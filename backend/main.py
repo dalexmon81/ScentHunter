@@ -2,6 +2,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 import importlib
 import traceback
+import re
 
 app = FastAPI(
     title="ScentHunter API",
@@ -16,7 +17,6 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Scraper che abbiamo creato
 STORES = [
     "bplatz",
     "deloox",
@@ -28,12 +28,15 @@ STORES = [
     "notino",
 ]
 
+def normalize_query(value: str) -> str:
+    value = str(value or "").strip()
+    value = re.sub(r"\s+", " ", value)
+    value = re.sub(r"(?<=\d)(?=[A-Za-z])|(?<=[A-Za-z])(?=\d)", " ", value)
+    return value.strip()
+
 @app.get("/")
 def root():
-    return {
-        "app": "ScentHunter",
-        "status": "running"
-    }
+    return {"app": "ScentHunter", "status": "running"}
 
 @app.get("/health")
 def health():
@@ -41,23 +44,20 @@ def health():
 
 @app.get("/search")
 def search_perfume(q: str):
-    query = q.strip()
+    query = normalize_query(q)
 
     if not query:
-        return {
-            "query": query,
-            "count": 0,
-            "results": []
-        }
+        return {"query": query, "count": 0, "results": []}
 
     all_results = []
     errors = {}
 
     for store in STORES:
         try:
-            module = importlib.import_module(
-                f"backend.scrapers.{store}.scraper"
-            )
+            try:
+                module = importlib.import_module(f"backend.scrapers.{store}.scraper")
+            except ModuleNotFoundError:
+                module = importlib.import_module(f"scrapers.{store}.scraper")
 
             results = module.search(query)
 
