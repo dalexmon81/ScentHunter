@@ -3,6 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 import importlib
 import traceback
 import re
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
 app = FastAPI(
     title="ScentHunter API",
@@ -52,7 +53,7 @@ def search_perfume(q: str):
     all_results = []
     errors = {}
 
-    for store in STORES:
+    def run_store(store):
         try:
             try:
                 module = importlib.import_module(f"backend.scrapers.{store}.scraper")
@@ -60,16 +61,40 @@ def search_perfume(q: str):
                 module = importlib.import_module(f"scrapers.{store}.scraper")
 
             results = module.search(query)
-
+            cleaned = []
             if results:
                 for product in results:
                     if isinstance(product, dict):
                         product.setdefault("store", store)
-                        all_results.append(product)
-
+                        cleaned.append(product)
+            return store, cleaned, None
         except Exception as e:
-            errors[store] = str(e)
             traceback.print_exc()
+            return store, [], str(e)
+
+    # I negozi vengono interrogati in parallelo:
+    # un sito lento non impedisce agli altri di restituire i propri risultati.
+    pool = ThreadPoolExecutor(max_workers=len(STORES))
+    futures = {pool.submit(run_store, store): store for store in STORES}
+
+    try:
+        for future in as_completed(futures, timeout=15):
+            store = futures[future]
+            try:
+                _, products, error = future.result()
+                all_results.extend(products)
+                if error:
+                    errors[store] = error
+            except Exception as e:
+                errors[store] = str(e)
+    except TimeoutError:
+        pass
+    finally:
+        for future, store in futures.items():
+            if not future.done():
+                errors[store] = "timeout"
+                future.cancel()
+        pool.shutdown(wait=False, cancel_futures=True)
 
     return {
         "query": query,
