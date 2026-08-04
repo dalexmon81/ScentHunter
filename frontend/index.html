@@ -130,7 +130,7 @@ function backend(){
   if (origin.includes("-3000.app.github.dev")) {
     return origin.replace("-3000.app.github.dev", "-8000.app.github.dev");
   }
-  return "http://localhost:8000";
+  return origin;
 }
 async function searchPerfume(){
 const q=queryInput.value.trim();if(!q){statusBox.textContent="Scrivi il nome di un profumo.";resultsBox.innerHTML="";errorsBox.innerHTML="";return}
