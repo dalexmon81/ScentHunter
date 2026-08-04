@@ -78,7 +78,7 @@ def search_perfume(q: str):
     futures = {pool.submit(run_store, store): store for store in STORES}
 
     try:
-        for future in as_completed(futures, timeout=15):
+        for future in as_completed(futures, timeout=30):
             store = futures[future]
             try:
                 _, products, error = future.result()
@@ -95,6 +95,54 @@ def search_perfume(q: str):
                 errors[store] = "timeout"
                 future.cancel()
         pool.shutdown(wait=False, cancel_futures=True)
+
+    def price_value(product):
+        value = product.get("price")
+        if value is None:
+            return float("inf")
+        if isinstance(value, (int, float)):
+            return float(value)
+
+        text = str(value).strip().lower()
+        if not text or any(word in text for word in ("out of stock", "rupture", "esaurito", "non disponibile")):
+            return float("inf")
+
+        match = re.search(r"\d+(?:[.,]\d+)?", text.replace(" ", ""))
+        if not match:
+            return float("inf")
+        try:
+            return float(match.group(0).replace(",", "."))
+        except ValueError:
+            return float("inf")
+
+    excluded_patterns = [
+        r"\bcoffret\b",
+        r"\bgift\s*set\b",
+        r"\bset\s*(?:regalo|cadeau|parfum|perfume|eau de parfum|eau de toilette)\b",
+        r"\b(?:parfum|perfume|fragrance)\s*set\b",
+        r"\bgeschenkset\b",
+        r"\bgeschenk\s*set\b",
+        r"\bduftset\b",
+        r"\bkit\s*(?:regalo|parfum|perfume)\b",
+        r"\bbundle\b",
+        r"\bmultipack\b",
+        r"\bmini\s*set\b",
+        r"\bdiscovery\s*set\b",
+        r"\btravel\s*set\b",
+        r"\b(?:2|3|4|5|6)\s*(?:pcs|pieces|pezzi|teilig|pi[eè]ces)\b",
+    ]
+
+    def is_single_perfume(product):
+        name = str(
+            product.get("name")
+            or product.get("title")
+            or product.get("product_name")
+            or ""
+        ).lower()
+        return not any(re.search(pattern, name, flags=re.IGNORECASE) for pattern in excluded_patterns)
+
+    all_results = [product for product in all_results if is_single_perfume(product)]
+    all_results.sort(key=price_value)
 
     return {
         "query": query,

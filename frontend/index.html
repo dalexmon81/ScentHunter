@@ -1,43 +1,167 @@
 <!DOCTYPE html>
 <html lang="it">
 <head>
-<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>ScentHunter</title>
 <style>
-*{box-sizing:border-box}body{margin:0;background:#09090b;color:#f5f5f5;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif}
-.container{width:min(92%,760px);margin:auto;padding:54px 0 80px}header{text-align:center;margin-bottom:62px}
-h1{margin:0;font-size:clamp(42px,8vw,58px);font-weight:800;letter-spacing:-2px}.gold{color:#dfb932}
-.subtitle{margin-top:18px;color:#aaaab2;font-size:clamp(20px,4.5vw,27px)}
-.search-card{border:2px solid #29292f;background:#111114;border-radius:28px;padding:18px}
-input{width:100%;border:0;outline:0;border-radius:20px;padding:30px 26px;background:#202025;color:white;font-size:24px;font-weight:600}
-input::placeholder{color:#8d8d96}button{width:100%;margin-top:18px;border:0;border-radius:20px;padding:26px 20px;background:#dfb932;color:#111114;font-size:25px;font-weight:800}
-button:disabled{opacity:.65}#status{margin:38px 7px 20px;color:#b6b6bd;font-size:23px;line-height:1.4}
-.result{margin-top:18px;padding:22px;border:1px solid #2c2c32;border-radius:20px;background:#151518}
-.store{color:#dfb932;font-size:16px;font-weight:800;text-transform:uppercase}.name{margin-top:8px;font-size:21px;font-weight:700;line-height:1.3}
-.price{margin-top:12px;font-size:22px;font-weight:800}.result a{display:inline-block;margin-top:16px;color:#dfb932;text-decoration:none;font-weight:700}
-#errorsBox{margin:26px 7px 0;color:#85858d;font-size:14px;line-height:1.55}
+*{box-sizing:border-box} html{background:#050607} body{margin:0;background:radial-gradient(circle at 50% 0,#111713 0,#07090a 30%,#030405 100%);color:#f7f7f5;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif}
+.app{width:min(100%,760px);margin:auto;min-height:100vh;padding:22px 18px 110px}
+.top{display:flex;align-items:center;justify-content:center;position:relative;padding:5px 0 20px}
+.logo{font-size:31px;font-weight:800;letter-spacing:-1.5px} .gold{color:#e7b83f} .bell{position:absolute;right:4px;font-size:24px;color:#e7b83f}
+.search-card{padding:0;margin:0 0 18px;border:0;background:none}
+input{width:100%;border:1px solid #34363a;outline:0;border-radius:18px;padding:17px 18px 17px 48px;background:linear-gradient(135deg,#181a1d,#101113);color:white;font-size:17px}
+.searchwrap{position:relative} .searchicon{position:absolute;left:17px;top:13px;font-size:24px;z-index:2}
+button{border:0;font-weight:800} #searchButton{display:none}
+.hero{border:1px solid #234638;border-radius:22px;padding:25px 20px;background:radial-gradient(circle at 85% 45%,#173c2d 0,#0b1c16 24%,#07100d 58%,#060808 100%);min-height:205px;position:relative;overflow:hidden}
+.hero h2{font-size:22px;margin:0 0 12px;max-width:64%;line-height:1.1} .hero p{font-size:16px;line-height:1.45;margin:0 0 18px;max-width:58%}
+.herobtn{display:inline-block;background:linear-gradient(#f4ca5d,#d99c22);color:#111;padding:13px 20px;border-radius:30px;font-size:14px;font-weight:900}
+.bottle{position:absolute;right:14px;bottom:16px;font-size:78px;filter:drop-shadow(0 0 12px #dba82d)}
+.sectionhead{display:flex;justify-content:space-between;align-items:center;margin:26px 4px 12px} .sectionhead h3,.cats h3{margin:0;font-size:20px} .see{color:#51c66f;font-weight:700}
+.deals{display:grid;grid-template-columns:repeat(3,1fr);gap:10px} .deal{border:1px solid #303236;border-radius:18px;background:linear-gradient(145deg,#17191b,#0b0c0d);padding:10px;min-width:0;position:relative}
+.discount{position:absolute;left:7px;top:7px;background:#e42b2b;border-radius:16px;padding:5px 7px;font-size:12px;font-weight:900} .heart{position:absolute;right:8px;top:7px;font-size:18px;color:#aaa}
+.pic{height:95px;display:flex;align-items:center;justify-content:center;font-size:55px} .brand{font-size:12px;color:#ddd} .pname{font-size:12px;font-weight:700;line-height:1.25;min-height:30px} .dprice{color:#52ce76;font-size:18px;font-weight:900;margin-top:5px} .shop{font-size:11px;color:#aaa;margin-top:4px}
+.cats{margin-top:28px} .catrow{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin-top:12px} .cat{border:1px solid #34363a;border-radius:16px;background:#111315;text-align:center;padding:13px 3px 10px;font-size:10px} .cat b{display:block;font-size:25px;color:#e5ad36;margin-bottom:7px}
+.smart{margin-top:26px;border:1px solid #303236;border-radius:20px;background:linear-gradient(120deg,#111416,#080a0b);padding:20px;display:flex;align-items:center;gap:18px} .smarticon{font-size:47px;color:#e4ae37} .smart strong{color:#e7b83f;font-size:20px} .smart p{margin:5px 0 0;line-height:1.35}
+#searchOutput{margin-bottom:18px} #status{margin:14px 5px 10px;color:#b6b6bd;font-size:16px;line-height:1.4} .result,.comparison{margin-top:12px;padding:17px;border:1px solid #303238;border-radius:18px;background:#121416}
+.store,.badge{color:#e7b83f;font-size:12px;font-weight:900;text-transform:uppercase} .name{margin-top:7px;font-size:18px;font-weight:750} .price,.offer-price{font-weight:900;color:#55ce78} .result a,.offer a{display:inline-block;margin-top:10px;color:#e7b83f;text-decoration:none;font-weight:700}
+.offer{padding:12px 0;border-top:1px solid #303238} .offer-row{display:flex;justify-content:space-between;gap:12px} .offer-store{font-weight:800} .saving{margin:9px 0;color:#8ee6ad;font-weight:800} #errorsBox{margin:20px 5px;color:#85858d;font-size:13px}
+.nav{position:fixed;z-index:20;bottom:0;left:50%;transform:translateX(-50%);width:min(100%,760px);padding:9px 12px calc(9px + env(safe-area-inset-bottom));background:rgba(7,8,9,.96);border-top:1px solid #25272a;display:grid;grid-template-columns:repeat(5,1fr);backdrop-filter:blur(15px)} .navitem{text-align:center;color:#98999c;font-size:10px} .navitem b{display:block;font-size:23px;margin-bottom:2px;font-weight:400} .navitem.active{color:#e7b83f}
+@media(max-width:390px){.app{padding-left:12px;padding-right:12px}.hero{padding:21px 16px}.bottle{font-size:65px}.hero h2{font-size:19px}.deal{padding:8px}.pic{height:82px;font-size:46px}}
+
+.brandHero{text-align:center;padding:8px 0 20px}
+.brandMark{height:78px;display:flex;align-items:center;justify-content:center}
+.brandMark svg{width:112px;height:78px;filter:drop-shadow(0 0 10px rgba(222,174,58,.18))}
+.brandName{font-size:31px;font-weight:800;letter-spacing:-1.4px;line-height:1}
+.brandName span{color:#e7b83f}
+.tagline{margin-top:10px;color:#d7d7d3;font-size:11px;font-weight:800;letter-spacing:2.2px}
+.benefits{margin:16px auto 18px;display:grid;grid-template-columns:repeat(4,1fr);max-width:390px}
+.benefits div{display:flex;flex-direction:column;align-items:center;gap:5px;border-right:1px solid #252729}
+.benefits div:last-child{border-right:0}
+.benefits b{color:#e7b83f;font-size:19px;height:21px}
+.benefits span{font-size:8px;font-weight:800;letter-spacing:.6px;color:#d8d8d5}
+.searchicon{top:15px!important;width:21px;height:21px}
+.searchicon svg{width:21px;height:21px;fill:none;stroke:#9b9da0;stroke-width:2;stroke-linecap:round}
+.bottle{right:10px!important;bottom:8px!important;width:145px;height:135px;font-size:0!important;filter:none!important}
+.bottle svg{width:100%;height:100%;filter:drop-shadow(0 0 10px rgba(225,176,54,.18))}
+
+
+.hero.hero-search{min-height:330px;padding:28px 20px 22px;display:flex;flex-direction:column;justify-content:flex-start}
+.hero.hero-search h2{max-width:62%;margin-bottom:10px}
+.hero.hero-search p{max-width:57%;margin-bottom:18px}
+.hero-actions{margin-top:auto;position:relative;z-index:3;width:100%}
+.hero-actions .search-card{margin:0 0 10px;padding:0;background:none;border:0}
+.hero-actions input{background:#121615;border:1px solid #3b403e;padding:15px 16px 15px 47px;font-size:16px}
+.hero-actions .herobtn{width:100%;margin:0;padding:15px 18px;border-radius:18px}
+.hero.hero-search .bottle{right:8px!important;top:25px!important;bottom:auto!important;width:140px;height:135px}
+#searchOutput{scroll-margin-top:12px}
+@media(max-width:390px){
+ .hero.hero-search{min-height:320px;padding:24px 16px 18px}
+ .hero.hero-search .bottle{width:118px;height:118px;right:4px!important;top:28px!important}
+ .hero.hero-search h2{max-width:66%}
+ .hero.hero-search p{max-width:60%}
+}
+
 </style>
 </head>
-<body><main class="container">
-<header><h1>Scent<span class="gold">Hunter</span></h1><div class="subtitle">Trova il tuo profumo al prezzo migliore</div></header>
-<section class="search-card"><input id="query" type="search" placeholder="Es. Rasasi Hawas Ice" autocomplete="off" enterkeyhint="search"><button id="searchButton">Cerca</button></section>
-<div id="status">Cerca un profumo per confrontare i prezzi.</div><section id="results"></section><div id="errorsBox"></div>
+<body>
+<main class="app">
+<div class="brandHero">
+  <div class="brandMark" aria-label="ScentHunter">
+    <svg viewBox="0 0 180 120" role="img" aria-label="Bottiglia di profumo con lente">
+      <defs>
+        <linearGradient id="g" x1="0" x2="1"><stop stop-color="#f2d47a"/><stop offset="1" stop-color="#c68b20"/></linearGradient>
+      </defs>
+      <rect x="55" y="32" width="70" height="70" rx="15" fill="none" stroke="url(#g)" stroke-width="7"/>
+      <rect x="69" y="18" width="42" height="16" rx="4" fill="none" stroke="url(#g)" stroke-width="6"/>
+      <rect x="77" y="7" width="26" height="12" rx="3" fill="none" stroke="url(#g)" stroke-width="5"/>
+      <circle cx="108" cy="67" r="27" fill="#090b0b" stroke="url(#g)" stroke-width="7"/>
+      <line x1="128" y1="87" x2="151" y2="110" stroke="url(#g)" stroke-width="8" stroke-linecap="round"/>
+    </svg>
+  </div>
+  <div class="brandName">Scent<span>Hunter</span></div>
+  <div class="tagline">FIND THE BEST PRICE, EVERY TIME</div>
+  <div class="benefits">
+    <div><b>⌕</b><span>TROVA</span></div>
+    <div><b>⇄</b><span>CONFRONTA</span></div>
+    <div><b>€</b><span>RISPARMIA</span></div>
+    <div><b>♜</b><span>FIDATI</span></div>
+  </div>
+</div>
+
+<section class="hero hero-search">
+<h2>TROVA IL TUO PROFUMO</h2><p>Confronta i prezzi tra i migliori negozi online.</p><div class="bottle">
+<svg viewBox="0 0 170 150" aria-label="Profumo con lente">
+  <defs><linearGradient id="hg" x1="0" x2="1"><stop stop-color="#f2d47a"/><stop offset="1" stop-color="#c68b20"/></linearGradient></defs>
+  <rect x="32" y="42" width="88" height="88" rx="18" fill="#111713" stroke="url(#hg)" stroke-width="7"/>
+  <rect x="51" y="24" width="50" height="19" rx="5" fill="#111713" stroke="url(#hg)" stroke-width="6"/>
+  <rect x="62" y="10" width="28" height="15" rx="4" fill="#111713" stroke="url(#hg)" stroke-width="5"/>
+  <circle cx="100" cy="85" r="31" fill="#0a0d0c" stroke="url(#hg)" stroke-width="7"/>
+  <line x1="123" y1="108" x2="149" y2="134" stroke="url(#hg)" stroke-width="9" stroke-linecap="round"/>
+</svg>
+</div>
+<div class="hero-actions">
+<section class="search-card"><div class="searchwrap"><span class="searchicon"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"/><line x1="15.5" y1="15.5" x2="21" y2="21"/></svg></span><input id="query" type="search" placeholder="Cerca profumo, marca, nota..." autocomplete="off" enterkeyhint="search"></div><button id="searchButton">Cerca</button></section>
+<button class="herobtn" onclick="searchPerfume()">INIZIA LA RICERCA</button>
+</div>
+</section>
+<div id="searchOutput"><div id="status">Cerca un profumo per confrontare i prezzi.</div><section id="results"></section><div id="errorsBox"></div></div>
+
+
+
+<div class="sectionhead"><h3>OFFERTE DEL MOMENTO</h3><span class="see">Vedi tutte</span></div>
+<section class="deals">
+<div class="deal"><span class="discount">-23%</span><span class="heart">♡</span><div class="pic">🧴</div><div class="brand">Rasasi</div><div class="pname">Hawas Ice</div><div class="dprice">€39,95</div><div class="shop">ProfumoCity</div></div>
+<div class="deal"><span class="discount">-18%</span><span class="heart">♡</span><div class="pic">♟</div><div class="brand">Azzaro</div><div class="pname">The Most Wanted</div><div class="dprice">€59,90</div><div class="shop">Deloox</div></div>
+<div class="deal"><span class="discount">-21%</span><span class="heart">♡</span><div class="pic">🏺</div><div class="brand">Jean Paul Gaultier</div><div class="pname">Le Male Le Parfum</div><div class="dprice">€67,45</div><div class="shop">ParfumDreams</div></div>
+</section>
+
+<section class="cats"><h3>CATEGORIE</h3><div class="catrow"><div class="cat"><b>♙</b>Profumi</div><div class="cat"><b>☆</b>Bestseller</div><div class="cat"><b>♧</b>Novità</div><div class="cat"><b>%</b>Offerte</div><div class="cat"><b>◇</b>Esclusivi</div></div></section>
+
+
+
 </main>
+
+<nav class="nav"><div class="navitem active"><b>⌕</b>Esplora</div><div class="navitem"><b>♡</b>Wishlist</div><div class="navitem"><b>♕</b>Top</div><div class="navitem"><b>▥</b>Confronta</div><div class="navitem"><b>♙</b>Profilo</div></nav>
 <script>
 const queryInput=document.getElementById("query"),searchButton=document.getElementById("searchButton"),statusBox=document.getElementById("status"),resultsBox=document.getElementById("results"),errorsBox=document.getElementById("errorsBox");
 function esc(v){return String(v??"").replaceAll("&","&amp;").replaceAll("<","&lt;").replaceAll(">","&gt;").replaceAll('"',"&quot;").replaceAll("'","&#039;")}
-function backend(){const h=location.hostname;if(h.includes(".app.github.dev"))return location.protocol+"//"+h.replace(/-3000\.app\.github\.dev$/,"-8000.app.github.dev");return"http://127.0.0.1:8000"}
+function backend(){
+  const origin = window.location.origin;
+  if (origin.includes("-3000.app.github.dev")) {
+    return origin.replace("-3000.app.github.dev", "-8000.app.github.dev");
+  }
+  return "http://localhost:8000";
+}
 async function searchPerfume(){
 const q=queryInput.value.trim();if(!q){statusBox.textContent="Scrivi il nome di un profumo.";resultsBox.innerHTML="";errorsBox.innerHTML="";return}
-searchButton.disabled=true;searchButton.textContent="Cerco…";statusBox.textContent="Ricerca in corso…";resultsBox.innerHTML="";errorsBox.innerHTML="";
+searchButton.disabled=true;searchButton.textContent="Cerco…";statusBox.textContent="Ricerca in corso…";resultsBox.innerHTML="";errorsBox.innerHTML="";document.getElementById("searchOutput").scrollIntoView({behavior:"smooth",block:"start"});
 try{
 const response=await fetch(backend()+"/search?q="+encodeURIComponent(q));if(!response.ok)throw new Error("Errore del server: "+response.status);
 const data=await response.json(),results=Array.isArray(data.results)?data.results:[];
-statusBox.textContent=results.length?results.length+(results.length===1?" risultato trovato.":" risultati trovati."):"Nessun risultato trovato.";
-resultsBox.innerHTML=results.map(i=>`<article class="result"><div class="store">${esc(i.store||"Negozio")}</div><div class="name">${esc(i.name||"Profumo")}</div><div class="price">${esc(i.price||"Prezzo non disponibile")}</div>${i.url?`<a href="${esc(i.url)}" target="_blank" rel="noopener noreferrer">Vai al negozio →</a>`:""}</article>`).join("");
+const comparisons=Array.isArray(data.comparisons)?data.comparisons:[];
+if(comparisons.length){
+  statusBox.textContent=comparisons.length+(comparisons.length===1?" profumo confrontato.":" profumi confrontati.");
+  resultsBox.innerHTML=comparisons.map(g=>{
+    const offers=Array.isArray(g.offers)?g.offers:[];
+    const prices=offers.map(o=>Number(o.price_value)).filter(Number.isFinite);
+    const min=prices.length?Math.min(...prices):null,max=prices.length?Math.max(...prices):null;
+    const saving=min!==null&&max!==null&&max>min?(max-min).toLocaleString("it-IT",{minimumFractionDigits:2,maximumFractionDigits:2})+" €":"";
+    return `<article class="comparison">
+      <div class="badge">🏆 CONFRONTO PREZZI</div>
+      <div class="name">${esc(g.name||"Profumo")}</div>
+      ${g.size_ml?`<div>${esc(g.size_ml)} ml${g.concentration?" · "+esc(String(g.concentration).toUpperCase()):""}</div>`:""}
+      ${saving?`<div class="saving">Risparmio possibile: ${saving}</div>`:""}
+      ${offers.map((o,n)=>`<div class="offer"><div class="offer-row"><span class="offer-store">${n===0?"🥇 ":""}${esc(o.store||"Negozio")}</span><span class="offer-price">${esc(o.price||((o.price_value!=null)?Number(o.price_value).toLocaleString("it-IT",{minimumFractionDigits:2,maximumFractionDigits:2})+" €":""))}</span></div>${o.url?`<a href="${esc(o.url)}" target="_blank" rel="noopener noreferrer">Vai al negozio →</a>`:""}</div>`).join("")}
+    </article>`;
+  }).join("");
+}else{
+  statusBox.textContent=results.length?results.length+(results.length===1?" risultato trovato.":" risultati trovati."):"Nessun risultato trovato.";
+  resultsBox.innerHTML=results.map(i=>`<article class="result"><div class="store">${esc(i.store||"Negozio")}</div><div class="name">${esc(i.name||"Profumo")}</div><div class="price">${esc(i.price||"Prezzo non disponibile")}</div>${i.url?`<a href="${esc(i.url)}" target="_blank" rel="noopener noreferrer">Vai al negozio →</a>`:""}</article>`).join("");
+}
 if(data.errors&&Object.keys(data.errors).length)errorsBox.innerHTML="Alcuni negozi non hanno risposto: "+Object.keys(data.errors).map(esc).join(", ")+".";
 }catch(e){console.error(e);statusBox.textContent="Impossibile completare la ricerca."}
 finally{searchButton.disabled=false;searchButton.textContent="Cerca"}
 }
 searchButton.addEventListener("click",searchPerfume);queryInput.addEventListener("keydown",e=>{if(e.key==="Enter"){e.preventDefault();searchPerfume()}});
-</script></body></html>
+</script>
+</body></html>
