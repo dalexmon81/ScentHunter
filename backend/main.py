@@ -1,9 +1,11 @@
-from fastapi import FastAPI
+from pathlib import Path
+from fastapi import FastAPI, HTTPException
+from fastapi.responses import FileResponse
 from fastapi.middleware.cors import CORSMiddleware
 import importlib
 import traceback
 import re
-from concurrent.futures import ThreadPoolExecutor, as_completed
+from concurrent.futures import ThreadPoolExecutor, as_completed, TimeoutError
 
 app = FastAPI(
     title="ScentHunter API",
@@ -18,6 +20,9 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+BASE_DIR = Path(__file__).resolve().parent.parent
+FRONTEND_INDEX = BASE_DIR / "frontend" / "index.html"
+
 STORES = [
     "bplatz",
     "deloox",
@@ -29,19 +34,25 @@ STORES = [
     "notino",
 ]
 
+
 def normalize_query(value: str) -> str:
     value = str(value or "").strip()
     value = re.sub(r"\s+", " ", value)
     value = re.sub(r"(?<=\d)(?=[A-Za-z])|(?<=[A-Za-z])(?=\d)", " ", value)
     return value.strip()
 
-@app.get("/")
+
+@app.get("/", include_in_schema=False)
 def root():
-    return {"app": "ScentHunter", "status": "running"}
+    if not FRONTEND_INDEX.exists():
+        raise HTTPException(status_code=500, detail="frontend/index.html non trovato")
+    return FileResponse(FRONTEND_INDEX)
+
 
 @app.get("/health")
 def health():
     return {"status": "healthy"}
+
 
 @app.get("/search")
 def search_perfume(q: str):
@@ -148,5 +159,5 @@ def search_perfume(q: str):
         "query": query,
         "count": len(all_results),
         "results": all_results,
-        "errors": errors
+        "errors": errors,
     }
