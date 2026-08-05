@@ -1,6 +1,4 @@
-from pathlib import Path
-from fastapi import FastAPI, HTTPException
-from fastapi.responses import FileResponse
+from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 import importlib
@@ -52,12 +50,6 @@ STORES = [
 
 BASE_DIR = os.path.dirname(__file__)
 HISTORY_PATH = os.path.join(BASE_DIR, "price_history.json")
-
-FRONTEND_INDEX = (
-    Path(__file__).resolve().parent.parent
-    / "frontend"
-    / "index.html"
-)
 
 VARIANTS = {
     "pour femme",
@@ -174,6 +166,10 @@ def product_image(product: Dict[str, Any]) -> str:
 def matches(product: Dict[str, Any], query: str) -> bool:
     """
     Evita risultati palesemente diversi dalla ricerca.
+
+    Esempio:
+    se si cerca "9 PM", non devono entrare automaticamente
+    "9 PM Rebel", "9 PM Elixir", ecc.
     """
     name = norm(product.get("name", ""))
     query_normalized = norm(query)
@@ -245,6 +241,8 @@ def build_search_attempts(store: str, query: str) -> List[str]:
     if compact and compact not in attempts:
         attempts.append(compact)
 
+    # Bplatz può restituire risultati migliori partendo
+    # anche dai singoli termini della ricerca.
     if store == "bplatz":
         for token in normalized_query.split():
             if token and token not in attempts:
@@ -465,18 +463,16 @@ def update_price_history(
 
 
 # ============================================================
-# API - ROOT / HOMEPAGE
+# API - ROOT
 # ============================================================
 
-@app.get("/", include_in_schema=False)
+@app.get("/")
 def root():
-    if not FRONTEND_INDEX.exists():
-        raise HTTPException(
-            status_code=500,
-            detail="frontend/index.html non trovato",
-        )
-
-    return FileResponse(FRONTEND_INDEX)
+    return {
+        "app": "ScentHunter",
+        "status": "running",
+        "version": "1.0.0",
+    }
 
 
 # ============================================================
@@ -554,155 +550,190 @@ def search_perfume(q: str):
 # ============================================================
 
 @app.get("/suggest")
-
 def suggest(q: str):
-
     query = norm(q)
 
     if len(query) < 2:
-
         return {
-
             "query": q,
-
             "count": 0,
-
             "suggestions": [],
-
             "source": "stores",
-
         }
 
     suggestions = []
-
     seen = set()
 
-    # Per l'autocomplete NON usiamo search_perfume(),
-
-    # perché il filtro della ricerca completa elimina varianti
-
-    # come Hawas Ice, Hawas Tropical, ecc.
-
+    # Autocomplete permissivo: NON usa matches(), perché matches()
+    # elimina apposta varianti come Hawas Ice quando si cerca Hawas.
     for store in STORES:
-
         try:
-
             module = load_scraper(store)
 
-            results = module.search(q) or []
+            # Prova sia il testo originale sia quello normalizzato.
+            attempts = [str(q or "").strip()]
+            if query not in attempts:
+                attempts.append(query)
 
-            for product in results:
-
-                if not isinstance(product, dict):
-
+            for attempt in attempts:
+                if not attempt:
                     continue
 
-                name = str(
+                results = module.search(attempt) or []
 
-                    product.get("name")
+                for product in results:
+                    if not isinstance(product, dict):
+                        continue
 
-                    or product.get("title")
+                    name = str(
+                        product.get("name")
+                        or product.get("title")
+                        or product.get("product_name")
+                        or ""
+                    ).strip()
 
-                    or product.get("product_name")
+                    if not name:
+                        continue
 
-                    or ""
+                    normalized_name = norm(name)
 
-                ).strip()
+                    # Tutte le parole digitate devono comparire nel nome/marca.
+                    brand = str(product.get("brand") or "").strip()
+                    haystack = norm(f"{brand} {name}")
+                    words = [w for w in query.split() if w]
 
-                if not name:
+                    if not all(w in haystack for w in words):
+                        continue
 
-                    continue
+                    # Niente gift set, deodoranti, shower gel, ecc.
+                    if any(norm(phrase) in normalized_name for phrase in NON_PERFUME):
+                        continue
 
-                normalized_name = norm(name)
+                    key = normalized_name
+                    if key in seen:
+                        continue
+                    seen.add(key)
 
-                # Il nome deve contenere ciò che l'utente sta scrivendo.
-
-                # "ha" -> Hawas, Hawas Ice, ecc.
-
-                if query not in normalized_name:
-
-                    continue
-
-                # Escludiamo prodotti che non sono profumi singoli.
-
-                if any(
-
-                    norm(phrase) in normalized_name
-
-                    for phrase in NON_PERFUME
-
-                ):
-
-                    continue
-
-                key = normalized_name
-
-                if key in seen:
-
-                    continue
-
-                seen.add(key)
-
-                suggestions.append(
-
-                    {
-
+                    suggestions.append({
                         "name": name,
-
                         "store": product.get("store", store),
-
-                        "brand": product.get("brand", ""),
-
+                        "brand": brand,
                         "image": product_image(product),
-
-                    }
-
-                )
+                    })
 
         except Exception:
-
             traceback.print_exc()
 
-    # Prima i nomi che iniziano con ciò che è stato scritto,
-
-    # poi quelli che lo contengono.
-
     suggestions.sort(
-
         key=lambda item: (
-
-            0 if norm(item["name"]).startswith(query) else 1,
-
-            len(item["name"]),
-
-            item["name"].lower(),
-
+            0 if norm(item.get("name", "")).startswith(query) else 1,
+            len(item.get("name", "")),
+            item.get("name", "").lower(),
         )
-
     )
 
+    suggestions = suggestions[:8]
+
     return {
-
         "query": q,
-
-        "count": len(suggestions[:8]),
-
-        "suggestions": suggestions[:8],
-
+        "count": len(suggestions),
+        "suggestions": suggestions,
         "source": "stores",
     }
 
 
-
-
 # ============================================================
-
 # API - AUTOCOMPLETE
-
 # ============================================================
 
 @app.get("/autocomplete")
-
 def autocomplete(q: str):
-
     return suggest(q)
+
+
+# ============================================================
+# API - PRODUCT
+# ============================================================
+
+@app.get("/product")
+def product(
+    name: str,
+    brand: str = "",
+):
+
+    data = search_perfume(
+        name
+    )
+
+    offers: List[Dict[str, Any]] = []
+
+    for product_data in data["results"]:
+
+        value = price_num(
+            product_data.get("price")
+        )
+
+        if value is None:
+            continue
+
+        offer = dict(
+            product_data
+        )
+
+        offer["price_value"] = value
+        offer["image"] = product_image(
+            offer
+        )
+
+        offers.append(
+            offer
+        )
+
+    offers.sort(
+        key=lambda offer: offer[
+            "price_value"
+        ]
+    )
+
+    best_offer = (
+        offers[0]
+        if offers
+        else None
+    )
+
+    history = update_price_history(
+        name=name,
+        brand=brand,
+        best_offer=best_offer,
+    )
+
+    image = next(
+        (
+            offer["image"]
+            for offer in offers
+            if offer.get("image")
+        ),
+        "",
+    )
+
+    lowest_price = (
+        best_offer.get("price")
+        if best_offer
+        else None
+    )
+
+    return {
+        "name": name,
+        "brand": brand,
+        "image": image,
+        "lowest_price": lowest_price,
+        "best_offer": best_offer,
+        "offers": offers,
+        "history": history,
+        "errors": data["errors"],
+        "message": (
+            ""
+            if offers
+            else "Nessuna offerta disponibile al momento"
+        ),
+    }
