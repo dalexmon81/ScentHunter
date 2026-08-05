@@ -1,275 +1,381 @@
 import re
-import html
 import json
-from typing import List, Dict, Optional
-from urllib.parse import urljoin, quote_plus
+import html as html_lib
+from urllib.parse import quote_plus, urljoin
 
 import requests
 from bs4 import BeautifulSoup
 
 STORE = "Sabina"
-BASE_URL = "https://www.sabina.com"
-TIMEOUT = 25
+BASE = "https://www.sabina.com"
+TIMEOUT = 20
 
 HEADERS = {
-    "User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36",
-    "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
-    "Accept-Language": "it-IT,it;q=0.9,en-US;q=0.8,en;q=0.7",
-    "Cache-Control": "no-cache",
+    "User-Agent": (
+        "Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) "
+        "AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.0 "
+        "Mobile/15E148 Safari/604.1"
+    ),
+    "Accept-Language": "it-IT,it;q=0.9,en;q=0.7",
+    "Accept": "text/html,application/xhtml+xml,application/json;q=0.9,*/*;q=0.8",
+    "Referer": BASE + "/it/",
 }
 
-SEARCH_URLS = [
-    BASE_URL + "/it/ricerca?controller=search&s={query}",
-    BASE_URL + "/it/search?controller=search&s={query}",
-]
-
-FRAGRANCE_WORDS = (
-    "eau de parfum", "eau de toilette", " parfum", "profumo",
-    "elixir", "eau forte", "cologne"
-)
-EXCLUDE_WORDS = (
-    "occhiali", "sunglass", "after shave", "dopobarba", "deodor",
-    "gel da barba", "balsamo", "lozione", "detergente", "crema",
-    "shampoo", "doccia", "shower", "stick", "makeup", "rossetto"
+PRICE_RE = re.compile(r"(?<!\d)(\d{1,4}(?:[.,]\d{2}))\s*€")
+PRODUCT_URL_RE = re.compile(
+    r"^https?://(?:www\.)?sabina\.com/it/(?!"
+    r"(?:content|ricerca|ricerca_old|marchi|negozi|contatto|faq|"
+    r"carrello|ordine|stato-ordine|il-mio-conto|module)/)"
 )
 
-def _clean(s):
-    return re.sub(r"\s+", " ", html.unescape(str(s or ""))).strip()
 
-def _norm(s):
-    s = _clean(s).lower()
-    s = re.sub(r"[^\w\s]+", " ", s, flags=re.UNICODE)
-    return re.sub(r"\s+", " ", s).strip()
+def _clean(value):
+    return re.sub(r"\s+", " ", html_lib.unescape(value or "")).strip()
 
-def _tokens(q):
-    return [x for x in _norm(q).split() if len(x) > 1]
 
-def _matches(text, query):
-    n = _norm(text)
-    return all(t in n for t in _tokens(query))
-
-def _is_fragrance(text):
-    n = _norm(text)
-    if any(_norm(x) in n for x in EXCLUDE_WORDS):
-        return False
-    return any(_norm(x) in n for x in FRAGRANCE_WORDS)
-
-def _money(value):
+def _price(value):
     if value is None:
         return None
-    s = _clean(value).replace("€", "").replace("$", "").strip()
-    m = re.search(r"(\d{1,4}(?:[.,]\d{2}))", s)
+    if isinstance(value, (int, float)):
+        return f"{float(value):.2f}".replace(".", ",") + " €"
+    text = _clean(str(value))
+    m = PRICE_RE.search(text)
+    if not m:
+        # JSON/API spesso restituisce il numero senza simbolo €
+        m = re.search(r"(?<!\d)(\d{1,4}(?:[.,]\d{2}))(?!\d)", text)
     if not m:
         return None
-    v = m.group(1)
-    # normalize to Italian display
-    if "." in v and "," not in v:
-        v = v.replace(".", ",")
-    try:
-        if float(v.replace(",", ".")) <= 0:
-            return None
-    except ValueError:
-        return None
-    return v + " €"
+    return m.group(1).replace(".", ",") + " €"
 
-def _jsonld_products(soup):
-    out = []
-    for node in soup.find_all("script", attrs={"type": "application/ld+json"}):
-        raw = node.string or node.get_text()
-        if not raw:
+
+def _looks_like_product_url(url):
+    return bool(url and PRODUCT_URL_RE.match(url))
+
+
+def _dedupe(rows, query):
+    q = _clean(query).lower()
+    words = [w for w in re.findall(r"[a-z0-9À-ÿ]+", q) if len(w) > 1]
+    out, seen = [], set()
+
+    for row in rows:
+        name = _clean(row.get("name"))
+        url = row.get("url")
+        price = _price(row.get("price"))
+
+        if not name or not url or not price:
             continue
-        try:
-            data = json.loads(raw)
-        except Exception:
+
+        hay = name.lower()
+        # Evita il vecchio problema: risultati cosmetici casuali per "Liquid", ecc.
+        if words and not all(w in hay for w in words):
             continue
-        stack = data if isinstance(data, list) else [data]
-        while stack:
-            x = stack.pop()
-            if isinstance(x, list):
-                stack.extend(x)
-            elif isinstance(x, dict):
-                if x.get("@type") == "Product":
-                    out.append(x)
-                for v in x.values():
-                    if isinstance(v, (dict, list)):
-                        stack.append(v)
+
+        key = (name.lower(), url.split("?")[0])
+        if key in seen:
+            continue
+        seen.add(key)
+
+        out.append({
+            "store": STORE,
+            "name": name,
+            "price": price,
+            "url": url.split("#")[0],
+        })
+
     return out
 
-def _product_from_jsonld(obj, page_url, query):
-    name = _clean(obj.get("name"))
-    if not name or not _matches(name, query):
-        return None
-    desc = _clean(obj.get("description"))
-    combined = name + " " + desc + " " + page_url.replace("-", " ")
-    if not _is_fragrance(combined):
-        return None
 
-    offers = obj.get("offers", {})
-    if isinstance(offers, list):
-        offers = offers[0] if offers else {}
-    price = _money(offers.get("price") if isinstance(offers, dict) else None)
-    if not price:
-        return None
-    url = obj.get("url") or page_url
-    return {"store": STORE, "name": name, "price": price, "url": urljoin(BASE_URL, url)}
+def _walk_json(obj, query):
+    """Estrae prodotti da JSON anche se SellBoost cambia leggermente i nomi dei campi."""
+    rows = []
 
-def _parse_product_page(session, url, query):
-    try:
-        r = session.get(url, headers=HEADERS, timeout=TIMEOUT, allow_redirects=True)
-        if r.status_code != 200:
-            return None
-    except requests.RequestException:
-        return None
+    def walk(x):
+        if isinstance(x, dict):
+            low = {str(k).lower(): v for k, v in x.items()}
 
-    soup = BeautifulSoup(r.text, "html.parser")
-
-    # Prefer structured product data.
-    for obj in _jsonld_products(soup):
-        item = _product_from_jsonld(obj, r.url, query)
-        if item:
-            return item
-
-    h1 = soup.find("h1")
-    if not h1:
-        return None
-    name = _clean(h1.get_text(" ", strip=True))
-
-    # Product type is often separated from H1 on Sabina.
-    top = _clean(soup.get_text(" ", strip=True))[:2500]
-    for kind in ("EAU DE PARFUM", "EAU DE TOILETTE", "PARFUM", "ELIXIR", "EAU FORTE", "COLOGNE"):
-        if kind.lower() in top.lower() and kind.lower() not in name.lower():
-            name += " " + kind
-            break
-
-    if not _matches(name, query):
-        return None
-    if not _is_fragrance(name + " " + r.url.replace("-", " ")):
-        return None
-
-    # Exact current sale price on Sabina: "Prezzo:83,67 €"
-    page_text = _clean(soup.get_text(" ", strip=True))
-    m = re.search(r"\bPrezzo\s*:\s*([€$]?\s*\d{1,4}[.,]\d{2})", page_text, re.I)
-    price = _money(m.group(1)) if m else None
-
-    if not price:
-        for selector in (
-            "meta[property='product:price:amount']",
-            "meta[itemprop='price']",
-            "[itemprop='price']"
-        ):
-            el = soup.select_one(selector)
-            if el:
-                price = _money(el.get("content") or el.get("value") or el.get_text(" ", strip=True))
-                if price:
-                    break
-    if not price:
-        return None
-
-    return {"store": STORE, "name": name, "price": price, "url": r.url}
-
-def _candidate_links_from_html(soup, query):
-    candidates = []
-    seen = set()
-    qtokens = _tokens(query)
-
-    # Sabina currently uses URLs such as:
-    # /it/profumi-da-uomo/7094-dior-sauvage-eau-de-parfum.html
-    # /it/sauvage/11971-sauvage-elixir-eau-de-parfum-dior.html
-    product_re = re.compile(r"/it/(?:[^/?#]+/)*\d+-[^/?#]+\.html(?:\?.*)?$", re.I)
-
-    for a in soup.find_all("a", href=True):
-        href = urljoin(BASE_URL, a["href"])
-        if not product_re.search(href):
-            continue
-        label = _clean(a.get_text(" ", strip=True))
-        hay = _norm(label + " " + href.replace("-", " "))
-        if not all(t in hay for t in qtokens):
-            continue
-        href = href.split("#")[0]
-        if href not in seen:
-            seen.add(href)
-            candidates.append(href)
-    return candidates
-
-def _search_pages(session, query):
-    all_urls = []
-    seen = set()
-    for template in SEARCH_URLS:
-        try:
-            r = session.get(
-                template.format(query=quote_plus(query)),
-                headers=HEADERS, timeout=TIMEOUT, allow_redirects=True
+            name = next(
+                (low[k] for k in (
+                    "name", "product_name", "productname", "title", "label"
+                ) if k in low and isinstance(low[k], (str, int, float))),
+                None,
             )
-            if r.status_code != 200:
-                continue
-        except requests.RequestException:
-            continue
-        soup = BeautifulSoup(r.text, "html.parser")
-        for url in _candidate_links_from_html(soup, query):
-            if url not in seen:
-                seen.add(url)
-                all_urls.append(url)
-    return all_urls
+            url = next(
+                (low[k] for k in (
+                    "url", "link", "product_url", "producturl", "href"
+                ) if k in low and isinstance(low[k], str)),
+                None,
+            )
+            price = next(
+                (low[k] for k in (
+                    "price", "final_price", "finalprice", "sale_price",
+                    "saleprice", "price_amount", "priceamount"
+                ) if k in low),
+                None,
+            )
 
-def _fallback_catalog_pages(session, query):
-    # Sabina search can be JS/redirect dependent. Its indexed brand/category pages
-    # are server-rendered, so use them as a reliable fallback.
-    words = _tokens(query)
-    pages = []
+            if url:
+                url = urljoin(BASE, url)
+            if name and url and _looks_like_product_url(url) and _price(price):
+                rows.append({
+                    "store": STORE,
+                    "name": str(name),
+                    "price": price,
+                    "url": url,
+                })
 
-    if "dior" in words and "sauvage" in words:
-        pages.extend([
-            BASE_URL + "/it/307-sauvage",
-            BASE_URL + "/it/304-dior",
-        ])
+            for v in x.values():
+                walk(v)
 
-    # Generic fallback: site search engine endpoint with the full query.
-    urls = []
-    seen = set()
-    for page in pages:
+        elif isinstance(x, list):
+            for v in x:
+                walk(v)
+
+    walk(obj)
+    return _dedupe(rows, query)
+
+
+def _parse_html(text, query):
+    soup = BeautifulSoup(text, "html.parser")
+    rows = []
+
+    # 1) JSON-LD: è il dato più pulito quando presente.
+    for script in soup.select('script[type="application/ld+json"]'):
         try:
-            r = session.get(page, headers=HEADERS, timeout=TIMEOUT, allow_redirects=True)
-            if r.status_code != 200:
-                continue
-        except requests.RequestException:
-            continue
-        soup = BeautifulSoup(r.text, "html.parser")
-        for u in _candidate_links_from_html(soup, query):
-            if u not in seen:
-                seen.add(u)
-                urls.append(u)
-    return urls
+            data = json.loads(script.get_text(strip=True))
+            rows.extend(_walk_json(data, query))
+        except Exception:
+            pass
 
-def search(query: str) -> List[Dict[str, str]]:
+    # 2) Card / link prodotto. Non dipende da UNA singola classe CSS.
+    for a in soup.find_all("a", href=True):
+        url = urljoin(BASE, a["href"])
+        if not _looks_like_product_url(url):
+            continue
+
+        container = a
+        for _ in range(7):
+            parent = getattr(container, "parent", None)
+            if not parent:
+                break
+            container = parent
+            txt = _clean(container.get_text(" ", strip=True))
+            if "€" in txt and len(txt) < 1800:
+                break
+
+        text_block = _clean(container.get_text(" ", strip=True))
+        pm = PRICE_RE.search(text_block)
+        if not pm:
+            continue
+
+        # Preferenza: title/aria-label/testo link; poi heading nella card.
+        candidates = [
+            a.get("title"),
+            a.get("aria-label"),
+            a.get_text(" ", strip=True),
+        ]
+        for sel in ("h1", "h2", "h3", "h4", ".name", ".product-name", ".product-title"):
+            el = container.select_one(sel)
+            if el:
+                candidates.append(el.get_text(" ", strip=True))
+
+        name = max((_clean(x) for x in candidates if _clean(x)), key=len, default="")
+        if not name or name.lower() in {"vedi", "vedi tutto", "acquista", "immagine"}:
+            continue
+
+        rows.append({
+            "store": STORE,
+            "name": name,
+            "price": pm.group(1) + " €",
+            "url": url,
+        })
+
+    return _dedupe(rows, query)
+
+
+def _get(session, url, **kwargs):
+    r = session.get(url, headers=HEADERS, timeout=TIMEOUT, allow_redirects=True, **kwargs)
+    r.raise_for_status()
+    return r
+
+
+def search(query):
     query = _clean(query)
     if not query:
         return []
 
-    session = requests.Session()
-
-    urls = _search_pages(session, query)
-    if not urls:
-        urls = _fallback_catalog_pages(session, query)
-
+    s = requests.Session()
     results = []
-    seen = set()
-    for url in urls[:40]:
-        item = _parse_product_page(session, url, query)
-        if not item:
-            continue
-        if item["url"] in seen:
-            continue
-        seen.add(item["url"])
-        results.append(item)
 
-    # Best matches first; exact query tokens are already mandatory.
-    results.sort(key=lambda x: (len(_norm(x["name"])), x["name"]))
-    return results
+    # Crea cookie/sessione come un browser normale.
+    try:
+        _get(s, BASE + "/it/")
+    except Exception:
+        pass
+
+    # Caso speciale SOLO per Valentino:
+    # usa direttamente la pagina brand profumi Sabina.
+    if query.lower() == "valentino":
+        try:
+            r = _get(s, BASE + "/it/653-valentino")
+        except Exception:
+            return []
+
+        # Importante: estraiamo le card SENZA filtrare subito per la parola
+        # "Valentino", perché Sabina può omettere il brand dal titolo.
+        soup = BeautifulSoup(r.text, "html.parser")
+        raw_rows = []
+
+        for a in soup.find_all("a", href=True):
+            url = urljoin(BASE, a["href"])
+            if not _looks_like_product_url(url):
+                continue
+
+            container = a
+            for _ in range(7):
+                parent = getattr(container, "parent", None)
+                if not parent:
+                    break
+                container = parent
+                txt = _clean(container.get_text(" ", strip=True))
+                if "€" in txt and len(txt) < 1800:
+                    break
+
+            text_block = _clean(container.get_text(" ", strip=True))
+            pm = PRICE_RE.search(text_block)
+            if not pm:
+                continue
+
+            candidates = [
+                a.get("title"),
+                a.get("aria-label"),
+                a.get_text(" ", strip=True),
+            ]
+            for sel in ("h1", "h2", "h3", "h4", ".name", ".product-name", ".product-title"):
+                el = container.select_one(sel)
+                if el:
+                    candidates.append(el.get_text(" ", strip=True))
+
+            name = max((_clean(x) for x in candidates if _clean(x)), key=len, default="")
+            if not name or name.lower() in {"vedi", "vedi tutto", "acquista", "immagine"}:
+                continue
+
+            raw_rows.append({
+                "store": STORE,
+                "name": name,
+                "price": pm.group(1) + " €",
+                "url": url,
+            })
+
+        perfume_words = (
+            "eau de parfum", "eau-de-parfum",
+            "eau de toilette", "eau-de-toilette",
+            "parfum", "profumo", "profumi",
+            "born in roma", "born-in-roma",
+            "voce viva", "voce-viva",
+            "valentina",
+        )
+        accessory_words = (
+            "handbags", "handbag", "borsa", "borse",
+            "wallet", "portafoglio", "portafogli",
+            "portachiavi", "keyring", "keychain",
+            "zaino", "backpack", "pochette", "clutch",
+        )
+
+        out, seen = [], set()
+        for row in raw_rows:
+            name = _clean(row.get("name"))
+            url = urljoin(BASE, str(row.get("url") or ""))
+            price = _price(row.get("price"))
+            hay = (name + " " + url).lower()
+
+            if not name or not url or not price:
+                continue
+            if any(w in hay for w in accessory_words):
+                continue
+            if not any(w in hay for w in perfume_words):
+                continue
+
+            canonical_url = url.split("?")[0].split("#")[0].rstrip("/")
+            key = canonical_url.lower()
+            if key in seen:
+                continue
+            seen.add(key)
+
+            out.append({
+                "store": STORE,
+                "name": name,
+                "price": price,
+                "url": canonical_url,
+            })
+
+        return out
+
+
+    urls = [
+        BASE + "/it/ricerca?search_query=" + quote_plus(query),
+        BASE + "/it/ricerca_old?s=" + quote_plus(query),
+        BASE + "/it/ricerca_old?search_query=" + quote_plus(query),
+    ]
+
+    for url in urls:
+        try:
+            r = _get(s, url)
+            results.extend(_parse_html(r.text, query))
+            if results:
+                return _dedupe(results, query)
+        except Exception:
+            continue
+
+    # Il file reale di Sabina dichiara questo endpoint:
+    # /modules/ecelastic/ajax.php
+    # Proviamo sia GET sia POST e più nomi-parametro usati dalle versioni Prestashop.
+    ajax_url = BASE + "/modules/ecelastic/ajax.php"
+    payloads = [
+        {"q": query, "query": query, "search_query": query, "id_lang": 5, "id_country": 10, "id_currency": 1},
+        {"s": query, "search_query": query, "id_lang": 5, "id_country": 10, "id_currency": 1},
+        {"query": query, "id_lang": 5, "id_country": 10, "id_currency": 1},
+    ]
+
+    for payload in payloads:
+        for method in ("get", "post"):
+            try:
+                fn = getattr(s, method)
+                if method == "get":
+                    r = fn(ajax_url, params=payload, headers=HEADERS, timeout=TIMEOUT)
+                else:
+                    r = fn(ajax_url, data=payload, headers={
+                        **HEADERS,
+                        "X-Requested-With": "XMLHttpRequest",
+                    }, timeout=TIMEOUT)
+
+                if not r.ok or not r.text.strip():
+                    continue
+
+                try:
+                    data = r.json()
+                    rows = _walk_json(data, query)
+                except Exception:
+                    rows = _parse_html(r.text, query)
+
+                if rows:
+                    return rows
+            except Exception:
+                continue
+
+    return []
+
+
+# Alias compatibili con gli altri scraper del progetto.
+def scrape(query):
+    return search(query)
+
+
+def search_sabina(query):
+    return search(query)
+
 
 if __name__ == "__main__":
-    query = "Dior Sauvage"
-    results = search(query)
-    print(f"QUERY: {query}")
-    print(f"RISULTATI: {len(results)}")
-    for item in results:
-        print(item)
+    import sys
+    q = " ".join(sys.argv[1:]).strip() or "Dior"
+    data = search(q)
+    print(json.dumps(data, ensure_ascii=False, indent=2))

@@ -199,8 +199,7 @@ def _product_page(session: requests.Session, url: str, query: str) -> Optional[D
         return None
     return {"store": STORE, "name": name, "price": price, "url": r.url}
 
-def _is_out_of_stock_page(session: requests.Session, url: str) -> bool:
-    """Return True only when the product page explicitly says it is unavailable."""
+def _is_out_of_stock_page(session, url):
     try:
         r = session.get(url, headers=HEADERS, timeout=TIMEOUT, allow_redirects=True)
         if r.status_code != 200:
@@ -210,85 +209,36 @@ def _is_out_of_stock_page(session: requests.Session, url: str) -> bool:
 
     soup = BeautifulSoup(r.text, "html.parser")
 
-    # 1) Shopify JSON-LD availability is the strongest signal.
-    found_offer = False
-    found_available = False
-    for script in soup.find_all("script", type="application/ld+json"):
-        raw = script.string or script.get_text()
-        try:
-            obj = json.loads(raw)
-        except Exception:
-            continue
-
-        stack = obj if isinstance(obj, list) else [obj]
-        while stack:
-            x = stack.pop(0)
-            if not isinstance(x, dict):
-                continue
-
-            if x.get("@type") == "Product":
-                offers = x.get("offers") or []
-                if isinstance(offers, dict):
-                    offers = [offers]
-
-                for offer in offers:
-                    if not isinstance(offer, dict):
-                        continue
-                    found_offer = True
-                    availability = _clean(offer.get("availability")).lower()
-                    if any(word in availability for word in (
-                        "outofstock", "out_of_stock", "soldout",
-                        "sold_out", "discontinued"
-                    )):
-                        continue
-                    if any(word in availability for word in (
-                        "instock", "in_stock", "limitedavailability",
-                        "preorder", "backorder"
-                    )):
-                        found_available = True
-
-            for value in x.values():
-                if isinstance(value, dict):
-                    stack.append(value)
-                elif isinstance(value, list):
-                    stack.extend(v for v in value if isinstance(v, dict))
-
-    if found_offer and not found_available:
-        # All structured offers were explicitly unavailable or none advertised
-        # availability. Confirm with visible Shopify wording before declaring OOS.
-        page_text = _clean(soup.get_text(" ", strip=True)).lower()
-        if any(marker in page_text for marker in (
-            "out of stock",
-            "sold out",
-            "unavailable",
-            "nicht auf lager",
-            "ausverkauft",
-            "rupture de stock",
-            "épuisé",
-        )):
-            return True
-
-    # 2) Visible storefront text / disabled purchase button.
-    page_text = _clean(soup.get_text(" ", strip=True)).lower()
-    explicit_markers = (
-        "out of stock",
-        "sold out",
-        "nicht auf lager",
-        "ausverkauft",
-        "rupture de stock",
-        "épuisé",
+    # Check only the current product's purchase controls.
+    selectors = (
+        'button[name="add"]',
+        '.product-form__submit',
+        '[data-add-to-cart]',
+        'button[type="submit"]',
     )
-    if any(marker in page_text for marker in explicit_markers):
-        return True
 
-    for button in soup.find_all(["button", "input"]):
-        label = _clean(
-            button.get_text(" ", strip=True)
-            if button.name == "button"
-            else button.get("value")
-        ).lower()
-        if any(marker in label for marker in explicit_markers):
+    controls = []
+    for selector in selectors:
+        controls.extend(soup.select(selector))
+
+    unavailable = (
+        "out of stock", "sold out", "unavailable",
+        "ausverkauft", "nicht auf lager",
+        "rupture de stock", "épuisé",
+    )
+
+    for control in controls:
+        label = _clean(control.get_text(" ", strip=True)).lower()
+        disabled = (
+            control.has_attr("disabled")
+            or str(control.get("aria-disabled", "")).lower() == "true"
+        )
+
+        if any(word in label for word in unavailable):
             return True
+
+        if not disabled and any(word in label for word in ("add to cart", "buy now", "add")):
+            return False
 
     return False
 
