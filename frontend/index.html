@@ -147,7 +147,7 @@ body{position:relative}
 <script>
 const queryInput=document.getElementById("query"),searchButton=document.getElementById("searchButton"),statusBox=document.getElementById("status"),resultsBox=document.getElementById("results"),errorsBox=document.getElementById("errorsBox");
 
-const WISH_KEY="scenthunter_wishlist_v2";
+const WISH_KEY="scenthunter_wishlist_v3";
 const OLD_WISH_KEY="scenthunter_wishlist_v1";
 
 function normalizePerfumeName(v){
@@ -158,10 +158,26 @@ function normalizePerfumeName(v){
     .replace(/[^a-z0-9à-ÿ]+/gi," ")
     .replace(/\s+/g," ").trim();
 }
-function wishId(x){
-  const base=normalizePerfumeName(x.name||"");
-  return (String(x.brand||"").toLowerCase().trim()+"|"+base);
+function perfumeKey(x){
+  return normalizePerfumeName(x.name||"");
 }
+function samePerfume(a,b){
+  const A=perfumeKey(a),B=perfumeKey(b);
+  if(!A||!B)return false;
+  if(A===B)return true;
+  const longer=A.length>=B.length?A:B;
+  const shorter=A.length>=B.length?B:A;
+  // Consente solo un prefisso breve (tipicamente la marca):
+  // "rasasi hawas ice" = "hawas ice".
+  // Non unisce varianti aggiunte in coda:
+  // "hawas daarej passione" != "hawas daarej".
+  if(longer.endsWith(" "+shorter)){
+    const prefix=longer.slice(0,longer.length-shorter.length).trim();
+    return prefix.split(/\s+/).filter(Boolean).length<=2;
+  }
+  return false;
+}
+function wishId(x){return perfumeKey(x)}
 function getWishlist(){
   try{
     let list=JSON.parse(localStorage.getItem(WISH_KEY)||"null");
@@ -169,8 +185,7 @@ function getWishlist(){
       const old=JSON.parse(localStorage.getItem(OLD_WISH_KEY)||"[]");
       list=[];
       old.forEach(x=>{
-        const id=wishId(x);
-        const found=list.find(y=>wishId(y)===id);
+        const found=list.find(y=>samePerfume(y,x));
         if(!found) list.push(x);
         else {
           const np=parsePrice(x.price), op=parsePrice(found.price);
@@ -191,7 +206,7 @@ function saveWishlist(list){
   renderWishlist();syncHearts();
 }
 function addWish(item){
-  const list=getWishlist(),id=wishId(item),found=list.find(x=>wishId(x)===id);
+  const list=getWishlist(),found=list.find(x=>samePerfume(x,item));
   if(!found) list.push(item);
   else {
     const np=parsePrice(item.price),op=parsePrice(found.price);
@@ -202,8 +217,8 @@ function addWish(item){
 }
 function removeWish(id){saveWishlist(getWishlist().filter(x=>wishId(x)!==id))}
 function toggleWish(item){
-  const id=wishId(item),list=getWishlist();
-  if(list.some(x=>wishId(x)===id))removeWish(id);else addWish(item);
+  const list=getWishlist(),found=list.find(x=>samePerfume(x,item));
+  if(found)removeWish(wishId(found));else addWish(item);
 }
 function renderWishlist(){
   const box=document.getElementById("wishlistList"),count=document.getElementById("wishlistCount"),list=getWishlist();
@@ -221,9 +236,9 @@ function renderWishlist(){
   </article>`).join("");
 }
 function syncHearts(){
-  const ids=new Set(getWishlist().map(wishId));
+  const saved=getWishlist();
   document.querySelectorAll(".heart[data-name],.wish-result[data-name]").forEach(h=>{
-    const on=ids.has(wishId({brand:h.dataset.brand,name:h.dataset.name}));
+    const on=saved.some(x=>samePerfume(x,{brand:h.dataset.brand,name:h.dataset.name}));
     h.textContent=on?"♥":"♡";h.classList.toggle("saved",on);
   });
 }
