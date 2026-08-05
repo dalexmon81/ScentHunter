@@ -36,7 +36,7 @@ STORES = [
     "notino",
 ]
 
-SEARCH_TIMEOUT = 10
+SEARCH_TIMEOUT = 30
 CACHE_TTL = 300
 _search_cache = {}
 _cache_lock = threading.Lock()
@@ -193,5 +193,8 @@ def search_perfume(q: str):
         "results": all_results,
         "errors": errors,
     }
-    set_cached(query, payload)
+    # Cache only successful searches with at least one result.
+    # Empty/timeout responses are retried on the next request instead of being cached.
+    if all_results:
+        set_cached(query, payload)
     return payload
