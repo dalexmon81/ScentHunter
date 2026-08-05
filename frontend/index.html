@@ -25,7 +25,7 @@ button{border:0;font-weight:800} #searchButton{display:none}
 #searchOutput{margin-bottom:18px} #status{margin:14px 5px 10px;color:#b6b6bd;font-size:16px;line-height:1.4} .result,.comparison{margin-top:12px;padding:17px;border:1px solid #303238;border-radius:18px;background:#121416}
 .store,.badge{color:#e7b83f;font-size:12px;font-weight:900;text-transform:uppercase} .name{margin-top:7px;font-size:18px;font-weight:750} .price,.offer-price{font-weight:900;color:#55ce78} .result a,.offer a{display:inline-block;margin-top:10px;color:#e7b83f;text-decoration:none;font-weight:700}
 .offer{padding:12px 0;border-top:1px solid #303238} .offer-row{display:flex;justify-content:space-between;gap:12px} .offer-store{font-weight:800} .saving{margin:9px 0;color:#8ee6ad;font-weight:800} #errorsBox{margin:20px 5px;color:#85858d;font-size:13px}
-.nav{position:fixed;z-index:20;bottom:0;left:50%;transform:translateX(-50%);width:min(100%,760px);padding:9px 12px calc(9px + env(safe-area-inset-bottom));background:rgba(7,8,9,.96);border-top:1px solid #25272a;display:grid;grid-template-columns:repeat(5,1fr);backdrop-filter:blur(15px)} .navitem{text-align:center;color:#98999c;font-size:10px} .navitem b{display:flex;align-items:center;justify-content:center;height:36px;font-size:34px;line-height:36px;margin-bottom:3px;font-weight:400} .navitem.active{color:#e7b83f}
+.nav{position:fixed;z-index:20;bottom:0;left:50%;transform:translateX(-50%);width:min(100%,760px);padding:9px 12px calc(9px + env(safe-area-inset-bottom));background:rgba(7,8,9,.96);border-top:1px solid #25272a;display:grid;grid-template-columns:repeat(5,1fr);backdrop-filter:blur(15px)} .navitem{text-align:center;color:#98999c;font-size:10px} .navitem b{display:block;font-size:27px;line-height:29px;margin-bottom:3px;font-weight:400} .navitem.active{color:#e7b83f}
 @media(max-width:390px){.app{padding-left:12px;padding-right:12px}.hero{padding:21px 16px}.bottle{font-size:65px}.hero h2{font-size:19px}.deal{padding:8px}.pic{height:82px;font-size:46px}}
 
 .brandHero{text-align:center;padding:8px 0 20px}
@@ -68,9 +68,7 @@ button{border:0;font-weight:800} #searchButton{display:none}
 .bottle{width:150px!important;height:190px!important;right:5px!important;top:8px!important;bottom:auto!important;overflow:hidden;border-radius:18px}
 .bottle img{width:100%;height:100%;object-fit:contain;display:block}
 @media(max-width:390px){.bottle{width:125px!important;height:160px!important;right:2px!important;top:14px!important}}
-
-/* Bottom nav icon visual-size fix */
-.navitem b{display:flex!important;align-items:center!important;justify-content:center!important;height:36px!important;font-size:34px!important;line-height:36px!important;margin-bottom:3px!important}
+.wishShop{display:inline-block;margin-top:10px;padding:9px 14px;border-radius:18px;background:#e7b83f;color:#111;font-size:11px;font-weight:900;text-decoration:none}
 </style>
 <style>
 .nav{position:fixed!important;left:50%!important;right:auto!important;bottom:0!important;top:auto!important;transform:translateX(-50%)!important;width:min(100%,760px)!important;z-index:9999!important;margin:0!important}
@@ -256,7 +254,7 @@ function renderWishlist(){
       <div class="wishlist-brand">${esc(x.brand||"")}</div>
       <div class="wishlist-name">${esc(x.name||"Profumo")}</div>
       ${x.price?`<div class="wishlist-price">${esc(x.price)}</div>`:""}
-      ${x.shop?`<div class="wishlist-shop">Miglior prezzo attuale: ${esc(x.shop)}</div>`:""}
+      ${x.shop?`<div class="wishlist-shop">Miglior prezzo attuale: ${esc(x.shop)}</div>`:""}${(x.url||x.link)?`<a class="wishShop" href="${esc(x.url||x.link)}" target="_blank" rel="noopener">VAI AL NEGOZIO →</a>`:""}
       ${x.previousPrice&&x.previousShop?`<div class="wishlist-change"><span class="old">${esc(x.previousPrice)} · ${esc(x.previousShop)}</span> → ${esc(x.price)} · ${esc(x.shop)}</div><div class="wishlist-badge">↓ NUOVO MIGLIOR PREZZO${x.priceDrop?` · -${esc(formatEuro(x.priceDrop))}`:""}</div>`:""}
     </div>
     <button class="remove-wish" data-remove="${esc(wishId(x))}" aria-label="Rimuovi">♥</button>
