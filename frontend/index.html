@@ -69,6 +69,9 @@ button{border:0;font-weight:800} #searchButton{display:none}
 .bottle img{width:100%;height:100%;object-fit:contain;display:block}
 @media(max-width:390px){.bottle{width:125px!important;height:160px!important;right:2px!important;top:14px!important}}
 .wishShop{display:inline-block;margin-top:10px;padding:9px 14px;border-radius:18px;background:#e7b83f;color:#111;font-size:11px;font-weight:900;text-decoration:none}
+
+.navitem .navicon{height:34px!important;display:flex!important;align-items:center!important;justify-content:center!important;margin-bottom:3px!important;font-size:0!important;line-height:0!important}
+.navitem .navicon svg{width:30px!important;height:30px!important;fill:none!important;stroke:currentColor!important;stroke-width:2!important;stroke-linecap:round!important;stroke-linejoin:round!important;display:block!important}
 </style>
 <style>
 .nav{position:fixed!important;left:50%!important;right:auto!important;bottom:0!important;top:auto!important;transform:translateX(-50%)!important;width:min(100%,760px)!important;z-index:9999!important;margin:0!important}
@@ -148,7 +151,13 @@ body{position:relative}
 </div>
 </main>
 
-<nav class="nav"><div class="navitem active" data-view="explore"><b>⌕</b>Esplora</div><div class="navitem" data-view="wishlist"><b>♡</b>Wishlist</div><div class="navitem"><b>♕</b>Top</div><div class="navitem"><b>▥</b>Confronta</div><div class="navitem"><b>♙</b>Profilo</div></nav>
+<nav class="nav">
+<div class="navitem active" data-view="explore"><b class="navicon"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="6.5"/><path d="M16 16l4 4"/></svg></b>Esplora</div>
+<div class="navitem" data-view="wishlist"><b class="navicon"><svg viewBox="0 0 24 24"><path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.6l-1-1a5.5 5.5 0 0 0-7.8 7.8l1 1L12 21l7.8-7.6 1-1a5.5 5.5 0 0 0 0-7.8z"/></svg></b>Wishlist</div>
+<div class="navitem"><b class="navicon"><svg viewBox="0 0 24 24"><path d="M3 18h18L19 7l-5 5-2-8-2 8-5-5-2 11z"/><path d="M5 21h14"/></svg></b>Top</div>
+<div class="navitem"><b class="navicon"><svg viewBox="0 0 24 24"><path d="M4 3v18M7 3v18M11 3v18M13 3v18M17 3v18M20 3v18"/></svg></b>Confronta</div>
+<div class="navitem"><b class="navicon"><svg viewBox="0 0 24 24"><circle cx="12" cy="7" r="3"/><path d="M7 21v-3a5 5 0 0 1 10 0v3H7z"/></svg></b>Profilo</div>
+</nav>
 <script>
 const queryInput=document.getElementById("query"),searchButton=document.getElementById("searchButton"),statusBox=document.getElementById("status"),resultsBox=document.getElementById("results"),errorsBox=document.getElementById("errorsBox");
 
