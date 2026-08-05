@@ -345,30 +345,28 @@ if(data.errors&&Object.keys(data.errors).length)errorsBox.innerHTML="Alcuni nego
 finally{searchButton.disabled=false;searchButton.textContent="Cerca"}
 }
 
-const SCENT_CATALOG=[{"brand": "Afnan", "name": "9 PM", "image": "https://fimgs.net/mdimg/perfume-thumbs/dark-blue.60814.jpg"}, {"brand": "Afnan", "name": "9 PM Rebel", "image": "https://fimgs.net/mdimg/perfume-thumbs/dark-blue.87405.jpg"}, {"brand": "Afnan", "name": "9 PM Elixir", "image": ""}, {"brand": "Afnan", "name": "9 PM Night Out", "image": ""}, {"brand": "Rasasi", "name": "Hawas for Him", "image": "https://fimgs.net/mdimg/perfume-thumbs/dark-blue.46890.jpg"}, {"brand": "Rasasi", "name": "Hawas Ice", "image": "https://fimgs.net/mdimg/perfume-thumbs/dark-blue.80088.jpg"}, {"brand": "Rasasi", "name": "Hawas Black", "image": ""}, {"brand": "Lattafa", "name": "Asad", "image": "https://fimgs.net/mdimg/perfume-thumbs/dark-blue.72821.jpg"}, {"brand": "Lattafa", "name": "Asad Bourbon", "image": ""}, {"brand": "Lattafa", "name": "Nebras", "image": "https://fimgs.net/mdimg/perfume-thumbs/dark-blue.78560.jpg"}, {"brand": "French Avenue", "name": "Liquid Brun", "image": ""}, {"brand": "Armaf", "name": "Club de Nuit Intense Man", "image": "https://fimgs.net/mdimg/perfume-thumbs/dark-blue.34696.jpg"}, {"brand": "Armaf", "name": "Supremacy Not Only Intense", "image": ""}, {"brand": "Armaf", "name": "Supremacy Collector's Edition", "image": ""}, {"brand": "Armaf", "name": "Supremacy in Heaven", "image": ""}, {"brand": "Azzaro", "name": "The Most Wanted", "image": ""}, {"brand": "Azzaro", "name": "The Most Wanted Parfum", "image": ""}, {"brand": "Azzaro", "name": "Forever Wanted Elixir", "image": ""}, {"brand": "Valentino", "name": "Born in Roma Uomo", "image": ""}, {"brand": "Valentino", "name": "Born in Roma Uomo Extradose", "image": ""}, {"brand": "Dumont", "name": "Nitro Red", "image": ""}, {"brand": "Maison Alhambra", "name": "Jean Lowe Immortal", "image": ""}, {"brand": "Maison Alhambra", "name": "Jean Lowe Azure", "image": ""}, {"brand": "Ahmed Al Maghribi", "name": "Kaaf", "image": ""}, {"brand": "Rue Broca", "name": "Theoreme Homme", "image": ""}, {"brand": "Paris Corner", "name": "Emir Cedrat Essence", "image": ""}, {"brand": "Paris Corner", "name": "North Stag Expressions III Trois", "image": ""}, {"brand": "Paris Corner", "name": "Art of Universe", "image": ""}, {"brand": "Fragrance World", "name": "Royal Blend", "image": ""}, {"brand": "Fragrance World", "name": "Royal Blend Sequoia", "image": ""}, {"brand": "Fragrance World", "name": "Spectre Ghost", "image": ""}, {"brand": "Fragrance World", "name": "Spectre Wraith", "image": ""}, {"brand": "Al Haramain", "name": "Amber Oud Gold Edition", "image": ""}, {"brand": "Al Haramain", "name": "Amber Oud Aqua Dubai", "image": ""}, {"brand": "Turathi", "name": "Turathi Blue", "image": ""}];
 const scentAC=document.getElementById("scentAC");
-function acNorm(s){return String(s||"").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"")}
-function acRender(){
-  const q=acNorm(queryInput.value.trim());
-  if(q.length<2){scentAC.classList.remove("open");scentAC.innerHTML="";return}
-  const words=q.split(/\s+/).filter(Boolean);
-  const hits=SCENT_CATALOG.filter(x=>{
-    const hay=acNorm(x.brand+" "+x.name);
-    return words.every(w=>hay.includes(w));
-  }).slice(0,7);
-  if(!hits.length){scentAC.classList.remove("open");scentAC.innerHTML="";return}
-  scentAC._hits=hits;
-  scentAC.innerHTML=hits.map((x,i)=>`<button type="button" class="scent-ac-row" data-i="${i}">${x.image?`<img class="scent-ac-img" src="${x.image}" alt="" onerror="this.outerHTML='<span class=&quot;scent-ac-fallback&quot;>🧴</span>'">`:`<span class="scent-ac-fallback">🧴</span>`}<span><span class="scent-ac-brand">${esc(x.brand)}</span><span class="scent-ac-name">${esc(x.name)}</span></span></button>`).join("");
-  scentAC.classList.add("open");
+let acTimer=null;
+let acController=null;
+
+async function acRender(){
+  const raw=queryInput.value.trim();
+  if(raw.length<2){scentAC.classList.remove("open");scentAC.innerHTML="";return}
+  if(acController)acController.abort();
+  acController=new AbortController();
+  try{
+    const response=await fetch(backend()+"/suggest?q="+encodeURIComponent(raw),{signal:acController.signal});
+    if(!response.ok)throw new Error("Suggest HTTP "+response.status);
+    const data=await response.json();
+    const hits=Array.isArray(data.suggestions)?data.suggestions.slice(0,8):[];
+    if(!hits.length){scentAC.classList.remove("open");scentAC.innerHTML="";return}
+    scentAC._hits=hits;
+    scentAC.innerHTML=hits.map((x,i)=>`<button type="button" class="scent-ac-row" data-i="${i}">${x.image?`<img class="scent-ac-img" src="${esc(x.image)}" alt="" onerror="this.outerHTML='<span class=&quot;scent-ac-fallback&quot;>🧴</span>'">`:`<span class="scent-ac-fallback">🧴</span>`}<span><span class="scent-ac-brand">${esc(x.brand||"")}</span><span class="scent-ac-name">${esc(x.name||"")}</span></span></button>`).join("");
+    scentAC.classList.add("open");
+  }catch(err){if(err.name!=="AbortError")console.error(err)}
 }
-queryInput.addEventListener("input",acRender);
-scentAC.addEventListener("click",e=>{
-  const b=e.target.closest("[data-i]"); if(!b)return;
-  const x=(scentAC._hits||[])[Number(b.dataset.i)]; if(!x)return;
-  queryInput.value=x.brand+" "+x.name;
-  scentAC.classList.remove("open");
-  searchPerfume();
-});
+queryInput.addEventListener("input",()=>{clearTimeout(acTimer);acTimer=setTimeout(acRender,250)});
+scentAC.addEventListener("click",e=>{const b=e.target.closest("[data-i]");if(!b)return;const x=(scentAC._hits||[])[Number(b.dataset.i)];if(!x)return;queryInput.value=((x.brand||"")+" "+(x.name||"")).trim();scentAC.classList.remove("open");searchPerfume()});
 document.addEventListener("click",e=>{if(!e.target.closest(".searchwrap"))scentAC.classList.remove("open")});
 
 searchButton.addEventListener("click",searchPerfume);queryInput.addEventListener("keydown",e=>{if(e.key==="Enter"){e.preventDefault();searchPerfume()}});
