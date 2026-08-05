@@ -91,6 +91,9 @@ body{position:relative}
 .wishlist-empty{border:1px solid #303238;border-radius:20px;background:#111416;padding:28px 20px;text-align:center;color:#b6b6bd}
 .wishlist-empty b{display:block;color:#e7b83f;font-size:42px;margin-bottom:10px}
 .wishlist-card{margin:12px 0;padding:16px;border:1px solid #303238;border-radius:18px;background:linear-gradient(145deg,#17191b,#0b0c0d);display:flex;gap:14px;align-items:center}
+.wishlist-change{margin-top:7px;font-size:13px;font-weight:800;color:#55d982}
+.wishlist-change .old{color:#9a9aa0;text-decoration:line-through;margin-right:6px}
+.wishlist-badge{display:inline-block;margin-top:7px;padding:4px 8px;border-radius:999px;background:#173522;color:#62e58d;font-size:11px;font-weight:900}
 .wishlist-card .wishpic{width:62px;height:70px;border-radius:14px;background:#101214;display:flex;align-items:center;justify-content:center;font-size:34px;flex:0 0 auto}
 .wishlist-info{min-width:0;flex:1}.wishlist-brand{font-size:12px;color:#aaa}.wishlist-name{font-weight:800;font-size:17px;margin:3px 0}.wishlist-price{color:#55ce78;font-weight:900}.wishlist-shop{font-size:12px;color:#aaa;margin-top:3px}
 .remove-wish{background:none;color:#e7b83f;font-size:25px;padding:8px;cursor:pointer}
@@ -201,24 +204,43 @@ function parsePrice(v){
   const n=parseFloat(String(v||"").replace(/[^\d,.-]/g,"").replace(",","."));
   return Number.isFinite(n)?n:null;
 }
+function offerId(x){return [normalizePerfumeName(x.name||""),String(x.shop||"").toLowerCase().trim(),String(x.price||"").trim()].join("|")}
+function formatEuro(n){return Number(n).toLocaleString("it-IT",{minimumFractionDigits:2,maximumFractionDigits:2})+" €"}
+function updateTrackedWish(item){
+  const list=getWishlist(),found=list.find(x=>samePerfume(x,item));
+  if(!found)return false;
+  const np=parsePrice(item.price),op=parsePrice(found.price);
+  if(np===null)return false;
+  if(op===null||np<op){
+    if(op!==null){found.previousPrice=found.price||"";found.previousShop=found.shop||"";found.priceDrop=op-np;found.priceChangedAt=Date.now()}
+    found.price=item.price;found.shop=item.shop||found.shop||"";
+    if(item.url)found.url=item.url;if(item.pic)found.pic=item.pic;
+    localStorage.setItem(WISH_KEY,JSON.stringify(list));return true;
+  }
+  return false;
+}
+function refreshWishlistFromResults(results){
+  if(!Array.isArray(results))return;
+  let changed=false;
+  results.forEach(i=>{if(updateTrackedWish({brand:i.brand||"",name:i.name||"",price:i.price||((i.price_value!=null)?formatEuro(i.price_value):""),shop:i.store||i.shop||"",url:i.url||"",pic:"🧴"}))changed=true});
+  if(changed)renderWishlist();
+}
 function saveWishlist(list){
   localStorage.setItem(WISH_KEY,JSON.stringify(list));
   renderWishlist();syncHearts();
 }
 function addWish(item){
   const list=getWishlist(),found=list.find(x=>samePerfume(x,item));
-  if(!found) list.push(item);
-  else {
-    const np=parsePrice(item.price),op=parsePrice(found.price);
-    if(np!==null&&(op===null||np<op)){found.price=item.price;found.shop=item.shop}
-    if(item.pic)found.pic=item.pic;
-  }
+  item.selectedOfferId=offerId(item);item.addedPrice=item.price||"";item.addedShop=item.shop||"";
+  if(!found)list.push(item);
+  else{found.selectedOfferId=item.selectedOfferId;const np=parsePrice(item.price),op=parsePrice(found.price);if(np!==null&&(op===null||np<op)){found.price=item.price;found.shop=item.shop}if(item.pic)found.pic=item.pic}
   saveWishlist(list);
 }
 function removeWish(id){saveWishlist(getWishlist().filter(x=>wishId(x)!==id))}
 function toggleWish(item){
-  const list=getWishlist(),found=list.find(x=>samePerfume(x,item));
-  if(found)removeWish(wishId(found));else addWish(item);
+  const list=getWishlist(),found=list.find(x=>samePerfume(x,item)),clickedId=offerId(item);
+  if(found&&found.selectedOfferId===clickedId){removeWish(wishId(found));return}
+  addWish(item);
 }
 function renderWishlist(){
   const box=document.getElementById("wishlistList"),count=document.getElementById("wishlistCount"),list=getWishlist();
@@ -231,6 +253,7 @@ function renderWishlist(){
       <div class="wishlist-name">${esc(x.name||"Profumo")}</div>
       ${x.price?`<div class="wishlist-price">${esc(x.price)}</div>`:""}
       ${x.shop?`<div class="wishlist-shop">Miglior prezzo attuale: ${esc(x.shop)}</div>`:""}
+      ${x.previousPrice&&x.previousShop?`<div class="wishlist-change"><span class="old">${esc(x.previousPrice)} · ${esc(x.previousShop)}</span> → ${esc(x.price)} · ${esc(x.shop)}</div><div class="wishlist-badge">↓ NUOVO MIGLIOR PREZZO${x.priceDrop?` · -${esc(formatEuro(x.priceDrop))}`:""}</div>`:""}
     </div>
     <button class="remove-wish" data-remove="${esc(wishId(x))}" aria-label="Rimuovi">♥</button>
   </article>`).join("");
@@ -238,13 +261,14 @@ function renderWishlist(){
 function syncHearts(){
   const saved=getWishlist();
   document.querySelectorAll(".heart[data-name],.wish-result[data-name]").forEach(h=>{
-    const on=saved.some(x=>samePerfume(x,{brand:h.dataset.brand,name:h.dataset.name}));
+    const item={brand:h.dataset.brand||"",name:h.dataset.name||"",price:h.dataset.price||"",shop:h.dataset.shop||""},found=saved.find(x=>samePerfume(x,item));
+    const on=!!found&&!!found.selectedOfferId&&found.selectedOfferId===offerId(item);
     h.textContent=on?"♥":"♡";h.classList.toggle("saved",on);
   });
 }
 document.addEventListener("click",e=>{
   const h=e.target.closest(".heart[data-name],.wish-result[data-name]");
-  if(h){toggleWish({brand:h.dataset.brand||"",name:h.dataset.name||"",price:h.dataset.price||"",shop:h.dataset.shop||"",pic:h.dataset.pic||"🧴"});return}
+  if(h){toggleWish({brand:h.dataset.brand||"",name:h.dataset.name||"",price:h.dataset.price||"",shop:h.dataset.shop||"",url:h.dataset.url||"",pic:h.dataset.pic||"🧴"});return}
   const r=e.target.closest("[data-remove]");if(r){removeWish(r.dataset.remove);return}
   const nav=e.target.closest(".navitem[data-view]");
   if(nav){
@@ -291,8 +315,10 @@ if(comparisons.length){
   }).join("");
 }else{
   statusBox.textContent=results.length?results.length+(results.length===1?" risultato trovato.":" risultati trovati."):"Nessun risultato trovato.";
-  resultsBox.innerHTML=results.map(i=>`<article class="result"><div class="store">${esc(i.store||"Negozio")}</div><div class="result-top"><div class="name">${esc(i.name||"Profumo")}</div><button class="wish-result" data-brand="" data-name="${esc(i.name||"Profumo")}" data-price="${esc(i.price||"")}" data-shop="${esc(i.store||"")}" data-pic="🧴" aria-label="Wishlist">♡</button></div><div class="price">${esc(i.price||"Prezzo non disponibile")}</div>${i.url?`<a href="${esc(i.url)}" target="_blank" rel="noopener noreferrer">Vai al negozio →</a>`:""}</article>`).join("");
+  resultsBox.innerHTML=results.map(i=>`<article class="result"><div class="store">${esc(i.store||"Negozio")}</div><div class="result-top"><div class="name">${esc(i.name||"Profumo")}</div><button class="wish-result" data-brand="" data-name="${esc(i.name||"Profumo")}" data-price="${esc(i.price||"")}" data-shop="${esc(i.store||"")}" data-url="${esc(i.url||"")}" data-pic="🧴" aria-label="Wishlist">♡</button></div><div class="price">${esc(i.price||"Prezzo non disponibile")}</div>${i.url?`<a href="${esc(i.url)}" target="_blank" rel="noopener noreferrer">Vai al negozio →</a>`:""}</article>`).join("");
 }
+refreshWishlistFromResults(results);
+refreshWishlistFromResults(comparisons.flatMap(g=>(Array.isArray(g.offers)?g.offers:[]).map(o=>({name:g.name||"",brand:g.brand||"",price:o.price||"",price_value:o.price_value,store:o.store||"",url:o.url||""}))));
 syncHearts();
 if(data.errors&&Object.keys(data.errors).length)errorsBox.innerHTML="Alcuni negozi non hanno risposto: "+Object.keys(data.errors).map(esc).join(", ")+".";
 }catch(e){console.error(e);statusBox.textContent="Impossibile completare la ricerca."}
