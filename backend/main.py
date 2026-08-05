@@ -554,150 +554,155 @@ def search_perfume(q: str):
 # ============================================================
 
 @app.get("/suggest")
+
 def suggest(q: str):
 
-    data = search_perfume(q)
+    query = norm(q)
+
+    if len(query) < 2:
+
+        return {
+
+            "query": q,
+
+            "count": 0,
+
+            "suggestions": [],
+
+            "source": "stores",
+
+        }
 
     suggestions = []
+
     seen = set()
 
-    for product in data["results"]:
+    # Per l'autocomplete NON usiamo search_perfume(),
 
-        key = norm(
-            product.get("name", "")
+    # perché il filtro della ricerca completa elimina varianti
+
+    # come Hawas Ice, Hawas Tropical, ecc.
+
+    for store in STORES:
+
+        try:
+
+            module = load_scraper(store)
+
+            results = module.search(q) or []
+
+            for product in results:
+
+                if not isinstance(product, dict):
+
+                    continue
+
+                name = str(
+
+                    product.get("name")
+
+                    or product.get("title")
+
+                    or product.get("product_name")
+
+                    or ""
+
+                ).strip()
+
+                if not name:
+
+                    continue
+
+                normalized_name = norm(name)
+
+                # Il nome deve contenere ciò che l'utente sta scrivendo.
+
+                # "ha" -> Hawas, Hawas Ice, ecc.
+
+                if query not in normalized_name:
+
+                    continue
+
+                # Escludiamo prodotti che non sono profumi singoli.
+
+                if any(
+
+                    norm(phrase) in normalized_name
+
+                    for phrase in NON_PERFUME
+
+                ):
+
+                    continue
+
+                key = normalized_name
+
+                if key in seen:
+
+                    continue
+
+                seen.add(key)
+
+                suggestions.append(
+
+                    {
+
+                        "name": name,
+
+                        "store": product.get("store", store),
+
+                        "brand": product.get("brand", ""),
+
+                        "image": product_image(product),
+
+                    }
+
+                )
+
+        except Exception:
+
+            traceback.print_exc()
+
+    # Prima i nomi che iniziano con ciò che è stato scritto,
+
+    # poi quelli che lo contengono.
+
+    suggestions.sort(
+
+        key=lambda item: (
+
+            0 if norm(item["name"]).startswith(query) else 1,
+
+            len(item["name"]),
+
+            item["name"].lower(),
+
         )
 
-        if not key:
-            continue
-
-        if key in seen:
-            continue
-
-        seen.add(key)
-
-        suggestions.append(
-            {
-                "name": product.get(
-                    "name",
-                    "",
-                ),
-                "store": product.get(
-                    "store",
-                    "",
-                ),
-                "brand": product.get(
-                    "brand",
-                    "",
-                ),
-                "image": product_image(
-                    product
-                ),
-            }
-        )
-
-        if len(suggestions) >= 6:
-            break
+    )
 
     return {
+
         "query": q,
-        "count": len(suggestions),
-        "suggestions": suggestions,
+
+        "count": len(suggestions[:8]),
+
+        "suggestions": suggestions[:8],
+
         "source": "stores",
     }
 
 
+
+
 # ============================================================
+
 # API - AUTOCOMPLETE
+
 # ============================================================
 
 @app.get("/autocomplete")
+
 def autocomplete(q: str):
+
     return suggest(q)
-
-
-# ============================================================
-# API - PRODUCT
-# ============================================================
-
-@app.get("/product")
-def product(
-    name: str,
-    brand: str = "",
-):
-
-    data = search_perfume(
-        name
-    )
-
-    offers: List[Dict[str, Any]] = []
-
-    for product_data in data["results"]:
-
-        value = price_num(
-            product_data.get("price")
-        )
-
-        if value is None:
-            continue
-
-        offer = dict(
-            product_data
-        )
-
-        offer["price_value"] = value
-        offer["image"] = product_image(
-            offer
-        )
-
-        offers.append(
-            offer
-        )
-
-    offers.sort(
-        key=lambda offer: offer[
-            "price_value"
-        ]
-    )
-
-    best_offer = (
-        offers[0]
-        if offers
-        else None
-    )
-
-    history = update_price_history(
-        name=name,
-        brand=brand,
-        best_offer=best_offer,
-    )
-
-    image = next(
-        (
-            offer["image"]
-            for offer in offers
-            if offer.get("image")
-        ),
-        "",
-    )
-
-    lowest_price = (
-        best_offer.get("price")
-        if best_offer
-        else None
-    )
-
-    return {
-        "name": name,
-        "brand": brand,
-        "image": image,
-        "lowest_price": lowest_price,
-        "best_offer": best_offer,
-        "offers": offers,
-        "history": history,
-        "errors": data["errors"],
-        "message": (
-            ""
-            if offers
-            else "Nessuna offerta disponibile al momento"
-        ),
-    }
