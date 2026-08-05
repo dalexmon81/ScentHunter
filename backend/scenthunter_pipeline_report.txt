@@ -1,0 +1,43 @@
+=== SCENTHUNTER PIPELINE DIAGNOSTIC ===
+QUERY: Miu Miu
+
+SABINA SCRAPER COUNT: 6
+S1: MIU MIU Miu Miu Miutine | 59,08 € | https://www.sabina.com/it/profumi-di-donna/36989-miu-miu-miutine-eau-de-parfum.html
+S2: MIU MIU Miu Miu Miutine Eau de Parfum Set | 116,51 € | https://www.sabina.com/it/profumi-di-donna/48406-miu-miu-miutine-eau-de-parfum-set-miu-miu.html
+S3: MIU MIU Miu Miu L'Eau De Muguet Eau de Parfum | 58,14 € | https://www.sabina.com/it/profumi-di-donna/5144-miu-miu-l-eau-de-muguet-eau-de-parfum.html
+S4: MIU MIU Miu Miu L’Eau Bleue | 59,08 € | https://www.sabina.com/it/profumi-di-donna/6431-leau-bleue.html
+S5: MIU MIU Miu Miu L'Eau Rosée | 74,74 € | https://www.sabina.com/it/profumi-di-donna/6694-l-eau-rosee.html
+S6: MIU MIU Miumiu Fleur De Lait | 63,31 € | https://www.sabina.com/it/profumi-di-donna/36990-miumiu-fleur-de-lait-eau-de-parfum.html
+
+AFTER is_perfume: 6
+AFTER query_relevant: 6
+AFTER price filter: 6
+AFTER enrich_and_group results: 6
+COMPARISONS COUNT: 6
+
+=== CLEANED RESULTS ===
+R1: MIU MIU Miu Miu L'Eau De Muguet Eau de Parfum | key=miu miu miu miu l eau de muguet|edp|size? | 58,14 € | https://www.sabina.com/it/profumi-di-donna/5144-miu-miu-l-eau-de-muguet-eau-de-parfum.html
+R2: MIU MIU Miu Miu Miutine | key=miu miu miu miu miutine|conc?|size? | 59,08 € | https://www.sabina.com/it/profumi-di-donna/36989-miu-miu-miutine-eau-de-parfum.html
+R3: MIU MIU Miu Miu L’Eau Bleue | key=miu miu miu miu l eau bleue|conc?|size? | 59,08 € | https://www.sabina.com/it/profumi-di-donna/6431-leau-bleue.html
+R4: MIU MIU Miumiu Fleur De Lait | key=miu miu miumiu fleur de lait|conc?|size? | 63,31 € | https://www.sabina.com/it/profumi-di-donna/36990-miumiu-fleur-de-lait-eau-de-parfum.html
+R5: MIU MIU Miu Miu L'Eau Rosée | key=miu miu miu miu l eau rosee|conc?|size? | 74,74 € | https://www.sabina.com/it/profumi-di-donna/6694-l-eau-rosee.html
+R6: MIU MIU Miu Miu Miutine Eau de Parfum Set | key=miu miu miu miu miutine set|edp|size? | 116,51 € | https://www.sabina.com/it/profumi-di-donna/48406-miu-miu-miutine-eau-de-parfum-set-miu-miu.html
+
+=== COMPARISONS ===
+C1: MIU MIU Miu Miu L'Eau De Muguet Eau de Parfum | key=miu miu miu miu l eau de muguet|edp|size? | offers=1 | best=58.14
+C2: MIU MIU Miu Miu Miutine | key=miu miu miu miu miutine|conc?|size? | offers=1 | best=59.08
+C3: MIU MIU Miu Miu L’Eau Bleue | key=miu miu miu miu l eau bleue|conc?|size? | offers=1 | best=59.08
+C4: MIU MIU Miumiu Fleur De Lait | key=miu miu miumiu fleur de lait|conc?|size? | offers=1 | best=63.31
+C5: MIU MIU Miu Miu L'Eau Rosée | key=miu miu miu miu l eau rosee|conc?|size? | offers=1 | best=74.74
+C6: MIU MIU Miu Miu Miutine Eau de Parfum Set | key=miu miu miu miu miutine set|edp|size? | offers=1 | best=116.51
+
+=== FULL /search FUNCTION ===
+HTTP FUNCTION TOTAL RESULTS: 16
+HTTP FUNCTION SABINA RESULTS: 6
+HTTP FUNCTION COMPARISONS: 16
+H1: MIU MIU Miu Miu L'Eau De Muguet Eau de Parfum | 58,14 € | https://www.sabina.com/it/profumi-di-donna/5144-miu-miu-l-eau-de-muguet-eau-de-parfum.html
+H2: MIU MIU Miu Miu Miutine | 59,08 € | https://www.sabina.com/it/profumi-di-donna/36989-miu-miu-miutine-eau-de-parfum.html
+H3: MIU MIU Miu Miu L’Eau Bleue | 59,08 € | https://www.sabina.com/it/profumi-di-donna/6431-leau-bleue.html
+H4: MIU MIU Miumiu Fleur De Lait | 63,31 € | https://www.sabina.com/it/profumi-di-donna/36990-miumiu-fleur-de-lait-eau-de-parfum.html
+H5: MIU MIU Miu Miu L'Eau Rosée | 74,74 € | https://www.sabina.com/it/profumi-di-donna/6694-l-eau-rosee.html
+H6: MIU MIU Miu Miu Miutine Eau de Parfum Set | 116,51 € | https://www.sabina.com/it/profumi-di-donna/48406-miu-miu-miutine-eau-de-parfum-set-miu-miu.html

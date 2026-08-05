@@ -7,6 +7,8 @@ from urllib.parse import unquote
 BASE_URL = "https://www.parfum-zentrum.de"
 SITEMAP_URL = BASE_URL + "/sitemap.xml"
 
+SESSION = requests.Session()
+
 HEADERS = {
     "User-Agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 Version/18.0 Mobile/15E148 Safari/604.1",
     "Accept-Language": "de-DE,de;q=0.9,en;q=0.8",
@@ -32,7 +34,7 @@ def _xml_urls(xml_text):
     ]
 
 def _get_sitemap_urls():
-    r = requests.get(SITEMAP_URL, headers=HEADERS, timeout=25)
+    r = SESSION.get(SITEMAP_URL, headers=HEADERS, timeout=4)
     r.raise_for_status()
     urls = _xml_urls(r.text)
 
@@ -44,7 +46,7 @@ def _get_sitemap_urls():
     out = []
     for sm in child_maps:
         try:
-            rr = requests.get(sm, headers=HEADERS, timeout=25)
+            rr = SESSION.get(sm, headers=HEADERS, timeout=4)
             if rr.status_code == 200:
                 out.extend(_xml_urls(rr.text))
         except Exception:
@@ -52,7 +54,7 @@ def _get_sitemap_urls():
     return out
 
 def _extract_product(url, query):
-    r = requests.get(url, headers=HEADERS, timeout=25)
+    r = SESSION.get(url, headers=HEADERS, timeout=4)
     if r.status_code != 200:
         return None
 
@@ -135,7 +137,7 @@ def search(query):
     results = []
     seen = set()
 
-    for url in candidates[:30]:
+    for url in candidates[:6]:
         try:
             item = _extract_product(url, query)
         except Exception:

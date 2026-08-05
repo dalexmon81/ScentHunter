@@ -29,6 +29,30 @@ def _price(text):
     return (m.group(1).replace(".", ",") + "€") if m else ""
 
 
+def _clean_title(title):
+    title = _clean(title)
+    # Notino/Bing prependono spesso messaggi promozionali al vero nome prodotto.
+    title = re.sub(r"^(?:livraison\s+offerte\s+)?(?:promo\s+)?cadeaux?\s+offerts?\s+", "", title, flags=re.I)
+    title = re.sub(r"^(?:promo|promotion)\s+", "", title, flags=re.I)
+    # Rimuove coda rating/prezzo tipica degli snippet Bing.
+    title = re.sub(r"\s+\d[,.]\d\s*\(\s*\d+\s*\)\s+de\s+\d{1,4}[,.]\d{2}\s*€.*$", "", title, flags=re.I)
+    title = re.sub(r"\s+de\s+\d{1,4}[,.]\d{2}\s*€.*$", "", title, flags=re.I)
+    return _clean(title)
+
+def _single_perfume(title):
+    low = _clean(title).lower()
+    blocked = (
+        "coffret", "gift set", "set cadeau", "coffret cadeau",
+        "miniature", "échantillon", "sample", "discovery set",
+        "lot de ", "pack de ", "duo ", "trio ",
+        "gel douche", "shower gel", "déodorant", "deodorant",
+        "lotion corps", "body lotion", "crème corps", "body cream",
+        "après-rasage", "after shave", "aftershave",
+        "spray corps", "body spray", "brume", "hair mist"
+    )
+    return not any(x in low for x in blocked)
+
+
 
 def _is_product_url(url, query):
     try:
@@ -95,9 +119,11 @@ def _direct(query):
         if not _is_product_url(product_url, query) or product_url in seen:
             continue
 
-        title = _clean(a.get_text(" ", strip=True))
+        title = _clean_title(a.get_text(" ", strip=True))
         if len(title) < 3:
-            title = query
+            title = _clean_title(query)
+        if not _single_perfume(title):
+            continue
 
         seen.add(product_url)
         out.append({
@@ -130,10 +156,12 @@ def _bing(query):
         if not a:
             continue
         href = a.get("href", "")
-        title = _clean(a.get_text(" ", strip=True))
+        title = _clean_title(a.get_text(" ", strip=True))
         snippet = _clean(li.get_text(" ", strip=True))
         low = (title + " " + snippet).lower()
 
+        if not _single_perfume(title):
+            continue
         if not _is_product_url(href, query):
             continue
         if words and not all(w in low for w in words):
