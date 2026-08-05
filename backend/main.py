@@ -8,6 +8,7 @@ import json
 import os
 import re
 import traceback
+from concurrent.futures import ThreadPoolExecutor, as_completed, TimeoutError
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
 
@@ -503,9 +504,7 @@ def health():
 @app.get("/search")
 def search_perfume(q: str):
 
-    query = str(
-        q or ""
-    ).strip()
+    query = str(q or "").strip()
 
     if not query:
         return {
@@ -518,33 +517,42 @@ def search_perfume(q: str):
     all_results: List[Dict[str, Any]] = []
     errors: Dict[str, str] = {}
 
-    for store in STORES:
+    # Gli scraper vengono eseguiti in parallelo.
+    # Un negozio lento o bloccato non deve fermare tutta la ricerca.
+    executor = ThreadPoolExecutor(max_workers=len(STORES))
+    futures = {
+        executor.submit(run_store, store, query): store
+        for store in STORES
+    }
 
-        try:
-            results = run_store(
-                store,
-                query,
-            )
+    try:
+        for future in as_completed(futures, timeout=25):
+            store = futures[future]
 
-            all_results.extend(
-                results
-            )
+            try:
+                store_results = future.result()
+                all_results.extend(store_results)
 
-        except Exception as error:
+            except Exception as error:
+                errors[store] = f"{type(error).__name__}: {error}"
+                traceback.print_exc()
 
-            errors[store] = (
-                f"{type(error).__name__}: {error}"
-            )
+    except TimeoutError:
+        # Il tempo massimo complessivo è scaduto.
+        # Manteniamo comunque i risultati dei negozi che hanno risposto.
+        pass
 
-            traceback.print_exc()
+    finally:
+        for future, store in futures.items():
+            if not future.done():
+                errors[store] = "timeout"
+                future.cancel()
 
-    results = unique_results(
-        all_results
-    )
+        # Fondamentale: non aspettiamo gli scraper rimasti bloccati.
+        executor.shutdown(wait=False, cancel_futures=True)
 
-    results = sort_by_price(
-        results
-    )
+    results = unique_results(all_results)
+    results = sort_by_price(results)
 
     return {
         "query": query,
