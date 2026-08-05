@@ -578,27 +578,33 @@ def suggest(q: str):
             "source": "stores",
         }
 
-    suggestions = []
+    suggestions: List[Dict[str, Any]] = []
     seen = set()
 
-    # Autocomplete permissivo: NON usa matches(), perché matches()
-    # elimina apposta varianti come Hawas Ice quando si cerca Hawas.
-    for store in STORES:
+    def run_suggest_store(store: str):
         try:
             module = load_scraper(store)
+            results = module.search(str(q or "").strip()) or []
+            return store, results, None
+        except Exception as error:
+            return store, [], f"{type(error).__name__}: {error}"
 
-            # Prova sia il testo originale sia quello normalizzato.
-            attempts = [str(q or "").strip()]
-            if query not in attempts:
-                attempts.append(query)
+    # Autocomplete separato dalla /search:
+    # gli 8 negozi vengono interrogati in parallelo e con timeout breve.
+    executor = ThreadPoolExecutor(max_workers=len(STORES))
+    futures = {
+        executor.submit(run_suggest_store, store): store
+        for store in STORES
+    }
 
-            for attempt in attempts:
-                if not attempt:
-                    continue
+    try:
+        for future in as_completed(futures, timeout=7):
+            store = futures[future]
 
-                results = module.search(attempt) or []
+            try:
+                _, products, _ = future.result()
 
-                for product in results:
+                for product in products:
                     if not isinstance(product, dict):
                         continue
 
@@ -609,26 +615,31 @@ def suggest(q: str):
                         or ""
                     ).strip()
 
+                    brand = str(product.get("brand") or "").strip()
+
                     if not name:
                         continue
 
                     normalized_name = norm(name)
-
-                    # Tutte le parole digitate devono comparire nel nome/marca.
-                    brand = str(product.get("brand") or "").strip()
                     haystack = norm(f"{brand} {name}")
-                    words = [w for w in query.split() if w]
+                    words = [word for word in query.split() if word]
 
-                    if not all(w in haystack for w in words):
+                    # Per l'autocomplete NON usiamo matches():
+                    # così "Ha" può mostrare Hawas, Hawas Ice,
+                    # Hawas Black, Hawas Tropical, ecc.
+                    if not all(word in haystack for word in words):
                         continue
 
-                    # Niente gift set, deodoranti, shower gel, ecc.
-                    if any(norm(phrase) in normalized_name for phrase in NON_PERFUME):
+                    if any(
+                        norm(phrase) in normalized_name
+                        for phrase in NON_PERFUME
+                    ):
                         continue
 
                     key = normalized_name
                     if key in seen:
                         continue
+
                     seen.add(key)
 
                     suggestions.append({
@@ -638,12 +649,23 @@ def suggest(q: str):
                         "image": product_image(product),
                     })
 
-        except Exception:
-            traceback.print_exc()
+            except Exception:
+                traceback.print_exc()
+
+    except TimeoutError:
+        pass
+
+    finally:
+        for future in futures:
+            if not future.done():
+                future.cancel()
+
+        executor.shutdown(wait=False, cancel_futures=True)
 
     suggestions.sort(
         key=lambda item: (
             0 if norm(item.get("name", "")).startswith(query) else 1,
+            0 if norm(item.get("brand", "")).startswith(query) else 1,
             len(item.get("name", "")),
             item.get("name", "").lower(),
         )
