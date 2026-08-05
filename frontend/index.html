@@ -147,19 +147,63 @@ body{position:relative}
 <script>
 const queryInput=document.getElementById("query"),searchButton=document.getElementById("searchButton"),statusBox=document.getElementById("status"),resultsBox=document.getElementById("results"),errorsBox=document.getElementById("errorsBox");
 
-const WISH_KEY="scenthunter_wishlist_v1";
-function getWishlist(){try{return JSON.parse(localStorage.getItem(WISH_KEY)||"[]")}catch(e){return []}}
-function wishId(x){return (String(x.brand||"")+"|"+String(x.name||"")).toLowerCase().trim()}
-function saveWishlist(list){localStorage.setItem(WISH_KEY,JSON.stringify(list));renderWishlist();syncHearts()}
+const WISH_KEY="scenthunter_wishlist_v2";
+const OLD_WISH_KEY="scenthunter_wishlist_v1";
+
+function normalizePerfumeName(v){
+  return String(v||"")
+    .toLowerCase()
+    .replace(/\b(eau de parfum|eau de toilette|edp|edt|parfum|perfume|spray|men|women|for men|for women)\b/g," ")
+    .replace(/\b\d+\s*ml\b/g," ")
+    .replace(/[^a-z0-9à-ÿ]+/gi," ")
+    .replace(/\s+/g," ").trim();
+}
+function wishId(x){
+  const base=normalizePerfumeName(x.name||"");
+  return (String(x.brand||"").toLowerCase().trim()+"|"+base);
+}
+function getWishlist(){
+  try{
+    let list=JSON.parse(localStorage.getItem(WISH_KEY)||"null");
+    if(!Array.isArray(list)){
+      const old=JSON.parse(localStorage.getItem(OLD_WISH_KEY)||"[]");
+      list=[];
+      old.forEach(x=>{
+        const id=wishId(x);
+        const found=list.find(y=>wishId(y)===id);
+        if(!found) list.push(x);
+        else {
+          const np=parsePrice(x.price), op=parsePrice(found.price);
+          if(np!==null&&(op===null||np<op)){found.price=x.price;found.shop=x.shop}
+        }
+      });
+      localStorage.setItem(WISH_KEY,JSON.stringify(list));
+    }
+    return list;
+  }catch(e){return []}
+}
+function parsePrice(v){
+  const n=parseFloat(String(v||"").replace(/[^\d,.-]/g,"").replace(",","."));
+  return Number.isFinite(n)?n:null;
+}
+function saveWishlist(list){
+  localStorage.setItem(WISH_KEY,JSON.stringify(list));
+  renderWishlist();syncHearts();
+}
 function addWish(item){
-  const list=getWishlist(),id=wishId(item);
-  if(!list.some(x=>wishId(x)===id))list.push(item);
+  const list=getWishlist(),id=wishId(item),found=list.find(x=>wishId(x)===id);
+  if(!found) list.push(item);
+  else {
+    const np=parsePrice(item.price),op=parsePrice(found.price);
+    if(np!==null&&(op===null||np<op)){found.price=item.price;found.shop=item.shop}
+    if(item.pic)found.pic=item.pic;
+  }
   saveWishlist(list);
 }
 function removeWish(id){saveWishlist(getWishlist().filter(x=>wishId(x)!==id))}
 function toggleWish(item){
   const id=wishId(item),list=getWishlist();
-  if(list.some(x=>wishId(x)===id))removeWish(id); else addWish(item);
+  if(list.some(x=>wishId(x)===id))removeWish(id);else addWish(item);
 }
 function renderWishlist(){
   const box=document.getElementById("wishlistList"),count=document.getElementById("wishlistCount"),list=getWishlist();
@@ -171,20 +215,16 @@ function renderWishlist(){
       <div class="wishlist-brand">${esc(x.brand||"")}</div>
       <div class="wishlist-name">${esc(x.name||"Profumo")}</div>
       ${x.price?`<div class="wishlist-price">${esc(x.price)}</div>`:""}
-      ${x.shop?`<div class="wishlist-shop">Miglior prezzo: ${esc(x.shop)}</div>`:""}
+      ${x.shop?`<div class="wishlist-shop">Miglior prezzo attuale: ${esc(x.shop)}</div>`:""}
     </div>
     <button class="remove-wish" data-remove="${esc(wishId(x))}" aria-label="Rimuovi">♥</button>
   </article>`).join("");
 }
 function syncHearts(){
   const ids=new Set(getWishlist().map(wishId));
-  document.querySelectorAll(".heart[data-name]").forEach(h=>{
-    const item={brand:h.dataset.brand,name:h.dataset.name};
-    const on=ids.has(wishId(item));h.textContent=on?"♥":"♡";h.classList.toggle("saved",on);
-  });
-  document.querySelectorAll(".wish-result[data-name]").forEach(h=>{
-    const item={brand:h.dataset.brand,name:h.dataset.name};
-    const on=ids.has(wishId(item));h.textContent=on?"♥":"♡";h.classList.toggle("saved",on);
+  document.querySelectorAll(".heart[data-name],.wish-result[data-name]").forEach(h=>{
+    const on=ids.has(wishId({brand:h.dataset.brand,name:h.dataset.name}));
+    h.textContent=on?"♥":"♡";h.classList.toggle("saved",on);
   });
 }
 document.addEventListener("click",e=>{
