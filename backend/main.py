@@ -1,5 +1,7 @@
-from fastapi import FastAPI
+from pathlib import Path
+from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse
 
 import importlib
 import json
@@ -50,6 +52,12 @@ STORES = [
 
 BASE_DIR = os.path.dirname(__file__)
 HISTORY_PATH = os.path.join(BASE_DIR, "price_history.json")
+
+FRONTEND_INDEX = (
+    Path(__file__).resolve().parent.parent
+    / "frontend"
+    / "index.html"
+)
 
 VARIANTS = {
     "pour femme",
@@ -466,13 +474,14 @@ def update_price_history(
 # API - ROOT
 # ============================================================
 
-@app.get("/")
+@app.get("/", include_in_schema=False)
 def root():
-    return {
-        "app": "ScentHunter",
-        "status": "running",
-        "version": "1.0.0",
-    }
+    if not FRONTEND_INDEX.exists():
+        raise HTTPException(
+            status_code=500,
+            detail="frontend/index.html non trovato",
+        )
+    return FileResponse(FRONTEND_INDEX)
 
 
 # ============================================================
