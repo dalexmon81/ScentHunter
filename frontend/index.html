@@ -395,7 +395,8 @@ async function loadSuggestions(){
   scentSuggestAbort=new AbortController();
   try{
     /* Prima prova un endpoint autocomplete dedicato; se non esiste usa /search già presente. */
-    let r=await fetch(backend()+"/autocomplete?q="+encodeURIComponent(q),{signal:scentSuggestAbort.signal});
+    let r=await fetch(backend()+"/suggest?q="+encodeURIComponent(q),{signal:scentSuggestAbort.signal});
+    if(!r.ok)r=await fetch(backend()+"/autocomplete?q="+encodeURIComponent(q),{signal:scentSuggestAbort.signal});
     if(!r.ok)r=await fetch(backend()+"/search?q="+encodeURIComponent(q),{signal:scentSuggestAbort.signal});
     if(!r.ok)return renderSuggestions([]);
     renderSuggestions(normalizeSuggestions(await r.json()));
