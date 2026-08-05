@@ -5,6 +5,8 @@ from fastapi.middleware.cors import CORSMiddleware
 import importlib
 import traceback
 import re
+import time
+import threading
 from concurrent.futures import ThreadPoolExecutor, as_completed, TimeoutError
 
 app = FastAPI(
@@ -34,12 +36,38 @@ STORES = [
     "notino",
 ]
 
+SEARCH_TIMEOUT = 10
+CACHE_TTL = 300
+_search_cache = {}
+_cache_lock = threading.Lock()
+
 
 def normalize_query(value: str) -> str:
     value = str(value or "").strip()
     value = re.sub(r"\s+", " ", value)
     value = re.sub(r"(?<=\d)(?=[A-Za-z])|(?<=[A-Za-z])(?=\d)", " ", value)
     return value.strip()
+
+
+def cache_key(query: str) -> str:
+    return query.casefold()
+
+def get_cached(query: str):
+    key = cache_key(query)
+    now = time.monotonic()
+    with _cache_lock:
+        item = _search_cache.get(key)
+        if not item:
+            return None
+        created_at, payload = item
+        if now - created_at > CACHE_TTL:
+            _search_cache.pop(key, None)
+            return None
+        return payload
+
+def set_cached(query: str, payload: dict):
+    with _cache_lock:
+        _search_cache[cache_key(query)] = (time.monotonic(), payload)
 
 
 @app.get("/", include_in_schema=False)
@@ -60,6 +88,10 @@ def search_perfume(q: str):
 
     if not query:
         return {"query": query, "count": 0, "results": []}
+
+    cached = get_cached(query)
+    if cached is not None:
+        return cached
 
     all_results = []
     errors = {}
@@ -89,7 +121,7 @@ def search_perfume(q: str):
     futures = {pool.submit(run_store, store): store for store in STORES}
 
     try:
-        for future in as_completed(futures, timeout=30):
+        for future in as_completed(futures, timeout=SEARCH_TIMEOUT):
             store = futures[future]
             try:
                 _, products, error = future.result()
@@ -155,9 +187,11 @@ def search_perfume(q: str):
     all_results = [product for product in all_results if is_single_perfume(product)]
     all_results.sort(key=price_value)
 
-    return {
+    payload = {
         "query": query,
         "count": len(all_results),
         "results": all_results,
         "errors": errors,
     }
+    set_cached(query, payload)
+    return payload
