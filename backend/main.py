@@ -1,4 +1,6 @@
-from fastapi import FastAPI
+from pathlib import Path
+from fastapi import FastAPI, HTTPException
+from fastapi.responses import FileResponse
 from fastapi.middleware.cors import CORSMiddleware
 
 import importlib
@@ -50,6 +52,12 @@ STORES = [
 
 BASE_DIR = os.path.dirname(__file__)
 HISTORY_PATH = os.path.join(BASE_DIR, "price_history.json")
+
+FRONTEND_INDEX = (
+    Path(__file__).resolve().parent.parent
+    / "frontend"
+    / "index.html"
+)
 
 VARIANTS = {
     "pour femme",
@@ -166,10 +174,6 @@ def product_image(product: Dict[str, Any]) -> str:
 def matches(product: Dict[str, Any], query: str) -> bool:
     """
     Evita risultati palesemente diversi dalla ricerca.
-
-    Esempio:
-    se si cerca "9 PM", non devono entrare automaticamente
-    "9 PM Rebel", "9 PM Elixir", ecc.
     """
     name = norm(product.get("name", ""))
     query_normalized = norm(query)
@@ -241,8 +245,6 @@ def build_search_attempts(store: str, query: str) -> List[str]:
     if compact and compact not in attempts:
         attempts.append(compact)
 
-    # Bplatz può restituire risultati migliori partendo
-    # anche dai singoli termini della ricerca.
     if store == "bplatz":
         for token in normalized_query.split():
             if token and token not in attempts:
@@ -463,16 +465,18 @@ def update_price_history(
 
 
 # ============================================================
-# API - ROOT
+# API - ROOT / HOMEPAGE
 # ============================================================
 
-@app.get("/")
+@app.get("/", include_in_schema=False)
 def root():
-    return {
-        "app": "ScentHunter",
-        "status": "running",
-        "version": "1.0.0",
-    }
+    if not FRONTEND_INDEX.exists():
+        raise HTTPException(
+            status_code=500,
+            detail="frontend/index.html non trovato",
+        )
+
+    return FileResponse(FRONTEND_INDEX)
 
 
 # ============================================================
@@ -603,7 +607,7 @@ def suggest(q: str):
 
 
 # ============================================================
-# API - AUTOCOMPLETE (alias di /suggest)
+# API - AUTOCOMPLETE
 # ============================================================
 
 @app.get("/autocomplete")
