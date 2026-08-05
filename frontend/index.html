@@ -365,7 +365,7 @@ async function acRender(){
     scentAC.classList.add("open");
   }catch(err){if(err.name!=="AbortError")console.error(err)}
 }
-queryInput.addEventListener("input",()=>{clearTimeout(acTimer);acTimer=setTimeout(acRender,250)});
+queryInput.addEventListener("input",()=>{clearTimeout(acTimer);acTimer=setTimeout(acRender,300)});
 scentAC.addEventListener("click",e=>{const b=e.target.closest("[data-i]");if(!b)return;const x=(scentAC._hits||[])[Number(b.dataset.i)];if(!x)return;queryInput.value=((x.brand||"")+" "+(x.name||"")).trim();scentAC.classList.remove("open");searchPerfume()});
 document.addEventListener("click",e=>{if(!e.target.closest(".searchwrap"))scentAC.classList.remove("open")});
 
