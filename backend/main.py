@@ -358,6 +358,66 @@ def sort_by_price(
 
 
 # ============================================================
+# RICERCA PREZZI
+# ============================================================
+
+def search_perfume(query: str) -> Dict[str, Any]:
+    """
+    Cerca lo stesso profumo in tutti i negozi senza lasciare che
+    un singolo scraper blocchi l'intera richiesta.
+    """
+    query = str(query or "").strip()
+    if not query:
+        return {"query": query, "results": [], "comparisons": [], "errors": {}}
+
+    results: List[Dict[str, Any]] = []
+    errors: Dict[str, str] = {}
+
+    executor = ThreadPoolExecutor(max_workers=min(8, len(STORES)))
+    future_to_store = {
+        executor.submit(run_store, store, query): store
+        for store in STORES
+    }
+
+    # Il frontend interrompe /search dopo 25 secondi: il backend deve
+    # quindi rispondere prima, anche se uno scraper rimane appeso.
+    done, not_done = wait(future_to_store, timeout=20)
+
+    for future in done:
+        store = future_to_store[future]
+        try:
+            products = future.result() or []
+            results.extend(products)
+        except Exception as exc:
+            errors[store] = str(exc) or exc.__class__.__name__
+            traceback.print_exc()
+
+    for future in not_done:
+        store = future_to_store[future]
+        errors[store] = "timeout"
+        future.cancel()
+
+    # Non aspettiamo gli scraper bloccati prima di restituire la risposta.
+    executor.shutdown(wait=False, cancel_futures=True)
+
+    results = sort_by_price(unique_results(results))
+
+    # Il frontend sa già raggruppare le offerte presenti in results.
+    return {
+        "query": query,
+        "count": len(results),
+        "results": results,
+        "comparisons": [],
+        "errors": errors,
+    }
+
+
+@app.get("/search")
+def search(q: str):
+    return search_perfume(q)
+
+
+# ============================================================
 # PRICE HISTORY
 # ============================================================
 
