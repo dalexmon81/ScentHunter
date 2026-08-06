@@ -519,9 +519,7 @@ def search_perfume(q: str):
 
     # Gli scraper vengono eseguiti in parallelo.
     # Un negozio lento o bloccato non deve fermare tutta la ricerca.
-    # Un worker per store evita che gli ultimi negozi restino in coda
-    # mentre il timeout complessivo continua a scorrere.
-    executor = ThreadPoolExecutor(max_workers=len(STORES))
+    executor = ThreadPoolExecutor(max_workers=2)
     futures = {
         executor.submit(run_store, store, query): store
         for store in STORES
@@ -562,6 +560,51 @@ def search_perfume(q: str):
         "results": results,
         "errors": errors,
     }
+
+
+
+# ============================================================
+# API - TEST SINGOLO STORE (diagnostica)
+# ============================================================
+
+@app.get("/test-store")
+def test_store(store: str, q: str):
+    """
+    Endpoint diagnostico: esegue UN SOLO scraper.
+    Non modifica la normale ricerca /search.
+    """
+    store = str(store or "").strip().lower()
+    query = str(q or "").strip()
+
+    if store not in STORES:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Store non valido. Disponibili: {', '.join(STORES)}",
+        )
+
+    if not query:
+        raise HTTPException(
+            status_code=400,
+            detail="Parametro q mancante",
+        )
+
+    try:
+        results = run_store(store, query)
+        return {
+            "store": store,
+            "query": query,
+            "count": len(results),
+            "results": results,
+        }
+    except Exception as error:
+        traceback.print_exc()
+        return {
+            "store": store,
+            "query": query,
+            "count": 0,
+            "results": [],
+            "error": f"{type(error).__name__}: {error}",
+        }
 
 
 # ============================================================
