@@ -482,8 +482,24 @@ async function searchPerfume(){
  const q=(selectedSearchTerm||queryInput.value).trim();if(!q){statusBox.textContent="Scrivi il nome di un profumo.";resultsBox.innerHTML="";errorsBox.innerHTML="";return}
  searchButton.disabled=true;searchButton.textContent="Cerco…";statusBox.textContent="Ricerca in corso…";resultsBox.innerHTML="";errorsBox.innerHTML="";document.getElementById("searchOutput").scrollIntoView({behavior:"smooth",block:"start"});
  try{
-  const response=await fetch(backend()+"/search?q="+encodeURIComponent(q));if(!response.ok)throw new Error("Errore del server: "+response.status);
-  const data=await response.json(),groups=shGroupData(data);showProducts(groups);
+  const queries=[q];
+  if(selectedSearchBrand){
+    const full=(selectedSearchBrand+" "+q).trim();
+    if(full.toLowerCase()!==q.toLowerCase())queries.push(full);
+  }
+  const payloads=[];
+  for(const term of queries){
+    const response=await fetch(backend()+"/search?q="+encodeURIComponent(term));
+    if(response.ok)payloads.push(await response.json());
+  }
+  if(!payloads.length)throw new Error("Nessuna risposta valida dal server");
+  const data={results:[],comparisons:[],errors:{}};
+  payloads.forEach(d=>{
+    if(Array.isArray(d.results))data.results.push(...d.results);
+    if(Array.isArray(d.comparisons))data.comparisons.push(...d.comparisons);
+    if(d.errors&&typeof d.errors==="object")Object.assign(data.errors,d.errors);
+  });
+  const groups=shGroupData(data);showProducts(groups);
   refreshWishlistFromResults(groups.flatMap(g=>g.offers.map(o=>({name:g.name||"",brand:g.brand||"",price:shPrice(o),price_value:o.price_value,store:o.store||"",url:o.url||""}))));
   if(data.errors&&Object.keys(data.errors).length)errorsBox.innerHTML="Alcuni negozi non hanno risposto: "+Object.keys(data.errors).map(esc).join(", ")+".";
  }catch(e){console.error(e);statusBox.textContent="Impossibile completare la ricerca."}
@@ -491,6 +507,7 @@ async function searchPerfume(){
 }
 
 let selectedSearchTerm="";
+let selectedSearchBrand="";
 const scentAC=document.getElementById("scentAC");
 let acTimer=null;
 let acController=null;
@@ -510,9 +527,20 @@ const LOCAL_AC=[
 {brand:"French Avenue",name:"Liquid Brun Limited Edition",image:""}
 ];
 
+function acRank(x,raw){
+ const q=String(raw||"").toLowerCase().trim();
+ const name=String(x.name||"").toLowerCase().trim();
+ const brand=String(x.brand||"").toLowerCase().trim();
+ if(name.startsWith(q)) return 0;
+ if(name.split(/\s+/).some(w=>w.startsWith(q))) return 1;
+ if(name.includes(q)) return 2;
+ if(brand.startsWith(q)) return 3;
+ if(brand.includes(q)) return 4;
+ return 99;
+}
 function localACHits(raw){
  const q=raw.toLowerCase().trim();
- return LOCAL_AC.filter(x=>(x.brand+" "+x.name).toLowerCase().includes(q)).slice(0,8);
+ return LOCAL_AC.filter(x=>acRank(x,q)<99).sort((a,b)=>acRank(a,q)-acRank(b,q)||String(a.name).localeCompare(String(b.name))).slice(0,8);
 }
 function showACHits(hits){
  if(!hits.length){scentAC.classList.remove("open");scentAC.innerHTML="";return}
@@ -532,11 +560,13 @@ async function acRender(){
   const data=await response.json();
   const remote=Array.isArray(data.suggestions)?data.suggestions:[];
   const merged=[...remote,...localACHits(raw)],seen=new Set();
-  showACHits(merged.filter(x=>{const k=((x.brand||"")+"|"+(x.name||"")).toLowerCase();if(seen.has(k))return false;seen.add(k);return true}).slice(0,8));
+  const unique=merged.filter(x=>{const k=((x.brand||"")+"|"+(x.name||"")).toLowerCase();if(seen.has(k))return false;seen.add(k);return true});
+  unique.sort((a,b)=>acRank(a,raw)-acRank(b,raw)||String(a.name||"").localeCompare(String(b.name||"")));
+  showACHits(unique.filter(x=>acRank(x,raw)<99).slice(0,8));
  }catch(err){}
 }
-queryInput.addEventListener("input",()=>{selectedSearchTerm="";clearTimeout(acTimer);acTimer=setTimeout(acRender,300)});
-scentAC.addEventListener("click",e=>{const b=e.target.closest("[data-i]");if(!b)return;const x=(scentAC._hits||[])[Number(b.dataset.i)];if(!x)return;queryInput.value=((x.brand||"")+" "+(x.name||"")).trim();selectedSearchTerm=(x.name||"").trim();scentAC.classList.remove("open");searchPerfume()});
+queryInput.addEventListener("input",()=>{selectedSearchTerm="";selectedSearchBrand="";clearTimeout(acTimer);acTimer=setTimeout(acRender,300)});
+scentAC.addEventListener("click",e=>{const b=e.target.closest("[data-i]");if(!b)return;const x=(scentAC._hits||[])[Number(b.dataset.i)];if(!x)return;queryInput.value=((x.brand||"")+" "+(x.name||"")).trim();selectedSearchTerm=(x.name||"").trim();selectedSearchBrand=(x.brand||"").trim();scentAC.classList.remove("open");searchPerfume()});
 document.addEventListener("click",e=>{if(!e.target.closest(".searchwrap"))scentAC.classList.remove("open")});
 
 searchButton.addEventListener("click",searchPerfume);queryInput.addEventListener("keydown",e=>{if(e.key==="Enter"){e.preventDefault();searchPerfume()}});
