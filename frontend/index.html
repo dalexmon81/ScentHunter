@@ -508,6 +508,58 @@ async function searchPerfume(){
 
 let selectedSearchTerm="";
 let selectedSearchBrand="";
+
+// Catalogo locale per l'autocomplete: funziona anche se il backend /suggest non esiste.
+const LOCAL_SCENTS=[
+ {brand:"Rasasi",name:"Hawas for Him"},
+ {brand:"Rasasi",name:"Hawas Ice"},
+ {brand:"Rasasi",name:"Hawas Kobra"},
+ {brand:"Rasasi",name:"Hawas Fire"},
+ {brand:"Rasasi",name:"Hawas Black"},
+ {brand:"Valentino",name:"Born in Roma Uomo"},
+ {brand:"Valentino",name:"Born in Roma Uomo Intense"},
+ {brand:"Valentino",name:"Born in Roma Uomo Extradose"},
+ {brand:"Valentino",name:"Born in Roma Yellow Dream Uomo"},
+ {brand:"Valentino",name:"Uomo Born in Roma Coral Fantasy"},
+ {brand:"Azzaro",name:"The Most Wanted"},
+ {brand:"Azzaro",name:"The Most Wanted Parfum"},
+ {brand:"Azzaro",name:"Wanted by Night"},
+ {brand:"Azzaro",name:"Forever Wanted Elixir"},
+ {brand:"Jean Paul Gaultier",name:"Le Male Le Parfum"},
+ {brand:"Jean Paul Gaultier",name:"Le Male Elixir"},
+ {brand:"Armaf",name:"Club de Nuit Intense Man"},
+ {brand:"Armaf",name:"Club de Nuit Precieux"},
+ {brand:"Armaf",name:"Odyssey Mandarin Sky"},
+ {brand:"Armaf",name:"Odyssey Spectra"},
+ {brand:"Armaf",name:"Odyssey Artisto Red"},
+ {brand:"Afnan",name:"9PM"},
+ {brand:"Afnan",name:"9PM Rebel"},
+ {brand:"Afnan",name:"9PM Elixir"},
+ {brand:"Afnan",name:"9PM Night Out"},
+ {brand:"Afnan",name:"Supremacy Collector's Edition"},
+ {brand:"Afnan",name:"Supremacy in Heaven"},
+ {brand:"Lattafa",name:"Asad Bourbon"},
+ {brand:"Lattafa",name:"Nebras"},
+ {brand:"French Avenue",name:"Liquid Brun"},
+ {brand:"French Avenue",name:"Liquid Brun Limited Edition"},
+ {brand:"Dumont",name:"Nitro Red"},
+ {brand:"Ahmed Al Maghribi",name:"Kaaf"},
+ {brand:"Rue Broca",name:"Theoreme Homme"},
+ {brand:"Afnan",name:"Turathi Blue"},
+ {brand:"Maison Alhambra",name:"Jean Lowe Immortal"},
+ {brand:"Creed",name:"Aventus"},
+ {brand:"Creed",name:"Green Irish Tweed"},
+ {brand:"Dior",name:"Sauvage"},
+ {brand:"Dior",name:"Sauvage Elixir"},
+ {brand:"Chanel",name:"Bleu de Chanel"},
+ {brand:"Yves Saint Laurent",name:"Y Eau de Parfum"},
+ {brand:"Giorgio Armani",name:"Acqua di Gio Profondo"},
+ {brand:"Giorgio Armani",name:"Stronger With You Intensely"},
+ {brand:"Versace",name:"Eros"},
+ {brand:"Versace",name:"Dylan Blue"},
+ {brand:"Prada",name:"Luna Rossa Carbon"},
+ {brand:"Prada",name:"Luna Rossa Ocean"}
+];
 const scentAC=document.getElementById("scentAC");
 let acTimer=null;
 let acController=null;
@@ -532,6 +584,13 @@ function showACHits(hits){
 async function acRender(){
  const raw=queryInput.value.trim();
  if(raw.length<2){scentAC.classList.remove("open");scentAC.innerHTML="";return}
+
+ // Mostra SUBITO i risultati locali: niente dipendenza dal main.py.
+ const local=LOCAL_SCENTS.filter(x=>acRank(x,raw)<99);
+ local.sort((a,b)=>acRank(a,raw)-acRank(b,raw)||String(a.name||"").localeCompare(String(b.name||"")));
+ showACHits(local.slice(0,8));
+
+ // Se /suggest è disponibile, aggiunge anche i suggerimenti remoti.
  if(acController)acController.abort();
  acController=new AbortController();
  try{
@@ -539,11 +598,13 @@ async function acRender(){
   if(!response.ok)return;
   const data=await response.json();
   const remote=Array.isArray(data.suggestions)?data.suggestions:[];
-  const merged=[...remote],seen=new Set();
+  const merged=[...local,...remote],seen=new Set();
   const unique=merged.filter(x=>{const k=((x.brand||"")+"|"+(x.name||"")).toLowerCase();if(seen.has(k))return false;seen.add(k);return true});
   unique.sort((a,b)=>acRank(a,raw)-acRank(b,raw)||String(a.name||"").localeCompare(String(b.name||"")));
   showACHits(unique.filter(x=>acRank(x,raw)<99).slice(0,8));
- }catch(err){}
+ }catch(err){
+  // Il catalogo locale resta visibile anche se /suggest manca o fallisce.
+ }
 }
 queryInput.addEventListener("input",()=>{selectedSearchTerm="";selectedSearchBrand="";clearTimeout(acTimer);acTimer=setTimeout(acRender,300)});
 scentAC.addEventListener("click",e=>{const b=e.target.closest("[data-i]");if(!b)return;const x=(scentAC._hits||[])[Number(b.dataset.i)];if(!x)return;queryInput.value=((x.brand||"")+" "+(x.name||"")).trim();selectedSearchTerm=(x.name||"").trim();selectedSearchBrand=(x.brand||"").trim();scentAC.classList.remove("open");searchPerfume()});
