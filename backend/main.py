@@ -282,9 +282,15 @@ def run_store(
     output: List[Dict[str, Any]] = []
     seen = set()
 
+    # Alcuni scraper legacy non espongono search().
+    # Non devono far fallire l'intera ricerca ScentHunter.
+    search_fn = getattr(module, "search", None)
+    if not callable(search_fn):
+        return []
+
     for attempt in attempts:
 
-        results = module.search(attempt) or []
+        results = search_fn(attempt) or []
 
         for item in results:
 
@@ -869,6 +875,10 @@ def suggest(q: str):
         try:
             module = load_scraper(store)
 
+            search_fn = getattr(module, "search", None)
+            if not callable(search_fn):
+                continue
+
             attempts = [raw_query]
 
             if query not in attempts:
@@ -878,7 +888,7 @@ def suggest(q: str):
                 if not attempt:
                     continue
 
-                results = module.search(attempt) or []
+                results = search_fn(attempt) or []
 
                 for product in results:
                     if not isinstance(product, dict):
