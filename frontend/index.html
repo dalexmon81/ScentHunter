@@ -401,7 +401,7 @@ function chooseOffer(gi,oi){
 }
 
 async function searchPerfume(){
- const q=queryInput.value.trim();if(!q){statusBox.textContent="Scrivi il nome di un profumo.";resultsBox.innerHTML="";errorsBox.innerHTML="";return}
+ const q=(selectedSearchTerm||queryInput.value).trim();if(!q){statusBox.textContent="Scrivi il nome di un profumo.";resultsBox.innerHTML="";errorsBox.innerHTML="";return}
  searchButton.disabled=true;searchButton.textContent="Cerco…";statusBox.textContent="Ricerca in corso…";resultsBox.innerHTML="";errorsBox.innerHTML="";document.getElementById("searchOutput").scrollIntoView({behavior:"smooth",block:"start"});
  try{
   const response=await fetch(backend()+"/search?q="+encodeURIComponent(q));if(!response.ok)throw new Error("Errore del server: "+response.status);
@@ -412,6 +412,7 @@ async function searchPerfume(){
  finally{searchButton.disabled=false;searchButton.textContent="Cerca"}
 }
 
+let selectedSearchTerm="";
 const scentAC=document.getElementById("scentAC");
 let acTimer=null;
 let acController=null;
@@ -456,8 +457,8 @@ async function acRender(){
   showACHits(merged.filter(x=>{const k=((x.brand||"")+"|"+(x.name||"")).toLowerCase();if(seen.has(k))return false;seen.add(k);return true}).slice(0,8));
  }catch(err){}
 }
-queryInput.addEventListener("input",()=>{clearTimeout(acTimer);acTimer=setTimeout(acRender,300)});
-scentAC.addEventListener("click",e=>{const b=e.target.closest("[data-i]");if(!b)return;const x=(scentAC._hits||[])[Number(b.dataset.i)];if(!x)return;queryInput.value=((x.brand||"")+" "+(x.name||"")).trim();scentAC.classList.remove("open");searchPerfume()});
+queryInput.addEventListener("input",()=>{selectedSearchTerm="";clearTimeout(acTimer);acTimer=setTimeout(acRender,300)});
+scentAC.addEventListener("click",e=>{const b=e.target.closest("[data-i]");if(!b)return;const x=(scentAC._hits||[])[Number(b.dataset.i)];if(!x)return;queryInput.value=((x.brand||"")+" "+(x.name||"")).trim();selectedSearchTerm=(x.name||"").trim();scentAC.classList.remove("open");searchPerfume()});
 document.addEventListener("click",e=>{if(!e.target.closest(".searchwrap"))scentAC.classList.remove("open")});
 
 searchButton.addEventListener("click",searchPerfume);queryInput.addEventListener("keydown",e=>{if(e.key==="Enter"){e.preventDefault();searchPerfume()}});
