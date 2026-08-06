@@ -478,7 +478,7 @@ function chooseOffer(gi,oi){
   openProduct(gi);
 }
 
-async function fetchJSONWithTimeout(url,ms=25000){
+async function fetchJSONWithTimeout(url,ms=90000){
  const controller=new AbortController();
  const timer=setTimeout(()=>controller.abort(),ms);
  try{
@@ -492,27 +492,11 @@ async function searchPerfume(){
  const q=(selectedSearchTerm||queryInput.value).trim();if(!q){statusBox.textContent="Scrivi il nome di un profumo.";resultsBox.innerHTML="";errorsBox.innerHTML="";return}
  searchButton.disabled=true;searchButton.textContent="Cerco…";statusBox.textContent="Ricerca in corso…";resultsBox.innerHTML="";errorsBox.innerHTML="";document.getElementById("searchOutput").scrollIntoView({behavior:"smooth",block:"start"});
  try{
-  const queries=[q];
-  if(selectedSearchBrand){
-    const full=(selectedSearchBrand+" "+q).trim();
-    if(full.toLowerCase()!==q.toLowerCase())queries.push(full);
-  }
-  const payloads=[];
-  for(const term of queries){
-    try{
-      const payload=await fetchJSONWithTimeout(backend()+"/search?q="+encodeURIComponent(term),25000);
-      payloads.push(payload);
-    }catch(err){
-      console.warn("Ricerca fallita per",term,err);
-    }
-  }
-  if(!payloads.length)throw new Error("Nessuna risposta valida dal server");
-  const data={results:[],comparisons:[],errors:{}};
-  payloads.forEach(d=>{
-    if(Array.isArray(d.results))data.results.push(...d.results);
-    if(Array.isArray(d.comparisons))data.comparisons.push(...d.comparisons);
-    if(d.errors&&typeof d.errors==="object")Object.assign(data.errors,d.errors);
-  });
+  const term=q;
+  const data=await fetchJSONWithTimeout(
+    backend()+"/search?q="+encodeURIComponent(term),
+    25000
+  );
   const groups=shGroupData(data);showProducts(groups);
   refreshWishlistFromResults(groups.flatMap(g=>g.offers.map(o=>({name:g.name||"",brand:g.brand||"",price:shPrice(o),price_value:o.price_value,store:o.store||"",url:o.url||""}))));
   if(data.errors&&Object.keys(data.errors).length)errorsBox.innerHTML="Alcuni negozi non hanno risposto: "+Object.keys(data.errors).map(esc).join(", ")+".";
