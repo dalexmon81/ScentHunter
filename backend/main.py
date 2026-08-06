@@ -237,41 +237,33 @@ def load_scraper(store: str):
 
 
 def build_search_attempts(store: str, query: str) -> List[str]:
-    """Poche query mirate: precisa prima, poi più corta."""
-    raw = str(query or "").strip()
-    normalized = norm(raw)
-    attempts: List[str] = []
+    """
+    Costruisce le varianti della ricerca.
+    """
+    attempts = [query]
 
-    def add(value: str) -> None:
-        value = str(value or "").strip()
-        if value and norm(value) not in [norm(x) for x in attempts]:
-            attempts.append(value)
+    normalized_query = norm(query)
 
-    add(raw)
+    # Solo Bplatz usa varianti aggiuntive della query.
+    # Gli altri store ricevono la ricerca originale una sola volta.
+    if store == "bplatz":
+        compact = re.sub(
+            r"(?<=\d)\s+(?=[a-z])|(?<=[a-z])\s+(?=\d)",
+            "",
+            normalized_query,
+        )
 
-    tokens = [t for t in normalized.split() if t not in IGNORED_WORDS]
+        if compact and compact not in attempts:
+            attempts.append(compact)
 
-    # Spesso la prima parola è il marchio:
-    # Rasasi Hawas for Him -> Hawas Him
-    # Lattafa Asad Bourbon -> Asad Bourbon
-    if len(tokens) >= 2:
-        add(" ".join(tokens[1:]))
+        # Bplatz può restituire risultati migliori partendo
+        # anche dai singoli termini della ricerca.
+        for token in normalized_query.split():
+            if token and token not in attempts:
+                attempts.append(token)
 
-    # Query ancora più semplice per motori che lavorano male con nomi lunghi.
-    if len(tokens) >= 3:
-        add(" ".join(tokens[-2:]))
-    elif tokens:
-        add(" ".join(tokens))
+    return attempts
 
-    compact = re.sub(
-        r"(?<=\d)\s+(?=[a-z])|(?<=[a-z])\s+(?=\d)",
-        "",
-        normalized,
-    )
-    if compact != normalized:
-        add(compact)
-
-    return attempts[:3]
 
 def run_store(
     store: str,
@@ -318,9 +310,6 @@ def run_store(
 
             if matches(product, query):
                 output.append(product)
-
-        if output:
-            break
 
     return output
 
@@ -522,39 +511,28 @@ def search_perfume(q: str):
     query = str(q or "").strip()
 
     if not query:
-        return {"query": "", "count": 0, "results": [], "errors": {}}
+        return {
+            "query": "",
+            "count": 0,
+            "results": [],
+            "errors": {},
+        }
 
     all_results: List[Dict[str, Any]] = []
     errors: Dict[str, str] = {}
 
-    # NON 8 insieme: su Render Free abbiamo osservato exit 137.
-    # Due worker riducono nettamente RAM e connessioni simultanee.
-    executor = ThreadPoolExecutor(max_workers=2)
-    futures = {
-        executor.submit(run_store, store, query): store
-        for store in STORES
-    }
+    # Ripristino della ricerca stabile/originale:
+    # gli store vengono interrogati uno alla volta.
+    for store in STORES:
+        try:
+            store_results = run_store(store, query)
+            all_results.extend(store_results)
+        except Exception as error:
+            errors[store] = f"{type(error).__name__}: {error}"
+            traceback.print_exc()
 
-    try:
-        for future in as_completed(futures, timeout=28):
-            store = futures[future]
-            try:
-                all_results.extend(future.result())
-            except Exception as error:
-                errors[store] = f"{type(error).__name__}: {error}"
-                traceback.print_exc()
-    except TimeoutError:
-        pass
-    finally:
-        for future, store in futures.items():
-            if not future.done():
-                if future.cancel():
-                    errors[store] = "Non eseguito: limite tempo ricerca"
-                else:
-                    errors[store] = "Timeout: negozio troppo lento"
-        executor.shutdown(wait=False, cancel_futures=True)
-
-    results = sort_by_price(unique_results(all_results))
+    results = unique_results(all_results)
+    results = sort_by_price(results)
 
     return {
         "query": query,
