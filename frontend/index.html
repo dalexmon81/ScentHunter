@@ -351,22 +351,100 @@ function shNum(o){
   return p===null?Infinity:p;
 }
 function shGroupData(data){
-  const groups=[];
-  const comps=Array.isArray(data.comparisons)?data.comparisons:[];
-  comps.forEach(g=>{
-    const offers=(Array.isArray(g.offers)?g.offers:[]).slice().sort((x,y)=>shNum(x)-shNum(y));
-    groups.push({brand:g.brand||offers[0]?.brand||"",name:g.name||offers[0]?.name||"Profumo",size_ml:g.size_ml||"",concentration:g.concentration||"",image:g.image||offers.find(x=>x.image||x.image_url||x.thumbnail)?.image||offers.find(x=>x.image_url)?.image_url||offers.find(x=>x.thumbnail)?.thumbnail||"",offers});
+  const raw=[];
+
+  // Raccoglie tutte le offerte, sia da comparisons sia da results.
+  (Array.isArray(data.comparisons)?data.comparisons:[]).forEach(g=>{
+    (Array.isArray(g.offers)?g.offers:[]).forEach(o=>{
+      raw.push({...o,
+        brand:o.brand||g.brand||"",
+        name:o.name||g.name||"Profumo",
+        size_ml:o.size_ml||o.size||g.size_ml||"",
+        concentration:o.concentration||g.concentration||"",
+        image:o.image||o.image_url||o.thumbnail||g.image||""
+      });
+    });
   });
-  const loose=Array.isArray(data.results)?data.results:[];
-  loose.forEach(r=>{
-    const rn=normalizePerfumeName(r.name||"");
-    let g=groups.find(x=>normalizePerfumeName(x.name||"")===rn && String(x.size_ml||"")===String(r.size_ml||r.size||""));
-    if(!g){g={brand:r.brand||"",name:r.name||"Profumo",size_ml:r.size_ml||r.size||"",concentration:r.concentration||"",image:r.image||r.image_url||r.thumbnail||"",offers:[]};groups.push(g)}
-    if(!g.image)g.image=r.image||r.image_url||r.thumbnail||"";
-    if(!g.offers.some(o=>(o.url||"")===(r.url||"")&&(o.store||"")===(r.store||"")))g.offers.push(r);
+  (Array.isArray(data.results)?data.results:[]).forEach(o=>raw.push({...o}));
+
+  function sizeOf(o){
+    const explicit=String(o.size_ml||o.size||"").match(/(\d{1,4})/);
+    if(explicit)return explicit[1];
+    const m=String(o.name||"").match(/\b(\d{1,4})\s*ml\b/i);
+    return m?m[1]:"";
+  }
+
+  function canonicalName(o){
+    let n=normalizePerfumeName(o.name||"").toLowerCase();
+    let brand=normalizePerfumeName(o.brand||"").toLowerCase();
+
+    // Elimina dal nome elementi commerciali che non identificano una variante diversa.
+    n=n.replace(/\b\d{1,4}\s*ml\b/gi," ");
+    n=n.replace(/\b(eau de parfum|eau de toilette|eau de cologne|parfum|perfume|edp|edt|edc|extrait|spray|men|man|for men|for him|pour homme)\b/gi," ");
+
+    // Alcuni negozi mettono la marca dentro il nome, altri no.
+    if(brand && n.startsWith(brand+" ")) n=n.slice(brand.length+1);
+
+    // Caso frequente Rasasi: "Hawas Ice" e "Rasasi Hawas Ice".
+    n=n.replace(/^rasasi\s+/i," ");
+
+    return n.replace(/[^a-z0-9]+/gi," ").replace(/\s+/g," ").trim();
+  }
+
+  function canonicalBrand(o){
+    let b=normalizePerfumeName(o.brand||"").toLowerCase().trim();
+    if(!b && /\brasasi\b/i.test(String(o.name||"")))b="rasasi";
+    return b;
+  }
+
+  const map=new Map();
+
+  raw.forEach(o=>{
+    const cname=canonicalName(o);
+    if(!cname)return;
+    const size=sizeOf(o);
+    const key=cname+"|"+size;
+
+    if(!map.has(key)){
+      map.set(key,{
+        brand:o.brand||(/\brasasi\b/i.test(String(o.name||""))?"Rasasi":""),
+        name:o.name||"Profumo",
+        canonical:cname,
+        size_ml:size,
+        concentration:o.concentration||"",
+        image:o.image||o.image_url||o.thumbnail||"",
+        offers:[]
+      });
+    }
+
+    const g=map.get(key);
+    if(!g.brand && o.brand)g.brand=o.brand;
+    if(!g.image)g.image=o.image||o.image_url||o.thumbnail||"";
+
+    // Un solo risultato per negozio. Se lo stesso store arriva due volte,
+    // conserva l'offerta col prezzo più basso.
+    const store=String(o.store||"").trim().toLowerCase();
+    const existingIndex=g.offers.findIndex(x=>String(x.store||"").trim().toLowerCase()===store && store);
+
+    if(existingIndex>=0){
+      if(shNum(o)<shNum(g.offers[existingIndex]))g.offers[existingIndex]=o;
+    }else{
+      g.offers.push(o);
+    }
   });
-  groups.forEach(g=>g.offers.sort((x,y)=>shNum(x)-shNum(y)));
-  return groups.filter(g=>g.name);
+
+  const groups=[...map.values()];
+
+  groups.forEach(g=>{
+    g.offers.sort((a,b)=>shNum(a)-shNum(b));
+
+    // Titolo uniforme: marca + nome canonico + formato.
+    const words=g.canonical.split(" ").map(w=>w ? w[0].toUpperCase()+w.slice(1) : w).join(" ");
+    const brand=(g.brand||"").trim();
+    g.name=((brand?brand+" ":"")+words+(g.size_ml?" "+g.size_ml+" ml":"")).trim();
+  });
+
+  return groups.filter(g=>g.offers.length);
 }
 function showProducts(groups){
   currentProductGroups=groups;
