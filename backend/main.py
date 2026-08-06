@@ -270,39 +270,29 @@ def run_store(
     query: str,
 ) -> List[Dict[str, Any]]:
     """
-    Esegue la ricerca su un singolo negozio.
+    Adapter unico tra /search e gli scraper esistenti.
+    Gli scraper NON vengono modificati.
     """
     module = load_scraper(store)
 
-    attempts = build_search_attempts(
-        store,
-        query,
-    )
+    search_fn = getattr(module, "search", None)
+    if not callable(search_fn):
+        raise RuntimeError(f"{store}: scraper senza funzione search()")
+
+    attempts = build_search_attempts(store, query)
 
     output: List[Dict[str, Any]] = []
     seen = set()
 
-    # Alcuni scraper legacy non espongono search().
-    # Non devono far fallire l'intera ricerca ScentHunter.
-    search_fn = getattr(module, "search", None)
-    if not callable(search_fn):
-        return []
-
     for attempt in attempts:
-
         results = search_fn(attempt) or []
 
         for item in results:
-
             if not isinstance(item, dict):
                 continue
 
             product = dict(item)
-
-            product.setdefault(
-                "store",
-                store,
-            )
+            product.setdefault("store", store)
 
             key = (
                 str(product.get("url", "")).lower(),
@@ -311,7 +301,6 @@ def run_store(
 
             if key in seen:
                 continue
-
             seen.add(key)
 
             if matches(product, query):
@@ -514,6 +503,15 @@ def health():
 
 @app.get("/search")
 def search_perfume(q: str):
+    """
+    Ricerca prezzi ricostruita da zero.
+
+    - usa TUTTI gli store, compreso Parfumzentrum;
+    - non modifica gli scraper;
+    - ogni store viene eseguito in parallelo;
+    - un singolo scraper rotto non annulla gli altri;
+    - risultati deduplicati e ordinati per prezzo.
+    """
     query = str(q or "").strip()
 
     if not query:
@@ -527,46 +525,58 @@ def search_perfume(q: str):
     all_results: List[Dict[str, Any]] = []
     errors: Dict[str, str] = {}
 
-    # Ricerca a memoria controllata.
-    # Parfumzentrum viene escluso temporaneamente: la sua sitemap
-    # è il punto da correggere separatamente senza bloccare gli altri store.
-    search_stores = [
-        store for store in STORES
-        if store != "parfumzentrum"
-    ]
+    # Tutti gli scraper configurati, senza esclusioni speciali.
+    search_stores = list(STORES)
 
-    # Esegue gli scraper in parallelo, ma NON aspetta all'infinito
-    # i negozi lenti. Dopo STORE_TIMEOUT secondi restituiamo comunque
-    # i risultati già arrivati dagli altri store.
-    STORE_TIMEOUT = 12.0
-    executor = ThreadPoolExecutor(max_workers=min(len(search_stores), 7))
+    executor = ThreadPoolExecutor(
+        max_workers=max(1, len(search_stores))
+    )
+
     futures = {
         executor.submit(run_store, store, query): store
         for store in search_stores
     }
 
+    # Il frontend diagnostico attuale interrompe a 25 s.
+    # Il backend restituisce ciò che ha raccolto prima di quel limite.
+    SEARCH_DEADLINE = 20.0
+
     try:
-        for future in as_completed(futures, timeout=STORE_TIMEOUT):
+        for future in as_completed(
+            futures,
+            timeout=SEARCH_DEADLINE,
+        ):
             store = futures[future]
+
             try:
                 store_results = future.result()
-                all_results.extend(store_results)
+
+                if store_results:
+                    all_results.extend(store_results)
+
             except Exception as error:
-                errors[store] = f"{type(error).__name__}: {error}"
+                errors[store] = (
+                    f"{type(error).__name__}: {error}"
+                )
                 traceback.print_exc()
+
     except TimeoutError:
-        # Segna solo gli scraper che non hanno terminato entro il limite.
         for future, store in futures.items():
             if not future.done():
-                errors[store] = f"Timeout: oltre {STORE_TIMEOUT:.0f}s"
+                errors[store] = (
+                    f"Timeout: oltre {SEARCH_DEADLINE:.0f}s"
+                )
                 future.cancel()
-    finally:
-        # Fondamentale: wait=False evita che il context manager aspetti
-        # comunque i thread bloccati prima di rispondere a /search.
-        executor.shutdown(wait=False, cancel_futures=True)
 
-    results = unique_results(all_results)
-    results = sort_by_price(results)
+    finally:
+        executor.shutdown(
+            wait=False,
+            cancel_futures=True,
+        )
+
+    results = sort_by_price(
+        unique_results(all_results)
+    )
 
     return {
         "query": query,
@@ -875,10 +885,6 @@ def suggest(q: str):
         try:
             module = load_scraper(store)
 
-            search_fn = getattr(module, "search", None)
-            if not callable(search_fn):
-                continue
-
             attempts = [raw_query]
 
             if query not in attempts:
@@ -888,7 +894,7 @@ def suggest(q: str):
                 if not attempt:
                     continue
 
-                results = search_fn(attempt) or []
+                results = module.search(attempt) or []
 
                 for product in results:
                     if not isinstance(product, dict):
