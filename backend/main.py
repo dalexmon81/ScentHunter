@@ -517,16 +517,34 @@ def search_perfume(q: str):
     all_results: List[Dict[str, Any]] = []
     errors: Dict[str, str] = {}
 
-    # Ricerca mirata: eseguiamo gli store uno alla volta.
-    # I test /test-store dimostrano che gli scraper singoli funzionano;
-    # evitiamo quindi la concorrenza che su Render può saturare memoria/risorse.
-    for store in STORES:
-        try:
-            store_results = run_store(store, query)
-            all_results.extend(store_results)
-        except Exception as error:
-            errors[store] = f"{type(error).__name__}: {error}"
-            traceback.print_exc()
+    # Eseguiamo gli scraper in parallelo con un numero limitato di worker.
+    # In questo modo uno store lento non costringe /search ad aspettare
+    # tutti gli altri in sequenza.
+    executor = ThreadPoolExecutor(max_workers=4)
+    futures = {
+        executor.submit(run_store, store, query): store
+        for store in STORES
+    }
+
+    try:
+        for future in as_completed(futures, timeout=20):
+            store = futures[future]
+            try:
+                store_results = future.result()
+                all_results.extend(store_results)
+            except Exception as error:
+                errors[store] = f"{type(error).__name__}: {error}"
+                traceback.print_exc()
+    except TimeoutError:
+        # Dopo 20 secondi restituiamo comunque i risultati già ottenuti.
+        for future, store in futures.items():
+            if not future.done():
+                errors[store] = "Timeout: ricerca negozio troppo lenta"
+                future.cancel()
+    finally:
+        # Non aspettiamo gli scraper rimasti bloccati: la risposta HTTP deve
+        # arrivare prima del timeout del frontend.
+        executor.shutdown(wait=False, cancel_futures=True)
 
     results = unique_results(all_results)
     results = sort_by_price(results)
