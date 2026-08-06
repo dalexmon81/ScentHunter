@@ -1,14 +1,11 @@
-from pathlib import Path
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse
 
 import importlib
 import json
 import os
 import re
 import traceback
-from concurrent.futures import ThreadPoolExecutor, as_completed, TimeoutError
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
 
@@ -53,12 +50,6 @@ STORES = [
 
 BASE_DIR = os.path.dirname(__file__)
 HISTORY_PATH = os.path.join(BASE_DIR, "price_history.json")
-
-FRONTEND_INDEX = (
-    Path(__file__).resolve().parent.parent
-    / "frontend"
-    / "index.html"
-)
 
 VARIANTS = {
     "pour femme",
@@ -475,14 +466,13 @@ def update_price_history(
 # API - ROOT
 # ============================================================
 
-@app.get("/", include_in_schema=False)
+@app.get("/")
 def root():
-    if not FRONTEND_INDEX.exists():
-        raise HTTPException(
-            status_code=500,
-            detail="frontend/index.html non trovato",
-        )
-    return FileResponse(FRONTEND_INDEX)
+    return {
+        "app": "ScentHunter",
+        "status": "running",
+        "version": "1.0.0",
+    }
 
 
 # ============================================================
@@ -504,7 +494,9 @@ def health():
 @app.get("/search")
 def search_perfume(q: str):
 
-    query = str(q or "").strip()
+    query = str(
+        q or ""
+    ).strip()
 
     if not query:
         return {
@@ -517,42 +509,33 @@ def search_perfume(q: str):
     all_results: List[Dict[str, Any]] = []
     errors: Dict[str, str] = {}
 
-    # Gli scraper vengono eseguiti in parallelo.
-    # Un negozio lento o bloccato non deve fermare tutta la ricerca.
-    executor = ThreadPoolExecutor(max_workers=len(STORES))
-    futures = {
-        executor.submit(run_store, store, query): store
-        for store in STORES
-    }
+    for store in STORES:
 
-    try:
-        for future in as_completed(futures, timeout=25):
-            store = futures[future]
+        try:
+            results = run_store(
+                store,
+                query,
+            )
 
-            try:
-                store_results = future.result()
-                all_results.extend(store_results)
+            all_results.extend(
+                results
+            )
 
-            except Exception as error:
-                errors[store] = f"{type(error).__name__}: {error}"
-                traceback.print_exc()
+        except Exception as error:
 
-    except TimeoutError:
-        # Il tempo massimo complessivo è scaduto.
-        # Manteniamo comunque i risultati dei negozi che hanno risposto.
-        pass
+            errors[store] = (
+                f"{type(error).__name__}: {error}"
+            )
 
-    finally:
-        for future, store in futures.items():
-            if not future.done():
-                errors[store] = "timeout"
-                future.cancel()
+            traceback.print_exc()
 
-        # Fondamentale: non aspettiamo gli scraper rimasti bloccati.
-        executor.shutdown(wait=False, cancel_futures=True)
+    results = unique_results(
+        all_results
+    )
 
-    results = unique_results(all_results)
-    results = sort_by_price(results)
+    results = sort_by_price(
+        results
+    )
 
     return {
         "query": query,
@@ -563,42 +546,105 @@ def search_perfume(q: str):
 
 
 # ============================================================
-# API - SUGGEST / AUTOCOMPLETE
+# API - SUGGEST
 # ============================================================
-
-AUTOCOMPLETE_CATALOG = [
-    {"brand": "Rasasi", "name": "Hawas for Him", "image": ""},
-    {"brand": "Rasasi", "name": "Hawas Ice", "image": ""},
-    {"brand": "Rasasi", "name": "Hawas Black", "image": ""},
-    {"brand": "Rasasi", "name": "Hawas Tropical", "image": ""},
-    {"brand": "Rasasi", "name": "Hawas Fire", "image": ""},
-    {"brand": "Rasasi", "name": "Hawas Kobra", "image": ""},
-    {"brand": "Afnan", "name": "9 PM", "image": ""},
-    {"brand": "Afnan", "name": "9 PM Rebel", "image": ""},
-    {"brand": "Afnan", "name": "9 PM Elixir", "image": ""},
-    {"brand": "Afnan", "name": "9 PM Night Out", "image": ""},
-    {"brand": "French Avenue", "name": "Liquid Brun", "image": ""},
-    {"brand": "French Avenue", "name": "Liquid Brun Limited Edition", "image": ""},
-]
 
 @app.get("/suggest")
 def suggest(q: str):
     query = norm(q)
+
     if len(query) < 2:
-        return {"query": q, "count": 0, "suggestions": [], "source": "local"}
+        return {
+            "query": q,
+            "count": 0,
+            "suggestions": [],
+            "source": "stores",
+        }
 
-    words = query.split()
-    hits = []
-    for item in AUTOCOMPLETE_CATALOG:
-        haystack = norm(f"{item.get('brand','')} {item.get('name','')}")
-        if all(word in haystack for word in words):
-            name_n = norm(item.get("name",""))
-            score = 0 if name_n.startswith(query) else (1 if query in name_n else 2)
-            hits.append((score, len(item.get("name","")), item))
+    suggestions = []
+    seen = set()
 
-    hits.sort(key=lambda x:(x[0],x[1],x[2].get("name","").lower()))
-    suggestions=[x[2] for x in hits[:8]]
-    return {"query": q, "count": len(suggestions), "suggestions": suggestions, "source": "local"}
+    # Autocomplete permissivo: NON usa matches(), perché matches()
+    # elimina apposta varianti come Hawas Ice quando si cerca Hawas.
+    for store in STORES:
+        try:
+            module = load_scraper(store)
+
+            # Prova sia il testo originale sia quello normalizzato.
+            attempts = [str(q or "").strip()]
+            if query not in attempts:
+                attempts.append(query)
+
+            for attempt in attempts:
+                if not attempt:
+                    continue
+
+                results = module.search(attempt) or []
+
+                for product in results:
+                    if not isinstance(product, dict):
+                        continue
+
+                    name = str(
+                        product.get("name")
+                        or product.get("title")
+                        or product.get("product_name")
+                        or ""
+                    ).strip()
+
+                    if not name:
+                        continue
+
+                    normalized_name = norm(name)
+
+                    # Tutte le parole digitate devono comparire nel nome/marca.
+                    brand = str(product.get("brand") or "").strip()
+                    haystack = norm(f"{brand} {name}")
+                    words = [w for w in query.split() if w]
+
+                    if not all(w in haystack for w in words):
+                        continue
+
+                    # Niente gift set, deodoranti, shower gel, ecc.
+                    if any(norm(phrase) in normalized_name for phrase in NON_PERFUME):
+                        continue
+
+                    key = normalized_name
+                    if key in seen:
+                        continue
+                    seen.add(key)
+
+                    suggestions.append({
+                        "name": name,
+                        "store": product.get("store", store),
+                        "brand": brand,
+                        "image": product_image(product),
+                    })
+
+        except Exception:
+            traceback.print_exc()
+
+    suggestions.sort(
+        key=lambda item: (
+            0 if norm(item.get("name", "")).startswith(query) else 1,
+            len(item.get("name", "")),
+            item.get("name", "").lower(),
+        )
+    )
+
+    suggestions = suggestions[:8]
+
+    return {
+        "query": q,
+        "count": len(suggestions),
+        "suggestions": suggestions,
+        "source": "stores",
+    }
+
+
+# ============================================================
+# API - AUTOCOMPLETE
+# ============================================================
 
 @app.get("/autocomplete")
 def autocomplete(q: str):
