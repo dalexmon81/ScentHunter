@@ -22,8 +22,12 @@ def search(query):
         "User-Agent": "Mozilla/5.0"
     }
 
-    response = requests.get(url, headers=headers, timeout=15)
-    response.raise_for_status()
+    try:
+        response = requests.get(url, headers=headers, timeout=15)
+        response.raise_for_status()
+    except requests.RequestException as error:
+        print(f"PERFUMEMARKET ERROR: {error}")
+        return []
 
     soup = BeautifulSoup(response.text, "html.parser")
     results = []
