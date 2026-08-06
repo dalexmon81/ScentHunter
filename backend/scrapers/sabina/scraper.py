@@ -8,7 +8,7 @@ from bs4 import BeautifulSoup
 
 STORE = "Sabina"
 BASE = "https://www.sabina.com"
-TIMEOUT = 20
+TIMEOUT = 4
 
 HEADERS = {
     "User-Agent": (
@@ -199,6 +199,17 @@ def _get(session, url, **kwargs):
 
 
 def search(query):
+    """
+    Ricerca Sabina.
+    Strategia:
+      A) ricerca attuale
+      B) ricerca legacy reale di Sabina
+      C) endpoint ecelastic del sito
+      D) pagina HTML ottenuta dopo inizializzazione sessione
+
+    Ritorna sempre:
+      [{"store":"Sabina","name":"...","price":"00,00 €","url":"..."}]
+    """
     query = _clean(query)
     if not query:
         return []
@@ -211,105 +222,6 @@ def search(query):
         _get(s, BASE + "/it/")
     except Exception:
         pass
-
-    # Caso speciale SOLO per Valentino:
-    # usa direttamente la pagina brand profumi Sabina.
-    if query.lower() == "valentino":
-        try:
-            r = _get(s, BASE + "/it/653-valentino")
-        except Exception:
-            return []
-
-        # Importante: estraiamo le card SENZA filtrare subito per la parola
-        # "Valentino", perché Sabina può omettere il brand dal titolo.
-        soup = BeautifulSoup(r.text, "html.parser")
-        raw_rows = []
-
-        for a in soup.find_all("a", href=True):
-            url = urljoin(BASE, a["href"])
-            if not _looks_like_product_url(url):
-                continue
-
-            container = a
-            for _ in range(7):
-                parent = getattr(container, "parent", None)
-                if not parent:
-                    break
-                container = parent
-                txt = _clean(container.get_text(" ", strip=True))
-                if "€" in txt and len(txt) < 1800:
-                    break
-
-            text_block = _clean(container.get_text(" ", strip=True))
-            pm = PRICE_RE.search(text_block)
-            if not pm:
-                continue
-
-            candidates = [
-                a.get("title"),
-                a.get("aria-label"),
-                a.get_text(" ", strip=True),
-            ]
-            for sel in ("h1", "h2", "h3", "h4", ".name", ".product-name", ".product-title"):
-                el = container.select_one(sel)
-                if el:
-                    candidates.append(el.get_text(" ", strip=True))
-
-            name = max((_clean(x) for x in candidates if _clean(x)), key=len, default="")
-            if not name or name.lower() in {"vedi", "vedi tutto", "acquista", "immagine"}:
-                continue
-
-            raw_rows.append({
-                "store": STORE,
-                "name": name,
-                "price": pm.group(1) + " €",
-                "url": url,
-            })
-
-        perfume_words = (
-            "eau de parfum", "eau-de-parfum",
-            "eau de toilette", "eau-de-toilette",
-            "parfum", "profumo", "profumi",
-            "born in roma", "born-in-roma",
-            "voce viva", "voce-viva",
-            "valentina",
-        )
-        accessory_words = (
-            "handbags", "handbag", "borsa", "borse",
-            "wallet", "portafoglio", "portafogli",
-            "portachiavi", "keyring", "keychain",
-            "zaino", "backpack", "pochette", "clutch",
-        )
-
-        out, seen = [], set()
-        for row in raw_rows:
-            name = _clean(row.get("name"))
-            url = urljoin(BASE, str(row.get("url") or ""))
-            price = _price(row.get("price"))
-            hay = (name + " " + url).lower()
-
-            if not name or not url or not price:
-                continue
-            if any(w in hay for w in accessory_words):
-                continue
-            if not any(w in hay for w in perfume_words):
-                continue
-
-            canonical_url = url.split("?")[0].split("#")[0].rstrip("/")
-            key = canonical_url.lower()
-            if key in seen:
-                continue
-            seen.add(key)
-
-            out.append({
-                "store": STORE,
-                "name": name,
-                "price": price,
-                "url": canonical_url,
-            })
-
-        return out
-
 
     urls = [
         BASE + "/it/ricerca?search_query=" + quote_plus(query),
