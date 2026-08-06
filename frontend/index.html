@@ -478,6 +478,16 @@ function chooseOffer(gi,oi){
   openProduct(gi);
 }
 
+async function fetchJSONWithTimeout(url,ms=20000){
+ const controller=new AbortController();
+ const timer=setTimeout(()=>controller.abort(),ms);
+ try{
+  const response=await fetch(url,{signal:controller.signal,headers:{"Accept":"application/json"}});
+  if(!response.ok)throw new Error("HTTP "+response.status);
+  return await response.json();
+ }finally{clearTimeout(timer)}
+}
+
 async function searchPerfume(){
  const q=(selectedSearchTerm||queryInput.value).trim();if(!q){statusBox.textContent="Scrivi il nome di un profumo.";resultsBox.innerHTML="";errorsBox.innerHTML="";return}
  searchButton.disabled=true;searchButton.textContent="Cerco…";statusBox.textContent="Ricerca in corso…";resultsBox.innerHTML="";errorsBox.innerHTML="";document.getElementById("searchOutput").scrollIntoView({behavior:"smooth",block:"start"});
@@ -489,8 +499,12 @@ async function searchPerfume(){
   }
   const payloads=[];
   for(const term of queries){
-    const response=await fetch(backend()+"/search?q="+encodeURIComponent(term));
-    if(response.ok)payloads.push(await response.json());
+    try{
+      const payload=await fetchJSONWithTimeout(backend()+"/search?q="+encodeURIComponent(term),20000);
+      payloads.push(payload);
+    }catch(err){
+      console.warn("Ricerca fallita per",term,err);
+    }
   }
   if(!payloads.length)throw new Error("Nessuna risposta valida dal server");
   const data={results:[],comparisons:[],errors:{}};
@@ -568,11 +582,9 @@ function acRank(x,raw){
  const q=String(raw||"").toLowerCase().trim();
  const name=String(x.name||"").toLowerCase().trim();
  const brand=String(x.brand||"").toLowerCase().trim();
- if(name.startsWith(q)) return 0;
- if(name.split(/\s+/).some(w=>w.startsWith(q))) return 1;
- if(name.includes(q)) return 2;
- if(brand.startsWith(q)) return 3;
- if(brand.includes(q)) return 4;
+ // Autocomplete SOLO per iniziale della marca o del nome del profumo.
+ if(brand.startsWith(q)) return 0;
+ if(name.startsWith(q)) return 1;
  return 99;
 }
 function showACHits(hits){
