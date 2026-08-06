@@ -478,7 +478,7 @@ function chooseOffer(gi,oi){
   openProduct(gi);
 }
 
-async function fetchJSONWithTimeout(url,ms=20000){
+async function fetchJSONWithTimeout(url,ms=90000){
  const controller=new AbortController();
  const timer=setTimeout(()=>controller.abort(),ms);
  try{
@@ -500,7 +500,7 @@ async function searchPerfume(){
   const payloads=[];
   for(const term of queries){
     try{
-      const payload=await fetchJSONWithTimeout(backend()+"/search?q="+encodeURIComponent(term),20000);
+      const payload=await fetchJSONWithTimeout(backend()+"/search?q="+encodeURIComponent(term),90000);
       payloads.push(payload);
     }catch(err){
       console.warn("Ricerca fallita per",term,err);
@@ -572,7 +572,11 @@ const LOCAL_SCENTS=[
  {brand:"Versace",name:"Eros"},
  {brand:"Versace",name:"Dylan Blue"},
  {brand:"Prada",name:"Luna Rossa Carbon"},
- {brand:"Prada",name:"Luna Rossa Ocean"}
+ {brand:"Prada",name:"Luna Rossa Ocean"},
+ {brand:"Givenchy",name:"Gentleman Society"},
+ {brand:"Givenchy",name:"Gentleman Reserve Privee"},
+ {brand:"Lancôme",name:"La Vie Est Belle"},
+ {brand:"Lancôme",name:"Idôle"}
 ];
 const scentAC=document.getElementById("scentAC");
 let acTimer=null;
