@@ -517,17 +517,41 @@ def search_perfume(q: str):
     all_results: List[Dict[str, Any]] = []
     errors: Dict[str, str] = {}
 
-    # TEST CHIRURGICO: /search interroga solo Deloox.
-    # STORES resta invariato: autocomplete e resto dell'app non cambiano.
-    SEARCH_STORES = ["deloox"]
+    # Gli scraper vengono eseguiti in parallelo.
+    # Un negozio lento o bloccato non deve fermare tutta la ricerca.
+    # Un worker per store evita che gli ultimi negozi restino in coda
+    # mentre il timeout complessivo continua a scorrere.
+    executor = ThreadPoolExecutor(max_workers=len(STORES))
+    futures = {
+        executor.submit(run_store, store, query): store
+        for store in STORES
+    }
 
-    for store in SEARCH_STORES:
-        try:
-            store_results = run_store(store, query)
-            all_results.extend(store_results)
-        except Exception as error:
-            errors[store] = f"{type(error).__name__}: {error}"
-            traceback.print_exc()
+    try:
+        for future in as_completed(futures, timeout=25):
+            store = futures[future]
+
+            try:
+                store_results = future.result()
+                all_results.extend(store_results)
+
+            except Exception as error:
+                errors[store] = f"{type(error).__name__}: {error}"
+                traceback.print_exc()
+
+    except TimeoutError:
+        # Il tempo massimo complessivo è scaduto.
+        # Manteniamo comunque i risultati dei negozi che hanno risposto.
+        pass
+
+    finally:
+        for future, store in futures.items():
+            if not future.done():
+                errors[store] = "timeout"
+                future.cancel()
+
+        # Fondamentale: non aspettiamo gli scraper rimasti bloccati.
+        executor.shutdown(wait=False, cancel_futures=True)
 
     results = unique_results(all_results)
     results = sort_by_price(results)
@@ -538,51 +562,6 @@ def search_perfume(q: str):
         "results": results,
         "errors": errors,
     }
-
-
-
-# ============================================================
-# API - TEST SINGOLO STORE (diagnostica)
-# ============================================================
-
-@app.get("/test-store")
-def test_store(store: str, q: str):
-    """
-    Endpoint diagnostico: esegue UN SOLO scraper.
-    Non modifica la normale ricerca /search.
-    """
-    store = str(store or "").strip().lower()
-    query = str(q or "").strip()
-
-    if store not in STORES:
-        raise HTTPException(
-            status_code=400,
-            detail=f"Store non valido. Disponibili: {', '.join(STORES)}",
-        )
-
-    if not query:
-        raise HTTPException(
-            status_code=400,
-            detail="Parametro q mancante",
-        )
-
-    try:
-        results = run_store(store, query)
-        return {
-            "store": store,
-            "query": query,
-            "count": len(results),
-            "results": results,
-        }
-    except Exception as error:
-        traceback.print_exc()
-        return {
-            "store": store,
-            "query": query,
-            "count": 0,
-            "results": [],
-            "error": f"{type(error).__name__}: {error}",
-        }
 
 
 # ============================================================
