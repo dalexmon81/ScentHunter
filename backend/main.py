@@ -10,6 +10,7 @@ import traceback
 from fastapi.responses import FileResponse
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
 
 # ============================================================
@@ -490,10 +491,7 @@ def health():
 
 @app.get("/search")
 def search_perfume(q: str):
-
-    query = str(
-        q or ""
-    ).strip()
+    query = str(q or "").strip()
 
     if not query:
         return {
@@ -506,33 +504,25 @@ def search_perfume(q: str):
     all_results: List[Dict[str, Any]] = []
     errors: Dict[str, str] = {}
 
-    for store in STORES:
+    # Gli stessi scraper di prima, ma in parallelo.
+    # Evita che 8 negozi eseguiti uno dopo l'altro facciano scadere il frontend.
+    with ThreadPoolExecutor(max_workers=len(STORES)) as executor:
+        future_to_store = {
+            executor.submit(run_store, store, query): store
+            for store in STORES
+        }
 
-        try:
-            results = run_store(
-                store,
-                query,
-            )
+        for future in as_completed(future_to_store):
+            store = future_to_store[future]
 
-            all_results.extend(
-                results
-            )
+            try:
+                results = future.result() or []
+                all_results.extend(results)
+            except Exception as error:
+                errors[store] = f"{type(error).__name__}: {error}"
+                traceback.print_exc()
 
-        except Exception as error:
-
-            errors[store] = (
-                f"{type(error).__name__}: {error}"
-            )
-
-            traceback.print_exc()
-
-    results = unique_results(
-        all_results
-    )
-
-    results = sort_by_price(
-        results
-    )
+    results = sort_by_price(unique_results(all_results))
 
     return {
         "query": query,
@@ -543,12 +533,14 @@ def search_perfume(q: str):
 
 
 # ============================================================
+# ============================================================
 # API - SUGGEST
 # ============================================================
 
 @app.get("/suggest")
 def suggest(q: str):
-    query = norm(q)
+    raw_query = str(q or "").strip()
+    query = norm(raw_query)
 
     if len(query) < 2:
         return {
@@ -558,78 +550,93 @@ def suggest(q: str):
             "source": "stores",
         }
 
-    suggestions = []
+    suggestions: List[Dict[str, Any]] = []
     seen = set()
 
-    # Autocomplete permissivo: NON usa matches(), perché matches()
-    # elimina apposta varianti come Hawas Ice quando si cerca Hawas.
-    for store in STORES:
-        try:
-            module = load_scraper(store)
+    def fetch_store_suggestions(store: str) -> List[Dict[str, Any]]:
+        module = load_scraper(store)
+        found: List[Dict[str, Any]] = []
+        attempts = [raw_query]
 
-            # Prova sia il testo originale sia quello normalizzato.
-            attempts = [str(q or "").strip()]
-            if query not in attempts:
-                attempts.append(query)
+        if query and query != norm(raw_query):
+            attempts.append(query)
 
-            for attempt in attempts:
-                if not attempt:
+        for attempt in attempts:
+            if not attempt:
+                continue
+
+            for product in (module.search(attempt) or []):
+                if not isinstance(product, dict):
                     continue
 
-                results = module.search(attempt) or []
+                name = str(
+                    product.get("name")
+                    or product.get("title")
+                    or product.get("product_name")
+                    or ""
+                ).strip()
+                brand = str(product.get("brand") or "").strip()
 
-                for product in results:
-                    if not isinstance(product, dict):
-                        continue
+                if not name:
+                    continue
 
-                    name = str(
-                        product.get("name")
-                        or product.get("title")
-                        or product.get("product_name")
-                        or ""
-                    ).strip()
+                normalized_name = norm(name)
+                normalized_brand = norm(brand)
 
-                    if not name:
-                        continue
+                # Autocomplete per INIZIO:
+                # "giv" -> Givenchy, "lan" -> Lancôme, "val" -> Valentino.
+                # Non accetta più lettere trovate casualmente nel mezzo.
+                if not (
+                    normalized_brand.startswith(query)
+                    or normalized_name.startswith(query)
+                ):
+                    continue
 
-                    normalized_name = norm(name)
+                if any(norm(phrase) in normalized_name for phrase in NON_PERFUME):
+                    continue
 
-                    # Tutte le parole digitate devono comparire nel nome/marca.
-                    brand = str(product.get("brand") or "").strip()
-                    haystack = norm(f"{brand} {name}")
-                    words = [w for w in query.split() if w]
+                found.append({
+                    "name": name,
+                    "store": product.get("store", store),
+                    "brand": brand,
+                    "image": product_image(product),
+                })
 
-                    if not all(w in haystack for w in words):
-                        continue
+        return found
 
-                    # Niente gift set, deodoranti, shower gel, ecc.
-                    if any(norm(phrase) in normalized_name for phrase in NON_PERFUME):
-                        continue
+    # Tutti i negozi vengono interrogati insieme, non uno dopo l'altro.
+    with ThreadPoolExecutor(max_workers=len(STORES)) as executor:
+        futures = {
+            executor.submit(fetch_store_suggestions, store): store
+            for store in STORES
+        }
 
-                    key = normalized_name
+        for future in as_completed(futures):
+            try:
+                for item in (future.result() or []):
+                    key = (
+                        norm(item.get("brand", "")),
+                        norm(item.get("name", "")),
+                    )
                     if key in seen:
                         continue
                     seen.add(key)
-
-                    suggestions.append({
-                        "name": name,
-                        "store": product.get("store", store),
-                        "brand": brand,
-                        "image": product_image(product),
-                    })
-
-        except Exception:
-            traceback.print_exc()
+                    suggestions.append(item)
+            except Exception:
+                traceback.print_exc()
 
     suggestions.sort(
         key=lambda item: (
+            0 if norm(item.get("brand", "")).startswith(query) else 1,
             0 if norm(item.get("name", "")).startswith(query) else 1,
+            len(item.get("brand", "")),
             len(item.get("name", "")),
+            item.get("brand", "").lower(),
             item.get("name", "").lower(),
         )
     )
 
-    suggestions = suggestions[:8]
+    suggestions = suggestions[:12]
 
     return {
         "query": q,
@@ -639,15 +646,12 @@ def suggest(q: str):
     }
 
 
-# ============================================================
-# API - AUTOCOMPLETE
-# ============================================================
-
 @app.get("/autocomplete")
 def autocomplete(q: str):
     return suggest(q)
 
 
+# ============================================================
 # ============================================================
 # API - PRODUCT
 # ============================================================
