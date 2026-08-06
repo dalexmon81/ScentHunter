@@ -1,54 +1,126 @@
 import re
 import requests
-from bs4 import BeautifulSoup
+from bs4 import BeautifulSoup, Tag
 from urllib.parse import urljoin
 
 STORE = "Bplatz"
 BASE = "https://en.bplatz.de"
-TIMEOUT = 15
+CATALOG_URL = BASE + "/collections/produkte"
+TIMEOUT = 4
 
 HEADERS = {
-    "User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36",
+    "User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 "
+                  "(KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36",
     "Accept-Language": "en-US,en;q=0.9",
 }
 
-def _norm(value):
-    value = str(value or "").lower()
-    value = re.sub(r"[^a-z0-9]+", " ", value)
-    return re.sub(r"\s+", " ", value).strip()
+def _norm(v):
+    v = str(v or "").lower()
+    v = re.sub(r"(?<=\d)(?=[a-z])|(?<=[a-z])(?=\d)", " ", v)
+    v = re.sub(r"[^a-z0-9]+", " ", v)
+    return re.sub(r"\s+", " ", v).strip()
 
-def _matches(text, query):
-    tokens = _norm(query).split()
+def _match(text, query):
+    words = _norm(query).split()
     hay = _norm(text)
-    return bool(tokens) and all(token in hay for token in tokens)
+    return bool(words) and all(w in hay for w in words)
 
-def _price_from_product_json(session, product_url):
-    product_url = product_url.split("?")[0].split("#")[0].rstrip("/")
-    try:
-        r = session.get(product_url + ".js", headers=HEADERS, timeout=TIMEOUT)
-        if r.status_code != 200:
-            return None, None
-        data = r.json()
-    except (requests.RequestException, ValueError):
-        return None, None
+def _price(text):
+    if not text:
+        return None
 
-    name = str(data.get("title") or "").strip()
-    variants = data.get("variants") or []
-    available = [v for v in variants if v.get("available")]
-    variants = available or variants
+    # Prefer "retail price", which is the actual selling price on Bplatz cards.
+    patterns = [
+        r"retail\s+price\s*€\s*(\d{1,4}(?:[.,]\d{2})?)",
+        r"sale\s+price\s*€\s*(\d{1,4}(?:[.,]\d{2})?)",
+        r"€\s*(\d{1,4}(?:[.,]\d{2})?)",
+        r"(\d{1,4}(?:[.,]\d{2})?)\s*€",
+    ]
 
-    prices = []
-    for variant in variants:
-        try:
-            prices.append(int(variant.get("price")))
-        except (TypeError, ValueError):
-            pass
+    for pattern in patterns:
+        m = re.search(pattern, text, re.I)
+        if m:
+            value = m.group(1).replace(".", ",")
+            try:
+                if float(value.replace(",", ".")) <= 0:
+                    continue
+            except ValueError:
+                continue
+            return value + " €"
+    return None
 
-    if not prices:
-        return name, None
+def _product_card(a):
+    node = a
+    best = a
+    for _ in range(8):
+        parent = node.parent
+        if not isinstance(parent, Tag):
+            break
+        text = " ".join(parent.stripped_strings)
+        if len(text) > 1500:
+            break
+        best = parent
+        if "€" in text and ("Add to" in text or "Wishlist" in text or "retail price" in text.lower()):
+            return parent
+        node = parent
+    return best
 
-    price = f"{min(prices) / 100:.2f}".replace(".", ",") + " €"
-    return name, price
+def _extract_page(html, query):
+    soup = BeautifulSoup(html, "html.parser")
+    out = []
+    seen = set()
+
+    for a in soup.find_all("a", href=True):
+        href = urljoin(BASE, a["href"]).split("#")[0]
+        path = href.lower()
+
+        # Bplatz is Shopify: real product URLs use /products/ (case-insensitive).
+        if "/products/" not in path:
+            continue
+
+        name = " ".join(a.stripped_strings).strip()
+        title = (a.get("title") or "").strip()
+
+        card = _product_card(a)
+        card_text = " ".join(card.stripped_strings).strip()
+
+        # Product name can be in the anchor, title, image alt or card.
+        img = card.find("img")
+        img_alt = (img.get("alt") or "").strip() if img else ""
+
+        candidates = [name, title, img_alt]
+        product_name = next((x for x in candidates if x and _match(x, query)), None)
+
+        if not product_name:
+            # Find a nearby link in the same card whose text is the product title.
+            for pa in card.find_all("a", href=True):
+                txt = " ".join(pa.stripped_strings).strip()
+                phref = urljoin(BASE, pa["href"])
+                if "/products/" in phref.lower() and txt and _match(txt, query):
+                    product_name = txt
+                    href = phref.split("#")[0]
+                    break
+
+        if not product_name:
+            continue
+
+        price = _price(card_text)
+        if not price:
+            continue
+
+        key = (href, _norm(product_name))
+        if key in seen:
+            continue
+        seen.add(key)
+
+        out.append({
+            "store": STORE,
+            "name": product_name,
+            "price": price,
+            "url": href,
+        })
+
+    return out
 
 def search(query):
     query = str(query or "").strip()
@@ -56,72 +128,53 @@ def search(query):
         return []
 
     session = requests.Session()
-    product_urls = []
+    results = []
+    seen_urls = set()
 
-    # Shopify search page used by Bplatz.
-    try:
-        r = session.get(
-            BASE + "/search",
-            params={"q": query, "type": "product"},
-            headers=HEADERS,
-            timeout=TIMEOUT,
-            allow_redirects=True,
-        )
-        if r.status_code == 200:
-            soup = BeautifulSoup(r.text, "html.parser")
-            for a in soup.find_all("a", href=True):
-                url = urljoin(BASE, a["href"]).split("#")[0]
-                if "/products/" in url.lower() and url not in product_urls:
-                    product_urls.append(url)
-    except requests.RequestException:
-        pass
-
-    # Shopify predictive search fallback.
-    if not product_urls:
+    # Important: the old scraper used homepage ?s=query.
+    # Bplatz does not expose useful search results that way.
+    # Its real catalogue is /collections/produkte.
+    # Page 1 currently contains products such as Rasasi Hawas.
+    for page in range(1, 31):
         try:
             r = session.get(
-                BASE + "/search/suggest.json",
-                params={
-                    "q": query,
-                    "resources[type]": "product",
-                    "resources[limit]": "20",
-                },
+                CATALOG_URL,
+                params={"page": page},
                 headers=HEADERS,
                 timeout=TIMEOUT,
+                allow_redirects=True,
             )
-            if r.status_code == 200:
-                data = r.json()
-                products = data.get("resources", {}).get("results", {}).get("products", [])
-                for product in products:
-                    url = urljoin(BASE, product.get("url") or "")
-                    if "/products/" in url.lower() and url not in product_urls:
-                        product_urls.append(url)
-        except (requests.RequestException, ValueError):
-            pass
+            if r.status_code != 200:
+                break
+        except requests.RequestException:
+            break
 
-    results = []
-    seen = set()
+        page_results = _extract_page(r.text, query)
 
-    for url in product_urls:
-        name, price = _price_from_product_json(session, url)
-        if not name or not price or not _matches(name, query):
-            continue
-        if url in seen:
-            continue
-        seen.add(url)
-        results.append({
-            "store": STORE,
-            "name": name,
-            "price": price,
-            "url": url,
-        })
+        for item in page_results:
+            if item["url"] in seen_urls:
+                continue
+            seen_urls.add(item["url"])
+            results.append(item)
 
-    return results
+        # For a specific perfume query, a few matches are enough.
+        if results and len(_norm(query).split()) >= 2:
+            break
+
+        # Stop when Shopify returns an empty catalogue page.
+        soup = BeautifulSoup(r.text, "html.parser")
+        if not any("/products/" in urljoin(BASE, a.get("href", "")).lower()
+                   for a in soup.find_all("a", href=True)):
+            break
+
+    results.sort(key=lambda x: (len(_norm(x["name"])), x["name"]))
+    return results[:20]
 
 if __name__ == "__main__":
-    for query in ("Rasasi Hawas", "Armaf Club de Nuit", "Riiffs"):
-        print("\\nQUERY:", query)
-        results = search(query)
-        print("RISULTATI:", len(results))
-        for item in results:
+    for q in ("Rasasi Hawas", "Armaf Club de Nuit", "Riiffs"):
+        print("\n" + "=" * 60)
+        print("QUERY:", q)
+        items = search(q)
+        print("RISULTATI:", len(items))
+        for item in items:
             print(item)
