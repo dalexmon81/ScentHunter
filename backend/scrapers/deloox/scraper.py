@@ -1,6 +1,5 @@
 import json
 import re
-from typing import Dict, List, Optional
 from urllib.parse import quote_plus, urljoin
 
 import requests
@@ -8,206 +7,72 @@ from bs4 import BeautifulSoup
 
 STORE = "Deloox"
 BASE_URL = "https://www.deloox.com"
-SEARCH_URL = f"{BASE_URL}/search.html?q={{query}}"
-TIMEOUT = 25
 
 HEADERS = {
     "User-Agent": (
-        "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 "
-        "(KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36"
-    ),
-    "Accept": (
-        "text/html,application/xhtml+xml,application/xml;q=0.9,"
-        "image/avif,image/webp,*/*;q=0.8"
+        "Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) "
+        "AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.0 "
+        "Mobile/15E148 Safari/604.1"
     ),
     "Accept-Language": "en-GB,en;q=0.9,it;q=0.8",
-    "Cache-Control": "no-cache",
-    "Pragma": "no-cache",
-    "Connection": "keep-alive",
+    "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
 }
 
-PRICE_RE = re.compile(r"(\d{1,4}[.,]\d{2})")
+PRICE_RE = re.compile(
+    r"(?:€\s*\d{1,4}(?:[.,]\d{2})?|\d{1,4}(?:[.,]\d{2})?\s*€)"
+)
 
 
-def _clean(value: str) -> str:
-    return re.sub(r"\s+", " ", str(value or "")).strip()
+def _clean(text):
+    return re.sub(r"\s+", " ", str(text or "")).strip()
 
 
-def _normalize(value: str) -> str:
-    value = _clean(value).lower()
-    value = re.sub(r"[^\w\s]+", " ", value)
-    value = re.sub(r"\s+", " ", value).strip()
+def _price(text):
+    match = PRICE_RE.search(_clean(text))
+    if not match:
+        return None
+    value = match.group(0).replace(" ", "")
+    if value.startswith("€"):
+        value = value[1:] + "€"
     return value
 
 
-def _score_name_against_query(name: str, query: str) -> int:
-    name_n = _normalize(name)
-    query_n = _normalize(query)
-
-    if not name_n or not query_n:
-        return 0
-
-    score = 0
-    tokens = [t for t in query_n.split() if len(t) > 1]
-
-    for token in tokens:
-        if token in name_n:
-            score += 10
-
-    if query_n in name_n:
-        score += 50
-
-    return score
+def _matches(name, query):
+    name_words = set(re.findall(r"[a-z0-9]+", name.lower()))
+    query_words = re.findall(r"[a-z0-9]+", query.lower())
+    important = [w for w in query_words if len(w) > 2]
+    return not important or all(w in name_words for w in important)
 
 
-def _format_price(value) -> Optional[str]:
-    if value is None:
-        return None
-
-    text = _clean(str(value)).replace("€", "")
-    m = PRICE_RE.search(text)
-    if not m:
-        return None
-
-    price = m.group(1).replace(".", ",")
-    return f"{price} €"
-
-
-def _is_unavailable(text: str) -> bool:
-    text_n = _normalize(text)
-    negative_markers = [
-        "out of stock",
-        "sold out",
-        "not available",
-        "temporarily unavailable",
-        "niet op voorraad",
-        "non disponibile",
-        "esaurito",
-    ]
-    return any(marker in text_n for marker in negative_markers)
-
-
-def _extract_url_from_node(node) -> str:
-    link = node.find("a", href=True)
-    if not link:
-        return ""
-
-    href = _clean(link.get("href", ""))
-    if not href or href.startswith("#"):
-        return ""
-
-    return urljoin(BASE_URL, href.split("?")[0])
-
-
-def _extract_name_from_node(node) -> str:
-    selectors = [
-        "[class*='name']",
-        "[class*='title']",
-        "h2",
-        "h3",
-        "h4",
-        "a[title]",
-    ]
-
-    for sel in selectors:
-        found = node.select_one(sel)
-        if found:
-            text = found.get("title") or found.get_text(" ", strip=True)
-            text = _clean(text)
-            if len(text) >= 3:
-                return text
-
-    link = node.find("a", href=True)
-    if link:
-        title = _clean(link.get("title", ""))
-        if title:
-            return title
-        text = _clean(link.get_text(" ", strip=True))
-        if text:
-            return text
-
-    return ""
-
-
-def _extract_price_from_text(text: str) -> Optional[str]:
-    m = PRICE_RE.search(_clean(text))
-    if not m:
-        return None
-    return f"{m.group(1).replace('.', ',')} €"
-
-
-def _add_result(
-    results: List[Dict[str, str]],
-    seen: set,
-    query: str,
-    name: str,
-    price,
-    url: str,
-    raw_text: str = "",
-) -> None:
+def _add(results, seen, name, price, url, query):
     name = _clean(name)
-    final_price = _format_price(price) if not isinstance(price, str) else _extract_price_from_text(price)
+    price = _price(price)
     url = _clean(url)
 
-    if not name or not final_price or not url:
+    if not name or not price or not url:
+        return
+    if not _matches(name, query):
         return
 
-    score = _score_name_against_query(name, query)
-    if score <= 0:
-        return
-
-    unavailable = _is_unavailable(raw_text or name)
-    key = url.split("?")[0]
+    url = urljoin(BASE_URL, url)
+    key = (name.lower(), price, url.split("?")[0])
 
     if key in seen:
         return
 
     seen.add(key)
-    results.append(
-        {
-            "store": STORE,
-            "name": name,
-            "price": final_price,
-            "url": url,
-            "_score": score,
-            "_unavailable": unavailable,
-        }
-    )
+    results.append({
+        "store": STORE,
+        "name": name,
+        "price": price,
+        "url": url,
+    })
 
 
-def _parse_data_drs_article(soup: BeautifulSoup, query: str, results: List[Dict[str, str]], seen: set) -> None:
-    for node in soup.select("[data-drs-article]"):
-        raw = node.get("data-drs-article", "").strip()
-        if not raw:
-            continue
-
-        try:
-            data = json.loads(raw)
-        except Exception:
-            continue
-
-        name = data.get("name", "")
-        price = data.get("price")
-        url = _extract_url_from_node(node)
-        if not url:
-            continue
-
-        _add_result(
-            results=results,
-            seen=seen,
-            query=query,
-            name=name,
-            price=price,
-            url=url,
-            raw_text=json.dumps(data, ensure_ascii=False),
-        )
-
-
-def _parse_jsonld(soup: BeautifulSoup, query: str, results: List[Dict[str, str]], seen: set) -> None:
+def _parse_jsonld(soup, query, results, seen):
     for script in soup.find_all("script", type="application/ld+json"):
         raw = script.string or script.get_text()
-        raw = raw.strip()
-        if not raw:
+        if not raw.strip():
             continue
 
         try:
@@ -229,41 +94,43 @@ def _parse_jsonld(soup: BeautifulSoup, query: str, results: List[Dict[str, str]]
 
             if "@graph" in item:
                 stack.append(item["@graph"])
+
             if "itemListElement" in item:
                 stack.append(item["itemListElement"])
+
             if "item" in item and isinstance(item["item"], (dict, list)):
                 stack.append(item["item"])
 
             typ = item.get("@type")
-            is_product = "Product" in typ if isinstance(typ, list) else typ == "Product"
+            if isinstance(typ, list):
+                is_product = "Product" in typ
+            else:
+                is_product = typ == "Product"
+
             if not is_product:
                 continue
 
             name = item.get("name", "")
             url = item.get("url", "")
-            offers = item.get("offers", {})
 
+            offers = item.get("offers", {})
             if isinstance(offers, list):
                 offers = offers[0] if offers else {}
 
-            price = offers.get("price") if isinstance(offers, dict) else None
-            availability = offers.get("availability", "") if isinstance(offers, dict) else ""
+            price = ""
+            if isinstance(offers, dict):
+                price = offers.get("price", "")
+                currency = offers.get("priceCurrency", "EUR")
+                if price:
+                    price = f"{price}€" if currency == "EUR" else str(price)
 
-            _add_result(
-                results=results,
-                seen=seen,
-                query=query,
-                name=name,
-                price=price,
-                url=url,
-                raw_text=f"{name} {availability}",
-            )
+            _add(results, seen, name, price, url, query)
 
 
-def _parse_html_cards(soup: BeautifulSoup, query: str, results: List[Dict[str, str]], seen: set) -> None:
+def _parse_html(soup, query, results, seen):
     selectors = [
-        "[data-product-id]",
         "[data-product]",
+        "[data-product-id]",
         ".product",
         ".product-item",
         ".product-card",
@@ -281,72 +148,111 @@ def _parse_html_cards(soup: BeautifulSoup, query: str, results: List[Dict[str, s
 
     for node in nodes:
         text = _clean(node.get_text(" ", strip=True))
-        price = _extract_price_from_text(text)
+        price = _price(text)
         if not price:
             continue
 
-        url = _extract_url_from_node(node)
-        name = _extract_name_from_node(node)
+        link = node.find("a", href=True)
+        if not link:
+            continue
 
-        _add_result(
-            results=results,
-            seen=seen,
-            query=query,
-            name=name,
-            price=price,
-            url=url,
-            raw_text=text,
+        href = link.get("href", "")
+        if not href or href.startswith("#"):
+            continue
+
+        title_node = node.select_one(
+            "[class*='name'], [class*='title'], h2, h3, h4"
+        )
+        name = (
+            title_node.get_text(" ", strip=True)
+            if title_node
+            else link.get("title")
+            or link.get_text(" ", strip=True)
         )
 
-
-def _fetch_search_page(session: requests.Session, query: str) -> Optional[str]:
-    try:
-        url = SEARCH_URL.format(query=quote_plus(query))
-        response = session.get(url, headers=HEADERS, timeout=TIMEOUT, allow_redirects=True)
-        response.raise_for_status()
-        return response.text
-    except requests.RequestException:
-        return None
+        _add(results, seen, name, price, href, query)
 
 
-def search(query: str) -> List[Dict[str, str]]:
+def search(query):
     query = _clean(query)
     if not query:
         return []
 
     session = requests.Session()
-    html_text = _fetch_search_page(session, query)
-    if not html_text:
-        return []
+    session.headers.update(HEADERS)
 
-    soup = BeautifulSoup(html_text, "html.parser")
-    results: List[Dict[str, str]] = []
+    # Deloox non usa in modo affidabile /search?q=...
+    # La ricerca pubblica indicizza invece pagine categoria/prodotto.
+    # Proviamo prima il motore interno tramite endpoint/percorsi noti,
+    # poi ricaviamo eventuali link prodotto dalla risposta.
+    candidates = [
+        f"{BASE_URL}/search?search={quote_plus(query)}",
+        f"{BASE_URL}/search?q={quote_plus(query)}",
+        f"{BASE_URL}/search?query={quote_plus(query)}",
+    ]
+
+    results = []
     seen = set()
 
-    _parse_data_drs_article(soup, query, results, seen)
-    _parse_jsonld(soup, query, results, seen)
-    _parse_html_cards(soup, query, results, seen)
+    for url in candidates:
+        try:
+            response = session.get(url, timeout=4, allow_redirects=True)
+            if response.status_code != 200:
+                continue
 
-    available = [r for r in results if not r["_unavailable"]]
-    final_results = available if available else results
-    final_results.sort(key=lambda x: (-x["_score"], x["name"]))
+            soup = BeautifulSoup(response.text, "html.parser")
 
-    return [
-        {
-            "store": r["store"],
-            "name": r["name"],
-            "price": r["price"],
-            "url": r["url"],
-        }
-        for r in final_results
-    ]
+            # Parser normali
+            _parse_jsonld(soup, query, results, seen)
+            _parse_html(soup, query, results, seen)
+
+            # Deloox: intercetta direttamente i link /product/<id>/<slug>.html
+            for a in soup.find_all("a", href=True):
+                href = a.get("href", "")
+                if "/product/" not in href or not href.endswith(".html"):
+                    continue
+
+                name = _clean(a.get_text(" ", strip=True) or a.get("title", ""))
+                if not name or not _matches(name, query):
+                    continue
+
+                product_url = urljoin(BASE_URL, href)
+                try:
+                    pr = session.get(product_url, timeout=4, allow_redirects=True)
+                    if pr.status_code != 200:
+                        continue
+                    psoup = BeautifulSoup(pr.text, "html.parser")
+
+                    # Nome prodotto
+                    h1 = psoup.find("h1")
+                    pname = _clean(h1.get_text(" ", strip=True)) if h1 else name
+
+                    # Prezzo: Deloox spesso spezza € / interi / centesimi nel DOM.
+                    ptext = _clean(psoup.get_text(" ", strip=True))
+                    pm = re.search(
+                        r"our price:\s*€\s*(\d{1,4})\s*,\s*(\d{2})",
+                        ptext,
+                        re.IGNORECASE,
+                    )
+                    if pm:
+                        price = f"{pm.group(1)},{pm.group(2)}€"
+                        _add(results, seen, pname, price, product_url, query)
+                except requests.RequestException:
+                    pass
+
+            if results:
+                break
+
+        except requests.RequestException:
+            continue
+
+    return results
 
 
 if __name__ == "__main__":
     test_query = "Rasasi Hawas Ice"
     found = search(test_query)
 
-    print(f"QUERY: {test_query}")
     print(f"RISULTATI: {len(found)}")
-    for item in found:
+    for item in found[:10]:
         print(item)
