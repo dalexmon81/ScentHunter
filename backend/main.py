@@ -8,7 +8,7 @@ from concurrent.futures import ThreadPoolExecutor, TimeoutError, as_completed
 from typing import Any, Dict, List
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import HTMLResponse
+from fastapi.responses import HTMLResponse, FileResponse
 from fastapi.staticfiles import StaticFiles
 
 app = FastAPI()
@@ -35,6 +35,14 @@ STORES = [
 VARIANTS = ["flanker", "intense", "elixir", "parfum", "edp", "edt"]
 NON_PERFUME = ["shower", "gel", "lotion", "body", "deodorant", "stick", "aftershave", "balm"]
 IGNORED_WORDS = {"eau", "de", "parfum", "toilette", "edp", "edt", "for", "him", "her", "man", "woman"}
+
+# Serve index.html alla rotta principale "/"
+@app.get("/", response_class=HTMLResponse)
+def read_root():
+    if os.path.exists("index.html"):
+        with open("index.html", "r", encoding="utf-8") as f:
+            return f.read()
+    return "<h1>API ScentHunter Attive</h1><p>Trova le tue fragranze con le rotte /suggest e /search</p>"
 
 def norm(text: str) -> str:
     if not text:
