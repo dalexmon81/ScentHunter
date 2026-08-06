@@ -493,9 +493,11 @@ async function searchPerfume(){
  searchButton.disabled=true;searchButton.textContent="Cerco…";statusBox.textContent="Ricerca in corso…";resultsBox.innerHTML="";errorsBox.innerHTML="";document.getElementById("searchOutput").scrollIntoView({behavior:"smooth",block:"start"});
  try{
   const term=q;
-  const data=await fetchJSONWithTimeout(
-    backend()+"/search?q="+encodeURIComponent(term),
-    25000
+  const data = await fetchJSONWithTimeout(
+  backend()+"/search?q="+encodeURIComponent(term),
+  60000
+)
+
   );
   const groups=shGroupData(data);showProducts(groups);
   refreshWishlistFromResults(groups.flatMap(g=>g.offers.map(o=>({name:g.name||"",brand:g.brand||"",price:shPrice(o),price_value:o.price_value,store:o.store||"",url:o.url||""}))));
