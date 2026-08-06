@@ -8,6 +8,7 @@ import json
 import os
 import re
 import traceback
+import multiprocessing as mp
 from concurrent.futures import ThreadPoolExecutor, as_completed, TimeoutError, wait
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
@@ -361,49 +362,67 @@ def sort_by_price(
 # RICERCA PREZZI
 # ============================================================
 
+def _store_process(store: str, query: str, queue) -> None:
+    try:
+        products = run_store(store, query) or []
+        queue.put((store, products, None))
+    except BaseException as exc:
+        queue.put((store, [], str(exc) or exc.__class__.__name__))
+
+
 def search_perfume(query: str) -> Dict[str, Any]:
-    """
-    Cerca lo stesso profumo in tutti i negozi senza lasciare che
-    un singolo scraper blocchi l'intera richiesta.
-    """
     query = str(query or "").strip()
     if not query:
-        return {"query": query, "results": [], "comparisons": [], "errors": {}}
+        return {"query": query, "count": 0, "results": [], "comparisons": [], "errors": {}}
 
     results: List[Dict[str, Any]] = []
     errors: Dict[str, str] = {}
 
-    executor = ThreadPoolExecutor(max_workers=min(8, len(STORES)))
-    future_to_store = {
-        executor.submit(run_store, store, query): store
-        for store in STORES
-    }
+    ctx = mp.get_context("fork")
+    queue = ctx.Queue()
+    processes = {}
 
-    # Il frontend interrompe /search dopo 25 secondi.
-    # Manteniamo un margine ampio per Render e restituiamo subito
-    # i risultati dei negozi che hanno risposto entro 12 secondi.
-    done, not_done = wait(future_to_store, timeout=12)
+    for store in STORES:
+        p = ctx.Process(target=_store_process, args=(store, query, queue))
+        p.start()
+        processes[store] = p
 
-    for future in done:
-        store = future_to_store[future]
+    import time
+    deadline = time.monotonic() + 10.0
+    received = set()
+
+    while len(received) < len(STORES):
+        remaining = deadline - time.monotonic()
+        if remaining <= 0:
+            break
         try:
-            products = future.result() or []
-            results.extend(products)
-        except Exception as exc:
-            errors[store] = str(exc) or exc.__class__.__name__
-            traceback.print_exc()
+            store, products, error = queue.get(timeout=min(0.25, remaining))
+        except Exception:
+            continue
+        received.add(store)
+        if error:
+            errors[store] = error
+        else:
+            results.extend(products or [])
 
-    for future in not_done:
-        store = future_to_store[future]
-        errors[store] = "timeout"
-        future.cancel()
+    for store, p in processes.items():
+        if store not in received:
+            errors[store] = "timeout"
+        if p.is_alive():
+            p.terminate()
+        p.join(timeout=0.5)
+        if p.is_alive():
+            p.kill()
+            p.join(timeout=0.5)
 
-    # Non aspettiamo gli scraper bloccati prima di restituire la risposta.
-    executor.shutdown(wait=False, cancel_futures=True)
+    try:
+        queue.close()
+        queue.join_thread()
+    except Exception:
+        pass
 
     results = sort_by_price(unique_results(results))
 
-    # Il frontend sa già raggruppare le offerte presenti in results.
     return {
         "query": query,
         "count": len(results),
