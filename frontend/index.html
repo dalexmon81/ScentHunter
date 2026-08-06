@@ -578,32 +578,66 @@ const LOCAL_SCENTS=[
  {brand:"Lancôme",name:"La Vie Est Belle"},
  {brand:"Lancôme",name:"Idôle"}
 ];
+
+// Catalogo marchi separato dai profumi: permette di trovare subito il marchio
+// anche quando /suggest o gli scraper non restituiscono ancora un prodotto.
+const BRAND_CATALOG = [
+  "Abercrombie & Fitch","Acqua di Parma","Adidas","Afnan","Agent Provocateur","Ajmal","Al Haramain",
+  "Alexandre.J","Amouage","Antonio Banderas","Aramis","Armaf","Atelier Cologne","Atkinsons","Azzaro",
+  "BDK Parfums","Bentley","Billie Eilish","Boucheron","Britney Spears","Burberry","Bvlgari","By Kilian",
+  "Byredo","Cacharel","Calvin Klein","Carolina Herrera","Cartier","Chanel","Chloé","Coach","Creed",
+  "Davidoff","Diesel","Dior","Dolce & Gabbana","Donna Karan","Dsquared2","Dumont","Elie Saab","Escada",
+  "Escentric Molecules","Essential Parfums","Estée Lauder","Etat Libre d'Orange","Ex Nihilo","Ferragamo",
+  "Ferrari","Franck Boclet","Franck Olivier","Fragrance World","Frederic Malle","French Avenue","Giorgio Armani",
+  "Givenchy","Goldfield & Banks","Gucci","Guerlain","Guess","Guy Laroche","Hermès","Hugo Boss","Initio",
+  "Issey Miyake","Jacques Bogart","Jean Paul Gaultier","Jimmy Choo","Jo Malone London","John Varvatos",
+  "Juicy Couture","Juliette Has a Gun","Kenzo","Khadlaj","Lacoste","Lalique","Lancôme","Lattafa","Le Labo",
+  "Loewe","Louis Vuitton","Maison Alhambra","Maison Francis Kurkdjian","Maison Margiela","Mancera","Marc Jacobs",
+  "Mercedes-Benz","Miller Harris","Molinard","Montale","Montblanc","Moschino","Mugler","Narciso Rodriguez",
+  "Nishane","Ormonde Jayne","Orto Parisi","Paco Rabanne","Paris Corner","Parfums de Marly","Penhaligon's",
+  "Prada","Ralph Lauren","Rasasi","Rayhaan","Roja Parfums","Rue Broca","Salvatore Ferragamo","Serge Lutens",
+  "Shiseido","Swiss Arabian","Ted Lapidus","The House of Oud","Thierry Mugler","Tiziana Terenzi","Tom Ford",
+  "Tommy Hilfiger","Trussardi","Valentino","Van Cleef & Arpels","Versace","Viktor&Rolf","Xerjoff",
+  "Yves Saint Laurent","Zadig & Voltaire","Zara"
+];
+
+function acNorm(value){
+  return String(value||"")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g,"")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g," ")
+    .trim();
+}
+
 const scentAC=document.getElementById("scentAC");
 let acTimer=null;
 let acController=null;
 
 function acRank(x,raw){
- const q=String(raw||"").toLowerCase().trim();
- const name=String(x.name||"").toLowerCase().trim();
- const brand=String(x.brand||"").toLowerCase().trim();
- // Autocomplete SOLO per iniziale della marca o del nome del profumo.
- if(brand.startsWith(q)) return 0;
- if(name.startsWith(q)) return 1;
+ const q=acNorm(raw);
+ const name=acNorm(x.name);
+ const brand=acNorm(x.brand);
+ // SOLO prefisso: marchio prima, poi nome profumo. Accenti ignorati.
+ if(brand.startsWith(q)) return x.brandOnly ? 0 : 1;
+ if(name.startsWith(q)) return 2;
  return 99;
 }
 function showACHits(hits){
  if(!hits.length){scentAC.classList.remove("open");scentAC.innerHTML="";return}
  scentAC._hits=hits;
- scentAC.innerHTML=hits.map((x,i)=>`<button type="button" class="scent-ac-row" data-i="${i}">${x.image?`<img class="scent-ac-img" src="${esc(x.image)}" alt="">`:`<span class="scent-ac-fallback">🧴</span>`}<span><span class="scent-ac-brand">${esc(x.brand||"")}</span><span class="scent-ac-name">${esc(x.name||"")}</span></span></button>`).join("");
+ scentAC.innerHTML=hits.map((x,i)=>`<button type="button" class="scent-ac-row" data-i="${i}">${x.image?`<img class="scent-ac-img" src="${esc(x.image)}" alt="">`:`<span class="scent-ac-fallback">🧴</span>`}<span><span class="scent-ac-brand">${esc(x.brand||"")}</span><span class="scent-ac-name">${esc(x.brandOnly?"Marchio":(x.name||""))}</span></span></button>`).join("");
  scentAC.classList.add("open");
 }
 async function acRender(){
  const raw=queryInput.value.trim();
  if(raw.length<2){scentAC.classList.remove("open");scentAC.innerHTML="";return}
 
- // Mostra SUBITO i risultati locali: niente dipendenza dal main.py.
- const local=LOCAL_SCENTS.filter(x=>acRank(x,raw)<99);
- local.sort((a,b)=>acRank(a,raw)-acRank(b,raw)||String(a.name||"").localeCompare(String(b.name||"")));
+ // Mostra SUBITO marchi + profumi locali: niente dipendenza dal main.py.
+ const brands=BRAND_CATALOG.map(brand=>({brand,name:"",brandOnly:true})).filter(x=>acRank(x,raw)<99);
+ const scents=LOCAL_SCENTS.filter(x=>acRank(x,raw)<99);
+ const local=[...brands,...scents];
+ local.sort((a,b)=>acRank(a,raw)-acRank(b,raw)||String(a.brand||"").localeCompare(String(b.brand||""))||String(a.name||"").localeCompare(String(b.name||"")));
  showACHits(local.slice(0,8));
 
  // Se /suggest è disponibile, aggiunge anche i suggerimenti remoti.
@@ -623,7 +657,20 @@ async function acRender(){
  }
 }
 queryInput.addEventListener("input",()=>{selectedSearchTerm="";selectedSearchBrand="";clearTimeout(acTimer);acTimer=setTimeout(acRender,300)});
-scentAC.addEventListener("click",e=>{const b=e.target.closest("[data-i]");if(!b)return;const x=(scentAC._hits||[])[Number(b.dataset.i)];if(!x)return;queryInput.value=((x.brand||"")+" "+(x.name||"")).trim();selectedSearchTerm=(x.name||"").trim();selectedSearchBrand=(x.brand||"").trim();scentAC.classList.remove("open");searchPerfume()});
+scentAC.addEventListener("click",e=>{
+ const b=e.target.closest("[data-i]");if(!b)return;
+ const x=(scentAC._hits||[])[Number(b.dataset.i)];if(!x)return;
+ if(x.brandOnly){
+  queryInput.value=(x.brand||"")+" ";
+  selectedSearchTerm="";selectedSearchBrand=(x.brand||"").trim();
+  scentAC.classList.remove("open");
+  queryInput.focus();
+  return;
+ }
+ queryInput.value=((x.brand||"")+" "+(x.name||"")).trim();
+ selectedSearchTerm=(x.name||"").trim();selectedSearchBrand=(x.brand||"").trim();
+ scentAC.classList.remove("open");searchPerfume();
+});
 document.addEventListener("click",e=>{if(!e.target.closest(".searchwrap"))scentAC.classList.remove("open")});
 
 searchButton.addEventListener("click",searchPerfume);queryInput.addEventListener("keydown",e=>{if(e.key==="Enter"){e.preventDefault();searchPerfume()}});
