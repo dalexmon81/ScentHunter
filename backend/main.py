@@ -529,26 +529,35 @@ def search_perfume(q: str):
         if store != "parfumzentrum"
     ]
 
-    # Esegue gli scraper in parallelo.
-    # In questo modo uno store lento non costringe /search
-    # ad aspettare la somma dei tempi di tutti i negozi.
-    max_workers = min(len(search_stores), 7)
+    # Esegue gli scraper in parallelo, ma NON aspetta all'infinito
+    # i negozi lenti. Dopo STORE_TIMEOUT secondi restituiamo comunque
+    # i risultati già arrivati dagli altri store.
+    STORE_TIMEOUT = 12.0
+    executor = ThreadPoolExecutor(max_workers=min(len(search_stores), 7))
+    futures = {
+        executor.submit(run_store, store, query): store
+        for store in search_stores
+    }
 
-    with ThreadPoolExecutor(max_workers=max_workers) as executor:
-        futures = {
-            executor.submit(run_store, store, query): store
-            for store in search_stores
-        }
-
-        for future in as_completed(futures):
+    try:
+        for future in as_completed(futures, timeout=STORE_TIMEOUT):
             store = futures[future]
-
             try:
                 store_results = future.result()
                 all_results.extend(store_results)
             except Exception as error:
                 errors[store] = f"{type(error).__name__}: {error}"
                 traceback.print_exc()
+    except TimeoutError:
+        # Segna solo gli scraper che non hanno terminato entro il limite.
+        for future, store in futures.items():
+            if not future.done():
+                errors[store] = f"Timeout: oltre {STORE_TIMEOUT:.0f}s"
+                future.cancel()
+    finally:
+        # Fondamentale: wait=False evita che il context manager aspetti
+        # comunque i thread bloccati prima di rispondere a /search.
+        executor.shutdown(wait=False, cancel_futures=True)
 
     results = unique_results(all_results)
     results = sort_by_price(results)
