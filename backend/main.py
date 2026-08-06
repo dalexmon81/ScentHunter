@@ -416,10 +416,10 @@ def search_perfume(query: str) -> Dict[str, Any]:
             p.join(timeout=0.5)
 
     try:
-    queue.cancel_join_thread()
-    queue.close()
-except Exception:
-    pass
+        queue.cancel_join_thread()
+        queue.close()
+    except Exception:
+        pass
 
     results = sort_by_price(unique_results(results))
 
