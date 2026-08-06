@@ -349,21 +349,45 @@ const scentAC=document.getElementById("scentAC");
 let acTimer=null;
 let acController=null;
 
+const LOCAL_AC=[
+{brand:"Rasasi",name:"Hawas for Him",image:""},
+{brand:"Rasasi",name:"Hawas Ice",image:""},
+{brand:"Rasasi",name:"Hawas Black",image:""},
+{brand:"Rasasi",name:"Hawas Tropical",image:""},
+{brand:"Rasasi",name:"Hawas Fire",image:""},
+{brand:"Rasasi",name:"Hawas Kobra",image:""},
+{brand:"Afnan",name:"9 PM",image:""},
+{brand:"Afnan",name:"9 PM Rebel",image:""},
+{brand:"Afnan",name:"9 PM Elixir",image:""},
+{brand:"Afnan",name:"9 PM Night Out",image:""},
+{brand:"French Avenue",name:"Liquid Brun",image:""},
+{brand:"French Avenue",name:"Liquid Brun Limited Edition",image:""}
+];
+
+function localACHits(raw){
+ const q=raw.toLowerCase().trim();
+ return LOCAL_AC.filter(x=>(x.brand+" "+x.name).toLowerCase().includes(q)).slice(0,8);
+}
+function showACHits(hits){
+ if(!hits.length){scentAC.classList.remove("open");scentAC.innerHTML="";return}
+ scentAC._hits=hits;
+ scentAC.innerHTML=hits.map((x,i)=>`<button type="button" class="scent-ac-row" data-i="${i}">${x.image?`<img class="scent-ac-img" src="${esc(x.image)}" alt="">`:`<span class="scent-ac-fallback">🧴</span>`}<span><span class="scent-ac-brand">${esc(x.brand||"")}</span><span class="scent-ac-name">${esc(x.name||"")}</span></span></button>`).join("");
+ scentAC.classList.add("open");
+}
 async function acRender(){
-  const raw=queryInput.value.trim();
-  if(raw.length<2){scentAC.classList.remove("open");scentAC.innerHTML="";return}
-  if(acController)acController.abort();
-  acController=new AbortController();
-  try{
-    const response=await fetch(backend()+"/suggest?q="+encodeURIComponent(raw),{signal:acController.signal});
-    if(!response.ok)throw new Error("Suggest HTTP "+response.status);
-    const data=await response.json();
-    const hits=Array.isArray(data.suggestions)?data.suggestions.slice(0,8):[];
-    if(!hits.length){scentAC.classList.remove("open");scentAC.innerHTML="";return}
-    scentAC._hits=hits;
-    scentAC.innerHTML=hits.map((x,i)=>`<button type="button" class="scent-ac-row" data-i="${i}">${x.image?`<img class="scent-ac-img" src="${esc(x.image)}" alt="" onerror="this.outerHTML='<span class=&quot;scent-ac-fallback&quot;>🧴</span>'">`:`<span class="scent-ac-fallback">🧴</span>`}<span><span class="scent-ac-brand">${esc(x.brand||"")}</span><span class="scent-ac-name">${esc(x.name||"")}</span></span></button>`).join("");
-    scentAC.classList.add("open");
-  }catch(err){if(err.name!=="AbortError")console.error(err)}
+ const raw=queryInput.value.trim();
+ if(raw.length<2){scentAC.classList.remove("open");scentAC.innerHTML="";return}
+ showACHits(localACHits(raw));
+ if(acController)acController.abort();
+ acController=new AbortController();
+ try{
+  const response=await fetch(backend()+"/suggest?q="+encodeURIComponent(raw),{signal:acController.signal});
+  if(!response.ok)return;
+  const data=await response.json();
+  const remote=Array.isArray(data.suggestions)?data.suggestions:[];
+  const merged=[...remote,...localACHits(raw)],seen=new Set();
+  showACHits(merged.filter(x=>{const k=((x.brand||"")+"|"+(x.name||"")).toLowerCase();if(seen.has(k))return false;seen.add(k);return true}).slice(0,8));
+ }catch(err){}
 }
 queryInput.addEventListener("input",()=>{clearTimeout(acTimer);acTimer=setTimeout(acRender,300)});
 scentAC.addEventListener("click",e=>{const b=e.target.closest("[data-i]");if(!b)return;const x=(scentAC._hits||[])[Number(b.dataset.i)];if(!x)return;queryInput.value=((x.brand||"")+" "+(x.name||"")).trim();scentAC.classList.remove("open");searchPerfume()});
