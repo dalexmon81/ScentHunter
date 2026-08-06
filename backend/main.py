@@ -519,7 +519,9 @@ def search_perfume(q: str):
 
     # Gli scraper vengono eseguiti in parallelo.
     # Un negozio lento o bloccato non deve fermare tutta la ricerca.
-    executor = ThreadPoolExecutor(max_workers=2)
+    # Un worker per store evita che gli ultimi negozi restino in coda
+    # mentre il timeout complessivo continua a scorrere.
+    executor = ThreadPoolExecutor(max_workers=len(STORES))
     futures = {
         executor.submit(run_store, store, query): store
         for store in STORES
