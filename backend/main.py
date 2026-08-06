@@ -563,127 +563,42 @@ def search_perfume(q: str):
 
 
 # ============================================================
-# API - SUGGEST
+# API - SUGGEST / AUTOCOMPLETE
 # ============================================================
+
+AUTOCOMPLETE_CATALOG = [
+    {"brand": "Rasasi", "name": "Hawas for Him", "image": ""},
+    {"brand": "Rasasi", "name": "Hawas Ice", "image": ""},
+    {"brand": "Rasasi", "name": "Hawas Black", "image": ""},
+    {"brand": "Rasasi", "name": "Hawas Tropical", "image": ""},
+    {"brand": "Rasasi", "name": "Hawas Fire", "image": ""},
+    {"brand": "Rasasi", "name": "Hawas Kobra", "image": ""},
+    {"brand": "Afnan", "name": "9 PM", "image": ""},
+    {"brand": "Afnan", "name": "9 PM Rebel", "image": ""},
+    {"brand": "Afnan", "name": "9 PM Elixir", "image": ""},
+    {"brand": "Afnan", "name": "9 PM Night Out", "image": ""},
+    {"brand": "French Avenue", "name": "Liquid Brun", "image": ""},
+    {"brand": "French Avenue", "name": "Liquid Brun Limited Edition", "image": ""},
+]
 
 @app.get("/suggest")
 def suggest(q: str):
     query = norm(q)
-
     if len(query) < 2:
-        return {
-            "query": q,
-            "count": 0,
-            "suggestions": [],
-            "source": "stores",
-        }
+        return {"query": q, "count": 0, "suggestions": [], "source": "local"}
 
-    suggestions: List[Dict[str, Any]] = []
-    seen = set()
+    words = query.split()
+    hits = []
+    for item in AUTOCOMPLETE_CATALOG:
+        haystack = norm(f"{item.get('brand','')} {item.get('name','')}")
+        if all(word in haystack for word in words):
+            name_n = norm(item.get("name",""))
+            score = 0 if name_n.startswith(query) else (1 if query in name_n else 2)
+            hits.append((score, len(item.get("name","")), item))
 
-    def run_suggest_store(store: str):
-        try:
-            module = load_scraper(store)
-            results = module.search(str(q or "").strip()) or []
-            return store, results, None
-        except Exception as error:
-            return store, [], f"{type(error).__name__}: {error}"
-
-    # Autocomplete separato dalla /search:
-    # gli 8 negozi vengono interrogati in parallelo e con timeout breve.
-    executor = ThreadPoolExecutor(max_workers=len(STORES))
-    futures = {
-        executor.submit(run_suggest_store, store): store
-        for store in STORES
-    }
-
-    try:
-        for future in as_completed(futures, timeout=7):
-            store = futures[future]
-
-            try:
-                _, products, _ = future.result()
-
-                for product in products:
-                    if not isinstance(product, dict):
-                        continue
-
-                    name = str(
-                        product.get("name")
-                        or product.get("title")
-                        or product.get("product_name")
-                        or ""
-                    ).strip()
-
-                    brand = str(product.get("brand") or "").strip()
-
-                    if not name:
-                        continue
-
-                    normalized_name = norm(name)
-                    haystack = norm(f"{brand} {name}")
-                    words = [word for word in query.split() if word]
-
-                    # Per l'autocomplete NON usiamo matches():
-                    # così "Ha" può mostrare Hawas, Hawas Ice,
-                    # Hawas Black, Hawas Tropical, ecc.
-                    if not all(word in haystack for word in words):
-                        continue
-
-                    if any(
-                        norm(phrase) in normalized_name
-                        for phrase in NON_PERFUME
-                    ):
-                        continue
-
-                    key = normalized_name
-                    if key in seen:
-                        continue
-
-                    seen.add(key)
-
-                    suggestions.append({
-                        "name": name,
-                        "store": product.get("store", store),
-                        "brand": brand,
-                        "image": product_image(product),
-                    })
-
-            except Exception:
-                traceback.print_exc()
-
-    except TimeoutError:
-        pass
-
-    finally:
-        for future in futures:
-            if not future.done():
-                future.cancel()
-
-        executor.shutdown(wait=False, cancel_futures=True)
-
-    suggestions.sort(
-        key=lambda item: (
-            0 if norm(item.get("name", "")).startswith(query) else 1,
-            0 if norm(item.get("brand", "")).startswith(query) else 1,
-            len(item.get("name", "")),
-            item.get("name", "").lower(),
-        )
-    )
-
-    suggestions = suggestions[:8]
-
-    return {
-        "query": q,
-        "count": len(suggestions),
-        "suggestions": suggestions,
-        "source": "stores",
-    }
-
-
-# ============================================================
-# API - AUTOCOMPLETE
-# ============================================================
+    hits.sort(key=lambda x:(x[0],x[1],x[2].get("name","").lower()))
+    suggestions=[x[2] for x in hits[:8]]
+    return {"query": q, "count": len(suggestions), "suggestions": suggestions, "source": "local"}
 
 @app.get("/autocomplete")
 def autocomplete(q: str):
