@@ -103,12 +103,6 @@ IGNORED_WORDS = {
     "ml",
     "for",
     "by",
-    "him",
-    "her",
-    "men",
-    "women",
-    "homme",
-    "femme",
 }
 
 
@@ -299,15 +293,6 @@ def run_store(
 
             product = dict(item)
             product.setdefault("store", store)
-
-            # Adapter: gli scraper possono chiamare il nome in modi diversi.
-            if not product.get("name"):
-                product["name"] = (
-                    product.get("title")
-                    or product.get("product_name")
-                    or product.get("product")
-                    or ""
-                )
 
             key = (
                 str(product.get("url", "")).lower(),
@@ -510,137 +495,6 @@ def health():
         "status": "healthy",
         "stores": STORES,
     }
-
-
-# ============================================================
-# API - SEARCH
-# ============================================================
-
-@app.get("/search")
-def search_perfume(q: str):
-    """
-    /search mirato anti-blocco:
-    - scraper invariati
-    - esecuzione parallela
-    - deadline GLOBALE breve
-    - NON aspetta i thread lenti in shutdown
-    - restituisce subito i risultati già arrivati
-    """
-    query = str(q or "").strip()
-
-    if not query:
-        return {
-            "query": "",
-            "count": 0,
-            "results": [],
-            "errors": {},
-        }
-
-    all_results: List[Dict[str, Any]] = []
-    errors: Dict[str, str] = {}
-    search_stores = list(STORES)
-
-    executor = ThreadPoolExecutor(
-        max_workers=max(1, len(search_stores))
-    )
-
-    futures = {
-        executor.submit(run_store, store, query): store
-        for store in search_stores
-    }
-
-    # Deve finire MOLTO prima del timeout frontend di 25 secondi.
-    SEARCH_DEADLINE = 8.0
-
-    try:
-        done, not_done = wait(
-            futures.keys(),
-            timeout=SEARCH_DEADLINE,
-        )
-
-        for future in done:
-            store = futures[future]
-            try:
-                store_results = future.result()
-                if store_results:
-                    all_results.extend(store_results)
-            except Exception as error:
-                errors[store] = (
-                    f"{type(error).__name__}: {error}"
-                )
-                traceback.print_exc()
-
-        # Questi scraper non devono più trattenere /search.
-        for future in not_done:
-            store = futures[future]
-            errors[store] = (
-                f"Timeout: oltre {SEARCH_DEADLINE:.0f}s"
-            )
-            future.cancel()
-
-    finally:
-        # FONDAMENTALE:
-        # wait=False evita che FastAPI resti appeso aspettando
-        # scraper/thread che non hanno terminato.
-        executor.shutdown(
-            wait=False,
-            cancel_futures=True,
-        )
-
-    results = sort_by_price(
-        unique_results(all_results)
-    )
-
-    return {
-        "query": query,
-        "count": len(results),
-        "results": results,
-        "errors": errors,
-    }
-
-
-# ============================================================
-# API - TEST SINGOLO STORE (diagnostica)
-# ============================================================
-
-@app.get("/test-store")
-def test_store(store: str, q: str):
-    """
-    Endpoint diagnostico: esegue UN SOLO scraper.
-    Non modifica la normale ricerca /search.
-    """
-    store = str(store or "").strip().lower()
-    query = str(q or "").strip()
-
-    if store not in STORES:
-        raise HTTPException(
-            status_code=400,
-            detail=f"Store non valido. Disponibili: {', '.join(STORES)}",
-        )
-
-    if not query:
-        raise HTTPException(
-            status_code=400,
-            detail="Parametro q mancante",
-        )
-
-    try:
-        results = run_store(store, query)
-        return {
-            "store": store,
-            "query": query,
-            "count": len(results),
-            "results": results,
-        }
-    except Exception as error:
-        traceback.print_exc()
-        return {
-            "store": store,
-            "query": query,
-            "count": 0,
-            "results": [],
-            "error": f"{type(error).__name__}: {error}",
-        }
 
 
 # ============================================================
