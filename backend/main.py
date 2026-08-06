@@ -379,9 +379,10 @@ def search_perfume(query: str) -> Dict[str, Any]:
         for store in STORES
     }
 
-    # Il frontend interrompe /search dopo 25 secondi: il backend deve
-    # quindi rispondere prima, anche se uno scraper rimane appeso.
-    done, not_done = wait(future_to_store, timeout=20)
+    # Il frontend interrompe /search dopo 25 secondi.
+    # Manteniamo un margine ampio per Render e restituiamo subito
+    # i risultati dei negozi che hanno risposto entro 12 secondi.
+    done, not_done = wait(future_to_store, timeout=12)
 
     for future in done:
         store = future_to_store[future]
