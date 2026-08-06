@@ -11,9 +11,6 @@ import traceback
 from concurrent.futures import ThreadPoolExecutor, as_completed, TimeoutError
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
-from urllib.parse import urlencode
-from urllib.request import Request, urlopen
-from urllib.error import HTTPError, URLError
 
 
 # ============================================================
@@ -523,7 +520,7 @@ def search_perfume(q: str):
     # Eseguiamo gli scraper in parallelo con un numero limitato di worker.
     # In questo modo uno store lento non costringe /search ad aspettare
     # tutti gli altri in sequenza.
-    executor = ThreadPoolExecutor(max_workers=4)
+    executor = ThreadPoolExecutor(max_workers=len(STORES))
     futures = {
         executor.submit(run_store, store, query): store
         for store in STORES
@@ -609,259 +606,29 @@ def test_store(store: str, q: str):
 # API - SUGGEST
 # ============================================================
 
-def fragella_search(query: str, limit: int = 10) -> List[Dict[str, Any]]:
-    """
-    Catalogo profumi indipendente dai negozi.
-    Serve SOLO all'autocomplete: la ricerca prezzi resta affidata agli scraper.
-    """
-    api_key = os.getenv("FRAGELLA_API_KEY", "").strip()
-
-    if not api_key:
-        return []
-
-    params = urlencode({
-        "search": query,
-        "limit": max(1, min(int(limit), 10)),
-    })
-
-    request = Request(
-        f"https://api.fragella.com/api/v1/fragrances?{params}",
-        headers={
-            "x-api-key": api_key,
-            "Accept": "application/json",
-            "User-Agent": "ScentHunter/1.0",
-        },
-    )
-
-    with urlopen(request, timeout=5) as response:
-        payload = json.loads(
-            response.read().decode("utf-8")
-        )
-
-    if isinstance(payload, dict):
-        items = (
-            payload.get("data")
-            or payload.get("results")
-            or payload.get("fragrances")
-            or []
-        )
-    elif isinstance(payload, list):
-        items = payload
-    else:
-        items = []
-
-    output: List[Dict[str, Any]] = []
-
-    for item in items:
-        if not isinstance(item, dict):
-            continue
-
-        name = str(
-            item.get("Name")
-            or item.get("name")
-            or ""
-        ).strip()
-
-        brand = str(
-            item.get("Brand")
-            or item.get("brand")
-            or ""
-        ).strip()
-
-        image = str(
-            item.get("Image URL Transparent")
-            or item.get("Image URL")
-            or item.get("image")
-            or ""
-        ).strip()
-
-        if not name:
-            continue
-
-        output.append({
-            "name": name,
-            "brand": brand,
-            "store": brand or "ScentHunter",
-            "image": image,
-            "catalog_id": (
-                item.get("_id")
-                or item.get("id")
-            ),
-        })
-
-    return output
-
-
-def rank_catalog_suggestions(
-    items: List[Dict[str, Any]],
-    query: str,
-) -> List[Dict[str, Any]]:
-
-    query_n = norm(query)
-    tokens = [
-        token
-        for token in query_n.split()
-        if len(token) >= 2
-    ]
-
-    ranked = []
-    seen = set()
-
-    for item in items:
-        name = str(item.get("name") or "").strip()
-        brand = str(item.get("brand") or "").strip()
-
-        if not name:
-            continue
-
-        name_n = norm(name)
-        brand_n = norm(brand)
-        text = norm(f"{brand} {name}")
-
-        if tokens and not all(token in text for token in tokens):
-            continue
-
-        if any(
-            norm(phrase) in name_n
-            for phrase in NON_PERFUME
-        ):
-            continue
-
-        key = (
-            str(item.get("catalog_id") or "").strip()
-            or f"{brand_n}|{name_n}"
-        )
-
-        if key in seen:
-            continue
-
-        seen.add(key)
-
-        # Priorità:
-        # 1) nome profumo che inizia esattamente con ciò che si scrive
-        # 2) brand che inizia con ciò che si scrive
-        # 3) query contenuta nel nome
-        # 4) query contenuta nel brand
-        if name_n.startswith(query_n):
-            priority = 0
-        elif brand_n.startswith(query_n):
-            priority = 1
-        elif query_n in name_n:
-            priority = 2
-        elif query_n in brand_n:
-            priority = 3
-        else:
-            priority = 4
-
-        position = text.find(query_n)
-        if position < 0:
-            position = 999
-
-        ranked.append((
-            priority,
-            position,
-            len(name_n),
-            name_n,
-            item,
-        ))
-
-    ranked.sort(
-        key=lambda row: row[:4]
-    )
-
-    return [
-        row[4]
-        for row in ranked[:8]
-    ]
-
-
 @app.get("/suggest")
 def suggest(q: str):
-
-    raw_query = str(q or "").strip()
-    query = norm(raw_query)
+    query = norm(q)
 
     if len(query) < 2:
         return {
             "query": q,
             "count": 0,
             "suggestions": [],
-            "source": "catalog",
+            "source": "stores",
         }
 
-    # --------------------------------------------------------
-    # 1. CATALOGO PROFUMI
-    # --------------------------------------------------------
-    # Non dipende dai negozi. Quindi "Aquatica", "Liquid Brun",
-    # "Hawas Ice", ecc. possono comparire anche se uno scraper
-    # prezzi in quel momento è lento o non risponde.
-    if len(query) >= 3:
-        try:
-            catalog_queries = [raw_query]
-
-            # Per ricerche tipo "French Avenue Liquid Brun"
-            # proviamo anche le parole significative.
-            for token in query.split():
-                if len(token) >= 3 and token not in catalog_queries:
-                    catalog_queries.append(token)
-
-            catalog_results: List[Dict[str, Any]] = []
-            catalog_seen = set()
-
-            for catalog_query in catalog_queries:
-                for item in fragella_search(catalog_query, 10):
-                    key = (
-                        str(item.get("catalog_id") or "").strip()
-                        or f"{norm(item.get('brand'))}|{norm(item.get('name'))}"
-                    )
-
-                    if key in catalog_seen:
-                        continue
-
-                    catalog_seen.add(key)
-                    catalog_results.append(item)
-
-            suggestions = rank_catalog_suggestions(
-                catalog_results,
-                raw_query,
-            )
-
-            if suggestions:
-                return {
-                    "query": q,
-                    "count": len(suggestions),
-                    "suggestions": suggestions,
-                    "source": "catalog",
-                }
-
-        except (
-            HTTPError,
-            URLError,
-            TimeoutError,
-            ValueError,
-            json.JSONDecodeError,
-        ) as error:
-            print(
-                "Catalog suggest error:",
-                repr(error),
-            )
-        except Exception:
-            traceback.print_exc()
-
-    # --------------------------------------------------------
-    # 2. FALLBACK NEGOZI
-    # --------------------------------------------------------
-    # Se il catalogo esterno non è disponibile, manteniamo il
-    # comportamento che già funzionava nel main(10).
     suggestions = []
     seen = set()
 
+    # Autocomplete permissivo: NON usa matches(), perché matches()
+    # elimina apposta varianti come Hawas Ice quando si cerca Hawas.
     for store in STORES:
         try:
             module = load_scraper(store)
 
-            attempts = [raw_query]
-
+            # Prova sia il testo originale sia quello normalizzato.
+            attempts = [str(q or "").strip()]
             if query not in attempts:
                 attempts.append(query)
 
@@ -886,49 +653,27 @@ def suggest(q: str):
                         continue
 
                     normalized_name = norm(name)
-                    brand = str(
-                        product.get("brand")
-                        or ""
-                    ).strip()
 
-                    haystack = norm(
-                        f"{brand} {name}"
-                    )
+                    # Tutte le parole digitate devono comparire nel nome/marca.
+                    brand = str(product.get("brand") or "").strip()
+                    haystack = norm(f"{brand} {name}")
+                    words = [w for w in query.split() if w]
 
-                    words = [
-                        word
-                        for word in query.split()
-                        if word
-                    ]
-
-                    if not all(
-                        word in haystack
-                        for word in words
-                    ):
+                    if not all(w in haystack for w in words):
                         continue
 
-                    if any(
-                        norm(phrase) in normalized_name
-                        for phrase in NON_PERFUME
-                    ):
+                    # Niente gift set, deodoranti, shower gel, ecc.
+                    if any(norm(phrase) in normalized_name for phrase in NON_PERFUME):
                         continue
 
-                    key = (
-                        norm(brand),
-                        normalized_name,
-                    )
-
+                    key = normalized_name
                     if key in seen:
                         continue
-
                     seen.add(key)
 
                     suggestions.append({
                         "name": name,
-                        "store": product.get(
-                            "store",
-                            store,
-                        ),
+                        "store": product.get("store", store),
                         "brand": brand,
                         "image": product_image(product),
                     })
@@ -938,9 +683,7 @@ def suggest(q: str):
 
     suggestions.sort(
         key=lambda item: (
-            0
-            if norm(item.get("name", "")).startswith(query)
-            else 1,
+            0 if norm(item.get("name", "")).startswith(query) else 1,
             len(item.get("name", "")),
             item.get("name", "").lower(),
         )
@@ -952,7 +695,7 @@ def suggest(q: str):
         "query": q,
         "count": len(suggestions),
         "suggestions": suggestions,
-        "source": "stores-fallback",
+        "source": "stores",
     }
 
 
