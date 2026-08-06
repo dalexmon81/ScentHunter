@@ -521,9 +521,15 @@ def search_perfume(q: str):
     all_results: List[Dict[str, Any]] = []
     errors: Dict[str, str] = {}
 
-    # Ripristino della ricerca stabile/originale:
-    # gli store vengono interrogati uno alla volta.
-    for store in STORES:
+    # Ricerca a memoria controllata.
+    # Parfumzentrum viene escluso temporaneamente: la sua sitemap
+    # è il punto da correggere separatamente senza bloccare gli altri store.
+    search_stores = [
+        store for store in STORES
+        if store != "parfumzentrum"
+    ]
+
+    for store in search_stores:
         try:
             store_results = run_store(store, query)
             all_results.extend(store_results)
