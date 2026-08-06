@@ -352,6 +352,12 @@ function shNum(o){
 }
 function shGroupData(data){
   const raw=[];
+  if(Array.isArray(data))data={results:data};
+  data=(data&&typeof data==="object")?data:{};
+  if(data.data&&typeof data.data==="object"){
+    if(!Array.isArray(data.results)&&Array.isArray(data.data.results))data.results=data.data.results;
+    if(!Array.isArray(data.comparisons)&&Array.isArray(data.data.comparisons))data.comparisons=data.data.comparisons;
+  }
 
   // Raccoglie tutte le offerte, sia da comparisons sia da results.
   (Array.isArray(data.comparisons)?data.comparisons:[]).forEach(g=>{
@@ -489,21 +495,45 @@ async function fetchJSONWithTimeout(url,ms=90000){
 }
 
 async function searchPerfume(){
- const q=(selectedSearchTerm||queryInput.value).trim();if(!q){statusBox.textContent="Scrivi il nome di un profumo.";resultsBox.innerHTML="";errorsBox.innerHTML="";return}
- searchButton.disabled=true;searchButton.textContent="Cerco…";statusBox.textContent="Ricerca in corso…";resultsBox.innerHTML="";errorsBox.innerHTML="";document.getElementById("searchOutput").scrollIntoView({behavior:"smooth",block:"start"});
+ const q=(selectedSearchTerm||queryInput.value).trim();
+ if(!q){
+  statusBox.textContent="Scrivi il nome di un profumo.";
+  resultsBox.innerHTML="";
+  errorsBox.innerHTML="";
+  return;
+ }
+ searchButton.disabled=true;
+ searchButton.textContent="Cerco…";
+ statusBox.textContent="Ricerca in corso…";
+ resultsBox.innerHTML="";
+ errorsBox.innerHTML="";
+ document.getElementById("searchOutput").scrollIntoView({behavior:"smooth",block:"start"});
  try{
-  const term=q;
   const data=await fetchJSONWithTimeout(
-    backend()+"/search?q="+encodeURIComponent(term),
-    90000
+   backend()+"/search?q="+encodeURIComponent(q),
+   90000
   );
-  const groups=shGroupData(data);showProducts(groups);
-  refreshWishlistFromResults(groups.flatMap(g=>g.offers.map(o=>({name:g.name||"",brand:g.brand||"",price:shPrice(o),price_value:o.price_value,store:o.store||"",url:o.url||""}))));
-  if(data.errors&&Object.keys(data.errors).length)errorsBox.innerHTML="Alcuni negozi non hanno risposto: "+Object.keys(data.errors).map(esc).join(", ")+".";
- }catch(e){console.error(e);statusBox.textContent="Impossibile completare la ricerca."}
- finally{searchButton.disabled=false;searchButton.textContent="Cerca"}
+  const groups=shGroupData(data);
+  showProducts(groups);
+  refreshWishlistFromResults(groups.flatMap(g=>g.offers.map(o=>({
+   name:g.name||"",brand:g.brand||"",price:shPrice(o),
+   price_value:o.price_value,store:o.store||"",url:o.url||""
+  }))));
+  const failed=(data&&data.errors&&typeof data.errors==="object")?Object.keys(data.errors):[];
+  errorsBox.innerHTML=failed.length
+   ?"Alcuni negozi non hanno risposto: "+failed.map(esc).join(", ")+"."
+   :"";
+ }catch(e){
+  console.error(e);
+  errorsBox.innerHTML="";
+  statusBox.textContent=e&&e.name==="AbortError"
+   ?"La ricerca sta impiegando troppo tempo. Riprova."
+   :"Impossibile completare la ricerca.";
+ }finally{
+  searchButton.disabled=false;
+  searchButton.textContent="Cerca";
+ }
 }
-
 let selectedSearchTerm="";
 let selectedSearchBrand="";
 
@@ -602,9 +632,11 @@ function acRank(x,raw){
  const q=acNorm(raw);
  const name=acNorm(x.name);
  const brand=acNorm(x.brand);
- // SOLO prefisso: marchio prima, poi nome profumo. Accenti ignorati.
+ if(!q)return 99;
  if(brand.startsWith(q)) return x.brandOnly ? 0 : 1;
  if(name.startsWith(q)) return 2;
+ if(brand.includes(q)) return x.brandOnly ? 3 : 4;
+ if(name.includes(q)) return 5;
  return 99;
 }
 function showACHits(hits){
@@ -652,7 +684,7 @@ scentAC.addEventListener("click",e=>{
   return;
  }
  queryInput.value=((x.brand||"")+" "+(x.name||"")).trim();
- selectedSearchTerm=(x.name||"").trim();selectedSearchBrand=(x.brand||"").trim();
+ selectedSearchBrand=(x.brand||"").trim();selectedSearchTerm=((x.brand||"")+" "+(x.name||"")).trim();
  scentAC.classList.remove("open");searchPerfume();
 });
 document.addEventListener("click",e=>{if(!e.target.closest(".searchwrap"))scentAC.classList.remove("open")});
