@@ -133,6 +133,32 @@ body{position:relative}
 
 </style>
 
+
+<style>
+/* ScentHunter: ricerca = prodotti, dettaglio = confronto negozi */
+.product-card{margin-top:12px;padding:15px;border:1px solid #303238;border-radius:18px;background:linear-gradient(145deg,#17191b,#0b0c0d);display:flex;gap:14px;align-items:center;cursor:pointer}
+.product-card:active{transform:scale(.995)}
+.product-card .result-image{width:72px;height:82px;flex:0 0 72px}
+.product-card-main{min-width:0;flex:1}
+.product-brand{font-size:11px;color:#e7b83f;font-weight:900;text-transform:uppercase;letter-spacing:.5px}
+.product-name{font-size:18px;font-weight:850;line-height:1.2;margin:4px 0}
+.product-meta{font-size:12px;color:#a8aaad}
+.product-from{margin-top:7px;color:#55ce78;font-size:17px;font-weight:900}
+.product-arrow{font-size:28px;color:#e7b83f;flex:0 0 auto}
+.product-detail{margin-top:12px;padding:17px;border:1px solid #365443;border-radius:20px;background:linear-gradient(145deg,#121815,#0d100f)}
+.product-detail-head{display:flex;gap:14px;align-items:center;margin-bottom:15px}
+.product-detail-title{min-width:0;flex:1}
+.back-products{display:inline-flex;align-items:center;gap:7px;background:none;color:#e7b83f;padding:0 0 14px;font-size:14px;font-weight:850;cursor:pointer}
+.product-detail .offer{position:relative;padding:14px 0}
+.offer-select{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.offer-heart{background:none;color:#aaa;font-size:27px;line-height:1;padding:2px 4px;cursor:pointer}
+.offer-heart.saved{color:#e7b83f}
+.offer-actions{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:9px}
+.offer-actions .offer-link{margin-top:0}
+.offer-best-tag{font-size:10px;color:#62e58d;font-weight:900;letter-spacing:.4px}
+@media(max-width:390px){.product-card .result-image{width:62px;height:72px;flex-basis:62px}.product-name{font-size:16px}}
+</style>
+
 </head>
 <body>
 <main class="app">
@@ -328,47 +354,148 @@ function backend(){
   }
   return origin;
 }
-async function searchPerfume(){
-const q=queryInput.value.trim();if(!q){statusBox.textContent="Scrivi il nome di un profumo.";resultsBox.innerHTML="";errorsBox.innerHTML="";return}
-searchButton.disabled=true;searchButton.textContent="Cerco…";statusBox.textContent="Ricerca in corso…";resultsBox.innerHTML="";errorsBox.innerHTML="";document.getElementById("searchOutput").scrollIntoView({behavior:"smooth",block:"start"});
-try{
-const response=await fetch(backend()+"/search?q="+encodeURIComponent(q));if(!response.ok)throw new Error("Errore del server: "+response.status);
-const data=await response.json(),results=Array.isArray(data.results)?data.results:[];
-const comparisons=Array.isArray(data.comparisons)?data.comparisons:[];
-if(comparisons.length){
-  statusBox.textContent=comparisons.length+(comparisons.length===1?" profumo confrontato.":" profumi confrontati.");
-  resultsBox.innerHTML=comparisons.map(g=>{
-    const offers=Array.isArray(g.offers)?g.offers:[];
-    const prices=offers.map(o=>Number(o.price_value)).filter(Number.isFinite);
-    const min=prices.length?Math.min(...prices):null,max=prices.length?Math.max(...prices):null;
-    const saving=min!==null&&max!==null&&max>min?(max-min).toLocaleString("it-IT",{minimumFractionDigits:2,maximumFractionDigits:2})+" €":"";
-    const image=g.image||offers.find(o=>o.image||o.image_url||o.thumbnail)?.image||offers.find(o=>o.image_url)?.image_url||offers.find(o=>o.thumbnail)?.thumbnail||"";
-    const best=offers[0]||null;
-    const bestPrice=best?(best.price||((best.price_value!=null)?Number(best.price_value).toLocaleString("it-IT",{minimumFractionDigits:2,maximumFractionDigits:2})+" €":"")):"";
-    return `<article class="comparison">
-      <div class="badge">🏆 CONFRONTO PREZZI</div>
-      <div class="comparison-head">
-        <div class="result-image">${image?`<img src="${esc(image)}" alt="${esc(g.name||"Profumo")}" onerror="this.outerHTML='🧴'">`:"🧴"}</div>
-        <div class="result-main">
-          <div class="comparison-top"><div class="name">${esc(g.name||"Profumo")}</div><button class="wish-result" data-brand="${esc(g.brand||"")}" data-name="${esc(g.name||"Profumo")}" data-price="${esc(bestPrice)}" data-shop="${best?esc(best.store||""):""}" data-url="${best?esc(best.url||""):""}" data-pic="${esc(image||"🧴")}" aria-label="Wishlist">♡</button></div>
-          ${g.size_ml?`<div class="offer-meta">${esc(g.size_ml)} ml${g.concentration?" · "+esc(String(g.concentration).toUpperCase()):""}</div>`:""}
-        </div>
+let lastProductGroups=[];
+
+function moneyFromOffer(o){
+  if(o && o.price) return String(o.price);
+  const n=Number(o && o.price_value);
+  return Number.isFinite(n)?n.toLocaleString("it-IT",{minimumFractionDigits:2,maximumFractionDigits:2})+" €":"";
+}
+function numericPrice(o){
+  const n=Number(o && o.price_value);
+  if(Number.isFinite(n)) return n;
+  const s=String((o&&o.price)||"").replace(/[^\d,.-]/g,"").replace(",",".");
+  const p=Number(s); return Number.isFinite(p)?p:Infinity;
+}
+function productKey(x){
+  return [
+    String(x.brand||"").toLowerCase().trim(),
+    String(x.name||"").toLowerCase().trim(),
+    String(x.size_ml||x.size||"").toLowerCase().trim(),
+    String(x.concentration||"").toLowerCase().trim()
+  ].join("|");
+}
+function normalizeProductGroups(data){
+  const groups=[];
+  const comparisons=Array.isArray(data.comparisons)?data.comparisons:[];
+  comparisons.forEach(g=>{
+    const offers=(Array.isArray(g.offers)?g.offers:[]).slice().sort((a,b)=>numericPrice(a)-numericPrice(b));
+    groups.push({
+      brand:g.brand||offers[0]?.brand||"",
+      name:g.name||offers[0]?.name||"Profumo",
+      size_ml:g.size_ml||offers[0]?.size_ml||"",
+      concentration:g.concentration||offers[0]?.concentration||"",
+      image:g.image||offers.find(o=>o.image||o.image_url||o.thumbnail)?.image||offers.find(o=>o.image_url)?.image_url||offers.find(o=>o.thumbnail)?.thumbnail||"",
+      offers
+    });
+  });
+
+  const loose=Array.isArray(data.results)?data.results:[];
+  loose.forEach(r=>{
+    const candidate={brand:r.brand||"",name:r.name||"Profumo",size_ml:r.size_ml||r.size||"",concentration:r.concentration||""};
+    let g=groups.find(x=>productKey(x)===productKey(candidate));
+    if(!g){
+      g={...candidate,image:r.image||r.image_url||r.thumbnail||"",offers:[]};
+      groups.push(g);
+    }
+    if(!g.image)g.image=r.image||r.image_url||r.thumbnail||"";
+    const oid=((r.store||"")+"|"+(r.url||"")+"|"+moneyFromOffer(r)).toLowerCase();
+    if(!g.offers.some(o=>(((o.store||"")+"|"+(o.url||"")+"|"+moneyFromOffer(o)).toLowerCase()===oid))) g.offers.push(r);
+  });
+  groups.forEach(g=>g.offers.sort((a,b)=>numericPrice(a)-numericPrice(b)));
+  return groups.filter(g=>g.name);
+}
+function renderProductList(groups){
+  lastProductGroups=groups;
+  statusBox.textContent=groups.length?groups.length+(groups.length===1?" profumo trovato.":" profumi trovati."):"Nessun profumo trovato.";
+  resultsBox.innerHTML=groups.map((g,i)=>{
+    const best=g.offers[0], from=best?moneyFromOffer(best):"";
+    const meta=[g.size_ml?(String(g.size_ml).includes("ml")?g.size_ml:g.size_ml+" ml"):"",g.concentration?String(g.concentration).toUpperCase():""].filter(Boolean).join(" · ");
+    return `<article class="product-card" data-product-index="${i}">
+      <div class="result-image">${g.image?`<img src="${esc(g.image)}" alt="${esc(g.name)}" onerror="this.outerHTML='🧴'">`:"🧴"}</div>
+      <div class="product-card-main">
+        ${g.brand?`<div class="product-brand">${esc(g.brand)}</div>`:""}
+        <div class="product-name">${esc(g.name)}</div>
+        ${meta?`<div class="product-meta">${esc(meta)}</div>`:""}
+        ${from?`<div class="product-from">da ${esc(from)}</div>`:""}
+        <div class="product-meta">${g.offers.length} ${g.offers.length===1?"negozio":"negozi"} disponibili</div>
       </div>
-      ${bestPrice?`<div class="bestline"><div><div class="bestlabel">Miglior prezzo</div>${best?`<div class="offer-meta">${esc(best.store||"")}</div>`:""}</div><div class="bestprice">${esc(bestPrice)}</div></div>`:""}
-      ${saving?`<div class="saving">Puoi risparmiare fino a ${saving}</div>`:""}
-      ${offers.map((o,n)=>`<div class="offer ${n===0?"best":""}"><div class="offer-row"><span class="offer-store">${n===0?"🥇 MIGLIOR PREZZO · ":""}${esc(o.store||"Negozio")}</span><span class="offer-price">${esc(o.price||((o.price_value!=null)?Number(o.price_value).toLocaleString("it-IT",{minimumFractionDigits:2,maximumFractionDigits:2})+" €":""))}</span></div>${o.url?`<a class="offer-link" href="${esc(o.url)}" target="_blank" rel="noopener noreferrer">Vai al negozio →</a>`:""}</div>`).join("")}
+      <div class="product-arrow">›</div>
     </article>`;
   }).join("");
-}else{
-  statusBox.textContent=results.length?results.length+(results.length===1?" risultato trovato.":" risultati trovati."):"Nessun risultato trovato.";
-  resultsBox.innerHTML=results.map(i=>{const image=i.image||i.image_url||i.thumbnail||"";return `<article class="result"><div class="store">${esc(i.store||"Negozio")}</div><div class="result-head"><div class="result-image">${image?`<img src="${esc(image)}" alt="${esc(i.name||"Profumo")}" onerror="this.outerHTML='🧴'">`:"🧴"}</div><div class="result-main"><div class="result-top"><div class="name">${esc(i.name||"Profumo")}</div><button class="wish-result" data-brand="${esc(i.brand||"")}" data-name="${esc(i.name||"Profumo")}" data-price="${esc(i.price||"")}" data-shop="${esc(i.store||"")}" data-url="${esc(i.url||"")}" data-pic="${esc(image||"🧴")}" aria-label="Wishlist">♡</button></div><div class="bestprice">${esc(i.price||"Prezzo non disponibile")}</div>${i.url?`<a class="offer-link" href="${esc(i.url)}" target="_blank" rel="noopener noreferrer">Vai al negozio →</a>`:""}</div></div></article>`}).join("");
 }
-refreshWishlistFromResults(results);
-refreshWishlistFromResults(comparisons.flatMap(g=>(Array.isArray(g.offers)?g.offers:[]).map(o=>({name:g.name||"",brand:g.brand||"",price:o.price||"",price_value:o.price_value,store:o.store||"",url:o.url||""}))));
-syncHearts();
-if(data.errors&&Object.keys(data.errors).length)errorsBox.innerHTML="Alcuni negozi non hanno risposto: "+Object.keys(data.errors).map(esc).join(", ")+".";
-}catch(e){console.error(e);statusBox.textContent="Impossibile completare la ricerca."}
-finally{searchButton.disabled=false;searchButton.textContent="Cerca"}
+function renderProductDetail(index){
+  const g=lastProductGroups[index]; if(!g)return;
+  const offers=(g.offers||[]).slice().sort((a,b)=>numericPrice(a)-numericPrice(b));
+  const saved=getWishlist();
+  const meta=[g.size_ml?(String(g.size_ml).includes("ml")?g.size_ml:g.size_ml+" ml"):"",g.concentration?String(g.concentration).toUpperCase():""].filter(Boolean).join(" · ");
+  resultsBox.innerHTML=`<article class="product-detail">
+    <button type="button" class="back-products" id="backProducts">← Torna ai risultati</button>
+    <div class="product-detail-head">
+      <div class="result-image">${g.image?`<img src="${esc(g.image)}" alt="${esc(g.name)}" onerror="this.outerHTML='🧴'">`:"🧴"}</div>
+      <div class="product-detail-title">
+        ${g.brand?`<div class="product-brand">${esc(g.brand)}</div>`:""}
+        <div class="product-name">${esc(g.name)}</div>
+        ${meta?`<div class="product-meta">${esc(meta)}</div>`:""}
+      </div>
+    </div>
+    <div class="bestlabel">CONFRONTA I PREZZI · ${offers.length} ${offers.length===1?"NEGOZIO":"NEGOZI"}</div>
+    ${offers.map((o,n)=>{
+      const item={brand:g.brand||o.brand||"",name:g.name||o.name||"",price:moneyFromOffer(o),shop:o.store||"",url:o.url||"",pic:g.image||"🧴"};
+      const found=saved.find(x=>samePerfume(x,item));
+      const on=!!found&&found.selectedOfferId===offerId(item);
+      return `<div class="offer ${n===0?"best":""}">
+        <div class="offer-select">
+          <div>
+            <div class="offer-store">${esc(o.store||"Negozio")}</div>
+            ${n===0?`<div class="offer-best-tag">MIGLIOR PREZZO</div>`:""}
+          </div>
+          <div style="display:flex;align-items:center;gap:8px">
+            <span class="offer-price">${esc(moneyFromOffer(o)||"Prezzo non disponibile")}</span>
+            <button class="offer-heart ${on?"saved":""}" data-offer-index="${n}" aria-label="Salva questa offerta">${on?"♥":"♡"}</button>
+          </div>
+        </div>
+        <div class="offer-actions">
+          ${o.url?`<a class="offer-link" href="${esc(o.url)}" target="_blank" rel="noopener noreferrer">Vai al negozio →</a>`:"<span></span>"}
+        </div>
+      </div>`;
+    }).join("")}
+  </article>`;
+  statusBox.textContent="";
+  document.getElementById("searchOutput").scrollIntoView({behavior:"smooth",block:"start"});
+  document.getElementById("backProducts").onclick=()=>renderProductList(lastProductGroups);
+  resultsBox.querySelectorAll(".offer-heart").forEach(btn=>{
+    btn.onclick=()=>{
+      const o=offers[Number(btn.dataset.offerIndex)];
+      toggleWish({brand:g.brand||o.brand||"",name:g.name||o.name||"",price:moneyFromOffer(o),shop:o.store||"",url:o.url||"",pic:g.image||"🧴"});
+      renderProductDetail(index);
+    };
+  });
+}
+resultsBox.addEventListener("click",e=>{
+  const card=e.target.closest(".product-card[data-product-index]");
+  if(card)renderProductDetail(Number(card.dataset.productIndex));
+});
+
+async function searchPerfume(){
+ const q=queryInput.value.trim();
+ if(!q){statusBox.textContent="Scrivi il nome di un profumo.";resultsBox.innerHTML="";errorsBox.innerHTML="";return}
+ searchButton.disabled=true;searchButton.textContent="Cerco…";statusBox.textContent="Ricerca in corso…";resultsBox.innerHTML="";errorsBox.innerHTML="";
+ document.getElementById("searchOutput").scrollIntoView({behavior:"smooth",block:"start"});
+ try{
+   const response=await fetch(backend()+"/search?q="+encodeURIComponent(q));
+   if(!response.ok)throw new Error("Errore del server: "+response.status);
+   const data=await response.json();
+   const groups=normalizeProductGroups(data);
+   renderProductList(groups);
+   const allOffers=groups.flatMap(g=>g.offers.map(o=>({name:g.name||"",brand:g.brand||"",price:moneyFromOffer(o),price_value:o.price_value,store:o.store||"",url:o.url||""})));
+   refreshWishlistFromResults(allOffers);
+   if(data.errors&&Object.keys(data.errors).length)errorsBox.innerHTML="Alcuni negozi non hanno risposto: "+Object.keys(data.errors).map(esc).join(", ")+".";
+ }catch(e){
+   console.error(e);statusBox.textContent="Impossibile completare la ricerca.";
+ }finally{
+   searchButton.disabled=false;searchButton.textContent="Cerca";
+ }
 }
 
 const scentAC=document.getElementById("scentAC");
@@ -392,34 +519,4 @@ const LOCAL_AC=[
 
 function localACHits(raw){
  const q=raw.toLowerCase().trim();
- return LOCAL_AC.filter(x=>(x.brand+" "+x.name).toLowerCase().includes(q)).slice(0,8);
-}
-function showACHits(hits){
- if(!hits.length){scentAC.classList.remove("open");scentAC.innerHTML="";return}
- scentAC._hits=hits;
- scentAC.innerHTML=hits.map((x,i)=>`<button type="button" class="scent-ac-row" data-i="${i}">${x.image?`<img class="scent-ac-img" src="${esc(x.image)}" alt="">`:`<span class="scent-ac-fallback">🧴</span>`}<span><span class="scent-ac-brand">${esc(x.brand||"")}</span><span class="scent-ac-name">${esc(x.name||"")}</span></span></button>`).join("");
- scentAC.classList.add("open");
-}
-async function acRender(){
- const raw=queryInput.value.trim();
- if(raw.length<2){scentAC.classList.remove("open");scentAC.innerHTML="";return}
- showACHits(localACHits(raw));
- if(acController)acController.abort();
- acController=new AbortController();
- try{
-  const response=await fetch(backend()+"/suggest?q="+encodeURIComponent(raw),{signal:acController.signal});
-  if(!response.ok)return;
-  const data=await response.json();
-  const remote=Array.isArray(data.suggestions)?data.suggestions:[];
-  const merged=[...remote,...localACHits(raw)],seen=new Set();
-  showACHits(merged.filter(x=>{const k=((x.brand||"")+"|"+(x.name||"")).toLowerCase();if(seen.has(k))return false;seen.add(k);return true}).slice(0,8));
- }catch(err){}
-}
-queryInput.addEventListener("input",()=>{clearTimeout(acTimer);acTimer=setTimeout(acRender,300)});
-scentAC.addEventListener("click",e=>{const b=e.target.closest("[data-i]");if(!b)return;const x=(scentAC._hits||[])[Number(b.dataset.i)];if(!x)return;queryInput.value=((x.brand||"")+" "+(x.name||"")).trim();scentAC.classList.remove("open");searchPerfume()});
-document.addEventListener("click",e=>{if(!e.target.closest(".searchwrap"))scentAC.classList.remove("open")});
-
-searchButton.addEventListener("click",searchPerfume);queryInput.addEventListener("keydown",e=>{if(e.key==="Enter"){e.preventDefault();searchPerfume()}});
-renderWishlist();syncHearts();
-</script>
-</body></html>
+ return LOCAL_AC.filter(x=>(x.brand+" "+x.name).toLow
