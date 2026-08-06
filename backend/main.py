@@ -517,11 +517,9 @@ def search_perfume(q: str):
     all_results: List[Dict[str, Any]] = []
     errors: Dict[str, str] = {}
 
-    # Ricerca stabile: interroghiamo solo gli store verificati come
-    # rispondenti singolarmente, così /search restituisce i risultati
-    # senza restare bloccato dagli scraper lenti.
-    # STORES resta invariato per autocomplete e resto dell'app.
-    SEARCH_STORES = ["deloox", "notino", "parfumcity"]
+    # TEST CHIRURGICO: /search interroga solo Deloox.
+    # STORES resta invariato: autocomplete e resto dell'app non cambiano.
+    SEARCH_STORES = ["deloox"]
 
     for store in SEARCH_STORES:
         try:
