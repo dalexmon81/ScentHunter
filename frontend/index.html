@@ -114,6 +114,23 @@ body{position:relative}
 .heart,.wish-result{cursor:pointer;user-select:none}.heart.saved,.wish-result.saved{color:#e7b83f}
 .result-top,.comparison-top{display:flex;justify-content:space-between;gap:10px;align-items:flex-start}
 .wish-result{background:none;color:#aaa;font-size:25px;padding:0 2px;line-height:1}
+.result,.comparison{box-shadow:0 10px 28px rgba(0,0,0,.18)}
+.comparison{border-color:#365443;background:linear-gradient(145deg,#121815,#0d100f)}
+.comparison-head{display:flex;gap:14px;align-items:center;margin:8px 0 14px}
+.result-head{display:flex;gap:13px;align-items:center;margin-top:8px}
+.result-image{width:72px;height:82px;flex:0 0 72px;border-radius:15px;border:1px solid #30343a;background:#0b0d0e;display:flex;align-items:center;justify-content:center;overflow:hidden;font-size:38px}
+.result-image img{width:100%;height:100%;object-fit:contain;background:white}
+.result-main{min-width:0;flex:1}
+.result-main .name{margin-top:0}
+.bestline{display:flex;justify-content:space-between;gap:12px;align-items:end;margin:4px 0 12px}
+.bestlabel{font-size:11px;color:#a9aaa9;text-transform:uppercase;font-weight:800;letter-spacing:.5px}
+.bestprice{font-size:24px;color:#55ce78;font-weight:950}
+.offer{padding:13px 0}
+.offer.best{margin:5px -8px 0;padding:13px 8px;border-radius:13px;background:rgba(73,176,108,.08);border-top:1px solid #31583e}
+.offer-link{display:inline-flex!important;align-items:center;justify-content:center;min-height:38px;padding:9px 14px;border:1px solid #6d5620;border-radius:22px;background:#19150b}
+.offer-meta{font-size:11px;color:#8e9094;margin-top:3px}
+@media(max-width:390px){.result-image{width:62px;height:72px;flex-basis:62px}.bestprice{font-size:21px}}
+
 </style>
 
 </head>
@@ -325,17 +342,26 @@ if(comparisons.length){
     const prices=offers.map(o=>Number(o.price_value)).filter(Number.isFinite);
     const min=prices.length?Math.min(...prices):null,max=prices.length?Math.max(...prices):null;
     const saving=min!==null&&max!==null&&max>min?(max-min).toLocaleString("it-IT",{minimumFractionDigits:2,maximumFractionDigits:2})+" €":"";
+    const image=g.image||offers.find(o=>o.image||o.image_url||o.thumbnail)?.image||offers.find(o=>o.image_url)?.image_url||offers.find(o=>o.thumbnail)?.thumbnail||"";
+    const best=offers[0]||null;
+    const bestPrice=best?(best.price||((best.price_value!=null)?Number(best.price_value).toLocaleString("it-IT",{minimumFractionDigits:2,maximumFractionDigits:2})+" €":"")):"";
     return `<article class="comparison">
       <div class="badge">🏆 CONFRONTO PREZZI</div>
-      <div class="comparison-top"><div class="name">${esc(g.name||"Profumo")}</div><button class="wish-result" data-brand="" data-name="${esc(g.name||"Profumo")}" data-price="${min!==null?min.toLocaleString("it-IT",{minimumFractionDigits:2,maximumFractionDigits:2})+" €":""}" data-shop="${offers[0]?esc(offers[0].store||""):""}" data-pic="🧴" aria-label="Wishlist">♡</button></div>
-      ${g.size_ml?`<div>${esc(g.size_ml)} ml${g.concentration?" · "+esc(String(g.concentration).toUpperCase()):""}</div>`:""}
-      ${saving?`<div class="saving">Risparmio possibile: ${saving}</div>`:""}
-      ${offers.map((o,n)=>`<div class="offer"><div class="offer-row"><span class="offer-store">${n===0?"🥇 ":""}${esc(o.store||"Negozio")}</span><span class="offer-price">${esc(o.price||((o.price_value!=null)?Number(o.price_value).toLocaleString("it-IT",{minimumFractionDigits:2,maximumFractionDigits:2})+" €":""))}</span></div>${o.url?`<a href="${esc(o.url)}" target="_blank" rel="noopener noreferrer">Vai al negozio →</a>`:""}</div>`).join("")}
+      <div class="comparison-head">
+        <div class="result-image">${image?`<img src="${esc(image)}" alt="${esc(g.name||"Profumo")}" onerror="this.outerHTML='🧴'">`:"🧴"}</div>
+        <div class="result-main">
+          <div class="comparison-top"><div class="name">${esc(g.name||"Profumo")}</div><button class="wish-result" data-brand="${esc(g.brand||"")}" data-name="${esc(g.name||"Profumo")}" data-price="${esc(bestPrice)}" data-shop="${best?esc(best.store||""):""}" data-url="${best?esc(best.url||""):""}" data-pic="${esc(image||"🧴")}" aria-label="Wishlist">♡</button></div>
+          ${g.size_ml?`<div class="offer-meta">${esc(g.size_ml)} ml${g.concentration?" · "+esc(String(g.concentration).toUpperCase()):""}</div>`:""}
+        </div>
+      </div>
+      ${bestPrice?`<div class="bestline"><div><div class="bestlabel">Miglior prezzo</div>${best?`<div class="offer-meta">${esc(best.store||"")}</div>`:""}</div><div class="bestprice">${esc(bestPrice)}</div></div>`:""}
+      ${saving?`<div class="saving">Puoi risparmiare fino a ${saving}</div>`:""}
+      ${offers.map((o,n)=>`<div class="offer ${n===0?"best":""}"><div class="offer-row"><span class="offer-store">${n===0?"🥇 MIGLIOR PREZZO · ":""}${esc(o.store||"Negozio")}</span><span class="offer-price">${esc(o.price||((o.price_value!=null)?Number(o.price_value).toLocaleString("it-IT",{minimumFractionDigits:2,maximumFractionDigits:2})+" €":""))}</span></div>${o.url?`<a class="offer-link" href="${esc(o.url)}" target="_blank" rel="noopener noreferrer">Vai al negozio →</a>`:""}</div>`).join("")}
     </article>`;
   }).join("");
 }else{
   statusBox.textContent=results.length?results.length+(results.length===1?" risultato trovato.":" risultati trovati."):"Nessun risultato trovato.";
-  resultsBox.innerHTML=results.map(i=>`<article class="result"><div class="store">${esc(i.store||"Negozio")}</div><div class="result-top"><div class="name">${esc(i.name||"Profumo")}</div><button class="wish-result" data-brand="" data-name="${esc(i.name||"Profumo")}" data-price="${esc(i.price||"")}" data-shop="${esc(i.store||"")}" data-url="${esc(i.url||"")}" data-pic="🧴" aria-label="Wishlist">♡</button></div><div class="price">${esc(i.price||"Prezzo non disponibile")}</div>${i.url?`<a href="${esc(i.url)}" target="_blank" rel="noopener noreferrer">Vai al negozio →</a>`:""}</article>`).join("");
+  resultsBox.innerHTML=results.map(i=>{const image=i.image||i.image_url||i.thumbnail||"";return `<article class="result"><div class="store">${esc(i.store||"Negozio")}</div><div class="result-head"><div class="result-image">${image?`<img src="${esc(image)}" alt="${esc(i.name||"Profumo")}" onerror="this.outerHTML='🧴'">`:"🧴"}</div><div class="result-main"><div class="result-top"><div class="name">${esc(i.name||"Profumo")}</div><button class="wish-result" data-brand="${esc(i.brand||"")}" data-name="${esc(i.name||"Profumo")}" data-price="${esc(i.price||"")}" data-shop="${esc(i.store||"")}" data-url="${esc(i.url||"")}" data-pic="${esc(image||"🧴")}" aria-label="Wishlist">♡</button></div><div class="bestprice">${esc(i.price||"Prezzo non disponibile")}</div>${i.url?`<a class="offer-link" href="${esc(i.url)}" target="_blank" rel="noopener noreferrer">Vai al negozio →</a>`:""}</div></div></article>`}).join("");
 }
 refreshWishlistFromResults(results);
 refreshWishlistFromResults(comparisons.flatMap(g=>(Array.isArray(g.offers)?g.offers:[]).map(o=>({name:g.name||"",brand:g.brand||"",price:o.price||"",price_value:o.price_value,store:o.store||"",url:o.url||""}))));
