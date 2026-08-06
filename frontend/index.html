@@ -489,7 +489,7 @@ async function fetchJSONWithTimeout(url,ms=25000){
 }
 
 async function searchPerfume(){
- const q=(selectedSearchTerm||queryInput.value).trim();if(!q){statusBox.textContent="Scrivi il nome di un profumo.";resultsBox.innerHTML="";errorsBox.innerHTML="";return}
+ const q=queryInput.value.trim();if(!q){statusBox.textContent="Scrivi il nome di un profumo.";resultsBox.innerHTML="";errorsBox.innerHTML="";return}
  searchButton.disabled=true;searchButton.textContent="Cerco…";statusBox.textContent="Ricerca in corso…";resultsBox.innerHTML="";errorsBox.innerHTML="";document.getElementById("searchOutput").scrollIntoView({behavior:"smooth",block:"start"});
  try{
   const queries=[q];
@@ -668,8 +668,8 @@ scentAC.addEventListener("click",e=>{
   return;
  }
  queryInput.value=((x.brand||"")+" "+(x.name||"")).trim();
- selectedSearchTerm=(x.name||"").trim();selectedSearchBrand=(x.brand||"").trim();
- scentAC.classList.remove("open");searchPerfume();
+ selectedSearchTerm="";selectedSearchBrand="";
+ scentAC.classList.remove("open");queryInput.focus();
 });
 document.addEventListener("click",e=>{if(!e.target.closest(".searchwrap"))scentAC.classList.remove("open")});
 
