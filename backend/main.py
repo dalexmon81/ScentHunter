@@ -1,3 +1,4 @@
+from pathlib import Path
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -6,6 +7,7 @@ import json
 import os
 import re
 import traceback
+from fastapi.responses import FileResponse
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
 
@@ -466,18 +468,13 @@ def update_price_history(
 # API - ROOT
 # ============================================================
 
-@app.get("/")
+
+BASE_DIR = Path(__file__).resolve().parent.parent
+FRONTEND_INDEX = BASE_DIR / "frontend" / "index.html"
+
+@app.get("/", include_in_schema=False)
 def root():
-    return {
-        "app": "ScentHunter",
-        "status": "running",
-        "version": "1.0.0",
-    }
-
-
-# ============================================================
-# API - HEALTH
-# ============================================================
+    return FileResponse(FRONTEND_INDEX)
 
 @app.get("/health")
 def health():
