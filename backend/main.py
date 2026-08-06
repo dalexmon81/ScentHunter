@@ -1,205 +1,73 @@
-from pathlib import Path
-from fastapi import FastAPI, HTTPException
-from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse
-
 import importlib
-import json
 import os
 import re
-import traceback
-from concurrent.futures import ThreadPoolExecutor, as_completed, TimeoutError
-from datetime import datetime, timezone
-from typing import Any, Dict, List, Optional
+import statistics
+import time
+import requests
+from concurrent.futures import ThreadPoolExecutor, TimeoutError, as_completed
+from typing import Any, Dict, List
+from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import HTMLResponse
+from fastapi.staticfiles import StaticFiles
 
-
-# ============================================================
-# ScentHunter API
-# ============================================================
-
-app = FastAPI(
-    title="ScentHunter API",
-    version="1.0.0",
-)
-
-
-# ============================================================
-# CORS
-# ============================================================
+app = FastAPI()
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origin_regex=r"https?://.*",
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-
-# ============================================================
-# CONFIGURAZIONE
-# ============================================================
-
 STORES = [
     "bplatz",
     "deloox",
-    "parfumcity",
-    "parfumzentrum",
-    "perfumemarket",
     "sabina",
-    "orioudh",
+    "parfumcity",
     "notino",
+    "ditano",
+    "douglas",
+    "sephora",
 ]
 
-BASE_DIR = os.path.dirname(__file__)
-HISTORY_PATH = os.path.join(BASE_DIR, "price_history.json")
+VARIANTS = ["flanker", "intense", "elixir", "parfum", "edp", "edt"]
+NON_PERFUME = ["shower", "gel", "lotion", "body", "deodorant", "stick", "aftershave", "balm"]
+IGNORED_WORDS = {"eau", "de", "parfum", "toilette", "edp", "edt", "for", "him", "her", "man", "woman"}
 
-FRONTEND_INDEX = (
-    Path(__file__).resolve().parent.parent
-    / "frontend"
-    / "index.html"
-)
-
-VARIANTS = {
-    "pour femme",
-    "night out",
-    "rebel",
-    "elixir",
-    "intense",
-    "extreme",
-    "limited edition",
-    "collector edition",
-    "collector's edition",
-}
-
-NON_PERFUME = {
-    "gift set",
-    "set regalo",
-    "coffret",
-    "bundle",
-    "deodorant",
-    "deo spray",
-    "shower gel",
-    "body lotion",
-    "after shave",
-    "aftershave",
-    "travel set",
-    "discovery set",
-    "kit",
-}
-
-IGNORED_WORDS = {
-    "eau",
-    "de",
-    "parfum",
-    "perfume",
-    "edp",
-    "edt",
-    "extrait",
-    "spray",
-    "ml",
-    "for",
-    "by",
-}
-
-
-# ============================================================
-# FUNZIONI DI NORMALIZZAZIONE
-# ============================================================
-
-def norm(value: Any) -> str:
-    """
-    Normalizza un nome per rendere più affidabili confronti e ricerche.
-
-    Esempi:
-        9PM   -> 9 pm
-        9 PM  -> 9 pm
-    """
-    value = str(value or "").lower().strip()
-
-    value = re.sub(
-        r"(?<=\d)(?=[a-z])|(?<=[a-z])(?=\d)",
-        " ",
-        value,
-    )
-
-    value = re.sub(
-        r"[^a-z0-9]+",
-        " ",
-        value,
-    )
-
-    return re.sub(
-        r"\s+",
-        " ",
-        value,
-    ).strip()
-
-
-def price_num(value: Any) -> Optional[float]:
-    """
-    Estrae il valore numerico da un prezzo.
-    """
-    match = re.search(
-        r"(\d{1,5}(?:[.,]\d{1,2})?)",
-        str(value or ""),
-    )
-
-    if not match:
-        return None
-
-    try:
-        return float(
-            match.group(1).replace(",", ".")
-        )
-    except ValueError:
-        return None
-
-
-def product_image(product: Dict[str, Any]) -> str:
-    """
-    Recupera l'immagine indipendentemente dal nome usato dallo scraper.
-    """
-    return (
-        product.get("image")
-        or product.get("image_url")
-        or product.get("thumbnail")
-        or ""
-    )
-
-
-# ============================================================
-# FILTRO RISULTATI
-# ============================================================
+def norm(text: str) -> str:
+    if not text:
+        return ""
+    text = text.lower()
+    text = re.sub(r'[^a-z0-9\s]', ' ', text)
+    return " ".join(text.split())
 
 def matches(product: Dict[str, Any], query: str) -> bool:
     """
-    Evita risultati palesemente diversi dalla ricerca.
-
-    Esempio:
-    se si cerca "9 PM", non devono entrare automaticamente
-    "9 PM Rebel", "9 PM Elixir", ecc.
+    Evita risultati palesemente diversi dalla ricerca,
+    confrontando i token della query sia con il nome che con il brand del prodotto.
     """
     name = norm(product.get("name", ""))
+    brand = norm(product.get("brand", ""))
+    full_text = norm(f"{brand} {name}")
     query_normalized = norm(query)
 
-    if not name:
+    if not full_text:
         return False
 
     for phrase in VARIANTS:
         normalized_phrase = norm(phrase)
-
         if (
-            normalized_phrase in name
+            normalized_phrase in full_text
             and normalized_phrase not in query_normalized
         ):
             return False
 
     for phrase in NON_PERFUME:
         normalized_phrase = norm(phrase)
-
         if (
-            normalized_phrase in name
+            normalized_phrase in full_text
             and normalized_phrase not in query_normalized
         ):
             return False
@@ -214,340 +82,273 @@ def matches(product: Dict[str, Any], query: str) -> bool:
         return False
 
     return all(
-        token in name
+        token in full_text
         for token in tokens
     )
 
+def load_scraper(store_name: str):
+    return importlib.import_module(f"scrapers.{store_name}")
 
-# ============================================================
-# SCRAPER
-# ============================================================
+def build_search_attempts(query: str) -> List[str]:
+    raw = str(query or "").strip()
+    normalized = norm(raw)
+    words = normalized.split()
+    attempts = [raw]
 
-def load_scraper(store: str):
-    """
-    Carica dinamicamente:
-        scrapers/<store>/scraper.py
-    """
-    return importlib.import_module(
-        f"scrapers.{store}.scraper"
-    )
+    if len(words) > 2:
+        attempts.append(" ".join(words[:2]))
+    if len(words) > 1:
+        attempts.append(words[0])
 
+    unique_attempts = []
+    for item in attempts:
+        item_clean = item.strip()
+        if item_clean and item_clean not in unique_attempts:
+            unique_attempts.append(item_clean)
+    return unique_attempts
 
-def build_search_attempts(store: str, query: str) -> List[str]:
-    """
-    Costruisce le varianti della ricerca.
-    """
-    attempts = [query]
-
-    normalized_query = norm(query)
-
-    compact = re.sub(
-        r"(?<=\d)\s+(?=[a-z])|(?<=[a-z])\s+(?=\d)",
-        "",
-        normalized_query,
-    )
-
-    if compact and compact not in attempts:
-        attempts.append(compact)
-
-    # Bplatz può restituire risultati migliori partendo
-    # anche dai singoli termini della ricerca.
-    if store == "bplatz":
-        for token in normalized_query.split():
-            if token and token not in attempts:
-                attempts.append(token)
-
-    return attempts
-
-
-def run_store(
-    store: str,
-    query: str,
-) -> List[Dict[str, Any]]:
-    """
-    Esegue la ricerca su un singolo negozio.
-    """
+def run_store(store: str, query: str) -> List[Dict[str, Any]]:
     module = load_scraper(store)
-
-    attempts = build_search_attempts(
-        store,
-        query,
-    )
-
-    output: List[Dict[str, Any]] = []
-    seen = set()
+    attempts = build_search_attempts(query)
 
     for attempt in attempts:
-
-        results = module.search(attempt) or []
-
-        for item in results:
-
-            if not isinstance(item, dict):
-                continue
-
-            product = dict(item)
-
-            product.setdefault(
-                "store",
-                store,
-            )
-
-            key = (
-                str(product.get("url", "")).lower(),
-                norm(product.get("name", "")),
-            )
-
-            if key in seen:
-                continue
-
-            seen.add(key)
-
-            if matches(product, query):
-                output.append(product)
-
-    return output
-
-
-# ============================================================
-# DEDUPLICAZIONE E ORDINAMENTO
-# ============================================================
-
-def unique_results(
-    products: List[Dict[str, Any]],
-) -> List[Dict[str, Any]]:
-
-    unique: List[Dict[str, Any]] = []
-    seen = set()
-
-    for product in products:
-
-        key = (
-            str(product.get("store", "")).lower(),
-            str(product.get("url", "")).lower(),
-            norm(product.get("name", "")),
-        )
-
-        if key in seen:
+        try:
+            results = module.search(attempt) or []
+            valid = []
+            for item in results:
+                if isinstance(item, dict) and matches(item, query):
+                    valid.append(item)
+            if valid:
+                return valid
+        except Exception as err:
+            print(f"Error scraping {store} with query '{attempt}': {err}")
             continue
 
-        seen.add(key)
-        unique.append(product)
+    return []
 
-    return unique
-
-
-def sort_by_price(
-    products: List[Dict[str, Any]],
-) -> List[Dict[str, Any]]:
-
-    def key(product):
-        value = price_num(
-            product.get("price")
-        )
-
-        if value is None:
-            return float("inf")
-
-        return value
-
-    return sorted(
-        products,
-        key=key,
+def product_image(product: Dict[str, Any]) -> str:
+    return (
+        product.get("image")
+        or product.get("image_url")
+        or product.get("img")
+        or ""
     )
 
+def unique_results(items: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    seen = set()
+    output = []
+    for item in items:
+        key = (
+            norm(item.get("store", "")),
+            norm(item.get("name", "")),
+            item.get("price"),
+        )
+        if key not in seen:
+            seen.add(key)
+            output.append(item)
+    return output
 
-# ============================================================
-# PRICE HISTORY
-# ============================================================
+def sort_by_price(items: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    def get_price(x):
+        try:
+            val = float(x.get("price", 999999))
+            return val if val > 0 else 999999
+        except (ValueError, TypeError):
+            return 999999
+    return sorted(items, key=get_price)
 
-def load_history() -> Dict[str, Any]:
+def fragella_search(query: str, limit: int = 10) -> List[Dict[str, Any]]:
+    url = f"https://api.fragella.com/v1/search?q={requests.utils.quote(query)}&limit={limit}"
     try:
-        with open(
-            HISTORY_PATH,
-            "r",
-            encoding="utf-8",
-        ) as file:
-            data = json.load(file)
+        resp = requests.get(url, timeout=5)
+        if resp.status_code == 200:
+            data = resp.json()
+            return data.get("results", [])
+    except Exception as e:
+        print(f"Fragella API error: {e}")
+    return []
 
-        if isinstance(data, dict):
-            return data
+def rank_catalog_suggestions(items: List[Dict[str, Any]], query: str) -> List[Dict[str, Any]]:
+    q_norm = norm(query)
+    q_words = q_norm.split()
+    
+    scored = []
+    for item in items:
+        name = item.get("name", "")
+        brand = item.get("brand", "")
+        full = norm(f"{brand} {name}")
+        
+        score = 0
+        if full.startswith(q_norm):
+            score += 100
+        elif norm(name).startswith(q_norm) or norm(brand).startswith(q_norm):
+            score += 50
+            
+        if all(w in full for w in q_words):
+            score += 20
+            
+        scored.append((score, item))
+        
+    scored.sort(key=lambda x: x[0], reverse=True)
+    
+    suggestions = []
+    for score, item in scored:
+        if score > 0 or len(q_norm) < 3:
+            suggestions.append({
+                "name": item.get("name"),
+                "brand": item.get("brand"),
+                "image": product_image(item),
+                "catalog_id": item.get("catalog_id") or item.get("id"),
+            })
+    return suggestions
 
-    except Exception:
-        pass
+@app.get("/suggest")
+def suggest(q: str):
+    raw_query = str(q or "").strip()
+    query = norm(raw_query)
 
-    return {}
+    if len(query) < 2:
+        return {
+            "query": q,
+            "count": 0,
+            "suggestions": [],
+            "source": "catalog",
+        }
 
+    # 1. CATALOGO PROFUMI
+    if len(query) >= 2:
+        try:
+            catalog_queries = [raw_query]
 
-def save_history(
-    data: Dict[str, Any],
-) -> None:
+            for token in query.split():
+                if len(token) >= 2 and token not in catalog_queries:
+                    catalog_queries.append(token)
 
-    try:
-        with open(
-            HISTORY_PATH,
-            "w",
-            encoding="utf-8",
-        ) as file:
+            catalog_results: List[Dict[str, Any]] = []
+            catalog_seen = set()
 
-            json.dump(
-                data,
-                file,
-                ensure_ascii=False,
-                indent=2,
+            for catalog_query in catalog_queries:
+                for item in fragella_search(catalog_query, 10):
+                    key = (
+                        str(item.get("catalog_id") or "").strip()
+                        or f"{norm(item.get('brand'))}|{norm(item.get('name'))}"
+                    )
+
+                    if key in catalog_seen:
+                        continue
+
+                    catalog_seen.add(key)
+                    catalog_results.append(item)
+
+            suggestions = rank_catalog_suggestions(
+                catalog_results,
+                raw_query,
             )
 
-    except OSError:
-        pass
+            if suggestions:
+                return {
+                    "query": q,
+                    "count": len(suggestions),
+                    "suggestions": suggestions,
+                    "source": "catalog",
+                }
 
+        except Exception as error:
+            print("Catalog suggest error:", repr(error))
 
-def update_price_history(
-    name: str,
-    brand: str,
-    best_offer: Optional[Dict[str, Any]],
-) -> List[Dict[str, Any]]:
+    # 2. FALLBACK NEGOZI (con match sui prefissi delle parole)
+    suggestions = []
+    seen = set()
 
-    history_data = load_history()
+    for store in STORES:
+        try:
+            module = load_scraper(store)
+            results = module.search(raw_query) or []
 
-    key = (
-        norm(f"{brand} {name}")
-        or norm(name)
-    )
+            for product in results:
+                if not isinstance(product, dict):
+                    continue
 
-    history = history_data.get(
-        key,
-        [],
-    )
+                name = str(product.get("name") or "").strip()
+                brand = str(product.get("brand") or "").strip()
+                if not name:
+                    continue
 
-    if not isinstance(history, list):
-        history = []
+                haystack = norm(f"{brand} {name}")
+                words = query.split()
 
-    if not best_offer:
-        return history
+                haystack_words = haystack.split()
+                if not all(
+                    any(hw.startswith(w) for hw in haystack_words)
+                    for w in words
+                ):
+                    continue
 
-    point = {
-        "date": datetime.now(
-            timezone.utc
-        ).isoformat(),
+                if any(norm(phrase) in norm(name) for phrase in NON_PERFUME):
+                    continue
 
-        "value": best_offer[
-            "price_value"
-        ],
+                key = (norm(brand), norm(name))
+                if key in seen:
+                    continue
 
-        "price": best_offer.get(
-            "price",
-            "",
-        ),
+                seen.add(key)
+                suggestions.append({
+                    "name": name,
+                    "store": product.get("store", store),
+                    "brand": brand,
+                    "image": product_image(product),
+                })
 
-        "store": best_offer.get(
-            "store",
-            "",
-        ),
-    }
+        except Exception:
+            pass
 
-    last = (
-        history[-1]
-        if history
-        else None
-    )
-
-    changed = (
-        not last
-        or last.get("value") != point["value"]
-        or last.get("store") != point["store"]
-    )
-
-    if changed:
-        history.append(point)
-
-        history = history[-100:]
-
-        history_data[key] = history
-
-        save_history(
-            history_data
+    suggestions.sort(
+        key=lambda item: (
+            0 if norm(item.get("name", "")).startswith(query) else 1,
+            0 if norm(item.get("brand", "")).startswith(query) else 1,
+            len(item.get("name", "")),
         )
+    )
 
-    return history
-
-
-# ============================================================
-# API - ROOT
-# ============================================================
-
-@app.get("/", include_in_schema=False)
-def root():
-    if not FRONTEND_INDEX.exists():
-        raise HTTPException(
-            status_code=500,
-            detail="frontend/index.html non trovato",
-        )
-    return FileResponse(FRONTEND_INDEX)
-
-
-# ============================================================
-# API - HEALTH
-# ============================================================
-
-@app.get("/health")
-def health():
     return {
-        "status": "healthy",
-        "stores": STORES,
+        "query": q,
+        "count": len(suggestions[:8]),
+        "suggestions": suggestions[:8],
+        "source": "stores-fallback",
     }
-
-
-# ============================================================
-# API - SEARCH
-# ============================================================
 
 @app.get("/search")
 def search_perfume(q: str):
-
     query = str(q or "").strip()
 
     if not query:
-        return {
-            "query": "",
-            "count": 0,
-            "results": [],
-            "errors": {},
-        }
+        return {"query": "", "count": 0, "results": [], "errors": {}}
 
     all_results: List[Dict[str, Any]] = []
     errors: Dict[str, str] = {}
 
-    # Eseguiamo gli scraper in parallelo con un numero limitato di worker.
-    # In questo modo uno store lento non costringe /search ad aspettare
-    # tutti gli altri in sequenza.
-    executor = ThreadPoolExecutor(max_workers=len(STORES))
+    executor = ThreadPoolExecutor(max_workers=4)
     futures = {
         executor.submit(run_store, store, query): store
         for store in STORES
     }
 
     try:
-        for future in as_completed(futures, timeout=20):
+        for future in as_completed(futures, timeout=25):
             store = futures[future]
             try:
-                store_results = future.result()
-                all_results.extend(store_results)
+                all_results.extend(future.result())
             except Exception as error:
                 errors[store] = f"{type(error).__name__}: {error}"
-                traceback.print_exc()
     except TimeoutError:
-        # Dopo 20 secondi restituiamo comunque i risultati già ottenuti.
+        pass
+    finally:
         for future, store in futures.items():
             if not future.done():
-                errors[store] = "Timeout: ricerca negozio troppo lenta"
-                future.cancel()
-    finally:
-        # Non aspettiamo gli scraper rimasti bloccati: la risposta HTTP deve
-        # arrivare prima del timeout del frontend.
+                errors[store] = "Timeout: negozio troppo lento"
         executor.shutdown(wait=False, cancel_futures=True)
 
-    results = unique_results(all_results)
-    results = sort_by_price(results)
+    results = sort_by_price(unique_results(all_results))
 
     return {
         "query": query,
@@ -556,241 +357,6 @@ def search_perfume(q: str):
         "errors": errors,
     }
 
-
-
-# ============================================================
-# API - TEST SINGOLO STORE (diagnostica)
-# ============================================================
-
-@app.get("/test-store")
-def test_store(store: str, q: str):
-    """
-    Endpoint diagnostico: esegue UN SOLO scraper.
-    Non modifica la normale ricerca /search.
-    """
-    store = str(store or "").strip().lower()
-    query = str(q or "").strip()
-
-    if store not in STORES:
-        raise HTTPException(
-            status_code=400,
-            detail=f"Store non valido. Disponibili: {', '.join(STORES)}",
-        )
-
-    if not query:
-        raise HTTPException(
-            status_code=400,
-            detail="Parametro q mancante",
-        )
-
-    try:
-        results = run_store(store, query)
-        return {
-            "store": store,
-            "query": query,
-            "count": len(results),
-            "results": results,
-        }
-    except Exception as error:
-        traceback.print_exc()
-        return {
-            "store": store,
-            "query": query,
-            "count": 0,
-            "results": [],
-            "error": f"{type(error).__name__}: {error}",
-        }
-
-
-# ============================================================
-# API - SUGGEST
-# ============================================================
-
-@app.get("/suggest")
-def suggest(q: str):
-    query = norm(q)
-
-    if len(query) < 2:
-        return {
-            "query": q,
-            "count": 0,
-            "suggestions": [],
-            "source": "stores",
-        }
-
-    suggestions = []
-    seen = set()
-
-    # Autocomplete permissivo: NON usa matches(), perché matches()
-    # elimina apposta varianti come Hawas Ice quando si cerca Hawas.
-    for store in STORES:
-        try:
-            module = load_scraper(store)
-
-            # Prova sia il testo originale sia quello normalizzato.
-            attempts = [str(q or "").strip()]
-            if query not in attempts:
-                attempts.append(query)
-
-            for attempt in attempts:
-                if not attempt:
-                    continue
-
-                results = module.search(attempt) or []
-
-                for product in results:
-                    if not isinstance(product, dict):
-                        continue
-
-                    name = str(
-                        product.get("name")
-                        or product.get("title")
-                        or product.get("product_name")
-                        or ""
-                    ).strip()
-
-                    if not name:
-                        continue
-
-                    normalized_name = norm(name)
-
-                    # Tutte le parole digitate devono comparire nel nome/marca.
-                    brand = str(product.get("brand") or "").strip()
-                    haystack = norm(f"{brand} {name}")
-                    words = [w for w in query.split() if w]
-
-                    if not all(w in haystack for w in words):
-                        continue
-
-                    # Niente gift set, deodoranti, shower gel, ecc.
-                    if any(norm(phrase) in normalized_name for phrase in NON_PERFUME):
-                        continue
-
-                    key = normalized_name
-                    if key in seen:
-                        continue
-                    seen.add(key)
-
-                    suggestions.append({
-                        "name": name,
-                        "store": product.get("store", store),
-                        "brand": brand,
-                        "image": product_image(product),
-                    })
-
-        except Exception:
-            traceback.print_exc()
-
-    suggestions.sort(
-        key=lambda item: (
-            0 if norm(item.get("name", "")).startswith(query) else 1,
-            len(item.get("name", "")),
-            item.get("name", "").lower(),
-        )
-    )
-
-    suggestions = suggestions[:8]
-
-    return {
-        "query": q,
-        "count": len(suggestions),
-        "suggestions": suggestions,
-        "source": "stores",
-    }
-
-
-# ============================================================
-# API - AUTOCOMPLETE
-# ============================================================
-
-@app.get("/autocomplete")
-def autocomplete(q: str):
-    return suggest(q)
-
-
-# ============================================================
-# API - PRODUCT
-# ============================================================
-
-@app.get("/product")
-def product(
-    name: str,
-    brand: str = "",
-):
-
-    data = search_perfume(
-        name
-    )
-
-    offers: List[Dict[str, Any]] = []
-
-    for product_data in data["results"]:
-
-        value = price_num(
-            product_data.get("price")
-        )
-
-        if value is None:
-            continue
-
-        offer = dict(
-            product_data
-        )
-
-        offer["price_value"] = value
-        offer["image"] = product_image(
-            offer
-        )
-
-        offers.append(
-            offer
-        )
-
-    offers.sort(
-        key=lambda offer: offer[
-            "price_value"
-        ]
-    )
-
-    best_offer = (
-        offers[0]
-        if offers
-        else None
-    )
-
-    history = update_price_history(
-        name=name,
-        brand=brand,
-        best_offer=best_offer,
-    )
-
-    image = next(
-        (
-            offer["image"]
-            for offer in offers
-            if offer.get("image")
-        ),
-        "",
-    )
-
-    lowest_price = (
-        best_offer.get("price")
-        if best_offer
-        else None
-    )
-
-    return {
-        "name": name,
-        "brand": brand,
-        "image": image,
-        "lowest_price": lowest_price,
-        "best_offer": best_offer,
-        "offers": offers,
-        "history": history,
-        "errors": data["errors"],
-        "message": (
-            ""
-            if offers
-            else "Nessuna offerta disponibile al momento"
-        ),
-    }
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run(app, host="0.0.0.0", port=8000)
