@@ -3,9 +3,10 @@ import os
 import re
 import statistics
 import time
-import requests
+from pathlib import Path
 from concurrent.futures import ThreadPoolExecutor, TimeoutError, as_completed
 from typing import Any, Dict, List
+import requests
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse, FileResponse
@@ -20,6 +21,12 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+BASE_DIR = Path(__file__).resolve().parent
+
+# Monta eventuale cartella static se presente (per CSS/JS/immagini)
+if (BASE_DIR / "static").exists():
+    app.mount("/static", StaticFiles(directory=str(BASE_DIR / "static")), name="static")
 
 STORES = [
     "bplatz",
@@ -36,13 +43,23 @@ VARIANTS = ["flanker", "intense", "elixir", "parfum", "edp", "edt"]
 NON_PERFUME = ["shower", "gel", "lotion", "body", "deodorant", "stick", "aftershave", "balm"]
 IGNORED_WORDS = {"eau", "de", "parfum", "toilette", "edp", "edt", "for", "him", "her", "man", "woman"}
 
-# Serve index.html alla rotta principale "/"
-@app.get("/", response_class=HTMLResponse)
+# Serve index.html alla rotta principale "/" cercando in più percorsi possibili
+@app.get("/")
 def read_root():
-    if os.path.exists("index.html"):
-        with open("index.html", "r", encoding="utf-8") as f:
-            return f.read()
-    return "<h1>API ScentHunter Attive</h1><p>Trova le tue fragranze con le rotte /suggest e /search</p>"
+    possible_paths = [
+        BASE_DIR / "index.html",
+        BASE_DIR / "static" / "index.html",
+        BASE_DIR / "public" / "index.html",
+    ]
+    
+    for path in possible_paths:
+        if path.is_file():
+            return FileResponse(path)
+            
+    return HTMLResponse(
+        "<h1>API ScentHunter Attive</h1><p>Attenzione: Il file <b>index.html</b> non è stato trovato nella root della repository su Render.</p>",
+        status_code=404
+    )
 
 def norm(text: str) -> str:
     if not text:
@@ -52,10 +69,6 @@ def norm(text: str) -> str:
     return " ".join(text.split())
 
 def matches(product: Dict[str, Any], query: str) -> bool:
-    """
-    Evita risultati palesemente diversi dalla ricerca,
-    confrontando i token della query sia con il nome che con il brand del prodotto.
-    """
     name = norm(product.get("name", ""))
     brand = norm(product.get("brand", ""))
     full_text = norm(f"{brand} {name}")
@@ -264,7 +277,7 @@ def suggest(q: str):
         except Exception as error:
             print("Catalog suggest error:", repr(error))
 
-    # 2. FALLBACK NEGOZI (con match sui prefissi delle parole)
+    # 2. FALLBACK NEGOZI
     suggestions = []
     seen = set()
 
