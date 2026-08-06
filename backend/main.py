@@ -8,6 +8,8 @@ import json
 import os
 import re
 import traceback
+import multiprocessing as mp
+import queue
 from concurrent.futures import ThreadPoolExecutor, as_completed, TimeoutError
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
@@ -501,6 +503,121 @@ def health():
 # API - SEARCH
 # ============================================================
 
+STORE_TIMEOUT = 8.0
+SEARCH_TIMEOUT = 12.0
+
+
+def _store_worker(store: str, query: str, output_queue) -> None:
+    """
+    Esegue uno scraper in un processo separato.
+    Se lo scraper resta bloccato, il processo può essere terminato davvero.
+    """
+    try:
+        results = run_store(store, query)
+        output_queue.put(("ok", store, results))
+    except Exception as error:
+        traceback.print_exc()
+        output_queue.put(
+            ("error", store, f"{type(error).__name__}: {error}")
+        )
+
+
+def run_search_isolated(query: str):
+    """
+    Avvia tutti gli store in processi separati.
+    Nessuno scraper può tenere in ostaggio /search.
+    """
+    ctx = mp.get_context("spawn")
+    output_queue = ctx.Queue()
+    processes = {}
+    started_at = {}
+
+    import time
+    global_start = time.monotonic()
+
+    for store in STORES:
+        process = ctx.Process(
+            target=_store_worker,
+            args=(store, query, output_queue),
+            daemon=True,
+        )
+        process.start()
+        processes[store] = process
+        started_at[store] = time.monotonic()
+
+    all_results: List[Dict[str, Any]] = []
+    errors: Dict[str, str] = {}
+    finished = set()
+
+    while len(finished) < len(STORES):
+        now = time.monotonic()
+
+        # Timeout globale: restituiamo sempre una risposta rapidamente.
+        if now - global_start >= SEARCH_TIMEOUT:
+            break
+
+        # Timeout per singolo negozio.
+        for store, process in processes.items():
+            if store in finished:
+                continue
+
+            if now - started_at[store] >= STORE_TIMEOUT and process.is_alive():
+                process.terminate()
+                process.join(timeout=0.5)
+                finished.add(store)
+                errors[store] = "Timeout: ricerca negozio troppo lenta"
+
+        # Raccogliamo ciò che è già pronto senza bloccare la richiesta.
+        try:
+            status, store, payload = output_queue.get(timeout=0.15)
+        except queue.Empty:
+            # Se un processo è finito senza aver scritto nella coda,
+            # lo marchiamo come errore invece di aspettarlo per sempre.
+            for store, process in processes.items():
+                if store in finished:
+                    continue
+                if not process.is_alive() and process.exitcode is not None:
+                    process.join(timeout=0.1)
+                    finished.add(store)
+                    errors.setdefault(
+                        store,
+                        f"Processo scraper terminato (exit {process.exitcode})",
+                    )
+            continue
+
+        if store in finished:
+            continue
+
+        finished.add(store)
+
+        process = processes.get(store)
+        if process is not None:
+            process.join(timeout=0.2)
+
+        if status == "ok":
+            all_results.extend(payload or [])
+        else:
+            errors[store] = str(payload)
+
+    # Chiusura dura di qualunque scraper ancora vivo.
+    for store, process in processes.items():
+        if store not in finished:
+            errors.setdefault(store, "Timeout: ricerca negozio troppo lenta")
+
+        if process.is_alive():
+            process.terminate()
+
+        process.join(timeout=0.5)
+
+    try:
+        output_queue.close()
+        output_queue.join_thread()
+    except Exception:
+        pass
+
+    return all_results, errors
+
+
 @app.get("/search")
 def search_perfume(q: str):
 
@@ -514,37 +631,7 @@ def search_perfume(q: str):
             "errors": {},
         }
 
-    all_results: List[Dict[str, Any]] = []
-    errors: Dict[str, str] = {}
-
-    # Eseguiamo gli scraper in parallelo con un numero limitato di worker.
-    # In questo modo uno store lento non costringe /search ad aspettare
-    # tutti gli altri in sequenza.
-    executor = ThreadPoolExecutor(max_workers=4)
-    futures = {
-        executor.submit(run_store, store, query): store
-        for store in STORES
-    }
-
-    try:
-        for future in as_completed(futures, timeout=20):
-            store = futures[future]
-            try:
-                store_results = future.result()
-                all_results.extend(store_results)
-            except Exception as error:
-                errors[store] = f"{type(error).__name__}: {error}"
-                traceback.print_exc()
-    except TimeoutError:
-        # Dopo 20 secondi restituiamo comunque i risultati già ottenuti.
-        for future, store in futures.items():
-            if not future.done():
-                errors[store] = "Timeout: ricerca negozio troppo lenta"
-                future.cancel()
-    finally:
-        # Non aspettiamo gli scraper rimasti bloccati: la risposta HTTP deve
-        # arrivare prima del timeout del frontend.
-        executor.shutdown(wait=False, cancel_futures=True)
+    all_results, errors = run_search_isolated(query)
 
     results = unique_results(all_results)
     results = sort_by_price(results)
@@ -555,7 +642,6 @@ def search_perfume(q: str):
         "results": results,
         "errors": errors,
     }
-
 
 
 # ============================================================
