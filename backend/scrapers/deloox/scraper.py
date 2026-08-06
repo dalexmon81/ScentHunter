@@ -1,7 +1,5 @@
-import json
 import re
-from urllib.parse import quote_plus, urljoin
-
+from urllib.parse import urljoin
 import requests
 from bs4 import BeautifulSoup
 
@@ -9,250 +7,138 @@ STORE = "Deloox"
 BASE_URL = "https://www.deloox.com"
 
 HEADERS = {
-    "User-Agent": (
-        "Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) "
-        "AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.0 "
-        "Mobile/15E148 Safari/604.1"
-    ),
-    "Accept-Language": "en-GB,en;q=0.9,it;q=0.8",
-    "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/131.0 Safari/537.36",
+    "Accept-Language": "en-GB,en;q=0.9",
 }
 
-PRICE_RE = re.compile(
-    r"(?:€\s*\d{1,4}(?:[.,]\d{2})?|\d{1,4}(?:[.,]\d{2})?\s*€)"
-)
+def _clean(x):
+    return re.sub(r"\s+", " ", str(x or "")).strip()
 
-
-def _clean(text):
-    return re.sub(r"\s+", " ", str(text or "")).strip()
-
-
-def _price(text):
-    match = PRICE_RE.search(_clean(text))
-    if not match:
-        return None
-    value = match.group(0).replace(" ", "")
-    if value.startswith("€"):
-        value = value[1:] + "€"
-    return value
-
+def _tokens(x):
+    return [w for w in re.findall(r"[a-z0-9]+", x.lower()) if len(w) > 2]
 
 def _matches(name, query):
-    name_words = set(re.findall(r"[a-z0-9]+", name.lower()))
-    query_words = re.findall(r"[a-z0-9]+", query.lower())
-    important = [w for w in query_words if len(w) > 2]
-    return not important or all(w in name_words for w in important)
+    n = set(_tokens(name))
+    return all(w in n for w in _tokens(query))
 
-
-def _add(results, seen, name, price, url, query):
-    name = _clean(name)
-    price = _price(price)
-    url = _clean(url)
-
-    if not name or not price or not url:
-        return
-    if not _matches(name, query):
-        return
-
-    url = urljoin(BASE_URL, url)
-    key = (name.lower(), price, url.split("?")[0])
-
-    if key in seen:
-        return
-
-    seen.add(key)
-    results.append({
-        "store": STORE,
-        "name": name,
-        "price": price,
-        "url": url,
-    })
-
-
-def _parse_jsonld(soup, query, results, seen):
-    for script in soup.find_all("script", type="application/ld+json"):
-        raw = script.string or script.get_text()
-        if not raw.strip():
-            continue
-
-        try:
-            data = json.loads(raw)
-        except Exception:
-            continue
-
-        stack = data if isinstance(data, list) else [data]
-
-        while stack:
-            item = stack.pop()
-
-            if isinstance(item, list):
-                stack.extend(item)
-                continue
-
-            if not isinstance(item, dict):
-                continue
-
-            if "@graph" in item:
-                stack.append(item["@graph"])
-
-            if "itemListElement" in item:
-                stack.append(item["itemListElement"])
-
-            if "item" in item and isinstance(item["item"], (dict, list)):
-                stack.append(item["item"])
-
-            typ = item.get("@type")
-            if isinstance(typ, list):
-                is_product = "Product" in typ
-            else:
-                is_product = typ == "Product"
-
-            if not is_product:
-                continue
-
-            name = item.get("name", "")
-            url = item.get("url", "")
-
-            offers = item.get("offers", {})
-            if isinstance(offers, list):
-                offers = offers[0] if offers else {}
-
-            price = ""
-            if isinstance(offers, dict):
-                price = offers.get("price", "")
-                currency = offers.get("priceCurrency", "EUR")
-                if price:
-                    price = f"{price}€" if currency == "EUR" else str(price)
-
-            _add(results, seen, name, price, url, query)
-
-
-def _parse_html(soup, query, results, seen):
-    selectors = [
-        "[data-product]",
-        "[data-product-id]",
-        ".product",
-        ".product-item",
-        ".product-card",
-        ".product-tile",
-        "article",
-        "li",
+def _price(text):
+    text = _clean(text)
+    patterns = [
+        r"€\s*(\d{1,4})[.,](\d{2})",
+        r"(\d{1,4})[.,](\d{2})\s*€",
     ]
-
-    nodes = []
-    for selector in selectors:
-        found = soup.select(selector)
-        if found:
-            nodes = found
-            break
-
-    for node in nodes:
-        text = _clean(node.get_text(" ", strip=True))
-        price = _price(text)
-        if not price:
-            continue
-
-        link = node.find("a", href=True)
-        if not link:
-            continue
-
-        href = link.get("href", "")
-        if not href or href.startswith("#"):
-            continue
-
-        title_node = node.select_one(
-            "[class*='name'], [class*='title'], h2, h3, h4"
-        )
-        name = (
-            title_node.get_text(" ", strip=True)
-            if title_node
-            else link.get("title")
-            or link.get_text(" ", strip=True)
-        )
-
-        _add(results, seen, name, price, href, query)
-
+    for p in patterns:
+        m = re.search(p, text)
+        if m:
+            return f"{m.group(1)},{m.group(2)}€"
+    return None
 
 def search(query):
     query = _clean(query)
     if not query:
         return []
 
-    session = requests.Session()
-    session.headers.update(HEADERS)
+    s = requests.Session()
+    s.headers.update(HEADERS)
 
-    # Deloox non usa in modo affidabile /search?q=...
-    # La ricerca pubblica indicizza invece pagine categoria/prodotto.
-    # Proviamo prima il motore interno tramite endpoint/percorsi noti,
-    # poi ricaviamo eventuali link prodotto dalla risposta.
-    candidates = [
-        f"{BASE_URL}/search?search={quote_plus(query)}",
-        f"{BASE_URL}/search?q={quote_plus(query)}",
-        f"{BASE_URL}/search?query={quote_plus(query)}",
-    ]
+    # Deloox espone un indice completo dei brand nella pagina prodotto/home.
+    # Troviamo il brand dalla query e apriamo la sua pagina categoria.
+    r = s.get(BASE_URL, timeout=8)
+    r.raise_for_status()
+    soup = BeautifulSoup(r.text, "html.parser")
+
+    qwords = _tokens(query)
+    brand_link = None
+
+    # Preferisci un link brand il cui testo è contenuto nella query.
+    for a in soup.find_all("a", href=True):
+        txt = _clean(a.get_text(" ", strip=True))
+        if not txt:
+            continue
+        tw = _tokens(txt)
+        if tw and all(w in qwords for w in tw):
+            href = a["href"]
+            if "categorie" in href.lower() or "category" in href.lower():
+                brand_link = urljoin(BASE_URL, href)
+                break
+
+    # fallback specifico: ricerca link che contenga il primo token (es. Rasasi)
+    if not brand_link and qwords:
+        for a in soup.find_all("a", href=True):
+            if qwords[0] in _clean(a.get_text()).lower():
+                brand_link = urljoin(BASE_URL, a["href"])
+                break
+
+    if not brand_link:
+        return []
+
+    r = s.get(brand_link, timeout=8)
+    r.raise_for_status()
+    soup = BeautifulSoup(r.text, "html.parser")
 
     results = []
     seen = set()
 
-    for url in candidates:
-        try:
-            response = session.get(url, timeout=4, allow_redirects=True)
-            if response.status_code != 200:
-                continue
-
-            soup = BeautifulSoup(response.text, "html.parser")
-
-            # Parser normali
-            _parse_jsonld(soup, query, results, seen)
-            _parse_html(soup, query, results, seen)
-
-            # Deloox: intercetta direttamente i link /product/<id>/<slug>.html
-            for a in soup.find_all("a", href=True):
-                href = a.get("href", "")
-                if "/product/" not in href or not href.endswith(".html"):
-                    continue
-
-                name = _clean(a.get_text(" ", strip=True) or a.get("title", ""))
-                if not name or not _matches(name, query):
-                    continue
-
-                product_url = urljoin(BASE_URL, href)
-                try:
-                    pr = session.get(product_url, timeout=4, allow_redirects=True)
-                    if pr.status_code != 200:
-                        continue
-                    psoup = BeautifulSoup(pr.text, "html.parser")
-
-                    # Nome prodotto
-                    h1 = psoup.find("h1")
-                    pname = _clean(h1.get_text(" ", strip=True)) if h1 else name
-
-                    # Prezzo: Deloox spesso spezza € / interi / centesimi nel DOM.
-                    ptext = _clean(psoup.get_text(" ", strip=True))
-                    pm = re.search(
-                        r"our price:\s*€\s*(\d{1,4})\s*,\s*(\d{2})",
-                        ptext,
-                        re.IGNORECASE,
-                    )
-                    if pm:
-                        price = f"{pm.group(1)},{pm.group(2)}€"
-                        _add(results, seen, pname, price, product_url, query)
-                except requests.RequestException:
-                    pass
-
-            if results:
-                break
-
-        except requests.RequestException:
+    # Le pagine categoria Deloox contengono link diretti /product/...html
+    for a in soup.find_all("a", href=True):
+        href = a["href"]
+        if "/product/" not in href or ".html" not in href:
             continue
+
+        product_url = urljoin(BASE_URL, href)
+        name = _clean(a.get_text(" ", strip=True) or a.get("title", ""))
+
+        # Se il testo del link non contiene il nome completo, leggiamo il prodotto.
+        if not name or not _matches(name, query):
+            try:
+                pr = s.get(product_url, timeout=8)
+                if pr.status_code != 200:
+                    continue
+                ps = BeautifulSoup(pr.text, "html.parser")
+                h1 = ps.find("h1")
+                name = _clean(h1.get_text(" ", strip=True)) if h1 else name
+                if not _matches(name, query):
+                    continue
+                price = _price(ps.get_text(" ", strip=True))
+            except requests.RequestException:
+                continue
+        else:
+            # Il contenitore della card di solito contiene anche il prezzo.
+            parent = a
+            for _ in range(5):
+                if parent.parent:
+                    parent = parent.parent
+                p = _price(parent.get_text(" ", strip=True))
+                if p:
+                    break
+            else:
+                p = None
+            price = p
+
+            if not price:
+                try:
+                    pr = s.get(product_url, timeout=8)
+                    ps = BeautifulSoup(pr.text, "html.parser")
+                    price = _price(ps.get_text(" ", strip=True))
+                except requests.RequestException:
+                    price = None
+
+        if not price:
+            continue
+
+        key = product_url.split("?")[0]
+        if key in seen:
+            continue
+        seen.add(key)
+
+        results.append({
+            "store": STORE,
+            "name": name,
+            "price": price,
+            "url": product_url,
+        })
 
     return results
 
-
 if __name__ == "__main__":
-    test_query = "Rasasi Hawas Ice"
-    found = search(test_query)
-
-    print(f"RISULTATI: {len(found)}")
-    for item in found[:10]:
-        print(item)
+    print(search("Rasasi Hawas for Him"))
