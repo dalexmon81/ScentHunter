@@ -512,21 +512,6 @@ const scentAC=document.getElementById("scentAC");
 let acTimer=null;
 let acController=null;
 
-const LOCAL_AC=[
-{brand:"Rasasi",name:"Hawas for Him",image:""},
-{brand:"Rasasi",name:"Hawas Ice",image:""},
-{brand:"Rasasi",name:"Hawas Black",image:""},
-{brand:"Rasasi",name:"Hawas Tropical",image:""},
-{brand:"Rasasi",name:"Hawas Fire",image:""},
-{brand:"Rasasi",name:"Hawas Kobra",image:""},
-{brand:"Afnan",name:"9 PM",image:""},
-{brand:"Afnan",name:"9 PM Rebel",image:""},
-{brand:"Afnan",name:"9 PM Elixir",image:""},
-{brand:"Afnan",name:"9 PM Night Out",image:""},
-{brand:"French Avenue",name:"Liquid Brun",image:""},
-{brand:"French Avenue",name:"Liquid Brun Limited Edition",image:""}
-];
-
 function acRank(x,raw){
  const q=String(raw||"").toLowerCase().trim();
  const name=String(x.name||"").toLowerCase().trim();
@@ -538,10 +523,6 @@ function acRank(x,raw){
  if(brand.includes(q)) return 4;
  return 99;
 }
-function localACHits(raw){
- const q=raw.toLowerCase().trim();
- return LOCAL_AC.filter(x=>acRank(x,q)<99).sort((a,b)=>acRank(a,q)-acRank(b,q)||String(a.name).localeCompare(String(b.name))).slice(0,8);
-}
 function showACHits(hits){
  if(!hits.length){scentAC.classList.remove("open");scentAC.innerHTML="";return}
  scentAC._hits=hits;
@@ -551,7 +532,6 @@ function showACHits(hits){
 async function acRender(){
  const raw=queryInput.value.trim();
  if(raw.length<2){scentAC.classList.remove("open");scentAC.innerHTML="";return}
- showACHits(localACHits(raw));
  if(acController)acController.abort();
  acController=new AbortController();
  try{
@@ -559,7 +539,7 @@ async function acRender(){
   if(!response.ok)return;
   const data=await response.json();
   const remote=Array.isArray(data.suggestions)?data.suggestions:[];
-  const merged=[...remote,...localACHits(raw)],seen=new Set();
+  const merged=[...remote],seen=new Set();
   const unique=merged.filter(x=>{const k=((x.brand||"")+"|"+(x.name||"")).toLowerCase();if(seen.has(k))return false;seen.add(k);return true});
   unique.sort((a,b)=>acRank(a,raw)-acRank(b,raw)||String(a.name||"").localeCompare(String(b.name||"")));
   showACHits(unique.filter(x=>acRank(x,raw)<99).slice(0,8));
