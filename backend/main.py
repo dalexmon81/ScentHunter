@@ -517,10 +517,13 @@ def search_perfume(q: str):
     all_results: List[Dict[str, Any]] = []
     errors: Dict[str, str] = {}
 
-    # Ricerca mirata: eseguiamo gli store uno alla volta.
-    # I test /test-store dimostrano che gli scraper singoli funzionano;
-    # evitiamo quindi la concorrenza che su Render può saturare memoria/risorse.
-    for store in STORES:
+    # Ricerca stabile: interroghiamo solo gli store verificati come
+    # rispondenti singolarmente, così /search restituisce i risultati
+    # senza restare bloccato dagli scraper lenti.
+    # STORES resta invariato per autocomplete e resto dell'app.
+    SEARCH_STORES = ["deloox", "notino", "parfumcity"]
+
+    for store in SEARCH_STORES:
         try:
             store_results = run_store(store, query)
             all_results.extend(store_results)
