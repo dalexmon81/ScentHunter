@@ -8,7 +8,7 @@ import json
 import os
 import re
 import traceback
-from concurrent.futures import ThreadPoolExecutor, as_completed, TimeoutError
+from concurrent.futures import ThreadPoolExecutor, as_completed, TimeoutError, wait
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
 from urllib.parse import urlencode
@@ -504,13 +504,12 @@ def health():
 @app.get("/search")
 def search_perfume(q: str):
     """
-    Ricerca prezzi ricostruita da zero.
-
-    - usa TUTTI gli store, compreso Parfumzentrum;
-    - non modifica gli scraper;
-    - ogni store viene eseguito in parallelo;
-    - un singolo scraper rotto non annulla gli altri;
-    - risultati deduplicati e ordinati per prezzo.
+    /search mirato anti-blocco:
+    - scraper invariati
+    - esecuzione parallela
+    - deadline GLOBALE breve
+    - NON aspetta i thread lenti in shutdown
+    - restituisce subito i risultati già arrivati
     """
     query = str(q or "").strip()
 
@@ -524,8 +523,6 @@ def search_perfume(q: str):
 
     all_results: List[Dict[str, Any]] = []
     errors: Dict[str, str] = {}
-
-    # Tutti gli scraper configurati, senza esclusioni speciali.
     search_stores = list(STORES)
 
     executor = ThreadPoolExecutor(
@@ -537,38 +534,39 @@ def search_perfume(q: str):
         for store in search_stores
     }
 
-    # Il frontend diagnostico attuale interrompe a 25 s.
-    # Il backend restituisce ciò che ha raccolto prima di quel limite.
-    SEARCH_DEADLINE = 20.0
+    # Deve finire MOLTO prima del timeout frontend di 25 secondi.
+    SEARCH_DEADLINE = 8.0
 
     try:
-        for future in as_completed(
-            futures,
+        done, not_done = wait(
+            futures.keys(),
             timeout=SEARCH_DEADLINE,
-        ):
-            store = futures[future]
+        )
 
+        for future in done:
+            store = futures[future]
             try:
                 store_results = future.result()
-
                 if store_results:
                     all_results.extend(store_results)
-
             except Exception as error:
                 errors[store] = (
                     f"{type(error).__name__}: {error}"
                 )
                 traceback.print_exc()
 
-    except TimeoutError:
-        for future, store in futures.items():
-            if not future.done():
-                errors[store] = (
-                    f"Timeout: oltre {SEARCH_DEADLINE:.0f}s"
-                )
-                future.cancel()
+        # Questi scraper non devono più trattenere /search.
+        for future in not_done:
+            store = futures[future]
+            errors[store] = (
+                f"Timeout: oltre {SEARCH_DEADLINE:.0f}s"
+            )
+            future.cancel()
 
     finally:
+        # FONDAMENTALE:
+        # wait=False evita che FastAPI resti appeso aspettando
+        # scraper/thread che non hanno terminato.
         executor.shutdown(
             wait=False,
             cancel_futures=True,
