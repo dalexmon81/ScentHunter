@@ -529,13 +529,26 @@ def search_perfume(q: str):
         if store != "parfumzentrum"
     ]
 
-    for store in search_stores:
-        try:
-            store_results = run_store(store, query)
-            all_results.extend(store_results)
-        except Exception as error:
-            errors[store] = f"{type(error).__name__}: {error}"
-            traceback.print_exc()
+    # Esegue gli scraper in parallelo.
+    # In questo modo uno store lento non costringe /search
+    # ad aspettare la somma dei tempi di tutti i negozi.
+    max_workers = min(len(search_stores), 7)
+
+    with ThreadPoolExecutor(max_workers=max_workers) as executor:
+        futures = {
+            executor.submit(run_store, store, query): store
+            for store in search_stores
+        }
+
+        for future in as_completed(futures):
+            store = futures[future]
+
+            try:
+                store_results = future.result()
+                all_results.extend(store_results)
+            except Exception as error:
+                errors[store] = f"{type(error).__name__}: {error}"
+                traceback.print_exc()
 
     results = unique_results(all_results)
     results = sort_by_price(results)
