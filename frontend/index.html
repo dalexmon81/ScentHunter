@@ -483,41 +483,69 @@ async function fetchJSONWithTimeout(url,ms=25000){
  const timer=setTimeout(()=>controller.abort(),ms);
  try{
   const response=await fetch(url,{signal:controller.signal,headers:{"Accept":"application/json"}});
-  if(!response.ok)throw new Error("HTTP "+response.status);
-  return await response.json();
+  const raw=await response.text();
+  let data=null;
+  try{data=raw?JSON.parse(raw):null}catch(_){data=null}
+  if(!response.ok){
+   const err=new Error("HTTP "+response.status+" "+response.statusText);
+   err.status=response.status;err.url=url;err.raw=raw;throw err;
+  }
+  if(data===null){
+   const err=new Error("Risposta non JSON dal server");
+   err.url=url;err.raw=raw;throw err;
+  }
+  return data;
+ }catch(err){
+  if(err&&err.name==="AbortError"){
+   const e=new Error("TIMEOUT dopo "+ms+" ms");e.url=url;throw e;
+  }
+  throw err;
  }finally{clearTimeout(timer)}
 }
 
 async function searchPerfume(){
- const q=queryInput.value.trim();if(!q){statusBox.textContent="Scrivi il nome di un profumo.";resultsBox.innerHTML="";errorsBox.innerHTML="";return}
+ const q=queryInput.value.trim();
+ if(!q){statusBox.textContent="Scrivi il nome di un profumo.";resultsBox.innerHTML="";errorsBox.innerHTML="";return}
  searchButton.disabled=true;searchButton.textContent="Cerco…";statusBox.textContent="Ricerca in corso…";resultsBox.innerHTML="";errorsBox.innerHTML="";document.getElementById("searchOutput").scrollIntoView({behavior:"smooth",block:"start"});
  try{
   const queries=[q];
   if(selectedSearchBrand){
-    const full=(selectedSearchBrand+" "+q).trim();
-    if(full.toLowerCase()!==q.toLowerCase())queries.push(full);
+   const full=(selectedSearchBrand+" "+q).trim();
+   if(full.toLowerCase()!==q.toLowerCase())queries.push(full);
   }
   const payloads=[];
+  const failures=[];
   for(const term of queries){
-    try{
-      const payload=await fetchJSONWithTimeout(backend()+"/search?q="+encodeURIComponent(term),25000);
-      payloads.push(payload);
-    }catch(err){
-      console.warn("Ricerca fallita per",term,err);
-    }
+   const url=backend()+"/search?q="+encodeURIComponent(term);
+   try{
+    const payload=await fetchJSONWithTimeout(url,25000);
+    payloads.push(payload);
+   }catch(err){
+    console.error("DIAGNOSTICA /search",term,url,err);
+    failures.push({term,url,message:(err&&err.message)||String(err),raw:(err&&err.raw)||""});
+   }
   }
-  if(!payloads.length)throw new Error("Nessuna risposta valida dal server");
+  if(!payloads.length){
+   const f=failures[0]||{};
+   statusBox.textContent="ERRORE RICERCA: "+(f.message||"Nessuna risposta valida dal server");
+   errorsBox.innerHTML="<b>Diagnostica</b><br>Query: "+esc(f.term||q)+"<br>URL: "+esc(f.url||backend()+"/search")+(f.raw?"<br>Risposta server: "+esc(String(f.raw).slice(0,700)):"");
+   return;
+  }
   const data={results:[],comparisons:[],errors:{}};
   payloads.forEach(d=>{
-    if(Array.isArray(d.results))data.results.push(...d.results);
-    if(Array.isArray(d.comparisons))data.comparisons.push(...d.comparisons);
-    if(d.errors&&typeof d.errors==="object")Object.assign(data.errors,d.errors);
+   if(Array.isArray(d.results))data.results.push(...d.results);
+   if(Array.isArray(d.comparisons))data.comparisons.push(...d.comparisons);
+   if(d.errors&&typeof d.errors==="object")Object.assign(data.errors,d.errors);
   });
   const groups=shGroupData(data);showProducts(groups);
   refreshWishlistFromResults(groups.flatMap(g=>g.offers.map(o=>({name:g.name||"",brand:g.brand||"",price:shPrice(o),price_value:o.price_value,store:o.store||"",url:o.url||""}))));
   if(data.errors&&Object.keys(data.errors).length)errorsBox.innerHTML="Alcuni negozi non hanno risposto: "+Object.keys(data.errors).map(esc).join(", ")+".";
- }catch(e){console.error(e);statusBox.textContent="Impossibile completare la ricerca."}
- finally{searchButton.disabled=false;searchButton.textContent="Cerca"}
+  if(failures.length)errorsBox.innerHTML+=(errorsBox.innerHTML?"<br>":"")+"Diagnostica: "+failures.map(f=>esc(f.term+" → "+f.message)).join(" | ");
+ }catch(e){
+  console.error(e);
+  statusBox.textContent="ERRORE JS: "+((e&&e.message)||String(e));
+  errorsBox.innerHTML="<b>Diagnostica JavaScript</b><br>"+esc((e&&e.stack)||String(e));
+ }finally{searchButton.disabled=false;searchButton.textContent="Cerca"}
 }
 
 let selectedSearchTerm="";
