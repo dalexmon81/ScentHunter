@@ -103,6 +103,12 @@ IGNORED_WORDS = {
     "ml",
     "for",
     "by",
+    "him",
+    "her",
+    "men",
+    "women",
+    "homme",
+    "femme",
 }
 
 
@@ -293,6 +299,15 @@ def run_store(
 
             product = dict(item)
             product.setdefault("store", store)
+
+            # Adapter: gli scraper possono chiamare il nome in modi diversi.
+            if not product.get("name"):
+                product["name"] = (
+                    product.get("title")
+                    or product.get("product_name")
+                    or product.get("product")
+                    or ""
+                )
 
             key = (
                 str(product.get("url", "")).lower(),
