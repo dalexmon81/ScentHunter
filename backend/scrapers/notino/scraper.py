@@ -84,7 +84,12 @@ def _is_product_url(url):
         "/promotions",
     )
 
-    return not any(part in low for part in blocked)
+    if any(part in low for part in blocked):
+        return False
+
+    # Esclude home/category/wrapper links: servono almeno due segmenti reali.
+    path = product_url_path = url.split("notino.fr", 1)[-1].split("?", 1)[0].strip("/")
+    return len([p for p in path.split("/") if p]) >= 2
 
 
 def search(query):
@@ -128,11 +133,22 @@ def search(query):
         if product_url in seen:
             continue
 
-        # Prima usiamo il testo del link: su Notino spesso contiene
-        # l'intera card prodotto.
+        # Il link deve rappresentare il prodotto stesso.
+        # Non accettiamo wrapper della pagina di ricerca ("Résultat de la recherche...",
+        # "Nombre de produits 50", filtri, categorie, ecc.).
         link_text = _clean(link.get_text(" ", strip=True))
+        label = _clean(link.get("title") or link.get("aria-label") or "")
 
-        if not _matches(link_text, query):
+        candidate_name = label or link_text
+        candidate_low = candidate_name.lower()
+
+        if (
+            not candidate_name
+            or not _matches(candidate_name, query)
+            or "résultat de la recherche" in candidate_low
+            or "resultat de la recherche" in candidate_low
+            or "nombre de produits" in candidate_low
+        ):
             continue
 
         text = link_text
@@ -176,11 +192,7 @@ def search(query):
 
         # Il testo del link è la fonte più sicura perché appartiene
         # esattamente allo stesso URL prodotto.
-        candidate = _clean(
-            link.get("title")
-            or link.get("aria-label")
-            or link_text
-        )
+        candidate = candidate_name
 
         if candidate and _matches(candidate, query):
             name = candidate
