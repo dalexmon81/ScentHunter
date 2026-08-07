@@ -128,10 +128,27 @@ def _looks_like_product_url(url: str) -> bool:
     if first_segment in PRODUCT_PATH_EXCLUSIONS:
         return False
 
-    if "search.asp" in path:
+    if path in {"", "search.asp"}:
         return False
 
-    return len(path.split("/")) >= 2
+    if any(
+        part in path
+        for part in (
+            "/search",
+            "/category",
+            "/categories",
+            "/brands",
+            "/brand/",
+            "/basket",
+            "/cart",
+            "/login",
+            "/account",
+            "/help",
+        )
+    ):
+        return False
+
+    return True
 
 
 def _extract_prices(text: str) -> list[str]:
@@ -172,13 +189,13 @@ def _is_stock_text(text: str) -> bool:
 def _candidate_container(anchor) -> Any:
     node = anchor
 
-    for _ in range(6):
+    for _ in range(8):
         if not node:
             break
 
         text = _clean(node.get_text(" ", strip=True))
 
-        if len(text) >= 20 and (_extract_prices(text) or _is_stock_text(text)):
+        if 20 <= len(text) <= 1200 and _extract_prices(text):
             return node
 
         node = getattr(node, "parent", None)
@@ -190,8 +207,22 @@ def _name_from_container(container, fallback: str) -> str:
     if container is None:
         return fallback
 
-    for selector in ("h1", "h2", "h3", "h4"):
-        element = container.select_one(selector)
+    selectors = (
+        "h1",
+        "h2",
+        "h3",
+        "h4",
+        "[class*='name']",
+        "[class*='title']",
+        "[data-testid*='name']",
+        "[data-testid*='title']",
+    )
+
+    for selector in selectors:
+        try:
+            element = container.select_one(selector)
+        except Exception:
+            element = None
 
         if element:
             text = _clean(element.get_text(" ", strip=True))
@@ -307,16 +338,19 @@ def _results_from_json_ld(soup: BeautifulSoup) -> list[dict[str, str]]:
 def _results_from_html(html: str, query: str) -> list[dict[str, str]]:
     soup = BeautifulSoup(html, "html.parser")
     results: list[dict[str, str]] = []
-    seen: set[str] = set()
+    seen: set[tuple[str, str]] = set()
 
     for item in _results_from_json_ld(soup):
-        results.append(item)
-        seen.add(item["url"])
+        key = (item["url"], item["price"])
+
+        if key not in seen:
+            seen.add(key)
+            results.append(item)
 
     for anchor in soup.find_all("a", href=True):
         url = _normalise_url(anchor.get("href", ""))
 
-        if not url or url in seen or not _looks_like_product_url(url):
+        if not url or not _looks_like_product_url(url):
             continue
 
         container = _candidate_container(anchor)
@@ -325,16 +359,26 @@ def _results_from_html(html: str, query: str) -> list[dict[str, str]]:
             continue
 
         text = _clean(container.get_text(" ", strip=True))
-
-        if len(text) > 2500:
-            continue
-
         prices = _extract_prices(text)
 
         if not prices:
-            continue
+            parent = anchor.parent
+            parent_text = _clean(parent.get_text(" ", strip=True)) if parent else ""
+            prices = _extract_prices(parent_text)
 
-        name = _name_from_container(container, _clean(query))
+            if not prices:
+                continue
+
+            text = parent_text
+
+        name = _name_from_container(
+            container,
+            _clean(anchor.get_text(" ", strip=True)),
+        )
+
+        if not name or len(name) > 300:
+            name = _clean(query)
+
         low = text.lower()
         availability = ""
 
@@ -345,15 +389,21 @@ def _results_from_html(html: str, query: str) -> list[dict[str, str]]:
         elif "disponible" in low:
             availability = "Disponible"
 
-        results.append({
+        item = {
             "store": STORE,
             "name": name,
             "price": prices[0],
             "url": url,
             "availability": availability,
-        })
+        }
 
-        seen.add(url)
+        key = (url, prices[0])
+
+        if key in seen:
+            continue
+
+        seen.add(key)
+        results.append(item)
 
         if len(results) >= 50:
             break
@@ -444,20 +494,55 @@ def _search_with_playwright(query: str) -> list[dict[str, str]]:
             )
 
             if response is not None and response.status == 403:
-                browser.close()
                 LOGGER.warning("Notino returned HTTP 403 to Playwright")
+                browser.close()
                 return []
 
             try:
                 page.wait_for_load_state(
                     "networkidle",
-                    timeout=min(DEFAULT_TIMEOUT_MS, 15000),
+                    timeout=10000,
                 )
             except PlaywrightTimeoutError:
                 pass
 
-            page.wait_for_timeout(1500)
+            page.wait_for_timeout(3000)
+
             html = page.content()
+            title = page.title()
+            current_url = page.url
+            body_text = _clean(page.locator("body").inner_text(timeout=10000))
+
+            LOGGER.warning("NOTINO URL REQUESTED: %s", url)
+            LOGGER.warning("NOTINO FINAL URL: %s", current_url)
+            LOGGER.warning("NOTINO TITLE: %s", title)
+            LOGGER.warning("NOTINO BODY PREVIEW: %s", body_text[:1500])
+
+            try:
+                with open("/tmp/notino-debug.html", "w", encoding="utf-8") as file:
+                    file.write(html)
+            except OSError:
+                pass
+
+            blocked_terms = (
+                "access denied",
+                "forbidden",
+                "captcha",
+                "verify you are human",
+                "robot",
+                "too many requests",
+                "accès refusé",
+                "activité inhabituelle",
+            )
+
+            if any(term in body_text.lower() for term in blocked_terms):
+                LOGGER.warning(
+                    "Notino anti-bot page detected: %s",
+                    body_text[:500],
+                )
+                browser.close()
+                return []
+
             browser.close()
 
     except PlaywrightTimeoutError as exc:
