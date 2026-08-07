@@ -1,8 +1,7 @@
-import json
 import re
 import requests
 from bs4 import BeautifulSoup
-from urllib.parse import quote_plus, urljoin, urlparse
+from urllib.parse import quote_plus, urljoin
 
 STORE = "Notino"
 BASE_URL = "https://www.notino.fr"
@@ -34,80 +33,60 @@ def _matches(text, query):
     return all(word in text for word in _words(query))
 
 
-def _format_price(value):
-    if value is None:
-        return ""
-
-    match = re.search(r"(\d{1,4}(?:[.,]\d{1,2})?)", _clean(value))
-    if not match:
-        return ""
-
-    try:
-        number = float(match.group(1).replace(",", "."))
-    except ValueError:
-        return ""
-
-    if number <= 0:
-        return ""
-
-    return f"{number:.2f}".replace(".", ",") + "€"
-
-
 def _price(text):
-    matches = list(PRICE_RE.finditer(text or ""))
+    text = _clean(text)
+
+    if not text:
+        return ""
+
+    # 1. Notino: "Prix actuel 37,50 €"
+    current = re.search(
+        r"prix\\s+actuel\\s+(\\d{1,4}[.,]\\d{2})\\s*€",
+        text,
+        re.I,
+    )
+    if current:
+        return current.group(1).replace(".", ",") + "€"
+
+    # 2. Notino: "En stock | 37,50 € / 100 ml"
+    stock = re.search(
+        r"en\\s+stock.{0,80}?(\\d{1,4}[.,]\\d{2})\\s*€",
+        text,
+        re.I,
+    )
+    if stock:
+        return stock.group(1).replace(".", ",") + "€"
+
+    # 3. Evita che lo storico "Dernier prix le plus bas"
+    # venga scelto come prezzo del prodotto.
+    cleaned = re.sub(
+        r"dernier\\s+prix\\s+le\\s+plus\\s+bas\\s+"
+        r"\\d{1,4}[.,]\\d{2}\\s*€",
+        "",
+        text,
+        flags=re.I,
+    )
+
+    matches = list(PRICE_RE.finditer(cleaned))
 
     if not matches:
         return ""
 
+    # Manteniamo il comportamento dello scraper originale.
     match = matches[-1]
     value = match.group(1) or match.group(2)
 
     return value.replace(".", ",") + "€"
 
 
-def _looks_like_product_url(url):
-    parsed = urlparse(url)
-
-    if parsed.netloc.lower() not in ("www.notino.fr", "notino.fr"):
-        return False
-
-    parts = [part for part in parsed.path.split("/") if part]
-
-    # Le pagine prodotto Notino usate dallo scraper hanno normalmente:
-    # /marca/prodotto/
-    if len(parts) < 2:
-        return False
-
-    low = parsed.path.lower()
-
-    if any(
-        bad in low
-        for bad in (
-            "/search",
-            "search.asp",
-            "/panier",
-            "/cart",
-            "/login",
-            "/account",
-            "/contact",
-            "/livraison",
-            "/conditions",
-            "/magazine",
-            "/marques/",
-            "/parfums/",
-            "/cosmetiques/",
-        )
-    ):
-        return False
-
-    return True
-
-
-def _search_page(session, query):
+def _search_page(query):
     urls = [
         BASE_URL + "/search.asp?exps=" + quote_plus(query),
         BASE_URL + "/search?query=" + quote_plus(query),
     ]
+
+    session = requests.Session()
+    session.headers.update(HEADERS)
 
     for url in urls:
         try:
@@ -125,207 +104,16 @@ def _search_page(session, query):
             yield response.text
 
 
-def _json_ld_products(soup):
-    products = []
-
-    for script in soup.find_all("script", type="application/ld+json"):
-        raw = script.string or script.get_text()
-
-        if not raw:
-            continue
-
-        try:
-            data = json.loads(raw)
-        except (TypeError, ValueError):
-            continue
-
-        stack = data if isinstance(data, list) else [data]
-
-        while stack:
-            item = stack.pop()
-
-            if isinstance(item, list):
-                stack.extend(item)
-                continue
-
-            if not isinstance(item, dict):
-                continue
-
-            graph = item.get("@graph")
-            if isinstance(graph, list):
-                stack.extend(graph)
-
-            item_type = item.get("@type", "")
-            types = item_type if isinstance(item_type, list) else [item_type]
-
-            if "Product" in types:
-                products.append(item)
-
-    return products
-
-
-def _offer_data(offers):
-    if isinstance(offers, list):
-        offer_list = offers
-    elif isinstance(offers, dict):
-        offer_list = [offers]
-    else:
-        return "", ""
-
-    for offer in offer_list:
-        if not isinstance(offer, dict):
-            continue
-
-        availability = _clean(offer.get("availability")).lower()
-
-        # Non restituiamo prodotti dichiarati non disponibili.
-        if any(
-            term in availability
-            for term in ("outofstock", "soldout", "discontinued")
-        ):
-            continue
-
-        price = (
-            _format_price(offer.get("price"))
-            or _format_price(offer.get("lowPrice"))
-        )
-
-        if price:
-            return price, availability
-
-    return "", ""
-
-
-def _product_details(session, product_url, query):
-    try:
-        response = session.get(
-            product_url,
-            timeout=15,
-            allow_redirects=True,
-        )
-        response.raise_for_status()
-    except requests.RequestException as error:
-        print("NOTINO PRODUCT ERROR:", error)
-        return None
-
-    final_url = response.url.split("?")[0]
-
-    if not _looks_like_product_url(final_url):
-        return None
-
-    soup = BeautifulSoup(response.text, "html.parser")
-    page_text = _clean(soup.get_text(" ", strip=True))
-    low = page_text.lower()
-
-    # Se la pagina dichiara chiaramente il prodotto non disponibile,
-    # non lo inviamo a ScentHunter.
-    if any(
-        term in low
-        for term in (
-            "rupture de stock",
-            "en rupture",
-            "actuellement indisponible",
-            "produit indisponible",
-        )
-    ):
-        return None
-
-    name = ""
-    price = ""
-
-    # 1) Fonte preferita: dati strutturati della PAGINA PRODOTTO.
-    # Qui prezzo, nome e URL appartengono allo stesso prodotto.
-    for product in _json_ld_products(soup):
-        candidate_name = _clean(product.get("name"))
-
-        brand = product.get("brand")
-        if isinstance(brand, dict):
-            brand = _clean(brand.get("name"))
-        else:
-            brand = _clean(brand)
-
-        match_text = _clean(brand + " " + candidate_name)
-
-        if not _matches(match_text, query):
-            continue
-
-        candidate_price, _ = _offer_data(product.get("offers"))
-
-        if candidate_price:
-            name = candidate_name
-            price = candidate_price
-            break
-
-    # 2) Fallback: nome reale dalla pagina.
-    if not name:
-        h1 = soup.find("h1")
-        if h1:
-            candidate = _clean(h1.get_text(" ", strip=True))
-            if _matches(candidate + " " + page_text[:1500], query):
-                name = candidate
-
-    if not name:
-        title = soup.find("title")
-        if title:
-            candidate = _clean(title.get_text(" ", strip=True)).split("|")[0]
-            if _matches(candidate, query):
-                name = candidate
-
-    if not name:
-        return None
-
-    # La query deve corrispondere al prodotto vero, non soltanto
-    # a testo generico della pagina.
-    if not _matches(name + " " + page_text[:1200], query):
-        return None
-
-    # 3) Fallback prezzo: scegliamo SOLO indicatori di prezzo attuale.
-    # Non usiamo più "_price(page_text)", che poteva prendere
-    # "Dernier prix le plus bas" o altri prezzi non correnti.
-    if not price:
-        current = re.search(
-            r"prix\s+actuel\s+(\d{1,4}[.,]\d{2})\s*€",
-            page_text,
-            re.I,
-        )
-        if current:
-            price = _format_price(current.group(1))
-
-    if not price:
-        stock_price = re.search(
-            r"en\s+stock\s*[|:]?\s*(\d{1,4}[.,]\d{2})\s*€",
-            page_text,
-            re.I,
-        )
-        if stock_price:
-            price = _format_price(stock_price.group(1))
-
-    if not price:
-        return None
-
-    return {
-        "store": STORE,
-        "name": name,
-        "price": price,
-        "url": final_url,
-    }
-
-
 def search(query):
     query = _clean(query)
 
     if not query:
         return []
 
-    session = requests.Session()
-    session.headers.update(HEADERS)
-
     results = []
     seen = set()
 
-    # Manteniamo la ricerca dello scraper funzionante.
-    # La card serve soltanto per trovare URL candidati.
-    for html in _search_page(session, query):
+    for html in _search_page(query):
         soup = BeautifulSoup(html, "html.parser")
 
         for link in soup.find_all("a", href=True):
@@ -336,7 +124,29 @@ def search(query):
 
             product_url = urljoin(BASE_URL, href).split("?")[0]
 
-            if not _looks_like_product_url(product_url):
+            if "notino.fr" not in product_url.lower():
+                continue
+
+            path = product_url.replace(BASE_URL, "").strip("/").lower()
+
+            if not path:
+                continue
+
+            if any(
+                bad in path
+                for bad in (
+                    "search.asp",
+                    "search/",
+                    "panier",
+                    "cart",
+                    "login",
+                    "account",
+                    "contact",
+                    "livraison",
+                    "conditions",
+                    "magazine",
+                )
+            ):
                 continue
 
             if product_url in seen:
@@ -345,8 +155,9 @@ def search(query):
             node = link
             card = None
 
-            # Logica originale funzionante:
-            # risale dalla voce prodotto fino alla card con query + prezzo.
+            # Stessa logica di ParfumCity/PerfumeMarket:
+            # risale dalla voce prodotto fino alla card che contiene
+            # query + prezzo.
             for _ in range(8):
                 if node is None:
                     break
@@ -362,18 +173,59 @@ def search(query):
             if card is None:
                 continue
 
-            # Segniamo l'URL prima della verifica per non richiederlo
-            # più volte se la pagina ricerca contiene link duplicati.
-            seen.add(product_url)
+            text = _clean(card.get_text(" ", strip=True))
 
-            # NOVITÀ: nome/prezzo/disponibilità arrivano dalla pagina
-            # prodotto reale, non dalla card di ricerca.
-            details = _product_details(session, product_url, query)
+            name = ""
 
-            if not details:
+            for tag in card.find_all(["h1", "h2", "h3", "h4"]):
+                candidate = _clean(tag.get_text(" ", strip=True))
+
+                if candidate and _matches(candidate, query):
+                    name = candidate
+                    break
+
+            if not name:
+                candidate = _clean(
+                    link.get("title")
+                    or link.get("aria-label")
+                    or link.get_text(" ", strip=True)
+                )
+
+                if candidate and _matches(candidate, query):
+                    name = candidate
+
+            if not name:
+                # Alcune card Notino hanno il nome separato dal link:
+                # usiamo il testo della card soltanto se contiene la query.
+                for element in card.find_all(["span", "div", "p"]):
+                    candidate = _clean(
+                        element.get_text(" ", strip=True)
+                    )
+
+                    if (
+                        candidate
+                        and len(candidate) <= 250
+                        and _matches(candidate, query)
+                    ):
+                        name = candidate
+                        break
+
+            if not name:
                 continue
 
-            results.append(details)
+            price = _price(text)
+
+            if not price:
+                continue
+
+            seen.add(product_url)
+
+            results.append({
+                "store": STORE,
+                "name": name,
+                "price": price,
+                "url": product_url,
+            })
 
             if len(results) >= 10:
                 return results
