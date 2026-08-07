@@ -1,7 +1,8 @@
 import re
+from urllib.parse import quote_plus, urljoin
+
 import requests
 from bs4 import BeautifulSoup
-from urllib.parse import quote_plus, urljoin
 
 STORE = "Notino"
 BASE_URL = "https://www.notino.fr/"
@@ -17,147 +18,104 @@ HEADERS = {
 }
 
 OUT_OF_STOCK = (
+    "actuellement en rupture de stock",
     "rupture de stock",
     "en rupture",
     "indisponible",
-    "temporairement indisponible",
     "épuisé",
     "epuise",
     "out of stock",
+    "sold out",
 )
 
 
-def _clean(s):
-    return re.sub(r"\s+", " ", str(s or "")).strip()
+def _clean(value):
+    return re.sub(r"\s+", " ", str(value or "")).strip()
+
+
+def _tokens(value):
+    return re.findall(r"[a-z0-9]+", _clean(value).lower())
+
+
+def _matches(text, query):
+    haystack = set(_tokens(text))
+    wanted = [x for x in _tokens(query) if len(x) >= 2]
+    return bool(wanted) and all(x in haystack for x in wanted)
 
 
 def _price(text):
+    text = _clean(text)
+
+    # Evita di trasformare "Prix minimal 25,50 €" in offerta corrente.
+    if re.search(r"prix\s+minimal", text, re.I):
+        return ""
+
     m = re.search(
         r"(?:de\s+)?(\d{1,4}[,.]\d{2})\s*€",
-        _clean(text),
+        text,
         re.I,
     )
     return (m.group(1).replace(".", ",") + "€") if m else ""
 
 
-def _is_out_of_stock(text):
+def _out_of_stock(text):
     low = _clean(text).lower()
     return any(marker in low for marker in OUT_OF_STOCK)
-
-
-def _valid_product_url(url):
-    low = _clean(url).lower()
-
-    if not low.startswith("https://www.notino.fr/"):
-        return False
-
-    blocked = (
-        "/search.asp",
-        "/panier",
-        "/cart",
-        "/wishlist",
-        "/mynotino",
-        "/livraison",
-        "/contact",
-        "/conditions",
-        "/magazine",
-    )
-
-    return not any(part in low for part in blocked)
-
-
-def _product_available(product_url):
-    try:
-        r = requests.get(
-            product_url,
-            headers=HEADERS,
-            timeout=8,
-            allow_redirects=True,
-        )
-
-        if r.status_code != 200:
-            return None
-
-        text = _clean(
-            BeautifulSoup(r.text, "html.parser").get_text(" ", strip=True)
-        )
-
-        if _is_out_of_stock(text):
-            return False
-
-        return True
-
-    except requests.RequestException:
-        return None
 
 
 def _direct(query):
     url = SEARCH_URL + quote_plus(query)
 
     try:
-        r = requests.get(
+        response = requests.get(
             url,
             headers=HEADERS,
             timeout=12,
             allow_redirects=True,
         )
-
-        if r.status_code != 200:
+        if response.status_code != 200:
             return []
-
     except requests.RequestException:
         return []
 
-    soup = BeautifulSoup(r.text, "html.parser")
-    words = [w.lower() for w in query.split() if len(w) >= 2]
-
-    out = []
+    soup = BeautifulSoup(response.text, "html.parser")
+    results = []
     seen = set()
 
     for a in soup.find_all("a", href=True):
         href = _clean(a.get("href"))
-
         if not href:
             continue
 
         product_url = urljoin(BASE_URL, href)
-
-        if not _valid_product_url(product_url):
+        if "notino.fr/" not in product_url.lower():
             continue
 
-        if product_url in seen:
-            continue
-
-        parent = a
+        node = a
+        card_text = ""
 
         for _ in range(7):
-            txt = _clean(parent.get_text(" ", strip=True))
-
-            if "€" in txt or _is_out_of_stock(txt):
+            card_text = _clean(node.get_text(" ", strip=True))
+            if (
+                "€" in card_text
+                or _out_of_stock(card_text)
+            ):
                 break
 
-            if parent.parent is None:
+            if node.parent is None:
                 break
+            node = node.parent
 
-            parent = parent.parent
-
-        txt = _clean(parent.get_text(" ", strip=True))
-        low = txt.lower()
-
-        if words and not all(w in low for w in words):
+        if not _matches(card_text, query):
             continue
 
-        if _is_out_of_stock(txt):
+        # Notino può mostrare il prodotto nella ricerca anche quando esaurito.
+        # In quel caso NON è un'offerta acquistabile.
+        if _out_of_stock(card_text):
             continue
 
-        price = _price(txt)
-
+        price = _price(card_text)
         if not price:
-            continue
-
-        availability = _product_available(product_url)
-
-        if availability is False:
             continue
 
         title = _clean(
@@ -166,111 +124,107 @@ def _direct(query):
             or a.get_text(" ", strip=True)
         )
 
-        if len(title) < 3:
-            title = query
+        if not title or not _matches(
+            f"{title} {card_text}",
+            query,
+        ):
+            continue
 
-        seen.add(product_url)
+        key = product_url.split("?")[0]
+        if key in seen:
+            continue
 
-        out.append({
+        seen.add(key)
+        results.append({
             "store": STORE,
             "name": title,
             "price": price,
-            "url": product_url,
+            "url": key,
         })
 
-        if len(out) >= 10:
+        if len(results) >= 10:
             break
 
-    return out
+    return results
 
 
 def _bing(query):
-    q = f'site:notino.fr "{query}"'
-    url = "https://www.bing.com/search?q=" + quote_plus(q)
+    # Mantiene il fallback che permetteva a Notino di comparire
+    # quando il datacenter veniva bloccato dal sito diretto.
+    search_url = (
+        "https://www.bing.com/search?q="
+        + quote_plus(f'site:notino.fr "{query}"')
+    )
 
     try:
-        r = requests.get(
-            url,
+        response = requests.get(
+            search_url,
             headers=HEADERS,
             timeout=15,
         )
-        r.raise_for_status()
-
-    except requests.RequestException as e:
-        print("NOTINO FALLBACK ERROR:", e)
+        response.raise_for_status()
+    except requests.RequestException as error:
+        print("NOTINO FALLBACK ERROR:", error)
         return []
 
-    soup = BeautifulSoup(r.text, "html.parser")
-    words = [w.lower() for w in query.split() if len(w) >= 2]
-
-    out = []
+    soup = BeautifulSoup(response.text, "html.parser")
+    results = []
     seen = set()
 
     for li in soup.select("li.b_algo"):
         a = li.select_one("h2 a")
-
         if not a:
             continue
 
         href = _clean(a.get("href"))
         title = _clean(a.get_text(" ", strip=True))
         snippet = _clean(li.get_text(" ", strip=True))
-        low = (title + " " + snippet).lower()
+        combined = f"{title} {snippet}"
 
-        if not _valid_product_url(href):
+        if "notino.fr" not in href.lower():
             continue
 
-        if words and not all(w in low for w in words):
+        if not _matches(combined, query):
             continue
 
-        if _is_out_of_stock(low):
+        # Se l'indice dice esplicitamente che è esaurito, non mostrarlo.
+        if _out_of_stock(combined):
             continue
 
+        # Non usare prezzi "minimal" / storici come offerte.
         price = _price(snippet)
-
         if not price:
             continue
 
-        if href in seen:
+        key = href.split("?")[0]
+        if key in seen:
             continue
 
-        availability = _product_available(href)
-
-        if availability is not True:
-            continue
-
-        seen.add(href)
-
-        out.append({
+        seen.add(key)
+        results.append({
             "store": STORE,
-            "name": title,
+            "name": title or query,
             "price": price,
-            "url": href,
+            "url": key,
         })
 
-        if len(out) >= 10:
+        if len(results) >= 10:
             break
 
-    return out
+    return results
 
 
 def search(query):
     query = _clean(query)
-
     if not query:
         return []
 
-    results = _direct(query)
-
-    if results:
-        return results
+    direct = _direct(query)
+    if direct:
+        return direct
 
     return _bing(query)
 
 
 if __name__ == "__main__":
-    items = search("Rasasi Hawas Ice")
-    print("RISULTATI:", len(items))
-
-    for item in items:
-        print(item)
+    print(search("Rasasi Hawas Ice"))
