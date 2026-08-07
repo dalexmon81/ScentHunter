@@ -1,3 +1,4 @@
+import json
 import re
 import requests
 from bs4 import BeautifulSoup
@@ -7,7 +8,11 @@ STORE = "Notino"
 BASE_URL = "https://www.notino.fr"
 
 HEADERS = {
-    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+    "User-Agent": (
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+        "AppleWebKit/537.36 (KHTML, like Gecko) "
+        "Chrome/124.0.0.0 Safari/537.36"
+    ),
     "Accept-Language": "fr-FR,fr;q=0.9,en;q=0.8",
 }
 
@@ -16,173 +21,493 @@ PRICE_RE = re.compile(
     re.I,
 )
 
-# Testi generici da non considerare nomi prodotto
-GENERIC_TITLES = [
+GENERIC_TITLES = (
     "résultat de la recherche",
+    "resultat de la recherche",
     "nombre de produits",
     "recherche",
-    "produits",
     "résultats",
-    "page",
+    "resultats",
+    "produits",
     "chargement",
     "loading",
-]
+)
+
+BAD_PATHS = (
+    "search.asp",
+    "search/",
+    "panier",
+    "cart",
+    "login",
+    "account",
+    "contact",
+    "livraison",
+    "conditions",
+    "magazine",
+)
+
+OUT_OF_STOCK_TEXTS = (
+    "rupture de stock",
+    "épuisé",
+    "epuise",
+    "indisponible",
+    "non disponible",
+    "out of stock",
+    "sold out",
+)
 
 
-def _clean(s):
-    return re.sub(r"\s+", " ", str(s or "")).strip()
+def _clean(value):
+    return re.sub(r"\s+", " ", str(value or "")).strip()
 
 
-def _words(s):
+def _norm(value):
+    value = _clean(value).lower()
+    value = (
+        value.replace("é", "e")
+        .replace("è", "e")
+        .replace("ê", "e")
+        .replace("ë", "e")
+        .replace("à", "a")
+        .replace("â", "a")
+        .replace("ä", "a")
+        .replace("î", "i")
+        .replace("ï", "i")
+        .replace("ô", "o")
+        .replace("ö", "o")
+        .replace("ù", "u")
+        .replace("û", "u")
+        .replace("ü", "u")
+        .replace("ç", "c")
+    )
+    value = re.sub(r"[^a-z0-9]+", " ", value)
+    return re.sub(r"\s+", " ", value).strip()
+
+
+def _words(value):
     return [
-        x
-        for x in re.findall(r"[a-z0-9]+", _clean(s).lower())
-        if len(x) > 1
+        word
+        for word in _norm(value).split()
+        if len(word) > 1
     ]
 
 
 def _matches(text, query):
-    text = _clean(text).lower()
-    return all(word in text for word in _words(query))
+    words = _words(query)
+    haystack = _norm(text)
+    return bool(words) and all(word in haystack for word in words)
 
 
 def _is_generic_title(title):
-    """
-    Scarta titoli che sembrano intestazioni/pagine di ricerca
-    invece che nomi prodotto reali.
-    """
-    t = _clean(title).lower()
-    return any(g in t for g in GENERIC_TITLES)
+    title_n = _norm(title)
+    return any(_norm(text) in title_n for text in GENERIC_TITLES)
 
 
-def _price(text):
-    matches = list(PRICE_RE.finditer(text or ""))
-
-    if not matches:
+def _format_price(value):
+    try:
+        number = float(str(value).replace(",", "."))
+    except (TypeError, ValueError):
         return ""
 
-    match = matches[-1]
-    value = match.group(1) or match.group(2)
+    if number <= 0:
+        return ""
 
-    return value.replace(".", ",") + "€"
-
-
-def _price_near_product(card, link, name):
-    """
-    Accetta il prezzo solo se è nello stesso piccolo sotto-blocco
-    che contiene il link/nome prodotto. Se per trovare il prezzo
-    dobbiamo arrivare a un contenitore con più prodotti/link,
-    il risultato è ambiguo e viene scartato.
-    """
-    node = link
-
-    for _ in range(5):
-        if node is None:
-            break
-
-        text = _clean(node.get_text(" ", strip=True))
-
-        if _price(text):
-            # Il blocco deve ancora riferirsi al prodotto corrente.
-            if name and not _matches(text, name):
-                return ""
-
-            # Se contiene più link Notino diversi, il prezzo può
-            # appartenere a un'altra card: non rischiamo.
-            urls = set()
-
-            for a in node.find_all("a", href=True):
-                href = _clean(a.get("href", ""))
-                url = urljoin(BASE_URL, href).split("?")[0]
-
-                if "notino.fr" in url.lower():
-                    path = url.replace(BASE_URL, "").strip("/").lower()
-
-                    if path and not any(
-                        bad in path
-                        for bad in (
-                            "search.asp",
-                            "search/",
-                            "panier",
-                            "cart",
-                            "login",
-                            "account",
-                            "contact",
-                            "livraison",
-                            "conditions",
-                            "magazine",
-                        )
-                    ):
-                        urls.add(url)
-
-            if len(urls) > 1:
-                return ""
-
-            return _price(text)
-
-        if node is card:
-            break
-
-        node = node.parent
-
-    return ""
+    return f"{number:.2f}".replace(".", ",") + "€"
 
 
-def _search_page(query):
+def _prices_from_text(text):
+    values = []
+
+    for match in PRICE_RE.finditer(text or ""):
+        raw = match.group(1) or match.group(2)
+
+        try:
+            number = float(raw.replace(",", "."))
+        except ValueError:
+            continue
+
+        if number > 0:
+            values.append(number)
+
+    return values
+
+
+def _session():
+    session = requests.Session()
+    session.headers.update(HEADERS)
+    return session
+
+
+def _get(session, url, timeout=15):
+    response = session.get(
+        url,
+        timeout=timeout,
+        allow_redirects=True,
+    )
+    response.raise_for_status()
+    return response
+
+
+def _valid_product_url(url):
+    if not url:
+        return False
+
+    lower = url.lower()
+
+    if "notino.fr" not in lower:
+        return False
+
+    path = lower.replace(BASE_URL, "").strip("/")
+
+    if not path:
+        return False
+
+    return not any(bad in path for bad in BAD_PATHS)
+
+
+def _search_pages(session, query):
     urls = [
         BASE_URL + "/search.asp?exps=" + quote_plus(query),
         BASE_URL + "/search?query=" + quote_plus(query),
     ]
 
-    session = requests.Session()
-    session.headers.update(HEADERS)
+    seen = set()
 
     for url in urls:
-        try:
-            response = session.get(
-                url,
-                timeout=15,
-                allow_redirects=True,
-            )
+        if url in seen:
+            continue
 
-            response.raise_for_status()
+        seen.add(url)
+
+        try:
+            response = _get(session, url)
         except requests.RequestException as error:
-            print("NOTINO ERROR:", error)
+            print("NOTINO SEARCH ERROR:", repr(error))
             continue
 
         if response.text:
             yield response.text
 
 
-def _find_smallest_container_with_price(link, query):
+def _candidate_urls(html, query):
     """
-    Trova il contenitore più piccolo (partendo dal link) che:
-    - contiene il link;
-    - contiene un prezzo;
-    - contiene testo che matcha la query.
-    Restituisce None se non esiste un blocco coerente.
+    La pagina di ricerca serve SOLO a trovare URL plausibili.
+    Nessun prezzo viene letto da qui.
     """
-    node = link
-    best = None
+    soup = BeautifulSoup(html, "html.parser")
+    ranked = []
+    seen = set()
 
-    for _ in range(8):
-        if node is None:
-            break
+    for link in soup.find_all("a", href=True):
+        href = _clean(link.get("href"))
 
-        text = _clean(node.get_text(" ", strip=True))
+        if not href:
+            continue
 
-        if _matches(text, query) and _price(text):
-            best = node
-            # Non break: continuiamo a salire per vedere se troviamo
-            # un contenitore ancora più piccolo in futuro.
-            # In pratica, l'ultimo "best" sarà il più piccolo.
-            # Ma qui saliamo dal link verso l'alto, quindi il primo
-            # che soddisfa è già il più piccolo. Possiamo fermarci.
-            break
+        url = urljoin(BASE_URL, href).split("#")[0].split("?")[0]
 
-        node = node.parent
+        if not _valid_product_url(url):
+            continue
 
-    return best
+        if url in seen:
+            continue
+
+        anchor_text = _clean(
+            " ".join(
+                filter(
+                    None,
+                    [
+                        link.get("title"),
+                        link.get("aria-label"),
+                        link.get_text(" ", strip=True),
+                    ],
+                )
+            )
+        )
+
+        url_text = url.replace("-", " ").replace("/", " ")
+
+        score = 0
+
+        if _matches(anchor_text, query):
+            score += 10
+
+        if _matches(url_text, query):
+            score += 6
+
+        # Un URL senza alcuna relazione con la query non ci interessa.
+        if score == 0:
+            continue
+
+        seen.add(url)
+        ranked.append((score, len(url), url))
+
+    ranked.sort(key=lambda row: (-row[0], row[1]))
+
+    return [row[2] for row in ranked[:12]]
+
+
+def _json_ld_objects(soup):
+    for script in soup.find_all(
+        "script",
+        attrs={"type": "application/ld+json"},
+    ):
+        raw = script.string or script.get_text()
+
+        if not raw:
+            continue
+
+        try:
+            data = json.loads(raw)
+        except (TypeError, ValueError, json.JSONDecodeError):
+            continue
+
+        stack = data if isinstance(data, list) else [data]
+
+        while stack:
+            item = stack.pop(0)
+
+            if isinstance(item, list):
+                stack.extend(item)
+                continue
+
+            if not isinstance(item, dict):
+                continue
+
+            graph = item.get("@graph")
+
+            if isinstance(graph, list):
+                stack.extend(graph)
+
+            yield item
+
+
+def _product_json_ld(soup, query):
+    """
+    Prima scelta: dati strutturati Product/Offer della pagina prodotto.
+    Qui nome e prezzo appartengono allo stesso oggetto.
+    """
+    candidates = []
+
+    for item in _json_ld_objects(soup):
+        item_type = item.get("@type", "")
+        types = item_type if isinstance(item_type, list) else [item_type]
+
+        if not any(str(t).lower() == "product" for t in types):
+            continue
+
+        name = _clean(item.get("name"))
+
+        if (
+            not name
+            or _is_generic_title(name)
+            or not _matches(name, query)
+        ):
+            continue
+
+        offers = item.get("offers")
+        offer_list = offers if isinstance(offers, list) else [offers]
+
+        for offer in offer_list:
+            if not isinstance(offer, dict):
+                continue
+
+            availability = _clean(offer.get("availability")).lower()
+
+            if any(
+                marker in availability
+                for marker in (
+                    "outofstock",
+                    "soldout",
+                    "discontinued",
+                )
+            ):
+                continue
+
+            raw_price = (
+                offer.get("price")
+                or offer.get("lowPrice")
+            )
+
+            price = _format_price(raw_price)
+
+            if not price:
+                continue
+
+            image = item.get("image") or ""
+
+            if isinstance(image, list):
+                image = image[0] if image else ""
+
+            return {
+                "name": name,
+                "price": price,
+                "image": _clean(image),
+            }
+
+    return None
+
+
+def _meta_name(soup):
+    selectors = (
+        ('meta[property="og:title"]', "content"),
+        ('meta[name="twitter:title"]', "content"),
+    )
+
+    for selector, attribute in selectors:
+        tag = soup.select_one(selector)
+
+        if tag:
+            value = _clean(tag.get(attribute))
+
+            if value:
+                # Rimuove il suffisso del sito, senza inventare il nome.
+                value = re.sub(
+                    r"\s*[\|\-–—]\s*notino.*$",
+                    "",
+                    value,
+                    flags=re.I,
+                ).strip()
+
+                if value:
+                    return value
+
+    h1 = soup.find("h1")
+
+    if h1:
+        return _clean(h1.get_text(" ", strip=True))
+
+    return ""
+
+
+def _meta_price(soup):
+    """
+    Fallback conservativo: solo meta/tag esplicitamente associati
+    al prezzo del prodotto. Mai il testo globale della pagina.
+    """
+    selectors = (
+        ('meta[property="product:price:amount"]', "content"),
+        ('meta[property="og:price:amount"]', "content"),
+        ('meta[itemprop="price"]', "content"),
+    )
+
+    for selector, attribute in selectors:
+        tag = soup.select_one(selector)
+
+        if not tag:
+            continue
+
+        price = _format_price(tag.get(attribute))
+
+        if price:
+            return price
+
+    price_nodes = soup.select('[itemprop="price"]')
+
+    for node in price_nodes:
+        raw = node.get("content") or node.get_text(" ", strip=True)
+        values = _prices_from_text(raw)
+
+        if values:
+            return _format_price(values[0])
+
+        price = _format_price(raw)
+
+        if price:
+            return price
+
+    return ""
+
+
+def _page_is_out_of_stock(soup):
+    text = _norm(soup.get_text(" ", strip=True))
+    return any(_norm(marker) in text for marker in OUT_OF_STOCK_TEXTS)
+
+
+def _extract_product_page(session, url, query):
+    """
+    Apre l'URL prodotto e verifica lì nome/prezzo.
+    Se non siamo sicuri, restituisce None.
+    """
+    try:
+        response = _get(session, url)
+    except requests.RequestException as error:
+        print("NOTINO PRODUCT ERROR:", repr(error), url)
+        return None
+
+    final_url = response.url.split("#")[0].split("?")[0]
+
+    if not _valid_product_url(final_url):
+        return None
+
+    soup = BeautifulSoup(response.text, "html.parser")
+
+    structured = _product_json_ld(soup, query)
+
+    if structured:
+        print(
+            "NOTINO VERIFIED PRODUCT:",
+            final_url,
+            "|",
+            structured["name"],
+            "|",
+            structured["price"],
+        )
+
+        return {
+            "store": STORE,
+            "name": structured["name"],
+            "price": structured["price"],
+            "url": final_url,
+            "image": structured.get("image", ""),
+            "available": True,
+            "stock_status": "in_stock",
+        }
+
+    # Se la pagina dichiara chiaramente indisponibilità, non inventiamo prezzo.
+    if _page_is_out_of_stock(soup):
+        print("NOTINO OUT OF STOCK:", final_url)
+        return None
+
+    name = _meta_name(soup)
+
+    if (
+        not name
+        or _is_generic_title(name)
+        or not _matches(name, query)
+    ):
+        return None
+
+    price = _meta_price(soup)
+
+    if not price:
+        print("NOTINO PRICE NOT VERIFIED:", final_url)
+        return None
+
+    image = ""
+    image_tag = soup.select_one('meta[property="og:image"]')
+
+    if image_tag:
+        image = _clean(image_tag.get("content"))
+
+    print(
+        "NOTINO VERIFIED PRODUCT:",
+        final_url,
+        "|",
+        name,
+        "|",
+        price,
+    )
+
+    return {
+        "store": STORE,
+        "name": name,
+        "price": price,
+        "url": final_url,
+        "image": image,
+        "available": True,
+        "stock_status": "in_stock",
+    }
 
 
 def search(query):
@@ -191,131 +516,46 @@ def search(query):
     if not query:
         return []
 
+    session = _session()
+
+    urls = []
+    seen_urls = set()
+
+    # 1) La ricerca trova soltanto URL candidati.
+    for html in _search_pages(session, query):
+        for url in _candidate_urls(html, query):
+            if url not in seen_urls:
+                seen_urls.add(url)
+                urls.append(url)
+
+    if not urls:
+        print("NOTINO NO PRODUCT URL:", query)
+        return []
+
+    # 2) Ogni candidato viene verificato sulla SUA pagina prodotto.
     results = []
-    seen = set()
+    seen_products = set()
 
-    for html in _search_page(query):
-        soup = BeautifulSoup(html, "html.parser")
+    for url in urls:
+        product = _extract_product_page(
+            session,
+            url,
+            query,
+        )
 
-        for link in soup.find_all("a", href=True):
-            href = _clean(link.get("href", ""))
+        if not product:
+            continue
 
-            if not href:
-                continue
+        key = product["url"].lower()
 
-            product_url = urljoin(BASE_URL, href).split("?")[0]
+        if key in seen_products:
+            continue
 
-            if "notino.fr" not in product_url.lower():
-                continue
+        seen_products.add(key)
+        results.append(product)
 
-            path = product_url.replace(BASE_URL, "").strip("/").lower()
-
-            if not path:
-                continue
-
-            if any(
-                bad in path
-                for bad in (
-                    "search.asp",
-                    "search/",
-                    "panier",
-                    "cart",
-                    "login",
-                    "account",
-                    "contact",
-                    "livraison",
-                    "conditions",
-                    "magazine",
-                )
-            ):
-                continue
-
-            if product_url in seen:
-                continue
-
-            # Trova il contenitore più piccolo coerente
-            card = _find_smallest_container_with_price(link, query)
-
-            if card is None:
-                continue
-
-            text = _clean(card.get_text(" ", strip=True))
-
-            # Estrazione del nome prodotto
-            name = ""
-
-            # Prima prova: heading reali dentro il blocco
-            for tag in card.find_all(["h1", "h2", "h3", "h4"]):
-                candidate = _clean(tag.get_text(" ", strip=True))
-
-                if candidate and _matches(candidate, query):
-                    if not _is_generic_title(candidate):
-                        name = candidate
-                        break
-
-            if not name:
-                candidate = _clean(
-                    link.get("title")
-                    or link.get("aria-label")
-                    or link.get_text(" ", strip=True)
-                )
-
-                if candidate and _matches(candidate, query):
-                    if not _is_generic_title(candidate):
-                        name = candidate
-
-            if not name:
-                # Alcune card Notino hanno il nome separato dal link:
-                # usiamo il testo della card soltanto se contiene la query.
-                for element in card.find_all(["span", "div", "p"]):
-                    candidate = _clean(
-                        element.get_text(" ", strip=True)
-                    )
-
-                    if (
-                        candidate
-                        and len(candidate) <= 250
-                        and _matches(candidate, query)
-                        and not _is_generic_title(candidate)
-                    ):
-                        name = candidate
-                        break
-
-            if not name:
-                continue
-
-            # Ultima difesa: se il nome sembra troppo generico, skip
-            if _is_generic_title(name):
-                continue
-
-            # Prezzo vincolato allo stesso sotto-blocco del prodotto.
-            # Se è ambiguo, Notino non restituisce l'offerta.
-            price = _price_near_product(card, link, name)
-
-            if not price:
-                print(
-                    "NOTINO SKIP AMBIGUOUS PRICE:",
-                    name,
-                    "|",
-                    product_url,
-                    flush=True,
-                )
-                continue
-
-            seen.add(product_url)
-
-            results.append({
-                "store": STORE,
-                "name": name,
-                "price": price,
-                "url": product_url,
-            })
-
-            if len(results) >= 10:
-                return results
-
-        if results:
-            return results
+        if len(results) >= 10:
+            break
 
     return results
 
