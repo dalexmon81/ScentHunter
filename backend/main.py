@@ -596,18 +596,47 @@ def product(name: str, brand: str = ""):
     offers: List[Dict[str, Any]] = []
 
     for product_data in data["results"]:
-        value = price_num(product_data.get("price"))
+    offer = dict(product_data)
 
-        if value is None:
-            continue
+    is_available = offer.get("available", True)
+    stock_status = offer.get("stock_status", "in_stock")
+    value = price_num(offer.get("price"))
 
-        offer = dict(product_data)
-        offer["price_value"] = value
+    # Manteniamo anche i prodotti esauriti
+    if is_available is False or stock_status == "out_of_stock":
+        offer["available"] = False
+        offer["stock_status"] = "out_of_stock"
+        offer["price_value"] = None
         offer["image"] = product_image(offer)
         offers.append(offer)
+        continue
 
-    offers.sort(key=lambda offer: offer["price_value"])
-    best_offer = offers[0] if offers else None
+    # Un risultato senza prezzo e senza stato stock valido
+    # non è un'offerta utilizzabile
+    if value is None:
+        continue
+
+    offer["available"] = True
+    offer["stock_status"] = "in_stock"
+    offer["price_value"] = value
+    offer["image"] = product_image(offer)
+    offers.append(offer)
+
+# Prima le offerte disponibili ordinate per prezzo,
+# poi quelle esaurite
+offers.sort(
+    key=lambda offer: (
+        offer.get("available") is False,
+        offer.get("price_value")
+        if offer.get("price_value") is not None
+        else float("inf"),
+    )
+)
+
+best_offer = next(
+    (offer for offer in offers if offer.get("available") is not False),
+    None,
+)
 
     history = update_price_history(
         name=name,
