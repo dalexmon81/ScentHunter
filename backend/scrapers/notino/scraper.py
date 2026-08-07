@@ -16,7 +16,6 @@ PRICE_RE = re.compile(
     re.I,
 )
 
-# Titoli generici di pagina/ricerca da scartare come nome prodotto
 GENERIC_TITLES = [
     "résultat de la recherche",
     "nombre de produits",
@@ -28,13 +27,17 @@ GENERIC_TITLES = [
     "loading",
 ]
 
-# Testi che indicano chiaramente indisponibilità / niente vendita attuale
 UNAVAILABLE_PATTERNS = [
-    "rupture de stock",   # actuellement en rupture de stock
-    "épuisé",             # produit épuisé
-    "non disponible",     # non disponible
-    "pas disponible",     # pas disponible
+    "rupture de stock",
+    "épuisé",
+    "non disponible",
+    "pas disponible",
 ]
+
+IGNORED_MATCH_WORDS = {
+    "eau", "de", "parfum", "perfume", "edp", "edt",
+    "spray", "ml", "pour", "homme", "femme",
+}
 
 def _clean(s):
     return re.sub(r"\s+", " ", str(s or "")).strip()
@@ -47,20 +50,26 @@ def _words(s):
     ]
 
 def _matches(text, query):
-    text = _clean(text).lower()
-    return all(word in text for word in _words(query))
+    text_tokens = set(_words(text))
+    query_tokens = {
+        word
+        for word in _words(query)
+        if word not in IGNORED_MATCH_WORDS
+    }
+
+    if not query_tokens:
+        query_tokens = set(_words(query))
+
+    if not query_tokens:
+        return False
+
+    return query_tokens.issubset(text_tokens)
 
 def _is_generic_title(title):
     t = _clean(title).lower()
     return any(g in t for g in GENERIC_TITLES)
 
 def _is_unavailable_block(text: str) -> bool:
-    """
-    True se il blocco di testo contiene segnali chiari
-    che il prodotto/variante è non disponibile.
-    Questo evita di usare prezzi da blocchi tipo
-    'Actuellement en rupture de stock / Prix minimal 25,50 €'.
-    """
     t = _clean(text).lower()
     return any(pattern in t for pattern in UNAVAILABLE_PATTERNS)
 
@@ -72,7 +81,6 @@ def _price(text):
 
     match = matches[-1]
     value = match.group(1) or match.group(2)
-
     return value.replace(".", ",") + "€"
 
 def _search_page(query):
@@ -91,7 +99,6 @@ def _search_page(query):
                 timeout=15,
                 allow_redirects=True,
             )
-
             response.raise_for_status()
         except requests.RequestException as error:
             print("NOTINO ERROR:", error)
@@ -151,9 +158,6 @@ def search(query):
             node = link
             card = None
 
-            # Stessa logica di ParfumCity/PerfumeMarket:
-            # risale dalla voce prodotto fino alla card che contiene
-            # query + prezzo.
             for _ in range(8):
                 if node is None:
                     break
@@ -171,15 +175,11 @@ def search(query):
 
             text = _clean(card.get_text(" ", strip=True))
 
-            # NOVITÀ: se il blocco/card indica chiaramente
-            # che il prodotto/variante è in rottura di stock / non disponibile,
-            # NON usiamo i prezzi presenti in questo blocco.
             if _is_unavailable_block(text):
                 continue
 
             name = ""
 
-            # 1) Heading nella card
             for tag in card.find_all(["h1", "h2", "h3", "h4"]):
                 candidate = _clean(tag.get_text(" ", strip=True))
 
@@ -188,7 +188,6 @@ def search(query):
                         name = candidate
                         break
 
-            # 2) Titolo/aria-label/testo del link
             if not name:
                 candidate = _clean(
                     link.get("title")
@@ -200,10 +199,7 @@ def search(query):
                     if not _is_generic_title(candidate):
                         name = candidate
 
-            # 3) Altri elementi testuali nella card
             if not name:
-                # Alcune card Notino hanno il nome separato dal link:
-                # usiamo il testo della card soltanto se contiene la query.
                 for element in card.find_all(["span", "div", "p"]):
                     candidate = _clean(
                         element.get_text(" ", strip=True)
@@ -227,7 +223,6 @@ def search(query):
                 continue
 
             seen.add(product_url)
-
             results.append(
                 {
                     "store": STORE,
