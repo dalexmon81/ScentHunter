@@ -67,6 +67,67 @@ def _price(text):
     return value.replace(".", ",") + "€"
 
 
+def _price_near_product(card, link, name):
+    """
+    Accetta il prezzo solo se è nello stesso piccolo sotto-blocco
+    che contiene il link/nome prodotto. Se per trovare il prezzo
+    dobbiamo arrivare a un contenitore con più prodotti/link,
+    il risultato è ambiguo e viene scartato.
+    """
+    node = link
+
+    for _ in range(5):
+        if node is None:
+            break
+
+        text = _clean(node.get_text(" ", strip=True))
+
+        if _price(text):
+            # Il blocco deve ancora riferirsi al prodotto corrente.
+            if name and not _matches(text, name):
+                return ""
+
+            # Se contiene più link Notino diversi, il prezzo può
+            # appartenere a un'altra card: non rischiamo.
+            urls = set()
+
+            for a in node.find_all("a", href=True):
+                href = _clean(a.get("href", ""))
+                url = urljoin(BASE_URL, href).split("?")[0]
+
+                if "notino.fr" in url.lower():
+                    path = url.replace(BASE_URL, "").strip("/").lower()
+
+                    if path and not any(
+                        bad in path
+                        for bad in (
+                            "search.asp",
+                            "search/",
+                            "panier",
+                            "cart",
+                            "login",
+                            "account",
+                            "contact",
+                            "livraison",
+                            "conditions",
+                            "magazine",
+                        )
+                    ):
+                        urls.add(url)
+
+            if len(urls) > 1:
+                return ""
+
+            return _price(text)
+
+        if node is card:
+            break
+
+        node = node.parent
+
+    return ""
+
+
 def _search_page(query):
     urls = [
         BASE_URL + "/search.asp?exps=" + quote_plus(query),
@@ -180,11 +241,6 @@ def search(query):
 
             text = _clean(card.get_text(" ", strip=True))
 
-            # Se non c'è prezzo coerente nel blocco, skip
-            price = _price(text)
-            if not price:
-                continue
-
             # Estrazione del nome prodotto
             name = ""
 
@@ -230,6 +286,20 @@ def search(query):
 
             # Ultima difesa: se il nome sembra troppo generico, skip
             if _is_generic_title(name):
+                continue
+
+            # Prezzo vincolato allo stesso sotto-blocco del prodotto.
+            # Se è ambiguo, Notino non restituisce l'offerta.
+            price = _price_near_product(card, link, name)
+
+            if not price:
+                print(
+                    "NOTINO SKIP AMBIGUOUS PRICE:",
+                    name,
+                    "|",
+                    product_url,
+                    flush=True,
+                )
                 continue
 
             seen.add(product_url)
