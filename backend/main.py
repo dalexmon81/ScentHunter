@@ -116,6 +116,99 @@ def matches(product: Dict[str, Any], query: str) -> bool:
 
     return query_tokens.issubset(name_tokens)
 
+
+def canonicalize_product(product: Dict[str, Any], query: str) -> Dict[str, Any]:
+    """
+    Corregge SOLO il nome visualizzato/raggruppato.
+    Non cambia URL, prezzo, negozio o risultato trovato.
+
+    Per la famiglia Jean Paul Gaultier Le Beau riconosce la variante
+    dal nome + URL originali, così Paradise Garden, Le Parfum,
+    Flower Edition ecc. non vengono più fusi sotto "Le Beau".
+    """
+    item = dict(product)
+
+    original_name = str(item.get("name", "") or "")
+    original_url = str(item.get("url", "") or "")
+    source = norm(f"{original_name} {original_url}")
+    query_n = norm(query)
+
+    # Applica questa correzione soltanto alla famiglia Le Beau.
+    if "le beau" not in source and "le beau" not in query_n:
+        return item
+
+    if "beau" not in source:
+        return item
+
+    size = ""
+    size_match = re.search(
+        r"\b(\d{1,3}(?:[.,]\d+)?)\s*ml\b",
+        f"{original_name} {original_url}",
+        re.I,
+    )
+    if size_match:
+        size = size_match.group(1).replace(",", ".") + " ml"
+
+    # Ordine importante: prima le varianti specifiche, poi Le Beau semplice.
+    if "paradise" in source and "garden" in source:
+        canonical = "Jean Paul Gaultier Le Beau Paradise Garden"
+        variant_rank = 2
+    elif "flower" in source or "fleur" in source:
+        canonical = "Jean Paul Gaultier Le Beau Flower Edition"
+        variant_rank = 3
+    elif (
+        "le beau le parfum" in source
+        or ("le beau" in source and "intense" in source)
+    ):
+        canonical = "Jean Paul Gaultier Le Beau Le Parfum"
+        variant_rank = 0
+    elif "le beau" in source:
+        canonical = "Jean Paul Gaultier Le Beau"
+        variant_rank = 1
+    else:
+        return item
+
+    item["name"] = f"{canonical} {size}".strip()
+    item["_variant_rank"] = variant_rank
+    return item
+
+
+def result_sort_key(product: Dict[str, Any], query: str):
+    """
+    Prima la variante cercata, poi le altre varianti della famiglia.
+    Dentro ogni variante ordina per formato e poi per prezzo.
+    """
+    name_n = norm(product.get("name", ""))
+    query_n = norm(query)
+
+    # La variante esatta cercata deve stare davanti.
+    if "le beau le parfum" in query_n:
+        if "le beau le parfum" in name_n:
+            family_rank = 0
+        elif "paradise garden" in name_n:
+            family_rank = 1
+        elif "flower edition" in name_n:
+            family_rank = 2
+        elif "le beau" in name_n:
+            family_rank = 3
+        else:
+            family_rank = 9
+    else:
+        family_rank = int(product.get("_variant_rank", 9))
+
+    size_match = re.search(r"\b(\d{1,3}(?:[.,]\d+)?)\s*ml\b", name_n)
+    size = (
+        float(size_match.group(1).replace(",", "."))
+        if size_match
+        else 9999.0
+    )
+
+    price = price_num(product.get("price"))
+    if price is None:
+        price = float("inf")
+
+    return (family_rank, size, price)
+
 def load_scraper(store: str):
     return importlib.import_module(f"scrapers.{store}.scraper")
 
@@ -238,7 +331,19 @@ def search_perfume(query: str) -> Dict[str, Any]:
 
     executor.shutdown(wait=False, cancel_futures=True)
 
-    results = sort_by_price(unique_results(results))
+    results = unique_results(results)
+    results = [
+        canonicalize_product(product, query)
+        for product in results
+    ]
+    results = sorted(
+        results,
+        key=lambda product: result_sort_key(product, query),
+    )
+
+    # Campo interno usato solo per ordinare: non serve al frontend.
+    for product in results:
+        product.pop("_variant_rank", None)
 
     return {
         "query": query,
