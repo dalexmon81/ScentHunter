@@ -69,7 +69,6 @@ def price_num(value: Any) -> Optional[float]:
     match = re.search(r"(\d{1,5}(?:[.,]\d{1,2})?)", str(value or ""))
     if not match:
         return None
-
     try:
         return float(match.group(1).replace(",", "."))
     except ValueError:
@@ -103,8 +102,7 @@ def matches(product: Dict[str, Any], query: str) -> bool:
             return False
 
     tokens = [
-        token
-        for token in query_normalized.split()
+        token for token in query_normalized.split()
         if token not in IGNORED_WORDS
     ]
 
@@ -128,7 +126,6 @@ def build_search_attempts(store: str, query: str) -> List[str]:
             "",
             normalized_query,
         )
-
         if compact and compact not in attempts:
             attempts.append(compact)
 
@@ -176,9 +173,7 @@ def run_store(store: str, query: str) -> List[Dict[str, Any]]:
     return output
 
 
-def unique_results(
-    products: List[Dict[str, Any]],
-) -> List[Dict[str, Any]]:
+def unique_results(products: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
     unique: List[Dict[str, Any]] = []
     seen = set()
 
@@ -198,53 +193,18 @@ def unique_results(
     return unique
 
 
-def is_available(product: Dict[str, Any]) -> bool:
-    available = product.get("available")
-    stock_status = norm(product.get("stock_status", ""))
-
-    if available is False:
-        return False
-
-    if stock_status in {
-        "out of stock",
-        "out_of_stock",
-        "outofstock",
-        "sold out",
-        "unavailable",
-        "rupture de stock",
-        "epuise",
-    }:
-        return False
-
-    return True
-
-
-def sort_by_price(
-    products: List[Dict[str, Any]],
-) -> List[Dict[str, Any]]:
+def sort_by_price(products: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
     def key(product):
-        available = is_available(product)
         value = price_num(product.get("price"))
-
-        return (
-            not available,
-            float("inf") if value is None else value,
-        )
+        return float("inf") if value is None else value
 
     return sorted(products, key=key)
 
 
 def search_perfume(query: str) -> Dict[str, Any]:
     query = str(query or "").strip()
-
     if not query:
-        return {
-            "query": query,
-            "count": 0,
-            "results": [],
-            "comparisons": [],
-            "errors": {},
-        }
+        return {"query": query, "count": 0, "results": [], "comparisons": [], "errors": {}}
 
     results: List[Dict[str, Any]] = []
     errors: Dict[str, str] = {}
@@ -253,20 +213,15 @@ def search_perfume(query: str) -> Dict[str, Any]:
         max_workers=len(STORES),
         thread_name_prefix="scent-store",
     )
-
     future_to_store = {
         executor.submit(run_store, store, query): store
         for store in STORES
     }
 
-    done, not_done = wait(
-        future_to_store,
-        timeout=30,
-    )
+    done, not_done = wait(future_to_store, timeout=30)
 
     for future in done:
         store = future_to_store[future]
-
         try:
             results.extend(future.result() or [])
         except Exception as exc:
@@ -277,14 +232,9 @@ def search_perfume(query: str) -> Dict[str, Any]:
         errors[store] = "timeout"
         future.cancel()
 
-    executor.shutdown(
-        wait=False,
-        cancel_futures=True,
-    )
+    executor.shutdown(wait=False, cancel_futures=True)
 
-    results = sort_by_price(
-        unique_results(results)
-    )
+    results = sort_by_price(unique_results(results))
 
     return {
         "query": query,
@@ -302,36 +252,19 @@ def search(q: str):
 
 def load_history() -> Dict[str, Any]:
     try:
-        with open(
-            HISTORY_PATH,
-            "r",
-            encoding="utf-8",
-        ) as file:
+        with open(HISTORY_PATH, "r", encoding="utf-8") as file:
             data = json.load(file)
-
         if isinstance(data, dict):
             return data
-
     except Exception:
         pass
-
     return {}
 
 
 def save_history(data: Dict[str, Any]) -> None:
     try:
-        with open(
-            HISTORY_PATH,
-            "w",
-            encoding="utf-8",
-        ) as file:
-            json.dump(
-                data,
-                file,
-                ensure_ascii=False,
-                indent=2,
-            )
-
+        with open(HISTORY_PATH, "w", encoding="utf-8") as file:
+            json.dump(data, file, ensure_ascii=False, indent=2)
     except OSError:
         pass
 
@@ -382,36 +315,23 @@ def root():
             status_code=500,
             detail="frontend/index.html non trovato",
         )
-
     return FileResponse(FRONTEND_INDEX)
 
 
 @app.get("/health")
 def health():
-    return {
-        "status": "healthy",
-        "stores": STORES,
-    }
+    return {"status": "healthy", "stores": STORES}
 
 
-def fragella_search(
-    query: str,
-    limit: int = 10,
-) -> List[Dict[str, Any]]:
-    api_key = os.getenv(
-        "FRAGELLA_API_KEY",
-        "",
-    ).strip()
+def fragella_search(query: str, limit: int = 10) -> List[Dict[str, Any]]:
+    api_key = os.getenv("FRAGELLA_API_KEY", "").strip()
 
     if not api_key:
         return []
 
     params = urlencode({
         "search": query,
-        "limit": max(
-            1,
-            min(int(limit), 10),
-        ),
+        "limit": max(1, min(int(limit), 10)),
     })
 
     request = Request(
@@ -423,13 +343,8 @@ def fragella_search(
         },
     )
 
-    with urlopen(
-        request,
-        timeout=5,
-    ) as response:
-        payload = json.loads(
-            response.read().decode("utf-8")
-        )
+    with urlopen(request, timeout=5) as response:
+        payload = json.loads(response.read().decode("utf-8"))
 
     if isinstance(payload, dict):
         items = (
@@ -438,10 +353,8 @@ def fragella_search(
             or payload.get("fragrances")
             or []
         )
-
     elif isinstance(payload, list):
         items = payload
-
     else:
         items = []
 
@@ -451,18 +364,8 @@ def fragella_search(
         if not isinstance(item, dict):
             continue
 
-        name = str(
-            item.get("Name")
-            or item.get("name")
-            or ""
-        ).strip()
-
-        brand = str(
-            item.get("Brand")
-            or item.get("brand")
-            or ""
-        ).strip()
-
+        name = str(item.get("Name") or item.get("name") or "").strip()
+        brand = str(item.get("Brand") or item.get("brand") or "").strip()
         image = str(
             item.get("Image URL Transparent")
             or item.get("Image URL")
@@ -478,10 +381,7 @@ def fragella_search(
             "brand": brand,
             "store": brand or "ScentHunter",
             "image": image,
-            "catalog_id": (
-                item.get("_id")
-                or item.get("id")
-            ),
+            "catalog_id": item.get("_id") or item.get("id"),
         })
 
     return output
@@ -492,24 +392,13 @@ def rank_catalog_suggestions(
     query: str,
 ) -> List[Dict[str, Any]]:
     query_n = norm(query)
-
-    tokens = [
-        token
-        for token in query_n.split()
-        if len(token) >= 2
-    ]
-
+    tokens = [token for token in query_n.split() if len(token) >= 2]
     ranked = []
     seen = set()
 
     for item in items:
-        name = str(
-            item.get("name") or ""
-        ).strip()
-
-        brand = str(
-            item.get("brand") or ""
-        ).strip()
+        name = str(item.get("name") or "").strip()
+        brand = str(item.get("brand") or "").strip()
 
         if not name:
             continue
@@ -518,22 +407,14 @@ def rank_catalog_suggestions(
         brand_n = norm(brand)
         text = norm(f"{brand} {name}")
 
-        if tokens and not all(
-            token in text
-            for token in tokens
-        ):
+        if tokens and not all(token in text for token in tokens):
             continue
 
-        if any(
-            norm(phrase) in name_n
-            for phrase in NON_PERFUME
-        ):
+        if any(norm(phrase) in name_n for phrase in NON_PERFUME):
             continue
 
         key = (
-            str(
-                item.get("catalog_id") or ""
-            ).strip()
+            str(item.get("catalog_id") or "").strip()
             or f"{brand_n}|{name_n}"
         )
 
@@ -554,28 +435,13 @@ def rank_catalog_suggestions(
             priority = 4
 
         position = text.find(query_n)
-
         if position < 0:
             position = 999
 
-        ranked.append(
-            (
-                priority,
-                position,
-                len(name_n),
-                name_n,
-                item,
-            )
-        )
+        ranked.append((priority, position, len(name_n), name_n, item))
 
-    ranked.sort(
-        key=lambda row: row[:4]
-    )
-
-    return [
-        row[4]
-        for row in ranked[:8]
-    ]
+    ranked.sort(key=lambda row: row[:4])
+    return [row[4] for row in ranked[:8]]
 
 
 @app.get("/suggest")
@@ -596,32 +462,17 @@ def suggest(q: str):
             catalog_queries = [raw_query]
 
             for token in query.split():
-                if (
-                    len(token) >= 3
-                    and token not in catalog_queries
-                ):
+                if len(token) >= 3 and token not in catalog_queries:
                     catalog_queries.append(token)
 
-            catalog_results: List[
-                Dict[str, Any]
-            ] = []
-
+            catalog_results: List[Dict[str, Any]] = []
             catalog_seen = set()
 
             for catalog_query in catalog_queries:
-                for item in fragella_search(
-                    catalog_query,
-                    10,
-                ):
+                for item in fragella_search(catalog_query, 10):
                     key = (
-                        str(
-                            item.get("catalog_id")
-                            or ""
-                        ).strip()
-                        or (
-                            f"{norm(item.get('brand'))}|"
-                            f"{norm(item.get('name'))}"
-                        )
+                        str(item.get("catalog_id") or "").strip()
+                        or f"{norm(item.get('brand'))}|{norm(item.get('name'))}"
                     )
 
                     if key in catalog_seen:
@@ -650,11 +501,7 @@ def suggest(q: str):
             ValueError,
             json.JSONDecodeError,
         ) as error:
-            print(
-                "Catalog suggest error:",
-                repr(error),
-            )
-
+            print("Catalog suggest error:", repr(error))
         except Exception:
             traceback.print_exc()
 
@@ -676,10 +523,7 @@ def suggest(q: str):
                 results = module.search(attempt) or []
 
                 for product in results:
-                    if not isinstance(
-                        product,
-                        dict,
-                    ):
+                    if not isinstance(product, dict):
                         continue
 
                     name = str(
@@ -693,39 +537,20 @@ def suggest(q: str):
                         continue
 
                     normalized_name = norm(name)
+                    brand = str(product.get("brand") or "").strip()
+                    haystack = norm(f"{brand} {name}")
+                    words = [word for word in query.split() if word]
 
-                    brand = str(
-                        product.get("brand")
-                        or ""
-                    ).strip()
-
-                    haystack = norm(
-                        f"{brand} {name}"
-                    )
-
-                    words = [
-                        word
-                        for word in query.split()
-                        if word
-                    ]
-
-                    if not all(
-                        word in haystack
-                        for word in words
-                    ):
+                    if not all(word in haystack for word in words):
                         continue
 
                     if any(
-                        norm(phrase)
-                        in normalized_name
+                        norm(phrase) in normalized_name
                         for phrase in NON_PERFUME
                     ):
                         continue
 
-                    key = (
-                        norm(brand),
-                        normalized_name,
-                    )
+                    key = (norm(brand), normalized_name)
 
                     if key in seen:
                         continue
@@ -734,14 +559,9 @@ def suggest(q: str):
 
                     suggestions.append({
                         "name": name,
-                        "store": product.get(
-                            "store",
-                            store,
-                        ),
+                        "store": product.get("store", store),
                         "brand": brand,
-                        "image": product_image(
-                            product
-                        ),
+                        "image": product_image(product),
                     })
 
         except Exception:
@@ -749,16 +569,9 @@ def suggest(q: str):
 
     suggestions.sort(
         key=lambda item: (
-            0
-            if norm(
-                item.get("name", "")
-            ).startswith(query)
-            else 1,
+            0 if norm(item.get("name", "")).startswith(query) else 1,
             len(item.get("name", "")),
-            item.get(
-                "name",
-                "",
-            ).lower(),
+            item.get("name", "").lower(),
         )
     )
 
@@ -778,60 +591,23 @@ def autocomplete(q: str):
 
 
 @app.get("/product")
-def product(
-    name: str,
-    brand: str = "",
-):
+def product(name: str, brand: str = ""):
     data = search_perfume(name)
     offers: List[Dict[str, Any]] = []
 
     for product_data in data["results"]:
-        offer = dict(product_data)
-
-        available = is_available(offer)
-        value = price_num(
-            offer.get("price")
-        )
-
-        if not available:
-            offer["available"] = False
-            offer["stock_status"] = "out_of_stock"
-            offer["price_value"] = None
-            offer["image"] = product_image(offer)
-            offers.append(offer)
-            continue
+        value = price_num(product_data.get("price"))
 
         if value is None:
             continue
 
-        offer["available"] = True
-        offer["stock_status"] = "in_stock"
+        offer = dict(product_data)
         offer["price_value"] = value
         offer["image"] = product_image(offer)
         offers.append(offer)
 
-    offers.sort(
-        key=lambda offer: (
-            offer.get("available") is False,
-            (
-                offer.get("price_value")
-                if offer.get("price_value") is not None
-                else float("inf")
-            ),
-        )
-    )
-
-    best_offer = next(
-        (
-            offer
-            for offer in offers
-            if (
-                offer.get("available") is not False
-                and offer.get("price_value") is not None
-            )
-        ),
-        None,
-    )
+    offers.sort(key=lambda offer: offer["price_value"])
+    best_offer = offers[0] if offers else None
 
     history = update_price_history(
         name=name,
@@ -840,19 +616,11 @@ def product(
     )
 
     image = next(
-        (
-            offer["image"]
-            for offer in offers
-            if offer.get("image")
-        ),
+        (offer["image"] for offer in offers if offer.get("image")),
         "",
     )
 
-    lowest_price = (
-        best_offer.get("price")
-        if best_offer
-        else None
-    )
+    lowest_price = best_offer.get("price") if best_offer else None
 
     return {
         "name": name,
@@ -863,9 +631,5 @@ def product(
         "offers": offers,
         "history": history,
         "errors": data["errors"],
-        "message": (
-            ""
-            if offers
-            else "Nessuna offerta disponibile al momento"
-        ),
+        "message": "" if offers else "Nessuna offerta disponibile al momento",
     }
