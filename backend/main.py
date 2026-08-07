@@ -147,13 +147,8 @@ def run_store(store: str, query: str) -> List[Dict[str, Any]]:
     output: List[Dict[str, Any]] = []
     seen = set()
 
-    notino_bing = getattr(module, "_bing", None) if store == "notino" else None
-
     for attempt in attempts:
-        if callable(notino_bing):
-            results = notino_bing(attempt) or []
-        else:
-            results = search_fn(attempt) or []
+        results = search_fn(attempt) or []
 
         for item in results:
             if not isinstance(item, dict):
@@ -223,7 +218,7 @@ def search_perfume(query: str) -> Dict[str, Any]:
         for store in STORES
     }
 
-    done, not_done = wait(future_to_store, timeout=20)
+    done, not_done = wait(future_to_store, timeout=30)
 
     for future in done:
         store = future_to_store[future]
