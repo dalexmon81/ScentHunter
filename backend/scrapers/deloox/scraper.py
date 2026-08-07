@@ -1,3 +1,4 @@
+import json
 import re
 from urllib.parse import urljoin
 
@@ -7,6 +8,7 @@ from bs4 import BeautifulSoup
 
 STORE = "Deloox"
 BASE_URL = "https://www.deloox.com"
+HOME_URL = f"{BASE_URL}/en"
 TIMEOUT = 10
 
 HEADERS = {
@@ -18,6 +20,40 @@ HEADERS = {
     "Accept-Language": "en-GB,en;q=0.9",
 }
 
+
+PRICE_RE = re.compile(
+    r"""
+    (?:
+        €\s*
+        (?P<euro_before>\d{1,4})
+        \s*
+        (?:[,.\^]\s*)+
+        (?P<cents_before>\d{2})
+        \s*\^*
+
+        |
+
+        (?P<euro_after>\d{1,4})
+        \s*
+        (?:[,.\^]\s*)+
+        (?P<cents_after>\d{2})
+        \s*\^*
+        \s*€
+
+        |
+
+        €\s*(?P<integer_before>\d{1,4})(?![\d.,])
+
+        |
+
+        (?P<integer_after>\d{1,4})
+        \s*€
+    )
+    """,
+    re.I | re.X,
+)
+
+
 SOLD_OUT = (
     "sold out",
     "out of stock",
@@ -25,8 +61,29 @@ SOLD_OUT = (
     "currently unavailable",
 )
 
+
+NON_FRAGRANCE = (
+    "body mist",
+    "body spray",
+    "body lotion",
+    "body cream",
+    "body oil",
+    "body wash",
+    "shower gel",
+    "shower oil",
+    "hand and body",
+    "hand cream",
+    "deodorant",
+    "after shave",
+    "aftershave",
+    "hair mist",
+    "hair spray",
+    "soap",
+)
+
+
 SIZE_RE = re.compile(
-    r"(\d{1,3}(?:[.,]\d+)?)\s*ml",
+    r"\b(\d{1,3}(?:[.,]\d+)?)\s*ml\b",
     re.I,
 )
 
@@ -35,66 +92,39 @@ SIZE_FULL_RE = re.compile(
     re.I,
 )
 
-PRICE_RE = re.compile(
-    r"""
-    (?:
-        €\s*
-        (?P<int1>\d{1,4})
-        \s*(?:[,.\^]\s*)+
-        (?P<dec1>\d{2})
-        \s*\^*
 
-        |
-
-        (?P<int2>\d{1,4})
-        \s*(?:[,.\^]\s*)+
-        (?P<dec2>\d{2})
-        \s*\^*\s*€
-
-        |
-
-        €\s*(?P<int3>\d{1,4})(?![\d.,])
-
-        |
-
-        (?P<int4>\d{1,4})\s*€
-    )
-    """,
-    re.I | re.X,
-)
-
-
-DIRECT_PRODUCTS = (
+CATEGORY_FALLBACKS = (
     (
         ("le", "beau", "le", "parfum"),
-        (
-            "https://www.deloox.com/product/"
-            "1241200/jean-paul-gaultier-le-beau-le-parfum-"
-            "eau-de-parfum-intense-75-ml.html",
-
-            "https://www.deloox.com/product/"
-            "1241191/jean-paul-gaultier-le-beau-le-parfum-"
-            "eau-de-parfum-intense-125-ml.html",
-        ),
-    ),
-)
-
-
-CATEGORIES = (
-    (
-        ("miu", "miu"),
         "https://www.deloox.com/category/"
-        "1071574/miu-miu-fragrances.html",
+        "1084243/le-beau-le-parfum.html",
     ),
     (
         ("jean", "paul", "gaultier"),
         "https://www.deloox.com/category/"
         "1072906/jean-paul-gaultier-fragrances.html",
     ),
+    (
+        ("miu", "miu"),
+        "https://www.deloox.com/category/"
+        "1071574/miu-miu-fragrances.html",
+    ),
 )
 
 
-def clean(value):
+NON_FRAGRANCE_TOKENS = {
+    tuple(
+        re.sub(
+            r"[^a-z0-9]+",
+            " ",
+            value.lower(),
+        ).split()
+    )
+    for value in NON_FRAGRANCE
+}
+
+
+def _clean(value):
     return re.sub(
         r"\s+",
         " ",
@@ -102,47 +132,101 @@ def clean(value):
     ).strip()
 
 
-def norm(value):
+def _norm(value):
     return re.sub(
         r"[^a-z0-9]+",
         " ",
-        clean(value).lower(),
+        _clean(value).lower(),
     ).strip()
 
 
-def tokens(value):
-    return {
+def _tokens(value):
+    return [
         token
-        for token in norm(value).split()
+        for token in _norm(value).split()
         if len(token) > 1
-    }
+    ]
 
 
-def extract_price(text):
-    match = PRICE_RE.search(clean(text))
+def _matches_soft(text, query, minimum=0.55):
+    text_tokens = set(_tokens(text))
+    query_tokens = set(_tokens(query))
+
+    if not query_tokens:
+        return False
+
+    found = sum(
+        token in text_tokens
+        for token in query_tokens
+    )
+
+    return found / len(query_tokens) >= minimum
+
+
+def _match_score(text, query):
+    text_tokens = _tokens(text)
+    query_tokens = _tokens(query)
+
+    if not query_tokens:
+        return -9999
+
+    text_set = set(text_tokens)
+    query_set = set(query_tokens)
+
+    found = sum(
+        token in text_set
+        for token in query_set
+    )
+
+    if found == 0:
+        return -9999
+
+    missing = len(query_set) - found
+
+    extras = [
+        token
+        for token in text_tokens
+        if token not in query_set
+    ]
+
+    return (
+        found * 100
+        - missing * 35
+        - len(extras) * 3
+        - abs(len(text_tokens) - len(query_tokens))
+    )
+
+
+def _extract_price(text):
+    if not text:
+        return None
+
+    match = PRICE_RE.search(_clean(text))
 
     if not match:
         return None
 
-    integer = (
-        match.group("int1")
-        or match.group("int2")
-        or match.group("int3")
-        or match.group("int4")
-    )
+    if match.group("euro_before"):
+        integer = match.group("euro_before")
+        cents = match.group("cents_before")
 
-    cents = (
-        match.group("dec1")
-        or match.group("dec2")
-    )
+    elif match.group("euro_after"):
+        integer = match.group("euro_after")
+        cents = match.group("cents_after")
 
-    if cents:
-        return f"{integer},{cents} €"
+    elif match.group("integer_before"):
+        return f"{match.group('integer_before')},00 €"
 
-    return f"{integer},00 €"
+    elif match.group("integer_after"):
+        return f"{match.group('integer_after')},00 €"
+
+    else:
+        return None
+
+    return f"{integer},{cents} €"
 
 
-def get(session, url):
+def _get(session, url):
     try:
         response = session.get(
             url,
@@ -159,8 +243,571 @@ def get(session, url):
         return None
 
 
-def size_value(value):
-    match = SIZE_RE.search(value or "")
+def _query_wants_non_fragrance(query):
+    query_tokens = set(_tokens(query))
+
+    for phrase in NON_FRAGRANCE_TOKENS:
+        if set(phrase).issubset(query_tokens):
+            return True
+
+    return False
+
+
+def _contains_non_fragrance_product(text):
+    tokens = _tokens(text)
+
+    for phrase in NON_FRAGRANCE_TOKENS:
+        size = len(phrase)
+
+        for index in range(len(tokens) - size + 1):
+            if tuple(tokens[index:index + size]) == phrase:
+                return True
+
+    return False
+
+
+def _is_relevant_product(text, query):
+    if not _matches_soft(
+        text,
+        query,
+        minimum=0.55,
+    ):
+        return False
+
+    if not _query_wants_non_fragrance(query):
+        if _contains_non_fragrance_product(text):
+            return False
+
+    return True
+
+
+def _find_brand_category(session, query):
+    query_tokens = set(_tokens(query))
+
+    for required_tokens, fallback_url in CATEGORY_FALLBACKS:
+        if set(required_tokens).issubset(query_tokens):
+            return fallback_url
+
+    response = _get(
+        session,
+        HOME_URL,
+    )
+
+    if response is None:
+        return None
+
+    soup = BeautifulSoup(
+        response.text,
+        "html.parser",
+    )
+
+    candidates = []
+
+    for link in soup.find_all(
+        "a",
+        href=True,
+    ):
+        name = _clean(
+            link.get_text(
+                " ",
+                strip=True,
+            )
+        )
+
+        href = _clean(
+            link.get("href")
+        )
+
+        if not name or not href:
+            continue
+
+        url = urljoin(
+            BASE_URL,
+            href,
+        )
+
+        if "/category/" not in url.lower():
+            continue
+
+        category_tokens = set(
+            _tokens(name)
+        )
+
+        overlap = len(
+            category_tokens & query_tokens
+        )
+
+        if overlap == 0:
+            continue
+
+        candidates.append((
+            overlap,
+            overlap / len(category_tokens),
+            url,
+        ))
+
+    if not candidates:
+        return None
+
+    candidates.sort(
+        key=lambda item: (
+            item[0],
+            item[1],
+        ),
+        reverse=True,
+    )
+
+    return candidates[0][2]
+
+
+def _find_product_card(link):
+    node = link
+
+    for _ in range(8):
+        if node is None:
+            break
+
+        text = _clean(
+            node.get_text(
+                " ",
+                strip=True,
+            )
+        )
+
+        if (
+            _extract_price(text)
+            or SIZE_RE.search(text)
+        ):
+            return node
+
+        node = node.parent
+
+    return link
+
+
+def _url_matches_query(product_url, query):
+    url_tokens = set(
+        _tokens(product_url)
+    )
+
+    query_tokens = set(
+        _tokens(query)
+    )
+
+    return query_tokens.issubset(url_tokens)
+
+
+def _extract_category(html, query):
+    soup = BeautifulSoup(
+        html,
+        "html.parser",
+    )
+
+    results = []
+    seen = set()
+
+    query_tokens = set(
+        _tokens(query)
+    )
+
+    for link in soup.find_all(
+        "a",
+        href=True,
+    ):
+        href = _clean(
+            link.get("href")
+        )
+
+        product_url = urljoin(
+            BASE_URL,
+            href,
+        ).split("?")[0]
+
+        if "/product/" not in product_url.lower():
+            continue
+
+        # Controllo fondamentale contro prodotti estranei.
+        if not _url_matches_query(
+            product_url,
+            query,
+        ):
+            continue
+
+        card = _find_product_card(link)
+
+        card_text = _clean(
+            card.get_text(
+                " ",
+                strip=True,
+            )
+        )
+
+        if any(
+            word in card_text.lower()
+            for word in SOLD_OUT
+        ):
+            continue
+
+        if not _matches_soft(
+            card_text,
+            query,
+            minimum=0.55,
+        ):
+            continue
+
+        card_tokens = set(
+            _tokens(card_text)
+        )
+
+        if not query_tokens.issubset(card_tokens):
+            continue
+
+        if not _is_relevant_product(
+            card_text,
+            query,
+        ):
+            continue
+
+        price = _extract_price(card_text)
+
+        if not price:
+            continue
+
+        product_name = query
+
+        link_name = _clean(
+            link.get_text(
+                " ",
+                strip=True,
+            )
+        )
+
+        if (
+            link_name
+            and not SIZE_FULL_RE.fullmatch(link_name)
+            and _matches_soft(
+                link_name,
+                query,
+                minimum=0.55,
+            )
+        ):
+            product_name = link_name
+
+        if product_url in seen:
+            continue
+
+        seen.add(product_url)
+
+        results.append({
+            "store": STORE,
+            "name": product_name,
+            "price": price,
+            "url": product_url,
+            "available": True,
+            "availability": "in_stock",
+        })
+
+    return results
+
+
+def _extract_brand_page(html, query):
+    soup = BeautifulSoup(
+        html,
+        "html.parser",
+    )
+
+    results = []
+    seen = set()
+
+    for link in soup.find_all(
+        "a",
+        href=True,
+    ):
+        node = link
+
+        for _ in range(8):
+            if node is None:
+                break
+
+            text = _clean(
+                node.get_text(
+                    " ",
+                    strip=True,
+                )
+            )
+
+            if not _matches_soft(
+                text,
+                query,
+                minimum=0.55,
+            ):
+                node = node.parent
+                continue
+
+            price = _extract_price(text)
+
+            if not price:
+                node = node.parent
+                continue
+
+            if any(
+                word in text.lower()
+                for word in SOLD_OUT
+            ):
+                node = node.parent
+                continue
+
+            product_link = None
+
+            for anchor in node.find_all(
+                "a",
+                href=True,
+            ):
+                candidate_url = urljoin(
+                    BASE_URL,
+                    anchor.get(
+                        "href",
+                        "",
+                    ),
+                ).split("?")[0]
+
+                if "/product/" not in candidate_url.lower():
+                    continue
+
+                if not _url_matches_query(
+                    candidate_url,
+                    query,
+                ):
+                    continue
+
+                product_link = candidate_url
+                break
+
+            if (
+                product_link
+                and product_link not in seen
+                and _is_relevant_product(
+                    text,
+                    query,
+                )
+            ):
+                seen.add(product_link)
+
+                results.append({
+                    "store": STORE,
+                    "name": query,
+                    "price": price,
+                    "url": product_link,
+                    "available": True,
+                    "availability": "in_stock",
+                })
+
+            break
+
+    return results
+
+
+def _extract_product_variants(
+    html,
+    product_name,
+    product_url,
+):
+    soup = BeautifulSoup(
+        html,
+        "html.parser",
+    )
+
+    strings = [
+        _clean(value)
+        for value in soup.stripped_strings
+        if _clean(value)
+    ]
+
+    results = []
+    seen_sizes = set()
+
+    for index, value in enumerate(strings):
+        size_match = SIZE_FULL_RE.fullmatch(value)
+
+        if not size_match:
+            continue
+
+        size = size_match.group(1).replace(
+            ",",
+            ".",
+        )
+
+        size_label = f"{size} ml"
+
+        if size_label in seen_sizes:
+            continue
+
+        chunk = []
+        sold_out = False
+
+        for next_index in range(
+            index + 1,
+            min(index + 30, len(strings)),
+        ):
+            next_value = strings[next_index]
+
+            if SIZE_FULL_RE.fullmatch(next_value):
+                break
+
+            chunk.append(next_value)
+
+            if any(
+                word in next_value.lower()
+                for word in SOLD_OUT
+            ):
+                sold_out = True
+                break
+
+        if sold_out:
+            continue
+
+        price = _extract_price(
+            " ".join(chunk)
+        )
+
+        if not price:
+            continue
+
+        seen_sizes.add(size_label)
+
+        slug = re.sub(
+            r"[^a-z0-9]+",
+            "-",
+            size_label.lower(),
+        ).strip("-")
+
+        results.append({
+            "store": STORE,
+            "name": f"{product_name} {size_label}",
+            "price": price,
+            "url": f"{product_url}#{slug}",
+            "available": True,
+            "availability": "in_stock",
+            "size": size_label,
+        })
+
+    return results
+
+
+def _extract_jsonld_variants(
+    html,
+    product_name,
+    product_url,
+):
+    soup = BeautifulSoup(
+        html,
+        "html.parser",
+    )
+
+    results = []
+
+    for script in soup.find_all(
+        "script",
+        type="application/ld+json",
+    ):
+        try:
+            data = json.loads(
+                script.string or script.get_text()
+            )
+
+        except (
+            json.JSONDecodeError,
+            TypeError,
+        ):
+            continue
+
+        objects = (
+            data
+            if isinstance(data, list)
+            else [data]
+        )
+
+        for item in objects:
+            if not isinstance(item, dict):
+                continue
+
+            item_text = " ".join([
+                str(item.get("name", "")),
+                str(item.get("description", "")),
+            ])
+
+            size_match = SIZE_RE.search(
+                item_text
+            )
+
+            if not size_match:
+                continue
+
+            size = size_match.group(1).replace(
+                ",",
+                ".",
+            )
+
+            offers = item.get(
+                "offers",
+                [],
+            )
+
+            if isinstance(offers, dict):
+                offers = [offers]
+
+            for offer in offers:
+                if not isinstance(offer, dict):
+                    continue
+
+                price = offer.get("price")
+
+                if price is None:
+                    continue
+
+                if str(
+                    offer.get(
+                        "priceCurrency",
+                        "EUR",
+                    )
+                ) != "EUR":
+                    continue
+
+                availability = str(
+                    offer.get(
+                        "availability",
+                        "",
+                    )
+                ).lower()
+
+                if "outofstock" in availability:
+                    continue
+
+                price_text = str(price).replace(
+                    ".",
+                    ",",
+                )
+
+                if "," not in price_text:
+                    price_text += ",00"
+
+                results.append({
+                    "store": STORE,
+                    "name": f"{product_name} {size} ml",
+                    "price": f"{price_text} €",
+                    "url": product_url,
+                    "available": True,
+                    "availability": "in_stock",
+                    "size": f"{size} ml",
+                })
+
+    return results
+
+
+def _size_number(item):
+    match = SIZE_RE.search(
+        item.get("size", "")
+    )
 
     if not match:
         return 9999
@@ -174,299 +821,15 @@ def size_value(value):
         return 9999
 
 
-def extract_price_near_size(
-    soup,
-    expected_size,
-):
-    strings = [
-        clean(value)
-        for value in soup.stripped_strings
-        if clean(value)
-    ]
-
-    for index, value in enumerate(strings):
-        size_match = SIZE_FULL_RE.fullmatch(value)
-
-        if not size_match:
-            continue
-
-        current_size = size_match.group(1).replace(
-            ",",
-            ".",
-        )
-
-        if current_size != expected_size:
-            continue
-
-        chunk = []
-
-        for next_index in range(
-            index + 1,
-            min(index + 25, len(strings)),
-        ):
-            next_value = strings[next_index]
-
-            if SIZE_FULL_RE.fullmatch(next_value):
-                break
-
-            if any(
-                word in next_value.lower()
-                for word in SOLD_OUT
-            ):
-                return None
-
-            chunk.append(next_value)
-
-        price = extract_price(
-            " ".join(chunk)
-        )
-
-        if price:
-            return price
-
-    return None
-
-
-def search_direct(session, query, urls):
-    results = []
-    seen = set()
-
-    for url in urls:
-        response = get(session, url)
-
-        if response is None:
-            continue
-
-        soup = BeautifulSoup(
-            response.text,
-            "html.parser",
-        )
-
-        page_text = clean(
-            soup.get_text(
-                " ",
-                strip=True,
-            )
-        )
-
-        if any(
-            word in page_text.lower()
-            for word in SOLD_OUT
-        ):
-            continue
-
-        size_match = SIZE_RE.search(url)
-
-        if not size_match:
-            continue
-
-        size = size_match.group(1).replace(
-            ",",
-            ".",
-        )
-
-        size_label = f"{size} ml"
-
-        price = extract_price_near_size(
-            soup,
-            size,
-        )
-
-        if not price:
-            price = extract_price(page_text)
-
-        if not price:
-            continue
-
-        key = (
-            url,
-            size_label,
-            price,
-        )
-
-        if key in seen:
-            continue
-
-        seen.add(key)
-
-        results.append({
-            "store": STORE,
-            "name": f"{query} {size_label}",
-            "price": price,
-            "url": f"{url}#{size.replace('.', '-')}-ml",
-            "available": True,
-            "availability": "in_stock",
-            "size": size_label,
-        })
-
-    results.sort(
-        key=lambda item: size_value(
-            item.get("size", "")
-        )
-    )
-
-    return results
-
-
-def find_category(session, query):
-    query_tokens = tokens(query)
-
-    for required, url in CATEGORIES:
-        if set(required).issubset(query_tokens):
-            return url
-
-    response = get(
-        session,
-        BASE_URL + "/en",
-    )
-
-    if response is None:
-        return None
-
-    soup = BeautifulSoup(
-        response.text,
-        "html.parser",
-    )
-
-    best_url = None
-    best_score = 0
-
-    for link in soup.find_all(
-        "a",
-        href=True,
-    ):
-        name = clean(
-            link.get_text(
-                " ",
-                strip=True,
-            )
-        )
-
-        href = clean(
-            link.get("href")
-        )
-
-        url = urljoin(
-            BASE_URL,
-            href,
-        )
-
-        if "/category/" not in url.lower():
-            continue
-
-        score = len(
-            tokens(name) & query_tokens
-        )
-
-        if score > best_score:
-            best_score = score
-            best_url = url
-
-    return best_url
-
-
-def search_category(session, query, category_url):
-    response = get(
-        session,
-        category_url,
-    )
-
-    if response is None:
-        return []
-
-    soup = BeautifulSoup(
-        response.text,
-        "html.parser",
-    )
-
-    query_tokens = tokens(query)
-    results = []
-    seen = set()
-
-    for link in soup.find_all(
-        "a",
-        href=True,
-    ):
-        url = urljoin(
-            BASE_URL,
-            clean(link.get("href")),
-        ).split("?")[0]
-
-        if "/product/" not in url.lower():
-            continue
-
-        # Il nome richiesto deve comparire nello slug.
-        if not query_tokens.issubset(tokens(url)):
-            continue
-
-        card = link
-        text = ""
-
-        for _ in range(8):
-            if card is None:
-                break
-
-            text = clean(
-                card.get_text(
-                    " ",
-                    strip=True,
-                )
-            )
-
-            if extract_price(text):
-                break
-
-            card = card.parent
-
-        if not text:
-            continue
-
-        if any(
-            word in text.lower()
-            for word in SOLD_OUT
-        ):
-            continue
-
-        price = extract_price(text)
-
-        if not price or url in seen:
-            continue
-
-        seen.add(url)
-
-        results.append({
-            "store": STORE,
-            "name": query,
-            "price": price,
-            "url": url,
-            "available": True,
-            "availability": "in_stock",
-        })
-
-    return results
-
-
 def search(query):
-    query = clean(query)
+    query = _clean(query)
 
     if not query:
         return []
 
     session = requests.Session()
-    query_tokens = tokens(query)
 
-    # Questo return è intenzionalmente immediato.
-    # Se la query è Le Beau Le Parfum,
-    # non deve mai passare alla categoria generale Le Beau.
-    for required, urls in DIRECT_PRODUCTS:
-        if set(required).issubset(query_tokens):
-            return search_direct(
-                session,
-                query,
-                urls,
-            )
-
-    category_url = find_category(
+    category_url = _find_brand_category(
         session,
         query,
     )
@@ -474,21 +837,131 @@ def search(query):
     if not category_url:
         return []
 
-    return search_category(
+    response = _get(
         session,
-        query,
         category_url,
     )
 
+    if response is None:
+        return []
 
-if __name__ == "__main__":
-    tests = (
-        "Le Beau Le Parfum",
-        "Miu Miu Miutine",
-        "Jean Paul Gaultier Le Beau Le Parfum",
+    candidates = _extract_category(
+        response.text,
+        query,
     )
 
-    for query in tests:
+    if not candidates:
+        candidates = _extract_brand_page(
+            response.text,
+            query,
+        )
+
+    if not candidates:
+        return []
+
+    scored = []
+    seen_urls = set()
+
+    for item in candidates:
+        product_url = item["url"].split(
+            "#"
+        )[0].split("?")[0]
+
+        if product_url in seen_urls:
+            continue
+
+        if not _url_matches_query(
+            product_url,
+            query,
+        ):
+            continue
+
+        seen_urls.add(product_url)
+
+        scored.append((
+            _match_score(
+                item["name"],
+                query,
+            ),
+            item,
+        ))
+
+    if not scored:
+        return []
+
+    scored.sort(
+        key=lambda item: item[0],
+        reverse=True,
+    )
+
+    best_score = scored[0][0]
+    minimum_score = best_score - 45
+
+    final_results = []
+    seen_variants = set()
+
+    for score, item in scored:
+        if score < minimum_score:
+            break
+
+        product_url = item["url"].split(
+            "#"
+        )[0].split("?")[0]
+
+        product_response = _get(
+            session,
+            product_url,
+        )
+
+        if product_response is None:
+            continue
+
+        variants = _extract_product_variants(
+            product_response.text,
+            item["name"],
+            product_url,
+        )
+
+        if not variants:
+            variants = _extract_jsonld_variants(
+                product_response.text,
+                item["name"],
+                product_url,
+            )
+
+        for variant in variants:
+            key = (
+                variant["url"],
+                variant.get("size", ""),
+                variant["price"],
+            )
+
+            if key in seen_variants:
+                continue
+
+            seen_variants.add(key)
+            final_results.append(variant)
+
+    if final_results:
+        final_results.sort(
+            key=_size_number
+        )
+
+        return final_results[:20]
+
+    return [item for _, item in scored]
+
+
+if __name__ == "__main__":
+    queries = (
+        "Tom Ford Neroli Portofino",
+        "Miu Miu Miutine",
+        "Le Beau Le Parfum",
+        "Jean Paul Gaultier Le Beau Le Parfum",
+        "Rasasi Hawas Ice",
+    )
+
+    for query in queries:
         print("\nQUERY:", query)
 
         results = search(query)
