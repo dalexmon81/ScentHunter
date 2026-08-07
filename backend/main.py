@@ -8,7 +8,6 @@ import json
 import os
 import re
 import traceback
-import multiprocessing as mp
 from concurrent.futures import ThreadPoolExecutor, as_completed, TimeoutError, wait
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
@@ -57,6 +56,9 @@ STORES = [
 
 BASE_DIR = os.path.dirname(__file__)
 HISTORY_PATH = os.path.join(BASE_DIR, "price_history.json")
+
+# Pool unico: al massimo 3 scraper attivi in tutta l’app.
+SEARCH_EXECUTOR = ThreadPoolExecutor(max_workers=3, thread_name_prefix="scent-store")
 
 FRONTEND_INDEX = (
     Path(__file__).resolve().parent.parent
@@ -362,14 +364,6 @@ def sort_by_price(
 # RICERCA PREZZI
 # ============================================================
 
-def _store_process(store: str, query: str, queue) -> None:
-    try:
-        products = run_store(store, query) or []
-        queue.put((store, products, None))
-    except BaseException as exc:
-        queue.put((store, [], str(exc) or exc.__class__.__name__))
-
-
 def search_perfume(query: str) -> Dict[str, Any]:
     query = str(query or "").strip()
     if not query:
@@ -378,48 +372,28 @@ def search_perfume(query: str) -> Dict[str, Any]:
     results: List[Dict[str, Any]] = []
     errors: Dict[str, str] = {}
 
-    ctx = mp.get_context("fork")
-    queue = ctx.Queue()
-    processes = {}
+    # Un solo pool globale evita 8 processi per ricerca e impedisce
+    # che ricerche consecutive moltiplichino memoria/thread.
+    future_to_store = {
+        SEARCH_EXECUTOR.submit(run_store, store, query): store
+        for store in STORES
+    }
 
-    for store in STORES:
-        p = ctx.Process(target=_store_process, args=(store, query, queue))
-        p.start()
-        processes[store] = p
+    done, not_done = wait(future_to_store, timeout=18)
 
-    import time
-    deadline = time.monotonic() + 10.0
-    received = set()
-
-    while len(received) < len(STORES):
-        remaining = deadline - time.monotonic()
-        if remaining <= 0:
-            break
+    for future in done:
+        store = future_to_store[future]
         try:
-            store, products, error = queue.get(timeout=min(0.25, remaining))
-        except Exception:
-            continue
-        received.add(store)
-        if error:
-            errors[store] = error
-        else:
-            results.extend(products or [])
+            results.extend(future.result() or [])
+        except Exception as exc:
+            errors[store] = str(exc) or exc.__class__.__name__
 
-    for store, p in processes.items():
-        if store not in received:
-            errors[store] = "timeout"
-        if p.is_alive():
-            p.terminate()
-        p.join(timeout=0.5)
-        if p.is_alive():
-            p.kill()
-            p.join(timeout=0.5)
-
-    try:
-        queue.cancel_join_thread()
-        queue.close()
-    except Exception:
-        pass
+    # I task non ancora partiti vengono cancellati.
+    # Quelli già attivi restano al massimo 3 in totale, non 8 per ricerca.
+    for future in not_done:
+        store = future_to_store[future]
+        errors[store] = "timeout"
+        future.cancel()
 
     results = sort_by_price(unique_results(results))
 
