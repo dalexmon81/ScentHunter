@@ -18,7 +18,6 @@ HEADERS = {
 }
 
 PRICE_RE = re.compile(r"(?<!\d)(\d{1,4}[.,]\d{2})\s*€", re.I)
-ML_RE = re.compile(r"\b\d+(?:[.,]\d+)?\s*ml\b", re.I)
 
 OUT_OF_STOCK = (
     "en rupture de stock",
@@ -28,13 +27,13 @@ OUT_OF_STOCK = (
     "epuise",
 )
 
-BAD_TEXT = (
+BAD_RESULT_TEXT = (
     "résultat de la recherche",
     "resultat de la recherche",
     "nombre de produits",
     "produits :",
-    "le plus pertinent",
     "afficher plus",
+    "le plus pertinent",
 )
 
 
@@ -60,22 +59,23 @@ def _tokens(value):
 
 
 def _matches(text, query):
-    n = _norm(text)
-    return all(token in n for token in _tokens(query))
+    text = _norm(text)
+    tokens = _tokens(query)
+    return bool(tokens) and all(token in text for token in tokens)
 
 
 def _prices(text):
-    return [x.replace(".", ",") + "€" for x in PRICE_RE.findall(_clean(text))]
+    return [p.replace(".", ",") + " €" for p in PRICE_RE.findall(_clean(text))]
 
 
-def _is_out_of_stock(text):
+def _out_of_stock(text):
     low = _clean(text).lower()
-    return any(marker in low for marker in OUT_OF_STOCK)
+    return any(x in low for x in OUT_OF_STOCK)
 
 
-def _bad_text(text):
+def _bad_result(text):
     low = _clean(text).lower()
-    return any(x in low for x in BAD_TEXT)
+    return any(x in low for x in BAD_RESULT_TEXT)
 
 
 def _product_url(href):
@@ -83,93 +83,104 @@ def _product_url(href):
         return ""
 
     url = urljoin(BASE_URL, href).split("#")[0].split("?")[0]
-    p = urlparse(url)
+    parsed = urlparse(url)
 
-    if p.netloc.lower() not in {"notino.fr", "www.notino.fr"}:
+    if parsed.netloc.lower() not in {"notino.fr", "www.notino.fr"}:
         return ""
 
-    parts = [x for x in p.path.strip("/").split("/") if x]
-    if len(parts) < 2:
+    path = parsed.path.strip("/")
+    if not path:
         return ""
+
+    first = path.split("/", 1)[0].lower()
 
     blocked = {
         "search.asp", "parfums", "parfums-homme", "parfums-femme",
         "cosmetiques", "maquillage", "cheveux", "visage", "corps",
         "marques", "promotions", "nouveautes", "panier", "cart",
         "login", "account", "contact", "magazine", "faqs",
+        "livraison-offerte", "premium", "cadeau-luxe",
     }
 
-    if parts[0].lower() in blocked:
+    if first in blocked:
+        return ""
+
+    # Le vere pagine prodotto Notino normalmente hanno brand + prodotto.
+    if len([x for x in path.split("/") if x]) < 2:
         return ""
 
     return url
 
 
-def _smallest_product_card(link, query):
+def _link_identity(link):
+    return _clean(
+        " ".join([
+            link.get("title") or "",
+            link.get("aria-label") or "",
+            link.get_text(" ", strip=True),
+        ])
+    )
+
+
+def _nearest_price_block(link, query):
     """
-    Trova il più piccolo antenato che:
-    - contiene la query;
-    - contiene un prezzo oppure lo stato out-of-stock;
-    - non è il wrapper generale dei risultati;
-    - contiene pochi link prodotto, così prezzo/nome restano della stessa card.
+    Parte DAL link prodotto corretto e risale solo finché trova il suo prezzo.
+    Non cerca link a caso nella pagina e non usa il wrapper generale dei risultati.
     """
     node = link
 
-    for _ in range(8):
+    for _ in range(7):
         if node is None:
             break
 
         text = _clean(node.get_text(" ", strip=True))
 
-        if 10 <= len(text) <= 900 and _matches(text, query) and not _bad_text(text):
-            product_links = set()
+        if len(text) > 1600:
+            break
 
-            for a in node.find_all("a", href=True):
-                u = _product_url(a.get("href", ""))
-                if u:
-                    product_links.add(u)
+        if _bad_result(text):
+            node = node.parent
+            continue
 
-            if len(product_links) <= 1 and (_prices(text) or _is_out_of_stock(text)):
-                return node
+        if _matches(text, query):
+            if _out_of_stock(text):
+                return node, text, None
+
+            prices = _prices(text)
+            if prices:
+                return node, text, prices[0]
 
         node = node.parent
 
-    return None
+    return None, "", None
 
 
-def _name_from_card(card, link, query):
-    candidates = []
+def _name(link, block, query):
+    # Prima scelta: il testo/label DEL link prodotto.
+    identity = _link_identity(link)
+    if identity and _matches(identity, query) and not _bad_result(identity):
+        # Togli solo rumore commerciale in coda, senza inventare il nome.
+        identity = re.split(
+            r"\b(?:\d{1,4}[.,]\d{2}\s*€|en rupture de stock|livraison offerte)\b",
+            identity,
+            maxsplit=1,
+            flags=re.I,
+        )[0]
+        identity = _clean(identity)
+        if 2 <= len(identity) <= 300:
+            return identity
 
-    for attr in ("title", "aria-label"):
-        v = _clean(link.get(attr, ""))
-        if v:
-            candidates.append(v)
-
-    link_text = _clean(link.get_text(" ", strip=True))
-    if link_text:
-        candidates.append(link_text)
-
-    for selector in ("h1", "h2", "h3", "h4", "[class*='name']", "[class*='title']"):
-        try:
-            for el in card.select(selector):
-                v = _clean(el.get_text(" ", strip=True))
-                if v:
-                    candidates.append(v)
-        except Exception:
-            pass
-
-    # Ultima possibilità: testo card senza prezzo/valutazione.
-    card_text = _clean(card.get_text(" ", strip=True))
-    candidates.append(card_text)
-
-    for value in candidates:
-        if (
-            value
-            and len(value) <= 260
-            and _matches(value, query)
-            and not _bad_text(value)
-        ):
-            return value
+    # Fallback: heading dentro la stessa card.
+    if block is not None:
+        for selector in ("h1", "h2", "h3", "h4"):
+            for el in block.select(selector):
+                candidate = _clean(el.get_text(" ", strip=True))
+                if (
+                    2 <= len(candidate) <= 300
+                    and _matches(candidate, query)
+                    and not _bad_result(candidate)
+                ):
+                    return candidate
 
     return ""
 
@@ -179,11 +190,11 @@ def search(query):
     if not query:
         return []
 
-    url = BASE_URL + "/search.asp?exps=" + quote_plus(query)
+    search_url = BASE_URL + "/search.asp?exps=" + quote_plus(query)
 
     try:
         response = requests.get(
-            url,
+            search_url,
             headers=HEADERS,
             timeout=TIMEOUT,
             allow_redirects=True,
@@ -202,54 +213,27 @@ def search(query):
         if not product_url or product_url in seen:
             continue
 
-        # Il link o la sua card devono riferirsi davvero alla query.
-        link_identity = _clean(
-            (link.get("title") or "") + " " +
-            (link.get("aria-label") or "") + " " +
-            link.get_text(" ", strip=True)
-        )
-
-        card = _smallest_product_card(link, query)
-        if card is None:
+        # Punto chiave:
+        # il LINK prodotto deve già riferirsi alla query.
+        # Così "Résultat de la recherche..." non può diventare un prodotto.
+        identity = _link_identity(link)
+        if not identity or not _matches(identity, query) or _bad_result(identity):
             continue
 
-        text = _clean(card.get_text(" ", strip=True))
-
-        if _bad_text(text) or _is_out_of_stock(text):
+        block, text, price = _nearest_price_block(link, query)
+        if block is None:
             continue
 
-        # Sicurezza fondamentale: nella card deve esserci esattamente
-        # questo URL prodotto, non un contenitore con più prodotti.
-        urls_in_card = {
-            _product_url(a.get("href", ""))
-            for a in card.find_all("a", href=True)
-        }
-        urls_in_card.discard("")
-
-        if urls_in_card and product_url not in urls_in_card:
-            continue
-        if len(urls_in_card) > 1:
+        # Un prodotto non disponibile non deve entrare nel comparatore.
+        if _out_of_stock(text):
             continue
 
-        name = _name_from_card(card, link, query)
+        if not price:
+            continue
+
+        name = _name(link, block, query)
         if not name:
             continue
-
-        # Evita che un link generico erediti una query dal wrapper.
-        if link_identity and not _matches(link_identity, query):
-            # Va bene solo se il nome estratto dalla stessa card è chiaramente valido
-            # e la card contiene un unico URL prodotto.
-            if not (_matches(name, query) and len(urls_in_card) == 1):
-                continue
-
-        prices = _prices(text)
-        if not prices:
-            continue
-
-        # In una vera card Notino il prezzo prodotto è quello principale.
-        # Se compaiono più importi (es. promo/codice), scegliamo il primo prezzo
-        # associato alla card, NON l'ultimo importo della pagina.
-        price = prices[0]
 
         seen.add(product_url)
         results.append({
@@ -267,5 +251,7 @@ def search(query):
 
 if __name__ == "__main__":
     import sys
+
     q = " ".join(sys.argv[1:]).strip() or "Majesty"
-    print(search(q))
+    for item in search(q):
+        print(item)
