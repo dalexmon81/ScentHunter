@@ -401,9 +401,10 @@ function shGroupData(data){
     const cname=canonicalName(o);
     if(!cname)return;
     const size=sizeOf(o);
-    // Raggruppa lo stesso profumo anche quando alcuni negozi non indicano i ml.
-    // Il formato resta separato solo quando esistono davvero più formati espliciti.
-    const key=cname;
+    // Ogni formato è un prodotto distinto.
+    // 30 ml, 50 ml, 100 ml ecc. NON devono mai finire nella stessa scheda.
+    // Se il formato non è dichiarato, resta in un gruppo separato "unknown".
+    const key=cname+"|"+(size||"unknown");
 
     if(!map.has(key)){
       map.set(key,{
@@ -421,10 +422,19 @@ function shGroupData(data){
     if(!g.brand && o.brand)g.brand=o.brand;
     if(!g.image)g.image=o.image||o.image_url||o.thumbnail||"";
 
-    // Un solo risultato per negozio. Se lo stesso store arriva due volte,
-    // conserva l'offerta col prezzo più basso.
+    // Deduplica soltanto la STESSA offerta.
+    // Non elimina più altri risultati dello stesso negozio.
     const store=String(o.store||"").trim().toLowerCase();
-    const existingIndex=g.offers.findIndex(x=>String(x.store||"").trim().toLowerCase()===store && store);
+    const url=String(o.url||"").split("?")[0].toLowerCase();
+    const offerSize=sizeOf(o)||"unknown";
+    const offerName=normalizePerfumeName(o.name||"").toLowerCase();
+    const existingIndex=g.offers.findIndex(x=>{
+      const xs=String(x.store||"").trim().toLowerCase();
+      const xu=String(x.url||"").split("?")[0].toLowerCase();
+      const xsize=sizeOf(x)||"unknown";
+      const xn=normalizePerfumeName(x.name||"").toLowerCase();
+      return xs===store && xu===url && xsize===offerSize && xn===offerName;
+    });
 
     if(existingIndex>=0){
       if(shNum(o)<shNum(g.offers[existingIndex]))g.offers[existingIndex]=o;
