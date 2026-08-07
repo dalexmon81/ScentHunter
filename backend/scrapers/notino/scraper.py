@@ -1,255 +1,150 @@
 import re
 import requests
 from bs4 import BeautifulSoup
-from urllib.parse import quote_plus, urljoin
+from urllib.parse import quote_plus, urlparse, parse_qs
 
 STORE = "Notino"
 BASE_URL = "https://www.notino.fr"
+SEARCH_PROXY = "https://www.google.com/search"
 
 HEADERS = {
-    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
-                  "AppleWebKit/537.36 (KHTML, like Gecko) "
-                  "Chrome/124.0.0.0 Safari/537.36",
-    "Accept-Language": "fr-FR,fr;q=0.9,en;q=0.8",
+    "User-Agent": (
+        "Mozilla/5.0 (X11; Linux x86_64) "
+        "AppleWebKit/537.36 (KHTML, like Gecko) "
+        "Chrome/124.0 Safari/537.36"
+    ),
+    "Accept-Language": "fr-FR,fr;q=0.9,en;q=0.7",
 }
 
-PRICE_RE = re.compile(
-    r"€\s*(\d{1,4}[.,]\d{2})|(\d{1,4}[.,]\d{2})\s*€",
-    re.I,
+OUT_OF_STOCK_WORDS = (
+    "rupture de stock",
+    "en rupture",
+    "épuisé",
+    "epuise",
+    "indisponible",
+    "out of stock",
+)
+
+NON_PRODUCT_PATHS = (
+    "/marques/",
+    "/conseils/",
+    "/article/",
+    "/blog/",
+    "/contact/",
 )
 
 
-def _clean(s):
-    return re.sub(r"\s+", " ", str(s or "")).strip()
+def _clean(text):
+    return re.sub(r"\s+", " ", text or "").strip()
 
 
-def _words(s):
-    return [
-        x for x in re.findall(r"[a-z0-9]+", _clean(s).lower())
-        if len(x) > 1
-    ]
-
-
-def _matches(text, query):
+def _norm(text):
     text = _clean(text).lower()
-    return all(word in text for word in _words(query))
+    text = re.sub(r"[^a-z0-9à-ÿ]+", " ", text)
+    return re.sub(r"\s+", " ", text).strip()
 
 
-def _format_price(value):
-    if not value:
-        return ""
+def _extract_notino_url(href):
+    href = href or ""
 
-    value = str(value).strip().replace(" ", "").replace("€", "")
-
-    m = re.search(r"\d{1,4}(?:[.,]\d{2})", value)
-    if not m:
-        return ""
-
-    return m.group(0).replace(".", ",") + "€"
-
-
-def _extract_product(session, product_url, query):
-    """
-    Apre la VERA scheda prodotto Notino.
-    Nome e prezzo vengono estratti solo da questa pagina.
-    """
-
-    try:
-        response = session.get(
-            product_url,
-            headers=HEADERS,
-            timeout=15,
-            allow_redirects=True,
-        )
-        response.raise_for_status()
-    except requests.RequestException as error:
-        print("NOTINO PRODUCT ERROR:", product_url, error, flush=True)
-        return None
-
-    final_url = response.url.split("?")[0]
-
-    # Sicurezza: dobbiamo essere ancora su Notino.
-    if "notino.fr" not in final_url.lower():
-        return None
-
-    soup = BeautifulSoup(response.text, "html.parser")
-
-    # -----------------------
-    # NOME PRODOTTO
-    # -----------------------
-
-    name = ""
-
-    h1 = soup.find("h1")
-    if h1:
-        name = _clean(h1.get_text(" ", strip=True))
-
-    # Fallback: title / meta
-    if not name or not _matches(name, query):
-        meta = soup.find("meta", property="og:title")
-
-        if meta:
-            candidate = _clean(meta.get("content"))
-            if _matches(candidate, query):
-                name = candidate
-
-    # La scheda aperta deve essere davvero del prodotto cercato.
-    if not name or not _matches(name, query):
-        print(
-            "NOTINO REJECT PRODUCT NAME:",
-            product_url,
-            "| NAME:",
-            name,
-            flush=True,
-        )
-        return None
-
-    # -----------------------
-    # DISPONIBILITÀ
-    # -----------------------
-
-    page_text = _clean(soup.get_text(" ", strip=True))
-    page_lower = page_text.lower()
-
-    unavailable = (
-        "rupture de stock",
-        "épuisé",
-        "indisponible",
-        "produit indisponible",
-        "actuellement indisponible",
+    # URL Notino diretto
+    m = re.search(
+        r"https?://(?:www\.)?notino\.fr/[^\s&\"']+",
+        href,
+        re.I,
     )
+    if m:
+        return m.group(0)
 
-    if any(x in page_lower for x in unavailable):
-        print(
-            "NOTINO OUT OF STOCK:",
-            name,
-            product_url,
-            flush=True,
-        )
-        return None
+    # URL Google del tipo /url?q=https://www.notino.fr/...
+    if href.startswith("/url?"):
+        query = parse_qs(urlparse(href).query)
+        target = (query.get("q") or query.get("url") or [""])[0]
+        if "notino.fr/" in target:
+            return target
 
-    # -----------------------
-    # PREZZO
-    # -----------------------
+    return ""
 
-    price = ""
 
-    # 1. Prima scelta: metadata strutturati della scheda.
-    price_selectors = [
-        'meta[property="product:price:amount"]',
-        'meta[itemprop="price"]',
-        '[itemprop="price"]',
-    ]
+def _looks_like_product_url(url):
+    if not url:
+        return False
 
-    for selector in price_selectors:
-        element = soup.select_one(selector)
+    low = url.lower()
 
-        if not element:
-            continue
+    if any(path in low for path in NON_PRODUCT_PATHS):
+        return False
 
-        value = (
-            element.get("content")
-            or element.get("value")
-            or element.get_text(" ", strip=True)
-        )
+    return "notino.fr/" in low
 
-        price = _format_price(value)
 
-        if price:
-            break
-
-    # 2. JSON-LD: spesso contiene prezzo e disponibilità reali.
-    if not price:
-        for script in soup.find_all(
-            "script",
-            attrs={"type": "application/ld+json"}
-        ):
-            raw = script.string or script.get_text()
-
-            if not raw:
-                continue
-
-            # Cerchiamo price nel JSON senza dipendere
-            # dalla struttura esatta.
-            matches = re.findall(
-                r'"price"\s*:\s*"?(\d{1,4}(?:[.,]\d{1,2})?)"?',
-                raw,
-                re.I,
-            )
-
-            for value in matches:
-                price = _format_price(value)
-
-                if price:
-                    break
-
-            if price:
-                break
-
-    # 3. Fallback finale: cerca prezzi vicino alla zona prodotto.
-    if not price:
-        price_matches = list(PRICE_RE.finditer(page_text))
-
-        # Non prendiamo più "l'ultimo prezzo della pagina".
-        # Accettiamo il primo prezzo plausibile della scheda.
-        for match in price_matches:
-            value = match.group(1) or match.group(2)
-            candidate = _format_price(value)
-
-            if candidate:
-                price = candidate
-                break
-
-    if not price:
-        print(
-            "NOTINO REJECT NO PRICE:",
-            name,
-            product_url,
-            flush=True,
-        )
-        return None
-
-    print(
-        "NOTINO PRODUCT ACCEPT:",
-        name,
-        "| PRICE:",
-        price,
-        "| URL:",
-        final_url,
-        flush=True,
-    )
-
-    return {
-        "store": STORE,
-        "name": name,
-        "price": price,
-        "url": final_url,
+def _query_words(query):
+    ignored = {
+        "eau", "de", "parfum", "perfume", "edp", "edt",
+        "spray", "ml", "pour", "homme", "femme",
     }
 
-
-def _search_pages(session, query):
-    urls = [
-        BASE_URL + "/search.asp?exps=" + quote_plus(query),
-        BASE_URL + "/search?query=" + quote_plus(query),
+    return [
+        word
+        for word in _norm(query).split()
+        if len(word) >= 2 and word not in ignored
     ]
 
-    for url in urls:
+
+def _matches_query(text, query):
+    low = _norm(text)
+    words = _query_words(query)
+
+    if not words:
+        return False
+
+    return all(word in low for word in words)
+
+
+def _extract_price(text):
+    # Accetta 39,95 €, 39.95 €, 39,95€, ecc.
+    matches = re.findall(
+        r"(?<!\d)(\d{1,4}[,.]\d{2})\s*€",
+        text or "",
+    )
+
+    if not matches:
+        return ""
+
+    # Evitiamo prezzi palesemente non realistici per un profumo.
+    values = []
+
+    for raw in matches:
         try:
-            response = session.get(
-                url,
-                headers=HEADERS,
-                timeout=15,
-                allow_redirects=True,
-            )
-
-            response.raise_for_status()
-
-        except requests.RequestException as error:
-            print("NOTINO SEARCH ERROR:", error, flush=True)
+            value = float(raw.replace(",", "."))
+        except ValueError:
             continue
 
-        if response.text:
-            yield response.text
+        if 5 <= value <= 2000:
+            values.append((value, raw))
+
+    if not values:
+        return ""
+
+    values.sort(key=lambda item: item[0])
+    return values[0][1].replace(".", ",") + " €"
+
+
+def _google_search(query):
+    params = {
+        "q": query,
+        "num": 20,
+        "filter": 0,
+    }
+
+    response = requests.get(
+        SEARCH_PROXY,
+        params=params,
+        headers=HEADERS,
+        timeout=20,
+    )
+    response.raise_for_status()
+    return BeautifulSoup(response.text, "html.parser")
 
 
 def search(query):
@@ -258,102 +153,104 @@ def search(query):
     if not query:
         return []
 
-    session = requests.Session()
-    session.headers.update(HEADERS)
+    # Facciamo più tentativi. Il secondo favorisce risultati che
+    # espongono un prezzo nello snippet Google.
+    search_queries = [
+        f'site:notino.fr "{query}"',
+        f'site:notino.fr "{query}" "€"',
+    ]
 
     results = []
     seen = set()
 
-    for html in _search_pages(session, query):
+    for google_query in search_queries:
+        try:
+            soup = _google_search(google_query)
+        except requests.RequestException as error:
+            print("NOTINO SEARCH ERROR:", error)
+            continue
 
-        soup = BeautifulSoup(html, "html.parser")
+        # Usiamo i blocchi che contengono un titolo h3:
+        # sono molto più affidabili dei generici "div".
+        for title in soup.select("h3"):
+            link_tag = title.find_parent("a", href=True)
 
-        for link in soup.find_all("a", href=True):
-
-            href = _clean(link.get("href"))
-
-            if not href:
+            if not link_tag:
                 continue
 
-            product_url = urljoin(
-                BASE_URL,
-                href
-            ).split("?")[0]
+            url = _extract_notino_url(link_tag.get("href", ""))
 
-            if "notino.fr" not in product_url.lower():
+            if not _looks_like_product_url(url):
                 continue
 
-            path = product_url.replace(
-                BASE_URL,
-                ""
-            ).strip("/").lower()
+            block = title
 
-            if not path:
+            # Risaliamo qualche livello per includere titolo, prezzo e snippet.
+            for _ in range(4):
+                parent = block.parent
+                if parent is None:
+                    break
+                block = parent
+
+            text = _clean(block.get_text(" ", strip=True))
+            name = _clean(title.get_text(" ", strip=True))
+
+            combined = f"{name} {text}"
+
+            if not _matches_query(combined, query):
                 continue
 
-            # Escludiamo pagine generiche.
-            if any(
-                bad in path
-                for bad in (
-                    "search.asp",
-                    "search/",
-                    "panier",
-                    "cart",
-                    "login",
-                    "account",
-                    "contact",
-                    "livraison",
-                    "conditions",
-                    "magazine",
-                    "marques",
-                    "parfums",
-                )
-            ):
+            low = combined.lower()
+
+            # IMPORTANTE:
+            # non restituiamo più a ScentHunter i risultati Google
+            # esplicitamente marcati come esauriti. In questo modo
+            # Notino non compare con una falsa "offerta".
+            if any(word in low for word in OUT_OF_STOCK_WORDS):
+                print("NOTINO SKIP OUT OF STOCK:", name, url)
                 continue
 
-            if product_url in seen:
+            price = _extract_price(combined)
+
+            # Senza prezzo non possiamo considerarlo un'offerta valida.
+            if not price:
+                print("NOTINO SKIP NO PRICE:", name, url)
                 continue
 
-            # Il link stesso deve identificare il prodotto.
-            link_text = _clean(
-                link.get("title")
-                or link.get("aria-label")
-                or link.get_text(" ", strip=True)
-            )
+            key = url.lower()
 
-            if not _matches(link_text, query):
+            if key in seen:
                 continue
 
-            seen.add(product_url)
+            seen.add(key)
 
             print(
-                "NOTINO FOUND PRODUCT URL:",
-                product_url,
-                "| LINK:",
-                link_text,
-                flush=True,
+                "NOTINO VALID OFFER:",
+                name,
+                "|",
+                price,
+                "|",
+                url,
             )
 
-            # QUI È LA CORREZIONE:
-            # niente prezzo dalla pagina ricerca.
-            # Apriamo la scheda prodotto.
-            product = _extract_product(
-                session,
-                product_url,
-                query,
-            )
-
-            if product:
-                results.append(product)
+            results.append({
+                "store": STORE,
+                "name": name or query,
+                "price": price,
+                "url": url,
+                "available": True,
+                "stock_status": "in_stock",
+            })
 
             if len(results) >= 10:
                 return results
-
-        if results:
-            return results
 
     return results
 
 
 if __name__ == "__main__":
-    print(search("Hawas Ice"))
+    items = search("Rasasi Hawas Ice")
+    print("RISULTATI:", len(items))
+
+    for item in items:
+        print(item)
