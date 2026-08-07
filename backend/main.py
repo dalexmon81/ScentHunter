@@ -85,32 +85,36 @@ def product_image(product: Dict[str, Any]) -> str:
 
 
 def matches(product: Dict[str, Any], query: str) -> bool:
-    name = norm(product.get("name", ""))
+    name_tokens = set(norm(product.get("name", "")).split())
     query_normalized = norm(query)
 
-    if not name:
+    if not name_tokens:
         return False
 
-    for phrase in VARIANTS:
-        p = norm(phrase)
-        if p in name and p not in query_normalized:
-            return False
+    query_all_tokens = set(query_normalized.split())
 
     for phrase in NON_PERFUME:
-        p = norm(phrase)
-        if p in name and p not in query_normalized:
+        phrase_tokens = set(norm(phrase).split())
+        if (
+            phrase_tokens
+            and phrase_tokens.issubset(name_tokens)
+            and not phrase_tokens.issubset(query_all_tokens)
+        ):
             return False
 
-    tokens = [
-        token for token in query_normalized.split()
+    query_tokens = {
+        token
+        for token in query_all_tokens
         if token not in IGNORED_WORDS
-    ]
+    }
 
-    if not tokens:
+    if not query_tokens:
+        query_tokens = query_all_tokens
+
+    if not query_tokens:
         return False
 
-    return all(token in name for token in tokens)
-
+    return query_tokens.issubset(name_tokens)
 
 def load_scraper(store: str):
     return importlib.import_module(f"scrapers.{store}.scraper")
