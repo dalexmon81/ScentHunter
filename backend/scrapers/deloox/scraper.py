@@ -18,6 +18,8 @@ PRICE_RE = re.compile(
     re.I,
 )
 
+ML_RE = re.compile(r"\b(\d{1,4})\s*ml\b", re.I)
+
 SOLD_OUT = (
     "sold out",
     "out of stock",
@@ -37,9 +39,16 @@ def _tokens(value):
     return [x for x in _norm(value).split() if len(x) > 1]
 
 
+def _query_tokens(value):
+    # I ml non fanno parte dell'identità della fragranza:
+    # così una ricerca del profumo può recuperare 30/50/100 ml.
+    text = ML_RE.sub(" ", str(value or ""))
+    return _tokens(text)
+
+
 def _matches(text, query):
     hay = _norm(text)
-    words = _tokens(query)
+    words = _query_tokens(query)
     return bool(words) and all(word in hay for word in words)
 
 
@@ -60,24 +69,17 @@ def _get(session, url):
         )
         response.raise_for_status()
         return response
-    except requests.RequestException as error:
-        print(f"DELOOX ERROR: {error}")
+    except requests.RequestException:
         return None
 
 
 def _find_brand_category(session, query):
-    """
-    Deloox non usa un normale /search?q=...
-    La home espone invece l'indice dei brand.
-    Cerchiamo il brand direttamente lì e apriamo la sua categoria.
-    """
     response = _get(session, HOME_URL)
     if response is None:
         return None
 
     soup = BeautifulSoup(response.text, "html.parser")
-    query_words = _tokens(query)
-
+    query_words = _query_tokens(query)
     candidates = []
 
     for link in soup.find_all("a", href=True):
@@ -96,34 +98,78 @@ def _find_brand_category(session, query):
         if not brand_words:
             continue
 
-        # Il nome brand deve comparire nella query.
         if all(word in query_words for word in brand_words):
             candidates.append((len(brand_words), len(name), url))
 
     if not candidates:
         return None
 
-    # Preferisci il brand più specifico.
     candidates.sort(key=lambda x: (-x[0], -x[1]))
     return candidates[0][2]
 
 
+def _card_for_link(link):
+    node = link
+    best = link
+
+    for _ in range(8):
+        if node is None:
+            break
+
+        text = _clean(node.get_text(" ", strip=True))
+
+        if len(text) > 2500:
+            break
+
+        best = node
+
+        if _extract_price(text):
+            return node
+
+        node = node.parent
+
+    return best
+
+
+def _best_name(card, link, query):
+    candidates = []
+
+    for tag in card.find_all(["h1", "h2", "h3", "h4"]):
+        text = _clean(tag.get_text(" ", strip=True))
+        if text:
+            candidates.append(text)
+
+    for a in card.find_all("a", href=True):
+        text = _clean(a.get_text(" ", strip=True))
+        if text:
+            candidates.append(text)
+
+    link_text = _clean(link.get_text(" ", strip=True))
+    if link_text:
+        candidates.append(link_text)
+
+    for text in candidates:
+        if _matches(text, query):
+            return text
+
+    card_text = _clean(card.get_text(" ", strip=True))
+
+    if _matches(card_text, query):
+        ml = ML_RE.search(card_text)
+        if ml:
+            return f"{query} {ml.group(1)} ml"
+        return query
+
+    return ""
+
+
 def _extract_category(html, query):
-    """
-    La pagina categoria Deloox contiene direttamente:
-    nome prodotto, formato, disponibilità e prezzo.
-    Usiamo la stessa filosofia semplice di PerfumeMarket:
-    link -> pochi parent -> prezzo della stessa card.
-    """
     soup = BeautifulSoup(html, "html.parser")
     results = []
     seen = set()
 
-    query_tokens = _tokens(query)
-
     for link in soup.find_all("a", href=True):
         href = _clean(link.get("href"))
-        name = _clean(link.get_text(" ", strip=True))
 
         if not href:
             continue
@@ -133,40 +179,37 @@ def _extract_category(html, query):
         if "/product/" not in product_url.lower():
             continue
 
-        if not name:
+        card = _card_for_link(link)
+        card_text = _clean(card.get_text(" ", strip=True))
+
+        # Il match viene fatto sull'intera card, non solo sul testo del link.
+        # Deloox può separare nome, formato e prezzo in elementi diversi.
+        if not _matches(card_text, query):
             continue
-
-        name_norm = _norm(name)
-
-        if not all(token in name_norm for token in query_tokens):
-            continue
-
-        node = link
-        price = None
-        card_text = ""
-
-        for _ in range(6):
-            if node is None:
-                break
-
-            card_text = _clean(node.get_text(" ", strip=True))
-            price = _extract_price(card_text)
-
-            if price:
-                break
-
-            node = node.parent
 
         if any(word in card_text.lower() for word in SOLD_OUT):
             continue
 
+        price = _extract_price(card_text)
         if not price:
             continue
 
-        if product_url in seen:
+        name = _best_name(card, link, query)
+        if not name:
             continue
 
-        seen.add(product_url)
+        ml = ML_RE.search(card_text)
+        if ml and not ML_RE.search(name):
+            name = f"{name} {ml.group(1)} ml"
+
+        # La stessa fragranza può avere URL/formati distinti.
+        size = ml.group(1) if ml else ""
+        key = (product_url, size)
+
+        if key in seen:
+            continue
+
+        seen.add(key)
 
         results.append({
             "store": STORE,
@@ -180,100 +223,174 @@ def _extract_category(html, query):
     return results
 
 
-def _extract_brand_page(html, query):
-    """
-    Alcune pagine brand mostrano i prodotti senza link /product/
-    immediatamente leggibile. In quel caso prendiamo i blocchi testuali
-    che contengono query + prezzo e recuperiamo il link prodotto vicino.
-    """
+def _extract_product_page(html, url, query):
     soup = BeautifulSoup(html, "html.parser")
-    results = []
+    page_text = _clean(soup.get_text(" ", strip=True))
+
+    if not _matches(page_text, query):
+        return []
+
+    if any(word in page_text.lower() for word in SOLD_OUT):
+        return []
+
+    price = None
+
+    # Prima cerca il prezzo nei blocchi prezzo.
+    for selector in (
+        "[class*='price']",
+        "[id*='price']",
+        "[itemprop='price']",
+    ):
+        for element in soup.select(selector):
+            price = _extract_price(_clean(element.get_text(" ", strip=True)))
+            if price:
+                break
+        if price:
+            break
+
+    if not price:
+        price = _extract_price(page_text)
+
+    if not price:
+        return []
+
+    h1 = soup.find("h1")
+    name = _clean(h1.get_text(" ", strip=True)) if h1 else query
+
+    ml = ML_RE.search(page_text)
+    if ml and not ML_RE.search(name):
+        name = f"{name} {ml.group(1)} ml"
+
+    return [{
+        "store": STORE,
+        "name": name,
+        "price": price,
+        "url": url.split("?")[0],
+        "available": True,
+        "availability": "in_stock",
+    }]
+
+
+def _sitemap_product_urls(session, query):
+    """
+    Fallback generale: usa le sitemap pubbliche di Deloox per trovare
+    pagine prodotto anche quando il brand non compare nella home.
+    Non contiene profumi hardcoded.
+    """
+    roots = [
+        BASE_URL + "/sitemap.xml",
+        BASE_URL + "/sitemap_index.xml",
+    ]
+
+    wanted = _query_tokens(query)
+    found = []
+    checked_maps = set()
+
+    def scan_map(url, depth=0):
+        if depth > 2 or url in checked_maps or len(found) >= 30:
+            return
+
+        checked_maps.add(url)
+        response = _get(session, url)
+
+        if response is None:
+            return
+
+        soup = BeautifulSoup(response.text, "xml")
+        locs = [_clean(x.get_text()) for x in soup.find_all("loc")]
+
+        for loc in locs:
+            low = loc.lower()
+
+            if low.endswith(".xml") or "sitemap" in low:
+                scan_map(loc, depth + 1)
+                continue
+
+            if "/product/" not in low:
+                continue
+
+            # URL slug come primo filtro; se non basta verrà controllata
+            # comunque la pagina prodotto.
+            slug = _norm(loc)
+
+            if all(token in slug for token in wanted):
+                if loc not in found:
+                    found.append(loc)
+
+    for root in roots:
+        scan_map(root)
+
+    return found
+
+
+def _dedupe(results):
+    out = []
     seen = set()
 
-    for link in soup.find_all("a", href=True):
-        href = _clean(link.get("href"))
-        if not href:
+    for item in results:
+        ml = ML_RE.search(item.get("name", ""))
+        size = ml.group(1) if ml else ""
+        key = (
+            item.get("url", "").split("?")[0],
+            size,
+            item.get("price", ""),
+        )
+
+        if key in seen:
             continue
 
-        node = link
+        seen.add(key)
+        out.append(item)
 
-        for _ in range(6):
-            if node is None:
-                break
-
-            text = _clean(node.get_text(" ", strip=True))
-
-            if _matches(text, query):
-                price = _extract_price(text)
-
-                if price and not any(x in text.lower() for x in SOLD_OUT):
-                    product_link = None
-                    product_name = ""
-
-                    for a in node.find_all("a", href=True):
-                        candidate_url = urljoin(BASE_URL, a.get("href", "")).split("?")[0]
-                        candidate_name = _clean(a.get_text(" ", strip=True))
-
-                        if "/product/" in candidate_url.lower():
-                            product_link = candidate_url
-
-                            if candidate_name and _matches(candidate_name, query):
-                                product_name = candidate_name
-                                break
-
-                    if product_link:
-                        if not product_name:
-                            product_name = query
-
-                        if product_link not in seen:
-                            seen.add(product_link)
-                            results.append({
-                                "store": STORE,
-                                "name": product_name,
-                                "price": price,
-                                "url": product_link,
-                                "available": True,
-                                "availability": "in_stock",
-                            })
-
-                break
-
-            node = node.parent
-
-    return results
+    return out
 
 
 def search(query):
     query = _clean(query)
+
     if not query:
         return []
 
     session = requests.Session()
+    results = []
 
-    # 1) Trova il brand dall'indice Deloox.
+    # 1) Percorso già esistente: brand -> categoria.
     brand_url = _find_brand_category(session, query)
 
-    if not brand_url:
-        return []
+    if brand_url:
+        response = _get(session, brand_url)
 
-    # 2) La categoria brand è il vero punto di ingresso utile.
-    response = _get(session, brand_url)
+        if response is not None:
+            results.extend(_extract_category(response.text, query))
 
-    if response is None:
-        return []
-
-    results = _extract_category(response.text, query)
-
+    # 2) Fallback: sitemap -> tutte le pagine prodotto corrispondenti.
+    # Serve soprattutto quando la categoria brand non restituisce le card
+    # oppure quando i formati sono pagine prodotto separate.
     if not results:
-        results = _extract_brand_page(response.text, query)
+        for product_url in _sitemap_product_urls(session, query):
+            response = _get(session, product_url)
 
-    return results[:20]
+            if response is None:
+                continue
+
+            results.extend(
+                _extract_product_page(
+                    response.text,
+                    response.url,
+                    query,
+                )
+            )
+
+    return _dedupe(results)[:20]
 
 
 if __name__ == "__main__":
     for q in (
+        "Tom Ford Neroli Portofino",
         "French Avenue Liquid Brun",
         "Miu Miu Miutine",
         "Rasasi Hawas Ice",
     ):
-        print(q, search(q))
+        print("\nQUERY:", q)
+        for item in search(q):
+            print(item)
