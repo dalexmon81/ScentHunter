@@ -203,50 +203,32 @@ def sort_by_price(products: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
 
 def search_perfume(query: str) -> Dict[str, Any]:
     query = str(query or "").strip()
-
     if not query:
-        return {
-            "query": query,
-            "count": 0,
-            "results": [],
-            "comparisons": [],
-            "errors": {},
-        }
+        return {"query": query, "count": 0, "results": [], "comparisons": [], "errors": {}}
 
     results: List[Dict[str, Any]] = []
     errors: Dict[str, str] = {}
-
-    def execute(store: str):
-        try:
-            return store, run_store(store, query), None
-        except Exception as exc:
-            return store, [], str(exc) or exc.__class__.__name__
 
     executor = ThreadPoolExecutor(
         max_workers=len(STORES),
         thread_name_prefix="scent-store",
     )
-
-    futures = {
-        executor.submit(execute, store): store
+    future_to_store = {
+        executor.submit(run_store, store, query): store
         for store in STORES
     }
 
-    done, not_done = wait(futures, timeout=15)
+    done, not_done = wait(future_to_store, timeout=20)
 
     for future in done:
-        store = futures[future]
+        store = future_to_store[future]
         try:
-            store_name, store_results, error = future.result()
-            if error:
-                errors[store_name] = error
-            else:
-                results.extend(store_results or [])
+            results.extend(future.result() or [])
         except Exception as exc:
             errors[store] = str(exc) or exc.__class__.__name__
 
     for future in not_done:
-        store = futures[future]
+        store = future_to_store[future]
         errors[store] = "timeout"
         future.cancel()
 
