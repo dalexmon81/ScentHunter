@@ -58,26 +58,47 @@ def _tokens(value):
     return [x for x in _norm(value).split() if len(x) > 1]
 
 
+GENERIC_WORDS = {
+    "eau", "de", "parfum", "perfume", "edp", "edt", "toilette",
+    "pour", "for", "the", "woman", "women", "man", "men",
+}
+
+
+def _important_tokens(value):
+    return [x for x in _tokens(value) if x not in GENERIC_WORDS]
+
+
 def _matches(text, query):
-    hay_tokens = set(_tokens(text))
-    query_tokens = _tokens(query)
-    return bool(query_tokens) and all(word in hay_tokens for word in query_tokens)
+    """
+    Matching tollerante ma sicuro:
+    - ignora parole generiche come eau/de/parfum;
+    - non richiede che Deloox scriva brand/nome nello stesso ordine;
+    - richiede comunque le parole distintive del profumo.
+    """
+    hay = set(_important_tokens(text))
+    wanted = _important_tokens(query)
+
+    if not wanted:
+        wanted = _tokens(query)
+
+    return bool(wanted) and all(word in hay for word in wanted)
 
 
 def _match_score(text, query):
-    text_tokens = _tokens(text)
-    query_tokens = _tokens(query)
+    text_tokens = _important_tokens(text)
+    query_tokens = _important_tokens(query)
 
     if not query_tokens:
-        return -9999
+        query_tokens = _tokens(query)
 
     text_set = set(text_tokens)
-    if not all(token in text_set for token in query_tokens):
+    matched = sum(1 for token in query_tokens if token in text_set)
+
+    if matched != len(query_tokens):
         return -9999
 
-    query_set = set(query_tokens)
-    extras = [token for token in text_tokens if token not in query_set]
-    return (len(query_tokens) * 100) - (len(extras) * 3) - abs(len(text_tokens) - len(query_tokens))
+    extras = [token for token in text_tokens if token not in set(query_tokens)]
+    return matched * 100 - len(extras) * 2
 
 
 def _extract_price(text):
@@ -259,11 +280,6 @@ def _extract_category(html, query):
         if not name:
             continue
 
-        name_norm = _norm(name)
-
-        if not all(token in name_norm for token in query_tokens):
-            continue
-
         if not _is_relevant_product(name, query):
             continue
 
@@ -286,9 +302,6 @@ def _extract_category(html, query):
         if any(word in card_text.lower() for word in SOLD_OUT):
             continue
 
-        if not price:
-            continue
-
         if product_url in seen:
             continue
 
@@ -297,7 +310,7 @@ def _extract_category(html, query):
         results.append({
             "store": STORE,
             "name": name,
-            "price": price,
+            "price": price or "",
             "url": product_url,
             "available": True,
             "availability": "in_stock",
@@ -308,9 +321,9 @@ def _extract_category(html, query):
 
 def _extract_brand_page(html, query):
     """
-    Alcune pagine brand mostrano i prodotti senza link /product/
-    immediatamente leggibile. In quel caso prendiamo i blocchi testuali
-    che contengono query + prezzo e recuperiamo il link prodotto vicino.
+    Fallback generale: scansiona i link prodotto della pagina brand.
+    Il nome del prodotto viene valutato direttamente, senza dipendere
+    dal testo completo della card.
     """
     soup = BeautifulSoup(html, "html.parser")
     results = []
@@ -318,53 +331,49 @@ def _extract_brand_page(html, query):
 
     for link in soup.find_all("a", href=True):
         href = _clean(link.get("href"))
-        if not href:
+        name = _clean(link.get_text(" ", strip=True))
+
+        if not href or not name:
             continue
 
-        node = link
+        product_url = urljoin(BASE_URL, href).split("?")[0]
 
-        for _ in range(6):
+        if "/product/" not in product_url.lower():
+            continue
+
+        if product_url in seen:
+            continue
+
+        if not _is_relevant_product(name, query):
+            continue
+
+        # Il prezzo della card è utile come fallback, ma non è obbligatorio:
+        # la pagina prodotto verrà comunque aperta per leggere le varianti.
+        node = link
+        price = None
+        card_text = ""
+
+        for _ in range(7):
             if node is None:
                 break
-
-            text = _clean(node.get_text(" ", strip=True))
-
-            if _matches(text, query):
-                price = _extract_price(text)
-
-                if price and not any(x in text.lower() for x in SOLD_OUT):
-                    product_link = None
-                    product_name = ""
-
-                    for a in node.find_all("a", href=True):
-                        candidate_url = urljoin(BASE_URL, a.get("href", "")).split("?")[0]
-                        candidate_name = _clean(a.get_text(" ", strip=True))
-
-                        if "/product/" in candidate_url.lower():
-                            product_link = candidate_url
-
-                            if candidate_name and _matches(candidate_name, query):
-                                product_name = candidate_name
-                                break
-
-                    if product_link:
-                        if not product_name:
-                            product_name = query
-
-                        if product_link not in seen:
-                            seen.add(product_link)
-                            results.append({
-                                "store": STORE,
-                                "name": product_name,
-                                "price": price,
-                                "url": product_link,
-                                "available": True,
-                                "availability": "in_stock",
-                            })
-
+            card_text = _clean(node.get_text(" ", strip=True))
+            price = _extract_price(card_text)
+            if price:
                 break
-
             node = node.parent
+
+        if any(x in card_text.lower() for x in SOLD_OUT):
+            continue
+
+        seen.add(product_url)
+        results.append({
+            "store": STORE,
+            "name": name,
+            "price": price or "",
+            "url": product_url,
+            "available": True,
+            "availability": "in_stock",
+        })
 
     return results
 
@@ -385,9 +394,15 @@ def search(query):
         return []
 
     category_results = _extract_category(response.text, query)
+    fallback_results = _extract_brand_page(response.text, query)
 
-    if not category_results:
-        category_results = _extract_brand_page(response.text, query)
+    by_url = {}
+    for item in category_results + fallback_results:
+        url = item.get("url", "").split("#")[0].split("?")[0]
+        if url and url not in by_url:
+            by_url[url] = item
+
+    category_results = list(by_url.values())
 
     candidates = []
     seen_urls = set()
