@@ -61,6 +61,7 @@ SOLD_OUT = (
     "currently unavailable",
 )
 
+
 NON_FRAGRANCE = (
     "body mist",
     "body spray",
@@ -79,6 +80,7 @@ NON_FRAGRANCE = (
     "hair spray",
     "soap",
 )
+
 
 SIZE_RE = re.compile(
     r"\b(\d{1,3}(?:[.,]\d+)?)\s*ml\b",
@@ -197,7 +199,7 @@ def _match_score(text, query):
 
 def _extract_price(text):
     """
-    Riconosce anche:
+    Supporta, tra gli altri, questi formati:
 
     € 71, ^69^
     € 71,69
@@ -298,8 +300,9 @@ def _is_relevant_product(name, query):
 
 def _find_brand_category(session, query):
     """
-    Prima usa le categorie note.
-    Poi cerca eventuali categorie nella homepage.
+    Cerca prima le categorie note.
+    Se non trova una corrispondenza, cerca le categorie
+    presenti nella homepage Deloox.
     """
     query_tokens = set(_tokens(query))
 
@@ -327,7 +330,10 @@ def _find_brand_category(session, query):
         href=True,
     ):
         name = _clean(
-            link.get_text(" ", strip=True)
+            link.get_text(
+                " ",
+                strip=True,
+            )
         )
 
         href = _clean(
@@ -385,7 +391,7 @@ def _find_brand_category(session, query):
 
 def _find_product_card(link):
     """
-    Trova la card completa che contiene:
+    Trova il contenitore della card che contiene
     nome, formato, disponibilità e prezzo.
     """
     node = link
@@ -395,7 +401,10 @@ def _find_product_card(link):
             break
 
         text = _clean(
-            node.get_text(" ", strip=True)
+            node.get_text(
+                " ",
+                strip=True,
+            )
         )
 
         if (
@@ -437,7 +446,10 @@ def _extract_category(html, query):
         card = _find_product_card(link)
 
         card_text = _clean(
-            card.get_text(" ", strip=True)
+            card.get_text(
+                " ",
+                strip=True,
+            )
         )
 
         if any(
@@ -464,17 +476,38 @@ def _extract_category(html, query):
         if not price:
             continue
 
-        product_name = _clean(
-            link.get_text(" ", strip=True)
+        # Il singolo link può contenere solo "75 ml"
+        # o "125 ml". In quel caso non va usato come
+        # nome del prodotto.
+        product_name = query
+
+        link_name = _clean(
+            link.get_text(
+                " ",
+                strip=True,
+            )
         )
 
-        if not product_name:
-            product_name = query
+        if (
+            link_name
+            and not SIZE_FULL_RE.fullmatch(link_name)
+            and _matches_soft(
+                link_name,
+                query,
+                minimum=0.55,
+            )
+        ):
+            product_name = link_name
 
-        if product_url in seen:
+        result_key = (
+            product_url,
+            product_name,
+        )
+
+        if result_key in seen:
             continue
 
-        seen.add(product_url)
+        seen.add(result_key)
 
         results.append({
             "store": STORE,
@@ -508,7 +541,10 @@ def _extract_brand_page(html, query):
                 break
 
             text = _clean(
-                node.get_text(" ", strip=True)
+                node.get_text(
+                    " ",
+                    strip=True,
+                )
             )
 
             if _matches_soft(
@@ -548,7 +584,22 @@ def _extract_brand_page(html, query):
 
                         if "/product/" in candidate_url.lower():
                             product_link = candidate_url
-                            product_name = candidate_name
+
+                            if (
+                                candidate_name
+                                and not SIZE_FULL_RE.fullmatch(
+                                    candidate_name
+                                )
+                                and _matches_soft(
+                                    candidate_name,
+                                    query,
+                                    minimum=0.55,
+                                )
+                            ):
+                                product_name = candidate_name
+                            else:
+                                product_name = query
+
                             break
 
                     if (
@@ -579,8 +630,7 @@ def _extract_brand_page(html, query):
 
 def _extract_direct_products(html, query):
     """
-    Cerca direttamente i link /product/
-    nella pagina ricevuta.
+    Fallback che cerca direttamente i link /product/.
     """
     soup = BeautifulSoup(
         html,
@@ -648,9 +698,22 @@ def _extract_direct_products(html, query):
 
         seen.add(product_url)
 
+        product_name = query
+
+        if (
+            name
+            and not SIZE_FULL_RE.fullmatch(name)
+            and _matches_soft(
+                name,
+                query,
+                minimum=0.55,
+            )
+        ):
+            product_name = name
+
         results.append({
             "store": STORE,
-            "name": name or query,
+            "name": product_name,
             "price": price,
             "url": product_url,
             "available": True,
