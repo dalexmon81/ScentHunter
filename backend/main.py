@@ -147,8 +147,13 @@ def run_store(store: str, query: str) -> List[Dict[str, Any]]:
     output: List[Dict[str, Any]] = []
     seen = set()
 
+    notino_bing = getattr(module, "_bing", None) if store == "notino" else None
+
     for attempt in attempts:
-        results = search_fn(attempt) or []
+        if callable(notino_bing):
+            results = notino_bing(attempt) or []
+        else:
+            results = search_fn(attempt) or []
 
         for item in results:
             if not isinstance(item, dict):
