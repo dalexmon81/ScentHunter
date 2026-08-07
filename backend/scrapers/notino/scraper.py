@@ -93,89 +93,35 @@ def _search_page(query):
             yield response.text
 
 
-def _find_card_for_link(link, query):
+def _find_smallest_container_with_price(link, query):
     """
-    Risale dal link fino a trovare un contenitore 'card' plausibile:
-    - contiene il link,
-    - contiene la query,
-    - contiene almeno un prezzo.
-    Torna None se non esiste un blocco coerente.
+    Trova il contenitore più piccolo (partendo dal link) che:
+    - contiene il link;
+    - contiene un prezzo;
+    - contiene testo che matcha la query.
+    Restituisce None se non esiste un blocco coerente.
     """
     node = link
+    best = None
+
     for _ in range(8):
         if node is None:
             break
 
         text = _clean(node.get_text(" ", strip=True))
 
-        # richiediamo TUTTI e 3:
-        # 1) testo coerente con la query;
-        # 2) almeno un prezzo nel blocco;
-        # 3) il blocco non è palesemente generico.
         if _matches(text, query) and _price(text):
-            # filtro rapido contro blocchi di pagina / intestazioni enormi
-            if len(text) > 800:
-                # troppo testo, probabile contenitore di pagina
-                node = node.parent
-                continue
-            return node
+            best = node
+            # Non break: continuiamo a salire per vedere se troviamo
+            # un contenitore ancora più piccolo in futuro.
+            # In pratica, l'ultimo "best" sarà il più piccolo.
+            # Ma qui saliamo dal link verso l'alto, quindi il primo
+            # che soddisfa è già il più piccolo. Possiamo fermarci.
+            break
 
         node = node.parent
 
-    return None
-
-
-def _extract_name_from_card(card, link, query):
-    """
-    Estrae il nome prodotto da una 'card' coerente, con vari fallback.
-    Applica anche una piccola normalizzazione per evitare doppi prodotti
-    quando cambia solo un dettaglio tipo '100 ml'.
-    """
-    name = ""
-
-    # 1) Heading all'interno della card
-    for tag in card.find_all(["h1", "h2", "h3", "h4"]):
-        candidate = _clean(tag.get_text(" ", strip=True))
-        if candidate and _matches(candidate, query) and not _is_generic_title(candidate):
-            name = candidate
-            break
-
-    # 2) Titolo/aria-label/testo del link
-    if not name:
-        candidate = _clean(
-            link.get("title")
-            or link.get("aria-label")
-            or link.get_text(" ", strip=True)
-        )
-        if candidate and _matches(candidate, query) and not _is_generic_title(candidate):
-            name = candidate
-
-    # 3) Altri elementi testuali vicini
-    if not name:
-        for element in card.find_all(["span", "div", "p"]):
-            candidate = _clean(element.get_text(" ", strip=True))
-            if (
-                candidate
-                and len(candidate) <= 250
-                and _matches(candidate, query)
-                and not _is_generic_title(candidate)
-            ):
-                name = candidate
-                break
-
-    if not name:
-        return ""
-
-    # Piccola normalizzazione: se il nome completo inizia con la query,
-    # teniamo il prefisso fino alla lunghezza della query o poco oltre.
-    # Esempio:
-    # "Rasasi Hawas Ice 100 ml" -> "Rasasi Hawas Ice 100 ml" (lasciamo intero)
-    # "Hawas Ice 100 ml" -> "Hawas Ice 100 ml"
-    # ma se il backend raggruppa per nome normalizzato, puoi
-    # facilmente troncare dal lato tuo dopo.
-    name = _clean(name)
-
-    return name
+    return best
 
 
 def search(query):
@@ -226,38 +172,74 @@ def search(query):
             if product_url in seen:
                 continue
 
-            # Trova la card più coerente per questo link
-            card = _find_card_for_link(link, query)
+            # Trova il contenitore più piccolo coerente
+            card = _find_smallest_container_with_price(link, query)
+
             if card is None:
                 continue
 
             text = _clean(card.get_text(" ", strip=True))
 
-            # Prezzo SOLO dal testo di questa card,
-            # non da antenati più alti.
+            # Se non c'è prezzo coerente nel blocco, skip
             price = _price(text)
             if not price:
                 continue
 
-            # Estrai e normalizza il nome prodotto
-            name = _extract_name_from_card(card, link, query)
+            # Estrazione del nome prodotto
+            name = ""
+
+            # Prima prova: heading reali dentro il blocco
+            for tag in card.find_all(["h1", "h2", "h3", "h4"]):
+                candidate = _clean(tag.get_text(" ", strip=True))
+
+                if candidate and _matches(candidate, query):
+                    if not _is_generic_title(candidate):
+                        name = candidate
+                        break
+
+            if not name:
+                candidate = _clean(
+                    link.get("title")
+                    or link.get("aria-label")
+                    or link.get_text(" ", strip=True)
+                )
+
+                if candidate and _matches(candidate, query):
+                    if not _is_generic_title(candidate):
+                        name = candidate
+
+            if not name:
+                # Alcune card Notino hanno il nome separato dal link:
+                # usiamo il testo della card soltanto se contiene la query.
+                for element in card.find_all(["span", "div", "p"]):
+                    candidate = _clean(
+                        element.get_text(" ", strip=True)
+                    )
+
+                    if (
+                        candidate
+                        and len(candidate) <= 250
+                        and _matches(candidate, query)
+                        and not _is_generic_title(candidate)
+                    ):
+                        name = candidate
+                        break
+
             if not name:
                 continue
 
-            # Ulteriore difesa: niente nomi generici
+            # Ultima difesa: se il nome sembra troppo generico, skip
             if _is_generic_title(name):
                 continue
 
             seen.add(product_url)
 
-            results.append(
-                {
-                    "store": STORE,
-                    "name": name,
-                    "price": price,
-                    "url": product_url,
-                }
-            )
+            results.append({
+                "store": STORE,
+                "name": name,
+                "price": price,
+                "url": product_url,
+            })
 
             if len(results) >= 10:
                 return results
