@@ -379,12 +379,28 @@ def search(query):
                 allow_redirects=True,
             )
 
+            print(
+                "DELOOX DEBUG:",
+                "requested=", search_url,
+                "status=", response.status_code,
+                "final_url=", response.url,
+                "html_chars=", len(response.text or ""),
+            )
+
             if response.status_code != 200 or not response.text:
+                print("DELOOX DEBUG: skipped response")
                 continue
 
             results = _parse_response(response, query)
 
+            print(
+                "DELOOX DEBUG:",
+                "query=", query,
+                "results=", len(results),
+            )
+
             if results:
+                print("DELOOX DEBUG FIRST RESULT:", results[0])
                 return results[:10]
 
         except requests.RequestException as error:
