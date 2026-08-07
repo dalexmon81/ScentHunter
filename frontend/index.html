@@ -478,7 +478,7 @@ function chooseOffer(gi,oi){
   openProduct(gi);
 }
 
-async function fetchJSONWithTimeout(url,ms=25000){
+async function fetchJSONWithTimeout(url,ms=90000){
  const controller=new AbortController();
  const timer=setTimeout(()=>controller.abort(),ms);
  try{
