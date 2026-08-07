@@ -1,197 +1,169 @@
-import re import time from urllib.parse import urljoin
+import re
+import requests
+from bs4 import BeautifulSoup
+from urllib.parse import urljoin
 
-import requests from bs4 import BeautifulSoup
+STORE = "Deloox"
+BASE_URL = "https://www.deloox.com"
+HOME_URL = BASE_URL + "/en"
+TIMEOUT = 10
 
-STORE = “Deloox” BASE_URL = “https://www.deloox.com” HOME_URL =
-BASE_URL + “/en”
+HEADERS = {
+    "User-Agent": "Mozilla/5.0",
+    "Accept-Language": "en-GB,en;q=0.9",
+}
 
-HEADERS = { “User-Agent”: ( “Mozilla/5.0 (Windows NT 10.0; Win64; x64)”
-“AppleWebKit/537.36 (KHTML, like Gecko)” “Chrome/131.0 Safari/537.36” ),
-“Accept”:
-“text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,/;q=0.8”,
-“Accept-Language”: “en-GB,en;q=0.9”, “Cache-Control”: “no-cache”, }
+PRICE_RE = re.compile(
+    r"(?:our\s+price|from)?\s*€\s*(\d{1,4})\s*[,.\^]?\s*(\d{2})",
+    re.I,
+)
 
-TIMEOUT = 12 MAX_CATEGORY_PAGES = 35
+SOLD_OUT = (
+    "sold out",
+    "out of stock",
+    "not available",
+)
 
-PRICE_RE = re.compile( r”(?:from)?€()?()“, re.I, )
 
-SOLD_OUT_PATTERNS = ( “sold out”, “out of stock”, “temporarily
-unavailable”, “not available”, )
+def _clean(value):
+    return re.sub(r"\s+", " ", str(value or "")).strip()
 
-def _clean(value): return re.sub(r”+“,” “, str(value or”“)).strip()
 
-def _tokens(value): return [ token for token in re.findall(r”[a-z0-9]+“,
-_clean(value).lower()) if len(token) > 1 ]
+def _norm(value):
+    return re.sub(r"[^a-z0-9]+", " ", _clean(value).lower()).strip()
 
-def _matches(text, query): text_tokens = _tokens(text) query_tokens =
-_tokens(query)
 
-    if not query_tokens:
-        return False
+def _tokens(value):
+    return [x for x in _norm(value).split() if len(x) > 1]
 
-    return all(token in text_tokens for token in query_tokens)
 
-def _price(text): text = _clean(text) matches =
-list(PRICE_RE.finditer(text))
+def _matches(text, query):
+    hay = _norm(text)
+    words = _tokens(query)
+    return bool(words) and all(word in hay for word in words)
 
-    if not matches:
+
+def _extract_price(text):
+    match = PRICE_RE.search(text or "")
+    if not match:
         return None
+    return f"{match.group(1)},{match.group(2)} €"
 
-    match = matches[-1]
-    return f"{match.group(1)},{match.group(2)}€"
 
-def _get(session, url): try: response = session.get( url,
-timeout=TIMEOUT, allow_redirects=True, )
-
-        if response.status_code != 200:
-            return None
-
+def _get(session, url):
+    try:
+        response = session.get(
+            url,
+            headers=HEADERS,
+            timeout=TIMEOUT,
+            allow_redirects=True,
+        )
+        response.raise_for_status()
         return response
-
-    except requests.RequestException:
+    except requests.RequestException as error:
+        print(f"DELOOX ERROR: {error}")
         return None
 
-def _product_links(soup): links = [] seen = set()
 
-    for a in soup.find_all("a", href=True):
-        href = _clean(a.get("href"))
-
-        if not href:
-            continue
-
-        url = urljoin(BASE_URL, href).split("?")[0]
-
-        if "/product/" not in url.lower():
-            continue
-
-        if url in seen:
-            continue
-
-        seen.add(url)
-        links.append(url)
-
-    return links
-
-def _extract_product_page(session, url, query): response = _get(session,
-url)
-
+def _find_brand_category(session, query):
+    """
+    Deloox non usa un normale /search?q=...
+    La home espone invece l'indice dei brand.
+    Cerchiamo il brand direttamente lì e apriamo la sua categoria.
+    """
+    response = _get(session, HOME_URL)
     if response is None:
         return None
 
     soup = BeautifulSoup(response.text, "html.parser")
+    query_words = _tokens(query)
 
-    h1 = soup.find("h1")
-    name = _clean(h1.get_text(" ", strip=True)) if h1 else ""
+    candidates = []
 
-    if not name:
+    for link in soup.find_all("a", href=True):
+        name = _clean(link.get_text(" ", strip=True))
+        href = _clean(link.get("href"))
+
+        if not name or not href:
+            continue
+
+        url = urljoin(BASE_URL, href)
+
+        if "/category/" not in url.lower():
+            continue
+
+        brand_words = _tokens(name)
+        if not brand_words:
+            continue
+
+        # Il nome brand deve comparire nella query.
+        if all(word in query_words for word in brand_words):
+            candidates.append((len(brand_words), len(name), url))
+
+    if not candidates:
         return None
 
-    page_text = _clean(soup.get_text(" ", strip=True))
+    # Preferisci il brand più specifico.
+    candidates.sort(key=lambda x: (-x[0], -x[1]))
+    return candidates[0][2]
 
-    # Il match viene fatto soprattutto sul vero H1.
-    # In seconda battuta usiamo il testo pagina per brand/product line.
-    if not _matches(name, query) and not _matches(page_text, query):
-        return None
 
-    lower_text = page_text.lower()
-    sold_out = any(x in lower_text for x in SOLD_OUT_PATTERNS)
+def _extract_category(html, query):
+    """
+    La pagina categoria Deloox contiene direttamente:
+    nome prodotto, formato, disponibilità e prezzo.
+    Usiamo la stessa filosofia semplice di PerfumeMarket:
+    link -> pochi parent -> prezzo della stessa card.
+    """
+    soup = BeautifulSoup(html, "html.parser")
+    results = []
+    seen = set()
 
-    price = _price(page_text)
+    query_tokens = _tokens(query)
 
-    # Un prodotto esaurito senza prezzo non deve diventare
-    # un'offerta acquistabile in ScentHunter.
-    if sold_out:
-        return None
+    for link in soup.find_all("a", href=True):
+        href = _clean(link.get("href"))
+        name = _clean(link.get_text(" ", strip=True))
 
-    if not price:
-        return None
-
-    return {
-        "store": STORE,
-        "name": name,
-        "price": price,
-        "url": response.url.split("?")[0],
-        "available": True,
-        "availability": "in_stock",
-    }
-
-def _extract_cards(soup, query): ““” Estrae direttamente i prodotti
-dalle card categoria quando nome + query + prezzo sono presenti nello
-stesso blocco. ““” results = [] seen = set()
-
-    for a in soup.find_all("a", href=True):
-        href = _clean(a.get("href"))
-
-        if "/product/" not in href.lower():
+        if not href:
             continue
 
         product_url = urljoin(BASE_URL, href).split("?")[0]
 
-        if product_url in seen:
+        if "/product/" not in product_url.lower():
             continue
 
-        node = a
-        card = None
+        if not name:
+            continue
 
-        for _ in range(8):
+        name_norm = _norm(name)
+
+        if not all(token in name_norm for token in query_tokens):
+            continue
+
+        node = link
+        price = None
+        card_text = ""
+
+        for _ in range(6):
             if node is None:
                 break
 
-            text = _clean(node.get_text(" ", strip=True))
+            card_text = _clean(node.get_text(" ", strip=True))
+            price = _extract_price(card_text)
 
-            if _matches(text, query) and _price(text):
-                card = node
+            if price:
                 break
 
             node = node.parent
 
-        if card is None:
+        if any(word in card_text.lower() for word in SOLD_OUT):
             continue
-
-        text = _clean(card.get_text(" ", strip=True))
-        lower_text = text.lower()
-
-        if any(x in lower_text for x in SOLD_OUT_PATTERNS):
-            continue
-
-        price = _price(text)
 
         if not price:
             continue
 
-        name = ""
-
-        for selector in (
-            "h1",
-            "h2",
-            "h3",
-            "h4",
-            "[class*='product-name']",
-            "[class*='product-title']",
-            "[itemprop='name']",
-        ):
-            element = card.select_one(selector)
-
-            if not element:
-                continue
-
-            candidate = _clean(element.get_text(" ", strip=True))
-
-            if candidate and _matches(candidate, query):
-                name = candidate
-                break
-
-        if not name:
-            candidate = _clean(
-                a.get("title")
-                or a.get("aria-label")
-                or a.get_text(" ", strip=True)
-            )
-
-            if candidate and _matches(candidate, query):
-                name = candidate
-
-        if not name:
+        if product_url in seen:
             continue
 
         seen.add(product_url)
@@ -207,171 +179,101 @@ stesso blocco. ““” results = [] seen = set()
 
     return results
 
-def _find_catalog_categories(session, query): ““” Deloox non espone una
-normale /search?q=…: partiamo dalla home reale e ricaviamo dinamicamente
-i link di brand/categorie presenti nel catalogo. ““” response =
-_get(session, HOME_URL)
 
-    if response is None:
-        return []
-
-    soup = BeautifulSoup(response.text, "html.parser")
-
-    exact = []
-    fragrance_roots = []
+def _extract_brand_page(html, query):
+    """
+    Alcune pagine brand mostrano i prodotti senza link /product/
+    immediatamente leggibile. In quel caso prendiamo i blocchi testuali
+    che contengono query + prezzo e recuperiamo il link prodotto vicino.
+    """
+    soup = BeautifulSoup(html, "html.parser")
+    results = []
     seen = set()
 
-    for a in soup.find_all("a", href=True):
-        text = _clean(a.get_text(" ", strip=True))
-        href = _clean(a.get("href"))
-
+    for link in soup.find_all("a", href=True):
+        href = _clean(link.get("href"))
         if not href:
             continue
 
-        url = urljoin(BASE_URL, href)
+        node = link
 
-        if "/category/" not in url.lower():
-            continue
+        for _ in range(6):
+            if node is None:
+                break
 
-        key = url.split("?")[0]
+            text = _clean(node.get_text(" ", strip=True))
 
-        if key in seen:
-            continue
+            if _matches(text, query):
+                price = _extract_price(text)
 
-        seen.add(key)
+                if price and not any(x in text.lower() for x in SOLD_OUT):
+                    product_link = None
+                    product_name = ""
 
-        if text and _matches(text, query):
-            exact.append(key)
+                    for a in node.find_all("a", href=True):
+                        candidate_url = urljoin(BASE_URL, a.get("href", "")).split("?")[0]
+                        candidate_name = _clean(a.get_text(" ", strip=True))
 
-        low_text = text.lower()
+                        if "/product/" in candidate_url.lower():
+                            product_link = candidate_url
 
-        if (
-            "all men's fragrances" in low_text
-            or "all women" in low_text and "fragrance" in low_text
-            or "all unisex fragrances" in low_text
-            or low_text == "men's fragrances"
-            or low_text == "women's fragrances"
-            or low_text == "unisex fragrances"
-        ):
-            fragrance_roots.append(key)
+                            if candidate_name and _matches(candidate_name, query):
+                                product_name = candidate_name
+                                break
 
-    # Prima brand/categorie che corrispondono direttamente alla query.
-    # Poi i tre cataloghi generali dei profumi.
-    ordered = []
+                    if product_link:
+                        if not product_name:
+                            product_name = query
 
-    for url in exact + fragrance_roots:
-        if url not in ordered:
-            ordered.append(url)
+                        if product_link not in seen:
+                            seen.add(product_link)
+                            results.append({
+                                "store": STORE,
+                                "name": product_name,
+                                "price": price,
+                                "url": product_link,
+                                "available": True,
+                                "availability": "in_stock",
+                            })
 
-    return ordered
+                break
 
-def _crawl_category(session, category_url, query): results = []
-seen_results = set() seen_products = set()
-
-    for page in range(1, MAX_CATEGORY_PAGES + 1):
-        separator = "&" if "?" in category_url else "?"
-        url = category_url if page == 1 else f"{category_url}{separator}page={page}"
-
-        response = _get(session, url)
-
-        if response is None:
-            break
-
-        soup = BeautifulSoup(response.text, "html.parser")
-
-        # 1) Tentativo veloce: estrazione direttamente dalle card.
-        card_results = _extract_cards(soup, query)
-
-        for item in card_results:
-            key = item["url"]
-
-            if key not in seen_results:
-                seen_results.add(key)
-                results.append(item)
-
-        if len(results) >= 10:
-            return results[:10]
-
-        # 2) Recuperiamo i veri /product/ della pagina.
-        product_urls = _product_links(soup)
-
-        new_urls = [
-            u for u in product_urls
-            if u not in seen_products
-        ]
-
-        if not new_urls:
-            break
-
-        for product_url in new_urls:
-            seen_products.add(product_url)
-
-            # Prima filtriamo con il testo/link presente nella categoria
-            # quando possibile, poi confermiamo sulla pagina prodotto.
-            item = _extract_product_page(
-                session,
-                product_url,
-                query,
-            )
-
-            if not item:
-                continue
-
-            key = item["url"]
-
-            if key in seen_results:
-                continue
-
-            seen_results.add(key)
-            results.append(item)
-
-            if len(results) >= 10:
-                return results[:10]
-
-        time.sleep(0.05)
+            node = node.parent
 
     return results
 
-def search(query): query = _clean(query)
 
+def search(query):
+    query = _clean(query)
     if not query:
         return []
 
     session = requests.Session()
-    session.headers.update(HEADERS)
 
-    categories = _find_catalog_categories(session, query)
+    # 1) Trova il brand dall'indice Deloox.
+    brand_url = _find_brand_category(session, query)
 
-    if not categories:
+    if not brand_url:
         return []
 
-    all_results = []
-    seen = set()
+    # 2) La categoria brand è il vero punto di ingresso utile.
+    response = _get(session, brand_url)
 
-    for category_url in categories:
-        results = _crawl_category(
-            session,
-            category_url,
-            query,
-        )
+    if response is None:
+        return []
 
-        for item in results:
-            key = item["url"]
+    results = _extract_category(response.text, query)
 
-            if key in seen:
-                continue
+    if not results:
+        results = _extract_brand_page(response.text, query)
 
-            seen.add(key)
-            all_results.append(item)
+    return results[:20]
 
-            if len(all_results) >= 10:
-                return all_results[:10]
 
-        # Se una categoria/brand specifica ha già trovato risultati,
-        # non serve attraversare tutto il catalogo generale.
-        if all_results and _matches(category_url, query):
-            break
-
-    return all_results[:10]
-
-if name == “main”: print(search(“Hawas Ice”))
+if __name__ == "__main__":
+    for q in (
+        "French Avenue Liquid Brun",
+        "Miu Miu Miutine",
+        "Rasasi Hawas Ice",
+    ):
+        print(q, search(q))
