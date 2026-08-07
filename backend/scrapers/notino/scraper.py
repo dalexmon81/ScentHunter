@@ -16,7 +16,7 @@ PRICE_RE = re.compile(
     re.I,
 )
 
-# Testi generici da non considerare nomi prodotto
+# Titoli generici di pagina/ricerca da scartare come nome prodotto
 GENERIC_TITLES = [
     "résultat de la recherche",
     "nombre de produits",
@@ -47,12 +47,23 @@ def _matches(text, query):
 
 
 def _is_generic_title(title):
-    """Scarta titoli che sembrano intestazioni/pagine di ricerca."""
     t = _clean(title).lower()
     return any(g in t for g in GENERIC_TITLES)
 
 
+def _price_raw_matches(text):
+    """Ritorna tutte le stringhe prezzo trovate nel testo (lista)."""
+    matches = list(PRICE_RE.finditer(text or ""))
+    values = []
+    for m in matches:
+        value = m.group(1) or m.group(2)
+        if value:
+            values.append(value.replace(".", ",") + "€")
+    return values
+
+
 def _price(text):
+    """Versione originale: prende l'ultimo prezzo trovato."""
     matches = list(PRICE_RE.finditer(text or ""))
 
     if not matches:
@@ -62,6 +73,20 @@ def _price(text):
     value = match.group(1) or match.group(2)
 
     return value.replace(".", ",") + "€"
+
+
+def _unique_price_or_empty(text):
+    """
+    Se nel blocco c'è UN SOLO prezzo coerente, restituiscilo.
+    Se ce ne sono 0 o >1, torna stringa vuota (associazione non sicura).
+    Questo blocca i casi tipo 'Résultat de la recherche' con più prezzi.
+    """
+    prices = _price_raw_matches(text)
+    unique = sorted(set(prices))
+    if len(unique) == 1:
+        return unique[0]
+    # 0 prezzi o più di uno => meglio nessun risultato Notino
+    return ""
 
 
 def _search_page(query):
@@ -80,6 +105,7 @@ def _search_page(query):
                 timeout=15,
                 allow_redirects=True,
             )
+
             response.raise_for_status()
         except requests.RequestException as error:
             print("NOTINO ERROR:", error)
@@ -87,89 +113,6 @@ def _search_page(query):
 
         if response.text:
             yield response.text
-
-
-def _find_local_price_anchor(node):
-    """
-    Cerca il prezzo in porzioni *vicine* al link:
-    - prima nei fratelli (precedenti/successivi),
-    - poi nel genitore diretto e al massimo nel genitore del genitore.
-    Evita di salire troppo, per non prendere prezzi di altre card.
-    """
-    # 1) Fratelli del link
-    for sib in list(node.previous_siblings) + list(node.next_siblings):
-        if not hasattr(sib, "get_text"):
-            continue
-        text = _clean(sib.get_text(" ", strip=True))
-        price = _price(text)
-        if price:
-            return sib, price
-
-    # 2) Genitore diretto
-    parent = node.parent
-    if parent and hasattr(parent, "get_text"):
-        text = _clean(parent.get_text(" ", strip=True))
-        price = _price(text)
-        if price and len(text) <= 800:  # limite dimensione blocco
-            return parent, price
-
-    # 3) Genitore del genitore (un solo livello in più)
-    if parent is not None:
-        grand = parent.parent
-    else:
-        grand = None
-
-    if grand and hasattr(grand, "get_text"):
-        text = _clean(grand.get_text(" ", strip=True))
-        price = _price(text)
-        # qui siamo più sospettosi: se il blocco è enorme, evitiamo
-        if price and len(text) <= 600:
-            return grand, price
-
-    return None, ""
-
-
-def _extract_name_from_card(card, link, query):
-    """
-    Estrae il nome prodotto da una 'card' coerente, con vari fallback.
-    """
-    name = ""
-
-    # 1) Heading all'interno della card
-    for tag in card.find_all(["h1", "h2", "h3", "h4"]):
-        candidate = _clean(tag.get_text(" ", strip=True))
-        if candidate and _matches(candidate, query) and not _is_generic_title(candidate):
-            name = candidate
-            break
-
-    # 2) Titolo/aria-label/testo del link
-    if not name:
-        candidate = _clean(
-            link.get("title")
-            or link.get("aria-label")
-            or link.get_text(" ", strip=True)
-        )
-        if candidate and _matches(candidate, query) and not _is_generic_title(candidate):
-            name = candidate
-
-    # 3) Altri elementi testuali vicini
-    if not name:
-        for element in card.find_all(["span", "div", "p"]):
-            candidate = _clean(element.get_text(" ", strip=True))
-            if (
-                candidate
-                and len(candidate) <= 250
-                and _matches(candidate, query)
-                and not _is_generic_title(candidate)
-            ):
-                name = candidate
-                break
-
-    if not name:
-        return ""
-
-    name = _clean(name)
-    return name
 
 
 def search(query):
@@ -220,21 +163,101 @@ def search(query):
             if product_url in seen:
                 continue
 
-            # Partiamo sempre dal link come "core" della card.
-            # Trova porzioni di DOM vicine che contengono un prezzo.
-            price_node, price = _find_local_price_anchor(link)
-            if not price:
-                # Nessun prezzo vicino in modo credibile → scarta
+            node = link
+            card = None
+
+            # Stessa logica di ParfumCity/PerfumeMarket:
+            # risale dalla voce prodotto fino alla card che contiene
+            # query + prezzo.
+            for _ in range(8):
+                if node is None:
+                    break
+
+                text = _clean(node.get_text(" ", strip=True))
+
+                # qui usiamo ancora _price per trovare "qualche" prezzo
+                # e capire se questo blocco è interessante.
+                if _matches(text, query) and _price(text):
+                    card = node
+                    break
+
+                node = node.parent
+
+            if card is None:
                 continue
 
-            # Usa il nodo che contiene il prezzo come 'card' di riferimento:
-            # è abbastanza locale da evitare contaminazioni,
-            # ma non troppo stretto da perdere il contenuto della card.
-            card = price_node
+            text = _clean(card.get_text(" ", strip=True))
 
-            # Estrai il nome prodotto dal blocco card
-            name = _extract_name_from_card(card, link, query)
+            name = ""
+
+            # 1) Heading nella card
+            for tag in card.find_all(["h1", "h2", "h3", "h4"]):
+                candidate = _clean(tag.get_text(" ", strip=True))
+
+                if candidate and _matches(candidate, query):
+                    if not _is_generic_title(candidate):
+                        name = candidate
+                        break
+
+            # 2) Titolo/aria-label/testo del link
+            if not name:
+                candidate = _clean(
+                    link.get("title")
+                    or link.get("aria-label")
+                    or link.get_text(" ", strip=True)
+                )
+
+                if candidate and _matches(candidate, query):
+                    if not _is_generic_title(candidate):
+                        name = candidate
+
+            # 3) Altri elementi testuali nella card
+            if not name:
+                # Alcune card Notino hanno il nome separato dal link:
+                # usiamo il testo della card soltanto se contiene la query.
+                for element in card.find_all(["span", "div", "p"]):
+                    candidate = _clean(
+                        element.get_text(" ", strip=True)
+                    )
+
+                    if (
+                        candidate
+                        and len(candidate) <= 250
+                        and _matches(candidate, query)
+                        and not _is_generic_title(candidate)
+                    ):
+                        name = candidate
+                        break
+
             if not name:
                 continue
 
-            if _is_generic_title(name):
+            # Prezzo: deve esserci un SOLO prezzo nel blocco card.
+            price = _unique_price_or_empty(text)
+
+            if not price:
+                # 0 o più di un prezzo => associazione non sicura, scartiamo
+                continue
+
+            seen.add(product_url)
+
+            results.append(
+                {
+                    "store": STORE,
+                    "name": name,
+                    "price": price,
+                    "url": product_url,
+                }
+            )
+
+            if len(results) >= 10:
+                return results
+
+        if results:
+            return results
+
+    return results
+
+
+if __name__ == "__main__":
+    print(search("Hawas Ice"))
