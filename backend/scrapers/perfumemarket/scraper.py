@@ -21,6 +21,20 @@ def _matches(text, query):
     return bool(query_tokens) and all(token in text for token in query_tokens)
 
 
+def _soft_matches(text, query):
+    """
+    Match più permissivo per siblings:
+    basta che ALMENO un token della query sia presente nel testo.
+    Questo aiuta a catturare link come '50 ml', '100 ml', ecc.,
+    collegati alla stessa fragranza.
+    """
+    text = (text or "").lower()
+    query_tokens = [t.lower() for t in query.split() if t.strip()]
+    if not query_tokens:
+        return False
+    return any(token in text for token in query_tokens)
+
+
 def _extract_product_page(session, product_url, query):
     try:
         response = session.get(product_url, timeout=15)
@@ -87,7 +101,7 @@ def _extract_product_page(session, product_url, query):
         if (
             "/products/" in href.lower()
             and href != product_url.split("?")[0]
-            and _matches(candidate_text, query)
+            and _soft_matches(candidate_text, query)  # <--- qui
             and href not in seen
         ):
             seen.add(href)
@@ -172,7 +186,7 @@ def search(query):
     queue = list(product_urls)
     checked = set()
 
-    while queue and len(checked) < 12:
+    while queue and len(checked) < 25:  # <--- 12 -> 25
         product_url = queue.pop(0)
 
         if product_url in checked:
