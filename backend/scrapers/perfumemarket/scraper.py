@@ -1,107 +1,23 @@
-import re
-import requests
-from bs4 import BeautifulSoup
-from urllib.parse import quote, urljoin
+import re import requests from bs4 import BeautifulSoup from
+urllib.parse import quote, urljoin
 
-BASE_URL = "https://www.perfumemarket.nl"
-PRICE_RE = re.compile(r"€\s*(\d{1,4}[.,]\d{2})|(\d{1,4}[.,]\d{2})\s*€")
+BASE_URL = “https://www.perfumemarket.nl” PRICE_RE =
+re.compile(r”€([.,])|([.,])€“)
 
+COLLECTION_URL = BASE_URL + “/collections/all-perfumes”
 
-def _extract_price(text):
-    match = PRICE_RE.search(text or "")
-    if not match:
-        return None
-    value = match.group(1) or match.group(2)
-    return value.replace(".", ",") + " €"
+def _extract_price(text): match = PRICE_RE.search(text or ““) if not
+match: return None value = match.group(1) or match.group(2) return
+value.replace(”.”, “,”) + ” €”
 
+def _tokens(query): return [t.lower() for t in str(query or ““).split()
+if t.strip()]
 
-def _matches(text, query):
-    text = (text or "").lower()
-    tokens = [t.lower() for t in query.split() if t.strip()]
-    return bool(tokens) and all(token in text for token in tokens)
+def _extract_results(html, query): soup = BeautifulSoup(html,
+“html.parser”) results = [] seen = set()
 
+    query_tokens = _tokens(query)
 
-def _catalog_results(query, headers):
-    """
-    Fallback Shopify: legge il catalogo prodotti in JSON in una sola richiesta.
-    Serve per recuperare formati che la pagina /search non mostra,
-    per esempio 30 ml e 50 ml dello stesso profumo.
-    """
-    url = BASE_URL + "/collections/all-perfumes/products.json?limit=250"
-
-    try:
-        response = requests.get(url, headers=headers, timeout=15)
-        response.raise_for_status()
-        data = response.json()
-    except (requests.RequestException, ValueError):
-        return []
-
-    results = []
-
-    for product in data.get("products", []):
-        title = str(product.get("title") or "").strip()
-
-        if not title or not _matches(title, query):
-            continue
-
-        handle = str(product.get("handle") or "").strip()
-        if not handle:
-            continue
-
-        product_url = BASE_URL + "/products/" + handle
-        variants = product.get("variants") or []
-
-        # Normalmente PerfumeMarket mette il formato già nel titolo prodotto.
-        # Se ci sono più varianti con prezzi diversi, le manteniamo separate.
-        for variant in variants:
-            price_raw = str(variant.get("price") or "").strip()
-
-            if not price_raw:
-                continue
-
-            try:
-                price = f"{float(price_raw):.2f}".replace(".", ",") + " €"
-            except ValueError:
-                continue
-
-            variant_title = str(variant.get("title") or "").strip()
-            name = title
-
-            if variant_title and variant_title.lower() != "default title":
-                if variant_title.lower() not in title.lower():
-                    name = f"{title} {variant_title}"
-
-            results.append({
-                "store": "PerfumeMarket",
-                "name": name,
-                "price": price,
-                "url": product_url
-            })
-
-    return results
-
-
-def search(query):
-    url = BASE_URL + "/search?q=" + quote(query)
-
-    headers = {
-        "User-Agent": "Mozilla/5.0"
-    }
-
-    try:
-        response = requests.get(url, headers=headers, timeout=15)
-        response.raise_for_status()
-    except requests.RequestException as error:
-        print(f"PERFUMEMARKET ERROR: {error}")
-        return []
-
-    soup = BeautifulSoup(response.text, "html.parser")
-    results = []
-    seen = set()
-
-    query_tokens = [t.lower() for t in query.split() if t.strip()]
-
-    # LOGICA ORIGINALE: lasciata invariata.
     for link in soup.find_all("a", href=True):
         name = link.get_text(" ", strip=True)
         href = link.get("href", "")
@@ -110,12 +26,14 @@ def search(query):
             continue
 
         name_lower = name.lower()
+
         if not all(token in name_lower for token in query_tokens):
             continue
 
         node = link
         price = None
 
+        # Stessa logica dello scraper originale funzionante.
         for _ in range(5):
             if node is None:
                 break
@@ -145,22 +63,75 @@ def search(query):
             "url": product_url
         })
 
-    # PICCOLA AGGIUNTA:
-    # completa i risultati con il catalogo JSON Shopify.
-    for item in _catalog_results(query, headers):
-        key = item["url"].split("?")[0]
+    return results
 
-        if key in seen:
-            continue
+def search(query): query = str(query or ““).strip()
 
-        seen.add(key)
-        results.append(item)
+    if not query:
+        return []
+
+    headers = {
+        "User-Agent": "Mozilla/5.0"
+    }
+
+    results = []
+    seen = set()
+
+    # 1) Ricerca originale: resta identica alla versione che funziona.
+    search_url = BASE_URL + "/search?q=" + quote(query)
+
+    try:
+        response = requests.get(
+            search_url,
+            headers=headers,
+            timeout=15
+        )
+        response.raise_for_status()
+
+        for item in _extract_results(response.text, query):
+            if item["url"] not in seen:
+                seen.add(item["url"])
+                results.append(item)
+
+    except requests.RequestException as error:
+        print(f"PERFUMEMARKET SEARCH ERROR: {error}")
+
+    # 2) Piccolo fallback: controlla le pagine REALI della collezione.
+    # Non apre ogni prodotto e non usa products.json.
+    # Si ferma quando trova una pagina senza prodotti.
+    for page in range(1, 13):
+        try:
+            response = requests.get(
+                COLLECTION_URL,
+                params={"page": page},
+                headers=headers,
+                timeout=15
+            )
+            response.raise_for_status()
+        except requests.RequestException as error:
+            print(f"PERFUMEMARKET COLLECTION ERROR: {error}")
+            break
+
+        soup = BeautifulSoup(response.text, "html.parser")
+
+        product_links = [
+            a for a in soup.find_all("a", href=True)
+            if "/products/" in a.get("href", "").lower()
+        ]
+
+        if not product_links:
+            break
+
+        for item in _extract_results(response.text, query):
+            if item["url"] in seen:
+                continue
+
+            seen.add(item["url"])
+            results.append(item)
 
     return results
 
-
-if __name__ == "__main__":
-    results = search("Neroli Portofino Tom Ford")
+if name == “main”: results = search(“Neroli Portofino Tom Ford”)
 
     print("RISULTATI:", len(results))
 
