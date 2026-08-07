@@ -1,230 +1,94 @@
 import re
-from urllib.parse import quote_plus, urljoin
-
 import requests
 from bs4 import BeautifulSoup
+from urllib.parse import quote_plus
 
 STORE = "Notino"
-BASE_URL = "https://www.notino.fr/"
-SEARCH_URL = "https://www.notino.fr/search.asp?exps="
+BASE_URL = "https://www.notino.fr"
+SEARCH_PROXY = "https://www.google.com/search"
 
 HEADERS = {
-    "User-Agent": (
-        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
-        "AppleWebKit/537.36 (KHTML, like Gecko) "
-        "Chrome/124.0.0.0 Safari/537.36"
-    ),
+    "User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 "
+                  "(KHTML, like Gecko) Chrome/124.0 Safari/537.36",
     "Accept-Language": "fr-FR,fr;q=0.9,en;q=0.7",
 }
 
-OUT_OF_STOCK = (
-    "actuellement en rupture de stock",
-    "rupture de stock",
-    "en rupture",
-    "indisponible",
-    "épuisé",
-    "epuise",
-    "out of stock",
-    "sold out",
-)
-
-
-def _clean(value):
-    return re.sub(r"\s+", " ", str(value or "")).strip()
-
-
-def _tokens(value):
-    return re.findall(r"[a-z0-9]+", _clean(value).lower())
-
-
-def _matches(text, query):
-    haystack = set(_tokens(text))
-    wanted = [x for x in _tokens(query) if len(x) >= 2]
-    return bool(wanted) and all(x in haystack for x in wanted)
-
-
-def _price(text):
-    text = _clean(text)
-
-    # Evita di trasformare "Prix minimal 25,50 €" in offerta corrente.
-    if re.search(r"prix\s+minimal", text, re.I):
-        return ""
-
-    m = re.search(
-        r"(?:de\s+)?(\d{1,4}[,.]\d{2})\s*€",
-        text,
-        re.I,
-    )
-    return (m.group(1).replace(".", ",") + "€") if m else ""
-
-
-def _out_of_stock(text):
-    low = _clean(text).lower()
-    return any(marker in low for marker in OUT_OF_STOCK)
-
-
-def _direct(query):
-    url = SEARCH_URL + quote_plus(query)
-
-    try:
-        response = requests.get(
-            url,
-            headers=HEADERS,
-            timeout=12,
-            allow_redirects=True,
-        )
-        if response.status_code != 200:
-            return []
-    except requests.RequestException:
-        return []
-
-    soup = BeautifulSoup(response.text, "html.parser")
-    results = []
-    seen = set()
-
-    for a in soup.find_all("a", href=True):
-        href = _clean(a.get("href"))
-        if not href:
-            continue
-
-        product_url = urljoin(BASE_URL, href)
-        if "notino.fr/" not in product_url.lower():
-            continue
-
-        node = a
-        card_text = ""
-
-        for _ in range(7):
-            card_text = _clean(node.get_text(" ", strip=True))
-            if (
-                "€" in card_text
-                or _out_of_stock(card_text)
-            ):
-                break
-
-            if node.parent is None:
-                break
-            node = node.parent
-
-        if not _matches(card_text, query):
-            continue
-
-        # Notino può mostrare il prodotto nella ricerca anche quando esaurito.
-        # In quel caso NON è un'offerta acquistabile.
-        if _out_of_stock(card_text):
-            continue
-
-        price = _price(card_text)
-        if not price:
-            continue
-
-        title = _clean(
-            a.get("title")
-            or a.get("aria-label")
-            or a.get_text(" ", strip=True)
-        )
-
-        if not title or not _matches(
-            f"{title} {card_text}",
-            query,
-        ):
-            continue
-
-        key = product_url.split("?")[0]
-        if key in seen:
-            continue
-
-        seen.add(key)
-        results.append({
-            "store": STORE,
-            "name": title,
-            "price": price,
-            "url": key,
-        })
-
-        if len(results) >= 10:
-            break
-
-    return results
-
-
-def _bing(query):
-    # Mantiene il fallback che permetteva a Notino di comparire
-    # quando il datacenter veniva bloccato dal sito diretto.
-    search_url = (
-        "https://www.bing.com/search?q="
-        + quote_plus(f'site:notino.fr "{query}"')
-    )
-
-    try:
-        response = requests.get(
-            search_url,
-            headers=HEADERS,
-            timeout=15,
-        )
-        response.raise_for_status()
-    except requests.RequestException as error:
-        print("NOTINO FALLBACK ERROR:", error)
-        return []
-
-    soup = BeautifulSoup(response.text, "html.parser")
-    results = []
-    seen = set()
-
-    for li in soup.select("li.b_algo"):
-        a = li.select_one("h2 a")
-        if not a:
-            continue
-
-        href = _clean(a.get("href"))
-        title = _clean(a.get_text(" ", strip=True))
-        snippet = _clean(li.get_text(" ", strip=True))
-        combined = f"{title} {snippet}"
-
-        if "notino.fr" not in href.lower():
-            continue
-
-        if not _matches(combined, query):
-            continue
-
-        # Se l'indice dice esplicitamente che è esaurito, non mostrarlo.
-        if _out_of_stock(combined):
-            continue
-
-        # Non usare prezzi "minimal" / storici come offerte.
-        price = _price(snippet)
-        if not price:
-            continue
-
-        key = href.split("?")[0]
-        if key in seen:
-            continue
-
-        seen.add(key)
-        results.append({
-            "store": STORE,
-            "name": title or query,
-            "price": price,
-            "url": key,
-        })
-
-        if len(results) >= 10:
-            break
-
-    return results
-
+def _clean(text):
+    return re.sub(r"\s+", " ", text or "").strip()
 
 def search(query):
     query = _clean(query)
     if not query:
         return []
 
-    direct = _direct(query)
-    if direct:
-        return direct
+    # Notino blocca le richieste dirette da alcuni datacenter (403).
+    # Cerchiamo quindi le pagine Notino indicizzate dal motore di ricerca.
+    params = {"q": f'site:notino.fr "{query}"'}
+    try:
+        r = requests.get(SEARCH_PROXY, params=params, headers=HEADERS, timeout=20)
+        r.raise_for_status()
+    except requests.RequestException as e:
+        print("NOTINO SEARCH ERROR:", e)
+        return []
 
-    return _bing(query)
+    soup = BeautifulSoup(r.text, "html.parser")
+    results = []
+    seen = set()
+    words = [w.lower() for w in query.split() if len(w) >= 2]
 
+    for block in soup.select("div"):
+        text = _clean(block.get_text(" ", strip=True))
+        low = text.lower()
+
+        if not text or not all(w in low for w in words):
+            continue
+
+        # Deve sembrare un risultato prodotto Notino.
+        if "notino.fr" not in low and "rasasi" not in low:
+            continue
+
+        link_tag = block.find("a", href=True)
+        if not link_tag:
+            continue
+
+        href = link_tag.get("href", "")
+        m = re.search(r"(https?://(?:www\.)?notino\.fr/[^\s&]+)", href)
+        if not m:
+            continue
+
+        url = m.group(1)
+        if url in seen:
+            continue
+
+        # Nome: preferiamo il titolo del risultato.
+        title = block.find("h3")
+        name = _clean(title.get_text(" ", strip=True)) if title else query
+
+        # Prezzo oppure disponibilità.
+        price_match = re.search(r"\b\d{1,4}[,.]\d{2}\s*€", text)
+        if price_match:
+            price = price_match.group(0).replace(".", ",")
+        elif "rupture de stock" in low:
+            price = "En rupture de stock"
+        else:
+            # Non mostriamo risultati senza prezzo/disponibilità.
+            continue
+
+        seen.add(url)
+        results.append({
+            "store": STORE,
+            "name": name,
+            "price": price,
+            "url": url,
+        })
+
+        if len(results) >= 10:
+            break
+
+    return results
 
 if __name__ == "__main__":
-    print(search("Rasasi Hawas Ice"))
+    items = search("Rasasi Hawas Ice")
+    print("RISULTATI:", len(items))
+    for item in items:
+        print(item)
