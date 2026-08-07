@@ -386,6 +386,18 @@ def _find_product_card(link):
 
 
 def _url_matches_query(product_url, query):
+    """
+    Match flessibile in stile ricerca Deloox.
+
+    Non richiede più che TUTTE le parole della query
+    siano presenti nello slug del prodotto.
+
+    Esempio:
+    "Le Beau Le Parfum" può quindi mostrare anche
+    prodotti della famiglia Le Beau (Le Beau,
+    Le Beau Le Parfum, Paradise Garden, Narcisse, ecc.),
+    evitando però risultati completamente estranei.
+    """
     url_tokens = set(
         _tokens(product_url)
     )
@@ -394,7 +406,20 @@ def _url_matches_query(product_url, query):
         _tokens(query)
     )
 
-    return query_tokens.issubset(url_tokens)
+    if not query_tokens:
+        return False
+
+    overlap = len(
+        url_tokens & query_tokens
+    )
+
+    # Almeno due parole significative in comune.
+    # Per query di una sola parola ne basta una.
+    minimum_overlap = (
+        1 if len(query_tokens) == 1 else 2
+    )
+
+    return overlap >= minimum_overlap
 
 
 def _extract_category(html, query):
@@ -459,7 +484,15 @@ def _extract_category(html, query):
             _tokens(card_text)
         )
 
-        if not query_tokens.issubset(card_tokens):
+        overlap = len(
+            card_tokens & query_tokens
+        )
+
+        minimum_overlap = (
+            1 if len(query_tokens) == 1 else 2
+        )
+
+        if overlap < minimum_overlap:
             continue
 
         if not _is_relevant_product(
