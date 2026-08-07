@@ -14,6 +14,11 @@ HEADERS = {
     "Accept-Language": "de-DE,de;q=0.9,en;q=0.8",
 }
 
+IGNORED_MATCH_WORDS = {
+    "eau", "de", "parfum", "perfume", "edp", "edt",
+    "spray", "ml", "pour", "for",
+}
+
 def _tokens(text):
     return [
         x.lower()
@@ -22,8 +27,20 @@ def _tokens(text):
     ]
 
 def _all_tokens_match(text, query):
-    low = unquote(text).lower().replace("-", " ")
-    return all(t in low for t in _tokens(query))
+    text_tokens = set(_tokens(text))
+    query_tokens = {
+        token
+        for token in _tokens(query)
+        if token not in IGNORED_MATCH_WORDS
+    }
+
+    if not query_tokens:
+        query_tokens = set(_tokens(query))
+
+    if not query_tokens:
+        return False
+
+    return query_tokens.issubset(text_tokens)
 
 def _xml_urls(xml_text):
     root = ET.fromstring(xml_text)
@@ -38,45 +55,57 @@ def _get_sitemap_urls():
     r.raise_for_status()
     urls = _xml_urls(r.text)
 
-    # If sitemap.xml is an index, open its child sitemaps.
-    child_maps = [u for u in urls if "sitemap" in u.lower() and u.lower().endswith((".xml", ".xml.gz"))]
+    child_maps = [
+        u for u in urls
+        if "sitemap" in u.lower()
+        and u.lower().endswith((".xml", ".xml.gz"))
+    ]
+
     if not child_maps:
         return urls
 
     out = []
+
     for sm in child_maps:
         try:
             rr = SESSION.get(sm, headers=HEADERS, timeout=4)
+
             if rr.status_code == 200:
                 out.extend(_xml_urls(rr.text))
         except Exception:
             pass
+
     return out
 
 def _extract_product(url, query):
     r = SESSION.get(url, headers=HEADERS, timeout=4)
+
     if r.status_code != 200:
         return None
 
     soup = BeautifulSoup(r.text, "html.parser")
     h1 = soup.find("h1")
+
     if not h1:
         return None
 
     name = " ".join(h1.stripped_strings)
+
     if not _all_tokens_match(name, query):
         return None
 
-    # Work only around the actual product heading, avoiding prices from
-    # navigation/recommendations elsewhere on the page.
     chunks = []
     node = h1
+
     for _ in range(8):
         if not node:
             break
+
         txt = node.get_text(" ", strip=True)
+
         if txt:
             chunks.append(txt)
+
         node = node.parent
 
     product_text = min(
@@ -85,19 +114,18 @@ def _extract_product(url, query):
         default=""
     )
 
-    # Parfum-Zentrum marks unavailable items with this message.
     unavailable_phrases = (
         "leider nicht lieferbar",
         "nicht lieferbar",
         "nicht vorrätig",
         "ausverkauft",
     )
+
     page_near_h1 = " ".join(chunks[:5]).lower()
+
     if any(x in page_near_h1 for x in unavailable_phrases):
         return None
 
-    # Prefer a selling price followed by VAT/shipping text. This avoids
-    # Grundpreis (price per litre) and recommendation prices.
     patterns = [
         r"(\d{1,4}[.,]\d{2})\s*€\s*inkl\.",
         r"Versandbereit\s*(\d{1,4}[.,]\d{2})\s*€",
@@ -105,8 +133,10 @@ def _extract_product(url, query):
     ]
 
     price = ""
+
     for pattern in patterns:
         m = re.search(pattern, product_text, re.I)
+
         if m:
             price = m.group(1).replace(".", ",") + "€"
             break
@@ -128,8 +158,8 @@ def search(query):
         print("ERRORE SITEMAP:", e)
         return []
 
-    # Product pages use an article code in the slug: ..._z123456/
     candidates = []
+
     for url in urls:
         if re.search(r"_z\d+/?$", url) and _all_tokens_match(url, query):
             candidates.append(url)
@@ -145,6 +175,7 @@ def search(query):
 
         if item:
             key = (item["name"].lower(), item["price"])
+
             if key not in seen:
                 seen.add(key)
                 results.append(item)
@@ -152,8 +183,8 @@ def search(query):
     return results
 
 if __name__ == "__main__":
-    # Available product used to verify the scraper.
     results = search("Rasasi Hawas For Him")
     print("RISULTATI:", len(results))
+
     for item in results[:10]:
         print(item)
