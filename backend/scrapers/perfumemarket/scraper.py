@@ -1,127 +1,71 @@
-import re
-import requests
-from bs4 import BeautifulSoup
-from urllib.parse import quote, urljoin
+import re import requests from bs4 import BeautifulSoup from
+urllib.parse import quote, urljoin
 
-BASE_URL = "https://www.perfumemarket.nl"
-PRICE_RE = re.compile(r"€\s*(\d{1,4}[.,]\d{2})|(\d{1,4}[.,]\d{2})\s*€")
+BASE_URL = “https://www.perfumemarket.nl” PRICE_RE =
+re.compile(r”€([.,])|([.,])€“, re.I)
 
+Parole che indicano prodotti diversi dal profumo vero e proprio.
 
-def _extract_price(text):
-    match = PRICE_RE.search(text or "")
-    if not match:
-        return None
+EXCLUDED_WORDS = { “body”, “shower”, “gel”, “soap”, “wash”, “hand”,
+“cream”, “creme”, “moisturizer”, “deodorant”, “spray deodorant”,
+“lotion”, “after shave”, “aftershave”, “hair”, “candle”, “diffuser”,
+“set”, “gift set” }
+
+def _norm(text): text = str(text or ““).lower() text =
+re.sub(r”[^a-z0-9]+“,” “, text) return re.sub(r”+“,” “, text).strip()
+
+def _extract_price(text): match = PRICE_RE.search(text or ““) if not
+match: return None
+
     value = match.group(1) or match.group(2)
     return value.replace(".", ",") + " €"
 
+def _extract_ml(text): m = re.search(r”)ml, text or ““, re.I) return
+int(m.group(1)) if m else None
 
-def _matches(text, query):
-    text = (text or "").lower()
-    query_tokens = [t.lower() for t in query.split() if t.strip()]
-    return bool(query_tokens) and all(token in text for token in query_tokens)
+def _is_excluded(name): n = _norm(name) return any(re.search(r” +
+re.escape(word) + r”, n) for word in EXCLUDED_WORDS)
 
+def _query_tokens(query): # Il formato non deve impedire di trovare le
+altre varianti. # Es.: “Tom Ford Neroli Portofino 30 ml” deve poter
+trovare anche 50/100 ml. q = re.sub(r”ml, ” “, str(query or”“),
+flags=re.I) return [t for t in _norm(q).split() if t]
 
-def _soft_matches(text, query):
-    """
-    Match più permissivo per siblings:
-    basta che ALMENO un token della query sia presente nel testo.
-    Questo aiuta a catturare link come '50 ml', '100 ml', ecc.,
-    collegati alla stessa fragranza.
-    """
-    text = (text or "").lower()
-    query_tokens = [t.lower() for t in query.split() if t.strip()]
-    if not query_tokens:
-        return False
-    return any(token in text for token in query_tokens)
+def _product_name_from_card(card, fallback): # Cerca prima un
+titolo/link prodotto leggibile nella stessa card. candidates = []
 
+    for selector in ("h1", "h2", "h3", "h4", ".product-title", ".card__heading", ".product-item__title"):
+        for node in card.select(selector):
+            txt = node.get_text(" ", strip=True)
+            if txt:
+                candidates.append(txt)
 
-def _extract_product_page(session, product_url, query):
-    try:
-        response = session.get(product_url, timeout=15)
-        response.raise_for_status()
-    except requests.RequestException:
-        return None, []
+    for a in card.find_all("a", href=True):
+        txt = a.get_text(" ", strip=True)
+        if txt:
+            candidates.append(txt)
 
-    soup = BeautifulSoup(response.text, "html.parser")
+    if fallback:
+        candidates.append(fallback)
 
-    h1 = soup.find("h1")
-    name = h1.get_text(" ", strip=True) if h1 else ""
+    # Preferisce nomi con formato ml, perché distinguono correttamente le varianti.
+    candidates = list(dict.fromkeys(candidates))
+    candidates.sort(key=lambda x: (0 if _extract_ml(x) else 1, len(x)))
 
-    if not name or not _matches(name, query):
-        title = soup.find("title")
-        title_text = title.get_text(" ", strip=True) if title else ""
-        if _matches(title_text, query):
-            name = title_text
+    return candidates[0] if candidates else fallback
 
-    if not name:
-        return None, []
+def search(query): query = str(query or ““).strip() if not query: return
+[]
 
-    # Prefer price elements on the product page instead of the whole page.
-    price = None
-    price_selectors = [
-        "[class*='price']",
-        "[id*='price']",
-        "[data-product-price]",
-        "[itemprop='price']",
-    ]
-
-    for selector in price_selectors:
-        for element in soup.select(selector):
-            price = _extract_price(element.get_text(" ", strip=True))
-            if price:
-                break
-        if price:
-            break
-
-    if not price:
-        price = _extract_price(soup.get_text(" ", strip=True))
-
-    item = None
-    if price:
-        item = {
-            "store": "PerfumeMarket",
-            "name": name,
-            "price": price,
-            "url": product_url.split("?")[0]
-        }
-
-    # Collect sibling product URLs shown on the same product page.
-    siblings = []
-    seen = set()
-
-    for link in soup.find_all("a", href=True):
-        href = urljoin(BASE_URL, link.get("href", "")).split("?")[0]
-        text = link.get_text(" ", strip=True)
-        title = link.get("title", "")
-        img = link.find("img")
-        alt = img.get("alt", "") if img else ""
-
-        candidate_text = " ".join(x for x in (text, title, alt) if x)
-
-        if (
-            "/products/" in href.lower()
-            and href != product_url.split("?")[0]
-            and _soft_matches(candidate_text, query)  # <--- qui
-            and href not in seen
-        ):
-            seen.add(href)
-            siblings.append(href)
-
-    return item, siblings
-
-
-def search(query):
     url = BASE_URL + "/search?q=" + quote(query)
-
     headers = {
-        "User-Agent": "Mozilla/5.0"
+        "User-Agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) "
+                      "AppleWebKit/605.1.15 Version/17.0 Mobile/15E148 Safari/604.1",
+        "Accept-Language": "nl-NL,nl;q=0.9,en;q=0.8",
     }
 
-    session = requests.Session()
-    session.headers.update(headers)
-
     try:
-        response = session.get(url, timeout=15)
+        response = requests.get(url, headers=headers, timeout=15)
         response.raise_for_status()
     except requests.RequestException as error:
         print(f"PERFUMEMARKET ERROR: {error}")
@@ -130,91 +74,86 @@ def search(query):
     soup = BeautifulSoup(response.text, "html.parser")
     results = []
     seen = set()
-    product_urls = []
 
-    query_tokens = [t.lower() for t in query.split() if t.strip()]
+    tokens = _query_tokens(query)
 
-    # Logica originale: raccoglie tutti i prodotti visibili nella ricerca.
     for link in soup.find_all("a", href=True):
-        name = link.get_text(" ", strip=True)
         href = link.get("href", "")
+        link_name = link.get_text(" ", strip=True)
 
-        if not name or not href:
+        if not href:
             continue
 
-        name_lower = name.lower()
-        if not all(token in name_lower for token in query_tokens):
-            continue
-
+        # Risale la card senza inglobare mezza pagina.
         node = link
-        price = None
-
-        for _ in range(5):
-            if node is None:
+        card = link
+        for _ in range(6):
+            parent = getattr(node, "parent", None)
+            if parent is None:
                 break
 
-            text = node.get_text(" ", strip=True)
-            price = _extract_price(text)
-
-            if price:
+            text = parent.get_text(" ", strip=True)
+            if len(text) > 2500:
                 break
 
-            node = node.parent
+            card = parent
 
-        product_url = urljoin(BASE_URL, href).split("?")[0]
+            # Una card utile contiene prezzo e link.
+            if PRICE_RE.search(text):
+                break
 
-        if "/products/" not in product_url.lower():
+            node = parent
+
+        card_text = card.get_text(" ", strip=True)
+        name = _product_name_from_card(card, link_name)
+
+        # Il match viene fatto sul contenuto della card, non soltanto sul primo <a>.
+        haystack = _norm(name + " " + card_text)
+        if not tokens or not all(token in haystack for token in tokens):
             continue
 
-        if product_url not in product_urls:
-            product_urls.append(product_url)
-
-        if not price or product_url in seen:
+        if _is_excluded(name):
             continue
 
-        seen.add(product_url)
+        price = _extract_price(card_text)
+        if not price:
+            continue
+
+        product_url = urljoin(BASE_URL, href).split("#")[0]
+
+        # Evita URL generici della ricerca/home.
+        if "/search" in product_url.lower():
+            continue
+
+        ml = _extract_ml(name) or _extract_ml(card_text)
+
+        # Chiave con URL + formato: non elimina accidentalmente 30/50/100 ml.
+        key = (product_url.split("?")[0], ml)
+        if key in seen:
+            continue
+        seen.add(key)
+
+        clean_name = name.strip()
+        if ml and not re.search(r"\b\d{1,4}\s*ml\b", clean_name, re.I):
+            clean_name = f"{clean_name} {ml} ml"
 
         results.append({
             "store": "PerfumeMarket",
-            "name": name,
+            "name": clean_name,
             "price": price,
-            "url": product_url
+            "url": product_url,
         })
 
-    # Secondo passaggio: apriamo i prodotti trovati e recuperiamo eventuali
-    # altri formati dello stesso profumo (30 ml, 50 ml, 100 ml, ecc.).
-    queue = list(product_urls)
-    checked = set()
-
-    while queue and len(checked) < 25:  # <--- 12 -> 25
-        product_url = queue.pop(0)
-
-        if product_url in checked:
-            continue
-
-        checked.add(product_url)
-
-        item, siblings = _extract_product_page(
-            session,
-            product_url,
-            query
-        )
-
-        if item and item["url"] not in seen:
-            seen.add(item["url"])
-            results.append(item)
-
-        for sibling in siblings:
-            if sibling not in checked and sibling not in queue:
-                queue.append(sibling)
+    # Prima i profumi con formato riconosciuto, poi ordine crescente di ml.
+    results.sort(key=lambda x: (
+        _extract_ml(x["name"]) is None,
+        _extract_ml(x["name"]) or 9999,
+        _norm(x["name"])
+    ))
 
     return results
 
-
-if __name__ == "__main__":
-    results = search("Neroli Portofino Tom Ford")
-
-    print("RISULTATI:", len(results))
-
-    for product in results[:20]:
-        print(product)
+if name == “main”: for q in ( “Tom Ford Neroli Portofino”, “Hawas Ice”,
+“Riiffs Freeze”, ): print(“” + “=” * 60) print(“QUERY:”, q) items =
+search(q) print(“RISULTATI:”, len(items)) for product in items:
+print(product)
