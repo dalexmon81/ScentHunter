@@ -34,45 +34,11 @@ def _matches(text, query):
 
 
 def _price(text):
-    text = _clean(text)
-
-    if not text:
-        return ""
-
-    # 1. Notino: "Prix actuel 37,50 €"
-    current = re.search(
-        r"prix\\s+actuel\\s+(\\d{1,4}[.,]\\d{2})\\s*€",
-        text,
-        re.I,
-    )
-    if current:
-        return current.group(1).replace(".", ",") + "€"
-
-    # 2. Notino: "En stock | 37,50 € / 100 ml"
-    stock = re.search(
-        r"en\\s+stock.{0,80}?(\\d{1,4}[.,]\\d{2})\\s*€",
-        text,
-        re.I,
-    )
-    if stock:
-        return stock.group(1).replace(".", ",") + "€"
-
-    # 3. Evita che lo storico "Dernier prix le plus bas"
-    # venga scelto come prezzo del prodotto.
-    cleaned = re.sub(
-        r"dernier\\s+prix\\s+le\\s+plus\\s+bas\\s+"
-        r"\\d{1,4}[.,]\\d{2}\\s*€",
-        "",
-        text,
-        flags=re.I,
-    )
-
-    matches = list(PRICE_RE.finditer(cleaned))
+    matches = list(PRICE_RE.finditer(text or ""))
 
     if not matches:
         return ""
 
-    # Manteniamo il comportamento dello scraper originale.
     match = matches[-1]
     value = match.group(1) or match.group(2)
 
@@ -95,9 +61,19 @@ def _search_page(query):
                 timeout=15,
                 allow_redirects=True,
             )
+            print("NOTINO DEBUG REQUEST URL:", url, flush=True)
+            print("NOTINO DEBUG STATUS:", response.status_code, flush=True)
+            print("NOTINO DEBUG FINAL URL:", response.url, flush=True)
+            print("NOTINO DEBUG HTML LENGTH:", len(response.text or ""), flush=True)
+
+            body_preview = _clean(
+                BeautifulSoup(response.text or "", "html.parser").get_text(" ", strip=True)
+            )
+            print("NOTINO DEBUG BODY:", body_preview[:1200], flush=True)
+
             response.raise_for_status()
         except requests.RequestException as error:
-            print("NOTINO ERROR:", error)
+            print("NOTINO ERROR:", error, flush=True)
             continue
 
         if response.text:
@@ -115,8 +91,13 @@ def search(query):
 
     for html in _search_page(query):
         soup = BeautifulSoup(html, "html.parser")
+        all_links = soup.find_all("a", href=True)
+        print("NOTINO DEBUG LINKS TOTAL:", len(all_links), flush=True)
 
-        for link in soup.find_all("a", href=True):
+        candidate_count = 0
+        query_card_count = 0
+
+        for link in all_links:
             href = _clean(link.get("href", ""))
 
             if not href:
@@ -152,6 +133,16 @@ def search(query):
             if product_url in seen:
                 continue
 
+            candidate_count += 1
+            if candidate_count <= 30:
+                print(
+                    "NOTINO DEBUG CANDIDATE:",
+                    product_url,
+                    "| LINK TEXT:",
+                    _clean(link.get_text(" ", strip=True))[:180],
+                    flush=True,
+                )
+
             node = link
             card = None
 
@@ -173,7 +164,17 @@ def search(query):
             if card is None:
                 continue
 
+            query_card_count += 1
             text = _clean(card.get_text(" ", strip=True))
+            print(
+                "NOTINO DEBUG MATCHED CARD:",
+                product_url,
+                "| TEXT:",
+                text[:600],
+                "| PRICE:",
+                _price(text),
+                flush=True,
+            )
 
             name = ""
 
@@ -211,12 +212,38 @@ def search(query):
                         break
 
             if not name:
+                print(
+                    "NOTINO DEBUG REJECT NAME:",
+                    product_url,
+                    "| CARD:",
+                    text[:500],
+                    flush=True,
+                )
                 continue
 
             price = _price(text)
 
             if not price:
+                print(
+                    "NOTINO DEBUG REJECT PRICE:",
+                    product_url,
+                    "| NAME:",
+                    name,
+                    "| CARD:",
+                    text[:500],
+                    flush=True,
+                )
                 continue
+
+            print(
+                "NOTINO DEBUG ACCEPT:",
+                name,
+                "| PRICE:",
+                price,
+                "| URL:",
+                product_url,
+                flush=True,
+            )
 
             seen.add(product_url)
 
@@ -233,6 +260,12 @@ def search(query):
         if results:
             return results
 
+    print(
+        "NOTINO DEBUG FINAL RESULTS:",
+        len(results),
+        results,
+        flush=True,
+    )
     return results
 
 
