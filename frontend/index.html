@@ -370,23 +370,41 @@ function shGroupData(data){
     let n=normalizePerfumeName(o.name||"").toLowerCase();
     let brand=normalizePerfumeName(o.brand||"").toLowerCase();
 
-    // Elimina dal nome elementi commerciali che non identificano una variante diversa.
+    // Togli solo formato e parole realmente commerciali.
+    // IMPORTANTE: "parfum" ed "extrait" restano, perché possono identificare
+    // una variante diversa (es. "Le Beau Le Parfum").
     n=n.replace(/\b\d{1,4}\s*ml\b/gi," ");
-    n=n.replace(/\b(eau de parfum|eau de toilette|eau de cologne|parfum|perfume|edp|edt|edc|extrait|spray|men|man|for men|for him|pour homme)\b/gi," ");
+    n=n.replace(/\b(eau de toilette|eau de cologne|perfume|edp|edt|edc|spray|men|man|for men|for him|pour homme)\b/gi," ");
 
-    // Alcuni negozi mettono la marca dentro il nome, altri no.
+    // Se la marca è già separata nel campo brand, non deve duplicare il nome.
     if(brand && n.startsWith(brand+" ")) n=n.slice(brand.length+1);
 
-    // Marche/parole commerciali che alcuni negozi inseriscono nel titolo.
-    // Non devono creare schede diverse per lo stesso profumo.
+    // Togli soltanto parole/marche accessorie note.
     n=n.replace(/\b(french avenue|rasasi)\b/gi," ");
     n=n.replace(/\b(by|de|unisex|x)\b/gi," ");
 
-    // Normalizza anche l'ordine delle parole:
-    // "French Avenue Liquid Brun" = "Liquid Brun French Avenue"
-    // "Magnetiq Aromatix" = "Aromatix Magnetiq".
-    const tokens=n.replace(/[^a-z0-9]+/gi," ").replace(/\s+/g," ").trim().split(" ").filter(Boolean);
+    // Mantiene l'ORDINE ORIGINALE delle parole.
+    // Niente .sort(): il titolo non viene più trasformato in
+    // "Beau Gaultier Jean Le Parfum".
+    return n.replace(/[^a-z0-9]+/gi," ").replace(/\s+/g," ").trim();
+  }
+
+  function groupingName(o){
+    // La chiave può ignorare l'ordine per unire lo stesso prodotto scritto
+    // diversamente dai negozi, ma NON viene mai usata come titolo visibile.
+    const n=canonicalName(o);
+    const tokens=n.split(" ").filter(Boolean);
     return [...new Set(tokens)].sort().join(" ");
+  }
+
+  function displayName(o,size){
+    let n=normalizePerfumeName(o.name||"Profumo").trim();
+    n=n.replace(/\b\d{1,4}\s*ml\b/gi," ").replace(/\s+/g," ").trim();
+    const brand=normalizePerfumeName(o.brand||"").trim();
+    if(brand && n.toLowerCase().startsWith(brand.toLowerCase()+" ")){
+      n=n.slice(brand.length).trim();
+    }
+    return ((brand?brand+" ":"")+n+(size?" "+size+" ml":"")).replace(/\s+/g," ").trim();
   }
 
   function canonicalBrand(o){
@@ -399,18 +417,20 @@ function shGroupData(data){
 
   raw.forEach(o=>{
     const cname=canonicalName(o);
-    if(!cname)return;
+    const groupName=groupingName(o);
+    if(!cname||!groupName)return;
     const size=sizeOf(o);
     // Ogni formato è un prodotto distinto.
     // 30 ml, 50 ml, 100 ml ecc. NON devono mai finire nella stessa scheda.
     // Se il formato non è dichiarato, resta in un gruppo separato "unknown".
-    const key=cname+"|"+(size||"unknown");
+    const key=groupName+"|"+(size||"unknown");
 
     if(!map.has(key)){
       map.set(key,{
         brand:o.brand||(/\brasasi\b/i.test(String(o.name||""))?"Rasasi":""),
         name:o.name||"Profumo",
         canonical:cname,
+        display_name:displayName(o,size),
         size_ml:size,
         concentration:o.concentration||"",
         image:o.image||o.image_url||o.thumbnail||"",
@@ -448,10 +468,9 @@ function shGroupData(data){
   groups.forEach(g=>{
     g.offers.sort((a,b)=>shNum(a)-shNum(b));
 
-    // Titolo uniforme: marca + nome canonico + formato.
-    const words=g.canonical.split(" ").map(w=>w ? w[0].toUpperCase()+w.slice(1) : w).join(" ");
-    const brand=(g.brand||"").trim();
-    g.name=((brand?brand+" ":"")+words+(g.size_ml?" "+g.size_ml+" ml":"")).trim();
+    // Il titolo visibile usa il nome reale ricevuto dal negozio.
+    // La chiave normalizzata serve solo per raggruppare, mai per riscrivere il nome.
+    g.name=g.display_name||g.name||"Profumo";
   });
 
   return groups.filter(g=>g.offers.length);
