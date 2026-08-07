@@ -270,7 +270,7 @@ def _is_relevant_product(text, query):
     if not _matches_soft(
         text,
         query,
-        minimum=0.55,
+        minimum=0.40,
     ):
         return False
 
@@ -387,39 +387,55 @@ def _find_product_card(link):
 
 def _url_matches_query(product_url, query):
     """
-    Match flessibile in stile ricerca Deloox.
-
-    Non richiede più che TUTTE le parole della query
-    siano presenti nello slug del prodotto.
-
-    Esempio:
-    "Le Beau Le Parfum" può quindi mostrare anche
-    prodotti della famiglia Le Beau (Le Beau,
-    Le Beau Le Parfum, Paradise Garden, Narcisse, ecc.),
-    evitando però risultati completamente estranei.
+    Match graduato: non pretende più che TUTTE le parole della query
+    siano nello slug. Serve solo a scartare risultati completamente estranei.
     """
-    url_tokens = set(
-        _tokens(product_url)
-    )
-
-    query_tokens = set(
-        _tokens(query)
-    )
+    url_tokens = set(_tokens(product_url))
+    query_tokens = set(_tokens(query))
 
     if not query_tokens:
         return False
 
-    overlap = len(
-        url_tokens & query_tokens
+    overlap = len(url_tokens & query_tokens)
+    return overlap / len(query_tokens) >= 0.50
+
+
+def _candidate_score(name, product_url, query):
+    """
+    Classifica i risultati senza eliminarli troppo presto.
+    Il match esatto resta in cima; le varianti della stessa famiglia
+    possono comunque comparire.
+    """
+    query_tokens = set(_tokens(query))
+    name_tokens = set(_tokens(name))
+    url_tokens = set(_tokens(product_url))
+
+    if not query_tokens:
+        return -9999
+
+    name_overlap = len(query_tokens & name_tokens)
+    url_overlap = len(query_tokens & url_tokens)
+
+    if max(name_overlap, url_overlap) == 0:
+        return -9999
+
+    score = (
+        name_overlap * 120
+        + url_overlap * 70
     )
 
-    # Almeno due parole significative in comune.
-    # Per query di una sola parola ne basta una.
-    minimum_overlap = (
-        1 if len(query_tokens) == 1 else 2
-    )
+    if query_tokens.issubset(name_tokens):
+        score += 250
 
-    return overlap >= minimum_overlap
+    if query_tokens.issubset(url_tokens):
+        score += 180
+
+    # Premia la famiglia del prodotto ma non richiede il match totale.
+    common = max(name_overlap, url_overlap)
+    coverage = common / len(query_tokens)
+    score += int(coverage * 100)
+
+    return score
 
 
 def _extract_category(html, query):
@@ -484,15 +500,9 @@ def _extract_category(html, query):
             _tokens(card_text)
         )
 
-        overlap = len(
-            card_tokens & query_tokens
-        )
-
-        minimum_overlap = (
-            1 if len(query_tokens) == 1 else 2
-        )
-
-        if overlap < minimum_overlap:
+        # Non richiedere tutte le parole: Deloox mostra anche
+        # varianti appartenenti alla stessa famiglia del profumo.
+        if not (card_tokens & query_tokens):
             continue
 
         if not _is_relevant_product(
@@ -903,19 +913,19 @@ def search(query):
         if product_url in seen_urls:
             continue
 
-        if not _url_matches_query(
+        candidate_score = _candidate_score(
+            item["name"],
             product_url,
             query,
-        ):
+        )
+
+        if candidate_score <= -9999:
             continue
 
         seen_urls.add(product_url)
 
         scored.append((
-            _match_score(
-                item["name"],
-                query,
-            ),
+            candidate_score,
             item,
         ))
 
@@ -928,7 +938,7 @@ def search(query):
     )
 
     best_score = scored[0][0]
-    minimum_score = best_score - 45
+    minimum_score = best_score - 320
 
     final_results = []
     seen_variants = set()
