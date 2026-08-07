@@ -30,11 +30,17 @@ NON_FRAGRANCE = (
     "body lotion",
     "body cream",
     "body oil",
+    "body wash",
     "shower gel",
     "shower oil",
     "hand and body",
+    "hand cream",
     "deodorant",
     "after shave",
+    "aftershave",
+    "hair mist",
+    "hair spray",
+    "soap",
 )
 
 SIZE_RE = re.compile(r"\b(\d{1,3}(?:[.,]\d+)?)\s*ml\b", re.I)
@@ -53,9 +59,25 @@ def _tokens(value):
 
 
 def _matches(text, query):
-    hay = _norm(text)
-    words = _tokens(query)
-    return bool(words) and all(word in hay for word in words)
+    hay_tokens = set(_tokens(text))
+    query_tokens = _tokens(query)
+    return bool(query_tokens) and all(word in hay_tokens for word in query_tokens)
+
+
+def _match_score(text, query):
+    text_tokens = _tokens(text)
+    query_tokens = _tokens(query)
+
+    if not query_tokens:
+        return -9999
+
+    text_set = set(text_tokens)
+    if not all(token in text_set for token in query_tokens):
+        return -9999
+
+    query_set = set(query_tokens)
+    extras = [token for token in text_tokens if token not in query_set]
+    return (len(query_tokens) * 100) - (len(extras) * 3) - abs(len(text_tokens) - len(query_tokens))
 
 
 def _extract_price(text):
@@ -354,12 +376,10 @@ def search(query):
 
     session = requests.Session()
 
-    # 1) Trova il brand dall'indice Deloox.
     brand_url = _find_brand_category(session, query)
     if not brand_url:
         return []
 
-    # 2) Cerca il prodotto nella pagina brand.
     response = _get(session, brand_url)
     if response is None:
         return []
@@ -369,23 +389,37 @@ def search(query):
     if not category_results:
         category_results = _extract_brand_page(response.text, query)
 
-    # 3) Scarta prodotti corpo/accessori e conserva solo candidati pertinenti.
-    candidates = [
-        item for item in category_results
-        if _is_relevant_product(item.get("name", ""), query)
-    ]
+    candidates = []
+    seen_urls = set()
+
+    for item in category_results:
+        name = item.get("name", "")
+        url = item.get("url", "").split("#")[0].split("?")[0]
+
+        if not url or url in seen_urls:
+            continue
+
+        if not _is_relevant_product(name, query):
+            continue
+
+        seen_urls.add(url)
+        candidates.append((_match_score(name, query), item))
 
     if not candidates:
         return []
 
-    # Preferisci il nome più corto: normalmente è il profumo principale,
-    # non una variante/accessorio con parole aggiuntive.
-    candidates.sort(key=lambda item: len(_norm(item.get("name", ""))))
+    # Miglior corrispondenza testuale prima.
+    # Nessun profumo specifico è codificato qui.
+    candidates.sort(key=lambda x: x[0], reverse=True)
+    best_score = candidates[0][0]
 
     final_results = []
-    seen = set()
+    seen_variants = set()
 
-    for item in candidates[:5]:
+    for score, item in candidates:
+        if score < best_score:
+            break
+
         clean_url = item["url"].split("#")[0].split("?")[0]
         product_response = _get(session, clean_url)
 
@@ -399,23 +433,33 @@ def search(query):
         )
 
         for variant in variants:
-            key = (_norm(variant["name"]), variant["price"])
-            if key in seen:
+            key = (
+                _norm(item["name"]),
+                _norm(variant.get("size", "")),
+                variant["price"],
+            )
+
+            if key in seen_variants:
                 continue
-            seen.add(key)
+
+            seen_variants.add(key)
             final_results.append(variant)
 
-        # Appena troviamo le varianti del profumo corretto non serve aprire
-        # body mist/lotion o altri risultati omonimi.
-        if variants:
-            break
+    if final_results:
+        def size_number(item):
+            match = SIZE_RE.search(item.get("size", ""))
+            if not match:
+                return 9999
+            try:
+                return float(match.group(1).replace(",", "."))
+            except ValueError:
+                return 9999
 
-    # Fallback: se Deloox cambia temporaneamente markup, restituisce almeno
-    # il profumo principale trovato nella categoria.
-    if not final_results:
-        return candidates[:1]
+        final_results.sort(key=size_number)
+        return final_results[:20]
 
-    return final_results[:20]
+    # Fallback prudente: solo il miglior profumo trovato.
+    return [candidates[0][1]]
 
 
 if __name__ == "__main__":
