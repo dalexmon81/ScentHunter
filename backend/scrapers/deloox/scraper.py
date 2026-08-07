@@ -97,7 +97,7 @@ CATEGORY_FALLBACKS = (
     (
         ("le", "beau", "le", "parfum"),
         "https://www.deloox.com/category/"
-        "1084243/le-beau-le-parfum.html",
+        "1072906/jean-paul-gaultier-fragrances.html",
     ),
     (
         ("jean", "paul", "gaultier"),
@@ -270,7 +270,7 @@ def _is_relevant_product(text, query):
     if not _matches_soft(
         text,
         query,
-        minimum=0.40,
+        minimum=0.55,
     ):
         return False
 
@@ -386,56 +386,15 @@ def _find_product_card(link):
 
 
 def _url_matches_query(product_url, query):
-    """
-    Match graduato: non pretende più che TUTTE le parole della query
-    siano nello slug. Serve solo a scartare risultati completamente estranei.
-    """
-    url_tokens = set(_tokens(product_url))
-    query_tokens = set(_tokens(query))
-
-    if not query_tokens:
-        return False
-
-    overlap = len(url_tokens & query_tokens)
-    return overlap / len(query_tokens) >= 0.50
-
-
-def _candidate_score(name, product_url, query):
-    """
-    Classifica i risultati senza eliminarli troppo presto.
-    Il match esatto resta in cima; le varianti della stessa famiglia
-    possono comunque comparire.
-    """
-    query_tokens = set(_tokens(query))
-    name_tokens = set(_tokens(name))
-    url_tokens = set(_tokens(product_url))
-
-    if not query_tokens:
-        return -9999
-
-    name_overlap = len(query_tokens & name_tokens)
-    url_overlap = len(query_tokens & url_tokens)
-
-    if max(name_overlap, url_overlap) == 0:
-        return -9999
-
-    score = (
-        name_overlap * 120
-        + url_overlap * 70
+    url_tokens = set(
+        _tokens(product_url)
     )
 
-    if query_tokens.issubset(name_tokens):
-        score += 250
+    query_tokens = set(
+        _tokens(query)
+    )
 
-    if query_tokens.issubset(url_tokens):
-        score += 180
-
-    # Premia la famiglia del prodotto ma non richiede il match totale.
-    common = max(name_overlap, url_overlap)
-    coverage = common / len(query_tokens)
-    score += int(coverage * 100)
-
-    return score
+    return query_tokens.issubset(url_tokens)
 
 
 def _extract_category(html, query):
@@ -500,9 +459,7 @@ def _extract_category(html, query):
             _tokens(card_text)
         )
 
-        # Non richiedere tutte le parole: Deloox mostra anche
-        # varianti appartenenti alla stessa famiglia del profumo.
-        if not (card_tokens & query_tokens):
+        if not query_tokens.issubset(card_tokens):
             continue
 
         if not _is_relevant_product(
@@ -913,19 +870,19 @@ def search(query):
         if product_url in seen_urls:
             continue
 
-        candidate_score = _candidate_score(
-            item["name"],
+        if not _url_matches_query(
             product_url,
             query,
-        )
-
-        if candidate_score <= -9999:
+        ):
             continue
 
         seen_urls.add(product_url)
 
         scored.append((
-            candidate_score,
+            _match_score(
+                item["name"],
+                query,
+            ),
             item,
         ))
 
@@ -938,7 +895,7 @@ def search(query):
     )
 
     best_score = scored[0][0]
-    minimum_score = best_score - 320
+    minimum_score = best_score - 45
 
     final_results = []
     seen_variants = set()
