@@ -9,7 +9,6 @@ from html import unescape
 import os
 import re
 import traceback
-from concurrent.futures import ThreadPoolExecutor, TimeoutError, wait
 from threading import Lock
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
@@ -29,6 +28,7 @@ app.add_middleware(
 )
 
 SEARCH_LOCK = Lock()
+
 STORES = [
     "bplatz",
     "deloox",
@@ -109,7 +109,6 @@ def _price_from_structured_html(html: str) -> Optional[float]:
     """
     html = unescape(html or "")
 
-    # 1) JSON-LD: Product -> offers -> price.
     scripts = re.findall(
         r'<script[^>]+type=["\']application/ld\+json["\'][^>]*>(.*?)</script>',
         html,
@@ -131,7 +130,6 @@ def _price_from_structured_html(html: str) -> Optional[float]:
                             n = price_num(offer.get(key))
                             if n is not None:
                                 yield n
-            # Alcuni negozi mettono direttamente price nel Product.
             if str(value.get("@type", "")).lower() == "product":
                 n = price_num(value.get("price"))
                 if n is not None:
@@ -149,11 +147,8 @@ def _price_from_structured_html(html: str) -> Optional[float]:
             continue
         prices = list(walk(payload))
         if prices:
-            # Il primo prezzo Product/Offer è quello più affidabile; non usiamo
-            # i prezzi aggregati di comparatori esterni presenti nella pagina.
             return prices[0]
 
-    # 2) Meta tag comuni di Shopify/WooCommerce/OpenGraph.
     patterns = [
         r'<meta[^>]+(?:property|name)=["\'](?:product:price:amount|og:price:amount)["\'][^>]+content=["\']([^"\']+)',
         r'<meta[^>]+itemprop=["\']price["\'][^>]+content=["\']([^"\']+)',
@@ -171,17 +166,11 @@ def _price_from_structured_html(html: str) -> Optional[float]:
 def resolve_actual_price(product: Dict[str, Any]) -> Dict[str, Any]:
     """
     Normalizza il prezzo mostrato da ScentHunter al prezzo realmente pagabile.
-
-    Problema risolto: alcuni scraper possono intercettare il prezzo unitario
-    (es. 26,66 €/100 ml) invece del prezzo della confezione (es. 39,99 €).
-    Prima prova la pagina prodotto; solo se non è disponibile usa il calcolo
-    da prezzo unitario quando il campo lo dichiara esplicitamente.
     """
     item = dict(product)
     raw_price = str(item.get("price") or "").strip()
     size = _product_size_ml(item)
 
-    # Se la pagina è disponibile, il prezzo strutturato è la fonte primaria.
     url = str(item.get("url") or "").strip()
     if url and size and abs(size - 100.0) > 0.01:
         try:
@@ -202,8 +191,6 @@ def resolve_actual_price(product: Dict[str, Any]) -> Dict[str, Any]:
         except Exception:
             pass
 
-    # Fallback sicuro: converti SOLO quando il testo dichiara esplicitamente
-    # che il valore è un prezzo unitario per 100 ml.
     unit_match = re.search(r"(?:/|per\s*)100\s*ml", raw_price, re.I)
     if unit_match and size and size > 0:
         unit = price_num(raw_price[:unit_match.start()])
@@ -216,13 +203,6 @@ def resolve_actual_price(product: Dict[str, Any]) -> Dict[str, Any]:
 
 
 def matches(product: Dict[str, Any], query: str) -> bool:
-    """
-    Match generale del prodotto.
-
-    IMPORTANTE: non scartiamo automaticamente le varianti (Limited Edition,
-    Elixir, Rebel, ecc.). La UI deve poterle mostrare come prodotti distinti.
-    Filtriamo invece i veri non-profumi (gift set, deodoranti, kit...).
-    """
     name_tokens = set(norm(product.get("name", "")).split())
     query_all_tokens = set(norm(query).split())
 
@@ -341,37 +321,44 @@ def sort_by_price(products: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
 
 
 def search_perfume(query: str) -> Dict[str, Any]:
-    query = str(query or "").strip()
-
-    if not query:
-        return {
-            "query": query,
-            "count": 0,
-            "results": [],
-            "comparisons": [],
-            "errors": {},
-        }
-
-    results: List[Dict[str, Any]] = []
-    errors: Dict[str, str] = {}
-
     with SEARCH_LOCK:
+        query = str(query or "").strip()
+
+        if not query:
+            return {
+                "query": query,
+                "count": 0,
+                "results": [],
+                "comparisons": [],
+                "errors": {},
+            }
+
+        results: List[Dict[str, Any]] = []
+        errors: Dict[str, str] = {}
+
+        # IMPORTANTE:
+        # Gli scraper vengono eseguiti SEQUENZIALMENTE.
+        # In questo modo non vengono tenuti in memoria più scraper
+        # contemporaneamente e si riduce il picco RAM su Render.
         for store in STORES:
             try:
-                store_results = run_store(store, query)
-                results.extend(store_results or [])
+                store_results = run_store(store, query) or []
+                results.extend(store_results)
             except Exception as exc:
                 errors[store] = str(exc) or exc.__class__.__name__
+                traceback.print_exc()
 
-    results = sort_by_price(unique_results(results))
+        results = sort_by_price(unique_results(results))
 
-    return {
-        "query": query,
-        "count": len(results),
-        "results": results,
-        "comparisons": [],
-        "errors": errors,
-    }
+        return {
+            "query": query,
+            "count": len(results),
+            "results": results,
+            "comparisons": [],
+            "errors": errors,
+        }
+
+
 @app.get("/search")
 def search(q: str):
     return search_perfume(q)
