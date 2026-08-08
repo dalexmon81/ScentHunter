@@ -1,6 +1,5 @@
 import json
 import re
-import unicodedata
 from urllib.parse import urljoin
 
 import requests
@@ -144,19 +143,10 @@ def _clean(value):
 
 
 def _norm(value):
-    value = unicodedata.normalize(
-        "NFKD",
-        _clean(value).lower(),
-    )
-    value = "".join(
-        char
-        for char in value
-        if not unicodedata.combining(char)
-    )
     return re.sub(
         r"[^a-z0-9]+",
         " ",
-        value,
+        _clean(value).lower(),
     ).strip()
 
 
@@ -430,11 +420,6 @@ def _extract_category(html, query):
         _tokens(query)
     )
 
-    limited_query = {
-        "limited",
-        "edition",
-    }.issubset(query_tokens)
-
     for link in soup.find_all(
         "a",
         href=True,
@@ -451,8 +436,8 @@ def _extract_category(html, query):
         if "/product/" not in product_url.lower():
             continue
 
-        # Normal searches keep the original URL filter.
-        if not limited_query and not _url_matches_query(
+        # Controllo fondamentale contro prodotti estranei.
+        if not _url_matches_query(
             product_url,
             query,
         ):
@@ -473,136 +458,50 @@ def _extract_category(html, query):
         ):
             continue
 
-        if limited_query:
-            # Deloox may put the product name in an attribute instead of
-            # visible text. Collect every useful title/name/alt attribute from
-            # the link, images and its ancestors.
-            parts = [
-                card_text,
-                _clean(link.get_text(" ", strip=True)),
-                _clean(link.get("title")),
-                _clean(link.get("aria-label")),
-                _clean(link.get("data-product-name")),
-                _clean(link.get("data-name")),
-            ]
+        if not _matches_soft(
+            card_text,
+            query,
+            minimum=0.55,
+        ):
+            continue
 
-            for image in link.find_all("img"):
-                parts.extend([
-                    _clean(image.get("alt")),
-                    _clean(image.get("title")),
-                    _clean(image.get("data-product-name")),
-                    _clean(image.get("data-name")),
-                ])
+        card_tokens = set(
+            _tokens(card_text)
+        )
 
-            node = link
-            for _ in range(12):
-                if node is None:
-                    break
+        if not query_tokens.issubset(card_tokens):
+            continue
 
-                parts.extend([
-                    _clean(node.get("title")),
-                    _clean(node.get("aria-label")),
-                    _clean(node.get("data-product-name")),
-                    _clean(node.get("data-name")),
-                    _clean(node.get("data-title")),
-                ])
+        if not _is_relevant_product(
+            card_text,
+            query,
+        ):
+            continue
 
-                node = node.parent
+        price = _extract_price(card_text)
 
-            candidate_text = _clean(
-                " ".join(
-                    part
-                    for part in parts
-                    if part
-                )
+        if not price:
+            continue
+
+        product_name = query
+
+        link_name = _clean(
+            link.get_text(
+                " ",
+                strip=True,
             )
+        )
 
-            candidate_tokens = set(
-                _tokens(candidate_text)
-            )
-
-            base_tokens = query_tokens - {
-                "limited",
-                "edition",
-            }
-
-            if not base_tokens.issubset(
-                candidate_tokens
-            ):
-                continue
-
-            if not {
-                "limited",
-                "edition",
-            }.issubset(candidate_tokens):
-                continue
-
-            price = _extract_price(card_text)
-
-            if not price:
-                price = _extract_price(candidate_text)
-
-            if not price:
-                continue
-
-            product_name = link.get("title") or link.get(
-                "data-product-name"
-            ) or link.get("data-name") or ""
-
-            product_name = _clean(
-                product_name
-            )
-
-            if not product_name:
-                product_name = query
-
-        else:
-            if not _matches_soft(
-                card_text,
+        if (
+            link_name
+            and not SIZE_FULL_RE.fullmatch(link_name)
+            and _matches_soft(
+                link_name,
                 query,
                 minimum=0.55,
-            ):
-                continue
-
-            card_tokens = set(
-                _tokens(card_text)
             )
-
-            if not query_tokens.issubset(
-                card_tokens
-            ):
-                continue
-
-            if not _is_relevant_product(
-                card_text,
-                query,
-            ):
-                continue
-
-            price = _extract_price(card_text)
-
-            if not price:
-                continue
-
-            product_name = query
-
-            link_name = _clean(
-                link.get_text(
-                    " ",
-                    strip=True,
-                )
-            )
-
-            if (
-                link_name
-                and not SIZE_FULL_RE.fullmatch(link_name)
-                and _matches_soft(
-                    link_name,
-                    query,
-                    minimum=0.55,
-                )
-            ):
-                product_name = link_name
+        ):
+            product_name = link_name
 
         if product_url in seen:
             continue
@@ -619,7 +518,6 @@ def _extract_category(html, query):
         })
 
     return results
-
 
 
 def _extract_brand_page(html, query):
@@ -971,13 +869,6 @@ def search(query):
     if not candidates:
         return []
 
-    limited_query = {
-        "limited",
-        "edition",
-    }.issubset(
-        set(_tokens(query))
-    )
-
     scored = []
     seen_urls = set()
 
@@ -989,7 +880,7 @@ def search(query):
         if product_url in seen_urls:
             continue
 
-        if not limited_query and not _url_matches_query(
+        if not _url_matches_query(
             product_url,
             query,
         ):
@@ -1069,6 +960,121 @@ def search(query):
         return final_results[:20]
 
     return [item for _, item in scored]
+
+
+
+def debug_category(q: str):
+    """
+    Diagnostic endpoint for Deloox category extraction.
+    It intentionally exposes the raw candidates found in the category
+    before the normal ranking/filtering pipeline.
+    """
+    query = _clean(q)
+
+    if not query:
+        return {
+            "query": query,
+            "category_url": None,
+            "candidates": [],
+        }
+
+    session = requests.Session()
+
+    category_url = _find_brand_category(
+        session,
+        query,
+    )
+
+    if not category_url:
+        return {
+            "query": query,
+            "category_url": None,
+            "candidates": [],
+        }
+
+    response = _get(
+        session,
+        category_url,
+    )
+
+    if response is None:
+        return {
+            "query": query,
+            "category_url": category_url,
+            "candidates": [],
+            "error": "category request failed",
+        }
+
+    soup = BeautifulSoup(
+        response.text,
+        "html.parser",
+    )
+
+    candidates = []
+    seen = set()
+
+    for link in soup.find_all(
+        "a",
+        href=True,
+    ):
+        href = _clean(
+            link.get("href")
+        )
+
+        product_url = urljoin(
+            BASE_URL,
+            href,
+        ).split("?")[0]
+
+        if "/product/" not in product_url.lower():
+            continue
+
+        if product_url in seen:
+            continue
+
+        seen.add(product_url)
+
+        card = _find_product_card(link)
+
+        candidates.append({
+            "url": product_url,
+            "link_text": _clean(
+                link.get_text(
+                    " ",
+                    strip=True,
+                )
+            ),
+            "link_title": _clean(
+                link.get("title")
+            ),
+            "aria_label": _clean(
+                link.get("aria-label")
+            ),
+            "data_product_name": _clean(
+                link.get("data-product-name")
+            ),
+            "data_name": _clean(
+                link.get("data-name")
+            ),
+            "card_text": _clean(
+                card.get_text(
+                    " ",
+                    strip=True,
+                )
+            ),
+        })
+
+    return {
+        "query": query,
+        "category_url": category_url,
+        "count": len(candidates),
+        "candidates": candidates,
+    }
+
+
+@app.get("/debug-category")
+def debug_category_endpoint(q: str):
+    return debug_category(q)
 
 
 if __name__ == "__main__":
