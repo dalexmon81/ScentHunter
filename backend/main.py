@@ -3,16 +3,14 @@ from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 
-import gc
 import importlib
 import json
-import sys
-import resource
 import os
 import re
 import traceback
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
 
 # ============================================================
@@ -42,16 +40,15 @@ app.add_middleware(
 # CONFIGURAZIONE
 # ============================================================
 
-# Negozi attivi nella ricerca.
-# I tre scraper che in questo momento restituiscono 403/429
-# vengono esclusi dalla richiesta per evitare timeout e fallimenti
-# dell'intera ricerca.
 STORES = [
     "bplatz",
     "deloox",
+    "parfumcity",
     "parfumzentrum",
+    "perfumemarket",
     "sabina",
     "orioudh",
+    "notino",
 ]
 
 BASE_DIR = os.path.dirname(__file__)
@@ -236,96 +233,50 @@ def load_scraper(store: str):
     )
 
 
-def build_search_attempts(store: str, query: str) -> List[str]:
-    """
-    Una sola richiesta per negozio.
-
-    Non facciamo retry automatici: alcuni negozi rispondono 403/429
-    e ripetere la stessa ricerca peggiora il blocco e allunga il tempo
-    totale della richiesta /search.
-    """
-    return [query]
+def build_search_attempts(query: str) -> List[str]:
+    query = str(query or "").strip()
+    return [query] if query else []
 
 
-def log_memory(label: str) -> None:
-    try:
-        # Linux reports ru_maxrss in KB.
-        mb = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss / 1024
-        print(f"RAM DEBUG | {label} | maxrss={mb:.1f} MB", flush=True)
-    except Exception:
-        pass
+def run_store(store: str, query: str) -> List[Dict[str, Any]]:
+    if store in {"notino", "perfumemarket", "parfumcity"}:
+        return []
 
-
-def run_store(
-    store: str,
-    query: str,
-) -> List[Dict[str, Any]]:
-    """
-    Esegue la ricerca su un singolo negozio.
-
-    Versione RAM-safe:
-    - un solo scraper alla volta;
-    - rilascia subito i risultati intermedi;
-    - forza il garbage collector dopo ogni tentativo;
-    - non mantiene il modulo scraper in memoria dopo la ricerca.
-    """
-    module_name = f"scrapers.{store}.scraper"
     module = load_scraper(store)
+    results = module.search(query) or []
 
-    attempts = build_search_attempts(
-        store,
-        query,
-    )
+    if not isinstance(results, list):
+        return []
 
-    output: List[Dict[str, Any]] = []
+    clean = []
     seen = set()
 
-    try:
-        for attempt in attempts:
-            results = module.search(attempt) or []
+    for item in results:
+        if not isinstance(item, dict):
+            continue
+        product = dict(item)
+        product.setdefault("store", store)
 
-            try:
-                for item in results:
-                    if not isinstance(item, dict):
-                        continue
+        key = (
+            str(product.get("url", "")).lower(),
+            norm(product.get("name", "")),
+        )
+        if key in seen:
+            continue
+        seen.add(key)
 
-                    product = dict(item)
-                    product.setdefault(
-                        "store",
-                        store,
-                    )
+        if matches(product, query):
+            clean.append(product)
 
-                    key = (
-                        str(product.get("url", "")).lower(),
-                        norm(product.get("name", "")),
-                    )
+        if len(clean) >= 10:
+            break
 
-                    if key in seen:
-                        continue
+    return clean
 
-                    seen.add(key)
 
-                    if matches(product, query):
-                        output.append(product)
-            finally:
-                # Il risultato grezzo può contenere strutture HTML/BeautifulSoup
-                # molto più pesanti dei piccoli dict che conserviamo.
-                del results
-                gc.collect()
-    finally:
-        # Alcuni scraper mantengono oggetti pesanti a livello di modulo.
-        # Rimuovendoli da sys.modules permettiamo al GC di liberarli prima
-        # del passaggio al negozio successivo.
-        try:
-            sys.modules.pop(module_name, None)
-        except Exception:
-            pass
-
-        del module
-        gc.collect()
-
-    return output
-
+# ============================================================
+# DEDUPLICAZIONE E ORDINAMENTO
+# ============================================================
 
 def unique_results(
     products: List[Dict[str, Any]],
@@ -517,7 +468,6 @@ def health():
 
 @app.get("/search")
 def search_perfume(q: str):
-
     query = str(q or "").strip()
 
     if not query:
@@ -526,64 +476,54 @@ def search_perfume(q: str):
             "count": 0,
             "results": [],
             "errors": {},
+            "message": "Inserisci il nome di un profumo.",
         }
 
+    active_stores = [
+        store for store in STORES
+        if store not in {"notino", "perfumemarket", "parfumcity"}
+    ]
+
     all_results: List[Dict[str, Any]] = []
-    errors: Dict[str, str] = {}
+    errors: Dict[str, str] = {
+        "notino": "Temporaneamente escluso (403).",
+        "perfumemarket": "Temporaneamente escluso (429).",
+        "parfumcity": "Temporaneamente escluso (429).",
+    }
 
-    # IMPORTANTE: eseguiamo gli scraper uno alla volta.
-    # Il piano Free di Render dispone di 512 MB di RAM.
-    # Eseguire 8 scraper contemporaneamente fa crescere molto la memoria
-    # perché ogni scraper può caricare HTML e BeautifulSoup nello stesso momento.
-    # La versione precedente del backend era sequenziale e funzionava.
-    print(f"SEARCH START | query={query}", flush=True)
+    # Bounded concurrency: max 2 stores at once to keep Railway memory stable.
+    with ThreadPoolExecutor(max_workers=2) as executor:
+        futures = {
+            executor.submit(run_store, store, query): store
+            for store in active_stores
+        }
 
-    for store in STORES:
-        print(f"SCRAPER DEBUG | START | {store}", flush=True)
-        log_memory(f"before {store}")
+        for future in as_completed(futures):
+            store = futures[future]
+            try:
+                store_results = future.result()
+                all_results.extend(store_results)
+                logger.info(
+                    "SEARCH store=%s results=%s",
+                    store,
+                    len(store_results),
+                )
+            except Exception as error:
+                errors[store] = f"{type(error).__name__}: {error}"
+                logger.warning(
+                    "SEARCH store=%s ERROR=%s",
+                    store,
+                    error,
+                )
 
-        try:
-            store_results = run_store(store, query)
-            all_results.extend(store_results)
-
-            print(
-                f"SCRAPER DEBUG | END | {store} | results={len(store_results)}",
-                flush=True,
-            )
-
-            del store_results
-            gc.collect()
-            log_memory(f"after {store}")
-
-        except Exception as error:
-            errors[store] = f"{type(error).__name__}: {error}"
-            print(
-                f"SCRAPER DEBUG | ERROR | {store} | "
-                f"{type(error).__name__}: {error}",
-                flush=True,
-            )
-            traceback.print_exc()
-            gc.collect()
-            log_memory(f"error {store}")
-
-    results = unique_results(all_results)
-
-    # A questo punto non servono più i riferimenti duplicati/intermedi.
-    del all_results
-    gc.collect()
-
-    results = sort_by_price(results)
-
-    print(
-        f"SEARCH END | query={query} | results={len(results)} | errors={len(errors)}",
-        flush=True,
-    )
+    results = sort_by_price(unique_results(all_results))
 
     return {
         "query": query,
         "count": len(results),
         "results": results,
         "errors": errors,
+        "message": "" if results else "Nessun risultato disponibile al momento.",
     }
 
 
