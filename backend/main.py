@@ -38,6 +38,9 @@ STORES = [
     "notino",
 ]
 
+# DIAGNOSTICA: attivo solo Notino per isolare il consumo RAM.
+STORES = ["notino"]
+
 BASE_DIR = os.path.dirname(__file__)
 HISTORY_PATH = os.path.join(BASE_DIR, "price_history.json")
 FRONTEND_INDEX = Path(__file__).resolve().parent.parent / "frontend" / "index.html"
