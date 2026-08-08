@@ -8,9 +8,9 @@ import xml.etree.ElementTree as ET
 
 STORE = "Bplatz"
 BASE = "https://en.bplatz.de"
-TIMEOUT = 4
+TIMEOUT = 5
 MAX_RESULTS = 20
-MAX_CANDIDATES = 12
+MAX_CANDIDATES = 16
 
 HEADERS = {
     "User-Agent": (
@@ -80,11 +80,17 @@ def _format_price(value):
     return f"{number:.2f}".replace(".", ",") + " €"
 
 
+def _clean_url(url):
+    if not url:
+        return None
+    return urljoin(BASE, str(url)).split("#")[0].split("?")[0]
+
+
 def _product_url_from_slug(slug):
     slug = str(slug or "").strip()
     if not slug:
         return None
-    return urljoin(BASE, "/products/" + slug).split("#")[0].split("?")[0]
+    return _clean_url("/products/" + slug)
 
 
 def _parse_sitemap_locs(xml_text):
@@ -101,7 +107,6 @@ def _parse_sitemap_locs(xml_text):
 
 
 def _get_product_sitemaps(session):
-    """Read Shopify's sitemap index. This is one fast request."""
     try:
         response = session.get(
             f"{BASE}/sitemap.xml",
@@ -123,7 +128,6 @@ def _get_product_sitemaps(session):
 
 
 def _candidate_urls_from_sitemap(xml_text, query):
-    """Find product URLs using the product slug; no catalogue-page crawl."""
     qt = _tokens(query)
     if not qt:
         return []
@@ -142,8 +146,8 @@ def _candidate_urls_from_sitemap(xml_text, query):
         if not qt.issubset(slug_tokens):
             continue
 
-        clean = loc.split("#")[0].split("?")[0]
-        if clean not in seen:
+        clean = _clean_url(loc)
+        if clean and clean not in seen:
             seen.add(clean)
             urls.append(clean)
 
@@ -166,25 +170,144 @@ def _fetch_product_sitemap(session, sitemap_url):
     return response.text or ""
 
 
+def _find_candidates_from_html(session, query):
+    """Fallback for Shopify stores where sitemap search misses translated/brand-prefixed handles."""
+    q = quote_plus(query)
+
+    urls = []
+    seen = set()
+
+    # Normal Shopify product search page.
+    for endpoint in (
+        f"{BASE}/search?q={q}&type=product",
+        f"{BASE}/search?type=product&q={q}",
+    ):
+        try:
+            response = session.get(
+                endpoint,
+                headers=HEADERS,
+                timeout=TIMEOUT,
+                allow_redirects=True,
+            )
+        except requests.RequestException:
+            continue
+
+        if response.status_code != 200 or not response.text:
+            continue
+
+        soup = BeautifulSoup(response.text, "html.parser")
+
+        for a in soup.find_all("a", href=True):
+            href = str(a.get("href") or "")
+            if "/products/" not in href.lower():
+                continue
+
+            url = _clean_url(href)
+            if url and url not in seen:
+                seen.add(url)
+                urls.append(url)
+
+        if urls:
+            break
+
+    return urls[:MAX_CANDIDATES]
+
+
+def _find_candidates_from_predictive_search(session, query):
+    q = quote_plus(query)
+
+    try:
+        response = session.get(
+            f"{BASE}/search/suggest.json"
+            f"?q={q}&resources[type]=product&resources[limit]=20",
+            headers=HEADERS,
+            timeout=TIMEOUT,
+            allow_redirects=True,
+        )
+    except requests.RequestException:
+        return []
+
+    if response.status_code != 200:
+        return []
+
+    try:
+        data = response.json()
+    except (ValueError, TypeError, json.JSONDecodeError):
+        return []
+
+    resources = data.get("resources") or {}
+    block = resources.get("results") or {}
+    products = block.get("products") or []
+
+    urls = []
+    seen = set()
+
+    for product in products:
+        if not isinstance(product, dict):
+            continue
+
+        title = str(product.get("title") or "").strip()
+        if not _score(title, query):
+            continue
+
+        handle = product.get("handle")
+        url = _product_url_from_slug(handle)
+        if url and url not in seen:
+            seen.add(url)
+            urls.append(url)
+
+    return urls[:MAX_CANDIDATES]
+
+
 def _find_candidates(session, query):
+    """Use sitemap first, then Shopify's normal search, then predictive search."""
+    urls = []
+    seen = set()
+
+    # 1. Sitemap: fastest and most precise when the handle contains the query.
     sitemaps = _get_product_sitemaps(session)
 
-    # Shopify normally exposes one product sitemap for this catalogue.
-    # We stop as soon as the requested words produce candidates.
     for sitemap_url in sitemaps[:4]:
         xml_text = _fetch_product_sitemap(session, sitemap_url)
         if not xml_text:
             continue
 
-        candidates = _candidate_urls_from_sitemap(xml_text, query)
-        if candidates:
-            return candidates[:MAX_CANDIDATES]
+        for url in _candidate_urls_from_sitemap(xml_text, query):
+            if url not in seen:
+                seen.add(url)
+                urls.append(url)
 
-    return []
+        if urls:
+            return urls[:MAX_CANDIDATES]
+
+    # 2. Normal Shopify search page.
+    for url in _find_candidates_from_html(session, query):
+        if url not in seen:
+            seen.add(url)
+            urls.append(url)
+
+    if urls:
+        return urls[:MAX_CANDIDATES]
+
+    # 3. Shopify predictive search.
+    for url in _find_candidates_from_predictive_search(session, query):
+        if url not in seen:
+            seen.add(url)
+            urls.append(url)
+
+    return urls[:MAX_CANDIDATES]
 
 
 def _extract_price_and_availability(soup):
-    # JSON-LD is the cleanest source for the actual product price.
+    """
+    Return the actual customer price, not the €/100ml reference price.
+    Prefer an in-stock JSON-LD offer. If multiple offers exist, keep an
+    available one instead of rejecting the whole product because one
+    variant is out of stock.
+    """
+    found_available_price = None
+    found_out_of_stock = False
+
     for script in soup.find_all("script", type="application/ld+json"):
         raw = script.string or script.get_text()
         if not raw:
@@ -218,11 +341,17 @@ def _extract_price_and_availability(soup):
                 if any(x in availability for x in (
                     "outofstock", "soldout", "unavailable"
                 )):
-                    return None, False
+                    found_out_of_stock = True
+                    continue
 
-                price = _format_price(offer.get("price"))
+                price = _format_price(
+                    offer.get("price") or offer.get("lowPrice")
+                )
                 if price:
-                    return price, True
+                    found_available_price = price
+
+    if found_available_price:
+        return found_available_price, True
 
     # Shopify product meta tags.
     amount = soup.find("meta", attrs={"property": "product:price:amount"})
@@ -238,7 +367,7 @@ def _extract_price_and_availability(soup):
     )):
         return None, False
 
-    # Last price fallback. Only take a normal € price, never €/ml or €/l.
+    # Last price fallback. Never use €/100ml or €/l.
     for pattern in (
         r"(?:regular\s+price|retail\s+price)\s*€\s*"
         r"(\d{1,4}(?:[.,]\d{1,2})?)",
@@ -283,8 +412,10 @@ def _read_product(session, url, query):
         return None
 
     score = _score(title, query)
+
+    # Bplatz can have a brand-prefixed/translated title while the URL slug
+    # contains the searched words.
     if not score:
-        # The URL slug may be a better match than a translated title.
         slug = url.rsplit("/products/", 1)[-1]
         score = _score(slug.replace("-", " "), query)
 
@@ -300,7 +431,7 @@ def _read_product(session, url, query):
         "store": STORE,
         "name": title,
         "price": price,
-        "url": url.split("#")[0].split("?")[0],
+        "url": _clean_url(url),
         "_score": score,
     }
 
@@ -313,51 +444,13 @@ def search(query):
     session = requests.Session()
     session.headers.update(HEADERS)
 
-    # IMPORTANT: no 20-page catalogue crawl and no repeated product search.
-    # One sitemap request + one product sitemap + concurrent candidate checks.
     urls = _find_candidates(session, query)
-
-    if not urls:
-        # Fast Shopify search fallback. Only one request.
-        q = quote_plus(query)
-        try:
-            response = session.get(
-                f"{BASE}/search/suggest.json"
-                f"?q={q}&resources[type]=product&resources[limit]=20",
-                headers=HEADERS,
-                timeout=TIMEOUT,
-                allow_redirects=True,
-            )
-        except requests.RequestException:
-            response = None
-
-        if response is not None and response.status_code == 200:
-            try:
-                data = response.json()
-            except (ValueError, TypeError, json.JSONDecodeError):
-                data = {}
-
-            resources = data.get("resources") or {}
-            block = resources.get("results") or {}
-            products = block.get("products") or []
-
-            for product in products:
-                if not isinstance(product, dict):
-                    continue
-                title = str(product.get("title") or "").strip()
-                if not _score(title, query):
-                    continue
-                handle = product.get("handle")
-                url = _product_url_from_slug(handle)
-                if url:
-                    urls.append(url)
-
-    urls = list(dict.fromkeys(urls))[:MAX_CANDIDATES]
 
     if not urls:
         return []
 
     results = []
+
     with ThreadPoolExecutor(max_workers=min(6, len(urls))) as pool:
         futures = {
             pool.submit(_read_product, session, url, query): url
@@ -369,6 +462,7 @@ def search(query):
                 item = future.result()
             except Exception:
                 item = None
+
             if item:
                 results.append(item)
 
