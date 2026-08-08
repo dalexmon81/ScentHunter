@@ -1,6 +1,5 @@
 import json
 import re
-import unicodedata
 from urllib.parse import urljoin
 
 import requests
@@ -144,20 +143,10 @@ def _clean(value):
 
 
 def _norm(value):
-    value = unicodedata.normalize(
-        "NFKD",
-        _clean(value).lower(),
-    )
-    value = "".join(
-        char
-        for char in value
-        if not unicodedata.combining(char)
-    )
-
     return re.sub(
         r"[^a-z0-9]+",
         " ",
-        value,
+        _clean(value).lower(),
     ).strip()
 
 
@@ -842,230 +831,6 @@ def _size_number(item):
         return 9999
 
 
-def _search_limited_edition(session, category_html, query):
-    """
-    Dedicated resolver for Limited Edition variants.
-
-    Deloox places the Limited Edition inside the Liquid Brun category, while
-    the product URL/card can omit the words "limited edition". Therefore:
-      1) collect every Liquid Brun product link from the category;
-      2) open each real product page;
-      3) identify the Limited Edition from the complete page text;
-      4) use the existing variant extractor for the final offer.
-    Normal Deloox searches never enter this function.
-    """
-    query_tokens = set(
-        _tokens(query)
-    )
-
-    base_tokens = query_tokens - {
-        "limited",
-        "edition",
-    }
-
-    soup = BeautifulSoup(
-        category_html,
-        "html.parser",
-    )
-
-    candidates = []
-    seen = set()
-
-    for link in soup.find_all(
-        "a",
-        href=True,
-    ):
-        href = _clean(
-            link.get("href")
-        )
-
-        product_url = urljoin(
-            BASE_URL,
-            href,
-        ).split("?")[0]
-
-        if "/product/" not in product_url.lower():
-            continue
-
-        if product_url in seen:
-            continue
-
-        seen.add(product_url)
-
-        card = _find_product_card(link)
-
-        parts = [
-            _clean(
-                link.get_text(
-                    " ",
-                    strip=True,
-                )
-            ),
-            _clean(
-                link.get("title")
-            ),
-            _clean(
-                link.get("aria-label")
-            ),
-            _clean(
-                link.get("data-product-name")
-            ),
-            _clean(
-                link.get("data-name")
-            ),
-            _clean(
-                card.get_text(
-                    " ",
-                    strip=True,
-                )
-            ),
-        ]
-
-        node = link
-        for _ in range(8):
-            if node is None:
-                break
-
-            parts.append(
-                _clean(
-                    node.get_text(
-                        " ",
-                        strip=True,
-                    )
-                )
-            )
-
-            node = node.parent
-
-        context = _clean(
-            " ".join(
-                part
-                for part in parts
-                if part
-            )
-        )
-
-        context_tokens = set(
-            _tokens(context)
-        )
-
-        # Candidate only needs to be the requested base perfume.
-        if not base_tokens.issubset(
-            context_tokens
-        ):
-            continue
-
-        candidates.append(
-            (
-                product_url,
-                context,
-            )
-        )
-
-    if not candidates:
-        return []
-
-    results = []
-    seen_results = set()
-
-    for product_url, context in candidates:
-        product_response = _get(
-            session,
-            product_url,
-        )
-
-        if product_response is None:
-            continue
-
-        page_text = _clean(
-            BeautifulSoup(
-                product_response.text,
-                "html.parser",
-            ).get_text(
-                " ",
-                strip=True,
-            )
-        )
-
-        page_text_normalized = _norm(
-            page_text
-        )
-
-        # The decisive test is the complete product page, not its URL.
-        if not {
-            "limited",
-            "edition",
-        }.issubset(
-            set(page_text_normalized.split())
-        ):
-            # Also accept an exact marker in the raw HTML after accent
-            # normalization, in case it is inside structured data/metadata.
-            raw_normalized = _norm(
-                product_response.text
-            )
-
-            if not {
-                "limited",
-                "edition",
-            }.issubset(
-                set(raw_normalized.split())
-            ):
-                continue
-
-        variants = _extract_product_variants(
-            product_response.text,
-            query,
-            product_url,
-        )
-
-        if not variants:
-            variants = _extract_jsonld_variants(
-                product_response.text,
-                query,
-                product_url,
-            )
-
-        if variants:
-            for variant in variants:
-                key = (
-                    variant.get("url", ""),
-                    variant.get("size", ""),
-                    variant.get("price", ""),
-                )
-
-                if key in seen_results:
-                    continue
-
-                seen_results.add(key)
-                results.append(variant)
-
-            continue
-
-        # Last-resort offer from the category/product page itself.
-        # This is still only used after the page has positively identified
-        # Limited Edition.
-        price = _extract_price(
-            page_text
-        )
-
-        if not price:
-            price = _extract_price(
-                context
-            )
-
-        if price:
-            results.append({
-                "store": STORE,
-                "name": "Liquid Brun Limited Edition",
-                "price": price,
-                "url": product_url,
-                "available": True,
-                "availability": "in_stock",
-            })
-
-    return results
-
-
 def search(query):
     query = _clean(query)
 
@@ -1088,25 +853,6 @@ def search(query):
     )
 
     if response is None:
-        return []
-
-    limited_query = {
-        "limited",
-        "edition",
-    }.issubset(
-        set(_tokens(query))
-    )
-
-    if limited_query:
-        limited_results = _search_limited_edition(
-            session,
-            response.text,
-            query,
-        )
-
-        if limited_results:
-            return limited_results[:20]
-
         return []
 
     candidates = _extract_category(
@@ -1214,6 +960,82 @@ def search(query):
         return final_results[:20]
 
     return [item for _, item in scored]
+
+
+
+@app.get("/debug-deloox-raw")
+def debug_deloox_raw(q: str = "Liquid Brun Limited édition"):
+    session = requests.Session()
+
+    category_url = _find_brand_category(
+        session,
+        q,
+    )
+
+    if not category_url:
+        return {
+            "query": q,
+            "category_url": None,
+            "error": "category not found",
+        }
+
+    response = _get(
+        session,
+        category_url,
+    )
+
+    if response is None:
+        return {
+            "query": q,
+            "category_url": category_url,
+            "error": "category request failed",
+        }
+
+    html = response.text or ""
+    html_lower = html.lower()
+
+    markers = [
+        "limited",
+        "edition",
+        "édition",
+        "extrait",
+        "150 ml",
+        "liquid brun",
+        "42,89",
+        "42.89",
+    ]
+
+    marker_counts = {
+        marker: html_lower.count(marker.lower())
+        for marker in markers
+    }
+
+    # Return small snippets around every occurrence of "limited", so we can
+    # see the real HTML structure without dumping the whole page.
+    snippets = []
+    for match in re.finditer(
+        r"limited",
+        html,
+        re.I,
+    ):
+        start = max(0, match.start() - 800)
+        end = min(len(html), match.end() + 1200)
+
+        snippets.append(
+            html[start:end]
+        )
+
+        if len(snippets) >= 10:
+            break
+
+    return {
+        "query": q,
+        "category_url": category_url,
+        "status_code": response.status_code,
+        "html_length": len(html),
+        "marker_counts": marker_counts,
+        "limited_snippets": snippets,
+    }
 
 
 if __name__ == "__main__":
