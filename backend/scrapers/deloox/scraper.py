@@ -153,7 +153,6 @@ def _norm(value):
         for char in value
         if not unicodedata.combining(char)
     )
-
     return re.sub(
         r"[^a-z0-9]+",
         " ",
@@ -452,7 +451,7 @@ def _extract_category(html, query):
         if "/product/" not in product_url.lower():
             continue
 
-        # Keep the original URL filter for normal searches.
+        # Normal searches keep the original URL filter.
         if not limited_query and not _url_matches_query(
             product_url,
             query,
@@ -474,37 +473,46 @@ def _extract_category(html, query):
         ):
             continue
 
-        # _find_product_card() deliberately returns the nearest ancestor
-        # containing price/size. On Deloox that node can omit the product title.
-        # For Limited Edition we therefore inspect the link metadata and the
-        # surrounding ancestors as well, without changing normal searches.
         if limited_query:
-            candidate_parts = [
+            # Deloox may put the product name in an attribute instead of
+            # visible text. Collect every useful title/name/alt attribute from
+            # the link, images and its ancestors.
+            parts = [
                 card_text,
                 _clean(link.get_text(" ", strip=True)),
                 _clean(link.get("title")),
                 _clean(link.get("aria-label")),
+                _clean(link.get("data-product-name")),
+                _clean(link.get("data-name")),
             ]
 
+            for image in link.find_all("img"):
+                parts.extend([
+                    _clean(image.get("alt")),
+                    _clean(image.get("title")),
+                    _clean(image.get("data-product-name")),
+                    _clean(image.get("data-name")),
+                ])
+
             node = link
-            for _ in range(8):
+            for _ in range(12):
                 if node is None:
                     break
 
-                candidate_parts.append(
-                    _clean(
-                        node.get_text(
-                            " ",
-                            strip=True,
-                        )
-                    )
-                )
+                parts.extend([
+                    _clean(node.get("title")),
+                    _clean(node.get("aria-label")),
+                    _clean(node.get("data-product-name")),
+                    _clean(node.get("data-name")),
+                    _clean(node.get("data-title")),
+                ])
+
                 node = node.parent
 
             candidate_text = _clean(
                 " ".join(
                     part
-                    for part in candidate_parts
+                    for part in parts
                     if part
                 )
             )
@@ -528,6 +536,26 @@ def _extract_category(html, query):
                 "edition",
             }.issubset(candidate_tokens):
                 continue
+
+            price = _extract_price(card_text)
+
+            if not price:
+                price = _extract_price(candidate_text)
+
+            if not price:
+                continue
+
+            product_name = link.get("title") or link.get(
+                "data-product-name"
+            ) or link.get("data-name") or ""
+
+            product_name = _clean(
+                product_name
+            )
+
+            if not product_name:
+                product_name = query
+
         else:
             if not _matches_soft(
                 card_text,
@@ -540,7 +568,9 @@ def _extract_category(html, query):
                 _tokens(card_text)
             )
 
-            if not query_tokens.issubset(card_tokens):
+            if not query_tokens.issubset(
+                card_tokens
+            ):
                 continue
 
             if not _is_relevant_product(
@@ -549,44 +579,30 @@ def _extract_category(html, query):
             ):
                 continue
 
-        price = _extract_price(
-            candidate_text
-            if limited_query
-            else card_text
-        )
+            price = _extract_price(card_text)
 
-        if not price:
-            continue
+            if not price:
+                continue
 
-        product_name = query
+            product_name = query
 
-        link_name = _clean(
-            link.get_text(
-                " ",
-                strip=True,
+            link_name = _clean(
+                link.get_text(
+                    " ",
+                    strip=True,
+                )
             )
-        )
 
-        if limited_query:
-            # Preserve the exact variant name when Deloox exposes it on the
-            # product link. Otherwise keep the query as the product name.
-            if {
-                "limited",
-                "edition",
-            }.issubset(
-                set(_tokens(link_name))
+            if (
+                link_name
+                and not SIZE_FULL_RE.fullmatch(link_name)
+                and _matches_soft(
+                    link_name,
+                    query,
+                    minimum=0.55,
+                )
             ):
                 product_name = link_name
-        elif (
-            link_name
-            and not SIZE_FULL_RE.fullmatch(link_name)
-            and _matches_soft(
-                link_name,
-                query,
-                minimum=0.55,
-            )
-        ):
-            product_name = link_name
 
         if product_url in seen:
             continue
@@ -955,6 +971,13 @@ def search(query):
     if not candidates:
         return []
 
+    limited_query = {
+        "limited",
+        "edition",
+    }.issubset(
+        set(_tokens(query))
+    )
+
     scored = []
     seen_urls = set()
 
@@ -966,7 +989,7 @@ def search(query):
         if product_url in seen_urls:
             continue
 
-        if not _url_matches_query(
+        if not limited_query and not _url_matches_query(
             product_url,
             query,
         ):
