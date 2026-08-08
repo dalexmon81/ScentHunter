@@ -7,6 +7,7 @@ import importlib
 import json
 import os
 import re
+import unicodedata
 import traceback
 from concurrent.futures import ThreadPoolExecutor, as_completed, TimeoutError, wait
 from datetime import datetime, timezone
@@ -122,6 +123,15 @@ def norm(value: Any) -> str:
         9 PM  -> 9 pm
     """
     value = str(value or "").lower().strip()
+
+    # Normalize accents so French queries such as "édition"
+    # are treated exactly like "edition".
+    value = unicodedata.normalize("NFKD", value)
+    value = "".join(
+        char
+        for char in value
+        if not unicodedata.combining(char)
+    )
 
     value = re.sub(
         r"(?<=\d)(?=[a-z])|(?<=[a-z])(?=\d)",
