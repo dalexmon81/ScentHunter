@@ -1004,8 +1004,23 @@ def search(query):
         )
 
         if limited_query:
+            # Do NOT rely only on H1/title. On Deloox the product title can
+            # remain "Liquid Brun" while the page itself identifies the
+            # Limited Edition elsewhere (variant selector/product details).
+            page_text = _clean(
+                BeautifulSoup(
+                    product_response.text,
+                    "html.parser",
+                ).get_text(
+                    " ",
+                    strip=True,
+                )
+            )
+
             page_tokens = set(
-                _tokens(page_name)
+                _tokens(
+                    f"{page_name} {page_text}"
+                )
             )
 
             if not {
@@ -1013,6 +1028,8 @@ def search(query):
                 "edition",
             }.issubset(page_tokens):
                 continue
+
+            page_name = "Liquid Brun Limited Edition"
 
         variants = _extract_product_variants(
             product_response.text,
@@ -1046,6 +1063,12 @@ def search(query):
         )
 
         return final_results[:20]
+
+    # Critical: for a Limited Edition query, NEVER fall back to the base
+    # Liquid Brun candidate. If no product page was positively identified as
+    # Limited Edition, return no Deloox result.
+    if limited_query:
+        return []
 
     return [item for _, item in scored]
 
