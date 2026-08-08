@@ -402,9 +402,9 @@ def _url_matches_query(product_url, query):
     if query_tokens.issubset(url_tokens):
         return True
 
-    # Deloox can keep "limited edition" only in the category/product title,
-    # while the product URL contains the base product slug.
-    variant_tokens = {"limited", "edition"}
+    # Deloox can keep variant descriptors such as "limited edition"
+    # in the product title/card while omitting them from the URL slug.
+    variant_tokens = {"limited", "edition", "collector", "collectors"}
     base_tokens = query_tokens - variant_tokens
 
     return bool(base_tokens) and base_tokens.issubset(url_tokens)
@@ -461,46 +461,31 @@ def _extract_category(html, query):
         ):
             continue
 
-        limited_query = {
-            "limited",
-            "edition",
-        }.issubset(query_tokens)
+        if not _matches_soft(
+            card_text,
+            query,
+            minimum=0.55,
+        ):
+            continue
+
+        card_tokens = set(_tokens(card_text))
+        limited_query = {"limited", "edition"}.issubset(query_tokens)
 
         if limited_query:
-            base_tokens = query_tokens - {
-                "limited",
-                "edition",
-            }
-            card_tokens = set(_tokens(card_text))
-
+            base_tokens = query_tokens - {"limited", "edition"}
             if not base_tokens.issubset(card_tokens):
                 continue
-
-            # "Limited Edition" may be outside the product card text.
-            # The exact variant is resolved from the product page later.
-            relevance_query = " ".join(sorted(base_tokens))
+            # The category card may only say "Liquid Brun". The exact
+            # Limited Edition check is done on the product page.
         else:
-            if not _matches_soft(
-                card_text,
-                query,
-                minimum=0.55,
-            ):
-                continue
-
-            card_tokens = set(
-                _tokens(card_text)
-            )
-
             if not query_tokens.issubset(card_tokens):
                 continue
 
-            relevance_query = query
-
-        if not _is_relevant_product(
-            card_text,
-            relevance_query,
-        ):
-            continue
+            if not _is_relevant_product(
+                card_text,
+                query,
+            ):
+                continue
 
         price = _extract_price(card_text)
 
@@ -646,10 +631,20 @@ def _extract_product_variants(
     product_name,
     product_url,
 ):
-    soup = BeautifulSoup(
-        html,
-        "html.parser",
-    )
+    soup = BeautifulSoup(html, "html.parser")
+
+    page_name = ""
+    h1 = soup.find("h1")
+    if h1:
+        page_name = _clean(h1.get_text(" ", strip=True))
+
+    if not page_name:
+        title = soup.find("title")
+        if title:
+            page_name = _clean(title.get_text(" ", strip=True))
+
+    if not page_name:
+        page_name = product_name
 
     strings = [
         _clean(value)
@@ -657,97 +652,42 @@ def _extract_product_variants(
         if _clean(value)
     ]
 
-    page_name = ""
-    h1 = soup.find("h1")
-
-    if h1:
-        page_name = _clean(
-            h1.get_text(
-                " ",
-                strip=True,
-            )
-        )
-
-    if not page_name:
-        title = soup.find("title")
-
-        if title:
-            page_name = _clean(
-                title.get_text(
-                    " ",
-                    strip=True,
-                )
-            )
-
-    if not page_name:
-        page_name = product_name
-
     results = []
     seen_sizes = set()
 
     for index, value in enumerate(strings):
         size_match = SIZE_FULL_RE.fullmatch(value)
-
         if not size_match:
             continue
 
-        size = size_match.group(1).replace(
-            ",",
-            ".",
-        )
-
+        size = size_match.group(1).replace(",", ".")
         size_label = f"{size} ml"
-
         if size_label in seen_sizes:
             continue
 
-        chunk = []
-        sold_out = False
+        # Search around the size in both directions. Deloox can put price and
+        # availability before the size selector.
+        left = max(0, index - 20)
+        right = min(index + 30, len(strings))
+        chunk = strings[left:right]
+        chunk_text = " ".join(chunk)
 
-        for next_index in range(
-            index + 1,
-            min(index + 30, len(strings)),
-        ):
-            next_value = strings[next_index]
-
-            if SIZE_FULL_RE.fullmatch(next_value):
-                break
-
-            chunk.append(next_value)
-
-            if any(
-                word in next_value.lower()
-                for word in SOLD_OUT
-            ):
-                sold_out = True
-                break
-
-        if sold_out:
+        if any(word in chunk_text.lower() for word in SOLD_OUT):
             continue
 
-        price = _extract_price(
-            " ".join(chunk)
-        )
-
+        price = _extract_price(chunk_text)
         if not price:
             continue
 
         seen_sizes.add(size_label)
+        name = page_name
+        if not SIZE_RE.search(name):
+            name = f"{name} {size_label}"
 
-        slug = re.sub(
-            r"[^a-z0-9]+",
-            "-",
-            size_label.lower(),
-        ).strip("-")
-
-        variant_name = page_name
-
-        if not SIZE_RE.search(variant_name):
-            variant_name = f"{variant_name} {size_label}"
-
+        slug = re.sub(r"[^a-z0-9]+", "-", size_label.lower()).strip("-")
         results.append({
             "store": STORE,
-            "name": variant_name,
+            "name": name,
             "price": price,
             "url": f"{product_url}#{slug}",
             "available": True,
@@ -756,7 +696,6 @@ def _extract_product_variants(
         })
 
     return results
-
 
 def _extract_jsonld_variants(
     html,
@@ -855,19 +794,13 @@ def _extract_jsonld_variants(
                 if "," not in price_text:
                     price_text += ",00"
 
-                variant_name = _clean(
-                    str(item.get("name") or "")
-                )
-
-                if not variant_name:
-                    variant_name = product_name
-
-                if not SIZE_RE.search(variant_name):
-                    variant_name = f"{variant_name} {size} ml"
+                json_name = _clean(str(item.get("name") or "")) or product_name
+                if not SIZE_RE.search(json_name):
+                    json_name = f"{json_name} {size} ml"
 
                 results.append({
                     "store": STORE,
-                    "name": variant_name,
+                    "name": json_name,
                     "price": f"{price_text} €",
                     "url": product_url,
                     "available": True,
@@ -968,19 +901,8 @@ def search(query):
         reverse=True,
     )
 
-    limited_query = {
-        "limited",
-        "edition",
-    }.issubset(
-        set(_tokens(query))
-    )
-
     best_score = scored[0][0]
-    minimum_score = (
-        float("-inf")
-        if limited_query
-        else best_score - 45
-    )
+    minimum_score = best_score - 45
 
     final_results = []
     seen_variants = set()
@@ -1014,14 +936,13 @@ def search(query):
                 product_url,
             )
 
+        limited_query = {"limited", "edition"}.issubset(set(_tokens(query)))
+
         if limited_query:
             variants = [
                 variant
                 for variant in variants
-                if {
-                    "limited",
-                    "edition",
-                }.issubset(
+                if {"limited", "edition"}.issubset(
                     set(_tokens(variant.get("name", "")))
                 )
             ]
