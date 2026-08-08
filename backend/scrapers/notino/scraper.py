@@ -3,18 +3,22 @@ import requests
 from bs4 import BeautifulSoup
 from urllib.parse import quote_plus, urljoin
 
+
 STORE = "Notino"
 BASE_URL = "https://www.notino.fr"
+
 
 HEADERS = {
     "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
     "Accept-Language": "fr-FR,fr;q=0.9,en;q=0.8",
 }
 
+
 PRICE_RE = re.compile(
     r"€\s*(\d{1,4}[.,]\d{2})|(\d{1,4}[.,]\d{2})\s*€",
     re.I,
 )
+
 
 # Titoli generici di pagina/ricerca da scartare come nome prodotto
 GENERIC_TITLES = [
@@ -28,16 +32,19 @@ GENERIC_TITLES = [
     "loading",
 ]
 
+
 # Testi che indicano chiaramente indisponibilità / niente vendita attuale
 UNAVAILABLE_PATTERNS = [
-    "rupture de stock",   # actuellement en rupture de stock
-    "épuisé",             # produit épuisé
-    "non disponible",     # non disponible
-    "pas disponible",     # pas disponible
+    "rupture de stock",
+    "épuisé",
+    "non disponible",
+    "pas disponible",
 ]
+
 
 def _clean(s):
     return re.sub(r"\s+", " ", str(s or "")).strip()
+
 
 def _words(s):
     return [
@@ -46,13 +53,16 @@ def _words(s):
         if len(x) > 1
     ]
 
+
 def _matches(text, query):
     text = _clean(text).lower()
     return all(word in text for word in _words(query))
 
+
 def _is_generic_title(title):
     t = _clean(title).lower()
     return any(g in t for g in GENERIC_TITLES)
+
 
 def _is_unavailable_block(text: str) -> bool:
     """
@@ -63,6 +73,7 @@ def _is_unavailable_block(text: str) -> bool:
     """
     t = _clean(text).lower()
     return any(pattern in t for pattern in UNAVAILABLE_PATTERNS)
+
 
 def _price(text):
     matches = list(PRICE_RE.finditer(text or ""))
@@ -75,30 +86,36 @@ def _price(text):
 
     return value.replace(".", ",") + "€"
 
+
 def _search_page(query):
-    urls = [
-        BASE_URL + "/search.asp?exps=" + quote_plus(query),
-        BASE_URL + "/search?query=" + quote_plus(query),
-    ]
+    # Usiamo solo l'endpoint reale della ricerca Notino.
+    # Evitiamo il secondo endpoint /search?query= che può
+    # aggiungere una seconda richiesta lenta o inutile.
+    url = (
+        BASE_URL
+        + "/search.asp?exps="
+        + quote_plus(query)
+    )
 
     session = requests.Session()
     session.headers.update(HEADERS)
 
-    for url in urls:
-        try:
-            response = session.get(
-                url,
-                timeout=15,
-                allow_redirects=True,
-            )
+    try:
+        response = session.get(
+            url,
+            timeout=8,
+            allow_redirects=True,
+        )
 
-            response.raise_for_status()
-        except requests.RequestException as error:
-            print("NOTINO ERROR:", error)
-            continue
+        response.raise_for_status()
 
-        if response.text:
-            yield response.text
+    except requests.RequestException as error:
+        print("NOTINO ERROR:", error)
+        return
+
+    if response.text:
+        yield response.text
+
 
 def search(query):
     query = _clean(query)
@@ -244,6 +261,7 @@ def search(query):
             return results
 
     return results
+
 
 if __name__ == "__main__":
     print(search("Hawas Ice"))
