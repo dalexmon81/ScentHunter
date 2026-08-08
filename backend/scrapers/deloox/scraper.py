@@ -418,148 +418,6 @@ def _url_matches_query(product_url, query):
     return query_tokens.issubset(url_tokens)
 
 
-def _extract_limited_category(html, query):
-    soup = BeautifulSoup(
-        html,
-        "html.parser",
-    )
-
-    query_tokens = set(
-        _tokens(query)
-    )
-
-    base_tokens = query_tokens - {
-        "limited",
-        "edition",
-    }
-
-    results = []
-    seen = set()
-
-    for link in soup.find_all(
-        "a",
-        href=True,
-    ):
-        href = _clean(
-            link.get("href")
-        )
-
-        product_url = urljoin(
-            BASE_URL,
-            href,
-        ).split("?")[0]
-
-        if "/product/" not in product_url.lower():
-            continue
-
-        card = _find_product_card(link)
-
-        # The product name can be on the anchor while _find_product_card()
-        # may return a price/size ancestor. Combine both plus nearby ancestors.
-        parts = [
-            _clean(
-                link.get_text(
-                    " ",
-                    strip=True,
-                )
-            ),
-            _clean(
-                link.get("title")
-            ),
-            _clean(
-                link.get("aria-label")
-            ),
-            _clean(
-                card.get_text(
-                    " ",
-                    strip=True,
-                )
-            ),
-        ]
-
-        node = link.parent
-        for _ in range(4):
-            if node is None:
-                break
-            parts.append(
-                _clean(
-                    node.get_text(
-                        " ",
-                        strip=True,
-                    )
-                )
-            )
-            node = node.parent
-
-        candidate_text = _clean(
-            " ".join(
-                part
-                for part in parts
-                if part
-            )
-        )
-
-        tokens = set(
-            _tokens(candidate_text)
-        )
-
-        # This is the decisive filter:
-        # Liquid Brun + Limited + Edition must all be present in the
-        # category card context. The normal Liquid Brun card therefore
-        # cannot be returned for this query.
-        if not base_tokens.issubset(tokens):
-            continue
-
-        if not {
-            "limited",
-            "edition",
-        }.issubset(tokens):
-            continue
-
-        if any(
-            word in candidate_text.lower()
-            for word in SOLD_OUT
-        ):
-            continue
-
-        price = _extract_price(candidate_text)
-
-        if not price:
-            continue
-
-        if product_url in seen:
-            continue
-
-        seen.add(product_url)
-
-        product_name = _clean(
-            link.get_text(
-                " ",
-                strip=True,
-            )
-        )
-
-        if not product_name or len(
-            set(_tokens(product_name))
-            & {
-                "limited",
-                "edition",
-            }
-        ) < 2:
-            product_name = "Liquid Brun Limited Edition"
-
-        results.append({
-            "store": STORE,
-            "name": product_name,
-            "price": price,
-            "url": product_url,
-            "available": True,
-            "availability": "in_stock",
-        })
-
-    return results
-
-
 def _extract_category(html, query):
     soup = BeautifulSoup(
         html,
@@ -984,6 +842,230 @@ def _size_number(item):
         return 9999
 
 
+def _search_limited_edition(session, category_html, query):
+    """
+    Dedicated resolver for Limited Edition variants.
+
+    Deloox places the Limited Edition inside the Liquid Brun category, while
+    the product URL/card can omit the words "limited edition". Therefore:
+      1) collect every Liquid Brun product link from the category;
+      2) open each real product page;
+      3) identify the Limited Edition from the complete page text;
+      4) use the existing variant extractor for the final offer.
+    Normal Deloox searches never enter this function.
+    """
+    query_tokens = set(
+        _tokens(query)
+    )
+
+    base_tokens = query_tokens - {
+        "limited",
+        "edition",
+    }
+
+    soup = BeautifulSoup(
+        category_html,
+        "html.parser",
+    )
+
+    candidates = []
+    seen = set()
+
+    for link in soup.find_all(
+        "a",
+        href=True,
+    ):
+        href = _clean(
+            link.get("href")
+        )
+
+        product_url = urljoin(
+            BASE_URL,
+            href,
+        ).split("?")[0]
+
+        if "/product/" not in product_url.lower():
+            continue
+
+        if product_url in seen:
+            continue
+
+        seen.add(product_url)
+
+        card = _find_product_card(link)
+
+        parts = [
+            _clean(
+                link.get_text(
+                    " ",
+                    strip=True,
+                )
+            ),
+            _clean(
+                link.get("title")
+            ),
+            _clean(
+                link.get("aria-label")
+            ),
+            _clean(
+                link.get("data-product-name")
+            ),
+            _clean(
+                link.get("data-name")
+            ),
+            _clean(
+                card.get_text(
+                    " ",
+                    strip=True,
+                )
+            ),
+        ]
+
+        node = link
+        for _ in range(8):
+            if node is None:
+                break
+
+            parts.append(
+                _clean(
+                    node.get_text(
+                        " ",
+                        strip=True,
+                    )
+                )
+            )
+
+            node = node.parent
+
+        context = _clean(
+            " ".join(
+                part
+                for part in parts
+                if part
+            )
+        )
+
+        context_tokens = set(
+            _tokens(context)
+        )
+
+        # Candidate only needs to be the requested base perfume.
+        if not base_tokens.issubset(
+            context_tokens
+        ):
+            continue
+
+        candidates.append(
+            (
+                product_url,
+                context,
+            )
+        )
+
+    if not candidates:
+        return []
+
+    results = []
+    seen_results = set()
+
+    for product_url, context in candidates:
+        product_response = _get(
+            session,
+            product_url,
+        )
+
+        if product_response is None:
+            continue
+
+        page_text = _clean(
+            BeautifulSoup(
+                product_response.text,
+                "html.parser",
+            ).get_text(
+                " ",
+                strip=True,
+            )
+        )
+
+        page_text_normalized = _norm(
+            page_text
+        )
+
+        # The decisive test is the complete product page, not its URL.
+        if not {
+            "limited",
+            "edition",
+        }.issubset(
+            set(page_text_normalized.split())
+        ):
+            # Also accept an exact marker in the raw HTML after accent
+            # normalization, in case it is inside structured data/metadata.
+            raw_normalized = _norm(
+                product_response.text
+            )
+
+            if not {
+                "limited",
+                "edition",
+            }.issubset(
+                set(raw_normalized.split())
+            ):
+                continue
+
+        variants = _extract_product_variants(
+            product_response.text,
+            query,
+            product_url,
+        )
+
+        if not variants:
+            variants = _extract_jsonld_variants(
+                product_response.text,
+                query,
+                product_url,
+            )
+
+        if variants:
+            for variant in variants:
+                key = (
+                    variant.get("url", ""),
+                    variant.get("size", ""),
+                    variant.get("price", ""),
+                )
+
+                if key in seen_results:
+                    continue
+
+                seen_results.add(key)
+                results.append(variant)
+
+            continue
+
+        # Last-resort offer from the category/product page itself.
+        # This is still only used after the page has positively identified
+        # Limited Edition.
+        price = _extract_price(
+            page_text
+        )
+
+        if not price:
+            price = _extract_price(
+                context
+            )
+
+        if price:
+            results.append({
+                "store": STORE,
+                "name": "Liquid Brun Limited Edition",
+                "price": price,
+                "url": product_url,
+                "available": True,
+                "availability": "in_stock",
+            })
+
+    return results
+
+
 def search(query):
     query = _clean(query)
 
@@ -1016,13 +1098,14 @@ def search(query):
     )
 
     if limited_query:
-        limited_candidates = _extract_limited_category(
+        limited_results = _search_limited_edition(
+            session,
             response.text,
             query,
         )
 
-        if limited_candidates:
-            return limited_candidates[:20]
+        if limited_results:
+            return limited_results[:20]
 
         return []
 
