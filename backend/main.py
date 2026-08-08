@@ -1,4 +1,4 @@
-from pathlib import Path
+fromfrom pathlib import Path
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
@@ -53,8 +53,13 @@ NON_PERFUME = {
 }
 
 IGNORED_WORDS = {
-    "eau", "de", "parfum", "perfume", "edp", "edt",
-    "extrait", "spray", "ml", "for", "by",
+    "eau",
+    "de",
+    "edp",
+    "edt",
+    "ml",
+    "for",
+    "by",
 }
 
 
@@ -86,6 +91,7 @@ def product_image(product: Dict[str, Any]) -> str:
 
 def matches(product: Dict[str, Any], query: str) -> bool:
     name_tokens = set(norm(product.get("name", "")).split())
+    url_tokens = set(norm(product.get("url", "")).split())
     query_normalized = norm(query)
 
     if not name_tokens:
@@ -114,14 +120,13 @@ def matches(product: Dict[str, Any], query: str) -> bool:
     if not query_tokens:
         return False
 
-    return query_tokens.issubset(name_tokens)
+    return all(
+        token in name_tokens or token in url_tokens
+        for token in query_tokens
+    )
 
 
 def canonicalize_product(product: Dict[str, Any], query: str) -> Dict[str, Any]:
-    """
-    Normalizza SOLO i nomi della famiglia Jean Paul Gaultier Le Beau.
-    Prezzo, URL, negozio e disponibilità restano invariati.
-    """
     item = dict(product)
 
     original_name = str(item.get("name", "") or "")
@@ -132,8 +137,6 @@ def canonicalize_product(product: Dict[str, Any], query: str) -> Dict[str, Any]:
     if "beau" not in source:
         return item
 
-    # Interveniamo solo quando il risultato o la ricerca appartengono
-    # chiaramente alla famiglia Jean Paul Gaultier Le Beau.
     is_le_beau_family = (
         "le beau" in source
         or "le beau" in query_n
@@ -146,7 +149,6 @@ def canonicalize_product(product: Dict[str, Any], query: str) -> Dict[str, Any]:
     if not is_le_beau_family:
         return item
 
-    # Il formato viene ricavato prima dal nome, poi dall'URL.
     size = ""
     size_match = re.search(
         r"\b(\d{1,3}(?:[.,]\d+)?)\s*ml\b",
@@ -164,9 +166,6 @@ def canonicalize_product(product: Dict[str, Any], query: str) -> Dict[str, Any]:
     if size_match:
         size = size_match.group(1).replace(",", ".") + " ml"
 
-    # IMPORTANTE:
-    # riconosciamo prima tutte le varianti specifiche.
-    # Così Flower/Paradise/Le Parfum non finiscono sotto Le Beau semplice.
     if (
         ("paradise" in source and "garden" in source)
         or "paradisegarden" in source
@@ -212,12 +211,8 @@ def canonicalize_product(product: Dict[str, Any], query: str) -> Dict[str, Any]:
     item["_variant_rank"] = variant_rank
     return item
 
+
 def result_sort_key(product: Dict[str, Any], query: str):
-    """
-    Ordina prima la variante cercata.
-    Poi Paradise Garden, Flower Edition e Le Beau semplice.
-    Dentro ogni variante: formato e prezzo.
-    """
     name_n = norm(product.get("name", ""))
     query_n = norm(query)
 
@@ -251,6 +246,7 @@ def result_sort_key(product: Dict[str, Any], query: str):
 
     return (family_rank, size, price)
 
+
 def load_scraper(store: str):
     return importlib.import_module(f"scrapers.{store}.scraper")
 
@@ -268,48 +264,53 @@ def build_search_attempts(store: str, query: str) -> List[str]:
         if compact and compact not in attempts:
             attempts.append(compact)
 
-        for token in normalized_query.split():
-            if token and token not in attempts:
-                attempts.append(token)
-
     return attempts
 
 
 def run_store(store: str, query: str) -> List[Dict[str, Any]]:
-    module = load_scraper(store)
-    search_fn = getattr(module, "search", None)
+    try:
+        module = load_scraper(store)
+        search_fn = getattr(module, "search", None)
 
-    if not callable(search_fn):
-        raise RuntimeError(f"{store}: scraper senza funzione search()")
+        if not callable(search_fn):
+            raise RuntimeError(f"{store}: scraper senza funzione search()")
 
-    attempts = build_search_attempts(store, query)
-    output: List[Dict[str, Any]] = []
-    seen = set()
+        attempts = build_search_attempts(store, query)
+        output: List[Dict[str, Any]] = []
+        seen = set()
 
-    for attempt in attempts:
-        results = search_fn(attempt) or []
-
-        for item in results:
-            if not isinstance(item, dict):
+        for attempt in attempts:
+            try:
+                results = search_fn(attempt) or []
+            except Exception as error:
+                print(f"[{store}] errore nella query {attempt!r}: {error}")
                 continue
 
-            product = dict(item)
-            product.setdefault("store", store)
+            for item in results:
+                if not isinstance(item, dict):
+                    continue
 
-            key = (
-                str(product.get("url", "")).lower(),
-                norm(product.get("name", "")),
-            )
+                product = dict(item)
+                product.setdefault("store", store)
 
-            if key in seen:
-                continue
+                key = (
+                    str(product.get("url", "")).lower(),
+                    norm(product.get("name", "")),
+                )
 
-            seen.add(key)
+                if key in seen:
+                    continue
 
-            if matches(product, query):
-                output.append(product)
+                seen.add(key)
 
-    return output
+                if matches(product, query):
+                    output.append(product)
+
+        return output
+
+    except Exception as error:
+        print(f"[{store}] errore caricamento scraper: {type(error).__name__}: {error}")
+        raise
 
 
 def unique_results(products: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
@@ -357,33 +358,28 @@ def search_perfume(query: str) -> Dict[str, Any]:
         for store in STORES
     }
 
-    done, not_done = wait(future_to_store, timeout=30)
+    try:
+        done, not_done = wait(future_to_store, timeout=30)
 
-    for future in done:
-        store = future_to_store[future]
-        try:
-            results.extend(future.result() or [])
-        except Exception as exc:
-            errors[store] = str(exc) or exc.__class__.__name__
+        for future in done:
+            store = future_to_store[future]
+            try:
+                results.extend(future.result() or [])
+            except Exception as exc:
+                errors[store] = str(exc) or exc.__class__.__name__
 
-    for future in not_done:
-        store = future_to_store[future]
-        errors[store] = "timeout"
-        future.cancel()
+        for future in not_done:
+            store = future_to_store[future]
+            errors[store] = "timeout"
+            future.cancel()
 
-    executor.shutdown(wait=False, cancel_futures=True)
+    finally:
+        executor.shutdown(wait=False, cancel_futures=True)
 
     results = unique_results(results)
-    results = [
-        canonicalize_product(product, query)
-        for product in results
-    ]
-    results = sorted(
-        results,
-        key=lambda product: result_sort_key(product, query),
-    )
+    results = [canonicalize_product(product, query) for product in results]
+    results = sorted(results, key=lambda product: result_sort_key(product, query))
 
-    # Campo interno usato solo per ordinare: non serve al frontend.
     for product in results:
         product.pop("_variant_rank", None)
 
