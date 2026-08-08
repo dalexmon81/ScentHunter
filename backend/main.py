@@ -191,11 +191,9 @@ def resolve_actual_price(product: Dict[str, Any]) -> Dict[str, Any]:
                 },
             )
             with urlopen(request, timeout=4) as response:
-                # Non tenere in RAM pagine enormi: per il prezzo strutturato
-                # ci basta una porzione iniziale della pagina.
                 chunks = []
                 total = 0
-                max_bytes = 2 * 1024 * 1024
+                max_bytes = 1 * 1024 * 1024
 
                 while total < max_bytes:
                     chunk = response.read(min(64 * 1024, max_bytes - total))
@@ -309,9 +307,8 @@ def run_store(store: str, query: str) -> List[Dict[str, Any]]:
             product = dict(item)
             product.setdefault("store", store)
 
-            # Scarta subito i risultati non pertinenti.
-            # La parte pesante (apertura della pagina prodotto) viene eseguita
-            # solo sui prodotti che dobbiamo realmente mostrare.
+            # Filter first: only matching perfumes get the extra request
+            # needed to recover the real pack price.
             if not matches(product, query):
                 continue
 
@@ -367,10 +364,11 @@ def search_perfume(query: str) -> Dict[str, Any]:
     results: List[Dict[str, Any]] = []
     errors: Dict[str, str] = {}
 
-    # Render Free has only 512 MB RAM.
-    # Run one store at a time so the 8 scrapers never occupy memory together.
+    # Render Free: 512 MB RAM.
+    # Two scrapers at a time keeps the search fast enough without the
+    # memory spike caused by running all 8 simultaneously.
     executor = ThreadPoolExecutor(
-        max_workers=1,
+        max_workers=2,
         thread_name_prefix="scent-store",
     )
     future_to_store = {
@@ -378,7 +376,7 @@ def search_perfume(query: str) -> Dict[str, Any]:
         for store in STORES
     }
 
-    done, not_done = wait(future_to_store, timeout=90)
+    done, not_done = wait(future_to_store, timeout=60)
 
     for future in done:
         store = future_to_store[future]
@@ -393,11 +391,6 @@ def search_perfume(query: str) -> Dict[str, Any]:
         future.cancel()
 
     executor.shutdown(wait=False, cancel_futures=True)
-
-    # Release Future references before building the final response.
-    future_to_store.clear()
-    done = None
-    not_done = None
 
     results = sort_by_price(unique_results(results))
 
