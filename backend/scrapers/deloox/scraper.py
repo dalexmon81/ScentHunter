@@ -439,8 +439,15 @@ def _extract_category(html, query):
         if "/product/" not in product_url.lower():
             continue
 
-        # Controllo fondamentale contro prodotti estranei.
-        if not _url_matches_query(
+        limited_query = {"limited", "edition"}.issubset(
+            set(_tokens(query))
+        )
+
+        # For normal searches keep the URL guard. For Limited Edition,
+        # Deloox can use a product slug that does not contain all query words;
+        # the definitive identification is done from the visible product
+        # block below.
+        if not limited_query and not _url_matches_query(
             product_url,
             query,
         ):
@@ -475,6 +482,23 @@ def _extract_category(html, query):
                 )
             )
 
+        # Walk further up the DOM for Deloox layouts where the product title,
+        # price and product link are not in the same immediate card node.
+        ancestor_texts = []
+        node = link
+        for _ in range(8):
+            if node is None:
+                break
+            ancestor_texts.append(
+                _clean(
+                    node.get_text(
+                        " ",
+                        strip=True,
+                    )
+                )
+            )
+            node = node.parent
+
         combined_card_text = _clean(
             " ".join(
                 part
@@ -482,6 +506,7 @@ def _extract_category(html, query):
                     card_text,
                     link_text,
                     parent_text,
+                    *ancestor_texts,
                 )
                 if part
             )
@@ -493,28 +518,19 @@ def _extract_category(html, query):
         ):
             continue
 
-        limited_query = {"limited", "edition"}.issubset(query_tokens)
         card_tokens = set(_tokens(combined_card_text))
 
         if limited_query:
-            # IMPORTANT:
-            # Deloox can show the Limited Edition inside the Liquid Brun
-            # category while the product card itself only says "Liquid Brun".
-            # The old generic 0.55 match rejected that card because only
-            # 2/4 query tokens were present. For a Limited Edition query,
-            # validate only the base product here; the variant is checked
-            # later on the actual product page.
             base_tokens = query_tokens - {"limited", "edition"}
 
             if not base_tokens.issubset(card_tokens):
                 continue
 
-            # If the category itself exposes the exact variant, accept this
-            # candidate immediately. This avoids losing it before the product
-            # page is opened.
+            # The category page must identify this candidate as the requested
+            # Limited Edition. This prevents the normal 100 ml Liquid Brun
+            # from being returned for the Limited Edition query.
             if not {"limited", "edition"}.issubset(card_tokens):
-                # Keep the candidate for product-page verification.
-                pass
+                continue
         else:
             if not _matches_soft(
                 card_text,
