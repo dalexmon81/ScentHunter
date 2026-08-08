@@ -10,6 +10,7 @@ import os
 import re
 import traceback
 from concurrent.futures import ThreadPoolExecutor, TimeoutError, wait
+from threading import Lock
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
 from urllib.parse import urlencode
@@ -27,6 +28,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+SEARCH_LOCK = Lock()
 STORES = [
     "bplatz",
     "deloox",
@@ -340,36 +342,26 @@ def sort_by_price(products: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
 
 def search_perfume(query: str) -> Dict[str, Any]:
     query = str(query or "").strip()
+
     if not query:
-        return {"query": query, "count": 0, "results": [], "comparisons": [], "errors": {}}
+        return {
+            "query": query,
+            "count": 0,
+            "results": [],
+            "comparisons": [],
+            "errors": {},
+        }
 
     results: List[Dict[str, Any]] = []
     errors: Dict[str, str] = {}
 
-    executor = ThreadPoolExecutor(
-        max_workers=1,
-        thread_name_prefix="scent-store",
-    )
-    future_to_store = {
-        executor.submit(run_store, store, query): store
-        for store in STORES
-    }
-
-    done, not_done = wait(future_to_store, timeout=30)
-
-    for future in done:
-        store = future_to_store[future]
-        try:
-            results.extend(future.result() or [])
-        except Exception as exc:
-            errors[store] = str(exc) or exc.__class__.__name__
-
-    for future in not_done:
-        store = future_to_store[future]
-        errors[store] = "timeout"
-        future.cancel()
-
-    executor.shutdown(wait=False, cancel_futures=True)
+    with SEARCH_LOCK:
+        for store in STORES:
+            try:
+                store_results = run_store(store, query)
+                results.extend(store_results or [])
+            except Exception as exc:
+                errors[store] = str(exc) or exc.__class__.__name__
 
     results = sort_by_price(unique_results(results))
 
@@ -380,8 +372,6 @@ def search_perfume(query: str) -> Dict[str, Any]:
         "comparisons": [],
         "errors": errors,
     }
-
-
 @app.get("/search")
 def search(q: str):
     return search_perfume(q)
