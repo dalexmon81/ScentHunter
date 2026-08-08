@@ -51,6 +51,9 @@ STORES = [
     "notino",
 ]
 
+BLOCKED_STORES = {"notino", "perfumemarket", "parfumcity"}
+ACTIVE_STORES = [store for store in STORES if store not in BLOCKED_STORES]
+
 BASE_DIR = os.path.dirname(__file__)
 HISTORY_PATH = os.path.join(BASE_DIR, "price_history.json")
 
@@ -489,12 +492,12 @@ def search_perfume(q: str):
     # Massimo 3 scraper contemporaneamente.
     # 8 in parallelo causano picchi di RAM; tutti in sequenza possono
     # superare il timeout di 90 secondi del frontend.
-    max_workers = min(3, len(STORES))
+    max_workers = min(3, len(ACTIVE_STORES))
 
     with ThreadPoolExecutor(max_workers=max_workers) as executor:
         futures = {
             executor.submit(run_store, store, query): store
-            for store in STORES
+            for store in ACTIVE_STORES
         }
 
         for future in as_completed(futures):
@@ -516,6 +519,12 @@ def search_perfume(q: str):
                 )
 
     results = sort_by_price(unique_results(all_results))
+
+    for store in sorted(BLOCKED_STORES):
+        errors.setdefault(
+            store,
+            "Temporaneamente escluso: il sito sta rispondendo 403/429."
+        )
 
     return {
         "query": query,
