@@ -95,11 +95,6 @@ SIZE_FULL_RE = re.compile(
 
 CATEGORY_FALLBACKS = (
     (
-        ("liquid", "brun"),
-        "https://www.deloox.com/en/category/"
-        "1132834/liquid-brun.html",
-    ),
-    (
         ("le", "beau", "le", "parfum"),
         "https://www.deloox.com/category/"
         "1084243/le-beau-le-parfum.html",
@@ -391,22 +386,37 @@ def _find_product_card(link):
 
 
 def _url_matches_query(product_url, query):
+    """
+    Controllo URL permissivo: Deloox può usare lo stesso slug del prodotto
+    per più varianti (es. Liquid Brun / Limited Edition). In quel caso la
+    variante è visibile nel testo della card o nella pagina prodotto, non
+    necessariamente nell'URL.
+    """
     url_tokens = set(_tokens(product_url))
     query_tokens = set(_tokens(query))
 
+    if not query_tokens:
+        return False
+
+    # Prima scelta: URL completo contiene tutti i termini della query.
     if query_tokens.issubset(url_tokens):
         return True
 
-    # Deloox may keep variant descriptors such as "limited edition"
-    # in the visible product title while omitting them from the URL slug.
-    variant_tokens = {
-        "limited",
-        "edition",
+    # Se manca solo una parte della variante, lasciamo passare il prodotto
+    # purché l'URL contenga almeno il nucleo principale della query.
+    # La verifica precisa viene poi fatta sul testo della card.
+    core_tokens = {
+        token for token in query_tokens
+        if token not in {
+            "limited", "edition", "limitededition",
+            "special", "exclusive", "collector", "collectors"
+        }
     }
 
-    required_tokens = query_tokens - variant_tokens
+    if core_tokens and core_tokens.issubset(url_tokens):
+        return True
 
-    return bool(required_tokens) and required_tokens.issubset(url_tokens)
+    return False
 
 
 def _extract_category(html, query):
@@ -454,82 +464,33 @@ def _extract_category(html, query):
             )
         )
 
-        link_text = _clean(
-            link.get_text(
-                " ",
-                strip=True,
-            )
-        )
-
-        combined_text = _clean(
-            f"{card_text} {link_text}"
-        )
-
         if any(
-            word in combined_text.lower()
+            word in card_text.lower()
             for word in SOLD_OUT
         ):
             continue
 
-        else:
-            base_tokens = query_tokens - {
-                "limited",
-                "edition",
-            }
+        if not _matches_soft(
+            card_text,
+            query,
+            minimum=0.55,
+        ):
+            continue
 
-            combined_tokens = set(
-                _tokens(combined_text)
-            )
+        card_tokens = set(
+            _tokens(card_text)
+        )
 
-            if not base_tokens.issubset(combined_tokens):
-                continue
+        if not query_tokens.issubset(card_tokens):
+            continue
 
-            # Do not require "limited edition" to be present in the category
-            # card. It will be checked against the actual product page.
-
-        if not limited_query:
-            if not _matches_soft(
-                combined_text,
-                query,
-                minimum=0.55,
-            ):
-                continue
-
-            combined_tokens = set(
-                _tokens(combined_text)
-            )
-
-            if not query_tokens.issubset(combined_tokens):
-                continue
-
-            if not _is_relevant_product(
-                combined_text,
-                query,
-            ):
-                continue
-        else:
-            base_tokens = query_tokens - {
-                "limited",
-                "edition",
-            }
-
-            combined_tokens = set(
-                _tokens(combined_text)
-            )
-
-            if not base_tokens.issubset(combined_tokens):
-                continue
-
-            if not _is_relevant_product(
-                combined_text,
-                " ".join(sorted(base_tokens)),
-            ):
-                continue
+        if not _is_relevant_product(
+            card_text,
+            query,
+        ):
+            continue
 
         price = _extract_price(card_text)
-
-        if not price:
-            price = _extract_price(combined_text)
 
         if not price:
             continue
@@ -678,41 +639,6 @@ def _extract_product_variants(
         "html.parser",
     )
 
-    # Deloox can have the real variant name (for example "Limited edition")
-    # in the product page title while the category card only says "Liquid Brun".
-    page_name = ""
-
-    h1 = soup.find("h1")
-    if h1:
-        page_name = _clean(
-            h1.get_text(
-                " ",
-                strip=True,
-            )
-        )
-
-    if not page_name:
-        title = soup.find("title")
-        if title:
-            page_name = _clean(
-                title.get_text(
-                    " ",
-                    strip=True,
-                )
-            )
-
-    if not page_name:
-        page_name = product_name
-
-    # Keep the requested/base product name when the page title is clearly
-    # unrelated, but use the real page title when it contains the query.
-    if not _matches_soft(
-        page_name,
-        product_name,
-        minimum=0.50,
-    ):
-        page_name = product_name
-
     strings = [
         _clean(value)
         for value in soup.stripped_strings
@@ -720,7 +646,7 @@ def _extract_product_variants(
     ]
 
     results = []
-    seen = set()
+    seen_sizes = set()
 
     for index, value in enumerate(strings):
         size_match = SIZE_FULL_RE.fullmatch(value)
@@ -735,57 +661,41 @@ def _extract_product_variants(
 
         size_label = f"{size} ml"
 
-        # Inspect both sides of the size label. On Deloox the price/availability
-        # may appear before the size rather than after it.
-        chunks = []
-
-        for start_index, end_index in (
-            (
-                max(0, index - 12),
-                index,
-            ),
-            (
-                index + 1,
-                min(index + 35, len(strings)),
-            ),
-        ):
-            chunks.extend(
-                strings[start_index:end_index]
-            )
-
-        chunk_text = _clean(
-            " ".join(chunks)
-        )
-
-        if any(
-            word in chunk_text.lower()
-            for word in SOLD_OUT
-        ):
+        if size_label in seen_sizes:
             continue
 
-        price = _extract_price(chunk_text)
+        chunk = []
+        sold_out = False
+
+        for next_index in range(
+            index + 1,
+            min(index + 30, len(strings)),
+        ):
+            next_value = strings[next_index]
+
+            if SIZE_FULL_RE.fullmatch(next_value):
+                break
+
+            chunk.append(next_value)
+
+            if any(
+                word in next_value.lower()
+                for word in SOLD_OUT
+            ):
+                sold_out = True
+                break
+
+        if sold_out:
+            continue
+
+        price = _extract_price(
+            " ".join(chunk)
+        )
 
         if not price:
             continue
 
-        # Build the actual variant name from the product page. This is critical
-        # because the category candidate can be named only "Liquid Brun".
-        variant_name = page_name
-
-        # If the page title itself does not contain the size, append it.
-        if not SIZE_RE.search(variant_name):
-            variant_name = f"{variant_name} {size_label}"
-
-        key = (
-            _norm(variant_name),
-            size_label,
-            price,
-        )
-
-        if key in seen:
-            continue
-
-        seen.add(key)
+        seen_sizes.add(size_label)
 
         slug = re.sub(
             r"[^a-z0-9]+",
@@ -795,7 +705,7 @@ def _extract_product_variants(
 
         results.append({
             "store": STORE,
-            "name": variant_name,
+            "name": f"{product_name} {size_label}",
             "price": price,
             "url": f"{product_url}#{slug}",
             "available": True,
@@ -804,6 +714,7 @@ def _extract_product_variants(
         })
 
     return results
+
 
 def _extract_jsonld_variants(
     html,
@@ -902,19 +813,9 @@ def _extract_jsonld_variants(
                 if "," not in price_text:
                     price_text += ",00"
 
-                variant_name = _clean(
-                    str(item.get("name") or "")
-                )
-
-                if not variant_name:
-                    variant_name = product_name
-
-                if not SIZE_RE.search(variant_name):
-                    variant_name = f"{variant_name} {size} ml"
-
                 results.append({
                     "store": STORE,
-                    "name": variant_name,
+                    "name": f"{product_name} {size} ml",
                     "price": f"{price_text} €",
                     "url": product_url,
                     "available": True,
@@ -1015,19 +916,8 @@ def search(query):
         reverse=True,
     )
 
-    limited_query = {
-        "limited",
-        "edition",
-    }.issubset(
-        set(_tokens(query))
-    )
-
     best_score = scored[0][0]
-    minimum_score = (
-        float("-inf")
-        if limited_query
-        else best_score - 45
-    )
+    minimum_score = best_score - 45
 
     final_results = []
     seen_variants = set()
@@ -1060,24 +950,6 @@ def search(query):
                 item["name"],
                 product_url,
             )
-
-        # Variant names can be represented in the product page independently
-        # from the category card. For a Limited Edition query, inspect the
-        # complete returned variant name and retain only the requested edition.
-        if {
-            "limited",
-            "edition",
-        }.issubset(set(_tokens(query))):
-            variants = [
-                variant
-                for variant in variants
-                if {
-                    "limited",
-                    "edition",
-                }.issubset(
-                    set(_tokens(variant.get("name", "")))
-                )
-            ]
 
         for variant in variants:
             key = (
