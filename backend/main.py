@@ -168,48 +168,50 @@ def _price_from_structured_html(html: str) -> Optional[float]:
 
 def resolve_actual_price(product: Dict[str, Any]) -> Dict[str, Any]:
     """
-    Normalizza il prezzo senza effettuare un secondo download della pagina prodotto.
+    Normalizza il prezzo mostrato da ScentHunter al prezzo realmente pagabile.
 
-    Il download aggiuntivo della pagina prodotto per ogni risultato era troppo
-    pesante per Render e poteva provocare timeout o riavvii/OOM.
-
-    Manteniamo quindi il prezzo già fornito dallo scraper.
-    Se il prezzo è espresso esplicitamente come €/100 ml, lo convertiamo.
+    Problema risolto: alcuni scraper possono intercettare il prezzo unitario
+    (es. 26,66 €/100 ml) invece del prezzo della confezione (es. 39,99 €).
+    Prima prova la pagina prodotto; solo se non è disponibile usa il calcolo
+    da prezzo unitario quando il campo lo dichiara esplicitamente.
     """
     item = dict(product)
-
     raw_price = str(item.get("price") or "").strip()
     size = _product_size_ml(item)
 
-    # Prezzo già fornito dallo scraper.
-    direct_price = price_num(raw_price)
-
-    if direct_price is not None:
-        item["price_value"] = direct_price
-
-    # Convertiamo SOLO un prezzo dichiarato esplicitamente
-    # come prezzo per 100 ml.
-    unit_match = re.search(
-        r"(?:/|per\s*)100\s*ml",
-        raw_price,
-        re.I,
-    )
-
-    if unit_match and size and size > 0:
-        unit = price_num(
-            raw_price[:unit_match.start()]
-        )
-
-        if unit is not None:
-            actual = round(
-                unit * size / 100.0,
-                2,
+    # Se la pagina è disponibile, il prezzo strutturato è la fonte primaria.
+    url = str(item.get("url") or "").strip()
+    if url and size and abs(size - 100.0) > 0.01:
+        try:
+            request = Request(
+                url,
+                headers={
+                    "Accept": "text/html,application/xhtml+xml",
+                    "User-Agent": "Mozilla/5.0 (compatible; ScentHunter/1.0)",
+                },
             )
+            with urlopen(request, timeout=4) as response:
+                html = response.read().decode("utf-8", errors="ignore")
+            actual = _price_from_structured_html(html)
+            if actual is not None:
+                item["price"] = f"{actual:.2f} €"
+                item["price_value"] = actual
+                return item
+        except Exception:
+            pass
 
+    # Fallback sicuro: converti SOLO quando il testo dichiara esplicitamente
+    # che il valore è un prezzo unitario per 100 ml.
+    unit_match = re.search(r"(?:/|per\s*)100\s*ml", raw_price, re.I)
+    if unit_match and size and size > 0:
+        unit = price_num(raw_price[:unit_match.start()])
+        if unit is not None:
+            actual = round(unit * size / 100.0, 2)
             item["price"] = f"{actual:.2f} €"
             item["price_value"] = actual
 
     return item
+
 
 def matches(product: Dict[str, Any], query: str) -> bool:
     """
@@ -290,7 +292,12 @@ def run_store(store: str, query: str) -> List[Dict[str, Any]]:
 
             product = dict(item)
             product.setdefault("store", store)
-            product = resolve_actual_price(product)
+
+            # Prima filtriamo il risultato.
+            # Solo i prodotti pertinenti arrivano alla fase più pesante:
+            # apertura della pagina prodotto per recuperare il prezzo reale.
+            if not matches(product, query):
+                continue
 
             key = (
                 str(product.get("url", "")).lower(),
@@ -302,8 +309,9 @@ def run_store(store: str, query: str) -> List[Dict[str, Any]]:
 
             seen.add(key)
 
-            if matches(product, query):
-                output.append(product)
+            # Recupera il prezzo reale solo dopo il filtro.
+            product = resolve_actual_price(product)
+            output.append(product)
 
     return output
 
@@ -344,8 +352,11 @@ def search_perfume(query: str) -> Dict[str, Any]:
     results: List[Dict[str, Any]] = []
     errors: Dict[str, str] = {}
 
+    # Render Free ha 512 MB di RAM.
+    # Teniamo al massimo 2 scraper attivi contemporaneamente per evitare
+    # che 8 scraper + richieste alle pagine prodotto consumino tutta la RAM.
     executor = ThreadPoolExecutor(
-        max_workers=len(STORES),
+        max_workers=2,
         thread_name_prefix="scent-store",
     )
     future_to_store = {
@@ -366,6 +377,12 @@ def search_perfume(query: str) -> Dict[str, Any]:
         store = future_to_store[future]
         errors[store] = "timeout"
         future.cancel()
+
+    # I Future conservano internamente il loro risultato.
+    # Liberiamo subito la mappa prima dell'ordinamento finale.
+    future_to_store.clear()
+    done = None
+    not_done = None
 
     executor.shutdown(wait=False, cancel_futures=True)
 
