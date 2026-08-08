@@ -1,12 +1,15 @@
 import json
 import re
 import requests
-from bs4 import BeautifulSoup, Tag
+from bs4 import BeautifulSoup
 from urllib.parse import quote_plus, urljoin
 
 STORE = "Bplatz"
 BASE = "https://en.bplatz.de"
-TIMEOUT = 8
+TIMEOUT = 7
+MAX_RESULTS = 20
+MAX_JSON_PAGES = 12
+MAX_HTML_PAGES = 20
 
 HEADERS = {
     "User-Agent": (
@@ -15,358 +18,166 @@ HEADERS = {
         "Chrome/131.0 Safari/537.36"
     ),
     "Accept-Language": "en-US,en;q=0.9",
+    "Accept": "text/html,application/json,application/xhtml+xml,*/*;q=0.8",
 }
 
-DIRECT_PRODUCTS = (
-    (
-        ("liquid", "brun", "limited", "edition"),
-        (
-            BASE + "/Products/liquid-brun-limited-edition-eau-de-parfum-150-ml",
-        ),
-    ),
-    (
-        ("liquid", "brun"),
-        (
-            BASE + "/products/fragrance-world-liquid-brun-eau-de-parfum-100ml",
-        ),
-    ),
-)
+EXCLUDED_WORDS = {
+    "tester",
+    "gift",
+    "set",
+    "bundle",
+    "duo",
+    "box",
+    "discovery",
+    "mini",
+    "sample",
+    "samples",
+    "deodorant",
+    "body",
+    "shower",
+    "lotion",
+    "cream",
+}
 
 
-def _norm(v):
-    v = str(v or "").lower()
-    v = re.sub(r"[^a-z0-9]+", " ", v)
-    return re.sub(r"\s+", " ", v).strip()
+def _norm(value):
+    value = str(value or "").lower()
+    value = value.replace("é", "e").replace("è", "e").replace("ê", "e")
+    value = re.sub(r"[^a-z0-9]+", " ", value)
+    return re.sub(r"\s+", " ", value).strip()
 
 
-def _match(text, query):
-    words = _norm(query).split()
-    hay = _norm(text)
-    return bool(words) and all(w in hay.split() for w in words)
+def _tokens(value):
+    return set(_norm(value).split())
 
 
-def _price(text):
+def _is_excluded(name):
+    tokens = _tokens(name)
+    return bool(tokens & EXCLUDED_WORDS)
+
+
+def _match_score(name, query):
+    name_tokens = _tokens(name)
+    query_tokens = _tokens(query)
+
+    if not query_tokens:
+        return 0
+
+    # Tutte le parole della ricerca devono essere presenti nel nome.
+    if not query_tokens.issubset(name_tokens):
+        return 0
+
+    score = len(query_tokens) * 10
+
+    # Premia il nome che contiene esattamente la sequenza cercata.
+    nq = _norm(query)
+    nn = _norm(name)
+    if nq and nq in nn:
+        score += 30
+
+    # Penalizza leggermente prodotti accessori, senza eliminarli tutti.
+    if _is_excluded(name):
+        return 0
+
+    return score
+
+
+def _format_price(value):
+    if value is None:
+        return None
+
+    text = str(value).strip().replace("€", "").replace(" ", "")
+    text = text.replace(".", ".")
+
+    try:
+        number = float(text.replace(",", "."))
+    except ValueError:
+        return None
+
+    if number <= 0:
+        return None
+
+    return f"{number:.2f}".replace(".", ",") + " €"
+
+
+def _price_from_text(text):
     if not text:
         return None
 
-    # Prima cerca il prezzo reale del prodotto.
-    # "Price €620 / pro l" è un prezzo al litro e NON va usato.
+    # Bplatz mostra spesso anche il prezzo al litro/ml.
+    # Quello NON deve essere restituito come prezzo del prodotto.
     patterns = [
-        r"(?:regular\s+price)\s*€\s*(\d{1,4}(?:[.,]\d{1,2})?)",
         r"(?:retail\s+price)\s*€\s*(\d{1,4}(?:[.,]\d{1,2})?)",
-        r"(?:price)\s*€\s*(\d{1,4}(?:[.,]\d{1,2})?)",
+        r"(?:regular\s+price)\s*€\s*(\d{1,4}(?:[.,]\d{1,2})?)",
+        r"(?:price)\s*€\s*(\d{1,4}(?:[.,]\d{1,2})?)(?!\s*/)",
         r"€\s*(\d{1,4}(?:[.,]\d{1,2})?)(?!\s*/)",
     ]
 
     for pattern in patterns:
-        m = re.search(pattern, text, re.I)
-        if not m:
-            continue
-
-        value = m.group(1).replace(".", ",")
-
-        try:
-            if float(value.replace(",", ".")) <= 0:
-                continue
-        except ValueError:
-            continue
-
-        if "," not in value:
-            value += ",00"
-
-        return value + " €"
+        match = re.search(pattern, text, re.I)
+        if match:
+            price = _format_price(match.group(1))
+            if price:
+                return price
 
     return None
 
 
-def _product_card(a):
-    node = a
-    best = a
+def _product_url(handle):
+    if not handle:
+        return None
+    handle = str(handle).strip()
+    if handle.startswith("http://") or handle.startswith("https://"):
+        return handle.split("#")[0].split("?")[0]
+    return urljoin(BASE, "/products/" + handle).split("#")[0].split("?")[0]
 
-    for _ in range(8):
-        parent = node.parent
 
-        if not isinstance(parent, Tag):
+def _product_from_json(product, query):
+    if not isinstance(product, dict):
+        return None
+
+    title = str(product.get("title") or "").strip()
+    score = _match_score(title, query)
+    if not score:
+        return None
+
+    variants = product.get("variants") or []
+    if isinstance(variants, dict):
+        variants = [variants]
+
+    available_variant = None
+    best_variant = None
+
+    for variant in variants:
+        if not isinstance(variant, dict):
+            continue
+
+        if best_variant is None:
+            best_variant = variant
+
+        available = variant.get("available")
+        if available:
+            available_variant = variant
             break
 
-        text = " ".join(parent.stripped_strings)
-
-        if len(text) > 1800:
-            break
-
-        best = parent
-
-        if "€" in text and (
-            "add to" in text.lower()
-            or "wishlist" in text.lower()
-            or "retail price" in text.lower()
-            or "regular price" in text.lower()
-            or "show product" in text.lower()
-        ):
-            return parent
-
-        node = parent
-
-    return best
-
-
-def _is_exact_liquid_brun(name, query):
-    n = _norm(name)
-    q = _norm(query)
-
-    if not _match(n, q):
-        return False
-
-    # Non devono diventare risultati del profumo vero.
-    excluded = (
-        "tester",
-        "gift set",
-        "set",
-        "bundle",
-        "duo",
-        "box",
-        "discovery",
-        "mini",
-    )
-
-    return not any(
-        word in n.split()
-        for word in excluded
-    )
-
-
-def _extract_page(html, query):
-    soup = BeautifulSoup(html, "html.parser")
-    out = []
-    seen = set()
-
-    for a in soup.find_all("a", href=True):
-        href = urljoin(
-            BASE,
-            a.get("href", ""),
-        ).split("#")[0].split("?")[0]
-
-        if "/products/" not in href.lower():
-            continue
-
-        card = _product_card(a)
-        card_text = " ".join(
-            card.stripped_strings
-        ).strip()
-
-        if not _is_exact_liquid_brun(
-            card_text,
-            query,
-        ):
-            continue
-
-        candidates = [
-            " ".join(a.stripped_strings).strip(),
-            (a.get("title") or "").strip(),
-            (a.get("aria-label") or "").strip(),
-        ]
-
-        img = card.find("img")
-        if img:
-            candidates.append(
-                (img.get("alt") or "").strip()
-            )
-
-        product_name = next(
-            (
-                x for x in candidates
-                if x and _is_exact_liquid_brun(x, query)
-            ),
-            None,
-        )
-
-        if not product_name:
-            for pa in card.find_all("a", href=True):
-                txt = " ".join(
-                    pa.stripped_strings
-                ).strip()
-                phref = urljoin(
-                    BASE,
-                    pa.get("href", ""),
-                )
-
-                if (
-                    "/products/" in phref.lower()
-                    and txt
-                    and _is_exact_liquid_brun(txt, query)
-                ):
-                    product_name = txt
-                    href = phref.split("#")[0].split("?")[0]
-                    break
-
-        if not product_name:
-            continue
-
-        if any(
-            word in card_text.lower()
-            for word in (
-                "sold out",
-                "out of stock",
-                "not available",
-                "available soon",
-            )
-        ):
-            continue
-
-        price = _price(card_text)
-
-        if not price:
-            continue
-
-        key = href.lower()
-
-        if key in seen:
-            continue
-
-        seen.add(key)
-
-        out.append({
-            "store": STORE,
-            "name": product_name,
-            "price": price,
-            "url": href,
-            "available": True,
-            "availability": "in_stock",
-        })
-
-    return out
-
-
-def _extract_product_page(session, url, query):
-    r = session.get(
-        url,
-        headers=HEADERS,
-        timeout=TIMEOUT,
-        allow_redirects=True,
-    )
-
-    if r.status_code != 200 or not r.text:
+    variant = available_variant or best_variant
+    if not variant:
         return None
 
-    soup = BeautifulSoup(
-        r.text,
-        "html.parser",
-    )
-
-    title = ""
-
-    h1 = soup.find("h1")
-    if h1:
-        title = " ".join(
-            h1.stripped_strings
-        ).strip()
-
-    if not title:
-        meta = soup.find(
-            "meta",
-            property="og:title",
-        )
-        if meta:
-            title = str(
-                meta.get("content", "")
-            ).strip()
-
-    if not title or not _is_exact_liquid_brun(
-        title,
-        query,
-    ):
+    if variant.get("available") is False:
         return None
 
-    page_text = " ".join(
-        soup.stripped_strings
-    )
-
-    if any(
-        word in page_text.lower()
-        for word in (
-            "sold out",
-            "out of stock",
-            "not available",
-            "available soon",
-        )
-    ):
-        return None
-
-    price = _price(page_text)
-
-    # Shopify JSON-LD: utile quando il prezzo è separato dal testo.
+    price = _format_price(variant.get("price"))
     if not price:
-        for script in soup.find_all(
-            "script",
-            type="application/ld+json",
-        ):
-            try:
-                data = json.loads(
-                    script.string or script.get_text()
-                )
-            except (
-                ValueError,
-                TypeError,
-                json.JSONDecodeError,
-            ):
-                continue
-
-            objects = data if isinstance(data, list) else [data]
-
-            for item in objects:
-                if not isinstance(item, dict):
-                    continue
-
-                offers = item.get("offers", [])
-                if isinstance(offers, dict):
-                    offers = [offers]
-
-                for offer in offers:
-                    if not isinstance(offer, dict):
-                        continue
-
-                    availability = str(
-                        offer.get(
-                            "availability",
-                            "",
-                        )
-                    ).lower()
-
-                    if "outofstock" in availability:
-                        continue
-
-                    price_value = offer.get("price")
-                    if price_value is None:
-                        continue
-
-                    price = _price(
-                        f"€ {price_value}"
-                    )
-                    if price:
-                        break
-
-                if price:
-                    break
-
-            if price:
-                break
+        price = _price_from_text(json.dumps(product))
 
     if not price:
         return None
 
-    size = None
-    size_match = re.search(
-        r"\b(\d{1,4}(?:[.,]\d+)?)\s*ml\b",
-        title,
-        re.I,
-    )
-
-    if size_match:
-        size = (
-            size_match.group(1)
-            .replace(",", ".")
-            + " ml"
-        )
+    handle = product.get("handle")
+    url = _product_url(handle)
+    if not url:
+        return None
 
     return {
         "store": STORE,
@@ -375,112 +186,381 @@ def _extract_product_page(session, url, query):
         "url": url,
         "available": True,
         "availability": "in_stock",
-        **({"size": size} if size else {}),
+        "_score": score,
     }
 
 
-def _search_urls(query):
-    q = quote_plus(query)
+def _extract_products_json(data, query):
+    if not isinstance(data, dict):
+        return []
 
-    return [
+    products = data.get("products")
+    if not isinstance(products, list):
+        return []
+
+    results = []
+    seen = set()
+
+    for product in products:
+        item = _product_from_json(product, query)
+        if not item:
+            continue
+
+        key = item["url"].lower()
+        if key in seen:
+            continue
+
+        seen.add(key)
+        results.append(item)
+
+    return results
+
+
+def _search_json(session, query):
+    """Try Shopify's public product JSON/search endpoints first."""
+    q = quote_plus(query)
+    endpoints = [
+        f"{BASE}/search/suggest.json?q={q}&resources[type]=product&resources[limit]={MAX_RESULTS}",
+        f"{BASE}/search/suggest.json?q={q}&resources[type]=product&resources[limit]={MAX_RESULTS}&resources[options][unavailable_products]=hide",
+        f"{BASE}/collections/all-products/products.json?limit=250&page=1",
+        f"{BASE}/collections/Products-a/products.json?limit=250&page=1",
+    ]
+
+    results = []
+    seen = set()
+
+    for url in endpoints:
+        try:
+            response = session.get(
+                url,
+                headers=HEADERS,
+                timeout=TIMEOUT,
+                allow_redirects=True,
+            )
+        except requests.RequestException:
+            continue
+
+        if response.status_code != 200 or not response.text:
+            continue
+
+        try:
+            data = response.json()
+        except ValueError:
+            continue
+
+        # search/suggest.json usa spesso resources.results.products.
+        if "resources" in data:
+            resources = data.get("resources") or {}
+            results_block = resources.get("results") or {}
+            products = results_block.get("products") or []
+            data = {"products": products}
+
+        page_results = _extract_products_json(data, query)
+
+        for item in page_results:
+            key = item["url"].lower()
+            if key in seen:
+                continue
+            seen.add(key)
+            results.append(item)
+
+        if results:
+            break
+
+    return results
+
+
+def _extract_html_cards(html, query):
+    soup = BeautifulSoup(html, "html.parser")
+    results = []
+    seen = set()
+
+    for link in soup.find_all("a", href=True):
+        href = urljoin(BASE, link.get("href", ""))
+        if "/products/" not in href.lower():
+            continue
+
+        href = href.split("#")[0].split("?")[0]
+        card = link
+
+        for _ in range(7):
+            parent = getattr(card, "parent", None)
+            if not parent:
+                break
+
+            text = " ".join(parent.stripped_strings).strip()
+            if len(text) > 2200:
+                break
+
+            card = parent
+
+            if "€" in text and (
+                "wishlist" in text.lower()
+                or "add to cart" in text.lower()
+                or "retail price" in text.lower()
+                or "show product" in text.lower()
+            ):
+                break
+
+        title_candidates = [
+            " ".join(link.stripped_strings).strip(),
+            str(link.get("title") or "").strip(),
+            str(link.get("aria-label") or "").strip(),
+        ]
+
+        image = card.find("img")
+        if image:
+            title_candidates.append(str(image.get("alt") or "").strip())
+
+        title = next(
+            (x for x in title_candidates if _match_score(x, query)),
+            None,
+        )
+        if not title:
+            continue
+
+        card_text = " ".join(card.stripped_strings).strip()
+        lower = card_text.lower()
+        if any(x in lower for x in ("sold out", "out of stock", "not available")):
+            continue
+
+        price = _price_from_text(card_text)
+        if not price:
+            continue
+
+        score = _match_score(title, query)
+        key = href.lower()
+        if key in seen:
+            continue
+
+        seen.add(key)
+        results.append({
+            "store": STORE,
+            "name": title,
+            "price": price,
+            "url": href,
+            "available": True,
+            "availability": "in_stock",
+            "_score": score,
+        })
+
+    return results
+
+
+def _search_html(session, query):
+    q = quote_plus(query)
+    urls = [
         f"{BASE}/search?q={q}&type=product",
         f"{BASE}/search?q={q}",
     ]
 
+    for url in urls:
+        try:
+            response = session.get(
+                url,
+                headers=HEADERS,
+                timeout=TIMEOUT,
+                allow_redirects=True,
+            )
+        except requests.RequestException:
+            continue
+
+        if response.status_code != 200 or not response.text:
+            continue
+
+        results = _extract_html_cards(response.text, query)
+        if results:
+            return results
+
+    return []
+
+
+def _search_collection_pages(session, query):
+    """General fallback: scan Bplatz's real product catalogue pages."""
+    results = []
+    seen = set()
+
+    for page in range(1, MAX_HTML_PAGES + 1):
+        if page == 1:
+            url = f"{BASE}/collections/all-products"
+        else:
+            url = f"{BASE}/collections/all-products?page={page}"
+
+        try:
+            response = session.get(
+                url,
+                headers=HEADERS,
+                timeout=TIMEOUT,
+                allow_redirects=True,
+            )
+        except requests.RequestException:
+            continue
+
+        if response.status_code != 200 or not response.text:
+            continue
+
+        page_results = _extract_html_cards(response.text, query)
+
+        for item in page_results:
+            key = item["url"].lower()
+            if key in seen:
+                continue
+            seen.add(key)
+            results.append(item)
+
+        # Se abbiamo già trovato risultati, non serve continuare a
+        # scaricare altre pagine del catalogo.
+        if results:
+            break
+
+    return results
+
+
+def _verify_product_page(session, item, query):
+    """Verify title, availability and actual product price on Bplatz."""
+    try:
+        response = session.get(
+            item["url"],
+            headers=HEADERS,
+            timeout=TIMEOUT,
+            allow_redirects=True,
+        )
+    except requests.RequestException:
+        return item
+
+    if response.status_code != 200 or not response.text:
+        return item
+
+    soup = BeautifulSoup(response.text, "html.parser")
+
+    title = ""
+    h1 = soup.find("h1")
+    if h1:
+        title = " ".join(h1.stripped_strings).strip()
+
+    if not title:
+        meta = soup.find("meta", property="og:title")
+        if meta:
+            title = str(meta.get("content") or "").strip()
+
+    if title and _match_score(title, query):
+        item["name"] = title
+        item["_score"] = _match_score(title, query)
+
+    page_text = " ".join(soup.stripped_strings).strip()
+    lower = page_text.lower()
+    if any(x in lower for x in ("sold out", "out of stock", "not available")):
+        return None
+
+    price = _price_from_text(page_text)
+
+    # Fallback JSON-LD.
+    if not price:
+        for script in soup.find_all("script", type="application/ld+json"):
+            raw = script.string or script.get_text()
+            try:
+                data = json.loads(raw)
+            except (ValueError, TypeError, json.JSONDecodeError):
+                continue
+
+            objects = data if isinstance(data, list) else [data]
+            for obj in objects:
+                if not isinstance(obj, dict):
+                    continue
+                offers = obj.get("offers") or []
+                if isinstance(offers, dict):
+                    offers = [offers]
+                for offer in offers:
+                    if not isinstance(offer, dict):
+                        continue
+                    availability = str(offer.get("availability") or "").lower()
+                    if "outofstock" in availability:
+                        continue
+                    price = _format_price(offer.get("price"))
+                    if price:
+                        break
+                if price:
+                    break
+            if price:
+                break
+
+    if price:
+        item["price"] = price
+
+    item["available"] = True
+    item["availability"] = "in_stock"
+    return item
+
 
 def search(query):
     query = str(query or "").strip()
-
     if not query:
         return []
 
     session = requests.Session()
     session.headers.update(HEADERS)
 
-    results = []
-    seen_urls = set()
+    candidates = []
+    seen = set()
 
-    # Per Liquid Brun usiamo anche le pagine dirette.
-    # La ricerca Shopify può infatti non restituire tutti i prodotti.
-    query_tokens = set(_norm(query).split())
+    # 1. Shopify JSON: veloce e generale.
+    for item in _search_json(session, query):
+        key = item["url"].lower()
+        if key not in seen:
+            seen.add(key)
+            candidates.append(item)
 
-    for required, urls in DIRECT_PRODUCTS:
-        if set(required).issubset(query_tokens):
-            for url in urls:
-                if url.lower() in seen_urls:
-                    continue
+    # 2. Ricerca HTML Shopify.
+    if not candidates:
+        for item in _search_html(session, query):
+            key = item["url"].lower()
+            if key not in seen:
+                seen.add(key)
+                candidates.append(item)
 
-                try:
-                    item = _extract_product_page(
-                        session,
-                        url,
-                        query,
-                    )
-                except requests.RequestException:
-                    item = None
+    # 3. Ultimo fallback: catalogo generale Bplatz.
+    if not candidates:
+        for item in _search_collection_pages(session, query):
+            key = item["url"].lower()
+            if key not in seen:
+                seen.add(key)
+                candidates.append(item)
 
-                if item:
-                    seen_urls.add(url.lower())
-                    results.append(item)
+    # Verifica finale direttamente sulla pagina prodotto.
+    verified = []
+    for item in candidates[:MAX_RESULTS]:
+        checked = _verify_product_page(session, item, query)
+        if checked:
+            verified.append(checked)
 
-    # Poi proviamo la ricerca Shopify per eventuali prodotti aggiuntivi.
-    if not results or "liquid" not in query_tokens:
-        for url in _search_urls(query):
-            try:
-                r = session.get(
-                    url,
-                    headers=HEADERS,
-                    timeout=TIMEOUT,
-                    allow_redirects=True,
-                )
-            except requests.RequestException:
-                continue
-
-            if r.status_code != 200 or not r.text:
-                continue
-
-            page_results = _extract_page(
-                r.text,
-                query,
-            )
-
-            for item in page_results:
-                key = item["url"].lower()
-
-                if key in seen_urls:
-                    continue
-
-                seen_urls.add(key)
-                results.append(item)
-
-            if page_results:
-                break
-
-    results.sort(
+    # Ordine: prima il match più preciso, poi nome.
+    verified.sort(
         key=lambda x: (
-            len(_norm(x["name"])),
-            x["name"].lower(),
+            -int(x.get("_score", 0)),
+            len(_norm(x.get("name", ""))),
+            _norm(x.get("name", "")),
         )
     )
 
-    return results[:20]
+    for item in verified:
+        item.pop("_score", None)
+
+    return verified[:MAX_RESULTS]
 
 
 if __name__ == "__main__":
-    for q in (
+    for query in (
         "Liquid Brun",
         "Liquid Brun Limited Edition",
         "Rasasi Hawas",
+        "Rasasi Hawas Ice",
         "Armaf Club de Nuit",
-        "Afnan 9 PM Night Out",
+        "Afnan 9 PM",
         "French Avenue",
     ):
-        print("\n" + "=" * 60)
-        print("QUERY:", q)
-
-        items = search(q)
-
+        print("\n" + "=" * 70)
+        print("QUERY:", query)
+        items = search(query)
         print("RISULTATI:", len(items))
-
         for item in items:
             print(item)
