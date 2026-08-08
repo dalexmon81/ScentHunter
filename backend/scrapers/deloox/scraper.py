@@ -471,25 +471,53 @@ def _extract_category(html, query):
         ):
             continue
 
-        if not _matches_soft(
-            combined_text,
-            query,
-            minimum=0.55,
-        ):
-            continue
+        # For normal searches keep the strict card match.
+        # For Limited Edition searches, Deloox may expose the variant only
+        # on the product page, so the base Liquid Brun card is allowed through
+        # and the definitive variant check happens after opening the product.
+        limited_query = {
+            "limited",
+            "edition",
+        }.issubset(query_tokens)
 
-        combined_tokens = set(
-            _tokens(combined_text)
-        )
+        if not limited_query:
+            if not _matches_soft(
+                combined_text,
+                query,
+                minimum=0.55,
+            ):
+                continue
 
-        if not query_tokens.issubset(combined_tokens):
-            continue
+            combined_tokens = set(
+                _tokens(combined_text)
+            )
 
-        if not _is_relevant_product(
-            combined_text,
-            query,
-        ):
-            continue
+            if not query_tokens.issubset(combined_tokens):
+                continue
+
+            if not _is_relevant_product(
+                combined_text,
+                query,
+            ):
+                continue
+        else:
+            base_tokens = query_tokens - {
+                "limited",
+                "edition",
+            }
+
+            combined_tokens = set(
+                _tokens(combined_text)
+            )
+
+            if not base_tokens.issubset(combined_tokens):
+                continue
+
+            if not _is_relevant_product(
+                combined_text,
+                " ".join(sorted(base_tokens)),
+            ):
+                continue
 
         price = _extract_price(card_text)
 
@@ -954,6 +982,24 @@ def search(query):
                 item["name"],
                 product_url,
             )
+
+        # Variant names can be represented in the product page independently
+        # from the category card. For a Limited Edition query, inspect the
+        # complete returned variant name and retain only the requested edition.
+        if {
+            "limited",
+            "edition",
+        }.issubset(set(_tokens(query))):
+            variants = [
+                variant
+                for variant in variants
+                if {
+                    "limited",
+                    "edition",
+                }.issubset(
+                    set(_tokens(variant.get("name", "")))
+                )
+            ]
 
         for variant in variants:
             key = (
