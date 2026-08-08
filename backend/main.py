@@ -52,6 +52,8 @@ STORES = [
     "orioudh",
     "notino",
 ]
+# TEMPORANEAMENTE esclusi per test OOM/429.
+STORES = [s for s in STORES if s not in {"parfumcity", "perfumemarket"}]
 
 BASE_DIR = os.path.dirname(__file__)
 HISTORY_PATH = os.path.join(BASE_DIR, "price_history.json")
