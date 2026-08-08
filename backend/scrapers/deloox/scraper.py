@@ -671,6 +671,41 @@ def _extract_product_variants(
         "html.parser",
     )
 
+    # Deloox can have the real variant name (for example "Limited edition")
+    # in the product page title while the category card only says "Liquid Brun".
+    page_name = ""
+
+    h1 = soup.find("h1")
+    if h1:
+        page_name = _clean(
+            h1.get_text(
+                " ",
+                strip=True,
+            )
+        )
+
+    if not page_name:
+        title = soup.find("title")
+        if title:
+            page_name = _clean(
+                title.get_text(
+                    " ",
+                    strip=True,
+                )
+            )
+
+    if not page_name:
+        page_name = product_name
+
+    # Keep the requested/base product name when the page title is clearly
+    # unrelated, but use the real page title when it contains the query.
+    if not _matches_soft(
+        page_name,
+        product_name,
+        minimum=0.50,
+    ):
+        page_name = product_name
+
     strings = [
         _clean(value)
         for value in soup.stripped_strings
@@ -678,7 +713,7 @@ def _extract_product_variants(
     ]
 
     results = []
-    seen_sizes = set()
+    seen = set()
 
     for index, value in enumerate(strings):
         size_match = SIZE_FULL_RE.fullmatch(value)
@@ -693,41 +728,57 @@ def _extract_product_variants(
 
         size_label = f"{size} ml"
 
-        if size_label in seen_sizes:
-            continue
+        # Inspect both sides of the size label. On Deloox the price/availability
+        # may appear before the size rather than after it.
+        chunks = []
 
-        chunk = []
-        sold_out = False
-
-        for next_index in range(
-            index + 1,
-            min(index + 30, len(strings)),
+        for start_index, end_index in (
+            (
+                max(0, index - 12),
+                index,
+            ),
+            (
+                index + 1,
+                min(index + 35, len(strings)),
+            ),
         ):
-            next_value = strings[next_index]
+            chunks.extend(
+                strings[start_index:end_index]
+            )
 
-            if SIZE_FULL_RE.fullmatch(next_value):
-                break
+        chunk_text = _clean(
+            " ".join(chunks)
+        )
 
-            chunk.append(next_value)
-
-            if any(
-                word in next_value.lower()
-                for word in SOLD_OUT
-            ):
-                sold_out = True
-                break
-
-        if sold_out:
+        if any(
+            word in chunk_text.lower()
+            for word in SOLD_OUT
+        ):
             continue
 
-        price = _extract_price(
-            " ".join(chunk)
-        )
+        price = _extract_price(chunk_text)
 
         if not price:
             continue
 
-        seen_sizes.add(size_label)
+        # Build the actual variant name from the product page. This is critical
+        # because the category candidate can be named only "Liquid Brun".
+        variant_name = page_name
+
+        # If the page title itself does not contain the size, append it.
+        if not SIZE_RE.search(variant_name):
+            variant_name = f"{variant_name} {size_label}"
+
+        key = (
+            _norm(variant_name),
+            size_label,
+            price,
+        )
+
+        if key in seen:
+            continue
+
+        seen.add(key)
 
         slug = re.sub(
             r"[^a-z0-9]+",
@@ -737,7 +788,7 @@ def _extract_product_variants(
 
         results.append({
             "store": STORE,
-            "name": f"{product_name} {size_label}",
+            "name": variant_name,
             "price": price,
             "url": f"{product_url}#{slug}",
             "available": True,
@@ -746,7 +797,6 @@ def _extract_product_variants(
         })
 
     return results
-
 
 def _extract_jsonld_variants(
     html,
@@ -845,9 +895,19 @@ def _extract_jsonld_variants(
                 if "," not in price_text:
                     price_text += ",00"
 
+                variant_name = _clean(
+                    str(item.get("name") or "")
+                )
+
+                if not variant_name:
+                    variant_name = product_name
+
+                if not SIZE_RE.search(variant_name):
+                    variant_name = f"{variant_name} {size} ml"
+
                 results.append({
                     "store": STORE,
-                    "name": f"{product_name} {size} ml",
+                    "name": variant_name,
                     "price": f"{price_text} €",
                     "url": product_url,
                     "available": True,
