@@ -9,7 +9,8 @@ from html import unescape
 import os
 import re
 import traceback
-from concurrent.futures import ThreadPoolExecutor, TimeoutError, wait
+import gc
+from concurrent.futures import TimeoutError
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
 from urllib.parse import urlencode
@@ -364,33 +365,28 @@ def search_perfume(query: str) -> Dict[str, Any]:
     results: List[Dict[str, Any]] = []
     errors: Dict[str, str] = {}
 
-    # Render Free: 512 MB RAM.
-    # Two scrapers at a time keeps the search fast enough without the
-    # memory spike caused by running all 8 simultaneously.
-    executor = ThreadPoolExecutor(
-        max_workers=2,
-        thread_name_prefix="scent-store",
-    )
-    future_to_store = {
-        executor.submit(run_store, store, query): store
-        for store in STORES
-    }
+    # Render Free has only 512 MB RAM.
+    # IMPORTANT: do NOT start all stores concurrently. The real-price
+    # lookup can create extra HTTP/HTML allocations, so even 2 workers
+    # can push the instance over the memory limit.
+    #
+    # Run one store at a time, release its result objects, and force a
+    # garbage collection before moving to the next store.
+    for store in STORES:
+        store_results = None
 
-    done, not_done = wait(future_to_store, timeout=60)
-
-    for future in done:
-        store = future_to_store[future]
         try:
-            results.extend(future.result() or [])
+            store_results = run_store(store, query)
+            if store_results:
+                results.extend(store_results)
+
         except Exception as exc:
             errors[store] = str(exc) or exc.__class__.__name__
 
-    for future in not_done:
-        store = future_to_store[future]
-        errors[store] = "timeout"
-        future.cancel()
-
-    executor.shutdown(wait=False, cancel_futures=True)
+        finally:
+            # Break references before the next scraper starts.
+            store_results = None
+            gc.collect()
 
     results = sort_by_price(unique_results(results))
 
