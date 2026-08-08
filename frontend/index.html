@@ -482,12 +482,30 @@ function shGroupData(data){
     if(!g.brand && o.brand)g.brand=o.brand;
     if(!g.image)g.image=o.image||o.image_url||o.thumbnail||"";
 
-    // Deduplica soltanto la STESSA offerta.
-    // Non elimina più altri risultati dello stesso negozio.
+    // DEDUPLICA LE OFFERTE.
+    // ScentHunter deve mostrare una sola offerta per negozio dentro
+    // la stessa famiglia/formato del profumo. Questo è importante
+    // soprattutto per Notino, che può restituire più card/URL per
+    // lo stesso prodotto e lo stesso prezzo.
     const store=String(o.store||"").trim().toLowerCase();
     const url=String(o.url||"").split("?")[0].toLowerCase();
     const offerSize=sizeOf(o)||"unknown";
     const offerName=normalizePerfumeName(o.name||"").toLowerCase();
+    const isNotino=store==="notino";
+    const isLiquidBrun=!!lb;
+
+    // NOTINO: una sola offerta per famiglia. La prima ricevuta dal
+    // backend viene considerata quella valida e non vengono aggiunte
+    // altre copie dello stesso negozio, anche se URL/nome differiscono.
+    if(isNotino && isLiquidBrun){
+      const alreadyNotino=g.offers.some(x=>
+        String(x.store||"").trim().toLowerCase()==="notino"
+      );
+      if(!alreadyNotino) g.offers.push(o);
+      return;
+    }
+
+    // Per tutti gli altri negozi eliminiamo duplicati identici.
     const existingIndex=g.offers.findIndex(x=>{
       const xs=String(x.store||"").trim().toLowerCase();
       const xu=String(x.url||"").split("?")[0].toLowerCase();
@@ -506,6 +524,20 @@ function shGroupData(data){
   const groups=[...map.values()];
 
   groups.forEach(g=>{
+    // Ultimo controllo anti-duplicato: una sola offerta per negozio
+    // nella stessa card. Se il backend ha restituito più record,
+    // conserviamo quello con il prezzo più basso.
+    const byStore=new Map();
+    g.offers.forEach(o=>{
+      const store=String(o.store||"").trim().toLowerCase();
+      if(!store){
+        byStore.set(`__empty_${byStore.size}`,o);
+        return;
+      }
+      const prev=byStore.get(store);
+      if(!prev || shNum(o)<shNum(prev)) byStore.set(store,o);
+    });
+    g.offers=[...byStore.values()];
     g.offers.sort((a,b)=>shNum(a)-shNum(b));
 
     // Il titolo visibile usa il nome reale ricevuto dal negozio.
