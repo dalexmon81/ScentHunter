@@ -902,6 +902,13 @@ def search(query):
     if not query:
         return []
 
+    limited_query = {
+        "limited",
+        "edition",
+    }.issubset(
+        set(_tokens(query))
+    )
+
     session = requests.Session()
 
     category_url = _find_brand_category(
