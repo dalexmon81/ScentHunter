@@ -168,40 +168,15 @@ def _price_from_structured_html(html: str) -> Optional[float]:
 
 def resolve_actual_price(product: Dict[str, Any]) -> Dict[str, Any]:
     """
-    Normalizza il prezzo mostrato da ScentHunter al prezzo realmente pagabile.
+    RAM-safe price normalization.
 
-    Problema risolto: alcuni scraper possono intercettare il prezzo unitario
-    (es. 26,66 €/100 ml) invece del prezzo della confezione (es. 39,99 €).
-    Prima prova la pagina prodotto; solo se non è disponibile usa il calcolo
-    da prezzo unitario quando il campo lo dichiara esplicitamente.
+    Non effettua richieste HTTP aggiuntive alla pagina prodotto.
+    Corregge solo il caso esplicito di prezzo espresso per 100 ml.
     """
     item = dict(product)
     raw_price = str(item.get("price") or "").strip()
     size = _product_size_ml(item)
 
-    # Se la pagina è disponibile, il prezzo strutturato è la fonte primaria.
-    url = str(item.get("url") or "").strip()
-    if url and size and abs(size - 100.0) > 0.01:
-        try:
-            request = Request(
-                url,
-                headers={
-                    "Accept": "text/html,application/xhtml+xml",
-                    "User-Agent": "Mozilla/5.0 (compatible; ScentHunter/1.0)",
-                },
-            )
-            with urlopen(request, timeout=4) as response:
-                html = response.read().decode("utf-8", errors="ignore")
-            actual = _price_from_structured_html(html)
-            if actual is not None:
-                item["price"] = f"{actual:.2f} €"
-                item["price_value"] = actual
-                return item
-        except Exception:
-            pass
-
-    # Fallback sicuro: converti SOLO quando il testo dichiara esplicitamente
-    # che il valore è un prezzo unitario per 100 ml.
     unit_match = re.search(r"(?:/|per\s*)100\s*ml", raw_price, re.I)
     if unit_match and size and size > 0:
         unit = price_num(raw_price[:unit_match.start()])
@@ -273,17 +248,6 @@ def build_search_attempts(store: str, query: str) -> List[str]:
 
 
 def run_store(store: str, query: str) -> List[Dict[str, Any]]:
-    """
-    Esegue un solo scraper alla volta.
-
-    Importante per Railway/Render:
-    - niente esecuzione parallela degli 8 negozi;
-    - nessuna apertura della pagina prodotto per ogni risultato grezzo;
-    - il filtro viene applicato prima di qualsiasi eventuale normalizzazione
-      del prezzo;
-    - la memoria viene liberata prima di passare al negozio successivo.
-    """
-    module_name = f"scrapers.{store}.scraper"
     module = load_scraper(store)
     search_fn = getattr(module, "search", None)
 
@@ -296,20 +260,21 @@ def run_store(store: str, query: str) -> List[Dict[str, Any]]:
 
     try:
         for attempt in attempts:
-            raw_results = search_fn(attempt) or []
+            results = search_fn(attempt) or []
 
             try:
-                for item in raw_results:
+                for item in results:
                     if not isinstance(item, dict):
                         continue
 
                     product = dict(item)
                     product.setdefault("store", store)
 
-                    # Prima filtriamo. Questo evita richieste HTTP aggiuntive
-                    # per prodotti che comunque non verranno mostrati.
+                    # Filtra prima di qualsiasi normalizzazione.
                     if not matches(product, query):
                         continue
+
+                    product = resolve_actual_price(product)
 
                     key = (
                         str(product.get("url", "")).lower(),
@@ -322,17 +287,16 @@ def run_store(store: str, query: str) -> List[Dict[str, Any]]:
                     seen.add(key)
                     output.append(product)
             finally:
-                del raw_results
+                del results
                 gc.collect()
-
     finally:
-        # Rilascia eventuali riferimenti pesanti mantenuti dal modulo scraper.
+        # Lascia che gli oggetti del modulo scraper possano essere raccolti
+        # prima di passare al negozio successivo.
         try:
             import sys
-            sys.modules.pop(module_name, None)
+            sys.modules.pop(f"scrapers.{store}.scraper", None)
         except Exception:
             pass
-
         del module
         gc.collect()
 
@@ -368,14 +332,6 @@ def sort_by_price(products: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
 
 
 def search_perfume(query: str) -> Dict[str, Any]:
-    """
-    Ricerca RAM-safe: un solo negozio alla volta.
-
-    La versione precedente lanciava tutti gli scraper contemporaneamente
-    e, per ogni risultato grezzo, apriva anche la pagina prodotto.
-    Su un container con RAM limitata questo moltiplicava rapidamente
-    richieste, HTML e oggetti BeautifulSoup.
-    """
     query = str(query or "").strip()
     if not query:
         return {
@@ -389,21 +345,19 @@ def search_perfume(query: str) -> Dict[str, Any]:
     results: List[Dict[str, Any]] = []
     errors: Dict[str, str] = {}
 
+    # Un solo scraper alla volta: fondamentale su Railway/Render con RAM limitata.
     for store in STORES:
         try:
             store_results = run_store(store, query)
             results.extend(store_results)
-
             del store_results
             gc.collect()
-
         except Exception as exc:
             errors[store] = str(exc) or exc.__class__.__name__
             traceback.print_exc()
             gc.collect()
 
     results = sort_by_price(unique_results(results))
-
     gc.collect()
 
     return {
