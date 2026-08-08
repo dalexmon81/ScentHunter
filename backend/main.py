@@ -9,7 +9,7 @@ from html import unescape
 import os
 import re
 import traceback
-from threading import Lock
+from concurrent.futures import ThreadPoolExecutor, TimeoutError, wait
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
 from urllib.parse import urlencode
@@ -26,8 +26,6 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
-SEARCH_LOCK = Lock()
 
 STORES = [
     "bplatz",
@@ -109,6 +107,7 @@ def _price_from_structured_html(html: str) -> Optional[float]:
     """
     html = unescape(html or "")
 
+    # 1) JSON-LD: Product -> offers -> price.
     scripts = re.findall(
         r'<script[^>]+type=["\']application/ld\+json["\'][^>]*>(.*?)</script>',
         html,
@@ -130,6 +129,7 @@ def _price_from_structured_html(html: str) -> Optional[float]:
                             n = price_num(offer.get(key))
                             if n is not None:
                                 yield n
+            # Alcuni negozi mettono direttamente price nel Product.
             if str(value.get("@type", "")).lower() == "product":
                 n = price_num(value.get("price"))
                 if n is not None:
@@ -147,8 +147,11 @@ def _price_from_structured_html(html: str) -> Optional[float]:
             continue
         prices = list(walk(payload))
         if prices:
+            # Il primo prezzo Product/Offer è quello più affidabile; non usiamo
+            # i prezzi aggregati di comparatori esterni presenti nella pagina.
             return prices[0]
 
+    # 2) Meta tag comuni di Shopify/WooCommerce/OpenGraph.
     patterns = [
         r'<meta[^>]+(?:property|name)=["\'](?:product:price:amount|og:price:amount)["\'][^>]+content=["\']([^"\']+)',
         r'<meta[^>]+itemprop=["\']price["\'][^>]+content=["\']([^"\']+)',
@@ -165,44 +168,57 @@ def _price_from_structured_html(html: str) -> Optional[float]:
 
 def resolve_actual_price(product: Dict[str, Any]) -> Dict[str, Any]:
     """
-    Normalizza il prezzo mostrato da ScentHunter al prezzo realmente pagabile.
+    Normalizza il prezzo senza effettuare un secondo download della pagina prodotto.
+
+    Il download aggiuntivo della pagina prodotto per ogni risultato era troppo
+    pesante per Render e poteva provocare timeout o riavvii/OOM.
+
+    Manteniamo quindi il prezzo già fornito dallo scraper.
+    Se il prezzo è espresso esplicitamente come €/100 ml, lo convertiamo.
     """
     item = dict(product)
+
     raw_price = str(item.get("price") or "").strip()
     size = _product_size_ml(item)
 
-    url = str(item.get("url") or "").strip()
-    if url and size and abs(size - 100.0) > 0.01:
-        try:
-            request = Request(
-                url,
-                headers={
-                    "Accept": "text/html,application/xhtml+xml",
-                    "User-Agent": "Mozilla/5.0 (compatible; ScentHunter/1.0)",
-                },
-            )
-            with urlopen(request, timeout=4) as response:
-                html = response.read().decode("utf-8", errors="ignore")
-            actual = _price_from_structured_html(html)
-            if actual is not None:
-                item["price"] = f"{actual:.2f} €"
-                item["price_value"] = actual
-                return item
-        except Exception:
-            pass
+    # Prezzo già fornito dallo scraper.
+    direct_price = price_num(raw_price)
 
-    unit_match = re.search(r"(?:/|per\s*)100\s*ml", raw_price, re.I)
+    if direct_price is not None:
+        item["price_value"] = direct_price
+
+    # Convertiamo SOLO un prezzo dichiarato esplicitamente
+    # come prezzo per 100 ml.
+    unit_match = re.search(
+        r"(?:/|per\s*)100\s*ml",
+        raw_price,
+        re.I,
+    )
+
     if unit_match and size and size > 0:
-        unit = price_num(raw_price[:unit_match.start()])
+        unit = price_num(
+            raw_price[:unit_match.start()]
+        )
+
         if unit is not None:
-            actual = round(unit * size / 100.0, 2)
+            actual = round(
+                unit * size / 100.0,
+                2,
+            )
+
             item["price"] = f"{actual:.2f} €"
             item["price_value"] = actual
 
     return item
 
-
 def matches(product: Dict[str, Any], query: str) -> bool:
+    """
+    Match generale del prodotto.
+
+    IMPORTANTE: non scartiamo automaticamente le varianti (Limited Edition,
+    Elixir, Rebel, ecc.). La UI deve poterle mostrare come prodotti distinti.
+    Filtriamo invece i veri non-profumi (gift set, deodoranti, kit...).
+    """
     name_tokens = set(norm(product.get("name", "")).split())
     query_all_tokens = set(norm(query).split())
 
@@ -321,42 +337,47 @@ def sort_by_price(products: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
 
 
 def search_perfume(query: str) -> Dict[str, Any]:
-    with SEARCH_LOCK:
-        query = str(query or "").strip()
+    query = str(query or "").strip()
+    if not query:
+        return {"query": query, "count": 0, "results": [], "comparisons": [], "errors": {}}
 
-        if not query:
-            return {
-                "query": query,
-                "count": 0,
-                "results": [],
-                "comparisons": [],
-                "errors": {},
-            }
+    results: List[Dict[str, Any]] = []
+    errors: Dict[str, str] = {}
 
-        results: List[Dict[str, Any]] = []
-        errors: Dict[str, str] = {}
+    executor = ThreadPoolExecutor(
+        max_workers=len(STORES),
+        thread_name_prefix="scent-store",
+    )
+    future_to_store = {
+        executor.submit(run_store, store, query): store
+        for store in STORES
+    }
 
-        # IMPORTANTE:
-        # Gli scraper vengono eseguiti SEQUENZIALMENTE.
-        # In questo modo non vengono tenuti in memoria più scraper
-        # contemporaneamente e si riduce il picco RAM su Render.
-        for store in STORES:
-            try:
-                store_results = run_store(store, query) or []
-                results.extend(store_results)
-            except Exception as exc:
-                errors[store] = str(exc) or exc.__class__.__name__
-                traceback.print_exc()
+    done, not_done = wait(future_to_store, timeout=30)
 
-        results = sort_by_price(unique_results(results))
+    for future in done:
+        store = future_to_store[future]
+        try:
+            results.extend(future.result() or [])
+        except Exception as exc:
+            errors[store] = str(exc) or exc.__class__.__name__
 
-        return {
-            "query": query,
-            "count": len(results),
-            "results": results,
-            "comparisons": [],
-            "errors": errors,
-        }
+    for future in not_done:
+        store = future_to_store[future]
+        errors[store] = "timeout"
+        future.cancel()
+
+    executor.shutdown(wait=False, cancel_futures=True)
+
+    results = sort_by_price(unique_results(results))
+
+    return {
+        "query": query,
+        "count": len(results),
+        "results": results,
+        "comparisons": [],
+        "errors": errors,
+    }
 
 
 @app.get("/search")
