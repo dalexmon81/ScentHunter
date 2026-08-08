@@ -214,31 +214,38 @@ def resolve_actual_price(product: Dict[str, Any]) -> Dict[str, Any]:
 
 
 def matches(product: Dict[str, Any], query: str) -> bool:
-    name = norm(product.get("name", ""))
-    query_normalized = norm(query)
+    """
+    Match generale del prodotto.
 
-    if not name:
+    IMPORTANTE: non scartiamo automaticamente le varianti (Limited Edition,
+    Elixir, Rebel, ecc.). La UI deve poterle mostrare come prodotti distinti.
+    Filtriamo invece i veri non-profumi (gift set, deodoranti, kit...).
+    """
+    name_tokens = set(norm(product.get("name", "")).split())
+    query_all_tokens = set(norm(query).split())
+
+    if not name_tokens or not query_all_tokens:
         return False
-
-    for phrase in VARIANTS:
-        p = norm(phrase)
-        if p in name and p not in query_normalized:
-            return False
 
     for phrase in NON_PERFUME:
-        p = norm(phrase)
-        if p in name and p not in query_normalized:
+        phrase_tokens = set(norm(phrase).split())
+        if (
+            phrase_tokens
+            and phrase_tokens.issubset(name_tokens)
+            and not phrase_tokens.issubset(query_all_tokens)
+        ):
             return False
 
-    tokens = [
-        token for token in query_normalized.split()
+    query_tokens = {
+        token
+        for token in query_all_tokens
         if token not in IGNORED_WORDS
-    ]
+    }
 
-    if not tokens:
-        return False
+    if not query_tokens:
+        query_tokens = query_all_tokens
 
-    return all(token in name for token in tokens)
+    return bool(query_tokens) and query_tokens.issubset(name_tokens)
 
 
 def load_scraper(store: str):
@@ -378,6 +385,39 @@ def search_perfume(query: str) -> Dict[str, Any]:
 @app.get("/search")
 def search(q: str):
     return search_perfume(q)
+
+
+@app.get("/test-store")
+def test_store(store: str, q: str):
+    """Endpoint diagnostico per testare un solo scraper."""
+    store = str(store or "").strip().lower()
+    query = str(q or "").strip()
+
+    if store not in STORES:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Store non valido. Disponibili: {', '.join(STORES)}",
+        )
+    if not query:
+        raise HTTPException(status_code=400, detail="Parametro q mancante")
+
+    try:
+        results = run_store(store, query)
+        return {
+            "store": store,
+            "query": query,
+            "count": len(results),
+            "results": results,
+        }
+    except Exception as error:
+        traceback.print_exc()
+        return {
+            "store": store,
+            "query": query,
+            "count": 0,
+            "results": [],
+            "error": f"{type(error).__name__}: {error}",
+        }
 
 
 def load_history() -> Dict[str, Any]:
