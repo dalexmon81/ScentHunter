@@ -235,12 +235,15 @@ def load_scraper(store: str):
 
 def build_search_attempts(store: str, query: str) -> List[str]:
     """
-    Mantiene una sola richiesta reale per negozio.
-    Le vecchie varianti della query moltiplicavano le chiamate HTTP
-    e aumentavano il rischio di 403/429 e il consumo di memoria.
+    Restituisce una sola query per ogni scraper.
+
+    Le vecchie versioni generavano query aggiuntive (query compatta
+    e singoli termini per Bplatz). Questo moltiplicava le richieste
+    HTTP, aumentando il rischio di 403/429 e il consumo di memoria.
+    La normalizzazione e la logica specifica del singolo negozio
+    restano responsabilità dello scraper.
     """
     return [query]
-
 
 
 def run_store(
@@ -288,10 +291,6 @@ def run_store(
 
             if matches(product, query):
                 output.append(product)
-
-        # Rilascia riferimenti temporanei dopo ogni tentativo.
-        del results
-        gc.collect()
 
     return output
 
@@ -510,6 +509,7 @@ def search_perfume(q: str):
     # perché ogni scraper può caricare HTML e BeautifulSoup nello stesso momento.
     # La versione precedente del backend era sequenziale e funzionava.
     for store in STORES:
+        store_results = []
         try:
             store_results = run_store(store, query)
             all_results.extend(store_results)
@@ -517,6 +517,9 @@ def search_perfume(q: str):
             errors[store] = f"{type(error).__name__}: {error}"
             traceback.print_exc()
         finally:
+            # Rilascia subito i riferimenti temporanei dello scraper.
+            store_results.clear()
+            del store_results
             gc.collect()
 
     results = unique_results(all_results)
