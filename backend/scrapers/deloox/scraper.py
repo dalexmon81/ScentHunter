@@ -199,13 +199,25 @@ def _match_score(text, query):
         if token not in query_set
     ]
 
-    return (
+    score = (
         found * 100
         - missing * 35
         - len(extras) * 3
         - abs(len(text_tokens) - len(query_tokens))
     )
 
+    # Limited Edition is a strong identity discriminator.
+    # If the user explicitly asks for it, a candidate containing both
+    # "limited" and "edition" must outrank the base product.
+    variant_tokens = {"limited", "edition"}
+
+    if variant_tokens.issubset(query_set):
+        if variant_tokens.issubset(text_set):
+            score += 1000
+        else:
+            score -= 1000
+
+    return score
 
 def _extract_price(text):
     if not text:
@@ -370,46 +382,6 @@ def _find_brand_category(session, query):
     return candidates[0][2]
 
 
-def _real_product_name(html, fallback):
-    soup = BeautifulSoup(
-        html or "",
-        "html.parser",
-    )
-
-    h1 = soup.find("h1")
-    if h1:
-        name = _clean(h1.get_text(" ", strip=True))
-        if name:
-            return name
-
-    title = soup.find("title")
-    if title:
-        name = _clean(title.get_text(" ", strip=True))
-        if name:
-            return name
-
-    for script in soup.find_all(
-        "script",
-        type="application/ld+json",
-    ):
-        try:
-            payload = json.loads(
-                script.string or script.get_text()
-            )
-        except Exception:
-            continue
-
-        objects = payload if isinstance(payload, list) else [payload]
-
-        for item in objects:
-            if isinstance(item, dict):
-                name = _clean(item.get("name"))
-                if name:
-                    return name
-
-    return fallback
-
-
 def _find_product_card(link):
     node = link
 
@@ -476,17 +448,8 @@ def _extract_category(html, query):
         if "/product/" not in product_url.lower():
             continue
 
-        limited_query = {
-            "limited",
-            "edition",
-        }.issubset(
-            set(_tokens(query))
-        )
-
-        # Keep the original behaviour for every normal search.
-        # Only Limited Edition needs the relaxed candidate collection because
-        # Deloox may omit "limited edition" from the product URL.
-        if not limited_query and not _url_matches_query(
+        # Controllo fondamentale contro prodotti estranei.
+        if not _url_matches_query(
             product_url,
             query,
         ):
@@ -507,41 +470,25 @@ def _extract_category(html, query):
         ):
             continue
 
-        if limited_query:
-            # The category card can contain only the base name "Liquid Brun".
-            # For this special query we validate the base product here and
-            # validate "Limited Edition" on the actual product page.
-            base_tokens = query_tokens - {
-                "limited",
-                "edition",
-            }
+        if not _matches_soft(
+            card_text,
+            query,
+            minimum=0.55,
+        ):
+            continue
 
-            card_tokens = set(
-                _tokens(card_text)
-            )
+        card_tokens = set(
+            _tokens(card_text)
+        )
 
-            if not base_tokens.issubset(card_tokens):
-                continue
-        else:
-            if not _matches_soft(
-                card_text,
-                query,
-                minimum=0.55,
-            ):
-                continue
+        if not query_tokens.issubset(card_tokens):
+            continue
 
-            card_tokens = set(
-                _tokens(card_text)
-            )
-
-            if not query_tokens.issubset(card_tokens):
-                continue
-
-            if not _is_relevant_product(
-                card_text,
-                query,
-            ):
-                continue
+        if not _is_relevant_product(
+            card_text,
+            query,
+        ):
+            continue
 
         price = _extract_price(card_text)
 
@@ -902,13 +849,6 @@ def search(query):
     if not query:
         return []
 
-    limited_query = {
-        "limited",
-        "edition",
-    }.issubset(
-        set(_tokens(query))
-    )
-
     session = requests.Session()
 
     category_url = _find_brand_category(
@@ -952,7 +892,7 @@ def search(query):
         if product_url in seen_urls:
             continue
 
-        if not limited_query and not _url_matches_query(
+        if not _url_matches_query(
             product_url,
             query,
         ):
@@ -970,6 +910,25 @@ def search(query):
 
     if not scored:
         return []
+
+    if limited_query:
+        variant_candidates = [
+            item
+            for item in scored
+            if {
+                "limited",
+                "edition",
+            }.issubset(
+                set(_tokens(item[1].get("name", "")))
+            )
+        ]
+
+        # If the candidate name itself carries the requested variant,
+        # discard the base Liquid Brun candidates. Otherwise keep the
+        # original candidate list so the existing fallback behaviour is
+        # preserved.
+        if variant_candidates:
+            scored = variant_candidates
 
     scored.sort(
         key=lambda item: item[0],
@@ -998,49 +957,16 @@ def search(query):
         if product_response is None:
             continue
 
-        page_name = _real_product_name(
-            product_response.text,
-            item["name"],
-        )
-
-        if limited_query:
-            # Do NOT rely only on H1/title. On Deloox the product title can
-            # remain "Liquid Brun" while the page itself identifies the
-            # Limited Edition elsewhere (variant selector/product details).
-            page_text = _clean(
-                BeautifulSoup(
-                    product_response.text,
-                    "html.parser",
-                ).get_text(
-                    " ",
-                    strip=True,
-                )
-            )
-
-            page_tokens = set(
-                _tokens(
-                    f"{page_name} {page_text}"
-                )
-            )
-
-            if not {
-                "limited",
-                "edition",
-            }.issubset(page_tokens):
-                continue
-
-            page_name = "Liquid Brun Limited Edition"
-
         variants = _extract_product_variants(
             product_response.text,
-            page_name,
+            item["name"],
             product_url,
         )
 
         if not variants:
             variants = _extract_jsonld_variants(
                 product_response.text,
-                page_name,
+                item["name"],
                 product_url,
             )
 
@@ -1063,12 +989,6 @@ def search(query):
         )
 
         return final_results[:20]
-
-    # Critical: for a Limited Edition query, NEVER fall back to the base
-    # Liquid Brun candidate. If no product page was positively identified as
-    # Limited Edition, return no Deloox result.
-    if limited_query:
-        return []
 
     return [item for _, item in scored]
 
