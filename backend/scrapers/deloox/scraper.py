@@ -461,23 +461,31 @@ def _extract_category(html, query):
         ):
             continue
 
-        if not _matches_soft(
-            card_text,
-            query,
-            minimum=0.55,
-        ):
-            continue
-
-        card_tokens = set(_tokens(card_text))
         limited_query = {"limited", "edition"}.issubset(query_tokens)
+        card_tokens = set(_tokens(card_text))
 
         if limited_query:
+            # IMPORTANT:
+            # Deloox can show the Limited Edition inside the Liquid Brun
+            # category while the product card itself only says "Liquid Brun".
+            # The old generic 0.55 match rejected that card because only
+            # 2/4 query tokens were present. For a Limited Edition query,
+            # validate only the base product here; the variant is checked
+            # later on the actual product page.
             base_tokens = query_tokens - {"limited", "edition"}
+
             if not base_tokens.issubset(card_tokens):
                 continue
-            # The category card may only say "Liquid Brun". The exact
-            # Limited Edition check is done on the product page.
+
+            # Do not require "limited edition" in the category card.
         else:
+            if not _matches_soft(
+                card_text,
+                query,
+                minimum=0.55,
+            ):
+                continue
+
             if not query_tokens.issubset(card_tokens):
                 continue
 
@@ -901,8 +909,16 @@ def search(query):
         reverse=True,
     )
 
+    limited_query = {"limited", "edition"}.issubset(
+        set(_tokens(query))
+    )
+
     best_score = scored[0][0]
-    minimum_score = best_score - 45
+    minimum_score = (
+        float("-inf")
+        if limited_query
+        else best_score - 45
+    )
 
     final_results = []
     seen_variants = set()
@@ -966,6 +982,12 @@ def search(query):
         )
 
         return final_results[:20]
+
+    # NEVER return the base Liquid Brun card for a Limited Edition query.
+    # If the actual product page did not expose a Limited Edition variant,
+    # the correct result is no result.
+    if limited_query:
+        return []
 
     return [item for _, item in scored]
 
