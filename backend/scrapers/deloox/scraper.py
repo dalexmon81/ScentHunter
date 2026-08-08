@@ -432,6 +432,11 @@ def _extract_category(html, query):
         _tokens(query)
     )
 
+    limited_query = {
+        "limited",
+        "edition",
+    }.issubset(query_tokens)
+
     for link in soup.find_all(
         "a",
         href=True,
@@ -448,8 +453,11 @@ def _extract_category(html, query):
         if "/product/" not in product_url.lower():
             continue
 
-        # Controllo fondamentale contro prodotti estranei.
-        if not _url_matches_query(
+        # Normal searches keep the original URL guard.
+        # Limited Edition is different: Deloox's category URL is
+        # /liquid-brun.html and the product slug may not contain the
+        # words "limited edition".
+        if not limited_query and not _url_matches_query(
             product_url,
             query,
         ):
@@ -470,25 +478,43 @@ def _extract_category(html, query):
         ):
             continue
 
-        if not _matches_soft(
-            card_text,
-            query,
-            minimum=0.55,
-        ):
-            continue
-
         card_tokens = set(
             _tokens(card_text)
         )
 
-        if not query_tokens.issubset(card_tokens):
-            continue
+        if limited_query:
+            # For Limited Edition, the category card must contain the exact
+            # discriminator. This prevents the normal Liquid Brun card from
+            # ever being accepted for the Limited Edition query.
+            base_tokens = query_tokens - {
+                "limited",
+                "edition",
+            }
 
-        if not _is_relevant_product(
-            card_text,
-            query,
-        ):
-            continue
+            if not base_tokens.issubset(card_tokens):
+                continue
+
+            if not {
+                "limited",
+                "edition",
+            }.issubset(card_tokens):
+                continue
+        else:
+            if not _matches_soft(
+                card_text,
+                query,
+                minimum=0.55,
+            ):
+                continue
+
+            if not query_tokens.issubset(card_tokens):
+                continue
+
+            if not _is_relevant_product(
+                card_text,
+                query,
+            ):
+                continue
 
         price = _extract_price(card_text)
 
@@ -504,7 +530,17 @@ def _extract_category(html, query):
             )
         )
 
-        if (
+        if limited_query:
+            # The category card already exposes the exact Deloox product name,
+            # e.g. "French Avenue Liquid Brun Extrait de Parfum Limited edition".
+            if {
+                "limited",
+                "edition",
+            }.issubset(
+                set(_tokens(link_name))
+            ):
+                product_name = link_name
+        elif (
             link_name
             and not SIZE_FULL_RE.fullmatch(link_name)
             and _matches_soft(
@@ -901,7 +937,7 @@ def search(query):
         if product_url in seen_urls:
             continue
 
-        if not _url_matches_query(
+        if not limited_query and not _url_matches_query(
             product_url,
             query,
         ):
@@ -921,23 +957,25 @@ def search(query):
         return []
 
     if limited_query:
-        variant_candidates = [
+        # The category is the authoritative source for this variant.
+        # Return only cards whose actual product name contains the
+        # Limited Edition discriminator. Do not fall through to the
+        # normal-product fallback.
+        limited_results = [
             item
-            for item in scored
+            for _, item in scored
             if {
                 "limited",
                 "edition",
             }.issubset(
-                set(_tokens(item[1].get("name", "")))
+                set(_tokens(item.get("name", "")))
             )
         ]
 
-        # If the candidate name itself carries the requested variant,
-        # discard the base Liquid Brun candidates. Otherwise keep the
-        # original candidate list so the existing fallback behaviour is
-        # preserved.
-        if variant_candidates:
-            scored = variant_candidates
+        if not limited_results:
+            return []
+
+        return limited_results[:20]
 
     scored.sort(
         key=lambda item: item[0],
