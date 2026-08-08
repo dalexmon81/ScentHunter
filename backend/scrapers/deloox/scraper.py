@@ -455,6 +455,38 @@ def _extract_category(html, query):
             )
         )
 
+        # Deloox's Liquid Brun category currently contains the Limited
+        # Edition as a distinct product entry. In some page layouts the
+        # variant wording is attached to the link/nearby element rather than
+        # the element returned by _find_product_card(), so include both.
+        link_text = _clean(
+            link.get_text(
+                " ",
+                strip=True,
+            )
+        )
+
+        parent_text = ""
+        if link.parent:
+            parent_text = _clean(
+                link.parent.get_text(
+                    " ",
+                    strip=True,
+                )
+            )
+
+        combined_card_text = _clean(
+            " ".join(
+                part
+                for part in (
+                    card_text,
+                    link_text,
+                    parent_text,
+                )
+                if part
+            )
+        )
+
         if any(
             word in card_text.lower()
             for word in SOLD_OUT
@@ -462,7 +494,7 @@ def _extract_category(html, query):
             continue
 
         limited_query = {"limited", "edition"}.issubset(query_tokens)
-        card_tokens = set(_tokens(card_text))
+        card_tokens = set(_tokens(combined_card_text))
 
         if limited_query:
             # IMPORTANT:
@@ -477,7 +509,12 @@ def _extract_category(html, query):
             if not base_tokens.issubset(card_tokens):
                 continue
 
-            # Do not require "limited edition" in the category card.
+            # If the category itself exposes the exact variant, accept this
+            # candidate immediately. This avoids losing it before the product
+            # page is opened.
+            if not {"limited", "edition"}.issubset(card_tokens):
+                # Keep the candidate for product-page verification.
+                pass
         else:
             if not _matches_soft(
                 card_text,
@@ -502,23 +539,32 @@ def _extract_category(html, query):
 
         product_name = query
 
-        link_name = _clean(
-            link.get_text(
-                " ",
-                strip=True,
+        if limited_query:
+            # Prefer the exact Limited Edition wording visible on the
+            # category card/link.
+            limited_match = re.search(
+                r"([A-Za-z0-9'’&.-]+(?:\s+[A-Za-z0-9'’&.-]+){0,12}"
+                r"\s+Limited\s+edition)",
+                combined_card_text,
+                re.I,
             )
-        )
 
-        if (
-            link_name
-            and not SIZE_FULL_RE.fullmatch(link_name)
-            and _matches_soft(
-                link_name,
-                query,
-                minimum=0.55,
-            )
-        ):
-            product_name = link_name
+            if limited_match:
+                product_name = _clean(
+                    limited_match.group(1)
+                )
+
+        if product_name == query:
+            if (
+                link_text
+                and not SIZE_FULL_RE.fullmatch(link_text)
+                and _matches_soft(
+                    link_text,
+                    query,
+                    minimum=0.55,
+                )
+            ):
+                product_name = link_text
 
         if product_url in seen:
             continue
