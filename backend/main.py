@@ -191,8 +191,24 @@ def resolve_actual_price(product: Dict[str, Any]) -> Dict[str, Any]:
                 },
             )
             with urlopen(request, timeout=4) as response:
-                html = response.read().decode("utf-8", errors="ignore")
+                # Non tenere in RAM pagine enormi: per il prezzo strutturato
+                # ci basta una porzione iniziale della pagina.
+                chunks = []
+                total = 0
+                max_bytes = 2 * 1024 * 1024
+
+                while total < max_bytes:
+                    chunk = response.read(min(64 * 1024, max_bytes - total))
+                    if not chunk:
+                        break
+                    chunks.append(chunk)
+                    total += len(chunk)
+
+                html = b"".join(chunks).decode("utf-8", errors="ignore")
+                del chunks
+
             actual = _price_from_structured_html(html)
+            del html
             if actual is not None:
                 item["price"] = f"{actual:.2f} €"
                 item["price_value"] = actual
@@ -293,9 +309,9 @@ def run_store(store: str, query: str) -> List[Dict[str, Any]]:
             product = dict(item)
             product.setdefault("store", store)
 
-            # Prima filtriamo il risultato.
-            # Solo i prodotti pertinenti arrivano alla fase più pesante:
-            # apertura della pagina prodotto per recuperare il prezzo reale.
+            # Scarta subito i risultati non pertinenti.
+            # La parte pesante (apertura della pagina prodotto) viene eseguita
+            # solo sui prodotti che dobbiamo realmente mostrare.
             if not matches(product, query):
                 continue
 
@@ -309,7 +325,6 @@ def run_store(store: str, query: str) -> List[Dict[str, Any]]:
 
             seen.add(key)
 
-            # Recupera il prezzo reale solo dopo il filtro.
             product = resolve_actual_price(product)
             output.append(product)
 
@@ -352,11 +367,10 @@ def search_perfume(query: str) -> Dict[str, Any]:
     results: List[Dict[str, Any]] = []
     errors: Dict[str, str] = {}
 
-    # Render Free ha 512 MB di RAM.
-    # Teniamo al massimo 2 scraper attivi contemporaneamente per evitare
-    # che 8 scraper + richieste alle pagine prodotto consumino tutta la RAM.
+    # Render Free has only 512 MB RAM.
+    # Run one store at a time so the 8 scrapers never occupy memory together.
     executor = ThreadPoolExecutor(
-        max_workers=2,
+        max_workers=1,
         thread_name_prefix="scent-store",
     )
     future_to_store = {
@@ -364,7 +378,7 @@ def search_perfume(query: str) -> Dict[str, Any]:
         for store in STORES
     }
 
-    done, not_done = wait(future_to_store, timeout=30)
+    done, not_done = wait(future_to_store, timeout=90)
 
     for future in done:
         store = future_to_store[future]
@@ -378,13 +392,12 @@ def search_perfume(query: str) -> Dict[str, Any]:
         errors[store] = "timeout"
         future.cancel()
 
-    # I Future conservano internamente il loro risultato.
-    # Liberiamo subito la mappa prima dell'ordinamento finale.
+    executor.shutdown(wait=False, cancel_futures=True)
+
+    # Release Future references before building the final response.
     future_to_store.clear()
     done = None
     not_done = None
-
-    executor.shutdown(wait=False, cancel_futures=True)
 
     results = sort_by_price(unique_results(results))
 
