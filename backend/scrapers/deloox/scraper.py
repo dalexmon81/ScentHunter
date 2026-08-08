@@ -1,5 +1,6 @@
 import json
 import re
+import time
 from urllib.parse import urljoin
 
 import requests
@@ -10,6 +11,8 @@ STORE = "Deloox"
 BASE_URL = "https://www.deloox.com"
 HOME_URL = f"{BASE_URL}/en"
 TIMEOUT = 10
+MAX_PRODUCT_PAGES = 6
+PRODUCT_REQUEST_DELAY = 0.20
 
 HEADERS = {
     "User-Agent": (
@@ -97,7 +100,7 @@ CATEGORY_FALLBACKS = (
     (
         ("le", "beau", "le", "parfum"),
         "https://www.deloox.com/category/"
-        "1072906/jean-paul-gaultier-fragrances.html",
+        "1084243/le-beau-le-parfum.html",
     ),
     (
         ("jean", "paul", "gaultier"),
@@ -235,6 +238,14 @@ def _get(session, url):
             allow_redirects=True,
         )
 
+        if response.status_code in (403, 429):
+            print(
+                f"DELOOX BLOCKED ({response.status_code}): {url}"
+            )
+            response.close()
+            setattr(session, "_scenthunter_blocked", True)
+            return None
+
         response.raise_for_status()
         return response
 
@@ -296,8 +307,11 @@ def _find_brand_category(session, query):
     if response is None:
         return None
 
+    html = response.text
+    response.close()
+
     soup = BeautifulSoup(
-        response.text,
+        html,
         "html.parser",
     )
 
@@ -835,6 +849,7 @@ def search(query):
     )
 
     if not category_url:
+        session.close()
         return []
 
     response = _get(
@@ -843,20 +858,25 @@ def search(query):
     )
 
     if response is None:
+        session.close()
         return []
 
+    category_html = response.text
+    response.close()
+
     candidates = _extract_category(
-        response.text,
+        category_html,
         query,
     )
 
     if not candidates:
         candidates = _extract_brand_page(
-            response.text,
+            category_html,
             query,
         )
 
     if not candidates:
+        session.close()
         return []
 
     scored = []
@@ -887,6 +907,7 @@ def search(query):
         ))
 
     if not scored:
+        session.close()
         return []
 
     scored.sort(
@@ -899,9 +920,16 @@ def search(query):
 
     final_results = []
     seen_variants = set()
+    product_pages_checked = 0
 
     for score, item in scored:
         if score < minimum_score:
+            break
+
+        if product_pages_checked >= MAX_PRODUCT_PAGES:
+            break
+
+        if getattr(session, "_scenthunter_blocked", False):
             break
 
         product_url = item["url"].split(
@@ -914,17 +942,23 @@ def search(query):
         )
 
         if product_response is None:
+            if getattr(session, "_scenthunter_blocked", False):
+                break
             continue
 
+        product_pages_checked += 1
+        product_html = product_response.text
+        product_response.close()
+
         variants = _extract_product_variants(
-            product_response.text,
+            product_html,
             item["name"],
             product_url,
         )
 
         if not variants:
             variants = _extract_jsonld_variants(
-                product_response.text,
+                product_html,
                 item["name"],
                 product_url,
             )
@@ -941,6 +975,11 @@ def search(query):
 
             seen_variants.add(key)
             final_results.append(variant)
+
+        if product_pages_checked < MAX_PRODUCT_PAGES:
+            time.sleep(PRODUCT_REQUEST_DELAY)
+
+    session.close()
 
     if final_results:
         final_results.sort(
