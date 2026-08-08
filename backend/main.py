@@ -12,7 +12,7 @@ import traceback
 from concurrent.futures import ThreadPoolExecutor, TimeoutError, wait
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
-from urllib.parse import urlencode, quote_plus
+from urllib.parse import urlencode
 from urllib.request import Request, urlopen
 from urllib.error import HTTPError, URLError
 
@@ -272,124 +272,6 @@ def build_search_attempts(store: str, query: str) -> List[str]:
     return attempts
 
 
-
-
-def _bplatz_direct_fallback(query: str) -> List[Dict[str, Any]]:
-    """
-    Fallback Bplatz indipendente dallo scraper.
-    Se sitemap/catalogo non restituisce candidati, prova direttamente
-    la ricerca Shopify di Bplatz e legge le pagine prodotto.
-    """
-    query = str(query or "").strip()
-    if not query:
-        return []
-
-    headers = {
-        "Accept": "text/html,application/xhtml+xml,application/json",
-        "Accept-Language": "en-US,en;q=0.9",
-        "User-Agent": (
-            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
-            "AppleWebKit/537.36 (KHTML, like Gecko) "
-            "Chrome/131.0 Safari/537.36"
-        ),
-    }
-
-    bases = (
-        "https://en.bplatz.de",
-        "https://bplatz.de",
-    )
-
-    def clean_url(href: str, base: str) -> Optional[str]:
-        href = unescape(str(href or "").strip())
-        if not href:
-            return None
-        if href.startswith("/"):
-            href = base.rstrip("/") + href
-        elif href.startswith("products/"):
-            href = base.rstrip("/") + "/" + href
-        if not href.startswith("http"):
-            return None
-        return href.split("#", 1)[0].split("?", 1)[0]
-
-    def product_from_page(url: str) -> Optional[Dict[str, Any]]:
-        try:
-            request = Request(url, headers=headers)
-            with urlopen(request, timeout=5) as response:
-                html = response.read().decode("utf-8", errors="ignore")
-        except Exception:
-            return None
-
-        title = ""
-        m = re.search(
-            r'<meta[^>]+property=["\']og:title["\'][^>]+content=["\']([^"\']+)',
-            html,
-            re.I,
-        )
-        if m:
-            title = unescape(m.group(1)).strip()
-
-        if not title:
-            m = re.search(r"<h1[^>]*>(.*?)</h1>", html, re.I | re.S)
-            if m:
-                title = re.sub(r"<[^>]+>", " ", m.group(1))
-                title = re.sub(r"\s+", " ", unescape(title)).strip()
-
-        if not title or not matches({"name": title}, query):
-            return None
-
-        lower = html.lower()
-        if any(marker in lower for marker in (
-            '"availability":"http://schema.org/outofstock"',
-            '"availability":"https://schema.org/outofstock"',
-            "sold out",
-            "out of stock",
-        )):
-            return None
-
-        price = _price_from_structured_html(html)
-        if price is None:
-            return None
-
-        return {
-            "store": "bplatz",
-            "name": title,
-            "price": f"{price:.2f} €",
-            "url": url,
-        }
-
-    for base in bases:
-        search_url = f"{base}/search?q={quote_plus(query)}&type=product"
-
-        try:
-            request = Request(search_url, headers=headers)
-            with urlopen(request, timeout=5) as response:
-                html = response.read().decode("utf-8", errors="ignore")
-        except Exception:
-            continue
-
-        hrefs = re.findall(
-            r'href=["\']([^"\']*/products/[^"\']+)["\']',
-            html,
-            re.I,
-        )
-
-        urls = []
-        seen = set()
-        for href in hrefs:
-            url = clean_url(href, base)
-            if not url or "/products/" not in url.lower() or url in seen:
-                continue
-            seen.add(url)
-            urls.append(url)
-
-        for url in urls[:12]:
-            item = product_from_page(url)
-            if item:
-                return [item]
-
-    return []
-
-
 def run_store(store: str, query: str) -> List[Dict[str, Any]]:
     module = load_scraper(store)
     search_fn = getattr(module, "search", None)
@@ -403,13 +285,6 @@ def run_store(store: str, query: str) -> List[Dict[str, Any]]:
 
     for attempt in attempts:
         results = search_fn(attempt) or []
-
-        # Bplatz: se lo scraper non trova nulla, prova direttamente
-        # la ricerca Shopify del negozio.
-        if store == "bplatz" and not results:
-            fallback_results = _bplatz_direct_fallback(attempt)
-            if fallback_results:
-                results = fallback_results
 
         for item in results:
             if not isinstance(item, dict):
