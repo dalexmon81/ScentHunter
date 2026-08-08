@@ -257,9 +257,6 @@ def build_search_attempts(store: str, query: str) -> List[str]:
     normalized_query = norm(query)
 
     if store == "bplatz":
-        # Bplatz can index the product under the exact perfume name, while
-        # its visible title may include the brand/house. Keep the exact query
-        # first, then use progressively broader searches.
         compact = re.sub(
             r"(?<=\d)\s+(?=[a-z])|(?<=[a-z])\s+(?=\d)",
             "",
@@ -267,21 +264,6 @@ def build_search_attempts(store: str, query: str) -> List[str]:
         )
         if compact and compact not in attempts:
             attempts.append(compact)
-
-        # Search the significant tokens separately. This is important when
-        # Shopify's product handle does not contain every word of the query.
-        for token in normalized_query.split():
-            if token and token not in attempts:
-                attempts.append(token)
-
-    elif store == "deloox":
-        # Deloox's catalogue/search layer may require the house/brand to
-        # resolve a product page. The original query remains first so normal
-        # searches are unchanged; the enriched attempt is only a fallback.
-        if normalized_query:
-            enriched = f"french avenue {normalized_query}"
-            if enriched not in attempts:
-                attempts.append(enriched)
 
         for token in normalized_query.split():
             if token and token not in attempts:
@@ -324,37 +306,6 @@ def run_store(store: str, query: str) -> List[Dict[str, Any]]:
 
             if matches(product, query):
                 output.append(product)
-                continue
-
-            # Some store pages prepend/translate the house name or format
-            # the product title differently. Do not weaken the global matcher;
-            # only retry the two problematic stores with a token-based check
-            # against the product URL/title. This cannot admit gift sets,
-            # testers, deodorants, etc.
-            if store in {"bplatz", "deloox"}:
-                name_text = norm(
-                    " ".join(
-                        str(product.get(key) or "")
-                        for key in ("name", "title", "product_name", "url")
-                    )
-                )
-                query_tokens = {
-                    token for token in norm(query).split()
-                    if token not in IGNORED_WORDS
-                }
-
-                if (
-                    query_tokens
-                    and query_tokens.issubset(set(name_text.split()))
-                    and not any(
-                        set(norm(phrase).split()).issubset(set(name_text.split()))
-                        and not set(norm(phrase).split()).issubset(
-                            set(norm(query).split())
-                        )
-                        for phrase in NON_PERFUME
-                    )
-                ):
-                    output.append(product)
 
     return output
 
