@@ -385,35 +385,58 @@ function shGroupData(data){
     n=n.replace(/\b(french avenue|rasasi)\b/gi," ");
     n=n.replace(/\b(by|de|unisex|x)\b/gi," ");
 
-    // CASO SPECIALE: Liquid Brun.
-    // I negozi lo descrivono in modi diversi ("Parfum", "Extrait",
-    // "by French Avenue", ecc.), ma per ScentHunter devono diventare
-    // sempre le stesse 3 famiglie: Liquid Brun, Liquid Brun Limited Edition
-    // e Mystery Box Liquid Brun.
-    const compact=n.replace(/\s+/g," ").trim();
-    if(/\bliquid\s+brun\b/i.test(compact)){
-      const isMystery=/\bmystery\s+box\b/i.test(compact);
-      const isLimited=/\blimited\s+edition\b/i.test(compact);
-      if(isMystery) return "mystery box liquid brun";
-      if(isLimited) return "liquid brun limited edition";
-      return "liquid brun";
-    }
-
     // Mantiene l'ORDINE ORIGINALE delle parole.
     // Niente .sort(): il titolo non viene più trasformato in
     // "Beau Gaultier Jean Le Parfum".
     return n.replace(/[^a-z0-9]+/gi," ").replace(/\s+/g," ").trim();
   }
 
+  // Raggruppamento speciale per la famiglia Liquid Brun.
+  // Deloox/negozi possono scrivere lo stesso profumo in modi diversi:
+  // "Liquid Brun French Avenue", "French Avenue Liquid Brun",
+  // "Liquid Brun ... Parfum", ecc.
+  // Qui vogliamo ESATTAMENTE 3 categorie:
+  // 1) Liquid Brun
+  // 2) Liquid Brun Limited Edition
+  // 3) Mystery Box Liquid Brun
+  function liquidBrunFamily(o){
+    const raw=String(o.name||"").toLowerCase();
+    const brand=String(o.brand||"").toLowerCase();
+    const s=(brand+" "+raw).replace(/[^a-z0-9]+/gi," ").replace(/\s+/g," ").trim();
+
+    if(!/liquid\s+brun/.test(s)) return "";
+
+    if(/mystery\s+box/.test(s)){
+      return "mystery box liquid brun";
+    }
+
+    if(/limited\s+edition/.test(s)){
+      return "liquid brun limited edition";
+    }
+
+    return "liquid brun";
+  }
+
   function groupingName(o){
-    // La chiave può ignorare l'ordine per unire lo stesso prodotto scritto
-    // diversamente dai negozi, ma NON viene mai usata come titolo visibile.
+    // Per Liquid Brun usiamo una chiave fissa di famiglia:
+    // il formato (100/150 ml o assente) NON crea una nuova categoria.
+    const lb=liquidBrunFamily(o);
+    if(lb) return lb;
+
+    // Per tutti gli altri profumi manteniamo il raggruppamento esistente.
     const n=canonicalName(o);
     const tokens=n.split(" ").filter(Boolean);
     return [...new Set(tokens)].sort().join(" ");
   }
 
   function displayName(o,size){
+    const lb=liquidBrunFamily(o);
+    if(lb){
+      if(lb==="mystery box liquid brun") return "Mystery Box Liquid Brun";
+      if(lb==="liquid brun limited edition") return "Liquid Brun Limited Edition";
+      return "Liquid Brun";
+    }
+
     let n=normalizePerfumeName(o.name||"Profumo").trim();
     n=n.replace(/\b\d{1,4}\s*ml\b/gi," ").replace(/\s+/g," ").trim();
     const brand=normalizePerfumeName(o.brand||"").trim();
@@ -436,10 +459,11 @@ function shGroupData(data){
     const groupName=groupingName(o);
     if(!cname||!groupName)return;
     const size=sizeOf(o);
-    // Ogni formato è un prodotto distinto.
-    // 30 ml, 50 ml, 100 ml ecc. NON devono mai finire nella stessa scheda.
-    // Se il formato non è dichiarato, resta in un gruppo separato "unknown".
-    const key=groupName+"|"+(size||"unknown");
+    // Per Liquid Brun il formato NON deve creare una categoria separata:
+    // 100 ml e formato non dichiarato appartengono alla stessa famiglia,
+    // così come 150 ml e formato non dichiarato per la Limited Edition.
+    const lb=liquidBrunFamily(o);
+    const key=groupName+"|"+(lb ? "liquid-brun-family" : (size||"unknown"));
 
     if(!map.has(key)){
       map.set(key,{
