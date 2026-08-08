@@ -5,6 +5,7 @@ from fastapi.responses import FileResponse
 
 import importlib
 import json
+from html import unescape
 import os
 import re
 import traceback
@@ -53,13 +54,8 @@ NON_PERFUME = {
 }
 
 IGNORED_WORDS = {
-    "eau",
-    "de",
-    "edp",
-    "edt",
-    "ml",
-    "for",
-    "by",
+    "eau", "de", "parfum", "perfume", "edp", "edt",
+    "extrait", "spray", "ml", "for", "by",
 }
 
 
@@ -89,162 +85,160 @@ def product_image(product: Dict[str, Any]) -> str:
     )
 
 
-def matches(product: Dict[str, Any], query: str) -> bool:
-    name_tokens = set(norm(product.get("name", "")).split())
-    url_tokens = set(norm(product.get("url", "")).split())
-    query_normalized = norm(query)
+def _product_size_ml(product: Dict[str, Any]) -> Optional[float]:
+    text = " ".join(
+        str(product.get(key) or "")
+        for key in ("name", "title", "product_name", "size_ml", "size")
+    )
+    match = re.search(r"\b(\d{1,4}(?:[.,]\d+)?)\s*ml\b", text, re.I)
+    if not match:
+        return None
+    try:
+        return float(match.group(1).replace(",", "."))
+    except ValueError:
+        return None
 
-    if not name_tokens:
-        return False
 
-    query_all_tokens = set(query_normalized.split())
+def _price_from_structured_html(html: str) -> Optional[float]:
+    """
+    Cerca il PREZZO REALE di vendita nella pagina prodotto.
+    Preferisce dati strutturati (JSON-LD/meta) rispetto al prezzo per 100 ml.
+    Funziona trasversalmente sui negozi che espongono il prezzo standard web.
+    """
+    html = unescape(html or "")
 
-    for phrase in NON_PERFUME:
-        phrase_tokens = set(norm(phrase).split())
-        if (
-            phrase_tokens
-            and phrase_tokens.issubset(name_tokens)
-            and not phrase_tokens.issubset(query_all_tokens)
-        ):
-            return False
-
-    query_tokens = {
-        token
-        for token in query_all_tokens
-        if token not in IGNORED_WORDS
-    }
-
-    if not query_tokens:
-        query_tokens = query_all_tokens
-
-    if not query_tokens:
-        return False
-
-    return all(
-        token in name_tokens or token in url_tokens
-        for token in query_tokens
+    # 1) JSON-LD: Product -> offers -> price.
+    scripts = re.findall(
+        r'<script[^>]+type=["\']application/ld\+json["\'][^>]*>(.*?)</script>',
+        html,
+        re.I | re.S,
     )
 
+    def walk(value):
+        if isinstance(value, dict):
+            offers = value.get("offers")
+            if isinstance(offers, dict):
+                for key in ("price", "lowPrice"):
+                    n = price_num(offers.get(key))
+                    if n is not None:
+                        yield n
+            elif isinstance(offers, list):
+                for offer in offers:
+                    if isinstance(offer, dict):
+                        for key in ("price", "lowPrice"):
+                            n = price_num(offer.get(key))
+                            if n is not None:
+                                yield n
+            # Alcuni negozi mettono direttamente price nel Product.
+            if str(value.get("@type", "")).lower() == "product":
+                n = price_num(value.get("price"))
+                if n is not None:
+                    yield n
+            for child in value.values():
+                yield from walk(child)
+        elif isinstance(value, list):
+            for child in value:
+                yield from walk(child)
 
-def canonicalize_product(product: Dict[str, Any], query: str) -> Dict[str, Any]:
+    for raw in scripts:
+        try:
+            payload = json.loads(raw.strip())
+        except Exception:
+            continue
+        prices = list(walk(payload))
+        if prices:
+            # Il primo prezzo Product/Offer è quello più affidabile; non usiamo
+            # i prezzi aggregati di comparatori esterni presenti nella pagina.
+            return prices[0]
+
+    # 2) Meta tag comuni di Shopify/WooCommerce/OpenGraph.
+    patterns = [
+        r'<meta[^>]+(?:property|name)=["\'](?:product:price:amount|og:price:amount)["\'][^>]+content=["\']([^"\']+)',
+        r'<meta[^>]+itemprop=["\']price["\'][^>]+content=["\']([^"\']+)',
+    ]
+    for pattern in patterns:
+        match = re.search(pattern, html, re.I)
+        if match:
+            n = price_num(match.group(1))
+            if n is not None:
+                return n
+
+    return None
+
+
+def resolve_actual_price(product: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    Normalizza il prezzo mostrato da ScentHunter al prezzo realmente pagabile.
+
+    Problema risolto: alcuni scraper possono intercettare il prezzo unitario
+    (es. 26,66 €/100 ml) invece del prezzo della confezione (es. 39,99 €).
+    Prima prova la pagina prodotto; solo se non è disponibile usa il calcolo
+    da prezzo unitario quando il campo lo dichiara esplicitamente.
+    """
     item = dict(product)
+    raw_price = str(item.get("price") or "").strip()
+    size = _product_size_ml(item)
 
-    original_name = str(item.get("name", "") or "")
-    original_url = str(item.get("url", "") or "")
-    source = norm(f"{original_name} {original_url}")
-    query_n = norm(query)
+    # Se la pagina è disponibile, il prezzo strutturato è la fonte primaria.
+    url = str(item.get("url") or "").strip()
+    if url and size and abs(size - 100.0) > 0.01:
+        try:
+            request = Request(
+                url,
+                headers={
+                    "Accept": "text/html,application/xhtml+xml",
+                    "User-Agent": "Mozilla/5.0 (compatible; ScentHunter/1.0)",
+                },
+            )
+            with urlopen(request, timeout=4) as response:
+                html = response.read().decode("utf-8", errors="ignore")
+            actual = _price_from_structured_html(html)
+            if actual is not None:
+                item["price"] = f"{actual:.2f} €"
+                item["price_value"] = actual
+                return item
+        except Exception:
+            pass
 
-    if "beau" not in source:
-        return item
+    # Fallback sicuro: converti SOLO quando il testo dichiara esplicitamente
+    # che il valore è un prezzo unitario per 100 ml.
+    unit_match = re.search(r"(?:/|per\s*)100\s*ml", raw_price, re.I)
+    if unit_match and size and size > 0:
+        unit = price_num(raw_price[:unit_match.start()])
+        if unit is not None:
+            actual = round(unit * size / 100.0, 2)
+            item["price"] = f"{actual:.2f} €"
+            item["price_value"] = actual
 
-    is_le_beau_family = (
-        "le beau" in source
-        or "le beau" in query_n
-        or (
-            "gaultier" in source
-            and "beau" in source
-        )
-    )
-
-    if not is_le_beau_family:
-        return item
-
-    size = ""
-    size_match = re.search(
-        r"\b(\d{1,3}(?:[.,]\d+)?)\s*ml\b",
-        original_name,
-        re.I,
-    )
-
-    if not size_match:
-        size_match = re.search(
-            r"(?:^|[-_/])(\d{1,3}(?:[.,]\d+)?)[-_]?ml(?:[.\-_/]|$)",
-            original_url,
-            re.I,
-        )
-
-    if size_match:
-        size = size_match.group(1).replace(",", ".") + " ml"
-
-    if (
-        ("paradise" in source and "garden" in source)
-        or "paradisegarden" in source
-    ):
-        canonical = "Jean Paul Gaultier Le Beau Paradise Garden"
-        variant_rank = 1
-
-    elif (
-        "flower edition" in source
-        or "floweredition" in source
-        or ("flower" in source and "edition" in source)
-        or "fleur" in source
-    ):
-        canonical = "Jean Paul Gaultier Le Beau Flower Edition"
-        variant_rank = 2
-
-    elif (
-        "le beau le parfum" in source
-        or "le-beau-le-parfum" in original_url.lower()
-        or (
-            "le beau" in source
-            and "parfum intense" in source
-        )
-        or (
-            "le beau" in source
-            and "intense" in source
-            and "paradise" not in source
-            and "flower" not in source
-            and "fleur" not in source
-        )
-    ):
-        canonical = "Jean Paul Gaultier Le Beau Le Parfum"
-        variant_rank = 0
-
-    elif "le beau" in source:
-        canonical = "Jean Paul Gaultier Le Beau"
-        variant_rank = 3
-
-    else:
-        return item
-
-    item["name"] = f"{canonical} {size}".strip()
-    item["_variant_rank"] = variant_rank
     return item
 
 
-def result_sort_key(product: Dict[str, Any], query: str):
-    name_n = norm(product.get("name", ""))
-    query_n = norm(query)
+def matches(product: Dict[str, Any], query: str) -> bool:
+    name = norm(product.get("name", ""))
+    query_normalized = norm(query)
 
-    if "le beau le parfum" in query_n:
-        if "le beau le parfum" in name_n:
-            family_rank = 0
-        elif "paradise garden" in name_n:
-            family_rank = 1
-        elif "flower edition" in name_n:
-            family_rank = 2
-        elif "le beau" in name_n:
-            family_rank = 3
-        else:
-            family_rank = 9
-    else:
-        family_rank = int(product.get("_variant_rank", 9))
+    if not name:
+        return False
 
-    size_match = re.search(
-        r"\b(\d{1,3}(?:[.,]\d+)?)\s*ml\b",
-        name_n,
-    )
-    size = (
-        float(size_match.group(1).replace(",", "."))
-        if size_match
-        else 9999.0
-    )
+    for phrase in VARIANTS:
+        p = norm(phrase)
+        if p in name and p not in query_normalized:
+            return False
 
-    price = price_num(product.get("price"))
-    if price is None:
-        price = float("inf")
+    for phrase in NON_PERFUME:
+        p = norm(phrase)
+        if p in name and p not in query_normalized:
+            return False
 
-    return (family_rank, size, price)
+    tokens = [
+        token for token in query_normalized.split()
+        if token not in IGNORED_WORDS
+    ]
+
+    if not tokens:
+        return False
+
+    return all(token in name for token in tokens)
 
 
 def load_scraper(store: str):
@@ -264,53 +258,49 @@ def build_search_attempts(store: str, query: str) -> List[str]:
         if compact and compact not in attempts:
             attempts.append(compact)
 
+        for token in normalized_query.split():
+            if token and token not in attempts:
+                attempts.append(token)
+
     return attempts
 
 
 def run_store(store: str, query: str) -> List[Dict[str, Any]]:
-    try:
-        module = load_scraper(store)
-        search_fn = getattr(module, "search", None)
+    module = load_scraper(store)
+    search_fn = getattr(module, "search", None)
 
-        if not callable(search_fn):
-            raise RuntimeError(f"{store}: scraper senza funzione search()")
+    if not callable(search_fn):
+        raise RuntimeError(f"{store}: scraper senza funzione search()")
 
-        attempts = build_search_attempts(store, query)
-        output: List[Dict[str, Any]] = []
-        seen = set()
+    attempts = build_search_attempts(store, query)
+    output: List[Dict[str, Any]] = []
+    seen = set()
 
-        for attempt in attempts:
-            try:
-                results = search_fn(attempt) or []
-            except Exception as error:
-                print(f"[{store}] errore nella query {attempt!r}: {error}")
+    for attempt in attempts:
+        results = search_fn(attempt) or []
+
+        for item in results:
+            if not isinstance(item, dict):
                 continue
 
-            for item in results:
-                if not isinstance(item, dict):
-                    continue
+            product = dict(item)
+            product.setdefault("store", store)
+            product = resolve_actual_price(product)
 
-                product = dict(item)
-                product.setdefault("store", store)
+            key = (
+                str(product.get("url", "")).lower(),
+                norm(product.get("name", "")),
+            )
 
-                key = (
-                    str(product.get("url", "")).lower(),
-                    norm(product.get("name", "")),
-                )
+            if key in seen:
+                continue
 
-                if key in seen:
-                    continue
+            seen.add(key)
 
-                seen.add(key)
+            if matches(product, query):
+                output.append(product)
 
-                if matches(product, query):
-                    output.append(product)
-
-        return output
-
-    except Exception as error:
-        print(f"[{store}] errore caricamento scraper: {type(error).__name__}: {error}")
-        raise
+    return output
 
 
 def unique_results(products: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
@@ -358,30 +348,23 @@ def search_perfume(query: str) -> Dict[str, Any]:
         for store in STORES
     }
 
-    try:
-        done, not_done = wait(future_to_store, timeout=30)
+    done, not_done = wait(future_to_store, timeout=30)
 
-        for future in done:
-            store = future_to_store[future]
-            try:
-                results.extend(future.result() or [])
-            except Exception as exc:
-                errors[store] = str(exc) or exc.__class__.__name__
+    for future in done:
+        store = future_to_store[future]
+        try:
+            results.extend(future.result() or [])
+        except Exception as exc:
+            errors[store] = str(exc) or exc.__class__.__name__
 
-        for future in not_done:
-            store = future_to_store[future]
-            errors[store] = "timeout"
-            future.cancel()
+    for future in not_done:
+        store = future_to_store[future]
+        errors[store] = "timeout"
+        future.cancel()
 
-    finally:
-        executor.shutdown(wait=False, cancel_futures=True)
+    executor.shutdown(wait=False, cancel_futures=True)
 
-    results = unique_results(results)
-    results = [canonicalize_product(product, query) for product in results]
-    results = sorted(results, key=lambda product: result_sort_key(product, query))
-
-    for product in results:
-        product.pop("_variant_rank", None)
+    results = sort_by_price(unique_results(results))
 
     return {
         "query": query,
