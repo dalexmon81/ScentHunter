@@ -193,10 +193,21 @@ def _parse_html(text, query):
 
 
 def _get(session, url, **kwargs):
-    r = session.get(url, headers=HEADERS, timeout=TIMEOUT, allow_redirects=True, **kwargs)
+    r = session.get(
+        url,
+        headers=HEADERS,
+        timeout=TIMEOUT,
+        allow_redirects=True,
+        **kwargs,
+    )
+
+    if r.status_code in (403, 429):
+        print(f"SABINA BLOCKED: HTTP {r.status_code}")
+        r.close()
+        return None
+
     r.raise_for_status()
     return r
-
 
 def search(query):
     """
@@ -215,6 +226,7 @@ def search(query):
         return []
 
     s = requests.Session()
+    s.headers.update(HEADERS)
     results = []
 
     # Crea cookie/sessione come un browser normale.
@@ -229,52 +241,105 @@ def search(query):
         BASE + "/it/ricerca_old?search_query=" + quote_plus(query),
     ]
 
-    for url in urls:
-        try:
-            r = _get(s, url)
-            results.extend(_parse_html(r.text, query))
-            if results:
-                return _dedupe(results, query)
-        except Exception:
-            continue
-
-    # Il file reale di Sabina dichiara questo endpoint:
-    # /modules/ecelastic/ajax.php
-    # Proviamo sia GET sia POST e più nomi-parametro usati dalle versioni Prestashop.
-    ajax_url = BASE + "/modules/ecelastic/ajax.php"
-    payloads = [
-        {"q": query, "query": query, "search_query": query, "id_lang": 5, "id_country": 10, "id_currency": 1},
-        {"s": query, "search_query": query, "id_lang": 5, "id_country": 10, "id_currency": 1},
-        {"query": query, "id_lang": 5, "id_country": 10, "id_currency": 1},
-    ]
-
-    for payload in payloads:
-        for method in ("get", "post"):
+    try:
+        for url in urls:
             try:
-                fn = getattr(s, method)
-                if method == "get":
-                    r = fn(ajax_url, params=payload, headers=HEADERS, timeout=TIMEOUT)
-                else:
-                    r = fn(ajax_url, data=payload, headers={
-                        **HEADERS,
-                        "X-Requested-With": "XMLHttpRequest",
-                    }, timeout=TIMEOUT)
+                r = _get(s, url)
 
-                if not r.ok or not r.text.strip():
-                    continue
+                # 403/429 significa che Sabina ci sta bloccando:
+                # non passiamo subito a un'altra ricerca equivalente.
+                if r is None:
+                    break
 
-                try:
-                    data = r.json()
-                    rows = _walk_json(data, query)
-                except Exception:
-                    rows = _parse_html(r.text, query)
+                html = r.text
+                r.close()
 
-                if rows:
-                    return rows
+                parsed = _parse_html(html, query)
+                results.extend(parsed)
+
+                if results:
+                    return _dedupe(results, query)
             except Exception:
                 continue
 
-    return []
+        # Endpoint ecelastic: manteniamo i payload/metodi originali,
+        # ma interrompiamo subito in caso di 403/429.
+        ajax_url = BASE + "/modules/ecelastic/ajax.php"
+        payloads = [
+            {
+                "q": query,
+                "query": query,
+                "search_query": query,
+                "id_lang": 5,
+                "id_country": 10,
+                "id_currency": 1,
+            },
+            {
+                "s": query,
+                "search_query": query,
+                "id_lang": 5,
+                "id_country": 10,
+                "id_currency": 1,
+            },
+            {
+                "query": query,
+                "id_lang": 5,
+                "id_country": 10,
+                "id_currency": 1,
+            },
+        ]
+
+        for payload in payloads:
+            for method in ("get", "post"):
+                try:
+                    fn = getattr(s, method)
+
+                    if method == "get":
+                        r = fn(
+                            ajax_url,
+                            params=payload,
+                            headers=HEADERS,
+                            timeout=TIMEOUT,
+                        )
+                    else:
+                        r = fn(
+                            ajax_url,
+                            data=payload,
+                            headers={
+                                **HEADERS,
+                                "X-Requested-With": "XMLHttpRequest",
+                            },
+                            timeout=TIMEOUT,
+                        )
+
+                    if r.status_code in (403, 429):
+                        print(f"SABINA AJAX BLOCKED: HTTP {r.status_code}")
+                        r.close()
+                        return []
+
+                    if not r.ok or not r.text.strip():
+                        r.close()
+                        continue
+
+                    response_text = r.text
+                    r.close()
+
+                    try:
+                        data = json.loads(response_text)
+                        rows = _walk_json(data, query)
+                    except Exception:
+                        rows = _parse_html(response_text, query)
+
+                    if rows:
+                        return rows
+
+                except Exception:
+                    continue
+
+        return []
+
+    finally:
+        s.close()
 
 
 # Alias compatibili con gli altri scraper del progetto.
