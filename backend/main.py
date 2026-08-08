@@ -3,8 +3,10 @@ from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 
+import gc
 import importlib
 import json
+import sys
 import os
 import re
 import traceback
@@ -265,7 +267,14 @@ def run_store(
 ) -> List[Dict[str, Any]]:
     """
     Esegue la ricerca su un singolo negozio.
+
+    Versione RAM-safe:
+    - un solo scraper alla volta;
+    - rilascia subito i risultati intermedi;
+    - forza il garbage collector dopo ogni tentativo;
+    - non mantiene il modulo scraper in memoria dopo la ricerca.
     """
+    module_name = f"scrapers.{store}.scraper"
     module = load_scraper(store)
 
     attempts = build_search_attempts(
@@ -276,41 +285,52 @@ def run_store(
     output: List[Dict[str, Any]] = []
     seen = set()
 
-    for attempt in attempts:
+    try:
+        for attempt in attempts:
+            results = module.search(attempt) or []
 
-        results = module.search(attempt) or []
+            try:
+                for item in results:
+                    if not isinstance(item, dict):
+                        continue
 
-        for item in results:
+                    product = dict(item)
+                    product.setdefault(
+                        "store",
+                        store,
+                    )
 
-            if not isinstance(item, dict):
-                continue
+                    key = (
+                        str(product.get("url", "")).lower(),
+                        norm(product.get("name", "")),
+                    )
 
-            product = dict(item)
+                    if key in seen:
+                        continue
 
-            product.setdefault(
-                "store",
-                store,
-            )
+                    seen.add(key)
 
-            key = (
-                str(product.get("url", "")).lower(),
-                norm(product.get("name", "")),
-            )
+                    if matches(product, query):
+                        output.append(product)
+            finally:
+                # Il risultato grezzo può contenere strutture HTML/BeautifulSoup
+                # molto più pesanti dei piccoli dict che conserviamo.
+                del results
+                gc.collect()
+    finally:
+        # Alcuni scraper mantengono oggetti pesanti a livello di modulo.
+        # Rimuovendoli da sys.modules permettiamo al GC di liberarli prima
+        # del passaggio al negozio successivo.
+        try:
+            sys.modules.pop(module_name, None)
+        except Exception:
+            pass
 
-            if key in seen:
-                continue
-
-            seen.add(key)
-
-            if matches(product, query):
-                output.append(product)
+        del module
+        gc.collect()
 
     return output
 
-
-# ============================================================
-# DEDUPLICAZIONE E ORDINAMENTO
-# ============================================================
 
 def unique_results(
     products: List[Dict[str, Any]],
@@ -525,11 +545,23 @@ def search_perfume(q: str):
         try:
             store_results = run_store(store, query)
             all_results.extend(store_results)
+
+            # Importante su hosting con RAM limitata:
+            # libera subito la memoria dello scraper appena terminato.
+            del store_results
+            gc.collect()
+
         except Exception as error:
             errors[store] = f"{type(error).__name__}: {error}"
             traceback.print_exc()
+            gc.collect()
 
     results = unique_results(all_results)
+
+    # A questo punto non servono più i riferimenti duplicati/intermedi.
+    del all_results
+    gc.collect()
+
     results = sort_by_price(results)
 
     return {
