@@ -346,11 +346,8 @@ def search_perfume(query: str) -> Dict[str, Any]:
     results: List[Dict[str, Any]] = []
     errors: Dict[str, str] = {}
 
-    # Limita gli scraper simultanei per evitare di superare la memoria
-    # disponibile su Render. Tutti gli 8 negozi restano attivi, ma vengono
-    # elaborati a gruppi di 2.
     executor = ThreadPoolExecutor(
-        max_workers=2,
+        max_workers=1,
         thread_name_prefix="scent-store",
     )
     future_to_store = {
