@@ -95,6 +95,16 @@ SIZE_FULL_RE = re.compile(
 
 CATEGORY_FALLBACKS = (
     (
+        ("liquid", "brun"),
+        "https://www.deloox.com/en/category/"
+        "1132834/liquid-brun.html",
+    ),
+    (
+        ("french", "avenue"),
+        "https://www.deloox.com/en/category/"
+        "1121334/french-avenue-mens-fragrances.html",
+    ),
+    (
         ("le", "beau", "le", "parfum"),
         "https://www.deloox.com/category/"
         "1084243/le-beau-le-parfum.html",
@@ -386,37 +396,18 @@ def _find_product_card(link):
 
 
 def _url_matches_query(product_url, query):
-    """
-    Controllo URL permissivo: Deloox può usare lo stesso slug del prodotto
-    per più varianti (es. Liquid Brun / Limited Edition). In quel caso la
-    variante è visibile nel testo della card o nella pagina prodotto, non
-    necessariamente nell'URL.
-    """
     url_tokens = set(_tokens(product_url))
     query_tokens = set(_tokens(query))
 
-    if not query_tokens:
-        return False
-
-    # Prima scelta: URL completo contiene tutti i termini della query.
     if query_tokens.issubset(url_tokens):
         return True
 
-    # Se manca solo una parte della variante, lasciamo passare il prodotto
-    # purché l'URL contenga almeno il nucleo principale della query.
-    # La verifica precisa viene poi fatta sul testo della card.
-    core_tokens = {
-        token for token in query_tokens
-        if token not in {
-            "limited", "edition", "limitededition",
-            "special", "exclusive", "collector", "collectors"
-        }
-    }
+    # Deloox can keep "limited edition" only in the category/product title,
+    # while the product URL contains the base product slug.
+    variant_tokens = {"limited", "edition"}
+    base_tokens = query_tokens - variant_tokens
 
-    if core_tokens and core_tokens.issubset(url_tokens):
-        return True
-
-    return False
+    return bool(base_tokens) and base_tokens.issubset(url_tokens)
 
 
 def _extract_category(html, query):
@@ -470,23 +461,44 @@ def _extract_category(html, query):
         ):
             continue
 
-        if not _matches_soft(
-            card_text,
-            query,
-            minimum=0.55,
-        ):
-            continue
+        limited_query = {
+            "limited",
+            "edition",
+        }.issubset(query_tokens)
 
-        card_tokens = set(
-            _tokens(card_text)
-        )
+        if limited_query:
+            base_tokens = query_tokens - {
+                "limited",
+                "edition",
+            }
+            card_tokens = set(_tokens(card_text))
 
-        if not query_tokens.issubset(card_tokens):
-            continue
+            if not base_tokens.issubset(card_tokens):
+                continue
+
+            # "Limited Edition" may be outside the product card text.
+            # The exact variant is resolved from the product page later.
+            relevance_query = " ".join(sorted(base_tokens))
+        else:
+            if not _matches_soft(
+                card_text,
+                query,
+                minimum=0.55,
+            ):
+                continue
+
+            card_tokens = set(
+                _tokens(card_text)
+            )
+
+            if not query_tokens.issubset(card_tokens):
+                continue
+
+            relevance_query = query
 
         if not _is_relevant_product(
             card_text,
-            query,
+            relevance_query,
         ):
             continue
 
@@ -645,6 +657,31 @@ def _extract_product_variants(
         if _clean(value)
     ]
 
+    page_name = ""
+    h1 = soup.find("h1")
+
+    if h1:
+        page_name = _clean(
+            h1.get_text(
+                " ",
+                strip=True,
+            )
+        )
+
+    if not page_name:
+        title = soup.find("title")
+
+        if title:
+            page_name = _clean(
+                title.get_text(
+                    " ",
+                    strip=True,
+                )
+            )
+
+    if not page_name:
+        page_name = product_name
+
     results = []
     seen_sizes = set()
 
@@ -703,9 +740,14 @@ def _extract_product_variants(
             size_label.lower(),
         ).strip("-")
 
+        variant_name = page_name
+
+        if not SIZE_RE.search(variant_name):
+            variant_name = f"{variant_name} {size_label}"
+
         results.append({
             "store": STORE,
-            "name": f"{product_name} {size_label}",
+            "name": variant_name,
             "price": price,
             "url": f"{product_url}#{slug}",
             "available": True,
@@ -813,9 +855,19 @@ def _extract_jsonld_variants(
                 if "," not in price_text:
                     price_text += ",00"
 
+                variant_name = _clean(
+                    str(item.get("name") or "")
+                )
+
+                if not variant_name:
+                    variant_name = product_name
+
+                if not SIZE_RE.search(variant_name):
+                    variant_name = f"{variant_name} {size} ml"
+
                 results.append({
                     "store": STORE,
-                    "name": f"{product_name} {size} ml",
+                    "name": variant_name,
                     "price": f"{price_text} €",
                     "url": product_url,
                     "available": True,
@@ -916,8 +968,19 @@ def search(query):
         reverse=True,
     )
 
+    limited_query = {
+        "limited",
+        "edition",
+    }.issubset(
+        set(_tokens(query))
+    )
+
     best_score = scored[0][0]
-    minimum_score = best_score - 45
+    minimum_score = (
+        float("-inf")
+        if limited_query
+        else best_score - 45
+    )
 
     final_results = []
     seen_variants = set()
@@ -950,6 +1013,18 @@ def search(query):
                 item["name"],
                 product_url,
             )
+
+        if limited_query:
+            variants = [
+                variant
+                for variant in variants
+                if {
+                    "limited",
+                    "edition",
+                }.issubset(
+                    set(_tokens(variant.get("name", "")))
+                )
+            ]
 
         for variant in variants:
             key = (
