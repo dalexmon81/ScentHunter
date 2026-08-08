@@ -9,7 +9,6 @@ from html import unescape
 import os
 import re
 import traceback
-import unicodedata
 from concurrent.futures import ThreadPoolExecutor, TimeoutError, wait
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
@@ -62,12 +61,6 @@ IGNORED_WORDS = {
 
 def norm(value: Any) -> str:
     value = str(value or "").lower().strip()
-    value = unicodedata.normalize("NFKD", value)
-    value = "".join(
-        char
-        for char in value
-        if not unicodedata.combining(char)
-    )
     value = re.sub(r"(?<=\d)(?=[a-z])|(?<=[a-z])(?=\d)", " ", value)
     value = re.sub(r"[^a-z0-9]+", " ", value)
     return re.sub(r"\s+", " ", value).strip()
@@ -242,20 +235,6 @@ def matches(product: Dict[str, Any], query: str) -> bool:
             and not phrase_tokens.issubset(query_all_tokens)
         ):
             return False
-
-    # Deloox encodes the exact product variant in its product URL.
-    # When a variant is explicitly requested, require that variant in the
-    # Deloox URL as well. This prevents the normal Liquid Brun product from
-    # being relabelled as "Liquid Brun Limited édition" by the scraper.
-    if str(product.get("store", "")).lower() == "deloox":
-        url_tokens = set(norm(product.get("url", "")).split())
-        for phrase in VARIANTS:
-            phrase_tokens = set(norm(phrase).split())
-            if (
-                phrase_tokens.issubset(query_all_tokens)
-                and not phrase_tokens.issubset(url_tokens)
-            ):
-                return False
 
     query_tokens = {
         token
