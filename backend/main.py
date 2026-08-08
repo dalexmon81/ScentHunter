@@ -7,6 +7,7 @@ import gc
 import importlib
 import json
 import sys
+import resource
 import os
 import re
 import traceback
@@ -259,6 +260,15 @@ def build_search_attempts(store: str, query: str) -> List[str]:
                 attempts.append(token)
 
     return attempts
+
+
+def log_memory(label: str) -> None:
+    try:
+        # Linux reports ru_maxrss in KB.
+        mb = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss / 1024
+        print(f"RAM DEBUG | {label} | maxrss={mb:.1f} MB", flush=True)
+    except Exception:
+        pass
 
 
 def run_store(
@@ -542,19 +552,32 @@ def search_perfume(q: str):
     # perché ogni scraper può caricare HTML e BeautifulSoup nello stesso momento.
     # La versione precedente del backend era sequenziale e funzionava.
     for store in STORES:
+        print(f"SCRAPER DEBUG | START | {store}", flush=True)
+        log_memory(f"before {store}")
+
         try:
             store_results = run_store(store, query)
             all_results.extend(store_results)
 
-            # Importante su hosting con RAM limitata:
-            # libera subito la memoria dello scraper appena terminato.
+            print(
+                f"SCRAPER DEBUG | END | {store} | results={len(store_results)}",
+                flush=True,
+            )
+
             del store_results
             gc.collect()
+            log_memory(f"after {store}")
 
         except Exception as error:
             errors[store] = f"{type(error).__name__}: {error}"
+            print(
+                f"SCRAPER DEBUG | ERROR | {store} | "
+                f"{type(error).__name__}: {error}",
+                flush=True,
+            )
             traceback.print_exc()
             gc.collect()
+            log_memory(f"error {store}")
 
     results = unique_results(all_results)
 
