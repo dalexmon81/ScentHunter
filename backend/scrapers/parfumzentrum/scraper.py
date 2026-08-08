@@ -52,8 +52,16 @@ def _xml_urls(xml_text):
 
 def _get_sitemap_urls():
     r = SESSION.get(SITEMAP_URL, headers=HEADERS, timeout=4)
+
+    if r.status_code in (403, 429):
+        print(f"PARFUMZENTRUM BLOCKED: HTTP {r.status_code}")
+        r.close()
+        return []
+
     r.raise_for_status()
-    urls = _xml_urls(r.text)
+    xml_text = r.text
+    r.close()
+    urls = _xml_urls(xml_text)
 
     child_maps = [
         u for u in urls
@@ -70,8 +78,17 @@ def _get_sitemap_urls():
         try:
             rr = SESSION.get(sm, headers=HEADERS, timeout=4)
 
+            if rr.status_code in (403, 429):
+                print(f"PARFUMZENTRUM SITEMAP BLOCKED: HTTP {rr.status_code}")
+                rr.close()
+                break
+
             if rr.status_code == 200:
-                out.extend(_xml_urls(rr.text))
+                xml_text = rr.text
+                rr.close()
+                out.extend(_xml_urls(xml_text))
+            else:
+                rr.close()
         except Exception:
             pass
 
@@ -80,10 +97,19 @@ def _get_sitemap_urls():
 def _extract_product(url, query):
     r = SESSION.get(url, headers=HEADERS, timeout=4)
 
-    if r.status_code != 200:
+    if r.status_code in (403, 429):
+        print(f"PARFUMZENTRUM PRODUCT BLOCKED: HTTP {r.status_code}")
+        r.close()
         return None
 
-    soup = BeautifulSoup(r.text, "html.parser")
+    if r.status_code != 200:
+        r.close()
+        return None
+
+    html = r.text
+    r.close()
+
+    soup = BeautifulSoup(html, "html.parser")
     h1 = soup.find("h1")
 
     if not h1:
@@ -167,18 +193,21 @@ def search(query):
     results = []
     seen = set()
 
-    for url in candidates[:6]:
-        try:
-            item = _extract_product(url, query)
-        except Exception:
-            item = None
+    try:
+        for url in candidates[:6]:
+            try:
+                item = _extract_product(url, query)
+            except Exception:
+                item = None
 
-        if item:
-            key = (item["name"].lower(), item["price"])
+            if item:
+                key = (item["name"].lower(), item["price"])
 
-            if key not in seen:
-                seen.add(key)
-                results.append(item)
+                if key not in seen:
+                    seen.add(key)
+                    results.append(item)
+    finally:
+        SESSION.close()
 
     return results
 
