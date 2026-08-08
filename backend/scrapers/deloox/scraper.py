@@ -210,25 +210,13 @@ def _match_score(text, query):
         if token not in query_set
     ]
 
-    score = (
+    return (
         found * 100
         - missing * 35
         - len(extras) * 3
         - abs(len(text_tokens) - len(query_tokens))
     )
 
-    # Limited Edition is a strong identity discriminator.
-    # If the user explicitly asks for it, a candidate containing both
-    # "limited" and "edition" must outrank the base product.
-    variant_tokens = {"limited", "edition"}
-
-    if variant_tokens.issubset(query_set):
-        if variant_tokens.issubset(text_set):
-            score += 1000
-        else:
-            score -= 1000
-
-    return score
 
 def _extract_price(text):
     if not text:
@@ -464,10 +452,7 @@ def _extract_category(html, query):
         if "/product/" not in product_url.lower():
             continue
 
-        # Normal searches keep the original URL guard.
-        # Limited Edition is different: Deloox's category URL is
-        # /liquid-brun.html and the product slug may not contain the
-        # words "limited edition".
+        # Keep the original URL filter for normal searches.
         if not limited_query and not _url_matches_query(
             product_url,
             query,
@@ -489,26 +474,59 @@ def _extract_category(html, query):
         ):
             continue
 
-        card_tokens = set(
-            _tokens(card_text)
-        )
-
+        # _find_product_card() deliberately returns the nearest ancestor
+        # containing price/size. On Deloox that node can omit the product title.
+        # For Limited Edition we therefore inspect the link metadata and the
+        # surrounding ancestors as well, without changing normal searches.
         if limited_query:
-            # For Limited Edition, the category card must contain the exact
-            # discriminator. This prevents the normal Liquid Brun card from
-            # ever being accepted for the Limited Edition query.
+            candidate_parts = [
+                card_text,
+                _clean(link.get_text(" ", strip=True)),
+                _clean(link.get("title")),
+                _clean(link.get("aria-label")),
+            ]
+
+            node = link
+            for _ in range(8):
+                if node is None:
+                    break
+
+                candidate_parts.append(
+                    _clean(
+                        node.get_text(
+                            " ",
+                            strip=True,
+                        )
+                    )
+                )
+                node = node.parent
+
+            candidate_text = _clean(
+                " ".join(
+                    part
+                    for part in candidate_parts
+                    if part
+                )
+            )
+
+            candidate_tokens = set(
+                _tokens(candidate_text)
+            )
+
             base_tokens = query_tokens - {
                 "limited",
                 "edition",
             }
 
-            if not base_tokens.issubset(card_tokens):
+            if not base_tokens.issubset(
+                candidate_tokens
+            ):
                 continue
 
             if not {
                 "limited",
                 "edition",
-            }.issubset(card_tokens):
+            }.issubset(candidate_tokens):
                 continue
         else:
             if not _matches_soft(
@@ -517,6 +535,10 @@ def _extract_category(html, query):
                 minimum=0.55,
             ):
                 continue
+
+            card_tokens = set(
+                _tokens(card_text)
+            )
 
             if not query_tokens.issubset(card_tokens):
                 continue
@@ -527,7 +549,11 @@ def _extract_category(html, query):
             ):
                 continue
 
-        price = _extract_price(card_text)
+        price = _extract_price(
+            candidate_text
+            if limited_query
+            else card_text
+        )
 
         if not price:
             continue
@@ -542,8 +568,8 @@ def _extract_category(html, query):
         )
 
         if limited_query:
-            # The category card already exposes the exact Deloox product name,
-            # e.g. "French Avenue Liquid Brun Extrait de Parfum Limited edition".
+            # Preserve the exact variant name when Deloox exposes it on the
+            # product link. Otherwise keep the query as the product name.
             if {
                 "limited",
                 "edition",
@@ -577,6 +603,7 @@ def _extract_category(html, query):
         })
 
     return results
+
 
 
 def _extract_brand_page(html, query):
@@ -928,15 +955,6 @@ def search(query):
     if not candidates:
         return []
 
-    # The variant rule is active only for an explicit Limited Edition query.
-    # Normal Deloox searches keep the original behaviour.
-    limited_query = {
-        "limited",
-        "edition",
-    }.issubset(
-        set(_tokens(query))
-    )
-
     scored = []
     seen_urls = set()
 
@@ -948,7 +966,7 @@ def search(query):
         if product_url in seen_urls:
             continue
 
-        if not limited_query and not _url_matches_query(
+        if not _url_matches_query(
             product_url,
             query,
         ):
@@ -966,27 +984,6 @@ def search(query):
 
     if not scored:
         return []
-
-    if limited_query:
-        # The category is the authoritative source for this variant.
-        # Return only cards whose actual product name contains the
-        # Limited Edition discriminator. Do not fall through to the
-        # normal-product fallback.
-        limited_results = [
-            item
-            for _, item in scored
-            if {
-                "limited",
-                "edition",
-            }.issubset(
-                set(_tokens(item.get("name", "")))
-            )
-        ]
-
-        if not limited_results:
-            return []
-
-        return limited_results[:20]
 
     scored.sort(
         key=lambda item: item[0],
