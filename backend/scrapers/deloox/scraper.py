@@ -370,6 +370,46 @@ def _find_brand_category(session, query):
     return candidates[0][2]
 
 
+def _real_product_name(html, fallback):
+    soup = BeautifulSoup(
+        html or "",
+        "html.parser",
+    )
+
+    h1 = soup.find("h1")
+    if h1:
+        name = _clean(h1.get_text(" ", strip=True))
+        if name:
+            return name
+
+    title = soup.find("title")
+    if title:
+        name = _clean(title.get_text(" ", strip=True))
+        if name:
+            return name
+
+    for script in soup.find_all(
+        "script",
+        type="application/ld+json",
+    ):
+        try:
+            payload = json.loads(
+                script.string or script.get_text()
+            )
+        except Exception:
+            continue
+
+        objects = payload if isinstance(payload, list) else [payload]
+
+        for item in objects:
+            if isinstance(item, dict):
+                name = _clean(item.get("name"))
+                if name:
+                    return name
+
+    return fallback
+
+
 def _find_product_card(link):
     node = link
 
@@ -396,22 +436,15 @@ def _find_product_card(link):
 
 
 def _url_matches_query(product_url, query):
-    url_tokens = set(_tokens(product_url))
-    query_tokens = set(_tokens(query))
-
-    if query_tokens.issubset(url_tokens):
-        return True
-
-    # Deloox can use the same/base product slug for a variant while the
-    # variant name is exposed in the category card or product page.
-    variant_tokens = {"limited", "edition"}
-
-    required_tokens = query_tokens - variant_tokens
-
-    return (
-        bool(required_tokens)
-        and required_tokens.issubset(url_tokens)
+    url_tokens = set(
+        _tokens(product_url)
     )
+
+    query_tokens = set(
+        _tokens(query)
+    )
+
+    return query_tokens.issubset(url_tokens)
 
 
 def _extract_category(html, query):
@@ -443,8 +476,17 @@ def _extract_category(html, query):
         if "/product/" not in product_url.lower():
             continue
 
-        # Controllo fondamentale contro prodotti estranei.
-        if not _url_matches_query(
+        limited_query = {
+            "limited",
+            "edition",
+        }.issubset(
+            set(_tokens(query))
+        )
+
+        # Keep the original behaviour for every normal search.
+        # Only Limited Edition needs the relaxed candidate collection because
+        # Deloox may omit "limited edition" from the product URL.
+        if not limited_query and not _url_matches_query(
             product_url,
             query,
         ):
@@ -465,23 +507,18 @@ def _extract_category(html, query):
         ):
             continue
 
-        limited_query = {"limited", "edition"}.issubset(
-            query_tokens
-        )
-
-        card_tokens = set(
-            _tokens(card_text)
-        )
-
         if limited_query:
-            # The Liquid Brun category contains the variant, but its card
-            # can show only the base product name. Use the base product tokens
-            # to collect the candidate; the exact variant is checked on the
-            # product page below.
+            # The category card can contain only the base name "Liquid Brun".
+            # For this special query we validate the base product here and
+            # validate "Limited Edition" on the actual product page.
             base_tokens = query_tokens - {
                 "limited",
                 "edition",
             }
+
+            card_tokens = set(
+                _tokens(card_text)
+            )
 
             if not base_tokens.issubset(card_tokens):
                 continue
@@ -492,6 +529,10 @@ def _extract_category(html, query):
                 minimum=0.55,
             ):
                 continue
+
+            card_tokens = set(
+                _tokens(card_text)
+            )
 
             if not query_tokens.issubset(card_tokens):
                 continue
@@ -639,72 +680,6 @@ def _extract_brand_page(html, query):
             break
 
     return results
-
-
-def _extract_page_product_name(html, fallback):
-    soup = BeautifulSoup(
-        html,
-        "html.parser",
-    )
-
-    h1 = soup.find("h1")
-    if h1:
-        value = _clean(
-            h1.get_text(
-                " ",
-                strip=True,
-            )
-        )
-        if value:
-            return value
-
-    title = soup.find("title")
-    if title:
-        value = _clean(
-            title.get_text(
-                " ",
-                strip=True,
-            )
-        )
-        if value:
-            return value
-
-    for script in soup.find_all(
-        "script",
-        type="application/ld+json",
-    ):
-        try:
-            data = json.loads(
-                script.string or script.get_text()
-            )
-        except (
-            json.JSONDecodeError,
-            TypeError,
-        ):
-            continue
-
-        objects = (
-            data
-            if isinstance(data, list)
-            else [data]
-        )
-
-        for item in objects:
-            if not isinstance(item, dict):
-                continue
-
-            item_type = str(
-                item.get("@type", "")
-            ).lower()
-
-            if item_type == "product":
-                name = _clean(
-                    str(item.get("name") or "")
-                )
-                if name:
-                    return name
-
-    return fallback
 
 
 def _extract_product_variants(
@@ -970,7 +945,7 @@ def search(query):
         if product_url in seen_urls:
             continue
 
-        if not _url_matches_query(
+        if not limited_query and not _url_matches_query(
             product_url,
             query,
         ):
@@ -992,10 +967,6 @@ def search(query):
     scored.sort(
         key=lambda item: item[0],
         reverse=True,
-    )
-
-    limited_query = {"limited", "edition"}.issubset(
-        set(_tokens(query))
     )
 
     best_score = scored[0][0]
@@ -1020,14 +991,14 @@ def search(query):
         if product_response is None:
             continue
 
-        page_product_name = _extract_page_product_name(
+        page_name = _real_product_name(
             product_response.text,
             item["name"],
         )
 
         if limited_query:
             page_tokens = set(
-                _tokens(page_product_name)
+                _tokens(page_name)
             )
 
             if not {
@@ -1038,14 +1009,14 @@ def search(query):
 
         variants = _extract_product_variants(
             product_response.text,
-            page_product_name,
+            page_name,
             product_url,
         )
 
         if not variants:
             variants = _extract_jsonld_variants(
                 product_response.text,
-                item["name"],
+                page_name,
                 product_url,
             )
 
@@ -1068,9 +1039,6 @@ def search(query):
         )
 
         return final_results[:20]
-
-    if limited_query:
-        return []
 
     return [item for _, item in scored]
 
