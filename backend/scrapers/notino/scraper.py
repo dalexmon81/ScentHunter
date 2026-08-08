@@ -76,25 +76,42 @@ def _price(text):
     return value.replace(".", ",") + "€"
 
 def _search_page(query):
-    url = BASE_URL + "/search.asp?exps=" + quote_plus(query)
+    urls = [
+        BASE_URL + "/search.asp?exps=" + quote_plus(query),
+        BASE_URL + "/search?query=" + quote_plus(query),
+    ]
 
     session = requests.Session()
     session.headers.update(HEADERS)
 
     try:
-        response = session.get(
-            url,
-            timeout=8,
-            allow_redirects=True,
-        )
-        response.raise_for_status()
-    except requests.RequestException as error:
-        print("NOTINO ERROR:", error)
-        return
+        for url in urls:
+            try:
+                response = session.get(
+                    url,
+                    timeout=10,
+                    allow_redirects=True,
+                )
+            except requests.RequestException as error:
+                print("NOTINO ERROR:", error)
+                continue
 
-    if response.text:
-        yield response.text
+            if response.status_code in (403, 429):
+                print(f"NOTINO BLOCKED: HTTP {response.status_code}")
+                response.close()
+                break
 
+            if response.status_code != 200:
+                response.close()
+                continue
+
+            html = response.text
+            response.close()
+
+            if html:
+                yield html
+    finally:
+        session.close()
 
 def search(query):
     query = _clean(query)
