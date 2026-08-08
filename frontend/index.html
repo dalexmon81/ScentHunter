@@ -385,6 +385,20 @@ function shGroupData(data){
     n=n.replace(/\b(french avenue|rasasi)\b/gi," ");
     n=n.replace(/\b(by|de|unisex|x)\b/gi," ");
 
+    // CASO SPECIALE: Liquid Brun.
+    // I negozi lo descrivono in modi diversi ("Parfum", "Extrait",
+    // "by French Avenue", ecc.), ma per ScentHunter devono diventare
+    // sempre le stesse 3 famiglie: Liquid Brun, Liquid Brun Limited Edition
+    // e Mystery Box Liquid Brun.
+    const compact=n.replace(/\s+/g," ").trim();
+    if(/\bliquid\s+brun\b/i.test(compact)){
+      const isMystery=/\bmystery\s+box\b/i.test(compact);
+      const isLimited=/\blimited\s+edition\b/i.test(compact);
+      if(isMystery) return "mystery box liquid brun";
+      if(isLimited) return "liquid brun limited edition";
+      return "liquid brun";
+    }
+
     // Mantiene l'ORDINE ORIGINALE delle parole.
     // Niente .sort(): il titolo non viene più trasformato in
     // "Beau Gaultier Jean Le Parfum".
