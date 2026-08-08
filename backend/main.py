@@ -3,14 +3,12 @@ from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 
-import gc
 import importlib
 import json
-import sys
-import resource
 import os
 import re
 import traceback
+import gc
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
 
@@ -42,16 +40,15 @@ app.add_middleware(
 # CONFIGURAZIONE
 # ============================================================
 
-# Negozi attivi nella ricerca.
-# I tre scraper che in questo momento restituiscono 403/429
-# vengono esclusi dalla richiesta per evitare timeout e fallimenti
-# dell'intera ricerca.
 STORES = [
     "bplatz",
     "deloox",
+    "parfumcity",
     "parfumzentrum",
+    "perfumemarket",
     "sabina",
     "orioudh",
+    "notino",
 ]
 
 BASE_DIR = os.path.dirname(__file__)
@@ -238,22 +235,12 @@ def load_scraper(store: str):
 
 def build_search_attempts(store: str, query: str) -> List[str]:
     """
-    Una sola richiesta per negozio.
-
-    Non facciamo retry automatici: alcuni negozi rispondono 403/429
-    e ripetere la stessa ricerca peggiora il blocco e allunga il tempo
-    totale della richiesta /search.
+    Mantiene una sola richiesta reale per negozio.
+    Le vecchie varianti della query moltiplicavano le chiamate HTTP
+    e aumentavano il rischio di 403/429 e il consumo di memoria.
     """
     return [query]
 
-
-def log_memory(label: str) -> None:
-    try:
-        # Linux reports ru_maxrss in KB.
-        mb = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss / 1024
-        print(f"RAM DEBUG | {label} | maxrss={mb:.1f} MB", flush=True)
-    except Exception:
-        pass
 
 
 def run_store(
@@ -262,14 +249,7 @@ def run_store(
 ) -> List[Dict[str, Any]]:
     """
     Esegue la ricerca su un singolo negozio.
-
-    Versione RAM-safe:
-    - un solo scraper alla volta;
-    - rilascia subito i risultati intermedi;
-    - forza il garbage collector dopo ogni tentativo;
-    - non mantiene il modulo scraper in memoria dopo la ricerca.
     """
-    module_name = f"scrapers.{store}.scraper"
     module = load_scraper(store)
 
     attempts = build_search_attempts(
@@ -280,52 +260,45 @@ def run_store(
     output: List[Dict[str, Any]] = []
     seen = set()
 
-    try:
-        for attempt in attempts:
-            results = module.search(attempt) or []
+    for attempt in attempts:
 
-            try:
-                for item in results:
-                    if not isinstance(item, dict):
-                        continue
+        results = module.search(attempt) or []
 
-                    product = dict(item)
-                    product.setdefault(
-                        "store",
-                        store,
-                    )
+        for item in results:
 
-                    key = (
-                        str(product.get("url", "")).lower(),
-                        norm(product.get("name", "")),
-                    )
+            if not isinstance(item, dict):
+                continue
 
-                    if key in seen:
-                        continue
+            product = dict(item)
 
-                    seen.add(key)
+            product.setdefault(
+                "store",
+                store,
+            )
 
-                    if matches(product, query):
-                        output.append(product)
-            finally:
-                # Il risultato grezzo può contenere strutture HTML/BeautifulSoup
-                # molto più pesanti dei piccoli dict che conserviamo.
-                del results
-                gc.collect()
-    finally:
-        # Alcuni scraper mantengono oggetti pesanti a livello di modulo.
-        # Rimuovendoli da sys.modules permettiamo al GC di liberarli prima
-        # del passaggio al negozio successivo.
-        try:
-            sys.modules.pop(module_name, None)
-        except Exception:
-            pass
+            key = (
+                str(product.get("url", "")).lower(),
+                norm(product.get("name", "")),
+            )
 
-        del module
+            if key in seen:
+                continue
+
+            seen.add(key)
+
+            if matches(product, query):
+                output.append(product)
+
+        # Rilascia riferimenti temporanei dopo ogni tentativo.
+        del results
         gc.collect()
 
     return output
 
+
+# ============================================================
+# DEDUPLICAZIONE E ORDINAMENTO
+# ============================================================
 
 def unique_results(
     products: List[Dict[str, Any]],
@@ -536,48 +509,18 @@ def search_perfume(q: str):
     # Eseguire 8 scraper contemporaneamente fa crescere molto la memoria
     # perché ogni scraper può caricare HTML e BeautifulSoup nello stesso momento.
     # La versione precedente del backend era sequenziale e funzionava.
-    print(f"SEARCH START | query={query}", flush=True)
-
     for store in STORES:
-        print(f"SCRAPER DEBUG | START | {store}", flush=True)
-        log_memory(f"before {store}")
-
         try:
             store_results = run_store(store, query)
             all_results.extend(store_results)
-
-            print(
-                f"SCRAPER DEBUG | END | {store} | results={len(store_results)}",
-                flush=True,
-            )
-
-            del store_results
-            gc.collect()
-            log_memory(f"after {store}")
-
         except Exception as error:
             errors[store] = f"{type(error).__name__}: {error}"
-            print(
-                f"SCRAPER DEBUG | ERROR | {store} | "
-                f"{type(error).__name__}: {error}",
-                flush=True,
-            )
             traceback.print_exc()
+        finally:
             gc.collect()
-            log_memory(f"error {store}")
 
     results = unique_results(all_results)
-
-    # A questo punto non servono più i riferimenti duplicati/intermedi.
-    del all_results
-    gc.collect()
-
     results = sort_by_price(results)
-
-    print(
-        f"SEARCH END | query={query} | results={len(results)} | errors={len(errors)}",
-        flush=True,
-    )
 
     return {
         "query": query,
@@ -585,49 +528,6 @@ def search_perfume(q: str):
         "results": results,
         "errors": errors,
     }
-
-
-# ============================================================
-# API - SUGGEST / AUTOCOMPLETE
-# ============================================================
-
-AUTOCOMPLETE_CATALOG = [
-    {"brand": "Rasasi", "name": "Hawas for Him", "image": ""},
-    {"brand": "Rasasi", "name": "Hawas Ice", "image": ""},
-    {"brand": "Rasasi", "name": "Hawas Black", "image": ""},
-    {"brand": "Rasasi", "name": "Hawas Tropical", "image": ""},
-    {"brand": "Rasasi", "name": "Hawas Fire", "image": ""},
-    {"brand": "Rasasi", "name": "Hawas Kobra", "image": ""},
-    {"brand": "Afnan", "name": "9 PM", "image": ""},
-    {"brand": "Afnan", "name": "9 PM Rebel", "image": ""},
-    {"brand": "Afnan", "name": "9 PM Elixir", "image": ""},
-    {"brand": "Afnan", "name": "9 PM Night Out", "image": ""},
-    {"brand": "French Avenue", "name": "Liquid Brun", "image": ""},
-    {"brand": "French Avenue", "name": "Liquid Brun Limited Edition", "image": ""},
-]
-
-@app.get("/suggest")
-def suggest(q: str):
-    query = norm(q)
-    if len(query) < 2:
-        return {"query": q, "count": 0, "suggestions": [], "source": "local"}
-
-    words = query.split()
-    hits = []
-    for item in AUTOCOMPLETE_CATALOG:
-        haystack = norm(f"{item.get('brand','')} {item.get('name','')}")
-        if all(word in haystack for word in words):
-            name_n = norm(item.get("name",""))
-            score = 0 if name_n.startswith(query) else (1 if query in name_n else 2)
-            hits.append((score, len(item.get("name","")), item))
-
-    hits.sort(key=lambda x:(x[0],x[1],x[2].get("name","").lower()))
-    suggestions=[x[2] for x in hits[:8]]
-    return {"query": q, "count": len(suggestions), "suggestions": suggestions, "source": "local"}
-
-@app.get("/autocomplete")
-def autocomplete(q: str):
-    return suggest(q)
 
 
 # ============================================================
