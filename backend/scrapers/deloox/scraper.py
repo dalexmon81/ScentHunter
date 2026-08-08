@@ -100,11 +100,6 @@ CATEGORY_FALLBACKS = (
         "1132834/liquid-brun.html",
     ),
     (
-        ("french", "avenue"),
-        "https://www.deloox.com/en/category/"
-        "1121334/french-avenue-mens-fragrances.html",
-    ),
-    (
         ("le", "beau", "le", "parfum"),
         "https://www.deloox.com/category/"
         "1084243/le-beau-le-parfum.html",
@@ -396,15 +391,22 @@ def _find_product_card(link):
 
 
 def _url_matches_query(product_url, query):
-    url_tokens = set(
-        _tokens(product_url)
-    )
+    url_tokens = set(_tokens(product_url))
+    query_tokens = set(_tokens(query))
 
-    query_tokens = set(
-        _tokens(query)
-    )
+    if query_tokens.issubset(url_tokens):
+        return True
 
-    return query_tokens.issubset(url_tokens)
+    # Deloox may keep variant descriptors such as "limited edition"
+    # in the visible product title while omitting them from the URL slug.
+    variant_tokens = {
+        "limited",
+        "edition",
+    }
+
+    required_tokens = query_tokens - variant_tokens
+
+    return bool(required_tokens) and required_tokens.issubset(url_tokens)
 
 
 def _extract_category(html, query):
@@ -452,33 +454,47 @@ def _extract_category(html, query):
             )
         )
 
+        link_text = _clean(
+            link.get_text(
+                " ",
+                strip=True,
+            )
+        )
+
+        combined_text = _clean(
+            f"{card_text} {link_text}"
+        )
+
         if any(
-            word in card_text.lower()
+            word in combined_text.lower()
             for word in SOLD_OUT
         ):
             continue
 
         if not _matches_soft(
-            card_text,
+            combined_text,
             query,
             minimum=0.55,
         ):
             continue
 
-        card_tokens = set(
-            _tokens(card_text)
+        combined_tokens = set(
+            _tokens(combined_text)
         )
 
-        if not query_tokens.issubset(card_tokens):
+        if not query_tokens.issubset(combined_tokens):
             continue
 
         if not _is_relevant_product(
-            card_text,
+            combined_text,
             query,
         ):
             continue
 
         price = _extract_price(card_text)
+
+        if not price:
+            price = _extract_price(combined_text)
 
         if not price:
             continue
