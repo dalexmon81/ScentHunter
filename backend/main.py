@@ -39,17 +39,7 @@ app.add_middleware(
 # CONFIGURAZIONE
 # ============================================================
 
-STORES = [
-    "bplatz",
-    "deloox",
-    "parfumcity",
-    "parfumzentrum",
-    "perfumemarket",
-    "sabina",
-    "orioudh",
-    "notino",
-]
-
+STORES = ["notino"]
 BASE_DIR = os.path.dirname(__file__)
 HISTORY_PATH = os.path.join(BASE_DIR, "price_history.json")
 
