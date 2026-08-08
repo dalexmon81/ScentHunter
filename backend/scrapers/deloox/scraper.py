@@ -27,7 +27,7 @@ PRICE_RE = re.compile(
         €\s*
         (?P<euro_before>\d{1,4})
         \s*
-        (?:[,.\^]\s*)+
+        (?:[,\.\^]\s*)+
         (?P<cents_before>\d{2})
         \s*\^*
 
@@ -35,7 +35,7 @@ PRICE_RE = re.compile(
 
         (?P<euro_after>\d{1,4})
         \s*
-        (?:[,.\^]\s*)+
+        (?:[,\.\^]\s*)+
         (?P<cents_after>\d{2})
         \s*\^*
         \s*€
@@ -206,10 +206,10 @@ def _match_score(text, query):
         - abs(len(text_tokens) - len(query_tokens))
     )
 
-    # Limited Edition is a strong identity discriminator.
-    # If the user explicitly asks for it, a candidate containing both
-    # "limited" and "edition" must outrank the base product.
-    variant_tokens = {"limited", "edition"}
+    variant_tokens = {
+        "limited",
+        "edition",
+    }
 
     if variant_tokens.issubset(query_set):
         if variant_tokens.issubset(text_set):
@@ -218,6 +218,7 @@ def _match_score(text, query):
             score -= 1000
 
     return score
+
 
 def _extract_price(text):
     if not text:
@@ -448,7 +449,6 @@ def _extract_category(html, query):
         if "/product/" not in product_url.lower():
             continue
 
-        # Controllo fondamentale contro prodotti estranei.
         if not _url_matches_query(
             product_url,
             query,
@@ -849,6 +849,14 @@ def search(query):
     if not query:
         return []
 
+    # Correzione: la variabile deve essere definita prima dell'uso.
+    limited_query = {
+        "limited",
+        "edition",
+    }.issubset(
+        set(_tokens(query))
+    )
+
     session = requests.Session()
 
     category_url = _find_brand_category(
@@ -911,6 +919,8 @@ def search(query):
     if not scored:
         return []
 
+    # Correzione: la variante viene identificata tramite URL.
+    # Il testo del link puo contenere solo la misura.
     if limited_query:
         variant_candidates = [
             item
@@ -919,14 +929,12 @@ def search(query):
                 "limited",
                 "edition",
             }.issubset(
-                set(_tokens(item[1].get("name", "")))
+                set(_tokens(item[1].get("url", "")))
             )
         ]
 
-        # If the candidate name itself carries the requested variant,
-        # discard the base Liquid Brun candidates. Otherwise keep the
-        # original candidate list so the existing fallback behaviour is
-        # preserved.
+        # Mantiene il fallback originale se Deloox non espone
+        # un URL con entrambi i token della variante.
         if variant_candidates:
             scored = variant_candidates
 
@@ -1000,6 +1008,8 @@ if __name__ == "__main__":
         "Le Beau Le Parfum",
         "Jean Paul Gaultier Le Beau Le Parfum",
         "Rasasi Hawas Ice",
+        "Liquid Brun",
+        "Liquid Brun Limited Edition",
     )
 
     for query in queries:
