@@ -1,5 +1,6 @@
 import json
 import re
+import unicodedata
 from urllib.parse import urljoin
 
 import requests
@@ -143,10 +144,20 @@ def _clean(value):
 
 
 def _norm(value):
+    value = unicodedata.normalize(
+        "NFKD",
+        _clean(value).lower(),
+    )
+    value = "".join(
+        char
+        for char in value
+        if not unicodedata.combining(char)
+    )
+
     return re.sub(
         r"[^a-z0-9]+",
         " ",
-        _clean(value).lower(),
+        value,
     ).strip()
 
 
