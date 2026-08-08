@@ -347,7 +347,7 @@ def search_perfume(query: str) -> Dict[str, Any]:
     errors: Dict[str, str] = {}
 
     executor = ThreadPoolExecutor(
-        max_workers=len(STORES),
+        max_workers=3,
         thread_name_prefix="scent-store",
     )
     future_to_store = {
