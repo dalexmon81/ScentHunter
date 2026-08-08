@@ -1,257 +1,104 @@
 import re
 import requests
 from bs4 import BeautifulSoup
-from urllib.parse import quote_plus, urljoin, urlparse
+from urllib.parse import quote_plus, urljoin
 
 STORE = "Notino"
-BASE_URL = "https://www.notino.fr/"
-SEARCH_URL = "https://www.notino.fr/search.asp?exps="
+BASE_URL = "https://www.notino.fr"
 
 HEADERS = {
-    "User-Agent": (
-        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
-        "AppleWebKit/537.36 (KHTML, like Gecko) "
-        "Chrome/124.0.0.0 Safari/537.36"
-    ),
-    "Accept-Language": "fr-FR,fr;q=0.9,en;q=0.7",
+    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+    "Accept-Language": "fr-FR,fr;q=0.9,en;q=0.8",
 }
 
+PRICE_RE = re.compile(
+    r"€\s*(\d{1,4}[.,]\d{2})|(\d{1,4}[.,]\d{2})\s*€",
+    re.I,
+)
+
+# Titoli generici di pagina/ricerca da scartare come nome prodotto
+GENERIC_TITLES = [
+    "résultat de la recherche",
+    "nombre de produits",
+    "recherche",
+    "produits",
+    "résultats",
+    "page",
+    "chargement",
+    "loading",
+]
+
+# Testi che indicano chiaramente indisponibilità / niente vendita attuale
+UNAVAILABLE_PATTERNS = [
+    "rupture de stock",   # actuellement en rupture de stock
+    "épuisé",             # produit épuisé
+    "non disponible",     # non disponible
+    "pas disponible",     # pas disponible
+]
+
 def _clean(s):
-    return re.sub(r"\s+", " ", s or "").strip()
+    return re.sub(r"\s+", " ", str(s or "")).strip()
 
-def _price(text):
-    m = re.search(r"(?:de\s+)?(\d{1,4}[,.]\d{2})\s*€", text, re.I)
-    return (m.group(1).replace(".", ",") + "€") if m else ""
-
-def _clean_title(title):
-    title = _clean(title)
-    title = re.sub(
-        r"^(?:livraison\s+offerte\s+)?(?:promo\s+)?cadeaux?\s+offerts?\s+",
-        "",
-        title,
-        flags=re.I,
-    )
-    title = re.sub(r"^(?:promo|promotion)\s+", "", title, flags=re.I)
-    title = re.sub(
-        r"\s+\d[,.]\d\s*\(\s*\d+\s*\)\s+de\s+\d{1,4}[,.]\d{2}\s*€.*$",
-        "",
-        title,
-        flags=re.I,
-    )
-    title = re.sub(
-        r"\s+de\s+\d{1,4}[,.]\d{2}\s*€.*$",
-        "",
-        title,
-        flags=re.I,
-    )
-    return _clean(title)
-
-def _single_perfume(title):
-    low = _clean(title).lower()
-    blocked = (
-        "coffret", "gift set", "set cadeau", "coffret cadeau",
-        "miniature", "échantillon", "sample", "discovery set",
-        "lot de ", "pack de ", "duo ", "trio ",
-        "gel douche", "shower gel", "déodorant", "deodorant",
-        "lotion corps", "body lotion", "crème corps", "body cream",
-        "après-rasage", "after shave", "aftershave",
-        "spray corps", "body spray", "brume", "hair mist",
-    )
-    return not any(x in low for x in blocked)
-
-def _is_product_url(url, query):
-    try:
-        parsed = urlparse(url)
-    except Exception:
-        return False
-
-    if parsed.netloc.lower() not in ("www.notino.fr", "notino.fr"):
-        return False
-
-    path = parsed.path.lower().rstrip("/")
-
-    # Questi sono percorsi generici di Notino e NON sono prodotti.
-    blocked = (
-        "/search.asp", "/cart", "/wishlist", "/mynotino", "/livraison",
-        "/avis", "/contact", "/magazine", "/marques", "/parfums",
-        "/cosmetiques", "/cheveux", "/dentaire", "/homme", "/femme",
-        "/offres-speciales", "/emballages-cadeaux",
-    )
-
-    if not path:
-        return False
-
-    if any(path == x or path.startswith(x + "/") for x in blocked):
-        return False
-
-    # Notino usa normalmente URL prodotto con /p-123456/.
-    # Accettiamo SOLO questo formato quando ci sono 3 segmenti:
-    # /marca/nome-prodotto/p-123456
-    parts = [p for p in path.split("/") if p]
-
-    if len(parts) == 3:
-        if not re.fullmatch(r"p-\d+", parts[-1]):
-            return False
-        slug = "-".join(parts[:-1])
-    elif len(parts) == 2:
-        # Vecchio formato prodotto: /marca/nome-prodotto
-        slug = "-".join(parts)
-    else:
-        return False
-
-    # Evita pagine generiche: il prodotto deve contenere
-    # almeno una parola significativa della query.
-    words = [
-        re.sub(r"[^a-z0-9]", "", w.lower())
-        for w in query.split()
-        if len(w) >= 3
+def _words(s):
+    return [
+        x
+        for x in re.findall(r"[a-z0-9]+", _clean(s).lower())
+        if len(x) > 1
     ]
 
-    if not words:
-        return False
+def _matches(text, query):
+    text = _clean(text).lower()
+    return all(word in text for word in _words(query))
 
-    return any(w and w in slug for w in words)
+def _is_generic_title(title):
+    t = _clean(title).lower()
+    return any(g in t for g in GENERIC_TITLES)
 
-def _direct(query):
-    url = SEARCH_URL + quote_plus(query)
+def _is_unavailable_block(text: str) -> bool:
+    """
+    True se il blocco di testo contiene segnali chiari
+    che il prodotto/variante è non disponibile.
+    Questo evita di usare prezzi da blocchi tipo
+    'Actuellement en rupture de stock / Prix minimal 25,50 €'.
+    """
+    t = _clean(text).lower()
+    return any(pattern in t for pattern in UNAVAILABLE_PATTERNS)
 
-    try:
-        r = requests.get(url, headers=HEADERS, timeout=12)
-        if r.status_code != 200:
-            return []
-    except requests.RequestException:
-        return []
+def _price(text):
+    matches = list(PRICE_RE.finditer(text or ""))
 
-    soup = BeautifulSoup(r.text, "html.parser")
-    words = [w.lower() for w in query.split() if len(w) >= 2]
-    out, seen = [], set()
+    if not matches:
+        return ""
 
-    for a in soup.find_all("a", href=True):
-        href = a.get("href", "")
-        if not href:
+    match = matches[-1]
+    value = match.group(1) or match.group(2)
+
+    return value.replace(".", ",") + "€"
+
+def _search_page(query):
+    urls = [
+        BASE_URL + "/search.asp?exps=" + quote_plus(query),
+        BASE_URL + "/search?query=" + quote_plus(query),
+    ]
+
+    session = requests.Session()
+    session.headers.update(HEADERS)
+
+    for url in urls:
+        try:
+            response = session.get(
+                url,
+                timeout=15,
+                allow_redirects=True,
+            )
+
+            response.raise_for_status()
+        except requests.RequestException as error:
+            print("NOTINO ERROR:", error)
             continue
 
-        product_url = urljoin(BASE_URL, href)
-
-        # FILTRO URL PRIMA di analizzare la card.
-        if not _is_product_url(product_url, query):
-            continue
-
-        parent = a
-
-        for _ in range(7):
-            txt = _clean(parent.get_text(" ", strip=True))
-
-            if "€" in txt or "rupture de stock" in txt.lower():
-                break
-
-            if parent.parent is None:
-                break
-
-            parent = parent.parent
-
-        txt = _clean(parent.get_text(" ", strip=True))
-        low = txt.lower()
-
-        if words and not all(w in low for w in words):
-            continue
-
-        price = _price(txt)
-
-        if not price and "rupture de stock" in low:
-            price = "En rupture de stock"
-
-        if not price:
-            continue
-
-        product_url = product_url.split("#")[0].split("?")[0].rstrip("/")
-
-        if product_url in seen:
-            continue
-
-        title = _clean_title(a.get_text(" ", strip=True))
-
-        if len(title) < 3:
-            title = _clean_title(query)
-
-        if not _single_perfume(title):
-            continue
-
-        seen.add(product_url)
-
-        out.append({
-            "store": STORE,
-            "name": title,
-            "price": price,
-            "url": product_url,
-        })
-
-        if len(out) >= 10:
-            break
-
-    return out
-
-def _bing(query):
-    q = f'site:notino.fr "{query}"'
-    url = "https://www.bing.com/search?q=" + quote_plus(q)
-
-    try:
-        r = requests.get(url, headers=HEADERS, timeout=15)
-        r.raise_for_status()
-    except requests.RequestException as e:
-        print("NOTINO FALLBACK ERROR:", e)
-        return []
-
-    soup = BeautifulSoup(r.text, "html.parser")
-    words = [w.lower() for w in query.split() if len(w) >= 2]
-    out, seen = [], set()
-
-    for li in soup.select("li.b_algo"):
-        a = li.select_one("h2 a")
-
-        if not a:
-            continue
-
-        href = a.get("href", "")
-        title = _clean_title(a.get_text(" ", strip=True))
-        snippet = _clean(li.get_text(" ", strip=True))
-        low = (title + " " + snippet).lower()
-
-        if not _is_product_url(href, query):
-            continue
-
-        if not _single_perfume(title):
-            continue
-
-        if words and not all(w in low for w in words):
-            continue
-
-        price = _price(snippet)
-
-        if not price and "rupture de stock" in low:
-            price = "En rupture de stock"
-
-        if not price:
-            continue
-
-        href = href.split("#")[0].split("?")[0].rstrip("/")
-
-        if href in seen:
-            continue
-
-        seen.add(href)
-
-        out.append({
-            "store": STORE,
-            "name": title,
-            "price": price,
-            "url": href,
-        })
-
-        if len(out) >= 10:
-            break
-
-    return out
+        if response.text:
+            yield response.text
 
 def search(query):
     query = _clean(query)
@@ -259,17 +106,144 @@ def search(query):
     if not query:
         return []
 
-    results = _direct(query)
+    results = []
+    seen = set()
 
-    if results:
-        return results
+    for html in _search_page(query):
+        soup = BeautifulSoup(html, "html.parser")
 
-    return _bing(query)
+        for link in soup.find_all("a", href=True):
+            href = _clean(link.get("href", ""))
+
+            if not href:
+                continue
+
+            product_url = urljoin(BASE_URL, href).split("?")[0]
+
+            if "notino.fr" not in product_url.lower():
+                continue
+
+            path = product_url.replace(BASE_URL, "").strip("/").lower()
+
+            if not path:
+                continue
+
+            if any(
+                bad in path
+                for bad in (
+                    "search.asp",
+                    "search/",
+                    "panier",
+                    "cart",
+                    "login",
+                    "account",
+                    "contact",
+                    "livraison",
+                    "conditions",
+                    "magazine",
+                )
+            ):
+                continue
+
+            if product_url in seen:
+                continue
+
+            node = link
+            card = None
+
+            # Stessa logica di ParfumCity/PerfumeMarket:
+            # risale dalla voce prodotto fino alla card che contiene
+            # query + prezzo.
+            for _ in range(8):
+                if node is None:
+                    break
+
+                text = _clean(node.get_text(" ", strip=True))
+
+                if _matches(text, query) and _price(text):
+                    card = node
+                    break
+
+                node = node.parent
+
+            if card is None:
+                continue
+
+            text = _clean(card.get_text(" ", strip=True))
+
+            # NOVITÀ: se il blocco/card indica chiaramente
+            # che il prodotto/variante è in rottura di stock / non disponibile,
+            # NON usiamo i prezzi presenti in questo blocco.
+            if _is_unavailable_block(text):
+                continue
+
+            name = ""
+
+            # 1) Heading nella card
+            for tag in card.find_all(["h1", "h2", "h3", "h4"]):
+                candidate = _clean(tag.get_text(" ", strip=True))
+
+                if candidate and _matches(candidate, query):
+                    if not _is_generic_title(candidate):
+                        name = candidate
+                        break
+
+            # 2) Titolo/aria-label/testo del link
+            if not name:
+                candidate = _clean(
+                    link.get("title")
+                    or link.get("aria-label")
+                    or link.get_text(" ", strip=True)
+                )
+
+                if candidate and _matches(candidate, query):
+                    if not _is_generic_title(candidate):
+                        name = candidate
+
+            # 3) Altri elementi testuali nella card
+            if not name:
+                # Alcune card Notino hanno il nome separato dal link:
+                # usiamo il testo della card soltanto se contiene la query.
+                for element in card.find_all(["span", "div", "p"]):
+                    candidate = _clean(
+                        element.get_text(" ", strip=True)
+                    )
+
+                    if (
+                        candidate
+                        and len(candidate) <= 250
+                        and _matches(candidate, query)
+                        and not _is_generic_title(candidate)
+                    ):
+                        name = candidate
+                        break
+
+            if not name:
+                continue
+
+            price = _price(text)
+
+            if not price:
+                continue
+
+            seen.add(product_url)
+
+            results.append(
+                {
+                    "store": STORE,
+                    "name": name,
+                    "price": price,
+                    "url": product_url,
+                }
+            )
+
+            if len(results) >= 10:
+                return results
+
+        if results:
+            return results
+
+    return results
 
 if __name__ == "__main__":
-    items = search("Liquid Brun")
-
-    print("RISULTATI:", len(items))
-
-    for item in items:
-        print(item)
+    print(search("Hawas Ice"))
