@@ -1,5 +1,6 @@
 import json
 import re
+import unicodedata
 from urllib.parse import urljoin
 
 import requests
@@ -143,10 +144,20 @@ def _clean(value):
 
 
 def _norm(value):
+    value = unicodedata.normalize(
+        "NFKD",
+        _clean(value).lower(),
+    )
+    value = "".join(
+        char
+        for char in value
+        if not unicodedata.combining(char)
+    )
+
     return re.sub(
         r"[^a-z0-9]+",
         " ",
-        _clean(value).lower(),
+        value,
     ).strip()
 
 
@@ -405,6 +416,148 @@ def _url_matches_query(product_url, query):
     )
 
     return query_tokens.issubset(url_tokens)
+
+
+def _extract_limited_category(html, query):
+    soup = BeautifulSoup(
+        html,
+        "html.parser",
+    )
+
+    query_tokens = set(
+        _tokens(query)
+    )
+
+    base_tokens = query_tokens - {
+        "limited",
+        "edition",
+    }
+
+    results = []
+    seen = set()
+
+    for link in soup.find_all(
+        "a",
+        href=True,
+    ):
+        href = _clean(
+            link.get("href")
+        )
+
+        product_url = urljoin(
+            BASE_URL,
+            href,
+        ).split("?")[0]
+
+        if "/product/" not in product_url.lower():
+            continue
+
+        card = _find_product_card(link)
+
+        # The product name can be on the anchor while _find_product_card()
+        # may return a price/size ancestor. Combine both plus nearby ancestors.
+        parts = [
+            _clean(
+                link.get_text(
+                    " ",
+                    strip=True,
+                )
+            ),
+            _clean(
+                link.get("title")
+            ),
+            _clean(
+                link.get("aria-label")
+            ),
+            _clean(
+                card.get_text(
+                    " ",
+                    strip=True,
+                )
+            ),
+        ]
+
+        node = link.parent
+        for _ in range(4):
+            if node is None:
+                break
+            parts.append(
+                _clean(
+                    node.get_text(
+                        " ",
+                        strip=True,
+                    )
+                )
+            )
+            node = node.parent
+
+        candidate_text = _clean(
+            " ".join(
+                part
+                for part in parts
+                if part
+            )
+        )
+
+        tokens = set(
+            _tokens(candidate_text)
+        )
+
+        # This is the decisive filter:
+        # Liquid Brun + Limited + Edition must all be present in the
+        # category card context. The normal Liquid Brun card therefore
+        # cannot be returned for this query.
+        if not base_tokens.issubset(tokens):
+            continue
+
+        if not {
+            "limited",
+            "edition",
+        }.issubset(tokens):
+            continue
+
+        if any(
+            word in candidate_text.lower()
+            for word in SOLD_OUT
+        ):
+            continue
+
+        price = _extract_price(candidate_text)
+
+        if not price:
+            continue
+
+        if product_url in seen:
+            continue
+
+        seen.add(product_url)
+
+        product_name = _clean(
+            link.get_text(
+                " ",
+                strip=True,
+            )
+        )
+
+        if not product_name or len(
+            set(_tokens(product_name))
+            & {
+                "limited",
+                "edition",
+            }
+        ) < 2:
+            product_name = "Liquid Brun Limited Edition"
+
+        results.append({
+            "store": STORE,
+            "name": product_name,
+            "price": price,
+            "url": product_url,
+            "available": True,
+            "availability": "in_stock",
+        })
+
+    return results
 
 
 def _extract_category(html, query):
@@ -855,6 +1008,24 @@ def search(query):
     if response is None:
         return []
 
+    limited_query = {
+        "limited",
+        "edition",
+    }.issubset(
+        set(_tokens(query))
+    )
+
+    if limited_query:
+        limited_candidates = _extract_limited_category(
+            response.text,
+            query,
+        )
+
+        if limited_candidates:
+            return limited_candidates[:20]
+
+        return []
+
     candidates = _extract_category(
         response.text,
         query,
@@ -960,121 +1131,6 @@ def search(query):
         return final_results[:20]
 
     return [item for _, item in scored]
-
-
-
-def debug_category(q: str):
-    """
-    Diagnostic endpoint for Deloox category extraction.
-    It intentionally exposes the raw candidates found in the category
-    before the normal ranking/filtering pipeline.
-    """
-    query = _clean(q)
-
-    if not query:
-        return {
-            "query": query,
-            "category_url": None,
-            "candidates": [],
-        }
-
-    session = requests.Session()
-
-    category_url = _find_brand_category(
-        session,
-        query,
-    )
-
-    if not category_url:
-        return {
-            "query": query,
-            "category_url": None,
-            "candidates": [],
-        }
-
-    response = _get(
-        session,
-        category_url,
-    )
-
-    if response is None:
-        return {
-            "query": query,
-            "category_url": category_url,
-            "candidates": [],
-            "error": "category request failed",
-        }
-
-    soup = BeautifulSoup(
-        response.text,
-        "html.parser",
-    )
-
-    candidates = []
-    seen = set()
-
-    for link in soup.find_all(
-        "a",
-        href=True,
-    ):
-        href = _clean(
-            link.get("href")
-        )
-
-        product_url = urljoin(
-            BASE_URL,
-            href,
-        ).split("?")[0]
-
-        if "/product/" not in product_url.lower():
-            continue
-
-        if product_url in seen:
-            continue
-
-        seen.add(product_url)
-
-        card = _find_product_card(link)
-
-        candidates.append({
-            "url": product_url,
-            "link_text": _clean(
-                link.get_text(
-                    " ",
-                    strip=True,
-                )
-            ),
-            "link_title": _clean(
-                link.get("title")
-            ),
-            "aria_label": _clean(
-                link.get("aria-label")
-            ),
-            "data_product_name": _clean(
-                link.get("data-product-name")
-            ),
-            "data_name": _clean(
-                link.get("data-name")
-            ),
-            "card_text": _clean(
-                card.get_text(
-                    " ",
-                    strip=True,
-                )
-            ),
-        })
-
-    return {
-        "query": query,
-        "category_url": category_url,
-        "count": len(candidates),
-        "candidates": candidates,
-    }
-
-
-@app.get("/debug-category")
-def debug_category_endpoint(q: str):
-    return debug_category(q)
 
 
 if __name__ == "__main__":
