@@ -534,6 +534,26 @@ def debug_deloox_raw(
             "42.89",
         ]
 
+        snippets = []
+        for match in re.finditer(
+            r"limited",
+            html,
+            re.I,
+        ):
+            start = max(
+                0,
+                match.start() - 1200,
+            )
+            end = min(
+                len(html),
+                match.end() + 1800,
+            )
+            snippets.append(
+                html[start:end]
+            )
+            if len(snippets) >= 12:
+                break
+
         return {
             "query": q,
             "category_url": category_url,
@@ -545,6 +565,7 @@ def debug_deloox_raw(
                 )
                 for marker in markers
             },
+            "limited_snippets": snippets,
         }
 
     except Exception as error:
