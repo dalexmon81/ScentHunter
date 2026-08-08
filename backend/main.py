@@ -19,6 +19,8 @@ from urllib.error import HTTPError, URLError
 
 print("SCENTHUNTER FIX V2 — SEARCH SEQUENTIAL — SUGGEST NO SHOP FALLBACK", flush=True)
 
+print("SCENTHUNTER ONLY NOTINO TEST — STORES=[notino]", flush=True)
+
 app = FastAPI(title="ScentHunter API", version="1.0.0")
 
 app.add_middleware(
@@ -29,16 +31,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-STORES = [
-    "bplatz",
-    "deloox",
-    "parfumcity",
-    "parfumzentrum",
-    "perfumemarket",
-    "sabina",
-    "orioudh",
-    "notino",
-]
+STORES = ["notino"]
 
 BASE_DIR = os.path.dirname(__file__)
 HISTORY_PATH = os.path.join(BASE_DIR, "price_history.json")
