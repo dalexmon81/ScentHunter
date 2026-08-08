@@ -471,14 +471,21 @@ def _extract_category(html, query):
         ):
             continue
 
-        # For normal searches keep the strict card match.
-        # For Limited Edition searches, Deloox may expose the variant only
-        # on the product page, so the base Liquid Brun card is allowed through
-        # and the definitive variant check happens after opening the product.
-        limited_query = {
-            "limited",
-            "edition",
-        }.issubset(query_tokens)
+        else:
+            base_tokens = query_tokens - {
+                "limited",
+                "edition",
+            }
+
+            combined_tokens = set(
+                _tokens(combined_text)
+            )
+
+            if not base_tokens.issubset(combined_tokens):
+                continue
+
+            # Do not require "limited edition" to be present in the category
+            # card. It will be checked against the actual product page.
 
         if not limited_query:
             if not _matches_soft(
@@ -1008,8 +1015,19 @@ def search(query):
         reverse=True,
     )
 
+    limited_query = {
+        "limited",
+        "edition",
+    }.issubset(
+        set(_tokens(query))
+    )
+
     best_score = scored[0][0]
-    minimum_score = best_score - 45
+    minimum_score = (
+        float("-inf")
+        if limited_query
+        else best_score - 45
+    )
 
     final_results = []
     seen_variants = set()
