@@ -346,10 +346,10 @@ def search_perfume(query: str) -> Dict[str, Any]:
     results: List[Dict[str, Any]] = []
     errors: Dict[str, str] = {}
 
-    # Render Free has 512 MB RAM.
-    # Keep all 8 scrapers, but run only 3 at a time to limit memory peaks.
+    # Render Free: limit concurrent scrapers to reduce RAM peaks.
+    # All 8 stores remain enabled; only 2 run at the same time.
     executor = ThreadPoolExecutor(
-        max_workers=3,
+        max_workers=2,
         thread_name_prefix="scent-store",
     )
     future_to_store = {
