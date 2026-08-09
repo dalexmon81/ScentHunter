@@ -396,15 +396,19 @@ def _find_product_card(link):
 
 
 def _url_matches_query(product_url, query):
-    url_tokens = set(
-        _tokens(product_url)
-    )
+    url_tokens = set(_tokens(product_url))
+    query_tokens = set(_tokens(query))
 
-    query_tokens = set(
-        _tokens(query)
-    )
+    if not query_tokens:
+        return False
 
-    return query_tokens.issubset(url_tokens)
+    # If URL contains all tokens, it's a match.
+    if query_tokens.issubset(url_tokens):
+        return True
+
+    # Otherwise accept if a sufficient fraction of query tokens appear in URL.
+    found = sum(1 for t in query_tokens if t in url_tokens)
+    return (found / len(query_tokens)) >= 0.55
 
 
 def _extract_category(html, query):
@@ -465,12 +469,26 @@ def _extract_category(html, query):
         ):
             continue
 
-        card_tokens = set(
-            _tokens(card_text)
-        )
+        card_tokens = set(_tokens(card_text))
 
         if not query_tokens.issubset(card_tokens):
-            continue
+            # Allow the card if a stricter soft similarity check passes,
+            # or if the anchor title / a heading inside the card contains all query tokens.
+            if not _matches_soft(card_text, query, minimum=0.75):
+                link_title = _clean(link.get("title") or "")
+                if link_title and set(_tokens(query)).issubset(set(_tokens(link_title))):
+                    pass
+                else:
+                    heading = None
+                    for h in ("h1", "h2", "h3", "h4"):
+                        node_h = card.find(h)
+                        if node_h:
+                            heading = _clean(node_h.get_text(" ", strip=True))
+                            break
+                    if heading and set(_tokens(query)).issubset(set(_tokens(heading))):
+                        pass
+                    else:
+                        continue
 
         if not _is_relevant_product(
             card_text,
@@ -495,13 +513,14 @@ def _extract_category(html, query):
         if (
             link_name
             and not SIZE_FULL_RE.fullmatch(link_name)
-            and _matches_soft(
-                link_name,
-                query,
-                minimum=0.55,
-            )
+            and _matches_soft(link_name, query, minimum=0.55)
+            and set(_tokens(query)).issubset(set(_tokens(link_name)))
         ):
             product_name = link_name
+        else:
+            link_title = _clean(link.get("title") or "")
+            if link_title and set(_tokens(query)).issubset(set(_tokens(link_title))):
+                product_name = link_title
 
         if product_url in seen:
             continue
