@@ -10,6 +10,9 @@ STORE = "Deloox"
 BASE_URL = "https://www.deloox.com"
 HOME_URL = f"{BASE_URL}/en"
 TIMEOUT = 10
+CATALOG_TIMEOUT = 15
+CATALOG_URL = f"{BASE_URL}/en/category/1025540/trending.html?page=60"
+CATALOG_FILTER_LINKS = None
 
 HEADERS = {
     "User-Agent": (
@@ -329,6 +332,96 @@ def _extract_search_page(html, query):
     return results
 
 
+def _catalog_filter_links(session):
+    """
+    Discover Deloox product-line filters generically.
+
+    This is deliberately NOT a perfume-name table. Deloox exposes its
+    product lines as filter links in the global catalogue; we read those
+    links and use the matching filter for the current query.
+    """
+    global CATALOG_FILTER_LINKS
+
+    if CATALOG_FILTER_LINKS is not None:
+        return CATALOG_FILTER_LINKS
+
+    try:
+        response = session.get(
+            CATALOG_URL,
+            headers=HEADERS,
+            timeout=CATALOG_TIMEOUT,
+            allow_redirects=True,
+        )
+        response.raise_for_status()
+    except requests.RequestException as error:
+        print(f"DELOOX CATALOG ERROR: {error}")
+        CATALOG_FILTER_LINKS = []
+        return CATALOG_FILTER_LINKS
+
+    soup = BeautifulSoup(response.text or "", "html.parser")
+    links = []
+    seen = set()
+
+    for link in soup.find_all("a", href=True):
+        name = _clean(link.get_text(" ", strip=True))
+        href = _clean(link.get("href", ""))
+        if not name or not href:
+            continue
+
+        href_lower = href.lower()
+        if "filters%5b" not in href_lower and "filters[" not in href_lower:
+            continue
+
+        url = urljoin(BASE_URL, href)
+        if url in seen:
+            continue
+
+        seen.add(url)
+        links.append((name, url))
+
+    CATALOG_FILTER_LINKS = links
+    return CATALOG_FILTER_LINKS
+
+
+def _find_catalog_filter_url(session, query):
+    """Find the best Deloox catalogue filter matching the perfume query."""
+    query_tokens = set(_tokens(query))
+    if not query_tokens:
+        return None
+
+    candidates = []
+    for name, url in _catalog_filter_links(session):
+        name_tokens = set(_tokens(name))
+        if not name_tokens:
+            continue
+
+        found = len(query_tokens & name_tokens)
+        if found == 0:
+            continue
+
+        score = _match_score(name, query)
+        if query_tokens.issubset(name_tokens):
+            score += 1000
+
+        candidates.append((score, len(name_tokens), name, url))
+
+    if not candidates:
+        return None
+
+    candidates.sort(
+        key=lambda item: (item[0], -item[1]),
+        reverse=True,
+    )
+
+    best_score, _, best_name, best_url = candidates[0]
+
+    # Do not use a weak one-token match for multi-word searches.
+    if len(query_tokens) > 1 and not query_tokens.issubset(set(_tokens(best_name))):
+        return None
+
+    return best_url
+
+
 def _generic_site_search(session, query):
     """Use Deloox's own search surface when category discovery cannot identify a brand.
     No perfume names or brands are hard-coded here; several common GET parameter
@@ -350,7 +443,14 @@ def _generic_site_search(session, query):
             continue
         candidates = _extract_search_page(response.text, query)
         if candidates:
-            return candidates
+            query_tokens = set(_tokens(query))
+            exact_candidates = [
+                item
+                for item in candidates
+                if query_tokens.issubset(set(_tokens(item.get("name", ""))))
+            ]
+            if exact_candidates:
+                return exact_candidates
     return []
 
 
@@ -1034,6 +1134,15 @@ def search(query):
         session,
         query,
     )
+
+    # Generic catalogue discovery: if the query does not contain the brand,
+    # use Deloox's own product-line filter catalogue instead of maintaining
+    # a growing list such as "Turathi -> Afnan" or "Aquatica -> Rayhaan".
+    if not category_url:
+        category_url = _find_catalog_filter_url(
+            session,
+            query,
+        )
 
     if not category_url:
         return []
