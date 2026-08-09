@@ -1,5 +1,4 @@
 import json
-import os
 import re
 from urllib.parse import urljoin
 
@@ -11,10 +10,6 @@ STORE = "Deloox"
 BASE_URL = "https://www.deloox.com"
 HOME_URL = f"{BASE_URL}/en"
 TIMEOUT = 10
-CATALOG_TIMEOUT = 15
-CATALOG_URL = f"{BASE_URL}/en/category/1025540/trending.html?page=60"
-CATALOG_FILTER_LINKS = None
-BRAND_CATEGORY_CACHE = {}
 
 HEADERS = {
     "User-Agent": (
@@ -68,6 +63,10 @@ SOLD_OUT = (
     "temporarily unavailable",
     "ausverkauft",
     "nicht auf lager",
+    "nicht lieferbar",
+    "ausverkauft",
+    "uitverkocht",
+    "niet op voorraad",
     "rupture de stock",
     "épuisé",
 )
@@ -302,268 +301,6 @@ def _is_relevant_product(text, query):
     return True
 
 
-def _extract_search_page(html, query):
-    soup = BeautifulSoup(html or "", "html.parser")
-    results = []
-    seen = set()
-    for link in soup.find_all("a", href=True):
-        product_url = urljoin(BASE_URL, _clean(link.get("href", ""))).split("?")[0]
-        if "/product/" not in product_url.lower() or product_url in seen:
-            continue
-        card = _find_product_card(link)
-        text = _clean(card.get_text(" ", strip=True))
-        if not _is_relevant_product(text, query):
-            continue
-        price = _extract_price(text)
-        sold_out = any(word in text.lower() for word in SOLD_OUT)
-        if not price and not sold_out:
-            continue
-        seen.add(product_url)
-        name = _real_product_name(html="".join(str(x) for x in []), fallback=query)
-        link_name = _clean(link.get_text(" ", strip=True))
-        if link_name and not SIZE_FULL_RE.fullmatch(link_name):
-            name = link_name
-        results.append({
-            "store": STORE,
-            "name": name or query,
-            "price": price or "Out of stock",
-            "url": product_url,
-            "available": not sold_out,
-            "availability": "out_of_stock" if sold_out else "in_stock",
-        })
-    return results
-
-
-
-def _fragella_brand(query):
-    """Resolve the brand from the perfume name without hard-coding perfume names."""
-    api_key = os.getenv("FRAGELLA_API_KEY", "").strip()
-    if not api_key:
-        return ""
-
-    try:
-        from urllib.parse import urlencode
-        from urllib.request import Request, urlopen
-
-        params = urlencode({"search": query, "limit": 8})
-        request = Request(
-            f"https://api.fragella.com/api/v1/fragrances?{params}",
-            headers={
-                "x-api-key": api_key,
-                "Accept": "application/json",
-                "User-Agent": "ScentHunter-Deloox/1.0",
-            },
-        )
-        with urlopen(request, timeout=4) as response:
-            payload = json.loads(response.read().decode("utf-8"))
-
-        items = []
-        if isinstance(payload, dict):
-            for key in ("data", "results", "fragrances"):
-                if isinstance(payload.get(key), list):
-                    items = payload[key]
-                    break
-        elif isinstance(payload, list):
-            items = payload
-
-        query_tokens = set(_tokens(query))
-        ranked = []
-        for item in items:
-            if not isinstance(item, dict):
-                continue
-            name = _clean(item.get("Name") or item.get("name") or "")
-            brand = _clean(item.get("Brand") or item.get("brand") or "")
-            if not name or not brand:
-                continue
-            name_tokens = set(_tokens(name))
-            overlap = len(query_tokens & name_tokens)
-            if query_tokens and overlap == 0:
-                continue
-            score = overlap * 100
-            if query_tokens.issubset(name_tokens):
-                score += 1000
-            score -= abs(len(name_tokens) - len(query_tokens))
-            ranked.append((score, brand))
-
-        if not ranked:
-            return ""
-        ranked.sort(key=lambda x: x[0], reverse=True)
-        return ranked[0][1]
-    except Exception as error:
-        print(f"DELOOX FRAGELLA BRAND ERROR: {error}")
-        return ""
-
-
-def _find_brand_category_by_brand(session, brand):
-    """Find a Deloox brand category dynamically from the site navigation."""
-    key = _norm(brand)
-    if not key:
-        return None
-    if key in BRAND_CATEGORY_CACHE:
-        return BRAND_CATEGORY_CACHE[key]
-
-    response = _get(session, HOME_URL)
-    if response is None:
-        return None
-
-    soup = BeautifulSoup(response.text or "", "html.parser")
-    best = None
-
-    for link in soup.find_all("a", href=True):
-        name = _clean(link.get_text(" ", strip=True))
-        href = _clean(link.get("href", ""))
-        if not name or not href:
-            continue
-        url = urljoin(BASE_URL, href)
-        if "/category/" not in url.lower():
-            continue
-
-        name_n = _norm(name)
-        if name_n != key:
-            continue
-
-        best = url
-        break
-
-    if best:
-        BRAND_CATEGORY_CACHE[key] = best
-    return best
-
-def _catalog_filter_links(session):
-    """
-    Discover Deloox product-line filters generically.
-
-    This is deliberately NOT a perfume-name table. Deloox exposes its
-    product lines as filter links in the global catalogue; we read those
-    links and use the matching filter for the current query.
-    """
-    global CATALOG_FILTER_LINKS
-
-    if CATALOG_FILTER_LINKS is not None:
-        return CATALOG_FILTER_LINKS
-
-    try:
-        response = session.get(
-            CATALOG_URL,
-            headers=HEADERS,
-            timeout=CATALOG_TIMEOUT,
-            allow_redirects=True,
-        )
-        response.raise_for_status()
-    except requests.RequestException as error:
-        print(f"DELOOX CATALOG ERROR: {error}")
-        CATALOG_FILTER_LINKS = []
-        return CATALOG_FILTER_LINKS
-
-    soup = BeautifulSoup(response.text or "", "html.parser")
-    links = []
-    seen = set()
-
-    for link in soup.find_all("a", href=True):
-        name = _clean(link.get_text(" ", strip=True))
-        href = _clean(link.get("href", ""))
-        if not name or not href:
-            continue
-
-        href_lower = href.lower()
-        is_filter_link = "filters%5b" in href_lower or "filters[" in href_lower
-        is_category_link = "/category/" in href_lower
-        if not is_filter_link and not is_category_link:
-            continue
-
-        url = urljoin(BASE_URL, href)
-        if url in seen:
-            continue
-
-        seen.add(url)
-        links.append((name, url))
-
-    CATALOG_FILTER_LINKS = links
-    return CATALOG_FILTER_LINKS
-
-
-def _find_catalog_filter_url(session, query):
-    """Find the best Deloox catalogue filter matching the perfume query."""
-    query_tokens = set(_tokens(query))
-    if not query_tokens:
-        return None
-
-    candidates = []
-    for name, url in _catalog_filter_links(session):
-        name_tokens = set(_tokens(name))
-        if not name_tokens:
-            continue
-
-        found = len(query_tokens & name_tokens)
-        if found == 0:
-            continue
-
-        score = _match_score(name, query)
-        if query_tokens.issubset(name_tokens):
-            score += 1000
-
-        candidates.append((score, len(name_tokens), name, url))
-
-    if not candidates:
-        return None
-
-    candidates.sort(
-        key=lambda item: (item[0], -item[1]),
-        reverse=True,
-    )
-
-    best_score, _, best_name, best_url = candidates[0]
-
-    # Do not use a weak one-token match for multi-word searches.
-    if len(query_tokens) > 1 and not query_tokens.issubset(set(_tokens(best_name))):
-        return None
-
-    return best_url
-
-
-def _generic_site_search(session, query):
-    """Use Deloox's own search surface when category discovery cannot identify a brand.
-    No perfume names or brands are hard-coded here; several common GET parameter
-    variants are tried because Deloox has changed the search route over time.
-    """
-    from urllib.parse import quote_plus
-    encoded = quote_plus(query)
-    urls = (
-        f"{BASE_URL}/en/search?search={encoded}",
-        f"{BASE_URL}/en/search?q={encoded}",
-        f"{BASE_URL}/en/search?query={encoded}",
-        f"{BASE_URL}/en/search?keyword={encoded}",
-        f"{BASE_URL}/search?search={encoded}",
-        f"{BASE_URL}/en?search={encoded}",
-    )
-    for url in urls:
-        response = _get(session, url)
-        if response is None:
-            continue
-        candidates = _extract_search_page(response.text, query)
-        if candidates:
-            query_tokens = set(_tokens(query))
-            exact_candidates = [
-                item
-                for item in candidates
-                if query_tokens.issubset(set(_tokens(item.get("name", ""))))
-            ]
-            if exact_candidates:
-                return exact_candidates
-
-            # Deloox può aggiungere marca, linea o descrizione al titolo del link.
-            # Se la card è già stata validata da _is_relevant_product, manteniamo
-            # comunque i candidati migliori invece di scartarli tutti.
-            ranked = sorted(
-                candidates,
-                key=lambda item: _match_score(item.get("name", ""), query),
-                reverse=True,
-            )
-            if ranked and _match_score(ranked[0].get("name", ""), query) >= 50:
-                return ranked[:20]
-    return []
-
-
 def _find_brand_category(session, query):
     query_tokens = set(_tokens(query))
 
@@ -600,15 +337,6 @@ def _find_brand_category(session, query):
     for required_tokens, fallback_url in CATEGORY_FALLBACKS:
         if set(required_tokens).issubset(query_tokens):
             return fallback_url
-
-    # Generic resolver: use the fragrance catalogue to identify the brand,
-    # then discover that brand's Deloox category from Deloox navigation.
-    # This avoids adding one hard-coded rule for every perfume.
-    brand = _fragella_brand(query)
-    if brand:
-        dynamic_category = _find_brand_category_by_brand(session, brand)
-        if dynamic_category:
-            return dynamic_category
 
     response = _get(
         session,
@@ -798,6 +526,12 @@ def _extract_category(html, query):
         # Keep the original behaviour for every normal search.
         # Only Limited Edition needs the relaxed candidate collection because
         # Deloox may omit "limited edition" from the product URL.
+        if not limited_query and not _url_matches_query(
+            product_url,
+            query,
+        ):
+            continue
+
         card = _find_product_card(link)
 
         card_text = _clean(
@@ -892,6 +626,59 @@ def _extract_category(html, query):
     return results
 
 
+def _extract_loose_product_candidates(html, query):
+    """Generic fallback for Deloox when the category card markup changes."""
+    soup = BeautifulSoup(html, "html.parser")
+    query_tokens = set(_tokens(query))
+    results = []
+    seen = set()
+
+    for link in soup.find_all("a", href=True):
+        href = _clean(link.get("href", ""))
+        product_url = urljoin(BASE_URL, href).split("?")[0]
+        if "/product/" not in product_url.lower():
+            continue
+        if product_url in seen:
+            continue
+
+        node = link
+        context = _clean(link.get_text(" ", strip=True))
+        for _ in range(10):
+            if node is None:
+                break
+            text = _clean(node.get_text(" ", strip=True))
+            if _matches_soft(text, query, minimum=0.50):
+                context = text
+                break
+            node = node.parent
+
+        combined = f"{context} {product_url}"
+        if not _matches_soft(combined, query, minimum=0.50):
+            continue
+        if not _is_relevant_product(combined, query):
+            continue
+
+        sold_out = any(word in combined.lower() for word in SOLD_OUT)
+        price = _extract_price(combined)
+        if not price and not sold_out:
+            # The product page will be checked later; keep the candidate.
+            price = None
+
+        seen.add(product_url)
+        results.append({
+            "store": STORE,
+            "name": query,
+            "price": price or "Out of stock",
+            "url": product_url,
+            "available": False if sold_out else None,
+            "availability": "out_of_stock" if sold_out else "unknown",
+        })
+        if len(results) >= 20:
+            break
+
+    return results
+
+
 def _extract_brand_page(html, query):
     soup = BeautifulSoup(
         html,
@@ -952,6 +739,12 @@ def _extract_brand_page(html, query):
                 ).split("?")[0]
 
                 if "/product/" not in candidate_url.lower():
+                    continue
+
+                if not _url_matches_query(
+                    candidate_url,
+                    query,
+                ):
                     continue
 
                 product_link = candidate_url
@@ -1225,31 +1018,10 @@ def search(query):
 
     session = requests.Session()
 
-    # First try Deloox's own generic search. This is the primary path for
-    # products whose brand/product line is not present in the query text.
-    generic_candidates = _generic_site_search(session, query)
-    if generic_candidates:
-        scored = sorted(
-            ((_match_score(item["name"], query), item) for item in generic_candidates),
-            key=lambda item: item[0],
-            reverse=True,
-        )
-        best_score = scored[0][0]
-        return [item for score, item in scored if score >= best_score - 45][:20]
-
     category_url = _find_brand_category(
         session,
         query,
     )
-
-    # Generic catalogue discovery: if the query does not contain the brand,
-    # use Deloox's own product-line filter catalogue instead of maintaining
-    # a growing list such as "Turathi -> Afnan" or "Aquatica -> Rayhaan".
-    if not category_url:
-        category_url = _find_catalog_filter_url(
-            session,
-            query,
-        )
 
     if not category_url:
         return []
@@ -1269,6 +1041,12 @@ def search(query):
 
     if not candidates:
         candidates = _extract_brand_page(
+            response.text,
+            query,
+        )
+
+    if not candidates:
+        candidates = _extract_loose_product_candidates(
             response.text,
             query,
         )
@@ -1299,6 +1077,12 @@ def search(query):
                     query,
                 )
 
+            if not page_candidates:
+                page_candidates = _extract_loose_product_candidates(
+                    page_response.text,
+                    query,
+                )
+
             if page_candidates:
                 candidates.extend(page_candidates)
                 break
@@ -1315,6 +1099,12 @@ def search(query):
         )[0].split("?")[0]
 
         if product_url in seen_urls:
+            continue
+
+        if not limited_query and not _url_matches_query(
+            product_url,
+            query,
+        ):
             continue
 
         seen_urls.add(product_url)
