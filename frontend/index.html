@@ -120,7 +120,7 @@ body{position:relative}
 .offer{padding:13px 0}
 .offer.best{margin:5px -8px 0;padding:13px 8px;border-radius:13px;background:rgba(73,176,108,.08);border-top:1px solid #31583e}
 .offer-link{display:inline-flex!important;align-items:center;justify-content:center;min-height:38px;padding:9px 14px;border:1px solid #6d5620;border-radius:22px;background:#19150b}
-.offer-meta{font-size:11px;color:#8e9094;margin-top:3px}.offer-out{font-size:11px;color:#20b26b;margin-top:3px;font-weight:700}
+.offer-meta{font-size:11px;color:#8e9094;margin-top:3px}
 @media(max-width:390px){.result-image{width:62px;height:72px;flex-basis:62px}.bestprice{font-size:21px}}
 
 </style>
@@ -129,6 +129,7 @@ body{position:relative}
 <style>
 .product-choice{margin-top:12px;padding:15px;border:1px solid #303238;border-radius:18px;background:#121416;display:flex;gap:13px;align-items:center;cursor:pointer}
 .product-choice-main{min-width:0;flex:1}.product-choice .arrow{color:#e7b83f;font-size:28px}
+.format-choice{margin-top:10px;padding:14px 15px;border:1px solid #303238;border-radius:16px;background:linear-gradient(145deg,#17191b,#0d0f10);display:flex;gap:13px;align-items:center;cursor:pointer}.format-choice-main{min-width:0;flex:1}.format-title{font-size:17px;font-weight:850}.format-choice .arrow{color:#e7b83f;font-size:28px}.format-unavailable{margin-top:6px;color:#8d8f94;font-size:13px;font-weight:700}
 .detail-back{background:none;color:#e7b83f;padding:0 0 12px;font-size:14px;cursor:pointer}
 .offer-heart{background:none;color:#aaa;font-size:26px;cursor:pointer;padding:0 4px}.offer-heart.saved{color:#e7b83f}
 .offer-line{display:flex;justify-content:space-between;align-items:center;gap:10px}
@@ -194,9 +195,7 @@ const OLD_WISH_KEY="scenthunter_wishlist_v1";
 function normalizePerfumeName(v){
   return String(v||"")
     .toLowerCase()
-    // NON eliminare "parfum": può essere parte del nome/variante
-    // (es. Jean Paul Gaultier Le Beau Le Parfum).
-    .replace(/\b(eau de parfum|eau de toilette|edp|edt|perfume|spray|men|women|for men|for women)\b/g," ")
+    .replace(/\b(eau de parfum|eau de toilette|edp|edt|parfum|perfume|spray|men|women|for men|for women)\b/g," ")
     .replace(/\b\d+\s*ml\b/g," ")
     .replace(/[^a-z0-9à-ÿ]+/gi," ")
     .replace(/\s+/g," ").trim();
@@ -368,82 +367,31 @@ function shGroupData(data){
     return m?m[1]:"";
   }
 
-  function canonicalName(o){
-    let n=normalizePerfumeName(o.name||"").toLowerCase();
-    let brand=normalizePerfumeName(o.brand||"").toLowerCase();
+  function cleanDisplayName(o){
+    let n=String(o.name||"Profumo").trim();
+    const brand=String(o.brand||"").trim();
 
-    // Togli solo formato e parole realmente commerciali.
-    // IMPORTANTE: "parfum" ed "extrait" restano, perché possono identificare
-    // una variante diversa (es. "Le Beau Le Parfum").
     n=n.replace(/\b\d{1,4}\s*ml\b/gi," ");
-    n=n.replace(/\b(eau de toilette|eau de cologne|perfume|edp|edt|edc|spray|men|man|for men|for him|pour homme)\b/gi," ");
+    n=n.replace(/\b(eau de parfum|eau de toilette|eau de cologne|parfum|perfume|edp|edt|edc|extrait|spray)\b/gi," ");
+    n=n.replace(/\b(for men|for women|for him|for her|pour homme|pour femme)\b/gi," ");
 
-    // Se la marca è già separata nel campo brand, non deve duplicare il nome.
-    if(brand && n.startsWith(brand+" ")) n=n.slice(brand.length+1);
+    // La marca può comparire dentro il titolo restituito dal negozio.
+    if(brand){
+      const br=brand.replace(/[.*+?^${}()|[\]\\]/g,"\\$&");
+      n=n.replace(new RegExp("^"+br+"\\s+","i"),"");
+    }
 
-    // Togli soltanto parole/marche accessorie note.
-    n=n.replace(/\b(french avenue|rasasi)\b/gi," ");
-    n=n.replace(/\b(by|de|unisex|x)\b/gi," ");
+    // Marchi che alcuni scraper inseriscono nel nome anche quando il campo brand è vuoto.
+    n=n.replace(/^french avenue\s+/i,"");
+    n=n.replace(/^rasasi\s+/i,"");
 
-    // Mantiene l'ORDINE ORIGINALE delle parole.
-    // Niente .sort(): il titolo non viene più trasformato in
-    // "Beau Gaultier Jean Le Parfum".
-    return n.replace(/[^a-z0-9]+/gi," ").replace(/\s+/g," ").trim();
+    return n.replace(/\s+/g," ").trim()||"Profumo";
   }
 
-  // Raggruppamento speciale per la famiglia Liquid Brun.
-  // Deloox/negozi possono scrivere lo stesso profumo in modi diversi:
-  // "Liquid Brun French Avenue", "French Avenue Liquid Brun",
-  // "Liquid Brun ... Parfum", ecc.
-  // Qui vogliamo ESATTAMENTE 3 categorie:
-  // 1) Liquid Brun
-  // 2) Liquid Brun Limited Edition
-  // 3) Mystery Box Liquid Brun
-  function liquidBrunFamily(o){
-    const raw=String(o.name||"").toLowerCase();
-    const brand=String(o.brand||"").toLowerCase();
-    const s=(brand+" "+raw).replace(/[^a-z0-9]+/gi," ").replace(/\s+/g," ").trim();
-
-    if(!/liquid\s+brun/.test(s)) return "";
-
-    if(/mystery\s+box/.test(s)){
-      return "mystery box liquid brun";
-    }
-
-    if(/limited\s+edition/.test(s)){
-      return "liquid brun limited edition";
-    }
-
-    return "liquid brun";
-  }
-
-  function groupingName(o){
-    // Per Liquid Brun usiamo una chiave fissa di famiglia:
-    // il formato (100/150 ml o assente) NON crea una nuova categoria.
-    const lb=liquidBrunFamily(o);
-    if(lb) return lb;
-
-    // Per tutti gli altri profumi manteniamo il raggruppamento esistente.
-    const n=canonicalName(o);
-    const tokens=n.split(" ").filter(Boolean);
-    return [...new Set(tokens)].sort().join(" ");
-  }
-
-  function displayName(o,size){
-    const lb=liquidBrunFamily(o);
-    if(lb){
-      if(lb==="mystery box liquid brun") return "Mystery Box Liquid Brun";
-      if(lb==="liquid brun limited edition") return "Liquid Brun Limited Edition";
-      return "Liquid Brun";
-    }
-
-    let n=normalizePerfumeName(o.name||"Profumo").trim();
-    n=n.replace(/\b\d{1,4}\s*ml\b/gi," ").replace(/\s+/g," ").trim();
-    const brand=normalizePerfumeName(o.brand||"").trim();
-    if(brand && n.toLowerCase().startsWith(brand.toLowerCase()+" ")){
-      n=n.slice(brand.length).trim();
-    }
-    return ((brand?brand+" ":"")+n+(size?" "+size+" ml":"")).replace(/\s+/g," ").trim();
+  function canonicalName(o){
+    let n=normalizePerfumeName(cleanDisplayName(o)).toLowerCase();
+    n=n.replace(/\b(unisex|x)\b/gi," ");
+    return n.replace(/\s+/g," ").trim();
   }
 
   function canonicalBrand(o){
@@ -456,25 +404,17 @@ function shGroupData(data){
 
   raw.forEach(o=>{
     const cname=canonicalName(o);
-    const groupName=groupingName(o);
-    if(!cname||!groupName)return;
+    if(!cname)return;
     const size=sizeOf(o);
-    // Per Liquid Brun il formato NON deve creare una categoria separata:
-    // 100 ml e formato non dichiarato appartengono alla stessa famiglia,
-    // così come 150 ml e formato non dichiarato per la Limited Edition.
-    const lb=liquidBrunFamily(o);
-    const key=groupName+"|"+(lb ? "liquid-brun-family" : (size||"unknown"));
+    const key=(canonicalBrand(o)||"")+"|"+cname;
 
     if(!map.has(key)){
       map.set(key,{
         brand:o.brand||(/\brasasi\b/i.test(String(o.name||""))?"Rasasi":""),
-        name:o.name||"Profumo",
+        name:cleanDisplayName(o),
         canonical:cname,
-        display_name:displayName(o,size),
-        size_ml:size,
-        concentration:o.concentration||"",
         image:o.image||o.image_url||o.thumbnail||"",
-        offers:[]
+        variants:new Map()
       });
     }
 
@@ -482,31 +422,25 @@ function shGroupData(data){
     if(!g.brand && o.brand)g.brand=o.brand;
     if(!g.image)g.image=o.image||o.image_url||o.thumbnail||"";
 
-    // DEDUPLICA LE OFFERTE.
-    // ScentHunter deve mostrare una sola offerta per negozio dentro
-    // la stessa famiglia/formato del profumo. Questo è importante
-    // soprattutto per Notino, che può restituire più card/URL per
-    // lo stesso prodotto e lo stesso prezzo.
+    const variantKey=size||"unknown";
+    if(!g.variants.has(variantKey)){
+      g.variants.set(variantKey,{
+        size_ml:size,
+        concentration:o.concentration||"",
+        image:o.image||o.image_url||o.thumbnail||g.image||"",
+        offers:[]
+      });
+    }
+
+    const v=g.variants.get(variantKey);
+    if(!v.concentration && o.concentration)v.concentration=o.concentration;
+    if(!v.image)v.image=o.image||o.image_url||o.thumbnail||g.image||"";
+
     const store=String(o.store||"").trim().toLowerCase();
     const url=String(o.url||"").split("?")[0].toLowerCase();
     const offerSize=sizeOf(o)||"unknown";
     const offerName=normalizePerfumeName(o.name||"").toLowerCase();
-    const isNotino=store==="notino";
-    const isLiquidBrun=!!lb;
-
-    // NOTINO: una sola offerta per famiglia. La prima ricevuta dal
-    // backend viene considerata quella valida e non vengono aggiunte
-    // altre copie dello stesso negozio, anche se URL/nome differiscono.
-    if(isNotino && isLiquidBrun){
-      const alreadyNotino=g.offers.some(x=>
-        String(x.store||"").trim().toLowerCase()==="notino"
-      );
-      if(!alreadyNotino) g.offers.push(o);
-      return;
-    }
-
-    // Per tutti gli altri negozi eliminiamo duplicati identici.
-    const existingIndex=g.offers.findIndex(x=>{
+    const existingIndex=v.offers.findIndex(x=>{
       const xs=String(x.store||"").trim().toLowerCase();
       const xu=String(x.url||"").split("?")[0].toLowerCase();
       const xsize=sizeOf(x)||"unknown";
@@ -515,110 +449,91 @@ function shGroupData(data){
     });
 
     if(existingIndex>=0){
-      if(shNum(o)<shNum(g.offers[existingIndex]))g.offers[existingIndex]=o;
+      if(shNum(o)<shNum(v.offers[existingIndex]))v.offers[existingIndex]=o;
     }else{
-      g.offers.push(o);
+      v.offers.push(o);
     }
   });
 
-  // Unisce automaticamente il gruppo senza formato con quello dello stesso profumo
-  // che possiede un formato esplicito. Il formato mancante non deve creare una seconda scheda.
-  const groupedByName=new Map();
-  [...map.values()].forEach(g=>{
-    const sample=g.offers[0]||g;
-    const groupName=groupingName(sample);
-    const lb=liquidBrunFamily(sample);
-    const bucket=groupName+"|"+(lb ? "liquid-brun-family" : "normal");
-    if(!groupedByName.has(bucket)) groupedByName.set(bucket,[]);
-    groupedByName.get(bucket).push(g);
-  });
-
-  const mergedGroups=[];
-  groupedByName.forEach(list=>{
-    const known=list.filter(g=>String(g.size_ml||"").trim());
-    const unknown=list.filter(g=>!String(g.size_ml||"").trim());
-    if(known.length && unknown.length){
-      const target=known[0];
-      unknown.forEach(extra=>{
-        extra.offers.forEach(o=>{
-          const store=String(o.store||"").trim().toLowerCase();
-          const idx=target.offers.findIndex(x=>String(x.store||"").trim().toLowerCase()===store);
-          if(idx<0) target.offers.push(o);
-          else if(shNum(o)<shNum(target.offers[idx])) target.offers[idx]=o;
-        });
+  const groups=[...map.values()].map(g=>{
+    const variants=[...g.variants.values()]
+      .filter(v=>v.offers.length)
+      .sort((a,b)=>{
+        const sa=parseInt(a.size_ml||"999999",10);
+        const sb=parseInt(b.size_ml||"999999",10);
+        return sa-sb;
       });
-      mergedGroups.push(...known);
-    }else{
-      mergedGroups.push(...list);
-    }
-  });
 
-  const groups=mergedGroups.filter(g=>g.offers.length);
-  groups.forEach(g=>{
-    // Ultimo controllo anti-duplicato: una sola offerta per negozio
-    // nella stessa card. Se il backend ha restituito più record,
-    // conserviamo quello con il prezzo più basso.
-    const byStore=new Map();
-    g.offers.forEach(o=>{
-      const store=String(o.store||"").trim().toLowerCase();
-      if(!store){
-        byStore.set(`__empty_${byStore.size}`,o);
-        return;
-      }
-      const prev=byStore.get(store);
-      if(!prev || shNum(o)<shNum(prev)) byStore.set(store,o);
-    });
-    g.offers=[...byStore.values()];
-    g.offers.sort((a,b)=>{
-      const ao=String(a.availability||"").toLowerCase().includes("out_of_stock") || a.available===false;
-      const bo=String(b.availability||"").toLowerCase().includes("out_of_stock") || b.available===false;
-      if(ao!==bo)return ao?1:-1;
-      return shNum(a)-shNum(b);
-    });
+    variants.forEach(v=>v.offers.sort((a,b)=>shNum(a)-shNum(b)));
 
-    // Il titolo visibile usa il nome reale ricevuto dal negozio.
-    // La chiave normalizzata serve solo per raggruppare, mai per riscrivere il nome.
-    g.name=g.display_name||g.name||"Profumo";
-  });
+    return {
+      ...g,
+      variants,
+      // Il prezzo principale è il miglior prezzo disponibile tra tutti i formati.
+      best:variants.flatMap(v=>v.offers).sort((a,b)=>shNum(a)-shNum(b))[0]||null
+    };
+  }).filter(g=>g.variants.length);
 
-  return groups.filter(g=>g.offers.length);
+  return groups;
 }
 function showProducts(groups){
   currentProductGroups=groups;
   statusBox.textContent=groups.length?groups.length+(groups.length===1?" profumo trovato.":" profumi trovati."):"Nessun profumo trovato.";
   resultsBox.innerHTML=groups.map((g,i)=>{
-    const best=g.offers[0],img=g.image||"",meta=[g.size_ml?(String(g.size_ml).includes("ml")?g.size_ml:g.size_ml+" ml"):"",g.concentration?String(g.concentration).toUpperCase():""].filter(Boolean).join(" · ");
+    const best=g.best,img=g.image||"";
+    const formatCount=g.variants.length;
+    const formatLabel=formatCount===1?"1 formato":formatCount+" formati";
     return `<article class="product-choice" onclick="openProduct(${i})">
       <div class="result-image">${img?`<img src="${esc(img)}" alt="${esc(g.name)}" onerror="this.outerHTML='🧴'">`:"🧴"}</div>
-      <div class="product-choice-main"><div class="store">${esc(g.brand||"")}</div><div class="name">${esc(g.name)}</div>${meta?`<div class="offer-meta">${esc(meta)}</div>`:""}${best?`<div class="bestprice">da ${esc(shPrice(best))}</div><div class="offer-meta">${g.offers.length} ${g.offers.length===1?"negozio":"negozi"}</div>`:""}</div>
+      <div class="product-choice-main"><div class="store">${esc(g.brand||"")}</div><div class="name">${esc(g.name)}</div>${best?`<div class="bestprice">da ${esc(shPrice(best))}</div>`:""}<div class="offer-meta">${formatLabel} · ${g.variants.reduce((n,v)=>n+v.offers.length,0)} ${g.variants.reduce((n,v)=>n+v.offers.length,0)===1?"negozio":"negozi"}</div></div>
       <div class="arrow">›</div>
     </article>`;
   }).join("");
 }
 function openProduct(i){
   const g=currentProductGroups[i];if(!g)return;
-  const offers=(g.offers||[]).slice().sort((x,y)=>{
-    const xo=String(x.availability||"").toLowerCase().includes("out_of_stock") || x.available===false;
-    const yo=String(y.availability||"").toLowerCase().includes("out_of_stock") || y.available===false;
-    if(xo!==yo)return xo?1:-1;
-    return shNum(x)-shNum(y);
-  }),saved=getWishlist(),img=g.image||"";
   statusBox.textContent="";
-  resultsBox.innerHTML=`<article class="comparison"><button class="detail-back" onclick="showProducts(currentProductGroups)">← Torna ai risultati</button>
-    <div class="comparison-head"><div class="result-image">${img?`<img src="${esc(img)}" alt="${esc(g.name)}" onerror="this.outerHTML='🧴'">`:"🧴"}</div><div class="result-main"><div class="store">${esc(g.brand||"")}</div><div class="name">${esc(g.name)}</div></div></div>
+  const saved=getWishlist(),img=g.image||"";
+
+  resultsBox.innerHTML=`<article class="comparison">
+    <button class="detail-back" onclick="showProducts(currentProductGroups)">← Torna ai risultati</button>
+    <div class="comparison-head">
+      <div class="result-image">${img?`<img src="${esc(img)}" alt="${esc(g.name)}" onerror="this.outerHTML='🧴'">`:"🧴"}</div>
+      <div class="result-main"><div class="store">${esc(g.brand||"")}</div><div class="name">${esc(g.name)}</div></div>
+    </div>
+    <div class="bestlabel">SCEGLI IL FORMATO · ${g.variants.length} ${g.variants.length===1?"FORMATO":"FORMATI"}</div>
+    ${g.variants.map((v,n)=>{
+      const best=v.offers.slice().sort((a,b)=>shNum(a)-shNum(b))[0];
+      const label=v.size_ml?`${v.size_ml} ml`:"Formato non specificato";
+      const available=v.offers.filter(o=>shNum(o)!==Infinity).length;
+      return `<div class="format-choice" onclick="openVariant(${i},${n})">
+        <div class="format-choice-main"><div class="format-title">${esc(label)}</div>${v.concentration?`<div class="offer-meta">${esc(String(v.concentration).toUpperCase())}</div>`:""}${best?`<div class="bestprice">da ${esc(shPrice(best))}</div>`:`<div class="format-unavailable">Nessun prezzo disponibile</div>`}<div class="offer-meta">${v.offers.length} ${v.offers.length===1?"negozio":"negozi"}${available&&available<v.offers.length?` · ${v.offers.length-available} non disponibili`:""}</div></div>
+        <div class="arrow">›</div>
+      </div>`;
+    }).join("")}
+  </article>`;
+  document.getElementById("searchOutput").scrollIntoView({behavior:"smooth",block:"start"});
+}
+function openVariant(gi,vi){
+  const g=currentProductGroups[gi],v=g&&g.variants[vi];if(!g||!v)return;
+  const offers=(v.offers||[]).slice().sort((a,b)=>shNum(a)-shNum(b)),saved=getWishlist(),img=v.image||g.image||"";
+  const label=v.size_ml?`${v.size_ml} ml`:"Formato non specificato";
+  statusBox.textContent="";
+  resultsBox.innerHTML=`<article class="comparison">
+    <button class="detail-back" onclick="openProduct(${gi})">← Torna ai formati</button>
+    <div class="comparison-head"><div class="result-image">${img?`<img src="${esc(img)}" alt="${esc(g.name)}" onerror="this.outerHTML='🧴'">`:"🧴"}</div><div class="result-main"><div class="store">${esc(g.brand||"")}</div><div class="name">${esc(g.name)}</div><div class="offer-meta">${esc(label)}</div></div></div>
     <div class="bestlabel">CONFRONTA I PREZZI · ${offers.length} ${offers.length===1?"NEGOZIO":"NEGOZI"}</div>
     ${offers.map((o,n)=>{
-      const item={brand:g.brand||o.brand||"",name:g.name||o.name||"",price:shPrice(o),shop:o.store||"",url:o.url||"",pic:img||"🧴"};
+      const item={brand:g.brand||o.brand||"",name:g.name||o.name||"",price:shPrice(o),shop:o.store||"",url:o.url||"",pic:img||"🧴",size_ml:v.size_ml||""};
       const found=saved.find(x=>samePerfume(x,item)),on=!!found&&found.selectedOfferId===offerId(item);
-      const isOut = String(o.availability||"").toLowerCase().includes("out_of_stock") || o.available === false;
-      return `<div class="offer ${n===0?"best":""}"><div class="offer-line"><div><div class="offer-store">${n===0?"🥇 ":""}${esc(o.store||"Negozio")}</div>${n===0?'<div class="offer-meta">MIGLIOR PREZZO</div>':""}${isOut?'<div class="offer-meta">NON DISPONIBILE</div>':""}</div><div style="display:flex;align-items:center;gap:8px"><span class="offer-price">${esc(shPrice(o)||"Prezzo non disponibile")}</span><button class="offer-heart ${on?"saved":""}" onclick="event.stopPropagation();chooseOffer(${i},${n})">${on?"♥":"♡"}</button></div></div>${o.url?`<a class="offer-link" href="${esc(o.url)}" target="_blank" rel="noopener noreferrer">Vai al negozio →</a>`:""}</div>`;
+      return `<div class="offer ${n===0?"best":""}"><div class="offer-line"><div><div class="offer-store">${n===0?"🥇 ":""}${esc(o.store||"Negozio")}</div>${n===0?'<div class="offer-meta">MIGLIOR PREZZO</div>':""}</div><div style="display:flex;align-items:center;gap:8px"><span class="offer-price">${esc(shPrice(o)||"Prezzo non disponibile")}</span><button class="offer-heart ${on?"saved":""}" onclick="event.stopPropagation();chooseOffer(${gi},${vi},${n})">${on?"♥":"♡"}</button></div></div>${o.url?`<a class="offer-link" href="${esc(o.url)}" target="_blank" rel="noopener noreferrer">Vai al negozio →</a>`:""}</div>`;
     }).join("")}</article>`;
   document.getElementById("searchOutput").scrollIntoView({behavior:"smooth",block:"start"});
 }
-function chooseOffer(gi,oi){
-  const g=currentProductGroups[gi],o=(g.offers||[]).slice().sort((x,y)=>shNum(x)-shNum(y))[oi];if(!o)return;
-  toggleWish({brand:g.brand||o.brand||"",name:g.name||o.name||"",price:shPrice(o),shop:o.store||"",url:o.url||"",pic:g.image||"🧴"});
-  openProduct(gi);
+function chooseOffer(gi,vi,oi){
+  const g=currentProductGroups[gi],v=g&&g.variants[vi],o=v&&(v.offers||[]).slice().sort((x,y)=>shNum(x)-shNum(y))[oi];if(!g||!v||!o)return;
+  toggleWish({brand:g.brand||o.brand||"",name:g.name||o.name||"",price:shPrice(o),shop:o.store||"",url:o.url||"",pic:v.image||g.image||"🧴",size_ml:v.size_ml||""});
+  openVariant(gi,vi);
 }
 
 async function fetchJSONWithTimeout(url,ms=90000){
