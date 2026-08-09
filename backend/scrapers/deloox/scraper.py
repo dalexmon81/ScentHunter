@@ -419,6 +419,7 @@ def _extract_category(html, query):
     )
 
     results = []
+    # seen will track (product_url, normalized_name) so we can emit multiple names for same URL
     seen = set()
 
     query_tokens = set(
@@ -480,8 +481,8 @@ def _extract_category(html, query):
         found_frac = found / n_query_tokens
 
         if found_frac < threshold:
-            # Fallback checks: accept if anchor title or a heading inside the card
-            # contains all query tokens (ParfumCity-like behavior), otherwise skip.
+            # Fallback checks: accept if anchor title or a heading inside the card contains all query tokens,
+            # otherwise skip.
             link_title = _clean(link.get("title") or "")
             heading = None
             for h in ("h1", "h2", "h3", "h4"):
@@ -535,19 +536,37 @@ def _extract_category(html, query):
             if link_title and set(_tokens(query)).issubset(set(_tokens(link_title))):
                 product_name = link_title
 
-        if product_url in seen:
-            continue
+        # Now append result(s). Use seen keyed by (product_url, name_norm) so we can emit
+        # both "Liquid Brun" and "Liquid Brun Limited Edition" pointing to same URL when appropriate.
+        name_norm = _norm(product_name)
+        key = (product_url, name_norm)
+        if key not in seen:
+            seen.add(key)
+            results.append({
+                "store": STORE,
+                "name": product_name,
+                "price": price,
+                "url": product_url,
+                "available": True,
+                "availability": "in_stock",
+            })
 
-        seen.add(product_url)
-
-        results.append({
-            "store": STORE,
-            "name": product_name,
-            "price": price,
-            "url": product_url,
-            "available": True,
-            "availability": "in_stock",
-        })
+        # If the found product_name contains the query tokens but has extra modifiers,
+        # also emit a variant using the plain query (so searches for the base name see a result).
+        if set(_tokens(query)).issubset(set(_tokens(product_name))):
+            base_name = query
+            base_norm = _norm(base_name)
+            base_key = (product_url, base_norm)
+            if base_key not in seen and base_norm != name_norm:
+                seen.add(base_key)
+                results.append({
+                    "store": STORE,
+                    "name": base_name,
+                    "price": price,
+                    "url": product_url,
+                    "available": True,
+                    "availability": "in_stock",
+                })
 
     return results
 
