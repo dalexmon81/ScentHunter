@@ -16,12 +16,7 @@ from urllib.parse import urlencode
 from urllib.request import Request, urlopen
 from urllib.error import HTTPError, URLError
 
-# Normalizer import (integrato qui)
-from backend.normalizer import (
-    apply_normalization_and_sort,
-    debug_log_grouped,
-    sort_offers_for_display,
-)
+import logging
 
 app = FastAPI(title="ScentHunter API", version="1.0.0")
 
@@ -32,6 +27,10 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+LOGGER = logging.getLogger("scent_debug")
+if not LOGGER.handlers:
+    logging.basicConfig(level=logging.INFO)
 
 STORES = [
     "bplatz",
@@ -113,7 +112,6 @@ def _price_from_structured_html(html: str) -> Optional[float]:
     """
     html = unescape(html or "")
 
-    # 1) JSON-LD: Product -> offers -> price.
     scripts = re.findall(
         r'<script[^>]+type=["\']application/ld\+json["\'][^>]*>(.*?)</script>',
         html,
@@ -135,7 +133,6 @@ def _price_from_structured_html(html: str) -> Optional[float]:
                             n = price_num(offer.get(key))
                             if n is not None:
                                 yield n
-            # Alcuni negozi mettono direttamente price nel Product.
             if str(value.get("@type", "")).lower() == "product":
                 n = price_num(value.get("price"))
                 if n is not None:
@@ -153,11 +150,8 @@ def _price_from_structured_html(html: str) -> Optional[float]:
             continue
         prices = list(walk(payload))
         if prices:
-            # Il primo prezzo Product/Offer è quello più affidabile; non usiamo
-            # i prezzi aggregati di comparatori esterni presenti nella pagina.
             return prices[0]
 
-    # 2) Meta tag comuni di Shopify/WooCommerce/OpenGraph.
     patterns = [
         r'<meta[^>]+(?:property|name)=["\'](?:product:price:amount|og:price:amount)["\'][^>]+content=["\']([^"\']+)',
         r'<meta[^>]+itemprop=["\']price["\'][^>]+content=["\']([^"\']+)',
@@ -185,7 +179,6 @@ def resolve_actual_price(product: Dict[str, Any]) -> Dict[str, Any]:
     raw_price = str(item.get("price") or "").strip()
     size = _product_size_ml(item)
 
-    # Se la pagina è disponibile, il prezzo strutturato è la fonte primaria.
     url = str(item.get("url") or "").strip()
     if url and size and abs(size - 100.0) > 0.01:
         try:
@@ -206,8 +199,6 @@ def resolve_actual_price(product: Dict[str, Any]) -> Dict[str, Any]:
         except Exception:
             pass
 
-    # Fallback sicuro: converti SOLO quando il testo dichiara esplicitamente
-    # che il valore è un prezzo unitario per 100 ml.
     unit_match = re.search(r"(?:/|per\s*)100\s*ml", raw_price, re.I)
     if unit_match and size and size > 0:
         unit = price_num(raw_price[:unit_match.start()])
@@ -292,6 +283,46 @@ def run_store(store: str, query: str) -> List[Dict[str, Any]]:
     for attempt in attempts:
         results = search_fn(attempt) or []
 
+        try:
+            query_l = (query or "").lower()
+        except Exception:
+            query_l = ""
+
+        if "turathi" in query_l or "turathi blue" in query_l:
+            try:
+                LOGGER.info("=== RAW SCRAPER OUTPUT (pre-matches) store=%s attempt=%r query=%r ===", store, attempt, query)
+            except Exception:
+                print("=== RAW SCRAPER OUTPUT (pre-matches) store=%s attempt=%r query=%r ===" % (store, attempt, query))
+
+            for o in results:
+                if not isinstance(o, dict):
+                    try:
+                        LOGGER.info("RAW non-dict result: %r", o)
+                    except Exception:
+                        print("RAW non-dict result:", o)
+                    continue
+
+                rec = {
+                    "store": store,
+                    "attempt": attempt,
+                    "name": o.get("name"),
+                    "brand": o.get("brand"),
+                    "price": o.get("price"),
+                    "url": o.get("url"),
+                    "size": o.get("size") or o.get("volume") or o.get("format"),
+                    "availability": o.get("availability"),
+                    "availability_text": o.get("availability_text") or o.get("raw_availability") or o.get("card_text"),
+                }
+                try:
+                    LOGGER.info(rec)
+                except Exception:
+                    print(rec)
+
+            try:
+                LOGGER.info("=== END RAW SCRAPER OUTPUT ===")
+            except Exception:
+                print("=== END RAW SCRAPER OUTPUT ===")
+
         for item in results:
             if not isinstance(item, dict):
                 continue
@@ -310,7 +341,31 @@ def run_store(store: str, query: str) -> List[Dict[str, Any]]:
 
             seen.add(key)
 
-            if matches(product, query):
+            try:
+                query_l = (query or "").lower()
+            except Exception:
+                query_l = ""
+
+            is_match = matches(product, query)
+
+            if "turathi" in query_l or "turathi blue" in query_l:
+                info = {
+                    "store": product.get("store"),
+                    "name": product.get("name"),
+                    "query": query,
+                }
+                try:
+                    if is_match:
+                        LOGGER.info("MATCHED by matches(): %r", info)
+                    else:
+                        LOGGER.info("REJECTED BY MATCHES(): %r", info)
+                except Exception:
+                    if is_match:
+                        print("MATCHED by matches():", info)
+                    else:
+                        print("REJECTED BY MATCHES():", info)
+
+            if is_match:
                 output.append(product)
 
     return output
@@ -377,68 +432,54 @@ def search_perfume(query: str) -> Dict[str, Any]:
 
     executor.shutdown(wait=False, cancel_futures=True)
 
-    # === INSERT NORMALIZER PIPELINE HERE ===
-    # Debug PRE-NORMALIZER for Turathi Blue: show raw offers present before normalization
-    low_query = query.lower()
-    if "turathi" in low_query or "turathi blue" in low_query:
-        print("=== PRE-NORMALIZER OFFERS ===")
-        for p in results:
-            size_field = p.get("size") or p.get("volume") or p.get("size_ml") or None
-            availability_field = p.get("availability") or p.get("availability_text") or None
-            print(
-                "PRE:",
-                f"store={p.get('store')}",
-                f"name={p.get('name')}",
-                f"price={p.get('price')}",
-                f"url={p.get('url')}",
-                f"size={size_field}",
-                f"availability={availability_field}",
-            )
-        stores_present_pre = {str(p.get("store") or "").lower() for p in results if p.get("store")}
-        for s in ("sabina", "bplatz", "orioudh", "deloox", "notino"):
-            print(f"PRE presence {s}: {s in stores_present_pre}")
-
     try:
-        grouped = apply_normalization_and_sort(results)
+        query_l = (query or "").lower()
     except Exception:
-        # In case normalizer fails for any reason, fall back to previous behavior
-        traceback.print_exc()
-        grouped = None
+        query_l = ""
 
-    # Debug POST-NORMALIZER for Turathi Blue: show normalized size/availability per offer
-    if ("turathi" in low_query or "turathi blue" in low_query) and grouped is not None:
-        print("=== POST-NORMALIZER GROUPS (Turathi) ===")
-        # debug_log_grouped prints per-group details matching the query tokens
-        debug_log_grouped(grouped, query="turathi blue")
-        # summary presence by store after normalization (flatten)
-        flattened_post = []
-        for g in grouped.values():
-            flattened_post.extend(g.get("offers", []))
-        stores_present_post = {str(o.get("store") or "").lower() for o in flattened_post if o.get("store")}
-        for s in ("sabina", "bplatz", "orioudh", "deloox", "notino"):
-            print(f"POST presence {s}: {s in stores_present_post}")
-
-    # Flatten grouped offers back into results list if grouped successfully
-    if grouped is not None:
-        flattened = []
-        for g in grouped.values():
-            flattened.extend(g.get("offers", []))
-
-        # deduplicate flattened offers using existing unique_results() semantics
-        deduped = unique_results(flattened)
-
-        # sort using normalizer's sort (in_stock -> unknown -> out_of_stock, price asc)
+    if "turathi" in query_l or "turathi blue" in query_l:
         try:
-            results = sort_offers_for_display(deduped)
-        except Exception:
-            # fallback to price sort if sorting fails
-            traceback.print_exc()
-            results = sort_by_price(deduped)
-    else:
-        # If grouping failed, fallback to original dedup + price sort
-        results = sort_by_price(unique_results(results))
+            from normalizer import apply_normalization_and_sort, debug_log_grouped
+            try:
+                grouped = apply_normalization_and_sort(results)
+                try:
+                    LOGGER.info("=== AFTER NORMALIZER (GROUPED) debug for query=%r ===", query)
+                except Exception:
+                    print("=== AFTER NORMALIZER (GROUPED) debug for query=%r ===" % (query,))
+                try:
+                    debug_log_grouped(grouped, query="turathi blue")
+                except Exception:
+                    print("debug_log_grouped failed, printing minimal grouped summary")
+                    for k, g in grouped.items():
+                        print("GROUP:", k, "sizes_present:", g.get("sizes_present"), "inferred:", g.get("inferred_single_size"))
+                        for o in g.get("offers", []):
+                            print("  OFFER:", o.get("store"), o.get("name"), o.get("_norm_size"), o.get("_size_imputed"), o.get("_availability"))
 
-    # === END NORMALIZER PIPELINE ===
+                stores_to_check = ["sabina", "bplatz", "orioudh", "deloox", "notino"]
+                present_before = {s: any((r.get("store") or "").lower() == s for r in results) for s in stores_to_check}
+                present_after = {}
+                for s in stores_to_check:
+                    found = False
+                    for g in grouped.values():
+                        for o in g.get("offers", []):
+                            if (o.get("store") or "").lower() == s:
+                                found = True
+                                break
+                        if found:
+                            break
+                    present_after[s] = found
+                try:
+                    LOGGER.info("PRESENCE BEFORE NORMALIZER: %r", present_before)
+                    LOGGER.info("PRESENCE AFTER NORMALIZER: %r", present_after)
+                except Exception:
+                    print("PRESENCE BEFORE NORMALIZER:", present_before)
+                    print("PRESENCE AFTER NORMALIZER:", present_after)
+            except Exception as e:
+                LOGGER.exception("apply_normalization_and_sort() failed: %s", e)
+        except Exception:
+            LOGGER.exception("Normalizer module import failed; skipping POST-NORMALIZER debug")
+
+    results = sort_by_price(unique_results(results))
 
     return {
         "query": query,
