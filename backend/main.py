@@ -18,6 +18,12 @@ from urllib.error import HTTPError, URLError
 
 import logging
 
+from normalizer import (
+    apply_normalization_and_sort,
+    debug_log_grouped,
+    sort_offers_for_display,
+)
+
 app = FastAPI(title="ScentHunter API", version="1.0.0")
 
 app.add_middleware(
@@ -432,6 +438,14 @@ def search_perfume(query: str) -> Dict[str, Any]:
 
     executor.shutdown(wait=False, cancel_futures=True)
 
+    # ============================================================
+    # NORMALIZER PIPELINE
+    # ============================================================
+    # La normalizzazione viene applicata a TUTTE le offerte raccolte,
+    # prima del dedup finale e dell'ordinamento restituito al frontend.
+    grouped = apply_normalization_and_sort(results)
+
+    # Debug dettagliato per Turathi Blue.
     try:
         query_l = (query or "").lower()
     except Exception:
@@ -439,47 +453,33 @@ def search_perfume(query: str) -> Dict[str, Any]:
 
     if "turathi" in query_l or "turathi blue" in query_l:
         try:
-            from normalizer import apply_normalization_and_sort, debug_log_grouped
-            try:
-                grouped = apply_normalization_and_sort(results)
-                try:
-                    LOGGER.info("=== AFTER NORMALIZER (GROUPED) debug for query=%r ===", query)
-                except Exception:
-                    print("=== AFTER NORMALIZER (GROUPED) debug for query=%r ===" % (query,))
-                try:
-                    debug_log_grouped(grouped, query="turathi blue")
-                except Exception:
-                    print("debug_log_grouped failed, printing minimal grouped summary")
-                    for k, g in grouped.items():
-                        print("GROUP:", k, "sizes_present:", g.get("sizes_present"), "inferred:", g.get("inferred_single_size"))
-                        for o in g.get("offers", []):
-                            print("  OFFER:", o.get("store"), o.get("name"), o.get("_norm_size"), o.get("_size_imputed"), o.get("_availability"))
+            LOGGER.info("=== AFTER NORMALIZER (GROUPED) debug for query=%r ===", query)
+            debug_log_grouped(grouped, query="turathi blue")
 
-                stores_to_check = ["sabina", "bplatz", "orioudh", "deloox", "notino"]
-                present_before = {s: any((r.get("store") or "").lower() == s for r in results) for s in stores_to_check}
-                present_after = {}
-                for s in stores_to_check:
-                    found = False
-                    for g in grouped.values():
-                        for o in g.get("offers", []):
-                            if (o.get("store") or "").lower() == s:
-                                found = True
-                                break
-                        if found:
-                            break
-                    present_after[s] = found
-                try:
-                    LOGGER.info("PRESENCE BEFORE NORMALIZER: %r", present_before)
-                    LOGGER.info("PRESENCE AFTER NORMALIZER: %r", present_after)
-                except Exception:
-                    print("PRESENCE BEFORE NORMALIZER:", present_before)
-                    print("PRESENCE AFTER NORMALIZER:", present_after)
-            except Exception as e:
-                LOGGER.exception("apply_normalization_and_sort() failed: %s", e)
+            stores_to_check = ["sabina", "bplatz", "orioudh", "deloox", "notino"]
+            present_after = {}
+            for store_name in stores_to_check:
+                present_after[store_name] = any(
+                    str(offer.get("store") or "").strip().lower() == store_name
+                    for group in grouped.values()
+                    for offer in group.get("offers", [])
+                )
+            LOGGER.info("PRESENCE AFTER NORMALIZER: %r", present_after)
         except Exception:
-            LOGGER.exception("Normalizer module import failed; skipping POST-NORMALIZER debug")
+            LOGGER.exception("Normalizer debug failed")
 
-    results = sort_by_price(unique_results(results))
+    # Flatten the normalized groups back to the list expected by the frontend.
+    normalized_results: List[Dict[str, Any]] = []
+    for group in grouped.values():
+        normalized_results.extend(group.get("offers", []))
+
+    normalized_results = unique_results(normalized_results)
+
+    try:
+        results = sort_offers_for_display(normalized_results)
+    except Exception:
+        traceback.print_exc()
+        results = sort_by_price(normalized_results)
 
     return {
         "query": query,
