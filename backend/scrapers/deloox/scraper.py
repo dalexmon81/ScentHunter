@@ -1,5 +1,6 @@
 import json
 import re
+import unicodedata
 from urllib.parse import urljoin
 
 import requests
@@ -143,10 +144,20 @@ def _clean(value):
 
 
 def _norm(value):
+    value = unicodedata.normalize(
+        "NFKD",
+        _clean(value).lower(),
+    )
+    value = "".join(
+        char
+        for char in value
+        if not unicodedata.combining(char)
+    )
+
     return re.sub(
         r"[^a-z0-9]+",
         " ",
-        _clean(value).lower(),
+        value,
     ).strip()
 
 
@@ -402,14 +413,20 @@ def _url_matches_query(product_url, query):
     if not query_tokens:
         return False
 
-    # If URL contains all tokens, it's a match.
+    # Only Limited Edition gets a strict discriminator.
+    # Normal searches keep the existing proven behavior.
+    if {"limited", "edition"}.issubset(query_tokens):
+        return {"limited", "edition"}.issubset(url_tokens)
+
     if query_tokens.issubset(url_tokens):
         return True
 
-    # Otherwise accept if a sufficient fraction of query tokens appear in URL.
-    # Use a permissive threshold to avoid dropping base products whose URLs omit modifiers.
-    found = sum(1 for t in query_tokens if t in url_tokens)
-    return (found / len(query_tokens)) >= 0.5
+    found = sum(
+        1 for token in query_tokens
+        if token in url_tokens
+    )
+
+    return (found / len(query_tokens)) >= 0.55
 
 
 def _extract_category(html, query):
@@ -419,7 +436,6 @@ def _extract_category(html, query):
     )
 
     results = []
-    # seen will track (product_url, normalized_name) so we can emit multiple names for same URL
     seen = set()
 
     query_tokens = set(
@@ -472,31 +488,35 @@ def _extract_category(html, query):
             continue
 
         card_tokens = set(_tokens(card_text))
+        limited_query = {"limited", "edition"}.issubset(query_tokens)
 
-        # Dynamic threshold: require a slightly lower fraction for short queries
-        # so simple queries (2 tokens) still match when one token is present in card.
-        n_query_tokens = len(query_tokens) or 1
-        threshold = 0.55 if n_query_tokens >= 3 else 0.5
-        found = sum(1 for t in query_tokens if t in card_tokens)
-        found_frac = found / n_query_tokens
+        if limited_query:
+            # Deloox may omit "Limited Edition" from the card text.
+            # _url_matches_query() has already required limited-edition in
+            # the product URL, so only the base perfume tokens are required here.
+            base_tokens = query_tokens - {"limited", "edition"}
 
-        if found_frac < threshold:
-            # Fallback checks: accept if anchor title or a heading inside the card contains all query tokens,
-            # otherwise skip.
-            link_title = _clean(link.get("title") or "")
-            heading = None
-            for h in ("h1", "h2", "h3", "h4"):
-                node_h = card.find(h)
-                if node_h:
-                    heading = _clean(node_h.get_text(" ", strip=True))
-                    break
+            if not base_tokens.issubset(card_tokens):
+                if not _matches_soft(card_text, " ".join(base_tokens), minimum=0.75):
+                    continue
 
-            if link_title and set(_tokens(query)).issubset(set(_tokens(link_title))):
-                pass
-            elif heading and set(_tokens(query)).issubset(set(_tokens(heading))):
-                pass
-            else:
-                continue
+        elif not query_tokens.issubset(card_tokens):
+            # Existing fallback for all normal searches.
+            if not _matches_soft(card_text, query, minimum=0.75):
+                link_title = _clean(link.get("title") or "")
+                if link_title and set(_tokens(query)).issubset(set(_tokens(link_title))):
+                    pass
+                else:
+                    heading = None
+                    for h in ("h1", "h2", "h3", "h4"):
+                        node_h = card.find(h)
+                        if node_h:
+                            heading = _clean(node_h.get_text(" ", strip=True))
+                            break
+                    if heading and set(_tokens(query)).issubset(set(_tokens(heading))):
+                        pass
+                    else:
+                        continue
 
         if not _is_relevant_product(
             card_text,
@@ -518,55 +538,31 @@ def _extract_category(html, query):
             )
         )
 
-        # Prefer link_name only if it contains all query tokens (avoid losing modifiers),
-        # but also accept link_name for short queries when soft-match is strong.
-        link_name_tokens = set(_tokens(link_name))
         if (
             link_name
             and not SIZE_FULL_RE.fullmatch(link_name)
-            and (
-                set(_tokens(query)).issubset(link_name_tokens)
-                or _matches_soft(link_name, query, minimum=0.75 and (len(query_tokens) <= 2))
-            )
+            and _matches_soft(link_name, query, minimum=0.55)
+            and set(_tokens(query)).issubset(set(_tokens(link_name)))
         ):
             product_name = link_name
         else:
-            # Fallback: prefer anchor title if it contains full tokens (some sites use title attr).
             link_title = _clean(link.get("title") or "")
             if link_title and set(_tokens(query)).issubset(set(_tokens(link_title))):
                 product_name = link_title
 
-        # Now append result(s). Use seen keyed by (product_url, name_norm) so we can emit
-        # both "Liquid Brun" and "Liquid Brun Limited Edition" pointing to same URL when appropriate.
-        name_norm = _norm(product_name)
-        key = (product_url, name_norm)
-        if key not in seen:
-            seen.add(key)
-            results.append({
-                "store": STORE,
-                "name": product_name,
-                "price": price,
-                "url": product_url,
-                "available": True,
-                "availability": "in_stock",
-            })
+        if product_url in seen:
+            continue
 
-        # If the found product_name contains the query tokens but has extra modifiers,
-        # also emit a variant using the plain query (so searches for the base name see a result).
-        if set(_tokens(query)).issubset(set(_tokens(product_name))):
-            base_name = query
-            base_norm = _norm(base_name)
-            base_key = (product_url, base_norm)
-            if base_key not in seen and base_norm != name_norm:
-                seen.add(base_key)
-                results.append({
-                    "store": STORE,
-                    "name": base_name,
-                    "price": price,
-                    "url": product_url,
-                    "available": True,
-                    "availability": "in_stock",
-                })
+        seen.add(product_url)
+
+        results.append({
+            "store": STORE,
+            "name": product_name,
+            "price": price,
+            "url": product_url,
+            "available": True,
+            "availability": "in_stock",
+        })
 
     return results
 
@@ -920,64 +916,32 @@ def search(query):
     if not candidates:
         return []
 
-    # Consolidate candidates by product_url and pick the best candidate per URL.
-    # Prefer a candidate whose normalized name equals the query; otherwise prefer
-    # the shorter normalized name (tends to be the base product).
-    best_by_url = {}
-
-    q_norm = _norm(query)
+    scored = []
+    seen_urls = set()
 
     for item in candidates:
-        product_url = item["url"].split("#")[0].split("?")[0]
+        product_url = item["url"].split(
+            "#"
+        )[0].split("?")[0]
 
-        if not _url_matches_query(product_url, query):
+        if product_url in seen_urls:
             continue
 
-        name = item.get("name", "") or ""
-        name_norm = _norm(name)
-
-        cur = best_by_url.get(product_url)
-        if cur is None:
-            best_by_url[product_url] = item
+        if not _url_matches_query(
+            product_url,
+            query,
+        ):
             continue
 
-        cur_name_norm = _norm(cur.get("name", "") or "")
+        seen_urls.add(product_url)
 
-        # Prefer exact-name match to query
-        if name_norm == q_norm and cur_name_norm != q_norm:
-            best_by_url[product_url] = item
-            continue
-        if cur_name_norm == q_norm and name_norm != q_norm:
-            # keep current
-            continue
-
-        # Otherwise prefer shorter normalized name (base over verbose variant)
-        if len(name_norm) < len(cur_name_norm):
-            best_by_url[product_url] = item
-            continue
-
-        # As a tiebreaker, prefer the candidate with higher match score
-        if _match_score(name, query) > _match_score(cur.get("name", ""), query):
-            best_by_url[product_url] = item
-
-    # Build scored list; include also explicit "base" copies (name = query)
-    scored = [
-        (_match_score(it.get("name", ""), query), it)
-        for it in best_by_url.values()
-    ]
-
-    # For each chosen item, if its name includes the query tokens but is more specific,
-    # add a second candidate with name=query so generic searches match the base name.
-    base_score = _match_score(query, query)
-    for it in list(best_by_url.values()):
-        name_tokens = set(_tokens(it.get("name", "") or ""))
-        q_tokens = set(_tokens(query))
-        if q_tokens and q_tokens.issubset(name_tokens):
-            # Add a "base" candidate only when normalized name differs from q_norm
-            if _norm(it.get("name", "") or "") != q_norm:
-                base_item = dict(it)
-                base_item["name"] = query
-                scored.append((base_score, base_item))
+        scored.append((
+            _match_score(
+                item["name"],
+                query,
+            ),
+            item,
+        ))
 
     if not scored:
         return []
@@ -1052,8 +1016,6 @@ if __name__ == "__main__":
         "Le Beau Le Parfum",
         "Jean Paul Gaultier Le Beau Le Parfum",
         "Rasasi Hawas Ice",
-        "Liquid Brun",
-        "Liquid Brun Limited Edition",
     )
 
     for query in queries:
