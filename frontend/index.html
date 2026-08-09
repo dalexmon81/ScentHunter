@@ -693,7 +693,7 @@ function shGroupData(data){
     // IMPORTANTE: "parfum" ed "extrait" restano, perché possono identificare
     // una variante diversa (es. "Le Beau Le Parfum").
     n=n.replace(/\b\d{1,4}\s*ml\b/gi," ");
-    n=n.replace(/\b(eau de toilette|eau de cologne|perfume|edp|edt|edc|spray|men|man|for men|for him|pour homme)\b/gi," ");
+    n=n.replace(/\b(eau de parfum|eau de toilette|eau de cologne|eau fraiche|perfume|edp|edt|edc|spray|men|man|for men|for him|pour homme|pour femme|mixte)\b/gi," ");
 
     // Se la marca è già separata nel campo brand, non deve duplicare il nome.
     if(brand && n.startsWith(brand+" ")) n=n.slice(brand.length+1);
@@ -769,17 +769,44 @@ function shGroupData(data){
     return b;
   }
 
+  // REGOLA GENERALE FORMATO:
+  // se un negozio non comunica il formato, non significa che esista una
+  // nuova variante. Se per quella stessa famiglia esiste un solo formato
+  // dichiarato dagli altri negozi, l'offerta senza formato viene inserita
+  // automaticamente nella stessa categoria.
+  const knownSizesByGroup=new Map();
+  raw.forEach(o=>{
+    const groupName=groupingName(o);
+    const lb=liquidBrunFamily(o);
+    if(!groupName || lb) return;
+    const size=sizeOf(o);
+    if(!size) return;
+    if(!knownSizesByGroup.has(groupName)) knownSizesByGroup.set(groupName,new Set());
+    knownSizesByGroup.get(groupName).add(String(size));
+  });
+
   const map=new Map();
 
   raw.forEach(o=>{
     const cname=canonicalName(o);
     const groupName=groupingName(o);
     if(!cname||!groupName)return;
-    const size=sizeOf(o);
+    let size=sizeOf(o);
+    const lb=liquidBrunFamily(o);
+
+    // REGOLA GENERALE:
+    // Se il negozio non indica il formato e questa famiglia ha un solo
+    // formato conosciuto, ereditiamo quel formato. Così l'offerta entra
+    // SEMPRE nella categoria corretta invece di creare una categoria "unknown".
+    // Non facciamo questa assegnazione se esistono più formati reali.
+    if(!size && !lb){
+      const known=knownSizesByGroup.get(groupName);
+      if(known && known.size===1) size=[...known][0];
+    }
+
     // Per Liquid Brun il formato NON deve creare una categoria separata:
     // 100 ml e formato non dichiarato appartengono alla stessa famiglia,
     // così come 150 ml e formato non dichiarato per la Limited Edition.
-    const lb=liquidBrunFamily(o);
     const key=groupName+"|"+(lb ? "liquid-brun-family" : (size||"unknown"));
 
     if(!map.has(key)){
