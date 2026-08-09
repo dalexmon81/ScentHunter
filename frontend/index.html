@@ -132,6 +132,7 @@ body{position:relative}
 .detail-back{background:none;color:#e7b83f;padding:0 0 12px;font-size:14px;cursor:pointer}
 .offer-heart{background:none;color:#aaa;font-size:26px;cursor:pointer;padding:0 4px}.offer-heart.saved{color:#e7b83f}
 .offer-line{display:flex;justify-content:space-between;align-items:center;gap:10px}
+.format-choice{width:100%;margin-top:10px;padding:16px 14px;border:1px solid #303238;border-radius:18px;background:#121416;color:#fff;display:flex;justify-content:space-between;align-items:center;gap:12px;text-align:left;cursor:pointer}.format-name{font-size:18px;font-weight:800}.format-price{color:#55ce78;font-size:18px;font-weight:900;white-space:nowrap}
 </style>
 
 </head>
@@ -460,23 +461,19 @@ function shGroupData(data){
     if(!cname||!groupName)return;
     const size=sizeOf(o);
 
-    // Regola formati Liquid Brun: i formati inesistenti vengono scartati
-    // prima del raggruppamento, così non possono finire nella scheda.
-    // Liquid Brun = 100 ml; Liquid Brun Limited Edition = 150 ml.
+    // Il raggruppamento principale NON usa il formato.
+    // Un profumo = una sola scheda; i formati vengono mostrati dentro la scheda.
     const lb=liquidBrunFamily(o);
     if(lb==="liquid brun" && size && size!=="100")return;
     if(lb==="liquid brun limited edition" && size && size!=="150")return;
-    // Per Liquid Brun il formato NON crea una categoria separata.
-    const key=groupName+"|"+(lb ? "liquid-brun-family" : (size||"unknown"));
 
+    const key=groupName;
     if(!map.has(key)){
       map.set(key,{
         brand:o.brand||(/\brasasi\b/i.test(String(o.name||""))?"Rasasi":""),
         name:o.name||"Profumo",
         canonical:cname,
         display_name:displayName(o,size),
-        size_ml:size,
-        concentration:o.concentration||"",
         image:o.image||o.image_url||o.thumbnail||"",
         offers:[]
       });
@@ -486,8 +483,6 @@ function shGroupData(data){
     if(!g.brand && o.brand)g.brand=o.brand;
     if(!g.image)g.image=o.image||o.image_url||o.thumbnail||"";
 
-    // Deduplica soltanto la STESSA offerta.
-    // Non elimina più altri risultati dello stesso negozio.
     const store=String(o.store||"").trim().toLowerCase();
     const url=String(o.url||"").split("?")[0].toLowerCase();
     const offerSize=sizeOf(o)||"unknown";
@@ -511,46 +506,75 @@ function shGroupData(data){
 
   groups.forEach(g=>{
     g.offers.sort((a,b)=>shNum(a)-shNum(b));
-
-    // Il titolo visibile usa il nome reale ricevuto dal negozio.
-    // La chiave normalizzata serve solo per raggruppare, mai per riscrivere il nome.
     g.name=g.display_name||g.name||"Profumo";
   });
 
   return groups.filter(g=>g.offers.length);
 }
+function formatLabel(o){
+  const size=sizeOf(o);
+  if(size)return String(size).includes("ml")?String(size):String(size)+" ml";
+  return "Formato";
+}
+function formatKey(o){
+  return sizeOf(o)||"unknown";
+}
+function formatGroups(g){
+  const map=new Map();
+  (g.offers||[]).forEach(o=>{
+    const key=formatKey(o);
+    if(!map.has(key))map.set(key,[]);
+    map.get(key).push(o);
+  });
+  return [...map.entries()].map(([key,offers])=>({key,label:formatLabel(offers[0]),offers:offers.sort((a,b)=>shNum(a)-shNum(b))}));
+}
 function showProducts(groups){
   currentProductGroups=groups;
   statusBox.textContent=groups.length?groups.length+(groups.length===1?" profumo trovato.":" profumi trovati."):"Nessun profumo trovato.";
   resultsBox.innerHTML=groups.map((g,i)=>{
-    const best=g.offers[0],img=g.image||"",meta=[g.size_ml?(String(g.size_ml).includes("ml")?g.size_ml:g.size_ml+" ml"):"",g.concentration?String(g.concentration).toUpperCase():""].filter(Boolean).join(" · ");
+    const formats=formatGroups(g),best=g.offers[0],img=g.image||"";
+    const totalOffers=g.offers.length;
     return `<article class="product-choice" onclick="openProduct(${i})">
       <div class="result-image">${img?`<img src="${esc(img)}" alt="${esc(g.name)}" onerror="this.outerHTML='🧴'">`:"🧴"}</div>
-      <div class="product-choice-main"><div class="store">${esc(g.brand||"")}</div><div class="name">${esc(g.name)}</div>${meta?`<div class="offer-meta">${esc(meta)}</div>`:""}${best?`<div class="bestprice">da ${esc(shPrice(best))}</div><div class="offer-meta">${g.offers.length} ${g.offers.length===1?"negozio":"negozi"}</div>`:""}</div>
+      <div class="product-choice-main"><div class="store">${esc(g.brand||"")}</div><div class="name">${esc(g.name)}</div><div class="offer-meta">${formats.length} ${formats.length===1?"formato":"formati"} · ${totalOffers} ${totalOffers===1?"negozio":"negozi"}</div>${best?`<div class="bestprice">da ${esc(shPrice(best))}</div>`:""}</div>
       <div class="arrow">›</div>
     </article>`;
   }).join("");
 }
 function openProduct(i){
   const g=currentProductGroups[i];if(!g)return;
-  const offers=(g.offers||[]).slice().sort((x,y)=>shNum(x)-shNum(y)),saved=getWishlist(),img=g.image||"";
+  const formats=formatGroups(g),saved=getWishlist(),img=g.image||"";
   statusBox.textContent="";
-  resultsBox.innerHTML=`<article class="comparison"><button class="detail-back" onclick="showProducts(currentProductGroups)">← Torna ai risultati</button>
-    <div class="comparison-head"><div class="result-image">${img?`<img src="${esc(img)}" alt="${esc(g.name)}" onerror="this.outerHTML='🧴'">`:"🧴"}</div><div class="result-main"><div class="store">${esc(g.brand||"")}</div><div class="name">${esc(g.name)}</div></div></div>
+  resultsBox.innerHTML=`<article class="comparison"><button class="detail-back" onclick="showProducts(currentProductGroups)">← Torna ai profumi</button>
+    <div class="comparison-head"><div class="result-image">${img?`<img src="${esc(img)}" alt="${esc(g.name)}" onerror="this.outerHTML='🧴'">`:"🧴"}</div><div class="result-main"><div class="store">${esc(g.brand||"")}</div><div class="name">${esc(g.name)}</div><div class="offer-meta">${formats.length} ${formats.length===1?"formato":"formati"} · ${g.offers.length} ${g.offers.length===1?"negozio":"negozi"}</div></div></div>
+    <div class="bestlabel">SCEGLI IL FORMATO</div>
+    ${formats.map((f,fi)=>{
+      const best=f.offers[0];
+      return `<button class="format-choice" onclick="openFormat(${i},${fi})"><div><div class="format-name">${esc(f.label)}</div><div class="offer-meta">${f.offers.length} ${f.offers.length===1?"negozio":"negozi"}</div></div><div class="format-price">da ${esc(shPrice(best)||"Prezzo non disponibile")} ›</div></button>`;
+    }).join("")}</article>`;
+  document.getElementById("searchOutput").scrollIntoView({behavior:"smooth",block:"start"});
+}
+function openFormat(gi,fi){
+  const g=currentProductGroups[gi];if(!g)return;
+  const formats=formatGroups(g),f=formats[fi];if(!f)return;
+  const offers=f.offers,saved=getWishlist(),img=g.image||"";
+  resultsBox.innerHTML=`<article class="comparison"><button class="detail-back" onclick="openProduct(${gi})">← Torna ai formati</button>
+    <div class="comparison-head"><div class="result-image">${img?`<img src="${esc(img)}" alt="${esc(g.name)}" onerror="this.outerHTML='🧴'">`:"🧴"}</div><div class="result-main"><div class="store">${esc(g.brand||"")}</div><div class="name">${esc(g.name)}</div><div class="offer-meta">${esc(f.label)}</div></div></div>
     <div class="bestlabel">CONFRONTA I PREZZI · ${offers.length} ${offers.length===1?"NEGOZIO":"NEGOZI"}</div>
     ${offers.map((o,n)=>{
       const item={brand:g.brand||o.brand||"",name:g.name||o.name||"",price:shPrice(o),shop:o.store||"",url:o.url||"",pic:img||"🧴"};
       const found=saved.find(x=>samePerfume(x,item)),on=!!found&&found.selectedOfferId===offerId(item);
-      return `<div class="offer ${n===0?"best":""}"><div class="offer-line"><div><div class="offer-store">${n===0?"🥇 ":""}${esc(o.store||"Negozio")}</div>${n===0?'<div class="offer-meta">MIGLIOR PREZZO</div>':""}</div><div style="display:flex;align-items:center;gap:8px"><span class="offer-price">${esc(shPrice(o)||"Prezzo non disponibile")}</span><button class="offer-heart ${on?"saved":""}" onclick="event.stopPropagation();chooseOffer(${i},${n})">${on?"♥":"♡"}</button></div></div>${o.url?`<a class="offer-link" href="${esc(o.url)}" target="_blank" rel="noopener noreferrer">Vai al negozio →</a>`:""}</div>`;
+      return `<div class="offer ${n===0?"best":""}"><div class="offer-line"><div><div class="offer-store">${n===0?"🥇 ":""}${esc(o.store||"Negozio")}</div>${n===0?'<div class="offer-meta">MIGLIOR PREZZO</div>':""}</div><div style="display:flex;align-items:center;gap:8px"><span class="offer-price">${esc(shPrice(o)||"Prezzo non disponibile")}</span><button class="offer-heart ${on?"saved":""}" onclick="event.stopPropagation();chooseOffer(${gi},${fi},${offers.indexOf(o)})">${on?"♥":"♡"}</button></div></div>${o.url?`<a class="offer-link" href="${esc(o.url)}" target="_blank" rel="noopener noreferrer">Vai al negozio →</a>`:""}</div>`;
     }).join("")}</article>`;
   document.getElementById("searchOutput").scrollIntoView({behavior:"smooth",block:"start"});
 }
-function chooseOffer(gi,oi){
-  const g=currentProductGroups[gi],o=(g.offers||[]).slice().sort((x,y)=>shNum(x)-shNum(y))[oi];if(!o)return;
+function chooseOffer(gi,fi,oi){
+  const g=currentProductGroups[gi];if(!g)return;
+  const formats=formatGroups(g),f=formats[fi];if(!f)return;
+  const o=f.offers[oi];if(!o)return;
   toggleWish({brand:g.brand||o.brand||"",name:g.name||o.name||"",price:shPrice(o),shop:o.store||"",url:o.url||"",pic:g.image||"🧴"});
-  openProduct(gi);
+  openFormat(gi,fi);
 }
-
 async function fetchJSONWithTimeout(url,ms=90000){
  const controller=new AbortController();
  const timer=setTimeout(()=>controller.abort(),ms);
