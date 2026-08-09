@@ -495,10 +495,15 @@ def _extract_category(html, query):
         if (
             link_name
             and not SIZE_FULL_RE.fullmatch(link_name)
+            # Manteniamo un controllo di similarità, ma richiediamo anche
+            # che i token della query siano contenuti nei token del link_name.
             and _matches_soft(
                 link_name,
                 query,
                 minimum=0.55,
+            )
+            and set(_tokens(query)).issubset(
+                set(_tokens(link_name))
             )
         ):
             product_name = link_name
