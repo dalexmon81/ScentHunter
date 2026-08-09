@@ -297,6 +297,63 @@ def _is_relevant_product(text, query):
     return True
 
 
+def _extract_search_page(html, query):
+    soup = BeautifulSoup(html or "", "html.parser")
+    results = []
+    seen = set()
+    for link in soup.find_all("a", href=True):
+        product_url = urljoin(BASE_URL, _clean(link.get("href", ""))).split("?")[0]
+        if "/product/" not in product_url.lower() or product_url in seen:
+            continue
+        card = _find_product_card(link)
+        text = _clean(card.get_text(" ", strip=True))
+        if not _is_relevant_product(text, query):
+            continue
+        price = _extract_price(text)
+        sold_out = any(word in text.lower() for word in SOLD_OUT)
+        if not price and not sold_out:
+            continue
+        seen.add(product_url)
+        name = _real_product_name(html="".join(str(x) for x in []), fallback=query)
+        link_name = _clean(link.get_text(" ", strip=True))
+        if link_name and not SIZE_FULL_RE.fullmatch(link_name):
+            name = link_name
+        results.append({
+            "store": STORE,
+            "name": name or query,
+            "price": price or "Out of stock",
+            "url": product_url,
+            "available": not sold_out,
+            "availability": "out_of_stock" if sold_out else "in_stock",
+        })
+    return results
+
+
+def _generic_site_search(session, query):
+    """Use Deloox's own search surface when category discovery cannot identify a brand.
+    No perfume names or brands are hard-coded here; several common GET parameter
+    variants are tried because Deloox has changed the search route over time.
+    """
+    from urllib.parse import quote_plus
+    encoded = quote_plus(query)
+    urls = (
+        f"{BASE_URL}/en/search?search={encoded}",
+        f"{BASE_URL}/en/search?q={encoded}",
+        f"{BASE_URL}/en/search?query={encoded}",
+        f"{BASE_URL}/en/search?keyword={encoded}",
+        f"{BASE_URL}/search?search={encoded}",
+        f"{BASE_URL}/en?search={encoded}",
+    )
+    for url in urls:
+        response = _get(session, url)
+        if response is None:
+            continue
+        candidates = _extract_search_page(response.text, query)
+        if candidates:
+            return candidates
+    return []
+
+
 def _find_brand_category(session, query):
     query_tokens = set(_tokens(query))
 
@@ -960,6 +1017,18 @@ def search(query):
     )
 
     session = requests.Session()
+
+    # First try Deloox's own generic search. This is the primary path for
+    # products whose brand/product line is not present in the query text.
+    generic_candidates = _generic_site_search(session, query)
+    if generic_candidates:
+        scored = sorted(
+            ((_match_score(item["name"], query), item) for item in generic_candidates),
+            key=lambda item: item[0],
+            reverse=True,
+        )
+        best_score = scored[0][0]
+        return [item for score, item in scored if score >= best_score - 45][:20]
 
     category_url = _find_brand_category(
         session,
