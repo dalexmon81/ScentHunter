@@ -305,6 +305,23 @@ def _is_relevant_product(text, query):
 def _find_brand_category(session, query):
     query_tokens = set(_tokens(query))
 
+    if query_tokens == {"liquid", "brun"}:
+        return (
+            "https://www.deloox.com/en/category/"
+            "1121334/french-avenue-mens-fragrances.html"
+        )
+
+    if {
+        "liquid",
+        "brun",
+        "limited",
+        "edition",
+    }.issubset(query_tokens):
+        return (
+            "https://www.deloox.com/en/category/"
+            "1132834/liquid-brun.html"
+        )
+
     for required_tokens, fallback_url in CATEGORY_FALLBACKS:
         if set(required_tokens).issubset(query_tokens):
             return fallback_url
@@ -456,25 +473,6 @@ def _extract_category(html, query):
             product_url,
             query,
         ):
-            continue
-
-        # Deloox has the normal Liquid Brun and the Limited Edition in the
-        # same category. Decide between them from the product URL only when
-        # the query itself asks for the Limited Edition.
-        query_tokens_for_variant = set(_tokens(query))
-        url_tokens_for_variant = set(_tokens(product_url))
-
-        wants_limited = {
-            "limited",
-            "edition",
-        }.issubset(query_tokens_for_variant)
-
-        is_limited = {
-            "limited",
-            "edition",
-        }.issubset(url_tokens_for_variant)
-
-        if wants_limited != is_limited:
             continue
 
         card = _find_product_card(link)
