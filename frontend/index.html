@@ -116,7 +116,7 @@ body{position:relative}
 .result-main .name{margin-top:0}
 .bestline{display:flex;justify-content:space-between;gap:12px;align-items:end;margin:4px 0 12px}
 .bestlabel{font-size:11px;color:#a9aaa9;text-transform:uppercase;font-weight:800;letter-spacing:.5px}
-.bestprice{font-size:24px;color:#55ce78;font-weight:950}
+.bestprice{font-size:24px;color:#55ce78;font-weight:950} .out-of-stock-label{font-size:24px;color:#55ce78;font-weight:950;text-transform:uppercase}
 .offer{padding:13px 0}
 .offer.best{margin:5px -8px 0;padding:13px 8px;border-radius:13px;background:rgba(73,176,108,.08);border-top:1px solid #31583e}
 .offer-link{display:inline-flex!important;align-items:center;justify-content:center;min-height:38px;padding:9px 14px;border:1px solid #6d5620;border-radius:22px;background:#19150b}
@@ -341,7 +341,33 @@ function shPrice(o){
   const n=Number(o&&o.price_value);
   return Number.isFinite(n)?formatEuro(n):"";
 }
+
+function isOutOfStock(o){
+  if(!o)return false;
+
+  const availability=String(
+    o.availability||o.stock_status||o.stock||o.availability_status||""
+  ).trim().toLowerCase();
+
+  if([
+    "out_of_stock","outofstock","out of stock","sold out","unavailable",
+    "en rupture de stock","rupture de stock","épuisé","epuise",
+    "nicht auf lager","ausverkauft"
+  ].includes(availability))return true;
+
+  if(o.available===false)return true;
+  if((o.stock===0 || o.stock==="0") && o.stock!=="")return true;
+
+  const priceText=String(o.price||"").trim().toLowerCase();
+  return [
+    "out_of_stock","outofstock","out of stock","sold out","unavailable",
+    "en rupture de stock","rupture de stock","épuisé","epuise",
+    "nicht auf lager","ausverkauft"
+  ].some(marker=>priceText.includes(marker));
+}
+
 function shNum(o){
+  if(isOutOfStock(o))return Infinity;
   const n=Number(o&&o.price_value);
   if(Number.isFinite(n))return n;
   const p=parsePrice(o&&o.price);
@@ -480,15 +506,15 @@ function shGroupData(data){
         const store=String(o.store||o.shop||"").trim().toLowerCase();
         const key=store||("__empty_"+byStore.size);
         const prev=byStore.get(key);
+
+        // Un'offerta esaurita non può sostituire un'offerta disponibile
+        // dello stesso negozio a causa di un vecchio prezzo.
         if(!prev || shNum(o)<shNum(prev))byStore.set(key,o);
       });
 
-      f.offers=[...byStore.values()].sort((a,b)=>{
-        const ao=isOutOfStock(a);
-        const bo=isOutOfStock(b);
-        if(ao!==bo)return ao?1:-1;
-        return shNum(a)-shNum(b);
-      });
+      // Disponibili prima, dal prezzo più basso.
+      // Tutti gli Out of Stock finiscono sempre in fondo.
+      f.offers=[...byStore.values()].sort((a,b)=>shNum(a)-shNum(b));
     });
 
     formats.sort((a,b)=>{
@@ -505,18 +531,7 @@ function shGroupData(data){
     g.concentration=g.formats.length===1?g.formats[0].concentration:"";
   });
 
-  // Ordine globale: prima i profumi con almeno un'offerta disponibile,
-  // poi quelli completamente OUT OF STOCK.
-  // A parità manteniamo l'ordine naturale dei risultati del backend.
-  const orderedGroups=groups.filter(g=>g.formats.length);
-  orderedGroups.sort((a,b)=>{
-    const aAvailable=(a.offers||[]).some(o=>!isOutOfStock(o));
-    const bAvailable=(b.offers||[]).some(o=>!isOutOfStock(o));
-    if(aAvailable!==bAvailable)return aAvailable?-1:1;
-    return 0;
-  });
-
-  return orderedGroups;
+  return groups.filter(g=>g.formats.length);
 }
 
 function formsafe(formats){
@@ -528,22 +543,8 @@ function formatLabel(f){
   return size;
 }
 
-function isOutOfStock(o){
-  if(!o)return false;
-  const availability=String(o.availability||o.stock_status||o.status||"").toLowerCase();
-  const price=String(o.price||"").toLowerCase();
-  return o.available===false || /out[_\s-]*of[_\s-]*stock|non[_\s-]*disponibile|non disponibile/.test(availability) || /out[_\s-]*of[_\s-]*stock|non[_\s-]*disponibile|non disponibile/.test(price);
-}
-
-function displayPriceForOffers(offers){
-  if(!offers||!offers.length)return "";
-  const first=offers[0];
-  if(isOutOfStock(first) && offers.every(isOutOfStock))return "OUT OF STOCK";
-  return shPrice(first);
-}
-
 function bestFormatPrice(f){
-  return displayPriceForOffers(f&&f.offers);
+  return f&&f.offers&&f.offers.length?shPrice(f.offers[0]):"";
 }
 
 function totalStoreCount(g){
@@ -554,12 +555,15 @@ function showProducts(groups){
   currentProductGroups=groups;
   statusBox.textContent=groups.length?groups.length+(groups.length===1?" profumo trovato.":" profumi trovati."):"Nessun profumo trovato.";
   resultsBox.innerHTML=groups.map((g,i)=>{
-    const best=g.offers[0],img=g.image||"";
+    const best=(g.offers||[]).find(o=>!isOutOfStock(o)),img=g.image||"";
     const formatCount=g.formats.length;
     const storeCount=totalStoreCount(g);
+    const availability=best
+      ? `<div class="bestprice">da ${esc(shPrice(best))}</div>`
+      : `<div class="out-of-stock-label">OUT OF STOCK</div>`;
     return `<article class="product-choice" onclick="openProduct(${i})">
       <div class="result-image">${img?`<img src="${esc(img)}" alt="${esc(g.name)}" onerror="this.outerHTML='🧴'">`:"🧴"}</div>
-      <div class="product-choice-main"><div class="store">${esc(g.brand||"")}</div><div class="name">${esc(g.name)}</div><div class="result-summary">${formatCount} ${formatCount===1?"formato":"formati"} · ${storeCount} ${storeCount===1?"negozio":"negozi"}</div>${best?`<div class="bestprice">${esc(displayPriceForOffers(g.offers))}</div>`:""}</div>
+      <div class="product-choice-main"><div class="store">${esc(g.brand||"")}</div><div class="name">${esc(g.name)}</div><div class="result-summary">${formatCount} ${formatCount===1?"formato":"formati"} · ${storeCount} ${storeCount===1?"negozio":"negozi"}</div>${availability}</div>
       <div class="arrow">›</div>
     </article>`;
   }).join("");
@@ -577,7 +581,7 @@ function openProduct(i){
       const stores=new Set(f.offers.map(o=>String(o.store||"").trim().toLowerCase()).filter(Boolean)).size;
       const best=bestFormatPrice(f);
       return `<div class="format-choice" onclick="openFormat(${i},${fi})">
-        <div class="format-choice-main"><div class="format-size">${esc(formatLabel(f))}</div>${best?`<div class="format-price">${esc(best)}</div>`:""}<div class="format-stores">${stores} ${stores===1?"negozio":"negozi"}</div></div>
+        <div class="format-choice-main"><div class="format-size">${esc(formatLabel(f))}</div>${best?`<div class="format-price">da ${esc(best)}</div>`:""}<div class="format-stores">${stores} ${stores===1?"negozio":"negozi"}</div></div>
         <div class="format-arrow">›</div>
       </div>`;
     }).join("")}
@@ -592,17 +596,13 @@ function openFormat(gi,fi){
   resultsBox.innerHTML=`<article class="comparison"><button class="detail-back" onclick="openProduct(${gi})">← Torna ai formati</button>
     <div class="comparison-head"><div class="result-image">${img?`<img src="${esc(img)}" alt="${esc(g.name)}" onerror="this.outerHTML='🧴'">`:"🧴"}</div><div class="result-main"><div class="store">${esc(g.brand||"")}</div><div class="name">${esc(g.name)}</div><div class="offer-meta">${esc(formatLabel(f))}</div></div></div>
     <div class="bestlabel">CONFRONTA I PREZZI · ${offers.length} ${offers.length===1?"NEGOZIO":"NEGOZI"}</div>
-    ${(()=>{
-      const allOut=offers.length>0&&offers.every(isOutOfStock);
-      return offers.map((o,n)=>{
-        const item={brand:g.brand||o.brand||"",name:g.name||o.name||"",price:shPrice(o),shop:o.store||"",url:o.url||"",pic:img||"🧴"};
-        const found=saved.find(x=>samePerfume(x,item)),on=!!found&&found.selectedOfferId===offerId(item);
-        const isOut=isOutOfStock(o);
-        const bestLabel=!allOut&&n===0?'<div class="offer-meta">MIGLIOR PREZZO</div>':"";
-        const outLabel=!allOut&&isOut?'<div class="offer-meta">OUT OF STOCK</div>':"";
-        return `<div class="offer ${!allOut&&n===0?"best":""}"><div class="offer-line"><div><div class="offer-store">${!allOut&&n===0?"🥇 ":""}${esc(o.store||"Negozio")}</div>${bestLabel}${outLabel}</div><div style="display:flex;align-items:center;gap:8px"><span class="offer-price">${esc(isOut?"OUT OF STOCK":(shPrice(o)||"Prezzo non disponibile"))}</span><button class="offer-heart ${on?"saved":""}" onclick="event.stopPropagation();chooseOffer(${gi},${fi},${n})">${on?"♥":"♡"}</button></div></div>${o.url?`<a class="offer-link" href="${esc(o.url)}" target="_blank" rel="noopener noreferrer">Vai al negozio →</a>`:""}</div>`;
-      }).join("");
-    })()}</article>`;
+    ${offers.map((o,n)=>{
+      const item={brand:g.brand||o.brand||"",name:g.name||o.name||"",price:shPrice(o),shop:o.store||"",url:o.url||"",pic:img||"🧴"};
+      const found=saved.find(x=>samePerfume(x,item)),on=!!found&&found.selectedOfferId===offerId(item);
+      const isOut=isOutOfStock(o);
+      const isBest=!isOut && n===0;
+      return `<div class="offer ${isBest?"best":""}"><div class="offer-line"><div><div class="offer-store">${isBest?"🥇 ":""}${esc(o.store||"Negozio")}</div>${isBest?'<div class="offer-meta">MIGLIOR PREZZO</div>':""}${isOut?'<div class="out-of-stock-label">OUT OF STOCK</div>':""}</div><div style="display:flex;align-items:center;gap:8px"><span class="offer-price">${isOut?"":esc(shPrice(o)||"Prezzo non disponibile")}</span><button class="offer-heart ${on?"saved":""}" onclick="event.stopPropagation();chooseOffer(${gi},${fi},${n})">${on?"♥":"♡"}</button></div></div>${o.url?`<a class="offer-link" href="${esc(o.url)}" target="_blank" rel="noopener noreferrer">Vai al negozio →</a>`:""}</div>`;
+    }).join("")}</article>`;
   document.getElementById("searchOutput").scrollIntoView({behavior:"smooth",block:"start"});
 }
 
