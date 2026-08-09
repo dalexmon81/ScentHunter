@@ -160,53 +160,81 @@ def search(query):
     results = []
     seen_urls = set()
 
-    # Bplatz uses the Shopify collection rather than the old ?s=query search.
-    # We deliberately scan sequentially, without retries, to reduce 403/429
-    # pressure and memory usage on Railway.
     with requests.Session() as session:
         session.headers.update(HEADERS)
 
-        for page in range(1, MAX_PAGES + 1):
-            try:
-                response = session.get(
-                    CATALOG_URL,
-                    params={"page": page},
-                    timeout=TIMEOUT,
-                    allow_redirects=True,
-                )
-            except requests.RequestException:
-                break
+        # PRIMARY: use Shopify's native product search.
+        # This avoids depending on where a product happens to sit in the
+        # generic catalogue pagination.
+        try:
+            response = session.get(
+                BASE + "/search",
+                params={"q": query, "type": "product"},
+                timeout=TIMEOUT,
+                allow_redirects=True,
+            )
+        except requests.RequestException:
+            response = None
 
+        if response is not None:
             status = response.status_code
 
-            if status in (403, 429):
+            if status == 200:
+                html = response.text
                 response.close()
-                break
 
-            if status != 200:
+                page_results, _ = _extract_page(html, query)
+
+                for item in page_results:
+                    if item["url"] in seen_urls:
+                        continue
+
+                    seen_urls.add(item["url"])
+                    results.append(item)
+            else:
                 response.close()
-                break
 
-            html = response.text
-            response.close()
+        # FALLBACK: keep the existing catalogue scan for stores/themes where
+        # the native Shopify search is unavailable or returns no usable match.
+        if not results:
+            for page in range(1, MAX_PAGES + 1):
+                try:
+                    response = session.get(
+                        CATALOG_URL,
+                        params={"page": page},
+                        timeout=TIMEOUT,
+                        allow_redirects=True,
+                    )
+                except requests.RequestException:
+                    break
 
-            page_results, has_products = _extract_page(html, query)
+                status = response.status_code
 
-            for item in page_results:
-                if item["url"] in seen_urls:
-                    continue
+                if status in (403, 429):
+                    response.close()
+                    break
 
-                seen_urls.add(item["url"])
-                results.append(item)
+                if status != 200:
+                    response.close()
+                    break
 
-            if results and len(_norm(query).split()) >= 2:
-                break
+                html = response.text
+                response.close()
 
-            if not has_products:
-                break
+                page_results, has_products = _extract_page(html, query)
 
-            if page < MAX_PAGES:
-                time.sleep(PAGE_DELAY)
+                for item in page_results:
+                    if item["url"] in seen_urls:
+                        continue
+
+                    seen_urls.add(item["url"])
+                    results.append(item)
+
+                if not has_products:
+                    break
+
+                if page < MAX_PAGES:
+                    time.sleep(PAGE_DELAY)
 
     results.sort(
         key=lambda x: (
