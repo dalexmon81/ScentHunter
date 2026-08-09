@@ -407,8 +407,9 @@ def _url_matches_query(product_url, query):
         return True
 
     # Otherwise accept if a sufficient fraction of query tokens appear in URL.
+    # Use a permissive threshold to avoid dropping base products whose URLs omit modifiers.
     found = sum(1 for t in query_tokens if t in url_tokens)
-    return (found / len(query_tokens)) >= 0.55
+    return (found / len(query_tokens)) >= 0.5
 
 
 def _extract_category(html, query):
@@ -471,24 +472,30 @@ def _extract_category(html, query):
 
         card_tokens = set(_tokens(card_text))
 
-        if not query_tokens.issubset(card_tokens):
-            # Allow the card if a stricter soft similarity check passes,
-            # or if the anchor title / a heading inside the card contains all query tokens.
-            if not _matches_soft(card_text, query, minimum=0.75):
-                link_title = _clean(link.get("title") or "")
-                if link_title and set(_tokens(query)).issubset(set(_tokens(link_title))):
-                    pass
-                else:
-                    heading = None
-                    for h in ("h1", "h2", "h3", "h4"):
-                        node_h = card.find(h)
-                        if node_h:
-                            heading = _clean(node_h.get_text(" ", strip=True))
-                            break
-                    if heading and set(_tokens(query)).issubset(set(_tokens(heading))):
-                        pass
-                    else:
-                        continue
+        # Dynamic threshold: require a slightly lower fraction for short queries
+        # so simple queries (2 tokens) still match when one token is present in card.
+        n_query_tokens = len(query_tokens) or 1
+        threshold = 0.55 if n_query_tokens >= 3 else 0.5
+        found = sum(1 for t in query_tokens if t in card_tokens)
+        found_frac = found / n_query_tokens
+
+        if found_frac < threshold:
+            # Fallback checks: accept if anchor title or a heading inside the card
+            # contains all query tokens (ParfumCity-like behavior), otherwise skip.
+            link_title = _clean(link.get("title") or "")
+            heading = None
+            for h in ("h1", "h2", "h3", "h4"):
+                node_h = card.find(h)
+                if node_h:
+                    heading = _clean(node_h.get_text(" ", strip=True))
+                    break
+
+            if link_title and set(_tokens(query)).issubset(set(_tokens(link_title))):
+                pass
+            elif heading and set(_tokens(query)).issubset(set(_tokens(heading))):
+                pass
+            else:
+                continue
 
         if not _is_relevant_product(
             card_text,
@@ -510,14 +517,20 @@ def _extract_category(html, query):
             )
         )
 
+        # Prefer link_name only if it contains all query tokens (avoid losing modifiers),
+        # but also accept link_name for short queries when soft-match is strong.
+        link_name_tokens = set(_tokens(link_name))
         if (
             link_name
             and not SIZE_FULL_RE.fullmatch(link_name)
-            and _matches_soft(link_name, query, minimum=0.55)
-            and set(_tokens(query)).issubset(set(_tokens(link_name)))
+            and (
+                set(_tokens(query)).issubset(link_name_tokens)
+                or _matches_soft(link_name, query, minimum=0.75 and (len(query_tokens) <= 2))
+            )
         ):
             product_name = link_name
         else:
+            # Fallback: prefer anchor title if it contains full tokens (some sites use title attr).
             link_title = _clean(link.get("title") or "")
             if link_title and set(_tokens(query)).issubset(set(_tokens(link_title))):
                 product_name = link_title
