@@ -1,4 +1,5 @@
 import json
+import os
 import re
 from urllib.parse import urljoin
 
@@ -13,6 +14,7 @@ TIMEOUT = 10
 CATALOG_TIMEOUT = 15
 CATALOG_URL = f"{BASE_URL}/en/category/1025540/trending.html?page=60"
 CATALOG_FILTER_LINKS = None
+BRAND_CATEGORY_CACHE = {}
 
 HEADERS = {
     "User-Agent": (
@@ -332,6 +334,101 @@ def _extract_search_page(html, query):
     return results
 
 
+
+def _fragella_brand(query):
+    """Resolve the brand from the perfume name without hard-coding perfume names."""
+    api_key = os.getenv("FRAGELLA_API_KEY", "").strip()
+    if not api_key:
+        return ""
+
+    try:
+        from urllib.parse import urlencode
+        from urllib.request import Request, urlopen
+
+        params = urlencode({"search": query, "limit": 8})
+        request = Request(
+            f"https://api.fragella.com/api/v1/fragrances?{params}",
+            headers={
+                "x-api-key": api_key,
+                "Accept": "application/json",
+                "User-Agent": "ScentHunter-Deloox/1.0",
+            },
+        )
+        with urlopen(request, timeout=4) as response:
+            payload = json.loads(response.read().decode("utf-8"))
+
+        items = []
+        if isinstance(payload, dict):
+            for key in ("data", "results", "fragrances"):
+                if isinstance(payload.get(key), list):
+                    items = payload[key]
+                    break
+        elif isinstance(payload, list):
+            items = payload
+
+        query_tokens = set(_tokens(query))
+        ranked = []
+        for item in items:
+            if not isinstance(item, dict):
+                continue
+            name = _clean(item.get("Name") or item.get("name") or "")
+            brand = _clean(item.get("Brand") or item.get("brand") or "")
+            if not name or not brand:
+                continue
+            name_tokens = set(_tokens(name))
+            overlap = len(query_tokens & name_tokens)
+            if query_tokens and overlap == 0:
+                continue
+            score = overlap * 100
+            if query_tokens.issubset(name_tokens):
+                score += 1000
+            score -= abs(len(name_tokens) - len(query_tokens))
+            ranked.append((score, brand))
+
+        if not ranked:
+            return ""
+        ranked.sort(key=lambda x: x[0], reverse=True)
+        return ranked[0][1]
+    except Exception as error:
+        print(f"DELOOX FRAGELLA BRAND ERROR: {error}")
+        return ""
+
+
+def _find_brand_category_by_brand(session, brand):
+    """Find a Deloox brand category dynamically from the site navigation."""
+    key = _norm(brand)
+    if not key:
+        return None
+    if key in BRAND_CATEGORY_CACHE:
+        return BRAND_CATEGORY_CACHE[key]
+
+    response = _get(session, HOME_URL)
+    if response is None:
+        return None
+
+    soup = BeautifulSoup(response.text or "", "html.parser")
+    best = None
+
+    for link in soup.find_all("a", href=True):
+        name = _clean(link.get_text(" ", strip=True))
+        href = _clean(link.get("href", ""))
+        if not name or not href:
+            continue
+        url = urljoin(BASE_URL, href)
+        if "/category/" not in url.lower():
+            continue
+
+        name_n = _norm(name)
+        if name_n != key:
+            continue
+
+        best = url
+        break
+
+    if best:
+        BRAND_CATEGORY_CACHE[key] = best
+    return best
+
 def _catalog_filter_links(session):
     """
     Discover Deloox product-line filters generically.
@@ -369,7 +466,9 @@ def _catalog_filter_links(session):
             continue
 
         href_lower = href.lower()
-        if "filters%5b" not in href_lower and "filters[" not in href_lower:
+        is_filter_link = "filters%5b" in href_lower or "filters[" in href_lower
+        is_category_link = "/category/" in href_lower
+        if not is_filter_link and not is_category_link:
             continue
 
         url = urljoin(BASE_URL, href)
@@ -490,6 +589,15 @@ def _find_brand_category(session, query):
     for required_tokens, fallback_url in CATEGORY_FALLBACKS:
         if set(required_tokens).issubset(query_tokens):
             return fallback_url
+
+    # Generic resolver: use the fragrance catalogue to identify the brand,
+    # then discover that brand's Deloox category from Deloox navigation.
+    # This avoids adding one hard-coded rule for every perfume.
+    brand = _fragella_brand(query)
+    if brand:
+        dynamic_category = _find_brand_category_by_brand(session, brand)
+        if dynamic_category:
+            return dynamic_category
 
     response = _get(
         session,
