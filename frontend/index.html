@@ -973,7 +973,7 @@ async function searchPerfume(){
  const updateSearchButton=()=>{dots=(dots+1)%4;searchButton.innerHTML='<span class="search-fixed">CERCO</span><span class="search-dots">'+". ".trim().repeat(0)+". ".trim().repeat(dots)+'</span>'};
  updateSearchButton();
  const dotsTimer=setInterval(updateSearchButton,500);
- statusBox.textContent="";resultsBox.innerHTML="";errorsBox.innerHTML="";document.getElementById("searchOutput").scrollIntoView({behavior:"smooth",block:"start"});
+ statusBox.textContent="";resultsBox.innerHTML="";errorsBox.innerHTML="";
  try{
   const term=q;
   const data=await fetchJSONWithTimeout(
