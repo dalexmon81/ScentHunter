@@ -125,7 +125,17 @@ body{position:relative}
 @media(max-width:390px){.result-image{width:62px;height:72px;flex-basis:62px}.bestprice{font-size:21px}}
 
 </style>
-
+<style>
+.wishlist-store-card{align-items:flex-start;position:relative}
+.wishlist-store-card .wishpic{margin-top:2px}
+.wishlist-selected-shop{font-size:14px;font-weight:900;color:#f4f4f2;margin:2px 0 2px}
+.wishlist-best-link{display:grid;grid-template-columns:1fr auto;gap:2px 12px;margin-top:12px;padding:11px 13px;border:1px solid #365443;border-radius:14px;background:rgba(73,176,108,.08);color:inherit;text-decoration:none}
+.wishlist-best-link span{grid-column:1/-1;color:#a9aaa9;font-size:10px;font-weight:800;letter-spacing:.5px}
+.wishlist-best-link strong{font-size:13px;color:#f5f5f2}
+.wishlist-best-link b{font-size:15px;color:#55ce78;align-self:center}
+.wishlist-best-link em{grid-column:1/-1;font-style:normal;color:#e7b83f;font-size:11px;font-weight:900;margin-top:4px}
+.nav{position:fixed!important;top:auto!important;bottom:0!important;left:0!important;right:0!important;width:100%!important;max-width:760px!important;margin:0 auto!important;transform:translate3d(0,0,0)!important;will-change:transform!important;z-index:2147483647!important}
+</style>
 
 <style>
 .product-choice{margin-top:12px;padding:15px;border:1px solid #303238;border-radius:18px;background:#121416;display:flex;gap:13px;align-items:center;cursor:pointer}
@@ -316,6 +326,14 @@ function addWish(item){
     addedPrice:item.price||"",
     addedShop:item.shop||""
   };
+  const best=getBestKnownOfferForWishlist(clean);
+  if(best){
+    clean.bestOutOfStock=false;
+    clean.bestShop=best.shop||"";
+    clean.bestPrice=best.price||"";
+    clean.bestPriceValue=best.price_value??null;
+    clean.bestUrl=best.url||"";
+  }
   if(!list.some(x=>sameWishOffer(x,clean))) list.push(clean);
   saveWishlist(list);
 }
@@ -335,24 +353,107 @@ function renderWishlist(){
   const box=document.getElementById("wishlistList"),count=document.getElementById("wishlistCount"),list=getWishlist();
   count.textContent=list.length+" "+(list.length===1?"offerta selezionata":"offerte selezionate");
   if(!list.length){
-    box.innerHTML='<div class="wishlist-empty"><b>♡</b>La tua Wishlist è vuota.<br>Premi il cuore su un negozio per salvarne l’offerta.</div>';
+    box.innerHTML='<div class="wishlist-empty"><b>♡</b>La tua Wishlist è vuota.<br>Premi il cuore su un negozio per salvare la sua offerta.</div>';
     return;
   }
+
+  // La Wishlist rappresenta l'OFFERTA che l'utente ha selezionato,
+  // non il miglior prezzo in assoluto. Il miglior prezzo viene mostrato
+  // separatamente e resta cliccabile.
   box.innerHTML=list.map(x=>{
     const out=isWishlistOutOfStock(x);
-    return `<article class="wishlist-card">
+    const best=getBestKnownOfferForWishlist(x);
+    const selectedUrl=x.url||x.link||"";
+    const bestDifferent=best && !sameWishOffer(best,x);
+    return `<article class="wishlist-card wishlist-store-card">
       <div class="wishpic">${esc(x.pic||"🧴")}</div>
       <div class="wishlist-info">
         <div class="wishlist-brand">${esc(x.brand||"")}</div>
         <div class="wishlist-name">${esc(x.name||"Profumo")}</div>
+        <div class="wishlist-selected-shop">${esc(x.shop||"Negozio")}</div>
         ${out?`<div class="wishlist-outstock">OUT OF STOCK</div>`:(x.price?`<div class="wishlist-price">${esc(x.price)}</div>`:"")}
-        ${x.shop?`<div class="wishlist-shop">Negozio selezionato: ${esc(x.shop)}</div>`:""}
-        ${(!out&&(x.url||x.link))?`<a class="wishShop" href="${esc(x.url||x.link)}" target="_blank" rel="noopener">VAI AL NEGOZIO →</a>`:""}
+        ${(!out&&selectedUrl)?`<a class="wishShop" href="${esc(selectedUrl)}" target="_blank" rel="noopener noreferrer">VAI AL NEGOZIO →</a>`:""}
+        ${best?`<a class="wishlist-best-link" href="${esc(best.url||best.link||selectedUrl)}" target="_blank" rel="noopener noreferrer"><span>MIGLIOR PREZZO ATTUALE</span><strong>${esc(best.shop||"Negozio")}</strong><b>${esc(best.price||shPrice(best))}</b><em>VAI AL NEGOZIO →</em></a>`:""}
         ${x.previousPrice&&x.previousShop?`<div class="wishlist-change"><span class="old">${esc(x.previousPrice)} · ${esc(x.previousShop)}</span> → ${esc(x.price)} · ${esc(x.shop)}</div><div class="wishlist-badge">↓ NUOVO PREZZO${x.priceDrop?` · -${esc(formatEuro(x.priceDrop))}`:""}</div>`:""}
       </div>
       <button class="remove-wish" data-remove="${esc(wishId(x))}" aria-label="Rimuovi">♥</button>
     </article>`;
   }).join("");
+}
+
+function getBestKnownOfferForWishlist(item){
+  // La wishlist conserva il miglior prezzo dell'ultima ricerca disponibile,
+  // così resta corretto anche entrando nella Wishlist dopo un refresh.
+  if(item.bestShop && item.bestPrice && !item.bestOutOfStock){
+    return {
+      brand:item.brand||"",
+      name:item.name||"",
+      price:item.bestPrice,
+      price_value:item.bestPriceValue,
+      shop:item.bestShop,
+      url:item.bestUrl||"",
+      pic:item.pic||"🧴"
+    };
+  }
+
+  // Fallback: se i risultati sono ancora presenti nella pagina, ricalcoliamo
+  // il miglior prezzo solo tra le offerte realmente disponibili.
+  let candidates=[];
+  currentProductGroups.forEach(g=>{
+    if(!samePerfume({name:g.name||""},item))return;
+    (g.offers||[]).forEach(o=>{
+      if(isOfferOutOfStock(o))return;
+      candidates.push({
+        brand:g.brand||o.brand||"",
+        name:g.name||o.name||"",
+        price:shPrice(o),
+        price_value:o.price_value,
+        shop:o.store||"",
+        url:o.url||"",
+        pic:g.image||item.pic||"🧴"
+      });
+    });
+  });
+  candidates.sort((a,b)=>shNum(a)-shNum(b));
+  return candidates[0]||null;
+}
+
+function updateBestPricesFromGroups(groups){
+  if(!Array.isArray(groups)||!groups.length)return;
+  const list=getWishlist();
+  let changed=false;
+  list.forEach(item=>{
+    const g=groups.find(group=>samePerfume({name:group.name||""},item));
+    if(!g)return;
+    const available=(g.offers||[]).filter(o=>!isOfferOutOfStock(o));
+    if(!available.length){
+      if(!item.bestOutOfStock || item.bestShop || item.bestPrice){
+        item.bestOutOfStock=true;
+        item.bestShop="";
+        item.bestPrice="";
+        item.bestPriceValue=null;
+        item.bestUrl="";
+        changed=true;
+      }
+      return;
+    }
+    available.sort((a,b)=>shNum(a)-shNum(b));
+    const best=available[0];
+    const bp=shPrice(best);
+    const bv=Number(best.price_value);
+    const next={
+      bestOutOfStock:false,
+      bestShop:best.store||"",
+      bestPrice:bp,
+      bestPriceValue:Number.isFinite(bv)?bv:null,
+      bestUrl:best.url||""
+    };
+    if(item.bestOutOfStock!==next.bestOutOfStock || item.bestShop!==next.bestShop || item.bestPrice!==next.bestPrice || item.bestUrl!==next.bestUrl){
+      Object.assign(item,next);
+      changed=true;
+    }
+  });
+  if(changed)localStorage.setItem(WISH_KEY,JSON.stringify(list));
 }
 function syncHearts(){
   const saved=getWishlist();
@@ -689,7 +790,13 @@ function openProduct(i){
   document.getElementById("searchOutput").scrollIntoView({behavior:"smooth",block:"start"});
 }
 function chooseOffer(gi,oi){
-  const g=currentProductGroups[gi],o=(g.offers||[]).slice().sort((x,y)=>shNum(x)-shNum(y))[oi];
+  const g=currentProductGroups[gi];
+  const offers=(g.offers||[]).slice().sort((a,b)=>{
+    const ao=isOfferOutOfStock(a),bo=isOfferOutOfStock(b);
+    if(ao!==bo)return ao?1:-1;
+    return shNum(a)-shNum(b);
+  });
+  const o=offers[oi];
   if(!o)return;
   const isOut=isOfferOutOfStock(o);
   const item={
@@ -730,6 +837,8 @@ async function searchPerfume(){
     180000
   );
   const groups=shGroupData(data);showProducts(groups);
+  currentProductGroups=groups;
+  updateBestPricesFromGroups(groups);
   refreshWishlistFromResults(groups.flatMap(g=>g.offers.map(o=>({name:g.name||"",brand:g.brand||"",price:shPrice(o),price_value:o.price_value,store:o.store||"",url:o.url||""}))));
   if(data.errors&&Object.keys(data.errors).length)errorsBox.innerHTML="Alcuni negozi non hanno risposto: "+Object.keys(data.errors).map(esc).join(", ")+".";
  }catch(e){console.error(e);statusBox.textContent="Impossibile completare la ricerca."}
