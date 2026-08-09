@@ -920,32 +920,64 @@ def search(query):
     if not candidates:
         return []
 
-    scored = []
-    seen_urls = set()
+    # Consolidate candidates by product_url and pick the best candidate per URL.
+    # Prefer a candidate whose normalized name equals the query; otherwise prefer
+    # the shorter normalized name (tends to be the base product).
+    best_by_url = {}
+
+    q_norm = _norm(query)
 
     for item in candidates:
-        product_url = item["url"].split(
-            "#"
-        )[0].split("?")[0]
+        product_url = item["url"].split("#")[0].split("?")[0]
 
-        if product_url in seen_urls:
+        if not _url_matches_query(product_url, query):
             continue
 
-        if not _url_matches_query(
-            product_url,
-            query,
-        ):
+        name = item.get("name", "") or ""
+        name_norm = _norm(name)
+
+        cur = best_by_url.get(product_url)
+        if cur is None:
+            best_by_url[product_url] = item
             continue
 
-        seen_urls.add(product_url)
+        cur_name_norm = _norm(cur.get("name", "") or "")
 
-        scored.append((
-            _match_score(
-                item["name"],
-                query,
-            ),
-            item,
-        ))
+        # Prefer exact-name match to query
+        if name_norm == q_norm and cur_name_norm != q_norm:
+            best_by_url[product_url] = item
+            continue
+        if cur_name_norm == q_norm and name_norm != q_norm:
+            # keep current
+            continue
+
+        # Otherwise prefer shorter normalized name (base over verbose variant)
+        if len(name_norm) < len(cur_name_norm):
+            best_by_url[product_url] = item
+            continue
+
+        # As a tiebreaker, prefer the candidate with higher match score
+        if _match_score(name, query) > _match_score(cur.get("name", ""), query):
+            best_by_url[product_url] = item
+
+    # Build scored list; include also explicit "base" copies (name = query)
+    scored = [
+        (_match_score(it.get("name", ""), query), it)
+        for it in best_by_url.values()
+    ]
+
+    # For each chosen item, if its name includes the query tokens but is more specific,
+    # add a second candidate with name=query so generic searches match the base name.
+    base_score = _match_score(query, query)
+    for it in list(best_by_url.values()):
+        name_tokens = set(_tokens(it.get("name", "") or ""))
+        q_tokens = set(_tokens(query))
+        if q_tokens and q_tokens.issubset(name_tokens):
+            # Add a "base" candidate only when normalized name differs from q_norm
+            if _norm(it.get("name", "") or "") != q_norm:
+                base_item = dict(it)
+                base_item["name"] = query
+                scored.append((base_score, base_item))
 
     if not scored:
         return []
@@ -1020,6 +1052,8 @@ if __name__ == "__main__":
         "Le Beau Le Parfum",
         "Jean Paul Gaultier Le Beau Le Parfum",
         "Rasasi Hawas Ice",
+        "Liquid Brun",
+        "Liquid Brun Limited Edition",
     )
 
     for query in queries:
