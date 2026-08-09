@@ -86,7 +86,7 @@ html,body{min-height:100%;overflow-x:hidden}
 /* iPhone/Safari: viewport stabile + contenuto scrollabile */
 html,body{height:100%;height:100dvh;overflow:hidden!important}
 body{position:relative}
-.app{height:100%;height:100dvh;min-height:0!important;overflow-y:auto;-webkit-overflow-scrolling:touch;padding-bottom:calc(125px + env(safe-area-inset-bottom))!important}
+.app{width:100%!important;max-width:760px!important;height:100%;height:100dvh;min-height:0!important;overflow-x:hidden!important;overflow-y:auto;-webkit-overflow-scrolling:touch;padding-bottom:calc(125px + env(safe-area-inset-bottom))!important}
 .nav{position:fixed!important;left:0!important;right:0!important;bottom:0!important;top:auto!important;transform:none!important;width:100%!important;max-width:760px!important;margin:0 auto!important;z-index:2147483647!important}
 </style>
 
@@ -255,7 +255,7 @@ body{position:relative}
   }
   .hero.hero-search .hero-actions input{
     height:48px!important;
-    font-size:14px!important;
+    font-size:16px!important;
     padding-left:43px!important;
   }
   .hero.hero-search .hero-actions .herobtn{
@@ -276,7 +276,7 @@ body{position:relative}
 .home-art-image{position:absolute;inset:0;width:100%;height:100%;display:block;object-fit:cover}
 .home-search-overlay{position:absolute;inset:0;z-index:2;pointer-events:none}
 .home-search-field{position:absolute;left:6.0%;top:78.05%;width:48.6%;height:6.35%;pointer-events:auto;display:flex;align-items:center}
-.home-search-field input{width:100%;height:100%;margin:0;border:1px solid #3b403e;border-radius:18px;background:rgba(18,21,22,.97);color:#f7f7f5;font-size:clamp(14px,2.3vw,19px);padding:0 15px 0 47px;outline:0;box-shadow:none}
+.home-search-field input{width:100%;height:100%;margin:0;border:1px solid #3b403e;border-radius:18px;background:rgba(18,21,22,.97);color:#f7f7f5;font-size:16px!important;padding:0 15px 0 47px;outline:0;box-shadow:none}
 .home-search-field input::placeholder{color:#9b9da0;opacity:1}
 .home-search-icon{position:absolute;left:14px;top:50%;transform:translateY(-50%);width:23px;height:23px;z-index:2;color:#a5a7aa;pointer-events:none}
 .home-search-icon svg{width:100%;height:100%;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round}
