@@ -1,262 +1,518 @@
+"""
+Notino.fr scraper for ScentHunter.
+
+Primary: Playwright + Chromium.
+Fallback: requests + BeautifulSoup.
+
+No Google/Bing.
+No hardcoded products or prices.
+"""
+
+from __future__ import annotations
+
+import json
+import logging
+import os
 import re
+from typing import Any
+from urllib.parse import quote_plus, urljoin, urlparse
+
 import requests
 from bs4 import BeautifulSoup
-from urllib.parse import quote_plus, urljoin
+
+try:
+    from playwright.sync_api import TimeoutError as PlaywrightTimeoutError
+    from playwright.sync_api import sync_playwright
+except ImportError:
+    PlaywrightTimeoutError = Exception
+    sync_playwright = None
+
 
 STORE = "Notino"
 BASE_URL = "https://www.notino.fr"
+SEARCH_URL = f"{BASE_URL}/search.asp?exps={{query}}"
+
+DEFAULT_TIMEOUT_MS = int(os.getenv("NOTINO_TIMEOUT_MS", "30000"))
+BROWSER_ENABLED = os.getenv("NOTINO_BROWSER", "1").lower() not in {
+    "0", "false", "no"
+}
+
+LOGGER = logging.getLogger(__name__)
 
 HEADERS = {
-    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
-    "Accept-Language": "fr-FR,fr;q=0.9,en;q=0.8",
+    "User-Agent": (
+        "Mozilla/5.0 (X11; Linux x86_64) "
+        "AppleWebKit/537.36 (KHTML, like Gecko) "
+        "Chrome/124.0.0.0 Safari/537.36"
+    ),
+    "Accept": (
+        "text/html,application/xhtml+xml,application/xml;"
+        "q=0.9,image/avif,image/webp,*/*;q=0.8"
+    ),
+    "Accept-Language": "fr-FR,fr;q=0.9,en;q=0.7",
+    "Cache-Control": "no-cache",
+    "Pragma": "no-cache",
 }
 
 PRICE_RE = re.compile(
-    r"€\s*(\d{1,4}[.,]\d{2})|(\d{1,4}[.,]\d{2})\s*€",
-    re.I,
+    r"(?<![\d.,])"
+    r"((?:\d{1,3}(?:[ .]\d{3})+|\d+)(?:[,.]\d{2})?)"
+    r"\s*(?:€|EUR)"
+    r"(?!\w)",
+    re.IGNORECASE,
 )
 
-# Titoli generici di pagina/ricerca da scartare come nome prodotto
-GENERIC_TITLES = [
-    "résultat de la recherche",
-    "nombre de produits",
-    "recherche",
-    "produits",
-    "résultats",
-    "page",
-    "chargement",
-    "loading",
-]
+PRODUCT_PATH_EXCLUSIONS = {
+    "search.asp",
+    "parfums",
+    "parfums-homme",
+    "parfums-femme",
+    "cosmetiques",
+    "maquillage",
+    "cheveux",
+    "corps",
+    "visage",
+    "promotions",
+    "nouveaux",
+    "marques",
+    "panier",
+    "checkout",
+    "login",
+    "account",
+}
 
-# Testi che indicano chiaramente indisponibilità / niente vendita attuale
-UNAVAILABLE_PATTERNS = [
-    "rupture de stock",   # actuellement en rupture de stock
-    "épuisé",             # produit épuisé
-    "non disponible",     # non disponible
-    "pas disponible",     # pas disponible
-]
 
-def _clean(s):
-    return re.sub(r"\s+", " ", str(s or "")).strip()
+def _clean(value: Any) -> str:
+    return re.sub(r"\s+", " ", str(value or "")).strip()
 
-def _words(s):
-    return [
-        x
-        for x in re.findall(r"[a-z0-9]+", _clean(s).lower())
-        if len(x) > 1
-    ]
 
-def _matches(text, query):
-    text = _clean(text).lower()
-    return all(word in text for word in _words(query))
+def _normalise_url(href: str) -> str | None:
+    if not href:
+        return None
 
-def _is_generic_title(title):
-    t = _clean(title).lower()
-    return any(g in t for g in GENERIC_TITLES)
+    href = href.strip()
 
-def _is_unavailable_block(text: str) -> bool:
-    """
-    True se il blocco di testo contiene segnali chiari
-    che il prodotto/variante è non disponibile.
-    Questo evita di usare prezzi da blocchi tipo
-    'Actuellement en rupture de stock / Prix minimal 25,50 €'.
-    """
-    t = _clean(text).lower()
-    return any(pattern in t for pattern in UNAVAILABLE_PATTERNS)
+    if href.startswith("//"):
+        href = "https:" + href
+    elif href.startswith("/"):
+        href = urljoin(BASE_URL, href)
 
-def _price(text):
-    matches = list(PRICE_RE.finditer(text or ""))
+    parsed = urlparse(href)
 
-    if not matches:
-        return ""
+    if parsed.scheme not in {"http", "https"}:
+        return None
 
-    match = matches[-1]
-    value = match.group(1) or match.group(2)
+    if parsed.netloc.lower() not in {"notino.fr", "www.notino.fr"}:
+        return None
 
-    return value.replace(".", ",") + "€"
+    path = parsed.path.rstrip("/")
 
-def _search_page(query):
-    urls = [
-        BASE_URL + "/search.asp?exps=" + quote_plus(query),
-        BASE_URL + "/search?query=" + quote_plus(query),
-    ]
+    if not path or path == "/":
+        return None
 
-    session = requests.Session()
-    session.headers.update(HEADERS)
+    if path.lower().endswith((".jpg", ".jpeg", ".png", ".webp", ".svg")):
+        return None
+
+    return f"{parsed.scheme}://{parsed.netloc}{path}"
+
+
+def _looks_like_product_url(url: str) -> bool:
+    parsed = urlparse(url)
+    path = parsed.path.strip("/").lower()
+
+    if not path:
+        return False
+
+    first_segment = path.split("/", 1)[0]
+
+    if first_segment in PRODUCT_PATH_EXCLUSIONS:
+        return False
+
+    if "search.asp" in path:
+        return False
+
+    return len(path.split("/")) >= 2
+
+
+def _extract_prices(text: str) -> list[str]:
+    prices: list[str] = []
+
+    for match in PRICE_RE.finditer(_clean(text)):
+        raw = match.group(1).replace(" ", "")
+
+        if raw.count(".") > 1:
+            raw = raw.replace(".", "")
+        elif "." in raw and "," not in raw:
+            raw = raw.replace(".", ",")
+
+        value = f"{raw} €"
+
+        if value not in prices:
+            prices.append(value)
+
+    return prices
+
+
+def _is_stock_text(text: str) -> bool:
+    low = _clean(text).lower()
+
+    stock_terms = (
+        "en stock",
+        "disponible",
+        "en rupture",
+        "rupture de stock",
+        "indisponible",
+        "épuisé",
+        "epuise",
+    )
+
+    return any(term in low for term in stock_terms)
+
+
+def _candidate_container(anchor) -> Any:
+    node = anchor
+
+    for _ in range(6):
+        if not node:
+            break
+
+        text = _clean(node.get_text(" ", strip=True))
+
+        if len(text) >= 20 and (_extract_prices(text) or _is_stock_text(text)):
+            return node
+
+        node = getattr(node, "parent", None)
+
+    return anchor.parent
+
+
+def _name_from_container(container, fallback: str) -> str:
+    if container is None:
+        return fallback
+
+    for selector in ("h1", "h2", "h3", "h4"):
+        element = container.select_one(selector)
+
+        if element:
+            text = _clean(element.get_text(" ", strip=True))
+
+            if 2 <= len(text) <= 300:
+                return text
+
+    anchor = container.find("a", href=True)
+
+    if anchor:
+        text = _clean(anchor.get_text(" ", strip=True))
+
+        if 2 <= len(text) <= 300:
+            return text
+
+    return fallback
+
+
+def _walk_json_ld(value: Any):
+    if isinstance(value, dict):
+        yield value
+
+        for child in value.values():
+            yield from _walk_json_ld(child)
+
+    elif isinstance(value, list):
+        for child in value:
+            yield from _walk_json_ld(child)
+
+
+def _parse_json_ld(soup: BeautifulSoup) -> list[dict[str, Any]]:
+    products: list[dict[str, Any]] = []
+
+    for script in soup.select('script[type="application/ld+json"]'):
+        raw = script.string or script.get_text()
+
+        if not raw:
+            continue
+
+        try:
+            data = json.loads(raw.strip())
+        except (json.JSONDecodeError, TypeError, ValueError):
+            continue
+
+        for obj in _walk_json_ld(data):
+            obj_type = obj.get("@type")
+
+            if isinstance(obj_type, list):
+                is_product = "Product" in obj_type
+            else:
+                is_product = obj_type == "Product"
+
+            if is_product:
+                products.append(obj)
+
+    return products
+
+
+def _results_from_json_ld(soup: BeautifulSoup) -> list[dict[str, str]]:
+    output: list[dict[str, str]] = []
+    seen: set[str] = set()
+
+    for product in _parse_json_ld(soup):
+        url = _normalise_url(str(product.get("url", "")))
+
+        if not url or not _looks_like_product_url(url):
+            continue
+
+        name = _clean(product.get("name"))
+        offers = product.get("offers", {})
+
+        if isinstance(offers, list):
+            offer_list = [x for x in offers if isinstance(x, dict)]
+        elif isinstance(offers, dict):
+            offer_list = [offers]
+        else:
+            offer_list = []
+
+        for offer in offer_list:
+            price_value = offer.get("price")
+            currency = _clean(offer.get("priceCurrency"))
+            availability = _clean(offer.get("availability"))
+
+            if price_value is None:
+                continue
+
+            if currency and currency.upper() not in {"EUR", "€"}:
+                continue
+
+            raw_price = _clean(price_value).replace(".", ",")
+
+            if not raw_price:
+                continue
+
+            key = f"{url}|{raw_price}"
+
+            if key in seen:
+                continue
+
+            seen.add(key)
+
+            low_availability = availability.lower()
+            if any(marker in low_availability for marker in (
+                "rupture", "épuisé", "epuise", "indisponible", "out of stock"
+            )):
+                available = False
+                normalized_availability = "out_of_stock"
+            elif any(marker in low_availability for marker in (
+                "en stock", "disponible", "available"
+            )):
+                available = True
+                normalized_availability = "in_stock"
+            else:
+                available = None
+                normalized_availability = "unknown"
+
+            output.append({
+                "store": STORE,
+                "name": name or url.rstrip("/").split("/")[-1],
+                "price": f"{raw_price} €",
+                "url": url,
+                "available": available,
+                "availability": normalized_availability,
+            })
+
+    return output
+
+
+def _results_from_html(html: str, query: str) -> list[dict[str, str]]:
+    soup = BeautifulSoup(html, "html.parser")
+    results: list[dict[str, str]] = []
+    seen: set[str] = set()
+
+    for item in _results_from_json_ld(soup):
+        results.append(item)
+        seen.add(item["url"])
+
+    for anchor in soup.find_all("a", href=True):
+        url = _normalise_url(anchor.get("href", ""))
+
+        if not url or url in seen or not _looks_like_product_url(url):
+            continue
+
+        container = _candidate_container(anchor)
+
+        if container is None:
+            continue
+
+        text = _clean(container.get_text(" ", strip=True))
+
+        if len(text) > 2500:
+            continue
+
+        prices = _extract_prices(text)
+
+        if not prices:
+            continue
+
+        name = _name_from_container(container, _clean(query))
+        low = text.lower()
+        availability = ""
+
+        if "rupture de stock" in low or "en rupture" in low:
+            availability = "Rupture de stock"
+        elif "en stock" in low:
+            availability = "En stock"
+        elif "disponible" in low:
+            availability = "Disponible"
+
+        low_availability = availability.lower()
+        if any(marker in low_availability for marker in (
+            "rupture", "épuisé", "epuise", "indisponible", "out of stock"
+        )):
+            available = False
+            normalized_availability = "out_of_stock"
+        elif any(marker in low_availability for marker in (
+            "en stock", "disponible", "available"
+        )):
+            available = True
+            normalized_availability = "in_stock"
+        else:
+            available = None
+            normalized_availability = "unknown"
+
+        results.append({
+            "store": STORE,
+            "name": name,
+            "price": prices[0],
+            "url": url,
+            "available": available,
+            "availability": normalized_availability,
+        })
+
+        seen.add(url)
+
+        if len(results) >= 50:
+            break
+
+    return results
+
+
+def _deduplicate(items: list[dict[str, str]]) -> list[dict[str, str]]:
+    output: list[dict[str, str]] = []
+    seen: set[tuple[str, str]] = set()
+
+    for item in items:
+        url = _clean(item.get("url"))
+        price = _clean(item.get("price"))
+
+        if not url or not price:
+            continue
+
+        key = (url, price)
+
+        if key in seen:
+            continue
+
+        seen.add(key)
+        output.append(item)
+
+    return output
+
+
+def _search_with_requests(query: str) -> list[dict[str, str]]:
+    url = SEARCH_URL.format(query=quote_plus(query))
 
     try:
-        for url in urls:
+        response = requests.get(
+            url,
+            headers=HEADERS,
+            timeout=20,
+            allow_redirects=True,
+        )
+    except requests.RequestException as exc:
+        LOGGER.warning("Notino requests error: %s", exc)
+        return []
+
+    if response.status_code == 403:
+        LOGGER.warning("Notino returned HTTP 403 to requests")
+        return []
+
+    if response.status_code >= 400:
+        LOGGER.warning("Notino returned HTTP %s", response.status_code)
+        return []
+
+    return _deduplicate(_results_from_html(response.text, query))
+
+
+def _search_with_playwright(query: str) -> list[dict[str, str]]:
+    if sync_playwright is None:
+        LOGGER.warning("Playwright is not installed")
+        return []
+
+    url = SEARCH_URL.format(query=quote_plus(query))
+
+    try:
+        with sync_playwright() as playwright:
+            browser = playwright.chromium.launch(
+                headless=True,
+                args=[
+                    "--no-sandbox",
+                    "--disable-dev-shm-usage",
+                    "--disable-gpu",
+                ],
+            )
+
+            context = browser.new_context(
+                user_agent=HEADERS["User-Agent"],
+                locale="fr-FR",
+                extra_http_headers={
+                    "Accept-Language": HEADERS["Accept-Language"],
+                },
+                viewport={"width": 1365, "height": 900},
+            )
+
+            page = context.new_page()
+
+            response = page.goto(
+                url,
+                wait_until="domcontentloaded",
+                timeout=DEFAULT_TIMEOUT_MS,
+            )
+
+            if response is not None and response.status == 403:
+                browser.close()
+                LOGGER.warning("Notino returned HTTP 403 to Playwright")
+                return []
+
             try:
-                response = session.get(
-                    url,
-                    timeout=10,
-                    allow_redirects=True,
+                page.wait_for_load_state(
+                    "networkidle",
+                    timeout=min(DEFAULT_TIMEOUT_MS, 15000),
                 )
-            except requests.RequestException as error:
-                print("NOTINO ERROR:", error)
-                continue
+            except PlaywrightTimeoutError:
+                pass
 
-            if response.status_code in (403, 429):
-                print(f"NOTINO BLOCKED: HTTP {response.status_code}")
-                response.close()
-                break
+            page.wait_for_timeout(1500)
+            html = page.content()
+            browser.close()
 
-            if response.status_code != 200:
-                response.close()
-                continue
+    except PlaywrightTimeoutError as exc:
+        LOGGER.warning("Notino Playwright timeout: %s", exc)
+        return []
 
-            html = response.text
-            response.close()
+    except Exception as exc:
+        LOGGER.warning("Notino Playwright error: %s", exc)
+        return []
 
-            if html:
-                yield html
-    finally:
-        session.close()
+    return _deduplicate(_results_from_html(html, query))
 
-def search(query):
+
+def search(query: str) -> list[dict[str, str]]:
     query = _clean(query)
 
     if not query:
         return []
 
-    results = []
-    seen = set()
+    if BROWSER_ENABLED:
+        browser_results = _search_with_playwright(query)
 
-    for html in _search_page(query):
-        soup = BeautifulSoup(html, "html.parser")
+        if browser_results:
+            return browser_results
 
-        for link in soup.find_all("a", href=True):
-            href = _clean(link.get("href", ""))
-
-            if not href:
-                continue
-
-            product_url = urljoin(BASE_URL, href).split("?")[0]
-
-            if "notino.fr" not in product_url.lower():
-                continue
-
-            path = product_url.replace(BASE_URL, "").strip("/").lower()
-
-            if not path:
-                continue
-
-            if any(
-                bad in path
-                for bad in (
-                    "search.asp",
-                    "search/",
-                    "panier",
-                    "cart",
-                    "login",
-                    "account",
-                    "contact",
-                    "livraison",
-                    "conditions",
-                    "magazine",
-                )
-            ):
-                continue
-
-            if product_url in seen:
-                continue
-
-            node = link
-            card = None
-
-            # Stessa logica di ParfumCity/PerfumeMarket:
-            # risale dalla voce prodotto fino alla card che contiene
-            # query + prezzo.
-            for _ in range(8):
-                if node is None:
-                    break
-
-                text = _clean(node.get_text(" ", strip=True))
-
-                if _matches(text, query) and _price(text):
-                    card = node
-                    break
-
-                node = node.parent
-
-            if card is None:
-                continue
-
-            text = _clean(card.get_text(" ", strip=True))
-
-            # NOVITÀ: se il blocco/card indica chiaramente
-            # che il prodotto/variante è in rottura di stock / non disponibile,
-            # NON usiamo i prezzi presenti in questo blocco.
-            if _is_unavailable_block(text):
-                continue
-
-            name = ""
-
-            # 1) Heading nella card
-            for tag in card.find_all(["h1", "h2", "h3", "h4"]):
-                candidate = _clean(tag.get_text(" ", strip=True))
-
-                if candidate and _matches(candidate, query):
-                    if not _is_generic_title(candidate):
-                        name = candidate
-                        break
-
-            # 2) Titolo/aria-label/testo del link
-            if not name:
-                candidate = _clean(
-                    link.get("title")
-                    or link.get("aria-label")
-                    or link.get_text(" ", strip=True)
-                )
-
-                if candidate and _matches(candidate, query):
-                    if not _is_generic_title(candidate):
-                        name = candidate
-
-            # 3) Altri elementi testuali nella card
-            if not name:
-                # Alcune card Notino hanno il nome separato dal link:
-                # usiamo il testo della card soltanto se contiene la query.
-                for element in card.find_all(["span", "div", "p"]):
-                    candidate = _clean(
-                        element.get_text(" ", strip=True)
-                    )
-
-                    if (
-                        candidate
-                        and len(candidate) <= 250
-                        and _matches(candidate, query)
-                        and not _is_generic_title(candidate)
-                    ):
-                        name = candidate
-                        break
-
-            if not name:
-                continue
-
-            price = _price(text)
-
-            if not price:
-                continue
-
-            seen.add(product_url)
-
-            results.append(
-                {
-                    "store": STORE,
-                    "name": name,
-                    "price": price,
-                    "url": product_url,
-                }
-            )
-
-            if len(results) >= 10:
-                return results
-
-        if results:
-            return results
-
-    return results
-
-if __name__ == "__main__":
-    print(search("Hawas Ice"))
+    return _search_with_requests(query)
