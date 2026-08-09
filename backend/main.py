@@ -85,253 +85,6 @@ def product_image(product: Dict[str, Any]) -> str:
     )
 
 
-# ============================================================
-# DISPONIBILITÀ GENERALE SCENTHUNTER
-# ============================================================
-
-STOCK_UNAVAILABLE_WORDS = (
-    "out of stock",
-    "sold out",
-    "unavailable",
-    "not available",
-    "currently unavailable",
-    "temporarily unavailable",
-    "outofstock",
-    "out_of_stock",
-    "soldout",
-    "non disponible",
-    "non disponible actuellement",
-    "produit indisponible",
-    "actuellement indisponible",
-    "indisponible",
-    "rupture de stock",
-    "en rupture",
-    "épuisé",
-    "epuise",
-    "esaurito",
-    "esaurita",
-    "non disponibile",
-    "nicht auf lager",
-    "ausverkauft",
-)
-
-STOCK_AVAILABLE_WORDS = (
-    "in stock",
-    "en stock",
-    "disponible",
-    "disponibile",
-    "available",
-    "disponibilità immediata",
-    "lieferbar",
-)
-
-
-def _stock_state_from_text(value: Any) -> Optional[bool]:
-    """
-    Legge uno stato di stock esplicito senza fare supposizioni.
-    True = disponibile, False = non disponibile, None = non dichiarato.
-    """
-    text = str(value or "").strip().lower()
-    if not text:
-        return None
-
-    normalized = re.sub(r"\s+", " ", text)
-
-    if any(marker in normalized for marker in STOCK_UNAVAILABLE_WORDS):
-        return False
-
-    if any(marker in normalized for marker in STOCK_AVAILABLE_WORDS):
-        return True
-
-    return None
-
-
-def _availability_from_product_fields(product: Dict[str, Any]) -> Optional[bool]:
-    """
-    Prima fonte: stato già fornito dallo scraper.
-    Accetta i nomi usati dai diversi negozi.
-    """
-    if product.get("available") is False:
-        return False
-
-    if product.get("available") is True:
-        return True
-
-    for field in (
-        "availability",
-        "stock_status",
-        "stock",
-        "availability_status",
-        "availability_text",
-        "stock_text",
-    ):
-        state = _stock_state_from_text(product.get(field))
-        if state is not None:
-            return state
-
-    return _stock_state_from_text(product.get("price"))
-
-
-def _availability_from_structured_html(html: str) -> Optional[bool]:
-    """
-    Seconda fonte: dati strutturati della pagina prodotto.
-    Cerca schema.org Product/Offer e il relativo campo availability.
-    """
-    html = unescape(html or "")
-
-    scripts = re.findall(
-        r'<script[^>]+type=["\']application/ld\+json["\'][^>]*>(.*?)</script>',
-        html,
-        re.I | re.S,
-    )
-
-    def walk(value):
-        if isinstance(value, dict):
-            availability = value.get("availability")
-            state = _stock_state_from_text(availability)
-            if state is not None:
-                yield state
-
-            offers = value.get("offers")
-            if isinstance(offers, dict):
-                state = _stock_state_from_text(offers.get("availability"))
-                if state is not None:
-                    yield state
-            elif isinstance(offers, list):
-                for offer in offers:
-                    if isinstance(offer, dict):
-                        state = _stock_state_from_text(
-                            offer.get("availability")
-                        )
-                        if state is not None:
-                            yield state
-
-            for child in value.values():
-                yield from walk(child)
-
-        elif isinstance(value, list):
-            for child in value:
-                yield from walk(child)
-
-    states: List[bool] = []
-
-    for raw in scripts:
-        try:
-            payload = json.loads(raw.strip())
-        except Exception:
-            continue
-
-        states.extend(list(walk(payload)))
-
-    if states:
-        # Una dichiarazione esplicita "out of stock" prevale:
-        # evita di considerare disponibile una pagina con più Offer
-        # quando almeno l'offerta realmente esposta è esaurita.
-        if False in states:
-            return False
-        return True
-
-    return None
-
-
-def _availability_from_page_text(html: str) -> Optional[bool]:
-    """
-    Terza fonte: testo visibile e pulsanti della pagina.
-    I marker negativi hanno precedenza.
-    """
-    html = unescape(html or "")
-    text = re.sub(r"<[^>]+>", " ", html)
-    text = re.sub(r"\s+", " ", text).strip().lower()
-
-    if any(marker in text for marker in STOCK_UNAVAILABLE_WORDS):
-        return False
-
-    if any(marker in text for marker in STOCK_AVAILABLE_WORDS):
-        return True
-
-    return None
-
-
-def fetch_product_html(url: str) -> Optional[str]:
-    """
-    Recupera una sola volta la pagina prodotto.
-    Tutta la logica centrale di disponibilità/prezzo può riutilizzare
-    lo stesso HTML.
-    """
-    url = str(url or "").strip()
-    if not url:
-        return None
-
-    try:
-        request = Request(
-            url,
-            headers={
-                "Accept": "text/html,application/xhtml+xml",
-                "User-Agent": (
-                    "Mozilla/5.0 (compatible; ScentHunter/1.0)"
-                ),
-            },
-        )
-        with urlopen(request, timeout=4) as response:
-            return response.read().decode("utf-8", errors="ignore")
-    except Exception:
-        return None
-
-
-def resolve_availability(
-    product: Dict[str, Any],
-    html: Optional[str] = None,
-) -> Dict[str, Any]:
-    """
-    REGOLA UNICA SCENTHUNTER:
-
-    1. usa lo stato esplicito già fornito dallo scraper;
-    2. se manca, controlla la pagina prodotto;
-    3. usa JSON-LD/schema.org;
-    4. poi testo/pulsanti della pagina;
-    5. se la pagina non dichiara nulla, mantiene il risultato dello scraper
-       oppure considera disponibile un prodotto che possiede un prezzo valido.
-
-    Non esistono regole dedicate a singoli profumi o negozi.
-    """
-    item = dict(product)
-
-    field_state = _availability_from_product_fields(item)
-
-    if field_state is not None:
-        available = field_state
-    else:
-        page_state = None
-
-        if html:
-            page_state = _availability_from_structured_html(html)
-
-            if page_state is None:
-                page_state = _availability_from_page_text(html)
-
-        if page_state is not None:
-            available = page_state
-        else:
-            # Fallback prudente: se il prodotto ha un prezzo numerico,
-            # lo consideriamo acquistabile solo quando non abbiamo
-            # ricevuto alcuna dichiarazione contraria.
-            available = price_num(item.get("price")) is not None
-
-    item["available"] = bool(available)
-    item["availability"] = (
-        "in_stock" if available else "out_of_stock"
-    )
-    item["stock_status"] = (
-        "in_stock" if available else "out_of_stock"
-    )
-
-    if not available:
-        item["price"] = "Out of stock"
-        item["price_value"] = None
-
-    return item
-
-
 def _product_size_ml(product: Dict[str, Any]) -> Optional[float]:
     text = " ".join(
         str(product.get(key) or "")
@@ -413,10 +166,246 @@ def _price_from_structured_html(html: str) -> Optional[float]:
     return None
 
 
-def resolve_actual_price(
-    product: Dict[str, Any],
-    html: Optional[str] = None,
-) -> Dict[str, Any]:
+# ============================================================
+# DISPONIBILITÀ GENERALE SENTEHUNTER
+# ============================================================
+# Regola unica per tutti i negozi:
+# - se uno scraper dichiara esplicitamente OUT OF STOCK, lo manteniamo;
+# - se la pagina prodotto conferma OUT OF STOCK, lo marchiamo centralmente;
+# - se la pagina conferma IN STOCK, lo marchiamo come disponibile;
+# - se non riusciamo a determinare lo stock, NON eliminiamo mai il prodotto.
+# In questo modo lo stock è normalizzato nel backend e non dipende da
+# correzioni specifiche per singolo profumo o singolo negozio.
+
+_STOCK_OOS_MARKERS = (
+    "out of stock",
+    "sold out",
+    "unavailable",
+    "not available",
+    "currently unavailable",
+    "out-of-stock",
+    "rupture de stock",
+    "en rupture",
+    "épuisé",
+    "indisponible",
+    "actuellement indisponible",
+    "produit indisponible",
+    "non disponible",
+    "non-disponible",
+    "esaurito",
+    "non disponibile",
+    "nicht auf lager",
+    "ausverkauft",
+    "nicht verfügbar",
+)
+
+_STOCK_IN_MARKERS = (
+    "in stock",
+    "en stock",
+    "disponible",
+    "disponibilità immediata",
+    "sofort lieferbar",
+    "auf lager",
+)
+
+
+def _stock_value_is_oos(value: Any) -> bool:
+    if value is False:
+        return True
+    s = norm(value).replace(" ", "_")
+    return s in {
+        "out_of_stock", "outofstock", "sold_out", "soldout",
+        "unavailable", "not_available", "notavailable",
+        "rupture_de_stock", "en_rupture", "epuise",
+        "indisponible", "non_disponible", "non_disponible_online",
+        "esaurito", "nicht_auf_lager", "ausverkauft",
+        "nicht_verfugbar",
+    }
+
+
+def _stock_value_is_in(value: Any) -> bool:
+    if value is True:
+        return True
+    s = norm(value).replace(" ", "_")
+    return s in {
+        "in_stock", "instock", "available", "in_stock_online",
+        "en_stock", "disponible", "auf_lager", "sofort_lieferbar",
+    }
+
+
+def _structured_stock_from_html(html: str) -> Optional[bool]:
+    """Legge Product/Offer JSON-LD e restituisce True/False se noto."""
+    html = unescape(html or "")
+    scripts = re.findall(
+        r'<script[^>]+type=["\']application/ld\+json["\'][^>]*>(.*?)</script>',
+        html,
+        re.I | re.S,
+    )
+
+    def walk(value):
+        if isinstance(value, dict):
+            offers = value.get("offers")
+            if isinstance(offers, dict):
+                availability = offers.get("availability")
+                if availability:
+                    yield availability
+            elif isinstance(offers, list):
+                for offer in offers:
+                    if isinstance(offer, dict) and offer.get("availability"):
+                        yield offer.get("availability")
+            if value.get("availability"):
+                yield value.get("availability")
+            for child in value.values():
+                yield from walk(child)
+        elif isinstance(value, list):
+            for child in value:
+                yield from walk(child)
+
+    found_in = False
+    found_out = False
+    for raw in scripts:
+        try:
+            payload = json.loads(raw.strip())
+        except Exception:
+            continue
+        for availability in walk(payload):
+            s = str(availability).lower()
+            if any(token in s for token in ("outofstock", "soldout", "unavailable")):
+                found_out = True
+            if "instock" in s or "limitedavailability" in s:
+                found_in = True
+
+    if found_out:
+        return False
+    if found_in:
+        return True
+    return None
+
+
+def _stock_from_product_page(url: str) -> Optional[bool]:
+    """
+    Controllo generico della pagina prodotto.
+
+    Restituisce:
+      False = certamente OUT OF STOCK
+      True  = certamente disponibile
+      None  = informazione non determinabile
+
+    Importante: None NON significa out of stock e non causa mai lo scarto
+    del prodotto.
+    """
+    url = str(url or "").strip()
+    if not url or not re.match(r"^https?://", url, re.I):
+        return None
+
+    try:
+        request = Request(
+            url,
+            headers={
+                "Accept": "text/html,application/xhtml+xml",
+                "User-Agent": "Mozilla/5.0 (compatible; ScentHunter/1.0)",
+            },
+        )
+        with urlopen(request, timeout=3.5) as response:
+            html = response.read().decode("utf-8", errors="ignore")
+    except Exception:
+        return None
+
+    structured = _structured_stock_from_html(html)
+    if structured is not None:
+        return structured
+
+    page = unescape(html)
+    visible = re.sub(r"<script[^>]*>.*?</script>", " ", page, flags=re.I | re.S)
+    visible = re.sub(r"<style[^>]*>.*?</style>", " ", visible, flags=re.I | re.S)
+    visible = re.sub(r"<[^>]+>", " ", visible)
+    visible = re.sub(r"\s+", " ", visible).lower()
+
+    # Prima i controlli di acquisto: sono più affidabili del testo generico.
+    button_chunks = re.findall(
+        r"<(?:button|input)[^>]*?(?:>.*?</button>|/?>)",
+        page,
+        flags=re.I | re.S,
+    )
+    button_text = " ".join(button_chunks).lower()
+    if any(marker in button_text for marker in _STOCK_OOS_MARKERS):
+        return False
+    if any(marker in button_text for marker in _STOCK_IN_MARKERS):
+        return True
+
+    # Poi testo visibile della pagina. Un marker OOS esplicito prevale.
+    if any(marker in visible for marker in _STOCK_OOS_MARKERS):
+        return False
+    if any(marker in visible for marker in _STOCK_IN_MARKERS):
+        return True
+
+    return None
+
+
+def normalize_stock(product: Dict[str, Any], cache: Optional[Dict[str, Optional[bool]]] = None) -> Dict[str, Any]:
+    """Applica la regola stock unica a un'offerta di qualunque negozio."""
+    item = dict(product)
+
+    # 1) Informazioni esplicite già fornite dallo scraper.
+    fields = (
+        "availability", "stock", "stock_status", "status",
+        "availability_status", "availabilityStatus", "stockStatus",
+        "in_stock", "inStock",
+    )
+    explicit_oos = any(_stock_value_is_oos(item.get(field)) for field in fields)
+    explicit_in = any(_stock_value_is_in(item.get(field)) for field in fields)
+
+    if item.get("available") is False:
+        explicit_oos = True
+    elif item.get("available") is True:
+        explicit_in = True
+
+    if explicit_oos:
+        item["available"] = False
+        item["availability"] = "out_of_stock"
+        item["stock_status"] = "out_of_stock"
+        item["price"] = "Out of stock"
+        item.pop("price_value", None)
+        return item
+
+    # 2) Se esiste un URL, verifichiamo la pagina reale. Il risultato
+    #    sconosciuto NON elimina mai il prodotto.
+    url = str(item.get("url") or "").strip()
+    page_stock = None
+    if url:
+        if cache is not None and url in cache:
+            page_stock = cache[url]
+        else:
+            page_stock = _stock_from_product_page(url)
+            if cache is not None:
+                cache[url] = page_stock
+
+    if page_stock is False:
+        item["available"] = False
+        item["availability"] = "out_of_stock"
+        item["stock_status"] = "out_of_stock"
+        item["price"] = "Out of stock"
+        item.pop("price_value", None)
+        return item
+
+    if page_stock is True or explicit_in:
+        item["available"] = True
+        item["availability"] = "in_stock"
+        item["stock_status"] = "in_stock"
+        return item
+
+    # 3) Nessuna informazione certa: manteniamo il risultato.
+    #    Non lo classifichiamo OOS per supposizione.
+    if "available" not in item:
+        item["available"] = True
+    if "availability" not in item:
+        item["availability"] = "unknown"
+    if "stock_status" not in item:
+        item["stock_status"] = "unknown"
+    return item
+
+
+def resolve_actual_price(product: Dict[str, Any]) -> Dict[str, Any]:
     """
     Normalizza il prezzo mostrato da ScentHunter al prezzo realmente pagabile.
 
@@ -433,13 +422,20 @@ def resolve_actual_price(
     url = str(item.get("url") or "").strip()
     if url and size and abs(size - 100.0) > 0.01:
         try:
-            page_html = html if html is not None else fetch_product_html(url)
-            if page_html:
-                actual = _price_from_structured_html(page_html)
-                if actual is not None:
-                    item["price"] = f"{actual:.2f} €"
-                    item["price_value"] = actual
-                    return item
+            request = Request(
+                url,
+                headers={
+                    "Accept": "text/html,application/xhtml+xml",
+                    "User-Agent": "Mozilla/5.0 (compatible; ScentHunter/1.0)",
+                },
+            )
+            with urlopen(request, timeout=4) as response:
+                html = response.read().decode("utf-8", errors="ignore")
+            actual = _price_from_structured_html(html)
+            if actual is not None:
+                item["price"] = f"{actual:.2f} €"
+                item["price_value"] = actual
+                return item
         except Exception:
             pass
 
@@ -525,6 +521,7 @@ def run_store(store: str, query: str) -> List[Dict[str, Any]]:
     attempts = build_search_attempts(store, query)
     output: List[Dict[str, Any]] = []
     seen = set()
+    stock_cache: Dict[str, Optional[bool]] = {}
 
     for attempt in attempts:
         results = search_fn(attempt) or []
@@ -536,32 +533,11 @@ def run_store(store: str, query: str) -> List[Dict[str, Any]]:
             product = dict(item)
             product.setdefault("store", store)
 
-            # ========================================================
-            # REGOLA GENERALE:
-            # ogni risultato passa dallo stesso controllo stock.
-            # Nessun profumo e nessun negozio ha una regola speciale.
-            # ========================================================
-            page_html = None
-
-            field_state = _availability_from_product_fields(product)
-
-            # Se lo scraper non ci ha dato uno stato esplicito,
-            # leggiamo la pagina prodotto una sola volta.
-            if field_state is None:
-                page_html = fetch_product_html(product.get("url", ""))
-
-            product = resolve_availability(
-                product,
-                html=page_html,
-            )
-
-            # Un prodotto non disponibile non deve mai essere trasformato
-            # in un'offerta acquistabile dal correttore del prezzo.
+            # Regola generale stock: prima normalizziamo la disponibilità.
+            # Se è OOS, non sprechiamo una seconda richiesta per il prezzo.
+            product = normalize_stock(product, stock_cache)
             if product.get("available") is not False:
-                product = resolve_actual_price(
-                    product,
-                    html=page_html,
-                )
+                product = resolve_actual_price(product)
 
             key = (
                 str(product.get("url", "")).lower(),
@@ -601,11 +577,12 @@ def unique_results(products: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
 
 def sort_by_price(products: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
     def key(product):
-        if product.get("available") is False:
-            return (1, float("inf"))
-
+        is_oos = (product.get("available") is False) or _stock_value_is_oos(
+            product.get("availability")
+        )
         value = price_num(product.get("price"))
-        return (0, float("inf") if value is None else value)
+        # Disponibili sempre prima; OUT OF STOCK sempre in fondo.
+        return (1 if is_oos else 0, float("inf") if value is None else value)
 
     return sorted(products, key=key)
 
@@ -627,7 +604,7 @@ def search_perfume(query: str) -> Dict[str, Any]:
         for store in STORES
     }
 
-    done, not_done = wait(future_to_store, timeout=30)
+    done, not_done = wait(future_to_store, timeout=35)
 
     for future in done:
         store = future_to_store[future]
@@ -1038,9 +1015,6 @@ def product(name: str, brand: str = ""):
     offers: List[Dict[str, Any]] = []
 
     for product_data in data["results"]:
-        if product_data.get("available") is False:
-            continue
-
         value = price_num(product_data.get("price"))
 
         if value is None:
