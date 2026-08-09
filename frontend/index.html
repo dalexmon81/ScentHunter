@@ -350,17 +350,15 @@ function shNum(o){
 function shGroupData(data){
   const raw=[];
 
-  // Raccoglie tutte le offerte, sia da comparisons sia da results.
+  // Unisce tutte le offerte provenienti dai due blocchi del backend.
   (Array.isArray(data.comparisons)?data.comparisons:[]).forEach(g=>{
-    (Array.isArray(g.offers)?g.offers:[]).forEach(o=>{
-      raw.push({...o,
-        brand:o.brand||g.brand||"",
-        name:o.name||g.name||"Profumo",
-        size_ml:o.size_ml||o.size||g.size_ml||"",
-        concentration:o.concentration||g.concentration||"",
-        image:o.image||o.image_url||o.thumbnail||g.image||""
-      });
-    });
+    (Array.isArray(g.offers)?g.offers:[]).forEach(o=>raw.push({...o,
+      brand:o.brand||g.brand||"",
+      name:o.name||g.name||"Profumo",
+      size_ml:o.size_ml||o.size||g.size_ml||"",
+      concentration:o.concentration||g.concentration||"",
+      image:o.image||o.image_url||o.thumbnail||g.image||""
+    }));
   });
   (Array.isArray(data.results)?data.results:[]).forEach(o=>raw.push({...o}));
 
@@ -371,25 +369,25 @@ function shGroupData(data){
     return m?m[1]:"";
   }
 
-  function canonicalName(o){
-    let n=normalizePerfumeName(o.name||"").toLowerCase();
-    let brand=normalizePerfumeName(o.brand||"").toLowerCase();
+  // Costruisce un vocabolario delle marche realmente presenti nei risultati.
+  // Serve soprattutto quando un negozio scrive "Turathi Blue by Afnan" mentre
+  // un altro scrive "Afnan Turathi Blue".
+  const brandTerms=[...new Set(raw.map(o=>String(o.brand||"").trim().toLowerCase()).filter(Boolean))]
+    .sort((a,b)=>b.length-a.length)
+    .map(b=>b.replace(/[.*+?^${}()|[\]\\]/g,"\\$&"));
 
-    // Togli solo formato e parole realmente commerciali.
-    // IMPORTANTE: "parfum" ed "extrait" restano, perché possono identificare
-    // una variante diversa (es. "Le Beau Le Parfum").
+  function cleanName(v){
+    let n=normalizePerfumeName(v||"").toLowerCase();
     n=n.replace(/\b\d{1,4}\s*ml\b/gi," ");
-    n=n.replace(/\b(eau de toilette|eau de cologne|perfume|edp|edt|edc|spray|men|man|for men|for him|pour homme)\b/gi," ");
-
-    if(brand && n.startsWith(brand+" ")) n=n.slice(brand.length+1);
-
-    n=n.replace(/\b(french avenue|rasasi)\b/gi," ");
-    n=n.replace(/\b(by|de|unisex|x)\b/gi," ");
-
-    return n.replace(/[^a-z0-9]+/gi," ").replace(/\s+/g," ").trim();
+    n=n.replace(/\b(eau de parfum|eau de toilette|eau de cologne|edp|edt|edc|spray|men|man|women|woman|for men|for women|for him|for her|pour homme|pour femme)\b/gi," ");
+    if(brandTerms.length){
+      brandTerms.forEach(re=>{ n=n.replace(new RegExp("\\b"+re+"\\b","gi")," "); });
+    }
+    // Marche scritta nel nome anche quando il campo brand è vuoto.
+    n=n.replace(/\b(by|de)\b/gi," ");
+    return n.replace(/[^a-z0-9à-ÿ]+/gi," ").replace(/\s+/g," ").trim();
   }
 
-  // Normalizza le tre famiglie speciali di Liquid Brun.
   function liquidBrunFamily(o){
     const rawName=String(o.name||"").toLowerCase();
     const brand=String(o.brand||"").toLowerCase();
@@ -402,34 +400,25 @@ function shGroupData(data){
 
   function groupingName(o){
     const lb=liquidBrunFamily(o);
-    if(lb) return lb;
-    return canonicalName(o);
+    if(lb)return lb;
+    return cleanName(o.name||"");
   }
 
   function displayName(o){
     const lb=liquidBrunFamily(o);
-    if(lb==="mystery box liquid brun") return "Mystery Box Liquid Brun";
-    if(lb==="liquid brun limited edition") return "Liquid Brun Limited Edition";
+    if(lb==="mystery box liquid brun")return "Mystery Box Liquid Brun";
+    if(lb==="liquid brun limited edition")return "Liquid Brun Limited Edition";
 
     let n=normalizePerfumeName(o.name||"Profumo").trim();
     n=n.replace(/\b\d{1,4}\s*ml\b/gi," ").replace(/\s+/g," ").trim();
-    const brand=normalizePerfumeName(o.brand||"").trim();
-    if(brand && n.toLowerCase().startsWith(brand.toLowerCase()+" ")) n=n.slice(brand.length).trim();
-    return ((brand?brand+" ":"")+n).replace(/\s+/g," ").trim();
+    const brand=String(o.brand||"").trim();
+    if(brand && n.toLowerCase().startsWith(brand.toLowerCase()+" "))n=n.slice(brand.length).trim();
+    return n.replace(/\s+/g," ").trim();
   }
 
-  function canonicalBrand(o){
-    let b=normalizePerfumeName(o.brand||"").toLowerCase().trim();
-    if(!b && /\brasasi\b/i.test(String(o.name||"")))b="rasasi";
-    return b;
-  }
-
-  // Alcuni risultati dei negozi possono riportare formati commercialmente
-  // impossibili per Liquid Brun. Qui evitiamo di trasformare quei falsi
-  // formati in categorie visibili.
   function validLiquidBrunSize(lb,size){
-    if(lb==="liquid brun" && size && size!=="100") return false;
-    if(lb==="liquid brun limited edition" && size && size!=="150") return false;
+    if(lb==="liquid brun" && size && size!=="100")return false;
+    if(lb==="liquid brun limited edition" && size && size!=="150")return false;
     return true;
   }
 
@@ -439,15 +428,16 @@ function shGroupData(data){
     const groupName=groupingName(o);
     if(!groupName)return;
 
-    const size=sizeOf(o);
+    let size=sizeOf(o);
     const lb=liquidBrunFamily(o);
+    if(!size && lb==="liquid brun")size="100";
+    if(!size && lb==="liquid brun limited edition")size="150";
     if(!validLiquidBrunSize(lb,size))return;
 
     const key=groupName;
-
     if(!map.has(key)){
       map.set(key,{
-        brand:o.brand||canonicalBrand(o)||"",
+        brand:o.brand||"",
         name:displayName(o),
         canonical:groupName,
         image:o.image||o.image_url||o.thumbnail||"",
@@ -462,57 +452,43 @@ function shGroupData(data){
 
     const formatKey=size||"unknown";
     if(!g.formats.has(formatKey)){
-      g.formats.set(formatKey,{
-        size_ml:size,
-        concentration:o.concentration||"",
-        offers:[]
-      });
+      g.formats.set(formatKey,{size_ml:size,concentration:o.concentration||"",offers:[]});
     }
-
-    const f=g.formats.get(formatKey);
-
-    // DEDUPLICA LE OFFERTE: una sola offerta per negozio nello stesso formato.
-    const store=String(o.store||"").trim().toLowerCase();
-    const url=String(o.url||"").split("?")[0].toLowerCase();
-    const offerName=normalizePerfumeName(o.name||"").toLowerCase();
-    const isNotino=store==="notino";
-    const isLiquidBrun=!!lb;
-
-    if(isNotino && isLiquidBrun){
-      const alreadyNotino=f.offers.some(x=>String(x.store||"").trim().toLowerCase()==="notino");
-      if(!alreadyNotino)f.offers.push(o);
-      return;
-    }
-
-    const existingIndex=f.offers.findIndex(x=>{
-      const xs=String(x.store||"").trim().toLowerCase();
-      const xu=String(x.url||"").split("?")[0].toLowerCase();
-      const xn=normalizePerfumeName(x.name||"").toLowerCase();
-      return xs===store && xu===url && xn===offerName;
-    });
-
-    if(existingIndex>=0){
-      if(shNum(o)<shNum(f.offers[existingIndex]))f.offers[existingIndex]=o;
-    }else{
-      f.offers.push(o);
-    }
+    g.formats.get(formatKey).offers.push(o);
   });
 
   const groups=[...map.values()];
 
   groups.forEach(g=>{
-    const formats=[...g.formats.values()].filter(f=>f.offers.length);
+    let formats=[...g.formats.values()].filter(f=>f.offers.length);
+
+    // Se esiste un solo formato numerico, tutte le offerte senza formato
+    // vengono accorpate lì. Non creiamo mai una categoria separata "Formato
+    // non specificato" quando possiamo identificarne un unico formato.
+    const known=formats.filter(f=>/^\d+$/.test(String(f.size_ml||"")));
+    const unknown=formats.filter(f=>!/^\d+$/.test(String(f.size_ml||"")));
+    if(known.length===1 && unknown.length){
+      const target=known[0];
+      unknown.forEach(uf=>target.offers.push(...uf.offers));
+      formats=formats.filter(f=>!unknown.includes(f));
+    }
 
     formats.forEach(f=>{
-      // Una sola offerta per negozio nello stesso formato, mantenendo il prezzo migliore.
+      // Una sola offerta per negozio e formato. Teniamo il prezzo migliore.
       const byStore=new Map();
       f.offers.forEach(o=>{
-        const store=String(o.store||"").trim().toLowerCase();
-        if(!store){byStore.set(`__empty_${byStore.size}`,o);return;}
-        const prev=byStore.get(store);
-        if(!prev || shNum(o)<shNum(prev))byStore.set(store,o);
+        const store=String(o.store||o.shop||"").trim().toLowerCase();
+        const key=store||("__empty_"+byStore.size);
+        const prev=byStore.get(key);
+        if(!prev || shNum(o)<shNum(prev))byStore.set(key,o);
       });
-      f.offers=[...byStore.values()].sort((a,b)=>shNum(a)-shNum(b));
+
+      f.offers=[...byStore.values()].sort((a,b)=>{
+        const ao=String(a.availability||"").toLowerCase().includes("out_of_stock") || a.available===false || /out\s*of\s*stock/i.test(String(a.price||""));
+        const bo=String(b.availability||"").toLowerCase().includes("out_of_stock") || b.available===false || /out\s*of\s*stock/i.test(String(b.price||""));
+        if(ao!==bo)return ao?1:-1;
+        return shNum(a)-shNum(b);
+      });
     });
 
     formats.sort((a,b)=>{
@@ -524,7 +500,7 @@ function shGroupData(data){
     });
 
     g.formats=formsafe(formats);
-    g.offers=g.formats.flatMap(f=>f.offers).sort((a,b)=>shNum(a)-shNum(b));
+    g.offers=g.formats.flatMap(f=>f.offers);
     g.size_ml=g.formats.length===1?g.formats[0].size_ml:"";
     g.concentration=g.formats.length===1?g.formats[0].concentration:"";
   });
