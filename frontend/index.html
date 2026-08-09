@@ -188,7 +188,8 @@ body{position:relative}
 <script>
 const queryInput=document.getElementById("query"),searchButton=document.getElementById("searchButton"),statusBox=document.getElementById("status"),resultsBox=document.getElementById("results"),errorsBox=document.getElementById("errorsBox");
 
-const WISH_KEY="scenthunter_wishlist_v3";
+const WISH_KEY="scenthunter_wishlist_v4";
+const PREV_WISH_KEY="scenthunter_wishlist_v3";
 const OLD_WISH_KEY="scenthunter_wishlist_v1";
 
 function normalizePerfumeName(v){
@@ -220,23 +221,30 @@ function samePerfume(a,b){
   }
   return false;
 }
-function wishId(x){return perfumeKey(x)}
+function wishId(x){return perfumeKey(x)+"|"+offerId(x)}
+function sameWishOffer(a,b){
+  return samePerfume(a,b) && offerId(a)===offerId(b);
+}
 function getWishlist(){
   try{
-    let list=JSON.parse(localStorage.getItem(WISH_KEY)||"null");
-    if(!Array.isArray(list)){
-      const old=JSON.parse(localStorage.getItem(OLD_WISH_KEY)||"[]");
-      list=[];
-      old.forEach(x=>{
-        const found=list.find(y=>samePerfume(y,x));
-        if(!found) list.push(x);
-        else {
-          const np=parsePrice(x.price), op=parsePrice(found.price);
-          if(np!==null&&(op===null||np<op)){found.price=x.price;found.shop=x.shop}
-        }
-      });
-      localStorage.setItem(WISH_KEY,JSON.stringify(list));
+    let raw=localStorage.getItem(WISH_KEY);
+    if(raw!==null){
+      const list=JSON.parse(raw);
+      return Array.isArray(list)?list:[];
     }
+
+    // Migrazione trasparente dalla vecchia wishlist.
+    const previous=JSON.parse(localStorage.getItem(PREV_WISH_KEY)||"null");
+    const old=previous!==null ? previous : JSON.parse(localStorage.getItem(OLD_WISH_KEY)||"[]");
+    const list=[];
+    if(Array.isArray(old)){
+      old.forEach(x=>{
+        const item={...x};
+        if(!item.selectedOfferId) item.selectedOfferId=offerId(item);
+        if(!list.some(y=>sameWishOffer(y,item))) list.push(item);
+      });
+    }
+    localStorage.setItem(WISH_KEY,JSON.stringify(list));
     return list;
   }catch(e){return []}
 }
@@ -244,42 +252,82 @@ function parsePrice(v){
   const n=parseFloat(String(v||"").replace(/[^\d,.-]/g,"").replace(",","."));
   return Number.isFinite(n)?n:null;
 }
-function offerId(x){return [normalizePerfumeName(x.name||""),String(x.shop||"").toLowerCase().trim(),String(x.price||"").trim()].join("|")}
-function formatEuro(n){return Number(n).toLocaleString("it-IT",{minimumFractionDigits:2,maximumFractionDigits:2})+" €"}
+function offerId(x){
+  return [
+    normalizePerfumeName(x.name||""),
+    String(x.shop||"").toLowerCase().trim(),
+    String(x.price||"").trim()
+  ].join("|");
+}
+function formatEuro(n){
+  return Number(n).toLocaleString("it-IT",{minimumFractionDigits:2,maximumFractionDigits:2})+" €";
+}
 function updateTrackedWish(item){
-  const list=getWishlist(),found=list.find(x=>samePerfume(x,item));
+  const list=getWishlist();
+  const found=list.find(x=>sameWishOffer(x,item));
   if(!found)return false;
+
   const np=parsePrice(item.price),op=parsePrice(found.price);
   if(np===null)return false;
-  if(op===null||np<op){
-    if(op!==null){found.previousPrice=found.price||"";found.previousShop=found.shop||"";found.priceDrop=op-np;found.priceChangedAt=Date.now()}
-    found.price=item.price;found.shop=item.shop||found.shop||"";
-    if(item.url)found.url=item.url;if(item.pic)found.pic=item.pic;
-    localStorage.setItem(WISH_KEY,JSON.stringify(list));return true;
+
+  if(op===null || np!==op || item.url){
+    if(op!==null && np!==op){
+      found.previousPrice=found.price||"";
+      found.previousShop=found.shop||"";
+      found.priceDrop=op-np;
+      found.priceChangedAt=Date.now();
+    }
+    found.price=item.price||found.price;
+    found.shop=item.shop||found.shop||"";
+    if(item.url)found.url=item.url;
+    if(item.pic)found.pic=item.pic;
+    found.selectedOfferId=offerId(found);
+    localStorage.setItem(WISH_KEY,JSON.stringify(list));
+    return true;
   }
   return false;
 }
 function refreshWishlistFromResults(results){
   if(!Array.isArray(results))return;
   let changed=false;
-  results.forEach(i=>{if(updateTrackedWish({brand:i.brand||"",name:i.name||"",price:i.price||((i.price_value!=null)?formatEuro(i.price_value):""),shop:i.store||i.shop||"",url:i.url||"",pic:"🧴"}))changed=true});
+  results.forEach(i=>{
+    if(updateTrackedWish({
+      brand:i.brand||"",
+      name:i.name||"",
+      price:i.price||((i.price_value!=null)?formatEuro(i.price_value):""),
+      shop:i.store||i.shop||"",
+      url:i.url||"",
+      pic:"🧴"
+    }))changed=true;
+  });
   if(changed)renderWishlist();
 }
 function saveWishlist(list){
   localStorage.setItem(WISH_KEY,JSON.stringify(list));
-  renderWishlist();syncHearts();
+  renderWishlist();
+  syncHearts();
 }
 function addWish(item){
-  const list=getWishlist(),found=list.find(x=>samePerfume(x,item));
-  item.selectedOfferId=offerId(item);item.addedPrice=item.price||"";item.addedShop=item.shop||"";
-  if(!found)list.push(item);
-  else{found.selectedOfferId=item.selectedOfferId;const np=parsePrice(item.price),op=parsePrice(found.price);if(np!==null&&(op===null||np<op)){found.price=item.price;found.shop=item.shop}if(item.pic)found.pic=item.pic}
+  const list=getWishlist();
+  const clean={
+    ...item,
+    selectedOfferId:offerId(item),
+    addedPrice:item.price||"",
+    addedShop:item.shop||""
+  };
+  if(!list.some(x=>sameWishOffer(x,clean))) list.push(clean);
   saveWishlist(list);
 }
-function removeWish(id){saveWishlist(getWishlist().filter(x=>wishId(x)!==id))}
+function removeWish(id){
+  saveWishlist(getWishlist().filter(x=>wishId(x)!==id));
+}
 function toggleWish(item){
-  const list=getWishlist(),found=list.find(x=>samePerfume(x,item)),clickedId=offerId(item);
-  if(found&&found.selectedOfferId===clickedId){removeWish(wishId(found));return}
+  const list=getWishlist();
+  const existing=list.find(x=>sameWishOffer(x,item));
+  if(existing){
+    removeWish(wishId(existing));
+    return;
+  }
   addWish(item);
 }
 function renderWishlist(){
@@ -301,9 +349,30 @@ function renderWishlist(){
 function syncHearts(){
   const saved=getWishlist();
   document.querySelectorAll(".heart[data-name],.wish-result[data-name]").forEach(h=>{
-    const item={brand:h.dataset.brand||"",name:h.dataset.name||"",price:h.dataset.price||"",shop:h.dataset.shop||""},found=saved.find(x=>samePerfume(x,item));
-    const on=!!found&&!!found.selectedOfferId&&found.selectedOfferId===offerId(item);
-    h.textContent=on?"♥":"♡";h.classList.toggle("saved",on);
+    const item={
+      brand:h.dataset.brand||"",
+      name:h.dataset.name||"",
+      price:h.dataset.price||"",
+      shop:h.dataset.shop||"",
+      url:h.dataset.url||"",
+      pic:h.dataset.pic||"🧴"
+    };
+    const on=saved.some(x=>sameWishOffer(x,item));
+    h.textContent=on?"♥":"♡";
+    h.classList.toggle("saved",on);
+  });
+  document.querySelectorAll(".offer-heart").forEach(h=>{
+    const item={
+      brand:h.dataset.brand||"",
+      name:h.dataset.name||"",
+      price:h.dataset.price||"",
+      shop:h.dataset.shop||"",
+      url:h.dataset.url||"",
+      pic:h.dataset.pic||"🧴"
+    };
+    const on=saved.some(x=>sameWishOffer(x,item));
+    h.textContent=on?"♥":"♡";
+    h.classList.toggle("saved",on);
   });
 }
 document.addEventListener("click",e=>{
@@ -585,14 +654,28 @@ function openProduct(i){
       const item={brand:g.brand||o.brand||"",name:g.name||o.name||"",price:shPrice(o),shop:o.store||"",url:o.url||"",pic:img||"🧴"};
       const found=saved.find(x=>samePerfume(x,item)),on=!!found&&found.selectedOfferId===offerId(item);
       const isOut = String(o.availability||"").toLowerCase().includes("out_of_stock") || o.available === false;
-      return `<div class="offer ${n===0?"best":""}"><div class="offer-line"><div><div class="offer-store">${n===0?"🥇 ":""}${esc(o.store||"Negozio")}</div>${n===0?'<div class="offer-meta">MIGLIOR PREZZO</div>':""}${isOut?'<div class="offer-meta">NON DISPONIBILE</div>':""}</div><div style="display:flex;align-items:center;gap:8px"><span class="offer-price">${esc(shPrice(o)||"Prezzo non disponibile")}</span><button class="offer-heart ${on?"saved":""}" onclick="event.stopPropagation();chooseOffer(${i},${n})">${on?"♥":"♡"}</button></div></div>${o.url?`<a class="offer-link" href="${esc(o.url)}" target="_blank" rel="noopener noreferrer">Vai al negozio →</a>`:""}</div>`;
+      return `<div class="offer ${n===0?"best":""}"><div class="offer-line"><div><div class="offer-store">${n===0?"🥇 ":""}${esc(o.store||"Negozio")}</div>${n===0?'<div class="offer-meta">MIGLIOR PREZZO</div>':""}${isOut?'<div class="offer-meta">NON DISPONIBILE</div>':""}</div><div style="display:flex;align-items:center;gap:8px"><span class="offer-price">${esc(shPrice(o)||"Prezzo non disponibile")}</span><button class="offer-heart ${on?"saved":""}" data-brand="${esc(item.brand)}" data-name="${esc(item.name)}" data-price="${esc(item.price)}" data-shop="${esc(item.shop)}" data-url="${esc(item.url)}" data-pic="${esc(item.pic)}" onclick="event.stopPropagation();chooseOffer(${i},${n})">${on?"♥":"♡"}</button></div></div>${o.url?`<a class="offer-link" href="${esc(o.url)}" target="_blank" rel="noopener noreferrer">Vai al negozio →</a>`:""}</div>`;
     }).join("")}</article>`;
   document.getElementById("searchOutput").scrollIntoView({behavior:"smooth",block:"start"});
 }
 function chooseOffer(gi,oi){
-  const g=currentProductGroups[gi],o=(g.offers||[]).slice().sort((x,y)=>shNum(x)-shNum(y))[oi];if(!o)return;
-  toggleWish({brand:g.brand||o.brand||"",name:g.name||o.name||"",price:shPrice(o),shop:o.store||"",url:o.url||"",pic:g.image||"🧴"});
-  openProduct(gi);
+  const g=currentProductGroups[gi],o=(g.offers||[]).slice().sort((x,y)=>shNum(x)-shNum(y))[oi];
+  if(!o)return;
+  const item={
+    brand:g.brand||o.brand||"",
+    name:g.name||o.name||"",
+    price:shPrice(o),
+    shop:o.store||"",
+    url:o.url||"",
+    pic:g.image||"🧴"
+  };
+  toggleWish(item);
+  const heart=document.querySelector(`.offer-heart[data-shop="${CSS.escape(item.shop)}"][data-price="${CSS.escape(item.price)}"]`);
+  if(heart){
+    const on=getWishlist().some(x=>sameWishOffer(x,item));
+    heart.textContent=on?"♥":"♡";
+    heart.classList.toggle("saved",on);
+  }
 }
 
 async function fetchJSONWithTimeout(url,ms=90000){
