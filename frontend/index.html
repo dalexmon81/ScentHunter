@@ -283,6 +283,8 @@ body{position:relative}
 .home-search-button{position:absolute;left:6.0%;top:86.4%;width:48.6%;height:6.5%;pointer-events:auto;border:0;border-radius:18px;background:linear-gradient(#f4ca5d,#d99c22);color:#111;font-size:clamp(12px,2.0vw,17px);font-weight:900;letter-spacing:.1px;cursor:pointer;box-shadow:none}
 .home-search-button:disabled{opacity:1!important;cursor:default}
 .home-search-button.searching{letter-spacing:.1px}
+.home-search-button.searching .search-fixed{display:inline-block}
+.home-search-button.searching .search-dots{display:inline-block;min-width:3ch;text-align:left}
 @media(max-width:390px){
  .home-art{border-radius:18px}
  .home-search-field{left:6.0%;width:48.6%;top:78.0%;height:6.35%}
@@ -968,7 +970,7 @@ async function searchPerfume(){
  const q=queryInput.value.trim();if(!q){statusBox.textContent="";resultsBox.innerHTML="";errorsBox.innerHTML="";return}
  searchButton.disabled=true;searchButton.classList.add("searching");
  let dots=0;
- const updateSearchButton=()=>{dots=(dots+1)%4;searchButton.textContent="CERCO"+".".repeat(dots)};
+ const updateSearchButton=()=>{dots=(dots+1)%4;searchButton.innerHTML='<span class="search-fixed">CERCO</span><span class="search-dots">'+". ".trim().repeat(0)+". ".trim().repeat(dots)+'</span>'};
  updateSearchButton();
  const dotsTimer=setInterval(updateSearchButton,500);
  statusBox.textContent="";resultsBox.innerHTML="";errorsBox.innerHTML="";document.getElementById("searchOutput").scrollIntoView({behavior:"smooth",block:"start"});
