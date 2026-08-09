@@ -16,6 +16,12 @@ from urllib.parse import urlencode
 from urllib.request import Request, urlopen
 from urllib.error import HTTPError, URLError
 
+# Normalizer import (integrato qui)
+from backend.normalizer import (
+    apply_normalization_and_sort,
+    debug_log_grouped,
+    sort_offers_for_display,
+)
 
 app = FastAPI(title="ScentHunter API", version="1.0.0")
 
@@ -83,111 +89,6 @@ def product_image(product: Dict[str, Any]) -> str:
         or product.get("thumbnail")
         or ""
     )
-
-
-def _stock_text(value: Any) -> str:
-    return norm(value).replace(" ", "_")
-
-
-_STOCK_OOS = {
-    "out_of_stock",
-    "outofstock",
-    "sold_out",
-    "soldout",
-    "unavailable",
-    "not_available",
-    "notavailable",
-    "non_disponibile",
-    "indisponibile",
-    "rupture_de_stock",
-    "rupture",
-    "epuise",
-    "épuisé",
-    "ausverkauft",
-    "nicht_auf_lager",
-}
-
-
-_STOCK_IN = {
-    "in_stock",
-    "instock",
-    "available",
-    "disponible",
-    "disponibile",
-    "en_stock",
-    "en_stock",
-    "limited_availability",
-}
-
-
-def normalize_stock(product: Dict[str, Any]) -> Dict[str, Any]:
-    """
-    Regola generale ScentHunter per la disponibilità.
-
-    - Se lo scraper fornisce uno stato esplicito, lo rispettiamo.
-    - Se fornisce available=True/False, lo rispettiamo.
-    - Se non fornisce alcuna informazione, NON eliminiamo il prodotto.
-      Rimane visibile come disponibilità non determinata.
-    - Non facciamo richieste HTTP aggiuntive qui: la ricerca di un singolo
-      negozio non deve sparire perché una verifica secondaria è lenta/bloccata.
-    """
-    item = dict(product)
-
-    if item.get("available") is False:
-        item["available"] = False
-        item["availability"] = "out_of_stock"
-        item["stock_status"] = "out_of_stock"
-        item["price"] = "Out of stock"
-        item.pop("price_value", None)
-        return item
-
-    if item.get("available") is True:
-        item["available"] = True
-        item["availability"] = "in_stock"
-        item["stock_status"] = "in_stock"
-        return item
-
-    fields = (
-        "availability",
-        "stock",
-        "stock_status",
-        "status",
-        "availability_status",
-        "availabilityStatus",
-        "stockStatus",
-        "in_stock",
-        "inStock",
-    )
-
-    values = [_stock_text(item.get(field)) for field in fields]
-
-    if any(value in _STOCK_OOS for value in values):
-        item["available"] = False
-        item["availability"] = "out_of_stock"
-        item["stock_status"] = "out_of_stock"
-        item["price"] = "Out of stock"
-        item.pop("price_value", None)
-        return item
-
-    if any(value in _STOCK_IN for value in values):
-        item["available"] = True
-        item["availability"] = "in_stock"
-        item["stock_status"] = "in_stock"
-        return item
-
-    price_text = norm(item.get("price"))
-    if any(marker in price_text for marker in _STOCK_OOS):
-        item["available"] = False
-        item["availability"] = "out_of_stock"
-        item["stock_status"] = "out_of_stock"
-        item["price"] = "Out of stock"
-        item.pop("price_value", None)
-        return item
-
-    item.setdefault("available", None)
-    item.setdefault("availability", "unknown")
-    item.setdefault("stock_status", "unknown")
-    return item
 
 
 def _product_size_ml(product: Dict[str, Any]) -> Optional[float]:
@@ -397,10 +298,7 @@ def run_store(store: str, query: str) -> List[Dict[str, Any]]:
 
             product = dict(item)
             product.setdefault("store", store)
-            product = normalize_stock(product)
-
-            if product.get("available") is not False:
-                product = resolve_actual_price(product)
+            product = resolve_actual_price(product)
 
             key = (
                 str(product.get("url", "")).lower(),
@@ -440,11 +338,8 @@ def unique_results(products: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
 
 def sort_by_price(products: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
     def key(product):
-        oos = product.get("available") is False or _stock_text(
-            product.get("availability")
-        ) in _STOCK_OOS
         value = price_num(product.get("price"))
-        return (1 if oos else 0, float("inf") if value is None else value)
+        return float("inf") if value is None else value
 
     return sorted(products, key=key)
 
@@ -457,16 +352,93 @@ def search_perfume(query: str) -> Dict[str, Any]:
     results: List[Dict[str, Any]] = []
     errors: Dict[str, str] = {}
 
-    # Un negozio alla volta: è la modalità più stabile su Railway Free.
-    # Un negozio lento/non disponibile non deve impedire agli altri di restituire risultati.
-    for store in STORES:
+    executor = ThreadPoolExecutor(
+        max_workers=len(STORES),
+        thread_name_prefix="scent-store",
+    )
+    future_to_store = {
+        executor.submit(run_store, store, query): store
+        for store in STORES
+    }
+
+    done, not_done = wait(future_to_store, timeout=30)
+
+    for future in done:
+        store = future_to_store[future]
         try:
-            store_results = run_store(store, query)
-            results.extend(store_results or [])
+            results.extend(future.result() or [])
         except Exception as exc:
             errors[store] = str(exc) or exc.__class__.__name__
 
-    results = sort_by_price(unique_results(results))
+    for future in not_done:
+        store = future_to_store[future]
+        errors[store] = "timeout"
+        future.cancel()
+
+    executor.shutdown(wait=False, cancel_futures=True)
+
+    # === INSERT NORMALIZER PIPELINE HERE ===
+    # Debug PRE-NORMALIZER for Turathi Blue: show raw offers present before normalization
+    low_query = query.lower()
+    if "turathi" in low_query or "turathi blue" in low_query:
+        print("=== PRE-NORMALIZER OFFERS ===")
+        for p in results:
+            size_field = p.get("size") or p.get("volume") or p.get("size_ml") or None
+            availability_field = p.get("availability") or p.get("availability_text") or None
+            print(
+                "PRE:",
+                f"store={p.get('store')}",
+                f"name={p.get('name')}",
+                f"price={p.get('price')}",
+                f"url={p.get('url')}",
+                f"size={size_field}",
+                f"availability={availability_field}",
+            )
+        stores_present_pre = {str(p.get("store") or "").lower() for p in results if p.get("store")}
+        for s in ("sabina", "bplatz", "orioudh", "deloox", "notino"):
+            print(f"PRE presence {s}: {s in stores_present_pre}")
+
+    try:
+        grouped = apply_normalization_and_sort(results)
+    except Exception:
+        # In case normalizer fails for any reason, fall back to previous behavior
+        traceback.print_exc()
+        grouped = None
+
+    # Debug POST-NORMALIZER for Turathi Blue: show normalized size/availability per offer
+    if ("turathi" in low_query or "turathi blue" in low_query) and grouped is not None:
+        print("=== POST-NORMALIZER GROUPS (Turathi) ===")
+        # debug_log_grouped prints per-group details matching the query tokens
+        debug_log_grouped(grouped, query="turathi blue")
+        # summary presence by store after normalization (flatten)
+        flattened_post = []
+        for g in grouped.values():
+            flattened_post.extend(g.get("offers", []))
+        stores_present_post = {str(o.get("store") or "").lower() for o in flattened_post if o.get("store")}
+        for s in ("sabina", "bplatz", "orioudh", "deloox", "notino"):
+            print(f"POST presence {s}: {s in stores_present_post}")
+
+    # Flatten grouped offers back into results list if grouped successfully
+    if grouped is not None:
+        flattened = []
+        for g in grouped.values():
+            flattened.extend(g.get("offers", []))
+
+        # deduplicate flattened offers using existing unique_results() semantics
+        deduped = unique_results(flattened)
+
+        # sort using normalizer's sort (in_stock -> unknown -> out_of_stock, price asc)
+        try:
+            results = sort_offers_for_display(deduped)
+        except Exception:
+            # fallback to price sort if sorting fails
+            traceback.print_exc()
+            results = sort_by_price(deduped)
+    else:
+        # If grouping failed, fallback to original dedup + price sort
+        results = sort_by_price(unique_results(results))
+
+    # === END NORMALIZER PIPELINE ===
 
     return {
         "query": query,
@@ -861,27 +833,18 @@ def product(name: str, brand: str = ""):
     offers: List[Dict[str, Any]] = []
 
     for product_data in data["results"]:
+        value = price_num(product_data.get("price"))
+
+        if value is None:
+            continue
+
         offer = dict(product_data)
-        value = price_num(offer.get("price"))
-
-        if value is not None:
-            offer["price_value"] = value
-
+        offer["price_value"] = value
         offer["image"] = product_image(offer)
         offers.append(offer)
 
-    offers.sort(
-        key=lambda offer: (
-            1 if offer.get("available") is False else 0,
-            offer.get("price_value", float("inf")),
-        )
-    )
-
-    available_offers = [
-        offer for offer in offers
-        if offer.get("available") is not False and offer.get("price_value") is not None
-    ]
-    best_offer = available_offers[0] if available_offers else None
+    offers.sort(key=lambda offer: offer["price_value"])
+    best_offer = offers[0] if offers else None
 
     history = update_price_history(
         name=name,
