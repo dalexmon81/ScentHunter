@@ -550,14 +550,29 @@ function shGroupData(data){
 function showProducts(groups){
   currentProductGroups=groups;
   statusBox.textContent=groups.length?groups.length+(groups.length===1?" profumo trovato.":" profumi trovati."):"Nessun profumo trovato.";
+  const saved=getWishlist();
   resultsBox.innerHTML=groups.map((g,i)=>{
     const best=g.offers[0],img=g.image||"",meta=[g.size_ml?(String(g.size_ml).includes("ml")?g.size_ml:g.size_ml+" ml"):"",g.concentration?String(g.concentration).toUpperCase():""].filter(Boolean).join(" · ");
+    const item=best?{brand:g.brand||best.brand||"",name:g.name||best.name||"",price:shPrice(best),shop:best.store||"",url:best.url||"",pic:img||"🧴"}:null;
+    const found=item?saved.find(x=>samePerfume(x,item)):null;
+    const on=!!found&&found.selectedOfferId===offerId(item);
     return `<article class="product-choice" onclick="openProduct(${i})">
       <div class="result-image">${img?`<img src="${esc(img)}" alt="${esc(g.name)}" onerror="this.outerHTML='🧴'">`:"🧴"}</div>
       <div class="product-choice-main"><div class="store">${esc(g.brand||"")}</div><div class="name">${esc(g.name)}</div>${meta?`<div class="offer-meta">${esc(meta)}</div>`:""}${best?`<div class="bestprice">da ${esc(shPrice(best))}</div><div class="offer-meta">${g.offers.length} ${g.offers.length===1?"negozio":"negozi"}</div>`:""}</div>
+      ${item?`<button class="wish-result ${on?"saved":""}" data-brand="${esc(item.brand)}" data-name="${esc(item.name)}" data-price="${esc(item.price)}" data-shop="${esc(item.shop)}" data-url="${esc(item.url)}" data-pic="${esc(item.pic)}" onclick="event.stopPropagation();toggleWishButton(this)" aria-label="Wishlist">${on?"♥":"♡"}</button>`:""}
       <div class="arrow">›</div>
     </article>`;
   }).join("");
+}
+function toggleWishButton(el){
+  toggleWish({
+    brand:el.dataset.brand||"",
+    name:el.dataset.name||"",
+    price:el.dataset.price||"",
+    shop:el.dataset.shop||"",
+    url:el.dataset.url||"",
+    pic:el.dataset.pic||"🧴"
+  });
 }
 function openProduct(i){
   const g=currentProductGroups[i];if(!g)return;
