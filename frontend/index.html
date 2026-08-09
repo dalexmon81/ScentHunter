@@ -505,7 +505,18 @@ function shGroupData(data){
     g.concentration=g.formats.length===1?g.formats[0].concentration:"";
   });
 
-  return groups.filter(g=>g.formats.length);
+  // Ordine globale: prima i profumi con almeno un'offerta disponibile,
+  // poi quelli completamente OUT OF STOCK.
+  // A parità manteniamo l'ordine naturale dei risultati del backend.
+  const orderedGroups=groups.filter(g=>g.formats.length);
+  orderedGroups.sort((a,b)=>{
+    const aAvailable=(a.offers||[]).some(o=>!isOutOfStock(o));
+    const bAvailable=(b.offers||[]).some(o=>!isOutOfStock(o));
+    if(aAvailable!==bAvailable)return aAvailable?-1:1;
+    return 0;
+  });
+
+  return orderedGroups;
 }
 
 function formsafe(formats){
@@ -581,12 +592,17 @@ function openFormat(gi,fi){
   resultsBox.innerHTML=`<article class="comparison"><button class="detail-back" onclick="openProduct(${gi})">← Torna ai formati</button>
     <div class="comparison-head"><div class="result-image">${img?`<img src="${esc(img)}" alt="${esc(g.name)}" onerror="this.outerHTML='🧴'">`:"🧴"}</div><div class="result-main"><div class="store">${esc(g.brand||"")}</div><div class="name">${esc(g.name)}</div><div class="offer-meta">${esc(formatLabel(f))}</div></div></div>
     <div class="bestlabel">CONFRONTA I PREZZI · ${offers.length} ${offers.length===1?"NEGOZIO":"NEGOZI"}</div>
-    ${offers.map((o,n)=>{
-      const item={brand:g.brand||o.brand||"",name:g.name||o.name||"",price:shPrice(o),shop:o.store||"",url:o.url||"",pic:img||"🧴"};
-      const found=saved.find(x=>samePerfume(x,item)),on=!!found&&found.selectedOfferId===offerId(item);
-      const isOut=isOutOfStock(o);
-      return `<div class="offer ${n===0?"best":""}"><div class="offer-line"><div><div class="offer-store">${n===0?"🥇 ":""}${esc(o.store||"Negozio")}</div>${n===0?'<div class="offer-meta">MIGLIOR PREZZO</div>':""}${isOut?'<div class="offer-meta">OUT OF STOCK</div>':""}</div><div style="display:flex;align-items:center;gap:8px"><span class="offer-price">${esc(isOut?"OUT OF STOCK":(shPrice(o)||"Prezzo non disponibile"))}</span><button class="offer-heart ${on?"saved":""}" onclick="event.stopPropagation();chooseOffer(${gi},${fi},${n})">${on?"♥":"♡"}</button></div></div>${o.url?`<a class="offer-link" href="${esc(o.url)}" target="_blank" rel="noopener noreferrer">Vai al negozio →</a>`:""}</div>`;
-    }).join("")}</article>`;
+    ${(()=>{
+      const allOut=offers.length>0&&offers.every(isOutOfStock);
+      return offers.map((o,n)=>{
+        const item={brand:g.brand||o.brand||"",name:g.name||o.name||"",price:shPrice(o),shop:o.store||"",url:o.url||"",pic:img||"🧴"};
+        const found=saved.find(x=>samePerfume(x,item)),on=!!found&&found.selectedOfferId===offerId(item);
+        const isOut=isOutOfStock(o);
+        const bestLabel=!allOut&&n===0?'<div class="offer-meta">MIGLIOR PREZZO</div>':"";
+        const outLabel=!allOut&&isOut?'<div class="offer-meta">OUT OF STOCK</div>':"";
+        return `<div class="offer ${!allOut&&n===0?"best":""}"><div class="offer-line"><div><div class="offer-store">${!allOut&&n===0?"🥇 ":""}${esc(o.store||"Negozio")}</div>${bestLabel}${outLabel}</div><div style="display:flex;align-items:center;gap:8px"><span class="offer-price">${esc(isOut?"OUT OF STOCK":(shPrice(o)||"Prezzo non disponibile"))}</span><button class="offer-heart ${on?"saved":""}" onclick="event.stopPropagation();chooseOffer(${gi},${fi},${n})">${on?"♥":"♡"}</button></div></div>${o.url?`<a class="offer-link" href="${esc(o.url)}" target="_blank" rel="noopener noreferrer">Vai al negozio →</a>`:""}</div>`;
+      }).join("");
+    })()}</article>`;
   document.getElementById("searchOutput").scrollIntoView({behavior:"smooth",block:"start"});
 }
 
