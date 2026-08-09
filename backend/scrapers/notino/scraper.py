@@ -320,6 +320,116 @@ def _results_from_json_ld(soup: BeautifulSoup) -> list[dict[str, str]]:
     return output
 
 
+def _query_tokens(text: str) -> set[str]:
+    value = _clean(text).lower()
+    value = re.sub(r"[^a-z0-9àâçéèêëîïôûùüÿñæœ]+", " ", value)
+    return {token for token in value.split() if len(token) >= 2}
+
+
+def _query_matches_text(text: str, query: str) -> bool:
+    query_tokens = _query_tokens(query)
+    text_tokens = _query_tokens(text)
+    return bool(query_tokens) and query_tokens.issubset(text_tokens)
+
+
+def _candidate_product_urls(html: str, query: str) -> list[tuple[str, str]]:
+    """Fallback discovery when Notino changes the search-card HTML."""
+    soup = BeautifulSoup(html, "html.parser")
+    candidates: list[tuple[str, str]] = []
+    seen: set[str] = set()
+
+    for anchor in soup.find_all("a", href=True):
+        url = _normalise_url(anchor.get("href", ""))
+        if not url or not _looks_like_product_url(url) or url in seen:
+            continue
+
+        node = anchor
+        best_text = _clean(anchor.get_text(" ", strip=True))
+        for _ in range(10):
+            if node is None:
+                break
+            text = _clean(node.get_text(" ", strip=True))
+            if _query_matches_text(text, query):
+                best_text = text
+                break
+            node = getattr(node, "parent", None)
+
+        combined = f"{anchor.get_text(' ', strip=True)} {url} {best_text}"
+        if not _query_matches_text(combined, query):
+            continue
+
+        seen.add(url)
+        candidates.append((url, best_text))
+        if len(candidates) >= 15:
+            break
+
+    return candidates
+
+
+def _product_page_result(url: str, fallback_name: str, query: str) -> dict[str, str] | None:
+    """Read one real Notino product page to recover price + stock."""
+    try:
+        response = requests.get(
+            url,
+            headers=HEADERS,
+            timeout=15,
+            allow_redirects=True,
+        )
+        if response.status_code >= 400:
+            return None
+    except requests.RequestException:
+        return None
+
+    soup = BeautifulSoup(response.text, "html.parser")
+    json_results = _results_from_json_ld(soup)
+    for item in json_results:
+        if _query_matches_text(item.get("name", ""), query):
+            return item
+
+    name = fallback_name
+    h1 = soup.find("h1")
+    if h1:
+        candidate = _clean(h1.get_text(" ", strip=True))
+        if candidate:
+            name = candidate
+
+    body = _clean(soup.get_text(" ", strip=True))
+    prices = _extract_prices(body)
+    if not prices:
+        return None
+
+    low = body.lower()
+    if any(term in low for term in ("actuellement en rupture de stock", "en rupture de stock", "rupture de stock", "épuisé", "epuise", "indisponible", "out of stock")):
+        available = False
+        availability = "out_of_stock"
+    elif any(term in low for term in ("en stock", "disponible", "available")):
+        available = True
+        availability = "in_stock"
+    else:
+        available = None
+        availability = "unknown"
+
+    return {
+        "store": STORE,
+        "name": name,
+        "price": prices[0],
+        "url": _normalise_url(response.url) or url,
+        "available": available,
+        "availability": availability,
+    }
+
+
+def _fallback_product_page_results(html: str, query: str) -> list[dict[str, str]]:
+    results: list[dict[str, str]] = []
+    for url, context in _candidate_product_urls(html, query):
+        item = _product_page_result(url, context or query, query)
+        if item:
+            results.append(item)
+        if len(results) >= 10:
+            break
+    return _deduplicate(results)
+
+
 def _results_from_html(html: str, query: str) -> list[dict[str, str]]:
     soup = BeautifulSoup(html, "html.parser")
     results: list[dict[str, str]] = []
@@ -437,7 +547,10 @@ def _search_with_requests(query: str) -> list[dict[str, str]]:
         LOGGER.warning("Notino returned HTTP %s", response.status_code)
         return []
 
-    return _deduplicate(_results_from_html(response.text, query))
+    results = _deduplicate(_results_from_html(response.text, query))
+    if results:
+        return results
+    return _fallback_product_page_results(response.text, query)
 
 
 def _search_with_playwright(query: str) -> list[dict[str, str]]:
@@ -500,7 +613,10 @@ def _search_with_playwright(query: str) -> list[dict[str, str]]:
         LOGGER.warning("Notino Playwright error: %s", exc)
         return []
 
-    return _deduplicate(_results_from_html(html, query))
+    results = _deduplicate(_results_from_html(html, query))
+    if results:
+        return results
+    return _fallback_product_page_results(html, query)
 
 
 def search(query: str) -> list[dict[str, str]]:
