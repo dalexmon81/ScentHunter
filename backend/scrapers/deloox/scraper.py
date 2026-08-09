@@ -413,19 +413,12 @@ def _url_matches_query(product_url, query):
     if not query_tokens:
         return False
 
-    # Only Limited Edition gets a strict discriminator.
-    # Normal searches keep the existing proven behavior.
-    if {"limited", "edition"}.issubset(query_tokens):
-        return {"limited", "edition"}.issubset(url_tokens)
-
+    # If URL contains all tokens, it's a match.
     if query_tokens.issubset(url_tokens):
         return True
 
-    found = sum(
-        1 for token in query_tokens
-        if token in url_tokens
-    )
-
+    # Otherwise accept if a sufficient fraction of query tokens appear in URL.
+    found = sum(1 for t in query_tokens if t in url_tokens)
     return (found / len(query_tokens)) >= 0.55
 
 
@@ -465,6 +458,25 @@ def _extract_category(html, query):
         ):
             continue
 
+        # Deloox has the normal Liquid Brun and the Limited Edition in the
+        # same category. Decide between them from the product URL only when
+        # the query itself asks for the Limited Edition.
+        query_tokens_for_variant = set(_tokens(query))
+        url_tokens_for_variant = set(_tokens(product_url))
+
+        wants_limited = {
+            "limited",
+            "edition",
+        }.issubset(query_tokens_for_variant)
+
+        is_limited = {
+            "limited",
+            "edition",
+        }.issubset(url_tokens_for_variant)
+
+        if wants_limited != is_limited:
+            continue
+
         card = _find_product_card(link)
 
         card_text = _clean(
@@ -488,20 +500,10 @@ def _extract_category(html, query):
             continue
 
         card_tokens = set(_tokens(card_text))
-        limited_query = {"limited", "edition"}.issubset(query_tokens)
 
-        if limited_query:
-            # Deloox may omit "Limited Edition" from the card text.
-            # _url_matches_query() has already required limited-edition in
-            # the product URL, so only the base perfume tokens are required here.
-            base_tokens = query_tokens - {"limited", "edition"}
-
-            if not base_tokens.issubset(card_tokens):
-                if not _matches_soft(card_text, " ".join(base_tokens), minimum=0.75):
-                    continue
-
-        elif not query_tokens.issubset(card_tokens):
-            # Existing fallback for all normal searches.
+        if not query_tokens.issubset(card_tokens):
+            # Allow the card if a stricter soft similarity check passes,
+            # or if the anchor title / a heading inside the card contains all query tokens.
             if not _matches_soft(card_text, query, minimum=0.75):
                 link_title = _clean(link.get("title") or "")
                 if link_title and set(_tokens(query)).issubset(set(_tokens(link_title))):
