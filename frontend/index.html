@@ -121,6 +121,7 @@ body{position:relative}
 .offer.best{margin:5px -8px 0;padding:13px 8px;border-radius:13px;background:rgba(73,176,108,.08);border-top:1px solid #31583e}
 .offer-link{display:inline-flex!important;align-items:center;justify-content:center;min-height:38px;padding:9px 14px;border:1px solid #6d5620;border-radius:22px;background:#19150b}
 .offer-meta{font-size:11px;color:#8e9094;margin-top:3px}
+.offer-outstock,.wishlist-outstock{font-size:22px;color:#55ce78;font-weight:950;letter-spacing:.2px;margin-top:4px}
 @media(max-width:390px){.result-image{width:62px;height:72px;flex-basis:62px}.bestprice{font-size:21px}}
 
 </style>
@@ -332,19 +333,26 @@ function toggleWish(item){
 }
 function renderWishlist(){
   const box=document.getElementById("wishlistList"),count=document.getElementById("wishlistCount"),list=getWishlist();
-  count.textContent=list.length+" "+(list.length===1?"profumo":"profumi");
-  if(!list.length){box.innerHTML='<div class="wishlist-empty"><b>♡</b>La tua Wishlist è vuota.<br>Premi il cuore su un profumo per salvarlo.</div>';return}
-  box.innerHTML=list.map(x=>`<article class="wishlist-card">
-    <div class="wishpic">${esc(x.pic||"🧴")}</div>
-    <div class="wishlist-info">
-      <div class="wishlist-brand">${esc(x.brand||"")}</div>
-      <div class="wishlist-name">${esc(x.name||"Profumo")}</div>
-      ${x.price?`<div class="wishlist-price">${esc(x.price)}</div>`:""}
-      ${x.shop?`<div class="wishlist-shop">Miglior prezzo attuale: ${esc(x.shop)}</div>`:""}${(x.url||x.link)?`<a class="wishShop" href="${esc(x.url||x.link)}" target="_blank" rel="noopener">VAI AL NEGOZIO →</a>`:""}
-      ${x.previousPrice&&x.previousShop?`<div class="wishlist-change"><span class="old">${esc(x.previousPrice)} · ${esc(x.previousShop)}</span> → ${esc(x.price)} · ${esc(x.shop)}</div><div class="wishlist-badge">↓ NUOVO MIGLIOR PREZZO${x.priceDrop?` · -${esc(formatEuro(x.priceDrop))}`:""}</div>`:""}
-    </div>
-    <button class="remove-wish" data-remove="${esc(wishId(x))}" aria-label="Rimuovi">♥</button>
-  </article>`).join("");
+  count.textContent=list.length+" "+(list.length===1?"offerta selezionata":"offerte selezionate");
+  if(!list.length){
+    box.innerHTML='<div class="wishlist-empty"><b>♡</b>La tua Wishlist è vuota.<br>Premi il cuore su un negozio per salvarne l’offerta.</div>';
+    return;
+  }
+  box.innerHTML=list.map(x=>{
+    const out=isWishlistOutOfStock(x);
+    return `<article class="wishlist-card">
+      <div class="wishpic">${esc(x.pic||"🧴")}</div>
+      <div class="wishlist-info">
+        <div class="wishlist-brand">${esc(x.brand||"")}</div>
+        <div class="wishlist-name">${esc(x.name||"Profumo")}</div>
+        ${out?`<div class="wishlist-outstock">OUT OF STOCK</div>`:(x.price?`<div class="wishlist-price">${esc(x.price)}</div>`:"")}
+        ${x.shop?`<div class="wishlist-shop">Negozio selezionato: ${esc(x.shop)}</div>`:""}
+        ${(!out&&(x.url||x.link))?`<a class="wishShop" href="${esc(x.url||x.link)}" target="_blank" rel="noopener">VAI AL NEGOZIO →</a>`:""}
+        ${x.previousPrice&&x.previousShop?`<div class="wishlist-change"><span class="old">${esc(x.previousPrice)} · ${esc(x.previousShop)}</span> → ${esc(x.price)} · ${esc(x.shop)}</div><div class="wishlist-badge">↓ NUOVO PREZZO${x.priceDrop?` · -${esc(formatEuro(x.priceDrop))}`:""}</div>`:""}
+      </div>
+      <button class="remove-wish" data-remove="${esc(wishId(x))}" aria-label="Rimuovi">♥</button>
+    </article>`;
+  }).join("");
 }
 function syncHearts(){
   const saved=getWishlist();
@@ -607,7 +615,11 @@ function shGroupData(data){
       if(!prev || shNum(o)<shNum(prev)) byStore.set(store,o);
     });
     g.offers=[...byStore.values()];
-    g.offers.sort((a,b)=>shNum(a)-shNum(b));
+    g.offers.sort((a,b)=>{
+      const ao=isOfferOutOfStock(a),bo=isOfferOutOfStock(b);
+      if(ao!==bo)return ao?1:-1;
+      return shNum(a)-shNum(b);
+    });
 
     // Il titolo visibile usa il nome reale ricevuto dal negozio.
     // La chiave normalizzata serve solo per raggruppare, mai per riscrivere il nome.
@@ -616,19 +628,33 @@ function shGroupData(data){
 
   return groups.filter(g=>g.offers.length);
 }
+function isOfferOutOfStock(o){
+  if(!o)return false;
+  if(o.available===false)return true;
+  const vals=[
+    o.availability,o.stock,o.stock_status,o.status,o.availability_status,
+    o.availabilityStatus,o.stockStatus,o.in_stock,o.inStock
+  ];
+  return vals.some(v=>{
+    if(v===false)return true;
+    const s=String(v??"").trim().toLowerCase().replace(/[-\s]+/g,"_");
+    return s==="out_of_stock" || s==="outofstock" || s==="not_available" ||
+           s==="notavailable" || s==="unavailable" || s==="sold_out" ||
+           s==="soldout" || s==="non_disponibile" || s==="non_disponibile_online";
+  });
+}
+function isWishlistOutOfStock(x){
+  return x?.outOfStock===true || isOfferOutOfStock(x);
+}
 function showProducts(groups){
   currentProductGroups=groups;
   statusBox.textContent=groups.length?groups.length+(groups.length===1?" profumo trovato.":" profumi trovati."):"Nessun profumo trovato.";
-  const saved=getWishlist();
   resultsBox.innerHTML=groups.map((g,i)=>{
-    const best=g.offers[0],img=g.image||"",meta=[g.size_ml?(String(g.size_ml).includes("ml")?g.size_ml:g.size_ml+" ml"):"",g.concentration?String(g.concentration).toUpperCase():""].filter(Boolean).join(" · ");
-    const item=best?{brand:g.brand||best.brand||"",name:g.name||best.name||"",price:shPrice(best),shop:best.store||"",url:best.url||"",pic:img||"🧴"}:null;
-    const found=item?saved.find(x=>samePerfume(x,item)):null;
-    const on=!!found&&found.selectedOfferId===offerId(item);
+    const best=g.offers.find(o=>!isOfferOutOfStock(o))||null;
+    const img=g.image||"",meta=[g.size_ml?(String(g.size_ml).includes("ml")?g.size_ml:g.size_ml+" ml"):"",g.concentration?String(g.concentration).toUpperCase():""].filter(Boolean).join(" · ");
     return `<article class="product-choice" onclick="openProduct(${i})">
       <div class="result-image">${img?`<img src="${esc(img)}" alt="${esc(g.name)}" onerror="this.outerHTML='🧴'">`:"🧴"}</div>
-      <div class="product-choice-main"><div class="store">${esc(g.brand||"")}</div><div class="name">${esc(g.name)}</div>${meta?`<div class="offer-meta">${esc(meta)}</div>`:""}${best?`<div class="bestprice">da ${esc(shPrice(best))}</div><div class="offer-meta">${g.offers.length} ${g.offers.length===1?"negozio":"negozi"}</div>`:""}</div>
-      ${item?`<button class="wish-result ${on?"saved":""}" data-brand="${esc(item.brand)}" data-name="${esc(item.name)}" data-price="${esc(item.price)}" data-shop="${esc(item.shop)}" data-url="${esc(item.url)}" data-pic="${esc(item.pic)}" onclick="event.stopPropagation();toggleWishButton(this)" aria-label="Wishlist">${on?"♥":"♡"}</button>`:""}
+      <div class="product-choice-main"><div class="store">${esc(g.brand||"")}</div><div class="name">${esc(g.name)}</div>${meta?`<div class="offer-meta">${esc(meta)}</div>`:""}${best?`<div class="bestprice">da ${esc(shPrice(best))}</div>`:`<div class="bestprice">OUT OF STOCK</div>`}<div class="offer-meta">${g.offers.length} ${g.offers.length===1?"negozio":"negozi"}</div></div>
       <div class="arrow">›</div>
     </article>`;
   }).join("");
@@ -645,29 +671,35 @@ function toggleWishButton(el){
 }
 function openProduct(i){
   const g=currentProductGroups[i];if(!g)return;
-  const offers=(g.offers||[]).slice().sort((x,y)=>shNum(x)-shNum(y)),saved=getWishlist(),img=g.image||"";
+  const offers=(g.offers||[]).slice().sort((a,b)=>{
+    const ao=isOfferOutOfStock(a),bo=isOfferOutOfStock(b);
+    if(ao!==bo)return ao?1:-1;
+    return shNum(a)-shNum(b);
+  }),saved=getWishlist(),img=g.image||"";
   statusBox.textContent="";
   resultsBox.innerHTML=`<article class="comparison"><button class="detail-back" onclick="showProducts(currentProductGroups)">← Torna ai risultati</button>
     <div class="comparison-head"><div class="result-image">${img?`<img src="${esc(img)}" alt="${esc(g.name)}" onerror="this.outerHTML='🧴'">`:"🧴"}</div><div class="result-main"><div class="store">${esc(g.brand||"")}</div><div class="name">${esc(g.name)}</div></div></div>
     <div class="bestlabel">CONFRONTA I PREZZI · ${offers.length} ${offers.length===1?"NEGOZIO":"NEGOZI"}</div>
     ${offers.map((o,n)=>{
-      const item={brand:g.brand||o.brand||"",name:g.name||o.name||"",price:shPrice(o),shop:o.store||"",url:o.url||"",pic:img||"🧴"};
-      const found=saved.find(x=>samePerfume(x,item)),on=!!found&&found.selectedOfferId===offerId(item);
-      const isOut = String(o.availability||"").toLowerCase().includes("out_of_stock") || o.available === false;
-      return `<div class="offer ${n===0?"best":""}"><div class="offer-line"><div><div class="offer-store">${n===0?"🥇 ":""}${esc(o.store||"Negozio")}</div>${n===0?'<div class="offer-meta">MIGLIOR PREZZO</div>':""}${isOut?'<div class="offer-meta">NON DISPONIBILE</div>':""}</div><div style="display:flex;align-items:center;gap:8px"><span class="offer-price">${esc(shPrice(o)||"Prezzo non disponibile")}</span><button class="offer-heart ${on?"saved":""}" data-brand="${esc(item.brand)}" data-name="${esc(item.name)}" data-price="${esc(item.price)}" data-shop="${esc(item.shop)}" data-url="${esc(item.url)}" data-pic="${esc(item.pic)}" onclick="event.stopPropagation();chooseOffer(${i},${n})">${on?"♥":"♡"}</button></div></div>${o.url?`<a class="offer-link" href="${esc(o.url)}" target="_blank" rel="noopener noreferrer">Vai al negozio →</a>`:""}</div>`;
+      const isOut=isOfferOutOfStock(o);
+      const item={brand:g.brand||o.brand||"",name:g.name||o.name||"",price:isOut?"":shPrice(o),shop:o.store||"",url:o.url||"",pic:img||"🧴",outOfStock:isOut};
+      const on=saved.some(x=>sameWishOffer(x,item));
+      return `<div class="offer ${!isOut&&n===0?"best":""}"><div class="offer-line"><div><div class="offer-store">${!isOut&&n===0?"🥇 ":""}${esc(o.store||"Negozio")}</div>${!isOut&&n===0?'<div class="offer-meta">MIGLIOR PREZZO</div>':""}${isOut?'<div class="offer-outstock">OUT OF STOCK</div>':""}</div><div style="display:flex;align-items:center;gap:8px">${!isOut?`<span class="offer-price">${esc(shPrice(o))}</span>`:""}<button class="offer-heart ${on?"saved":""}" data-brand="${esc(item.brand)}" data-name="${esc(item.name)}" data-price="${esc(item.price)}" data-shop="${esc(item.shop)}" data-url="${esc(item.url)}" data-pic="${esc(item.pic)}" onclick="event.stopPropagation();chooseOffer(${i},${n})">${on?"♥":"♡"}</button></div></div>${(!isOut&&o.url)?`<a class="offer-link" href="${esc(o.url)}" target="_blank" rel="noopener noreferrer">Vai al negozio →</a>`:""}</div>`;
     }).join("")}</article>`;
   document.getElementById("searchOutput").scrollIntoView({behavior:"smooth",block:"start"});
 }
 function chooseOffer(gi,oi){
   const g=currentProductGroups[gi],o=(g.offers||[]).slice().sort((x,y)=>shNum(x)-shNum(y))[oi];
   if(!o)return;
+  const isOut=isOfferOutOfStock(o);
   const item={
     brand:g.brand||o.brand||"",
     name:g.name||o.name||"",
-    price:shPrice(o),
+    price:isOut?"":shPrice(o),
     shop:o.store||"",
     url:o.url||"",
-    pic:g.image||"🧴"
+    pic:g.image||"🧴",
+    outOfStock:isOut
   };
   toggleWish(item);
   const heart=document.querySelector(`.offer-heart[data-shop="${CSS.escape(item.shop)}"][data-price="${CSS.escape(item.price)}"]`);
