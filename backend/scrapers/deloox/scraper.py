@@ -59,6 +59,12 @@ SOLD_OUT = (
     "out of stock",
     "not available",
     "currently unavailable",
+    "unavailable",
+    "temporarily unavailable",
+    "ausverkauft",
+    "nicht auf lager",
+    "rupture de stock",
+    "épuisé",
 )
 
 
@@ -293,6 +299,36 @@ def _is_relevant_product(text, query):
 
 def _find_brand_category(session, query):
     query_tokens = set(_tokens(query))
+
+    # Deloox.com currently exposes the dedicated Liquid Brun category mainly
+    # with the Limited Edition item. The normal Liquid Brun product is listed
+    # reliably in the French Avenue men's catalogue. Keep the dedicated
+    # Liquid Brun category for Limited Edition searches because that branch
+    # has special page validation below.
+    if {"liquid", "brun"}.issubset(query_tokens):
+        if {"limited", "edition"}.issubset(query_tokens):
+            return (
+                "https://www.deloox.com/en/category/"
+                "1132834/liquid-brun.html"
+            )
+        return (
+            "https://www.deloox.com/en/category/"
+            "1121334/french-avenue-mens-fragrances.html"
+        )
+
+    # Brand fallbacks for products whose brand/category is not discoverable
+    # from the Deloox homepage navigation.
+    if {"afnan"}.issubset(query_tokens):
+        return (
+            "https://www.deloox.com/en/category/"
+            "1078874/afnan-fragrances.html"
+        )
+
+    if {"rayhaan"}.issubset(query_tokens):
+        return (
+            "https://www.deloox.com/en/category/"
+            "1131978/rayhaan-fragrances.html"
+        )
 
     for required_tokens, fallback_url in CATEGORY_FALLBACKS:
         if set(required_tokens).issubset(query_tokens):
@@ -620,16 +656,14 @@ def _extract_brand_page(html, query):
                 node = node.parent
                 continue
 
-            price = _extract_price(text)
-
-            if not price:
-                node = node.parent
-                continue
-
-            if any(
+            card_sold_out = any(
                 word in text.lower()
                 for word in SOLD_OUT
-            ):
+            )
+
+            price = _extract_price(text)
+
+            if not price and not card_sold_out:
                 node = node.parent
                 continue
 
@@ -672,15 +706,34 @@ def _extract_brand_page(html, query):
                 results.append({
                     "store": STORE,
                     "name": query,
-                    "price": price,
+                    "price": price or "Out of stock",
                     "url": product_link,
-                    "available": True,
-                    "availability": "in_stock",
+                    "available": not card_sold_out,
+                    "availability": "out_of_stock" if card_sold_out else "in_stock",
                 })
 
             break
 
     return results
+
+
+def _page_is_sold_out(html):
+    soup = BeautifulSoup(
+        html or "",
+        "html.parser",
+    )
+
+    page_text = _clean(
+        soup.get_text(
+            " ",
+            strip=True,
+        )
+    ).lower()
+
+    return any(
+        marker in page_text
+        for marker in SOLD_OUT
+    )
 
 
 def _extract_product_variants(
@@ -935,6 +988,36 @@ def search(query):
             query,
         )
 
+    # Deloox brand pages are paginated. Some products (for example Rayhaan
+    # Aquatica) may be outside page 1. Only do the extra requests when page 1
+    # did not produce a candidate, keeping normal searches fast.
+    if not candidates:
+        for page_number in range(2, 7):
+            separator = "&" if "?" in category_url else "?"
+            page_url = f"{category_url}{separator}page={page_number}"
+            page_response = _get(
+                session,
+                page_url,
+            )
+
+            if page_response is None:
+                continue
+
+            page_candidates = _extract_category(
+                page_response.text,
+                query,
+            )
+
+            if not page_candidates:
+                page_candidates = _extract_brand_page(
+                    page_response.text,
+                    query,
+                )
+
+            if page_candidates:
+                candidates.extend(page_candidates)
+                break
+
     if not candidates:
         return []
 
@@ -1040,6 +1123,42 @@ def search(query):
                 page_name,
                 product_url,
             )
+
+        if not variants and _page_is_sold_out(product_response.text):
+            page_text = _clean(
+                BeautifulSoup(
+                    product_response.text,
+                    "html.parser",
+                ).get_text(
+                    " ",
+                    strip=True,
+                )
+            )
+
+            size_match = SIZE_RE.search(
+                page_text
+            )
+            size = (
+                size_match.group(1).replace(",", ".")
+                if size_match
+                else ""
+            )
+
+            price = _extract_price(page_text)
+
+            variants = [{
+                "store": STORE,
+                "name": (
+                    f"{page_name} {size} ml"
+                    if size
+                    else page_name
+                ),
+                "price": price or "Out of stock",
+                "url": product_url,
+                "available": False,
+                "availability": "out_of_stock",
+                **({"size": f"{size} ml"} if size else {}),
+            }]
 
         for variant in variants:
             key = (
