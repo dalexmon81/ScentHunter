@@ -550,6 +550,17 @@ def _generic_site_search(session, query):
             ]
             if exact_candidates:
                 return exact_candidates
+
+            # Deloox può aggiungere marca, linea o descrizione al titolo del link.
+            # Se la card è già stata validata da _is_relevant_product, manteniamo
+            # comunque i candidati migliori invece di scartarli tutti.
+            ranked = sorted(
+                candidates,
+                key=lambda item: _match_score(item.get("name", ""), query),
+                reverse=True,
+            )
+            if ranked and _match_score(ranked[0].get("name", ""), query) >= 50:
+                return ranked[:20]
     return []
 
 
@@ -787,12 +798,6 @@ def _extract_category(html, query):
         # Keep the original behaviour for every normal search.
         # Only Limited Edition needs the relaxed candidate collection because
         # Deloox may omit "limited edition" from the product URL.
-        if not limited_query and not _url_matches_query(
-            product_url,
-            query,
-        ):
-            continue
-
         card = _find_product_card(link)
 
         card_text = _clean(
@@ -947,12 +952,6 @@ def _extract_brand_page(html, query):
                 ).split("?")[0]
 
                 if "/product/" not in candidate_url.lower():
-                    continue
-
-                if not _url_matches_query(
-                    candidate_url,
-                    query,
-                ):
                     continue
 
                 product_link = candidate_url
@@ -1316,12 +1315,6 @@ def search(query):
         )[0].split("?")[0]
 
         if product_url in seen_urls:
-            continue
-
-        if not limited_query and not _url_matches_query(
-            product_url,
-            query,
-        ):
             continue
 
         seen_urls.add(product_url)
