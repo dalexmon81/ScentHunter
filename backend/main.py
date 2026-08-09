@@ -332,8 +332,12 @@ def unique_results(products: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
 
 def sort_by_price(products: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
     def key(product):
+        out = (
+            "out_of_stock" in str(product.get("availability", "")).lower()
+            or product.get("available") is False
+        )
         value = price_num(product.get("price"))
-        return float("inf") if value is None else value
+        return (1 if out else 0, float("inf") if value is None else value)
 
     return sorted(products, key=key)
 
@@ -767,17 +771,20 @@ def product(name: str, brand: str = ""):
 
     for product_data in data["results"]:
         value = price_num(product_data.get("price"))
-
-        if value is None:
-            continue
-
+        is_out = (
+            "out_of_stock" in str(product_data.get("availability", "")).lower()
+            or product_data.get("available") is False
+        )
         offer = dict(product_data)
-        offer["price_value"] = value
+        offer["price_value"] = value if value is not None else float("inf")
         offer["image"] = product_image(offer)
+        offer["available"] = not is_out
+        offer["availability"] = "out_of_stock" if is_out else offer.get("availability", "in_stock")
         offers.append(offer)
 
-    offers.sort(key=lambda offer: offer["price_value"])
-    best_offer = offers[0] if offers else None
+    offers.sort(key=lambda offer: (1 if offer.get("available") is False else 0, offer["price_value"]))
+    available_offers = [offer for offer in offers if offer.get("available") is not False and offer["price_value"] != float("inf")]
+    best_offer = available_offers[0] if available_offers else None
 
     history = update_price_history(
         name=name,
