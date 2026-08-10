@@ -55,7 +55,7 @@ NON_PERFUME = {
 }
 
 IGNORED_WORDS = {
-    "eau", "de", "perfume", "edp", "edt",
+    "eau", "de", "parfum", "perfume", "edp", "edt",
     "extrait", "spray", "ml", "for", "by",
 }
 
@@ -549,6 +549,17 @@ def matches(product: Dict[str, Any], query: str) -> bool:
 
     if not query_tokens:
         query_tokens = query_all_tokens
+
+    # Per ricerche composte precise (es. "Le Beau Le Parfum"),
+    # richiediamo che il nome contenga la sequenza completa delle parole.
+    # Questo evita falsi positivi come "Optimystic Le Beau" quando si cerca
+    # "Le Beau Le Parfum", mantenendo comunque le varianti che aggiungono
+    # testo dopo il nome esatto (es. "Le Beau Le Parfum Intense").
+    if len(query_tokens) >= 2:
+        query_phrase = norm(query)
+        normalized_name = norm(product.get("name", ""))
+        if query_phrase not in normalized_name:
+            return False
 
     return bool(query_tokens) and query_tokens.issubset(name_tokens)
 
