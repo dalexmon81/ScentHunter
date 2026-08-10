@@ -694,10 +694,7 @@ function shGroupData(data){
    * prodotti corpo/doccia/deodorante viene invece escluso.
    */
   function isNonPerfumeProduct(o){
-    const text=String([
-      o?.name,o?.brand,o?.description,o?.category,o?.type,o?.product_type,
-      o?.productType,o?.sub_category,o?.subcategory
-    ].filter(Boolean).join(" "))
+    const clean=v=>String(v||"")
       .toLowerCase()
       .normalize("NFD")
       .replace(/[\u0300-\u036f]/g,"")
@@ -705,12 +702,24 @@ function shGroupData(data){
       .replace(/\s+/g," ")
       .trim();
 
+    // Per decidere se una scheda è un prodotto non-profumo usiamo
+    // soprattutto i campi che descrivono il prodotto, NON la descrizione
+    // commerciale: quest'ultima può citare altri prodotti della linea.
+    const name=clean(o?.name);
+    const meta=clean([
+      o?.category,o?.type,o?.product_type,o?.productType,
+      o?.sub_category,o?.subcategory
+    ].filter(Boolean).join(" "));
+    const text=(name+" "+meta).trim();
     if(!text)return false;
 
-    const setLike=/\b(?:set|coffret|gift\s*set|gift\s*box|giftbox|set\s+regalo|confezione\s+regalo|duo|trio)\b/i.test(text);
-    const perfumeSignal=/\b(?:eau\s+de\s+parfum|eau\s+de\s+toilette|eau\s+de\s+cologne|extrait\s+de\s+parfum|edp|edt|edc|parfum|perfume|fragrance|profumo|profumo\s+da)\b/i.test(text);
+    // Un SET resta ammesso se identifica chiaramente un profumo/fragrance.
+    // Un set composto solo da prodotti corpo/doccia/deodorante viene invece escluso.
+    const isSet=/\b(?:set|gift\s*set|coffret|cofanetto|coffret\s*cadeau|pack|kit|box)\b/.test(text);
+    const hasFragrance=/(?:\beau\s+de\s+parfum\b|\beau\s+de\s+toilette\b|\beau\s+de\s+cologne\b|\beau\s+fraiche\b|\beau\s+fraicheur\b|\bparfum\b|\bperfume\b|\bfragrance\b|\bextrait\s+de\s+parfum\b|\bessence\b)/.test(text);
 
     const excluded=[
+      // Deodoranti / antitraspiranti
       /\bdeodorant(?:e|s)?\b/,
       /\bdeodorante\b/,
       /\bdeodorant\s*stick\b/,
@@ -719,19 +728,43 @@ function shGroupData(data){
       /\bdeo\b/,
       /\bantiperspirant\b/,
       /\banti[- ]?transpirant\b/,
-      /\bshower\s+gel\b/,
+
+      // Doccia / bagno / detergenti (incl. tedesco)
+      /\bshower\s*gel\b/,
+      /\bshower\s*cream\b/,
+      /\bshower\s*foam\b/,
+      /\bshower\s*oil\b/,
       /\bgel\s+(?:douche|doccia|bain)\b/,
+      /\bgel\s+doccia\b/,
       /\bdoccia\s+gel\b/,
+      /\bbagno\s+(?:doccia|schiuma)\b/,
+      /\bbagnoschiuma\b/,
+      /\bduschgel\b/,
+      /\bdusch[- ]?(?:gel|schaum|creme|lotion)\b/,
+      /\bbad[- ]?(?:gel|schaum|foam)\b/,
       /\bbody\s+wash\b/,
       /\bbody\s+gel\b/,
+      /\bbody\s+cleanser\b/,
+      /\bbody\s+cleaning\b/,
+
+      // Capelli
       /\bshampoo\b/,
       /\bconditioner\b/,
-      /\bbody\s+(?:lotion|cream|creme|milk|butter)\b/,
+      /\bhaarmaske\b/,
+      /\bhaarshampoo\b/,
+
+      // Creme / lozioni / corpo
+      /\bbody\s+(?:lotion|cream|creme|milk|butter|moisturizer)\b/,
       /\blotion\s+corps\b/,
       /\bcreme?\s+corps\b/,
-      /\bbody\s+moisturizer\b/,
+      /\bbody\s+milk\b/,
       /\bhand\s+(?:cream|creme|lotion)\b/,
       /\bface\s+(?:cream|creme|lotion|wash)\b/,
+      /\bhandcreme\b/,
+      /\bkorperlotion\b/,
+      /\bkoerperlotion\b/,
+
+      // Saponi / rasatura / make-up / igiene
       /\bsoap\b/,
       /\bsavon\b/,
       /\bsapone\b/,
@@ -747,11 +780,13 @@ function shGroupData(data){
       /\btoothbrush\b/
     ];
 
-    // Un set che contiene chiaramente un profumo resta valido anche se
-    // include deodorante, doccia gel o altri prodotti accessori.
-    if(setLike && perfumeSignal)return false;
+    const isExcluded=excluded.some(re=>re.test(text));
 
-    return excluded.some(re=>re.test(text));
+    // Se è un set che dichiara chiaramente di contenere un profumo,
+    // lo teniamo anche se il nome cita shower gel/deodorante.
+    if(isSet && hasFragrance)return false;
+
+    return isExcluded;
   }
 
   // Applichiamo il filtro SOLO ai risultati della ricerca, non alle
@@ -878,24 +913,8 @@ function shGroupData(data){
     const name=cleanBrandText(o.name);
     const n=norm(name);
 
-    /*
-     * 1. "By BRAND" è la prova più forte.
-     * Il "By BRAND" può comparire anche IN MEZZO al nome commerciale:
-     * "Island Dreams By Khadlaj - Extrait De Parfum".
-     * Cerchiamo prima i brand conosciuti, così non catturiamo il testo
-     * successivo ("- Extrait...", "- 100 ml", ecc.) come se fosse il brand.
-     */
-    const byKnown=KNOWN_BRANDS
-      .slice()
-      .sort((a,b)=>norm(b).length-norm(a).length)
-      .find(b=>{
-        const bw=norm(b).split(/\s+/).filter(Boolean)
-          .map(w=>w.replace(/[.*+?^${}()|[\]\\]/g,"\\$&")).join("\\s+");
-        return new RegExp("\\bby\\s+"+bw+"\\b","i").test(name);
-      });
-    if(byKnown)return byKnown;
-
-    const by=name.match(/\bby\s+([^|,;]+?)(?=\s*[-–—]|$)/i);
+    /* 1. "By BRAND" è la prova più forte. */
+    const by=name.match(/\bby\s+([^|,;]+?)\s*$/i);
     if(by){
       const byRaw=cleanBrandText(by[1]);
       const known=canonicalKnownBrand(byRaw);
@@ -905,16 +924,11 @@ function shGroupData(data){
       if(isLikelyBrand(byRaw))return pretty(byRaw);
     }
 
-    /* 2. Brand noto all'inizio O all'interno del nome. */
-    const knownAnywhere=KNOWN_BRANDS
-      .slice()
-      .sort((a,b)=>norm(b).length-norm(a).length)
-      .find(b=>{
-        const bw=norm(b).split(/\s+/).filter(Boolean)
-          .map(w=>w.replace(/[.*+?^${}()|[\]\\]/g,"\\$&")).join("\\s+");
-        return new RegExp("\\b"+bw+"\\b","i").test(name);
-      });
-    if(knownAnywhere)return knownAnywhere;
+    /* 2. Brand noto presente all'inizio del nome. */
+    const knownPrefix=KNOWN_BRANDS
+      .filter(b=>n===norm(b)||n.startsWith(norm(b)+" "))
+      .sort((a,b)=>norm(b).length-norm(a).length)[0];
+    if(knownPrefix)return knownPrefix;
 
     /* 3. Brand candidato già confermato da un'altra offerta. */
     const prefix=brandList
@@ -949,18 +963,6 @@ function shGroupData(data){
     return n;
   }
 
-  function knownAnywhereBrandFromName(value){
-    const s=cleanBrandText(value);
-    return KNOWN_BRANDS
-      .slice()
-      .sort((a,b)=>norm(b).length-norm(a).length)
-      .find(b=>{
-        const bw=norm(b).split(/\s+/).filter(Boolean)
-          .map(w=>w.replace(/[.*+?^${}()|[\]\\]/g,"\\$&")).join("\\s+");
-        return new RegExp("\\b"+bw+"\\b","i").test(s);
-      })||"";
-  }
-
   function cleanProductName(o,brand){
     let n=cleanBrandText(o.name||"Profumo")
       .replace(/\b\d{1,4}\s*ml\b/gi," ")
@@ -980,21 +982,16 @@ function shGroupData(data){
       .sort((a,b)=>norm(b).length-norm(a).length)
       .map(b=>b.replace(/[.*+?^${}()|[\]\\]/g,"\\$&"));
 
-    /*
-     * "By BRAND" è informazione commerciale, non identità del profumo.
-     * IMPORTANTE: può stare in qualsiasi posizione, non solo alla fine.
-     * Esempio:
-     *   "Island Dreams By Khadlaj - Extrait De Parfum"
-     * deve diventare "Island Dreams".
-     */
+    // "By BRAND" è sempre informazione commerciale del produttore, non
+    // parte dell'identità del profumo. Lo rimuoviamo in modo robusto anche
+    // quando lo scraper restituisce un brand sporco o non presente nella lista.
+    n=n.replace(/\s+by\s+[^|,;]+$/i," ").trim();
+    n=n.replace(new RegExp("\\s+by\\s+(?:"+knownBrandPatterns.join("|")+ ")\\s*$","i")," ").trim();
     if(brand){
       const brandWords=norm(brand).split(/\s+/).filter(Boolean)
         .map(w=>w.replace(/[.*+?^${}()|[\]\\]/g,"\\$&")).join("\\s+");
-      if(brandWords){
-        n=n.replace(new RegExp("\\s+by\\s+"+brandWords+"\\b","ig")," ").trim();
-      }
+      if(brandWords)n=n.replace(new RegExp("\\s+by\\s+"+brandWords+"\\s*$","i")," ").trim();
     }
-    n=n.replace(new RegExp("\\s+by\\s+(?:"+knownBrandPatterns.join("|")+ ")\\b","ig")," ").trim();
 
     // Residui come "()", "(man)", "(woman)".
     n=n
@@ -1008,29 +1005,34 @@ function shGroupData(data){
       .replace(/^(?:women'?s|men'?s|women|men)\s+perfume\s*[-–—:]\s*/i,"")
       .replace(/^(?:eau de parfum|eau de toilette|eau de cologne|edp|edt|edc|spray)\s*[-–—:]\s*/i,"")
       .replace(/\b(?:women'?s|men'?s|women|men)\s+perfume\b/gi," ")
-      .replace(/\b(?:eau de parfum|eau de toilette|eau de cologne|eau de parfum intense|extrait de parfum|extrait de parfume|edp|edt|edc|spray)\b/gi," ")
+      .replace(/\b(?:eau de parfum|eau de toilette|eau de cologne|eau de parfum intense|edp|edt|edc|spray)\b/gi," ")
       .replace(/\b(?:for men|for women|for him|for her|pour homme|pour femme|homme|femme|men|man|women|woman|unisex)\b/gi," ")
       .replace(/\s+/g," ")
       .trim();
 
-    /*
-     * Il brand può essere all'inizio, in mezzo o ripetuto nel nome.
-     * Lo eliminiamo ovunque SOLO se il nome contiene altro testo:
-     * così un eventuale prodotto chiamato esattamente come il brand non
-     * diventa "Profumo".
-     */
-    const brandToRemove=brand||knownAnywhereBrandFromName(n);
-    if(brandToRemove){
-      const brandNorm=norm(brandToRemove);
-      if(norm(n)!==brandNorm){
-        const bw=brandNorm.split(/\s+/).filter(Boolean)
+    // Togliamo il brand all'inizio. Ripetiamo l'operazione anche se il
+    // nome contiene il brand più volte (es. "Miu Miu Miu Miu Miutine").
+    if(brand){
+      const escapedBrand=cleanBrandText(brand).replace(/[.*+?^${}()|[\]\\]/g,"\\$&");
+      const brandWords=norm(brand).split(/\s+/).filter(Boolean)
+        .map(w=>w.replace(/[.*+?^${}()|[\]\\]/g,"\\$&")).join("\\s+");
+      for(let pass=0;pass<5;pass++){
+        const before=n;
+        n=n.replace(new RegExp("^\\s*"+escapedBrand+"\\s*[-–—:]?\\s*","i"),"").trim();
+        if(brandWords)n=n.replace(new RegExp("^\\s*"+brandWords+"\\s*[-–—:]?\\s*","i"),"").trim();
+        if(n===before)break;
+      }
+    }else{
+      // Anche senza campo brand, togliamo un brand noto che compare all'inizio.
+      for(const b of KNOWN_BRANDS){
+        const bw=norm(b).split(/\s+/).filter(Boolean)
           .map(w=>w.replace(/[.*+?^${}()|[\]\\]/g,"\\$&")).join("\\s+");
-        if(bw)n=n.replace(new RegExp("\\b"+bw+"\\b","ig")," ").trim();
+        if(bw)n=n.replace(new RegExp("^\\s*"+bw+"\\s*[-–—:]?\\s*","i"),"").trim();
       }
     }
 
     // Ultima barriera: nessun "By BRAND" conosciuto deve mai restare nel nome.
-    n=n.replace(new RegExp("\\s+by\\s+(?:"+knownBrandPatterns.join("|")+ ")\\b","ig")," ").trim();
+    n=n.replace(new RegExp("\\s+by\\s+(?:"+knownBrandPatterns.join("|")+ ")\\s*$","i")," ").trim();
 
     n=n
       .replace(/\s*[-–—]\s*/g," ")
