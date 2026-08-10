@@ -664,117 +664,268 @@ def _extract_brand_page(html, query):
     return results
 
 
-def _extract_product_variants(html):
+def _extract_product_variants(
+    html,
+    product_name,
+    product_url,
+):
     """
-    Estrae le varianti dalla struttura reale delle varianti Deloox.
-    Formato e prezzo devono appartenere allo stesso variant-container.
+    Estrae i formati dalla pagina prodotto Deloox senza fare uno scan globale.
+
+    Regola generale:
+    il formato e il prezzo devono trovarsi nello stesso blocco DOM locale.
+    In questo modo un "85 ml" presente in un'altra parte della pagina non viene
+    associato al prezzo della variante del prodotto.
     """
-    soup = BeautifulSoup(html, "html.parser")
-    variants = []
-    seen = set()
+    soup = BeautifulSoup(
+        html,
+        "html.parser",
+    )
 
-    containers = soup.select(".variant-container")
+    results = []
+    seen_sizes = set()
 
-    for container in containers:
-        full_text = _clean(container.get_text(" ", strip=True))
-        if not full_text:
+    # Prima scelta: elementi DOM che rappresentano esplicitamente una variante.
+    variant_nodes = soup.select(
+        "[class*='variant'], [class*='Variant'], "
+        "[class*='option'], [class*='Option'], "
+        "[class*='volume'], [class*='Volume'], "
+        "[class*='size'], [class*='Size']"
+    )
+
+    candidates = []
+
+    for node in variant_nodes:
+        text = _clean(node.get_text(" ", strip=True))
+        if not text:
             continue
 
-        size = _extract_size(full_text)
-        if not size:
+        matches = SIZE_FULL_RE.findall(text)
+        if not matches:
             continue
 
-        price = _extract_price(full_text)
+        price = _extract_price(text)
         if not price:
             continue
 
-        key = (size, price)
-        if key in seen:
+        for size in matches:
+            candidates.append((size, price))
+
+    # Seconda scelta: risaliamo dal nodo che contiene "X ml" solo fino al
+    # primo blocco DOM locale che contiene un prezzo.
+    if not candidates:
+        for text_node in soup.find_all(
+            string=SIZE_FULL_RE,
+        ):
+            value = _clean(text_node)
+            size_match = SIZE_FULL_RE.fullmatch(value)
+
+            if not size_match:
+                continue
+
+            size = size_match.group(1).replace(
+                ",",
+                ".",
+            )
+
+            parent = text_node.parent
+
+            for _ in range(6):
+                if parent is None:
+                    break
+
+                block_text = _clean(
+                    parent.get_text(" ", strip=True)
+                )
+
+                # Evita contenitori enormi che possono comprendere
+                # raccomandazioni o altri prodotti.
+                if len(block_text) > 700:
+                    parent = parent.parent
+                    continue
+
+                price = _extract_price(block_text)
+
+                if price:
+                    candidates.append(
+                        (size, price)
+                    )
+                    break
+
+                parent = parent.parent
+
+    for size, price in candidates:
+        size_label = f"{size} ml"
+
+        if size_label in seen_sizes:
             continue
 
-        seen.add(key)
-        variants.append({
-            "size": size,
+        seen_sizes.add(size_label)
+
+        slug = re.sub(
+            r"[^a-z0-9]+",
+            "-",
+            size_label.lower(),
+        ).strip("-")
+
+        results.append({
+            "store": STORE,
+            "name": f"{product_name} {size_label}",
             "price": price,
+            "url": f"{product_url}#{slug}",
+            "available": True,
+            "availability": "in_stock",
+            "size": size_label,
         })
 
-    return variants
+    return results
 
 
-def _extract_jsonld_variants(html):
+
+def _extract_jsonld_variants(
+    html,
+    product_name,
+    product_url,
+):
     """
     Fallback JSON-LD conservativo.
-    Il formato deve essere esplicitamente presente nel nome del Product JSON-LD.
+
+    Il formato viene letto esclusivamente dal nome del Product JSON-LD.
+    Non vengono più analizzati campi descrittivi generici.
     """
-    soup = BeautifulSoup(html, "html.parser")
-    variants = []
+    soup = BeautifulSoup(
+        html,
+        "html.parser",
+    )
+
+    results = []
     seen = set()
 
-    for script in soup.select('script[type="application/ld+json"]'):
-        raw = script.string or script.get_text()
-        if not raw:
-            continue
-
+    for script in soup.find_all(
+        "script",
+        type="application/ld+json",
+    ):
         try:
-            data = json.loads(raw)
-        except Exception:
+            data = json.loads(
+                script.string or script.get_text()
+            )
+        except (
+            json.JSONDecodeError,
+            TypeError,
+        ):
             continue
 
         objects = []
-        if isinstance(data, dict):
-            if isinstance(data.get("@graph"), list):
-                objects.extend(data["@graph"])
-            objects.append(data)
-        elif isinstance(data, list):
+
+        if isinstance(data, list):
             objects.extend(data)
+        elif isinstance(data, dict):
+            objects.append(data)
 
-        for obj in objects:
-            if not isinstance(obj, dict):
+            graph = data.get("@graph")
+            if isinstance(graph, list):
+                objects.extend(graph)
+
+        for item in objects:
+            if not isinstance(item, dict):
                 continue
 
-            obj_type = obj.get("@type")
-            if isinstance(obj_type, list):
-                is_product = "Product" in obj_type
-            else:
-                is_product = obj_type == "Product"
-            if not is_product:
+            item_type = item.get("@type")
+
+            if isinstance(item_type, list):
+                if "Product" not in item_type:
+                    continue
+            elif item_type != "Product":
                 continue
 
-            name = _clean(str(obj.get("name") or ""))
+            name = _clean(
+                item.get("name", "")
+            )
+
             if not name:
                 continue
 
-            size = _extract_size(name)
-            if not size:
+            size_match = SIZE_RE.search(name)
+
+            if not size_match:
                 continue
 
-            offers = obj.get("offers")
-            if isinstance(offers, list):
-                offer_list = offers
-            elif isinstance(offers, dict):
-                offer_list = [offers]
-            else:
-                offer_list = []
+            size = size_match.group(1).replace(
+                ",",
+                ".",
+            )
 
-            for offer in offer_list:
+            offers = item.get(
+                "offers",
+                [],
+            )
+
+            if isinstance(offers, dict):
+                offers = [offers]
+
+            for offer in offers:
                 if not isinstance(offer, dict):
                     continue
 
-                price = _extract_price(str(offer.get("price") or ""))
-                if not price:
+                price = offer.get("price")
+
+                if price is None:
                     continue
 
-                key = (size, price)
+                if str(
+                    offer.get(
+                        "priceCurrency",
+                        "EUR",
+                    )
+                ) != "EUR":
+                    continue
+
+                availability = str(
+                    offer.get(
+                        "availability",
+                        "",
+                    )
+                ).lower()
+
+                if "outofstock" in availability:
+                    continue
+
+                price_text = str(
+                    price
+                ).replace(
+                    ".",
+                    ",",
+                )
+
+                if "," not in price_text:
+                    price_text += ",00"
+
+                key = (
+                    size,
+                    price_text,
+                )
+
                 if key in seen:
                     continue
 
                 seen.add(key)
-                variants.append({
-                    "size": size,
-                    "price": price,
+
+                results.append({
+                    "store": STORE,
+                    "name": (
+                        f"{product_name} {size} ml"
+                    ),
+                    "price": (
+                        f"{price_text} €"
+                    ),
+                    "url": product_url,
+                    "available": True,
+                    "availability": "in_stock",
+                    "size": f"{size} ml",
                 })
 
-    return variants
+    return results
+
 
 
 def _size_number(item):
