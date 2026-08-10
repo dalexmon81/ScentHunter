@@ -55,7 +55,7 @@ NON_PERFUME = {
 }
 
 IGNORED_WORDS = {
-    "eau", "de", "parfum", "perfume", "edp", "edt",
+    "eau", "de", "perfume", "edp", "edt",
     "extrait", "spray", "ml", "for", "by",
 }
 
