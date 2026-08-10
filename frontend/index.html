@@ -928,7 +928,9 @@ document.addEventListener("pointermove",e=>{
 
 document.addEventListener("pointerup",()=>{
   if(!cardPointerActive)return;
-  setTimeout(()=>{cardPointerActive=false;cardPointerMoved=false;},0);
+  // Mantiene cardPointerMoved fino al click successivo, così uno scroll
+  // non viene trasformato accidentalmente in un'apertura della scheda.
+  cardPointerActive=false;
 },{passive:true,capture:true});
 
 document.addEventListener("pointercancel",()=>{
@@ -942,6 +944,7 @@ document.addEventListener("click",e=>{
     e.preventDefault();
     e.stopImmediatePropagation();
   }
+  cardPointerMoved=false;
 },{capture:true});
 
 function showProducts(groups){
@@ -960,7 +963,7 @@ function showProducts(groups){
       <div class="product-choice-main">
         <div class="store">${esc(g.brand||"")}</div>
         <div class="name">${esc(g.name)}</div>
-        <div class="offer-meta">${sizes.length} ${sizes.length===1?"formato":"formati"}</div>
+        <div class="offer-meta">${sizes.length===1?esc(formatLabel(sizes[0].size)):`${sizes.length} formati`}</div>
         ${best?`<div class="bestprice">da ${esc(shPrice(best))}</div>`:`<div class="bestprice">OUT OF STOCK</div>`}
       </div>
       <div class="arrow">›</div>
