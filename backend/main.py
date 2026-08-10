@@ -63,75 +63,72 @@ FRONTEND_INDEX = (
     / "index.html"
 )
 
-# Varianti che rendono la query specifica. Senza marker la ricerca è di famiglia.
-VARIANT_MARKERS = {
-    "pour femme", "pour homme", "femme", "homme", "flame", "night",
-    "night out", "by night", "rebel", "elixir", "intense", "extreme",
-    "limited", "limited edition", "collector", "collector edition",
-    "collector's edition", "special edition", "anniversary", "ice",
-    "blanc", "noir", "nude", "rose", "blue", "red", "black", "white",
-    "gold", "silver", "coral", "fantasy", "sport", "absolu",
-    "le parfum", "the parfum", "the most", "most wanted",
+# Parole che descrivono una variante del profumo.
+# NON vengono usate per escludere il risultato: se l'utente cerca
+# la famiglia (es. "Eros" o "9 PM"), tutte le varianti devono restare.
+VARIANTS = {
+    "pour femme",
+    "night out",
+    "rebel",
+    "elixir",
+    "intense",
+    "extreme",
+    "limited edition",
+    "collector edition",
+    "collector's edition",
 }
-VARIANTS = VARIANT_MARKERS
 
+# Questi termini indicano un prodotto diverso dal profumo.
+# I set/cofanetti/kit sono gestiti separatamente e NON vengono esclusi.
 NON_PERFUME = {
-    # Prodotti di cura/corpo che NON devono entrare nelle ricerche
-    # dei profumi. I set/coffret/bundle/kit restano invece ammessi.
     "deodorant",
     "deo spray",
     "shampoo",
     "conditioner",
     "hair conditioner",
-    "hair care",
-    "hair",
     "shower gel",
-    "shower",
+    "gel douche",
     "body wash",
+    "hand wash",
     "body lotion",
     "body cream",
-    "body butter",
-    "body milk",
-    "body oil",
-    "body mist",
+    "body creme",
     "hand cream",
-    "hand wash",
-    "hand lotion",
+    "hand creme",
+    "cream",
+    "creme",
+    "crème",
+    "lotion",
+    "oil",
+    "huile",
     "after shave",
     "aftershave",
-    "beard",
     "soap",
-    "bath",
-    "bath oil",
-    "bath gel",
-    "oil",
-    "fragrance oil",
-    "perfume oil",
-    "cream",
-    "lotion",
+    "savon",
+    "balm",
+    "baume",
+    "serum",
+    "sérum",
+    "scrub",
+    "cleanser",
+    "mask",
+    "emulsion",
+    "émulsion",
     "candle",
     "diffuser",
     "room spray",
     "home fragrance",
-    "fabric spray",
-    "scrub",
-    "toothpaste",
-    "detergent",
-    "powder",
-    "talc",
-    "roll on",
-    "roll-on",
 }
 
-# I set/coffret/bundle/kit sono ammessi anche se contengono prodotti
-# accessori: l'utente ha scelto esplicitamente di lasciarli nei risultati.
-SET_MARKERS = {
-    "set",
+SET_PRODUCTS = {
+    "gift set",
+    "set regalo",
     "coffret",
     "bundle",
+    "travel set",
+    "discovery set",
     "kit",
 }
-
 
 IGNORED_WORDS = {
     "eau",
@@ -214,154 +211,216 @@ def product_image(product: Dict[str, Any]) -> str:
 
 
 # ============================================================
-# NORMALIZZAZIONE NOME VISUALIZZATO
+# NOME CANONICO / FILTRO RISULTATI
 # ============================================================
 
-def display_name(product: Dict[str, Any]) -> str:
-    """
-    Restituisce il nome canonico visualizzato da ScentHunter.
+CATALOG_PATH = os.path.join(
+    BASE_DIR,
+    "SCENTHUNTER CATALOGO CORRETTO.json",
+)
 
-    Regola: il nome del profumo viene prima di eventuali descrittori
-    iniziali come Uomo/Donna; il brand resta nel campo brand e quindi
-    il frontend può visualizzare: Brand - Nome profumo - resto.
+
+CATALOG_BRANDS: Dict[str, str] = {}
+
+
+def load_catalog_aliases() -> Dict[str, str]:
     """
-    brand = str(product.get("brand") or "").strip()
+    Legge il catalogo master, quando disponibile, per ricondurre gli alias
+    dei negozi al nome canonico senza creare una lista manuale nel codice.
+    """
+    try:
+        with open(CATALOG_PATH, "r", encoding="utf-8") as file:
+            payload = json.load(file)
+    except (OSError, ValueError, TypeError):
+        return {}
+
+    products = payload.get("products", []) if isinstance(payload, dict) else []
+    aliases: Dict[str, str] = {}
+
+    if not isinstance(products, list):
+        return aliases
+
+    for item in products:
+        if not isinstance(item, dict):
+            continue
+
+        brand = str(item.get("brand") or "").strip()
+        canonical = str(item.get("name") or "").strip()
+        if not canonical:
+            continue
+
+        candidates = [canonical]
+        candidates.extend(item.get("aliases") or [])
+
+        # Se il nome canonico inizia con Uomo/Donna/Men/Women ma esiste
+        # un alias con le stesse parole e il genere dopo il nome della famiglia,
+        # preferiamo quest'ultimo ordine. Non contiene una lista manuale di profumi.
+        preferred = canonical
+        gender_prefixes = {
+            "uomo",
+            "donna",
+            "men",
+            "women",
+            "man",
+            "woman",
+        }
+        canonical_tokens = sorted(norm(canonical).split())
+        if canonical_tokens:
+            first_token = norm(canonical).split()[0]
+            if first_token in gender_prefixes:
+                for alias in candidates[1:]:
+                    alias = str(alias or "").strip()
+                    alias_tokens = sorted(norm(alias).split())
+                    alias_first = norm(alias).split()[0] if norm(alias) else ""
+                    if (
+                        alias_tokens == canonical_tokens
+                        and alias_first not in gender_prefixes
+                    ):
+                        preferred = alias
+                        break
+
+        # Rimuove un eventuale prefisso brand presente nell'alias scelto.
+        preferred_n = norm(preferred)
+        brand_n = norm(brand)
+        if brand_n and preferred_n.startswith(brand_n + " "):
+            preferred = preferred[len(brand):].lstrip(" -:")
+
+        for candidate in candidates:
+            candidate = str(candidate or "").strip()
+            if not candidate:
+                continue
+            key = norm(candidate)
+            aliases[key] = preferred
+            if brand:
+                aliases[norm(f"{brand} {candidate}")] = preferred
+
+            if brand:
+                CATALOG_BRANDS[key] = brand
+                if brand:
+                    CATALOG_BRANDS[norm(f"{brand} {candidate}")] = brand
+
+    return aliases
+
+
+CATALOG_ALIASES = load_catalog_aliases()
+
+
+def canonical_product_brand(product: Dict[str, Any]) -> str:
+    """Restituisce il brand canonico quando il catalogo riconosce l'alias."""
     raw_name = str(
         product.get("name")
         or product.get("title")
         or product.get("product_name")
         or ""
     ).strip()
+    brand = str(product.get("brand") or "").strip()
+    return (
+        CATALOG_BRANDS.get(norm(raw_name))
+        or CATALOG_BRANDS.get(norm(f"{brand} {raw_name}"))
+        or brand
+    ).strip()
+
+
+def canonical_product_name(product: Dict[str, Any]) -> str:
+    """
+    Restituisce il nome canonico del profumo.
+
+    Prima usa gli alias del catalogo master; se il prodotto non è nel catalogo,
+    mantiene il nome dello scraper, eliminando solo un eventuale prefisso
+    identico al brand.
+    """
+    raw_name = str(
+        product.get("name")
+        or product.get("title")
+        or product.get("product_name")
+        or ""
+    ).strip()
+    brand = str(product.get("brand") or "").strip()
 
     if not raw_name:
         return ""
 
-    # Elimina un eventuale brand già incorporato nel nome.
+    canonical = (
+        CATALOG_ALIASES.get(norm(raw_name))
+        or CATALOG_ALIASES.get(norm(f"{brand} {raw_name}"))
+    )
+    name = canonical or raw_name
+
+    if canonical:
+        raw_name = canonical
+
     if brand:
-        raw_name = re.sub(
-            rf"^\s*{re.escape(brand)}\s*[-–—:]?\s*",
-            "",
-            raw_name,
-            flags=re.IGNORECASE,
-        ).strip()
+        brand_n = norm(brand)
+        name_n = norm(name)
+        if name_n.startswith(brand_n + " "):
+            # Conserviamo la grafia originale dopo il prefisso brand.
+            name = name[len(brand):].lstrip(" -:")
 
-    # Caso importante per Born in Roma: alcuni negozi scrivono
-    # "Donna Born in Roma ..." / "Uomo Born in Roma ...".
-    # Il formato canonico deve essere "Born in Roma Donna ..." /
-    # "Born in Roma Uomo ...".
-    match = re.match(
-        r"^(donna|uomo)\s+(born\s+in\s+roma)(?:\s+(.*))?$",
-        raw_name,
-        flags=re.IGNORECASE,
+    name = name.strip()
+    # Uniforma anche la grafia 9PM/9pm in 9 PM senza alterare il resto del nome.
+    name = re.sub(
+        r"(?<=\d)(?=[A-Za-z])|(?<=[A-Za-z])(?=\d)",
+        " ",
+        name,
     )
-    if match:
-        gender = match.group(1).title()
-        family = "Born in Roma"
-        rest = (match.group(3) or "").strip()
-        return " ".join(part for part in (family, gender, rest) if part)
+    return name.strip()
 
-    # Copre anche il caso opposto: "Born in Roma Uomo ...".
-    match = re.match(
-        r"^(born\s+in\s+roma)\s+(donna|uomo)(?:\s+(.*))?$",
-        raw_name,
-        flags=re.IGNORECASE,
+
+def is_non_perfume(product: Dict[str, Any]) -> bool:
+    """
+    Identifica cosmetici e prodotti corpo/capelli che non sono profumi.
+    I set/cofanetti/kit vengono sempre mantenuti.
+    """
+    name = norm(
+        " ".join(
+            str(product.get(field) or "")
+            for field in (
+                "name",
+                "title",
+                "product_name",
+                "category",
+                "product_type",
+                "type",
+            )
+        )
     )
-    if match:
-        family = "Born in Roma"
-        gender = match.group(2).title()
-        rest = (match.group(3) or "").strip()
-        return " ".join(part for part in (family, gender, rest) if part)
 
-    return raw_name
+    if not name:
+        return True
 
+    if any(norm(marker) in name for marker in SET_PRODUCTS):
+        return False
 
-def normalize_product_names(products: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
-    """Applica il nome canonico senza alterare gli altri dati del prodotto."""
-    normalized: List[Dict[str, Any]] = []
-    for product in products:
-        item = dict(product)
-        name = display_name(item)
-        if name:
-            item["name"] = name
-        normalized.append(item)
-    return normalized
-
-
-# ============================================================
-# FILTRO RISULTATI
-# ============================================================
-
-def _query_has_variant_marker(query: str) -> bool:
-    q = norm(query)
-    return any(norm(marker) in q for marker in VARIANT_MARKERS)
-
-
-def _is_set_product(product: Dict[str, Any]) -> bool:
-    text = norm(" ".join(
-        str(product.get(field) or "")
-        for field in (
-            "name", "title", "product_name", "description",
-            "category", "type", "product_type",
-        )
-    ))
-    return any(norm(marker) in text for marker in SET_MARKERS)
-
-
-def _product_search_text(product: Dict[str, Any]) -> str:
-    return norm(" ".join(
-        str(product.get(field) or "")
-        for field in (
-            "name", "title", "product_name", "description",
-            "category", "type", "product_type",
-        )
-    ))
+    return any(norm(phrase) in name for phrase in NON_PERFUME)
 
 
 def matches(product: Dict[str, Any], query: str) -> bool:
     """
-    Applica tre regole: famiglia, variante specifica e filtro prodotti.
+    Verifica che il prodotto appartenga alla ricerca.
 
-    - Query base (es. Eros / Born in Roma) = accetta tutte le varianti
-      che lo scraper restituisce.
-    - Query con variante (es. Eros Flame) = resta specifica.
-    - Deodoranti, shampoo, oli, creme, shower gel ecc. vengono esclusi.
-      I set/coffret/bundle/kit sono volutamente ammessi.
+    La query viene trattata come ricerca per famiglia: quindi una ricerca
+    come "Eros", "9 PM", "Born in Roma" o "Stronger With You" accetta
+    naturalmente tutte le varianti che contengono quella famiglia.
     """
-    name = norm(product.get("name", ""))
+    name = canonical_product_name(product)
+    brand = str(product.get("brand") or "").strip()
+    haystack = norm(f"{brand} {name}")
     query_normalized = norm(query)
 
-    if not name:
+    if not haystack or is_non_perfume(product):
         return False
-
-    searchable = _product_search_text(product)
-
-    if not _is_set_product(product):
-        for phrase in NON_PERFUME:
-            normalized_phrase = norm(phrase)
-            if normalized_phrase and normalized_phrase in searchable:
-                return False
 
     tokens = [
         token
         for token in query_normalized.split()
         if token not in IGNORED_WORDS
     ]
+
     if not tokens:
         return False
 
-    # Se l'utente ha indicato una variante, non permettiamo che una
-    # variante diversa della stessa famiglia passi il filtro.
-    if _query_has_variant_marker(query):
-        for phrase in VARIANT_MARKERS:
-            normalized_phrase = norm(phrase)
-            if (
-                normalized_phrase
-                and normalized_phrase in name
-                and normalized_phrase not in query_normalized
-            ):
-                return False
+    return all(token in haystack for token in tokens)
 
-    return all(token in name for token in tokens)
 
 # ============================================================
 # SCRAPER
@@ -382,42 +441,17 @@ def build_search_attempts(
     query: str,
     catalog_hints: Optional[List[str]] = None,
 ) -> List[str]:
-    """Costruisce query complementari per non perdere le varianti di famiglia."""
+    """Costruisce query complementari senza fermarsi al primo risultato parziale."""
     raw = str(query or "").strip()
     normalized = norm(raw)
     attempts: List[str] = []
 
     def add(value: str) -> None:
         value = str(value or "").strip()
-        value_norm = norm(value)
-        if value_norm and value_norm not in {norm(x) for x in attempts}:
+        if value and norm(value) not in [norm(x) for x in attempts]:
             attempts.append(value)
 
     add(raw)
-
-    # Famiglie note che in passato gli scraper hanno indicizzato in modo
-    # separato. Queste query vengono aggiunte PRIMA dei normali fallback.
-    FAMILY_SEARCH_TERMS = {
-        "eros": [
-            "Eros",
-            "Eros Flame",
-            "Eros Energy",
-            "Eros Parfum",
-            "Eros Pour Femme",
-            "Eros Femme",
-        ],
-    }
-
-    if normalized in FAMILY_SEARCH_TERMS:
-        for term in FAMILY_SEARCH_TERMS[normalized]:
-            add(term)
-
-    # Il catalogo esterno può fornire altre varianti della famiglia.
-    # Usiamo il solo nome, non la coppia Brand + Nome, per non bruciare
-    # tentativi duplicati.
-    for hint in catalog_hints or []:
-        add(hint)
-
     tokens = [t for t in normalized.split() if t not in IGNORED_WORDS]
 
     if tokens:
@@ -437,9 +471,10 @@ def build_search_attempts(
     if compact != normalized:
         add(compact)
 
-    # Limite prudente: abbastanza alto per una famiglia, ma senza
-    # moltiplicare inutilmente le chiamate ai negozi.
-    return attempts[:12]
+    for hint in catalog_hints or []:
+        add(hint)
+
+    return attempts[:6]
 
 
 def run_store(
@@ -460,6 +495,13 @@ def run_store(
                 continue
             product = dict(item)
             product.setdefault("store", store)
+            product["brand"] = canonical_product_brand(product)
+            product["name"] = canonical_product_name(product)
+            product["display_name"] = (
+                f"{product.get('brand', '').strip()} - {product['name']}"
+                if str(product.get('brand') or '').strip()
+                else product['name']
+            )
             key = (
                 str(product.get("url", "")).lower(),
                 norm(product.get("name", "")),
@@ -501,23 +543,17 @@ def unique_results(
     return unique
 
 
-def sort_by_price(
+def sort_by_name(
     products: List[Dict[str, Any]],
 ) -> List[Dict[str, Any]]:
-
-    def key(product):
-        value = price_num(
-            product.get("price")
-        )
-
-        if value is None:
-            return float("inf")
-
-        return value
-
+    """Ordina rigorosamente per nome normalizzato, con tie-break deterministici."""
     return sorted(
         products,
-        key=key,
+        key=lambda product: (
+            norm(product.get("name", "")),
+            norm(product.get("brand", "")),
+            str(product.get("url", "")).lower(),
+        ),
     )
 
 
@@ -679,29 +715,17 @@ def search_perfume(q: str):
     # agli scraper quando il nome del prodotto è ambiguo o poco indicizzato.
     catalog_hints: List[str] = []
     try:
-        # Recuperiamo più risultati del catalogo e teniamo SOLO i nomi
-        # che appartengono alla famiglia cercata. In questo modo Eros può
-        # interrogare anche Eros Flame / Energy / Parfum ecc. senza sprecare
-        # tentativi con "Versace Eros", "Versace Eros Flame", ecc. duplicati.
-        catalog_items = fragella_search(query, 30)
+        catalog_items = fragella_search(query, 10)
         query_n = norm(query)
-        seen_hints = set()
-
         for item in catalog_items:
             name = str(item.get("name") or "").strip()
             brand = str(item.get("brand") or "").strip()
             if not name:
                 continue
-
             text = norm(f"{brand} {name}")
-            if query_n and not all(
-                token in text for token in query_n.split()
-            ):
-                continue
-
-            hint_n = norm(name)
-            if hint_n and hint_n not in seen_hints:
-                seen_hints.add(hint_n)
+            if query_n and all(token in text for token in query_n.split()):
+                if brand:
+                    catalog_hints.append(f"{brand} {name}")
                 catalog_hints.append(name)
     except Exception:
         catalog_hints = []
@@ -733,21 +757,7 @@ def search_perfume(q: str):
                     errors[store] = "Timeout: negozio troppo lento"
         executor.shutdown(wait=False, cancel_futures=True)
 
-    # Nome canonico + ordine alfabetico rigoroso:
-    # Brand -> nome profumo -> resto del nome -> negozio -> prezzo.
-    results = normalize_product_names(
-        unique_results(all_results)
-    )
-    results.sort(
-        key=lambda product: (
-            norm(product.get("brand", "")),
-            norm(product.get("name", "")),
-            norm(product.get("store", "")),
-            price_num(product.get("price"))
-            if price_num(product.get("price")) is not None
-            else float("inf"),
-        )
-    )
+    results = sort_by_name(unique_results(all_results))
 
     return {
         "query": query,
@@ -817,7 +827,7 @@ def fragella_search(query: str, limit: int = 10) -> List[Dict[str, Any]]:
 
     params = urlencode({
         "search": query,
-        "limit": max(1, min(int(limit), 30)),
+        "limit": max(1, min(int(limit), 10)),
     })
 
     request = Request(
@@ -917,13 +927,8 @@ def rank_catalog_suggestions(
         if tokens and not all(token in text for token in tokens):
             continue
 
-        if not _is_set_product(item):
-            suggestion_text = _product_search_text(item)
-            if any(
-                norm(phrase) in suggestion_text
-                for phrase in NON_PERFUME
-            ):
-                continue
+        if is_non_perfume(item):
+            continue
 
         key = (
             str(item.get("catalog_id") or "").strip()
@@ -1083,11 +1088,16 @@ def suggest(q: str):
                     if not name:
                         continue
 
-                    normalized_name = norm(name)
                     brand = str(
                         product.get("brand")
                         or ""
                     ).strip()
+                    product = dict(product)
+                    product["brand"] = canonical_product_brand(product)
+                    brand = product["brand"]
+                    product["name"] = canonical_product_name(product)
+                    name = product["name"]
+                    normalized_name = norm(name)
 
                     haystack = norm(
                         f"{brand} {name}"
@@ -1105,13 +1115,8 @@ def suggest(q: str):
                     ):
                         continue
 
-                    if not _is_set_product(product):
-                        suggestion_text = _product_search_text(product)
-                        if any(
-                            norm(phrase) in suggestion_text
-                            for phrase in NON_PERFUME
-                        ):
-                            continue
+                    if is_non_perfume(product):
+                        continue
 
                     key = (
                         norm(brand),
@@ -1123,9 +1128,13 @@ def suggest(q: str):
 
                     seen.add(key)
 
-                    suggestion_name = display_name(product) or name
                     suggestions.append({
-                        "name": suggestion_name,
+                        "name": name,
+                        "display_name": (
+                            f"{brand} - {name}"
+                            if brand
+                            else name
+                        ),
                         "store": product.get(
                             "store",
                             store,
