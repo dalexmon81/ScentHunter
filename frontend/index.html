@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+<<!DOCTYPE html>
 <html lang="it">
 <head>
 <meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
@@ -683,6 +683,75 @@ function shGroupData(data){
     });
   });
   (Array.isArray(data.results)?data.results:[]).forEach(o=>raw.push({...o}));
+
+  /*
+   * FILTRO PRODOTTI — dalla ricerca mostriamo solo prodotti che siano
+   * realmente profumi. Deodoranti, doccia gel, shampoo, creme, saponi,
+   * prodotti da barba ecc. non devono diventare schede.
+   *
+   * I SET restano ammessi: un set può contenere il profumo ed è quindi
+   * una voce utile della ricerca. Un set dichiaratamente composto da
+   * prodotti corpo/doccia/deodorante viene invece escluso.
+   */
+  function isNonPerfumeProduct(o){
+    const text=String([
+      o?.name,o?.brand,o?.description,o?.category,o?.type,o?.product_type,
+      o?.productType,o?.sub_category,o?.subcategory
+    ].filter(Boolean).join(" "))
+      .toLowerCase()
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g,"")
+      .replace(/[’‘]/g,"'")
+      .replace(/\s+/g," ")
+      .trim();
+
+    if(!text)return false;
+
+    const excluded=[
+      /\bdeodorant(?:e|s)?\b/,
+      /\bdeodorante\b/,
+      /\bdeodorant\s*stick\b/,
+      /\bdeostick\b/,
+      /\bdeo\s*stick\b/,
+      /\bdeo\b/,
+      /\bantiperspirant\b/,
+      /\banti[- ]?transpirant\b/,
+      /\bshower\s+gel\b/,
+      /\bgel\s+(?:douche|doccia|bain)\b/,
+      /\bdoccia\s+gel\b/,
+      /\bbody\s+wash\b/,
+      /\bbody\s+gel\b/,
+      /\bshampoo\b/,
+      /\bconditioner\b/,
+      /\bbody\s+(?:lotion|cream|creme|milk|butter)\b/,
+      /\blotion\s+corps\b/,
+      /\bcreme?\s+corps\b/,
+      /\bbody\s+moisturizer\b/,
+      /\bhand\s+(?:cream|creme|lotion)\b/,
+      /\bface\s+(?:cream|creme|lotion|wash)\b/,
+      /\bsoap\b/,
+      /\bsavon\b/,
+      /\bsapone\b/,
+      /\bshaving\b/,
+      /\bafter\s*shave\b/,
+      /\baftershave\b/,
+      /\brazor\b/,
+      /\bdemaquillant\b/,
+      /\bmake[- ]?up\b/,
+      /\blipstick\b/,
+      /\bmascara\b/,
+      /\btoothpaste\b/,
+      /\btoothbrush\b/
+    ];
+
+    return excluded.some(re=>re.test(text));
+  }
+
+  // Applichiamo il filtro SOLO ai risultati della ricerca, non alle
+  // offerte della home: qui "raw" contiene esclusivamente la ricerca.
+  const filteredRaw=raw.filter(o=>!isNonPerfumeProduct(o));
+  raw.length=0;
+  raw.push(...filteredRaw);
 
   function sizeOf(o){
     const explicit=String(o.size_ml||o.size||"").match(/(\d{1,4})/);
