@@ -348,15 +348,11 @@ const OLD_WISH_KEY="scenthunter_wishlist_v1";
 function normalizePerfumeName(v){
   return String(v||"")
     .toLowerCase()
-    // Per confronti e raggruppamenti, considera equivalenti le lettere
-    // accentate e non accentate: "Rosée" = "Rosee".
-    .normalize("NFD")
-    .replace(/[\\u0300-\\u036f]/g,"")
     // NON eliminare "parfum": può essere parte del nome/variante
     // (es. Jean Paul Gaultier Le Beau Le Parfum).
     .replace(/\b(eau de parfum|eau de toilette|edp|edt|perfume|spray|men|women|for men|for women)\b/g," ")
     .replace(/\b\d+\s*ml\b/g," ")
-    .replace(/[^a-z0-9]+/gi," ")
+    .replace(/[^a-z0-9à-ÿ]+/gi," ")
     .replace(/\s+/g," ").trim();
 }
 function perfumeKey(x){
@@ -691,88 +687,36 @@ function shGroupData(data){
     return m?m[1]:"";
   }
 
-  function splitBrandProduct(o){
-    let rawName=String(o.name||"Profumo")
-      .replace(/\b\d{1,4}\s*ml\b/gi," ")
-      .replace(/\s+/g," ").trim();
-
-    let brandRaw=String(o.brand||"").replace(/\s+/g," ").trim();
-    let brandNorm=normalizePerfumeName(brandRaw);
-    const words=rawName.split(/\s+/).filter(Boolean);
-
-    // Corregge il caso frequente in cui lo scraper restituisce "Miu"
-    // come brand mentre il nome contiene "Miu Miu ...".
-    if(brandNorm && brandNorm.split(" ").length===1 && words.length>=2){
-      const first=normalizePerfumeName(words[0]);
-      const second=normalizePerfumeName(words[1]);
-      if(first===brandNorm && second===brandNorm){
-        brandRaw=words.slice(0,2).join(" ");
-        brandNorm=normalizePerfumeName(brandRaw);
-      }
-    }
-
-    // Caso concatenato "Miumiu ..." con brand "Miu".
-    if(brandNorm && brandNorm.split(" ").length===1 && words.length){
-      const first=normalizePerfumeName(words[0]);
-      const compact=brandNorm.replace(/\s+/g,"");
-      if(first===compact && compact!==brandNorm){
-        brandRaw=words[0].replace(/([A-Za-zÀ-ÿ]+)\1/i,"$1 $1");
-        brandNorm=normalizePerfumeName(brandRaw);
-      }
-    }
-
-    // Se il nome ripete il brand all'inizio, usa il prefisso ripetuto
-    // come brand solo quando è coerente con il brand fornito.
-    if(brandNorm){
-      const rawWords=rawName.split(/\s+/).filter(Boolean);
-      const bw=brandNorm.split(" ").filter(Boolean).length;
-      const first=normalizePerfumeName(rawWords.slice(0,bw).join(" "));
-      if(first!==brandNorm && rawWords.length>=2){
-        for(let len=Math.min(4,Math.floor(rawWords.length/2));len>=2;len--){
-          const a=normalizePerfumeName(rawWords.slice(0,len).join(" "));
-          const b=normalizePerfumeName(rawWords.slice(len,len*2).join(" "));
-          if(a===b && a.startsWith(brandNorm+" ")){
-            brandRaw=rawWords.slice(0,len).join(" ");
-            brandNorm=a;
-            break;
-          }
-        }
-      }
-    }
-
-    let brand=titleCaseClean(brandRaw);
-    let nameWords=rawName.split(/\s+/).filter(Boolean);
-
-    if(brandNorm){
-      const bw=brandNorm.split(" ").filter(Boolean).length;
-      while(nameWords.length>=bw &&
-            normalizePerfumeName(nameWords.slice(0,bw).join(" "))===brandNorm){
-        nameWords=nameWords.slice(bw);
-      }
-
-      // Dopo il brand può rimanere un'ulteriore copia del primo token:
-      // "Miu Miu Miu Miutine" -> "Miu Miu" + "Miutine".
-      const brandFirst=brandNorm.split(" ")[0];
-      if(brandFirst && nameWords.length &&
-         normalizePerfumeName(nameWords[0])===brandFirst){
-        nameWords=nameWords.slice(1);
-      }
-    }
-
-    let product=titleCaseClean(nameWords.join(" ")||"Profumo")
-      .replace(/\s*[-–—]+\s*/g," ")
-      .replace(/\s+/g," ")
-      .trim();
-
-    return {brand, product};
-  }
-
   function canonicalName(o){
-    const parts=splitBrandProduct(o);
-    let n=normalizePerfumeName(parts.product||o.name||"");
+    let n=normalizePerfumeName(o.name||"").toLowerCase();
+    let brand=normalizePerfumeName(o.brand||"").toLowerCase();
+
+    // Per il raggruppamento gli accenti non devono creare nomi diversi:
+    // "rosée" e "rosee" devono essere la stessa chiave.
+    n=n.normalize("NFD").replace(/[\u0300-\u036f]/g,"");
+    brand=brand.normalize("NFD").replace(/[\u0300-\u036f]/g,"");
+
+    n=n.replace(/\b\d{1,4}\s*ml\b/gi," ");
+    n=n.replace(/\b(eau de toilette|eau de cologne|perfume|edp|edt|edc|spray|men|man|for men|for him|pour homme)\b/gi," ");
+
+    // Alcuni negozi ripetono il brand all'inizio del nome.
+    // Lo rimuoviamo tutte le volte necessarie.
+    if(brand){
+      while(n.startsWith(brand+" ")) n=n.slice(brand.length+1).trim();
+      if(n===brand) n="";
+
+      // Caso specifico dei brand composti da due token uguali,
+      // es. "Miu Miu Miu Miutine" -> "Miutine" per il raggruppamento.
+      const brandWords=brand.split(" ").filter(Boolean);
+      if(brandWords.length===2 && brandWords[0]===brandWords[1] &&
+         n.startsWith(brandWords[0]+" ")){
+        n=n.slice(brandWords[0].length+1).trim();
+      }
+    }
+
     n=n.replace(/\b(french avenue|rasasi)\b/gi," ");
     n=n.replace(/\b(by|de|unisex|x)\b/gi," ");
-    return n.replace(/\brosee\b/gi,"rose").replace(/[^a-z0-9]+/gi," ").replace(/\s+/g," ").trim();
+    return n.replace(/[^a-z0-9]+/gi," ").replace(/\s+/g," ").trim();
   }
 
   function liquidBrunFamily(o){
@@ -793,14 +737,6 @@ function shGroupData(data){
     return [...new Set(tokens)].sort().join(" ");
   }
 
-  function titleCaseClean(v){
-    return String(v||"")
-      .toLowerCase()
-      .replace(/(^|[\s\-'])([a-zà-ÿ])/gi,(m,sep,ch)=>sep+ch.toUpperCase())
-      .replace(/\s+/g," ")
-      .trim();
-  }
-
   function displayName(o){
     const lb=liquidBrunFamily(o);
     if(lb){
@@ -808,8 +744,27 @@ function shGroupData(data){
       if(lb==="liquid brun limited edition") return "Liquid Brun Limited Edition";
       return "Liquid Brun";
     }
-    const parts=splitBrandProduct(o);
-    return parts.product;
+    let n=normalizePerfumeName(o.name||"Profumo").trim();
+    n=n.replace(/\b\d{1,4}\s*ml\b/gi," ").replace(/\s+/g," ").trim();
+    const brand=normalizePerfumeName(o.brand||"").trim();
+    if(brand){
+      // Alcuni negozi possono restituire il brand ripetuto nel nome.
+      // Rimuoviamo il prefisso del brand e poi lo aggiungiamo una sola volta.
+      while(n.toLowerCase().startsWith(brand.toLowerCase()+" ")){
+        n=n.slice(brand.length).trim();
+      }
+      if(n.toLowerCase()===brand.toLowerCase()) n="";
+
+      // Caso "Miu Miu Miu Miutine": dopo aver tolto il primo "Miu Miu"
+      // resta un "Miu" spurio prima del vero nome del profumo.
+      const brandWords=brand.split(/\s+/).filter(Boolean);
+      if(brandWords.length===2 &&
+         brandWords[0].toLowerCase()===brandWords[1].toLowerCase() &&
+         n.toLowerCase().startsWith(brandWords[0].toLowerCase()+" ")){
+        n=n.slice(brandWords[0].length).trim();
+      }
+    }
+    return ((brand?brand+" ":"")+n).replace(/\s+/g," ").trim();
   }
 
   // Se esiste una sola misura esplicita per un profumo,
@@ -845,13 +800,12 @@ function shGroupData(data){
     // I formati ml sono il secondo livello.
     const key=groupName;
 
-    const parts=splitBrandProduct(o);
     if(!map.has(key)){
       map.set(key,{
-        brand:parts.brand||(/\brasasi\b/i.test(String(o.name||""))?"Rasasi":""),
-        name:parts.product,
+        brand:o.brand||(/\brasasi\b/i.test(String(o.name||""))?"Rasasi":""),
+        name:displayName(o),
         canonical:cname,
-        display_name:parts.product,
+        display_name:displayName(o),
         size_ml:"",
         concentration:o.concentration||"",
         image:o.image||o.image_url||o.thumbnail||"",
@@ -860,7 +814,7 @@ function shGroupData(data){
     }
 
     const g=map.get(key);
-    if(!g.brand && parts.brand)g.brand=parts.brand;
+    if(!g.brand && o.brand)g.brand=o.brand;
     if(!g.image)g.image=o.image||o.image_url||o.thumbnail||"";
 
     const normalizedOffer={...o};
@@ -925,14 +879,7 @@ function shGroupData(data){
       return shNum(a)-shNum(b);
     });
 
-    g.brand=titleCaseClean(g.brand||"");
-    // g.name contiene SOLO il nome del profumo; il brand viene aggiunto
-    // una sola volta nella scheda UI.
-    g.name=titleCaseClean(g.name||"")
-      .replace(/\s*[-–—]+\s*/g," ")
-      .replace(/\s+/g," ")
-      .trim();
-    g.display_name=g.name;
+    g.name=g.display_name||g.name||"Profumo";
   });
 
   return groups.filter(g=>g.offers.length);
@@ -1050,7 +997,8 @@ function showProducts(groups){
       return `<article class="product-choice" onclick='openSize(${i},${JSON.stringify(s.size)},false)'>
         <div class="result-image">${img?`<img src="${esc(img)}" alt="${esc(g.name)}" onerror="this.outerHTML='🧴'">`:"🧴"}</div>
         <div class="product-choice-main">
-          <div class="name">${esc(g.brand ? g.brand+" - "+g.name : g.name)}</div>
+          <div class="store">${esc(g.brand||"")}</div>
+          <div class="name">${esc(g.name)}</div>
           <div class="offer-meta">${esc(formatLabel(s.size))}</div>
           ${best?`<div class="bestprice">da ${esc(shPrice(best))}</div>`:`<div class="bestprice">OUT OF STOCK</div>`}
           <div class="offer-meta">${shopCount} ${shopCount===1?"negozio":"negozi"}</div>
@@ -1065,7 +1013,8 @@ function showProducts(groups){
     return `<article class="product-choice" onclick='openProduct(${i})'>
       <div class="result-image">${img?`<img src="${esc(img)}" alt="${esc(g.name)}" onerror="this.outerHTML='🧴'">`:"🧴"}</div>
       <div class="product-choice-main">
-        <div class="name">${esc(g.brand ? g.brand+" - "+g.name : g.name)}</div>
+        <div class="store">${esc(g.brand||"")}</div>
+        <div class="name">${esc(g.name)}</div>
         ${best?`<div class="bestprice">da ${esc(shPrice(best))}</div>`:`<div class="bestprice">OUT OF STOCK</div>`}
       </div>
       <div class="arrow">›</div>
