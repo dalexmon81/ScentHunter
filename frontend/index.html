@@ -699,7 +699,11 @@ function shGroupData(data){
     if(brand && n.startsWith(brand+" ")) n=n.slice(brand.length+1);
 
     // Togli soltanto parole/marche accessorie note.
-    n=n.replace(/\b(french avenue|rasasi)\b/gi," ");
+    // Elimina anche marchi/alias che alcuni negozi inseriscono nel titolo
+    // e i codici numerici prodotto (es. "Arabian Afnan ... 307342").
+    // Servono solo per il raggruppamento: il nome visualizzato resta quello corretto.
+    n=n.replace(/\b(french avenue|rasasi|afnan|arabian)\b/gi," ");
+    n=n.replace(/\b\d{4,}\b/g," ");
     n=n.replace(/\b(by|de|unisex|x)\b/gi," ");
 
     // Mantiene l'ORDINE ORIGINALE delle parole.
