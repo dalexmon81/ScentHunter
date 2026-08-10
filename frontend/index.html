@@ -733,37 +733,79 @@ function shGroupData(data){
     }
 
     let n=String(o.name||"Profumo")
-      .replace(/\b\\d{1,4}\s*ml\b/gi," ")
+      .replace(/\b\d{1,4}\s*ml\b/gi," ")
       .replace(/\s+/g," ")
       .trim();
 
-    const brandRaw=String(o.brand||"").replace(/\s+/g," ").trim();
-    const brandNorm=normalizePerfumeName(brandRaw);
-    const brand=titleCaseClean(brandRaw);
+    let brandRaw=String(o.brand||"").replace(/\s+/g," ").trim();
+    let brand=titleCaseClean(brandRaw);
+    let brandNorm=normalizePerfumeName(brandRaw);
 
-    // Alcuni negozi ripetono il brand all'inizio del nome:
-    // "Miu Miu Miu Miu L'Eau de Muguet".
-    // Rimuoviamo le ripetizioni iniziali del brand.
+    /*
+     * Alcuni scraper/negozi restituiscono il brand incompleto oppure
+     * lo ripetono più volte nel nome:
+     * "Miu Miu Miu Miu L'Eau de Muguet".
+     *
+     * Se il brand ricevuto è incompleto, cerchiamo un prefisso ripetuto
+     * all'inizio del nome e usiamo quello come brand.
+     */
+    const rawWords=n.split(/\s+/).filter(Boolean);
+    if(rawWords.length>=2){
+      const maxPrefix=Math.min(5,Math.floor(rawWords.length/2));
+      let repeatedPrefix="";
+
+      for(let len=maxPrefix;len>=1;len--){
+        const a=normalizePerfumeName(rawWords.slice(0,len).join(" "));
+        const b=normalizePerfumeName(rawWords.slice(len,len*2).join(" "));
+        if(a && a===b){
+          repeatedPrefix=rawWords.slice(0,len).join(" ");
+          break;
+        }
+      }
+
+      if(repeatedPrefix){
+        const repeatedNorm=normalizePerfumeName(repeatedPrefix);
+        const currentWords=brandNorm.split(" ").filter(Boolean);
+
+        // Sostituisce un brand ricevuto troppo corto/incompleto.
+        if(!brandNorm || repeatedNorm.startsWith(brandNorm+" ") ||
+           (currentWords.length===1 && repeatedNorm.split(" ").length>1)){
+          brandRaw=repeatedPrefix;
+          brand=titleCaseClean(repeatedPrefix);
+          brandNorm=repeatedNorm;
+        }
+      }
+    }
+
+    /*
+     * Rimuove TUTTE le ripetizioni iniziali del brand.
+     * Esempi:
+     * "Miu Miu Miu Miu L'Eau..." -> "L'Eau..."
+     * "Versace Versace Eros Flame" -> "Eros Flame"
+     */
     if(brandNorm){
       let guard=0;
-      while(guard<5){
+      while(guard<10){
         const nn=normalizePerfumeName(n);
+
         if(nn===brandNorm){
           n="";
           break;
         }
+
         if(nn.startsWith(brandNorm+" ")){
           const brandWords=brandNorm.split(" ").length;
-          const rawWords=n.split(/\s+/);
-          n=rawWords.slice(brandWords).join(" ").trim();
+          const rawWordsNow=n.split(/\s+/);
+          n=rawWordsNow.slice(brandWords).join(" ").trim();
           guard++;
           continue;
         }
+
         break;
       }
     }
 
-    return titleCaseClean(n||brand||"Profumo");
+    return titleCaseClean(n||"Profumo");
   }
 
   // Se esiste una sola misura esplicita per un profumo,
