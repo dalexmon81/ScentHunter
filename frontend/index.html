@@ -739,6 +739,10 @@ function shGroupData(data){
   raw.forEach(o=>{
     const groupName=groupingName(o);
     const size=sizeOf(o);
+    // Protezione formati Liquid Brun: solo i formati reali vengono mostrati.
+    const lb=liquidBrunFamily(o);
+    if(lb==="liquid brun" && size && size!=="100")return;
+    if(lb==="liquid brun limited edition" && size && size!=="150")return;
     if(!groupName||!size||liquidBrunFamily(o))return;
     if(!inferredSizeByGroup.has(groupName)){
       inferredSizeByGroup.set(groupName,new Set());
