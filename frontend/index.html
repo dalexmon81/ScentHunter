@@ -138,7 +138,7 @@ body{position:relative}
 </style>
 
 <style>
-.product-choice{margin-top:12px;padding:15px;border:1px solid #303238;border-radius:18px;background:#121416;display:flex;gap:13px;align-items:center;cursor:pointer;touch-action:pan-y;-webkit-tap-highlight-color:transparent}
+.product-choice{margin-top:12px;padding:15px;border:1px solid #303238;border-radius:18px;background:#121416;display:flex;gap:13px;align-items:center;cursor:pointer}
 .product-choice-main{min-width:0;flex:1}.product-choice .arrow{color:#e7b83f;font-size:28px}
 .detail-back{background:none;color:#e7b83f;padding:0 0 12px;font-size:14px;cursor:pointer}
 .offer-heart{background:none;color:#aaa;font-size:26px;cursor:pointer;padding:0 4px}.offer-heart.saved{color:#e7b83f}
@@ -906,42 +906,6 @@ function sizeOfOffer(o){
   return m?m[1]:"";
 }
 
-// Evita che uno scroll venga interpretato come tap sulla scheda,
-// senza bloccare i normali tap su iPhone/Safari.
-let cardPointerStartX=0;
-let cardPointerStartY=0;
-let cardPointerMoved=false;
-let cardPointerActive=false;
-
-document.addEventListener("pointerdown",e=>{
-  const card=e.target.closest(".product-choice");
-  if(!card)return;
-  cardPointerActive=true;
-  cardPointerMoved=false;
-  cardPointerStartX=e.clientX;
-  cardPointerStartY=e.clientY;
-},{passive:true,capture:true});
-
-document.addEventListener("pointerup",e=>{
-  if(!cardPointerActive)return;
-  cardPointerMoved=Math.hypot(e.clientX-cardPointerStartX,e.clientY-cardPointerStartY)>12;
-  cardPointerActive=false;
-},{passive:true,capture:true});
-
-document.addEventListener("pointercancel",()=>{
-  cardPointerActive=false;
-  cardPointerMoved=true;
-},{passive:true,capture:true});
-
-document.addEventListener("click",e=>{
-  if(!cardPointerMoved)return;
-  if(e.target.closest(".product-choice")){
-    e.preventDefault();
-    e.stopImmediatePropagation();
-  }
-  cardPointerMoved=false;
-},{capture:true});
-
 function showProducts(groups){
   currentProductGroups=groups;
   statusBox.textContent=groups.length
@@ -953,7 +917,11 @@ function showProducts(groups){
     const best=g.offers.find(o=>!isOfferOutOfStock(o))||null;
     const img=g.image||"";
 
-    return `<article class="product-choice" onclick="${sizes.length===1?`openSize(${i},${JSON.stringify(sizes[0].size)},false)`: `openProduct(${i})`}">
+    const cardAction = sizes.length===1
+      ? `openSize(${i},${JSON.stringify(sizes[0].size)})`
+      : `openProduct(${i})`;
+
+    return `<article class="product-choice" onclick="${cardAction}">
       <div class="result-image">${img?`<img src="${esc(img)}" alt="${esc(g.name)}" onerror="this.outerHTML='🧴'">`:"🧴"}</div>
       <div class="product-choice-main">
         <div class="store">${esc(g.brand||"")}</div>
@@ -1013,7 +981,7 @@ function openProduct(i){
   document.getElementById("searchOutput").scrollIntoView({behavior:"smooth",block:"start"});
 }
 
-function openSize(gi,sizeKey,fromFormats=true){
+function openSize(gi,sizeKey){
   const g=currentProductGroups[gi];
   if(!g)return;
 
@@ -1026,7 +994,7 @@ function openSize(gi,sizeKey,fromFormats=true){
 
   statusBox.textContent="";
   resultsBox.innerHTML=`<article class="comparison">
-    <button class="detail-back" onclick="${fromFormats?`openProduct(${gi})`:`showProducts(currentProductGroups)`}">${fromFormats?'← Torna ai formati':'← Torna ai profumi'}</button>
+    <button class="detail-back" onclick="openProduct(${gi})">← Torna ai formati</button>
     <div class="comparison-head">
       <div class="result-image">${img?`<img src="${esc(img)}" alt="${esc(g.name)}" onerror="this.outerHTML='🧴'">`:"🧴"}</div>
       <div class="result-main">
