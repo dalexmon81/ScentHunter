@@ -348,11 +348,15 @@ const OLD_WISH_KEY="scenthunter_wishlist_v1";
 function normalizePerfumeName(v){
   return String(v||"")
     .toLowerCase()
+    // Per confronti e raggruppamenti, considera equivalenti le lettere
+    // accentate e non accentate: "Rosée" = "Rosee".
+    .normalize("NFD")
+    .replace(/[\\u0300-\\u036f]/g,"")
     // NON eliminare "parfum": può essere parte del nome/variante
     // (es. Jean Paul Gaultier Le Beau Le Parfum).
     .replace(/\b(eau de parfum|eau de toilette|edp|edt|perfume|spray|men|women|for men|for women)\b/g," ")
     .replace(/\b\d+\s*ml\b/g," ")
-    .replace(/[^a-z0-9à-ÿ]+/gi," ")
+    .replace(/[^a-z0-9]+/gi," ")
     .replace(/\s+/g," ").trim();
 }
 function perfumeKey(x){
@@ -805,14 +809,19 @@ function shGroupData(data){
       }
     }
 
-    const cleanName=titleCaseClean(n||"Profumo");
+    let cleanName=titleCaseClean(n||"Profumo")
+      .replace(/\\s*-\\s*-+\\s*/g," - ")
+      .replace(/^[-–—\\s]+|[-–—\\s]+$/g,"")
+      .replace(/\\s+/g," ")
+      .trim();
 
     // Il nome visualizzato deve sempre essere:
     // Brand - Nome del profumo
-    // Manteniamo il brand anche quando è stato ricavato dal nome
-    // per correggere i risultati in cui il sito lo ripete più volte.
+    // Un solo separatore tra brand e profumo.
     if(brand){
-      return brand+" - "+cleanName;
+      return (brand+" - "+cleanName)
+        .replace(/\\s*-\\s*-+\\s*/g," - ")
+        .trim();
     }
 
     return cleanName;
