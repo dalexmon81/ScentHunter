@@ -73,6 +73,7 @@ VARIANTS = {
     "limited edition",
     "collector edition",
     "collector's edition",
+    "flame",
 }
 
 NON_PERFUME = {
