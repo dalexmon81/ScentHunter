@@ -878,7 +878,15 @@ function shGroupData(data){
       return shNum(a)-shNum(b);
     });
 
-    g.name=g.display_name||g.name||"Profumo";
+    // Il brand può arrivare solo da una delle offerte.
+    // Per questo la pulizia del nome va rifatta DOPO aver determinato
+    // il brand definitivo del gruppo: evita "Miu Miu Miu Miutine".
+    g.brand=titleCaseClean(g.brand||"");
+    g.name=displayName({
+      name:g.name||"",
+      brand:g.brand||""
+    });
+    g.display_name=g.name;
   });
 
   return groups.filter(g=>g.offers.length);
