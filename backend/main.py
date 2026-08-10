@@ -63,18 +63,17 @@ FRONTEND_INDEX = (
     / "index.html"
 )
 
-VARIANTS = {
-    "pour femme",
-    "night out",
-    "rebel",
-    "elixir",
-    "intense",
-    "extreme",
-    "limited edition",
-    "collector edition",
-    "collector's edition",
-    "flame",
+# Varianti che rendono la query specifica. Senza marker la ricerca è di famiglia.
+VARIANT_MARKERS = {
+    "pour femme", "pour homme", "femme", "homme", "flame", "night",
+    "night out", "by night", "rebel", "elixir", "intense", "extreme",
+    "limited", "limited edition", "collector", "collector edition",
+    "collector's edition", "special edition", "anniversary", "ice",
+    "blanc", "noir", "nude", "rose", "blue", "red", "black", "white",
+    "gold", "silver", "coral", "fantasy", "sport", "absolu",
+    "le parfum", "the parfum", "the most", "most wanted",
 }
+VARIANTS = VARIANT_MARKERS
 
 NON_PERFUME = {
     "gift set",
@@ -176,13 +175,19 @@ def product_image(product: Dict[str, Any]) -> str:
 # FILTRO RISULTATI
 # ============================================================
 
+def _query_has_variant_marker(query: str) -> bool:
+    q = norm(query)
+    return any(norm(marker) in q for marker in VARIANT_MARKERS)
+
+
 def matches(product: Dict[str, Any], query: str) -> bool:
     """
-    Evita risultati palesemente diversi dalla ricerca.
-
-    Esempio:
-    se si cerca "9 PM", non devono entrare automaticamente
-    "9 PM Rebel", "9 PM Elixir", ecc.
+    Query generica = famiglia:
+      Eros -> tutti gli Eros
+      9 PM -> tutti i 9 PM
+      Born in Roma -> tutte le varianti
+    Query con variante = specifica:
+      Eros Flame -> solo Eros Flame
     """
     name = norm(product.get("name", ""))
     query_normalized = norm(query)
@@ -190,38 +195,25 @@ def matches(product: Dict[str, Any], query: str) -> bool:
     if not name:
         return False
 
-    for phrase in VARIANTS:
-        normalized_phrase = norm(phrase)
-
-        if (
-            normalized_phrase in name
-            and normalized_phrase not in query_normalized
-        ):
-            return False
-
     for phrase in NON_PERFUME:
         normalized_phrase = norm(phrase)
-
-        if (
-            normalized_phrase in name
-            and normalized_phrase not in query_normalized
-        ):
+        if normalized_phrase in name and normalized_phrase not in query_normalized:
             return False
 
     tokens = [
-        token
-        for token in query_normalized.split()
+        token for token in query_normalized.split()
         if token not in IGNORED_WORDS
     ]
-
     if not tokens:
         return False
 
-    return all(
-        token in name
-        for token in tokens
-    )
+    if _query_has_variant_marker(query):
+        for phrase in VARIANT_MARKERS:
+            normalized_phrase = norm(phrase)
+            if normalized_phrase in name and normalized_phrase not in query_normalized:
+                return False
 
+    return all(token in name for token in tokens)
 
 # ============================================================
 # SCRAPER
