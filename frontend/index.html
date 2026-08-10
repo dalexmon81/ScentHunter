@@ -1309,16 +1309,64 @@ function shGroupData(data){
     g.display_name=g.brand?g.brand+" - "+g.name:g.name;
   });
 
-  // Ordine alfabetico REALE dei risultati visualizzati: prima brand, poi nome canonico.
-  // Il catalogo master stabilisce il nome corretto; qui ordiniamo invece le schede
-  // finali che l'utente vede a schermo.
+  // Ordine dei risultati visualizzati:
+  // 1) prima i veri profumi, ordinati per brand + nome canonico
+  // 2) alla fine i prodotti che NON sono profumi (deodoranti, shower gel,
+  //    body lotion, mystery box, ecc.).
+  // I set/cofanetti che contengono chiaramente un profumo restano tra i profumi.
   groups.sort((a,b)=>{
+    const aNonPerfume=isNonPerfumeProduct(a);
+    const bNonPerfume=isNonPerfumeProduct(b);
+    if(aNonPerfume!==bNonPerfume)return aNonPerfume?1:-1;
+
     const brandCmp=String(a.brand||"").localeCompare(String(b.brand||""),"it",{sensitivity:"base"});
     if(brandCmp!==0)return brandCmp;
     return String(a.name||"").localeCompare(String(b.name||""),"it",{sensitivity:"base",numeric:true});
   });
 
   return groups.filter(g=>g.offers.length);
+}
+
+function isNonPerfumeProduct(g){
+  if(!g)return false;
+
+  // Se il catalogo master ha riconosciuto la referenza, è un profumo:
+  // non lo spostiamo mai nella coda dei prodotti accessori.
+  if(g.catalog_id)return false;
+
+  const text=[
+    g.brand,g.name,g.concentration,
+    ...(g.offers||[]).map(o=>[o?.brand,o?.name,o?.category,o?.product_type,o?.productType,o?.type,o?.subcategory].filter(Boolean).join(" "))
+  ].join(" ").toLowerCase();
+
+  // Termini che identificano direttamente prodotti diversi dal profumo.
+  const nonPerfume=/(?:\bdeodorant\b|\bdeodorante\b|\bdeo\b|\bdeostick\b|\bdeo\-?stick\b|\bshower\s+gel\b|\bduschgel\b|\bduschegel\b|\bgel\s+doccia\b|\bdoccia\s+gel\b|\bbody\s+lotion\b|\blotion\b|\bbody\s+cream\b|\bcrema\s+corpo\b|\baftershave\b|\bafter\s*shave\b|\bshampoo\b|\bconditioner\b|\bsoap\b|\bsapone\b|\bbath\b|\bbagnoschiuma\b|\bbody\s+wash\b|\bhand\s+cream\b|\bhand\s+lotion\b|\bstick\b)/i.test(text);
+  if(nonPerfume)return true;
+
+  // Mystery Box/cofanetti generici senza una referenza di profumo esplicita
+  // non devono precedere i profumi veri. Un set che contiene chiaramente
+  // Eau de Parfum / Eau de Toilette / Extrait / Parfum / Perfume resta invece
+  // tra i profumi.
+  const explicitPerfume=/(?:\beau\s+de\s+parfum\b|\beau\s+de\s+toilette\b|\beau\s+de\s+cologne\b|\bextrait\s+de\s+parfum\b|\bparfum\b|\bperfume\b|\bfragrance\b)/i.test(text);
+  const mysteryBox=/(?:\bmystery\s+box\b|\bgift\s+box\b)/i.test(text);
+  const perfumeSet=/(?:\bcofanetto\b|\bgift\s+set\b|\bset\b)/i.test(text);
+
+  // Una mystery/gift box generica non è una referenza di profumo: resta in fondo,
+  // anche quando nel nome compare il nome di un profumo (es. "Mystery Box Khadlaj Island").
+  if(mysteryBox)return !explicitPerfume;
+
+  // Per i set/cofanetti, invece, conserviamo il risultato se il testo contiene
+  // una dicitura inequivocabile di profumo oppure il nome di una referenza del catalogo master.
+  if(perfumeSet){
+    if(explicitPerfume)return false;
+    const knownMaster=MASTER_CATALOG.some(p=>{
+      const mn=norm(p.name||"");
+      return mn && text.includes(mn);
+    });
+    return !knownMaster;
+  }
+
+  return false;
 }
 
 function isOfferOutOfStock(o){
