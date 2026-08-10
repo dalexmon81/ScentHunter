@@ -805,7 +805,17 @@ function shGroupData(data){
       }
     }
 
-    return titleCaseClean(n||"Profumo");
+    const cleanName=titleCaseClean(n||"Profumo");
+
+    // Il nome visualizzato deve sempre essere:
+    // Brand - Nome del profumo
+    // Manteniamo il brand anche quando è stato ricavato dal nome
+    // per correggere i risultati in cui il sito lo ripete più volte.
+    if(brand){
+      return brand+" - "+cleanName;
+    }
+
+    return cleanName;
   }
 
   // Se esiste una sola misura esplicita per un profumo,
