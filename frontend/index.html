@@ -732,20 +732,18 @@ function shGroupData(data){
     return ((brand?brand+" ":"")+n).replace(/\s+/g," ").trim();
   }
 
-  // Regola generale dei formati:
-  // un formato è considerato reale solo se è dichiarato esplicitamente
-  // nel nome di almeno un'offerta come "X ml".
-  // Il campo size_ml/size da solo non può inventare un formato.
-  const verifiedSizesByGroup=new Map();
+  // Se esiste una sola misura esplicita per un profumo,
+  // le offerte senza ml vengono assegnate a quella misura.
+  const inferredSizeByGroup=new Map();
 
   raw.forEach(o=>{
     const groupName=groupingName(o);
-    const nameMatch=String(o.name||"").match(/\b(\d{1,4})\s*ml\b/i);
-    if(!groupName||!nameMatch)return;
-    if(!verifiedSizesByGroup.has(groupName)){
-      verifiedSizesByGroup.set(groupName,new Set());
+    const size=sizeOf(o);
+    if(!groupName||!size||liquidBrunFamily(o))return;
+    if(!inferredSizeByGroup.has(groupName)){
+      inferredSizeByGroup.set(groupName,new Set());
     }
-    verifiedSizesByGroup.get(groupName).add(nameMatch[1]);
+    inferredSizeByGroup.get(groupName).add(size);
   });
 
   const map=new Map();
@@ -756,15 +754,11 @@ function shGroupData(data){
     if(!cname||!groupName)return;
 
     const explicitSize=sizeOf(o);
-    const verifiedSizes=verifiedSizesByGroup.get(groupName);
-
-    // Se il formato arriva solo da size_ml/size ma non è dichiarato
-    // nel nome di alcuna offerta dello stesso profumo, non mostrarlo.
-    if(explicitSize && (!verifiedSizes || !verifiedSizes.has(explicitSize)))return;
-
+    const lb=liquidBrunFamily(o);
+    const knownSizes=inferredSizeByGroup.get(groupName);
     const inferredSize=(
-      !explicitSize && verifiedSizes && verifiedSizes.size===1
-    ) ? [...verifiedSizes][0] : "";
+      !lb && !explicitSize && knownSizes && knownSizes.size===1
+    ) ? [...knownSizes][0] : "";
     const size=explicitSize||inferredSize;
 
     // UN SOLO GRUPPO PER PROFUMO.
@@ -927,7 +921,7 @@ function showProducts(groups){
       ? `openSize(${i},${JSON.stringify(sizes[0].size)})`
       : `openProduct(${i})`;
 
-    return `<article class="product-choice" onclick='${cardAction}'>
+    return `<article class="product-choice" onclick="${cardAction}">
       <div class="result-image">${img?`<img src="${esc(img)}" alt="${esc(g.name)}" onerror="this.outerHTML='🧴'">`:"🧴"}</div>
       <div class="product-choice-main">
         <div class="store">${esc(g.brand||"")}</div>
