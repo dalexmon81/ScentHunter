@@ -716,6 +716,14 @@ function shGroupData(data){
     return [...new Set(tokens)].sort().join(" ");
   }
 
+  function titleCaseClean(v){
+    return String(v||"")
+      .toLowerCase()
+      .replace(/(^|[\s\-'])([a-zà-ÿ])/gi,(m,sep,ch)=>sep+ch.toUpperCase())
+      .replace(/\s+/g," ")
+      .trim();
+  }
+
   function displayName(o){
     const lb=liquidBrunFamily(o);
     if(lb){
@@ -723,13 +731,39 @@ function shGroupData(data){
       if(lb==="liquid brun limited edition") return "Liquid Brun Limited Edition";
       return "Liquid Brun";
     }
-    let n=normalizePerfumeName(o.name||"Profumo").trim();
-    n=n.replace(/\b\d{1,4}\s*ml\b/gi," ").replace(/\s+/g," ").trim();
-    const brand=normalizePerfumeName(o.brand||"").trim();
-    if(brand && n.toLowerCase().startsWith(brand.toLowerCase()+" ")){
-      n=n.slice(brand.length).trim();
+
+    let n=String(o.name||"Profumo")
+      .replace(/\b\\d{1,4}\s*ml\b/gi," ")
+      .replace(/\s+/g," ")
+      .trim();
+
+    const brandRaw=String(o.brand||"").replace(/\s+/g," ").trim();
+    const brandNorm=normalizePerfumeName(brandRaw);
+    const brand=titleCaseClean(brandRaw);
+
+    // Alcuni negozi ripetono il brand all'inizio del nome:
+    // "Miu Miu Miu Miu L'Eau de Muguet".
+    // Rimuoviamo le ripetizioni iniziali del brand.
+    if(brandNorm){
+      let guard=0;
+      while(guard<5){
+        const nn=normalizePerfumeName(n);
+        if(nn===brandNorm){
+          n="";
+          break;
+        }
+        if(nn.startsWith(brandNorm+" ")){
+          const brandWords=brandNorm.split(" ").length;
+          const rawWords=n.split(/\s+/);
+          n=rawWords.slice(brandWords).join(" ").trim();
+          guard++;
+          continue;
+        }
+        break;
+      }
     }
-    return ((brand?brand+" ":"")+n).replace(/\s+/g," ").trim();
+
+    return titleCaseClean(n||brand||"Profumo");
   }
 
   // Se esiste una sola misura esplicita per un profumo,
@@ -962,8 +996,7 @@ function showProducts(groups){
       return `<article class="product-choice" onclick='openSize(${i},${JSON.stringify(s.size)},false)'>
         <div class="result-image">${img?`<img src="${esc(img)}" alt="${esc(g.name)}" onerror="this.outerHTML='🧴'">`:"🧴"}</div>
         <div class="product-choice-main">
-          <div class="store">${esc(g.brand||"")}</div>
-          <div class="name">${esc(g.name)}</div>
+          <div class="name">${esc(g.brand ? g.brand+" - "+g.name : g.name)}</div>
           <div class="offer-meta">${esc(formatLabel(s.size))}</div>
           ${best?`<div class="bestprice">da ${esc(shPrice(best))}</div>`:`<div class="bestprice">OUT OF STOCK</div>`}
           <div class="offer-meta">${shopCount} ${shopCount===1?"negozio":"negozi"}</div>
@@ -978,8 +1011,7 @@ function showProducts(groups){
     return `<article class="product-choice" onclick='openProduct(${i})'>
       <div class="result-image">${img?`<img src="${esc(img)}" alt="${esc(g.name)}" onerror="this.outerHTML='🧴'">`:"🧴"}</div>
       <div class="product-choice-main">
-        <div class="store">${esc(g.brand||"")}</div>
-        <div class="name">${esc(g.name)}</div>
+        <div class="name">${esc(g.brand ? g.brand+" - "+g.name : g.name)}</div>
         ${best?`<div class="bestprice">da ${esc(shPrice(best))}</div>`:`<div class="bestprice">OUT OF STOCK</div>`}
       </div>
       <div class="arrow">›</div>
