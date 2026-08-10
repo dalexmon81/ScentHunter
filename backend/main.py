@@ -500,7 +500,14 @@ def canonical_product_name(product: Dict[str, Any], family_query: str = "") -> s
             continue
         collapsed.append(word)
     name = " ".join(collapsed)
-    return re.sub(r"(?<=\d)(?=[A-Za-z])|(?<=[A-Za-z])(?=\d)", " ", name).strip()
+    name = re.sub(r"(?<=\d)(?=[A-Za-z])|(?<=[A-Za-z])(?=\d)", " ", name).strip()
+
+    # Canonicalizza la nomenclatura numerica Chanel anche nel NOME VISIBILE,
+    # non solo nella chiave di confronto. In questo modo "N 19" e "No. 19"
+    # non vengono mostrati come due famiglie/categorie differenti.
+    name = re.sub(r"\b(?:no\.?|n)\s*(\d+)\b", r"No. \1", name, flags=re.I)
+
+    return name
 
 
 def normalize_product(product: Dict[str, Any], family_query: str = "") -> Dict[str, Any]:
