@@ -917,12 +917,12 @@ function showProducts(groups){
     const best=g.offers.find(o=>!isOfferOutOfStock(o))||null;
     const img=g.image||"";
 
-    return `<article class="product-choice" onclick="${sizes.length===1?`openSize(${i},${JSON.stringify(sizes[0].size)},false)`: `openProduct(${i})`}">
+    return `<article class="product-choice" onclick="${sizes.length===1?`openSize(${i},${JSON.stringify(sizes[0].size)},false)`:`openProduct(${i})`}">
       <div class="result-image">${img?`<img src="${esc(img)}" alt="${esc(g.name)}" onerror="this.outerHTML='🧴'">`:"🧴"}</div>
       <div class="product-choice-main">
         <div class="store">${esc(g.brand||"")}</div>
         <div class="name">${esc(g.name)}</div>
-        <div class="offer-meta">${sizes.length} ${sizes.length===1?"formato":"formati"}</div>
+        <div class="offer-meta">${sizes.length===1?esc(formatLabel(sizes[0].size)):`${sizes.length} formati`}</div>
         ${best?`<div class="bestprice">da ${esc(shPrice(best))}</div>`:`<div class="bestprice">OUT OF STOCK</div>`}
       </div>
       <div class="arrow">›</div>
