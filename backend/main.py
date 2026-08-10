@@ -518,6 +518,36 @@ def resolve_actual_price(product: Dict[str, Any]) -> Dict[str, Any]:
     return item
 
 
+def canonicalize_product_name(name: Any) -> str:
+    """
+    Uniforma solo le denominazioni note che indicano lo stesso profumo.
+
+    Caso specifico verificato: "Supremacy In Oud De Parfum" e
+    "Supremacy In Oud" sono la stessa referenza commerciale.
+    Manteniamo invece separate tutte le altre varianti della linea Supremacy.
+    """
+    value = str(name or "").strip()
+    if not value:
+        return value
+
+    value = re.sub(
+        r"\bsupremacy\s+in\s+oud\s+de\s+parfum\b",
+        "Supremacy In Oud",
+        value,
+        flags=re.I,
+    )
+
+    return value
+
+
+def canonicalize_product(product: Dict[str, Any]) -> Dict[str, Any]:
+    """Applica la normalizzazione del nome senza alterare le altre informazioni."""
+    item = dict(product)
+    if item.get("name"):
+        item["name"] = canonicalize_product_name(item.get("name"))
+    return item
+
+
 def matches(product: Dict[str, Any], query: str) -> bool:
     """
     Match generale del prodotto.
@@ -549,17 +579,6 @@ def matches(product: Dict[str, Any], query: str) -> bool:
 
     if not query_tokens:
         query_tokens = query_all_tokens
-
-    # Per ricerche composte precise (es. "Le Beau Le Parfum"),
-    # richiediamo che il nome contenga la sequenza completa delle parole.
-    # Questo evita falsi positivi come "Optimystic Le Beau" quando si cerca
-    # "Le Beau Le Parfum", mantenendo comunque le varianti che aggiungono
-    # testo dopo il nome esatto (es. "Le Beau Le Parfum Intense").
-    if len(query_tokens) >= 2:
-        query_phrase = norm(query)
-        normalized_name = norm(product.get("name", ""))
-        if query_phrase not in normalized_name:
-            return False
 
     return bool(query_tokens) and query_tokens.issubset(name_tokens)
 
@@ -624,10 +643,25 @@ def run_store(store: str, query: str) -> List[Dict[str, Any]]:
             if key in seen:
                 continue
 
-            seen.add(key)
+            if not matches(product, query):
+                continue
 
-            if matches(product, query):
-                output.append(product)
+            # Dopo il matching normalizziamo il nome canonico.
+            # In questo modo una query come "Supremacy In Oud De Parfum"
+            # continua a trovare il prodotto, ma il frontend riceve una sola
+            # referenza per "Supremacy In Oud".
+            product = canonicalize_product(product)
+
+            key = (
+                str(product.get("url", "")).lower(),
+                norm(product.get("name", "")),
+            )
+
+            if key in seen:
+                continue
+
+            seen.add(key)
+            output.append(product)
 
     return output
 
@@ -637,9 +671,10 @@ def unique_results(products: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
     seen = set()
 
     for product in products:
+        product = canonicalize_product(product)
+
         key = (
             str(product.get("store", "")).lower(),
-            str(product.get("url", "")).lower(),
             norm(product.get("name", "")),
         )
 
