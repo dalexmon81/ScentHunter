@@ -852,6 +852,46 @@ function shGroupData(data){
 
   const knownBrandMap=new Map(KNOWN_BRANDS.map(b=>[norm(b),b]));
 
+
+  /* ============================================================
+   * CATALOGO MASTER SCENTHUNTER
+   * Fonte di verità per nome/brand delle referenze già verificate.
+   * Interviene solo su match esatti del nome canonico o di alias espliciti.
+   * ============================================================ */
+  const MASTER_CATALOG = [{"id":"SH-0001","brand":"Rasasi","name":"Hawas for Him","concentration":"","formats_ml":[],"aliases":[],"status":"da_verificare","notes":"Nome già incontrato nello storico ScentHunter; formato/alias da verificare prima dell'integrazione."},{"id":"SH-0002","brand":"Rasasi","name":"Hawas Ice","concentration":"","formats_ml":[],"aliases":[],"status":"da_verificare","notes":"Nome già incontrato nello storico ScentHunter; formato/alias da verificare prima dell'integrazione."},{"id":"SH-0003","brand":"Rasasi","name":"Hawas Kobra","concentration":"","formats_ml":[],"aliases":[],"status":"da_verificare","notes":"Nome già incontrato nello storico ScentHunter; formato/alias da verificare prima dell'integrazione."},{"id":"SH-0004","brand":"Rasasi","name":"Hawas Fire","concentration":"","formats_ml":[],"aliases":[],"status":"da_verificare","notes":"Nome già incontrato nello storico ScentHunter; formato/alias da verificare prima dell'integrazione."},{"id":"SH-0005","brand":"Rasasi","name":"Hawas Black","concentration":"","formats_ml":[],"aliases":[],"status":"da_verificare","notes":"Nome già incontrato nello storico ScentHunter; formato/alias da verificare prima dell'integrazione."},{"id":"SH-0006","brand":"Valentino","name":"Born in Roma Uomo","concentration":"","formats_ml":[],"aliases":[],"status":"da_verificare","notes":"Nome già incontrato nello storico ScentHunter; formato/alias da verificare prima dell'integrazione."},{"id":"SH-0007","brand":"Valentino","name":"Born in Roma Uomo Intense","concentration":"","formats_ml":[],"aliases":[],"status":"da_verificare","notes":"Nome già incontrato nello storico ScentHunter; formato/alias da verificare prima dell'integrazione."},{"id":"SH-0008","brand":"Valentino","name":"Born in Roma Uomo Extradose","concentration":"","formats_ml":[],"aliases":[],"status":"da_verificare","notes":"Nome già incontrato nello storico ScentHunter; formato/alias da verificare prima dell'integrazione."},{"id":"SH-0009","brand":"Valentino","name":"Born in Roma Yellow Dream Uomo","concentration":"","formats_ml":[],"aliases":[],"status":"da_verificare","notes":"Nome già incontrato nello storico ScentHunter; formato/alias da verificare prima dell'integrazione."},{"id":"SH-0010","brand":"Valentino","name":"Uomo Born in Roma Coral Fantasy","concentration":"","formats_ml":[],"aliases":[],"status":"da_verificare","notes":"Nome già incontrato nello storico ScentHunter; formato/alias da verificare prima dell'integrazione."},{"id":"SH-0011","brand":"Azzaro","name":"The Most Wanted","concentration":"","formats_ml":[],"aliases":[],"status":"da_verificare","notes":"Nome già incontrato nello storico ScentHunter; formato/alias da verificare prima dell'integrazione."},{"id":"SH-0012","brand":"Azzaro","name":"The Most Wanted Parfum","concentration":"","formats_ml":[],"aliases":[],"status":"da_verificare","notes":"Nome già incontrato nello storico ScentHunter; formato/alias da verificare prima dell'integrazione."},{"id":"SH-0013","brand":"Azzaro","name":"Wanted by Night","concentration":"","formats_ml":[],"aliases":[],"status":"da_verificare","notes":"Nome già incontrato nello storico ScentHunter; formato/alias da verificare prima dell'integrazione."},{"id":"SH-0014","brand":"Azzaro","name":"Forever Wanted Elixir","concentration":"","formats_ml":[],"aliases":[],"status":"da_verificare","notes":"Nome già incontrato nello storico ScentHunter; formato/alias da verificare prima dell'integrazione."},{"id":"SH-0015","brand":"Jean Paul Gaultier","name":"Le Male Le Parfum","concentration":"","formats_ml":[],"aliases":[],"status":"da_verificare","notes":"Nome già incontrato nello storico ScentHunter; formato/alias da verificare prima dell'integrazione."},{"id":"SH-0016","brand":"Jean Paul Gaultier","name":"Le Male Elixir","concentration":"","formats_ml":[],"aliases":[],"status":"da_verificare","notes":"Nome già incontrato nello storico ScentHunter; formato/alias da verificare prima dell'integrazione."},{"id":"SH-0017","brand":"Armaf","name":"Club de Nuit Intense Man","concentration":"","formats_ml":[],"aliases":[],"status":"da_verificare","notes":"Nome già incontrato nello storico ScentHunter; formato/alias da verificare prima dell'integrazione."},{"id":"SH-0018","brand":"Armaf","name":"Club de Nuit Precieux","concentration":"","formats_ml":[],"aliases":[],"status":"da_verificare","notes":"Nome già incontrato nello storico ScentHunter; formato/alias da verificare prima dell'integrazione."},{"id":"SH-0019","brand":"Armaf","name":"Odyssey Mandarin Sky","concentration":"","formats_ml":[],"aliases":[],"status":"da_verificare","notes":"Nome già incontrato nello storico ScentHunter; formato/alias da verificare prima dell'integrazione."},{"id":"SH-0020","brand":"Armaf","name":"Odyssey Spectra","concentration":"","formats_ml":[],"aliases":[],"status":"da_verificare","notes":"Nome già incontrato nello storico ScentHunter; formato/alias da verificare prima dell'integrazione."},{"id":"SH-0021","brand":"Armaf","name":"Odyssey Artisto Red","concentration":"","formats_ml":[],"aliases":[],"status":"da_verificare","notes":"Nome già incontrato nello storico ScentHunter; formato/alias da verificare prima dell'integrazione."},{"id":"SH-0022","brand":"Afnan","name":"9PM","concentration":"","formats_ml":[],"aliases":[],"status":"da_verificare","notes":"Nome già incontrato nello storico ScentHunter; formato/alias da verificare prima dell'integrazione."},{"id":"SH-0023","brand":"Afnan","name":"9PM Rebel","concentration":"","formats_ml":[],"aliases":[],"status":"da_verificare","notes":"Nome già incontrato nello storico ScentHunter; formato/alias da verificare prima dell'integrazione."},{"id":"SH-0024","brand":"Afnan","name":"9PM Elixir","concentration":"","formats_ml":[],"aliases":[],"status":"da_verificare","notes":"Nome già incontrato nello storico ScentHunter; formato/alias da verificare prima dell'integrazione."},{"id":"SH-0025","brand":"Afnan","name":"9PM Night Out","concentration":"","formats_ml":[],"aliases":[],"status":"da_verificare","notes":"Nome già incontrato nello storico ScentHunter; formato/alias da verificare prima dell'integrazione."},{"id":"SH-0026","brand":"Afnan","name":"Supremacy Collector's Edition","concentration":"","formats_ml":[],"aliases":[],"status":"da_verificare","notes":"Nome già incontrato nello storico ScentHunter; formato/alias da verificare prima dell'integrazione."},{"id":"SH-0027","brand":"Afnan","name":"Supremacy in Heaven","concentration":"","formats_ml":[],"aliases":[],"status":"da_verificare","notes":"Nome già incontrato nello storico ScentHunter; formato/alias da verificare prima dell'integrazione."},{"id":"SH-0028","brand":"Lattafa","name":"Asad Bourbon","concentration":"","formats_ml":[],"aliases":[],"status":"da_verificare","notes":"Nome già incontrato nello storico ScentHunter; formato/alias da verificare prima dell'integrazione."},{"id":"SH-0029","brand":"Lattafa","name":"Nebras","concentration":"","formats_ml":[],"aliases":[],"status":"da_verificare","notes":"Nome già incontrato nello storico ScentHunter; formato/alias da verificare prima dell'integrazione."},{"id":"SH-0030","brand":"French Avenue","name":"Liquid Brun","concentration":"","formats_ml":[100],"aliases":["Liquid Brun French Avenue","French Avenue Liquid Brun"],"status":"verificato_formato","notes":"Nome già incontrato nello storico ScentHunter; formato/alias da verificare prima dell'integrazione."},{"id":"SH-0031","brand":"French Avenue","name":"Liquid Brun Limited Edition","concentration":"","formats_ml":[150],"aliases":["Liquid Brun Limited Edition","French Avenue Liquid Brun Limited Edition"],"status":"verificato_formato","notes":"Nome già incontrato nello storico ScentHunter; formato/alias da verificare prima dell'integrazione."},{"id":"SH-0032","brand":"Dumont","name":"Nitro Red","concentration":"","formats_ml":[],"aliases":[],"status":"da_verificare","notes":"Nome già incontrato nello storico ScentHunter; formato/alias da verificare prima dell'integrazione."},{"id":"SH-0033","brand":"Ahmed Al Maghribi","name":"Kaaf","concentration":"","formats_ml":[],"aliases":[],"status":"da_verificare","notes":"Nome già incontrato nello storico ScentHunter; formato/alias da verificare prima dell'integrazione."},{"id":"SH-0034","brand":"Rue Broca","name":"Theoreme Homme","concentration":"","formats_ml":[],"aliases":[],"status":"da_verificare","notes":"Nome già incontrato nello storico ScentHunter; formato/alias da verificare prima dell'integrazione."},{"id":"SH-0035","brand":"Afnan","name":"Turathi Blue","concentration":"","formats_ml":[90],"aliases":["Afnan Turathi Blue","Afnan - Turathi Blue","Turathi Blue By Afnan"],"status":"verificato_formato","notes":"Nome già incontrato nello storico ScentHunter; formato/alias da verificare prima dell'integrazione."},{"id":"SH-0036","brand":"Maison Alhambra","name":"Jean Lowe Immortal","concentration":"","formats_ml":[],"aliases":[],"status":"da_verificare","notes":"Nome già incontrato nello storico ScentHunter; formato/alias da verificare prima dell'integrazione."},{"id":"SH-0037","brand":"Creed","name":"Aventus","concentration":"","formats_ml":[],"aliases":[],"status":"da_verificare","notes":"Nome già incontrato nello storico ScentHunter; formato/alias da verificare prima dell'integrazione."},{"id":"SH-0038","brand":"Creed","name":"Green Irish Tweed","concentration":"","formats_ml":[],"aliases":[],"status":"da_verificare","notes":"Nome già incontrato nello storico ScentHunter; formato/alias da verificare prima dell'integrazione."},{"id":"SH-0039","brand":"Dior","name":"Sauvage","concentration":"","formats_ml":[],"aliases":[],"status":"da_verificare","notes":"Nome già incontrato nello storico ScentHunter; formato/alias da verificare prima dell'integrazione."},{"id":"SH-0040","brand":"Dior","name":"Sauvage Elixir","concentration":"","formats_ml":[],"aliases":[],"status":"da_verificare","notes":"Nome già incontrato nello storico ScentHunter; formato/alias da verificare prima dell'integrazione."},{"id":"SH-0041","brand":"Chanel","name":"Bleu de Chanel","concentration":"","formats_ml":[],"aliases":[],"status":"da_verificare","notes":"Nome già incontrato nello storico ScentHunter; formato/alias da verificare prima dell'integrazione."},{"id":"SH-0042","brand":"Yves Saint Laurent","name":"Y Eau de Parfum","concentration":"","formats_ml":[],"aliases":[],"status":"da_verificare","notes":"Nome già incontrato nello storico ScentHunter; formato/alias da verificare prima dell'integrazione."},{"id":"SH-0043","brand":"Giorgio Armani","name":"Acqua di Gio Profondo","concentration":"","formats_ml":[],"aliases":[],"status":"da_verificare","notes":"Nome già incontrato nello storico ScentHunter; formato/alias da verificare prima dell'integrazione."},{"id":"SH-0044","brand":"Giorgio Armani","name":"Stronger With You Intensely","concentration":"","formats_ml":[],"aliases":[],"status":"da_verificare","notes":"Nome già incontrato nello storico ScentHunter; formato/alias da verificare prima dell'integrazione."},{"id":"SH-0045","brand":"Versace","name":"Eros","concentration":"","formats_ml":[50,100,200],"aliases":["Versace Eros","Versace - Eros"],"status":"verificato_formati","notes":"Nome già incontrato nello storico ScentHunter; formato/alias da verificare prima dell'integrazione."},{"id":"SH-0046","brand":"Versace","name":"Eros Flame","concentration":"","formats_ml":[50,100],"aliases":["Versace Eros Flame","Versace - Eros Flame"],"status":"verificato_formati","notes":"Nome già incontrato nello storico ScentHunter; formato/alias da verificare prima dell'integrazione."},{"id":"SH-0047","brand":"Versace","name":"Dylan Blue","concentration":"","formats_ml":[],"aliases":[],"status":"da_verificare","notes":"Nome già incontrato nello storico ScentHunter; formato/alias da verificare prima dell'integrazione."},{"id":"SH-0048","brand":"Prada","name":"Luna Rossa Carbon","concentration":"","formats_ml":[],"aliases":[],"status":"da_verificare","notes":"Nome già incontrato nello storico ScentHunter; formato/alias da verificare prima dell'integrazione."},{"id":"SH-0049","brand":"Prada","name":"Luna Rossa Ocean","concentration":"","formats_ml":[],"aliases":[],"status":"da_verificare","notes":"Nome già incontrato nello storico ScentHunter; formato/alias da verificare prima dell'integrazione."},{"id":"SH-0050","brand":"Givenchy","name":"Gentleman Society","concentration":"","formats_ml":[],"aliases":[],"status":"da_verificare","notes":"Nome già incontrato nello storico ScentHunter; formato/alias da verificare prima dell'integrazione."},{"id":"SH-0051","brand":"Givenchy","name":"Gentleman Reserve Privee","concentration":"","formats_ml":[],"aliases":[],"status":"da_verificare","notes":"Nome già incontrato nello storico ScentHunter; formato/alias da verificare prima dell'integrazione."},{"id":"SH-0052","brand":"Lancôme","name":"La Vie Est Belle","concentration":"","formats_ml":[],"aliases":[],"status":"da_verificare","notes":"Nome già incontrato nello storico ScentHunter; formato/alias da verificare prima dell'integrazione."},{"id":"SH-0053","brand":"Lancôme","name":"Idôle","concentration":"","formats_ml":[],"aliases":[],"status":"da_verificare","notes":"Nome già incontrato nello storico ScentHunter; formato/alias da verificare prima dell'integrazione."},{"id":"SH-0054","brand":"Khadlaj","name":"Island","concentration":"","formats_ml":[100],"aliases":["Island By Khadlaj","Island By Khadlaj - Extrait De Parfum","Island By Khadlaj Extrait de Parfum","Island Khadlaj","Island Parfum Khadlaj","Khadlaj - Island","Khadlaj - Island Extrait de Parfum","Khadlaj - Island Parfum","Khadlaj Island","Khadlaj Island Extrait de Parfum","Khadlaj Island Parfum"],"status":"verificato_nome_e_formato","notes":"Nome già incontrato nello storico ScentHunter; formato/alias da verificare prima dell'integrazione.","catalog_note":"Referenza confermata: Khadlaj Island. Le diciture Island, Island Parfum e Island Extrait de Parfum sono trattate come lo stesso profumo. Set/cofanetti esclusi."},{"id":"SH-0055","brand":"Khadlaj","name":"Island Dreams","concentration":"Extrait de Parfum","formats_ml":[100],"aliases":["Khadlaj Island Dreams","Island Dreams Khadlaj","Island Dreams By Khadlaj","Khadlaj - Island Dreams","Khadlaj - Island Dreams Extrait De Parfum"],"status":"verificato_nome_e_formato","notes":"Nome già incontrato nello storico ScentHunter; formato/alias da verificare prima dell'integrazione."},{"id":"SH-0056","brand":"Khadlaj","name":"Island Vanilla Dunes","concentration":"Extrait de Parfum","formats_ml":[100],"aliases":["Khadlaj Island Vanilla Dunes","Island Vanilla Dunes Khadlaj","Khadlaj - Island Vanilla Dunes","Khadlaj - Island Vanilla Dunes Extrait De Parfum"],"status":"verificato_nome_e_formato","notes":"Nome già incontrato nello storico ScentHunter; formato/alias da verificare prima dell'integrazione."},{"id":"SH-0057","brand":"Miu Miu","name":"Miutine","concentration":"","formats_ml":[],"aliases":[],"status":"da_verificare","notes":"Nome già incontrato nello storico ScentHunter; formato/alias da verificare prima dell'integrazione."},{"id":"SH-0058","brand":"Miu Miu","name":"L'Eau Rosée","concentration":"","formats_ml":[],"aliases":[],"status":"da_verificare","notes":"Nome già incontrato nello storico ScentHunter; formato/alias da verificare prima dell'integrazione."},{"id":"SH-0059","brand":"Afnan","name":"Turathi Red","concentration":"","formats_ml":[90],"aliases":["Afnan Turathi Red","Afnan - Turathi Red","Turathi Red By Afnan"],"status":"verificato_formato","notes":"Nome già incontrato nello storico ScentHunter; formato/alias da verificare prima dell'integrazione."},{"id":"SH-0060","brand":"Afnan","name":"Turathi Brown","concentration":"","formats_ml":[90],"aliases":["Afnan Turathi Brown","Afnan - Turathi Brown","Turathi Brown By Afnan"],"status":"verificato_formato","notes":"Nome già incontrato nello storico ScentHunter; formato/alias da verificare prima dell'integrazione."},{"id":"SH-0061","brand":"Afnan","name":"Turathi Electric","concentration":"","formats_ml":[90],"aliases":["Afnan Turathi Electric","Afnan - Turathi Electric","Turathi Electric By Afnan"],"status":"verificato_formato","notes":"Nome già incontrato nello storico ScentHunter; formato/alias da verificare prima dell'integrazione."},{"id":"SH-0062","brand":"Royal Blend","name":"Sequoia","concentration":"","formats_ml":[],"aliases":[],"status":"da_verificare","notes":"Nome già incontrato nello storico ScentHunter; formato/alias da verificare prima dell'integrazione."},{"id":"SH-0063","brand":"Rahyaan","name":"Wolf","concentration":"","formats_ml":[],"aliases":[],"status":"da_verificare","notes":"Nome già incontrato nello storico ScentHunter; formato/alias da verificare prima dell'integrazione."},{"id":"SH-0064","brand":"Rahyaan","name":"Valhalla","concentration":"","formats_ml":[],"aliases":[],"status":"da_verificare","notes":"Nome già incontrato nello storico ScentHunter; formato/alias da verificare prima dell'integrazione."},{"id":"SH-0065","brand":"Odyssey","name":"Art of Universe","concentration":"","formats_ml":[],"aliases":[],"status":"da_verificare","notes":"Nome già incontrato nello storico ScentHunter; formato/alias da verificare prima dell'integrazione."},{"id":"SH-0066","brand":"Odyssey","name":"Aquatica","concentration":"","formats_ml":[],"aliases":[],"status":"da_verificare","notes":"Nome già incontrato nello storico ScentHunter; formato/alias da verificare prima dell'integrazione."}];
+  const MASTER_CATALOG_INDEX = new Map();
+
+  MASTER_CATALOG.forEach(p=>{
+    const name=norm(p.name||"");
+    if(!name)return;
+    const candidates=[
+      name,
+      norm(`${p.brand||""} ${p.name||""}`),
+      ...(Array.isArray(p.aliases)?p.aliases.map(a=>norm(a)):[])
+    ].filter(Boolean);
+    candidates.forEach(c=>{
+      const old=MASTER_CATALOG_INDEX.get(c);
+      if(!old)MASTER_CATALOG_INDEX.set(c,p);
+      else if(old.id!==p.id)MASTER_CATALOG_INDEX.set(c,{ambiguous:true});
+    });
+  });
+
+  function resolveMasterProduct(brand,name){
+    const brandN=norm(brand);
+    const nameN=norm(name);
+    if(!nameN)return null;
+    const fullN=norm(`${brand||""} ${name||""}`);
+    for(const candidate of [fullN,nameN]){
+      if(!candidate)continue;
+      const hit=MASTER_CATALOG_INDEX.get(candidate);
+      if(!hit || hit.ambiguous)continue;
+      const catalogBrand=norm(hit.brand||"");
+      if(candidate===norm(`${hit.brand||""} ${hit.name||""}`))return hit;
+      if(brandN && catalogBrand===brandN)return hit;
+    }
+    return null;
+  }
+
   function cleanBrandText(v){
     return String(v||"").replace(/\s+/g," ").trim();
   }
@@ -1067,10 +1107,50 @@ function shGroupData(data){
   }
 
   function productIdentity(o){
+    // Primo tentativo: il dato originale dello scraper. Questo permette
+    // al catalogo di conservare nomi canonici che la pulizia commerciale
+    // potrebbe altrimenti accorciare (es. "Hawas for Him").
+    const rawBrand=cleanBrandText(o.brand);
+    const rawName=cleanBrandText(o.name);
+    const directMaster=resolveMasterProduct(rawBrand,rawName);
+    if(directMaster){
+      return {
+        brand:directMaster.brand||rawBrand,
+        name:directMaster.name||rawName,
+        key:norm(directMaster.brand||rawBrand)+"|"+norm(directMaster.name||rawName),
+        catalog_id:directMaster.id||""
+      };
+    }
+
     const lb=liquidBrunFamily(o);
-    if(lb)return {brand:"",name:pretty(lb),key:lb};
+    if(lb){
+      const detectedBrand=findBrand(o);
+      const masterLiquid=resolveMasterProduct(detectedBrand,pretty(lb));
+      if(masterLiquid){
+        return {
+          brand:masterLiquid.brand||detectedBrand,
+          name:masterLiquid.name||pretty(lb),
+          key:norm(masterLiquid.brand||detectedBrand)+"|"+norm(masterLiquid.name||pretty(lb)),
+          catalog_id:masterLiquid.id||""
+        };
+      }
+      return {brand:detectedBrand,name:pretty(lb),key:norm(detectedBrand)+"|"+lb};
+    }
     const brand=findBrand(o);
-    const name=cleanProductName(o,brand);
+    let name=cleanProductName(o,brand);
+
+    // Catalogo master: se il nome/alias e il brand corrispondono
+    // esattamente a una referenza verificata, usiamo il nome canonico.
+    const master=resolveMasterProduct(brand,name);
+    if(master){
+      return {
+        brand:master.brand||brand,
+        name:master.name||name,
+        key:norm(master.brand||brand)+"|"+norm(master.name||name),
+        catalog_id:master.id||""
+      };
+    }
+
     const key=(norm(brand)+"|"+norm(name)).replace(/\|+$/g,"");
     return {brand,name,key};
   }
@@ -1142,6 +1222,7 @@ function shGroupData(data){
         name:id.name,
         canonical:norm(id.name),
         display_name:id.brand?id.brand+" - "+id.name:id.name,
+        catalog_id:id.catalog_id||"",
         size_ml:"",
         concentration:o.concentration||"",
         image:o.image||o.image_url||o.thumbnail||"",
@@ -1151,11 +1232,13 @@ function shGroupData(data){
 
     const g=map.get(id.key);
     if(!g.brand&&id.brand)g.brand=id.brand;
+    if(!g.catalog_id&&id.catalog_id)g.catalog_id=id.catalog_id;
     if(!g.image)g.image=o.image||o.image_url||o.thumbnail||"";
 
     const normalizedOffer={...o};
     if(id.brand)normalizedOffer.brand=id.brand;
     if(id.name)normalizedOffer.name=id.name;
+    if(id.catalog_id)normalizedOffer.catalog_id=id.catalog_id;
     if(size)normalizedOffer.size_ml=size;
 
     const store=String(o.store||"").trim().toLowerCase();
@@ -1212,6 +1295,17 @@ function shGroupData(data){
 
     g.brand=pretty(g.brand||"");
     g.name=pretty(g.name||"Profumo");
+
+    // Se il gruppo appartiene al catalogo master, ripristiniamo
+    // esattamente la grafia canonica (maiuscole/minuscole comprese).
+    if(g.catalog_id){
+      const master=MASTER_CATALOG.find(p=>p.id===g.catalog_id);
+      if(master){
+        g.brand=master.brand||g.brand;
+        g.name=master.name||g.name;
+      }
+    }
+
     g.display_name=g.brand?g.brand+" - "+g.name:g.name;
   });
 
