@@ -136,6 +136,12 @@ def norm(value: Any) -> str:
         value,
     )
 
+    # Uniforma le diverse grafie della numerazione Chanel e simili:
+    # "N 19", "N° 19", "No. 19", "No 19" -> "no 19".
+    # In questo modo la stessa famiglia non viene spezzata in gruppi
+    # diversi solo per la nomenclatura usata dallo store.
+    value = re.sub(r"\b(?:no|n)\s*(?=\d)", "no ", value)
+
     return re.sub(
         r"\s+",
         " ",
