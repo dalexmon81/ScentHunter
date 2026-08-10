@@ -194,28 +194,33 @@ NON_PERFUME = {
     # Deodoranti / antitraspiranti
     "deodorant", "deodorante", "deodorants", "deodorantes", "déodorant",
     "deo", "deo spray", "deo stick", "deostick", "deodorant stick",
-    "antiperspirant", "antitranspirant", "anti transpirant",
-    # Capelli / doccia / bagno
-    "shampoo", "conditioner", "hair conditioner", "hair care", "hair",
-    "shower gel", "gel douche", "gel doccia", "doccia gel", "shower",
-    "body wash", "body gel", "bath", "bath gel", "bath oil",
-    "bagnoschiuma", "bagno schiuma", "douche",
-    # Creme / lozioni / trattamenti corpo-viso-mani
+    "deodorant spray", "deodorant roll on", "antiperspirant",
+    "antitranspirant", "anti transpirant", "anti-transpirant",
+    # Doccia / bagno / capelli (incluse le forme tedesche)
+    "shampoo", "shampo", "conditioner", "hair conditioner", "hair care",
+    "hair", "shower gel", "showergel", "gel douche", "gel doccia",
+    "doccia gel", "duschgel", "dusch gel", "duschbad", "dusch bad",
+    "shower", "body wash", "body gel", "bath", "bath gel", "bath oil",
+    "bagnoschiuma", "bagno schiuma", "douche", "gel da bagno",
+    # Creme / lozioni / trattamenti corpo-viso-mani (incluse forme tedesche)
     "body lotion", "body cream", "body creme", "body butter", "body milk",
-    "body moisturizer", "body moisturiser", "body balm", "body butter", "body mist",
+    "body moisturizer", "body moisturiser", "body balm", "body mist",
     "hair mist", "face mist", "fragrance mist", "body splash",
     "hand cream", "hand creme", "hand lotion", "face cream", "face creme",
     "face lotion", "face wash", "facial cream", "facial lotion",
     "cream", "creme", "crème", "crema", "creme hydratante",
     "lotion", "lozione", "locion", "lotion corps", "moisturizer",
     "moisturiser", "emulsion", "émulsion", "emulsione", "serum", "siero",
-    "balsam", "balm", "baume",
+    "balsam", "balm", "baume", "körperlotion", "körper lotion",
+    "körpercreme", "körper creme", "gesichtscreme", "gesicht creme",
+    "handcreme", "haarshampoo",
     # Oli
     "body oil", "oil", "huile", "olio", "fragrance oil", "perfume oil",
-    "essential oil", "huile essentielle",
+    "essential oil", "huile essentielle", "körperöl", "körper öl",
     # Saponi / barba / igiene
-    "soap", "savon", "sapone", "shaving", "shave", "after shave",
-    "aftershave", "beard", "barba", "razor", "roll on", "roll-on",
+    "soap", "savon", "sapone", "seife", "shaving", "shave",
+    "after shave", "aftershave", "beard", "barba", "rasage", "razor",
+    "roll on", "roll-on", "rasier",
     # Altri cosmetici / casa
     "candle", "diffuser", "room spray", "home fragrance", "fabric spray",
     "scrub", "cleanser", "mask", "toothpaste", "toothbrush", "detergent",
@@ -424,13 +429,32 @@ def _query_has_variant_marker(query: str) -> bool:
     return any(norm(marker) in q for marker in VARIANT_MARKERS if norm(marker))
 
 
+def _contains_term(text: str, phrase: str) -> bool:
+    """
+    Cerca una parola/frase come termine reale, non come semplice sottostringa.
+    Evita falsi positivi mentre intercetta anche forme come Duschgel/Deostick.
+    """
+    text_n = norm(text)
+    phrase_n = norm(phrase)
+    if not text_n or not phrase_n:
+        return False
+    return bool(re.search(r"(?<![a-z0-9])" + re.escape(phrase_n) + r"(?![a-z0-9])", text_n))
+
+
 def _is_set_product(product: Dict[str, Any]) -> bool:
-    text = norm(" ".join(str(product.get(field) or "") for field in ("name", "title", "product_name", "description", "category", "type", "product_type")))
-    return any(norm(marker) in text for marker in SET_PRODUCTS)
+    # Per riconoscere un set guardiamo il titolo/tipo del prodotto, non la
+    # descrizione commerciale: una descrizione di un profumo può citare un set.
+    fields = ("name", "title", "product_name", "category", "type", "product_type")
+    text = norm(" ".join(str(product.get(field) or "") for field in fields))
+    return any(_contains_term(text, marker) for marker in SET_PRODUCTS)
 
 
 def _product_search_text(product: Dict[str, Any]) -> str:
-    return norm(" ".join(str(product.get(field) or "") for field in ("name", "title", "product_name", "description", "category", "type", "product_type")))
+    fields = (
+        "name", "title", "product_name", "description",
+        "category", "type", "product_type", "sub_category", "subcategory"
+    )
+    return norm(" ".join(str(product.get(field) or "") for field in fields))
 
 
 def is_non_perfume(product: Dict[str, Any]) -> bool:
@@ -439,7 +463,7 @@ def is_non_perfume(product: Dict[str, Any]) -> bool:
     text = _product_search_text(product)
     if not text:
         return True
-    return any(norm(phrase) in text for phrase in NON_PERFUME if norm(phrase))
+    return any(_contains_term(text, phrase) for phrase in NON_PERFUME if norm(phrase))
 
 
 def matches(product: Dict[str, Any], query: str) -> bool:
@@ -965,10 +989,7 @@ def rank_catalog_suggestions(
         if tokens and not all(token in text for token in tokens):
             continue
 
-        if any(
-            norm(phrase) in name_n
-            for phrase in NON_PERFUME
-        ):
+        if any(_contains_term(name_n, phrase) for phrase in NON_PERFUME):
             continue
 
         key = (
