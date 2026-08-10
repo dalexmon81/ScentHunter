@@ -520,24 +520,13 @@ def resolve_actual_price(product: Dict[str, Any]) -> Dict[str, Any]:
 
 def canonicalize_product_name(name: Any) -> str:
     """
-    Uniforma solo le denominazioni note che indicano lo stesso profumo.
+    Non alterare la denominazione fornita dallo scraper.
 
-    Caso specifico verificato: "Supremacy In Oud De Parfum" e
-    "Supremacy In Oud" sono la stessa referenza commerciale.
-    Manteniamo invece separate tutte le altre varianti della linea Supremacy.
+    La concentrazione o una dicitura commerciale come "De Parfum" non deve
+    essere rimossa dal nome del negozio: il raggruppamento delle referenze
+    deve essere gestito separatamente e non modificando il testo originale.
     """
-    value = str(name or "").strip()
-    if not value:
-        return value
-
-    value = re.sub(
-        r"\bsupremacy\s+in\s+oud\s+de\s+parfum\b",
-        "Supremacy In Oud",
-        value,
-        flags=re.I,
-    )
-
-    return value
+    return str(name or "").strip()
 
 
 def canonicalize_product(product: Dict[str, Any]) -> Dict[str, Any]:
@@ -646,10 +635,8 @@ def run_store(store: str, query: str) -> List[Dict[str, Any]]:
             if not matches(product, query):
                 continue
 
-            # Dopo il matching normalizziamo il nome canonico.
-            # In questo modo una query come "Supremacy In Oud De Parfum"
-            # continua a trovare il prodotto, ma il frontend riceve una sola
-            # referenza per "Supremacy In Oud".
+            # Dopo il matching manteniamo la denominazione originale dello scraper.
+            # Non alteriamo concentrazione o diciture commerciali nel nome.
             product = canonicalize_product(product)
 
             key = (
