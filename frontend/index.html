@@ -858,16 +858,31 @@ function shGroupData(data){
       .replace(/\s+/g," ")
       .trim();
 
-    /* Togliamo prima "By BRAND", così non può restare nel nome. */
+    /*
+     * "By BRAND" è una provenienza commerciale, NON una parte del nome.
+     * Lo togliamo in modo volutamente robusto: prima dal testo originale,
+     * poi di nuovo dopo la normalizzazione. Così casi come
+     * "Turathi Purple By Afnan" e "Turathi Purple ()" non generano
+     * prodotti separati.
+     */
     if(brand){
+      const brandRaw=cleanBrandText(brand).replace(/[.*+?^${}()|[\]\\]/g,"\\$&");
+      n=n.replace(new RegExp("\\s+by\\s+"+brandRaw+"\\s*$","i")," ").trim();
       const brandNorm=norm(brand);
       if(brandNorm){
-        const byRe=new RegExp("\\s+by\\s+"+brandNorm.replace(/[.*+?^${}()|[\]\\]/g,"\\$&")+"\\s*$","i");
-        n=n.replace(byRe," ").trim();
+        const brandWords=brandNorm.split(/\s+/).map(w=>w.replace(/[.*+?^${}()|[\]\\]/g,"\\$&")).join("\\s+");
+        n=n.replace(new RegExp("\\s+by\\s+"+brandWords+"\\s*$","i")," ").trim();
       }
     }else{
       n=n.replace(/\s+by\s+[^|,;]+$/i," ").trim();
     }
+
+    /* Eliminiamo residui commerciali evidenti lasciati dai negozi. */
+    n=n
+      .replace(/\(\s*\)/g," ")
+      .replace(/\((?:man|woman|men|women|homme|femme|unisex)\)/gi," ")
+      .replace(/\s+/g," ")
+      .trim();
 
     /* Togliamo il brand iniziale, anche se compare più volte. */
     n=removeBrandFromStart(n,brand);
