@@ -691,17 +691,88 @@ function shGroupData(data){
     return m?m[1]:"";
   }
 
+  function splitBrandProduct(o){
+    let rawName=String(o.name||"Profumo")
+      .replace(/\b\d{1,4}\s*ml\b/gi," ")
+      .replace(/\s+/g," ").trim();
+
+    let brandRaw=String(o.brand||"").replace(/\s+/g," ").trim();
+    let brandNorm=normalizePerfumeName(brandRaw);
+    const words=rawName.split(/\s+/).filter(Boolean);
+
+    // Corregge il caso frequente in cui lo scraper restituisce "Miu"
+    // come brand mentre il nome contiene "Miu Miu ...".
+    if(brandNorm && brandNorm.split(" ").length===1 && words.length>=2){
+      const first=normalizePerfumeName(words[0]);
+      const second=normalizePerfumeName(words[1]);
+      if(first===brandNorm && second===brandNorm){
+        brandRaw=words.slice(0,2).join(" ");
+        brandNorm=normalizePerfumeName(brandRaw);
+      }
+    }
+
+    // Caso concatenato "Miumiu ..." con brand "Miu".
+    if(brandNorm && brandNorm.split(" ").length===1 && words.length){
+      const first=normalizePerfumeName(words[0]);
+      const compact=brandNorm.replace(/\s+/g,"");
+      if(first===compact && compact!==brandNorm){
+        brandRaw=words[0].replace(/([A-Za-zÀ-ÿ]+)\1/i,"$1 $1");
+        brandNorm=normalizePerfumeName(brandRaw);
+      }
+    }
+
+    // Se il nome ripete il brand all'inizio, usa il prefisso ripetuto
+    // come brand solo quando è coerente con il brand fornito.
+    if(brandNorm){
+      const rawWords=rawName.split(/\s+/).filter(Boolean);
+      const bw=brandNorm.split(" ").filter(Boolean).length;
+      const first=normalizePerfumeName(rawWords.slice(0,bw).join(" "));
+      if(first!==brandNorm && rawWords.length>=2){
+        for(let len=Math.min(4,Math.floor(rawWords.length/2));len>=2;len--){
+          const a=normalizePerfumeName(rawWords.slice(0,len).join(" "));
+          const b=normalizePerfumeName(rawWords.slice(len,len*2).join(" "));
+          if(a===b && a.startsWith(brandNorm+" ")){
+            brandRaw=rawWords.slice(0,len).join(" ");
+            brandNorm=a;
+            break;
+          }
+        }
+      }
+    }
+
+    let brand=titleCaseClean(brandRaw);
+    let nameWords=rawName.split(/\s+/).filter(Boolean);
+
+    if(brandNorm){
+      const bw=brandNorm.split(" ").filter(Boolean).length;
+      while(nameWords.length>=bw &&
+            normalizePerfumeName(nameWords.slice(0,bw).join(" "))===brandNorm){
+        nameWords=nameWords.slice(bw);
+      }
+
+      // Dopo il brand può rimanere un'ulteriore copia del primo token:
+      // "Miu Miu Miu Miutine" -> "Miu Miu" + "Miutine".
+      const brandFirst=brandNorm.split(" ")[0];
+      if(brandFirst && nameWords.length &&
+         normalizePerfumeName(nameWords[0])===brandFirst){
+        nameWords=nameWords.slice(1);
+      }
+    }
+
+    let product=titleCaseClean(nameWords.join(" ")||"Profumo")
+      .replace(/\s*[-–—]+\s*/g," ")
+      .replace(/\s+/g," ")
+      .trim();
+
+    return {brand, product};
+  }
+
   function canonicalName(o){
-    let n=normalizePerfumeName(o.name||"").toLowerCase();
-    let brand=normalizePerfumeName(o.brand||"").toLowerCase();
-    n=n.replace(/\b\d{1,4}\s*ml\b/gi," ");
-    n=n.replace(/\b(eau de toilette|eau de cologne|perfume|edp|edt|edc|spray|men|man|for men|for him|pour homme)\b/gi," ");
-    if(brand && n.startsWith(brand+" ")) n=n.slice(brand.length+1);
+    const parts=splitBrandProduct(o);
+    let n=normalizePerfumeName(parts.product||o.name||"");
     n=n.replace(/\b(french avenue|rasasi)\b/gi," ");
     n=n.replace(/\b(by|de|unisex|x)\b/gi," ");
-    // "Rosée" e "Rosee" devono appartenere allo stesso profumo.
-    n=n.replace(/\brosee\b/gi,"rose");
-    return n.replace(/[^a-z0-9]+/gi," ").replace(/\s+/g," ").trim();
+    return n.replace(/\brosee\b/gi,"rose").replace(/[^a-z0-9]+/gi," ").replace(/\s+/g," ").trim();
   }
 
   function liquidBrunFamily(o){
@@ -737,136 +808,8 @@ function shGroupData(data){
       if(lb==="liquid brun limited edition") return "Liquid Brun Limited Edition";
       return "Liquid Brun";
     }
-
-    let n=String(o.name||"Profumo")
-      .replace(/\b\d{1,4}\s*ml\b/gi," ")
-      .replace(/\s+/g," ")
-      .trim();
-
-    let brandRaw=String(o.brand||"").replace(/\s+/g," ").trim();
-    let brandNorm=normalizePerfumeName(brandRaw);
-
-    /*
-     * Il brand può arrivare incompleto:
-     * brand = "Miu"
-     * nome   = "Miu Miu Miu Miu Fleur De Lait"
-     *
-     * In questo caso ricostruisce il brand ripetuto all'inizio.
-     * Gestisce anche la forma concatenata "Miumiu".
-     */
-    if(brandNorm){
-      const words=n.split(/\s+/).filter(Boolean);
-      const brandWords=brandNorm.split(" ").filter(Boolean);
-
-      // Caso: "Miu Miu ..." con brand ricevuto come "Miu".
-      if(brandWords.length===1 && words.length>=2){
-        const bw=normalizePerfumeName(words[0]);
-        const w2=normalizePerfumeName(words[1]);
-
-        if(bw===brandNorm && w2===brandNorm){
-          let count=0;
-          while(count<words.length && normalizePerfumeName(words[count])===brandNorm){
-            count++;
-          }
-          if(count>=2){
-            brandRaw=words.slice(0,count).join(" ");
-            brandNorm=normalizePerfumeName(brandRaw);
-          }
-        }
-      }
-
-      // Caso: "Miumiu ..." con brand ricevuto come "Miu".
-      if(brandWords.length===1 && words.length){
-        const compact=brandNorm.replace(/\s+/g,"");
-        const firstNorm=normalizePerfumeName(words[0]);
-        if(firstNorm===compact && compact!==brandNorm){
-          brandRaw=words[0];
-          brandNorm=firstNorm;
-        }
-      }
-
-      // Caso concatenato: "Miumiu Fleur..." con brand "Miu".
-      if(brandWords.length===1){
-        const words2=n.split(/\s+/).filter(Boolean);
-        const first2=normalizePerfumeName(words2[0]||"");
-        const twice=brandNorm+brandNorm;
-        if(first2===twice){
-          brandRaw=words2[0].replace(/([A-Za-zÀ-ÿ]+)\\1/i,"$1 $1");
-          if(normalizePerfumeName(brandRaw)!==twice){
-            brandRaw=brandRaw || (brandRaw+" "+brandRaw);
-          }
-          brandNorm=twice;
-        }
-      }
-
-      // Caso generale: il nome inizia con un prefisso ripetuto.
-      const rawWords=n.split(/\s+/).filter(Boolean);
-      const maxPrefix=Math.min(5,Math.floor(rawWords.length/2));
-      for(let len=maxPrefix;len>=1;len--){
-        const a=normalizePerfumeName(rawWords.slice(0,len).join(" "));
-        const b=normalizePerfumeName(rawWords.slice(len,len*2).join(" "));
-        if(a && a===b && (!brandNorm || a.startsWith(brandNorm+" ") || a===brandNorm)){
-          brandRaw=rawWords.slice(0,len).join(" ");
-          brandNorm=a;
-          break;
-        }
-      }
-    }
-
-    let brand=titleCaseClean(brandRaw);
-
-    /*
-     * Rimuove dal nome tutte le occorrenze iniziali del brand,
-     * compresa la forma concatenata "Miumiu".
-     */
-    if(brandNorm){
-      let guard=0;
-      while(guard<10){
-        const words=n.split(/\s+/).filter(Boolean);
-        if(!words.length) break;
-
-        const nn=normalizePerfumeName(n);
-
-        if(nn===brandNorm){
-          n="";
-          break;
-        }
-
-        const bw=brandNorm.split(" ").filter(Boolean).length;
-        const first=normalizePerfumeName(words.slice(0,bw).join(" "));
-        const firstCompact=normalizePerfumeName(words[0]).replace(/\s+/g,"");
-        const brandCompact=brandNorm.replace(/\s+/g,"");
-
-        if(first===brandNorm){
-          n=words.slice(bw).join(" ").trim();
-          guard++;
-          continue;
-        }
-
-        if(firstCompact===brandCompact || firstCompact===brandCompact+brandCompact){
-          n=words.slice(1).join(" ").trim();
-          guard++;
-          continue;
-        }
-
-        break;
-      }
-    }
-
-    let cleanName=titleCaseClean(n||"Profumo")
-      .replace(/\s*[-–—]+\s*/g," ")
-      .replace(/\s+/g," ")
-      .trim();
-
-    if(brand){
-      return (brand+" - "+cleanName)
-        .replace(/\s*[-–—]+\s*/g," ")
-        .replace(/\s+/g," ")
-        .trim()
-        .replace(/\s-\s/g," - ");
-    }
-
-    return cleanName;
+    const parts=splitBrandProduct(o);
+    return parts.product;
   }
 
   // Se esiste una sola misura esplicita per un profumo,
@@ -902,12 +845,13 @@ function shGroupData(data){
     // I formati ml sono il secondo livello.
     const key=groupName;
 
+    const parts=splitBrandProduct(o);
     if(!map.has(key)){
       map.set(key,{
-        brand:o.brand||(/\brasasi\b/i.test(String(o.name||""))?"Rasasi":""),
-        name:displayName(o),
+        brand:parts.brand||(/\brasasi\b/i.test(String(o.name||""))?"Rasasi":""),
+        name:parts.product,
         canonical:cname,
-        display_name:displayName(o),
+        display_name:parts.product,
         size_ml:"",
         concentration:o.concentration||"",
         image:o.image||o.image_url||o.thumbnail||"",
@@ -916,7 +860,7 @@ function shGroupData(data){
     }
 
     const g=map.get(key);
-    if(!g.brand && o.brand)g.brand=o.brand;
+    if(!g.brand && parts.brand)g.brand=parts.brand;
     if(!g.image)g.image=o.image||o.image_url||o.thumbnail||"";
 
     const normalizedOffer={...o};
@@ -981,14 +925,13 @@ function shGroupData(data){
       return shNum(a)-shNum(b);
     });
 
-    // Il brand può arrivare solo da una delle offerte.
-    // Per questo la pulizia del nome va rifatta DOPO aver determinato
-    // il brand definitivo del gruppo: evita "Miu Miu Miu Miutine".
     g.brand=titleCaseClean(g.brand||"");
-    g.name=displayName({
-      name:g.name||"",
-      brand:g.brand||""
-    });
+    // g.name contiene SOLO il nome del profumo; il brand viene aggiunto
+    // una sola volta nella scheda UI.
+    g.name=titleCaseClean(g.name||"")
+      .replace(/\s*[-–—]+\s*/g," ")
+      .replace(/\s+/g," ")
+      .trim();
     g.display_name=g.name;
   });
 
