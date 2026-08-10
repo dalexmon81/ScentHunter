@@ -352,7 +352,7 @@ function normalizePerfumeName(v){
     // (es. Jean Paul Gaultier Le Beau Le Parfum).
     .replace(/\b(eau de parfum|eau de toilette|edp|edt|perfume|spray|men|women|for men|for women)\b/g," ")
     .replace(/\b\d+\s*ml\b/g," ")
-    .replace(/[^a-z0-9à-ÿ]+/gi," ")
+    .replace(/[^a-z0-9à-ÿ'’]+/gi," ")
     .replace(/\s+/g," ").trim();
 }
 function perfumeKey(x){
