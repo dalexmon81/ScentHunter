@@ -1309,6 +1309,15 @@ function shGroupData(data){
     g.display_name=g.brand?g.brand+" - "+g.name:g.name;
   });
 
+  // Ordine alfabetico REALE dei risultati visualizzati: prima brand, poi nome canonico.
+  // Il catalogo master stabilisce il nome corretto; qui ordiniamo invece le schede
+  // finali che l'utente vede a schermo.
+  groups.sort((a,b)=>{
+    const brandCmp=String(a.brand||"").localeCompare(String(b.brand||""),"it",{sensitivity:"base"});
+    if(brandCmp!==0)return brandCmp;
+    return String(a.name||"").localeCompare(String(b.name||""),"it",{sensitivity:"base",numeric:true});
+  });
+
   return groups.filter(g=>g.offers.length);
 }
 
