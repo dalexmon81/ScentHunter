@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+<<!DOCTYPE html>
 <html lang="it">
 <head>
 <meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
@@ -734,7 +734,7 @@ function shGroupData(data){
     "Initio","Parfums de Marly","Maison Francis Kurkdjian","Byredo","Diptyque",
     "Le Labo","Amouage","Memo Paris","Mancera","Matiere Premiere",
     "Al Qiam","Bharara","Bharara Beauty","Al Dur Al Manthoor","Lalique",
-    "Bentley","Bvlgari","Calvin Klein","Davidoff","Ferragamo","Kenzo",
+    "Bentley","Bvlgari","Calvin Klein","Miu Miu","Davidoff","Ferragamo","Kenzo",
     "Moschino","Issey Miyake","Jil Sander","Nautica","Rochas","Lacoste",
     "Mercedes-Benz","Afnan Perfumes","Rasasi Perfumes"
   ];
@@ -871,8 +871,10 @@ function shGroupData(data){
       .sort((a,b)=>norm(b).length-norm(a).length)
       .map(b=>b.replace(/[.*+?^${}()|[\]\\]/g,"\\$&"));
 
-    // Rimuove sempre un eventuale "By BRAND" finale, anche se il campo
-    // brand fornito dallo scraper è errato o contiene una descrizione.
+    // "By BRAND" è sempre informazione commerciale del produttore, non
+    // parte dell'identità del profumo. Lo rimuoviamo in modo robusto anche
+    // quando lo scraper restituisce un brand sporco o non presente nella lista.
+    n=n.replace(/\s+by\s+[^|,;]+$/i," ").trim();
     n=n.replace(new RegExp("\\s+by\\s+(?:"+knownBrandPatterns.join("|")+ ")\\s*$","i")," ").trim();
     if(brand){
       const brandWords=norm(brand).split(/\s+/).filter(Boolean)
