@@ -85,85 +85,387 @@ def product_image(product: Dict[str, Any]) -> str:
     )
 
 
+def _extract_size_ml(text: Any) -> Optional[float]:
+    """Estrae una misura SOLO quando è dichiarata con ml o cl."""
+    text = str(text or "")
+    match = re.search(r"\b(\d{1,4}(?:[.,]\d+)?)\s*(ml|cl)\b", text, re.I)
+    if not match:
+        return None
+    try:
+        value = float(match.group(1).replace(",", "."))
+    except ValueError:
+        return None
+    if match.group(2).lower() == "cl":
+        value *= 10.0
+    return value
+
+
 def _product_size_ml(product: Dict[str, Any]) -> Optional[float]:
     text = " ".join(
         str(product.get(key) or "")
         for key in ("name", "title", "product_name", "size_ml", "size")
     )
-    match = re.search(r"\b(\d{1,4}(?:[.,]\d+)?)\s*ml\b", text, re.I)
-    if not match:
-        return None
-    try:
-        return float(match.group(1).replace(",", "."))
-    except ValueError:
-        return None
+    return _extract_size_ml(text)
 
 
-def _price_from_structured_html(html: str) -> Optional[float]:
-    """
-    Cerca il PREZZO REALE di vendita nella pagina prodotto.
-    Preferisce dati strutturati (JSON-LD/meta) rispetto al prezzo per 100 ml.
-    Funziona trasversalmente sui negozi che espongono il prezzo standard web.
-    """
+def _price_from_structured_html(html: str, target_size_ml: Optional[float] = None) -> Optional[float]:
+    """Trova il prezzo della confezione corretta, non un prezzo aggregato o di un altro formato."""
     html = unescape(html or "")
-
-    # 1) JSON-LD: Product -> offers -> price.
     scripts = re.findall(
         r'<script[^>]+type=["\']application/ld\+json["\'][^>]*>(.*?)</script>',
         html,
         re.I | re.S,
     )
 
+    candidates = []
+
+    def offer_size(offer: Dict[str, Any], parent: Dict[str, Any]) -> Optional[float]:
+        parts = []
+        for key in ("name", "description", "sku", "url", "itemCondition"):
+            parts.append(str(offer.get(key) or ""))
+        for key in ("name", "description", "sku", "url"):
+            parts.append(str(parent.get(key) or ""))
+        return _extract_size_ml(" ".join(parts))
+
     def walk(value):
         if isinstance(value, dict):
             offers = value.get("offers")
             if isinstance(offers, dict):
-                for key in ("price", "lowPrice"):
-                    n = price_num(offers.get(key))
-                    if n is not None:
-                        yield n
-            elif isinstance(offers, list):
+                offers = [offers]
+            if isinstance(offers, list):
                 for offer in offers:
                     if isinstance(offer, dict):
-                        for key in ("price", "lowPrice"):
-                            n = price_num(offer.get(key))
-                            if n is not None:
-                                yield n
-            # Alcuni negozi mettono direttamente price nel Product.
-            if str(value.get("@type", "")).lower() == "product":
-                n = price_num(value.get("price"))
-                if n is not None:
-                    yield n
+                        price = price_num(offer.get("price"))
+                        if price is not None:
+                            candidates.append((offer_size(offer, value), price))
             for child in value.values():
-                yield from walk(child)
+                if isinstance(child, (dict, list)):
+                    yield from walk(child)
         elif isinstance(value, list):
             for child in value:
-                yield from walk(child)
+                if isinstance(child, (dict, list)):
+                    yield from walk(child)
 
     for raw in scripts:
         try:
             payload = json.loads(raw.strip())
         except Exception:
             continue
-        prices = list(walk(payload))
-        if prices:
-            # Il primo prezzo Product/Offer è quello più affidabile; non usiamo
-            # i prezzi aggregati di comparatori esterni presenti nella pagina.
-            return prices[0]
+        list(walk(payload))
 
-    # 2) Meta tag comuni di Shopify/WooCommerce/OpenGraph.
-    patterns = [
-        r'<meta[^>]+(?:property|name)=["\'](?:product:price:amount|og:price:amount)["\'][^>]+content=["\']([^"\']+)',
-        r'<meta[^>]+itemprop=["\']price["\'][^>]+content=["\']([^"\']+)',
-    ]
-    for pattern in patterns:
-        match = re.search(pattern, html, re.I)
-        if match:
-            n = price_num(match.group(1))
-            if n is not None:
-                return n
+    if not candidates:
+        patterns = [
+            r'<meta[^>]+(?:property|name)=["\'](?:product:price:amount|og:price:amount)["\'][^>]+content=["\']([^"\']+)',
+            r'<meta[^>]+itemprop=["\']price["\'][^>]+content=["\']([^"\']+)',
+        ]
+        for pattern in patterns:
+            match = re.search(pattern, html, re.I)
+            if match:
+                return price_num(match.group(1))
+        return None
+
+    if target_size_ml is not None:
+        exact = [price for size, price in candidates if size is not None and abs(size-target_size_ml) < 0.01]
+        if exact:
+            return exact[0]
+        # Se la pagina espone più formati ma non riusciamo a collegare il prezzo al formato richiesto,
+        # NON prendiamo arbitrariamente il primo prezzo: sarebbe proprio il tipo di errore che vogliamo evitare.
+        known_sizes = {round(size, 2) for size, _ in candidates if size is not None}
+        if len(known_sizes) > 1:
+            return None
+
+    return candidates[0][1]
+
+
+# ============================================================
+# DISPONIBILITÀ GENERALE SENTEHUNTER
+# ============================================================
+# Regola unica per tutti i negozi:
+# - se uno scraper dichiara esplicitamente OUT OF STOCK, lo manteniamo;
+# - se la pagina prodotto conferma OUT OF STOCK, lo marchiamo centralmente;
+# - se la pagina conferma IN STOCK, lo marchiamo come disponibile;
+# - se non riusciamo a determinare lo stock, NON eliminiamo mai il prodotto.
+# In questo modo lo stock è normalizzato nel backend e non dipende da
+# correzioni specifiche per singolo profumo o singolo negozio.
+
+_STOCK_OOS_MARKERS = (
+    "out of stock",
+    "sold out",
+    "unavailable",
+    "not available",
+    "currently unavailable",
+    "out-of-stock",
+    "this product is no longer available",
+    "this product is no longer available for purchase",
+    "product is no longer available",
+    "no longer available",
+    "rupture de stock",
+    "en rupture",
+    "épuisé",
+    "indisponible",
+    "actuellement indisponible",
+    "produit indisponible",
+    "non disponible",
+    "non-disponible",
+    "ce produit n'est plus disponible",
+    "ce produit n’est plus disponible",
+    "ce produit n'est plus disponible à la vente",
+    "ce produit n’est plus disponible à la vente",
+    "esaurito",
+    "non disponibile",
+    "questo prodotto non è più disponibile",
+    "questo prodotto non e piu disponibile",
+    "questo prodotto non è più disponibile per l'acquisto",
+    "questo prodotto non e piu disponibile per l'acquisto",
+    "nicht auf lager",
+    "ausverkauft",
+    "nicht verfügbar",
+    "dieses produkt ist nicht mehr verfügbar",
+    "dieses produkt ist nicht mehr verfugbar",
+    "niet beschikbaar",
+    "dit product is niet meer beschikbaar",
+)
+
+_STOCK_IN_MARKERS = (
+    "in stock",
+    "en stock",
+    "disponible",
+    "disponibilità immediata",
+    "sofort lieferbar",
+    "auf lager",
+)
+
+
+def _stock_value_is_oos(value: Any) -> bool:
+    if value is False:
+        return True
+    s = norm(value).replace(" ", "_")
+    return s in {
+        "out_of_stock", "outofstock", "sold_out", "soldout",
+        "unavailable", "not_available", "notavailable",
+        "rupture_de_stock", "en_rupture", "epuise",
+        "indisponible", "non_disponible", "non_disponible_online",
+        "esaurito", "nicht_auf_lager", "ausverkauft",
+        "nicht_verfugbar",
+    }
+
+
+def _stock_value_is_in(value: Any) -> bool:
+    if value is True:
+        return True
+    s = norm(value).replace(" ", "_")
+    return s in {
+        "in_stock", "instock", "available", "in_stock_online",
+        "en_stock", "disponible", "auf_lager", "sofort_lieferbar",
+    }
+
+
+def _structured_stock_from_html(html: str, target_size_ml: Optional[float] = None) -> Optional[bool]:
+    """Legge JSON-LD e, quando possibile, verifica lo stock del formato richiesto."""
+    html = unescape(html or "")
+    scripts = re.findall(
+        r'<script[^>]+type=["\']application/ld\+json["\'][^>]*>(.*?)</script>',
+        html,
+        re.I | re.S,
+    )
+
+    candidates = []
+
+    def offer_size(offer: Dict[str, Any], parent: Dict[str, Any]) -> Optional[float]:
+        parts=[]
+        for key in ("name", "description", "sku", "url"):
+            parts.append(str(offer.get(key) or ""))
+        for key in ("name", "description", "sku", "url"):
+            parts.append(str(parent.get(key) or ""))
+        return _extract_size_ml(" ".join(parts))
+
+    def walk(value):
+        if isinstance(value, dict):
+            offers=value.get("offers")
+            if isinstance(offers, dict):
+                offers=[offers]
+            if isinstance(offers, list):
+                for offer in offers:
+                    if not isinstance(offer, dict):
+                        continue
+                    availability=str(offer.get("availability") or value.get("availability") or "").lower()
+                    if availability:
+                        candidates.append((offer_size(offer,value),availability))
+            direct=str(value.get("availability") or "").lower()
+            if direct and not offers:
+                candidates.append((_extract_size_ml(" ".join(str(value.get(k) or "") for k in ("name","description","sku","url"))),direct))
+            for child in value.values():
+                if isinstance(child,(dict,list)):
+                    yield from walk(child)
+        elif isinstance(value,list):
+            for child in value:
+                if isinstance(child,(dict,list)):
+                    yield from walk(child)
+
+    for raw in scripts:
+        try:
+            payload=json.loads(raw.strip())
+        except Exception:
+            continue
+        list(walk(payload))
+
+    if not candidates:
+        return None
+
+    def status(value):
+        s=str(value).lower()
+        if any(x in s for x in ("outofstock","out_of_stock","soldout","sold_out","unavailable","discontinued")):
+            return False
+        if any(x in s for x in ("instock","in_stock","limitedavailability","preorder","backorder")):
+            return True
+        return None
+
+    if target_size_ml is not None:
+        matching=[status(a) for size,a in candidates if size is not None and abs(size-target_size_ml)<0.01]
+        if matching:
+            if False in matching:
+                return False
+            if True in matching:
+                return True
+            return None
+        known_sizes={round(size,2) for size,_ in candidates if size is not None}
+        if len(known_sizes)>1:
+            return None
+
+    states=[status(a) for _,a in candidates]
+    if False in states and True not in states:
+        return False
+    if True in states and False not in states:
+        return True
+    if False in states and True in states:
+        return None
+    return None
+
+
+def _stock_from_product_page(url: str, target_size_ml: Optional[float] = None) -> Optional[bool]:
+    """
+    Controllo generico della pagina prodotto.
+
+    Restituisce:
+      False = certamente OUT OF STOCK
+      True  = certamente disponibile
+      None  = informazione non determinabile
+
+    Importante: None NON significa out of stock e non causa mai lo scarto
+    del prodotto.
+    """
+    url = str(url or "").strip()
+    if not url or not re.match(r"^https?://", url, re.I):
+        return None
+
+    try:
+        request = Request(
+            url,
+            headers={
+                "Accept": "text/html,application/xhtml+xml",
+                "User-Agent": "Mozilla/5.0 (compatible; ScentHunter/1.0)",
+            },
+        )
+        with urlopen(request, timeout=3.5) as response:
+            html = response.read().decode("utf-8", errors="ignore")
+    except Exception:
+        return None
+
+    structured = _structured_stock_from_html(html, target_size_ml)
+    if structured is not None:
+        return structured
+
+    page = unescape(html)
+    visible = re.sub(r"<script[^>]*>.*?</script>", " ", page, flags=re.I | re.S)
+    visible = re.sub(r"<style[^>]*>.*?</style>", " ", visible, flags=re.I | re.S)
+    visible = re.sub(r"<[^>]+>", " ", visible)
+    visible = re.sub(r"\s+", " ", visible).lower()
+
+    # Prima i controlli di acquisto: sono più affidabili del testo generico.
+    button_chunks = re.findall(
+        r"<(?:button|input)[^>]*?(?:>.*?</button>|/?>)",
+        page,
+        flags=re.I | re.S,
+    )
+    button_text = " ".join(button_chunks).lower()
+    if any(marker in button_text for marker in _STOCK_OOS_MARKERS):
+        return False
+    if any(marker in button_text for marker in _STOCK_IN_MARKERS):
+        return True
+
+    # Poi testo visibile della pagina. Un marker OOS esplicito prevale.
+    if any(marker in visible for marker in _STOCK_OOS_MARKERS):
+        return False
+    if any(marker in visible for marker in _STOCK_IN_MARKERS):
+        return True
 
     return None
+
+
+def normalize_stock(product: Dict[str, Any], cache: Optional[Dict[str, Optional[bool]]] = None) -> Dict[str, Any]:
+    """Applica la regola stock unica a un'offerta di qualunque negozio."""
+    item = dict(product)
+
+    # 1) Informazioni esplicite già fornite dallo scraper.
+    fields = (
+        "availability", "stock", "stock_status", "status",
+        "availability_status", "availabilityStatus", "stockStatus",
+        "in_stock", "inStock",
+    )
+    explicit_oos = any(_stock_value_is_oos(item.get(field)) for field in fields)
+    explicit_in = any(_stock_value_is_in(item.get(field)) for field in fields)
+
+    if item.get("available") is False:
+        explicit_oos = True
+    # available=True is only a hint. The real product page is checked below.
+
+    if explicit_oos:
+        item["available"] = False
+        item["availability"] = "out_of_stock"
+        item["stock_status"] = "out_of_stock"
+        item["price"] = "Out of stock"
+        item.pop("price_value", None)
+        return item
+
+    # 2) Se esiste un URL, verifichiamo la pagina reale. Il risultato
+    #    sconosciuto NON elimina mai il prodotto.
+    url = str(item.get("url") or "").strip()
+    page_stock = None
+    if url:
+        if cache is not None and url in cache:
+            page_stock = cache[url]
+        else:
+            page_stock = _stock_from_product_page(url, _product_size_ml(item))
+            if cache is not None:
+                cache[url] = page_stock
+
+    if page_stock is False:
+        item["available"] = False
+        item["availability"] = "out_of_stock"
+        item["stock_status"] = "out_of_stock"
+        item["price"] = "Out of stock"
+        item.pop("price_value", None)
+        return item
+
+    if page_stock is True:
+        item["available"] = True
+        item["availability"] = "in_stock"
+        item["stock_status"] = "in_stock"
+        return item
+
+    # Una dichiarazione esplicita del singolo scraper vale solo se la pagina
+    # reale non ha dato una risposta contraria.
+    if explicit_in:
+        item["available"] = True
+        item["availability"] = "in_stock"
+        item["stock_status"] = "in_stock"
+        return item
+
+    # 3) Nessuna informazione certa: UNKNOWN, mai IN STOCK per supposizione.
+    item["available"] = None
+    item["availability"] = "unknown"
+    item["stock_status"] = "unknown"
+    return item
 
 
 def resolve_actual_price(product: Dict[str, Any]) -> Dict[str, Any]:
@@ -181,7 +483,7 @@ def resolve_actual_price(product: Dict[str, Any]) -> Dict[str, Any]:
 
     # Se la pagina è disponibile, il prezzo strutturato è la fonte primaria.
     url = str(item.get("url") or "").strip()
-    if url and size and abs(size - 100.0) > 0.01:
+    if url:
         try:
             request = Request(
                 url,
@@ -192,7 +494,7 @@ def resolve_actual_price(product: Dict[str, Any]) -> Dict[str, Any]:
             )
             with urlopen(request, timeout=4) as response:
                 html = response.read().decode("utf-8", errors="ignore")
-            actual = _price_from_structured_html(html)
+            actual = _price_from_structured_html(html, size)
             if actual is not None:
                 item["price"] = f"{actual:.2f} €"
                 item["price_value"] = actual
@@ -282,6 +584,7 @@ def run_store(store: str, query: str) -> List[Dict[str, Any]]:
     attempts = build_search_attempts(store, query)
     output: List[Dict[str, Any]] = []
     seen = set()
+    stock_cache: Dict[str, Optional[bool]] = {}
 
     for attempt in attempts:
         results = search_fn(attempt) or []
@@ -292,7 +595,12 @@ def run_store(store: str, query: str) -> List[Dict[str, Any]]:
 
             product = dict(item)
             product.setdefault("store", store)
-            product = resolve_actual_price(product)
+
+            # Regola generale stock: prima normalizziamo la disponibilità.
+            # Se è OOS, non sprechiamo una seconda richiesta per il prezzo.
+            product = normalize_stock(product, stock_cache)
+            if product.get("available") is not False:
+                product = resolve_actual_price(product)
 
             key = (
                 str(product.get("url", "")).lower(),
@@ -332,8 +640,13 @@ def unique_results(products: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
 
 def sort_by_price(products: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
     def key(product):
+        availability = str(product.get("availability") or "").lower()
+        is_oos = (product.get("available") is False) or _stock_value_is_oos(availability)
+        is_unknown = availability == "unknown" or product.get("available") is None
         value = price_num(product.get("price"))
-        return float("inf") if value is None else value
+        # IN STOCK -> UNKNOWN -> OUT OF STOCK. Il prezzo ordina solo dentro lo stesso stato.
+        state = 2 if is_oos else (1 if is_unknown else 0)
+        return (state, float("inf") if value is None else value)
 
     return sorted(products, key=key)
 
@@ -355,7 +668,7 @@ def search_perfume(query: str) -> Dict[str, Any]:
         for store in STORES
     }
 
-    done, not_done = wait(future_to_store, timeout=30)
+    done, not_done = wait(future_to_store, timeout=35)
 
     for future in done:
         store = future_to_store[future]
