@@ -917,7 +917,7 @@ function showProducts(groups){
     const best=g.offers.find(o=>!isOfferOutOfStock(o))||null;
     const img=g.image||"";
 
-    return `<article class="product-choice" onclick="openProduct(${i})">
+    return `<article class="product-choice" onclick="${sizes.length===1?`openSize(${i},${JSON.stringify(sizes[0].size)},false)`: `openProduct(${i})`}">
       <div class="result-image">${img?`<img src="${esc(img)}" alt="${esc(g.name)}" onerror="this.outerHTML='🧴'">`:"🧴"}</div>
       <div class="product-choice-main">
         <div class="store">${esc(g.brand||"")}</div>
@@ -977,7 +977,7 @@ function openProduct(i){
   document.getElementById("searchOutput").scrollIntoView({behavior:"smooth",block:"start"});
 }
 
-function openSize(gi,sizeKey){
+function openSize(gi,sizeKey,fromFormats=true){
   const g=currentProductGroups[gi];
   if(!g)return;
 
@@ -990,7 +990,7 @@ function openSize(gi,sizeKey){
 
   statusBox.textContent="";
   resultsBox.innerHTML=`<article class="comparison">
-    <button class="detail-back" onclick="openProduct(${gi})">← Torna ai formati</button>
+    <button class="detail-back" onclick="${fromFormats?`openProduct(${gi})`:`showProducts(currentProductGroups)`}">${fromFormats?'← Torna ai formati':'← Torna ai profumi'}</button>
     <div class="comparison-head">
       <div class="result-image">${img?`<img src="${esc(img)}" alt="${esc(g.name)}" onerror="this.outerHTML='🧴'">`:"🧴"}</div>
       <div class="result-main">
