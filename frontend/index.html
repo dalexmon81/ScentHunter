@@ -769,17 +769,45 @@ function shGroupData(data){
     return b;
   }
 
+  // INFERENZA GENERALE DEL FORMATO
+  // Se per lo stesso profumo esiste una sola misura esplicita (es. 100 ml),
+  // tutte le offerte dello stesso profumo che non dichiarano i ml vengono
+  // inserite automaticamente nella stessa categoria.
+  // La regola vale per TUTTI i profumi, non solo Liquid Brun.
+  // Se sono presenti più misure (es. 50 e 100 ml), non viene fatta alcuna
+  // supposizione: le offerte senza formato restano nella categoria unknown.
+  const inferredSizeByGroup=new Map();
+
+  raw.forEach(o=>{
+    const groupName=groupingName(o);
+    const size=sizeOf(o);
+    if(!groupName||!size||liquidBrunFamily(o))return;
+
+    if(!inferredSizeByGroup.has(groupName)){
+      inferredSizeByGroup.set(groupName,new Set());
+    }
+    inferredSizeByGroup.get(groupName).add(size);
+  });
+
   const map=new Map();
 
   raw.forEach(o=>{
     const cname=canonicalName(o);
     const groupName=groupingName(o);
     if(!cname||!groupName)return;
-    const size=sizeOf(o);
-    // Per Liquid Brun il formato NON deve creare una categoria separata:
-    // 100 ml e formato non dichiarato appartengono alla stessa famiglia,
-    // così come 150 ml e formato non dichiarato per la Limited Edition.
+
+    const explicitSize=sizeOf(o);
     const lb=liquidBrunFamily(o);
+    const knownSizes=inferredSizeByGroup.get(groupName);
+    const inferredSize=(
+      !lb && !explicitSize && knownSizes && knownSizes.size===1
+    ) ? [...knownSizes][0] : "";
+    const size=explicitSize||inferredSize;
+
+    // Per Liquid Brun il formato NON deve creare una categoria separata.
+    // Per tutti gli altri profumi, se esiste una sola misura esplicita,
+    // un'offerta senza ml viene assegnata a quella stessa categoria.
+    // Con più misure diverse, invece, non facciamo supposizioni.
     const key=groupName+"|"+(lb ? "liquid-brun-family" : (size||"unknown"));
 
     if(!map.has(key)){
