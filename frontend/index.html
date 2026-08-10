@@ -737,6 +737,12 @@ function shGroupData(data){
     return [...new Set(tokens)].sort().join(" ");
   }
 
+  function titleCasePerfumeName(v){
+    return String(v||"")
+      .toLowerCase()
+      .replace(/(^|[\s'’\-])([a-zà-ÿ])/gi,(m,p,c)=>p+c.toUpperCase());
+  }
+
   function displayName(o){
     const lb=liquidBrunFamily(o);
     if(lb){
@@ -744,19 +750,30 @@ function shGroupData(data){
       if(lb==="liquid brun limited edition") return "Liquid Brun Limited Edition";
       return "Liquid Brun";
     }
+
     let n=normalizePerfumeName(o.name||"Profumo").trim();
     n=n.replace(/\b\d{1,4}\s*ml\b/gi," ").replace(/\s+/g," ").trim();
-    const brand=normalizePerfumeName(o.brand||"").trim();
+    let brand=normalizePerfumeName(o.brand||"").trim();
+
+    // Se il sito non fornisce il brand, prova a riconoscere il caso
+    // di un brand composto da due parole identiche, come "Miu Miu".
+    if(!brand){
+      const probe=n.split(/\s+/).filter(Boolean);
+      if(probe.length>=3 && probe[0].toLowerCase()===probe[1].toLowerCase()){
+        brand=probe[0]+" "+probe[1];
+      }
+    }
+
     if(brand){
-      // Alcuni negozi possono restituire il brand ripetuto nel nome.
-      // Rimuoviamo il prefisso del brand e poi lo aggiungiamo una sola volta.
+      // Alcuni negozi ripetono il brand all'inizio del nome.
+      // Rimuoviamo tutte le ripetizioni del prefisso.
       while(n.toLowerCase().startsWith(brand.toLowerCase()+" ")){
         n=n.slice(brand.length).trim();
       }
       if(n.toLowerCase()===brand.toLowerCase()) n="";
 
-      // Caso "Miu Miu Miu Miutine": dopo aver tolto il primo "Miu Miu"
-      // resta un "Miu" spurio prima del vero nome del profumo.
+      // Caso specifico Miu Miu: dopo la rimozione del brand può
+      // rimanere un ulteriore "Miu" spurio prima del nome reale.
       const brandWords=brand.split(/\s+/).filter(Boolean);
       if(brandWords.length===2 &&
          brandWords[0].toLowerCase()===brandWords[1].toLowerCase() &&
@@ -764,7 +781,10 @@ function shGroupData(data){
         n=n.slice(brandWords[0].length).trim();
       }
     }
-    return ((brand?brand+" ":"")+n).replace(/\s+/g," ").trim();
+
+    const cleanBrand=titleCasePerfumeName(brand);
+    const cleanName=titleCasePerfumeName(n);
+    return (cleanBrand ? cleanBrand+" - ":"")+cleanName;
   }
 
   // Se esiste una sola misura esplicita per un profumo,
