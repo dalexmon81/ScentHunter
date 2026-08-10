@@ -9,6 +9,7 @@ from html import unescape
 import os
 import re
 import traceback
+import unicodedata
 from concurrent.futures import ThreadPoolExecutor, TimeoutError, wait
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
@@ -61,6 +62,8 @@ IGNORED_WORDS = {
 
 def norm(value: Any) -> str:
     value = str(value or "").lower().strip()
+    value = unicodedata.normalize("NFKD", value)
+    value = "".join(char for char in value if not unicodedata.combining(char))
     value = re.sub(r"(?<=\d)(?=[a-z])|(?<=[a-z])(?=\d)", " ", value)
     value = re.sub(r"[^a-z0-9]+", " ", value)
     return re.sub(r"\s+", " ", value).strip()
