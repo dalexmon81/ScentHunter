@@ -921,7 +921,7 @@ function showProducts(groups){
       ? `openSize(${i},${JSON.stringify(sizes[0].size)})`
       : `openProduct(${i})`;
 
-    return `<article class="product-choice" onclick="${cardAction}">
+    return `<article class="product-choice" onclick='${cardAction}'>
       <div class="result-image">${img?`<img src="${esc(img)}" alt="${esc(g.name)}" onerror="this.outerHTML='🧴'">`:"🧴"}</div>
       <div class="product-choice-main">
         <div class="store">${esc(g.brand||"")}</div>
