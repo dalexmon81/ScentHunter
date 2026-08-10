@@ -906,7 +906,8 @@ function sizeOfOffer(o){
   return m?m[1]:"";
 }
 
-// Evita che un trascinamento per scorrere venga interpretato come tap sulla scheda.
+// Evita che uno scroll venga interpretato come tap sulla scheda,
+// senza bloccare i normali tap su iPhone/Safari.
 let cardPointerStartX=0;
 let cardPointerStartY=0;
 let cardPointerMoved=false;
@@ -921,21 +922,15 @@ document.addEventListener("pointerdown",e=>{
   cardPointerStartY=e.clientY;
 },{passive:true,capture:true});
 
-document.addEventListener("pointermove",e=>{
+document.addEventListener("pointerup",e=>{
   if(!cardPointerActive)return;
-  if(Math.hypot(e.clientX-cardPointerStartX,e.clientY-cardPointerStartY)>8)cardPointerMoved=true;
-},{passive:true,capture:true});
-
-document.addEventListener("pointerup",()=>{
-  if(!cardPointerActive)return;
-  // Mantiene cardPointerMoved fino al click successivo, così uno scroll
-  // non viene trasformato accidentalmente in un'apertura della scheda.
+  cardPointerMoved=Math.hypot(e.clientX-cardPointerStartX,e.clientY-cardPointerStartY)>12;
   cardPointerActive=false;
 },{passive:true,capture:true});
 
 document.addEventListener("pointercancel",()=>{
   cardPointerActive=false;
-  cardPointerMoved=false;
+  cardPointerMoved=true;
 },{passive:true,capture:true});
 
 document.addEventListener("click",e=>{
