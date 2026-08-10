@@ -191,16 +191,35 @@ SET_PRODUCTS = {
 }
 
 NON_PERFUME = {
-    "deodorant", "deo spray", "shampoo", "conditioner", "hair conditioner",
-    "hair care", "hair", "shower gel", "gel douche", "shower", "body wash",
+    # Deodoranti / antitraspiranti
+    "deodorant", "deodorante", "deodorants", "deodorantes", "déodorant",
+    "deo", "deo spray", "deo stick", "deostick", "deodorant stick",
+    "antiperspirant", "antitranspirant", "anti transpirant",
+    # Capelli / doccia / bagno
+    "shampoo", "conditioner", "hair conditioner", "hair care", "hair",
+    "shower gel", "gel douche", "gel doccia", "doccia gel", "shower",
+    "body wash", "body gel", "bath", "bath gel", "bath oil",
+    "bagnoschiuma", "bagno schiuma", "douche",
+    # Creme / lozioni / trattamenti corpo-viso-mani
     "body lotion", "body cream", "body creme", "body butter", "body milk",
-    "body oil", "body mist", "hand cream", "hand creme", "hand wash",
-    "hand lotion", "after shave", "aftershave", "beard", "soap", "savon",
-    "bath", "bath oil", "bath gel", "oil", "huile", "fragrance oil",
-    "perfume oil", "cream", "creme", "crème", "lotion", "lozione",
+    "body moisturizer", "body moisturiser", "body balm", "body butter", "body mist",
+    "hair mist", "face mist", "fragrance mist", "body splash",
+    "hand cream", "hand creme", "hand lotion", "face cream", "face creme",
+    "face lotion", "face wash", "facial cream", "facial lotion",
+    "cream", "creme", "crème", "crema", "creme hydratante",
+    "lotion", "lozione", "locion", "lotion corps", "moisturizer",
+    "moisturiser", "emulsion", "émulsion", "emulsione", "serum", "siero",
+    "balsam", "balm", "baume",
+    # Oli
+    "body oil", "oil", "huile", "olio", "fragrance oil", "perfume oil",
+    "essential oil", "huile essentielle",
+    # Saponi / barba / igiene
+    "soap", "savon", "sapone", "shaving", "shave", "after shave",
+    "aftershave", "beard", "barba", "razor", "roll on", "roll-on",
+    # Altri cosmetici / casa
     "candle", "diffuser", "room spray", "home fragrance", "fabric spray",
-    "scrub", "cleanser", "mask", "emulsion", "émulsion", "toothpaste",
-    "detergent", "powder", "talc", "roll on", "roll-on",
+    "scrub", "cleanser", "mask", "toothpaste", "toothbrush", "detergent",
+    "powder", "talc",
 }
 
 
