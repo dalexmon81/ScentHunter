@@ -342,42 +342,59 @@ def _catalog_family_form(query: str) -> str:
 
 
 def _move_gender_after_family(name: str, family_query: str = "") -> str:
+    """
+    Porta SEMPRE il genere alla fine del nome del profumo.
+
+    Formato rigoroso ScentHunter:
+        Brand - Nome profumo - tutto il resto - Genere
+
+    Esempi:
+        Donna Born In Roma Coral Fantasy -> Born in Roma Coral Fantasy Donna
+        Uomo Born In Roma Coral Fantasy -> Born in Roma Coral Fantasy Uomo
+        Born In Roma Donna Coral Fantasy -> Born in Roma Coral Fantasy Donna
+        Born In Roma Uomo Extradose -> Born in Roma Extradose Uomo
+        Born In Roma Intense Uomo -> Born in Roma Intense Uomo
+    """
     raw = re.sub(r"\s+", " ", str(name or "")).strip()
-    match = re.match(r"^(uomo|donna|men|women|man|woman|homme|femme)\s+(.+)$", raw, re.I)
-    if not match:
+    if not raw:
         return raw
 
-    gender = match.group(1).title()
-    rest = match.group(2).strip()
-    family_tokens = [token for token in norm(family_query).split() if token not in IGNORED_WORDS]
-    rest_tokens = norm(rest).split()
-    original_tokens = _word_tokens(rest)
+    gender_re = re.compile(r"\b(uomo|donna|men|women|man|woman|homme|femme)\b", re.I)
+    matches = list(gender_re.finditer(raw))
+    if not matches:
+        return raw
 
-    # Prima scelta: la famiglia realmente cercata dall'utente.
-    if family_tokens and len(rest_tokens) >= len(family_tokens):
-        for index in range(len(rest_tokens) - len(family_tokens) + 1):
-            if rest_tokens[index:index + len(family_tokens)] != family_tokens:
+    # Prendiamo il primo indicatore di genere e lo rimuoviamo da qualsiasi
+    # posizione. Il genere viene poi sempre aggiunto in coda al nome completo.
+    gender_map = {
+        "uomo": "Uomo", "donna": "Donna",
+        "men": "Uomo", "man": "Uomo",
+        "women": "Donna", "woman": "Donna",
+        "homme": "Uomo", "femme": "Donna",
+    }
+    gender = gender_map[matches[0].group(1).lower()]
+    without_gender = gender_re.sub(" ", raw)
+    without_gender = re.sub(r"\s+", " ", without_gender).strip()
+
+    # Il catalogo può fornire la forma canonica della famiglia (es. Born in Roma).
+    # Qui NON rimettiamo il genere in mezzo: deve stare sempre alla fine.
+    family_tokens = [token for token in norm(family_query).split() if token not in IGNORED_WORDS]
+    base_tokens = norm(without_gender).split()
+    original_tokens = _word_tokens(without_gender)
+
+    if family_tokens and len(base_tokens) >= len(family_tokens):
+        for index in range(len(base_tokens) - len(family_tokens) + 1):
+            if base_tokens[index:index + len(family_tokens)] != family_tokens:
                 continue
             family_text = _catalog_family_form(family_query) if family_query else " ".join(original_tokens[index:index + len(family_tokens)])
             before = " ".join(original_tokens[:index]).strip()
             after = " ".join(original_tokens[index + len(family_tokens):]).strip()
-            parts = [family_text, gender]
-            if before:
-                parts.insert(0, before)
-            if after:
-                parts.append(after)
+            parts = [before, family_text, after, gender]
             return " ".join(part for part in parts if part).strip()
 
-    # Seconda scelta: alias/catalogo completo, solo se la parte dopo il genere
-    # coincide con un nome canonico completo.
-    rest_norm = norm(rest)
-    for form in CATALOG_FAMILY_FORMS:
-        if norm(form) != rest_norm:
-            continue
-        form_tokens = _word_tokens(form)
-        return " ".join([" ".join(form_tokens), gender]).strip()
-
-    return raw
+    # Se non riusciamo a ricostruire la famiglia, manteniamo tutto il nome
+    # nell'ordine originale, ma il genere viene comunque portato in coda.
+    return f"{without_gender} {gender}".strip()
 
 
 def canonical_product_brand(product: Dict[str, Any]) -> str:
