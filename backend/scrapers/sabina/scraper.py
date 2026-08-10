@@ -52,6 +52,112 @@ def _looks_like_product_url(url):
     return bool(url and PRODUCT_URL_RE.match(url))
 
 
+def _extract_size_from_html(text):
+    """Estrae la misura reale della confezione dalla pagina prodotto Sabina.
+
+    Alcuni risultati di ricerca Sabina non riportano i ml nel nome.
+    In quei casi leggiamo la misura dichiarata nella pagina prodotto,
+    senza indovinare in base al prezzo o al nome.
+    """
+    if not text:
+        return ""
+
+    # 1) Prima cerchiamo nei JSON-LD eventuali proprietà strutturate.
+    try:
+        soup = BeautifulSoup(text, "html.parser")
+        for script in soup.select('script[type="application/ld+json"]'):
+            try:
+                data = json.loads(script.get_text(strip=True))
+            except Exception:
+                continue
+
+            def walk_size(obj):
+                if isinstance(obj, dict):
+                    for key, value in obj.items():
+                        key_l = str(key).lower()
+                        if key_l in {"size", "volume", "netcontent", "capacity", "contentvolume"}:
+                            m = re.search(r"(?<!\d)(\d{2,4})\s*ml\b", str(value), re.I)
+                            if m:
+                                return m.group(1)
+                        found = walk_size(value)
+                        if found:
+                            return found
+                elif isinstance(obj, list):
+                    for value in obj:
+                        found = walk_size(value)
+                        if found:
+                            return found
+                return ""
+
+            found = walk_size(data)
+            if found:
+                return found
+    except Exception:
+        pass
+
+    # 2) Dato visibile della scheda prodotto. Sabina usa più lingue.
+    soup = BeautifulSoup(text, "html.parser")
+    visible = _clean(soup.get_text(" ", strip=True))
+    patterns = [
+        r"(?:dimensione|tamaño|taille|größe|groesse|size)\s*:?\s*(\d{2,4})\s*ml\b",
+        r"(?:dimensione|tamaño|taille|größe|groesse|size)[^0-9]{0,120}(\d{2,4})\s*ml\b",
+    ]
+    for pattern in patterns:
+        m = re.search(pattern, visible, re.I)
+        if m:
+            return m.group(1)
+
+    # 3) Fallback HTML: utile quando il testo è spezzato tra elementi/tag.
+    compact = re.sub(r"\s+", " ", text)
+    for pattern in patterns:
+        m = re.search(pattern, compact, re.I)
+        if m:
+            return m.group(1)
+
+    return ""
+
+
+def _enrich_product_sizes(session, rows):
+    """Aggiunge size_ml solo quando il risultato non contiene già i ml."""
+    enriched = []
+    cache = {}
+
+    for row in rows:
+        item = dict(row)
+        name = _clean(item.get("name"))
+        existing = re.search(r"\b(\d{1,4})\s*ml\b", name, re.I)
+        if existing:
+            item["size_ml"] = existing.group(1)
+            enriched.append(item)
+            continue
+
+        url = str(item.get("url") or "").split("#")[0]
+        if not url:
+            enriched.append(item)
+            continue
+
+        if url in cache:
+            size = cache[url]
+        else:
+            size = ""
+            try:
+                r = _get(session, url)
+                if r is not None:
+                    page = r.text
+                    r.close()
+                    size = _extract_size_from_html(page)
+            except Exception:
+                size = ""
+            cache[url] = size
+
+        if size:
+            item["size_ml"] = size
+
+        enriched.append(item)
+
+    return enriched
+
+
 def _dedupe(rows, query):
     q = _clean(query).lower()
     words = [w for w in re.findall(r"[a-z0-9À-ÿ]+", q) if len(w) > 1]
@@ -75,12 +181,15 @@ def _dedupe(rows, query):
             continue
         seen.add(key)
 
-        out.append({
+        item = {
             "store": STORE,
             "name": name,
             "price": price,
             "url": url.split("#")[0],
-        })
+        }
+        if row.get("size_ml"):
+            item["size_ml"] = str(row["size_ml"])
+        out.append(item)
 
     return out
 
@@ -258,7 +367,7 @@ def search(query):
                 results.extend(parsed)
 
                 if results:
-                    return _dedupe(results, query)
+                    return _enrich_product_sizes(s, _dedupe(results, query))
             except Exception:
                 continue
 
@@ -331,7 +440,7 @@ def search(query):
                         rows = _parse_html(response_text, query)
 
                     if rows:
-                        return rows
+                        return _enrich_product_sizes(s, _dedupe(rows, query))
 
                 except Exception:
                     continue
