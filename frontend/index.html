@@ -348,11 +348,15 @@ const OLD_WISH_KEY="scenthunter_wishlist_v1";
 function normalizePerfumeName(v){
   return String(v||"")
     .toLowerCase()
+    // Per confronti e raggruppamenti, considera equivalenti le lettere
+    // accentate e non accentate: "Rosée" = "Rosee".
+    .normalize("NFD")
+    .replace(/[\\u0300-\\u036f]/g,"")
     // NON eliminare "parfum": può essere parte del nome/variante
     // (es. Jean Paul Gaultier Le Beau Le Parfum).
     .replace(/\b(eau de parfum|eau de toilette|edp|edt|perfume|spray|men|women|for men|for women)\b/g," ")
     .replace(/\b\d+\s*ml\b/g," ")
-    .replace(/[^a-z0-9à-ÿ'’]+/gi," ")
+    .replace(/[^a-z0-9]+/gi," ")
     .replace(/\s+/g," ").trim();
 }
 function perfumeKey(x){
@@ -687,36 +691,128 @@ function shGroupData(data){
     return m?m[1]:"";
   }
 
-  function canonicalName(o){
-    let n=normalizePerfumeName(o.name||"").toLowerCase();
-    let brand=normalizePerfumeName(o.brand||"").toLowerCase();
+  function norm(v){
+    return normalizePerfumeName(v||"").toLowerCase().trim();
+  }
 
-    // Per il raggruppamento gli accenti non devono creare nomi diversi:
-    // "rosée" e "rosee" devono essere la stessa chiave.
-    n=n.normalize("NFD").replace(/[\u0300-\u036f]/g,"");
-    brand=brand.normalize("NFD").replace(/[\u0300-\u036f]/g,"");
+  function pretty(v){
+    return String(v||"")
+      .toLowerCase()
+      .replace(/(^|[\s\-'])([a-zà-ÿ])/gi,(m,sep,ch)=>sep+ch.toUpperCase())
+      .replace(/\s+/g," ")
+      .trim();
+  }
 
-    n=n.replace(/\b\d{1,4}\s*ml\b/gi," ");
-    n=n.replace(/\b(eau de toilette|eau de cologne|perfume|edp|edt|edc|spray|men|man|for men|for him|pour homme)\b/gi," ");
+  /*
+   * Il dato del negozio non è affidabile come formato del nome.
+   * Un negozio può scrivere:
+   *   Afnan Turathi Homme Brown Man
+   *   Turathi Brown By Afnan
+   *   Turathi Brown
+   *
+   * Prima raccogliamo le prove sul brand da TUTTE le offerte della
+   * ricerca. Il suffisso "By BRAND" è una prova forte e viene preferito
+   * a un brand ricevuto dal negozio che in realtà è il nome del prodotto.
+   */
+  const brandCandidates=new Map();
+  function addBrandCandidate(v,weight){
+    const rawBrand=String(v||"").replace(/\s+/g," ").trim();
+    const n=norm(rawBrand);
+    if(!n || n.length<2 || n.split(" ").length>5)return;
+    const old=brandCandidates.get(n);
+    if(!old || weight>old.weight || (weight===old.weight && rawBrand.length>old.raw.length)){
+      brandCandidates.set(n,{norm:n,raw:rawBrand,weight});
+    }
+  }
 
-    // Alcuni negozi ripetono il brand all'inizio del nome.
-    // Lo rimuoviamo tutte le volte necessarie.
-    if(brand){
-      while(n.startsWith(brand+" ")) n=n.slice(brand.length+1).trim();
-      if(n===brand) n="";
+  raw.forEach(o=>{
+    const name=String(o.name||"");
+    const explicit=String(o.brand||"").trim();
+    if(explicit)addBrandCandidate(explicit,3);
 
-      // Caso specifico dei brand composti da due token uguali,
-      // es. "Miu Miu Miu Miutine" -> "Miutine" per il raggruppamento.
-      const brandWords=brand.split(" ").filter(Boolean);
-      if(brandWords.length===2 && brandWords[0]===brandWords[1] &&
-         n.startsWith(brandWords[0]+" ")){
-        n=n.slice(brandWords[0].length+1).trim();
+    const by=name.match(/\bby\s+([^|,;]+?)\s*$/i);
+    if(by)addBrandCandidate(by[1],5);
+  });
+
+  const brandList=[...brandCandidates.values()].sort((a,b)=>{
+    if(b.weight!==a.weight)return b.weight-a.weight;
+    return b.norm.split(" ").length-a.norm.split(" ").length;
+  });
+
+  function findBrand(o){
+    const name=String(o.name||"").replace(/\s+/g," ").trim();
+    const n=norm(name);
+    const by=name.match(/\bby\s+([^|,;]+?)\s*$/i);
+    if(by){
+      const byNorm=norm(by[1]);
+      const exact=brandList.find(b=>b.norm===byNorm);
+      return exact?exact.raw:pretty(by[1]);
+    }
+
+    const explicit=String(o.brand||"").replace(/\s+/g," ").trim();
+    const explicitNorm=norm(explicit);
+
+    /* Se il brand ricevuto è chiaramente un prefisso del nome, è valido. */
+    if(explicitNorm && (n===explicitNorm || n.startsWith(explicitNorm+" "))){
+      return pretty(explicit);
+    }
+
+    /* Se il campo brand contiene in realtà un nome prodotto,
+       preferiamo il brand conosciuto che compare all'inizio del nome. */
+    const prefix=brandList
+      .filter(b=>n===b.norm || n.startsWith(b.norm+" "))
+      .sort((a,b)=>b.norm.length-a.norm.length)[0];
+    if(prefix)return pretty(prefix.raw);
+
+    return explicit?pretty(explicit):"";
+  }
+
+  function cleanProductName(o,brand){
+    let n=String(o.name||"Profumo")
+      .replace(/\b\d{1,4}\s*ml\b/gi," ")
+      .replace(/\s+/g," ")
+      .trim();
+
+    const brandNorm=norm(brand);
+
+    /* Elimina il brand iniziale, anche se il negozio lo ha ripetuto. */
+    if(brandNorm){
+      let guard=0;
+      while(guard<10){
+        const nn=norm(n);
+        if(nn===brandNorm){
+          n="";
+          break;
+        }
+        if(nn.startsWith(brandNorm+" ")){
+          const words=brandNorm.split(" ").length;
+          n=n.split(/\s+/).slice(words).join(" ").trim();
+          guard++;
+          continue;
+        }
+        break;
       }
     }
 
-    n=n.replace(/\b(french avenue|rasasi)\b/gi," ");
-    n=n.replace(/\b(by|de|unisex|x)\b/gi," ");
-    return n.replace(/[^a-z0-9]+/gi," ").replace(/\s+/g," ").trim();
+    /* Elimina il brand finale: "... By Afnan". */
+    if(brandNorm){
+      const re=new RegExp("\\s+by\\s+"+brandNorm+"\\s*$","i");
+      n=n.replace(re," ").trim();
+    }else{
+      n=n.replace(/\s+by\s+[^|,;]+$/i," ").trim();
+    }
+
+    /* Le varianti di genere/concentrazione non sono parte dell'identità.
+       Questo unifica, ad esempio, "Homme Brown Man" con "Brown". */
+    n=n
+      .replace(/\b(eau de parfum|eau de toilette|eau de cologne|eau de parfum intense|edp|edt|edc|parfum|perfume|spray)\b/gi," ")
+      .replace(/\b(for men|for women|for him|for her|pour homme|pour femme|homme|femme|men|man|women|woman)\b/gi," ")
+      .replace(/\b(unisex)\b/gi," ")
+      .replace(/\s+/g," ")
+      .replace(/^[-–—\s]+|[-–—\s]+$/g,"")
+      .trim();
+
+    return pretty(n||"Profumo");
   }
 
   function liquidBrunFamily(o){
@@ -729,103 +825,78 @@ function shGroupData(data){
     return "liquid brun";
   }
 
-  function groupingName(o){
+  /*
+   * Chiave unica del prodotto:
+   * brand + nome pulito.
+   * NON ordiniamo più alfabeticamente i singoli termini del nome:
+   * quello era il motivo per cui descrizioni diverse potevano finire
+   * in gruppi incoerenti.
+   */
+  function productIdentity(o){
     const lb=liquidBrunFamily(o);
-    if(lb) return lb;
-    const n=canonicalName(o);
-    const tokens=n.split(" ").filter(Boolean);
-    return [...new Set(tokens)].sort().join(" ");
+    if(lb)return {brand:"",name:pretty(lb),key:lb};
+    const brand=findBrand(o);
+    const name=cleanProductName(o,brand);
+    const key=(norm(brand)+"|"+norm(name)).replace(/\|+$/g,"");
+    return {brand,name,key};
   }
 
-  function titleCasePerfumeName(v){
-    return String(v||"")
-      .toLowerCase()
-      .replace(/(^|[\s'’\-])([a-zà-ÿ])/gi,(m,p,c)=>p+c.toUpperCase());
-  }
+  const identities=raw.map(o=>productIdentity(o));
 
-  function displayName(o){
-    const lb=liquidBrunFamily(o);
-    if(lb){
-      if(lb==="mystery box liquid brun") return "Mystery Box Liquid Brun";
-      if(lb==="liquid brun limited edition") return "Liquid Brun Limited Edition";
-      return "Liquid Brun";
-    }
-
-    let n=normalizePerfumeName(o.name||"Profumo").trim();
-    n=n.replace(/\b\d{1,4}\s*ml\b/gi," ").replace(/\s+/g," ").trim();
-    let brand=normalizePerfumeName(o.brand||"").trim();
-
-    // Se il sito non fornisce il brand, prova a riconoscere il caso
-    // di un brand composto da due parole identiche, come "Miu Miu".
-    if(!brand){
-      const probe=n.split(/\s+/).filter(Boolean);
-      if(probe.length>=3 && probe[0].toLowerCase()===probe[1].toLowerCase()){
-        brand=probe[0]+" "+probe[1];
+  // Se una stessa ricerca contiene una riga senza brand ma con lo stesso
+  // nome di una riga già identificata, eredita il brand dell'identità più
+  // affidabile. Non inventiamo brand quando non esiste alcuna evidenza.
+  const nameToBrand=new Map();
+  raw.forEach((o,i)=>{
+    const id=identities[i];
+    if(!id.brand)return;
+    const n=norm(id.name);
+    if(!n)return;
+    const old=nameToBrand.get(n);
+    if(!old || id.brand.length>old.length)nameToBrand.set(n,id.brand);
+  });
+  raw.forEach((o,i)=>{
+    const id=identities[i];
+    if(!id.brand){
+      const inherited=nameToBrand.get(norm(id.name));
+      if(inherited){
+        id.brand=inherited;
+        id.key=norm(inherited)+"|"+norm(id.name);
       }
     }
+  });
 
-    if(brand){
-      // Alcuni negozi ripetono il brand all'inizio del nome.
-      // Rimuoviamo tutte le ripetizioni del prefisso.
-      while(n.toLowerCase().startsWith(brand.toLowerCase()+" ")){
-        n=n.slice(brand.length).trim();
-      }
-      if(n.toLowerCase()===brand.toLowerCase()) n="";
-
-      // Caso specifico Miu Miu: dopo la rimozione del brand può
-      // rimanere un ulteriore "Miu" spurio prima del nome reale.
-      const brandWords=brand.split(/\s+/).filter(Boolean);
-      if(brandWords.length===2 &&
-         brandWords[0].toLowerCase()===brandWords[1].toLowerCase() &&
-         n.toLowerCase().startsWith(brandWords[0].toLowerCase()+" ")){
-        n=n.slice(brandWords[0].length).trim();
-      }
-    }
-
-    const cleanBrand=titleCasePerfumeName(brand);
-    const cleanName=titleCasePerfumeName(n);
-    return (cleanBrand ? cleanBrand+" - ":"")+cleanName;
-  }
-
-  // Se esiste una sola misura esplicita per un profumo,
-  // le offerte senza ml vengono assegnate a quella misura.
+  // Se esiste una sola misura esplicita per un prodotto,
+  // le offerte senza ml vengono assegnate automaticamente a quella misura.
   const inferredSizeByGroup=new Map();
-
-  raw.forEach(o=>{
-    const groupName=groupingName(o);
+  raw.forEach((o,i)=>{
+    const id=identities[i];
     const size=sizeOf(o);
-    if(!groupName||!size||liquidBrunFamily(o))return;
-    if(!inferredSizeByGroup.has(groupName)){
-      inferredSizeByGroup.set(groupName,new Set());
-    }
-    inferredSizeByGroup.get(groupName).add(size);
+    if(!id.key||!size||liquidBrunFamily(o))return;
+    if(!inferredSizeByGroup.has(id.key))inferredSizeByGroup.set(id.key,new Set());
+    inferredSizeByGroup.get(id.key).add(size);
   });
 
   const map=new Map();
 
-  raw.forEach(o=>{
-    const cname=canonicalName(o);
-    const groupName=groupingName(o);
-    if(!cname||!groupName)return;
+  raw.forEach((o,i)=>{
+    const id=identities[i];
+    if(!id.key||!id.name)return;
 
     const explicitSize=sizeOf(o);
     const lb=liquidBrunFamily(o);
-    const knownSizes=inferredSizeByGroup.get(groupName);
+    const knownSizes=inferredSizeByGroup.get(id.key);
     const inferredSize=(
       !lb && !explicitSize && knownSizes && knownSizes.size===1
     ) ? [...knownSizes][0] : "";
     const size=explicitSize||inferredSize;
 
-    // UN SOLO GRUPPO PER PROFUMO.
-    // I formati ml sono il secondo livello.
-    const key=groupName;
-
-    if(!map.has(key)){
-      map.set(key,{
-        brand:o.brand||(/\brasasi\b/i.test(String(o.name||""))?"Rasasi":""),
-        name:displayName(o),
-        canonical:cname,
-        display_name:displayName(o),
+    if(!map.has(id.key)){
+      map.set(id.key,{
+        brand:id.brand||"",
+        name:id.name,
+        canonical:norm(id.name),
+        display_name:id.brand ? id.brand+" - "+id.name : id.name,
         size_ml:"",
         concentration:o.concentration||"",
         image:o.image||o.image_url||o.thumbnail||"",
@@ -833,23 +904,25 @@ function shGroupData(data){
       });
     }
 
-    const g=map.get(key);
-    if(!g.brand && o.brand)g.brand=o.brand;
+    const g=map.get(id.key);
+    if(!g.brand && id.brand)g.brand=id.brand;
     if(!g.image)g.image=o.image||o.image_url||o.thumbnail||"";
 
     const normalizedOffer={...o};
-    if(size) normalizedOffer.size_ml=size;
+    if(id.brand)normalizedOffer.brand=id.brand;
+    if(id.name)normalizedOffer.name=id.name;
+    if(size)normalizedOffer.size_ml=size;
 
     const store=String(o.store||"").trim().toLowerCase();
     const url=String(o.url||"").split("?")[0].toLowerCase();
     const offerSize=size||"unknown";
-    const offerName=normalizePerfumeName(o.name||"").toLowerCase();
+    const offerName=norm(id.name);
 
     const existingIndex=g.offers.findIndex(x=>{
       const xs=String(x.store||"").trim().toLowerCase();
       const xu=String(x.url||"").split("?")[0].toLowerCase();
       const xsize=sizeOf(x)||"unknown";
-      const xn=normalizePerfumeName(x.name||"").toLowerCase();
+      const xn=norm(x.name||"");
       return xs===store && xu===url && xsize===offerSize && xn===offerName;
     });
 
@@ -865,8 +938,6 @@ function shGroupData(data){
   const groups=[...map.values()];
 
   groups.forEach(g=>{
-    // Una sola offerta per negozio DENTRO lo stesso formato.
-    // Formati diversi dello stesso negozio restano separati.
     const bySize=new Map();
 
     g.offers.forEach(o=>{
@@ -878,7 +949,6 @@ function shGroupData(data){
     const cleanOffers=[];
     bySize.forEach(list=>{
       const byStore=new Map();
-
       list.forEach(o=>{
         const store=String(o.store||"").trim().toLowerCase();
         if(!store){
@@ -888,7 +958,6 @@ function shGroupData(data){
         const prev=byStore.get(store);
         if(!prev || shNum(o)<shNum(prev))byStore.set(store,o);
       });
-
       cleanOffers.push(...byStore.values());
     });
 
@@ -899,7 +968,9 @@ function shGroupData(data){
       return shNum(a)-shNum(b);
     });
 
-    g.name=g.display_name||g.name||"Profumo";
+    g.brand=pretty(g.brand||"");
+    g.name=pretty(g.name||"Profumo");
+    g.display_name=g.brand ? g.brand+" - "+g.name : g.name;
   });
 
   return groups.filter(g=>g.offers.length);
@@ -1017,8 +1088,7 @@ function showProducts(groups){
       return `<article class="product-choice" onclick='openSize(${i},${JSON.stringify(s.size)},false)'>
         <div class="result-image">${img?`<img src="${esc(img)}" alt="${esc(g.name)}" onerror="this.outerHTML='🧴'">`:"🧴"}</div>
         <div class="product-choice-main">
-          <div class="store">${esc(g.brand||"")}</div>
-          <div class="name">${esc(g.name)}</div>
+          <div class="name">${esc(g.brand ? g.brand+" - "+g.name : g.name)}</div>
           <div class="offer-meta">${esc(formatLabel(s.size))}</div>
           ${best?`<div class="bestprice">da ${esc(shPrice(best))}</div>`:`<div class="bestprice">OUT OF STOCK</div>`}
           <div class="offer-meta">${shopCount} ${shopCount===1?"negozio":"negozi"}</div>
@@ -1033,8 +1103,7 @@ function showProducts(groups){
     return `<article class="product-choice" onclick='openProduct(${i})'>
       <div class="result-image">${img?`<img src="${esc(img)}" alt="${esc(g.name)}" onerror="this.outerHTML='🧴'">`:"🧴"}</div>
       <div class="product-choice-main">
-        <div class="store">${esc(g.brand||"")}</div>
-        <div class="name">${esc(g.name)}</div>
+        <div class="name">${esc(g.brand ? g.brand+" - "+g.name : g.name)}</div>
         ${best?`<div class="bestprice">da ${esc(shPrice(best))}</div>`:`<div class="bestprice">OUT OF STOCK</div>`}
       </div>
       <div class="arrow">›</div>
