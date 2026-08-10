@@ -685,115 +685,11 @@ function shGroupData(data){
   (Array.isArray(data.results)?data.results:[]).forEach(o=>raw.push({...o}));
 
   /*
-   * FILTRO PRODOTTI — dalla ricerca mostriamo solo prodotti che siano
-   * realmente profumi. Deodoranti, doccia gel, shampoo, creme, saponi,
-   * prodotti da barba ecc. non devono diventare schede.
-   *
-   * I SET restano ammessi: un set può contenere il profumo ed è quindi
-   * una voce utile della ricerca. Un set dichiaratamente composto da
-   * prodotti corpo/doccia/deodorante viene invece escluso.
+   * La classificazione profumo/non-profumo viene fatta una sola volta
+   * dalla funzione globale isNonPerfumeProduct() qui sotto.
+   * I risultati NON vengono eliminati: quelli non-profumo vengono ordinati
+   * alla fine della lista.
    */
-  function isNonPerfumeProduct(o){
-    const clean=v=>String(v||"")
-      .toLowerCase()
-      .normalize("NFD")
-      .replace(/[\u0300-\u036f]/g,"")
-      .replace(/[’‘]/g,"'")
-      .replace(/\s+/g," ")
-      .trim();
-
-    // Per decidere se una scheda è un prodotto non-profumo usiamo
-    // soprattutto i campi che descrivono il prodotto, NON la descrizione
-    // commerciale: quest'ultima può citare altri prodotti della linea.
-    const name=clean(o?.name);
-    const meta=clean([
-      o?.category,o?.type,o?.product_type,o?.productType,
-      o?.sub_category,o?.subcategory
-    ].filter(Boolean).join(" "));
-    const text=(name+" "+meta).trim();
-    if(!text)return false;
-
-    // Un SET resta ammesso se identifica chiaramente un profumo/fragrance.
-    // Un set composto solo da prodotti corpo/doccia/deodorante viene invece escluso.
-    const isSet=/\b(?:set|gift\s*set|coffret|cofanetto|coffret\s*cadeau|pack|kit|box)\b/.test(text);
-    const hasFragrance=/(?:\beau\s+de\s+parfum\b|\beau\s+de\s+toilette\b|\beau\s+de\s+cologne\b|\beau\s+fraiche\b|\beau\s+fraicheur\b|\bparfum\b|\bperfume\b|\bfragrance\b|\bextrait\s+de\s+parfum\b|\bessence\b)/.test(text);
-
-    const excluded=[
-      // Deodoranti / antitraspiranti
-      /\bdeodorant(?:e|s)?\b/,
-      /\bdeodorante\b/,
-      /\bdeodorant\s*stick\b/,
-      /\bdeostick\b/,
-      /\bdeo\s*stick\b/,
-      /\bdeo\b/,
-      /\bantiperspirant\b/,
-      /\banti[- ]?transpirant\b/,
-
-      // Doccia / bagno / detergenti (incl. tedesco)
-      /\bshower\s*gel\b/,
-      /\bshower\s*cream\b/,
-      /\bshower\s*foam\b/,
-      /\bshower\s*oil\b/,
-      /\bgel\s+(?:douche|doccia|bain)\b/,
-      /\bgel\s+doccia\b/,
-      /\bdoccia\s+gel\b/,
-      /\bbagno\s+(?:doccia|schiuma)\b/,
-      /\bbagnoschiuma\b/,
-      /\bduschgel\b/,
-      /\bdusch[- ]?(?:gel|schaum|creme|lotion)\b/,
-      /\bbad[- ]?(?:gel|schaum|foam)\b/,
-      /\bbody\s+wash\b/,
-      /\bbody\s+gel\b/,
-      /\bbody\s+cleanser\b/,
-      /\bbody\s+cleaning\b/,
-
-      // Capelli
-      /\bshampoo\b/,
-      /\bconditioner\b/,
-      /\bhaarmaske\b/,
-      /\bhaarshampoo\b/,
-
-      // Creme / lozioni / corpo
-      /\bbody\s+(?:lotion|cream|creme|milk|butter|moisturizer)\b/,
-      /\blotion\s+corps\b/,
-      /\bcreme?\s+corps\b/,
-      /\bbody\s+milk\b/,
-      /\bhand\s+(?:cream|creme|lotion)\b/,
-      /\bface\s+(?:cream|creme|lotion|wash)\b/,
-      /\bhandcreme\b/,
-      /\bkorperlotion\b/,
-      /\bkoerperlotion\b/,
-
-      // Saponi / rasatura / make-up / igiene
-      /\bsoap\b/,
-      /\bsavon\b/,
-      /\bsapone\b/,
-      /\bshaving\b/,
-      /\bafter\s*shave\b/,
-      /\baftershave\b/,
-      /\brazor\b/,
-      /\bdemaquillant\b/,
-      /\bmake[- ]?up\b/,
-      /\blipstick\b/,
-      /\bmascara\b/,
-      /\btoothpaste\b/,
-      /\btoothbrush\b/
-    ];
-
-    const isExcluded=excluded.some(re=>re.test(text));
-
-    // Se è un set che dichiara chiaramente di contenere un profumo,
-    // lo teniamo anche se il nome cita shower gel/deodorante.
-    if(isSet && hasFragrance)return false;
-
-    return isExcluded;
-  }
-
-  // Applichiamo il filtro SOLO ai risultati della ricerca, non alle
-  // offerte della home: qui "raw" contiene esclusivamente la ricerca.
-  const filteredRaw=raw.filter(o=>!isNonPerfumeProduct(o));
-  raw.length=0;
-  raw.push(...filteredRaw);
 
   function sizeOf(o){
     const explicit=String(o.size_ml||o.size||"").match(/(\d{1,4})/);
@@ -1330,43 +1226,44 @@ function shGroupData(data){
 function isNonPerfumeProduct(g){
   if(!g)return false;
 
-  // Se il catalogo master ha riconosciuto la referenza, è un profumo:
-  // non lo spostiamo mai nella coda dei prodotti accessori.
-  if(g.catalog_id)return false;
+  const clean=v=>String(v||"")
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g,"")
+    .replace(/[’‘]/g,"'")
+    .replace(/\s+/g," ")
+    .trim();
 
   const text=[
     g.brand,g.name,g.concentration,
-    ...(g.offers||[]).map(o=>[o?.brand,o?.name,o?.category,o?.product_type,o?.productType,o?.type,o?.subcategory].filter(Boolean).join(" "))
-  ].join(" ").toLowerCase();
+    g.category,g.type,g.product_type,g.productType,g.sub_category,g.subcategory,
+    ...(g.offers||[]).map(o=>[
+      o?.brand,o?.name,o?.category,o?.type,o?.product_type,o?.productType,
+      o?.sub_category,o?.subcategory
+    ].filter(Boolean).join(" "))
+  ].map(clean).filter(Boolean).join(" ");
 
-  // Termini che identificano direttamente prodotti diversi dal profumo.
-  const nonPerfume=/(?:\bdeodorant\b|\bdeodorante\b|\bdeo\b|\bdeostick\b|\bdeo\-?stick\b|\bshower\s+gel\b|\bduschgel\b|\bduschegel\b|\bgel\s+doccia\b|\bdoccia\s+gel\b|\bbody\s+lotion\b|\blotion\b|\bbody\s+cream\b|\bcrema\s+corpo\b|\baftershave\b|\bafter\s*shave\b|\bshampoo\b|\bconditioner\b|\bsoap\b|\bsapone\b|\bbath\b|\bbagnoschiuma\b|\bbody\s+wash\b|\bhand\s+cream\b|\bhand\s+lotion\b|\bstick\b)/i.test(text);
-  if(nonPerfume)return true;
+  if(!text)return false;
 
-  // Mystery Box/cofanetti generici senza una referenza di profumo esplicita
-  // non devono precedere i profumi veri. Un set che contiene chiaramente
-  // Eau de Parfum / Eau de Toilette / Extrait / Parfum / Perfume resta invece
-  // tra i profumi.
-  const explicitPerfume=/(?:\beau\s+de\s+parfum\b|\beau\s+de\s+toilette\b|\beau\s+de\s+cologne\b|\bextrait\s+de\s+parfum\b|\bparfum\b|\bperfume\b|\bfragrance\b)/i.test(text);
-  const mysteryBox=/(?:\bmystery\s+box\b|\bgift\s+box\b)/i.test(text);
-  const perfumeSet=/(?:\bcofanetto\b|\bgift\s+set\b|\bset\b)/i.test(text);
+  // Mystery/Gift Box generiche NON sono il profumo stesso: sempre in fondo.
+  // Questo vale anche quando il nome contiene una referenza reale, es.
+  // "Mystery Box Khadlaj Island".
+  if(/\b(?:mystery\s+box|gift\s+box)\b/.test(text))return true;
 
-  // Una mystery/gift box generica non è una referenza di profumo: resta in fondo,
-  // anche quando nel nome compare il nome di un profumo (es. "Mystery Box Khadlaj Island").
-  if(mysteryBox)return !explicitPerfume;
+  const isSet=/\b(?:set|gift\s*set|coffret|cofanetto|coffret\s+cadeau|pack|kit)\b/.test(text);
 
-  // Per i set/cofanetti, invece, conserviamo il risultato se il testo contiene
-  // una dicitura inequivocabile di profumo oppure il nome di una referenza del catalogo master.
-  if(perfumeSet){
+  // Prodotti chiaramente diversi dal profumo.
+  const nonPerfume=/(?:\bdeodorant(?:e|s)?\b|\bdeostick\b|\bdeo\s*stick\b|\bdeo\b|\bantiperspirant\b|\banti[- ]?transpirant\b|\bshower\s*(?:gel|cream|foam|oil)\b|\bgel\s+(?:douche|doccia|bain)\b|\bgel\s+doccia\b|\bdoccia\s+gel\b|\bbagno\s+(?:doccia|schiuma)\b|\bbagnoschiuma\b|\bduschgel\b|\bdusch[- ]?(?:gel|schaum|creme|lotion)\b|\bbad[- ]?(?:gel|schaum|foam)\b|\bbody\s+(?:wash|gel|cleanser|cleaning)\b|\bshampoo\b|\bconditioner\b|\bhaarmaske\b|\bhaarshampoo\b|\bbody\s+(?:lotion|cream|creme|milk|butter|moisturizer)\b|\blotion\s+corps\b|\bcreme?\s+corps\b|\bhand\s+(?:cream|creme|lotion)\b|\bface\s+(?:cream|creme|lotion|wash)\b|\bhandcreme\b|\bkorperlotion\b|\bkoerperlotion\b|\bsoap\b|\bsavon\b|\bsapone\b|\bshaving\b|\bafter\s*shave\b|\baftershave\b|\brazor\b|\bdemaquillant\b|\bmake[- ]?up\b|\blipstick\b|\bmascara\b|\btoothpaste\b|\btoothbrush\b)/.test(text);
+
+  // Un set/cofanetto resta tra i risultati principali se contiene un profumo.
+  // Se è invece chiaramente un set di soli prodotti corpo/igiene, va in fondo.
+  if(isSet){
+    const explicitPerfume=/(?:\beau\s+de\s+parfum\b|\beau\s+de\s+toilette\b|\beau\s+de\s+cologne\b|\beau\s+fraiche\b|\bextrait\s+de\s+parfum\b|\bparfum\b|\bperfume\b|\bfragrance\b)/.test(text);
     if(explicitPerfume)return false;
-    const knownMaster=MASTER_CATALOG.some(p=>{
-      const mn=norm(p.name||"");
-      return mn && text.includes(mn);
-    });
-    return !knownMaster;
+    return nonPerfume;
   }
 
-  return false;
+  return nonPerfume;
 }
 
 function isOfferOutOfStock(o){
