@@ -859,42 +859,69 @@ function shGroupData(data){
       .trim();
 
     /*
-     * "By BRAND" è una provenienza commerciale, NON una parte del nome.
-     * Lo togliamo in modo volutamente robusto: prima dal testo originale,
-     * poi di nuovo dopo la normalizzazione. Così casi come
-     * "Turathi Purple By Afnan" e "Turathi Purple ()" non generano
-     * prodotti separati.
+     * NORMALIZZAZIONE FORTE DEL NOME COMMERCIALE.
+     * Il backend può restituire lo stesso profumo in forme diverse:
+     *   "Turathi Blue By Afnan"
+     *   "Afnan Turathi Blue"
+     *   "Afnan - Women Perfume - Edp - 90 Ml - Turathi Blue By Afnan"
+     * Devono produrre tutti lo stesso nome: "Turathi Blue".
      */
+    const knownBrandPatterns=KNOWN_BRANDS
+      .slice()
+      .sort((a,b)=>norm(b).length-norm(a).length)
+      .map(b=>b.replace(/[.*+?^${}()|[\]\\]/g,"\\$&"));
+
+    // Rimuove sempre un eventuale "By BRAND" finale, anche se il campo
+    // brand fornito dallo scraper è errato o contiene una descrizione.
+    n=n.replace(new RegExp("\\s+by\\s+(?:"+knownBrandPatterns.join("|")+ ")\\s*$","i")," ").trim();
     if(brand){
-      const brandRaw=cleanBrandText(brand).replace(/[.*+?^${}()|[\]\\]/g,"\\$&");
-      n=n.replace(new RegExp("\\s+by\\s+"+brandRaw+"\\s*$","i")," ").trim();
-      const brandNorm=norm(brand);
-      if(brandNorm){
-        const brandWords=brandNorm.split(/\s+/).map(w=>w.replace(/[.*+?^${}()|[\]\\]/g,"\\$&")).join("\\s+");
-        n=n.replace(new RegExp("\\s+by\\s+"+brandWords+"\\s*$","i")," ").trim();
-      }
-    }else{
-      n=n.replace(/\s+by\s+[^|,;]+$/i," ").trim();
+      const brandWords=norm(brand).split(/\s+/).filter(Boolean)
+        .map(w=>w.replace(/[.*+?^${}()|[\]\\]/g,"\\$&")).join("\\s+");
+      if(brandWords)n=n.replace(new RegExp("\\s+by\\s+"+brandWords+"\\s*$","i")," ").trim();
     }
 
-    /* Eliminiamo residui commerciali evidenti lasciati dai negozi. */
+    // Residui come "()", "(man)", "(woman)".
     n=n
       .replace(/\(\s*\)/g," ")
       .replace(/\((?:man|woman|men|women|homme|femme|unisex)\)/gi," ")
       .replace(/\s+/g," ")
       .trim();
 
-    /* Togliamo il brand iniziale, anche se compare più volte. */
-    n=removeBrandFromStart(n,brand);
-
-    /*
-     * Descrizioni commerciali che non appartengono all'identità del
-     * profumo. "Parfum" resta invece valido quando è parte reale del nome.
-     */
+    // Elimina descrizioni commerciali iniziali: "Women Perfume - Edp - 90 Ml -".
     n=n
+      .replace(/^(?:women'?s|men'?s|women|men)\s+perfume\s*[-–—:]\s*/i,"")
+      .replace(/^(?:eau de parfum|eau de toilette|eau de cologne|edp|edt|edc|spray)\s*[-–—:]\s*/i,"")
       .replace(/\b(?:women'?s|men'?s|women|men)\s+perfume\b/gi," ")
       .replace(/\b(?:eau de parfum|eau de toilette|eau de cologne|eau de parfum intense|edp|edt|edc|spray)\b/gi," ")
       .replace(/\b(?:for men|for women|for him|for her|pour homme|pour femme|homme|femme|men|man|women|woman|unisex)\b/gi," ")
+      .replace(/\s+/g," ")
+      .trim();
+
+    // Togliamo il brand all'inizio. Ripetiamo l'operazione anche se il
+    // nome contiene il brand più volte (es. "Miu Miu Miu Miu Miutine").
+    if(brand){
+      const escapedBrand=cleanBrandText(brand).replace(/[.*+?^${}()|[\]\\]/g,"\\$&");
+      const brandWords=norm(brand).split(/\s+/).filter(Boolean)
+        .map(w=>w.replace(/[.*+?^${}()|[\]\\]/g,"\\$&")).join("\\s+");
+      for(let pass=0;pass<5;pass++){
+        const before=n;
+        n=n.replace(new RegExp("^\\s*"+escapedBrand+"\\s*[-–—:]?\\s*","i"),"").trim();
+        if(brandWords)n=n.replace(new RegExp("^\\s*"+brandWords+"\\s*[-–—:]?\\s*","i"),"").trim();
+        if(n===before)break;
+      }
+    }else{
+      // Anche senza campo brand, togliamo un brand noto che compare all'inizio.
+      for(const b of KNOWN_BRANDS){
+        const bw=norm(b).split(/\s+/).filter(Boolean)
+          .map(w=>w.replace(/[.*+?^${}()|[\]\\]/g,"\\$&")).join("\\s+");
+        if(bw)n=n.replace(new RegExp("^\\s*"+bw+"\\s*[-–—:]?\\s*","i"),"").trim();
+      }
+    }
+
+    // Ultima barriera: nessun "By BRAND" conosciuto deve mai restare nel nome.
+    n=n.replace(new RegExp("\\s+by\\s+(?:"+knownBrandPatterns.join("|")+ ")\\s*$","i")," ").trim();
+
+    n=n
       .replace(/\s*[-–—]\s*/g," ")
       .replace(/\s+/g," ")
       .trim();
