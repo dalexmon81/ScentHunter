@@ -8,7 +8,7 @@ import json
 import os
 import re
 import traceback
-import time
+import unicodedata
 from concurrent.futures import ThreadPoolExecutor, as_completed, TimeoutError
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
@@ -57,6 +57,7 @@ STORES = [
 
 BASE_DIR = os.path.dirname(__file__)
 HISTORY_PATH = os.path.join(BASE_DIR, "price_history.json")
+MASTER_CATALOG_PATH = os.path.join(BASE_DIR, "ScentHunter_catalogo_master_V5_FAMIGLIE.json")
 
 FRONTEND_INDEX = (
     Path(__file__).resolve().parent.parent
@@ -64,55 +65,90 @@ FRONTEND_INDEX = (
     / "index.html"
 )
 
-VARIANTS = {
-    "pour femme",
-    "night out",
-    "rebel",
-    "elixir",
-    "intense",
-    "extreme",
-    "limited edition",
-    "collector edition",
-    "collector's edition",
+# Varianti che rendono la query specifica. Senza marker la ricerca è di famiglia.
+VARIANT_MARKERS = {
+    "pour femme", "pour homme", "femme", "homme", "flame", "night",
+    "night out", "by night", "rebel", "elixir", "intense", "extreme",
+    "limited", "limited edition", "collector", "collector edition",
+    "collector's edition", "special edition", "anniversary", "ice",
+    "blanc", "noir", "nude", "rose", "blue", "red", "black", "white",
+    "gold", "silver", "coral", "fantasy", "sport", "absolu",
+    "le parfum", "the parfum", "the most", "most wanted",
 }
-
-# Famiglie che alcuni motori dei negozi indicizzano come prodotti separati.
-# Servono SOLO per la ricerca della famiglia, non cambiano le altre ricerche.
-FAMILY_SEARCH_TERMS = {
-    "9 pm": [
-        "9 PM",
-        "9 PM Pour Femme",
-        "9 PM Elixir",
-        "9 PM Night Out",
-        "9 PM Rebel",
-    ],
-    "9 am": [
-        "9 AM",
-        "9 AM Pour Femme",
-        "9 AM Dive",
-    ],
-    "le beau": [
-        "Le Beau",
-        "Le Beau Le Parfum",
-        "Le Beau Paradise Garden",
-    ],
-}
+VARIANTS = VARIANT_MARKERS
 
 NON_PERFUME = {
-    "gift set",
-    "set regalo",
-    "coffret",
-    "bundle",
+    # Prodotti di cura/corpo che NON devono entrare nelle ricerche
+    # dei profumi. I set/coffret/bundle/kit restano invece ammessi.
     "deodorant",
+    "deostick",
+    "deo stick",
+    "deodorant stick",
     "deo spray",
+    "shampoo",
+    "conditioner",
+    "hair conditioner",
+    "hair care",
+    "hair",
     "shower gel",
+    "duschgel",
+    "dusch gel",
+    "duschbad",
+    "shower",
+    "body wash",
     "body lotion",
+    "body cream",
+    "body butter",
+    "body milk",
+    "body oil",
+    "body mist",
+    "hand cream",
+    "hand wash",
+    "hand lotion",
     "after shave",
     "aftershave",
-    "travel set",
-    "discovery set",
+    "beard",
+    "soap",
+    "bath",
+    "bath oil",
+    "bath gel",
+    "oil",
+    "öl",
+    "oel",
+    "körperöl",
+    "koerperoel",
+    "fragrance oil",
+    "perfume oil",
+    "cream",
+    "creme",
+    "körpercreme",
+    "koerpercreme",
+    "lotion",
+    "körperlotion",
+    "koerperlotion",
+    "candle",
+    "diffuser",
+    "room spray",
+    "home fragrance",
+    "fabric spray",
+    "scrub",
+    "toothpaste",
+    "detergent",
+    "powder",
+    "talc",
+    "roll on",
+    "roll-on",
+}
+
+# I set/coffret/bundle/kit sono ammessi anche se contengono prodotti
+# accessori: l'utente ha scelto esplicitamente di lasciarli nei risultati.
+SET_MARKERS = {
+    "set",
+    "coffret",
+    "bundle",
     "kit",
 }
+
 
 IGNORED_WORDS = {
     "eau",
@@ -142,6 +178,8 @@ def norm(value: Any) -> str:
         9 PM  -> 9 pm
     """
     value = str(value or "").lower().strip()
+    value = unicodedata.normalize("NFKD", value)
+    value = "".join(ch for ch in value if not unicodedata.combining(ch))
 
     value = re.sub(
         r"(?<=\d)(?=[a-z])|(?<=[a-z])(?=\d)",
@@ -195,93 +233,158 @@ def product_image(product: Dict[str, Any]) -> str:
 
 
 # ============================================================
+# NORMALIZZAZIONE NOME VISUALIZZATO
+# ============================================================
+
+def display_name(product: Dict[str, Any]) -> str:
+    """
+    Restituisce il nome canonico visualizzato da ScentHunter.
+
+    Regola: il nome del profumo viene prima di eventuali descrittori
+    iniziali come Uomo/Donna; il brand resta nel campo brand e quindi
+    il frontend può visualizzare: Brand - Nome profumo - resto.
+    """
+    brand = str(product.get("brand") or "").strip()
+    raw_name = str(
+        product.get("name")
+        or product.get("title")
+        or product.get("product_name")
+        or ""
+    ).strip()
+
+    if not raw_name:
+        return ""
+
+    # Elimina un eventuale brand già incorporato nel nome.
+    if brand:
+        raw_name = re.sub(
+            rf"^\s*{re.escape(brand)}\s*[-–—:]?\s*",
+            "",
+            raw_name,
+            flags=re.IGNORECASE,
+        ).strip()
+
+    # Caso importante per Born in Roma: alcuni negozi scrivono
+    # "Donna Born in Roma ..." / "Uomo Born in Roma ...".
+    # Il formato canonico deve essere "Born in Roma Donna ..." /
+    # "Born in Roma Uomo ...".
+    match = re.match(
+        r"^(donna|uomo)\s+(born\s+in\s+roma)(?:\s+(.*))?$",
+        raw_name,
+        flags=re.IGNORECASE,
+    )
+    if match:
+        gender = match.group(1).title()
+        family = "Born in Roma"
+        rest = (match.group(3) or "").strip()
+        return " ".join(part for part in (family, rest, gender) if part)
+
+    # Copre anche il caso opposto: "Born in Roma Uomo ...".
+    match = re.match(
+        r"^(born\s+in\s+roma)\s+(donna|uomo)(?:\s+(.*))?$",
+        raw_name,
+        flags=re.IGNORECASE,
+    )
+    if match:
+        family = "Born in Roma"
+        gender = match.group(2).title()
+        rest = (match.group(3) or "").strip()
+        return " ".join(part for part in (family, rest, gender) if part)
+
+    return raw_name
+
+
+def normalize_product_names(products: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    """Applica il nome canonico senza alterare gli altri dati del prodotto."""
+    normalized: List[Dict[str, Any]] = []
+    for product in products:
+        item = dict(product)
+        name = display_name(item)
+        if name:
+            item["name"] = name
+        normalized.append(item)
+    return normalized
+
+
+# ============================================================
 # FILTRO RISULTATI
 # ============================================================
 
-def match_details(product: Dict[str, Any], query: str) -> Dict[str, Any]:
-    """
-    Esegue lo stesso filtro di matches(), ma restituisce anche il motivo
-    per cui un prodotto viene accettato o scartato.
+def _query_has_variant_marker(query: str) -> bool:
+    q = norm(query)
+    return any(norm(marker) in q for marker in VARIANT_MARKERS)
 
-    La diagnostica serve a distinguere:
-      - prodotto non restituito dallo scraper;
-      - prodotto restituito ma scartato dal main;
-      - prodotto restituito e accettato dal main.
-    """
-    query_normalized = norm(query)
 
-    searchable_parts = [
-        product.get("brand", ""),
-        product.get("name", ""),
-        product.get("title", ""),
-        product.get("product_name", ""),
-    ]
-    searchable = norm(" ".join(
-        str(value or "") for value in searchable_parts
+def _is_set_product(product: Dict[str, Any]) -> bool:
+    text = norm(" ".join(
+        str(product.get(field) or "")
+        for field in (
+            "name", "title", "product_name", "description",
+            "category", "type", "product_type",
+        )
+    ))
+    return any(norm(marker) in text for marker in SET_MARKERS)
+
+
+def _product_search_text(product: Dict[str, Any]) -> str:
+    # Per il filtro usiamo solo i campi che identificano il prodotto.
+    # La descrizione viene esclusa: può parlare di un set o di una linea
+    # e contenere parole come "cream" / "shower gel" senza significare
+    # che il risultato principale sia una crema o uno shower gel.
+    return norm(" ".join(
+        str(product.get(field) or "")
+        for field in (
+            "name", "title", "product_name",
+            "category", "type", "product_type",
+        )
     ))
 
-    if not searchable:
-        return {"matched": False, "reason": "campi nome/brand/titolo vuoti"}
 
+def matches(product: Dict[str, Any], query: str) -> bool:
+    """
+    Applica tre regole: famiglia, variante specifica e filtro prodotti.
+
+    - Query base (es. Eros / Born in Roma) = accetta tutte le varianti
+      che lo scraper restituisce.
+    - Query con variante (es. Eros Flame) = resta specifica.
+    - Deodoranti, shampoo, oli, creme, shower gel ecc. vengono esclusi.
+      I set/coffret/bundle/kit sono volutamente ammessi.
+    """
     name = norm(product.get("name", ""))
+    query_normalized = norm(query)
 
-    query_variant = None
-    for phrase in VARIANTS:
-        normalized_phrase = norm(phrase)
-        if normalized_phrase and normalized_phrase in query_normalized:
-            query_variant = normalized_phrase
-            break
+    if not name:
+        return False
 
-    if query_variant:
-        for phrase in VARIANTS:
+    searchable = _product_search_text(product)
+
+    if not _is_set_product(product):
+        for phrase in NON_PERFUME:
             normalized_phrase = norm(phrase)
-            if (
-                normalized_phrase
-                and normalized_phrase in name
-                and normalized_phrase != query_variant
-            ):
-                return {
-                    "matched": False,
-                    "reason": f"variante diversa: '{normalized_phrase}'",
-                }
-
-    for phrase in NON_PERFUME:
-        normalized_phrase = norm(phrase)
-        if (
-            normalized_phrase in searchable
-            and normalized_phrase not in query_normalized
-        ):
-            return {
-                "matched": False,
-                "reason": f"prodotto non profumo: '{normalized_phrase}'",
-            }
+            if normalized_phrase and normalized_phrase in searchable:
+                return False
 
     tokens = [
         token
         for token in query_normalized.split()
         if token not in IGNORED_WORDS
     ]
-
     if not tokens:
-        return {"matched": False, "reason": "query senza token utili"}
+        return False
 
-    missing = [token for token in tokens if token not in searchable]
-    if missing:
-        return {
-            "matched": False,
-            "reason": "token mancanti: " + ", ".join(missing),
-        }
+    # Se l'utente ha indicato una variante, non permettiamo che una
+    # variante diversa della stessa famiglia passi il filtro.
+    if _query_has_variant_marker(query):
+        for phrase in VARIANT_MARKERS:
+            normalized_phrase = norm(phrase)
+            if (
+                normalized_phrase
+                and normalized_phrase in name
+                and normalized_phrase not in query_normalized
+            ):
+                return False
 
-    return {"matched": True, "reason": "match accettato"}
-
-
-def matches(product: Dict[str, Any], query: str) -> bool:
-    """
-    Filtro principale. Mantiene esattamente la logica precedente;
-    match_details() aggiunge soltanto le informazioni diagnostiche.
-    """
-    return bool(match_details(product, query)["matched"])
-
+    return all(token in name for token in tokens)
 
 # ============================================================
 # SCRAPER
@@ -297,37 +400,122 @@ def load_scraper(store: str):
     )
 
 
-def build_search_attempts(store: str, query: str) -> List[str]:
-    """Poche query mirate: precisa prima, poi più corta."""
+def load_master_catalog() -> List[Dict[str, Any]]:
+    """Legge il catalogo master locale usato come sorgente delle famiglie."""
+    try:
+        with open(MASTER_CATALOG_PATH, "r", encoding="utf-8") as file:
+            payload = json.load(file)
+        items = payload.get("products", []) if isinstance(payload, dict) else []
+        return [item for item in items if isinstance(item, dict)]
+    except Exception:
+        return []
+
+
+def catalog_family_hints(query: str) -> List[str]:
+    """Restituisce i nomi canonici del catalogo appartenenti alla famiglia cercata."""
+    query_n = norm(query)
+    if not query_n:
+        return []
+
+    query_tokens = [token for token in query_n.split() if token not in IGNORED_WORDS]
+    if not query_tokens:
+        return []
+
+    hints: List[str] = []
+    seen = set()
+    for item in load_master_catalog():
+        name = str(item.get("name") or "").strip()
+        brand = str(item.get("brand") or "").strip()
+        if not name:
+            continue
+        text = norm(f"{brand} {name}")
+        if all(token in text for token in query_tokens):
+            key = norm(name)
+            if key and key not in seen:
+                seen.add(key)
+                hints.append(name)
+    return hints
+
+
+def catalog_brand_candidates(query: str) -> List[str]:
+    """Trova i brand del catalogo che appartengono alla famiglia richiesta."""
+    query_tokens = [
+        token for token in norm(query).split()
+        if token not in IGNORED_WORDS
+    ]
+    if not query_tokens:
+        return []
+
+    # Prima proviamo la query completa. Se contiene un indicatore di variante
+    # (es. Pour Femme/Rebel/Elixir), proviamo anche il nucleo della famiglia.
+    token_sets = [query_tokens]
+    core_tokens = [
+        token for token in query_tokens
+        if not any(
+            token == marker_token
+            for marker in VARIANT_MARKERS
+            for marker_token in norm(marker).split()
+        )
+    ]
+    if core_tokens and core_tokens != query_tokens:
+        token_sets.append(core_tokens)
+
+    brands: List[str] = []
+    seen = set()
+    for search_tokens in token_sets:
+        for item in load_master_catalog():
+            brand = str(item.get("brand") or "").strip()
+            name = str(item.get("name") or "").strip()
+            if not brand or not name:
+                continue
+            text = norm(f"{brand} {name}")
+            if all(token in text for token in search_tokens):
+                key = norm(brand)
+                if key not in seen:
+                    seen.add(key)
+                    brands.append(brand)
+    return brands[:4]
+
+
+def build_search_attempts(
+    store: str,
+    query: str,
+    catalog_hints: Optional[List[str]] = None,
+    discovered_brands: Optional[List[str]] = None,
+) -> List[str]:
+    """Costruisce query complementari senza perdere le varianti della famiglia."""
     raw = str(query or "").strip()
     normalized = norm(raw)
     attempts: List[str] = []
 
     def add(value: str) -> None:
         value = str(value or "").strip()
-        if value and norm(value) not in [norm(x) for x in attempts]:
+        value_norm = norm(value)
+        if value_norm and value_norm not in {norm(x) for x in attempts}:
             attempts.append(value)
 
     add(raw)
 
-    if normalized in FAMILY_SEARCH_TERMS:
-        for term in FAMILY_SEARCH_TERMS[normalized]:
-            add(term)
-        return attempts
+    # Se la prima ricerca restituisce un brand, proviamo anche il brand e
+    # brand + query. Questo recupera varianti che il motore del negozio
+    # non mostra con la query esatta.
+    for brand in discovered_brands or []:
+        add(brand)
+        add(f"{brand} {raw}")
+
+    # Il catalogo locale/remoto può fornire altre varianti della famiglia.
+    for hint in catalog_hints or []:
+        add(hint)
 
     tokens = [t for t in normalized.split() if t not in IGNORED_WORDS]
+    if tokens:
+        add(" ".join(tokens))
 
-    # Spesso la prima parola è il marchio:
-    # Rasasi Hawas for Him -> Hawas Him
-    # Lattafa Asad Bourbon -> Asad Bourbon
     if len(tokens) >= 2:
         add(" ".join(tokens[1:]))
 
-    # Query ancora più semplice per motori che lavorano male con nomi lunghi.
     if len(tokens) >= 3:
         add(" ".join(tokens[-2:]))
-    elif tokens:
-        add(" ".join(tokens))
 
     compact = re.sub(
         r"(?<=\d)\s+(?=[a-z])|(?<=[a-z])\s+(?=\d)",
@@ -337,128 +525,80 @@ def build_search_attempts(store: str, query: str) -> List[str]:
     if compact != normalized:
         add(compact)
 
-    return attempts[:3]
-
-def _diagnostic_product(product: Dict[str, Any], match: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
-    """Riduce un prodotto alla parte utile per la diagnostica."""
-    return {
-        "brand": str(product.get("brand", "") or ""),
-        "name": str(product.get("name", "") or ""),
-        "title": str(product.get("title", "") or ""),
-        "product_name": str(product.get("product_name", "") or ""),
-        "price": str(product.get("price", "") or ""),
-        "url": str(product.get("url", "") or ""),
-        "stock": product.get("stock"),
-        "availability": product.get("availability"),
-        "available": product.get("available"),
-        "match": match if match is not None else None,
-    }
-
-
-def run_store_diagnostic(
-    store: str,
-    query: str,
-) -> tuple[List[Dict[str, Any]], Dict[str, Any]]:
-    """
-    Esegue un singolo scraper e registra una traccia completa di diagnosi.
-    La logica di ricerca/matching resta invariata.
-    """
-    store_started = time.monotonic()
-    module = load_scraper(store)
-
-    attempts = build_search_attempts(
-        store,
-        query,
-    )
-
-    output: List[Dict[str, Any]] = []
-    seen = set()
-    attempt_diagnostics: List[Dict[str, Any]] = []
-
-    for attempt in attempts:
-        attempt_started = time.monotonic()
-        attempt_error = None
-
-        try:
-            results = module.search(attempt) or []
-        except Exception as error:
-            results = []
-            attempt_error = f"{type(error).__name__}: {error}"
-
-        raw_count = len(results) if isinstance(results, list) else 0
-        matched_count = 0
-        rejected_count = 0
-        raw_products: List[Dict[str, Any]] = []
-        rejected_products: List[Dict[str, Any]] = []
-
-        if not isinstance(results, list):
-            results = []
-
-        for item in results:
-            if not isinstance(item, dict):
-                continue
-
-            product = dict(item)
-            product.setdefault("store", store)
-            match = match_details(product, query)
-
-            if len(raw_products) < 50:
-                raw_products.append(_diagnostic_product(product, match))
-
-            key = (
-                str(product.get("url", "")).lower(),
-                norm(product.get("name", "")),
-            )
-
-            if key in seen:
-                continue
-
-            seen.add(key)
-
-            if match["matched"]:
-                output.append(product)
-                matched_count += 1
-            else:
-                rejected_count += 1
-                if len(rejected_products) < 30:
-                    rejected_products.append(
-                        _diagnostic_product(product, match)
-                    )
-
-        attempt_diagnostics.append({
-            "query_sent": attempt,
-            "duration_ms": round((time.monotonic() - attempt_started) * 1000),
-            "raw_count": raw_count,
-            "matched_count": matched_count,
-            "rejected_count": rejected_count,
-            "raw_products_sample": raw_products,
-            "rejected_products_sample": rejected_products,
-            "error": attempt_error,
-        })
-
-        if output and norm(query) not in FAMILY_SEARCH_TERMS:
-            break
-
-    diagnostic = {
-        "store": store,
-        "query": query,
-        "status": "error" if any(a.get("error") for a in attempt_diagnostics) and not output else "ok",
-        "duration_ms": round((time.monotonic() - store_started) * 1000),
-        "attempt_count": len(attempt_diagnostics),
-        "attempts": attempt_diagnostics,
-        "total_matched": len(output),
-    }
-
-    return output, diagnostic
+    # Torniamo al margine di 20 tentativi della versione che ieri dava
+    # risultati migliori. I negozi restano comunque limitati a 2 worker.
+    return attempts[:20]
 
 
 def run_store(
     store: str,
     query: str,
+    catalog_hints: Optional[List[str]] = None,
 ) -> List[Dict[str, Any]]:
-    """Compatibilità con gli endpoint diagnostici esistenti."""
-    results, _ = run_store_diagnostic(store, query)
-    return results
+    """Ricerca iniziale + espansione generica per brand e famiglia."""
+    module = load_scraper(store)
+    raw_query = str(query or "").strip()
+
+    # Prima chiamata: serve per ottenere risultati immediati e scoprire
+    # i brand reali associati alla query dal negozio.
+    initial_results = module.search(raw_query) or []
+    discovered_brands: List[str] = []
+    brand_seen = set()
+
+    for item in initial_results:
+        if not isinstance(item, dict):
+            continue
+        brand = str(item.get("brand") or "").strip()
+        if brand and norm(brand) not in brand_seen:
+            brand_seen.add(norm(brand))
+            discovered_brands.append(brand)
+
+    # Anche quando la query esatta non restituisce nulla, il catalogo può
+    # dirci quale brand appartiene alla famiglia. In quel caso proviamo
+    # direttamente il brand e brand + query.
+    for brand in catalog_brand_candidates(raw_query):
+        if norm(brand) not in brand_seen:
+            brand_seen.add(norm(brand))
+            discovered_brands.append(brand)
+
+    attempts = build_search_attempts(
+        store,
+        raw_query,
+        catalog_hints,
+        discovered_brands,
+    )
+
+    output: List[Dict[str, Any]] = []
+    seen = set()
+
+    # La query iniziale è già stata eseguita.
+    batches = [(raw_query, initial_results)]
+    for attempt in attempts:
+        if norm(attempt) == norm(raw_query):
+            continue
+        try:
+            batches.append((attempt, module.search(attempt) or []))
+        except Exception:
+            # Un tentativo fallito non deve bloccare l'intero negozio.
+            continue
+
+    for attempt, results in batches:
+        for item in results:
+            if not isinstance(item, dict):
+                continue
+            product = dict(item)
+            product.setdefault("store", store)
+            key = (
+                str(product.get("url", "")).lower(),
+                norm(product.get("name", "")),
+            )
+            if key in seen:
+                continue
+            seen.add(key)
+            if matches(product, query):
+                output.append(product)
+
+    return output
 
 
 # ============================================================
@@ -660,102 +800,80 @@ def search_perfume(q: str):
     if not query:
         return {"query": "", "count": 0, "results": [], "errors": {}}
 
-    search_started = time.monotonic()
     all_results: List[Dict[str, Any]] = []
     errors: Dict[str, str] = {}
-    diagnostics: Dict[str, Any] = {}
 
-    # Tutti gli 8 scraper vengono avviati subito.
-    executor = ThreadPoolExecutor(max_workers=len(STORES))
-    future_started: Dict[Any, float] = {}
-    futures = {}
+    # Il catalogo master locale è la sorgente primaria delle famiglie.
+    # Se una famiglia non è ancora completa nel master, Fragella viene usata
+    # solo come fallback per aggiungere eventuali nomi mancanti.
+    catalog_hints = catalog_family_hints(query)
+    try:
+        external_items = fragella_search(query, 30)
+        seen_hints = {norm(item) for item in catalog_hints}
+        query_n = norm(query)
+        for item in external_items:
+            name = str(item.get("name") or "").strip()
+            brand = str(item.get("brand") or "").strip()
+            if not name:
+                continue
+            text = norm(f"{brand} {name}")
+            if query_n and not all(token in text for token in query_n.split()):
+                continue
+            hint_n = norm(name)
+            if hint_n and hint_n not in seen_hints:
+                seen_hints.add(hint_n)
+                catalog_hints.append(name)
+    except Exception:
+        pass
 
-    for store in STORES:
-        future = executor.submit(run_store_diagnostic, store, query)
-        futures[future] = store
-        future_started[future] = time.monotonic()
+    # NON 8 insieme: su Render Free abbiamo osservato exit 137.
+    # Due worker riducono nettamente RAM e connessioni simultanee.
+    executor = ThreadPoolExecutor(max_workers=2)
+    futures = {
+        executor.submit(run_store, store, query, catalog_hints): store
+        for store in STORES
+    }
 
     try:
         for future in as_completed(futures, timeout=28):
             store = futures[future]
-            elapsed_ms = round((time.monotonic() - future_started[future]) * 1000)
             try:
-                store_results, diagnostic = future.result()
-                diagnostic["future_duration_ms"] = elapsed_ms
-                diagnostic["future_status"] = "completed"
-                all_results.extend(store_results)
-                diagnostics[store] = diagnostic
+                all_results.extend(future.result())
             except Exception as error:
                 errors[store] = f"{type(error).__name__}: {error}"
-                diagnostics[store] = {
-                    "store": store,
-                    "query": query,
-                    "status": "error",
-                    "future_status": "completed_with_error",
-                    "future_duration_ms": elapsed_ms,
-                    "error": errors[store],
-                }
                 traceback.print_exc()
     except TimeoutError:
         pass
     finally:
         for future, store in futures.items():
-            if future.done():
-                # Il future puo' essere terminato proprio mentre scatta il timeout.
-                # Per la diagnosi lo marchiamo separatamente, senza alterare il
-                # comportamento dei risultati gia' raccolti sopra.
-                if store not in diagnostics:
-                    elapsed_ms = round((time.monotonic() - future_started[future]) * 1000)
-                    try:
-                        store_results, diagnostic = future.result()
-                        diagnostic["future_duration_ms"] = elapsed_ms
-                        diagnostic["future_status"] = "completed_after_wait_window"
-                        diagnostics[store] = diagnostic
-                    except Exception as error:
-                        errors[store] = f"{type(error).__name__}: {error}"
-                        diagnostics[store] = {
-                            "store": store,
-                            "query": query,
-                            "status": "error",
-                            "future_status": "completed_after_wait_window_error",
-                            "future_duration_ms": elapsed_ms,
-                            "error": errors[store],
-                        }
-                continue
-
-            elapsed_ms = round((time.monotonic() - future_started[future]) * 1000)
-            if future.cancel():
-                errors[store] = "Non eseguito: limite tempo ricerca"
-                diagnostics[store] = {
-                    "store": store,
-                    "query": query,
-                    "status": "not_executed",
-                    "future_status": "cancelled",
-                    "future_duration_ms": elapsed_ms,
-                    "error": errors[store],
-                }
-            else:
-                errors[store] = "Timeout: negozio troppo lento"
-                diagnostics[store] = {
-                    "store": store,
-                    "query": query,
-                    "status": "timeout",
-                    "future_status": "still_running",
-                    "future_duration_ms": elapsed_ms,
-                    "error": errors[store],
-                }
-
+            if not future.done():
+                if future.cancel():
+                    errors[store] = "Non eseguito: limite tempo ricerca"
+                else:
+                    errors[store] = "Timeout: negozio troppo lento"
         executor.shutdown(wait=False, cancel_futures=True)
 
-    results = sort_by_price(unique_results(all_results))
+    # Nome canonico + ordine alfabetico rigoroso:
+    # Brand -> nome profumo -> resto del nome -> negozio -> prezzo.
+    results = normalize_product_names(
+        unique_results(all_results)
+    )
+    results.sort(
+        key=lambda product: (
+            norm(product.get("brand", "")),
+            norm(product.get("name", "")),
+            norm(product.get("store", "")),
+            price_num(product.get("price"))
+            if price_num(product.get("price")) is not None
+            else float("inf"),
+        )
+    )
 
     return {
         "query": query,
         "count": len(results),
         "results": results,
         "errors": errors,
-        "diagnostics": diagnostics,
-        "diagnostic_total_duration_ms": round((time.monotonic() - search_started) * 1000),
     }
 
 
@@ -785,13 +903,12 @@ def test_store(store: str, q: str):
         )
 
     try:
-        results, diagnostic = run_store_diagnostic(store, query)
+        results = run_store(store, query)
         return {
             "store": store,
             "query": query,
             "count": len(results),
             "results": results,
-            "diagnostic": diagnostic,
         }
     except Exception as error:
         traceback.print_exc()
@@ -820,7 +937,7 @@ def fragella_search(query: str, limit: int = 10) -> List[Dict[str, Any]]:
 
     params = urlencode({
         "search": query,
-        "limit": max(1, min(int(limit), 10)),
+        "limit": max(1, min(int(limit), 30)),
     })
 
     request = Request(
@@ -920,11 +1037,13 @@ def rank_catalog_suggestions(
         if tokens and not all(token in text for token in tokens):
             continue
 
-        if any(
-            norm(phrase) in name_n
-            for phrase in NON_PERFUME
-        ):
-            continue
+        if not _is_set_product(item):
+            suggestion_text = _product_search_text(item)
+            if any(
+                norm(phrase) in suggestion_text
+                for phrase in NON_PERFUME
+            ):
+                continue
 
         key = (
             str(item.get("catalog_id") or "").strip()
@@ -1106,11 +1225,13 @@ def suggest(q: str):
                     ):
                         continue
 
-                    if any(
-                        norm(phrase) in normalized_name
-                        for phrase in NON_PERFUME
-                    ):
-                        continue
+                    if not _is_set_product(product):
+                        suggestion_text = _product_search_text(product)
+                        if any(
+                            norm(phrase) in suggestion_text
+                            for phrase in NON_PERFUME
+                        ):
+                            continue
 
                     key = (
                         norm(brand),
@@ -1122,8 +1243,9 @@ def suggest(q: str):
 
                     seen.add(key)
 
+                    suggestion_name = display_name(product) or name
                     suggestions.append({
-                        "name": name,
+                        "name": suggestion_name,
                         "store": product.get(
                             "store",
                             store,
