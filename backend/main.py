@@ -117,7 +117,7 @@ IGNORED_WORDS = {
 # Tutti gli 8 store possono partire insieme.
 # Il vecchio max_workers=2 creava una coda: con 8 store e timeout
 # di 28 s alcuni negozi non arrivavano nemmeno a essere eseguiti.
-SEARCH_WORKERS = len(STORES)
+SEARCH_WORKERS = min(len(STORES), 8)
 
 # Limite complessivo della ricerca API.
 # Deve essere più basso del vecchio 28 s per evitare una UX da "ricerca bloccata".
@@ -181,10 +181,17 @@ def product_image(product: Dict[str, Any]) -> str:
 # ============================================================
 
 def matches(product: Dict[str, Any], query: str) -> bool:
+    # Gli scraper possono restituire brand e nome separati.
+    # Il controllo deve quindi usare il testo completo del prodotto.
     name = norm(product.get("name", ""))
+    brand = norm(product.get("brand", ""))
+    title = norm(product.get("title", ""))
+    product_text = norm(" ".join(
+        part for part in (brand, name, title) if part
+    ))
     query_normalized = norm(query)
 
-    if not name:
+    if not product_text:
         return False
 
     query_variant = None
@@ -225,7 +232,7 @@ def matches(product: Dict[str, Any], query: str) -> bool:
 
             if (
                 normalized_phrase
-                and normalized_phrase in name
+                and normalized_phrase in product_text
                 and normalized_phrase != query_variant
             ):
                 return False
@@ -234,7 +241,7 @@ def matches(product: Dict[str, Any], query: str) -> bool:
         normalized_phrase = norm(phrase)
 
         if (
-            normalized_phrase in name
+            normalized_phrase in product_text
             and normalized_phrase not in query_normalized
         ):
             return False
@@ -303,9 +310,10 @@ def build_search_attempts(store: str, query: str) -> List[str]:
         if t not in IGNORED_WORDS
     ]
 
-    # Solo per query lunghe: una forma corta.
-    if len(tokens) >= 3:
-        add(" ".join(tokens[1:]))
+    # NON eliminiamo automaticamente la prima parola della query.
+    # Se brand e nome sono separati dallo scraper, matches() li ricompone.
+    # Eliminare il primo token qui può invece produrre ricerche troppo
+    # generiche e poi risultati incoerenti.
 
     # Forma compatta 9 PM -> 9PM.
     compact = re.sub(
@@ -625,13 +633,16 @@ def search_perfume(q: str):
                     )
 
     finally:
-        # FONDAMENTALE:
-        # niente thread abbandonati in background.
-        #
-        # Questo evita che una seconda ricerca si sommi alla prima
-        # e che i risultati cambino in modo apparentemente casuale.
+        # Non aspettare indefinitamente i worker dopo il timeout globale.
+        # I risultati già completati vengono restituiti subito.
+        # I future non completati vengono cancellati quando possibile.
+        for future in futures:
+            if not future.done():
+                future.cancel()
+
         executor.shutdown(
-            wait=True
+            wait=False,
+            cancel_futures=True,
         )
 
     results = sort_by_price(
