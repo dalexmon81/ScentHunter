@@ -473,10 +473,23 @@ def normalize_product(product: Dict[str, Any], family_query: str = "") -> Dict[s
         name,
         flags=re.I,
     ).strip()
-    # `norm()` canonizza già N/No/N°/No. nella stessa forma interna.
-    # Non richiamiamo una funzione inesistente: deve restare una sola
-    # normalizzazione, altrimenti ogni prodotto genera NameError durante /search.
-    family_key_name = family_without_gender
+    # Chiave famiglia:
+    # per i profumi numerati, il numero identifica la famiglia.
+    # Quindi No. 5, No. 5 Refillable, No. 5 Refillable Refill e No. 5 Donna
+    # finiscono tutti nella stessa famiglia "Chanel No. 5".
+    #
+    # Le varianti restano comunque prodotti distinti: cambiamo SOLO la
+    # chiave usata per raggruppamento/ordinamento.
+    numbered_match = re.search(
+        r"\bNo\.\s*(\d+)\b",
+        family_without_gender,
+        flags=re.I,
+    )
+    if numbered_match:
+        family_key_name = f"No. {numbered_match.group(1)}"
+    else:
+        family_key_name = family_without_gender
+
     item["family_key"] = norm(f"{brand} {family_key_name}").strip()
     return item
 
