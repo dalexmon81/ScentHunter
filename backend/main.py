@@ -546,27 +546,19 @@ def build_search_attempts(
         # Poi le forme presenti nel catalogo. Se il catalogo è incompleto,
         # aggiungiamo anche il brand scoperto dal catalogo senza trasformarlo
         # in un filtro dei risultati.
-        for item in _catalog_family_products(raw):
+        family_items = _catalog_family_products(raw)
+
+        # Massimo due forme aggiuntive, scelte dal catalogo.
+        # La query originale resta sempre la prima.
+        for item in family_items[:2]:
             brand = str(item.get("brand") or "").strip()
             name = str(item.get("name") or "").strip()
             if brand and name:
                 add(f"{brand} {name}")
-            add(name)
+            elif name:
+                add(name)
 
-            aliases = item.get("aliases")
-            if isinstance(aliases, list):
-                for alias in aliases:
-                    add(alias)
-
-            if len(attempts) >= 5:
-                break
-
-        for brand in catalog_hints or []:
-            add(brand)
-            if len(attempts) >= 5:
-                break
-
-        return attempts[:5]
+        return attempts[:3]
 
     tokens = [
         x for x in normalized.split()
@@ -805,9 +797,9 @@ def search_perfume(q: str):
 
     catalog_hints = _catalog_brand_candidates(query)
 
-    # 4 worker: abbastanza parallelismo per far partire tutti gli store
-    # in due ondate, senza il carico RAM dell'8/8 che aveva causato exit 137.
-    max_workers = min(4, len(STORES))
+    # Tutti gli store partono subito. Il numero di query per store è stato
+    # ridotto sopra per evitare il moltiplicarsi delle richieste.
+    max_workers = min(8, len(STORES))
 
     executor = ThreadPoolExecutor(max_workers=max_workers)
 
@@ -821,9 +813,9 @@ def search_perfume(q: str):
         for store in STORES
     }
 
-    # Il vecchio 28s era troppo stretto per 8 store in due ondate.
-    # 50s lascia il tempo anche alla seconda ondata.
-    search_timeout = 50
+    # 45s è il limite globale: gli store rapidi restituiscono subito,
+    # quelli che non rispondono non bloccano la pagina indefinitamente.
+    search_timeout = 45
 
     try:
         for future in as_completed(
