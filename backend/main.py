@@ -678,11 +678,25 @@ def unique_results(
 def sort_by_name(
     products: List[Dict[str, Any]],
 ) -> List[Dict[str, Any]]:
-    """Ordine alfabetico rigoroso sul nome normalizzato Brand - Nome."""
+    """
+    Ordine alfabetico rigoroso, ma con le varianti della stessa famiglia
+    consecutive.
+
+    La famiglia viene ordinata tramite family_key, che è già canonizzata
+    (N/No/N°/No. -> stessa forma e Uomo/Donna fuori dalla chiave).
+    Le singole varianti NON vengono fuse: cambiano solo la posizione nel
+    risultato, così No. 19 e No. 19 Donna restano due prodotti distinti
+    ma vengono presentati nella stessa famiglia.
+    """
     return sorted(
         products,
         key=lambda product: (
-            norm(product.get("display_name") or f"{product.get('brand', '')} {product.get('name', '')}"),
+            norm(
+                product.get("family_key")
+                or product.get("display_name")
+                or f"{product.get('brand', '')} {product.get('name', '')}"
+            ),
+            norm(product.get("display_name") or product.get("name", "")),
             norm(product.get("store", "")),
             str(product.get("url", "")).lower(),
         ),
