@@ -357,10 +357,17 @@ def run_store(
             if matches(product, query):
                 output.append(product)
 
-        # Non facciamo altre chiamate allo stesso store se abbiamo già
-        # una risposta utile. Questo mantiene bassa la latenza.
-        if output:
-            break
+        # NON fermiamo lo store al primo risultato.
+        #
+        # Alcuni scraper (in particolare Bplatz e Sabina) possono restituire
+        # solo una parte dei prodotti con la prima forma della query
+        # (es. "9 PM") e altri prodotti con la forma compatta ("9PM").
+        # Fermarsi al primo risultato faceva quindi sparire prodotti validi.
+        #
+        # Le query alternative sono al massimo 3 e vengono eseguite
+        # comunque in modo sequenziale SOLO dentro questo singolo store.
+        # Tutti gli store, invece, continuano a lavorare in parallelo.
+        continue
 
     return output
 
