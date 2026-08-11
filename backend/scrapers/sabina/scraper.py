@@ -117,10 +117,20 @@ def _extract_size_from_html(text):
     return ""
 
 
+MAX_SIZE_ENRICH_REQUESTS = 3
+
+
 def _enrich_product_sizes(session, rows):
-    """Aggiunge size_ml solo quando il risultato non contiene già i ml."""
+    """Aggiunge size_ml senza rallentare la ricerca oltre il necessario.
+
+    Le pagine prodotto vengono usate solo per recuperare il formato quando
+    il nome non contiene già i ml. Limitiamo le richieste aggiuntive a 3:
+    tutti i risultati restano comunque validi e vengono restituiti anche
+    quando il formato non è disponibile.
+    """
     enriched = []
     cache = {}
+    enrichment_requests = 0
 
     for row in rows:
         item = dict(row)
@@ -138,8 +148,11 @@ def _enrich_product_sizes(session, rows):
 
         if url in cache:
             size = cache[url]
+        elif enrichment_requests >= MAX_SIZE_ENRICH_REQUESTS:
+            size = ""
         else:
             size = ""
+            enrichment_requests += 1
             try:
                 r = _get(session, url)
                 if r is not None:
