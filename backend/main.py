@@ -578,54 +578,150 @@ def load_scraper(store: str):
     )
 
 
+def _catalog_family_products(query: str) -> List[Dict[str, Any]]:
+    """
+    Restituisce tutti i prodotti del catalogo appartenenti
+    alla famiglia richiesta.
+    """
+    family = family_search_plan(query)
+
+    if not family:
+        return []
+
+    output = []
+    seen = set()
+
+    for item in CATALOG_PRODUCTS:
+        if not isinstance(item, dict):
+            continue
+
+        name = norm(item.get("name"))
+        brand = norm(item.get("brand"))
+
+        if not name:
+            continue
+
+        if family is LINE_FAMILY_PLANS["9 pm"]:
+            match_family = bool(
+                re.search(r"(?:^|\s)9\s*pm(?:\s|$)", name)
+            )
+
+        elif family is LINE_FAMILY_PLANS["9 am"]:
+            match_family = bool(
+                re.search(r"(?:^|\s)9\s*am(?:\s|$)", name)
+            )
+
+        elif family is LINE_FAMILY_PLANS["le beau"]:
+            match_family = "le beau" in name
+
+        else:
+            match_family = False
+
+        if not match_family:
+            continue
+
+        key = f"{brand}|{name}"
+
+        if key in seen:
+            continue
+
+        seen.add(key)
+        output.append(item)
+
+    return output
+
+
 def build_search_attempts(
     store: str,
     query: str,
     catalog_hints: Optional[List[str]] = None,
     discovered_brands: Optional[List[str]] = None,
 ) -> List[str]:
-    """Costruisce query generiche; nessun nome di profumo è hard-coded."""
-    raw = str(query or "").strip()
-    normalized = norm(raw)
-    attempts: List[str] = []
 
-    def add(value: str) -> None:
+    raw = str(query or "").strip()
+
+    attempts = []
+    seen = set()
+
+    def add(value: Any) -> None:
         value = str(value or "").strip()
-        value_norm = norm(value)
-        if value_norm and value_norm not in {norm(x) for x in attempts}:
+        key = norm(value)
+
+        if key and key not in seen:
+            seen.add(key)
             attempts.append(value)
 
     add(raw)
 
-    # Per le linee note facciamo anche le ricerche delle varianti della linea.
-    # Il risultato finale viene comunque filtrato da matches(), quindi non
-    # entrano prodotti di altre linee. Questo evita di perdere varianti che un
-    # negozio non restituisce quando si cerca solo il nome della famiglia.
     family = family_search_plan(raw)
-    if family:
-        for term in family["terms"]:
-            add(term)
-        # Per una linea restiamo sulle query della linea: i fallback generici
-        # consumano il limite di risultati dei negozi e fanno sparire varianti.
-        return attempts[:10]
 
-    # Un solo passaggio aggiuntivo sul brand scoperto permette di recuperare
-    # varianti che il motore interno del negozio non mostra con la query esatta.
+    if family:
+        # Query originale
+        add(raw)
+
+        # Brand
+        add(family.get("brand", ""))
+
+        # Query già definite nel piano famiglia
+        for term in family.get("terms", []):
+            add(term)
+
+        # TUTTE le varianti presenti nel catalogo
+        for item in _catalog_family_products(raw):
+
+            brand = str(item.get("brand") or "").strip()
+            name = str(item.get("name") or "").strip()
+
+            if brand and name:
+                add(f"{brand} {name}")
+
+            add(name)
+
+            aliases = item.get("aliases")
+
+            if isinstance(aliases, list):
+                for alias in aliases:
+                    add(alias)
+
+        # Brand eventualmente scoperti dallo scraper
+        for brand in discovered_brands or []:
+            add(brand)
+
+        return attempts
+
+    # Ricerca normale
     for brand in discovered_brands or []:
         add(brand)
+
     for hint in catalog_hints or []:
         add(hint)
-    tokens = [t for t in normalized.split() if t not in IGNORED_WORDS]
+
+    normalized = norm(raw)
+
+    tokens = [
+        token
+        for token in normalized.split()
+        if token not in IGNORED_WORDS
+    ]
+
     if tokens:
         add(" ".join(tokens))
+
     if len(tokens) >= 2:
         add(" ".join(tokens[1:]))
+
     if len(tokens) >= 3:
         add(" ".join(tokens[-2:]))
-    compact = re.sub(r"(?<=\d)\s+(?=[a-z])|(?<=[a-z])\s+(?=\d)", "", normalized)
-    if compact != normalized:
-        add(compact)
-    return attempts[:12]
+
+    compact = re.sub(
+        r"(?<=\d)\s+(?=[a-z])|(?<=[a-z])\s+(?=\d)",
+        "",
+        normalized,
+    )
+
+    add(compact)
+
+    return attempts
 
 
 def run_store(
