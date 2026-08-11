@@ -81,8 +81,6 @@ def product_from_json(data, url):
     title = data.get("title") or ""
     variants = data.get("variants") or []
 
-    # Availability must describe the REAL Shopify stock state.
-    # Keep the price even when every variant is sold out.
     available = [v for v in variants if v.get("available") is True]
     is_available = any(v.get("available") is True for v in variants) if variants else False
     pool = available or variants
@@ -93,7 +91,6 @@ def product_from_json(data, url):
         if p is None:
             continue
         try:
-            # Product .js normally returns integer cents.
             p = float(p)
             if p >= 100:
                 p /= 100
@@ -112,7 +109,6 @@ def product_from_json(data, url):
         "url": url,
         "available": is_available,
     }
-
 
 
 def search_html_urls(session, query):
@@ -146,7 +142,6 @@ def search_html_urls(session, query):
             or ""
         )
 
-        # Sometimes the title is on the surrounding product card.
         if not query_matches(title, query):
             card = a
             for _ in range(5):
@@ -166,61 +161,142 @@ def search_html_urls(session, query):
 
     return urls
 
+
 def candidate_urls(session, query):
-    # Search the complete query plus individual terms. Deduplicate by canonical path.
+    """
+    Ricerca generica multi-passaggio.
+
+    Non conosce nomi di profumi o varianti specifiche.
+    """
     searches = [query]
-    compact = re.sub(r"(?<=\d)\s+(?=[a-z])|(?<=[a-z])\s+(?=\d)", "", norm(query))
-    if compact and compact != norm(query):
+
+    normalized = norm(query)
+    compact = re.sub(
+        r"(?<=\d)\s+(?=[a-z])|(?<=[a-z])\s+(?=\d)",
+        "",
+        normalized,
+    )
+
+    if compact and compact != normalized:
         searches.append(compact)
-    for token in norm(query).split():
+
+    tokens = [
+        token
+        for token in normalized.split()
+        if token not in {
+            "eau", "de", "parfum", "perfume",
+            "edp", "edt", "extrait", "spray",
+            "ml", "for", "by",
+        }
+    ]
+
+    for token in tokens:
         if len(token) >= 3 and token not in searches:
             searches.append(token)
 
     urls = []
     seen = set()
-    for q in searches:
-        for p in predictive_products(session, q):
-            u = p.get("url")
-            if not u:
+
+    for search_query in searches:
+        for product in predictive_products(
+            session,
+            search_query,
+        ):
+            if not isinstance(product, dict):
                 continue
-            absolute = urljoin(BASE, u).split("?")[0]
-            path = urlparse(absolute).path.rstrip("/")
-            if "/products/" not in path or path in seen:
+
+            product_url = product.get("url")
+
+            if not product_url:
                 continue
+
+            absolute = (
+                urljoin(BASE, product_url)
+                .split("?")[0]
+            )
+
+            path = urlparse(
+                absolute
+            ).path.rstrip("/")
+
+            if (
+                "/products/" not in path
+                or path in seen
+            ):
+                continue
+
             seen.add(path)
             urls.append(absolute)
+
+    # Importante:
+    # il fallback HTML viene eseguito per TUTTE le query
+    # alternative, non soltanto per la query originale.
+    for search_query in searches:
+        for absolute in search_html_urls(
+            session,
+            search_query,
+        ):
+            path = urlparse(
+                absolute
+            ).path.rstrip("/")
+
+            if (
+                "/products/" not in path
+                or path in seen
+            ):
+                continue
+
+            seen.add(path)
+            urls.append(absolute)
+
     return urls
 
 
 def search(query):
     query = str(query or "").strip()
+
     if not query:
         return []
 
     session = requests.Session()
+
     results = []
     seen = set()
 
-    urls = candidate_urls(session, query)
-
-    # The predictive endpoint can omit perfectly valid products. Add the
-    # normal Shopify search as a generic fallback, without hard-coding names.
-    for url in search_html_urls(session, query):
-        if url not in urls:
-            urls.append(url)
+    urls = candidate_urls(
+        session,
+        query,
+    )
 
     for url in urls:
-        data = product_json(session, url)
-        item = product_from_json(data, url)
+        data = product_json(
+            session,
+            url,
+        )
+
+        item = product_from_json(
+            data,
+            url,
+        )
+
         if not item:
             continue
-        if not query_matches(item["name"], query):
+
+        # Il controllo definitivo viene sempre fatto
+        # sul titolo canonico restituito da Shopify.
+        if not query_matches(
+            item["name"],
+            query,
+        ):
             continue
 
-        # One canonical Shopify product path = one result.
-        key = urlparse(item["url"]).path.rstrip("/")
+        key = urlparse(
+            item["url"]
+        ).path.rstrip("/")
+
         if key in seen:
             continue
+
         seen.add(key)
         results.append(item)
 
@@ -228,7 +304,12 @@ def search(query):
 
 
 if __name__ == "__main__":
-    for q in ("9 PM", "Rayhaan Aquatica", "Turathi Blue"):
+    for q in (
+        "9 PM",
+        "Rayhaan Aquatica",
+        "Turathi Blue",
+    ):
         print("\\nQUERY:", q)
+
         for x in search(q):
             print(x)
