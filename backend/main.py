@@ -8,6 +8,7 @@ import json
 import os
 import re
 import traceback
+import time
 from concurrent.futures import ThreadPoolExecutor, as_completed, TimeoutError
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
@@ -359,9 +360,10 @@ def run_store_diagnostic(
     query: str,
 ) -> tuple[List[Dict[str, Any]], Dict[str, Any]]:
     """
-    Esegue un singolo scraper e conserva la traccia di ciò che entra nel
-    main prima del filtro. La logica di ricerca/matching resta invariata.
+    Esegue un singolo scraper e registra una traccia completa di diagnosi.
+    La logica di ricerca/matching resta invariata.
     """
+    store_started = time.monotonic()
     module = load_scraper(store)
 
     attempts = build_search_attempts(
@@ -374,7 +376,15 @@ def run_store_diagnostic(
     attempt_diagnostics: List[Dict[str, Any]] = []
 
     for attempt in attempts:
-        results = module.search(attempt) or []
+        attempt_started = time.monotonic()
+        attempt_error = None
+
+        try:
+            results = module.search(attempt) or []
+        except Exception as error:
+            results = []
+            attempt_error = f"{type(error).__name__}: {error}"
+
         raw_count = len(results) if isinstance(results, list) else 0
         matched_count = 0
         rejected_count = 0
@@ -392,8 +402,6 @@ def run_store_diagnostic(
             product.setdefault("store", store)
             match = match_details(product, query)
 
-            # Manteniamo un campione abbastanza ampio per capire se un
-            # prodotto è arrivato dallo scraper ma è stato filtrato.
             if len(raw_products) < 50:
                 raw_products.append(_diagnostic_product(product, match))
 
@@ -419,11 +427,13 @@ def run_store_diagnostic(
 
         attempt_diagnostics.append({
             "query_sent": attempt,
+            "duration_ms": round((time.monotonic() - attempt_started) * 1000),
             "raw_count": raw_count,
             "matched_count": matched_count,
             "rejected_count": rejected_count,
             "raw_products_sample": raw_products,
             "rejected_products_sample": rejected_products,
+            "error": attempt_error,
         })
 
         if output and norm(query) not in FAMILY_SEARCH_TERMS:
@@ -432,7 +442,9 @@ def run_store_diagnostic(
     diagnostic = {
         "store": store,
         "query": query,
-        "status": "ok",
+        "status": "error" if any(a.get("error") for a in attempt_diagnostics) and not output else "ok",
+        "duration_ms": round((time.monotonic() - store_started) * 1000),
+        "attempt_count": len(attempt_diagnostics),
         "attempts": attempt_diagnostics,
         "total_matched": len(output),
     }
@@ -648,24 +660,29 @@ def search_perfume(q: str):
     if not query:
         return {"query": "", "count": 0, "results": [], "errors": {}}
 
+    search_started = time.monotonic()
     all_results: List[Dict[str, Any]] = []
     errors: Dict[str, str] = {}
     diagnostics: Dict[str, Any] = {}
 
     # Tutti gli 8 scraper vengono avviati subito.
-    # Con 2 worker alcuni negozi potevano restare in coda e non essere
-    # mai eseguiti prima del timeout globale.
     executor = ThreadPoolExecutor(max_workers=len(STORES))
-    futures = {
-        executor.submit(run_store_diagnostic, store, query): store
-        for store in STORES
-    }
+    future_started: Dict[Any, float] = {}
+    futures = {}
+
+    for store in STORES:
+        future = executor.submit(run_store_diagnostic, store, query)
+        futures[future] = store
+        future_started[future] = time.monotonic()
 
     try:
         for future in as_completed(futures, timeout=28):
             store = futures[future]
+            elapsed_ms = round((time.monotonic() - future_started[future]) * 1000)
             try:
                 store_results, diagnostic = future.result()
+                diagnostic["future_duration_ms"] = elapsed_ms
+                diagnostic["future_status"] = "completed"
                 all_results.extend(store_results)
                 diagnostics[store] = diagnostic
             except Exception as error:
@@ -674,25 +691,47 @@ def search_perfume(q: str):
                     "store": store,
                     "query": query,
                     "status": "error",
+                    "future_status": "completed_with_error",
+                    "future_duration_ms": elapsed_ms,
                     "error": errors[store],
                 }
                 traceback.print_exc()
     except TimeoutError:
-        # Il timeout riguarda solo l'attesa della risposta complessiva.
-        # Non facciamo poi shutdown(wait=True), altrimenti il vantaggio del
-        # timeout viene annullato aspettando nuovamente i worker lenti.
         pass
     finally:
         for future, store in futures.items():
             if future.done():
+                # Il future puo' essere terminato proprio mentre scatta il timeout.
+                # Per la diagnosi lo marchiamo separatamente, senza alterare il
+                # comportamento dei risultati gia' raccolti sopra.
+                if store not in diagnostics:
+                    elapsed_ms = round((time.monotonic() - future_started[future]) * 1000)
+                    try:
+                        store_results, diagnostic = future.result()
+                        diagnostic["future_duration_ms"] = elapsed_ms
+                        diagnostic["future_status"] = "completed_after_wait_window"
+                        diagnostics[store] = diagnostic
+                    except Exception as error:
+                        errors[store] = f"{type(error).__name__}: {error}"
+                        diagnostics[store] = {
+                            "store": store,
+                            "query": query,
+                            "status": "error",
+                            "future_status": "completed_after_wait_window_error",
+                            "future_duration_ms": elapsed_ms,
+                            "error": errors[store],
+                        }
                 continue
 
+            elapsed_ms = round((time.monotonic() - future_started[future]) * 1000)
             if future.cancel():
                 errors[store] = "Non eseguito: limite tempo ricerca"
                 diagnostics[store] = {
                     "store": store,
                     "query": query,
                     "status": "not_executed",
+                    "future_status": "cancelled",
+                    "future_duration_ms": elapsed_ms,
                     "error": errors[store],
                 }
             else:
@@ -701,6 +740,8 @@ def search_perfume(q: str):
                     "store": store,
                     "query": query,
                     "status": "timeout",
+                    "future_status": "still_running",
+                    "future_duration_ms": elapsed_ms,
                     "error": errors[store],
                 }
 
@@ -714,6 +755,7 @@ def search_perfume(q: str):
         "results": results,
         "errors": errors,
         "diagnostics": diagnostics,
+        "diagnostic_total_duration_ms": round((time.monotonic() - search_started) * 1000),
     }
 
 
@@ -743,12 +785,13 @@ def test_store(store: str, q: str):
         )
 
     try:
-        results = run_store(store, query)
+        results, diagnostic = run_store_diagnostic(store, query)
         return {
             "store": store,
             "query": query,
             "count": len(results),
             "results": results,
+            "diagnostic": diagnostic,
         }
     except Exception as error:
         traceback.print_exc()
