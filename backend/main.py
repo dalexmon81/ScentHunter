@@ -579,12 +579,8 @@ def load_scraper(store: str):
 
 
 def _catalog_family_products(query: str) -> List[Dict[str, Any]]:
-    """
-    Restituisce tutti i prodotti del catalogo appartenenti
-    alla famiglia richiesta.
-    """
+    """Restituisce tutti i prodotti del catalogo appartenenti alla famiglia."""
     family = family_search_plan(query)
-
     if not family:
         return []
 
@@ -597,36 +593,25 @@ def _catalog_family_products(query: str) -> List[Dict[str, Any]]:
 
         name = norm(item.get("name"))
         brand = norm(item.get("brand"))
-
         if not name:
             continue
 
         if family is LINE_FAMILY_PLANS["9 pm"]:
-            match_family = bool(
-                re.search(r"(?:^|\s)9\s*pm(?:\s|$)", name)
-            )
-
+            ok = bool(re.search(r"(?:^|\s)9\s*pm(?:\s|$)", name))
         elif family is LINE_FAMILY_PLANS["9 am"]:
-            match_family = bool(
-                re.search(r"(?:^|\s)9\s*am(?:\s|$)", name)
-            )
-
+            ok = bool(re.search(r"(?:^|\s)9\s*am(?:\s|$)", name))
         elif family is LINE_FAMILY_PLANS["le beau"]:
-            match_family = "le beau" in name
-
+            ok = "le beau" in name
         else:
-            match_family = False
+            ok = False
 
-        if not match_family:
+        if not ok:
             continue
 
         key = f"{brand}|{name}"
-
-        if key in seen:
-            continue
-
-        seen.add(key)
-        output.append(item)
+        if key not in seen:
+            seen.add(key)
+            output.append(item)
 
     return output
 
@@ -637,91 +622,149 @@ def build_search_attempts(
     catalog_hints: Optional[List[str]] = None,
     discovered_brands: Optional[List[str]] = None,
 ) -> List[str]:
-
+    """Costruisce le query famiglia dal catalogo master, senza limite artificiale."""
     raw = str(query or "").strip()
-
     attempts = []
     seen = set()
 
     def add(value: Any) -> None:
         value = str(value or "").strip()
         key = norm(value)
-
         if key and key not in seen:
             seen.add(key)
             attempts.append(value)
 
     add(raw)
-
     family = family_search_plan(raw)
 
     if family:
-        # Query originale
         add(raw)
-
-        # Brand
         add(family.get("brand", ""))
 
-        # Query già definite nel piano famiglia
         for term in family.get("terms", []):
             add(term)
 
-        # TUTTE le varianti presenti nel catalogo
         for item in _catalog_family_products(raw):
-
             brand = str(item.get("brand") or "").strip()
             name = str(item.get("name") or "").strip()
 
             if brand and name:
                 add(f"{brand} {name}")
-
             add(name)
 
             aliases = item.get("aliases")
-
             if isinstance(aliases, list):
                 for alias in aliases:
                     add(alias)
 
-        # Brand eventualmente scoperti dallo scraper
         for brand in discovered_brands or []:
             add(brand)
 
         return attempts
 
-    # Ricerca normale
     for brand in discovered_brands or []:
         add(brand)
-
     for hint in catalog_hints or []:
         add(hint)
 
-    normalized = norm(raw)
-
     tokens = [
-        token
-        for token in normalized.split()
+        token for token in norm(raw).split()
         if token not in IGNORED_WORDS
     ]
-
     if tokens:
         add(" ".join(tokens))
-
     if len(tokens) >= 2:
         add(" ".join(tokens[1:]))
-
     if len(tokens) >= 3:
         add(" ".join(tokens[-2:]))
 
     compact = re.sub(
         r"(?<=\d)\s+(?=[a-z])|(?<=[a-z])\s+(?=\d)",
         "",
-        normalized,
+        norm(raw),
     )
-
     add(compact)
 
     return attempts
+
+
+def run_store(
+    store: str,
+    query: str,
+    catalog_hints: Optional[List[str]] = None,
+) -> List[Dict[str, Any]]:
+    """Esegue tutte le query utili dello store e filtra solo alla fine."""
+    module = load_scraper(store)
+    raw_query = str(query or "").strip()
+
+    try:
+        initial_results = module.search(raw_query) or []
+    except Exception:
+        initial_results = []
+
+    discovered_brands = []
+    brand_seen = set()
+
+    def remember_brand(item: Dict[str, Any]) -> None:
+        brand = str(item.get("brand") or "").strip()
+        key = norm(brand)
+        if brand and key and key not in brand_seen:
+            brand_seen.add(key)
+            discovered_brands.append(brand)
+
+    for item in initial_results:
+        if isinstance(item, dict):
+            remember_brand(item)
+
+    for brand in _catalog_brand_candidates(raw_query):
+        remember_brand({"brand": brand})
+
+    attempts = build_search_attempts(
+        store,
+        raw_query,
+        catalog_hints,
+        discovered_brands,
+    )
+
+    batches = [(raw_query, initial_results)]
+
+    for attempt in attempts:
+        if norm(attempt) == norm(raw_query):
+            continue
+        try:
+            batches.append((attempt, module.search(attempt) or []))
+        except Exception:
+            continue
+
+    output = []
+    seen = set()
+
+    for attempt, results in batches:
+        if not isinstance(results, list):
+            continue
+
+        for item in results:
+            if not isinstance(item, dict):
+                continue
+
+            product = normalize_product(
+                {**item, "store": item.get("store") or store},
+                raw_query,
+            )
+
+            key = (
+                str(product.get("url", "")).lower(),
+                norm(product.get("name", "")),
+            )
+
+            if key in seen:
+                continue
+            seen.add(key)
+
+            if matches(product, raw_query):
+                output.append(product)
+
+    return output
 
 
 def run_store(
@@ -948,9 +991,17 @@ def root():
 
 @app.get("/health")
 def health():
+    loaded_path = next(
+        (path for path in _catalog_paths() if path.exists()),
+        None,
+    )
     return {
         "status": "healthy",
         "stores": STORES,
+        "catalog_file": CATALOG_FILENAME,
+        "catalog_loaded": bool(CATALOG_PRODUCTS),
+        "catalog_products": len(CATALOG_PRODUCTS),
+        "catalog_path": str(loaded_path) if loaded_path else None,
     }
 
 
@@ -974,13 +1025,14 @@ def search_perfume(q: str):
 
     # NON 8 insieme: su Render Free abbiamo osservato exit 137.
     # Due worker riducono nettamente RAM e connessioni simultanee.
-    executor = ThreadPoolExecutor(max_workers=2)
+    executor = ThreadPoolExecutor(max_workers=4)
     futures = {
         executor.submit(run_store, store, query, catalog_hints): store
         for store in STORES
     }
 
-    search_timeout = 50 if family_search_plan(query) else 28
+    # Più tempo per le ricerche famiglia perché richiedono query mirate multiple.
+    search_timeout = 120 if family_search_plan(query) else 45
 
     try:
         for future in as_completed(futures, timeout=search_timeout):
