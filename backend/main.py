@@ -234,11 +234,12 @@ def build_search_attempts(store: str, query: str) -> List[str]:
     # Linee speciali: cerca le varianti principali della stessa linea.
     if re.search(r"\b9\s*pm\b", normalized):
         add("9 PM")
+        add("9PM")
         add("9 PM Elixir")
         add("9 PM Night Out")
         add("9 PM Rebel")
         add("9 PM Pour Femme")
-        return attempts[:5]
+        return attempts[:6]
 
     if re.search(r"\b9\s*am\b", normalized):
         add("9 AM")
@@ -322,7 +323,18 @@ def run_store(
             if matches(product, query):
                 output.append(product)
 
-        if output:
+        # Per le ricerche di una LINEA dobbiamo continuare anche se
+        # un tentativo ha già dato risultati: un negozio può restituire
+        # solo alcune varianti per "9 PM" e altre per "9 PM Elixir",
+        # "9 PM Night Out", ecc.
+        is_line_query = bool(
+            re.search(
+                r"\b9\s*pm\b|\b9\s*am\b|\ble\s+beau\b",
+                norm(query),
+            )
+        )
+
+        if output and not is_line_query:
             break
 
     return output
