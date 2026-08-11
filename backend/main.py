@@ -473,7 +473,9 @@ def normalize_product(product: Dict[str, Any], family_query: str = "") -> Dict[s
         name,
         flags=re.I,
     ).strip()
-    item["family_key"] = norm(f"{brand} {family_without_gender}").strip()
+    family_key_name = _normalize_numbering(family_without_gender)
+    family_key_name = _move_gender_after_family(family_key_name)
+    item["family_key"] = norm(f"{brand} {family_key_name}").strip()
     return item
 
 
