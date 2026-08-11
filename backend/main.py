@@ -136,12 +136,6 @@ def norm(value: Any) -> str:
         value,
     )
 
-    # Uniforma le diverse grafie della numerazione Chanel e simili:
-    # "N 19", "N° 19", "No. 19", "No 19" -> "no 19".
-    # In questo modo la stessa famiglia non viene spezzata in gruppi
-    # diversi solo per la nomenclatura usata dallo store.
-    value = re.sub(r"\b(?:no|n)\s*(?=\d)", "no ", value)
-
     return re.sub(
         r"\s+",
         " ",
@@ -327,76 +321,6 @@ def _catalog_brand_candidates(query: str) -> List[str]:
                     seen.add(key)
                     brands.append(brand)
     return brands[:4]
-
-
-def _catalog_family_candidates(query: str) -> List[str]:
-    """
-    Restituisce TUTTE le denominazioni del catalogo che appartengono alla
-    famiglia cercata. Non contiene nomi di profumi hard-coded.
-
-    La sorgente primaria è il catalogo locale. Se disponibile, Fragella viene
-    usato solo per ampliare il catalogo della famiglia; il risultato completo
-    viene poi passato agli scraper come serie di query separate.
-    """
-    query_tokens = [
-        token for token in norm(query).split()
-        if token not in IGNORED_WORDS
-    ]
-    if not query_tokens:
-        return []
-
-    candidates: List[str] = []
-    seen = set()
-
-    def add(value: Any, brand: str = "") -> None:
-        name = str(value or "").strip()
-        if not name:
-            return
-        # Preferiamo il solo nome del profumo: il filtro finale continuerà
-        # comunque a verificare che la famiglia richiesta sia presente.
-        key = norm(name)
-        if key and key not in seen:
-            seen.add(key)
-            candidates.append(name)
-
-    # 1) Catalogo locale
-    for item in CATALOG_PRODUCTS:
-        if not isinstance(item, dict):
-            continue
-        name = str(item.get("name") or "").strip()
-        brand = str(item.get("brand") or "").strip()
-        if not name:
-            continue
-        text = norm(f"{brand} {name}")
-        if all(token in text for token in query_tokens):
-            add(name, brand)
-        aliases = item.get("aliases")
-        if isinstance(aliases, list):
-            for alias in aliases:
-                alias_text = norm(f"{brand} {alias}")
-                if all(token in alias_text for token in query_tokens):
-                    add(name, brand)
-
-    # 2) Catalogo remoto: non ci fermiamo al primo record.
-    #    Questo è il punto che evita il caso "Eros + Eros Flame" soltanto.
-    try:
-        remote_items = fragella_search(query, 50)
-        for item in remote_items:
-            if not isinstance(item, dict):
-                continue
-            name = str(item.get("name") or "").strip()
-            brand = str(item.get("brand") or "").strip()
-            if not name:
-                continue
-            text = norm(f"{brand} {name}")
-            if all(token in text for token in query_tokens):
-                add(name, brand)
-    except Exception:
-        pass
-
-    # Più specifico prima, poi ordine alfabetico stabile.
-    candidates.sort(key=lambda value: (-len(norm(value).split()), norm(value)))
-    return candidates
 
 
 def _catalog_family_form(query: str) -> str:
@@ -601,7 +525,6 @@ def build_search_attempts(
     query: str,
     catalog_hints: Optional[List[str]] = None,
     discovered_brands: Optional[List[str]] = None,
-    family_candidates: Optional[List[str]] = None,
 ) -> List[str]:
     """Costruisce query generiche; nessun nome di profumo è hard-coded."""
     raw = str(query or "").strip()
@@ -619,21 +542,11 @@ def build_search_attempts(
     # varianti che il motore interno del negozio non mostra con la query esatta.
     for brand in discovered_brands or []:
         add(brand)
-        # Query composta: alcuni negozi restituiscono più varianti quando
-        # ricevono brand + famiglia invece del solo brand.
-        add(f"{brand} {raw}")
     for hint in catalog_hints or []:
         add(hint)
-    # Ogni variante del catalogo diventa una query autonoma dello scraper.
-    # Non c'è alcun elenco manuale di Eros/9 PM/Born in Roma.
-    for family_name in family_candidates or []:
-        add(family_name)
     tokens = [t for t in normalized.split() if t not in IGNORED_WORDS]
     if tokens:
         add(" ".join(tokens))
-    # Aggiunta: includere i primi due token per garantire "no 5" da "no 5 refillable"
-    if len(tokens) >= 2:
-        add(" ".join(tokens[:2]))
     if len(tokens) >= 2:
         add(" ".join(tokens[1:]))
     if len(tokens) >= 3:
@@ -641,20 +554,13 @@ def build_search_attempts(
     compact = re.sub(r"(?<=\d)\s+(?=[a-z])|(?<=[a-z])\s+(?=\d)", "", normalized)
     if compact != normalized:
         add(compact)
-
-    # Heuristica: se troviamo pattern come "no N" o "n N" assicurati di aggiungerli
-    for i in range(len(tokens) - 1):
-        if tokens[i] in ("no", "n") and tokens[i+1].isdigit():
-            add(f"{tokens[i]} {tokens[i+1]}")
-
-    return attempts[:20]
+    return attempts[:12]
 
 
 def run_store(
     store: str,
     query: str,
     catalog_hints: Optional[List[str]] = None,
-    family_candidates: Optional[List[str]] = None,
 ) -> List[Dict[str, Any]]:
     """Ricerca iniziale + espansione generica per brand per le query di famiglia."""
     module = load_scraper(store)
@@ -674,13 +580,7 @@ def run_store(
             brand_seen.add(norm(brand))
             discovered_brands.append(brand)
 
-    attempts = build_search_attempts(
-        store,
-        raw_query,
-        catalog_hints,
-        discovered_brands,
-        family_candidates,
-    )
+    attempts = build_search_attempts(store, raw_query, catalog_hints, discovered_brands)
     output: List[Dict[str, Any]] = []
     seen = set()
     pending = [attempt for attempt in attempts if norm(attempt) != norm(raw_query)]
@@ -695,13 +595,12 @@ def run_store(
         for item in results:
             if not isinstance(item, dict):
                 continue
-            # Usa 'attempt' come family_query / filtro, non la raw_query originale.
-            product = normalize_product({**item, "store": item.get("store") or store}, attempt)
+            product = normalize_product({**item, "store": item.get("store") or store}, raw_query)
             key = (str(product.get("url", "")).lower(), norm(product.get("name", "")))
             if key in seen:
                 continue
             seen.add(key)
-            if matches(product, attempt):
+            if matches(product, raw_query):
                 output.append(product)
     return output
 
@@ -902,22 +801,15 @@ def search_perfume(q: str):
     all_results: List[Dict[str, Any]] = []
     errors: Dict[str, str] = {}
 
-    # Il catalogo fornisce tutte le denominazioni della famiglia.
-    # Queste query vengono passate agli scraper una per una.
+    # Il catalogo locale fornisce il brand della famiglia.
+    # Non interroghiamo Fragella durante /search: riduciamo chiamate e RAM.
     catalog_hints: List[str] = _catalog_brand_candidates(query)
-    family_candidates: List[str] = _catalog_family_candidates(query)
 
     # NON 8 insieme: su Render Free abbiamo osservato exit 137.
     # Due worker riducono nettamente RAM e connessioni simultanee.
     executor = ThreadPoolExecutor(max_workers=2)
     futures = {
-        executor.submit(
-            run_store,
-            store,
-            query,
-            catalog_hints,
-            family_candidates,
-        ): store
+        executor.submit(run_store, store, query, catalog_hints): store
         for store in STORES
     }
 
@@ -1014,7 +906,7 @@ def fragella_search(query: str, limit: int = 10) -> List[Dict[str, Any]]:
 
     params = urlencode({
         "search": query,
-        "limit": max(1, min(int(limit), 50)),
+        "limit": max(1, min(int(limit), 10)),
     })
 
     request = Request(
