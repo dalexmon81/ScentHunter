@@ -81,10 +81,23 @@ def _product_from_shopify_object(p: Dict[str, Any], query: str) -> Optional[Dict
 def _from_shopify_json(session: requests.Session, query: str) -> List[Dict[str, str]]:
     # Run BOTH predictive-search variants. The old code stopped after the
     # first endpoint returned any result, which could hide sold-out products.
-    endpoints = [
-        BASE_URL + "/search/suggest.json?q={q}&resources[type]=product&resources[limit]=20",
-        BASE_URL + "/search/suggest.json?q={q}&resources[type]=product&resources[options][unavailable_products]=show&resources[limit]=20",
-    ]
+    queries = [query]
+
+    # Shopify predictive search can omit an exact product when the query is
+    # too specific. For multi-word searches, add a broader pass using the
+    # first two meaningful words, but keep the strict title filter below.
+    toks = _tokens(query)
+    if len(toks) >= 3:
+        broad = " ".join(toks[:2])
+        if broad and broad != _norm(query):
+            queries.append(broad)
+
+    endpoints = []
+    for search_query in queries:
+        endpoints.extend([
+            BASE_URL + "/search/suggest.json?q={q}&resources[type]=product&resources[limit]=20",
+            BASE_URL + "/search/suggest.json?q={q}&resources[type]=product&resources[options][unavailable_products]=show&resources[limit]=50",
+        ])
 
     results = []
     seen = set()
@@ -100,6 +113,8 @@ def _from_shopify_json(session: requests.Session, query: str) -> List[Dict[str, 
 
         products = data.get("resources", {}).get("results", {}).get("products", [])
         for p in products:
+            # Always validate against the ORIGINAL user query, not the
+            # broader fallback query.
             item = _product_from_shopify_object(p, query)
             if not item:
                 continue
@@ -320,21 +335,42 @@ def _read_product_page_signals(session: requests.Session, url: str) -> Dict[str,
 
 
 def _is_out_of_stock_page(session: requests.Session, url: str) -> bool:
-    # Strongest signal: actual Shopify variant availability.
-    variant_availability = _read_shopify_product_json(session, url)
-    if variant_availability is False:
+    """
+    Determine availability from the real storefront first.
+
+    Why:
+    Shopify's product .js can report a variant as available even when the
+    storefront purchase control is currently sold out (theme/inventory
+    configuration can make those signals disagree).
+
+    Priority:
+      1. Explicit product-page purchase control.
+      2. Explicit structured/data availability on the product page.
+      3. Shopify .js variant availability.
+    """
+    signals = _read_product_page_signals(session, url)
+
+    # The actual purchase control is the most useful storefront signal.
+    button = signals.get("button")
+    if button is False:
         return True
-    if variant_availability is True:
+    if button is True:
         return False
 
-    # Fallback to structured/product-page signals.
-    signals = _read_product_page_signals(session, url)
-    for key in ("jsonld", "html_data", "embedded_json", "button"):
+    # Structured storefront signals.
+    for key in ("jsonld", "html_data", "embedded_json"):
         value = signals.get(key)
         if value is False:
             return True
         if value is True:
             return False
+
+    # Last resort: Shopify product JSON.
+    variant_availability = _read_shopify_product_json(session, url)
+    if variant_availability is False:
+        return True
+    if variant_availability is True:
+        return False
 
     return False
 
