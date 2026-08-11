@@ -473,8 +473,10 @@ def normalize_product(product: Dict[str, Any], family_query: str = "") -> Dict[s
         name,
         flags=re.I,
     ).strip()
-    family_key_name = _normalize_numbering(family_without_gender)
-    family_key_name = _move_gender_after_family(family_key_name)
+    # `norm()` canonizza già N/No/N°/No. nella stessa forma interna.
+    # Non richiamiamo una funzione inesistente: deve restare una sola
+    # normalizzazione, altrimenti ogni prodotto genera NameError durante /search.
+    family_key_name = family_without_gender
     item["family_key"] = norm(f"{brand} {family_key_name}").strip()
     return item
 
