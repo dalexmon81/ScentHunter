@@ -1,7 +1,7 @@
 import json
 import re
 import html
-from typing import List, Dict, Optional
+from typing import List, Dict, Optional, Any
 from urllib.parse import quote_plus, urljoin
 
 import requests
@@ -12,25 +12,31 @@ BASE_URL = "https://orioudh.com"
 TIMEOUT = 25
 
 HEADERS = {
-    "User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36",
+    "User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 "
+                  "(KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36",
     "Accept": "text/html,application/xhtml+xml,application/json;q=0.9,*/*;q=0.8",
     "Accept-Language": "en-US,en;q=0.9,it;q=0.8",
 }
 
+
 def _clean(v) -> str:
     return re.sub(r"\s+", " ", html.unescape(str(v or ""))).strip()
+
 
 def _norm(v) -> str:
     s = _clean(v).lower()
     s = re.sub(r"[^a-z0-9]+", " ", s)
     return re.sub(r"\s+", " ", s).strip()
 
+
 def _tokens(q: str):
     return [x for x in _norm(q).split() if len(x) > 1]
+
 
 def _matches(text: str, query: str) -> bool:
     n = _norm(text)
     return all(t in n for t in _tokens(query))
+
 
 def _price(v) -> Optional[str]:
     if v is None:
@@ -47,57 +53,63 @@ def _price(v) -> Optional[str]:
         return None
     return f"{x:.2f}".replace(".", ",") + " €"
 
+
+def _product_from_shopify_object(p: Dict[str, Any], query: str) -> Optional[Dict[str, str]]:
+    title = _clean(p.get("title"))
+    vendor = _clean(p.get("vendor"))
+    text = f"{title} {vendor}"
+
+    if not title or not _matches(text, query):
+        return None
+
+    url = urljoin(BASE_URL, p.get("url") or "")
+    if not url:
+        return None
+
+    price = _price(p.get("price")) or _price(p.get("price_min")) or _price(p.get("price_max"))
+    if not price:
+        return None
+
+    return {
+        "store": STORE,
+        "name": title,
+        "price": price,
+        "url": url.split("?")[0],
+    }
+
+
 def _from_shopify_json(session: requests.Session, query: str) -> List[Dict[str, str]]:
+    # Run BOTH predictive-search variants. The old code stopped after the
+    # first endpoint returned any result, which could hide sold-out products.
     endpoints = [
         BASE_URL + "/search/suggest.json?q={q}&resources[type]=product&resources[limit]=20",
         BASE_URL + "/search/suggest.json?q={q}&resources[type]=product&resources[options][unavailable_products]=show&resources[limit]=20",
     ]
+
     results = []
     seen = set()
 
     for template in endpoints:
         try:
-            r = session.get(
-                template.format(q=quote_plus(query)),
-                headers=HEADERS, timeout=TIMEOUT
-            )
+            r = session.get(template.format(q=quote_plus(query)), headers=HEADERS, timeout=TIMEOUT)
             if r.status_code != 200:
                 continue
             data = r.json()
         except (requests.RequestException, ValueError):
             continue
 
-        products = (
-            data.get("resources", {})
-                .get("results", {})
-                .get("products", [])
-        )
+        products = data.get("resources", {}).get("results", {}).get("products", [])
         for p in products:
-            title = _clean(p.get("title"))
-            vendor = _clean(p.get("vendor"))
-            text = title + " " + vendor
-            if not _matches(text, query):
+            item = _product_from_shopify_object(p, query)
+            if not item:
                 continue
-
-            url = urljoin(BASE_URL, p.get("url") or "")
-            if not url or url in seen:
+            if item["url"] in seen:
                 continue
-
-            price = _price(p.get("price"))
-            if not price:
-                price = _price(p.get("price_min"))
-            if not price:
-                continue
-
-            seen.add(url)
-            results.append({
-                "store": STORE,
-                "name": title,
-                "price": price,
-                "url": url,
-            })
+            seen.add(item["url"])
+            results.append(item)
 
     return results
+
 
 def _from_search_html(session: requests.Session, query: str) -> List[Dict[str, str]]:
     url = BASE_URL + "/search?q=" + quote_plus(query) + "&type=product"
@@ -114,16 +126,16 @@ def _from_search_html(session: requests.Session, query: str) -> List[Dict[str, s
 
     for a in soup.select('a[href*="/products/"]'):
         href = urljoin(BASE_URL, a.get("href", "")).split("?")[0]
-        if href in seen:
+        if not href or href in seen:
             continue
 
         card = a
-        for _ in range(5):
+        for _ in range(6):
             if not card.parent:
                 break
             card = card.parent
             txt = _clean(card.get_text(" ", strip=True))
-            if "€" in txt and len(txt) < 1200:
+            if "€" in txt and len(txt) < 1600:
                 break
 
         text = _clean(card.get_text(" ", strip=True))
@@ -132,11 +144,11 @@ def _from_search_html(session: requests.Session, query: str) -> List[Dict[str, s
             continue
 
         price = None
-        prices = re.findall(r"\b\d{1,4}[.,]\d{2}\s*€", text)
-        for raw in prices:
+        for raw in re.findall(r"\b\d{1,4}[.,]\d{2}\s*€", text):
             price = _price(raw)
             if price:
                 break
+
         if not price:
             continue
 
@@ -147,195 +159,185 @@ def _from_search_html(session: requests.Session, query: str) -> List[Dict[str, s
             "price": price,
             "url": href,
         })
+
     return results
 
-def _product_page(session: requests.Session, url: str, query: str) -> Optional[Dict[str, str]]:
+
+def _availability_from_value(value) -> Optional[bool]:
+    if value is None:
+        return None
+    if isinstance(value, bool):
+        return value
+
+    s = _clean(value).lower()
+
+    if any(x in s for x in (
+        "outofstock", "out of stock", "soldout", "sold out", "unavailable",
+        "rupture de stock", "épuisé", "ausverkauft", "nicht auf lager",
+    )):
+        return False
+
+    if any(x in s for x in (
+        "instock", "in stock", "available", "disponible", "auf lager",
+    )):
+        return True
+
+    return None
+
+
+def _extract_variant_availability(data: Any) -> Optional[bool]:
+    if not isinstance(data, dict):
+        return None
+
+    variants = data.get("variants")
+    if isinstance(variants, list) and variants:
+        values = [
+            bool(v.get("available"))
+            for v in variants
+            if isinstance(v, dict) and "available" in v
+        ]
+        if values:
+            return any(values)
+
+    if "available" in data:
+        return bool(data.get("available"))
+
+    return None
+
+
+def _read_shopify_product_json(session: requests.Session, url: str) -> Optional[bool]:
+    js_url = url.rstrip("/") + ".js"
+    try:
+        r = session.get(js_url, headers=HEADERS, timeout=TIMEOUT, allow_redirects=True)
+        if r.status_code != 200:
+            return None
+        return _extract_variant_availability(r.json())
+    except (requests.RequestException, ValueError):
+        return None
+
+
+def _read_product_page_signals(session: requests.Session, url: str) -> Dict[str, Optional[bool]]:
+    signals = {"jsonld": None, "button": None, "html_data": None, "embedded_json": None}
+
     try:
         r = session.get(url, headers=HEADERS, timeout=TIMEOUT, allow_redirects=True)
         if r.status_code != 200:
-            return None
+            return signals
     except requests.RequestException:
-        return None
+        return signals
 
     soup = BeautifulSoup(r.text, "html.parser")
 
+    # JSON-LD availability.
     for script in soup.find_all("script", type="application/ld+json"):
         raw = script.string or script.get_text()
         try:
             obj = json.loads(raw)
         except Exception:
             continue
-        objects = obj if isinstance(obj, list) else [obj]
-        for x in objects:
+        for x in (obj if isinstance(obj, list) else [obj]):
             if not isinstance(x, dict) or x.get("@type") != "Product":
                 continue
-            name = _clean(x.get("name"))
-            if not _matches(name, query):
-                continue
             offers = x.get("offers") or {}
-            if isinstance(offers, list):
-                offers = offers[0] if offers else {}
-            price = _price(offers.get("price") if isinstance(offers, dict) else None)
-            if price:
-                return {"store": STORE, "name": name, "price": price, "url": r.url}
+            for offer in (offers if isinstance(offers, list) else [offers]):
+                if isinstance(offer, dict):
+                    av = _availability_from_value(offer.get("availability"))
+                    if av is not None:
+                        signals["jsonld"] = av
+                        break
+            if signals["jsonld"] is not None:
+                break
+        if signals["jsonld"] is not None:
+            break
 
-    h1 = soup.find("h1")
-    name = _clean(h1.get_text(" ", strip=True)) if h1 else ""
-    if not name or not _matches(name, query):
-        return None
-    text = _clean(soup.get_text(" ", strip=True))
-    m = re.search(r"\b(\d{1,4}[.,]\d{2})\s*€", text)
-    price = _price(m.group(1)) if m else None
-    if not price:
-        return None
-    return {"store": STORE, "name": name, "price": price, "url": r.url}
-
-def _availability_value(value) -> Optional[bool]:
-    """Return True=in stock, False=out of stock, None=unknown."""
-    s = _clean(value).lower()
-    if not s:
-        return None
-    if any(x in s for x in ("outofstock", "out of stock", "soldout", "sold out", "unavailable", "rupture", "épuisé", "ausverkauft")):
-        return False
-    if any(x in s for x in ("instock", "in stock", "available", "disponible")):
-        return True
-    return None
-
-def _shopify_variant_availability(soup: BeautifulSoup) -> Optional[bool]:
-    """Inspect Shopify product JSON and return availability when it is explicit."""
-    found_variants = False
-    any_available = False
-
-    for script in soup.find_all("script"):
-        raw = script.string or script.get_text()
-        if not raw or "variants" not in raw:
-            continue
-        try:
-            obj = json.loads(raw)
-        except Exception:
-            continue
-        candidates = []
-        if isinstance(obj, dict):
-            if isinstance(obj.get("variants"), list):
-                candidates.extend(obj["variants"])
-            product = obj.get("product")
-            if isinstance(product, dict) and isinstance(product.get("variants"), list):
-                candidates.extend(product["variants"])
-        for variant in candidates:
-            if not isinstance(variant, dict):
-                continue
-            if "available" not in variant:
-                continue
-            found_variants = True
-            if bool(variant.get("available")):
-                any_available = True
-
-    if not found_variants:
-        return None
-    return any_available
-
-def _jsonld_availability(soup: BeautifulSoup) -> Optional[bool]:
-    values = []
-    for script in soup.find_all("script", type="application/ld+json"):
-        raw = script.string or script.get_text()
-        try:
-            obj = json.loads(raw)
-        except Exception:
-            continue
-        stack = obj if isinstance(obj, list) else [obj]
-        while stack:
-            x = stack.pop()
-            if isinstance(x, dict):
-                if "availability" in x:
-                    values.append(x.get("availability"))
-                for v in x.values():
-                    if isinstance(v, (dict, list)):
-                        stack.append(v)
-            elif isinstance(x, list):
-                stack.extend(x)
-
-    states = [_availability_value(v) for v in values]
-    states = [s for s in states if s is not None]
-    if not states:
-        return None
-    # Any explicit InStock offer is enough to keep the product available.
-    if any(states):
-        return True
-    return False
-
-def _html_stock_signals(soup: BeautifulSoup) -> Optional[bool]:
-    unavailable_words = (
-        "out of stock", "sold out", "unavailable",
-        "ausverkauft", "nicht auf lager",
-        "rupture de stock", "épuisé",
-    )
-
-    # Explicit Shopify/theme signals.
-    for node in soup.select('[disabled], [aria-disabled="true"], [data-available], [data-available="false"], [data-product-available="false"]'):
-        attrs = " ".join(str(v) for v in node.attrs.values())
-        text = _clean(node.get_text(" ", strip=True)).lower()
-        blob = (attrs + " " + text).lower()
-        if any(word in blob for word in unavailable_words):
-            return False
-        if "data-available=\"false\"" in blob or "data-product-available=\"false\"" in blob:
-            return False
-
-    # Purchase controls are useful, but only as a fallback signal.
+    # Actual purchase controls.
     selectors = (
-        'button[name="add"]',
-        '.product-form__submit',
-        '[data-add-to-cart]',
-        'button[type="submit"]',
-        'input[type="submit"]',
+        'button[name="add"]', '.product-form__submit', '[data-add-to-cart]',
+        'button[type="submit"]', 'input[name="add"]',
     )
     controls = []
     for selector in selectors:
         controls.extend(soup.select(selector))
 
-    saw_control = False
+    unavailable_words = (
+        "out of stock", "sold out", "unavailable", "ausverkauft",
+        "nicht auf lager", "rupture de stock", "épuisé",
+    )
+    available_words = (
+        "add to cart", "buy now", "add", "add to bag",
+        "acheter", "in den warenkorb",
+    )
+
     for control in controls:
-        saw_control = True
-        label = _clean(control.get_text(" ", strip=True) or control.get("value", "")).lower()
+        label = _clean(
+            control.get_text(" ", strip=True)
+            or control.get("value")
+            or control.get("aria-label")
+            or ""
+        ).lower()
         disabled = (
             control.has_attr("disabled")
             or str(control.get("aria-disabled", "")).lower() == "true"
         )
-        if any(word in label for word in unavailable_words):
-            return False
-        if not disabled and any(word in label for word in ("add to cart", "buy now", "add")):
+
+        if any(word in label for word in unavailable_words) or disabled:
+            signals["button"] = False
+            break
+        if any(word in label for word in available_words):
+            signals["button"] = True
+
+    # Explicit availability attributes.
+    for node in soup.select("[data-available],[data-product-available],[data-availability],[data-stock]"):
+        for attr in ("data-available", "data-product-available", "data-availability", "data-stock"):
+            if node.has_attr(attr):
+                av = _availability_from_value(node.get(attr))
+                if av is not None:
+                    signals["html_data"] = av
+                    break
+        if signals["html_data"] is not None:
+            break
+
+    # Embedded Shopify product JSON.
+    for script in soup.find_all("script"):
+        raw = script.string or script.get_text()
+        if not raw or "variants" not in raw or "available" not in raw:
+            continue
+        try:
+            obj = json.loads(raw)
+            av = _extract_variant_availability(obj)
+            if av is not None:
+                signals["embedded_json"] = av
+                break
+        except Exception:
+            pass
+
+        matches = re.findall(r'"available"\s*:\s*(true|false)', raw, flags=re.IGNORECASE)
+        if matches:
+            signals["embedded_json"] = any(m.lower() == "true" for m in matches)
+            break
+
+    return signals
+
+
+def _is_out_of_stock_page(session: requests.Session, url: str) -> bool:
+    # Strongest signal: actual Shopify variant availability.
+    variant_availability = _read_shopify_product_json(session, url)
+    if variant_availability is False:
+        return True
+    if variant_availability is True:
+        return False
+
+    # Fallback to structured/product-page signals.
+    signals = _read_product_page_signals(session, url)
+    for key in ("jsonld", "html_data", "embedded_json", "button"):
+        value = signals.get(key)
+        if value is False:
             return True
-
-    if saw_control:
-        return None
-    return None
-
-def _is_out_of_stock_page(session, url):
-    try:
-        r = session.get(url, headers=HEADERS, timeout=TIMEOUT, allow_redirects=True)
-        if r.status_code != 200:
+        if value is True:
             return False
-    except requests.RequestException:
-        return False
 
-    soup = BeautifulSoup(r.text, "html.parser")
+    return False
 
-    # Strongest signal for Shopify: variant availability in product JSON.
-    variant_state = _shopify_variant_availability(soup)
-    if variant_state is False:
-        return True
-    if variant_state is True:
-        return False
-
-    # Schema.org Product JSON-LD availability.
-    jsonld_state = _jsonld_availability(soup)
-    if jsonld_state is False:
-        return True
-    if jsonld_state is True:
-        return False
-
-    # Theme/HTML signals as a final fallback.
-    html_state = _html_stock_signals(soup)
-    return html_state is False
 
 def search(query: str) -> List[Dict[str, str]]:
     query = _clean(query)
@@ -344,43 +346,34 @@ def search(query: str) -> List[Dict[str, str]]:
 
     session = requests.Session()
 
-    # Get both Shopify predictive results and the normal search page.
-    # The previous version used the HTML page only when the API returned zero
-    # results. That could hide an exact product when the API returned other
-    # products from the same family (e.g. 9 PM / Rebel / Night Out).
-    api_results = _from_shopify_json(session, query)
-    html_results = _from_search_html(session, query)
+    # Merge predictive-search and server-rendered search. Never stop merely
+    # because the first source returned another member of the same family.
+    sources = [
+        _from_shopify_json(session, query),
+        _from_search_html(session, query),
+    ]
 
     results = []
     seen = set()
-    for item in api_results + html_results:
-        url = item.get("url")
-        if not url or url in seen:
-            continue
-        seen.add(url)
-        results.append(item)
+    for source in sources:
+        for item in source:
+            if item["url"] in seen:
+                continue
+            seen.add(item["url"])
+            results.append(item)
 
-    # Verify availability on the real product page.
-    # Unavailable products remain visible, but their stale price is replaced
-    # by the stock status.
     final = []
-    seen = set()
     for item in results:
-        url = item["url"]
-        if url in seen:
-            continue
-        seen.add(url)
-
         checked = dict(item)
-        if _is_out_of_stock_page(session, url):
+        if _is_out_of_stock_page(session, item["url"]):
             checked["price"] = "Out of stock"
-
         final.append(checked)
 
     return final
 
+
 if __name__ == "__main__":
-    query = "Rasasi Hawas"
+    query = "9 PM Pour Femme"
     results = search(query)
     print(f"QUERY: {query}")
     print(f"RISULTATI: {len(results)}")
