@@ -1,5 +1,4 @@
-from pathlib import Path
-from fastapi import FastAPI, HTTPException
+ fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 
@@ -136,11 +135,12 @@ def norm(value: Any) -> str:
         value,
     )
 
-    # Uniforma le diverse grafie della numerazione Chanel e simili:
-    # "N 19", "N° 19", "No. 19", "No 19" -> "no 19".
-    # In questo modo la stessa famiglia non viene spezzata in gruppi
-    # diversi solo per la nomenclatura usata dallo store.
-    value = re.sub(r"\b(?:no|n)\s*(?=\d)", "no ", value)
+    # Canonicalizza la nomenclatura numerica dei profumi Chanel e simili.
+    # "N 19", "N° 19", "No. 19", "No 19" e "N19" devono essere
+    # la stessa chiave interna, altrimenti la stessa famiglia viene
+    # spezzata in gruppi diversi. La forma canonica interna è "no 19".
+    value = re.sub(r"\bn\s*(?:o|0)?\s*(\d+)\b", r"no \1", value)
+    value = re.sub(r"\bno\s*(\d+)\b", r"no \1", value)
 
     return re.sub(
         r"\s+",
@@ -329,76 +329,6 @@ def _catalog_brand_candidates(query: str) -> List[str]:
     return brands[:4]
 
 
-def _catalog_family_candidates(query: str) -> List[str]:
-    """
-    Restituisce TUTTE le denominazioni del catalogo che appartengono alla
-    famiglia cercata. Non contiene nomi di profumi hard-coded.
-
-    La sorgente primaria è il catalogo locale. Se disponibile, Fragella viene
-    usato solo per ampliare il catalogo della famiglia; il risultato completo
-    viene poi passato agli scraper come serie di query separate.
-    """
-    query_tokens = [
-        token for token in norm(query).split()
-        if token not in IGNORED_WORDS
-    ]
-    if not query_tokens:
-        return []
-
-    candidates: List[str] = []
-    seen = set()
-
-    def add(value: Any, brand: str = "") -> None:
-        name = str(value or "").strip()
-        if not name:
-            return
-        # Preferiamo il solo nome del profumo: il filtro finale continuerà
-        # comunque a verificare che la famiglia richiesta sia presente.
-        key = norm(name)
-        if key and key not in seen:
-            seen.add(key)
-            candidates.append(name)
-
-    # 1) Catalogo locale
-    for item in CATALOG_PRODUCTS:
-        if not isinstance(item, dict):
-            continue
-        name = str(item.get("name") or "").strip()
-        brand = str(item.get("brand") or "").strip()
-        if not name:
-            continue
-        text = norm(f"{brand} {name}")
-        if all(token in text for token in query_tokens):
-            add(name, brand)
-        aliases = item.get("aliases")
-        if isinstance(aliases, list):
-            for alias in aliases:
-                alias_text = norm(f"{brand} {alias}")
-                if all(token in alias_text for token in query_tokens):
-                    add(name, brand)
-
-    # 2) Catalogo remoto: non ci fermiamo al primo record.
-    #    Questo è il punto che evita il caso "Eros + Eros Flame" soltanto.
-    try:
-        remote_items = fragella_search(query, 50)
-        for item in remote_items:
-            if not isinstance(item, dict):
-                continue
-            name = str(item.get("name") or "").strip()
-            brand = str(item.get("brand") or "").strip()
-            if not name:
-                continue
-            text = norm(f"{brand} {name}")
-            if all(token in text for token in query_tokens):
-                add(name, brand)
-    except Exception:
-        pass
-
-    # Più specifico prima, poi ordine alfabetico stabile.
-    candidates.sort(key=lambda value: (-len(norm(value).split()), norm(value)))
-    return candidates
-
-
 def _catalog_family_form(query: str) -> str:
     q_tokens = [token for token in norm(query).split() if token not in IGNORED_WORDS]
     if not q_tokens:
@@ -483,6 +413,28 @@ def canonical_product_brand(product: Dict[str, Any]) -> str:
     ).strip()
 
 
+def _canonical_numbered_name(value: str) -> str:
+    """
+    Uniforma la nomenclatura numerica nel nome mostrato.
+
+    Esempi:
+        N 5       -> No. 5
+        N° 5      -> No. 5
+        No 5      -> No. 5
+        No. 5     -> No. 5
+        N19       -> No. 19
+
+    Non modifica numeri che non sono preceduti da N/No.
+    """
+    text = re.sub(r"\s+", " ", str(value or "")).strip()
+    return re.sub(
+        r"\b(?:n|no)\s*(?:[°º.]\s*)?(\d+)\b",
+        lambda match: f"No. {match.group(1)}",
+        text,
+        flags=re.I,
+    )
+
+
 def canonical_product_name(product: Dict[str, Any], family_query: str = "") -> str:
     raw_name = str(product.get("name") or product.get("title") or product.get("product_name") or "").strip()
     brand = canonical_product_brand(product)
@@ -492,6 +444,7 @@ def canonical_product_name(product: Dict[str, Any], family_query: str = "") -> s
     name = canonical or raw_name
     if brand:
         name = re.sub(rf"^\s*{re.escape(brand)}\s*[-–—:]?\s*", "", name, flags=re.I).strip()
+    name = _canonical_numbered_name(name)
     name = _move_gender_after_family(name, family_query)
     words = name.split()
     collapsed = []
@@ -500,14 +453,7 @@ def canonical_product_name(product: Dict[str, Any], family_query: str = "") -> s
             continue
         collapsed.append(word)
     name = " ".join(collapsed)
-    name = re.sub(r"(?<=\d)(?=[A-Za-z])|(?<=[A-Za-z])(?=\d)", " ", name).strip()
-
-    # Canonicalizza la nomenclatura numerica Chanel anche nel NOME VISIBILE,
-    # non solo nella chiave di confronto. In questo modo "N 19" e "No. 19"
-    # non vengono mostrati come due famiglie/categorie differenti.
-    name = re.sub(r"\b(?:no\.?|n)\s*(\d+)\b", r"No. \1", name, flags=re.I)
-
-    return name
+    return re.sub(r"(?<=\d)(?=[A-Za-z])|(?<=[A-Za-z])(?=\d)", " ", name).strip()
 
 
 def normalize_product(product: Dict[str, Any], family_query: str = "") -> Dict[str, Any]:
@@ -517,6 +463,16 @@ def normalize_product(product: Dict[str, Any], family_query: str = "") -> Dict[s
     brand = str(item.get("brand") or "").strip()
     name = str(item.get("name") or "").strip()
     item["display_name"] = f"{brand} - {name}" if brand else name
+
+    # Chiave stabile per il raggruppamento delle famiglie. Il genere non
+    # crea una nuova famiglia e la forma N/No è già stata canonizzata.
+    family_without_gender = re.sub(
+        r"\s+\b(?:uomo|donna|men|women|man|woman|homme|femme)\b\s*$",
+        "",
+        name,
+        flags=re.I,
+    ).strip()
+    item["family_key"] = norm(f"{brand} {family_without_gender}").strip()
     return item
 
 
@@ -608,7 +564,6 @@ def build_search_attempts(
     query: str,
     catalog_hints: Optional[List[str]] = None,
     discovered_brands: Optional[List[str]] = None,
-    family_candidates: Optional[List[str]] = None,
 ) -> List[str]:
     """Costruisce query generiche; nessun nome di profumo è hard-coded."""
     raw = str(query or "").strip()
@@ -626,15 +581,8 @@ def build_search_attempts(
     # varianti che il motore interno del negozio non mostra con la query esatta.
     for brand in discovered_brands or []:
         add(brand)
-        # Query composta: alcuni negozi restituiscono più varianti quando
-        # ricevono brand + famiglia invece del solo brand.
-        add(f"{brand} {raw}")
     for hint in catalog_hints or []:
         add(hint)
-    # Ogni variante del catalogo diventa una query autonoma dello scraper.
-    # Non c'è alcun elenco manuale di Eros/9 PM/Born in Roma.
-    for family_name in family_candidates or []:
-        add(family_name)
     tokens = [t for t in normalized.split() if t not in IGNORED_WORDS]
     if tokens:
         add(" ".join(tokens))
@@ -645,14 +593,13 @@ def build_search_attempts(
     compact = re.sub(r"(?<=\d)\s+(?=[a-z])|(?<=[a-z])\s+(?=\d)", "", normalized)
     if compact != normalized:
         add(compact)
-    return attempts[:20]
+    return attempts[:12]
 
 
 def run_store(
     store: str,
     query: str,
     catalog_hints: Optional[List[str]] = None,
-    family_candidates: Optional[List[str]] = None,
 ) -> List[Dict[str, Any]]:
     """Ricerca iniziale + espansione generica per brand per le query di famiglia."""
     module = load_scraper(store)
@@ -672,13 +619,7 @@ def run_store(
             brand_seen.add(norm(brand))
             discovered_brands.append(brand)
 
-    attempts = build_search_attempts(
-        store,
-        raw_query,
-        catalog_hints,
-        discovered_brands,
-        family_candidates,
-    )
+    attempts = build_search_attempts(store, raw_query, catalog_hints, discovered_brands)
     output: List[Dict[str, Any]] = []
     seen = set()
     pending = [attempt for attempt in attempts if norm(attempt) != norm(raw_query)]
@@ -899,22 +840,15 @@ def search_perfume(q: str):
     all_results: List[Dict[str, Any]] = []
     errors: Dict[str, str] = {}
 
-    # Il catalogo fornisce tutte le denominazioni della famiglia.
-    # Queste query vengono passate agli scraper una per una.
+    # Il catalogo locale fornisce il brand della famiglia.
+    # Non interroghiamo Fragella durante /search: riduciamo chiamate e RAM.
     catalog_hints: List[str] = _catalog_brand_candidates(query)
-    family_candidates: List[str] = _catalog_family_candidates(query)
 
     # NON 8 insieme: su Render Free abbiamo osservato exit 137.
     # Due worker riducono nettamente RAM e connessioni simultanee.
     executor = ThreadPoolExecutor(max_workers=2)
     futures = {
-        executor.submit(
-            run_store,
-            store,
-            query,
-            catalog_hints,
-            family_candidates,
-        ): store
+        executor.submit(run_store, store, query, catalog_hints): store
         for store in STORES
     }
 
@@ -1011,7 +945,7 @@ def fragella_search(query: str, limit: int = 10) -> List[Dict[str, Any]]:
 
     params = urlencode({
         "search": query,
-        "limit": max(1, min(int(limit), 50)),
+        "limit": max(1, min(int(limit), 10)),
     })
 
     request = Request(
