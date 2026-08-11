@@ -1624,10 +1624,68 @@ async function searchPerfume(){
  statusBox.textContent="";resultsBox.innerHTML="";errorsBox.innerHTML="";
  try{
   const term=q;
-  const data=await fetchJSONWithTimeout(
-    backend()+"/search?q="+encodeURIComponent(term),
-    180000
+
+  // Espansione controllata tramite il catalogo master.
+  // Il catalogo non inventa prezzi: aggiunge solo le varianti reali
+  // della famiglia da cercare nel backend.
+  function catalogQueryKey(v){
+    return String(v||"")
+      .toLowerCase()
+      .normalize("NFD").replace(/[\\u0300-\\u036f]/g,"")
+      .replace(/n[°º]?\\s*([0-9]+)/g,"no $1")
+      .replace(/no\\.?\\s*([0-9]+)/g,"no $1")
+      .replace(/[^a-z0-9]+/g," ")
+      .replace(/\\s+/g," ").trim();
+  }
+
+  const qKey=catalogQueryKey(term);
+  const expansion=new Set([term]);
+
+  SCENTHUNTER_CATALOG.forEach(p=>{
+    const names=[
+      p.name,
+      p.canonical_display_name,
+      ...(Array.isArray(p.aliases)?p.aliases:[])
+    ];
+    if(names.some(n=>catalogQueryKey(n)===qKey)){
+      expansion.add(p.name);
+      expansion.add(p.canonical_display_name||"");
+      if(p.brand) expansion.add(p.brand+" "+p.name);
+    }
+  });
+
+  // Una ricerca generica come "Chanel" non viene esplosa in centinaia
+  // di chiamate. L'espansione scatta solo su una corrispondenza esatta.
+  const terms=[...expansion].filter(Boolean).slice(0,12);
+
+  const payloads=await Promise.all(
+    terms.map(t=>fetchJSONWithTimeout(
+      backend()+"/search?q="+encodeURIComponent(t),
+      180000
+    ).catch(()=>({results:[],comparisons:[],errors:{}})))
   );
+
+  const data={results:[],comparisons:[],errors:{}};
+  payloads.forEach(x=>{
+    if(Array.isArray(x.results))data.results.push(...x.results);
+    if(Array.isArray(x.comparisons))data.comparisons.push(...x.comparisons);
+    if(x.errors&&typeof x.errors==="object")Object.assign(data.errors,x.errors);
+  });
+
+  // Deduplica offerte identiche prima del raggruppamento finale.
+  const seen=new Set();
+  data.results=data.results.filter(o=>{
+    const k=[
+      o?.store||o?.shop||"",
+      o?.url||"",
+      o?.name||"",
+      o?.price||o?.price_value||""
+    ].join("|").toLowerCase();
+    if(seen.has(k))return false;
+    seen.add(k);
+    return true;
+  });
+
   const groups=shGroupData(data);showProducts(groups);
   currentProductGroups=groups;
   updateBestPricesFromGroups(groups);
