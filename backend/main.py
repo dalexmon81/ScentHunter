@@ -89,7 +89,9 @@ LINE_FAMILY_PLANS = {
         "terms": [
             "9 PM", "9PM", "Afnan 9 PM",
             "9PM Elixir", "9PM Night Out", "9PM Rebel",
-            "9 PM Pour Femme", "9 PM Purple Femme",
+            "9 PM Pour Femme", "9PM Pour Femme",
+            "9 PM Purple Femme", "9PM Purple Femme",
+            "Purple Femme",
         ],
     },
     "9 am": {
@@ -105,6 +107,7 @@ LINE_FAMILY_PLANS = {
             "Le Beau", "Jean Paul Gaultier Le Beau",
             "Le Beau Le Parfum", "Le Beau Le Parfum Intense",
             "Le Beau Paradise Garden", "Le Beau Narcisse",
+            "Le Beau Narcisse Eau de Parfum", "Narcisse Le Beau",
         ],
     },
 }
@@ -604,7 +607,7 @@ def build_search_attempts(
             add(term)
         # Per una linea restiamo sulle query della linea: i fallback generici
         # consumano il limite di risultati dei negozi e fanno sparire varianti.
-        return attempts[:8]
+        return attempts[:10]
 
     # Un solo passaggio aggiuntivo sul brand scoperto permette di recuperare
     # varianti che il motore interno del negozio non mostra con la query esatta.
