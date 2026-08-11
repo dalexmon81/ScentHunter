@@ -63,7 +63,7 @@ FRONTEND_INDEX = (
     / "index.html"
 )
 
-CATALOG_FILENAME = "SCENTHUNTER CATALOGO CORRETTO.json"
+CATALOG_FILENAME = "scenthunter_catalog.json"
 
 VARIANT_MARKERS = {
     "pour femme", "pour homme", "femme", "homme",
