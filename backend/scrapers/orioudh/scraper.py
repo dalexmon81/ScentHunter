@@ -10,7 +10,7 @@ from bs4 import BeautifulSoup
 
 STORE = "Orioudh"
 BASE_URL = "https://orioudh.com"
-TIMEOUT = 25
+TIMEOUT = 20
 
 HEADERS = {
     "User-Agent": (
@@ -18,17 +18,15 @@ HEADERS = {
         "AppleWebKit/537.36 (KHTML, like Gecko) "
         "Chrome/126.0.0.0 Safari/537.36"
     ),
-    "Accept": (
-        "text/html,application/xhtml+xml,"
-        "application/json;q=0.9,*/*;q=0.8"
-    ),
+    "Accept": "application/json,text/html,application/xhtml+xml",
     "Accept-Language": "en-US,en;q=0.9,it;q=0.8",
 }
 
+IGNORED_WORDS = {
+    "eau", "de", "parfum", "perfume", "edp", "edt",
+    "extrait", "spray", "ml", "for", "by",
+}
 
-# ============================================================
-# NORMALIZZAZIONE
-# ============================================================
 
 def _clean(value) -> str:
     return re.sub(
@@ -40,77 +38,53 @@ def _clean(value) -> str:
 
 def _norm(value) -> str:
     value = _clean(value).lower()
-
     value = re.sub(
         r"(?<=\d)(?=[a-z])|(?<=[a-z])(?=\d)",
         " ",
         value,
     )
-
-    value = re.sub(
-        r"[^a-z0-9]+",
-        " ",
-        value,
-    )
-
-    return re.sub(
-        r"\s+",
-        " ",
-        value,
-    ).strip()
-
-
-IGNORED_WORDS = {
-    "eau",
-    "de",
-    "parfum",
-    "perfume",
-    "edp",
-    "edt",
-    "extrait",
-    "spray",
-    "ml",
-    "for",
-    "by",
-}
+    value = re.sub(r"[^a-z0-9]+", " ", value)
+    return re.sub(r"\s+", " ", value).strip()
 
 
 def _tokens(query: str) -> List[str]:
     return [
-        token
-        for token in _norm(query).split()
-        if token not in IGNORED_WORDS
-        and len(token) > 1
+        x for x in _norm(query).split()
+        if x not in IGNORED_WORDS and len(x) > 1
     ]
 
 
 def _matches(text: str, query: str) -> bool:
-    normalized_text = _norm(text)
+    n = _norm(text)
     tokens = _tokens(query)
-
-    return bool(tokens) and all(
-        token in normalized_text
-        for token in tokens
-    )
+    return bool(tokens) and all(t in n for t in tokens)
 
 
-# ============================================================
-# QUERY GENERICA MULTI-PASS
-# ============================================================
+def _price(value) -> Optional[str]:
+    if value is None:
+        return None
 
-def _search_queries(query: str) -> List[str]:
+    s = _clean(value).replace("€", "").strip()
+    m = re.search(r"(\d+(?:[.,]\d{1,2})?)", s)
+
+    if not m:
+        return None
+
+    try:
+        number = float(m.group(1).replace(",", "."))
+    except ValueError:
+        return None
+
+    if number <= 0:
+        return None
+
+    return f"{number:.2f}".replace(".", ",") + " €"
+
+
+def _search_terms(query: str) -> List[str]:
     """
-    Genera query alternative senza conoscere nomi di profumi.
-
-    Serve soprattutto quando Shopify indicizza una variante con una
-    forma leggermente diversa da quella digitata dall'utente.
-
-    Esempi:
-        9 PM Night Out
-        9PM Night Out
-        9 PM -> 9PM
-
-    Non contiene nomi di prodotti hard-coded.
+    Genera solo forme generiche della query ricevuta.
+    Non contiene nomi di profumi hard-coded.
     """
     raw = _clean(query)
     normalized = _norm(raw)
@@ -118,16 +92,15 @@ def _search_queries(query: str) -> List[str]:
     if not normalized:
         return []
 
-    attempts = []
+    terms = []
     seen = set()
 
     def add(value):
         value = _clean(value)
         key = _norm(value)
-
         if key and key not in seen:
             seen.add(key)
-            attempts.append(value)
+            terms.append(value)
 
     add(raw)
 
@@ -137,187 +110,65 @@ def _search_queries(query: str) -> List[str]:
         "",
         normalized,
     )
-
     if compact != normalized:
         add(compact)
 
     tokens = [
-        token
-        for token in normalized.split()
-        if token not in IGNORED_WORDS
+        t for t in normalized.split()
+        if t not in IGNORED_WORDS
     ]
 
-    # Query senza parole descrittive generiche.
     if len(tokens) >= 2:
         add(" ".join(tokens))
 
-    # Fallback progressivi: permettono a Shopify di trovare prodotti
-    # quando il motore non gestisce bene una query lunga.
+    # Per query lunghe proviamo anche il nucleo senza il primo token.
     if len(tokens) >= 3:
         add(" ".join(tokens[1:]))
-        add(" ".join(tokens[-2:]))
 
-    # Singoli token significativi.
-    for token in tokens:
-        if len(token) >= 3:
-            add(token)
-
-    return attempts[:8]
+    return terms
 
 
-# ============================================================
-# PREZZO
-# ============================================================
-
-def _price(value) -> Optional[str]:
-    if value is None:
-        return None
-
-    text = _clean(value).replace("€", "").strip()
-
-    match = re.search(
-        r"(\d+(?:[.,]\d{1,2})?)",
-        text,
-    )
-
-    if not match:
-        return None
-
-    try:
-        number = float(
-            match.group(1).replace(",", ".")
-        )
-    except ValueError:
-        return None
-
-    if number <= 0:
-        return None
-
-    return (
-        f"{number:.2f}".replace(".", ",")
-        + " €"
-    )
-
-
-# ============================================================
-# SHOPIFY PREDICTIVE SEARCH
-# ============================================================
-
-def _from_shopify_json(
+def _predictive(
     session: requests.Session,
     query: str,
-) -> List[Dict[str, str]]:
-
-    endpoint = (
-        BASE_URL
-        + "/search/suggest.json"
-    )
+) -> List[Dict]:
+    endpoint = BASE_URL + "/search/suggest.json"
 
     params = {
         "q": query,
         "resources[type]": "product",
         "resources[options][unavailable_products]": "show",
-        "resources[limit]": "20",
+        "resources[limit]": "50",
     }
 
     try:
-        response = session.get(
+        r = session.get(
             endpoint,
             params=params,
             headers=HEADERS,
             timeout=TIMEOUT,
         )
 
-        if response.status_code != 200:
+        if r.status_code != 200:
             return []
 
-        data = response.json()
+        data = r.json()
 
-    except (
-        requests.RequestException,
-        ValueError,
-    ):
+    except (requests.RequestException, ValueError):
         return []
 
-    products = (
+    return (
         data.get("resources", {})
         .get("results", {})
         .get("products", [])
+        or []
     )
 
-    results = []
-    seen = set()
 
-    for product in products:
-        if not isinstance(product, dict):
-            continue
-
-        title = _clean(
-            product.get("title")
-        )
-
-        vendor = _clean(
-            product.get("vendor")
-        )
-
-        if not title:
-            continue
-
-        # Filtro sul titolo reale.
-        # Non basta che Shopify abbia trovato il prodotto:
-        # deve realmente appartenere alla query.
-        if not _matches(
-            title + " " + vendor,
-            query,
-        ):
-            continue
-
-        product_url = product.get("url")
-
-        if not product_url:
-            continue
-
-        url = (
-            urljoin(
-                BASE_URL,
-                product_url,
-            )
-            .split("?")[0]
-        )
-
-        if url in seen:
-            continue
-
-        price = (
-            _price(product.get("price"))
-            or _price(product.get("price_min"))
-        )
-
-        # Per i risultati di ScentHunter ci interessa comunque
-        # conoscere il prodotto anche quando è esaurito.
-        # Se Shopify non espone il prezzo qui, lo recuperiamo
-        # dalla pagina prodotto più avanti.
-        seen.add(url)
-
-        results.append({
-            "store": STORE,
-            "name": title,
-            "price": price or "",
-            "url": url,
-        })
-
-    return results
-
-
-# ============================================================
-# SHOPIFY SEARCH HTML
-# ============================================================
-
-def _from_search_html(
+def _search_html(
     session: requests.Session,
     query: str,
 ) -> List[Dict[str, str]]:
-
     url = (
         BASE_URL
         + "/search?q="
@@ -326,93 +177,73 @@ def _from_search_html(
     )
 
     try:
-        response = session.get(
+        r = session.get(
             url,
             headers=HEADERS,
             timeout=TIMEOUT,
             allow_redirects=True,
         )
 
-        if response.status_code != 200:
+        if r.status_code != 200:
             return []
 
     except requests.RequestException:
         return []
 
-    soup = BeautifulSoup(
-        response.text,
-        "html.parser",
-    )
-
+    soup = BeautifulSoup(r.text, "html.parser")
     results = []
     seen = set()
 
-    for anchor in soup.select(
-        'a[href*="/products/"]'
-    ):
-        href = (
-            urljoin(
-                BASE_URL,
-                anchor.get("href", ""),
-            )
-            .split("?")[0]
-        )
+    for a in soup.select('a[href*="/products/"]'):
+        href = urljoin(
+            BASE_URL,
+            a.get("href", ""),
+        ).split("?")[0]
 
         if not href or href in seen:
             continue
 
-        card = anchor
-
-        for _ in range(5):
-            if not card.parent:
-                break
-
-            card = card.parent
-
-            text = _clean(
-                card.get_text(
-                    " ",
-                    strip=True,
-                )
-            )
-
-            if "€" in text and len(text) < 1200:
-                break
-
-        card_text = _clean(
-            card.get_text(
-                " ",
-                strip=True,
-            )
+        card = a
+        title = _clean(
+            a.get("title")
+            or a.get("aria-label")
+            or a.get_text(" ", strip=True)
         )
 
-        title = _clean(
-            anchor.get("title")
-            or anchor.get_text(
-                " ",
-                strip=True,
+        # Cerca il titolo nel contenitore della card.
+        for _ in range(6):
+            if not card.parent:
+                break
+            card = card.parent
+            text = _clean(
+                card.get_text(" ", strip=True)
             )
+            if len(text) < 1500 and (
+                "€" in text or title
+            ):
+                if not title:
+                    title = text
+                break
+
+        text = _clean(
+            card.get_text(" ", strip=True)
         )
 
         if not title:
-            continue
+            title = text
 
         if not _matches(
-            title + " " + card_text,
+            title + " " + text,
             query,
         ):
             continue
 
         price = None
-
-        prices = re.findall(
+        for raw in re.findall(
             r"\b\d{1,4}[.,]\d{2}\s*€",
-            card_text,
-        )
-
-        for raw_price in prices:
-            price = _price(raw_price)
-
+            text,
+        ):
+            price = _price(raw)
             if price:
                 break
 
@@ -428,378 +259,234 @@ def _from_search_html(
     return results
 
 
-# ============================================================
-# PRODUCT PAGE
-# ============================================================
-
-def _product_page(
+def _product_json(
     session: requests.Session,
     url: str,
-    query: str,
-) -> Optional[Dict[str, str]]:
+) -> Optional[Dict]:
+    """
+    Shopify .js: fonte autorevole per titolo, prezzo e disponibilità
+    delle varianti.
+    """
+    clean = url.split("?")[0].rstrip("/")
+    js_url = clean + ".js"
 
     try:
-        response = session.get(
-            url,
+        r = session.get(
+            js_url,
             headers=HEADERS,
             timeout=TIMEOUT,
-            allow_redirects=True,
         )
 
-        if response.status_code != 200:
+        if r.status_code != 200:
             return None
 
-    except requests.RequestException:
+        data = r.json()
+
+        return data if isinstance(data, dict) else None
+
+    except (requests.RequestException, ValueError):
         return None
 
-    soup = BeautifulSoup(
-        response.text,
-        "html.parser",
-    )
 
-    # --------------------------------------------------------
-    # JSON-LD
-    # --------------------------------------------------------
+def _from_product_json(
+    data: Dict,
+    url: str,
+) -> Optional[Dict[str, str]]:
+    title = _clean(data.get("title"))
 
-    for script in soup.find_all(
-        "script",
-        type="application/ld+json",
-    ):
-        raw = (
-            script.string
-            or script.get_text()
-        )
+    if not title:
+        return None
 
-        try:
-            obj = json.loads(raw)
-        except Exception:
+    variants = data.get("variants") or []
+
+    # Shopify indica la disponibilità vera sulle varianti.
+    available = [
+        v for v in variants
+        if isinstance(v, dict)
+        and v.get("available") is True
+    ]
+
+    prices = []
+
+    # Preferiamo le varianti realmente acquistabili.
+    pool = available or variants
+
+    for variant in pool:
+        if not isinstance(variant, dict):
             continue
 
-        objects = (
-            obj
-            if isinstance(obj, list)
-            else [obj]
+        value = variant.get("price")
+
+        if value is None:
+            continue
+
+        try:
+            number = float(value)
+
+            # Gestisce sia centesimi sia formato decimale.
+            if number >= 100:
+                number /= 100
+
+            prices.append(number)
+
+        except (ValueError, TypeError):
+            continue
+
+    price = ""
+
+    if prices:
+        price = (
+            f"{min(prices):.2f}"
+            .replace(".", ",")
+            + " €"
         )
 
-        for item in objects:
-            if not isinstance(item, dict):
-                continue
-
-            if item.get("@type") != "Product":
-                continue
-
-            name = _clean(
-                item.get("name")
-            )
-
-            if not name or not _matches(
-                name,
-                query,
-            ):
-                continue
-
-            offers = (
-                item.get("offers")
-                or {}
-            )
-
-            if isinstance(
-                offers,
-                list,
-            ):
-                offers = (
-                    offers[0]
-                    if offers
-                    else {}
-                )
-
-            price = _price(
-                offers.get("price")
-                if isinstance(
-                    offers,
-                    dict,
-                )
-                else None
-            )
-
-            if price:
-                return {
-                    "store": STORE,
-                    "name": name,
-                    "price": price,
-                    "url": response.url,
-                }
-
-    # --------------------------------------------------------
-    # H1 + pagina
-    # --------------------------------------------------------
-
-    h1 = soup.find("h1")
-
-    name = (
-        _clean(
-            h1.get_text(
-                " ",
-                strip=True,
-            )
-        )
-        if h1
-        else ""
-    )
-
-    if not name or not _matches(
-        name,
-        query,
-    ):
-        return None
-
-    text = _clean(
-        soup.get_text(
-            " ",
-            strip=True,
-        )
-    )
-
-    match = re.search(
-        r"\b(\d{1,4}[.,]\d{2})\s*€",
-        text,
-    )
-
-    price = (
-        _price(match.group(1))
-        if match
-        else None
-    )
-
-    if not price:
-        return None
+    is_available = bool(available)
 
     return {
         "store": STORE,
-        "name": name,
+        "name": title,
         "price": price,
-        "url": response.url,
+        "url": url,
+        "available": is_available,
+        "availability": (
+            "in_stock"
+            if is_available
+            else "out_of_stock"
+        ),
+        "stock_status": (
+            "in_stock"
+            if is_available
+            else "out_of_stock"
+        ),
     }
 
 
-# ============================================================
-# STOCK
-# ============================================================
-
-def _is_out_of_stock_page(
-    session: requests.Session,
-    url: str,
-) -> bool:
-
-    try:
-        response = session.get(
-            url,
-            headers=HEADERS,
-            timeout=TIMEOUT,
-            allow_redirects=True,
-        )
-
-        if response.status_code != 200:
-            return False
-
-    except requests.RequestException:
-        return False
-
-    soup = BeautifulSoup(
-        response.text,
-        "html.parser",
-    )
-
-    found_offer = False
-    found_available = False
-
-    for script in soup.find_all(
-        "script",
-        type="application/ld+json",
-    ):
-        raw = (
-            script.string
-            or script.get_text()
-        )
-
-        try:
-            obj = json.loads(raw)
-        except Exception:
-            continue
-
-        stack = (
-            obj
-            if isinstance(obj, list)
-            else [obj]
-        )
-
-        while stack:
-            item = stack.pop(0)
-
-            if not isinstance(item, dict):
-                continue
-
-            if item.get("@type") == "Product":
-                offers = (
-                    item.get("offers")
-                    or []
-                )
-
-                if isinstance(
-                    offers,
-                    dict,
-                ):
-                    offers = [offers]
-
-                for offer in offers:
-                    if not isinstance(
-                        offer,
-                        dict,
-                    ):
-                        continue
-
-                    found_offer = True
-
-                    availability = _clean(
-                        offer.get(
-                            "availability"
-                        )
-                    ).lower()
-
-                    if any(
-                        marker
-                        in availability
-                        for marker in (
-                            "instock",
-                            "in_stock",
-                            "limitedavailability",
-                            "preorder",
-                            "backorder",
-                        )
-                    ):
-                        found_available = True
-
-            for value in item.values():
-                if isinstance(
-                    value,
-                    dict,
-                ):
-                    stack.append(value)
-
-                elif isinstance(
-                    value,
-                    list,
-                ):
-                    stack.extend(
-                        value
-                        for value in value
-                        if isinstance(
-                            value,
-                            dict,
-                        )
-                    )
-
-    page_text = _clean(
-        soup.get_text(
-            " ",
-            strip=True,
-        )
-    ).lower()
-
-    explicit_markers = (
-        "out of stock",
-        "sold out",
-        "nicht auf lager",
-        "ausverkauft",
-        "rupture de stock",
-        "épuisé",
-    )
-
-    if found_offer and not found_available:
-        if any(
-            marker in page_text
-            for marker in explicit_markers
-        ):
-            return True
-
-    if any(
-        marker in page_text
-        for marker in explicit_markers
-    ):
-        return True
-
-    for button in soup.find_all(
-        ["button", "input"]
-    ):
-        label = _clean(
-            button.get_text(
-                " ",
-                strip=True,
-            )
-            if button.name == "button"
-            else button.get("value")
-        ).lower()
-
-        if any(
-            marker in label
-            for marker in explicit_markers
-        ):
-            return True
-
-    return False
-
-
-# ============================================================
-# SEARCH
-# ============================================================
-
-def search(
-    query: str,
-) -> List[Dict[str, str]]:
-
+def search(query: str) -> List[Dict[str, str]]:
     query = _clean(query)
 
     if not query:
         return []
 
     session = requests.Session()
-
     results = []
     seen = set()
 
-    # --------------------------------------------------------
-    # IMPORTANTISSIMO:
-    # proviamo più forme della stessa query.
-    # Non ci sono nomi di profumi hard-coded.
-    # --------------------------------------------------------
+    # ========================================================
+    # 1. Tutte le forme della query ricevuta
+    # ========================================================
 
-    for search_query in _search_queries(query):
+    for search_query in _search_terms(query):
 
-        batch = _from_shopify_json(
+        # ----------------------------------------------------
+        # Shopify predictive
+        # ----------------------------------------------------
+
+        products = _predictive(
             session,
             search_query,
         )
 
-        # Se predictive search non restituisce nulla,
-        # proviamo anche la ricerca HTML.
-        if not batch:
-            batch = _from_search_html(
-                session,
-                search_query,
-            )
+        # ----------------------------------------------------
+        # Anche HTML, SEMPRE.
+        # Non usiamo il fallback solo quando predictive è vuoto:
+        # i due motori possono restituire prodotti diversi.
+        # ----------------------------------------------------
 
-        for item in batch:
-            if not isinstance(item, dict):
+        html_products = _search_html(
+            session,
+            search_query,
+        )
+
+        candidates = []
+
+        for product in products:
+            if not isinstance(product, dict):
                 continue
 
-            url = item.get("url")
+            title = _clean(
+                product.get("title")
+            )
+
+            url = product.get("url")
+
+            if not title or not url:
+                continue
+
+            url = urljoin(
+                BASE_URL,
+                url,
+            ).split("?")[0]
+
+            candidates.append({
+                "name": title,
+                "url": url,
+                "price": (
+                    _price(product.get("price"))
+                    or _price(product.get("price_min"))
+                    or ""
+                ),
+            })
+
+        candidates.extend(
+            html_products
+        )
+
+        # ----------------------------------------------------
+        # 2. Verifica definitiva sul titolo reale.
+        # ----------------------------------------------------
+
+        for candidate in candidates:
+
+            url = candidate.get("url")
+            title = candidate.get("name", "")
 
             if not url or url in seen:
                 continue
 
-            # Filtro finale sempre sulla query ORIGINALE.
-            # Così un fallback generico non può introdurre
-            # prodotti estranei.
+            if not _matches(
+                title,
+                query,
+            ):
+                continue
+
+            # IMPORTANTE:
+            # filtriamo anche sulla query originale.
+            # Una query alternativa non può introdurre
+            # un prodotto di un'altra famiglia.
+            if not _matches(
+                title,
+                query,
+            ):
+                continue
+
+            data = _product_json(
+                session,
+                url,
+            )
+
+            if data:
+                item = _from_product_json(
+                    data,
+                    url,
+                )
+            else:
+                item = None
+
+            # Se .js non è disponibile, manteniamo comunque
+            # il risultato trovato dal motore Shopify.
+            if not item:
+                item = {
+                    "store": STORE,
+                    "name": title,
+                    "price": candidate.get(
+                        "price",
+                        "",
+                    ),
+                    "url": url,
+                }
+
+            # Verifica nuovamente il titolo canonico Shopify.
             if not _matches(
                 item.get("name", ""),
                 query,
@@ -807,81 +494,18 @@ def search(
                 continue
 
             seen.add(url)
-
-            checked = dict(item)
-
-            # Se la ricerca Shopify non ha dato il prezzo,
-            # recuperiamo la pagina reale.
-            if not checked.get("price"):
-                page_item = _product_page(
-                    session,
-                    url,
-                    query,
-                )
-
-                if page_item:
-                    checked.update(
-                        page_item
-                    )
-
-            # Verifica stock sulla pagina reale.
-            if _is_out_of_stock_page(
-                session,
-                url,
-            ):
-                checked["price"] = (
-                    "Out of stock"
-                )
-                checked["available"] = False
-                checked["availability"] = (
-                    "out_of_stock"
-                )
-                checked["stock_status"] = (
-                    "out_of_stock"
-                )
-            else:
-                checked.setdefault(
-                    "available",
-                    True,
-                )
-                checked.setdefault(
-                    "availability",
-                    "in_stock",
-                )
-                checked.setdefault(
-                    "stock_status",
-                    "in_stock",
-                )
-
-            results.append(checked)
+            results.append(item)
 
     return results
 
 
-# ============================================================
-# TEST LOCALE
-# ============================================================
-
 if __name__ == "__main__":
-
     for query in (
         "9 PM",
         "9 PM Night Out",
         "9 PM Rebel",
-        "Rayhaan Aquatica",
-        "Turathi Blue",
     ):
-        print(
-            "\nQUERY:",
-            query,
-        )
+        print("\nQUERY:", query)
 
-        found = search(query)
-
-        print(
-            "RISULTATI:",
-            len(found),
-        )
-
-        for item in found:
+        for item in search(query):
             print(item)
