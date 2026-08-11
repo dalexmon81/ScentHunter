@@ -197,16 +197,15 @@ def product_image(product: Dict[str, Any]) -> str:
 # FILTRO RISULTATI
 # ============================================================
 
-def matches(product: Dict[str, Any], query: str) -> bool:
+def match_details(product: Dict[str, Any], query: str) -> Dict[str, Any]:
     """
-    Filtra i risultati usando brand + nome + eventuali campi titolo.
+    Esegue lo stesso filtro di matches(), ma restituisce anche il motivo
+    per cui un prodotto viene accettato o scartato.
 
-    Alcuni scraper separano il marchio dal nome del prodotto:
-        brand = "Rayhaan"
-        name  = "Aquatica"
-
-    In quel caso la query "Rayhaan Aquatica" deve essere considerata
-    valida anche se "Rayhaan" non compare nel solo campo name.
+    La diagnostica serve a distinguere:
+      - prodotto non restituito dallo scraper;
+      - prodotto restituito ma scartato dal main;
+      - prodotto restituito e accettato dal main.
     """
     query_normalized = norm(query)
 
@@ -221,15 +220,10 @@ def matches(product: Dict[str, Any], query: str) -> bool:
     ))
 
     if not searchable:
-        return False
+        return {"matched": False, "reason": "campi nome/brand/titolo vuoti"}
 
-    # Il controllo principale usa brand + nome, non solo name.
-    # Questo evita di scartare prodotti correttamente trovati dallo scraper.
     name = norm(product.get("name", ""))
 
-    # Le varianti fanno parte della stessa famiglia.
-    # Le escludiamo solo quando l'utente ha chiesto esplicitamente
-    # una variante diversa; una ricerca base come "9 PM" deve includerle.
     query_variant = None
     for phrase in VARIANTS:
         normalized_phrase = norm(phrase)
@@ -245,16 +239,21 @@ def matches(product: Dict[str, Any], query: str) -> bool:
                 and normalized_phrase in name
                 and normalized_phrase != query_variant
             ):
-                return False
+                return {
+                    "matched": False,
+                    "reason": f"variante diversa: '{normalized_phrase}'",
+                }
 
     for phrase in NON_PERFUME:
         normalized_phrase = norm(phrase)
-
         if (
             normalized_phrase in searchable
             and normalized_phrase not in query_normalized
         ):
-            return False
+            return {
+                "matched": False,
+                "reason": f"prodotto non profumo: '{normalized_phrase}'",
+            }
 
     tokens = [
         token
@@ -263,12 +262,24 @@ def matches(product: Dict[str, Any], query: str) -> bool:
     ]
 
     if not tokens:
-        return False
+        return {"matched": False, "reason": "query senza token utili"}
 
-    return all(
-        token in searchable
-        for token in tokens
-    )
+    missing = [token for token in tokens if token not in searchable]
+    if missing:
+        return {
+            "matched": False,
+            "reason": "token mancanti: " + ", ".join(missing),
+        }
+
+    return {"matched": True, "reason": "match accettato"}
+
+
+def matches(product: Dict[str, Any], query: str) -> bool:
+    """
+    Filtro principale. Mantiene esattamente la logica precedente;
+    match_details() aggiunge soltanto le informazioni diagnostiche.
+    """
+    return bool(match_details(product, query)["matched"])
 
 
 # ============================================================
@@ -327,12 +338,29 @@ def build_search_attempts(store: str, query: str) -> List[str]:
 
     return attempts[:3]
 
-def run_store(
+def _diagnostic_product(product: Dict[str, Any], match: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+    """Riduce un prodotto alla parte utile per la diagnostica."""
+    return {
+        "brand": str(product.get("brand", "") or ""),
+        "name": str(product.get("name", "") or ""),
+        "title": str(product.get("title", "") or ""),
+        "product_name": str(product.get("product_name", "") or ""),
+        "price": str(product.get("price", "") or ""),
+        "url": str(product.get("url", "") or ""),
+        "stock": product.get("stock"),
+        "availability": product.get("availability"),
+        "available": product.get("available"),
+        "match": match if match is not None else None,
+    }
+
+
+def run_store_diagnostic(
     store: str,
     query: str,
-) -> List[Dict[str, Any]]:
+) -> tuple[List[Dict[str, Any]], Dict[str, Any]]:
     """
-    Esegue la ricerca su un singolo negozio.
+    Esegue un singolo scraper e conserva la traccia di ciò che entra nel
+    main prima del filtro. La logica di ricerca/matching resta invariata.
     """
     module = load_scraper(store)
 
@@ -343,22 +371,31 @@ def run_store(
 
     output: List[Dict[str, Any]] = []
     seen = set()
+    attempt_diagnostics: List[Dict[str, Any]] = []
 
     for attempt in attempts:
-
         results = module.search(attempt) or []
+        raw_count = len(results) if isinstance(results, list) else 0
+        matched_count = 0
+        rejected_count = 0
+        raw_products: List[Dict[str, Any]] = []
+        rejected_products: List[Dict[str, Any]] = []
+
+        if not isinstance(results, list):
+            results = []
 
         for item in results:
-
             if not isinstance(item, dict):
                 continue
 
             product = dict(item)
+            product.setdefault("store", store)
+            match = match_details(product, query)
 
-            product.setdefault(
-                "store",
-                store,
-            )
+            # Manteniamo un campione abbastanza ampio per capire se un
+            # prodotto è arrivato dallo scraper ma è stato filtrato.
+            if len(raw_products) < 50:
+                raw_products.append(_diagnostic_product(product, match))
 
             key = (
                 str(product.get("url", "")).lower(),
@@ -370,13 +407,46 @@ def run_store(
 
             seen.add(key)
 
-            if matches(product, query):
+            if match["matched"]:
                 output.append(product)
+                matched_count += 1
+            else:
+                rejected_count += 1
+                if len(rejected_products) < 30:
+                    rejected_products.append(
+                        _diagnostic_product(product, match)
+                    )
+
+        attempt_diagnostics.append({
+            "query_sent": attempt,
+            "raw_count": raw_count,
+            "matched_count": matched_count,
+            "rejected_count": rejected_count,
+            "raw_products_sample": raw_products,
+            "rejected_products_sample": rejected_products,
+        })
 
         if output and norm(query) not in FAMILY_SEARCH_TERMS:
             break
 
-    return output
+    diagnostic = {
+        "store": store,
+        "query": query,
+        "status": "ok",
+        "attempts": attempt_diagnostics,
+        "total_matched": len(output),
+    }
+
+    return output, diagnostic
+
+
+def run_store(
+    store: str,
+    query: str,
+) -> List[Dict[str, Any]]:
+    """Compatibilità con gli endpoint diagnostici esistenti."""
+    results, _ = run_store_diagnostic(store, query)
+    return results
 
 
 # ============================================================
@@ -580,13 +650,14 @@ def search_perfume(q: str):
 
     all_results: List[Dict[str, Any]] = []
     errors: Dict[str, str] = {}
+    diagnostics: Dict[str, Any] = {}
 
     # Tutti gli 8 scraper vengono avviati subito.
     # Con 2 worker alcuni negozi potevano restare in coda e non essere
     # mai eseguiti prima del timeout globale.
     executor = ThreadPoolExecutor(max_workers=len(STORES))
     futures = {
-        executor.submit(run_store, store, query): store
+        executor.submit(run_store_diagnostic, store, query): store
         for store in STORES
     }
 
@@ -594,9 +665,17 @@ def search_perfume(q: str):
         for future in as_completed(futures, timeout=28):
             store = futures[future]
             try:
-                all_results.extend(future.result())
+                store_results, diagnostic = future.result()
+                all_results.extend(store_results)
+                diagnostics[store] = diagnostic
             except Exception as error:
                 errors[store] = f"{type(error).__name__}: {error}"
+                diagnostics[store] = {
+                    "store": store,
+                    "query": query,
+                    "status": "error",
+                    "error": errors[store],
+                }
                 traceback.print_exc()
     except TimeoutError:
         # Il timeout riguarda solo l'attesa della risposta complessiva.
@@ -610,8 +689,20 @@ def search_perfume(q: str):
 
             if future.cancel():
                 errors[store] = "Non eseguito: limite tempo ricerca"
+                diagnostics[store] = {
+                    "store": store,
+                    "query": query,
+                    "status": "not_executed",
+                    "error": errors[store],
+                }
             else:
                 errors[store] = "Timeout: negozio troppo lento"
+                diagnostics[store] = {
+                    "store": store,
+                    "query": query,
+                    "status": "timeout",
+                    "error": errors[store],
+                }
 
         executor.shutdown(wait=False, cancel_futures=True)
 
@@ -622,6 +713,7 @@ def search_perfume(q: str):
         "count": len(results),
         "results": results,
         "errors": errors,
+        "diagnostics": diagnostics,
     }
 
 
