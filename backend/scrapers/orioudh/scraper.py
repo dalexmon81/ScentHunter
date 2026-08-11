@@ -1,7 +1,7 @@
 import json
 import re
 import html
-from typing import List, Dict, Optional, Iterable
+from typing import List, Dict, Optional
 from urllib.parse import quote_plus, urljoin, urlparse
 import xml.etree.ElementTree as ET
 
@@ -11,7 +11,7 @@ from bs4 import BeautifulSoup
 
 STORE = "Orioudh"
 BASE_URL = "https://orioudh.com"
-TIMEOUT = 20
+TIMEOUT = 10
 
 HEADERS = {
     "User-Agent": (
@@ -24,44 +24,32 @@ HEADERS = {
 }
 
 
-def _clean(value) -> str:
-    return re.sub(
-        r"\s+",
-        " ",
-        html.unescape(str(value or "")),
-    ).strip()
+def _clean(v) -> str:
+    return re.sub(r"\s+", " ", html.unescape(str(v or ""))).strip()
 
 
-def _norm(value) -> str:
-    value = _clean(value).lower()
-    value = re.sub(r"(?<=\d)(?=[a-z])|(?<=[a-z])(?=\d)", " ", value)
-    value = re.sub(r"[^a-z0-9]+", " ", value)
-    return re.sub(r"\s+", " ", value).strip()
+def _norm(v) -> str:
+    s = _clean(v).lower()
+    s = re.sub(r"(?<=\d)(?=[a-z])|(?<=[a-z])(?=\d)", " ", s)
+    s = re.sub(r"[^a-z0-9]+", " ", s)
+    return re.sub(r"\s+", " ", s).strip()
 
 
-def _tokens(value: str) -> List[str]:
-    return [x for x in _norm(value).split() if x]
+def _tokens(q: str):
+    return [x for x in _norm(q).split() if x]
 
 
-def _token_matches(query_token: str, product_token: str) -> bool:
-    """
-    Confronto generico dei token.
-
-    La parte importante per Orioudh è che alcuni URL Shopify usano
-    '900' mentre il nome prodotto usa '9 PM'. Non viene inserito
-    nessun nome di profumo: si gestiscono genericamente i numeri
-    composti dalla stessa cifra seguita da zeri.
-    """
-    if query_token == product_token:
+def _token_match(q: str, p: str) -> bool:
+    if q == p:
         return True
 
-    if query_token.isdigit() and product_token.isdigit():
-        if (
-            len(query_token) < len(product_token)
-            and product_token.startswith(query_token)
-            and set(product_token[len(query_token):]) == {"0"}
-        ):
-            return True
+    # Gestisce genericamente 9 -> 900 negli slug Shopify.
+    if q.isdigit() and p.isdigit():
+        return (
+            len(p) > len(q)
+            and p.startswith(q)
+            and set(p[len(q):]) == {"0"}
+        )
 
     return False
 
@@ -70,53 +58,236 @@ def _matches(text: str, query: str) -> bool:
     product_tokens = _tokens(text)
     query_tokens = _tokens(query)
 
-    if not query_tokens:
-        return False
-
-    return all(
-        any(_token_matches(q, p) for p in product_tokens)
+    return bool(query_tokens) and all(
+        any(_token_match(q, p) for p in product_tokens)
         for q in query_tokens
     )
 
 
-def _price(value) -> Optional[str]:
-    if value is None:
+def _price(v) -> Optional[str]:
+    if v is None:
         return None
 
-    s = _clean(value).replace("€", "").strip()
+    s = _clean(v).replace("€", "").strip()
     m = re.search(r"(\d+(?:[.,]\d{1,2})?)", s)
 
     if not m:
         return None
 
     try:
-        number = float(m.group(1).replace(",", "."))
+        x = float(m.group(1).replace(",", "."))
     except ValueError:
         return None
 
-    if number <= 0:
+    if x <= 0:
         return None
 
-    return f"{number:.2f}".replace(".", ",") + " €"
+    return f"{x:.2f}".replace(".", ",") + " €"
 
 
-def _product_url(value: str) -> str:
-    return urljoin(BASE_URL, str(value or "")).split("?")[0].rstrip("/")
+def _url(v) -> str:
+    return urljoin(BASE_URL, str(v or "")).split("?")[0].rstrip("/")
 
 
-def _canonical_path(url: str) -> str:
-    return urlparse(url).path.rstrip("/").lower()
+def _path(v) -> str:
+    return urlparse(v).path.rstrip("/").lower()
 
 
-def _product_from_shopify_json(
+def _predictive(session, query: str) -> List[str]:
+    try:
+        r = session.get(
+            BASE_URL + "/search/suggest.json",
+            params={
+                "q": query,
+                "resources[type]": "product",
+                "resources[options][unavailable_products]": "show",
+                "resources[limit]": "20",
+            },
+            headers=HEADERS,
+            timeout=TIMEOUT,
+        )
+
+        if r.status_code != 200:
+            return []
+
+        data = r.json()
+        products = (
+            data.get("resources", {})
+            .get("results", {})
+            .get("products", [])
+        )
+
+        out = []
+
+        for p in products:
+            if not isinstance(p, dict):
+                continue
+
+            title = _clean(p.get("title"))
+            u = _url(p.get("url"))
+
+            if "/products/" in u and _matches(title, query):
+                out.append(u)
+
+        return out
+
+    except (requests.RequestException, ValueError, TypeError):
+        return []
+
+
+def _search_html(session, query: str) -> List[str]:
+    try:
+        r = session.get(
+            BASE_URL + "/search",
+            params={"q": query, "type": "product"},
+            headers=HEADERS,
+            timeout=TIMEOUT,
+        )
+
+        if r.status_code != 200:
+            return []
+
+    except requests.RequestException:
+        return []
+
+    soup = BeautifulSoup(r.text, "html.parser")
+    out = []
+
+    for a in soup.select('a[href*="/products/"]'):
+        u = _url(a.get("href"))
+
+        if "/products/" not in u:
+            continue
+
+        title = _clean(
+            a.get("title")
+            or a.get("aria-label")
+            or a.get_text(" ", strip=True)
+        )
+
+        if _matches(title, query):
+            out.append(u)
+
+    return out
+
+
+def _sitemap_products(session) -> List[str]:
+    """
+    Fallback costoso: usato SOLO se predictive + search HTML
+    non hanno trovato nessun candidato.
+    """
+    urls = set()
+
+    candidates = [
+        BASE_URL + "/sitemap_products_1.xml",
+        BASE_URL + "/sitemap.xml",
+    ]
+
+    for sitemap in candidates:
+        try:
+            r = session.get(
+                sitemap,
+                headers=HEADERS,
+                timeout=TIMEOUT,
+            )
+
+            if r.status_code != 200:
+                continue
+
+            root = ET.fromstring(r.content)
+
+        except (requests.RequestException, ET.ParseError):
+            continue
+
+        tag = root.tag.lower()
+
+        if tag.endswith("urlset"):
+            for loc in root.findall(".//{*}loc"):
+                value = _clean(loc.text)
+                if "/products/" in value:
+                    urls.add(_url(value))
+
+            if urls:
+                return list(urls)
+
+        if tag.endswith("sitemapindex"):
+            children = []
+
+            for loc in root.findall(".//{*}loc"):
+                value = _clean(loc.text)
+                if "sitemap_products_" in value:
+                    children.append(value)
+
+            for child in children:
+                try:
+                    rr = session.get(
+                        child,
+                        headers=HEADERS,
+                        timeout=TIMEOUT,
+                    )
+
+                    if rr.status_code != 200:
+                        continue
+
+                    child_root = ET.fromstring(rr.content)
+
+                    for loc in child_root.findall(".//{*}loc"):
+                        value = _clean(loc.text)
+                        if "/products/" in value:
+                            urls.add(_url(value))
+
+                except (requests.RequestException, ET.ParseError):
+                    continue
+
+            if urls:
+                return list(urls)
+
+    return list(urls)
+
+
+def _sitemap_candidates(session, query: str) -> List[str]:
+    q = _tokens(query)
+    if not q:
+        return []
+
+    out = []
+
+    for u in _sitemap_products(session):
+        slug = _norm(
+            urlparse(u).path.rsplit("/", 1)[-1]
+        )
+
+        if _matches(slug, query):
+            out.append(u)
+
+    return out
+
+
+def _product_json(session, url: str) -> Optional[Dict]:
+    try:
+        r = session.get(
+            _url(url) + ".js",
+            headers=HEADERS,
+            timeout=TIMEOUT,
+        )
+
+        if r.status_code != 200:
+            return None
+
+        data = r.json()
+        return data if isinstance(data, dict) else None
+
+    except (requests.RequestException, ValueError):
+        return None
+
+
+def _make_product(
     data: Dict,
     url: str,
     query: str,
-) -> Optional[Dict[str, object]]:
-    if not isinstance(data, dict):
-        return None
-
+) -> Optional[Dict]:
     title = _clean(data.get("title"))
+
     if not title or not _matches(title, query):
         return None
 
@@ -124,490 +295,129 @@ def _product_from_shopify_json(
     if not isinstance(variants, list):
         variants = []
 
-    # Shopify .js è la fonte primaria per lo stock reale.
-    available_variants = [
+    available = [
         v for v in variants
         if isinstance(v, dict) and v.get("available") is True
     ]
 
-    is_available = bool(available_variants)
-
-    # Se è esaurito, conserviamo comunque il prezzo del prodotto.
-    pool = available_variants or [
-        v for v in variants if isinstance(v, dict)
+    pool = available or [
+        v for v in variants
+        if isinstance(v, dict)
     ]
 
     prices = []
 
-    for variant in pool:
-        value = variant.get("price")
-
-        if value is None:
-            continue
+    for v in pool:
+        value = v.get("price")
 
         try:
             number = float(str(value).replace(",", "."))
-
-            # Shopify .js normalmente usa prezzi decimali.
-            # Alcuni endpoint possono restituire centesimi.
-            if number >= 10000:
-                number /= 100
-
-            prices.append(number)
         except (TypeError, ValueError):
             continue
+
+        # Shopify product.js normalmente usa valori decimali.
+        if number >= 10000:
+            number /= 100
+
+        if number > 0:
+            prices.append(number)
 
     price = ""
     if prices:
         price = f"{min(prices):.2f}".replace(".", ",") + " €"
 
     if not price:
-        price = _price(data.get("price")) or _price(data.get("price_min")) or ""
+        price = _price(data.get("price")) or ""
+
+    is_available = bool(available)
 
     return {
         "store": STORE,
         "name": title,
         "price": price,
-        "url": url,
+        "url": _url(url),
         "available": is_available,
-        "availability": "in_stock" if is_available else "out_of_stock",
-        "stock_status": "in_stock" if is_available else "out_of_stock",
+        "availability": (
+            "in_stock" if is_available else "out_of_stock"
+        ),
+        "stock_status": (
+            "in_stock" if is_available else "out_of_stock"
+        ),
     }
 
 
-def _fetch_product_json(
-    session: requests.Session,
-    url: str,
-) -> Optional[Dict]:
-    clean = _product_url(url)
-    endpoint = clean + ".js"
-
-    try:
-        response = session.get(
-            endpoint,
-            headers=HEADERS,
-            timeout=TIMEOUT,
-        )
-
-        if response.status_code != 200:
-            return None
-
-        data = response.json()
-
-        return data if isinstance(data, dict) else None
-
-    except (requests.RequestException, ValueError):
-        return None
-
-
-def _from_shopify_predictive(
-    session: requests.Session,
-    query: str,
-) -> List[str]:
-    endpoint = BASE_URL + "/search/suggest.json"
-
-    params = {
-        "q": query,
-        "resources[type]": "product",
-        "resources[options][unavailable_products]": "show",
-        "resources[limit]": "20",
-    }
-
-    urls = []
-
-    try:
-        response = session.get(
-            endpoint,
-            params=params,
-            headers=HEADERS,
-            timeout=TIMEOUT,
-        )
-
-        if response.status_code != 200:
-            return []
-
-        data = response.json()
-
-        products = (
-            data.get("resources", {})
-            .get("results", {})
-            .get("products", [])
-        )
-
-        for product in products:
-            if not isinstance(product, dict):
-                continue
-
-            title = _clean(product.get("title"))
-            url = _product_url(product.get("url"))
-
-            if not url or "/products/" not in url:
-                continue
-
-            if _matches(title, query):
-                urls.append(url)
-
-    except (requests.RequestException, ValueError, TypeError):
-        pass
-
-    return urls
-
-
-def _from_search_html(
-    session: requests.Session,
-    query: str,
-) -> List[str]:
-    url = (
-        BASE_URL
-        + "/search?q="
-        + quote_plus(query)
-        + "&type=product"
-    )
-
-    try:
-        response = session.get(
-            url,
-            headers=HEADERS,
-            timeout=TIMEOUT,
-            allow_redirects=True,
-        )
-
-        if response.status_code != 200:
-            return []
-
-    except requests.RequestException:
-        return []
-
-    soup = BeautifulSoup(response.text, "html.parser")
-    urls = []
-
-    for link in soup.select('a[href*="/products/"]'):
-        href = _product_url(link.get("href"))
-
-        if not href or "/products/" not in href:
-            continue
-
-        title = _clean(
-            link.get("title")
-            or link.get("aria-label")
-            or link.get_text(" ", strip=True)
-        )
-
-        # Se il testo del link è troppo povero, prova il card circostante.
-        candidates = [title]
-
-        card = link
-        for _ in range(5):
-            if not card.parent:
-                break
-
-            card = card.parent
-            candidates.append(
-                _clean(card.get_text(" ", strip=True))
-            )
-
-        if any(_matches(candidate, query) for candidate in candidates):
-            urls.append(href)
-
-    return urls
-
-
-def _sitemap_urls(
-    session: requests.Session,
-) -> Iterable[str]:
-    """
-    Recupera gli URL prodotto dal sitemap Shopify.
-
-    Questo è il fallback che risolve il caso in cui il prodotto esista
-    realmente nel catalogo ma Shopify non lo restituisca nella ricerca.
-    """
-    sitemap_candidates = [
-        BASE_URL + "/sitemap_products_1.xml?from=0&to=250",
-        BASE_URL + "/sitemap_products_1.xml",
-        BASE_URL + "/sitemap.xml",
-    ]
-
-    seen_sitemaps = set()
-    product_urls = set()
-
-    for sitemap_url in sitemap_candidates:
-        if sitemap_url in seen_sitemaps:
-            continue
-
-        seen_sitemaps.add(sitemap_url)
-
-        try:
-            response = session.get(
-                sitemap_url,
-                headers=HEADERS,
-                timeout=TIMEOUT,
-            )
-
-            if response.status_code != 200:
-                continue
-
-            root = ET.fromstring(response.content)
-
-        except (
-            requests.RequestException,
-            ET.ParseError,
-        ):
-            continue
-
-        root_tag = root.tag.lower()
-
-        # Sitemap prodotto diretto.
-        if root_tag.endswith("urlset"):
-            for loc in root.findall(
-                ".//{*}loc"
-            ):
-                value = _clean(loc.text)
-
-                if "/products/" in value:
-                    product_urls.add(
-                        _product_url(value)
-                    )
-
-            if product_urls:
-                return product_urls
-
-        # Sitemap indice: recuperiamo i sotto-sitemap.
-        if root_tag.endswith("sitemapindex"):
-            child_sitemaps = []
-
-            for loc in root.findall(
-                ".//{*}loc"
-            ):
-                value = _clean(loc.text)
-
-                if "sitemap_products_" in value:
-                    child_sitemaps.append(value)
-
-            for child in child_sitemaps:
-                try:
-                    response = session.get(
-                        child,
-                        headers=HEADERS,
-                        timeout=TIMEOUT,
-                    )
-
-                    if response.status_code != 200:
-                        continue
-
-                    child_root = ET.fromstring(
-                        response.content
-                    )
-
-                    for loc in child_root.findall(
-                        ".//{*}loc"
-                    ):
-                        value = _clean(loc.text)
-
-                        if "/products/" in value:
-                            product_urls.add(
-                                _product_url(value)
-                            )
-
-                except (
-                    requests.RequestException,
-                    ET.ParseError,
-                ):
-                    continue
-
-            if product_urls:
-                return product_urls
-
-    return product_urls
-
-
-def _url_is_candidate(
-    url: str,
-    query: str,
-) -> bool:
-    """
-    Pre-filtra gli URL del sitemap senza scaricare centinaia di pagine.
-
-    Confronta il testo dello slug con la query e permette la forma
-    numerica '9' -> '900' quando il numero più lungo è lo stesso
-    numero seguito solo da zeri.
-    """
-    slug = _norm(
-        urlparse(url).path.rsplit("/", 1)[-1]
-    )
-
-    return _matches(slug, query)
-
-
-def _discover_from_sitemap(
-    session: requests.Session,
-    query: str,
-) -> List[str]:
-    urls = []
-
-    for url in _sitemap_urls(session):
-        if _url_is_candidate(url, query):
-            urls.append(url)
-
-    return urls
-
-
-def _build_queries(query: str) -> List[str]:
-    """
-    Genera poche forme generiche della query.
-
-    Non contiene nomi di profumi.
-    """
-    raw = _clean(query)
-    normalized = _norm(raw)
-
-    attempts = []
-    seen = set()
-
-    def add(value: str):
-        value = _clean(value)
-
-        if not value:
-            return
-
-        key = _norm(value)
-
-        if key and key not in seen:
-            seen.add(key)
-            attempts.append(value)
-
-    add(raw)
-
-    # Forma compatta: 9 PM -> 9PM.
-    compact = re.sub(
-        r"(?<=\d)\s+(?=[a-z])|(?<=[a-z])\s+(?=\d)",
-        "",
-        normalized,
-    )
-
-    add(compact)
-
-    # Token significativi singoli come fallback Shopify.
-    for token in normalized.split():
-        if len(token) >= 3:
-            add(token)
-
-    return attempts[:5]
-
-
-def search(query: str) -> List[Dict[str, object]]:
+def search(query: str) -> List[Dict]:
     query = _clean(query)
 
     if not query:
         return []
 
     session = requests.Session()
+    candidates = []
+    seen = set()
 
-    candidate_urls = []
-    seen_urls = set()
+    def add(urls):
+        for u in urls:
+            u = _url(u)
 
-    def add_urls(urls):
-        for url in urls:
-            url = _product_url(url)
-
-            if not url or "/products/" not in url:
+            if "/products/" not in u:
                 continue
 
-            key = _canonical_path(url)
+            key = _path(u)
 
-            if key in seen_urls:
+            if key in seen:
                 continue
 
-            seen_urls.add(key)
-            candidate_urls.append(url)
+            seen.add(key)
+            candidates.append(u)
 
-    # ---------------------------------------------------------
-    # 1. Ricerca Shopify standard
-    # ---------------------------------------------------------
-    for attempt in _build_queries(query):
-        add_urls(
-            _from_shopify_predictive(
-                session,
-                attempt,
-            )
+    # Primo passaggio: una sola query precisa.
+    add(_predictive(session, query))
+    add(_search_html(session, query))
+
+    # Secondo passaggio leggero solo se il primo non trova nulla.
+    if not candidates:
+        compact = re.sub(
+            r"(?<=\d)\s+(?=[a-z])|(?<=[a-z])\s+(?=\d)",
+            "",
+            _norm(query),
         )
 
-        add_urls(
-            _from_search_html(
-                session,
-                attempt,
-            )
-        )
+        if compact != _norm(query):
+            add(_predictive(session, compact))
+            add(_search_html(session, compact))
 
-    # ---------------------------------------------------------
-    # 2. FALLBACK CATALOGO / SITEMAP
-    # ---------------------------------------------------------
-    # Se Shopify search non trova un prodotto che esiste davvero,
-    # cerchiamo nel catalogo prodotto del negozio.
-    if not candidate_urls:
-        add_urls(
-            _discover_from_sitemap(
-                session,
-                query,
-            )
-        )
+    # SOLO ora usiamo il sitemap. Non viene più eseguito ogni volta.
+    if not candidates:
+        add(_sitemap_candidates(session, query))
 
-    # Anche se abbiamo trovato qualcosa con la search, il sitemap
-    # può contenere altri prodotti della stessa query.
-    add_urls(
-        _discover_from_sitemap(
-            session,
-            query,
-        )
-    )
+    results = []
+    seen_results = set()
 
-    # ---------------------------------------------------------
-    # 3. Leggiamo il JSON canonico del prodotto
-    # ---------------------------------------------------------
-    final = []
-    seen_products = set()
-
-    for url in candidate_urls:
-        data = _fetch_product_json(
-            session,
-            url,
-        )
+    for u in candidates:
+        data = _product_json(session, u)
 
         if not data:
             continue
 
-        item = _product_from_shopify_json(
-            data,
-            url,
-            query,
-        )
+        item = _make_product(data, u, query)
 
         if not item:
             continue
 
-        key = _canonical_path(
-            item["url"]
-        )
+        key = _path(item["url"])
 
-        if key in seen_products:
+        if key in seen_results:
             continue
 
-        seen_products.add(key)
-        final.append(item)
+        seen_results.add(key)
+        results.append(item)
 
-    return final
+    return results
 
 
 if __name__ == "__main__":
-    tests = (
-        "9 PM",
-        "9 PM Rebel",
-        "9 PM Pour Femme",
-        "Rayhaan Aquatica",
-        "Turathi Blue",
-    )
-
-    for query in tests:
-        print("\nQUERY:", query)
-
-        for item in search(query):
+    for q in ("9 PM", "9 PM Rebel", "9 PM Pour Femme"):
+        print("\nQUERY:", q)
+        for item in search(q):
             print(item)
