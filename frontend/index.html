@@ -1592,6 +1592,38 @@ async function fetchJSONWithTimeout(url,ms=90000){
  }finally{clearTimeout(timer)}
 }
 
+function familySearchPlan(query){
+ const n=normalizePerfumeName(query||"").toLowerCase().trim();
+
+ // 9 PM: una ricerca sulla linea deve restituire TUTTE le varianti della linea.
+ if(/(?:^|\s)9\s*pm(?:\s|$)/i.test(n)){
+  return {
+   terms:["9 PM","9PM Elixir","9PM Night Out","9PM Rebel","9 PM Pour Femme"],
+   filter:g=>{
+    const name=normalizePerfumeName(g?.name||"").toLowerCase();
+    const brand=normalizePerfumeName(g?.brand||"").toLowerCase();
+    return brand==="afnan" && /^9\s*pm\b/i.test(name);
+   }
+  };
+ }
+
+ // Le Beau: "Le Beau Le Parfum" appartiene alla stessa linea Le Beau.
+ // Limitiamo i risultati alla linea JPG Le Beau, evitando risultati casuali
+ // che contengono solo la parola "beau".
+ if(/\ble\s+beau\b/i.test(n)){
+  return {
+   terms:["Le Beau","Le Beau Le Parfum","Le Beau Paradise Garden"],
+   filter:g=>{
+    const name=normalizePerfumeName(g?.name||"").toLowerCase();
+    const brand=normalizePerfumeName(g?.brand||"").toLowerCase();
+    return brand==="jean paul gaultier" && /\ble\s+beau\b/i.test(name);
+   }
+  };
+ }
+
+ return {terms:[query],filter:null};
+}
+
 async function searchPerfume(){
  const q=queryInput.value.trim();if(!q){statusBox.textContent="";resultsBox.innerHTML="";errorsBox.innerHTML="";return}
  searchButton.disabled=true;searchButton.classList.add("searching");
@@ -1601,16 +1633,36 @@ async function searchPerfume(){
  const dotsTimer=setInterval(updateSearchButton,500);
  statusBox.textContent="";resultsBox.innerHTML="";errorsBox.innerHTML="";
  try{
-  const term=q;
-  const data=await fetchJSONWithTimeout(
+  const plan=familySearchPlan(q);
+  const responses=await Promise.allSettled(
+   plan.terms.map(term=>fetchJSONWithTimeout(
     backend()+"/search?q="+encodeURIComponent(term),
     180000
+   ))
   );
-  const groups=shGroupData(data);showProducts(groups);
+
+  const successful=responses.filter(r=>r.status==="fulfilled").map(r=>r.value);
+  if(!successful.length)throw new Error("Nessuna ricerca completata");
+
+  // Uniamo le risposte delle ricerche della stessa linea e poi
+  // raggruppiamo normalmente: prezzi e negozi restano confrontabili.
+  const merged={
+   comparisons:successful.flatMap(d=>Array.isArray(d.comparisons)?d.comparisons:[]),
+   results:successful.flatMap(d=>Array.isArray(d.results)?d.results:[]),
+   errors:Object.assign({},...successful.map(d=>d.errors||{}))
+  };
+
+  let groups=shGroupData(merged);
+
+  // Per le ricerche di linea eliminiamo qualsiasi risultato estraneo
+  // introdotto dal motore di ricerca dei negozi.
+  if(plan.filter)groups=groups.filter(plan.filter);
+
+  showProducts(groups);
   currentProductGroups=groups;
   updateBestPricesFromGroups(groups);
   refreshWishlistFromResults(groups.flatMap(g=>g.offers.map(o=>({name:g.name||"",brand:g.brand||"",price:shPrice(o),price_value:o.price_value,store:o.store||"",url:o.url||""}))));
-  if(data.errors&&Object.keys(data.errors).length)errorsBox.innerHTML="Alcuni negozi non hanno risposto: "+Object.keys(data.errors).map(esc).join(", ")+".";
+  if(merged.errors&&Object.keys(merged.errors).length)errorsBox.innerHTML="Alcuni negozi non hanno risposto: "+Object.keys(merged.errors).map(esc).join(", ")+".";
  }catch(e){console.error(e);statusBox.textContent="Impossibile completare la ricerca."}
  finally{clearInterval(dotsTimer);searchButton.disabled=false;searchButton.classList.remove("searching");searchButton.textContent="INIZIA LA RICERCA"}
 }
