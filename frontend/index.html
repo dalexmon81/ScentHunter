@@ -1333,7 +1333,7 @@ function isOfferOutOfStock(o){
   if(o.available===false)return true;
   const vals=[
     o.availability,o.stock,o.stock_status,o.status,o.availability_status,
-    o.availabilityStatus,o.stockStatus,o.in_stock,o.inStock,o.price
+    o.availabilityStatus,o.stockStatus,o.in_stock,o.inStock
   ];
   return vals.some(v=>{
     if(v===false)return true;
