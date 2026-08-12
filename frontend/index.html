@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+<<!DOCTYPE html>
 <html lang="it">
 <head>
 <meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
@@ -1335,13 +1335,22 @@ function isOfferOutOfStock(o){
     o.availability,o.stock,o.stock_status,o.status,o.availability_status,
     o.availabilityStatus,o.stockStatus,o.in_stock,o.inStock
   ];
-  return vals.some(v=>{
+  if(vals.some(v=>{
     if(v===false)return true;
     const s=String(v??"").trim().toLowerCase().replace(/[-\s]+/g,"_");
     return s==="out_of_stock" || s==="outofstock" || s==="not_available" ||
            s==="notavailable" || s==="unavailable" || s==="sold_out" ||
            s==="soldout" || s==="non_disponibile" || s==="non_disponibile_online";
-  });
+  }))return true;
+
+  // Orioudh può restituire lo stato direttamente nel campo price.
+  const priceText=String(o.price??"").trim().toLowerCase();
+  return [
+    "out of stock","sold out","unavailable","not available",
+    "non disponibile","non disponibile online","non disponibile al momento",
+    "rupture de stock","en rupture de stock","épuisé","epuise",
+    "ausverkauft","nicht auf lager","nicht verfügbar"
+  ].some(marker=>priceText.includes(marker));
 }
 function isWishlistOutOfStock(x){
   return x?.outOfStock===true || isOfferOutOfStock(x);
