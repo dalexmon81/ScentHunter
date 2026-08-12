@@ -162,88 +162,139 @@ def _extract_product(url, query):
             return ""
         return m.group(1).replace(".", ",") + "€"
 
-    # 1) FIRST CHOICE: JSON-LD Product/Offer price.
-    #    This is the selling price of the requested product page.
-    #    Parfum-Zentrum can keep the old/crossed price in visible
-    #    price nodes, so those must not win over the structured offer.
+    def _is_excluded(node):
+        """Reject reference/list prices and coupon-price elements."""
+        current = node
+        for _ in range(6):
+            if not current:
+                break
+
+            if getattr(current, "name", "") in {"del", "s", "strike"}:
+                return True
+
+            attrs = getattr(current, "attrs", {}) or {}
+            blob = " ".join(
+                str(attrs.get(k, ""))
+                for k in ("class", "id", "data-testid", "data-test")
+            ).lower()
+            style = str(attrs.get("style", "")).lower()
+
+            bad_words = (
+                "old-price", "old_price", "oldprice",
+                "previous-price", "previous_price",
+                "regular-price", "regular_price", "list-price",
+                "list_price", "uvp", "strike", "strikethrough",
+                "crossed", "code-price", "code_price", "rabattcode",
+                "gutschein", "coupon", "discount-code",
+            )
+
+            if any(word in blob for word in bad_words):
+                return True
+
+            if "line-through" in style or "linethrough" in style:
+                return True
+
+            current = current.parent
+
+        return False
+
+    def _price_score(node, value):
+        """Score visible prices: current selling price beats reference data."""
+        if _is_excluded(node):
+            return -10000
+
+        score = 0
+        current = node
+
+        for _ in range(5):
+            if not current:
+                break
+
+            attrs = getattr(current, "attrs", {}) or {}
+            blob = " ".join(
+                str(attrs.get(k, ""))
+                for k in ("class", "id", "data-testid", "data-test")
+            ).lower()
+            text = current.get_text(" ", strip=True).lower() if hasattr(current, "get_text") else ""
+
+            if any(x in blob for x in ("current-price", "current_price", "sale-price", "sale_price", "selling-price", "selling_price", "product-price", "product_price")):
+                score += 100
+            elif "price" in blob:
+                score += 20
+
+            if "inkl. mwst." in text and "/l" not in text:
+                score += 40
+
+            if "grundpreis" in text or "/l" in text:
+                score -= 80
+
+            if "preis inkl. code" in text or "rabattcode" in text:
+                score -= 100
+
+            current = current.parent
+
+        return score
+
     price = ""
+    visible_candidates = []
 
-    for script in soup.select('script[type="application/ld+json"]'):
-        raw_json = script.string or script.get_text()
-        try:
-            data = json.loads(raw_json)
-        except Exception:
+    # IMPORTANT: the shop can expose the crossed/reference price through
+    # itemprop or JSON-LD. Therefore visible, non-crossed prices are checked
+    # FIRST. This is the critical fix for Parfum-Zentrum.
+    for text_node in soup.find_all(string=re.compile(r"\d{1,4}[.,]\d{2}\s*€")):
+        value = _normalize_price(text_node)
+        if not value or _is_excluded(text_node.parent):
             continue
+        visible_candidates.append((_price_score(text_node.parent, value), value))
 
-        stack = data if isinstance(data, list) else [data]
+    if visible_candidates:
+        visible_candidates.sort(key=lambda x: x[0], reverse=True)
+        price = visible_candidates[0][1]
 
-        while stack:
-            obj = stack.pop()
-
-            if isinstance(obj, list):
-                stack.extend(obj)
+    # Only if no safe visible selling price exists, inspect structured data.
+    if not price:
+        for script in soup.select('script[type="application/ld+json"]'):
+            raw_json = script.string or script.get_text()
+            try:
+                data = json.loads(raw_json)
+            except Exception:
                 continue
 
-            if not isinstance(obj, dict):
-                continue
+            stack = data if isinstance(data, list) else [data]
+            while stack:
+                obj = stack.pop()
+                if isinstance(obj, list):
+                    stack.extend(obj)
+                    continue
+                if not isinstance(obj, dict):
+                    continue
 
-            offers = obj.get("offers")
-            if isinstance(offers, dict):
-                stack.append(offers)
-            elif isinstance(offers, list):
-                stack.extend(offers)
+                offers = obj.get("offers")
+                if isinstance(offers, dict):
+                    stack.append(offers)
+                elif isinstance(offers, list):
+                    stack.extend(offers)
 
-            if "price" in obj:
-                candidate = _normalize_price(obj.get("price"))
-                if candidate:
-                    price = candidate
-                    break
+                if "price" in obj:
+                    candidate = _normalize_price(obj.get("price"))
+                    if candidate:
+                        price = candidate
+                        break
+            if price:
+                break
 
-        if price:
-            break
-
-    # 2) Visible selling price. We deliberately do NOT use
-    #    "Preis inkl. Code": that is a coupon price, not the normal
-    #    shop price shown by ScentHunter.
+    # Final structured/meta fallback.
     if not price:
-        m = re.search(
-            r"(\d{1,4}[.,]\d{2})\s*€\s*inkl\.\s*MwSt\.",
-            product_text,
-            re.I,
-        )
-        if m:
-            price = _normalize_price(m.group(1))
-
-    # 3) Explicit price nodes, only after the two safer methods above.
-    if not price:
-        price_nodes = soup.select(
-            '[itemprop="price"], '
+        for node in soup.select(
             'meta[property="product:price:amount"], '
-            'meta[name="price"], '
-            'meta[itemprop="price"]'
-        )
-
-        for node in price_nodes:
-            raw = node.get("content") or node.get_text(" ", strip=True)
-            candidate = _normalize_price(raw)
+            'meta[name="price"], meta[itemprop="price"]'
+        ):
+            if _is_excluded(node):
+                continue
+            candidate = _normalize_price(node.get("content") or node.get_text(" ", strip=True))
             if candidate:
                 price = candidate
                 break
-
-    if not price:
-        # Last fallback: collect only visible prices that are not inside
-        # crossed-out/reference-price elements and use the first one.
-        visible_prices = []
-        for node in soup.find_all(string=re.compile(r"\d{1,4}[.,]\d{2}\s*€")):
-            parent = node.parent
-            if parent and parent.name in {"del", "s", "strike"}:
-                continue
-            candidate = _normalize_price(node)
-            if candidate:
-                visible_prices.append(candidate)
-
-        if visible_prices:
-            price = visible_prices[0]
 
     if not price:
         return None
