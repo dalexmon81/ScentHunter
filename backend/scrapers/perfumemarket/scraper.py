@@ -104,6 +104,25 @@ def _query_tokens_filtered(query):
         tokens = _tokens(query)
     return tokens
 
+
+# Discovery-only relaxation: gender words can hide valid variants such as
+# "Club De Nuit Intense Overdose" when the user searches "Club De Nuit Intense Man".
+# The original query is ALWAYS kept for final product-page verification.
+DISCOVERY_RELAX_WORDS = {"man", "woman", "men", "women", "male", "female"}
+
+def _discovery_queries(query):
+    original = str(query or "").strip()
+    if not original:
+        return []
+
+    queries = [original]
+    tokens = _tokens(original)
+    relaxed_tokens = [t for t in tokens if t not in DISCOVERY_RELAX_WORDS]
+    relaxed = " ".join(relaxed_tokens).strip()
+    if relaxed and relaxed.lower() != original.lower():
+        queries.append(relaxed)
+    return queries
+
 def _compact_normalize(s):
     t = unicodedata.normalize("NFKD", str(s or "")).lower()
     t = "".join(c for c in t if not unicodedata.combining(c))
@@ -807,38 +826,47 @@ def search(query):
             except Exception:
                 _debug_dump(f"catalog_bad_json_{page}", resp.text[:10000])
                 break
-            cats = _parse_catalog_json(payload, query)
-            candidates.extend(cats)
+            for discovery_query in _discovery_queries(query):
+                cats = _parse_catalog_json(payload, discovery_query)
+                candidates.extend(cats)
             products = payload.get("products") or []
             if len(products) < 250:
                 break
             time.sleep(0.08)
         # we do not break early here; collected candidates will be verified
 
-    # suggest.json (single call)
-    try:
-        suggest_url = BASE_URL + "/search/suggest.json?q=" + quote(query) + "&resources[type]=product&resources[limit]=10"
-        r = request_with_rate_limit(session, "GET", suggest_url, timeout=HTTP_TIMEOUT)
-        if r.ok:
-            try:
-                cats = _parse_search_suggest(r.json(), query)
-                candidates.extend(cats)
-            except Exception:
-                _debug_dump("suggest_parse_error", r.text[:8000])
-    except Exception as e:
-        vlog(f"SUGGEST ERROR: {e}")
+    # suggest.json - run the original query plus one discovery-only relaxed
+    # variant without gender words, because Shopify can rank variants such as
+    # Overdose out of the result set for a gendered query.
+    for discovery_query in _discovery_queries(query):
+        try:
+            suggest_url = BASE_URL + "/search/suggest.json?q=" + quote(discovery_query) + "&resources[type]=product&resources[limit]=10"
+            r = request_with_rate_limit(session, "GET", suggest_url, timeout=HTTP_TIMEOUT)
+            if r.ok:
+                try:
+                    cats = _parse_search_suggest(r.json(), discovery_query)
+                    candidates.extend(cats)
+                except Exception:
+                    _debug_dump("suggest_parse_error", r.text[:8000])
+        except Exception as e:
+            vlog(f"SUGGEST ERROR: {e}")
 
     # search HTML (two variants) - collect candidates, not final accept
-    for url in (BASE_URL + "/search?q=" + quote(query) + "&type=product", BASE_URL + "/search?q=" + quote(query)):
-        try:
-            r = request_with_rate_limit(session, "GET", url, timeout=HTTP_TIMEOUT)
-            r.raise_for_status()
-        except Exception as e:
-            vlog(f"SEARCH HTML ERROR: {e}")
-            continue
-        cats = _parse_search_html(r.text, query)
-        candidates.extend(cats)
+    for discovery_query in _discovery_queries(query):
+        for url in (
+            BASE_URL + "/search?q=" + quote(discovery_query) + "&type=product",
+            BASE_URL + "/search?q=" + quote(discovery_query),
+        ):
+            try:
+                r = request_with_rate_limit(session, "GET", url, timeout=HTTP_TIMEOUT)
+                r.raise_for_status()
+            except Exception as e:
+                vlog(f"SEARCH HTML ERROR: {e}")
+                continue
+            cats = _parse_search_html(r.text, discovery_query)
+            candidates.extend(cats)
 
+    vlog(f"DISCOVERY_QUERIES: {_discovery_queries(query)}")
     vlog(f"Collected candidates from sources: {len(candidates)}")
     vlog("FAST_DISCOVERY_COMPLETE: search/suggest/catalog candidates ready for verification")
 
