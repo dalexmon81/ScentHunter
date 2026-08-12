@@ -1617,7 +1617,10 @@ async function searchPerfume(){
   currentProductGroups=groups;
   updateBestPricesFromGroups(groups);
   refreshWishlistFromResults(groups.flatMap(g=>g.offers.map(o=>({name:g.name||"",brand:g.brand||"",price:shPrice(o),price_value:o.price_value,store:o.store||"",url:o.url||""}))));
-  if(data.errors&&Object.keys(data.errors).length)errorsBox.innerHTML="Alcuni negozi non hanno risposto: "+Object.keys(data.errors).map(esc).join(", ")+".";
+  if(data.errors&&Object.keys(data.errors).length){
+   const errorRows=Object.entries(data.errors).map(([store,error])=>`<div style="margin-top:7px"><strong>${esc(store)}</strong>: ${esc(String(error||"Errore non specificato"))}</div>`).join("");
+   errorsBox.innerHTML=`<div>Alcuni negozi non hanno risposto:</div>${errorRows}`;
+  }
  }catch(e){console.error(e);statusBox.textContent="Impossibile completare la ricerca."}
  finally{clearInterval(dotsTimer);searchButton.disabled=false;searchButton.classList.remove("searching");searchButton.textContent="INIZIA LA RICERCA"}
 }
