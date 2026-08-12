@@ -134,12 +134,6 @@ def _extract_product(url, query):
 
         node = node.parent
 
-    product_text = min(
-        (x for x in chunks if len(x) >= len(name) and "€" in x),
-        key=len,
-        default=""
-    )
-
     unavailable_phrases = (
         "leider nicht lieferbar",
         "nicht lieferbar",
@@ -155,153 +149,165 @@ def _extract_product(url, query):
     def _normalize_price(value):
         if value is None:
             return ""
-        value = str(value).replace("\\xa0", " ").strip()
-        m = re.search(r"(\\d{1,4}(?:[.,]\\d{2}))", value)
+
+        value = str(value).replace("\xa0", " ").strip()
+        m = re.search(r"\d{1,4}[.,]\d{2}", value)
+
         if not m:
             return ""
-        return m.group(1).replace(".", ",") + "€"
 
-    def _price_is_excluded(node):
+        return m.group(0).replace(".", ",") + "€"
+
+    def _excluded_node(node):
+        """True for old/list prices and code/coupon prices."""
         if not node:
             return True
 
-        tag = getattr(node, "name", "") or ""
-        if tag in {"del", "s", "strike"}:
-            return True
-
-        attrs = node.attrs if hasattr(node, "attrs") else {}
-        blob = " ".join([
-            str(attrs.get("class", "")),
-            str(attrs.get("id", "")),
-            str(attrs.get("data-testid", "")),
-            str(attrs.get("data-test", "")),
-        ]).lower()
-
-        excluded = (
-            "old-price", "old_price", "oldprice",
-            "uvp", "strike", "strikethrough", "crossed",
-            "previous-price", "previous_price",
-            "code-price", "code_price", "coupon",
-            "gutschein", "rabattcode", "discount-code",
-        )
-        return any(x in blob for x in excluded)
-
-    def _extract_jsonld_price():
-        import json
-
-        for script in soup.find_all("script", type=re.compile(r"ld\\+json", re.I)):
-            raw = script.string or script.get_text()
-            if not raw:
-                continue
-
-            try:
-                data = json.loads(raw)
-            except Exception:
-                continue
-
-            stack = data if isinstance(data, list) else [data]
-
-            while stack:
-                obj = stack.pop()
-                if isinstance(obj, list):
-                    stack.extend(obj)
-                    continue
-                if not isinstance(obj, dict):
-                    continue
-
-                offers = obj.get("offers")
-                if isinstance(offers, dict):
-                    offers = [offers]
-                elif not isinstance(offers, list):
-                    offers = []
-
-                for offer in offers:
-                    if not isinstance(offer, dict):
-                        continue
-                    price = _normalize_price(offer.get("price"))
-                    if price:
-                        return price
-
-                for value in obj.values():
-                    if isinstance(value, (dict, list)):
-                        stack.append(value)
-
-        return ""
-
-    # Prefer the structured current selling price supplied by the shop.
-    # This avoids taking the crossed-out UVP or the lower "Preis inkl. Code".
-    price = _extract_jsonld_price()
-
-    if not price:
-        for node in soup.find_all(attrs={"itemprop": "price"}):
-            if _price_is_excluded(node):
-                continue
-            price = _normalize_price(node.get("content") or node.get_text(" ", strip=True))
-            if price:
+        current = node
+        for _ in range(6):
+            if not current:
                 break
 
-    if not price:
-        price_selectors = (
-            '[data-testid*="price"]',
-            '[data-test*="price"]',
-            '.product-price',
-            '.product__price',
-            '.current-price',
-            '.current_price',
-            '.price-current',
-            '.price_current',
-            '.sale-price',
-            '.selling-price',
-            '[class*="current-price"]',
-            '[class*="product-price"]',
-        )
+            if getattr(current, "name", "") in {"del", "s", "strike"}:
+                return True
 
-        for selector in price_selectors:
-            for node in soup.select(selector):
-                if _price_is_excluded(node):
-                    continue
+            attrs = getattr(current, "attrs", {}) or {}
+            blob = " ".join(
+                str(attrs.get(key, ""))
+                for key in ("class", "id", "data-testid", "data-test")
+            ).lower()
 
-                text = node.get_text(" ", strip=True)
-                if not text:
-                    continue
-
-                # Never use a block that explicitly belongs to the code-price area.
-                if "preis inkl. code" in text.lower() or "rabattcode" in text.lower():
-                    continue
-
-                price = _normalize_price(text)
-                if price:
-                    break
-
-            if price:
-                break
-
-    if not price:
-        # Last-resort fallback: inspect the product block, but remove
-        # crossed-out/code-price nodes before reading the remaining text.
-        fallback_soup = BeautifulSoup(str(h1.parent.parent.parent), "html.parser")
-        for bad in fallback_soup.find_all(["del", "s", "strike"]):
-            bad.decompose()
-
-        for bad in fallback_soup.find_all(
-            class_=re.compile(
-                r"(old[-_ ]price|uvp|code[-_ ]price|rabattcode|gutschein|coupon)",
-                re.I
+            excluded_words = (
+                "old-price", "old_price", "oldprice",
+                "previous-price", "previous_price",
+                "regular-price", "regular_price",
+                "list-price", "list_price",
+                "uvp", "strike", "strikethrough", "crossed",
+                "code-price", "code_price", "rabattcode",
+                "gutschein", "coupon", "discount-code",
             )
+
+            if any(word in blob for word in excluded_words):
+                return True
+
+            text = current.get_text(" ", strip=True).lower()
+            if "preis inkl. code" in text or "rabattcode" in text:
+                return True
+
+            current = current.parent
+
+        return False
+
+    def _candidate_score(node):
+        """Higher score = more likely to be the actual selling price."""
+        if _excluded_node(node):
+            return -1000
+
+        attrs = getattr(node, "attrs", {}) or {}
+        blob = " ".join(
+            str(attrs.get(key, ""))
+            for key in ("class", "id", "data-testid", "data-test", "itemprop")
+        ).lower()
+
+        score = 0
+
+        for word in (
+            "current-price", "current_price", "currentprice",
+            "product-price", "product_price", "productprice",
+            "selling-price", "selling_price", "sellingprice",
+            "sale-price", "sale_price", "saleprice",
+            "price-current", "price_current",
         ):
-            bad.decompose()
+            if word in blob:
+                score += 100
 
-        fallback_text = fallback_soup.get_text(" ", strip=True)
-        fallback_text = re.sub(
-            r"(?:preis\\s+inkl\\.\\s*code|rabattcode).*?(?=\\d{1,4}[.,]\\d{2}\\s*€|$)",
-            " ",
-            fallback_text,
-            flags=re.I,
-        )
+        if "price" in blob:
+            score += 20
 
-        m = re.search(r"(\\d{1,4}[.,]\\d{2})\\s*€", fallback_text)
-        if m:
-            price = _normalize_price(m.group(1))
+        if "itemprop" in blob and "price" in blob:
+            score += 40
+
+        return score
+
+    price = ""
+    candidates = []
+
+    # IMPORTANT: do not use JSON-LD as the first source. Some shops expose
+    # the list/reference price there even when the visible selling price is lower.
+    selectors = (
+        '[itemprop="price"]',
+        '[data-testid*="price"]',
+        '[data-test*="price"]',
+        '[data-price]',
+        '[data-product-price]',
+        '[class*="current-price"]',
+        '[class*="product-price"]',
+        '[class*="selling-price"]',
+        '[class*="sale-price"]',
+        '[class*="price-current"]',
+        '[class*="price_current"]',
+    )
+
+    seen_nodes = set()
+
+    for selector in selectors:
+        for node in soup.select(selector):
+            marker = id(node)
+            if marker in seen_nodes:
+                continue
+            seen_nodes.add(marker)
+
+            if _excluded_node(node):
+                continue
+
+            raw = (
+                node.get("content")
+                or node.get("data-price")
+                or node.get("data-product-price")
+                or node.get_text(" ", strip=True)
+            )
+            value = _normalize_price(raw)
+
+            if value:
+                candidates.append((_candidate_score(node), value))
+
+    if candidates:
+        candidates.sort(key=lambda x: x[0], reverse=True)
+        price = candidates[0][1]
+
+    # Fallback specifically for the layout shown by ParfumZentrum:
+    # current price is followed by a crossed/reference price such as
+    # "53,92 € inkl. MwSt.". The reference price must never win.
+    if not price:
+        product_node = h1
+        for _ in range(5):
+            if product_node and product_node.parent:
+                product_node = product_node.parent
+
+        if product_node:
+            work = BeautifulSoup(str(product_node), "html.parser")
+
+            for bad in work.find_all(["del", "s", "strike"]):
+                bad.decompose()
+
+            for bad in work.find_all(
+                class_=re.compile(
+                    r"(old[-_ ]price|previous[-_ ]price|regular[-_ ]price|uvp|code[-_ ]price|rabattcode|gutschein|coupon)",
+                    re.I,
+                )
+            ):
+                bad.decompose()
+
+            for text_node in work.find_all(string=True):
+                parent = text_node.parent
+                if parent and _excluded_node(parent):
+                    text_node.extract()
+
+            text = work.get_text(" ", strip=True)
+            matches = re.findall(r"\d{1,4}[.,]\d{2}\s*€", text)
+
+            if matches:
+                price = _normalize_price(matches[0])
 
     if not price:
         return None
@@ -352,4 +358,4 @@ if __name__ == "__main__":
     print("RISULTATI:", len(results))
 
     for item in results[:10]:
-        print(ite
+        print(item)
