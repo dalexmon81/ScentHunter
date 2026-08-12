@@ -1,4 +1,3 @@
-
 # Complete PerfumeMarket scraper with sitemap-first discovery and token-weighted scoring
 # - Uses token-weighted scoring to shortlist candidates (no permissive fuzzy match).
 # - For every candidate, verifies identity by fetching the product page and accepting
@@ -41,10 +40,11 @@ DEBUG_DIR = os.getenv("PERFUME_DEBUG_DUMP_DIR", "/tmp/perfumemarket-debug")
 SHARED_DIR = os.getenv("PERFUME_SHARED_DIR", "/tmp")
 MIN_INTERVAL = float(os.getenv("PERFUME_RATE_MIN_INTERVAL", "2.5"))
 MAX_RETRIES_429 = int(os.getenv("PERFUME_MAX_RETRIES_429", "4"))
-ENABLE_PLAYWRIGHT = os.getenv("PERFUME_ENABLE_PLAYWRIGHT", "0") in ("1", "true", "True", "yes")
+ENABLE_PLAYWRIGHT = os.getenv("PERFUME_ENABLE_PLAYWRIGHT", "1") in ("1", "true", "True", "yes")
 VERBOSE = os.getenv("PERFUME_VERBOSE", "1") in ("1", "true", "True", "yes")
 MATCH_THRESHOLD = float(os.getenv("PERFUME_MATCH_THRESHOLD", "0.6"))
 CANDIDATE_MIN_SCORE = float(os.getenv("PERFUME_CANDIDATE_MIN_SCORE", "0.35"))
+MAX_RENDER_PER_SEARCH = int(os.getenv("PERFUME_MAX_RENDER_PER_SEARCH", "30"))
 
 # HTTP defaults
 HEADERS = {
@@ -506,27 +506,38 @@ def _parse_catalog_json(payload, query):
         vlog(f"CATALOG_CANDIDATE url={url} title={title!r} score={score:.3f} price_present={'yes' if price else 'no'}")
     return candidates
 
-def _parse_product_page(html, query, product_url):
-    """
-    Parse the product page and require verification:
-    - Extract page title
-    - Extract price (JSON-LD, itemprop, elements)
-    - Compute token-weighted score on title and accept only if >= MATCH_THRESHOLD
-    """
-    soup = BeautifulSoup(html or "", "html.parser")
-    title = ""
-    for sel in ("h1", "meta[property='og:title']", "title"):
-        el = soup.select_one(sel)
+def _extract_trusted_price_value(value):
+    """Extract a price from a trusted numeric price field (e.g. JSON-LD)."""
+    raw = str(value or "").strip()
+    if not raw:
+        return None
+    price = _extract_price_from_text(raw)
+    if price:
+        return price
+    if re.fullmatch(r"\d{1,5}(?:[.,]\d{2})?", raw):
+        return raw.replace(".", ",") + " €"
+    return None
+
+
+def _page_match_signals(soup, product_url):
+    """Return title-like signals from the real product page."""
+    signals = []
+
+    for selector in ("h1", "meta[property='og:title']", "title"):
+        try:
+            el = soup.select_one(selector)
+        except Exception:
+            el = None
         if not el:
             continue
-        title = el.get("content") if el.name == "meta" else el.get_text(" ", strip=True)
-        if title:
-            break
-    if not title:
-        vlog(f"PAGE_NO_TITLE url={product_url}")
-        return None
-    # try JSON-LD offers first
-    price = None
+        value = el.get("content") if el.name == "meta" else el.get_text(" ", strip=True)
+        if value:
+            signals.append((selector, str(value).strip()))
+
+    meta_description = soup.select_one("meta[name='description']")
+    if meta_description and meta_description.get("content"):
+        signals.append(("meta_description", str(meta_description.get("content")).strip()))
+
     for script in soup.find_all("script", type="application/ld+json"):
         raw = script.string or script.get_text(" ", strip=True)
         if not raw:
@@ -535,8 +546,44 @@ def _parse_product_page(html, query, product_url):
             data = json.loads(raw)
         except Exception:
             continue
-        objs = data if isinstance(data, list) else [data]
-        for obj in objs:
+        objects = data if isinstance(data, list) else [data]
+        stack = list(objects)
+        while stack:
+            obj = stack.pop()
+            if isinstance(obj, list):
+                stack.extend(obj)
+                continue
+            if not isinstance(obj, dict):
+                continue
+            name = str(obj.get("name") or "").strip()
+            if name:
+                signals.append(("jsonld_name", name))
+            graph = obj.get("@graph")
+            if isinstance(graph, list):
+                stack.extend(graph)
+
+    # The canonical product URL is a supporting signal, not the sole identity signal.
+    signals.append(("product_url", product_url))
+    return signals
+
+
+def _extract_page_price(soup):
+    """Extract price from JSON-LD first, then trusted page elements."""
+    for script in soup.find_all("script", type="application/ld+json"):
+        raw = script.string or script.get_text(" ", strip=True)
+        if not raw:
+            continue
+        try:
+            data = json.loads(raw)
+        except Exception:
+            continue
+        objects = data if isinstance(data, list) else [data]
+        stack = list(objects)
+        while stack:
+            obj = stack.pop()
+            if isinstance(obj, list):
+                stack.extend(obj)
+                continue
             if not isinstance(obj, dict):
                 continue
             offers = obj.get("offers")
@@ -545,30 +592,89 @@ def _parse_product_page(html, query, product_url):
             if isinstance(offers, list):
                 for offer in offers:
                     if isinstance(offer, dict):
-                        price = _extract_price_from_text(str(offer.get("price") or ""))
+                        price = _extract_trusted_price_value(offer.get("price"))
                         if price:
-                            break
-                if price:
-                    break
-            if price:
-                break
-        if price:
-            break
-    if not price:
-        price = _extract_price_from_node(soup)
-    if not price:
-        vlog(f"PAGE_NO_PRICE url={product_url} title={title!r}")
-        return None
-    # verify title via token-weighted scoring
-    page_score = _token_weighted_score(query, title + " " + product_url)
-    if page_score < MATCH_THRESHOLD:
-        vlog(f"PAGE_MISMATCH url={product_url} title={title!r} page_score={page_score:.3f}")
-        return None
-    vlog(f"PAGE_MATCH url={product_url} title={title!r} price={price} page_score={page_score:.3f}")
-    return {"store":"PerfumeMarket","name":title,"price":price,"url":product_url}
+                            return price
+            graph = obj.get("@graph")
+            if isinstance(graph, list):
+                stack.extend(graph)
 
-# Playwright fallback (unchanged)
+    return _extract_price_from_node(soup)
+
+
+def _parse_product_page(html, query, product_url):
+    """
+    Parse a product page and verify identity using multiple page signals.
+    Price must still be present in the supplied HTML; JS rendering is handled
+    separately by _verify_candidate_by_page when static price extraction fails.
+    """
+    soup = BeautifulSoup(html or "", "html.parser")
+    signals = _page_match_signals(soup, product_url)
+    if not signals:
+        vlog(f"PAGE_NO_TITLE url={product_url}")
+        return None
+
+    # Strong title-like signals are preferred. Meta description is only a
+    # secondary signal; the URL is never sufficient by itself.
+    strong_signals = [text for kind, text in signals if kind in ("h1", "meta[property='og:title']", "title", "jsonld_name")]
+    secondary_signals = [text for kind, text in signals if kind == "meta_description"]
+    strong_scores = [_token_weighted_score(query, text) for text in strong_signals]
+    secondary_scores = [_token_weighted_score(query, text) for text in secondary_signals]
+    page_score = max(strong_scores or [0.0])
+    if page_score < MATCH_THRESHOLD and secondary_scores:
+        page_score = max(page_score, max(secondary_scores))
+
+    if page_score < MATCH_THRESHOLD:
+        vlog(f"PAGE_MISMATCH url={product_url} page_score={page_score:.3f} signals={[s for _, s in signals[:5]]}")
+        return None
+
+    price = _extract_page_price(soup)
+    if not price:
+        vlog(f"PAGE_NO_PRICE url={product_url} page_score={page_score:.3f}")
+        return None
+
+    # Return the best strong identity signal as the displayed product name.
+    best_name = strong_signals[0] if strong_signals else signals[0][1]
+    best_score = -1.0
+    for text in strong_signals:
+        score = _token_weighted_score(query, text)
+        if score > best_score:
+            best_score = score
+            best_name = text
+
+    vlog(f"PAGE_MATCH url={product_url} title={best_name!r} price={price} page_score={page_score:.3f}")
+    return {"store":"PerfumeMarket","name":best_name,"price":price,"url":product_url}
+
+# Playwright product-page fallback.
+def render_product_page_with_playwright(product_url):
+    """Render one product page only when static HTML did not expose its price."""
+    if not ENABLE_PLAYWRIGHT:
+        vlog("Playwright disabled")
+        return None
+    if sync_playwright is None:
+        log("Playwright not installed in environment")
+        return None
+    try:
+        with sync_playwright() as p:
+            browser = p.chromium.launch(headless=True, args=["--no-sandbox"])
+            page = browser.new_page(user_agent=HEADERS["User-Agent"])
+            page.goto(BASE_URL, timeout=15000)
+            time.sleep(0.2 + random.random()*0.3)
+            page.goto(product_url, timeout=20000, wait_until="domcontentloaded")
+            try:
+                page.wait_for_load_state("networkidle", timeout=8000)
+            except Exception:
+                pass
+            html = page.content()
+            browser.close()
+            return html
+    except Exception as e:
+        log(f"Playwright product error: {e}")
+        return None
+
+
 def render_search_with_playwright(query):
+    """Legacy search-page rendering retained only as the final fallback."""
     if not ENABLE_PLAYWRIGHT:
         vlog("Playwright disabled")
         return None
@@ -594,10 +700,13 @@ def render_search_with_playwright(query):
         log(f"Playwright error: {e}")
         return None
 
-# Verify candidate by fetching product page and parsing it (strong identity verification)
-def _verify_candidate_by_page(session, candidate, query):
+
+# Verify candidate by fetching product page. If the static page has no price,
+# optionally render that one product page with Playwright and verify again.
+def _verify_candidate_by_page(session, candidate, query, render_state=None):
     """
     candidate: dict with {url, name, score, price, source}
+    render_state: mutable per-search counter for product-page renders.
     returns parsed item dict or None
     """
     url = candidate.get("url")
@@ -609,11 +718,44 @@ def _verify_candidate_by_page(session, candidate, query):
     if resp.status_code != 200 or not resp.text:
         vlog(f"VERIFY_GET_FAILED url={url} status={getattr(resp,'status_code',None)}")
         return None
+
     item = _parse_product_page(resp.text, query, url)
     if item:
         vlog(f"VERIFY_SUCCESS url={url} name={item.get('name')!r}")
+        return item
+
+    # Only render when the static page was a plausible identity but lacked a price.
+    # This keeps Playwright away from the broad candidate/sitemap scan.
+    static_soup = BeautifulSoup(resp.text, "html.parser")
+    static_signals = _page_match_signals(static_soup, url)
+    strong_signals = [text for kind, text in static_signals if kind in ("h1", "meta[property='og:title']", "title", "jsonld_name")]
+    static_score = max([_token_weighted_score(query, text) for text in strong_signals] or [0.0])
+    if static_score < MATCH_THRESHOLD:
+        vlog(f"VERIFY_FAILED url={url} static_score={static_score:.3f}")
+        return None
+
+    if not ENABLE_PLAYWRIGHT:
+        vlog(f"VERIFY_FAILED url={url} static_score={static_score:.3f} playwright=disabled")
+        return None
+
+    if render_state is None:
+        render_state = {"count": 0}
+    if render_state.get("count", 0) >= MAX_RENDER_PER_SEARCH:
+        vlog(f"VERIFY_RENDER_LIMIT url={url} limit={MAX_RENDER_PER_SEARCH}")
+        return None
+
+    render_state["count"] = render_state.get("count", 0) + 1
+    vlog(f"VERIFY_RENDER url={url} render_count={render_state['count']}/{MAX_RENDER_PER_SEARCH}")
+    rendered_html = render_product_page_with_playwright(url)
+    if not rendered_html:
+        vlog(f"VERIFY_FAILED url={url} rendered_html=empty")
+        return None
+
+    item = _parse_product_page(rendered_html, query, url)
+    if item:
+        vlog(f"VERIFY_RENDER_SUCCESS url={url} name={item.get('name')!r}")
     else:
-        vlog(f"VERIFY_FAILED url={url}")
+        vlog(f"VERIFY_RENDER_FAILED url={url}")
     return item
 
 # Main search flow with candidate verification
@@ -624,6 +766,7 @@ def search(query):
     session = _create_session()
     results = []
     seen = set()
+    render_state = {"count": 0}
 
     # Prime home to get cookies
     try:
@@ -740,7 +883,7 @@ def search(query):
         if any(url == it.get("url") for it in results):
             continue
         # If candidate already has price in payload/card, still verify by page as requested
-        item = _verify_candidate_by_page(session, cand, query)
+        item = _verify_candidate_by_page(session, cand, query, render_state)
         verified += 1
         if item:
             key = (item["name"].lower(), item["price"])
@@ -781,7 +924,7 @@ def search(query):
             # parse rendered html for candidates and verify
             cats = _parse_search_html(html, query)
             for c in cats:
-                item = _verify_candidate_by_page(session, c, query)
+                item = _verify_candidate_by_page(session, c, query, render_state)
                 if item:
                     k = (item["name"].lower(), item["price"])
                     if k not in seen:
