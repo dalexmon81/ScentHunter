@@ -1,3 +1,17 @@
+# Complete PerfumeMarket scraper with sitemap-first discovery and percent-based matching
+# - Uses sitemap as primary discovery source (scans product pages and verifies match on page title/data)
+# - Matching requires a percentage of query tokens to match product title (default 60%)
+# - No hard-coded exceptions for brands/products
+# - Rate limiting, debug dumps and Playwright fallback included (optional)
+#
+# Usage:
+# - Copy this file over your existing scraper and run.
+# - Configure via environment variables if needed:
+#     PERFUME_RATE_MIN_INTERVAL (default 2.5)
+#     PERFUME_DEBUG_DUMP_DIR (default /tmp/perfumemarket-debug)
+#     PERFUME_ENABLE_PLAYWRIGHT (1 to enable Playwright fallback)
+#     PERFUME_VERBOSE (1 to enable verbose diagnostic logging)
+#
 import os
 import re
 import time
