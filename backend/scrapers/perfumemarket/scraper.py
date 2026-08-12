@@ -373,6 +373,51 @@ def _extract_price_from_node(node):
                 return price
     return _extract_price_from_text(node.get_text(" ", strip=True))
 
+# Sitemap candidate ranking.
+# The sitemap can contain the complete product catalogue, so we use the product
+# URL/handle as a discovery source instead of blindly scanning the first N URLs.
+# This is only candidate discovery: the real product page is still fetched and
+# verified by _verify_candidate_by_page before anything is returned.
+def _rank_sitemap_product_urls(product_urls, query, limit=120):
+    candidates = []
+    seen = set()
+
+    for raw_url in product_urls or []:
+        url = str(raw_url or "").strip()
+        if not url:
+            continue
+
+        product_url = url.split("?", 1)[0].rstrip("/")
+        key = product_url.lower()
+        if key in seen or "/products/" not in key:
+            continue
+        seen.add(key)
+
+        # Shopify handles are normally the strongest searchable signal in the
+        # sitemap. Scoring the full URL also handles brand + product names.
+        score = _token_weighted_score(query, product_url)
+        if score < CANDIDATE_MIN_SCORE:
+            continue
+
+        candidates.append({
+            "source": "sitemap",
+            "url": product_url,
+            "name": "",
+            "score": score,
+            "price": None,
+        })
+
+    candidates.sort(
+        key=lambda item: (
+            -(item.get("score") or 0.0),
+            len(item.get("url") or ""),
+            item.get("url") or "",
+        )
+    )
+
+    return candidates[:max(0, int(limit))]
+
+
 # HTML parsing helpers (return preliminary candidates instead of final accept)
 def _parse_search_html(html, query):
     soup = BeautifulSoup(html or "", "html.parser")
@@ -790,32 +835,24 @@ def search(query):
     product_urls = [u for u in sitemap_urls if "/products/" in u.lower()]
     vlog(f"SITEMAP product URLs: {len(product_urls)}")
 
-    max_scan = int(os.getenv("PERFUME_SITEMAP_SCAN_LIMIT", "500"))
-    scanned = 0
-    for url in product_urls:
-        if scanned >= max_scan or len(results) >= int(os.getenv("PERFUME_MAX_RESULTS", "200")):
-            break
-        try:
-            resp = request_with_rate_limit(session, "GET", url, timeout=12)
-        except Exception as e:
-            vlog(f"SITEMAP product GET error: {e} url={url}")
-            continue
-        if resp.status_code != 200 or not resp.text:
-            continue
-        item = _parse_product_page(resp.text, query, url)
-        scanned += 1
-        if item:
-            key = (item["name"].lower(), item["price"])
-            if key not in seen:
-                seen.add(key)
-                results.append(item)
-                vlog(f"SITEMAP_ADD {url} -> {item['name']!r}")
-        time.sleep(0.05 + random.random() * 0.05)
+    # IMPORTANT: do not scan the first 500 sitemap URLs blindly. Their order is
+    # not relevance-ranked, so the requested product could be anywhere in the
+    # sitemap. Rank sitemap product handles first, then verify only the strongest
+    # candidates on their real product pages.
+    sitemap_candidate_limit = int(os.getenv("PERFUME_SITEMAP_CANDIDATE_LIMIT", "120"))
+    sitemap_candidates = _rank_sitemap_product_urls(
+        product_urls,
+        query,
+        limit=sitemap_candidate_limit,
+    )
+    vlog(
+        f"SITEMAP ranked candidates: {len(sitemap_candidates)} "
+        f"(limit={sitemap_candidate_limit})"
+    )
 
-    vlog(f"Sitemap scan complete: scanned={scanned}, matched={len(results)}")
-
-    # Collect candidates from catalog and suggest and search-html (do NOT accept until verified)
-    candidates = []
+    # Collect candidates from sitemap, catalog, suggest and search-html.
+    # Nothing is accepted until the real product page is verified.
+    candidates = list(sitemap_candidates)
 
     # catalog.json
     catalog_endpoints = (
@@ -907,27 +944,44 @@ def search(query):
         else:
             vlog(f"CANDIDATE_REJECTED {url} score_prelim={cand.get('score'):.3f}")
 
-    # Supplemental sitemap scan if few results (unchanged)
+    # Supplemental sitemap verification if few results. Use the next ranked
+    # candidates rather than returning to an arbitrary slice of the sitemap.
     if len(results) < int(os.getenv("PERFUME_SUPPLEMENTAL_RESULTS_THRESHOLD", "4")) and product_urls:
-        extra_scan_limit = int(os.getenv("PERFUME_SUPPLEMENTAL_SCAN_LIMIT", "120"))
-        extra_scanned = 0
-        for u in product_urls:
-            if extra_scanned >= extra_scan_limit or len(results) >= int(os.getenv("PERFUME_MAX_RESULTS", "200")):
+        extra_limit = int(os.getenv("PERFUME_SUPPLEMENTAL_SCAN_LIMIT", "120"))
+        already_considered = {
+            str(c.get("url") or "").lower()
+            for c in candidates
+            if c.get("url")
+        }
+        extra_candidates = [
+            c for c in _rank_sitemap_product_urls(
+                product_urls,
+                query,
+                limit=max(extra_limit * 2, extra_limit),
+            )
+            if str(c.get("url") or "").lower() not in already_considered
+        ][:extra_limit]
+
+        extra_verified = 0
+        for cand in extra_candidates:
+            if len(results) >= int(os.getenv("PERFUME_MAX_RESULTS", "200")):
                 break
-            try:
-                resp = request_with_rate_limit(session, "GET", u, timeout=12)
-            except Exception:
+            u = cand.get("url")
+            if not u:
                 continue
-            if resp.status_code != 200:
-                continue
-            item = _parse_product_page(resp.text, query, u)
-            extra_scanned += 1
+            item = _verify_candidate_by_page(session, cand, query, render_state)
+            extra_verified += 1
             if item:
                 k = (item["name"].lower(), item["price"])
                 if k not in seen:
                     seen.add(k)
                     results.append(item)
                     vlog(f"SITEMAP_EXTRA_ADD {u} -> {item['name']!r}")
+
+        vlog(
+            f"SITEMAP supplemental verification: checked={extra_verified}, "
+            f"matched={len(results)}"
+        )
 
     # Playwright fallback only if enabled and still no results
     if not results and ENABLE_PLAYWRIGHT:
@@ -997,9 +1051,43 @@ def _unit_test_scoring():
             s = _token_weighted_score(query, t)
             print(f"title={t!r}\n  score={s:.3f}")
 
+def _unit_test_sitemap_ranking():
+    tests = [
+        (
+            "Club de Nuit Intense Man",
+            [
+                "https://www.perfumemarket.nl/products/zadig-voltaire-this-is-him",
+                "https://www.perfumemarket.nl/products/armaf-club-de-nuit-intense-man-105ml",
+                "https://www.perfumemarket.nl/products/dolce-gabbana-q-intense",
+            ],
+            "https://www.perfumemarket.nl/products/armaf-club-de-nuit-intense-man-105ml",
+        ),
+        (
+            "Liquid Brun Limited Edition",
+            [
+                "https://www.perfumemarket.nl/products/liquid-brun-70ml",
+                "https://www.perfumemarket.nl/products/liquid-brun-limited-edition-70ml",
+                "https://www.perfumemarket.nl/products/rasasi-hawas-ice",
+            ],
+            "https://www.perfumemarket.nl/products/liquid-brun-limited-edition-70ml",
+        ),
+    ]
+
+    for query, urls, expected_first in tests:
+        ranked = _rank_sitemap_product_urls(urls, query, limit=10)
+        assert ranked, f"No sitemap candidates for {query!r}"
+        assert ranked[0]["url"] == expected_first, (
+            query, ranked
+        )
+        assert ranked[0]["score"] >= 0.9, (
+            query, ranked[0]
+        )
+
+
 if __name__ == "__main__":
     # Run local scoring tests for the requested cases
     _unit_test_scoring()
+    _unit_test_sitemap_ranking()
     # NOTE: To run live searches against the site, call search(query) with the queries.
     # E.g.:
     # res = search("Club de Nuit Intense Man")
