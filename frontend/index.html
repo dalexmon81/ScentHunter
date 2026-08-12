@@ -121,7 +121,7 @@ body{position:relative}
 .offer.best{margin:5px -8px 0;padding:13px 8px;border-radius:13px;background:rgba(73,176,108,.08);border-top:1px solid #31583e}
 .offer-link{display:inline-flex!important;align-items:center;justify-content:center;min-height:38px;padding:9px 14px;border:1px solid #6d5620;border-radius:22px;background:#19150b}
 .offer-meta{font-size:11px;color:#8e9094;margin-top:3px}
-.offer-outstock,.wishlist-outstock{display:block;font-size:24px;color:#55ce78!important;font-weight:950;letter-spacing:.2px;margin-top:4px;text-transform:uppercase}
+.offer-outstock,.wishlist-outstock{font-size:22px;color:#55ce78;font-weight:950;letter-spacing:.2px;margin-top:4px}
 @media(max-width:390px){.result-image{width:62px;height:72px;flex-basis:62px}.bestprice{font-size:21px}}
 
 </style>
@@ -1331,33 +1331,17 @@ function isNonPerfumeProduct(g){
 function isOfferOutOfStock(o){
   if(!o)return false;
   if(o.available===false)return true;
-
   const vals=[
     o.availability,o.stock,o.stock_status,o.status,o.availability_status,
     o.availabilityStatus,o.stockStatus,o.in_stock,o.inStock
   ];
-
-  const isOosValue=(v)=>{
+  return vals.some(v=>{
     if(v===false)return true;
     const s=String(v??"").trim().toLowerCase().replace(/[-\s]+/g,"_");
     return s==="out_of_stock" || s==="outofstock" || s==="not_available" ||
            s==="notavailable" || s==="unavailable" || s==="sold_out" ||
            s==="soldout" || s==="non_disponibile" || s==="non_disponibile_online";
-  };
-
-  if(vals.some(isOosValue))return true;
-
-  // Alcuni scraper, come Orioudh, possono restituire lo stato OOS
-  // direttamente nel campo price senza valorizzare available/availability.
-  // In quel caso il prodotto deve essere trattato esattamente come un
-  // prodotto OOS proveniente da un altro negozio.
-  const priceText=String(o.price??"").trim().toLowerCase();
-  return [
-    "out of stock","sold out","unavailable","not available",
-    "non disponibile","non disponibile online","non disponibile al momento",
-    "rupture de stock","en rupture de stock","épuisé","epuise",
-    "ausverkauft","nicht auf lager","nicht verfügbar"
-  ].some(marker=>priceText.includes(marker));
+  });
 }
 function isWishlistOutOfStock(x){
   return x?.outOfStock===true || isOfferOutOfStock(x);
@@ -1564,7 +1548,11 @@ function openSize(gi,sizeKey,fromFormats=true){
 
       return `<div class="offer ${!isOut&&n===0?"best":""}">
         <div class="offer-line">
-          <div class="offer-store">${!isOut&&n===0?"🥇 ":""}${esc(o.store||"Negozio")}</div>
+          <div>
+            <div class="offer-store">${!isOut&&n===0?"🥇 ":""}${esc(o.store||"Negozio")}</div>
+            ${!isOut&&n===0?'<div class="offer-meta">MIGLIOR PREZZO</div>':""}
+            ${isOut?'<div class="offer-outstock">OUT OF STOCK</div>':""}
+          </div>
           <div style="display:flex;align-items:center;gap:8px">
             ${!isOut?`<span class="offer-price">${esc(shPrice(o))}</span>`:""}
             <button class="offer-heart ${on?"saved":""}"
@@ -1577,8 +1565,6 @@ function openSize(gi,sizeKey,fromFormats=true){
               onclick="event.stopPropagation();chooseOffer(${gi},${JSON.stringify(sizeKey)},${n})">${on?"♥":"♡"}</button>
           </div>
         </div>
-        ${!isOut&&n===0?'<div class="offer-meta">MIGLIOR PREZZO</div>':""}
-        ${isOut?'<div class="offer-outstock">OUT OF STOCK</div>':""}
         ${(!isOut&&o.url)?`<a class="offer-link" href="${esc(o.url)}" target="_blank" rel="noopener noreferrer">Vai al negozio →</a>`:""}
       </div>`;
     }).join("")}
