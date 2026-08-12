@@ -152,67 +152,21 @@ def _extract_product(url, query):
     if any(x in page_near_h1 for x in unavailable_phrases):
         return None
 
-    # Prima prova il prezzo strutturato della pagina prodotto.
-    # Questo evita di prendere un vecchio/prezzo barrato quando la pagina
-    # espone anche il prezzo attuale della confezione.
     price = ""
-
-    for script in soup.find_all("script", type="application/ld+json"):
-        try:
-            payload = script.string or script.get_text(" ", strip=True)
-            if not payload:
-                continue
-            data = __import__("json").loads(payload)
-        except Exception:
-            continue
-
-        stack = data if isinstance(data, list) else [data]
-        while stack:
-            node_data = stack.pop()
-            if isinstance(node_data, list):
-                stack.extend(node_data)
-                continue
-            if not isinstance(node_data, dict):
-                continue
-
-            offers = node_data.get("offers")
-            if isinstance(offers, dict):
-                offers = [offers]
-            if isinstance(offers, list):
-                for offer in offers:
-                    if not isinstance(offer, dict):
-                        continue
-                    value = offer.get("price")
-                    if value is None:
-                        continue
-                    m = re.search(r"\d{1,4}(?:[.,]\d{2})?", str(value))
-                    if m:
-                        price = m.group(0).replace(".", ",") + "€"
-                        break
-            if price:
-                break
-
-            for value in node_data.values():
-                if isinstance(value, (dict, list)):
-                    stack.append(value)
-
-        if price:
-            break
-
-    # Fallback al testo visibile, privilegiando il prezzo seguito da
-    # "inkl. MwSt." e non i prezzi unitari per litro.
+    tax_pos = re.search(r"inkl\.\s*MwSt\.", product_text, re.I)
+    if tax_pos:
+        before_tax = product_text[:tax_pos.start()]
+        matches = list(re.finditer(r"(\d{1,4}[.,]\d{2})\s*€", before_tax, re.I))
+        if matches:
+            price = matches[-1].group(1).replace(".", ",") + "€"
     if not price:
-        patterns = [
-            r"(\d{1,4}[.,]\d{2})\s*€\s*inkl\.\s*MwSt\.",
-            r"Versandbereit\s*(\d{1,4}[.,]\d{2})\s*€",
-            r"(\d{1,4}[.,]\d{2})\s*€",
-        ]
-
-        for pattern in patterns:
-            m = re.search(pattern, product_text, re.I)
-            if m:
-                price = m.group(1).replace(".", ",") + "€"
-                break
+        matches = list(re.finditer(r"Versandbereit\s*(\d{1,4}[.,]\d{2})\s*€", product_text, re.I))
+        if matches:
+            price = matches[-1].group(1).replace(".", ",") + "€"
+    if not price:
+        matches = list(re.finditer(r"(\d{1,4}[.,]\d{2})\s*€", product_text, re.I))
+        if matches:
+            price = matches[-1].group(1).replace(".", ",") + "€"
 
     if not price:
         return None
