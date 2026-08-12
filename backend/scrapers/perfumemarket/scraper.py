@@ -1,3 +1,14 @@
+
+# Complete PerfumeMarket scraper with sitemap-first discovery and token-weighted scoring
+# - Uses token-weighted scoring to shortlist candidates (no permissive fuzzy match).
+# - For every candidate, verifies identity by fetching the product page and accepting
+#   the item only if the product page title scores >= MATCH_THRESHOLD and a price is present.
+# - No brand/product-specific exceptions. No new sources/fallbacks beyond existing ones.
+# - Configurable via env:
+#     PERFUME_RATE_MIN_INTERVAL (default 2.5)
+#     PERFUME_MATCH_THRESHOLD (default 0.6)
+#     PERFUME_CANDIDATE_MIN_SCORE (default 0.35)
+#     PERFUME_DEBUG_DUMP_DIR, PERFUME_VERBOSE, PERFUME_ENABLE_PLAYWRIGHT
 import os
 import re
 import time
@@ -32,8 +43,8 @@ MIN_INTERVAL = float(os.getenv("PERFUME_RATE_MIN_INTERVAL", "2.5"))
 MAX_RETRIES_429 = int(os.getenv("PERFUME_MAX_RETRIES_429", "4"))
 ENABLE_PLAYWRIGHT = os.getenv("PERFUME_ENABLE_PLAYWRIGHT", "0") in ("1", "true", "True", "yes")
 VERBOSE = os.getenv("PERFUME_VERBOSE", "1") in ("1", "true", "True", "yes")
-# Minimum fraction of query tokens that must match title to accept (user requested ~60%)
 MATCH_THRESHOLD = float(os.getenv("PERFUME_MATCH_THRESHOLD", "0.6"))
+CANDIDATE_MIN_SCORE = float(os.getenv("PERFUME_CANDIDATE_MIN_SCORE", "0.35"))
 
 # HTTP defaults
 HEADERS = {
@@ -44,10 +55,9 @@ HEADERS = {
     "Accept-Language": "en-US,en;q=0.8"
 }
 
-# Words to ignore in matching
+# Words to ignore in matching (do NOT include 'man','woman','intense' etc. as per request)
 IGNORED_MATCH_WORDS = {
-    "eau", "de", "parfum", "perfume", "edp", "edt", "ml", "pour", "for", "the", "and",
-    "man", "men", "woman", "women", "unisex", "spray", "vaporisateur", "intense"
+    "eau", "de", "parfum", "perfume", "edp", "edt", "ml", "pour", "for", "the", "and"
 }
 
 # Price regex
@@ -77,7 +87,7 @@ def _debug_dump(name, text):
     except Exception as e:
         vlog(f"DEBUG DUMP ERROR: {e}")
 
-# Tokenization & matching
+# Tokenization & scoring (token-weighted)
 def _tokens(text):
     if not text:
         return []
@@ -87,7 +97,7 @@ def _tokens(text):
     tokens = re.findall(r"[A-Za-z0-9]+", without_accents, flags=re.UNICODE)
     return [t.lower() for t in tokens if len(t) > 1]
 
-def _query_token_set(query):
+def _query_tokens_filtered(query):
     tokens = [t for t in _tokens(query) if t not in IGNORED_MATCH_WORDS]
     if not tokens:
         tokens = _tokens(query)
@@ -98,54 +108,57 @@ def _compact_normalize(s):
     t = "".join(c for c in t if not unicodedata.combining(c))
     return re.sub(r"[^0-9a-z]+", "", t, flags=re.UNICODE)
 
-def _token_fuzzy_match(q, t):
+def _token_best_match_score(q, title_tokens):
+    """
+    For a single query token q, return 1.0 if exact match, else fuzzy ratio clipped,
+    else 0.0.
+    """
+    if not title_tokens:
+        return 0.0
     # exact
-    if q == t:
-        return True
+    if q in title_tokens:
+        return 1.0
     # plural/singular heuristics
-    if q.endswith("s") and q[:-1] == t:
-        return True
-    if (q + "s") == t:
-        return True
-    # short-circuit small tokens
-    if len(q) <= 2 or len(t) <= 2:
-        return False
-    # difflib sequence ratio
-    return difflib.SequenceMatcher(None, q, t).ratio() >= 0.80
+    if q.endswith("s") and q[:-1] in title_tokens:
+        return 1.0
+    if (q + "s") in title_tokens:
+        return 1.0
+    # fuzzy similarity to best title token
+    best = 0.0
+    for t in title_tokens:
+        if len(q) <= 2 or len(t) <= 2:
+            continue
+        r = difflib.SequenceMatcher(None, q, t).ratio()
+        if r > best:
+            best = r
+    # clip small matches
+    return best if best >= 0.6 else 0.0
 
-def _tokens_match_percentage(title_text, query, threshold=MATCH_THRESHOLD):
+def _token_weighted_score(query, text):
     """
-    Return True if at least `threshold` fraction of query tokens are matched
-    against title_text tokens (using fuzzy token matching). Also accept
-    compact substring fallback.
+    Compute a weighted score in [0,1] indicating how well 'text' matches the 'query'.
+    Weight of a query token is proportional to its length (longer tokens are more distinctive).
+    The score sums matched weights; normalized by total weight.
     """
-    qtokens = _query_token_set(query)
+    qtokens = _query_tokens_filtered(query)
     if not qtokens:
-        return False
-    ttokens = set(_tokens(title_text))
-    matched = 0
-    for q in qtokens:
-        found = False
-        # direct membership
-        if q in ttokens:
-            found = True
-        else:
-            # fuzzy match with each token in title
-            for t in ttokens:
-                if _token_fuzzy_match(q, t):
-                    found = True
-                    break
-        if found:
-            matched += 1
-    pct = matched / max(1, len(qtokens))
-    if pct >= threshold:
-        return True
-    # fallback: compact normalized substring match
+        return 0.0
+    ttokens = set(_tokens(text))
+    # weights proportional to token length
+    lengths = [len(q) for q in qtokens]
+    total = sum(lengths)
+    if total == 0:
+        return 0.0
+    score = 0.0
+    for q, l in zip(qtokens, lengths):
+        match_value = _token_best_match_score(q, ttokens)  # in [0,1]
+        score += (l / total) * match_value
+    # fallback: if compact normalized query is substring of compact text, boost score to 1.0
     compact_q = _compact_normalize(" ".join(qtokens))
-    compact_t = _compact_normalize(title_text)
+    compact_t = _compact_normalize(text)
     if compact_q and compact_q in compact_t:
-        return True
-    return False
+        return 1.0
+    return float(score)
 
 # Rate limiter (file-lock fallback)
 class DomainRateLimiter:
@@ -332,9 +345,7 @@ def _extract_price_from_text(text):
         val = m.group(1)
         # normalize thousand separators and decimal
         if "." in val and "," in val:
-            # likely 1.234,56 -> remove dots then keep comma
             val = val.replace(".", "")
-        # ensure comma decimal separator in output
         val = val.replace(".", ",")
         return val + " €" if not val.endswith("€") else val
     return None
@@ -362,15 +373,10 @@ def _extract_price_from_node(node):
                 return price
     return _extract_price_from_text(node.get_text(" ", strip=True))
 
-# HTML parsing helpers
-def _parse_search_html(html, query, session=None):
-    """
-    Parse search HTML and return list of items.
-    If a candidate card lacks a visible price, and a session is provided,
-    fetch the product page and try parsing the page for price and title match.
-    """
+# HTML parsing helpers (return preliminary candidates instead of final accept)
+def _parse_search_html(html, query):
     soup = BeautifulSoup(html or "", "html.parser")
-    results = []
+    candidates = []
     seen = set()
     for a in soup.find_all("a", href=True):
         href = a.get("href") or ""
@@ -390,7 +396,7 @@ def _parse_search_html(html, query, session=None):
             card = getattr(card, "parent", None)
         if card is None:
             continue
-        # extract name from candidate card
+        # extract card name
         name = ""
         for sel in ("h1","h2",".product-title",".product__title",".product-name"):
             try:
@@ -402,62 +408,42 @@ def _parse_search_html(html, query, session=None):
                 break
         if not name:
             name = a.get_text(" ", strip=True)
-        # match using percent-based match against title+card text
         combined_text = f"{name} {card.get_text(' ', strip=True)} {product_url}"
-        if not _tokens_match_percentage(combined_text, query):
-            vlog(f"SKIP_HTML_MISMATCH url={product_url} name={name[:60]!r}")
+        score = _token_weighted_score(query, combined_text)
+        if score < CANDIDATE_MIN_SCORE:
+            vlog(f"SKIP_HTML_LOW_SCORE url={product_url} name={name!r} score={score:.3f}")
             continue
-        # Try to get price from card first
+        # price from card (may be None)
         price = _extract_price_from_node(card) or _extract_price_from_text(card.get_text(" ", strip=True))
-        if not price:
-            # If we have a session, fetch the product page and try parsing it
-            if session is not None:
-                try:
-                    resp = request_with_rate_limit(session, "GET", product_url, timeout=12)
-                    if resp.status_code == 200 and resp.text:
-                        item = _parse_product_page(resp.text, query, product_url)
-                        if item:
-                            # item already contains name/price/url
-                            seen.add(product_url)
-                            results.append(item)
-                            vlog(f"HTML_FALLBACK_PAGE_MATCH url={product_url} name={item.get('name')!r} price={item.get('price')}")
-                            continue
-                        else:
-                            vlog(f"HTML_FALLBACK_PAGE_NO_MATCH url={product_url}")
-                    else:
-                        vlog(f"HTML_FALLBACK_PAGE_GET_FAILED url={product_url} status={getattr(resp,'status_code',None)}")
-                except Exception as e:
-                    vlog(f"HTML_FALLBACK_PAGE_ERROR url={product_url} err={e}")
-            # no page fallback or page didn't help -> skip
-            vlog(f"SKIP_HTML_NOPRICE url={product_url} name={name!r}")
-            continue
-        # If we have price in card, accept it
+        candidates.append({"source":"search_html","url":product_url,"name":name,"score":score,"price":price})
         seen.add(product_url)
-        results.append({"store":"PerfumeMarket","name":name,"price":price,"url":product_url})
-        vlog(f"HTML_MATCH url={product_url} name={name!r} price={price}")
-    return results
+        vlog(f"HTML_CANDIDATE url={product_url} name={name!r} score={score:.3f} price_in_card={'yes' if price else 'no'}")
+    return candidates
 
 def _parse_search_suggest(payload, query):
-    results = []
-    seen = set()
+    candidates = []
     if not isinstance(payload, dict):
-        return results
+        return candidates
     resources = payload.get("resources", {}) or {}
     nested = resources.get("results", {}) or {}
     products = nested.get("products", []) or []
+    seen = set()
     for p in products:
         if not isinstance(p, dict):
             continue
         name = str(p.get("title") or p.get("name") or "").strip()
         url = str(p.get("url") or "").strip()
-        vlog(f"CANDIDATE_SUGGEST name={name!r} url={url}")
-        if not name or not url or not _tokens_match_percentage(name, query):
-            vlog(f"SKIP_SUGGEST name/url/mismatch {name!r} {url}")
-            continue
         product_url = urljoin(BASE_URL, url).split("?")[0].rstrip("/")
         if "/products/" not in product_url.lower():
-            vlog(f"SKIP_SUGGEST_NOT_PRODUCT {product_url}")
             continue
+        if product_url in seen:
+            continue
+        # compute score based on name/url
+        score = _token_weighted_score(query, name + " " + product_url)
+        if score < CANDIDATE_MIN_SCORE:
+            vlog(f"SKIP_SUGGEST_LOW_SCORE url={product_url} name={name!r} score={score:.3f}")
+            continue
+        # try to get price from payload variants
         price = None
         variants = p.get("variants") or []
         for v in variants:
@@ -473,20 +459,15 @@ def _parse_search_suggest(payload, query):
             price = _extract_price_from_text(raw)
             if not price and re.fullmatch(r"\d{1,5}(?:[.,]\d{2})?", raw):
                 price = raw.replace(".", ",") + " €"
-        if not price:
-            vlog(f"SKIP_SUGGEST_NOPRICE url={product_url} name={name!r}")
-            continue
-        if product_url in seen:
-            continue
+        candidates.append({"source":"suggest","url":product_url,"name":name,"score":score,"price":price})
         seen.add(product_url)
-        results.append({"store":"PerfumeMarket","name":name,"price":price,"url":product_url})
-        vlog(f"SUGGEST_MATCH url={product_url} name={name!r} price={price}")
-    return results
+        vlog(f"SUGGEST_CANDIDATE url={product_url} name={name!r} score={score:.3f} price_present={'yes' if price else 'no'}")
+    return candidates
 
 def _parse_catalog_json(payload, query):
-    results = []
+    candidates = []
     if not isinstance(payload, dict):
-        return results
+        return candidates
     products = payload.get("products") or []
     seen = set()
     for p in products:
@@ -496,10 +477,12 @@ def _parse_catalog_json(payload, query):
         handle = str(p.get("handle") or "").strip()
         if not title:
             continue
-        # use percent matching on title+handle
-        if not _tokens_match_percentage(title + " " + handle.replace("-", " "), query):
-            vlog(f"SKIP_CATALOG_MISMATCH title={title[:60]!r} handle={handle!r}")
+        combined = title + " " + handle.replace("-", " ")
+        score = _token_weighted_score(query, combined)
+        if score < CANDIDATE_MIN_SCORE:
+            vlog(f"SKIP_CATALOG_LOW_SCORE title={title[:60]!r} handle={handle!r} score={score:.3f}")
             continue
+        # try to get price from variants
         price = None
         variants = p.get("variants") or []
         for v in variants:
@@ -515,20 +498,21 @@ def _parse_catalog_json(payload, query):
             price = _extract_price_from_text(raw)
             if not price and re.fullmatch(r"\d{1,5}(?:[.,]\d{2})?", raw):
                 price = raw.replace(".", ",") + " €"
-        if not price:
-            vlog(f"SKIP_CATALOG_NOPRICE title={title!r}")
-            continue
         if not handle:
             continue
         url = urljoin(BASE_URL, "/products/" + handle).rstrip("/")
-        if url in seen:
-            continue
+        candidates.append({"source":"catalog","url":url,"name":title,"score":score,"price":price})
         seen.add(url)
-        results.append({"store":"PerfumeMarket","name":title,"price":price,"url":url})
-        vlog(f"CATALOG_MATCH url={url} title={title!r} price={price}")
-    return results
+        vlog(f"CATALOG_CANDIDATE url={url} title={title!r} score={score:.3f} price_present={'yes' if price else 'no'}")
+    return candidates
 
 def _parse_product_page(html, query, product_url):
+    """
+    Parse the product page and require verification:
+    - Extract page title
+    - Extract price (JSON-LD, itemprop, elements)
+    - Compute token-weighted score on title and accept only if >= MATCH_THRESHOLD
+    """
     soup = BeautifulSoup(html or "", "html.parser")
     title = ""
     for sel in ("h1", "meta[property='og:title']", "title"):
@@ -575,14 +559,15 @@ def _parse_product_page(html, query, product_url):
     if not price:
         vlog(f"PAGE_NO_PRICE url={product_url} title={title!r}")
         return None
-    # Now perform percent-based matching against the real page title (not slug)
-    if not _tokens_match_percentage(title + " " + product_url, query):
-        vlog(f"PAGE_MISMATCH url={product_url} title={title!r}")
+    # verify title via token-weighted scoring
+    page_score = _token_weighted_score(query, title + " " + product_url)
+    if page_score < MATCH_THRESHOLD:
+        vlog(f"PAGE_MISMATCH url={product_url} title={title!r} page_score={page_score:.3f}")
         return None
-    vlog(f"PAGE_MATCH url={product_url} title={title!r} price={price}")
+    vlog(f"PAGE_MATCH url={product_url} title={title!r} price={price} page_score={page_score:.3f}")
     return {"store":"PerfumeMarket","name":title,"price":price,"url":product_url}
 
-# Playwright fallback
+# Playwright fallback (unchanged)
 def render_search_with_playwright(query):
     if not ENABLE_PLAYWRIGHT:
         vlog("Playwright disabled")
@@ -609,7 +594,29 @@ def render_search_with_playwright(query):
         log(f"Playwright error: {e}")
         return None
 
-# Main search: sitemap-first discovery; verify matches on product pages (title/data)
+# Verify candidate by fetching product page and parsing it (strong identity verification)
+def _verify_candidate_by_page(session, candidate, query):
+    """
+    candidate: dict with {url, name, score, price, source}
+    returns parsed item dict or None
+    """
+    url = candidate.get("url")
+    try:
+        resp = request_with_rate_limit(session, "GET", url, timeout=12)
+    except Exception as e:
+        vlog(f"VERIFY_GET_ERROR url={url} err={e}")
+        return None
+    if resp.status_code != 200 or not resp.text:
+        vlog(f"VERIFY_GET_FAILED url={url} status={getattr(resp,'status_code',None)}")
+        return None
+    item = _parse_product_page(resp.text, query, url)
+    if item:
+        vlog(f"VERIFY_SUCCESS url={url} name={item.get('name')!r}")
+    else:
+        vlog(f"VERIFY_FAILED url={url}")
+    return item
+
+# Main search flow with candidate verification
 def search(query):
     query = str(query or "").strip()
     if not query:
@@ -627,7 +634,7 @@ def search(query):
     except Exception as e:
         vlog(f"Home prime failed: {e}")
 
-    # 1) sitemap-first: get all product URLs and validate on product pages
+    # 1) sitemap-first: product pages (these are already verified by _parse_product_page)
     sitemap_urls = []
     try:
         sitemap_list = _get_sitemap_urls(session)
@@ -640,10 +647,7 @@ def search(query):
     product_urls = [u for u in sitemap_urls if "/products/" in u.lower()]
     vlog(f"SITEMAP product URLs: {len(product_urls)}")
 
-    # Scan product pages from sitemap and validate title/data against query using percent-match
-    # This ensures matching is done on page content, not only slug.
-    # We limit the number of pages fetched per run to avoid excessive load; tune as needed.
-    max_scan = int(os.getenv("PERFUME_SITEMAP_SCAN_LIMIT", "500"))  # configurable
+    max_scan = int(os.getenv("PERFUME_SITEMAP_SCAN_LIMIT", "500"))
     scanned = 0
     for url in product_urls:
         if scanned >= max_scan or len(results) >= int(os.getenv("PERFUME_MAX_RESULTS", "200")):
@@ -663,67 +667,55 @@ def search(query):
                 seen.add(key)
                 results.append(item)
                 vlog(f"SITEMAP_ADD {url} -> {item['name']!r}")
-        # small polite pause
         time.sleep(0.05 + random.random() * 0.05)
 
     vlog(f"Sitemap scan complete: scanned={scanned}, matched={len(results)}")
 
-    # 2) catalog.json (public Shopify catalog)
-    if len(results) < int(os.getenv("PERFUME_MIN_RESULTS_AFTER_SITEMAP", "8")):
-        catalog_endpoints = (
-            BASE_URL + "/products.json?limit=250",
-            BASE_URL + "/collections/all-perfumes/products.json?limit=250",
-        )
-        for endpoint in catalog_endpoints:
-            for page in range(1, 8):
-                url = endpoint + ("&page=" + str(page) if "?" in endpoint else "?page=" + str(page))
-                try:
-                    resp = request_with_rate_limit(session, "GET", url, timeout=12)
-                except Exception as e:
-                    vlog(f"CATALOG GET FAILED {e} -> {url}")
-                    break
-                if resp.status_code != 200:
-                    break
-                try:
-                    payload = resp.json()
-                except Exception:
-                    _debug_dump(f"catalog_bad_json_{page}", resp.text[:10000])
-                    break
-                items = _parse_catalog_json(payload, query)
-                for it in items:
-                    k = (it["name"].lower(), it["price"])
-                    if k not in seen:
-                        seen.add(k)
-                        results.append(it)
-                        vlog(f"CATALOG_ADD {it['url']} -> {it['name']!r}")
-                if len(results) >= 40:
-                    break
-                products = payload.get("products") or []
-                if len(products) < 250:
-                    break
-                time.sleep(0.08)
-            if len(results) >= 40:
-                break
+    # Collect candidates from catalog and suggest and search-html (do NOT accept until verified)
+    candidates = []
 
-    # 3) suggest.json (single call)
+    # catalog.json
+    catalog_endpoints = (
+        BASE_URL + "/products.json?limit=250",
+        BASE_URL + "/collections/all-perfumes/products.json?limit=250",
+    )
+    for endpoint in catalog_endpoints:
+        for page in range(1, 8):
+            url = endpoint + ("&page=" + str(page) if "?" in endpoint else "?page=" + str(page))
+            try:
+                resp = request_with_rate_limit(session, "GET", url, timeout=12)
+            except Exception as e:
+                vlog(f"CATALOG GET FAILED {e} -> {url}")
+                break
+            if resp.status_code != 200:
+                break
+            try:
+                payload = resp.json()
+            except Exception:
+                _debug_dump(f"catalog_bad_json_{page}", resp.text[:10000])
+                break
+            cats = _parse_catalog_json(payload, query)
+            candidates.extend(cats)
+            products = payload.get("products") or []
+            if len(products) < 250:
+                break
+            time.sleep(0.08)
+        # we do not break early here; collected candidates will be verified
+
+    # suggest.json (single call)
     try:
         suggest_url = BASE_URL + "/search/suggest.json?q=" + quote(query) + "&resources[type]=product&resources[limit]=10"
         r = request_with_rate_limit(session, "GET", suggest_url, timeout=10)
         if r.ok:
             try:
-                items = _parse_search_suggest(r.json(), query)
-                for it in items:
-                    k = (it["name"].lower(), it["price"])
-                    if k not in seen:
-                        seen.add(k)
-                        results.append(it)
-                        vlog(f"SUGGEST_ADD {it['url']} -> {it['name']!r}")
+                cats = _parse_search_suggest(r.json(), query)
+                candidates.extend(cats)
             except Exception:
                 _debug_dump("suggest_parse_error", r.text[:8000])
     except Exception as e:
         vlog(f"SUGGEST ERROR: {e}")
 
-    # 4) search HTML (two variants) - pass session so fallback page fetch is possible
+    # search HTML (two variants) - collect candidates, not final accept
     for url in (BASE_URL + "/search?q=" + quote(query) + "&type=product", BASE_URL + "/search?q=" + quote(query)):
         try:
             r = request_with_rate_limit(session, "GET", url, timeout=12)
@@ -731,23 +723,41 @@ def search(query):
         except Exception as e:
             vlog(f"SEARCH HTML ERROR: {e}")
             continue
-        items = _parse_search_html(r.text, query, session=session)
-        for it in items:
-            k = (it["name"].lower(), it["price"])
-            if k not in seen:
-                seen.add(k)
-                results.append(it)
-                vlog(f"SEARCHHTML_ADD {it['url']} -> {it['name']!r}")
+        cats = _parse_search_html(r.text, query)
+        candidates.extend(cats)
 
-    # 5) supplemental sitemap scan (if very few results)
+    vlog(f"Collected candidates from sources: {len(candidates)}")
+
+    # Verify candidates by fetching product page (strong identity verification)
+    # To avoid excessive load, allow limiting number of verifications (configurable)
+    verify_limit = int(os.getenv("PERFUME_VERIFY_CANDIDATE_LIMIT", "120"))
+    verified = 0
+    for cand in candidates:
+        if verified >= verify_limit or len(results) >= int(os.getenv("PERFUME_MAX_RESULTS", "200")):
+            break
+        # If candidate already present in results (by url) skip
+        url = cand.get("url")
+        if any(url == it.get("url") for it in results):
+            continue
+        # If candidate already has price in payload/card, still verify by page as requested
+        item = _verify_candidate_by_page(session, cand, query)
+        verified += 1
+        if item:
+            key = (item["name"].lower(), item["price"])
+            if key not in seen:
+                seen.add(key)
+                results.append(item)
+                vlog(f"CANDIDATE_VERIFIED_ADD {url} -> {item['name']!r}")
+        else:
+            vlog(f"CANDIDATE_REJECTED {url} score_prelim={cand.get('score'):.3f}")
+
+    # Supplemental sitemap scan if few results (unchanged)
     if len(results) < int(os.getenv("PERFUME_SUPPLEMENTAL_RESULTS_THRESHOLD", "4")) and product_urls:
         extra_scan_limit = int(os.getenv("PERFUME_SUPPLEMENTAL_SCAN_LIMIT", "120"))
         extra_scanned = 0
         for u in product_urls:
             if extra_scanned >= extra_scan_limit or len(results) >= int(os.getenv("PERFUME_MAX_RESULTS", "200")):
                 break
-            if any(u.lower().endswith(k) for k in ["/", ""]):
-                pass
             try:
                 resp = request_with_rate_limit(session, "GET", u, timeout=12)
             except Exception:
@@ -763,17 +773,21 @@ def search(query):
                     results.append(item)
                     vlog(f"SITEMAP_EXTRA_ADD {u} -> {item['name']!r}")
 
-    # 6) Playwright fallback if still no results
+    # Playwright fallback only if enabled and still no results
     if not results and ENABLE_PLAYWRIGHT:
         html = render_search_with_playwright(query)
         if html:
-            items = _parse_search_html(html, query, session=session)
-            for it in items:
-                k = (it["name"].lower(), it["price"])
-                if k not in seen:
-                    seen.add(k)
-                    results.append(it)
-                    vlog(f"PLAYWRIGHT_ADD {it['url']} -> {it['name']!r}")
+            items = []
+            # parse rendered html for candidates and verify
+            cats = _parse_search_html(html, query)
+            for c in cats:
+                item = _verify_candidate_by_page(session, c, query)
+                if item:
+                    k = (item["name"].lower(), item["price"])
+                    if k not in seen:
+                        seen.add(k)
+                        results.append(item)
+                        vlog(f"PLAYWRIGHT_VERIFIED_ADD {c['url']} -> {item['name']!r}")
         else:
             vlog("Playwright rendered no HTML")
 
@@ -787,19 +801,50 @@ def search(query):
         pass
     return results
 
-# Quick test harness: runs against requested problematic queries (will actually request live site if run)
+# Local unit tests for scoring logic and sample titles (offline).
+# These tests are NOT live network tests; they help verify that the token-weighted scoring
+# behaves sensibly for the five requested cases.
+def _unit_test_scoring():
+    tests = {
+        "Club de Nuit Intense Man": [
+            "Armaf Club De Nuit Intense Man 105ml EDT - Men",
+            "Armaf Club De Nuit Lionheart for Women 100ml EDP",
+            "Armaf Club De Nuit Intense 105ml",
+            "Club de Nuit Intense - 105ml edt"
+        ],
+        "Dior Sauvage": [
+            "Dior Sauvage Eau de Toilette 100ml",
+            "Sauvage Parfum 60ml Dior",
+            "Dior Sauvage 200ml",
+            "Sauvage - 100 ml EDT"
+        ],
+        "Invictus": [
+            "Paco Rabanne Invictus 100ml EDT",
+            "Invictus Victory 100ml",
+            "Paco Rabanne Invictus Legend 100ml"
+        ],
+        "L'Aventure Intense": [
+            "Al Haramain L'Aventure Intense 100ml EDP",
+            "L'Aventure Intense 100ml",
+            "L'Aventure 100ml"
+        ],
+        "Liquid Brun Limited Edition": [
+            "Liquid Brun Limited Edition 70ml",
+            "Liquid Brun 70ml",
+            "Liquid Brun - Limited Edition 2024"
+        ],
+    }
+
+    for query, titles in tests.items():
+        print(f"\n--- TEST QUERY: {query} ---")
+        for t in titles:
+            s = _token_weighted_score(query, t)
+            print(f"title={t!r}\n  score={s:.3f}")
+
 if __name__ == "__main__":
-    tests = [
-        "1 club de nuit intense man",
-        "Club de Nuit Intense Man",
-        "Dior Sauvage",
-        "Invictus",
-        "L'Aventure Intense",
-        "Liquid Brun Limited Edition",
-    ]
-    for q in tests:
-        log(f"Searching for: {q}")
-        res = search(q)
-        log(f"Results for '{q}': {len(res)} items")
-        for r in res[:20]:
-            log(f" - {r.get('name')} @ {r.get('price')} -> {r.get('url')}")
+    # Run local scoring tests for the requested cases
+    _unit_test_scoring()
+    # NOTE: To run live searches against the site, call search(query) with the queries.
+    # E.g.:
+    # res = search("Club de Nuit Intense Man")
+    # print(res)
