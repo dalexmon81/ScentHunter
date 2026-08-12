@@ -136,6 +136,12 @@ def norm(value: Any) -> str:
         value,
     )
 
+    # Uniforma le diverse grafie della numerazione Chanel e simili:
+    # "N 19", "N° 19", "No. 19", "No 19" -> "no 19".
+    # In questo modo la stessa famiglia non viene spezzata in gruppi
+    # diversi solo per la nomenclatura usata dallo store.
+    value = re.sub(r"\b(?:no|n)\s*(?=\d)", "no ", value)
+
     return re.sub(
         r"\s+",
         " ",
@@ -494,7 +500,14 @@ def canonical_product_name(product: Dict[str, Any], family_query: str = "") -> s
             continue
         collapsed.append(word)
     name = " ".join(collapsed)
-    return re.sub(r"(?<=\d)(?=[A-Za-z])|(?<=[A-Za-z])(?=\d)", " ", name).strip()
+    name = re.sub(r"(?<=\d)(?=[A-Za-z])|(?<=[A-Za-z])(?=\d)", " ", name).strip()
+
+    # Canonicalizza la nomenclatura numerica Chanel anche nel NOME VISIBILE,
+    # non solo nella chiave di confronto. In questo modo "N 19" e "No. 19"
+    # non vengono mostrati come due famiglie/categorie differenti.
+    name = re.sub(r"\b(?:no\.?|n)\s*(\d+)\b", r"No. \1", name, flags=re.I)
+
+    return name
 
 
 def normalize_product(product: Dict[str, Any], family_query: str = "") -> Dict[str, Any]:
@@ -609,23 +622,6 @@ def build_search_attempts(
             attempts.append(value)
 
     add(raw)
-
-    # QUERY SPECIFICA: se l'utente ha indicato una variante precisa
-    # (es. "9 PM Pour Femme"), NON lanciamo l'espansione della famiglia.
-    # Questo evita decine di richieste inutili agli store e soprattutto evita
-    # i timeout osservati su Render. La query precisa viene cercata direttamente
-    # e in forma compatta (9pm invece di 9 pm).
-    if _query_has_variant_marker(raw):
-        add(normalized)
-        compact_specific = re.sub(
-            r"(?<=\d)\s+(?=[a-z])|(?<=[a-z])\s+(?=\d)",
-            "",
-            normalized,
-        )
-        if compact_specific != normalized:
-            add(compact_specific)
-        return attempts[:5]
-
     # Un solo passaggio aggiuntivo sul brand scoperto permette di recuperare
     # varianti che il motore interno del negozio non mostra con la query esatta.
     for brand in discovered_brands or []:
@@ -908,9 +904,10 @@ def search_perfume(q: str):
     catalog_hints: List[str] = _catalog_brand_candidates(query)
     family_candidates: List[str] = _catalog_family_candidates(query)
 
-    # NON 8 insieme: su Render Free abbiamo osservato exit 137.
-    # Due worker riducono nettamente RAM e connessioni simultanee.
-    executor = ThreadPoolExecutor(max_workers=2)
+    # Tutti gli store vengono avviati in parallelo: un negozio lento non deve
+    # tenere in coda gli altri. Il limite globale evita che una singola ricerca
+    # resti bloccata indefinitamente.
+    executor = ThreadPoolExecutor(max_workers=len(STORES))
     futures = {
         executor.submit(
             run_store,
@@ -923,7 +920,7 @@ def search_perfume(q: str):
     }
 
     try:
-        for future in as_completed(futures, timeout=28):
+        for future in as_completed(futures, timeout=45):
             store = futures[future]
             try:
                 all_results.extend(future.result())
@@ -931,6 +928,7 @@ def search_perfume(q: str):
                 errors[store] = f"{type(error).__name__}: {error}"
                 traceback.print_exc()
     except TimeoutError:
+        # Restituisce comunque tutti i risultati già completati.
         pass
     finally:
         for future, store in futures.items():
