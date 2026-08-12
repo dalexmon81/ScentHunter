@@ -152,63 +152,33 @@ def _extract_product(url, query):
     if any(x in page_near_h1 for x in unavailable_phrases):
         return None
 
-    def _is_old_price(node):
-        for _ in range(8):
+    price_re = re.compile(r"(\d{1,4}[.,]\d{2})\s*€")
+
+    def _ignore_price(node):
+        for _ in range(2):
             if not node:
                 break
-            attrs = (" ".join(node.get("class", [])) + " " + str(node.get("id", ""))).lower() if getattr(node, "attrs", None) is not None else ""
             if node.name in {"del", "s", "strike"}:
                 return True
-            if any(x in attrs for x in (
-                "old-price", "oldprice", "previous-price", "reference-price",
-                "regular-price", "uvp", "durchgestrichen", "was-price", "compare-price"
-            )):
+            attrs = (" ".join(node.get("class", [])) + " " + str(node.get("id", ""))).lower()
+            if any(x in attrs for x in ("old-price", "oldprice", "previous-price", "reference-price", "regular-price", "uvp", "was-price", "compare-price", "code-price", "coupon-price", "rabattpreis")):
+                return True
+            if "preis inkl. code" in node.get_text(" ", strip=True).lower() or "preis inkl code" in node.get_text(" ", strip=True).lower():
                 return True
             node = node.parent
         return False
 
-    price_matches = []
-    price_re = re.compile(r"(\d{1,4}[.,]\d{2})\s*€")
-
+    prices = []
     for node in soup.find_all(string=price_re):
-        if _is_old_price(node.parent):
+        if _ignore_price(node.parent):
             continue
+        m = price_re.search(str(node))
+        if m and not str(node)[m.end():].lstrip().startswith("/"):
+            prices.append(m.group(1).replace(".", ",") + "€")
 
-        raw = str(node)
-        m = price_re.search(raw)
-        if not m:
-            continue
-
-        # Ignore unit prices such as 809,80 €/l.
-        after = raw[m.end():].lstrip()
-        if after.startswith("/"):
-            continue
-
-        score = 0
-        context = ""
-        parent = node.parent
-        for _ in range(5):
-            if not parent:
-                break
-            context += " " + parent.get_text(" ", strip=True)
-            parent = parent.parent
-
-        context_low = context.lower()
-        if "preis inkl. code" in context_low or "inkl. code" in context_low:
-            score += 100
-        if "inkl. mwst." in context_low:
-            score += 50
-        if "versandbereit" in context_low:
-            score += 20
-
-        price_matches.append((score, m.group(1).replace(".", ",") + "€"))
-
-    if price_matches:
-        # Highest score wins; for equal scores the later price in the DOM wins.
-        price = sorted(enumerate(price_matches), key=lambda x: (x[1][0], x[0]))[-1][1][1]
+    if prices:
+        price = prices[-1]
     else:
-        # Last fallback: use the last price tied to the product text, never the
-        # first one. This avoids the common crossed-out/reference-price case.
         matches = list(re.finditer(r"(\d{1,4}[.,]\d{2})\s*€", product_text, re.I))
         price = matches[-1].group(1).replace(".", ",") + "€" if matches else ""
 
