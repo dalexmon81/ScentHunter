@@ -1,5 +1,7 @@
 import json
 import re
+import unicodedata
+import time
 import requests
 from bs4 import BeautifulSoup
 from urllib.parse import quote, quote_plus, urljoin
@@ -16,12 +18,24 @@ def _extract_price(text):
     return value.replace(".", ",") + " €"
 
 
+def _normalize_text(text):
+    text = unicodedata.normalize("NFKD", str(text or "").lower())
+    return "".join(c for c in text if not unicodedata.combining(c))
+
+
 def _tokens(text):
-    return [t.lower() for t in re.findall(r"[a-z0-9]+", text or "", re.I) if t.strip()]
+    normalized = _normalize_text(text)
+    tokens = re.findall(r"[0-9\w]+", normalized, flags=re.UNICODE)
+    return [t.lower().replace("_", "") for t in tokens if t.strip() and set(t) != {"_"}]
+
+
+def _normalize_for_match(text):
+    normalized = _normalize_text(text)
+    return re.sub(r"[^0-9a-z]+", "", normalized, flags=re.UNICODE)
 
 
 def _query_matches(text, query):
-    """Generic product matching tolerant of spaces, hyphens and apostrophes."""
+    """Generic Unicode-safe product matching tolerant of spaces, hyphens and apostrophes."""
     query_tokens = _tokens(query)
     text_tokens = set(_tokens(text))
     if not query_tokens:
@@ -30,11 +44,8 @@ def _query_matches(text, query):
     if all(token in text_tokens for token in query_tokens):
         return True
 
-    # Shopify handles often normalize names differently from the visible query:
-    # e.g. "L'Aventure" -> "l-aventure". Compare a compact alphanumeric form
-    # as a generic fallback; no product or brand is hard-coded.
-    compact_query = re.sub(r"[^a-z0-9]+", "", str(query or "").lower())
-    compact_text = re.sub(r"[^a-z0-9]+", "", str(text or "").lower())
+    compact_query = _normalize_for_match(query)
+    compact_text = _normalize_for_match(text)
     return bool(compact_query) and compact_query in compact_text
 
 
@@ -74,17 +85,50 @@ def _product_name(container, fallback):
     return fallback
 
 
+def _card_has_price(card):
+    if card is None:
+        return None
+
+    text_price = _extract_price(card.get_text(" ", strip=True))
+    if text_price:
+        return text_price
+
+    for element in card.find_all(True):
+        for attr in ("data-price", "data-product-price", "data-final-price", "data-price-amount"):
+            raw = element.get(attr)
+            if raw:
+                price = _extract_price(str(raw))
+                if not price and re.fullmatch(r"\d{1,5}(?:[.,]\d{2})?", str(raw).strip()):
+                    price = str(raw).strip().replace(".", ",") + " €"
+                if price:
+                    return price
+
+    for script in card.find_all("script", type="application/json"):
+        raw = script.string or script.get_text(" ", strip=True)
+        if raw and re.search(r"(?:price|amount)", raw, re.I):
+            price = _extract_price(raw)
+            if price:
+                return price
+
+    return None
+
+
 def _find_card(anchor):
     node = anchor
 
-    for _ in range(8):
+    for _ in range(10):
         if node is None:
             break
 
         text = node.get_text(" ", strip=True)
-        if len(text) >= 20 and (_extract_price(text) or _query_matches(text, "")):
-            # Stop at a reasonably small product block.
-            if len(text) <= 1800:
+        price = _card_has_price(node)
+        has_product_data = any(
+            element.has_attr(attr)
+            for element in node.find_all(True)
+            for attr in ("data-product-id", "data-product-handle", "data-product-price")
+        )
+        if len(text) >= 10 and (price or has_product_data):
+            if len(text) <= 2200:
                 return node
 
         node = getattr(node, "parent", None)
@@ -119,7 +163,7 @@ def _parse_search_html(html, query):
         if not _query_matches(f"{name} {card_text} {product_url}", query):
             continue
 
-        price = _extract_price(card_text)
+        price = _card_has_price(card)
         if not price:
             continue
 
@@ -494,7 +538,8 @@ def search(query):
     results = []
     seen = set()
 
-    def add_items(items):
+    def add_items(items, source):
+        added = 0
         for item in items or []:
             if not isinstance(item, dict):
                 continue
@@ -503,6 +548,9 @@ def search(query):
                 continue
             seen.add(url)
             results.append(item)
+            added += 1
+            print(f"PERFUMEMARKET FOUND via {source}: {item.get('name')} | {item.get('url')}")
+        return added
 
     # 1) Shopify predictive search. Always run it, but never stop the search
     # here: a partial predictive response must not hide a valid product found
@@ -524,7 +572,7 @@ def search(query):
             response = session.get(suggest_url, timeout=10)
             if response.ok:
                 try:
-                    add_items(_parse_search_suggest(response.json(), query))
+                    add_items(_parse_search_suggest(response.json(), query), "suggest")
                 except (ValueError, TypeError, json.JSONDecodeError):
                     pass
         except requests.RequestException as error:
@@ -545,18 +593,17 @@ def search(query):
             print(f"PERFUMEMARKET ERROR: {error}")
             continue
 
-        add_items(_parse_search_html(response.text, query))
+        add_items(_parse_search_html(response.text, query), "search-html")
 
     # 3) Public Shopify product catalog discovery. This is the important
     # fallback for products that Shopify's search/predictive-search endpoints
     # omit because of relevance, indexing or query normalization.
-    add_items(_find_candidates_from_catalog_json(session, query))
+    add_items(_find_candidates_from_catalog_json(session, query), "catalog-json")
 
-    # 4) Sitemap is now a true last-resort fallback. If the public catalog
-    # already found products, do not spend dozens of requests rescanning the
-    # same catalog through sitemap chunks. This keeps the scraper fast while
-    # preserving a fallback for unusual products not exposed by catalog JSON.
-    if not results:
+    # 4) Sitemap is a supplementary source, not a fallback that only runs
+    # when results are empty. Catalog/search endpoints can be partial, so scan
+    # sitemap chunks whenever the result set is still reasonably small.
+    if len(results) < 100:
         candidate_urls = _find_candidates_from_sitemap(session, query)
         for product_url in candidate_urls:
             if product_url.rstrip("/").lower() in seen:
@@ -569,6 +616,8 @@ def search(query):
 
             item = _parse_product_page(response.text, query, product_url)
             if item:
-                add_items([item])
+                add_items([item], "sitemap")
+                if len(results) >= 200:
+                    break
 
     return results
