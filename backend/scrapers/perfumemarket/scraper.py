@@ -32,6 +32,8 @@ MIN_INTERVAL = float(os.getenv("PERFUME_RATE_MIN_INTERVAL", "2.5"))
 MAX_RETRIES_429 = int(os.getenv("PERFUME_MAX_RETRIES_429", "4"))
 ENABLE_PLAYWRIGHT = os.getenv("PERFUME_ENABLE_PLAYWRIGHT", "0") in ("1", "true", "True", "yes")
 VERBOSE = os.getenv("PERFUME_VERBOSE", "1") in ("1", "true", "True", "yes")
+# Minimum fraction of query tokens that must match title to accept (user requested ~60%)
+MATCH_THRESHOLD = float(os.getenv("PERFUME_MATCH_THRESHOLD", "0.6"))
 
 # HTTP defaults
 HEADERS = {
@@ -42,22 +44,22 @@ HEADERS = {
     "Accept-Language": "en-US,en;q=0.8"
 }
 
-# Stopwords to ignore when matching tokens (extend as needed)
+# Words to ignore in matching
 IGNORED_MATCH_WORDS = {
-    "eau", "de", "parfum", "perfume", "edp", "edt", "ml", "pour", "for", "the", "and", "man", "men",
-    "woman", "women", "unisex", "spray", "vaporisateur", "intense", "intense.", "intense,",
+    "eau", "de", "parfum", "perfume", "edp", "edt", "ml", "pour", "for", "the", "and",
+    "man", "men", "woman", "women", "unisex", "spray", "vaporisateur", "intense"
 }
 
-# Price regex: euro amounts
+# Price regex
 PRICE_RE = re.compile(r"(\d{1,3}(?:[.,]\d{3})*(?:[.,]\d{2}))\s*€", re.I)
 
-# Ensure debug directory
+# Ensure debug directory exists
 try:
     os.makedirs(DEBUG_DIR, exist_ok=True)
 except Exception:
     pass
 
-# simple logger
+# Logging helpers
 def log(msg):
     print(f"PERFUMEMARKET: {msg}")
 
@@ -75,9 +77,8 @@ def _debug_dump(name, text):
     except Exception as e:
         vlog(f"DEBUG DUMP ERROR: {e}")
 
-# Tokenization and matching (inspired by ParfumZentrum)
+# Tokenization & matching
 def _tokens(text):
-    """Return normalized tokens (remove accents), keep alnum sequences longer than 1 char."""
     if not text:
         return []
     text = unquote(str(text))
@@ -90,35 +91,63 @@ def _query_token_set(query):
     tokens = [t for t in _tokens(query) if t not in IGNORED_MATCH_WORDS]
     if not tokens:
         tokens = _tokens(query)
-    return set(tokens)
+    return tokens
 
-def _all_tokens_match(text, query):
-    """Return True if all significant query tokens are present in text tokens (subset)."""
-    qset = _query_token_set(query)
-    if not qset:
-        return False
-    tset = set(_tokens(text))
-    # if exact subset matches, good
-    if qset.issubset(tset):
+def _compact_normalize(s):
+    t = unicodedata.normalize("NFKD", str(s or "")).lower()
+    t = "".join(c for c in t if not unicodedata.combining(c))
+    return re.sub(r"[^0-9a-z]+", "", t, flags=re.UNICODE)
+
+def _token_fuzzy_match(q, t):
+    # exact
+    if q == t:
         return True
-    # fallback: fuzzy per-token match (tolerate man/men and small typos)
-    for q in qset:
-        matched = False
-        for t in tset:
-            if q == t:
-                matched = True
-                break
-            if q.endswith("s") and q[:-1] == t:
-                matched = True
-                break
-            if difflib.SequenceMatcher(None, q, t).ratio() >= 0.8:
-                matched = True
-                break
-        if not matched:
-            return False
-    return True
+    # plural/singular heuristics
+    if q.endswith("s") and q[:-1] == t:
+        return True
+    if (q + "s") == t:
+        return True
+    # short-circuit small tokens
+    if len(q) <= 2 or len(t) <= 2:
+        return False
+    # difflib sequence ratio
+    return difflib.SequenceMatcher(None, q, t).ratio() >= 0.80
 
-# Rate limiter (file-lock fallback; optional Redis support)
+def _tokens_match_percentage(title_text, query, threshold=MATCH_THRESHOLD):
+    """
+    Return True if at least `threshold` fraction of query tokens are matched
+    against title_text tokens (using fuzzy token matching). Also accept
+    compact substring fallback.
+    """
+    qtokens = _query_token_set(query)
+    if not qtokens:
+        return False
+    ttokens = set(_tokens(title_text))
+    matched = 0
+    for q in qtokens:
+        found = False
+        # direct membership
+        if q in ttokens:
+            found = True
+        else:
+            # fuzzy match with each token in title
+            for t in ttokens:
+                if _token_fuzzy_match(q, t):
+                    found = True
+                    break
+        if found:
+            matched += 1
+    pct = matched / max(1, len(qtokens))
+    if pct >= threshold:
+        return True
+    # fallback: compact normalized substring match
+    compact_q = _compact_normalize(" ".join(qtokens))
+    compact_t = _compact_normalize(title_text)
+    if compact_q and compact_q in compact_t:
+        return True
+    return False
+
+# Rate limiter (file-lock fallback)
 class DomainRateLimiter:
     def __init__(self, domain, min_interval=MIN_INTERVAL, shared_dir=SHARED_DIR, redis_url=None):
         self.domain = domain
@@ -149,7 +178,7 @@ class DomainRateLimiter:
                     last = self.redis_client.get(key)
                     if last is None:
                         if self.redis_client.setnx(key, str(now)):
-                            self.redis_client.expire(key, int(self.min_interval*3)+5)
+                            self.redis_client.expire(key, int(self.min_interval*3) + 5)
                             break
                         else:
                             time.sleep(0.05 + random.random()*0.05)
@@ -159,7 +188,7 @@ class DomainRateLimiter:
                     if wait_for > 0:
                         time.sleep(wait_for + jitter)
                         continue
-                    self.redis_client.set(key, str(now), ex=int(self.min_interval*3)+5)
+                    self.redis_client.set(key, str(now), ex=int(self.min_interval*3) + 5)
                     break
                 except Exception:
                     self._file_wait(jitter)
@@ -189,7 +218,6 @@ class DomainRateLimiter:
         except Exception:
             time.sleep(self.min_interval + random.uniform(0, 0.3))
 
-# single limiter instance
 _RATE_LIMITER = DomainRateLimiter("perfumemarket.nl")
 
 # HTTP session factory
@@ -202,7 +230,7 @@ def _create_session():
     s.mount("http://", adapter)
     return s
 
-# request wrapper with rate limiting and 429 handling
+# Request wrapper
 def request_with_rate_limit(session, method, url, max_retries_429=MAX_RETRIES_429, **kwargs):
     attempt = 0
     base = 0.8
@@ -255,7 +283,7 @@ def _debug_dump_short(resp, tag):
     except Exception:
         pass
 
-# Sitemap helpers (sitemap-first approach)
+# Sitemap helpers
 def _xml_urls_from_text(xml_text):
     urls = []
     try:
@@ -265,14 +293,13 @@ def _xml_urls_from_text(xml_text):
             if url:
                 urls.append(url)
     except Exception:
-        # fallback naive parse
         for m in re.finditer(r"<loc>([^<]+)</loc>", xml_text or "", re.I):
             urls.append(m.group(1).strip())
     return urls
 
 def _get_sitemap_urls(session):
     try:
-        resp = request_with_rate_limit(session, "GET", SITEMAP_URL, timeout=8)
+        resp = request_with_rate_limit(session, "GET", SITEMAP_URL, timeout=10)
     except Exception as e:
         vlog(f"SITEMAP GET ERROR: {e}")
         return []
@@ -281,14 +308,13 @@ def _get_sitemap_urls(session):
         return []
     xml = resp.text
     urls = _xml_urls_from_text(xml)
-    # If sitemap points to child sitemaps, expand them
     child_maps = [u for u in urls if "sitemap" in u.lower() and u.lower().endswith((".xml", ".xml.gz"))]
     if not child_maps:
         return urls
     out = []
     for sm in child_maps:
         try:
-            r = request_with_rate_limit(session, "GET", sm, timeout=8)
+            r = request_with_rate_limit(session, "GET", sm, timeout=10)
         except Exception as e:
             vlog(f"Child sitemap GET failed: {e}")
             continue
@@ -297,16 +323,18 @@ def _get_sitemap_urls(session):
         out.extend(_xml_urls_from_text(r.text))
     return out
 
-# Parsing and extraction helpers
+# Price extraction utilities
 def _extract_price_from_text(text):
     if not text:
         return None
     m = PRICE_RE.search(text)
     if m:
         val = m.group(1)
-        # Normalize: 1.234,56 -> keep comma decimal if present; convert dot thousands to empty
-        val = val.replace(".", "").replace(",", ".") if "," in val and "." in val else val
-        # show with comma as decimal separator in output
+        # normalize thousand separators and decimal
+        if "." in val and "," in val:
+            # likely 1.234,56 -> remove dots then keep comma
+            val = val.replace(".", "")
+        # ensure comma decimal separator in output
         val = val.replace(".", ",")
         return val + " €" if not val.endswith("€") else val
     return None
@@ -314,7 +342,6 @@ def _extract_price_from_text(text):
 def _extract_price_from_node(node):
     if node is None:
         return None
-    # Search data-attributes and itemprop
     for elem in node.find_all(True):
         for attr in ("data-price", "data-product-price", "data-final-price", "data-price-amount", "data-priceamount", "data-price-cents"):
             if elem.has_attr(attr):
@@ -333,14 +360,13 @@ def _extract_price_from_node(node):
             price = _extract_price_from_text(candidate)
             if price:
                 return price
-    # last resort: search visible text
     return _extract_price_from_text(node.get_text(" ", strip=True))
 
+# HTML parsing helpers
 def _parse_search_html(html, query):
     soup = BeautifulSoup(html or "", "html.parser")
     results = []
     seen = set()
-    # walk anchors
     for a in soup.find_all("a", href=True):
         href = a.get("href") or ""
         product_url = urljoin(BASE_URL, href).split("?")[0].rstrip("/")
@@ -348,7 +374,7 @@ def _parse_search_html(html, query):
             continue
         if product_url in seen:
             continue
-        # find container/card
+        # find a surrounding card/container
         card = a
         for _ in range(8):
             if card is None:
@@ -359,7 +385,7 @@ def _parse_search_html(html, query):
             card = getattr(card, "parent", None)
         if card is None:
             continue
-        # name extraction
+        # extract name from candidate card
         name = ""
         for sel in ("h1","h2",".product-title",".product__title",".product-name"):
             try:
@@ -371,8 +397,9 @@ def _parse_search_html(html, query):
                 break
         if not name:
             name = a.get_text(" ", strip=True)
-        # match query
-        if not _all_tokens_match(name + " " + card.get_text(" ", strip=True) + " " + product_url, query):
+        # match using percent-based match against title+card text
+        combined_text = f"{name} {card.get_text(' ', strip=True)} {product_url}"
+        if not _tokens_match_percentage(combined_text, query):
             vlog(f"SKIP_HTML_MISMATCH url={product_url} name={name[:60]!r}")
             continue
         price = _extract_price_from_node(card) or _extract_price_from_text(card.get_text(" ", strip=True))
@@ -398,7 +425,7 @@ def _parse_search_suggest(payload, query):
         name = str(p.get("title") or p.get("name") or "").strip()
         url = str(p.get("url") or "").strip()
         vlog(f"CANDIDATE_SUGGEST name={name!r} url={url}")
-        if not name or not url or not _all_tokens_match(name, query):
+        if not name or not url or not _tokens_match_percentage(name, query):
             vlog(f"SKIP_SUGGEST name/url/mismatch {name!r} {url}")
             continue
         product_url = urljoin(BASE_URL, url).split("?")[0].rstrip("/")
@@ -443,10 +470,10 @@ def _parse_catalog_json(payload, query):
         handle = str(p.get("handle") or "").strip()
         if not title:
             continue
-        if not _all_tokens_match(title + " " + handle.replace("-", " "), query):
+        # use percent matching on title+handle
+        if not _tokens_match_percentage(title + " " + handle.replace("-", " "), query):
             vlog(f"SKIP_CATALOG_MISMATCH title={title[:60]!r} handle={handle!r}")
             continue
-        # price logic similar to earlier
         price = None
         variants = p.get("variants") or []
         for v in variants:
@@ -455,7 +482,6 @@ def _parse_catalog_json(payload, query):
                 if raw:
                     price = _extract_price_from_text(raw) or (raw.replace(".", ",") + " €" if re.fullmatch(r"\d{1,5}(?:[.,]\d{2})?", raw) else None)
                     if price:
-                        # prefer available variants
                         if v.get("available") is True:
                             break
         if not price:
@@ -478,7 +504,6 @@ def _parse_catalog_json(payload, query):
 
 def _parse_product_page(html, query, product_url):
     soup = BeautifulSoup(html or "", "html.parser")
-    # extract title
     title = ""
     for sel in ("h1", "meta[property='og:title']", "title"):
         el = soup.select_one(sel)
@@ -490,7 +515,7 @@ def _parse_product_page(html, query, product_url):
     if not title:
         vlog(f"PAGE_NO_TITLE url={product_url}")
         return None
-    # find JSON-LD price
+    # try JSON-LD offers first
     price = None
     for script in soup.find_all("script", type="application/ld+json"):
         raw = script.string or script.get_text(" ", strip=True)
@@ -524,12 +549,14 @@ def _parse_product_page(html, query, product_url):
     if not price:
         vlog(f"PAGE_NO_PRICE url={product_url} title={title!r}")
         return None
-    if not _all_tokens_match(title + " " + product_url, query):
+    # Now perform percent-based matching against the real page title (not slug)
+    if not _tokens_match_percentage(title + " " + product_url, query):
         vlog(f"PAGE_MISMATCH url={product_url} title={title!r}")
         return None
+    vlog(f"PAGE_MATCH url={product_url} title={title!r} price={price}")
     return {"store":"PerfumeMarket","name":title,"price":price,"url":product_url}
 
-# Playwright fallback: render search page if enabled and Playwright available
+# Playwright fallback
 def render_search_with_playwright(query):
     if not ENABLE_PLAYWRIGHT:
         vlog("Playwright disabled")
@@ -542,7 +569,6 @@ def render_search_with_playwright(query):
         with sync_playwright() as p:
             browser = p.chromium.launch(headless=True, args=["--no-sandbox"])
             page = browser.new_page(user_agent=HEADERS["User-Agent"])
-            # prime home
             page.goto(BASE_URL, timeout=15000)
             time.sleep(0.2 + random.random()*0.3)
             page.goto(url, timeout=20000)
@@ -557,7 +583,7 @@ def render_search_with_playwright(query):
         log(f"Playwright error: {e}")
         return None
 
-# Main search flow: sitemap -> catalog.json -> suggest -> search HTML -> sitemap pages -> playwright fallback
+# Main search: sitemap-first discovery; verify matches on product pages (title/data)
 def search(query):
     query = str(query or "").strip()
     if not query:
@@ -566,7 +592,7 @@ def search(query):
     results = []
     seen = set()
 
-    # prime home to get cookies
+    # Prime home to get cookies
     try:
         r = request_with_rate_limit(session, "GET", BASE_URL, timeout=10)
         if r and r.status_code == 200:
@@ -575,7 +601,7 @@ def search(query):
     except Exception as e:
         vlog(f"Home prime failed: {e}")
 
-    # 1) sitemap-first: find product URLs whose handle possibly matches the query tokens
+    # 1) sitemap-first: get all product URLs and validate on product pages
     sitemap_urls = []
     try:
         sitemap_list = _get_sitemap_urls(session)
@@ -585,76 +611,73 @@ def search(query):
     except Exception as e:
         vlog(f"SITEMAP ERROR: {e}")
 
-    candidate_urls = []
-    # heuristic: product URLs often include '/products/' - choose those where handle contains query tokens
-    for u in sitemap_urls:
-        if "/products/" not in u.lower():
-            continue
-        handle = u.lower().split("/products/",1)[-1].split("/",1)[0]
-        # check tokens in handle (replace hyphens with spaces)
-        if _all_tokens_match(handle.replace("-", " "), query):
-            candidate_urls.append(u)
+    product_urls = [u for u in sitemap_urls if "/products/" in u.lower()]
+    vlog(f"SITEMAP product URLs: {len(product_urls)}")
 
-    vlog(f"SITEMAP candidates: {len(candidate_urls)}")
-
-    # Limit how many sitemap product pages we fetch immediately (keep it small)
-    for url in candidate_urls[:80]:
-        if url in seen:
-            continue
+    # Scan product pages from sitemap and validate title/data against query using percent-match
+    # This ensures matching is done on page content, not only slug.
+    # We limit the number of pages fetched per run to avoid excessive load; tune as needed.
+    max_scan = int(os.getenv("PERFUME_SITEMAP_SCAN_LIMIT", "500"))  # configurable
+    scanned = 0
+    for url in product_urls:
+        if scanned >= max_scan or len(results) >= int(os.getenv("PERFUME_MAX_RESULTS", "200")):
+            break
         try:
-            r = request_with_rate_limit(session, "GET", url, timeout=12)
-            if r.status_code != 200:
-                continue
-            item = _parse_product_page(r.text, query, url)
+            resp = request_with_rate_limit(session, "GET", url, timeout=12)
         except Exception as e:
-            vlog(f"SITEMAP product GET error {e} url={url}")
-            item = None
+            vlog(f"SITEMAP product GET error: {e} url={url}")
+            continue
+        if resp.status_code != 200 or not resp.text:
+            continue
+        item = _parse_product_page(resp.text, query, url)
+        scanned += 1
         if item:
             key = (item["name"].lower(), item["price"])
             if key not in seen:
                 seen.add(key)
                 results.append(item)
-                vlog(f"SITEMAP_ADDED {url} -> {item['name']!r}")
-        if len(results) >= 20:
-            break
+                vlog(f"SITEMAP_ADD {url} -> {item['name']!r}")
+        # small polite pause
+        time.sleep(0.05 + random.random() * 0.05)
+
+    vlog(f"Sitemap scan complete: scanned={scanned}, matched={len(results)}")
 
     # 2) catalog.json (public Shopify catalog)
-    catalog_endpoints = (
-        BASE_URL + "/products.json?limit=250",
-        BASE_URL + "/collections/all-perfumes/products.json?limit=250",
-    )
-    for endpoint in catalog_endpoints:
-        for page in range(1, 8):  # reduce pages to avoid heavy load
-            url = endpoint + ("&page=" + str(page) if "?" in endpoint else "?page=" + str(page))
-            try:
-                resp = request_with_rate_limit(session, "GET", url, timeout=12)
-            except Exception as e:
-                vlog(f"CATALOG GET FAILED {e} -> {url}")
-                break
-            if resp.status_code != 200:
-                break
-            try:
-                payload = resp.json()
-            except Exception:
-                _debug_dump(f"catalog_bad_json_{page}", resp.text[:10000])
-                break
-            items = _parse_catalog_json(payload, query)
-            for it in items:
-                k = (it["name"].lower(), it["price"])
-                if k not in seen:
-                    seen.add(k)
-                    results.append(it)
-                    vlog(f"CATALOG_ADD {it['url']} -> {it['name']!r}")
-            # stop early if many found
+    if len(results) < int(os.getenv("PERFUME_MIN_RESULTS_AFTER_SITEMAP", "8")):
+        catalog_endpoints = (
+            BASE_URL + "/products.json?limit=250",
+            BASE_URL + "/collections/all-perfumes/products.json?limit=250",
+        )
+        for endpoint in catalog_endpoints:
+            for page in range(1, 8):
+                url = endpoint + ("&page=" + str(page) if "?" in endpoint else "?page=" + str(page))
+                try:
+                    resp = request_with_rate_limit(session, "GET", url, timeout=12)
+                except Exception as e:
+                    vlog(f"CATALOG GET FAILED {e} -> {url}")
+                    break
+                if resp.status_code != 200:
+                    break
+                try:
+                    payload = resp.json()
+                except Exception:
+                    _debug_dump(f"catalog_bad_json_{page}", resp.text[:10000])
+                    break
+                items = _parse_catalog_json(payload, query)
+                for it in items:
+                    k = (it["name"].lower(), it["price"])
+                    if k not in seen:
+                        seen.add(k)
+                        results.append(it)
+                        vlog(f"CATALOG_ADD {it['url']} -> {it['name']!r}")
+                if len(results) >= 40:
+                    break
+                products = payload.get("products") or []
+                if len(products) < 250:
+                    break
+                time.sleep(0.08)
             if len(results) >= 40:
                 break
-            # if fewer than limit, likely last page
-            products = payload.get("products") or []
-            if len(products) < 250:
-                break
-            time.sleep(0.08)
-        if len(results) >= 40:
-            break
 
     # 3) suggest.json (single call)
     try:
@@ -690,29 +713,23 @@ def search(query):
                 results.append(it)
                 vlog(f"SEARCHHTML_ADD {it['url']} -> {it['name']!r}")
 
-    # 5) supplemental sitemap scan if still few results (scan rest of product URLs but limit)
-    if len(results) < 6 and sitemap_urls:
-        extra = []
-        for u in sitemap_urls:
-            if "/products/" in u.lower():
-                extra.append(u)
-        # scan up to N extra product pages but skip already considered handles
-        scanned = 0
-        for u in extra:
-            if scanned >= 60 or len(results) >= 60:
+    # 5) supplemental sitemap scan (if very few results)
+    if len(results) < int(os.getenv("PERFUME_SUPPLEMENTAL_RESULTS_THRESHOLD", "4")) and product_urls:
+        extra_scan_limit = int(os.getenv("PERFUME_SUPPLEMENTAL_SCAN_LIMIT", "120"))
+        extra_scanned = 0
+        for u in product_urls:
+            if extra_scanned >= extra_scan_limit or len(results) >= int(os.getenv("PERFUME_MAX_RESULTS", "200")):
                 break
-            if any(u.lower().endswith(k) for k in ["/",""]):
+            if any(u.lower().endswith(k) for k in ["/", ""]):
                 pass
-            if u in seen:
-                continue
             try:
-                r = request_with_rate_limit(session, "GET", u, timeout=12)
-                if r.status_code != 200:
-                    continue
-                item = _parse_product_page(r.text, query, u)
-                scanned += 1
+                resp = request_with_rate_limit(session, "GET", u, timeout=12)
             except Exception:
-                item = None
+                continue
+            if resp.status_code != 200:
+                continue
+            item = _parse_product_page(resp.text, query, u)
+            extra_scanned += 1
             if item:
                 k = (item["name"].lower(), item["price"])
                 if k not in seen:
@@ -720,7 +737,7 @@ def search(query):
                     results.append(item)
                     vlog(f"SITEMAP_EXTRA_ADD {u} -> {item['name']!r}")
 
-    # 6) Playwright fallback (if no results)
+    # 6) Playwright fallback if still no results
     if not results and ENABLE_PLAYWRIGHT:
         html = render_search_with_playwright(query)
         if html:
@@ -744,12 +761,15 @@ def search(query):
         pass
     return results
 
-# If run as script, quick test
+# Quick test harness: runs against requested problematic queries (will actually request live site if run)
 if __name__ == "__main__":
     tests = [
         "1 club de nuit intense man",
-        "Armaf Club de Nuit Intense Man",
-        "Rasasi Hawas For Him",
+        "Club de Nuit Intense Man",
+        "Dior Sauvage",
+        "Invictus",
+        "L'Aventure Intense",
+        "Liquid Brun Limited Edition",
     ]
     for q in tests:
         log(f"Searching for: {q}")
