@@ -1,67 +1,82 @@
 import re
+import gzip
+import time
 import requests
 import xml.etree.ElementTree as ET
 from bs4 import BeautifulSoup
 from urllib.parse import unquote
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
 BASE_URL = "https://www.parfum-zentrum.de"
 SITEMAP_URL = BASE_URL + "/sitemap.xml"
-
-SESSION = requests.Session()
 
 HEADERS = {
     "User-Agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 Version/18.0 Mobile/15E148 Safari/604.1",
     "Accept-Language": "de-DE,de;q=0.9,en;q=0.8",
 }
 
-IGNORED_MATCH_WORDS = {
-    "eau", "de", "parfum", "perfume", "edp", "edt",
-    "spray", "ml", "pour", "for",
-}
+# Evita di riscaricare tutte le sitemap ad ogni ricerca.
+_SITEMAP_CACHE = None
+_SITEMAP_CACHE_TIME = 0
+SITEMAP_CACHE_SECONDS = 60 * 60
+
+# Limiti pensati per non far scattare il timeout del backend.
+MAX_CANDIDATES = 32
+MAX_WORKERS = 8
+REQUEST_TIMEOUT = 12
+
 
 def _tokens(text):
     return [
         x.lower()
-        for x in re.findall(r"[A-Za-zÀ-ÿ0-9]+", unquote(text))
+        for x in re.findall(r"[A-Za-zÀ-ÿ0-9]+", unquote(text or ""))
         if len(x) > 1
     ]
 
+
+def _normal(text):
+    return " ".join(_tokens(text))
+
+
 def _all_tokens_match(text, query):
-    text_tokens = set(_tokens(text))
-    query_tokens = {
-        token
-        for token in _tokens(query)
-        if token not in IGNORED_MATCH_WORDS
-    }
+    hay = set(_tokens(text))
+    return all(t in hay for t in _tokens(query))
 
-    if not query_tokens:
-        query_tokens = set(_tokens(query))
 
-    if not query_tokens:
-        return False
+def _xml_urls(content):
+    # Supporta sia XML normale sia sitemap .xml.gz.
+    if isinstance(content, bytes):
+        if content[:2] == b"\x1f\x8b":
+            content = gzip.decompress(content)
+        root = ET.fromstring(content)
+    else:
+        root = ET.fromstring(content.encode("utf-8"))
 
-    return query_tokens.issubset(text_tokens)
-
-def _xml_urls(xml_text):
-    root = ET.fromstring(xml_text)
     return [
         el.text.strip()
         for el in root.iter()
         if el.tag.endswith("loc") and el.text
     ]
 
-def _get_sitemap_urls():
-    r = SESSION.get(SITEMAP_URL, headers=HEADERS, timeout=4)
 
-    if r.status_code in (403, 429):
-        print(f"PARFUMZENTRUM BLOCKED: HTTP {r.status_code}")
-        r.close()
-        return []
-
+def _download_xml(url):
+    r = requests.get(url, headers=HEADERS, timeout=REQUEST_TIMEOUT)
     r.raise_for_status()
-    xml_text = r.text
-    r.close()
-    urls = _xml_urls(xml_text)
+    return _xml_urls(r.content)
+
+
+def _get_sitemap_urls(force_refresh=False):
+    global _SITEMAP_CACHE, _SITEMAP_CACHE_TIME
+
+    now = time.time()
+    if (
+        not force_refresh
+        and _SITEMAP_CACHE is not None
+        and now - _SITEMAP_CACHE_TIME < SITEMAP_CACHE_SECONDS
+    ):
+        return _SITEMAP_CACHE
+
+    urls = _download_xml(SITEMAP_URL)
 
     child_maps = [
         u for u in urls
@@ -69,212 +84,96 @@ def _get_sitemap_urls():
         and u.lower().endswith((".xml", ".xml.gz"))
     ]
 
-    if not child_maps:
-        return urls
+    if child_maps:
+        out = []
+        # Anche le sitemap figlie vengono scaricate in parallelo.
+        with ThreadPoolExecutor(max_workers=min(6, len(child_maps))) as ex:
+            futures = [ex.submit(_download_xml, sm) for sm in child_maps]
+            for f in as_completed(futures):
+                try:
+                    out.extend(f.result())
+                except Exception:
+                    pass
+        urls = out
 
-    out = []
-
-    for sm in child_maps:
-        try:
-            rr = SESSION.get(sm, headers=HEADERS, timeout=4)
-
-            if rr.status_code in (403, 429):
-                print(f"PARFUMZENTRUM SITEMAP BLOCKED: HTTP {rr.status_code}")
-                rr.close()
-                break
-
-            if rr.status_code == 200:
-                xml_text = rr.text
-                rr.close()
-                out.extend(_xml_urls(xml_text))
-            else:
-                rr.close()
-        except Exception:
-            pass
-
-    return out
-
-def _format_price(value):
-    """
-    Normalizza un prezzo in euro.
-    Gestisce valori come:
-    69.95 / 69,95 / 69.95 € / 1.149,80
-    """
-    raw = str(value or "").strip()
-    if not raw:
-        return ""
-
-    raw = raw.replace("\xa0", " ").strip()
-    m = re.search(r"\d[\d.,]*", raw)
-    if not m:
-        return ""
-
-    number = m.group(0)
-
-    # Formato europeo: 1.149,80
-    if "," in number:
-        if "." in number:
-            number = number.replace(".", "").replace(",", ".")
-        else:
-            number = number.replace(",", ".")
-    # Formato decimale semplice: 69.95
-    elif number.count(".") == 1:
-        left, right = number.split(".")
-        if len(right) != 2:
-            number = number.replace(".", "")
-    # Separatore migliaia senza decimali: 1.149
-    elif number.count(".") > 1:
-        number = number.replace(".", "")
-
-    try:
-        value_float = float(number)
-    except ValueError:
-        return ""
-
-    if value_float <= 0:
-        return ""
-
-    return f"{value_float:.2f}".replace(".", ",") + "€"
+    _SITEMAP_CACHE = urls
+    _SITEMAP_CACHE_TIME = now
+    return urls
 
 
-def _extract_price_from_html(html):
-    """
-    Estrae il prezzo di vendita reale.
-    Ordine:
-      1) JSON-LD Product/Offer
-      2) meta price
-      3) prezzo visibile vicino al prodotto
-    Non usa il Grundpreis €/l come prezzo del prodotto.
-    """
-    soup = BeautifulSoup(html or "", "html.parser")
+def _candidate_score(url, query):
+    """Mette prima gli URL che assomigliano di più alla query."""
+    q = _tokens(query)
+    u = _tokens(url)
 
-    # 1) JSON-LD: è la fonte più affidabile.
-    for script in soup.find_all("script", type="application/ld+json"):
-        raw = script.string or script.get_text()
-        if not raw:
-            continue
+    score = 0
+    for t in q:
+        if t in u:
+            score += 10
 
-        try:
-            data = __import__("json").loads(raw)
-        except Exception:
-            continue
+    # Bonus se le parole compaiono nello stesso ordine.
+    nq = _normal(query)
+    nu = _normal(url)
+    if nq and nq in nu:
+        score += 30
 
-        stack = data if isinstance(data, list) else [data]
+    # URL più corti tendono ad essere più specifici/puliti.
+    score -= len(url) / 1000
+    return score
 
-        while stack:
-            item = stack.pop(0)
 
-            if isinstance(item, list):
-                stack.extend(item)
-                continue
+def _relaxed_candidate_score(url, query):
+    """Punteggio per il fallback quando lo slug URL non contiene tutti i token."""
+    q = _tokens(query)
+    u = set(_tokens(url))
 
-            if not isinstance(item, dict):
-                continue
+    matched = sum(1 for token in q if token in u)
+    if matched == 0:
+        return -1
 
-            item_type = str(item.get("@type", "")).lower()
+    score = matched * 10
+    nq = _normal(query)
+    nu = _normal(url)
+    if nq and nq in nu:
+        score += 30
 
-            if item_type == "product" or "offers" in item:
-                offers = item.get("offers")
-                offer_list = offers if isinstance(offers, list) else [offers]
-
-                for offer in offer_list:
-                    if not isinstance(offer, dict):
-                        continue
-
-                    for key in ("price", "lowPrice"):
-                        price = _format_price(offer.get(key))
-                        if price:
-                            return price
-
-            for key in ("mainEntity", "item", "@graph"):
-                child = item.get(key)
-                if child:
-                    if isinstance(child, list):
-                        stack.extend(child)
-                    else:
-                        stack.append(child)
-
-    # 2) Meta prezzo strutturato.
-    for attrs in (
-        {"property": "product:price:amount"},
-        {"property": "og:price:amount"},
-        {"itemprop": "price"},
-    ):
-        tag = soup.find("meta", attrs=attrs)
-        if tag and tag.get("content"):
-            price = _format_price(tag["content"])
-            if price:
-                return price
-
-    # 3) Prezzo visibile.
-    # Prima cerchiamo contenitori che abbiano il simbolo € ma NON
-    # la dicitura Grundpreis (prezzo per litro).
-    for node in soup.find_all(["div", "span", "p", "strong", "b"]):
-        txt = node.get_text(" ", strip=True)
-        if not txt or "€" not in txt:
-            continue
-
-        low = txt.lower()
-        if "grundpreis" in low or "€/l" in low or "pro liter" in low:
-            continue
-
-        # Prezzo con esattamente due decimali.
-        m = re.search(r"(?<![\d.,])(\d{1,4}(?:[.,]\d{2}))(?:\s*€)", txt)
-        if m:
-            price = _format_price(m.group(1))
-            if price:
-                return price
-
-    # 4) Ultimo fallback sul testo della pagina.
-    text_content = soup.get_text(" ", strip=True)
-    patterns = [
-        r"(\d{1,4}[.,]\d{2})\s*€\s*inkl\.",
-        r"(\d{1,4}[.,]\d{2})\s*€",
-    ]
-
-    for pattern in patterns:
-        for m in re.finditer(pattern, text_content, re.I):
-            # Ignora prezzi per litro.
-            left = text_content[max(0, m.start() - 100):m.start()].lower()
-            if "grundpreis" in left or "pro liter" in left:
-                continue
-
-            price = _format_price(m.group(1))
-            if price:
-                return price
-
-    return ""
+    # Se il brand/nome compare quasi tutto nello slug, preferiscilo.
+    score += max(0, matched - 1) * 2
+    score -= len(url) / 1000
+    return score
 
 
 def _extract_product(url, query):
-    try:
-        r = SESSION.get(url, headers=HEADERS, timeout=6)
-    except Exception:
-        return None
-
-    if r.status_code in (403, 429):
-        print(f"PARFUMZENTRUM PRODUCT BLOCKED: HTTP {r.status_code}")
-        r.close()
-        return None
-
+    r = requests.get(url, headers=HEADERS, timeout=REQUEST_TIMEOUT)
     if r.status_code != 200:
-        r.close()
         return None
 
-    html = r.text
-    r.close()
-
-    soup = BeautifulSoup(html, "html.parser")
+    soup = BeautifulSoup(r.text, "html.parser")
     h1 = soup.find("h1")
-
     if not h1:
         return None
 
     name = " ".join(h1.stripped_strings)
 
-    # Il controllo definitivo resta sul nome reale del prodotto.
+    # Il controllo definitivo viene fatto sul nome reale del prodotto.
     if not _all_tokens_match(name, query):
         return None
+
+    chunks = []
+    node = h1
+    for _ in range(8):
+        if not node:
+            break
+        txt = node.get_text(" ", strip=True)
+        if txt:
+            chunks.append(txt)
+        node = node.parent
+
+    product_text = min(
+        (x for x in chunks if len(x) >= len(name) and "€" in x),
+        key=len,
+        default=""
+    )
 
     unavailable_phrases = (
         "leider nicht lieferbar",
@@ -282,13 +181,22 @@ def _extract_product(url, query):
         "nicht vorrätig",
         "ausverkauft",
     )
-
-    page_near_h1 = soup.get_text(" ", strip=True).lower()
-
+    page_near_h1 = " ".join(chunks[:5]).lower()
     if any(x in page_near_h1 for x in unavailable_phrases):
         return None
 
-    price = _extract_price_from_html(html)
+    patterns = [
+        r"(\d{1,4}[.,]\d{2})\s*€\s*inkl\.",
+        r"Versandbereit\s*(\d{1,4}[.,]\d{2})\s*€",
+        r"(\d{1,4}[.,]\d{2})\s*€",
+    ]
+
+    price = ""
+    for pattern in patterns:
+        m = re.search(pattern, product_text, re.I)
+        if m:
+            price = m.group(1).replace(".", ",") + "€"
+            break
 
     if not price:
         return None
@@ -301,96 +209,105 @@ def _extract_product(url, query):
     }
 
 
-def _candidate_score(url, query):
-    """
-    Ordina i candidati sitemap mettendo davanti quelli più vicini
-    alla query. Non basta più prendere i primi URL della sitemap.
-    """
-    q = [
-        t for t in _tokens(query)
-        if t not in IGNORED_MATCH_WORDS
+def _build_candidates(urls, query):
+    """Costruisce candidati prima con match completo, poi con match rilassato."""
+    product_urls = [
+        url for url in urls
+        if re.search(r"_z\d+/?$", url)
     ]
-    u = _tokens(url)
 
-    score = sum(10 for token in q if token in u)
+    strict = [
+        url for url in product_urls
+        if _all_tokens_match(url, query)
+    ]
+    strict.sort(key=lambda u: _candidate_score(u, query), reverse=True)
 
-    normalized_query = " ".join(q)
-    normalized_url = " ".join(u)
+    if strict:
+        # Manteniamo comunque un piccolo fallback rilassato: alcuni slug del sito
+        # possono omettere una parola presente nel nome visualizzato.
+        relaxed = [
+            url for url in product_urls
+            if url not in strict
+            and _relaxed_candidate_score(url, query) >= 20
+        ]
+        relaxed.sort(
+            key=lambda u: _relaxed_candidate_score(u, query),
+            reverse=True,
+        )
+        return (strict + relaxed)[:MAX_CANDIDATES]
 
-    if normalized_query and normalized_query in normalized_url:
-        score += 40
-
-    # Bonus per sequenza dei token.
-    if q:
-        joined = " ".join(u)
-        if all(token in joined for token in q):
-            score += len(q)
-
-    return score
+    relaxed = [
+        url for url in product_urls
+        if _relaxed_candidate_score(url, query) >= 10
+    ]
+    relaxed.sort(
+        key=lambda u: _relaxed_candidate_score(u, query),
+        reverse=True,
+    )
+    return relaxed[:MAX_CANDIDATES]
 
 
 def search(query):
     query = (query or "").strip()
-
     if not query:
         return []
 
     try:
         urls = _get_sitemap_urls()
+        candidates = _build_candidates(urls, query)
+
+        # Se la sitemap in cache non contiene il prodotto, la ricarichiamo una
+        # sola volta. Questo è importante per prodotti nuovi o appena modificati.
+        if not candidates:
+            print("PARFUMZENTRUM: nessun candidato dalla sitemap cache, refresh forzato")
+            urls = _get_sitemap_urls(force_refresh=True)
+            candidates = _build_candidates(urls, query)
+
     except Exception as e:
-        print("ERRORE SITEMAP:", e)
+        print("ERRORE SITEMAP PARFUMZENTRUM:", repr(e))
         return []
 
-    # Discovery generica:
-    # non limitiamo più la verifica ai primi 6 URL della sitemap.
-    # Prima raccogliamo TUTTI i candidati che contengono i token
-    # significativi della query, poi li ordiniamo per pertinenza.
-    candidates = []
-
-    for url in urls:
-        if not re.search(r"_z\d+/?$", url):
-            continue
-
-        if _all_tokens_match(url, query):
-            candidates.append(url)
-
-    candidates.sort(
-        key=lambda u: _candidate_score(u, query),
-        reverse=True,
-    )
-
-    # Limite alto ma controllato: evita una scansione enorme senza
-    # perdere prodotti validi che nella sitemap non sono nei primi 6.
-    candidates = candidates[:24]
+    if not candidates:
+        return []
 
     results = []
     seen = set()
 
-    try:
-        for url in candidates:
+    # Le richieste vengono eseguite in parallelo, riducendo molto il tempo.
+    with ThreadPoolExecutor(max_workers=min(MAX_WORKERS, len(candidates))) as ex:
+        future_to_url = {
+            ex.submit(_extract_product, url, query): url
+            for url in candidates
+        }
+
+        for future in as_completed(future_to_url):
             try:
-                item = _extract_product(url, query)
+                item = future.result()
             except Exception as e:
-                print("ERRORE PRODOTTO PARFUMZENTRUM:", repr(e))
-                item = None
+                print(
+                    "ERRORE PRODOTTO PARFUMZENTRUM:",
+                    future_to_url[future],
+                    repr(e),
+                )
+                continue
 
             if item:
-                key = (
-                    item["name"].lower(),
-                    item["price"],
-                )
-
+                key = (item["name"].lower(), item["price"])
                 if key not in seen:
                     seen.add(key)
                     results.append(item)
-    finally:
-        SESSION.close()
 
+    results.sort(key=lambda x: x["name"].lower())
     return results
 
-if __name__ == "__main__":
-    results = search("Khadlaj Onyx Gold")
-    print("RISULTATI:", len(results))
 
-    for item in results[:10]:
+if __name__ == "__main__":
+    test_query = "Khadlaj Onyx Gold"
+    start = time.time()
+    results = search(test_query)
+
+    print("QUERY:", test_query)
+    print("TEMPO:", round(time.time() - start, 2), "secondi")
+    print("RISULTATI:", len(results))
+    for item in results:
         print(item)
