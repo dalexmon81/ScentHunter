@@ -1,5 +1,4 @@
 import re
-import json
 import requests
 import xml.etree.ElementTree as ET
 from bs4 import BeautifulSoup
@@ -11,23 +10,29 @@ SITEMAP_URL = BASE_URL + "/sitemap.xml"
 SESSION = requests.Session()
 
 HEADERS = {
-    "User-Agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 Version/18.0 Mobile/15E148 Safari/604.1",
+    "User-Agent": (
+        "Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) "
+        "AppleWebKit/605.1.15 Version/18.0 Mobile/15E148 Safari/604.1"
+    ),
     "Accept-Language": "de-DE,de;q=0.9,en;q=0.8",
 }
 
 IGNORED_MATCH_WORDS = {
     "eau", "de", "parfum", "perfume", "edp", "edt",
     "spray", "ml", "pour", "for",
+    "woman", "man", "men", "women",
 }
 
-def _tokens(text):
+
+def _tokens(text: str):
     return [
         x.lower()
         for x in re.findall(r"[A-Za-zÀ-ÿ0-9]+", unquote(text))
         if len(x) > 1
     ]
 
-def _all_tokens_match(text, query):
+
+def _all_tokens_match(text: str, query: str) -> bool:
     text_tokens = set(_tokens(text))
     query_tokens = {
         token
@@ -43,13 +48,15 @@ def _all_tokens_match(text, query):
 
     return query_tokens.issubset(text_tokens)
 
-def _xml_urls(xml_text):
+
+def _xml_urls(xml_text: str):
     root = ET.fromstring(xml_text)
     return [
         el.text.strip()
         for el in root.iter()
         if el.tag.endswith("loc") and el.text
     ]
+
 
 def _get_sitemap_urls():
     r = SESSION.get(SITEMAP_URL, headers=HEADERS, timeout=4)
@@ -95,7 +102,123 @@ def _get_sitemap_urls():
 
     return out
 
-def _extract_product(url, query):
+
+def _extract_number(text: str):
+    """
+    Restituisce '52,30' da '52,30 €', ecc.
+    """
+    m = re.search(r"(\d{1,4}[.,]\d{2})\s*€", text)
+    if not m:
+        return None
+    return m.group(1).replace(".", ",")
+
+
+def _is_coupon_block(text: str) -> bool:
+    """
+    True se il blocco rappresenta un prezzo con codice/coupon.
+    """
+    t = text.lower()
+    if "preis inkl. code" in t:
+        return True
+    if "rabattcode" in t:
+        return True
+    if "gutschein" in t:
+        return True
+    # se vogliamo essere super sicuri sui codici tipo SALE5DE:
+    if re.search(r"[a-z]{4,}\d{0,2}", t) and "code" in t:
+        return True
+    return False
+
+
+def _extract_variants(soup: BeautifulSoup):
+    """
+    Estrarre lista di {size_ml, price} per i vari formati (30/50/100 ml, etc).
+    Regole:
+    - prezzo corrente visibile → usare
+    - prezzo barrato (strike/del/s) → NON usare
+    - blocchi 'Preis inkl. Code' / 'Rabattcode' → NON usare
+    """
+    variants = []
+
+    # Heuristica: i box dei formati sono tipicamente blocchi con il testo 'ml'
+    # e contengono prezzi. Cerchiamo elementi che nel testo contengono 'ml' e '€'.
+    candidate_boxes = []
+
+    for tag in soup.find_all(True):
+        txt = tag.get_text(" ", strip=True)
+        if "ml" in txt and "€" in txt:
+            candidate_boxes.append(tag)
+
+    seen_boxes = set()
+
+    for box in candidate_boxes:
+        # Evita di processare lo stesso box più volte
+        box_id = id(box)
+        if box_id in seen_boxes:
+            continue
+        seen_boxes.add(box_id)
+
+        full_text = box.get_text(" ", strip=True)
+        if _is_coupon_block(full_text):
+            # è il blocco tipo "51,22 € Preis inkl. Code"
+            continue
+
+        # Trova la dimensione (es. '50 ml', '100 ml')
+        size_match = re.search(r"(\d{1,4})\s*ml\b", full_text, re.I)
+        if not size_match:
+            continue
+
+        size_ml = size_match.group(1)
+
+        # Cerchiamo prezzi nei figli del box, ignorando quelli barrati
+        current_price = None
+
+        # 1) cerca elementi che NON siano <s>/<del> e NON abbiano stile line-through
+        for el in box.find_all(string=re.compile(r"€")):
+            parent = el.parent
+
+            # se il parent è s/del → barrato
+            if parent.name in ("s", "del"):
+                continue
+
+            style = parent.get("style", "") or ""
+            if "line-through" in style.replace(" ", "").lower():
+                # testo barrato via CSS
+                continue
+
+            price_text = parent.get_text(" ", strip=True)
+            num = _extract_number(price_text)
+            if not num:
+                continue
+
+            # prima occorrenza "sana" → la prendiamo come prezzo corrente
+            current_price = num
+            break
+
+        # 2) se non abbiamo trovato nulla, fallback: primo numero non barrato nel testo
+        if not current_price:
+            numbers = []
+            # prende tutte le occorrenze, ma poi filtriamo a livello di testo
+            for m in re.finditer(r"(\d{1,4}[.,]\d{2})\s*€", full_text):
+                numbers.append(m.group(1))
+
+            if numbers:
+                current_price = numbers[0].replace(".", ",")
+
+        if not current_price:
+            continue
+
+        variants.append(
+            {
+                "size_ml": size_ml,
+                "price": current_price + "€",
+            }
+        )
+
+    return variants
+
+
+def _extract_product(url: str, query: str):
     r = SESSION.get(url, headers=HEADERS, timeout=4)
 
     if r.status_code in (403, 429):
@@ -121,26 +244,7 @@ def _extract_product(url, query):
     if not _all_tokens_match(name, query):
         return None
 
-    chunks = []
-    node = h1
-
-    for _ in range(8):
-        if not node:
-            break
-
-        txt = node.get_text(" ", strip=True)
-
-        if txt:
-            chunks.append(txt)
-
-        node = node.parent
-
-    product_text = min(
-        (x for x in chunks if len(x) >= len(name) and "€" in x),
-        key=len,
-        default=""
-    )
-
+    # verifica disponibilità
     unavailable_phrases = (
         "leider nicht lieferbar",
         "nicht lieferbar",
@@ -148,165 +252,64 @@ def _extract_product(url, query):
         "ausverkauft",
     )
 
-    page_near_h1 = " ".join(chunks[:5]).lower()
+    # testo vicino all'H1 per capire se è esaurito
+    chunks = []
+    node = h1
 
+    for _ in range(8):
+        if not node:
+            break
+        txt = node.get_text(" ", strip=True)
+        if txt:
+            chunks.append(txt)
+        node = node.parent
+
+    page_near_h1 = " ".join(chunks[:5]).lower()
     if any(x in page_near_h1 for x in unavailable_phrases):
         return None
 
-    def _normalize_price(value):
-        if value is None:
-            return ""
-        value = str(value).strip().replace("\xa0", " ")
-        m = re.search(r"(\d{1,4}(?:[.,]\d{2})?)", value)
-        if not m:
-            return ""
-        return m.group(1).replace(".", ",") + "€"
+    # --- NUOVA LOGICA: estrazione varianti ---
+    variants = _extract_variants(soup)
 
-    def _is_excluded(node):
-        """Reject reference/list prices and coupon-price elements."""
-        current = node
-        for _ in range(6):
-            if not current:
+    if not variants:
+        # fallback: logica vecchia, ma solo per non perdere il prodotto
+        product_text = min(
+            (x for x in chunks if len(x) >= len(name) and "€" in x),
+            key=len,
+            default="",
+        )
+        price = ""
+        patterns = [
+            r"(\d{1,4}[.,]\d{2})\s*€\s*inkl\.",
+            r"Versandbereit\s*(\d{1,4}[.,]\d{2})\s*€",
+            r"(\d{1,4}[.,]\d{2})\s*€",
+        ]
+        for pattern in patterns:
+            m = re.search(pattern, product_text, re.I)
+            if m:
+                price = m.group(1).replace(".", ",") + "€"
                 break
 
-            if getattr(current, "name", "") in {"del", "s", "strike"}:
-                return True
+        if not price:
+            return None
 
-            attrs = getattr(current, "attrs", {}) or {}
-            blob = " ".join(
-                str(attrs.get(k, ""))
-                for k in ("class", "id", "data-testid", "data-test")
-            ).lower()
-            style = str(attrs.get("style", "")).lower()
+        # variante fittizia "std"
+        variants = [{"size_ml": None, "price": price}]
 
-            bad_words = (
-                "old-price", "old_price", "oldprice",
-                "previous-price", "previous_price",
-                "regular-price", "regular_price", "list-price",
-                "list_price", "uvp", "strike", "strikethrough",
-                "crossed", "code-price", "code_price", "rabattcode",
-                "gutschein", "coupon", "discount-code",
-            )
-
-            if any(word in blob for word in bad_words):
-                return True
-
-            if "line-through" in style or "linethrough" in style:
-                return True
-
-            current = current.parent
-
-        return False
-
-    def _price_score(node, value):
-        """Score visible prices: current selling price beats reference data."""
-        if _is_excluded(node):
-            return -10000
-
-        score = 0
-        current = node
-
-        for _ in range(5):
-            if not current:
-                break
-
-            attrs = getattr(current, "attrs", {}) or {}
-            blob = " ".join(
-                str(attrs.get(k, ""))
-                for k in ("class", "id", "data-testid", "data-test")
-            ).lower()
-            text = current.get_text(" ", strip=True).lower() if hasattr(current, "get_text") else ""
-
-            if any(x in blob for x in ("current-price", "current_price", "sale-price", "sale_price", "selling-price", "selling_price", "product-price", "product_price")):
-                score += 100
-            elif "price" in blob:
-                score += 20
-
-            if "inkl. mwst." in text and "/l" not in text:
-                score += 40
-
-            if "grundpreis" in text or "/l" in text:
-                score -= 80
-
-            if "preis inkl. code" in text or "rabattcode" in text:
-                score -= 100
-
-            current = current.parent
-
-        return score
-
-    price = ""
-    visible_candidates = []
-
-    # IMPORTANT: the shop can expose the crossed/reference price through
-    # itemprop or JSON-LD. Therefore visible, non-crossed prices are checked
-    # FIRST. This is the critical fix for Parfum-Zentrum.
-    for text_node in soup.find_all(string=re.compile(r"\d{1,4}[.,]\d{2}\s*€")):
-        value = _normalize_price(text_node)
-        if not value or _is_excluded(text_node.parent):
-            continue
-        visible_candidates.append((_price_score(text_node.parent, value), value))
-
-    if visible_candidates:
-        visible_candidates.sort(key=lambda x: x[0], reverse=True)
-        price = visible_candidates[0][1]
-
-    # Only if no safe visible selling price exists, inspect structured data.
-    if not price:
-        for script in soup.select('script[type="application/ld+json"]'):
-            raw_json = script.string or script.get_text()
-            try:
-                data = json.loads(raw_json)
-            except Exception:
-                continue
-
-            stack = data if isinstance(data, list) else [data]
-            while stack:
-                obj = stack.pop()
-                if isinstance(obj, list):
-                    stack.extend(obj)
-                    continue
-                if not isinstance(obj, dict):
-                    continue
-
-                offers = obj.get("offers")
-                if isinstance(offers, dict):
-                    stack.append(offers)
-                elif isinstance(offers, list):
-                    stack.extend(offers)
-
-                if "price" in obj:
-                    candidate = _normalize_price(obj.get("price"))
-                    if candidate:
-                        price = candidate
-                        break
-            if price:
-                break
-
-    # Final structured/meta fallback.
-    if not price:
-        for node in soup.select(
-            'meta[property="product:price:amount"], '
-            'meta[name="price"], meta[itemprop="price"]'
-        ):
-            if _is_excluded(node):
-                continue
-            candidate = _normalize_price(node.get("content") or node.get_text(" ", strip=True))
-            if candidate:
-                price = candidate
-                break
-
-    if not price:
-        return None
+    # ritorno compatibile con il resto di ScentHunter:
+    # per ora prendo la variante con prezzo minimo come "entry" principale.
+    main_variant = min(variants, key=lambda v: float(v["price"].split("€")[0].replace(",", ".")))
 
     return {
         "store": "ParfumZentrum",
         "name": name,
-        "price": price,
+        "price": main_variant["price"],
         "url": url,
+        "variants": variants,  # formato → prezzo (30/50/100 ml)
     }
 
-def search(query):
+
+def search(query: str):
     try:
         urls = _get_sitemap_urls()
     except Exception as e:
@@ -330,8 +333,7 @@ def search(query):
                 item = None
 
             if item:
-                key = (item["name"].lower(), item["price"])
-
+                key = (item["name"].lower(), item["url"])
                 if key not in seen:
                     seen.add(key)
                     results.append(item)
@@ -340,9 +342,9 @@ def search(query):
 
     return results
 
-if __name__ == "__main__":
-    results = search("Rasasi Hawas For Him")
-    print("RISULTATI:", len(results))
 
+if __name__ == "__main__":
+    results = search("Versace Eros pour Femme Eau de Toilette")
+    print("RISULTATI:", len(results))
     for item in results[:10]:
         print(item)
