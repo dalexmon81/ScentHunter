@@ -4,7 +4,7 @@ import time
 import requests
 import xml.etree.ElementTree as ET
 from bs4 import BeautifulSoup
-from urllib.parse import unquote
+from urllib.parse import unquote, urljoin, urlparse
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
 BASE_URL = "https://www.parfum-zentrum.de"
@@ -24,6 +24,7 @@ SITEMAP_CACHE_SECONDS = 60 * 60
 MAX_CANDIDATES = 32
 MAX_WORKERS = 8
 REQUEST_TIMEOUT = 12
+FALLBACK_MAX_PAGES = 4
 
 
 def _tokens(text):
@@ -86,7 +87,6 @@ def _get_sitemap_urls(force_refresh=False):
 
     if child_maps:
         out = []
-        # Anche le sitemap figlie vengono scaricate in parallelo.
         with ThreadPoolExecutor(max_workers=min(6, len(child_maps))) as ex:
             futures = [ex.submit(_download_xml, sm) for sm in child_maps]
             for f in as_completed(futures):
@@ -111,13 +111,11 @@ def _candidate_score(url, query):
         if t in u:
             score += 10
 
-    # Bonus se le parole compaiono nello stesso ordine.
     nq = _normal(query)
     nu = _normal(url)
     if nq and nq in nu:
         score += 30
 
-    # URL più corti tendono ad essere più specifici/puliti.
     score -= len(url) / 1000
     return score
 
@@ -137,10 +135,19 @@ def _relaxed_candidate_score(url, query):
     if nq and nq in nu:
         score += 30
 
-    # Se il brand/nome compare quasi tutto nello slug, preferiscilo.
     score += max(0, matched - 1) * 2
     score -= len(url) / 1000
     return score
+
+
+def _is_product_url(url):
+    """Riconosce gli URL prodotto senza dipendere dal solo suffisso _z123456."""
+    path = urlparse(url).path.lower()
+    if not path.startswith("/"):
+        return False
+    if any(x in path for x in ("/sitemap", "/suchen", "/marke/", "/f/", "/angebote/", "/artikel/")):
+        return False
+    return bool(re.search(r"(?:_z\d+|[-_]z\d+)(?:/)?$", path)) or "_z" in path
 
 
 def _extract_product(url, query):
@@ -211,10 +218,7 @@ def _extract_product(url, query):
 
 def _build_candidates(urls, query):
     """Costruisce candidati prima con match completo, poi con match rilassato."""
-    product_urls = [
-        url for url in urls
-        if re.search(r"_z\d+/?$", url)
-    ]
+    product_urls = [url for url in urls if _is_product_url(url)]
 
     strict = [
         url for url in product_urls
@@ -223,28 +227,126 @@ def _build_candidates(urls, query):
     strict.sort(key=lambda u: _candidate_score(u, query), reverse=True)
 
     if strict:
-        # Manteniamo comunque un piccolo fallback rilassato: alcuni slug del sito
-        # possono omettere una parola presente nel nome visualizzato.
         relaxed = [
             url for url in product_urls
             if url not in strict
             and _relaxed_candidate_score(url, query) >= 20
         ]
-        relaxed.sort(
-            key=lambda u: _relaxed_candidate_score(u, query),
-            reverse=True,
-        )
+        relaxed.sort(key=lambda u: _relaxed_candidate_score(u, query), reverse=True)
         return (strict + relaxed)[:MAX_CANDIDATES]
 
     relaxed = [
         url for url in product_urls
         if _relaxed_candidate_score(url, query) >= 10
     ]
-    relaxed.sort(
-        key=lambda u: _relaxed_candidate_score(u, query),
-        reverse=True,
-    )
+    relaxed.sort(key=lambda u: _relaxed_candidate_score(u, query), reverse=True)
     return relaxed[:MAX_CANDIDATES]
+
+
+def _fallback_category_urls(query):
+    """Costruisce le principali pagine catalogo del brand indicato nella query."""
+    tokens = _tokens(query)
+    if not tokens:
+        return []
+
+    # Per i nomi composti più comuni manteniamo il brand completo; per gli altri
+    # il primo token è normalmente il marchio (Khadlaj, Afnan, Armani, ecc.).
+    brand_candidates = [tokens[0]]
+    if len(tokens) >= 2 and tokens[0] in {"al", "j", "mancera", "maison"}:
+        brand_candidates.insert(0, "-".join(tokens[:2]))
+
+    urls = []
+    for brand in brand_candidates:
+        slug = re.sub(r"[^a-z0-9-]+", "-", brand.lower()).strip("-")
+        if not slug:
+            continue
+        urls.extend([
+            f"{BASE_URL}/{slug}_v1200/",
+            f"{BASE_URL}/parfums/f/{slug}/",
+            f"{BASE_URL}/oriental-court/f/{slug}/",
+        ])
+
+    # Evita richieste duplicate.
+    return list(dict.fromkeys(urls))
+
+
+def _fallback_links_from_page(page_url, query):
+    """Estrae link prodotto dalla pagina catalogo e dalle sue prime pagine successive."""
+    found = []
+    visited_pages = set()
+    queue = [page_url]
+
+    while queue and len(visited_pages) < FALLBACK_MAX_PAGES:
+        url = queue.pop(0)
+        if url in visited_pages:
+            continue
+        visited_pages.add(url)
+
+        try:
+            r = requests.get(url, headers=HEADERS, timeout=REQUEST_TIMEOUT)
+            if r.status_code != 200:
+                continue
+        except Exception as e:
+            print("PARFUMZENTRUM: fallback page error", url, repr(e))
+            continue
+
+        soup = BeautifulSoup(r.text, "html.parser")
+
+        for a in soup.find_all("a", href=True):
+            href = urljoin(BASE_URL, a.get("href", "").strip())
+            if not href.startswith(BASE_URL):
+                continue
+
+            text = " ".join(a.stripped_strings)
+            combined = f"{text} {href}"
+            if not _is_product_url(href):
+                # Alcuni link prodotto possono non avere il suffisso perfetto:
+                # il testo deve però contenere almeno due token della query.
+                matched = sum(t in set(_tokens(combined)) for t in _tokens(query))
+                if matched < min(2, len(_tokens(query))):
+                    continue
+
+            score = _candidate_score(combined, query)
+            if score >= 15 or _all_tokens_match(combined, query):
+                found.append((score, href))
+
+        # Segui solo la paginazione della stessa sezione, senza esplorare tutto il sito.
+        for a in soup.find_all("a", href=True):
+            href = urljoin(BASE_URL, a.get("href", "").strip())
+            if href.startswith(page_url.rstrip("/") + "?") and "page=" in href.lower():
+                if href not in visited_pages and href not in queue:
+                    queue.append(href)
+
+    # Prima i link più promettenti e poi deduplica.
+    found.sort(key=lambda x: x[0], reverse=True)
+    out = []
+    seen = set()
+    for _, href in found:
+        if href not in seen:
+            seen.add(href)
+            out.append(href)
+        if len(out) >= MAX_CANDIDATES:
+            break
+    return out
+
+
+def _fallback_candidates(query):
+    """Fallback reale sul catalogo quando sitemap/cache non producono candidati."""
+    all_links = []
+    seen = set()
+
+    for page_url in _fallback_category_urls(query):
+        links = _fallback_links_from_page(page_url, query)
+        for link in links:
+            if link not in seen:
+                seen.add(link)
+                all_links.append(link)
+        if all_links:
+            # Una pagina catalogo che ha già prodotto candidati è sufficiente.
+            break
+
+    all_links.sort(key=lambda u: _candidate_score(u, query), reverse=True)
+    return all_links[:MAX_CANDIDATES]
 
 
 def search(query):
@@ -252,12 +354,12 @@ def search(query):
     if not query:
         return []
 
+    candidates = []
+
     try:
         urls = _get_sitemap_urls()
         candidates = _build_candidates(urls, query)
 
-        # Se la sitemap in cache non contiene il prodotto, la ricarichiamo una
-        # sola volta. Questo è importante per prodotti nuovi o appena modificati.
         if not candidates:
             print("PARFUMZENTRUM: nessun candidato dalla sitemap cache, refresh forzato")
             urls = _get_sitemap_urls(force_refresh=True)
@@ -265,7 +367,13 @@ def search(query):
 
     except Exception as e:
         print("ERRORE SITEMAP PARFUMZENTRUM:", repr(e))
-        return []
+
+    # Nuova strada: se la sitemap non espone il prodotto, interroghiamo il catalogo
+    # del brand e prendiamo i link reali presenti nelle pagine, poi verifichiamo
+    # ogni prodotto dalla pagina individuale.
+    if not candidates:
+        print("PARFUMZENTRUM: avvio fallback catalogo per", repr(query))
+        candidates = _fallback_candidates(query)
 
     if not candidates:
         return []
@@ -273,7 +381,6 @@ def search(query):
     results = []
     seen = set()
 
-    # Le richieste vengono eseguite in parallelo, riducendo molto il tempo.
     with ThreadPoolExecutor(max_workers=min(MAX_WORKERS, len(candidates))) as ex:
         future_to_url = {
             ex.submit(_extract_product, url, query): url
