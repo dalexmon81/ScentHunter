@@ -777,42 +777,20 @@ def search(query):
     except Exception as e:
         vlog(f"Home prime failed: {e}")
 
-    # 1) sitemap-first: product pages (these are already verified by _parse_product_page)
-    sitemap_urls = []
+    # 1) Fast discovery first: Shopify search/catalog sources.
+    # IMPORTANT: do not scan the sitemap before these sources. The sitemap is
+    # deliberately kept as a supplementary recovery source below, because
+    # scanning hundreds of product pages first causes unnecessary 429s and can
+    # consume most of the search time before the relevant candidates are verified.
+    product_urls = []
+
     try:
         sitemap_list = _get_sitemap_urls(session)
         if sitemap_list:
-            vlog(f"SITEMAP: found {len(sitemap_list)} urls")
-            sitemap_urls = sitemap_list
+            product_urls = [u for u in sitemap_list if "/products/" in u.lower()]
+            vlog(f"SITEMAP indexed product URLs available for fallback: {len(product_urls)}")
     except Exception as e:
-        vlog(f"SITEMAP ERROR: {e}")
-
-    product_urls = [u for u in sitemap_urls if "/products/" in u.lower()]
-    vlog(f"SITEMAP product URLs: {len(product_urls)}")
-
-    max_scan = int(os.getenv("PERFUME_SITEMAP_SCAN_LIMIT", "500"))
-    scanned = 0
-    for url in product_urls:
-        if scanned >= max_scan or len(results) >= int(os.getenv("PERFUME_MAX_RESULTS", "200")):
-            break
-        try:
-            resp = request_with_rate_limit(session, "GET", url, timeout=12)
-        except Exception as e:
-            vlog(f"SITEMAP product GET error: {e} url={url}")
-            continue
-        if resp.status_code != 200 or not resp.text:
-            continue
-        item = _parse_product_page(resp.text, query, url)
-        scanned += 1
-        if item:
-            key = (item["name"].lower(), item["price"])
-            if key not in seen:
-                seen.add(key)
-                results.append(item)
-                vlog(f"SITEMAP_ADD {url} -> {item['name']!r}")
-        time.sleep(0.05 + random.random() * 0.05)
-
-    vlog(f"Sitemap scan complete: scanned={scanned}, matched={len(results)}")
+        vlog(f"SITEMAP INDEX ERROR: {e}")
 
     # Collect candidates from catalog and suggest and search-html (do NOT accept until verified)
     candidates = []
@@ -870,6 +848,7 @@ def search(query):
         candidates.extend(cats)
 
     vlog(f"Collected candidates from sources: {len(candidates)}")
+    vlog("FAST_DISCOVERY_COMPLETE: search/suggest/catalog candidates ready for verification")
 
     # Verify candidates by fetching product page (strong identity verification)
     # To avoid excessive load, allow limiting number of verifications (configurable)
@@ -923,7 +902,7 @@ def search(query):
         else:
             vlog(f"CANDIDATE_REJECTED {url} score_prelim={cand.get('score'):.3f}")
 
-    # Supplemental sitemap scan if few results (unchanged)
+    # Supplemental sitemap scan only after fast discovery/verification, if few results.
     if len(results) < int(os.getenv("PERFUME_SUPPLEMENTAL_RESULTS_THRESHOLD", "4")) and product_urls:
         extra_scan_limit = int(os.getenv("PERFUME_SUPPLEMENTAL_SCAN_LIMIT", "120"))
         extra_scanned = 0
