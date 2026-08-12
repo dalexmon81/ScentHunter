@@ -45,6 +45,7 @@ VERBOSE = os.getenv("PERFUME_VERBOSE", "1") in ("1", "true", "True", "yes")
 MATCH_THRESHOLD = float(os.getenv("PERFUME_MATCH_THRESHOLD", "0.6"))
 CANDIDATE_MIN_SCORE = float(os.getenv("PERFUME_CANDIDATE_MIN_SCORE", "0.35"))
 MAX_RENDER_PER_SEARCH = int(os.getenv("PERFUME_MAX_RENDER_PER_SEARCH", "30"))
+HTTP_TIMEOUT = float(os.getenv("PERFUME_HTTP_TIMEOUT", "8"))
 
 # HTTP defaults
 HEADERS = {
@@ -312,7 +313,7 @@ def _xml_urls_from_text(xml_text):
 
 def _get_sitemap_urls(session):
     try:
-        resp = request_with_rate_limit(session, "GET", SITEMAP_URL, timeout=10)
+        resp = request_with_rate_limit(session, "GET", SITEMAP_URL, timeout=HTTP_TIMEOUT)
     except Exception as e:
         vlog(f"SITEMAP GET ERROR: {e}")
         return []
@@ -327,7 +328,7 @@ def _get_sitemap_urls(session):
     out = []
     for sm in child_maps:
         try:
-            r = request_with_rate_limit(session, "GET", sm, timeout=10)
+            r = request_with_rate_limit(session, "GET", sm, timeout=HTTP_TIMEOUT)
         except Exception as e:
             vlog(f"Child sitemap GET failed: {e}")
             continue
@@ -658,11 +659,11 @@ def render_product_page_with_playwright(product_url):
         with sync_playwright() as p:
             browser = p.chromium.launch(headless=True, args=["--no-sandbox"])
             page = browser.new_page(user_agent=HEADERS["User-Agent"])
-            page.goto(BASE_URL, timeout=15000)
+            page.goto(BASE_URL, timeout=int(HTTP_TIMEOUT * 1000))
             time.sleep(0.2 + random.random()*0.3)
-            page.goto(product_url, timeout=20000, wait_until="domcontentloaded")
+            page.goto(product_url, timeout=int(HTTP_TIMEOUT * 1000), wait_until="domcontentloaded")
             try:
-                page.wait_for_load_state("networkidle", timeout=8000)
+                page.wait_for_load_state("networkidle", timeout=int(HTTP_TIMEOUT * 1000))
             except Exception:
                 pass
             html = page.content()
@@ -686,11 +687,11 @@ def render_search_with_playwright(query):
         with sync_playwright() as p:
             browser = p.chromium.launch(headless=True, args=["--no-sandbox"])
             page = browser.new_page(user_agent=HEADERS["User-Agent"])
-            page.goto(BASE_URL, timeout=15000)
+            page.goto(BASE_URL, timeout=int(HTTP_TIMEOUT * 1000))
             time.sleep(0.2 + random.random()*0.3)
-            page.goto(url, timeout=20000)
+            page.goto(url, timeout=int(HTTP_TIMEOUT * 1000))
             try:
-                page.wait_for_load_state("networkidle", timeout=10000)
+                page.wait_for_load_state("networkidle", timeout=int(HTTP_TIMEOUT * 1000))
             except Exception:
                 pass
             html = page.content()
@@ -711,7 +712,7 @@ def _verify_candidate_by_page(session, candidate, query, render_state=None):
     """
     url = candidate.get("url")
     try:
-        resp = request_with_rate_limit(session, "GET", url, timeout=12)
+        resp = request_with_rate_limit(session, "GET", url, timeout=HTTP_TIMEOUT)
     except Exception as e:
         vlog(f"VERIFY_GET_ERROR url={url} err={e}")
         return None
@@ -770,7 +771,7 @@ def search(query):
 
     # Prime home to get cookies
     try:
-        r = request_with_rate_limit(session, "GET", BASE_URL, timeout=10)
+        r = request_with_rate_limit(session, "GET", BASE_URL, timeout=HTTP_TIMEOUT)
         if r and r.status_code == 200:
             vlog("Primed home page for cookies")
         time.sleep(random.uniform(0.12, 0.6))
@@ -795,7 +796,7 @@ def search(query):
         for page in range(1, 8):
             url = endpoint + ("&page=" + str(page) if "?" in endpoint else "?page=" + str(page))
             try:
-                resp = request_with_rate_limit(session, "GET", url, timeout=12)
+                resp = request_with_rate_limit(session, "GET", url, timeout=HTTP_TIMEOUT)
             except Exception as e:
                 vlog(f"CATALOG GET FAILED {e} -> {url}")
                 break
@@ -817,7 +818,7 @@ def search(query):
     # suggest.json (single call)
     try:
         suggest_url = BASE_URL + "/search/suggest.json?q=" + quote(query) + "&resources[type]=product&resources[limit]=10"
-        r = request_with_rate_limit(session, "GET", suggest_url, timeout=10)
+        r = request_with_rate_limit(session, "GET", suggest_url, timeout=HTTP_TIMEOUT)
         if r.ok:
             try:
                 cats = _parse_search_suggest(r.json(), query)
@@ -830,7 +831,7 @@ def search(query):
     # search HTML (two variants) - collect candidates, not final accept
     for url in (BASE_URL + "/search?q=" + quote(query) + "&type=product", BASE_URL + "/search?q=" + quote(query)):
         try:
-            r = request_with_rate_limit(session, "GET", url, timeout=12)
+            r = request_with_rate_limit(session, "GET", url, timeout=HTTP_TIMEOUT)
             r.raise_for_status()
         except Exception as e:
             vlog(f"SEARCH HTML ERROR: {e}")
@@ -924,7 +925,7 @@ def search(query):
             if len(results) >= int(os.getenv("PERFUME_MAX_RESULTS", "200")):
                 break
             try:
-                resp = request_with_rate_limit(session, "GET", u, timeout=12)
+                resp = request_with_rate_limit(session, "GET", u, timeout=HTTP_TIMEOUT)
             except Exception:
                 continue
             if resp.status_code != 200:
