@@ -61,7 +61,7 @@ IGNORED_MATCH_WORDS = {
 }
 
 # Price regex
-PRICE_RE = re.compile(r"(\d{1,3}(?:[.,]\d{3})*(?:[.,]\d{2}))\s*€", re.I)
+PRICE_RE = re.compile(r"(?:€\s*(\d{1,3}(?:[.,]\d{3})*(?:[.,]\d{2}))|(\d{1,3}(?:[.,]\d{3})*(?:[.,]\d{2}))\s*€)", re.I)
 
 # Ensure debug directory exists
 try:
@@ -342,7 +342,7 @@ def _extract_price_from_text(text):
         return None
     m = PRICE_RE.search(text)
     if m:
-        val = m.group(1)
+        val = m.group(1) or m.group(2)
         # normalize thousand separators and decimal
         if "." in val and "," in val:
             val = val.replace(".", "")
