@@ -94,8 +94,163 @@ def _get_sitemap_urls():
 
     return out
 
+def _format_price(value):
+    """
+    Normalizza un prezzo in euro.
+    Gestisce valori come:
+    69.95 / 69,95 / 69.95 € / 1.149,80
+    """
+    raw = str(value or "").strip()
+    if not raw:
+        return ""
+
+    raw = raw.replace("\xa0", " ").strip()
+    m = re.search(r"\d[\d.,]*", raw)
+    if not m:
+        return ""
+
+    number = m.group(0)
+
+    # Formato europeo: 1.149,80
+    if "," in number:
+        if "." in number:
+            number = number.replace(".", "").replace(",", ".")
+        else:
+            number = number.replace(",", ".")
+    # Formato decimale semplice: 69.95
+    elif number.count(".") == 1:
+        left, right = number.split(".")
+        if len(right) != 2:
+            number = number.replace(".", "")
+    # Separatore migliaia senza decimali: 1.149
+    elif number.count(".") > 1:
+        number = number.replace(".", "")
+
+    try:
+        value_float = float(number)
+    except ValueError:
+        return ""
+
+    if value_float <= 0:
+        return ""
+
+    return f"{value_float:.2f}".replace(".", ",") + "€"
+
+
+def _extract_price_from_html(html):
+    """
+    Estrae il prezzo di vendita reale.
+    Ordine:
+      1) JSON-LD Product/Offer
+      2) meta price
+      3) prezzo visibile vicino al prodotto
+    Non usa il Grundpreis €/l come prezzo del prodotto.
+    """
+    soup = BeautifulSoup(html or "", "html.parser")
+
+    # 1) JSON-LD: è la fonte più affidabile.
+    for script in soup.find_all("script", type="application/ld+json"):
+        raw = script.string or script.get_text()
+        if not raw:
+            continue
+
+        try:
+            data = __import__("json").loads(raw)
+        except Exception:
+            continue
+
+        stack = data if isinstance(data, list) else [data]
+
+        while stack:
+            item = stack.pop(0)
+
+            if isinstance(item, list):
+                stack.extend(item)
+                continue
+
+            if not isinstance(item, dict):
+                continue
+
+            item_type = str(item.get("@type", "")).lower()
+
+            if item_type == "product" or "offers" in item:
+                offers = item.get("offers")
+                offer_list = offers if isinstance(offers, list) else [offers]
+
+                for offer in offer_list:
+                    if not isinstance(offer, dict):
+                        continue
+
+                    for key in ("price", "lowPrice"):
+                        price = _format_price(offer.get(key))
+                        if price:
+                            return price
+
+            for key in ("mainEntity", "item", "@graph"):
+                child = item.get(key)
+                if child:
+                    if isinstance(child, list):
+                        stack.extend(child)
+                    else:
+                        stack.append(child)
+
+    # 2) Meta prezzo strutturato.
+    for attrs in (
+        {"property": "product:price:amount"},
+        {"property": "og:price:amount"},
+        {"itemprop": "price"},
+    ):
+        tag = soup.find("meta", attrs=attrs)
+        if tag and tag.get("content"):
+            price = _format_price(tag["content"])
+            if price:
+                return price
+
+    # 3) Prezzo visibile.
+    # Prima cerchiamo contenitori che abbiano il simbolo € ma NON
+    # la dicitura Grundpreis (prezzo per litro).
+    for node in soup.find_all(["div", "span", "p", "strong", "b"]):
+        txt = node.get_text(" ", strip=True)
+        if not txt or "€" not in txt:
+            continue
+
+        low = txt.lower()
+        if "grundpreis" in low or "€/l" in low or "pro liter" in low:
+            continue
+
+        # Prezzo con esattamente due decimali.
+        m = re.search(r"(?<![\d.,])(\d{1,4}(?:[.,]\d{2}))(?:\s*€)", txt)
+        if m:
+            price = _format_price(m.group(1))
+            if price:
+                return price
+
+    # 4) Ultimo fallback sul testo della pagina.
+    text_content = soup.get_text(" ", strip=True)
+    patterns = [
+        r"(\d{1,4}[.,]\d{2})\s*€\s*inkl\.",
+        r"(\d{1,4}[.,]\d{2})\s*€",
+    ]
+
+    for pattern in patterns:
+        for m in re.finditer(pattern, text_content, re.I):
+            # Ignora prezzi per litro.
+            left = text_content[max(0, m.start() - 100):m.start()].lower()
+            if "grundpreis" in left or "pro liter" in left:
+                continue
+
+            price = _format_price(m.group(1))
+            if price:
+                return price
+
+    return ""
+
+
 def _extract_product(url, query):
-    r = SESSION.get(url, headers=HEADERS, timeout=4)
+    try:
+        r = SESSION.get(url, headers=HEADERS, timeout=6)
+    except Exception:
+        return None
 
     if r.status_code in (403, 429):
         print(f"PARFUMZENTRUM PRODUCT BLOCKED: HTTP {r.status_code}")
@@ -117,28 +272,9 @@ def _extract_product(url, query):
 
     name = " ".join(h1.stripped_strings)
 
+    # Il controllo definitivo resta sul nome reale del prodotto.
     if not _all_tokens_match(name, query):
         return None
-
-    chunks = []
-    node = h1
-
-    for _ in range(8):
-        if not node:
-            break
-
-        txt = node.get_text(" ", strip=True)
-
-        if txt:
-            chunks.append(txt)
-
-        node = node.parent
-
-    product_text = min(
-        (x for x in chunks if len(x) >= len(name) and "€" in x),
-        key=len,
-        default=""
-    )
 
     unavailable_phrases = (
         "leider nicht lieferbar",
@@ -147,25 +283,12 @@ def _extract_product(url, query):
         "ausverkauft",
     )
 
-    page_near_h1 = " ".join(chunks[:5]).lower()
+    page_near_h1 = soup.get_text(" ", strip=True).lower()
 
     if any(x in page_near_h1 for x in unavailable_phrases):
         return None
 
-    patterns = [
-        r"(\d{1,4}[.,]\d{2})\s*€\s*inkl\.",
-        r"Versandbereit\s*(\d{1,4}[.,]\d{2})\s*€",
-        r"(\d{1,4}[.,]\d{2})\s*€",
-    ]
-
-    price = ""
-
-    for pattern in patterns:
-        m = re.search(pattern, product_text, re.I)
-
-        if m:
-            price = m.group(1).replace(".", ",") + "€"
-            break
+    price = _extract_price_from_html(html)
 
     if not price:
         return None
@@ -177,31 +300,85 @@ def _extract_product(url, query):
         "url": url,
     }
 
+
+def _candidate_score(url, query):
+    """
+    Ordina i candidati sitemap mettendo davanti quelli più vicini
+    alla query. Non basta più prendere i primi URL della sitemap.
+    """
+    q = [
+        t for t in _tokens(query)
+        if t not in IGNORED_MATCH_WORDS
+    ]
+    u = _tokens(url)
+
+    score = sum(10 for token in q if token in u)
+
+    normalized_query = " ".join(q)
+    normalized_url = " ".join(u)
+
+    if normalized_query and normalized_query in normalized_url:
+        score += 40
+
+    # Bonus per sequenza dei token.
+    if q:
+        joined = " ".join(u)
+        if all(token in joined for token in q):
+            score += len(q)
+
+    return score
+
+
 def search(query):
+    query = (query or "").strip()
+
+    if not query:
+        return []
+
     try:
         urls = _get_sitemap_urls()
     except Exception as e:
         print("ERRORE SITEMAP:", e)
         return []
 
+    # Discovery generica:
+    # non limitiamo più la verifica ai primi 6 URL della sitemap.
+    # Prima raccogliamo TUTTI i candidati che contengono i token
+    # significativi della query, poi li ordiniamo per pertinenza.
     candidates = []
 
     for url in urls:
-        if re.search(r"_z\d+/?$", url) and _all_tokens_match(url, query):
+        if not re.search(r"_z\d+/?$", url):
+            continue
+
+        if _all_tokens_match(url, query):
             candidates.append(url)
+
+    candidates.sort(
+        key=lambda u: _candidate_score(u, query),
+        reverse=True,
+    )
+
+    # Limite alto ma controllato: evita una scansione enorme senza
+    # perdere prodotti validi che nella sitemap non sono nei primi 6.
+    candidates = candidates[:24]
 
     results = []
     seen = set()
 
     try:
-        for url in candidates[:6]:
+        for url in candidates:
             try:
                 item = _extract_product(url, query)
-            except Exception:
+            except Exception as e:
+                print("ERRORE PRODOTTO PARFUMZENTRUM:", repr(e))
                 item = None
 
             if item:
-                key = (item["name"].lower(), item["price"])
+                key = (
+                    item["name"].lower(),
+                    item["price"],
+                )
 
                 if key not in seen:
                     seen.add(key)
@@ -212,7 +389,7 @@ def search(query):
     return results
 
 if __name__ == "__main__":
-    results = search("Rasasi Hawas For Him")
+    results = search("Khadlaj Onyx Gold")
     print("RISULTATI:", len(results))
 
     for item in results[:10]:
