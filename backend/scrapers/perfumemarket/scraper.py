@@ -12,7 +12,12 @@ from urllib.parse import quote, urljoin
 from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
 
-# Optional: Redis shared limiter. Import only if available.
+# Optional imports (Playwright and Redis). Handled gracefully if missing.
+try:
+    from playwright.sync_api import sync_playwright
+except Exception:
+    sync_playwright = None
+
 try:
     import redis
 except Exception:
@@ -21,15 +26,41 @@ except Exception:
 BASE_URL = "https://www.perfumemarket.nl"
 PRICE_RE = re.compile(r"€\s*(\d{1,4}[.,]\d{2})|(\d{1,4}[.,]\d{2})\s*€")
 
-# Config from env
-MIN_INTERVAL = float(os.getenv("PERFUME_RATE_MIN_INTERVAL", "1.5"))  # seconds between requests to same domain
+# Config via environment
+MIN_INTERVAL = float(os.getenv("PERFUME_RATE_MIN_INTERVAL", "2.5"))  # default safer interval
 SHARED_DIR = os.getenv("PERFUME_SHARED_DIR", "/tmp")
-REDIS_URL = os.getenv("PERFUME_REDIS_URL")  # e.g. redis://user:pass@host:6379/0
+REDIS_URL = os.getenv("PERFUME_REDIS_URL")  # optional
 MAX_RETRIES_429 = int(os.getenv("PERFUME_MAX_RETRIES_429", "4"))
+DEBUG_DUMP_DIR = os.getenv("PERFUME_DEBUG_DUMP_DIR", "/tmp/perfumemarket-debug")
+ENABLE_PLAYWRIGHT = os.getenv("PERFUME_ENABLE_PLAYWRIGHT", "0") in ("1", "true", "True", "yes")
+
+
+def ensure_dir(path):
+    try:
+        os.makedirs(path, exist_ok=True)
+    except Exception:
+        pass
+
+
+ensure_dir(DEBUG_DUMP_DIR)
+ensure_dir(SHARED_DIR)
 
 
 def log(msg):
     print(f"PERFUMEMARKET: {msg}")
+
+
+def _debug_dump_text(label, text):
+    """Save debug text bodies to files with timestamp."""
+    try:
+        safe_label = re.sub(r"[^0-9A-Za-z_.-]", "_", label)[:64]
+        ts = int(time.time() * 1000)
+        fname = os.path.join(DEBUG_DUMP_DIR, f"{safe_label}_{ts}.txt")
+        with open(fname, "w", encoding="utf-8") as fh:
+            fh.write(text or "")
+        log(f"DEBUG DUMP: saved {label} -> {fname}")
+    except Exception as e:
+        log(f"DEBUG DUMP ERROR: {e}")
 
 
 def _extract_price(text):
@@ -177,7 +208,7 @@ def _extract_price_from_node(node):
     return _extract_price(text)
 
 
-# Rate limiter implementation with Redis optional or file-based fallback
+# Rate limiter with optional Redis or file-lock fallback
 class DomainRateLimiter:
     def __init__(self, domain, min_interval=MIN_INTERVAL, shared_dir=SHARED_DIR, redis_url=REDIS_URL):
         self.domain = domain
@@ -188,30 +219,25 @@ class DomainRateLimiter:
         if redis_url and redis:
             try:
                 self.redis_client = redis.from_url(redis_url)
-                # quick ping
                 self.redis_client.ping()
             except Exception:
                 self.redis_client = None
-        # file path for lock
         safe_name = re.sub(r"[^0-9a-zA-Z_.-]", "_", domain)
         self.lock_path = os.path.join(self.shared_dir, f"rate_limiter_{safe_name}.lock")
-        # ensure lock file exists
         try:
             open(self.lock_path, "a").close()
         except Exception:
             pass
 
     def wait(self):
-        jitter = random.uniform(0, 0.3)  # small jitter
+        jitter = random.uniform(0, 0.3)
         if self.redis_client:
-            # use Redis GETSET pattern with expiry
             key = f"ratelimit:{self.domain}"
-            now = time.time()
             while True:
+                now = time.time()
                 try:
                     last = self.redis_client.get(key)
                     if last is None:
-                        # set with expiry to avoid stale keys; use setnx
                         if self.redis_client.setnx(key, str(now)):
                             self.redis_client.expire(key, int(self.min_interval * 3) + 5)
                             break
@@ -221,16 +247,13 @@ class DomainRateLimiter:
                     last_ts = float(last)
                     wait_for = self.min_interval - (now - last_ts)
                     if wait_for > 0:
-                        sleep_for = wait_for + jitter
-                        time.sleep(sleep_for)
-                        now = time.time()
+                        time.sleep(wait_for + jitter)
                         continue
-                    # try to set new timestamp
-                    if self.redis_client.getset(key, str(now)):
-                        self.redis_client.expire(key, int(self.min_interval * 3) + 5)
+                    # set new timestamp
+                    self.redis_client.set(key, str(now), ex=int(self.min_interval * 3) + 5)
                     break
                 except Exception:
-                    # fallback to file method if redis intermittent
+                    # fallback to file
                     self._file_wait(jitter)
                     return
         else:
@@ -239,7 +262,6 @@ class DomainRateLimiter:
     def _file_wait(self, jitter):
         try:
             with open(self.lock_path, "r+") as fh:
-                # exclusive lock during read/write
                 fcntl.flock(fh, fcntl.LOCK_EX)
                 try:
                     fh.seek(0)
@@ -251,27 +273,19 @@ class DomainRateLimiter:
                 wait_for = self.min_interval - (now - last_ts)
                 if wait_for > 0:
                     time.sleep(wait_for + random.uniform(0, 0.3))
-                    now = time.time()
-                # write current timestamp
                 fh.seek(0)
                 fh.truncate()
-                fh.write(str(now))
+                fh.write(str(time.time()))
                 fh.flush()
                 fcntl.flock(fh, fcntl.LOCK_UN)
         except Exception:
-            # last-resort sleep
             time.sleep(self.min_interval + random.uniform(0, 0.3))
 
 
-# Create a limiter instance for perfumemarket
 _PERFUME_LIMITER = DomainRateLimiter("perfumemarket.nl")
 
 
 def request_with_rate_limit(session, method, url, max_retries_429=MAX_RETRIES_429, **kwargs):
-    """
-    Wrapper around session.request that respects per-domain rate limiter,
-    handles 429 with Retry-After and exponential backoff with jitter.
-    """
     attempt = 0
     backoff_base = 0.8
     while True:
@@ -280,14 +294,12 @@ def request_with_rate_limit(session, method, url, max_retries_429=MAX_RETRIES_42
         try:
             resp = session.request(method, url, **kwargs)
         except requests.RequestException as e:
-            # network error: short backoff and retry a couple times
             if attempt >= 3:
                 raise
             time.sleep(min(2, backoff_base * (2 ** (attempt - 1))) + random.uniform(0, 0.2))
             continue
 
         if resp.status_code == 429:
-            # respect Retry-After if present
             ra = resp.headers.get("Retry-After")
             if ra:
                 try:
@@ -301,23 +313,32 @@ def request_with_rate_limit(session, method, url, max_retries_429=MAX_RETRIES_42
                 log(f"429 Retry-After {sleep_for}s for {url}")
                 time.sleep(sleep_for)
             else:
-                # exponential backoff with jitter
                 if attempt > max_retries_429:
-                    resp.raise_for_status()  # give up
+                    # dump body for debug before raising
+                    try:
+                        _debug_dump_text("429_body", resp.text[:2000])
+                    except Exception:
+                        pass
+                    resp.raise_for_status()
                 backoff = backoff_base * (2 ** (attempt - 1)) + random.uniform(0, 0.5)
                 log(f"429 received, backing off {backoff:.2f}s (attempt {attempt}) for {url}")
                 time.sleep(backoff)
             continue
 
-        # For server errors, allow some retries
         if resp.status_code >= 500 and attempt < 3:
             time.sleep(0.5 + random.uniform(0, 0.3))
             continue
 
+        # dump non-200 for debugging
+        if resp.status_code != 200:
+            try:
+                _debug_dump_text(f"non200_{resp.status_code}_{quote(url, safe='')}", resp.text[:5000])
+            except Exception:
+                pass
+
         return resp
 
 
-# Create session with conservative automatic retries (but NOT for 429)
 def _create_session_with_retries():
     session = requests.Session()
     retries = Retry(total=2, backoff_factor=0.2, status_forcelist=(500, 502, 503, 504), allowed_methods=frozenset(['GET','HEAD','OPTIONS']))
@@ -338,19 +359,338 @@ def add_items_to_results(results, items, seen):
         results.append(item)
 
 
-# --- parsing functions unchanged (kept for brevity) ---
-# (I keep the previously improved parsing/matching/extraction code here)
-# Insert the parsing functions: _parse_search_html, _parse_search_suggest, _parse_catalog_json,
-# _find_candidates_from_catalog_json, _parse_product_sitemap_locs, _find_candidates_from_sitemap,
-# _parse_product_page — same as previous file, but all HTTP GETs below will use request_with_rate_limit.
+# Parsing helpers (search HTML, suggest JSON, catalog JSON, sitemap, product page)
+def _parse_search_html(html, query):
+    soup = BeautifulSoup(html or "", "html.parser")
+    results = []
+    seen = set()
+    for link in soup.find_all("a", href=True):
+        href = link.get("href", "")
+        product_url = urljoin(BASE_URL, href).split("?")[0].rstrip("/")
+        if "/products/" not in product_url.lower():
+            continue
+        if product_url in seen:
+            continue
+        card = _find_card(link)
+        if card is None:
+            continue
+        card_text = card.get_text(" ", strip=True)
+        name = _product_name(card, link.get_text(" ", strip=True))
+        if not _query_matches(f"{name} {card_text} {product_url}", query):
+            continue
+        price = _extract_price_from_node(card)
+        if not price:
+            price = _extract_price(card_text)
+        if not price:
+            continue
+        key = product_url.lower()
+        seen.add(key)
+        results.append({
+            "store": "PerfumeMarket",
+            "name": name,
+            "price": price,
+            "url": product_url,
+        })
+    return results
 
-# For brevity in this display I reuse functions from earlier version — ensure they're present
-# in code: the parsing helpers (_parse_search_html, _parse_search_suggest, etc.) remain as before.
-# Below I'll include the key search() function where every session.get(*) is replaced.
 
-# --- search() uses request_with_rate_limit for all HTTP calls ---
+def _parse_search_suggest(payload, query):
+    results = []
+    seen = set()
+    resources = payload.get("resources", {}) if isinstance(payload, dict) else {}
+    nested = resources.get("results", {}) if isinstance(resources, dict) else {}
+    products = nested.get("products", []) if isinstance(nested, dict) else []
+    if not isinstance(products, list):
+        return results
+    for product in products:
+        if not isinstance(product, dict):
+            continue
+        name = str(product.get("title") or product.get("name") or "").strip()
+        url = str(product.get("url") or "").strip()
+        if not name or not url or not _query_matches(name, query):
+            continue
+        product_url = urljoin(BASE_URL, url).split("?")[0].rstrip("/")
+        if "/products/" not in product_url.lower():
+            continue
+        price = None
+        variants = product.get("variants")
+        if isinstance(variants, list):
+            for variant in variants:
+                if not isinstance(variant, dict):
+                    continue
+                raw_variant_price = str(variant.get("price") or "").strip()
+                price = _extract_price(raw_variant_price)
+                if not price and re.fullmatch(r"\d{1,5}(?:[.,]\d{2})?", raw_variant_price):
+                    price = raw_variant_price.replace(".", ",") + " €"
+                if price:
+                    break
+        if not price:
+            raw_product_price = str(product.get("price") or product.get("price_min") or "").strip()
+            price = _extract_price(raw_product_price)
+            if not price and re.fullmatch(r"\d{1,5}(?:[.,]\d{2})?", raw_product_price):
+                price = raw_product_price.replace(".", ",") + " €"
+        if not price:
+            continue
+        key = product_url.lower()
+        if key in seen:
+            continue
+        seen.add(key)
+        results.append({
+            "store": "PerfumeMarket",
+            "name": name,
+            "price": price,
+            "url": product_url,
+        })
+    return results
+
+
+def _parse_catalog_json(payload, query):
+    if not isinstance(payload, dict):
+        return []
+    products = payload.get("products")
+    if not isinstance(products, list):
+        return []
+    results = []
+    seen = set()
+    for product in products:
+        if not isinstance(product, dict):
+            continue
+        title = str(product.get("title") or product.get("name") or "").strip()
+        handle = str(product.get("handle") or "").strip()
+        if not title or not _query_matches(title + " " + handle.replace("-", " "), query):
+            continue
+        product_id = str(product.get("id") or handle or title).strip().lower()
+        if product_id in seen:
+            continue
+        variants = product.get("variants")
+        if not isinstance(variants, list):
+            variants = []
+        price = None
+        for variant in variants:
+            if not isinstance(variant, dict):
+                continue
+            raw_price = str(variant.get("price") or "").strip()
+            if not raw_price:
+                continue
+            price = _extract_price(raw_price)
+            if not price and re.fullmatch(r"\d{1,5}(?:[.,]\d{2})?", raw_price):
+                price = raw_price.replace(".", ",") + " €"
+            if price:
+                if variant.get("available") is True:
+                    break
+        if not price:
+            raw_price = str(product.get("price") or "").strip()
+            price = _extract_price(raw_price)
+            if not price and re.fullmatch(r"\d{1,5}(?:[.,]\d{2})?", raw_price):
+                price = raw_price.replace(".", ",") + " €"
+        if not price:
+            continue
+        if handle:
+            product_url = urljoin(BASE_URL, "/products/" + handle).rstrip("/")
+        else:
+            continue
+        seen.add(product_id)
+        results.append({
+            "store": "PerfumeMarket",
+            "name": title,
+            "price": price,
+            "url": product_url,
+        })
+    return results
+
+
+def _find_candidates_from_catalog_json(session, query):
+    endpoints = (
+        BASE_URL + "/products.json?limit=250",
+        BASE_URL + "/collections/all-perfumes/products.json?limit=250",
+    )
+    matches = []
+    seen = set()
+    for base_endpoint in endpoints:
+        for page in range(1, 21):
+            separator = "&" if "?" in base_endpoint else "?"
+            url = base_endpoint + separator + "page=" + str(page)
+            try:
+                resp = request_with_rate_limit(session, "GET", url, timeout=12)
+            except Exception as e:
+                log(f"CATALOG JSON REQUEST ERROR: {e}")
+                break
+            if resp.status_code != 200 or not resp.text:
+                break
+            try:
+                payload = resp.json()
+            except (ValueError, TypeError, json.JSONDecodeError):
+                _debug_dump_text("catalog_json_bad_json", resp.text[:4000])
+                break
+            products = payload.get("products") if isinstance(payload, dict) else None
+            if not isinstance(products, list) or not products:
+                break
+            for item in _parse_catalog_json(payload, query):
+                key = item["url"].rstrip("/").lower()
+                if key in seen:
+                    continue
+                seen.add(key)
+                matches.append(item)
+            if len(products) < 250:
+                break
+            if len(matches) >= 200:
+                return matches
+            time.sleep(0.08)
+    return matches
+
+
+def _parse_product_sitemap_locs(xml_text, query):
+    if not xml_text:
+        return []
+    query_tokens = set(_tokens(query))
+    if not query_tokens:
+        return []
+    soup = BeautifulSoup(xml_text, "xml")
+    urls = []
+    seen = set()
+    for loc in soup.find_all("loc"):
+        url = str(loc.get_text(strip=True) or "")
+        if "/products/" not in url.lower():
+            continue
+        handle = url.lower().split("/products/", 1)[-1]
+        if not _query_matches(handle.replace("-", " "), query):
+            continue
+        clean = url.split("?", 1)[0].rstrip("/")
+        if clean and clean not in seen:
+            seen.add(clean)
+            urls.append(clean)
+    return urls
+
+
+def _find_candidates_from_sitemap(session, query):
+    try:
+        resp = request_with_rate_limit(session, "GET", BASE_URL + "/sitemap.xml", timeout=10)
+        if resp.status_code != 200 or not resp.text:
+            return []
+    except Exception:
+        return []
+    soup = BeautifulSoup(resp.text, "xml")
+    sitemap_urls = []
+    for loc in soup.find_all("loc"):
+        url = str(loc.get_text(strip=True) or "")
+        if "sitemap_products_" in url.lower():
+            sitemap_urls.append(url)
+    matches = []
+    seen = set()
+    for sitemap_url in sitemap_urls:
+        try:
+            resp = request_with_rate_limit(session, "GET", sitemap_url, timeout=10)
+        except Exception:
+            continue
+        if resp.status_code != 200 or not resp.text:
+            continue
+        for url in _parse_product_sitemap_locs(resp.text, query):
+            key = url.rstrip("/").lower()
+            if key in seen:
+                continue
+            seen.add(key)
+            matches.append(url)
+            if len(matches) >= 200:
+                return matches
+        time.sleep(0.03)
+    return matches
+
+
+def _parse_product_page(html, query, product_url):
+    soup = BeautifulSoup(html or "", "html.parser")
+    title = ""
+    for selector in ("h1", "meta[property='og:title']", "title"):
+        element = soup.select_one(selector)
+        if not element:
+            continue
+        title = (
+            element.get("content", "")
+            if element.name == "meta"
+            else element.get_text(" ", strip=True)
+        ).strip()
+        if title:
+            break
+    if not title:
+        return None
+    price = None
+    for script in soup.find_all("script", type="application/ld+json"):
+        raw = script.string or script.get_text(" ", strip=True)
+        if not raw:
+            continue
+        try:
+            data = json.loads(raw)
+        except (ValueError, TypeError, json.JSONDecodeError):
+            continue
+        objects = data if isinstance(data, list) else [data]
+        for obj in objects:
+            if not isinstance(obj, dict):
+                continue
+            offers = obj.get("offers")
+            if isinstance(offers, dict):
+                offers = [offers]
+            if not isinstance(offers, list):
+                continue
+            for offer in offers:
+                if not isinstance(offer, dict):
+                    continue
+                price = _extract_price(str(offer.get("price") or ""))
+                if not price:
+                    raw_price = str(offer.get("price") or "").strip()
+                    if re.fullmatch(r"\d{1,5}(?:[.,]\d{2})?", raw_price):
+                        price = raw_price.replace(".", ",") + " €"
+                if price:
+                    break
+            if price:
+                break
+        if price:
+            break
+    if not price:
+        price = _extract_price_from_node(soup)
+    if not price:
+        price = _extract_price(soup.get_text(" ", strip=True))
+    if not price or not _query_matches(title + " " + product_url, query):
+        return None
+    return {
+        "store": "PerfumeMarket",
+        "name": title,
+        "price": price,
+        "url": product_url,
+    }
+
+
+# Playwright fallback: render search page if enabled and Playwright available
+def render_search_with_playwright(query):
+    if not ENABLE_PLAYWRIGHT:
+        log("Playwright fallback disabled by env")
+        return None
+    if sync_playwright is None:
+        log("Playwright not installed")
+        return None
+    try:
+        url = BASE_URL + "/search?q=" + quote(query)
+        with sync_playwright() as p:
+            browser = p.chromium.launch(headless=True, args=["--no-sandbox"])
+            page = browser.new_page(user_agent=(
+                "Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) "
+                "AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.0 Mobile/15E148 Safari/604.1"
+            ))
+            # Prime the site for cookies
+            page.goto(BASE_URL, timeout=15000)
+            page.wait_for_timeout(200 + random.randint(0, 300))
+            page.goto(url, timeout=20000)
+            try:
+                page.wait_for_load_state("networkidle", timeout=10000)
+            except Exception:
+                pass
+            html = page.content()
+            browser.close()
+            return html
+    except Exception as e:
+        log(f"Playwright render error: {e}")
+        return None
+
+
 def search(query):
-    # use the same parsing helpers implemented earlier in the file
     query = str(query or "").strip()
     if not query:
         return []
@@ -362,6 +702,8 @@ def search(query):
             "Version/18.0 Mobile/15E148 Safari/604.1"
         ),
         "Accept-Language": "en-US,en;q=0.8",
+        "Referer": BASE_URL,
+        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
     }
 
     session = _create_session_with_retries()
@@ -369,7 +711,16 @@ def search(query):
     results = []
     seen = set()
 
-    # 1) predictive suggest — do only one call (less chance to trigger rate limit)
+    # Prime the domain (get cookies/session) - often reduces bot blocks
+    try:
+        resp = request_with_rate_limit(session, "GET", BASE_URL, timeout=10)
+        if resp and resp.status_code == 200:
+            log("Primed home page for cookies")
+        time.sleep(random.uniform(0.15, 0.6))
+    except Exception as e:
+        log(f"Priming home page failed: {e}")
+
+    # 1) predictive suggest - single call to reduce rate usage
     suggest_url = (
         BASE_URL
         + "/search/suggest.json?q="
@@ -384,12 +735,12 @@ def search(query):
                 if items:
                     log(f"FOUND {len(items)} via suggest")
                 add_items_to_results(results, items, seen)
-            except (ValueError, TypeError, json.JSONDecodeError):
-                pass
+            except Exception:
+                _debug_dump_text("suggest_parse_error", resp.text[:5000])
     except Exception as e:
         log(f"SUGGEST ERROR: {e}")
 
-    # 2) search HTML — two variants, but respect rate limiter
+    # 2) HTML search (two variants)
     search_urls = (
         BASE_URL + "/search?q=" + quote(query) + "&type=product",
         BASE_URL + "/search?q=" + quote(query),
@@ -406,7 +757,7 @@ def search(query):
             log(f"FOUND {len(items)} via search-html ({url})")
         add_items_to_results(results, items, seen)
 
-    # 3) catalog.json pages
+    # 3) Public catalog JSON
     try:
         catalog_items = _find_candidates_from_catalog_json(session, query)
         if catalog_items:
@@ -415,7 +766,7 @@ def search(query):
     except Exception as e:
         log(f"CATALOG JSON ERROR: {e}")
 
-    # 4) sitemap as supplement if not already many results
+    # 4) Sitemap supplement if not many results
     if len(results) < 200:
         try:
             candidate_urls = _find_candidates_from_sitemap(session, query)
@@ -439,22 +790,30 @@ def search(query):
         except Exception as e:
             log(f"SITEMAP ERROR: {e}")
 
+    # 5) Playwright fallback if nothing found and enabled
+    if not results:
+        html = render_search_with_playwright(query)
+        if html:
+            items = _parse_search_html(html, query)
+            if items:
+                log(f"FOUND {len(items)} via playwright-render")
+                add_items_to_results(results, items, seen)
+            else:
+                # Dump rendered HTML to inspect
+                _debug_dump_text("playwright_render_html", html[:4000])
+
     return results
 
 
-# NOTE: For the parsing helper functions referenced above (_parse_search_html, _parse_search_suggest, ...)
-# copy-paste their implementations from the previous full file (they are unchanged except for HTTP calls).
-# To keep this single file runnable, ensure those functions exist above or below this code block.
-
 if __name__ == "__main__":
-    # Quick manual test if run as script
-    test_queries = [
+    # Quick manual test
+    tests = [
         "chanel no 5",
         "l'aventure",
         "dior sauvage",
         "1 club de nuit intense man",
     ]
-    for q in test_queries:
+    for q in tests:
         log(f"Searching for: {q}")
         res = search(q)
         log(f"Results for '{q}': {len(res)} items")
