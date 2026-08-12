@@ -61,7 +61,7 @@ IGNORED_MATCH_WORDS = {
 }
 
 # Price regex
-PRICE_RE = re.compile(r"(?:€\s*(\d{1,3}(?:[.,]\d{3})*(?:[.,]\d{2}))|(\d{1,3}(?:[.,]\d{3})*(?:[.,]\d{2}))\s*€)", re.I)
+PRICE_RE = re.compile(r"(\d{1,3}(?:[.,]\d{3})*(?:[.,]\d{2}))\s*€", re.I)
 
 # Ensure debug directory exists
 try:
@@ -342,7 +342,7 @@ def _extract_price_from_text(text):
         return None
     m = PRICE_RE.search(text)
     if m:
-        val = m.group(1) or m.group(2)
+        val = m.group(1)
         # normalize thousand separators and decimal
         if "." in val and "," in val:
             val = val.replace(".", "")
@@ -875,6 +875,19 @@ def search(query):
     # To avoid excessive load, allow limiting number of verifications (configurable)
     verify_limit = int(os.getenv("PERFUME_VERIFY_CANDIDATE_LIMIT", "120"))
     verified = 0
+    # Prioritize the most relevant candidates and remove duplicate URLs before verification.
+    seen_candidate_urls = set()
+    ordered_candidates = []
+    for _candidate in candidates:
+        _candidate_url = _candidate.get("url")
+        if _candidate_url and _candidate_url in seen_candidate_urls:
+            continue
+        if _candidate_url:
+            seen_candidate_urls.add(_candidate_url)
+        ordered_candidates.append(_candidate)
+    ordered_candidates.sort(key=lambda _candidate: _candidate.get("score", 0.0) or 0.0, reverse=True)
+    candidates = ordered_candidates
+
     for cand in candidates:
         if verified >= verify_limit or len(results) >= int(os.getenv("PERFUME_MAX_RESULTS", "200")):
             break
