@@ -21,9 +21,21 @@ def _tokens(text):
 
 
 def _query_matches(text, query):
+    """Generic product matching tolerant of spaces, hyphens and apostrophes."""
     query_tokens = _tokens(query)
     text_tokens = set(_tokens(text))
-    return bool(query_tokens) and all(token in text_tokens for token in query_tokens)
+    if not query_tokens:
+        return False
+
+    if all(token in text_tokens for token in query_tokens):
+        return True
+
+    # Shopify handles often normalize names differently from the visible query:
+    # e.g. "L'Aventure" -> "l-aventure". Compare a compact alphanumeric form
+    # as a generic fallback; no product or brand is hard-coded.
+    compact_query = re.sub(r"[^a-z0-9]+", "", str(query or "").lower())
+    compact_text = re.sub(r"[^a-z0-9]+", "", str(text or "").lower())
+    return bool(compact_query) and compact_query in compact_text
 
 
 def _product_name(container, fallback):
@@ -210,8 +222,9 @@ def _parse_product_sitemap_locs(xml_text, query):
         if "/products/" not in url.lower():
             continue
         handle = url.lower().split("/products/", 1)[-1]
-        handle_tokens = set(_tokens(handle.replace("-", " ")))
-        if not query_tokens.issubset(handle_tokens):
+        # Use the same generic matcher as the normal search so Shopify URL
+        # normalization (hyphens/apostrophes/spaces) cannot hide products.
+        if not _query_matches(handle.replace("-", " "), query):
             continue
         clean = url.split("?", 1)[0].rstrip("/")
         if clean and clean not in seen:
@@ -241,8 +254,12 @@ def _find_candidates_from_sitemap(session, query):
         if "sitemap_products_" in url.lower():
             sitemap_urls.append(url)
 
-    # Shopify normally exposes only a small number of product sitemaps.
-    # Stop as soon as matching product URLs are found.
+    # Scan every product sitemap. A product can live in any sitemap chunk,
+    # so finding matches in one chunk must not hide additional matches in
+    # later chunks. No perfume or brand is hard-coded.
+    matches = []
+    seen = set()
+
     for sitemap_url in sitemap_urls:
         try:
             response = session.get(
@@ -256,11 +273,16 @@ def _find_candidates_from_sitemap(session, query):
         if response.status_code != 200 or not response.text:
             continue
 
-        urls = _parse_product_sitemap_locs(response.text, query)
-        if urls:
-            return urls[:20]
+        for url in _parse_product_sitemap_locs(response.text, query):
+            key = url.rstrip("/").lower()
+            if key in seen:
+                continue
+            seen.add(key)
+            matches.append(url)
+            if len(matches) >= 50:
+                return matches
 
-    return []
+    return matches
 
 
 def _parse_product_page(html, query, product_url):
@@ -404,29 +426,21 @@ def search(query):
 
         add_items(_parse_search_html(response.text, query))
 
-    # 3) Generic Shopify sitemap fallback. This is the important safety net:
-    # if Shopify search indexing misses a product, the official product
-    # sitemap still exposes its URL. No perfume is hard-coded.
-    if not results:
-        candidate_urls = _find_candidates_from_sitemap(session, query)
-        for product_url in candidate_urls:
-            try:
-                response = session.get(product_url, timeout=12)
-                response.raise_for_status()
-            except requests.RequestException:
-                continue
+    # 3) Generic Shopify sitemap discovery ALWAYS runs.
+    # Search endpoints can return only part of the catalog, so the official
+    # product sitemap is an additional discovery source. No perfume is hard-coded.
+    candidate_urls = _find_candidates_from_sitemap(session, query)
+    for product_url in candidate_urls:
+        if product_url.rstrip("/").lower() in seen:
+            continue
+        try:
+            response = session.get(product_url, timeout=12)
+            response.raise_for_status()
+        except requests.RequestException:
+            continue
 
-            item = _parse_product_page(response.text, query, product_url)
-            if item:
-                add_items([item])
+        item = _parse_product_page(response.text, query, product_url)
+        if item:
+            add_items([item])
 
     return results
-
-
-if __name__ == "__main__":
-    results = search("Hawas Malibu")
-
-    print("RISULTATI:", len(results))
-
-    for item in results[:10]:
-        print(item)
