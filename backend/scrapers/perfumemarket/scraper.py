@@ -2,6 +2,7 @@ import json
 import re
 import time
 import unicodedata
+import difflib
 import requests
 from bs4 import BeautifulSoup
 from urllib.parse import quote, urljoin
@@ -22,7 +23,6 @@ def _extract_price(text):
         return None
     value = match.group(1) or match.group(2)
     # Normalize representation to use comma as decimal separator and add euro symbol
-    # If value already has comma or dot, convert dot -> comma, but avoid double replacing
     value = value.replace(".", ",")
     return value + " €"
 
@@ -56,8 +56,45 @@ def _normalize_for_match(s):
     return re.sub(r"[^0-9a-z]+", "", t, flags=re.UNICODE)
 
 
+def _token_fuzzy_in_set(token, text_tokens):
+    """
+    Return True if token matches any token in text_tokens with fuzzy rules:
+    - exact match
+    - close match via difflib.get_close_matches (cutoff tuned)
+    - simple plural/singular variants
+    - SequenceMatcher ratio threshold for short near-misses
+    """
+    if token in text_tokens:
+        return True
+
+    # direct plural/singular heuristics
+    if token.endswith("s") and token[:-1] in text_tokens:
+        return True
+    if (token + "s") in text_tokens:
+        return True
+
+    # use difflib close matches with a tolerant cutoff
+    # cutoff tuned to accept small typos and man/men cases
+    try:
+        matches = difflib.get_close_matches(token, list(text_tokens), n=1, cutoff=0.72)
+    except Exception:
+        matches = []
+    if matches:
+        return True
+
+    # fallback: SequenceMatcher ratio for tokens longer than 2 chars
+    for t in text_tokens:
+        if len(token) <= 2 or len(t) <= 2:
+            continue
+        ratio = difflib.SequenceMatcher(None, token, t).ratio()
+        if ratio >= 0.8:
+            return True
+
+    return False
+
+
 def _query_matches(text, query):
-    """Generic product matching tolerant of spaces, hyphens, apostrophes and accents."""
+    """Generic product matching tolerant of spaces, hyphens, apostrophes, accents and small typos."""
     query = str(query or "")
     text = str(text or "")
 
@@ -66,13 +103,26 @@ def _query_matches(text, query):
         return False
 
     text_tokens = set(_tokens(text))
-    if all(token in text_tokens for token in query_tokens):
+    # Prefer strict token inclusion if possible, but allow fuzzy per-token matches
+    all_matched = True
+    for token in query_tokens:
+        if not token:
+            continue
+        if _token_fuzzy_in_set(token, text_tokens):
+            continue
+        all_matched = False
+        break
+    if all_matched:
         return True
 
-    # Fallback: compact normalized alphanumeric comparison (handles hyphens/apostrophes/accents)
+    # Shopify handles often normalize names differently from the visible query:
+    # fallback to compact alphanumeric substring match (after normalization)
     compact_query = _normalize_for_match(query)
     compact_text = _normalize_for_match(text)
-    return bool(compact_query) and compact_query in compact_text
+    if compact_query and compact_query in compact_text:
+        return True
+
+    return False
 
 
 def _product_name(container, fallback):
@@ -675,6 +725,7 @@ if __name__ == "__main__":
         "chanel no 5",
         "l'aventure",
         "dior sauvage",
+        "1 club de nuit intense man",
     ]
     for q in queries:
         log(f"Searching for: {q}")
