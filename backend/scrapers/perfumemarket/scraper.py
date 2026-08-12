@@ -1,13 +1,19 @@
 import json
 import re
-import unicodedata
 import time
+import unicodedata
 import requests
 from bs4 import BeautifulSoup
-from urllib.parse import quote, quote_plus, urljoin
+from urllib.parse import quote, urljoin
+from requests.adapters import HTTPAdapter
+from urllib3.util.retry import Retry
 
 BASE_URL = "https://www.perfumemarket.nl"
 PRICE_RE = re.compile(r"€\s*(\d{1,4}[.,]\d{2})|(\d{1,4}[.,]\d{2})\s*€")
+
+
+def log(msg):
+    print(f"PERFUMEMARKET: {msg}")
 
 
 def _extract_price(text):
@@ -15,35 +21,55 @@ def _extract_price(text):
     if not match:
         return None
     value = match.group(1) or match.group(2)
-    return value.replace(".", ",") + " €"
+    # Normalize representation to use comma as decimal separator and add euro symbol
+    # If value already has comma or dot, convert dot -> comma, but avoid double replacing
+    value = value.replace(".", ",")
+    return value + " €"
 
 
-def _normalize_text(text):
-    text = unicodedata.normalize("NFKD", str(text or "").lower())
-    return "".join(c for c in text if not unicodedata.combining(c))
+def _normalize_text(s):
+    """Normalize text by removing accents/diacritics and lowercasing."""
+    if not s:
+        return ""
+    normalized = unicodedata.normalize("NFKD", str(s))
+    without_accents = "".join(c for c in normalized if not unicodedata.combining(c))
+    return without_accents.lower()
 
 
 def _tokens(text):
-    normalized = _normalize_text(text)
-    tokens = re.findall(r"[0-9\w]+", normalized, flags=re.UNICODE)
-    return [t.lower().replace("_", "") for t in tokens if t.strip() and set(t) != {"_"}]
+    """
+    Tokenize text robustly supporting Unicode letters and digits.
+    Returns lowercase tokens with underscores removed.
+    """
+    if not text:
+        return []
+    normalized = unicodedata.normalize("NFKD", text)
+    without_accents = "".join(c for c in normalized if not unicodedata.combining(c))
+    # \w includes underscore; we'll strip underscores later
+    tokens = re.findall(r"[0-9\w]+", without_accents, flags=re.UNICODE)
+    return [t.lower().replace("_", "") for t in tokens if t.strip() and not set(t) == {"_"}]
 
 
-def _normalize_for_match(text):
-    normalized = _normalize_text(text)
-    return re.sub(r"[^0-9a-z]+", "", normalized, flags=re.UNICODE)
+def _normalize_for_match(s):
+    t = _normalize_text(s)
+    # keep only alnum characters for compact matching
+    return re.sub(r"[^0-9a-z]+", "", t, flags=re.UNICODE)
 
 
 def _query_matches(text, query):
-    """Generic Unicode-safe product matching tolerant of spaces, hyphens and apostrophes."""
+    """Generic product matching tolerant of spaces, hyphens, apostrophes and accents."""
+    query = str(query or "")
+    text = str(text or "")
+
     query_tokens = _tokens(query)
-    text_tokens = set(_tokens(text))
     if not query_tokens:
         return False
 
+    text_tokens = set(_tokens(text))
     if all(token in text_tokens for token in query_tokens):
         return True
 
+    # Fallback: compact normalized alphanumeric comparison (handles hyphens/apostrophes/accents)
     compact_query = _normalize_for_match(query)
     compact_text = _normalize_for_match(text)
     return bool(compact_query) and compact_query in compact_text
@@ -70,8 +96,7 @@ def _product_name(container, fallback):
             if name and len(name) <= 300:
                 return name
 
-    # Shopify product cards often expose the complete product title in
-    # an aria-label/title even when the visible anchor only contains the brand.
+    # Look into title/aria-label/alt on anchors or images
     for element in container.find_all(["a", "img"], limit=20):
         value = (
             element.get("title")
@@ -85,55 +110,60 @@ def _product_name(container, fallback):
     return fallback
 
 
-def _card_has_price(card):
-    if card is None:
-        return None
-
-    text_price = _extract_price(card.get_text(" ", strip=True))
-    if text_price:
-        return text_price
-
-    for element in card.find_all(True):
-        for attr in ("data-price", "data-product-price", "data-final-price", "data-price-amount"):
-            raw = element.get(attr)
-            if raw:
-                price = _extract_price(str(raw))
-                if not price and re.fullmatch(r"\d{1,5}(?:[.,]\d{2})?", str(raw).strip()):
-                    price = str(raw).strip().replace(".", ",") + " €"
-                if price:
-                    return price
-
-    for script in card.find_all("script", type="application/json"):
-        raw = script.string or script.get_text(" ", strip=True)
-        if raw and re.search(r"(?:price|amount)", raw, re.I):
-            price = _extract_price(raw)
-            if price:
-                return price
-
-    return None
-
-
 def _find_card(anchor):
     node = anchor
-
-    for _ in range(10):
+    for _ in range(8):
         if node is None:
             break
 
         text = node.get_text(" ", strip=True)
-        price = _card_has_price(node)
-        has_product_data = any(
-            element.has_attr(attr)
-            for element in node.find_all(True)
-            for attr in ("data-product-id", "data-product-handle", "data-product-price")
-        )
-        if len(text) >= 10 and (price or has_product_data):
-            if len(text) <= 2200:
+        # Consider a node a product card if it has enough text length and either a price
+        # or at least some tokens (we relax one previous strictness)
+        if len(text) >= 20 and (_extract_price(text) or _tokens(text)):
+            if len(text) <= 1800:
                 return node
 
         node = getattr(node, "parent", None)
 
     return anchor.parent
+
+
+def _extract_price_from_node(node):
+    """
+    Try to extract price from node by checking common data-attributes, itemprop,
+    class names and text contents. Returns price string or None.
+    """
+    if node is None:
+        return None
+
+    # Common data attributes that may contain price
+    for elem in node.find_all(True):
+        # try attributes that might directly hold a numeric price
+        for attr in ("data-price", "data-product-price", "data-final-price", "data-price-amount", "data-priceamount"):
+            if elem.has_attr(attr):
+                candidate = str(elem[attr]).strip()
+                price = _extract_price(candidate) or (candidate.replace(".", ",") + " €" if re.fullmatch(r"\d{1,5}(?:[.,]\d{2})?", candidate) else None)
+                if price:
+                    return price
+
+        # itemprop="price" or meta/property patterns
+        if elem.has_attr("itemprop") and elem["itemprop"].lower() == "price":
+            candidate = elem.get("content") or elem.get_text(" ", strip=True)
+            price = _extract_price(candidate) or (candidate.replace(".", ",") + " €" if re.fullmatch(r"\d{1,5}(?:[.,]\d{2})?", candidate) else None)
+            if price:
+                return price
+
+        # classes that likely contain price
+        class_attr = " ".join(elem.get("class") or [])
+        if class_attr and re.search(r"price|kosten|prijs|product-price|final-price", class_attr, re.I):
+            candidate = elem.get("content") or elem.get_text(" ", strip=True)
+            price = _extract_price(candidate) or (candidate.replace(".", ",") + " €" if re.fullmatch(r"\d{1,5}(?:[.,]\d{2})?", candidate) else None)
+            if price:
+                return price
+
+    # As last resort, search visible text in the node
+    text = node.get_text(" ", strip=True)
+    return _extract_price(text)
 
 
 def _parse_search_html(html, query):
@@ -157,13 +187,14 @@ def _parse_search_html(html, query):
         card_text = card.get_text(" ", strip=True)
         name = _product_name(card, link.get_text(" ", strip=True))
 
-        # IMPORTANT: match the query against the complete product card/name,
-        # not only the text of the clicked anchor. On Shopify the anchor can
-        # contain only the brand or an image.
+        # match the query against the complete product card/name/url
         if not _query_matches(f"{name} {card_text} {product_url}", query):
             continue
 
-        price = _card_has_price(card)
+        # Try multiple ways to get price: from data attributes, special classes, visible text
+        price = _extract_price_from_node(card)
+        if not price:
+            price = _extract_price(card_text)
         if not price:
             continue
 
@@ -247,9 +278,6 @@ def _parse_search_suggest(payload, query):
     return results
 
 
-
-
-
 def _parse_catalog_json(payload, query):
     """Parse Shopify's public product catalog JSON without relying on search ranking."""
     if not isinstance(payload, dict):
@@ -279,9 +307,6 @@ def _parse_catalog_json(payload, query):
         if not isinstance(variants, list):
             variants = []
 
-        # Keep the first variant price, preferring an available variant when
-        # Shopify exposes availability. We still return sold-out products,
-        # because ScentHunter must be able to report stock state downstream.
         price = None
         for variant in variants:
             if not isinstance(variant, dict):
@@ -352,6 +377,7 @@ def _find_candidates_from_catalog_json(session, query):
             if not isinstance(products, list) or not products:
                 break
 
+            # add items from this page
             for item in _parse_catalog_json(payload, query):
                 key = item["url"].rstrip("/").lower()
                 if key in seen:
@@ -359,15 +385,19 @@ def _find_candidates_from_catalog_json(session, query):
                 seen.add(key)
                 matches.append(item)
 
-            # Shopify normally returns fewer than the requested limit on the
-            # last page. This also prevents needless requests.
+            # Shopify normally returns fewer than the requested limit on the last page.
             if len(products) < 250:
                 break
 
-            if len(matches) >= 50:
+            # Soft cap: if we already have plenty, stop scanning
+            if len(matches) >= 200:
                 return matches
 
+            # small delay to avoid hammering
+            time.sleep(0.1)
+
     return matches
+
 
 def _parse_product_sitemap_locs(xml_text, query):
     """Return product URLs whose Shopify handle contains every query token."""
@@ -387,8 +417,6 @@ def _parse_product_sitemap_locs(xml_text, query):
         if "/products/" not in url.lower():
             continue
         handle = url.lower().split("/products/", 1)[-1]
-        # Use the same generic matcher as the normal search so Shopify URL
-        # normalization (hyphens/apostrophes/spaces) cannot hide products.
         if not _query_matches(handle.replace("-", " "), query):
             continue
         clean = url.split("?", 1)[0].rstrip("/")
@@ -419,9 +447,6 @@ def _find_candidates_from_sitemap(session, query):
         if "sitemap_products_" in url.lower():
             sitemap_urls.append(url)
 
-    # Scan every product sitemap. A product can live in any sitemap chunk,
-    # so finding matches in one chunk must not hide additional matches in
-    # later chunks. No perfume or brand is hard-coded.
     matches = []
     seen = set()
 
@@ -444,8 +469,11 @@ def _find_candidates_from_sitemap(session, query):
                 continue
             seen.add(key)
             matches.append(url)
-            if len(matches) >= 50:
+            if len(matches) >= 200:
                 return matches
+
+        # small delay to be polite
+        time.sleep(0.05)
 
     return matches
 
@@ -470,8 +498,7 @@ def _parse_product_page(html, query, product_url):
     if not title:
         return None
 
-    # Product pages can contain several prices. Prefer JSON-LD/product data,
-    # then fall back to visible page text.
+    # Prefer JSON-LD/product data for price, then visible page text.
     price = None
     for script in soup.find_all("script", type="application/ld+json"):
         raw = script.string or script.get_text(" ", strip=True)
@@ -507,6 +534,9 @@ def _parse_product_page(html, query, product_url):
             break
 
     if not price:
+        # search common selectors
+        price = _extract_price_from_node(soup)
+    if not price:
         price = _extract_price(soup.get_text(" ", strip=True))
 
     if not price or not _query_matches(title + " " + product_url, query):
@@ -518,6 +548,28 @@ def _parse_product_page(html, query, product_url):
         "price": price,
         "url": product_url,
     }
+
+
+def _create_session_with_retries():
+    session = requests.Session()
+    # retries for idempotent requests
+    retries = Retry(total=3, backoff_factor=0.3, status_forcelist=(429, 500, 502, 503, 504), allowed_methods=frozenset(['GET','HEAD','OPTIONS']))
+    adapter = HTTPAdapter(max_retries=retries)
+    session.mount("https://", adapter)
+    session.mount("http://", adapter)
+    return session
+
+
+def add_items_to_results(results, items, seen):
+    for item in items or []:
+        if not isinstance(item, dict):
+            continue
+        url = str(item.get("url") or "").split("?", 1)[0].rstrip("/").lower()
+        if not url or url in seen:
+            continue
+        seen.add(url)
+        results.append(item)
+
 
 def search(query):
     query = str(query or "").strip()
@@ -533,28 +585,12 @@ def search(query):
         "Accept-Language": "en-US,en;q=0.8",
     }
 
-    session = requests.Session()
+    session = _create_session_with_retries()
     session.headers.update(headers)
     results = []
     seen = set()
 
-    def add_items(items, source):
-        added = 0
-        for item in items or []:
-            if not isinstance(item, dict):
-                continue
-            url = str(item.get("url") or "").split("?", 1)[0].rstrip("/").lower()
-            if not url or url in seen:
-                continue
-            seen.add(url)
-            results.append(item)
-            added += 1
-            print(f"PERFUMEMARKET FOUND via {source}: {item.get('name')} | {item.get('url')}")
-        return added
-
-    # 1) Shopify predictive search. Always run it, but never stop the search
-    # here: a partial predictive response must not hide a valid product found
-    # by another generic Shopify search method.
+    # 1) Shopify predictive search
     suggest_urls = (
         BASE_URL
         + "/search/suggest.json?q="
@@ -572,14 +608,16 @@ def search(query):
             response = session.get(suggest_url, timeout=10)
             if response.ok:
                 try:
-                    add_items(_parse_search_suggest(response.json(), query), "suggest")
+                    items = _parse_search_suggest(response.json(), query)
+                    if items:
+                        log(f"FOUND {len(items)} via suggest")
+                    add_items_to_results(results, items, seen)
                 except (ValueError, TypeError, json.JSONDecodeError):
                     pass
         except requests.RequestException as error:
-            print(f"PERFUMEMARKET SUGGEST ERROR: {error}")
+            log(f"SUGGEST ERROR: {error}")
 
-    # 2) Normal Shopify search. Always run both forms, even if predictive
-    # search already found something. Results are deduplicated by URL.
+    # 2) Normal Shopify search (HTML)
     search_urls = (
         BASE_URL + "/search?q=" + quote(query) + "&type=product",
         BASE_URL + "/search?q=" + quote(query),
@@ -590,23 +628,30 @@ def search(query):
             response = session.get(url, timeout=12)
             response.raise_for_status()
         except requests.RequestException as error:
-            print(f"PERFUMEMARKET ERROR: {error}")
+            log(f"SEARCH HTML ERROR: {error}")
             continue
 
-        add_items(_parse_search_html(response.text, query), "search-html")
+        items = _parse_search_html(response.text, query)
+        if items:
+            log(f"FOUND {len(items)} via search-html ({url})")
+        add_items_to_results(results, items, seen)
 
-    # 3) Public Shopify product catalog discovery. This is the important
-    # fallback for products that Shopify's search/predictive-search endpoints
-    # omit because of relevance, indexing or query normalization.
-    add_items(_find_candidates_from_catalog_json(session, query), "catalog-json")
+    # 3) Public Shopify product catalog discovery
+    catalog_items = _find_candidates_from_catalog_json(session, query)
+    if catalog_items:
+        log(f"FOUND {len(catalog_items)} via catalog-json")
+    add_items_to_results(results, catalog_items, seen)
 
-    # 4) Sitemap is a supplementary source, not a fallback that only runs
-    # when results are empty. Catalog/search endpoints can be partial, so scan
-    # sitemap chunks whenever the result set is still reasonably small.
-    if len(results) < 100:
+    # 4) Sitemap: run as supplement if results below threshold to find missing handles.
+    # This prevents running sitemap-only when everything already found, but still
+    # allows finding products missing from catalog JSON or search endpoints.
+    if len(results) < 200:
         candidate_urls = _find_candidates_from_sitemap(session, query)
+        if candidate_urls:
+            log(f"FOUND {len(candidate_urls)} candidate URLs via sitemap")
         for product_url in candidate_urls:
-            if product_url.rstrip("/").lower() in seen:
+            key = product_url.rstrip("/").lower()
+            if key in seen:
                 continue
             try:
                 response = session.get(product_url, timeout=12)
@@ -616,8 +661,24 @@ def search(query):
 
             item = _parse_product_page(response.text, query, product_url)
             if item:
-                add_items([item], "sitemap")
-                if len(results) >= 200:
-                    break
+                add_items_to_results(results, [item], seen)
+                log(f"ADDED via sitemap: {item.get('url')}")
+            if len(results) >= 400:
+                break
 
     return results
+
+
+if __name__ == "__main__":
+    # Quick manual test if run as script
+    queries = [
+        "chanel no 5",
+        "l'aventure",
+        "dior sauvage",
+    ]
+    for q in queries:
+        log(f"Searching for: {q}")
+        res = search(q)
+        log(f"Results for '{q}': {len(res)} items")
+        for r in res[:10]:
+            log(f" - {r.get('name')} @ {r.get('price')} -> {r.get('url')}")
