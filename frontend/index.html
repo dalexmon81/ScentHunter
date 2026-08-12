@@ -1564,11 +1564,7 @@ function openSize(gi,sizeKey,fromFormats=true){
 
       return `<div class="offer ${!isOut&&n===0?"best":""}">
         <div class="offer-line">
-          <div>
-            <div class="offer-store">${!isOut&&n===0?"🥇 ":""}${esc(o.store||"Negozio")}</div>
-            ${!isOut&&n===0?'<div class="offer-meta">MIGLIOR PREZZO</div>':""}
-            ${isOut?'<div class="bestprice">OUT OF STOCK</div>':""}
-          </div>
+          <div class="offer-store">${!isOut&&n===0?"🥇 ":""}${esc(o.store||"Negozio")}</div>
           <div style="display:flex;align-items:center;gap:8px">
             ${!isOut?`<span class="offer-price">${esc(shPrice(o))}</span>`:""}
             <button class="offer-heart ${on?"saved":""}"
@@ -1581,6 +1577,8 @@ function openSize(gi,sizeKey,fromFormats=true){
               onclick="event.stopPropagation();chooseOffer(${gi},${JSON.stringify(sizeKey)},${n})">${on?"♥":"♡"}</button>
           </div>
         </div>
+        ${!isOut&&n===0?'<div class="offer-meta">MIGLIOR PREZZO</div>':""}
+        ${isOut?'<div class="offer-outstock">OUT OF STOCK</div>':""}
         ${(!isOut&&o.url)?`<a class="offer-link" href="${esc(o.url)}" target="_blank" rel="noopener noreferrer">Vai al negozio →</a>`:""}
       </div>`;
     }).join("")}
