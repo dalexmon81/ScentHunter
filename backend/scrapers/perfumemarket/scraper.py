@@ -1,17 +1,3 @@
-# Complete PerfumeMarket scraper with sitemap-first discovery and percent-based matching
-# - Uses sitemap as primary discovery source (scans product pages and verifies match on page title/data)
-# - Matching requires a percentage of query tokens to match product title (default 60%)
-# - No hard-coded exceptions for brands/products
-# - Rate limiting, debug dumps and Playwright fallback included (optional)
-#
-# Usage:
-# - Copy this file over your existing scraper and run.
-# - Configure via environment variables if needed:
-#     PERFUME_RATE_MIN_INTERVAL (default 2.5)
-#     PERFUME_DEBUG_DUMP_DIR (default /tmp/perfumemarket-debug)
-#     PERFUME_ENABLE_PLAYWRIGHT (1 to enable Playwright fallback)
-#     PERFUME_VERBOSE (1 to enable verbose diagnostic logging)
-#
 import os
 import re
 import time
@@ -377,7 +363,12 @@ def _extract_price_from_node(node):
     return _extract_price_from_text(node.get_text(" ", strip=True))
 
 # HTML parsing helpers
-def _parse_search_html(html, query):
+def _parse_search_html(html, query, session=None):
+    """
+    Parse search HTML and return list of items.
+    If a candidate card lacks a visible price, and a session is provided,
+    fetch the product page and try parsing the page for price and title match.
+    """
     soup = BeautifulSoup(html or "", "html.parser")
     results = []
     seen = set()
@@ -416,10 +407,31 @@ def _parse_search_html(html, query):
         if not _tokens_match_percentage(combined_text, query):
             vlog(f"SKIP_HTML_MISMATCH url={product_url} name={name[:60]!r}")
             continue
+        # Try to get price from card first
         price = _extract_price_from_node(card) or _extract_price_from_text(card.get_text(" ", strip=True))
         if not price:
+            # If we have a session, fetch the product page and try parsing it
+            if session is not None:
+                try:
+                    resp = request_with_rate_limit(session, "GET", product_url, timeout=12)
+                    if resp.status_code == 200 and resp.text:
+                        item = _parse_product_page(resp.text, query, product_url)
+                        if item:
+                            # item already contains name/price/url
+                            seen.add(product_url)
+                            results.append(item)
+                            vlog(f"HTML_FALLBACK_PAGE_MATCH url={product_url} name={item.get('name')!r} price={item.get('price')}")
+                            continue
+                        else:
+                            vlog(f"HTML_FALLBACK_PAGE_NO_MATCH url={product_url}")
+                    else:
+                        vlog(f"HTML_FALLBACK_PAGE_GET_FAILED url={product_url} status={getattr(resp,'status_code',None)}")
+                except Exception as e:
+                    vlog(f"HTML_FALLBACK_PAGE_ERROR url={product_url} err={e}")
+            # no page fallback or page didn't help -> skip
             vlog(f"SKIP_HTML_NOPRICE url={product_url} name={name!r}")
             continue
+        # If we have price in card, accept it
         seen.add(product_url)
         results.append({"store":"PerfumeMarket","name":name,"price":price,"url":product_url})
         vlog(f"HTML_MATCH url={product_url} name={name!r} price={price}")
@@ -711,7 +723,7 @@ def search(query):
     except Exception as e:
         vlog(f"SUGGEST ERROR: {e}")
 
-    # 4) search HTML (two variants)
+    # 4) search HTML (two variants) - pass session so fallback page fetch is possible
     for url in (BASE_URL + "/search?q=" + quote(query) + "&type=product", BASE_URL + "/search?q=" + quote(query)):
         try:
             r = request_with_rate_limit(session, "GET", url, timeout=12)
@@ -719,7 +731,7 @@ def search(query):
         except Exception as e:
             vlog(f"SEARCH HTML ERROR: {e}")
             continue
-        items = _parse_search_html(r.text, query)
+        items = _parse_search_html(r.text, query, session=session)
         for it in items:
             k = (it["name"].lower(), it["price"])
             if k not in seen:
@@ -755,7 +767,7 @@ def search(query):
     if not results and ENABLE_PLAYWRIGHT:
         html = render_search_with_playwright(query)
         if html:
-            items = _parse_search_html(html, query)
+            items = _parse_search_html(html, query, session=session)
             for it in items:
                 k = (it["name"].lower(), it["price"])
                 if k not in seen:
