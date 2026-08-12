@@ -33,6 +33,7 @@ REDIS_URL = os.getenv("PERFUME_REDIS_URL")  # optional
 MAX_RETRIES_429 = int(os.getenv("PERFUME_MAX_RETRIES_429", "4"))
 DEBUG_DUMP_DIR = os.getenv("PERFUME_DEBUG_DUMP_DIR", "/tmp/perfumemarket-debug")
 ENABLE_PLAYWRIGHT = os.getenv("PERFUME_ENABLE_PLAYWRIGHT", "0") in ("1", "true", "True", "yes")
+VERBOSE = os.getenv("PERFUME_VERBOSE", "1") in ("1", "true", "True", "yes")  # default on for diagnostics
 
 
 def ensure_dir(path):
@@ -50,6 +51,11 @@ def log(msg):
     print(f"PERFUMEMARKET: {msg}")
 
 
+def vlog(msg):
+    if VERBOSE:
+        log(msg)
+
+
 def _debug_dump_text(label, text):
     """Save debug text bodies to files with timestamp."""
     try:
@@ -58,7 +64,7 @@ def _debug_dump_text(label, text):
         fname = os.path.join(DEBUG_DUMP_DIR, f"{safe_label}_{ts}.txt")
         with open(fname, "w", encoding="utf-8") as fh:
             fh.write(text or "")
-        log(f"DEBUG DUMP: saved {label} -> {fname}")
+        vlog(f"DEBUG DUMP: saved {label} -> {fname}")
     except Exception as e:
         log(f"DEBUG DUMP ERROR: {e}")
 
@@ -249,11 +255,9 @@ class DomainRateLimiter:
                     if wait_for > 0:
                         time.sleep(wait_for + jitter)
                         continue
-                    # set new timestamp
                     self.redis_client.set(key, str(now), ex=int(self.min_interval * 3) + 5)
                     break
                 except Exception:
-                    # fallback to file
                     self._file_wait(jitter)
                     return
         else:
@@ -314,7 +318,6 @@ def request_with_rate_limit(session, method, url, max_retries_429=MAX_RETRIES_42
                 time.sleep(sleep_for)
             else:
                 if attempt > max_retries_429:
-                    # dump body for debug before raising
                     try:
                         _debug_dump_text("429_body", resp.text[:2000])
                     except Exception:
@@ -329,7 +332,6 @@ def request_with_rate_limit(session, method, url, max_retries_429=MAX_RETRIES_42
             time.sleep(0.5 + random.uniform(0, 0.3))
             continue
 
-        # dump non-200 for debugging
         if resp.status_code != 200:
             try:
                 _debug_dump_text(f"non200_{resp.status_code}_{quote(url, safe='')}", resp.text[:5000])
@@ -354,16 +356,19 @@ def add_items_to_results(results, items, seen):
             continue
         url = str(item.get("url") or "").split("?", 1)[0].rstrip("/").lower()
         if not url or url in seen:
+            vlog(f"SKIP add: already seen or invalid url -> {url}")
             continue
         seen.add(url)
         results.append(item)
+        vlog(f"ADDED item: {item.get('name')!r} -> {url}")
 
 
-# Parsing helpers (search HTML, suggest JSON, catalog JSON, sitemap, product page)
+# Parsing helpers with detailed diagnostics
 def _parse_search_html(html, query):
     soup = BeautifulSoup(html or "", "html.parser")
     results = []
     seen = set()
+    candidate_count = 0
     for link in soup.find_all("a", href=True):
         href = link.get("href", "")
         product_url = urljoin(BASE_URL, href).split("?")[0].rstrip("/")
@@ -371,26 +376,41 @@ def _parse_search_html(html, query):
             continue
         if product_url in seen:
             continue
+        candidate_count += 1
         card = _find_card(link)
         if card is None:
+            vlog(f"SKIP candidate (no card) url={product_url}")
             continue
         card_text = card.get_text(" ", strip=True)
         name = _product_name(card, link.get_text(" ", strip=True))
+
+        # Diagnostics: show candidate brief
+        vlog(f"CANDIDATE_HTML url={product_url} name_snippet={name[:60]!r}")
+
+        # match the query against the complete product card/name/url
         if not _query_matches(f"{name} {card_text} {product_url}", query):
+            vlog(f"SKIP candidate (query mismatch) url={product_url} name={name!r}")
             continue
+
+        # Try multiple ways to get price: from data attributes, special classes, visible text
         price = _extract_price_from_node(card)
         if not price:
             price = _extract_price(card_text)
         if not price:
+            vlog(f"SKIP candidate (no price) url={product_url} name={name!r} card_text_snippet={card_text[:120]!r}")
             continue
+
         key = product_url.lower()
         seen.add(key)
+
         results.append({
             "store": "PerfumeMarket",
             "name": name,
             "price": price,
             "url": product_url,
         })
+        vlog(f"PARSED_HTML_MATCH url={product_url} name={name!r} price={price}")
+    vlog(f"HTML parse: inspected candidates={candidate_count}, matched={len(results)}")
     return results
 
 
@@ -407,10 +427,13 @@ def _parse_search_suggest(payload, query):
             continue
         name = str(product.get("title") or product.get("name") or "").strip()
         url = str(product.get("url") or "").strip()
+        vlog(f"CANDIDATE_SUGGEST name={name!r} url={url}")
         if not name or not url or not _query_matches(name, query):
+            vlog(f"SKIP suggest (name/url/mismatch) name={name!r} url={url}")
             continue
         product_url = urljoin(BASE_URL, url).split("?")[0].rstrip("/")
         if "/products/" not in product_url.lower():
+            vlog(f"SKIP suggest (not product path) url={product_url}")
             continue
         price = None
         variants = product.get("variants")
@@ -430,9 +453,11 @@ def _parse_search_suggest(payload, query):
             if not price and re.fullmatch(r"\d{1,5}(?:[.,]\d{2})?", raw_product_price):
                 price = raw_product_price.replace(".", ",") + " €"
         if not price:
+            vlog(f"SKIP suggest (no price) url={product_url} name={name!r}")
             continue
         key = product_url.lower()
         if key in seen:
+            vlog(f"SKIP suggest (dupe) url={product_url}")
             continue
         seen.add(key)
         results.append({
@@ -441,6 +466,7 @@ def _parse_search_suggest(payload, query):
             "price": price,
             "url": product_url,
         })
+        vlog(f"PARSED_SUGGEST_MATCH url={product_url} name={name!r} price={price}")
     return results
 
 
@@ -457,10 +483,15 @@ def _parse_catalog_json(payload, query):
             continue
         title = str(product.get("title") or product.get("name") or "").strip()
         handle = str(product.get("handle") or "").strip()
+        # diagnostic
+        if title:
+            vlog(f"CANDIDATE_CATALOG title={title[:60]!r} handle={handle!r}")
         if not title or not _query_matches(title + " " + handle.replace("-", " "), query):
+            vlog(f"SKIP catalog (query mismatch) title={title!r} handle={handle!r}")
             continue
         product_id = str(product.get("id") or handle or title).strip().lower()
         if product_id in seen:
+            vlog(f"SKIP catalog (dupe id) id={product_id}")
             continue
         variants = product.get("variants")
         if not isinstance(variants, list):
@@ -484,10 +515,12 @@ def _parse_catalog_json(payload, query):
             if not price and re.fullmatch(r"\d{1,5}(?:[.,]\d{2})?", raw_price):
                 price = raw_price.replace(".", ",") + " €"
         if not price:
+            vlog(f"SKIP catalog (no price) title={title!r} handle={handle!r}")
             continue
         if handle:
             product_url = urljoin(BASE_URL, "/products/" + handle).rstrip("/")
         else:
+            vlog(f"SKIP catalog (no handle) title={title!r}")
             continue
         seen.add(product_id)
         results.append({
@@ -496,6 +529,7 @@ def _parse_catalog_json(payload, query):
             "price": price,
             "url": product_url,
         })
+        vlog(f"PARSED_CATALOG_MATCH url={product_url} title={title!r} price={price}")
     return results
 
 
@@ -516,6 +550,7 @@ def _find_candidates_from_catalog_json(session, query):
                 log(f"CATALOG JSON REQUEST ERROR: {e}")
                 break
             if resp.status_code != 200 or not resp.text:
+                vlog(f"CATALOG endpoint returned {resp.status_code} or empty body for {url}")
                 break
             try:
                 payload = resp.json()
@@ -536,6 +571,7 @@ def _find_candidates_from_catalog_json(session, query):
             if len(matches) >= 200:
                 return matches
             time.sleep(0.08)
+    vlog(f"CATALOG scan: found candidates={len(matches)}")
     return matches
 
 
@@ -566,6 +602,7 @@ def _find_candidates_from_sitemap(session, query):
     try:
         resp = request_with_rate_limit(session, "GET", BASE_URL + "/sitemap.xml", timeout=10)
         if resp.status_code != 200 or not resp.text:
+            vlog(f"SITEMAP root returned {resp.status_code}")
             return []
     except Exception:
         return []
@@ -593,6 +630,7 @@ def _find_candidates_from_sitemap(session, query):
             if len(matches) >= 200:
                 return matches
         time.sleep(0.03)
+    vlog(f"SITEMAP scan: found candidates={len(matches)}")
     return matches
 
 
@@ -611,6 +649,7 @@ def _parse_product_page(html, query, product_url):
         if title:
             break
     if not title:
+        vlog(f"PARSE PAGE SKIP (no title) url={product_url}")
         return None
     price = None
     for script in soup.find_all("script", type="application/ld+json"):
@@ -648,8 +687,13 @@ def _parse_product_page(html, query, product_url):
         price = _extract_price_from_node(soup)
     if not price:
         price = _extract_price(soup.get_text(" ", strip=True))
-    if not price or not _query_matches(title + " " + product_url, query):
+    if not price:
+        vlog(f"PARSE PAGE SKIP (no price) url={product_url} title={title!r}")
         return None
+    if not _query_matches(title + " " + product_url, query):
+        vlog(f"PARSE PAGE SKIP (query mismatch) url={product_url} title={title!r}")
+        return None
+    vlog(f"PARSE PAGE MATCH url={product_url} title={title!r} price={price}")
     return {
         "store": "PerfumeMarket",
         "name": title,
@@ -661,10 +705,10 @@ def _parse_product_page(html, query, product_url):
 # Playwright fallback: render search page if enabled and Playwright available
 def render_search_with_playwright(query):
     if not ENABLE_PLAYWRIGHT:
-        log("Playwright fallback disabled by env")
+        vlog("Playwright fallback disabled by env")
         return None
     if sync_playwright is None:
-        log("Playwright not installed")
+        vlog("Playwright not installed")
         return None
     try:
         url = BASE_URL + "/search?q=" + quote(query)
@@ -674,7 +718,6 @@ def render_search_with_playwright(query):
                 "Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) "
                 "AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.0 Mobile/15E148 Safari/604.1"
             ))
-            # Prime the site for cookies
             page.goto(BASE_URL, timeout=15000)
             page.wait_for_timeout(200 + random.randint(0, 300))
             page.goto(url, timeout=20000)
@@ -715,7 +758,7 @@ def search(query):
     try:
         resp = request_with_rate_limit(session, "GET", BASE_URL, timeout=10)
         if resp and resp.status_code == 200:
-            log("Primed home page for cookies")
+            vlog("Primed home page for cookies")
         time.sleep(random.uniform(0.15, 0.6))
     except Exception as e:
         log(f"Priming home page failed: {e}")
@@ -775,16 +818,19 @@ def search(query):
             for product_url in candidate_urls:
                 key = product_url.rstrip("/").lower()
                 if key in seen:
+                    vlog(f"SKIP sitemap (already seen) url={product_url}")
                     continue
                 try:
                     resp = request_with_rate_limit(session, "GET", product_url, timeout=12)
                     resp.raise_for_status()
                 except Exception:
+                    vlog(f"SITEMAP product GET failed url={product_url}")
                     continue
                 item = _parse_product_page(resp.text, query, product_url)
                 if item:
                     add_items_to_results(results, [item], seen)
-                    log(f"ADDED via sitemap: {item.get('url')}")
+                else:
+                    vlog(f"SITEMAP product parsed but no item matched url={product_url}")
                 if len(results) >= 400:
                     break
         except Exception as e:
@@ -799,8 +845,12 @@ def search(query):
                 log(f"FOUND {len(items)} via playwright-render")
                 add_items_to_results(results, items, seen)
             else:
-                # Dump rendered HTML to inspect
-                _debug_dump_text("playwright_render_html", html[:4000])
+                _debug_dump_text("playwright_render_html", html[:20000])
+
+    # Final diagnostics
+    log(f"SEARCH COMPLETE: found_total={len(results)}")
+    for idx, it in enumerate(results, 1):
+        log(f"RESULT {idx}: {it.get('name')!r} | {it.get('price')} | {it.get('url')}")
 
     return results
 
@@ -817,5 +867,5 @@ if __name__ == "__main__":
         log(f"Searching for: {q}")
         res = search(q)
         log(f"Results for '{q}': {len(res)} items")
-        for r in res[:10]:
+        for r in res[:20]:
             log(f" - {r.get('name')} @ {r.get('price')} -> {r.get('url')}")
