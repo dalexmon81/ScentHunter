@@ -204,6 +204,127 @@ def _parse_search_suggest(payload, query):
 
 
 
+
+
+def _parse_catalog_json(payload, query):
+    """Parse Shopify's public product catalog JSON without relying on search ranking."""
+    if not isinstance(payload, dict):
+        return []
+
+    products = payload.get("products")
+    if not isinstance(products, list):
+        return []
+
+    results = []
+    seen = set()
+
+    for product in products:
+        if not isinstance(product, dict):
+            continue
+
+        title = str(product.get("title") or product.get("name") or "").strip()
+        handle = str(product.get("handle") or "").strip()
+        if not title or not _query_matches(title + " " + handle.replace("-", " "), query):
+            continue
+
+        product_id = str(product.get("id") or handle or title).strip().lower()
+        if product_id in seen:
+            continue
+
+        variants = product.get("variants")
+        if not isinstance(variants, list):
+            variants = []
+
+        # Keep the first variant price, preferring an available variant when
+        # Shopify exposes availability. We still return sold-out products,
+        # because ScentHunter must be able to report stock state downstream.
+        price = None
+        for variant in variants:
+            if not isinstance(variant, dict):
+                continue
+            raw_price = str(variant.get("price") or "").strip()
+            if not raw_price:
+                continue
+            price = _extract_price(raw_price)
+            if not price and re.fullmatch(r"\d{1,5}(?:[.,]\d{2})?", raw_price):
+                price = raw_price.replace(".", ",") + " €"
+            if price:
+                if variant.get("available") is True:
+                    break
+
+        if not price:
+            raw_price = str(product.get("price") or "").strip()
+            price = _extract_price(raw_price)
+            if not price and re.fullmatch(r"\d{1,5}(?:[.,]\d{2})?", raw_price):
+                price = raw_price.replace(".", ",") + " €"
+
+        if not price:
+            continue
+
+        if handle:
+            product_url = urljoin(BASE_URL, "/products/" + handle).rstrip("/")
+        else:
+            continue
+
+        seen.add(product_id)
+        results.append({
+            "store": "PerfumeMarket",
+            "name": title,
+            "price": price,
+            "url": product_url,
+        })
+
+    return results
+
+
+def _find_candidates_from_catalog_json(session, query):
+    """Search the public Shopify catalog, bypassing Shopify search relevance."""
+    endpoints = (
+        BASE_URL + "/products.json?limit=250",
+        BASE_URL + "/collections/all-perfumes/products.json?limit=250",
+    )
+
+    matches = []
+    seen = set()
+
+    for base_endpoint in endpoints:
+        for page in range(1, 21):
+            separator = "&" if "?" in base_endpoint else "?"
+            url = base_endpoint + separator + "page=" + str(page)
+            try:
+                response = session.get(url, timeout=12)
+            except requests.RequestException:
+                break
+
+            if response.status_code != 200 or not response.text:
+                break
+
+            try:
+                payload = response.json()
+            except (ValueError, TypeError, json.JSONDecodeError):
+                break
+
+            products = payload.get("products") if isinstance(payload, dict) else None
+            if not isinstance(products, list) or not products:
+                break
+
+            for item in _parse_catalog_json(payload, query):
+                key = item["url"].rstrip("/").lower()
+                if key in seen:
+                    continue
+                seen.add(key)
+                matches.append(item)
+
+            # Shopify normally returns fewer than the requested limit on the
+            # last page. This also prevents needless requests.
+            if len(products) < 250:
+                break
+
+            if len(matches) >= 50:
+                return matches
+
+    return matches
+
 def _parse_product_sitemap_locs(xml_text, query):
     """Return product URLs whose Shopify handle contains every query token."""
     if not xml_text:
@@ -426,21 +547,28 @@ def search(query):
 
         add_items(_parse_search_html(response.text, query))
 
-    # 3) Generic Shopify sitemap discovery ALWAYS runs.
-    # Search endpoints can return only part of the catalog, so the official
-    # product sitemap is an additional discovery source. No perfume is hard-coded.
-    candidate_urls = _find_candidates_from_sitemap(session, query)
-    for product_url in candidate_urls:
-        if product_url.rstrip("/").lower() in seen:
-            continue
-        try:
-            response = session.get(product_url, timeout=12)
-            response.raise_for_status()
-        except requests.RequestException:
-            continue
+    # 3) Public Shopify product catalog discovery. This is the important
+    # fallback for products that Shopify's search/predictive-search endpoints
+    # omit because of relevance, indexing or query normalization.
+    add_items(_find_candidates_from_catalog_json(session, query))
 
-        item = _parse_product_page(response.text, query, product_url)
-        if item:
-            add_items([item])
+    # 4) Sitemap is now a true last-resort fallback. If the public catalog
+    # already found products, do not spend dozens of requests rescanning the
+    # same catalog through sitemap chunks. This keeps the scraper fast while
+    # preserving a fallback for unusual products not exposed by catalog JSON.
+    if not results:
+        candidate_urls = _find_candidates_from_sitemap(session, query)
+        for product_url in candidate_urls:
+            if product_url.rstrip("/").lower() in seen:
+                continue
+            try:
+                response = session.get(product_url, timeout=12)
+                response.raise_for_status()
+            except requests.RequestException:
+                continue
+
+            item = _parse_product_page(response.text, query, product_url)
+            if item:
+                add_items([item])
 
     return results
