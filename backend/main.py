@@ -14,6 +14,7 @@ from typing import Any, Dict, List, Optional
 from urllib.parse import urlencode
 from urllib.request import Request, urlopen
 from urllib.error import HTTPError, URLError
+import time
 
 
 # ============================================================
@@ -64,6 +65,10 @@ FRONTEND_INDEX = (
 )
 
 CATALOG_FILENAME = "SCENTHUNTER CATALOGO CORRETTO.json"
+
+# Limiti globali: una ricerca non deve restare bloccata da uno scraper lento.
+SEARCH_TIMEOUT = float(os.getenv("SCENTHUNTER_SEARCH_TIMEOUT", "35"))
+STORE_TIMEOUT = float(os.getenv("SCENTHUNTER_STORE_TIMEOUT", "20"))
 
 VARIANT_MARKERS = {
     "pour femme", "pour homme", "femme", "homme",
@@ -748,6 +753,12 @@ def run_store(
     """Ricerca iniziale + espansione generica per brand per le query di famiglia."""
     module = load_scraper(store)
     raw_query = str(query or "").strip()
+    store_started = time.monotonic()
+
+    def store_time_exceeded() -> bool:
+        return (time.monotonic() - store_started) >= STORE_TIMEOUT
+    if store_time_exceeded():
+        return []
     initial_results = module.search(raw_query) or []
     discovered_brands: List[str] = []
     brand_seen = set()
@@ -775,6 +786,9 @@ def run_store(
     pending = [attempt for attempt in attempts if norm(attempt) != norm(raw_query)]
     batches = [(raw_query, initial_results)]
     for attempt in pending:
+        if store_time_exceeded():
+            print(f"[TIMEOUT] store={store} budget={STORE_TIMEOUT:.0f}s", flush=True)
+            break
         try:
             batches.append((attempt, module.search(attempt) or []))
         except Exception:
@@ -1015,7 +1029,7 @@ def search_perfume(q: str):
     }
 
     try:
-        for future in as_completed(futures, timeout=28):
+        for future in as_completed(futures, timeout=SEARCH_TIMEOUT):
             store = futures[future]
             try:
                 store_results = future.result()
@@ -1041,7 +1055,7 @@ def search_perfume(q: str):
                 if future.cancel():
                     errors[store] = "Non eseguito: limite tempo ricerca"
                 else:
-                    errors[store] = "Timeout: negozio troppo lento"
+                    errors[store] = f"Timeout: oltre {STORE_TIMEOUT:.0f}s"
         executor.shutdown(wait=False, cancel_futures=True)
 
     normalized_results = [
