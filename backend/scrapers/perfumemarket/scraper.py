@@ -778,19 +778,10 @@ def search(query):
         vlog(f"Home prime failed: {e}")
 
     # 1) Fast discovery first: Shopify search/catalog sources.
-    # IMPORTANT: do not scan the sitemap before these sources. The sitemap is
-    # deliberately kept as a supplementary recovery source below, because
-    # scanning hundreds of product pages first causes unnecessary 429s and can
-    # consume most of the search time before the relevant candidates are verified.
-    product_urls = []
-
-    try:
-        sitemap_list = _get_sitemap_urls(session)
-        if sitemap_list:
-            product_urls = [u for u in sitemap_list if "/products/" in u.lower()]
-            vlog(f"SITEMAP indexed product URLs available for fallback: {len(product_urls)}")
-    except Exception as e:
-        vlog(f"SITEMAP INDEX ERROR: {e}")
+    # IMPORTANT: the sitemap is NOT touched here. It is only used later as a
+    # targeted recovery source when the fast sources return too few verified
+    # products. This prevents the sitemap from consuming requests before the
+    # relevant Shopify candidates have been checked.
 
     # Collect candidates from catalog and suggest and search-html (do NOT accept until verified)
     candidates = []
@@ -902,12 +893,35 @@ def search(query):
         else:
             vlog(f"CANDIDATE_REJECTED {url} score_prelim={cand.get('score'):.3f}")
 
-    # Supplemental sitemap scan only after fast discovery/verification, if few results.
-    if len(results) < int(os.getenv("PERFUME_SUPPLEMENTAL_RESULTS_THRESHOLD", "4")) and product_urls:
-        extra_scan_limit = int(os.getenv("PERFUME_SUPPLEMENTAL_SCAN_LIMIT", "120"))
-        extra_scanned = 0
+    # Supplemental sitemap recovery only after fast discovery/verification.
+    # Do NOT scan the first N sitemap products blindly: that can miss a valid
+    # variant simply because it appears later in the sitemap. First download
+    # the sitemap index, then keep only product URLs whose slug is genuinely
+    # relevant to the query. For example, "club de nuit intens" matches both
+    # .../club-de-nuit-intense-man and .../club-de-nuit-intense-overdose.
+    if len(results) < int(os.getenv("PERFUME_SUPPLEMENTAL_RESULTS_THRESHOLD", "4")):
+        try:
+            sitemap_list = _get_sitemap_urls(session)
+        except Exception as e:
+            sitemap_list = []
+            vlog(f"SITEMAP INDEX ERROR: {e}")
+
+        product_urls = [u for u in sitemap_list if "/products/" in u.lower()]
+        qtokens = _query_tokens_filtered(query)
+        relevant_sitemap_urls = []
         for u in product_urls:
-            if extra_scanned >= extra_scan_limit or len(results) >= int(os.getenv("PERFUME_MAX_RESULTS", "200")):
+            score = _token_weighted_score(query, u)
+            if score >= CANDIDATE_MIN_SCORE:
+                relevant_sitemap_urls.append((score, u))
+        relevant_sitemap_urls.sort(key=lambda x: x[0], reverse=True)
+        vlog(
+            f"SITEMAP_TARGETED: total_products={len(product_urls)} "
+            f"relevant={len(relevant_sitemap_urls)} query_tokens={qtokens}"
+        )
+
+        extra_scan_limit = int(os.getenv("PERFUME_SUPPLEMENTAL_SCAN_LIMIT", "120"))
+        for _score, u in relevant_sitemap_urls[:extra_scan_limit]:
+            if len(results) >= int(os.getenv("PERFUME_MAX_RESULTS", "200")):
                 break
             try:
                 resp = request_with_rate_limit(session, "GET", u, timeout=12)
@@ -916,7 +930,6 @@ def search(query):
             if resp.status_code != 200:
                 continue
             item = _parse_product_page(resp.text, query, u)
-            extra_scanned += 1
             if item:
                 k = (item["name"].lower(), item["price"])
                 if k not in seen:
