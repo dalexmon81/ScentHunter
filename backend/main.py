@@ -423,37 +423,22 @@ def _stock_from_product_page(url: str, target_size_ml: Optional[float] = None) -
     return None
 
 
-def normalize_stock(
-    product: Dict[str, Any],
-    cache: Optional[Dict[str, Optional[bool]]] = None,
-) -> Dict[str, Any]:
-    """
-    Normalizza lo stock usando esclusivamente i dati già restituiti dallo
-    scraper.
-
-    NON viene più riaperta la pagina prodotto durante la ricerca. La vecchia
-    verifica faceva una richiesta HTTP aggiuntiva per ogni risultato e,
-    insieme alla verifica prezzo, poteva saturare il tempo massimo della
-    ricerca e lasciare richieste concorrenti attive.
-
-    Regole:
-    - OUT OF STOCK esplicito -> out_of_stock
-    - IN STOCK esplicito -> in_stock
-    - nessuna informazione certa -> unknown
-    """
+def normalize_stock(product: Dict[str, Any], cache: Optional[Dict[str, Optional[bool]]] = None) -> Dict[str, Any]:
+    """Applica la regola stock unica a un'offerta di qualunque negozio."""
     item = dict(product)
 
+    # 1) Informazioni esplicite già fornite dallo scraper.
     fields = (
         "availability", "stock", "stock_status", "status",
         "availability_status", "availabilityStatus", "stockStatus",
         "in_stock", "inStock",
     )
-
     explicit_oos = any(_stock_value_is_oos(item.get(field)) for field in fields)
     explicit_in = any(_stock_value_is_in(item.get(field)) for field in fields)
 
     if item.get("available") is False:
         explicit_oos = True
+    # available=True is only a hint. The real product page is checked below.
 
     if explicit_oos:
         item["available"] = False
@@ -463,38 +448,49 @@ def normalize_stock(
         item.pop("price_value", None)
         return item
 
-    if explicit_in or item.get("available") is True:
+    # 2) NON riaprire la pagina prodotto qui.
+    #
+    # Il controllo centralizzato della pagina era la causa principale dei
+    # timeout: ogni risultato generava una richiesta HTTP aggiuntiva e, in
+    # alcuni casi, una seconda richiesta ancora per il prezzo.
+    #
+    # Se lo scraper ha dato uno stato esplicito lo usiamo. Se non lo ha dato,
+    # lasciamo UNKNOWN e NON scartiamo il prodotto.
+    if explicit_in:
         item["available"] = True
         item["availability"] = "in_stock"
         item["stock_status"] = "in_stock"
         return item
 
+    # 3) Nessuna informazione certa: UNKNOWN, mai IN STOCK per supposizione.
     item["available"] = None
     item["availability"] = "unknown"
     item["stock_status"] = "unknown"
     return item
 
+
 def resolve_actual_price(product: Dict[str, Any]) -> Dict[str, Any]:
     """
-    Normalizza il prezzo senza fare una seconda richiesta HTTP.
+    Normalizza il prezzo mostrato da ScentHunter al prezzo realmente pagabile.
 
-    Il prezzo restituito dallo scraper è la fonte primaria. Durante una ricerca
-    non dobbiamo riaprire la pagina prodotto, perché questo raddoppiava il
-    traffico verso i negozi e poteva far scattare i timeout globali.
-
-    Fallback sicuro:
-    - se lo scraper dichiara esplicitamente un prezzo unitario per 100 ml,
-      calcoliamo il prezzo della confezione;
-    - in tutti gli altri casi manteniamo esattamente il prezzo dello scraper.
+    Problema risolto: alcuni scraper possono intercettare il prezzo unitario
+    (es. 26,66 €/100 ml) invece del prezzo della confezione (es. 39,99 €).
+    Prima prova la pagina prodotto; solo se non è disponibile usa il calcolo
+    da prezzo unitario quando il campo lo dichiara esplicitamente.
     """
     item = dict(product)
     raw_price = str(item.get("price") or "").strip()
     size = _product_size_ml(item)
 
-    existing_value = price_num(raw_price)
-    if existing_value is not None:
-        item["price_value"] = existing_value
-
+    # IMPORTANTISSIMO:
+    # il prezzo restituito dallo scraper è la fonte primaria.
+    #
+    # Non riapriamo più la pagina prodotto dal main.py: oltre a raddoppiare
+    # le richieste HTTP, questo faceva prendere a volte un prezzo strutturato
+    # di un'altra variante o un prezzo barrato/listino.
+    #
+    # La normalizzazione da prezzo unitario è consentita SOLO quando lo
+    # scraper dichiara esplicitamente "/100 ml" o "per 100 ml".
     unit_match = re.search(r"(?:/|per\s*)100\s*ml", raw_price, re.I)
     if unit_match and size and size > 0:
         unit = price_num(raw_price[:unit_match.start()])
@@ -502,6 +498,12 @@ def resolve_actual_price(product: Dict[str, Any]) -> Dict[str, Any]:
             actual = round(unit * size / 100.0, 2)
             item["price"] = f"{actual:.2f} €"
             item["price_value"] = actual
+            return item
+
+    # Prezzo normale già estratto dallo scraper: non trasformarlo.
+    value = price_num(raw_price)
+    if value is not None:
+        item["price_value"] = value
 
     return item
 
@@ -600,7 +602,6 @@ def run_store(store: str, query: str) -> List[Dict[str, Any]]:
     attempts = build_search_attempts(store, query)
     output: List[Dict[str, Any]] = []
     seen = set()
-    stock_cache: Dict[str, Optional[bool]] = {}
 
     for attempt in attempts:
         results = search_fn(attempt) or []
@@ -612,9 +613,8 @@ def run_store(store: str, query: str) -> List[Dict[str, Any]]:
             product = dict(item)
             product.setdefault("store", store)
 
-            # Regola generale stock: prima normalizziamo la disponibilità.
-            # Se è OOS, non sprechiamo una seconda richiesta per il prezzo.
-            product = normalize_stock(product, stock_cache)
+            # Regola generale stock senza richieste HTTP aggiuntive.
+            product = normalize_stock(product)
             if product.get("available") is not False:
                 product = resolve_actual_price(product)
 
