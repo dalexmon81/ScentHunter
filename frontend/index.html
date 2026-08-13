@@ -1676,30 +1676,64 @@ function isLeBeauFamilyGroup(g){
 }
 
 async function searchLeBeauFamily(){
- const terms=[
-  "Jean Paul Gaultier Le Beau",
-  "Jean Paul Gaultier Le Beau Le Parfum",
-  "Jean Paul Gaultier Le Beau Paradise Garden",
-  "Jean Paul Gaultier Le Beau Narcisse",
-  "Jean Paul Gaultier Le Beau Flower Edition"
- ];
+ // Prima facciamo UNA sola ricerca ampia. In questo modo non lanciamo
+ // cinque cicli completi degli scraper e non blocchiamo la ricerca per minuti.
+ const baseTerm="Jean Paul Gaultier Le Beau";
  const merged={comparisons:[],results:[],errors:{}};
 
- // Una ricerca alla volta: evita di lanciare cinque cicli completi degli scraper insieme.
- for(const term of terms){
-  try{
-   const data=await fetchJSONWithTimeout(
-    backend()+"/search?q="+encodeURIComponent(term),
-    180000
-   );
-   if(Array.isArray(data.comparisons))merged.comparisons.push(...data.comparisons);
-   if(Array.isArray(data.results))merged.results.push(...data.results);
-   if(data.errors&&typeof data.errors==="object")Object.entries(data.errors).forEach(([store,error])=>{
-    if(!merged.errors[store])merged.errors[store]=error;
-   });
-  }catch(e){
-   merged.errors["ricerca "+term]=String(e?.message||"timeout");
-  }
+ const appendData=(data)=>{
+  if(Array.isArray(data.comparisons))merged.comparisons.push(...data.comparisons);
+  if(Array.isArray(data.results))merged.results.push(...data.results);
+  if(data.errors&&typeof data.errors==="object")Object.entries(data.errors).forEach(([store,error])=>{
+   if(!merged.errors[store])merged.errors[store]=error;
+  });
+ };
+
+ try{
+  const data=await fetchJSONWithTimeout(
+   backend()+"/search?q="+encodeURIComponent(baseTerm),
+   120000
+  );
+  appendData(data);
+ }catch(e){
+  merged.errors["ricerca "+baseTerm]=String(e?.message||"timeout");
+  return merged;
+ }
+
+ // Controlliamo cosa è già arrivato. Cerchiamo soltanto le varianti realmente
+ // mancanti, invece di ripetere cinque ricerche ogni volta.
+ const found=new Set();
+ try{
+  const baseGroups=shGroupData(merged);
+  baseGroups.filter(isLeBeauFamilyGroup).forEach(g=>{
+   found.add(normalizePerfumeName(g.name||""));
+  });
+ }catch(_){ }
+
+ const wanted=[
+  ["le beau","Jean Paul Gaultier Le Beau"],
+  ["le beau le parfum intense","Jean Paul Gaultier Le Beau Le Parfum"],
+  ["le beau paradise garden","Jean Paul Gaultier Le Beau Paradise Garden"],
+  ["le beau narcisse","Jean Paul Gaultier Le Beau Narcisse"],
+  ["le beau flower edition","Jean Paul Gaultier Le Beau Flower Edition"]
+ ];
+
+ // Al massimo due richieste di recupero contemporaneamente: abbastanza rapide
+ // da recuperare Narcisse/Flower senza sovraccaricare tutti gli scraper.
+ const missing=wanted.filter(([name])=>!found.has(normalizePerfumeName(name)));
+ for(let i=0;i<missing.length;i+=2){
+  const batch=missing.slice(i,i+2);
+  const results=await Promise.all(batch.map(async ([,term])=>{
+   try{
+    return await fetchJSONWithTimeout(
+     backend()+"/search?q="+encodeURIComponent(term),
+     75000
+    );
+   }catch(e){
+    return {comparisons:[],results:[],errors:{["ricerca "+term]:String(e?.message||"timeout")}};
+   }
+  }));
+  results.forEach(appendData);
  }
  return merged;
 }
