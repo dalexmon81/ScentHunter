@@ -1165,6 +1165,52 @@ function cleanBrandText(v){
     return "";
   }
 
+  /* ============================================================
+   * FAMILY CANONICA LE BEAU
+   *
+   * Le Beau è una famiglia di referenze distinte. Il backend può però
+   * restituire nomi sporchi o varianti commerciali diverse, ad esempio:
+   *   - Jean Paul Gaultier - "Le Beau" Narcisse
+   *   - Le Beau Le Parfum
+   *   - Le Beau Le Parfum Intense
+   *
+   * Questi nomi devono essere ricondotti alla referenza corretta senza
+   * fondere varianti diverse. La famiglia serve a riconoscere il gruppo,
+   * non a creare un unico prodotto.
+   * ============================================================ */
+  function leBeauFamilyIdentity(o){
+    const rawBrand=cleanBrandText(o&&o.brand);
+    const rawName=cleanBrandText(o&&o.name);
+    const combined=norm((rawBrand+" "+rawName).trim());
+
+    const isJpg=norm(rawBrand)==="jean paul gaultier" ||
+      combined.includes("jean paul gaultier");
+    if(!isJpg || !combined.includes("le beau"))return null;
+
+    let name="Le Beau";
+    if(/flower\s+edition/.test(combined)){
+      name="Le Beau Flower Edition";
+    }else if(/narcisse/.test(combined)){
+      name="Le Beau Narcisse";
+    }else if(/paradise\s+garden/.test(combined)){
+      name="Le Beau Paradise Garden";
+    }else if(/le\s+parfum(?:\s+intense)?/.test(combined)){
+      // "Le Beau Le Parfum" e "Le Beau Le Parfum Intense" sono
+      // due denominazioni commerciali della stessa referenza.
+      name="Le Beau Le Parfum Intense";
+    }else if(/le\s+beau\s+(?:eau\s+de\s+toilette|edt)/.test(combined)){
+      name="Le Beau";
+    }
+
+    return {
+      brand:"Jean Paul Gaultier",
+      name,
+      family:"Le Beau",
+      key:"jean paul gaultier|"+norm(name),
+      catalog_id:""
+    };
+  }
+
   function productIdentity(o){
     // Primo tentativo: il dato originale dello scraper. Questo permette
     // al catalogo di conservare nomi canonici che la pulizia commerciale
@@ -1172,6 +1218,9 @@ function cleanBrandText(v){
     const rawBrand=cleanBrandText(o.brand);
     const rawName=cleanBrandText(o.name);
     const hint=concentrationHint(o);
+
+    const leBeau=leBeauFamilyIdentity(o);
+    if(leBeau)return leBeau;
 
     // Se il nome originale contiene una concentrazione esplicita,
     // preferiamo la referenza master con la stessa concentrazione.
@@ -1784,6 +1833,24 @@ async function fetchJSONWithTimeout(url,ms=90000){
  }finally{clearTimeout(timer)}
 }
 
+function isLeBeauFamilyQuery(q){
+  const n=normalizePerfumeName(q||"");
+  return n.includes("le beau") &&
+    !n.includes("kenzo") &&
+    !n.includes("le monde est beau");
+}
+
+function filterLeBeauFamilyGroups(groups,q){
+  if(!isLeBeauFamilyQuery(q))return groups;
+  return (Array.isArray(groups)?groups:[]).filter(g=>{
+    const brand=normalizePerfumeName(g&&g.brand||"");
+    const family=normalizePerfumeName(g&&g.family||"");
+    const name=normalizePerfumeName(g&&g.name||"");
+    return family==="le beau" ||
+      (brand==="jean paul gaultier" && name.includes("le beau"));
+  });
+}
+
 async function searchPerfume(){
  const q=queryInput.value.trim();if(!q){statusBox.textContent="";resultsBox.innerHTML="";errorsBox.innerHTML="";return}
  searchButton.disabled=true;searchButton.classList.add("searching");
@@ -1798,7 +1865,7 @@ async function searchPerfume(){
     backend()+"/search?q="+encodeURIComponent(term),
     180000
   );
-  const groups=shGroupData(data);showProducts(groups);
+  const groups=filterLeBeauFamilyGroups(shGroupData(data),term);showProducts(groups);
   currentProductGroups=groups;
   updateBestPricesFromGroups(groups);
   refreshWishlistFromResults(groups.flatMap(g=>g.offers.map(o=>({name:g.name||"",brand:g.brand||"",price:shPrice(o),price_value:o.price_value,store:o.store||"",url:o.url||""}))));
