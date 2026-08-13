@@ -569,6 +569,7 @@ def build_search_attempts(store: str, query: str) -> List[str]:
     attempts = [query]
     normalized_query = norm(query)
 
+    # Forma compatta utile per negozi che indicizzano "9PM" ma non "9 PM".
     compact = re.sub(
         r"(?<=\d)\s+(?=[a-z])|(?<=[a-z])\s+(?=\d)",
         "",
@@ -577,23 +578,8 @@ def build_search_attempts(store: str, query: str) -> List[str]:
     if compact and compact not in attempts:
         attempts.append(compact)
 
-    # Ricerca generica "X pour femme": interroga esplicitamente entrambe
-    # le concentrazioni, senza alterare le query che hanno già una concentrazione.
-    generic_q = re.sub(
-        r"\b(eau\s+de\s+(?:toilette|parfum)|ed[pt])\b",
-        "",
-        normalized_query,
-        flags=re.I,
-    )
-    generic_q = re.sub(r"\s+", " ", generic_q).strip()
-    if generic_q and re.search(r"\bpour\s+femme\b", generic_q, re.I):
-        for concentration_query in (
-            f"{generic_q} eau de toilette",
-            f"{generic_q} eau de parfum",
-        ):
-            if concentration_query not in attempts:
-                attempts.append(concentration_query)
-
+    # Alcuni negozi usano un alias verificato del prodotto. Lo cerchiamo
+    # direttamente, ma solo per le query che hanno un alias esplicito.
     for alias in _query_aliases(query):
         if alias not in attempts:
             attempts.append(alias)
@@ -604,6 +590,7 @@ def build_search_attempts(store: str, query: str) -> List[str]:
                 attempts.append(token)
 
     return attempts
+
 
 def run_store(store: str, query: str) -> List[Dict[str, Any]]:
     module = load_scraper(store)
