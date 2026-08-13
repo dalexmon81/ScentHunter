@@ -1675,7 +1675,7 @@ function isLeBeauFamilyGroup(g){
  ].some(x=>name===normalizePerfumeName(x));
 }
 
-async function searchLeBeauFamily(){
+async function searchLeBeauFamily(onPartial){
  const terms=[
   "Jean Paul Gaultier Le Beau",
   "Jean Paul Gaultier Le Beau Le Parfum",
@@ -1684,19 +1684,19 @@ async function searchLeBeauFamily(){
   "Jean Paul Gaultier Le Beau Flower Edition"
  ];
  const merged={comparisons:[],results:[],errors:{}};
-
- // Le Beau: le cinque varianti vengono cercate a blocchi di 3.
- // Non aspettiamo una richiesta per volta: una risposta lenta non blocca le altre.
- const timeoutMs=35000;
+ const timeoutMs=30000;
  const concurrency=3;
+
  for(let i=0;i<terms.length;i+=concurrency){
   const batch=terms.slice(i,i+concurrency);
+  statusBox.textContent=`Cerco Le Beau… ${Math.min(i+batch.length,terms.length)}/${terms.length}`;
   const responses=await Promise.allSettled(batch.map(term=>
    fetchJSONWithTimeout(
     backend()+"/search?q="+encodeURIComponent(term),
     timeoutMs
    )
   ));
+
   responses.forEach((r,index)=>{
    const term=batch[index];
    if(r.status==="fulfilled"){
@@ -1710,7 +1710,13 @@ async function searchLeBeauFamily(){
     merged.errors["ricerca "+term]=String(r.reason?.message||"timeout");
    }
   });
+
+  // Mostra subito ciò che è già arrivato: una fonte lenta non nasconde
+  // i risultati validi delle altre fonti/varianti.
+  if(typeof onPartial==="function")onPartial(merged,false);
  }
+
+ if(typeof onPartial==="function")onPartial(merged,true);
  return merged;
 }
 
@@ -1724,28 +1730,35 @@ async function searchPerfume(){
  statusBox.textContent="";resultsBox.innerHTML="";errorsBox.innerHTML="";
  try{
   let data;
+  const renderData=(partialData,final=false)=>{
+   let groups=shGroupData(partialData||{});
+
+   // La ricerca "Le Beau" deve contenere solo la famiglia Jean Paul Gaultier.
+   // Elimina quindi falsi positivi come Kenzo Le Monde Est Beau.
+   if(isLeBeauFamilyQuery(q))groups=groups.filter(isLeBeauFamilyGroup);
+
+   showProducts(groups);
+   currentProductGroups=groups;
+   updateBestPricesFromGroups(groups);
+   refreshWishlistFromResults(groups.flatMap(g=>g.offers.map(o=>({name:g.name||"",brand:g.brand||"",price:shPrice(o),price_value:o.price_value,store:o.store||"",url:o.url||""}))));
+
+   if(partialData?.errors&&Object.keys(partialData.errors).length){
+    const errorRows=Object.entries(partialData.errors).map(([store,error])=>`<div style="margin-top:7px"><strong>${esc(store)}</strong>: ${esc(String(error||"Errore non specificato"))}</div>`).join("");
+    errorsBox.innerHTML=`<div>Alcune fonti non hanno risposto:</div>${errorRows}`;
+   }else if(final){
+    errorsBox.innerHTML="";
+   }
+   if(final)statusBox.textContent=groups.length?`Ricerca completata: ${groups.length} prodotti trovati.`:"Nessun risultato trovato.";
+  };
+
   if(isLeBeauFamilyQuery(q)){
-   data=await searchLeBeauFamily();
+   data=await searchLeBeauFamily(renderData);
   }else{
    data=await fetchJSONWithTimeout(
     backend()+"/search?q="+encodeURIComponent(q),
-    180000
+    30000
    );
-  }
-
-  let groups=shGroupData(data);
-
-  // La ricerca "Le Beau" deve contenere solo la famiglia Jean Paul Gaultier.
-  // Elimina quindi falsi positivi come Kenzo Le Monde Est Beau.
-  if(isLeBeauFamilyQuery(q))groups=groups.filter(isLeBeauFamilyGroup);
-
-  showProducts(groups);
-  currentProductGroups=groups;
-  updateBestPricesFromGroups(groups);
-  refreshWishlistFromResults(groups.flatMap(g=>g.offers.map(o=>({name:g.name||"",brand:g.brand||"",price:shPrice(o),price_value:o.price_value,store:o.store||"",url:o.url||""}))));
-  if(data.errors&&Object.keys(data.errors).length){
-   const errorRows=Object.entries(data.errors).map(([store,error])=>`<div style="margin-top:7px"><strong>${esc(store)}</strong>: ${esc(String(error||"Errore non specificato"))}</div>`).join("");
-   errorsBox.innerHTML=`<div>Alcuni negozi non hanno risposto:</div>${errorRows}`;
+   renderData(data,true);
   }
  }catch(e){
   console.error(e);
