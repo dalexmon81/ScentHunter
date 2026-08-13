@@ -492,7 +492,13 @@ def canonical_product_name(product: Dict[str, Any], family_query: str = "") -> s
     name = canonical or raw_name
     if brand:
         name = re.sub(rf"^\s*{re.escape(brand)}\s*[-–—:]?\s*", "", name, flags=re.I).strip()
-    name = _move_gender_after_family(name, family_query)
+
+    # Se il catalogo fornisce una referenza canonica francese come
+    # "Eros pour Femme ...", manteniamo "Femme" nel nome canonico.
+    # Non va trasformato in "Donna", altrimenti perdiamo la corrispondenza
+    # con la referenza del catalogo e con la query originale.
+    if not (canonical and re.search(r"\bfemme\b|\bhomme\b", name, flags=re.I)):
+        name = _move_gender_after_family(name, family_query)
     words = name.split()
     collapsed = []
     for word in words:
@@ -523,6 +529,26 @@ def normalize_product(product: Dict[str, Any], family_query: str = "") -> Dict[s
 # ============================================================
 # FILTRO RISULTATI
 # ============================================================
+
+def _query_concentration(value: Any) -> str:
+    """
+    Riconosce la concentrazione solo quando e' realmente indicata.
+
+    Importante: EDT ed EDP sono referenze diverse. Non devono essere
+    trattate come semplici parole ignorate durante il matching.
+    """
+    text = norm(value)
+    if not text:
+        return ""
+
+    if re.search(r"\beau de parfum\b", text) or re.search(r"\bedp\b", text):
+        return "edp"
+    if re.search(r"\beau de toilette\b", text) or re.search(r"\bedt\b", text):
+        return "edt"
+    if re.search(r"\bextrait(?: de parfum)?\b", text):
+        return "extrait"
+    return ""
+
 
 def _query_has_variant_marker(query: str) -> bool:
     q = norm(query)
@@ -572,18 +598,58 @@ def matches(product: Dict[str, Any], query: str) -> bool:
     query_normalized = norm(query)
     if not name or is_non_perfume(item):
         return False
+
+    # Se la query specifica una concentrazione, la stessa concentrazione
+    # deve essere presente nel nome del risultato.
+    # Esempio: "Eros pour Femme Eau de Parfum" NON puo' accettare
+    # "Eros pour Femme Eau de Toilette". Se la query non specifica
+    # EDT/EDP, entrambe le referenze restano valide.
+    query_concentration = _query_concentration(query)
+    if query_concentration:
+        name_concentration = _query_concentration(name)
+        if name_concentration != query_concentration:
+            return False
+
+    # canonical_product_name() porta "femme/homme" in coda e li traduce
+    # rispettivamente in "Donna/Uomo" per il nome visualizzato.
+    # Per il matching conserviamo quindi anche i sinonimi originali,
+    # altrimenti una query francese come "Eros pour Femme" non troverebbe
+    # piu' la referenza corretta.
+    matching_name = name
+    if "donna" in name.split():
+        matching_name += " femme women woman"
+    if "uomo" in name.split():
+        matching_name += " femme homme men man"
+    matching_name = norm(matching_name)
+
     tokens = [token for token in query_normalized.split() if token not in IGNORED_WORDS]
+
+    # Il brand puo' essere scritto nella query (es. "Versace Eros pour Femme").
+    # Il brand viene gia' confrontato separatamente e non deve rendere falsa
+    # una corrispondenza del nome prodotto.
+    brand_tokens = set(norm(item.get("brand") or "").split())
+    if brand_tokens:
+        tokens = [token for token in tokens if token not in brand_tokens]
+
     if not tokens:
         return False
     # La query deve comparire realmente nel nome: una famiglia non deve
     # trasformarsi automaticamente in una variante specifica.
-    if not all(token in name for token in tokens):
+    if not all(token in matching_name for token in tokens):
         return False
     if _query_has_variant_marker(query):
         query_tokens = set(tokens)
         name_tokens = set(name.split())
         for marker in VARIANT_MARKERS:
-            marker_tokens = set(norm(marker).split())
+            marker_norm = norm(marker)
+            # "parfum", "extrait", "edp" ed "edt" fanno parte della
+            # concentrazione e vengono gestiti separatamente sopra.
+            if marker_norm in {
+                "parfum", "extrait", "edp", "edt",
+                "eau de parfum", "eau de toilette",
+            }:
+                continue
+            marker_tokens = set(marker_norm.split())
             if marker_tokens and marker_tokens.issubset(name_tokens) and not marker_tokens.issubset(query_tokens):
                 return False
     return True
