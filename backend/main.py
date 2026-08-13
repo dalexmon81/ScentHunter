@@ -17,6 +17,8 @@ from urllib.parse import urlencode
 from urllib.request import Request, urlopen
 from urllib.error import HTTPError, URLError
 
+from bs4 import BeautifulSoup
+
 
 app = FastAPI(title="ScentHunter API", version="1.0.0")
 
@@ -130,17 +132,158 @@ def _product_size_ml(product: Dict[str, Any]) -> Optional[float]:
 
 
 def _price_from_structured_html(html: str, target_size_ml: Optional[float] = None) -> Optional[float]:
-    """Trova il prezzo della confezione corretta, non un prezzo aggregato o di un altro formato."""
+    """
+    Trova il prezzo realmente visibile/pagabile della confezione corretta.
+
+    Priorità:
+    1) prezzo corrente esplicito nel DOM (itemprop/data-price/class current);
+    2) prezzo visibile associato al formato richiesto;
+    3) JSON-LD offers.price come fallback.
+
+    Prezzi barrati, vecchi, confrontati e prezzi legati a coupon/codici
+    vengono esclusi.
+    """
     html = unescape(html or "")
-    scripts = re.findall(
-        r'<script[^>]+type=["\']application/ld\+json["\'][^>]*>(.*?)</script>',
-        html,
-        re.I | re.S,
+    soup = BeautifulSoup(html, "html.parser")
+
+    bad_class = re.compile(
+        r"(?:^|[-_\s])(old|was|strike|compare|cross|previous|original|list.?price|uvp)"
+        r"(?:$|[-_\s])",
+        re.I,
     )
+    coupon_class = re.compile(r"(coupon|gutschein|voucher|rabatt|promo)", re.I)
+    coupon_text = re.compile(
+        r"(preis\s+inkl\.?\s+code|rabattcode|gutschein|coupon|promo|sale5de)",
+        re.I,
+    )
+    price_re = re.compile(r"\d{1,4}[.,]\d{2}\s*€")
+
+    def _has_target_size(el) -> bool:
+        if target_size_ml is None:
+            return False
+        cur = el
+        target = int(target_size_ml)
+        for _ in range(4):
+            if cur is None:
+                break
+            txt = cur.get_text(" ", strip=True)
+            if re.search(rf"\b{target}\s*ml\b", txt, re.I):
+                return True
+            cur = cur.parent
+        return False
+
+    def _is_bad_context(el) -> bool:
+        cur = el
+        for depth in range(6):
+            if cur is None:
+                break
+
+            if cur.name in ("del", "s", "strike"):
+                return True
+
+            classes = " ".join(cur.get("class") or [])
+            if bad_class.search(classes) or coupon_class.search(classes):
+                return True
+
+            # Non escludere un intero contenitore prodotto solo perché
+            # contiene anche una sezione coupon. Il coupon viene escluso
+            # quando il suo blocco è realmente focalizzato sul codice.
+            if depth <= 3:
+                txt = cur.get_text(" ", strip=True)
+                if coupon_text.search(txt):
+                    prices = price_re.findall(txt)
+                    if (
+                        len(prices) <= 2
+                        and (
+                            coupon_class.search(classes)
+                            or "code" in txt.lower()
+                            or "gutschein" in txt.lower()
+                            or "coupon" in txt.lower()
+                        )
+                    ):
+                        return True
+
+            cur = cur.parent
+
+        return False
 
     candidates = []
 
-    def offer_size(offer: Dict[str, Any], parent: Dict[str, Any]) -> Optional[float]:
+    def _add_candidate(el, raw_value, base_score):
+        if not raw_value:
+            return
+
+        raw = str(raw_value)
+        if "€" not in raw and not re.search(r"\d{1,4}[.,]\d{2}", raw):
+            return
+
+        if _is_bad_context(el):
+            return
+
+        value = price_num(raw)
+        if value is None:
+            return
+
+        score = base_score
+        if _has_target_size(el):
+            score += 30
+
+        classes = " ".join(el.get("class") or [])
+        if re.search(
+            r"(current|final|now|product-price|price-now|price-current)",
+            classes,
+            re.I,
+        ):
+            score += 40
+
+        candidates.append((score, value))
+
+    # 1) Metadati HTML espliciti: sono più affidabili del testo libero.
+    for el in soup.find_all(True):
+        if el.name in ("script", "style", "noscript"):
+            continue
+
+        if str(el.get("itemprop") or "").lower() == "price":
+            _add_candidate(
+                el,
+                el.get("content") or el.get_text(" ", strip=True),
+                100,
+            )
+
+        for attr in (
+            "data-price",
+            "data-product-price",
+            "data-final-price",
+            "data-price-amount",
+            "data-priceamount",
+        ):
+            if el.get(attr) is not None:
+                _add_candidate(el, el.get(attr), 100)
+
+        classes = " ".join(el.get("class") or [])
+        if re.search(
+            r"(current|final|now|product-price|price-now|price-current)",
+            classes,
+            re.I,
+        ):
+            _add_candidate(el, el.get_text(" ", strip=True), 70)
+
+    # 2) Testo visibile: qui 52,30 € viene scelto e 53,92 € barrato viene
+    # escluso perché si trova dentro <del>/<s> o in un blocco "old/compare".
+    for node in soup.find_all(string=price_re):
+        _add_candidate(node.parent, node.strip(), 10)
+
+    if candidates:
+        candidates.sort(key=lambda item: item[0], reverse=True)
+        return candidates[0][1]
+
+    # 3) Fallback JSON-LD. Non viene usato se il DOM espone già il prezzo
+    # corrente, perché il JSON-LD può contenere il prezzo listino anziché
+    # quello promozionale realmente mostrato.
+    scripts = soup.find_all("script", type=re.compile(r"application/ld\+json", re.I))
+    structured_candidates = []
+
+    def _offer_size(offer: Dict[str, Any], parent: Dict[str, Any]) -> Optional[float]:
         parts = []
         for key in ("name", "description", "sku", "url", "itemCondition"):
             parts.append(str(offer.get(key) or ""))
@@ -148,7 +291,7 @@ def _price_from_structured_html(html: str, target_size_ml: Optional[float] = Non
             parts.append(str(parent.get(key) or ""))
         return _extract_size_ml(" ".join(parts))
 
-    def walk(value):
+    def _walk(value):
         if isinstance(value, dict):
             offers = value.get("offers")
             if isinstance(offers, dict):
@@ -156,46 +299,58 @@ def _price_from_structured_html(html: str, target_size_ml: Optional[float] = Non
             if isinstance(offers, list):
                 for offer in offers:
                     if isinstance(offer, dict):
-                        price = price_num(offer.get("price"))
-                        if price is not None:
-                            candidates.append((offer_size(offer, value), price))
+                        value_num = price_num(offer.get("price"))
+                        if value_num is not None:
+                            structured_candidates.append(
+                                (_offer_size(offer, value), value_num)
+                            )
             for child in value.values():
                 if isinstance(child, (dict, list)):
-                    yield from walk(child)
+                    yield from _walk(child)
         elif isinstance(value, list):
             for child in value:
                 if isinstance(child, (dict, list)):
-                    yield from walk(child)
+                    yield from _walk(child)
 
-    for raw in scripts:
+    for script in scripts:
+        raw = script.string or script.get_text(" ", strip=True)
+        if not raw:
+            continue
         try:
             payload = json.loads(raw.strip())
         except Exception:
             continue
-        list(walk(payload))
+        list(_walk(payload))
 
-    if not candidates:
-        patterns = [
-            r'<meta[^>]+(?:property|name)=["\'](?:product:price:amount|og:price:amount)["\'][^>]+content=["\']([^"\']+)',
-            r'<meta[^>]+itemprop=["\']price["\'][^>]+content=["\']([^"\']+)',
-        ]
-        for pattern in patterns:
-            match = re.search(pattern, html, re.I)
-            if match:
-                return price_num(match.group(1))
-        return None
+    if structured_candidates:
+        if target_size_ml is not None:
+            exact = [
+                value
+                for size, value in structured_candidates
+                if size is not None and abs(size - target_size_ml) < 0.01
+            ]
+            if exact:
+                return exact[0]
 
-    if target_size_ml is not None:
-        exact = [price for size, price in candidates if size is not None and abs(size-target_size_ml) < 0.01]
-        if exact:
-            return exact[0]
-        # Se la pagina espone più formati ma non riusciamo a collegare il prezzo al formato richiesto,
-        # NON prendiamo arbitrariamente il primo prezzo: sarebbe proprio il tipo di errore che vogliamo evitare.
-        known_sizes = {round(size, 2) for size, _ in candidates if size is not None}
-        if len(known_sizes) > 1:
-            return None
+            known_sizes = {
+                round(size, 2)
+                for size, _ in structured_candidates
+                if size is not None
+            }
+            if len(known_sizes) > 1:
+                return None
 
-    return candidates[0][1]
+        return structured_candidates[0][1]
+
+    # Ultimo fallback per meta price.
+    for el in soup.find_all("meta"):
+        prop = str(el.get("property") or el.get("name") or el.get("itemprop") or "").lower()
+        if prop in ("product:price:amount", "og:price:amount", "price"):
+            value = price_num(el.get("content"))
+            if value is not None:
+                return value
+
+    return None
 
 
 # ============================================================
