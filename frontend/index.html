@@ -1738,21 +1738,11 @@ async function searchPerfume(){
  window.__shSearchRequest=requestId;
  try{
   const plan=familySearchPlan(q);
-
-  /*
-   * IMPORTANTE: non mostriamo più una prima risposta e poi aggiungiamo
-   * varianti in ritardo. Per le famiglie eseguiamo tutte le query previste
-   * in parallelo, raccogliamo le risposte entro un limite breve e facciamo
-   * UN SOLO render finale. In questo modo la ricerca non sembra terminata
-   * per poi cambiare risultati qualche secondo dopo.
-   */
   const terms=plan?.terms?.length?plan.terms:[q];
 
-  // Il backend esegue diversi scraper pesanti. Le richieste contemporanee
-  // della versione precedente potevano saturarlo e far fallire TUTTE le
-  // varianti (il caso visto con 6/6 e nessun risultato).
-  // Per Le Beau usiamo quindi UNA richiesta alla volta: è più affidabile,
-  // ma il timeout resta breve. Non facciamo render intermedi.
+  // Una sola richiesta frontend alla volta: ogni /search del backend usa già
+  // i suoi scraper in parallelo. Evitiamo di saturare il backend con 6 /search
+  // contemporanei per la famiglia Le Beau.
   const timeoutMs=plan?15000:25000;
   const responses=[];
 
@@ -1770,15 +1760,15 @@ async function searchPerfume(){
       );
       responses.push({status:"fulfilled",value});
     }catch(error){
+      console.warn("ScentHunter search request failed:",term,error);
       responses.push({status:"rejected",reason:error});
     }
   }
 
-
   if(window.__shSearchRequest!==requestId)return;
 
   const successful=responses
-   .filter(r=>r.status==="fulfilled")
+   .filter(r=>r.status==="fulfilled" && r.value && typeof r.value==="object")
    .map(r=>r.value);
 
   if(!successful.length){
@@ -1788,28 +1778,69 @@ async function searchPerfume(){
   }
 
   const merged={
-   comparisons:successful.flatMap(d=>Array.isArray(d?.comparisons)?d.comparisons:[]),
-   results:successful.flatMap(d=>Array.isArray(d?.results)?d.results:[]),
-   errors:Object.assign({},...successful.map(d=>d?.errors||{}))
+   comparisons:successful.flatMap(d=>Array.isArray(d.comparisons)?d.comparisons:[]),
+   results:successful.flatMap(d=>Array.isArray(d.results)?d.results:[]),
+   errors:Object.assign({},...successful.map(d=>d.errors&&typeof d.errors==="object"?d.errors:{}))
   };
 
-  let groups=shGroupData(merged);
-  if(plan)groups=filterFamilyGroups(groups,plan);
+  let groups=[];
 
-  // Render UNA SOLA VOLTA: nessuna variante può comparire dopo la fine
-  // apparente della ricerca.
-  showProducts(groups);
-  currentProductGroups=groups;
-  if(!groups.length){
-    statusBox.textContent=`Nessun risultato trovato per "${q}".`;
-  }else{
-    statusBox.textContent=`Risultati per "${q}"`;
+  // ELABORAZIONE SEPARATA DALLE RICHIESTE:
+  // un errore di normalizzazione non deve mai trasformare una ricerca riuscita
+  // in "Impossibile completare la ricerca".
+  try{
+    groups=shGroupData(merged);
+    if(!Array.isArray(groups))groups=[];
+    groups=groups.filter(g=>g&&typeof g==="object").map(g=>({
+      ...g,
+      brand:String(g.brand||""),
+      name:String(g.name||"Profumo"),
+      offers:Array.isArray(g.offers)?g.offers.filter(o=>o&&typeof o==="object"):[]
+    }));
+    if(plan)groups=filterFamilyGroups(groups,plan);
+  }catch(error){
+    console.error("ScentHunter result processing error:",error);
+    statusBox.textContent=`Errore nell'elaborazione dei risultati per "${q}".`;
+    errorsBox.innerHTML=`<div>La ricerca dei negozi è terminata, ma un dato ricevuto non è stato elaborato correttamente.</div>`;
+    return;
   }
-  updateBestPricesFromGroups(groups);
-  refreshWishlistFromResults(groups.flatMap(g=>g.offers.map(o=>({
-   name:g.name||"",brand:g.brand||"",price:shPrice(o),
-   price_value:o.price_value,store:o.store||"",url:o.url||""
-  }))));
+
+  // Render prima di qualunque aggiornamento secondario (wishlist, prezzi,
+  // scroll ecc.). Così un errore accessorio non può cancellare la ricerca.
+  try{
+    showProducts(groups);
+  }catch(error){
+    console.error("ScentHunter render error:",error);
+    // Fallback minimo: mostra sempre i gruppi già validati, anche se una
+    // parte del renderer principale incontra un dato anomalo.
+    resultsBox.innerHTML=groups.map((g,i)=>{
+      const offers=Array.isArray(g.offers)?g.offers:[];
+      const available=offers.filter(o=>!isOfferOutOfStock(o));
+      const best=available.sort((a,b)=>shNum(a)-shNum(b))[0]||null;
+      return `<article class="result" data-fallback-index="${i}">
+        <div class="store">${esc(g.brand||"")}</div>
+        <div class="name">${esc(g.name||"Profumo")}</div>
+        ${best?`<div class="bestprice">da ${esc(shPrice(best))}</div>`:`<div class="offer-meta">OUT OF STOCK</div>`}
+        <div class="offer-meta">${offers.length} ${offers.length===1?"negozio":"negozi"}</div>
+      </article>`;
+    }).join("");
+    currentProductGroups=groups;
+  }
+
+  currentProductGroups=groups;
+  statusBox.textContent=groups.length
+    ?`Risultati per "${q}"`
+    :`Nessun risultato trovato per "${q}".`;
+
+  // Aggiornamenti secondari isolati: se qualcosa qui fallisce, i risultati
+  // restano comunque visibili.
+  try{updateBestPricesFromGroups(groups);}catch(error){console.warn("Wishlist price update skipped:",error)}
+  try{
+    refreshWishlistFromResults(groups.flatMap(g=>(g.offers||[]).map(o=>({
+      name:g.name||"",brand:g.brand||"",price:shPrice(o),
+      price_value:o.price_value,store:o.store||"",url:o.url||""
+    }))));
+  }catch(error){console.warn("Wishlist refresh skipped:",error)}
 
   const failed=responses.filter(r=>r.status==="rejected").length;
   if((merged.errors&&Object.keys(merged.errors).length)||failed){
@@ -1821,8 +1852,11 @@ async function searchPerfume(){
    errorsBox.innerHTML=`<div>${base}</div>${errorRows}`;
   }
  }catch(e){
-  console.error(e);
-  if(window.__shSearchRequest===requestId)statusBox.textContent="Impossibile completare la ricerca.";
+  console.error("ScentHunter search unexpected error:",e);
+  if(window.__shSearchRequest===requestId){
+    statusBox.textContent=`Errore imprevisto durante la ricerca di "${q}".`;
+    errorsBox.innerHTML=`<div>La richiesta è terminata, ma ScentHunter ha incontrato un errore interno. I dettagli sono disponibili nella console.</div>`;
+  }
  }finally{
   clearInterval(dotsTimer);
   if(window.__shSearchRequest===requestId){
@@ -1832,7 +1866,6 @@ async function searchPerfume(){
   }
  }
 }
-
 searchButton.addEventListener("click",searchPerfume);queryInput.addEventListener("keydown",e=>{if(e.key==="Enter"){e.preventDefault();searchPerfume()}});
 renderWishlist();syncHearts();
 </script>
