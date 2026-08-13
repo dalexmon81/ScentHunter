@@ -137,119 +137,113 @@ def _format_price(value):
     return f"{value_float:.2f}".replace(".", ",") + "€"
 
 
-def _is_old_or_discount_node(tag):
-    if tag is None:
-        return False
-    name = getattr(tag, "name", "") or ""
-    if name in ("del", "s", "strike"):
-        return True
-    classes = " ".join(tag.get("class") or []).lower()
-    if any(word in classes for word in (
-        "old", "list-price", "listprice", "compare", "strike",
-        "cross", "was", "uvp", "previous", "regular-price",
-    )):
-        return True
-    style = (tag.get("style") or "").replace(" ", "").lower()
-    return "line-through" in style or "text-decoration:line-through" in style
-
-
-def _contains_old_or_discount_descendant(tag):
-    if tag is None:
-        return False
-    for child in tag.find_all(True):
-        if _is_old_or_discount_node(child):
-            return True
-    return False
-
-
-def _price_candidate_score(tag, text):
-    classes = " ".join(tag.get("class") or []).lower()
-    score = 0
-    if tag.get("itemprop") == "price":
-        score += 120
-    if tag.get("content"):
-        score += 15
-    for word, points in (
-        ("product-detail-price", 100),
-        ("product-price", 80),
-        ("current-price", 80),
-        ("final-price", 80),
-        ("price", 30),
-    ):
-        if word in classes:
-            score += points
-    if tag.name in ("strong", "b"):
-        score += 10
-    low = text.lower()
-    if any(x in low for x in ("inkl. code", "rabattcode", "gutschein", "coupon")):
-        score -= 1000
-    return score
-
-
 def _extract_price_from_html(html):
     """
-    Estrae il prezzo corrente della singola pagina prodotto.
-    Scarta prezzi barrati/listino, coupon e prezzi per litro.
+    Estrae il prezzo di vendita reale.
+    Ordine:
+      1) JSON-LD Product/Offer
+      2) meta price
+      3) prezzo visibile vicino al prodotto
+    Non usa il Grundpreis €/l come prezzo del prodotto.
     """
     soup = BeautifulSoup(html or "", "html.parser")
-    h1 = soup.find("h1")
-    containers = []
-    if h1:
-        node = h1
-        for _ in range(6):
-            if node is None:
-                break
-            text = node.get_text(" ", strip=True)
-            if "€" in text:
-                containers.append(node)
-            node = getattr(node, "parent", None)
-    if not containers:
-        containers = [soup]
 
-    candidates = []
-    for container in containers:
-        for tag in container.find_all(True):
-            if _is_old_or_discount_node(tag):
-                continue
-            if _contains_old_or_discount_descendant(tag):
-                continue
-            text = tag.get_text(" ", strip=True)
-            if not text or "€" not in text or len(text) > 900:
-                continue
-            low = text.lower()
-            if any(x in low for x in (
-                "grundpreis", "pro liter", "€/l", "/ l",
-                "inkl. code", "rabattcode", "gutschein", "coupon",
-            )):
-                continue
-            matches = re.findall(
-                r"(?<![\d.,])(\d{1,4}(?:[.,]\d{2}))(?:\s*€)",
-                text,
-            )
-            for raw_value in matches:
-                price = _format_price(raw_value)
-                if price:
-                    score = _price_candidate_score(tag, text)
-                    score -= min(len(text), 300) / 1000.0
-                    candidates.append((score, len(text), price))
-        if candidates:
-            break
-
-    if candidates:
-        candidates.sort(key=lambda x: (-x[0], x[1]))
-        return candidates[0][2]
-
-    for tag in soup.find_all(["meta", "span", "div", "strong", "b"]):
-        if _is_old_or_discount_node(tag):
+    # 1) JSON-LD: è la fonte più affidabile.
+    for script in soup.find_all("script", type="application/ld+json"):
+        raw = script.string or script.get_text()
+        if not raw:
             continue
-        content = tag.get("content") or tag.get_text(" ", strip=True)
-        if tag.get("itemprop") == "price" and content:
-            price = _format_price(content)
+
+        try:
+            data = __import__("json").loads(raw)
+        except Exception:
+            continue
+
+        stack = data if isinstance(data, list) else [data]
+
+        while stack:
+            item = stack.pop(0)
+
+            if isinstance(item, list):
+                stack.extend(item)
+                continue
+
+            if not isinstance(item, dict):
+                continue
+
+            item_type = str(item.get("@type", "")).lower()
+
+            if item_type == "product" or "offers" in item:
+                offers = item.get("offers")
+                offer_list = offers if isinstance(offers, list) else [offers]
+
+                for offer in offer_list:
+                    if not isinstance(offer, dict):
+                        continue
+
+                    for key in ("price", "lowPrice"):
+                        price = _format_price(offer.get(key))
+                        if price:
+                            return price
+
+            for key in ("mainEntity", "item", "@graph"):
+                child = item.get(key)
+                if child:
+                    if isinstance(child, list):
+                        stack.extend(child)
+                    else:
+                        stack.append(child)
+
+    # 2) Meta prezzo strutturato.
+    for attrs in (
+        {"property": "product:price:amount"},
+        {"property": "og:price:amount"},
+        {"itemprop": "price"},
+    ):
+        tag = soup.find("meta", attrs=attrs)
+        if tag and tag.get("content"):
+            price = _format_price(tag["content"])
+            if price:
+                return price
+
+    # 3) Prezzo visibile.
+    # Prima cerchiamo contenitori che abbiano il simbolo € ma NON
+    # la dicitura Grundpreis (prezzo per litro).
+    for node in soup.find_all(["div", "span", "p", "strong", "b"]):
+        txt = node.get_text(" ", strip=True)
+        if not txt or "€" not in txt:
+            continue
+
+        low = txt.lower()
+        if "grundpreis" in low or "€/l" in low or "pro liter" in low:
+            continue
+
+        # Prezzo con esattamente due decimali.
+        m = re.search(r"(?<![\d.,])(\d{1,4}(?:[.,]\d{2}))(?:\s*€)", txt)
+        if m:
+            price = _format_price(m.group(1))
+            if price:
+                return price
+
+    # 4) Ultimo fallback sul testo della pagina.
+    text_content = soup.get_text(" ", strip=True)
+    patterns = [
+        r"(\d{1,4}[.,]\d{2})\s*€\s*inkl\.",
+        r"(\d{1,4}[.,]\d{2})\s*€",
+    ]
+
+    for pattern in patterns:
+        for m in re.finditer(pattern, text_content, re.I):
+            # Ignora prezzi per litro.
+            left = text_content[max(0, m.start() - 100):m.start()].lower()
+            if "grundpreis" in left or "pro liter" in left:
+                continue
+
+            price = _format_price(m.group(1))
             if price:
                 return price
 
     return ""
-
 
 
 def _extract_product(url, query):
@@ -281,15 +275,15 @@ def _extract_product(url, query):
     # Il formato e la concentrazione devono viaggiare con l'offerta.
     # Parfum-Zentrum espone entrambe le informazioni nel titolo H1, per esempio:
     # "Eros pour Femme Eau De Toilette 100 ml (woman)".
-    size_match = re.search(r"(?<!\d)(\d{1,4})\s*ml\b", name, re.I)
+    size_match = re.search(r"(?<!\\d)(\\d{1,4})\\s*ml\\b", name, re.I)
     size_ml = int(size_match.group(1)) if size_match else None
 
     concentration = ""
-    if re.search(r"\beau\s+de\s+toilette\b|\bedt\b", name, re.I):
+    if re.search(r"\\beau\\s+de\\s+toilette\\b|\\bedt\\b", name, re.I):
         concentration = "Eau de Toilette"
-    elif re.search(r"\beau\s+de\s+parfum\b|\bedp\b", name, re.I):
+    elif re.search(r"\\beau\\s+de\\s+parfum\\b|\\bedp\\b", name, re.I):
         concentration = "Eau de Parfum"
-    elif re.search(r"\bextrait(?:\s+de\s+parfum)?\b", name, re.I):
+    elif re.search(r"\\bextrait(?:\\s+de\\s+parfum)?\\b", name, re.I):
         concentration = "Extrait de Parfum"
 
     # Il controllo definitivo resta sul nome reale del prodotto.
