@@ -339,6 +339,7 @@ body{position:relative}
 <div class="navitem"><b class="navicon"><svg viewBox="0 0 24 24"><circle cx="12" cy="7" r="3"/><path d="M7 21v-3a5 5 0 0 1 10 0v3H7z"/></svg></b>Profilo</div>
 </nav>
 <script>
+let isSearching = false;
 const queryInput=document.getElementById("query"),searchButton=document.getElementById("searchButton"),statusBox=document.getElementById("status"),resultsBox=document.getElementById("results"),errorsBox=document.getElementById("errorsBox");
 
 const WISH_KEY="scenthunter_wishlist_v4";
@@ -1053,13 +1054,40 @@ function shGroupData(data){
     return "liquid brun";
   }
 
+  function concentrationHint(o){
+    const raw=String(o&&((o.name||"")+" "+(o.concentration||""))||"").toLowerCase();
+    if(/\beau\s+de\s+toilette\b|\bedt\b/.test(raw))return "Eau de Toilette";
+    if(/\beau\s+de\s+parfum\b|\bedp\b/.test(raw))return "Eau de Parfum";
+    if(/\bextrait(?:\s+de\s+parfum)?\b/.test(raw))return "Extrait de Parfum";
+    if(/\beau\s+de\s+cologne\b|\bedc\b/.test(raw))return "Eau de Cologne";
+    return "";
+  }
+
   function productIdentity(o){
     // Primo tentativo: il dato originale dello scraper. Questo permette
     // al catalogo di conservare nomi canonici che la pulizia commerciale
     // potrebbe altrimenti accorciare (es. "Hawas for Him").
     const rawBrand=cleanBrandText(o.brand);
     const rawName=cleanBrandText(o.name);
-    const directMaster=resolveMasterProduct(rawBrand,rawName);
+    const hint=concentrationHint(o);
+
+    // Se il nome originale contiene una concentrazione esplicita,
+    // preferiamo la referenza master con la stessa concentrazione.
+    // Questo evita che "Eau de Toilette" venga confusa con "Eau de Parfum"
+    // dopo la pulizia commerciale del nome.
+    let directMaster=null;
+    if(hint){
+      const rb=norm(rawBrand);
+      const rn=norm(rawName);
+      const candidates=MASTER_CATALOG.filter(p=>{
+        if(norm(p.concentration||"")!==norm(hint))return false;
+        if(rb && norm(p.brand||"")!==rb)return false;
+        const names=[p.name,...(Array.isArray(p.aliases)?p.aliases:[])].map(norm);
+        return names.some(a=>a===rn || (a.length>=6 && rn.includes(a)));
+      });
+      if(candidates.length===1)directMaster=candidates[0];
+    }
+    if(!directMaster)directMaster=resolveMasterProduct(rawBrand,rawName);
     if(directMaster){
       return {
         brand:directMaster.brand||rawBrand,
@@ -1234,6 +1262,29 @@ function shGroupData(data){
     });
 
     g.offers=cleanOffers;
+
+    /*
+     * PARFUMZENTRUM: accettiamo l'offerta solo se il formato è esplicito
+     * e compatibile con la referenza master. Gli altri negozi restano
+     * invariati perché alcuni scraper possono non restituire gli ml.
+     */
+    g.offers=g.offers.filter(o=>{
+      const store=String(o.store||'').trim().toLowerCase();
+      if(store!=='parfumzentrum')return true;
+
+      const s=sizeOf(o);
+      if(!s)return false;
+
+      if(g.catalog_id){
+        const master=MASTER_CATALOG.find(p=>p.id===g.catalog_id);
+        if(master&&Array.isArray(master.formats_ml)&&master.formats_ml.length){
+          const known=master.formats_ml.map(v=>String(v));
+          if(!known.includes(String(s)))return false;
+        }
+      }
+      return true;
+    });
+
     g.offers.sort((a,b)=>{
       const ao=isOfferOutOfStock(a),bo=isOfferOutOfStock(b);
       if(ao!==bo)return ao?1:-1;
