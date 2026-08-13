@@ -169,7 +169,7 @@ def _tokens(value):
     ]
 
 
-def _matches_soft(text, query, minimum=0.55):
+def _matches_soft(text, query, minimum=1.0):
     text_tokens = set(_tokens(text))
     query_tokens = set(_tokens(query))
 
@@ -291,7 +291,7 @@ def _is_relevant_product(text, query):
     if not _matches_soft(
         text,
         query,
-        minimum=0.55,
+        minimum=1.0,
     ):
         return False
 
@@ -423,23 +423,51 @@ def _find_product_card(link):
     return link
 
 
-def _url_matches_query(product_url, query):
+def _category_tokens_from_url(category_url):
+    path = str(category_url or "").split("?")[0].lower()
+    slug = path.rsplit("/", 1)[-1]
+    slug = re.sub(r"\.(?:html?|php)$", "", slug)
+
+    generic = {
+        "fragrance", "fragrances", "perfume", "perfumes",
+        "mens", "womens", "women", "men",
+        "collection", "collections", "category",
+    }
+
+    return {
+        token for token in _tokens(slug)
+        if token not in generic
+    }
+
+
+def _product_query(query, category_url=None):
+    query_tokens = _tokens(query)
+    brand_tokens = _category_tokens_from_url(category_url)
+    product_tokens = [
+        token for token in query_tokens
+        if token not in brand_tokens
+    ]
+    return " ".join(product_tokens).strip()
+
+
+def _url_matches_query(product_url, query, category_url=None):
+    product_query = _product_query(query, category_url) or query
+    query_tokens = set(_tokens(product_query))
     url_tokens = set(_tokens(product_url))
-    query_tokens = set(_tokens(query))
 
     if not query_tokens:
         return False
 
-    # If URL contains all tokens, it's a match.
     if query_tokens.issubset(url_tokens):
         return True
 
-    # Otherwise accept if a sufficient fraction of query tokens appear in URL.
-    found = sum(1 for t in query_tokens if t in url_tokens)
-    return (found / len(query_tokens)) >= 0.55
+    if len(query_tokens) == 1:
+        return next(iter(query_tokens)) in url_tokens
 
+    found = sum(1 for token in query_tokens if token in url_tokens)
+    return found / len(query_tokens) >= 0.75
 
-def _extract_category(html, query):
+def _extract_category(html, query, category_url=None):
     soup = BeautifulSoup(
         html,
         "html.parser",
@@ -448,9 +476,8 @@ def _extract_category(html, query):
     results = []
     seen = set()
 
-    query_tokens = set(
-        _tokens(query)
-    )
+    product_query = _product_query(query, category_url) or query
+    query_tokens = set(_tokens(product_query))
 
     for link in soup.find_all(
         "a",
@@ -468,10 +495,27 @@ def _extract_category(html, query):
         if "/product/" not in product_url.lower():
             continue
 
-        # Controllo fondamentale contro prodotti estranei.
-        if not _url_matches_query(
-            product_url,
-            query,
+        # Prima di usare il contenitore della card, verifichiamo il link
+        # specifico. Una card può contenere anche link a prodotti correlati:
+        # non dobbiamo mai prendere il primo URL /product/ trovato nel parent.
+        link_name = _clean(
+            link.get_text(
+                " ",
+                strip=True,
+            )
+        )
+        link_title = _clean(link.get("title") or "")
+        link_aria = _clean(link.get("aria-label") or "")
+
+        link_label = link_title or link_aria or link_name
+        if (
+            link_label
+            and not SIZE_FULL_RE.fullmatch(link_label)
+            and not _matches_soft(
+                link_label,
+                product_query,
+                minimum=1.0,
+            )
         ):
             continue
 
@@ -492,8 +536,8 @@ def _extract_category(html, query):
 
         if not _matches_soft(
             card_text,
-            query,
-            minimum=0.55,
+            product_query,
+            minimum=1.0,
         ):
             continue
 
@@ -502,9 +546,9 @@ def _extract_category(html, query):
         if not query_tokens.issubset(card_tokens):
             # Allow the card if a stricter soft similarity check passes,
             # or if the anchor title / a heading inside the card contains all query tokens.
-            if not _matches_soft(card_text, query, minimum=0.75):
+            if not _matches_soft(card_text, product_query, minimum=1.0):
                 link_title = _clean(link.get("title") or "")
-                if link_title and set(_tokens(query)).issubset(set(_tokens(link_title))):
+                if link_title and query_tokens.issubset(set(_tokens(link_title))):
                     pass
                 else:
                     heading = None
@@ -513,14 +557,14 @@ def _extract_category(html, query):
                         if node_h:
                             heading = _clean(node_h.get_text(" ", strip=True))
                             break
-                    if heading and set(_tokens(query)).issubset(set(_tokens(heading))):
+                    if heading and query_tokens.issubset(set(_tokens(heading))):
                         pass
                     else:
                         continue
 
         if not _is_relevant_product(
             card_text,
-            query,
+            product_query,
         ):
             continue
 
@@ -541,13 +585,13 @@ def _extract_category(html, query):
         if (
             link_name
             and not SIZE_FULL_RE.fullmatch(link_name)
-            and _matches_soft(link_name, query, minimum=0.55)
+            and _matches_soft(link_name, product_query, minimum=1.0)
             and set(_tokens(query)).issubset(set(_tokens(link_name)))
         ):
             product_name = link_name
         else:
             link_title = _clean(link.get("title") or "")
-            if link_title and set(_tokens(query)).issubset(set(_tokens(link_title))):
+            if link_title and query_tokens.issubset(set(_tokens(link_title))):
                 product_name = link_title
 
         if product_url in seen:
@@ -567,7 +611,7 @@ def _extract_category(html, query):
     return results
 
 
-def _extract_brand_page(html, query):
+def _extract_brand_page(html, query, category_url=None):
     soup = BeautifulSoup(
         html,
         "html.parser",
@@ -575,6 +619,8 @@ def _extract_brand_page(html, query):
 
     results = []
     seen = set()
+
+    product_query = _product_query(query, category_url) or query
 
     for link in soup.find_all(
         "a",
@@ -595,8 +641,8 @@ def _extract_brand_page(html, query):
 
             if not _matches_soft(
                 text,
-                query,
-                minimum=0.55,
+                product_query,
+                minimum=1.0,
             ):
                 node = node.parent
                 continue
@@ -615,6 +661,7 @@ def _extract_brand_page(html, query):
                 continue
 
             product_link = None
+            product_link_score = -1
 
             for anchor in node.find_all(
                 "a",
@@ -631,21 +678,47 @@ def _extract_brand_page(html, query):
                 if "/product/" not in candidate_url.lower():
                     continue
 
-                if not _url_matches_query(
-                    candidate_url,
-                    query,
+                anchor_name = _clean(
+                    anchor.get_text(
+                        " ",
+                        strip=True,
+                    )
+                )
+                anchor_title = _clean(anchor.get("title") or "")
+                anchor_aria = _clean(anchor.get("aria-label") or "")
+                anchor_label = anchor_title or anchor_aria or anchor_name
+
+                if (
+                    anchor_label
+                    and not SIZE_FULL_RE.fullmatch(anchor_label)
+                    and not _matches_soft(
+                        anchor_label,
+                        product_query,
+                        minimum=1.0,
+                    )
                 ):
                     continue
 
-                product_link = candidate_url
-                break
+                score = 0
+                if anchor_label:
+                    score += 10
+                    if _matches_soft(
+                        anchor_label,
+                        product_query,
+                        minimum=1.0,
+                    ):
+                        score += 100
+
+                if score > product_link_score:
+                    product_link = candidate_url
+                    product_link_score = score
 
             if (
                 product_link
                 and product_link not in seen
                 and _is_relevant_product(
                     text,
-                    query,
+                    product_query,
                 )
             ):
                 seen.add(product_link)
@@ -669,65 +742,88 @@ def _extract_product_variants(
     product_name,
     product_url,
 ):
+    """
+    Estrae i formati dalla pagina prodotto Deloox senza fare uno scan globale.
+
+    Regola generale:
+    il formato e il prezzo devono trovarsi nello stesso blocco DOM locale.
+    In questo modo un formato presente in un'altra parte della pagina non viene
+    associato al prezzo della variante del prodotto.
+    """
     soup = BeautifulSoup(
         html,
         "html.parser",
     )
 
-    strings = [
-        _clean(value)
-        for value in soup.stripped_strings
-        if _clean(value)
-    ]
-
     results = []
     seen_sizes = set()
 
-    for index, value in enumerate(strings):
-        size_match = SIZE_FULL_RE.fullmatch(value)
+    variant_nodes = soup.select(
+        "[class*='variant'], [class*='Variant'], "
+        "[class*='option'], [class*='Option'], "
+        "[class*='volume'], [class*='Volume'], "
+        "[class*='size'], [class*='Size']"
+    )
 
-        if not size_match:
+    candidates = []
+
+    for node in variant_nodes:
+        text = _clean(node.get_text(" ", strip=True))
+        if not text:
             continue
 
-        size = size_match.group(1).replace(
-            ",",
-            ".",
-        )
+        matches = SIZE_RE.findall(text)
+        if not matches:
+            continue
 
+        price = _extract_price(text)
+        if not price:
+            continue
+
+        for size in matches:
+            candidates.append((size, price))
+
+    if not candidates:
+        for text_node in soup.find_all(
+            string=SIZE_FULL_RE,
+        ):
+            value = _clean(text_node)
+            size_match = SIZE_FULL_RE.fullmatch(value)
+
+            if not size_match:
+                continue
+
+            size = size_match.group(1).replace(
+                ",",
+                ".",
+            )
+
+            parent = text_node.parent
+
+            for _ in range(6):
+                if parent is None:
+                    break
+
+                block_text = _clean(
+                    parent.get_text(" ", strip=True)
+                )
+
+                if len(block_text) > 700:
+                    parent = parent.parent
+                    continue
+
+                price = _extract_price(block_text)
+
+                if price:
+                    candidates.append((size, price))
+                    break
+
+                parent = parent.parent
+
+    for size, price in candidates:
         size_label = f"{size} ml"
 
         if size_label in seen_sizes:
-            continue
-
-        chunk = []
-        sold_out = False
-
-        for next_index in range(
-            index + 1,
-            min(index + 30, len(strings)),
-        ):
-            next_value = strings[next_index]
-
-            if SIZE_FULL_RE.fullmatch(next_value):
-                break
-
-            chunk.append(next_value)
-
-            if any(
-                word in next_value.lower()
-                for word in SOLD_OUT
-            ):
-                sold_out = True
-                break
-
-        if sold_out:
-            continue
-
-        price = _extract_price(
-            " ".join(chunk)
-        )
-
-        if not price:
             continue
 
         seen_sizes.add(size_label)
@@ -756,12 +852,14 @@ def _extract_jsonld_variants(
     product_name,
     product_url,
 ):
+    """Fallback JSON-LD conservativo: solo Product JSON-LD."""
     soup = BeautifulSoup(
         html,
         "html.parser",
     )
 
     results = []
+    seen = set()
 
     for script in soup.find_all(
         "script",
@@ -771,32 +869,40 @@ def _extract_jsonld_variants(
             data = json.loads(
                 script.string or script.get_text()
             )
-
         except (
             json.JSONDecodeError,
             TypeError,
         ):
             continue
 
-        objects = (
-            data
-            if isinstance(data, list)
-            else [data]
-        )
+        objects = []
+
+        if isinstance(data, list):
+            objects.extend(data)
+        elif isinstance(data, dict):
+            objects.append(data)
+
+            graph = data.get("@graph")
+            if isinstance(graph, list):
+                objects.extend(graph)
 
         for item in objects:
             if not isinstance(item, dict):
                 continue
 
-            item_text = " ".join([
-                str(item.get("name", "")),
-                str(item.get("description", "")),
-            ])
+            item_type = item.get("@type")
 
-            size_match = SIZE_RE.search(
-                item_text
-            )
+            if isinstance(item_type, list):
+                if "Product" not in item_type:
+                    continue
+            elif item_type != "Product":
+                continue
 
+            name = _clean(item.get("name", ""))
+            if not name:
+                continue
+
+            size_match = SIZE_RE.search(name)
             if not size_match:
                 continue
 
@@ -805,11 +911,7 @@ def _extract_jsonld_variants(
                 ".",
             )
 
-            offers = item.get(
-                "offers",
-                [],
-            )
-
+            offers = item.get("offers", [])
             if isinstance(offers, dict):
                 offers = [offers]
 
@@ -818,35 +920,28 @@ def _extract_jsonld_variants(
                     continue
 
                 price = offer.get("price")
-
                 if price is None:
                     continue
 
-                if str(
-                    offer.get(
-                        "priceCurrency",
-                        "EUR",
-                    )
-                ) != "EUR":
+                if str(offer.get("priceCurrency", "EUR")) != "EUR":
                     continue
 
                 availability = str(
-                    offer.get(
-                        "availability",
-                        "",
-                    )
+                    offer.get("availability", "")
                 ).lower()
 
                 if "outofstock" in availability:
                     continue
 
-                price_text = str(price).replace(
-                    ".",
-                    ",",
-                )
-
+                price_text = str(price).replace(".", ",")
                 if "," not in price_text:
                     price_text += ",00"
+
+                key = (size, price_text)
+                if key in seen:
+                    continue
+
+                seen.add(key)
 
                 results.append({
                     "store": STORE,
@@ -859,7 +954,6 @@ def _extract_jsonld_variants(
                 })
 
     return results
-
 
 def _size_number(item):
     match = SIZE_RE.search(
@@ -902,15 +996,19 @@ def search(query):
     if response is None:
         return []
 
+    product_query = _product_query(query, category_url) or query
+
     candidates = _extract_category(
         response.text,
         query,
+        category_url,
     )
 
     if not candidates:
         candidates = _extract_brand_page(
             response.text,
             query,
+            category_url,
         )
 
     if not candidates:
@@ -927,18 +1025,12 @@ def search(query):
         if product_url in seen_urls:
             continue
 
-        if not _url_matches_query(
-            product_url,
-            query,
-        ):
-            continue
-
         seen_urls.add(product_url)
 
         scored.append((
             _match_score(
                 item["name"],
-                query,
+                product_query,
             ),
             item,
         ))
