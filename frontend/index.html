@@ -1060,111 +1060,6 @@ function shGroupData(data){
     // potrebbe altrimenti accorciare (es. "Hawas for Him").
     const rawBrand=cleanBrandText(o.brand);
     const rawName=cleanBrandText(o.name);
-
-    /*
-     * VARIANTI CONCENTRAZIONE:
-     * alcune pagine (in particolare Parfum-Zentrum) possono restituire
-     * "Eros pour Femme Eau de Parfum" con lo stesso nome base dell'EDT.
-     * Non dobbiamo mai far finire l'EDP nel gruppo EDT.
-     *
-     * Se il catalogo contiene due referenze con lo stesso nome base ma
-     * concentrazione diversa, la concentrazione esplicita nella risposta
-     * dello scraper ha priorità assoluta.
-     */
-    const rawConcentration=String(
-      o.concentration||rawName
-    ).toLowerCase();
-
-    const concentrationHint =
-      /\beau\s+de\s+parfum\b|\bedp\b|\bparfum\b/.test(rawConcentration)
-        ? "Eau de Parfum"
-        : /\beau\s+de\s+toilette\b|\bedt\b/.test(rawConcentration)
-          ? "Eau de Toilette"
-          : /\bextrait(?:\s+de\s+parfum)?\b/.test(rawConcentration)
-            ? "Extrait de Parfum"
-            : "";
-
-    if(concentrationHint){
-      const brandHint=norm(rawBrand);
-      const rawBase=norm(
-        rawName
-          .replace(/\b(?:eau\s+de\s+parfum|eau\s+de\s+toilette|eau\s+de\s+cologne|extrait(?:\s+de\s+parfum)?|edp|edt|edc)\b/gi," ")
-          .replace(/\b\d{1,4}\s*ml\b/gi," ")
-          .replace(/\s+/g," ")
-          .trim()
-      );
-
-      const concentrationMaster=MASTER_CATALOG.find(p=>{
-        if(brandHint && norm(p.brand||"")!==brandHint)return false;
-        if(String(p.concentration||"").toLowerCase()!==concentrationHint.toLowerCase())return false;
-        const pn=norm(p.name||"");
-        const aliases=(Array.isArray(p.aliases)?p.aliases:[]).map(a=>norm(a));
-        return rawBase===pn ||
-          aliases.some(a=>{
-            const ab=a
-              .replace(/\b(?:eau\s+de\s+parfum|eau\s+de\s+toilette|eau\s+de\s+cologne|extrait(?:\s+de\s+parfum)?|edp|edt|edc)\b/g," ")
-              .replace(/\s+/g," ")
-              .trim();
-            return ab===rawBase;
-          });
-      });
-
-      if(concentrationMaster){
-        /*
-         * BARRIERA FORMATO + CONCENTRAZIONE:
-         * alcuni scraper riportano una concentrazione sbagliata rispetto
-         * alla pagina/prodotto reale. Se il formato esplicito non esiste
-         * nella referenza trovata, cerchiamo la referenza della stessa
-         * famiglia/concentrazione che contiene davvero quel formato.
-         *
-         * Caso reale: Versace Eros pour Femme 30/50 ml veniva trascinato
-         * nell'EDP (che esiste solo in 100 ml). In quel caso 30/50 ml
-         * appartengono all'EDT e devono essere ricondotti a SH-0071.
-         */
-        const explicitSize=sizeOf(o);
-        const masterFormats=Array.isArray(concentrationMaster.formats_ml)
-          ? concentrationMaster.formats_ml.map(v=>Number(v)).filter(Number.isFinite)
-          : [];
-
-        if(explicitSize && masterFormats.length && !masterFormats.includes(Number(explicitSize))){
-          const compatibleMaster=MASTER_CATALOG.find(p=>{
-            if(brandHint && norm(p.brand||'')!==brandHint)return false;
-            if(String(p.concentration||'').toLowerCase()===concentrationHint.toLowerCase())return false;
-            const formats=Array.isArray(p.formats_ml)
-              ? p.formats_ml.map(v=>Number(v)).filter(Number.isFinite)
-              : [];
-            if(!formats.includes(Number(explicitSize)))return false;
-            const pn=norm(p.name||'');
-            const aliases=(Array.isArray(p.aliases)?p.aliases:[]).map(a=>norm(a));
-            const sameBase=pn===rawBase || aliases.some(a=>{
-              const ab=a
-                .replace(/\b(?:eau\s+de\s+parfum|eau\s+de\s+toilette|eau\s+de\s+cologne|extrait(?:\s+de\s+parfum)?|edp|edt|edc)\b/g,' ')
-                .replace(/\s+/g,' ')
-                .trim();
-              return ab===rawBase;
-            });
-            return sameBase;
-          });
-
-          if(compatibleMaster){
-            return {
-              brand:compatibleMaster.brand||rawBrand,
-              name:compatibleMaster.name||rawName,
-              key:norm(compatibleMaster.brand||rawBrand)+"|"+norm(compatibleMaster.name||rawName),
-              catalog_id:compatibleMaster.id||""
-            };
-          }
-        }
-
-        return {
-          brand:concentrationMaster.brand||rawBrand,
-          name:concentrationMaster.name||rawName,
-          key:norm(concentrationMaster.brand||rawBrand)+"|"+norm(concentrationMaster.name||rawName),
-          catalog_id:concentrationMaster.id||""
-        };
-      }
-    }
-
     const directMaster=resolveMasterProduct(rawBrand,rawName);
     if(directMaster){
       return {
@@ -1342,26 +1237,26 @@ function shGroupData(data){
     g.offers=cleanOffers;
 
     /*
-     * FORMATO NON SPECIFICATO / FORMATO IMPOSSIBILE:
-     * se il catalogo conosce i formati reali della referenza, un'offerta
-     * senza size_ml NON può essere accettata. Non possiamo inventare il
-     * formato dal prezzo o dalla posizione nella pagina del negozio.
-     *
-     * Inoltre scartiamo qualsiasi misura che il catalogo non prevede per
-     * quella referenza. Questo evita che prezzi di un altro prodotto o di
-     * un'altra concentrazione finiscano nel gruppo corretto solo perché
-     * il nome commerciale è simile.
+     * PARFUMZENTRUM: accettiamo l'offerta solo se il formato è esplicito
+     * e compatibile con la referenza master. Gli altri negozi restano
+     * invariati perché alcuni scraper possono non restituire gli ml.
      */
-    if(g.catalog_id){
-      const master=MASTER_CATALOG.find(p=>p.id===g.catalog_id);
-      if(master && Array.isArray(master.formats_ml) && master.formats_ml.length){
-        const knownSizes=new Set(master.formats_ml.map(v=>String(v)));
-        g.offers=g.offers.filter(o=>{
-          const s=sizeOf(o);
-          return !!s && knownSizes.has(String(s));
-        });
+    g.offers=g.offers.filter(o=>{
+      const store=String(o.store||'').trim().toLowerCase();
+      if(store!=='parfumzentrum')return true;
+
+      const s=sizeOf(o);
+      if(!s)return false;
+
+      if(g.catalog_id){
+        const master=MASTER_CATALOG.find(p=>p.id===g.catalog_id);
+        if(master&&Array.isArray(master.formats_ml)&&master.formats_ml.length){
+          const known=master.formats_ml.map(v=>String(v));
+          if(!known.includes(String(s)))return false;
+        }
       }
-    }
+      return true;
+    });
 
     g.offers.sort((a,b)=>{
       const ao=isOfferOutOfStock(a),bo=isOfferOutOfStock(b);
