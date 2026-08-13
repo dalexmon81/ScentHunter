@@ -1089,11 +1089,13 @@ function shGroupData(data){
     }
     if(!directMaster)directMaster=resolveMasterProduct(rawBrand,rawName);
     if(directMaster){
+      const masterConcentration=String(directMaster.concentration||hint||"").trim();
       return {
         brand:directMaster.brand||rawBrand,
         name:directMaster.name||rawName,
-        key:norm(directMaster.brand||rawBrand)+"|"+norm(directMaster.name||rawName),
-        catalog_id:directMaster.id||""
+        key:norm(directMaster.brand||rawBrand)+"|"+norm(directMaster.name||rawName)+"|"+norm(masterConcentration),
+        catalog_id:directMaster.id||"",
+        concentration:masterConcentration
       };
     }
 
@@ -1105,8 +1107,9 @@ function shGroupData(data){
         return {
           brand:masterLiquid.brand||detectedBrand,
           name:masterLiquid.name||pretty(lb),
-          key:norm(masterLiquid.brand||detectedBrand)+"|"+norm(masterLiquid.name||pretty(lb)),
-          catalog_id:masterLiquid.id||""
+          key:norm(masterLiquid.brand||detectedBrand)+"|"+norm(masterLiquid.name||pretty(lb))+"|"+norm(masterLiquid.concentration||""),
+          catalog_id:masterLiquid.id||"",
+          concentration:masterLiquid.concentration||""
         };
       }
       return {brand:detectedBrand,name:pretty(lb),key:norm(detectedBrand)+"|"+lb};
@@ -1126,8 +1129,9 @@ function shGroupData(data){
       };
     }
 
-    const key=(norm(brand)+"|"+norm(name)).replace(/\|+$/g,"");
-    return {brand,name,key};
+    const detectedConcentration=concentrationHint(o);
+    const key=(norm(brand)+"|"+norm(name)+"|"+norm(detectedConcentration)).replace(/\|+$/g,"");
+    return {brand,name,key,concentration:detectedConcentration};
   }
 
   const identities=raw.map(o=>productIdentity(o));
@@ -1199,7 +1203,7 @@ function shGroupData(data){
         display_name:id.brand?id.brand+" - "+id.name:id.name,
         catalog_id:id.catalog_id||"",
         size_ml:"",
-        concentration:o.concentration||"",
+        concentration:o.concentration||id.concentration||"",
         image:o.image||o.image_url||o.thumbnail||"",
         offers:[]
       });
@@ -1214,6 +1218,7 @@ function shGroupData(data){
     if(id.brand)normalizedOffer.brand=id.brand;
     if(id.name)normalizedOffer.name=id.name;
     if(id.catalog_id)normalizedOffer.catalog_id=id.catalog_id;
+    if(id.concentration)normalizedOffer.concentration=id.concentration;
     if(size)normalizedOffer.size_ml=size;
 
     const store=String(o.store||"").trim().toLowerCase();
@@ -1226,7 +1231,8 @@ function shGroupData(data){
       const xu=String(x.url||"").split("?")[0].toLowerCase();
       const xsize=sizeOf(x)||"unknown";
       const xn=norm(x.name||"");
-      return xs===store&&xu===url&&xsize===offerSize&&xn===offerName;
+      const xc=norm(x.concentration||"");
+      return xs===store&&xu===url&&xsize===offerSize&&xn===offerName&&xc===offerConcentration;
     });
 
     if(existingIndex>=0){
