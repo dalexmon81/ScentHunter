@@ -15,9 +15,20 @@ HEADERS = {
 }
 
 IGNORED_MATCH_WORDS = {
-    "eau", "de", "parfum", "perfume", "edp", "edt",
+    "eau", "de",
     "spray", "ml", "pour", "for",
 }
+
+def _concentration(text):
+    """Return the concentration explicitly requested/present in text."""
+    value = unquote(str(text or ""))
+    if re.search(r"\beau\s+de\s+toilette\b|\bedt\b", value, re.I):
+        return "edt"
+    if re.search(r"\beau\s+de\s+parfum\b|\bedp\b", value, re.I):
+        return "edp"
+    if re.search(r"\bextrait(?:\s+de\s+parfum)?\b", value, re.I):
+        return "extrait"
+    return ""
 
 def _tokens(text):
     return [
@@ -35,12 +46,18 @@ def _all_tokens_match(text, query):
     }
 
     if not query_tokens:
-        query_tokens = set(_tokens(query))
-
-    if not query_tokens:
         return False
 
-    return query_tokens.issubset(text_tokens)
+    if not query_tokens.issubset(text_tokens):
+        return False
+
+    # Generic searches must allow both EDT and EDP.
+    # If the user explicitly requests a concentration, enforce it.
+    wanted_concentration = _concentration(query)
+    if wanted_concentration:
+        return _concentration(text) == wanted_concentration
+
+    return True
 
 def _xml_urls(xml_text):
     root = ET.fromstring(xml_text)
@@ -341,6 +358,17 @@ def _candidate_score(url, query):
         joined = " ".join(u)
         if all(token in joined for token in q):
             score += len(q)
+
+    wanted_concentration = _concentration(query)
+    if wanted_concentration == "edt":
+        if "toilette" in u or "edt" in u:
+            score += 60
+    elif wanted_concentration == "edp":
+        if "parfum" in u or "edp" in u:
+            score += 60
+    elif wanted_concentration == "extrait":
+        if "extrait" in u:
+            score += 60
 
     return score
 
