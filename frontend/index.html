@@ -1,3 +1,4 @@
+<!-- ScentHunter INDEX FINAL V4 - family search serialized to prevent backend saturation -->
 <!DOCTYPE html>
 <html lang="it">
 <head>
@@ -1747,27 +1748,30 @@ async function searchPerfume(){
    */
   const terms=plan?.terms?.length?plan.terms:[q];
 
-  // NON inviamo tutte le query della famiglia insieme: il backend con gli
-  // scraper attivi può saturarsi. Massimo 2 richieste contemporanee.
-  // Non facciamo render intermedi: mostriamo un solo risultato finale.
-  const timeoutMs=plan?18000:25000;
+  // Il backend esegue diversi scraper pesanti. Le richieste contemporanee
+  // della versione precedente potevano saturarlo e far fallire TUTTE le
+  // varianti (il caso visto con 6/6 e nessun risultato).
+  // Per Le Beau usiamo quindi UNA richiesta alla volta: è più affidabile,
+  // ma il timeout resta breve. Non facciamo render intermedi.
+  const timeoutMs=plan?15000:25000;
   const responses=[];
-  const concurrency=plan?3:2;
 
-  for(let i=0;i<terms.length;i+=concurrency){
+  for(let i=0;i<terms.length;i++){
     if(window.__shSearchRequest!==requestId)break;
-    const batch=terms.slice(i,i+concurrency);
+    const term=terms[i];
     statusBox.textContent=plan
-      ?`Cerco ${q}… (${Math.min(i+batch.length,terms.length)}/${terms.length})`
+      ?`Cerco ${q}… (${i+1}/${terms.length})`
       :`Cerco ${q}…`;
 
-    const batchResults=await Promise.allSettled(batch.map(term=>
-      fetchJSONWithTimeout(
+    try{
+      const value=await fetchJSONWithTimeout(
         backend()+"/search?q="+encodeURIComponent(term),
         timeoutMs
-      )
-    ));
-    responses.push(...batchResults);
+      );
+      responses.push({status:"fulfilled",value});
+    }catch(error){
+      responses.push({status:"rejected",reason:error});
+    }
   }
 
 
@@ -1777,7 +1781,11 @@ async function searchPerfume(){
    .filter(r=>r.status==="fulfilled")
    .map(r=>r.value);
 
-  if(!successful.length)throw new Error("Nessuna ricerca completata");
+  if(!successful.length){
+    statusBox.textContent=`Nessun risultato trovato per "${q}".`;
+    errorsBox.innerHTML=`<div>Le fonti non hanno risposto in tempo.</div>`;
+    return;
+  }
 
   const merged={
    comparisons:successful.flatMap(d=>Array.isArray(d?.comparisons)?d.comparisons:[]),
@@ -1794,6 +1802,8 @@ async function searchPerfume(){
   currentProductGroups=groups;
   if(!groups.length){
     statusBox.textContent=`Nessun risultato trovato per "${q}".`;
+  }else{
+    statusBox.textContent=`Risultati per "${q}"`;
   }
   updateBestPricesFromGroups(groups);
   refreshWishlistFromResults(groups.flatMap(g=>g.offers.map(o=>({
