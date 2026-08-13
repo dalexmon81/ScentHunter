@@ -514,15 +514,13 @@ def resolve_actual_price(product: Dict[str, Any]) -> Dict[str, Any]:
         pass
 
     # Se abbiamo un prezzo molto basso (<5 EUR) per confezioni di dimensione
-    # ragionevole (>=30 ml) o se non abbiamo size (None) e il prezzo è molto basso,
-    # consideriamo il prezzo sospetto e lo invalidiamo per il ranking.
-    # In tal caso rimuoviamo sia price_value sia price (stringa) per evitare
-    # che il frontend lo mostri come "da 4,99€" e che venga selezionato.
-    if item.get("price_value") is not None and item["price_value"] < 5.0 and (size is None or size >= 30.0):
-        # Invalidate numeric value and the displayed string
+    # ragionevole (>=30 ml), consideriamo il prezzo sospetto e lo invalidiamo
+    # solo per il ranking: rimuoviamo price_value ma NON cancelliamo la stringa
+    # item['price'] (così la UI continua a mostrare il prezzo). Se la size è
+    # sconosciuta (None) NON invalidiamo: il filtro sarebbe troppo aggressivo.
+    if item.get("price_value") is not None and size is not None and size >= 30.0 and item["price_value"] < 5.0:
+        # Invalidate numeric value for ranking
         item.pop("price_value", None)
-        # Remove the price string so UI won't present the suspicious value
-        item["price"] = ""
         item["price_invalidated"] = True
         try:
             print(f"SUSPECT_PRICE_INVALIDATED: store={item.get('store')} url={item.get('url')} name={item.get('name')!r} original_raw_price={raw_price!r}")
