@@ -205,7 +205,7 @@ def _price_from_structured_html(html: str, target_size_ml: Optional[float] = Non
 # - se uno scraper dichiara esplicitamente OUT OF STOCK, lo manteniamo;
 # - se la pagina prodotto conferma OUT OF STOCK, lo marchiamo centralmente;
 # - se la pagina conferma IN STOCK, lo marchiamo come disponibile;
-# - se non riusciamo di determinare lo stock, NON eliminiamo mai il prodotto.
+# - se non riusciamo a determinare lo stock, NON eliminiamo mai il prodotto.
 # In questo modo lo stock è normalizzato nel backend e non dipende da
 # correzioni specifiche per singolo profumo o singolo negozio.
 
@@ -229,8 +229,9 @@ _STOCK_OOS_MARKERS = (
     "non disponible",
     "non-disponible",
     "ce produit n'est plus disponible",
-    "ce produit n’est plus disponibile",
-    "ce produit n'est più disponibile a la vendita",
+    "ce produit n’est plus disponible",
+    "ce produit n'est plus disponible à la vente",
+    "ce produit n’est plus disponible à la vente",
     "esaurito",
     "non disponibile",
     "questo prodotto non è più disponibile",
@@ -504,30 +505,6 @@ def resolve_actual_price(product: Dict[str, Any]) -> Dict[str, Any]:
     if value is not None:
         item["price_value"] = value
 
-    # --- PATCH MINIMA: logging diagnostico e filtro conservativo per prezzi sospetti ---
-    try:
-        # Log diagnostico se il prodotto contiene "eros" nella name
-        # o se il prezzo parsed è molto basso (<5.0 EUR)
-        if norm(item.get("name", "")).find("eros") != -1 or (item.get("price_value") is not None and item.get("price_value") < 5.0):
-            print(f"SUSPECT_PRICE: store={item.get('store')} url={item.get('url')} name={item.get('name')!r} raw_price={raw_price!r} price_value={item.get('price_value')} size_ml={size}")
-    except Exception:
-        pass
-
-    # Se abbiamo un prezzo molto basso (<5 EUR) per confezioni di dimensione
-    # ragionevole (>=30 ml), consideriamo il prezzo sospetto e lo invalidiamo
-    # solo per il ranking: rimuoviamo price_value ma NON cancelliamo la stringa
-    # item['price'] (così la UI continua a mostrare il prezzo). Se la size è
-    # sconosciuta (None) NON invalidiamo: il filtro sarebbe troppo aggressivo.
-    if item.get("price_value") is not None and size is not None and size >= 30.0 and item["price_value"] < 5.0:
-        # Invalidate numeric value for ranking
-        item.pop("price_value", None)
-        item["price_invalidated"] = True
-        try:
-            print(f"SUSPECT_PRICE_INVALIDATED: store={item.get('store')} url={item.get('url')} name={item.get('name')!r} original_raw_price={raw_price!r}")
-        except Exception:
-            pass
-    # --- fine patch ---
-
     return item
 
 
@@ -592,7 +569,6 @@ def build_search_attempts(store: str, query: str) -> List[str]:
     attempts = [query]
     normalized_query = norm(query)
 
-    # Forma compatta utile per negozi che indicizzano "9PM" ma non "9 PM".
     compact = re.sub(
         r"(?<=\d)\s+(?=[a-z])|(?<=[a-z])\s+(?=\d)",
         "",
@@ -601,8 +577,23 @@ def build_search_attempts(store: str, query: str) -> List[str]:
     if compact and compact not in attempts:
         attempts.append(compact)
 
-    # Alcuni negozi usano un alias verificato del prodotto. Lo cerchiamo
-    # direttamente, ma solo per le query che hanno un alias esplicito.
+    # Ricerca generica "X pour femme": interroga esplicitamente entrambe
+    # le concentrazioni, senza alterare le query che hanno già una concentrazione.
+    generic_q = re.sub(
+        r"\b(eau\s+de\s+(?:toilette|parfum)|ed[pt])\b",
+        "",
+        normalized_query,
+        flags=re.I,
+    )
+    generic_q = re.sub(r"\s+", " ", generic_q).strip()
+    if generic_q and re.search(r"\bpour\s+femme\b", generic_q, re.I):
+        for concentration_query in (
+            f"{generic_q} eau de toilette",
+            f"{generic_q} eau de parfum",
+        ):
+            if concentration_query not in attempts:
+                attempts.append(concentration_query)
+
     for alias in _query_aliases(query):
         if alias not in attempts:
             attempts.append(alias)
@@ -613,7 +604,6 @@ def build_search_attempts(store: str, query: str) -> List[str]:
                 attempts.append(token)
 
     return attempts
-
 
 def run_store(store: str, query: str) -> List[Dict[str, Any]]:
     module = load_scraper(store)
