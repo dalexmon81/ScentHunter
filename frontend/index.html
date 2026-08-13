@@ -1265,25 +1265,26 @@ function shGroupData(data){
     g.offers=cleanOffers;
 
     /*
-     * PARFUMZENTRUM: accettiamo l'offerta solo se il formato è esplicito
-     * e compatibile con la referenza master. Gli altri negozi restano
-     * invariati perché alcuni scraper possono non restituire gli ml.
+     * FORMATI REALI DEL CATALOGO:
+     * se il gruppo e' associato a una referenza master, accettiamo solo
+     * i formati dichiarati dal catalogo. Questo vale per TUTTI i negozi,
+     * non solo ParfumZentrum. Evita categorie inventate come 30/40/50/80/
+     * 90/100/200 ml quando la referenza ha altri formati.
+     *
+     * Se lo scraper non comunica gli ml, conserviamo comunque l'offerta:
+     * non inventiamo un formato, ma non perdiamo il prezzo.
      */
     g.offers=g.offers.filter(o=>{
-      const store=String(o.store||'').trim().toLowerCase();
-      if(store!=='parfumzentrum')return true;
+      if(!g.catalog_id)return true;
+
+      const master=MASTER_CATALOG.find(p=>p.id===g.catalog_id);
+      if(!master||!Array.isArray(master.formats_ml)||!master.formats_ml.length)return true;
 
       const s=sizeOf(o);
-      if(!s)return false;
+      if(!s)return true;
 
-      if(g.catalog_id){
-        const master=MASTER_CATALOG.find(p=>p.id===g.catalog_id);
-        if(master&&Array.isArray(master.formats_ml)&&master.formats_ml.length){
-          const known=master.formats_ml.map(v=>String(v));
-          if(!known.includes(String(s)))return false;
-        }
-      }
-      return true;
+      const known=master.formats_ml.map(v=>String(v));
+      return known.includes(String(s));
     });
 
     g.offers.sort((a,b)=>{
@@ -1695,12 +1696,33 @@ async function searchLeBeauFamily(onPartial){
  for(let i=0;i<terms.length;i+=concurrency){
   const batch=terms.slice(i,i+concurrency);
   statusBox.textContent=`Cerco Le Beau… ${Math.min(i+batch.length,terms.length)}/${terms.length}`;
-  const responses=await Promise.allSettled(batch.map(term=>
+
+  let responses=await Promise.allSettled(batch.map(term=>
    fetchJSONWithTimeout(
     backend()+"/search?q="+encodeURIComponent(term),
     timeoutMs
    )
   ));
+
+  // Una variante puo' fallire per un problema momentaneo del backend.
+  // La riproviamo una sola volta prima di considerarla non disponibile.
+  const retryIndexes=[];
+  responses.forEach((r,index)=>{
+   if(r.status!=="fulfilled")retryIndexes.push(index);
+  });
+
+  if(retryIndexes.length){
+   statusBox.textContent=`Riprovando Le Beau… ${Math.min(i+batch.length,terms.length)}/${terms.length}`;
+   const retries=await Promise.allSettled(retryIndexes.map(index=>
+    fetchJSONWithTimeout(
+     backend()+"/search?q="+encodeURIComponent(batch[index]),
+     timeoutMs
+    )
+   ));
+   retries.forEach((r,j)=>{
+    if(r.status==="fulfilled")responses[retryIndexes[j]]=r;
+   });
+  }
 
   responses.forEach((r,index)=>{
    const term=batch[index];
@@ -1716,8 +1738,7 @@ async function searchLeBeauFamily(onPartial){
    }
   });
 
-  // Mostra subito ciò che è già arrivato: una fonte lenta non nasconde
-  // i risultati validi delle altre fonti/varianti.
+  // Mostra subito cio' che e' gia' arrivato.
   if(typeof onPartial==="function")onPartial(merged,false);
  }
 
