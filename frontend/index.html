@@ -1649,7 +1649,7 @@ function chooseOffer(gi,sizeKey,oi){
   }
 }
 
-async function fetchJSONWithTimeout(url,ms=60000){
+async function fetchJSONWithTimeout(url,ms=20000){
  const controller=new AbortController();
  const timer=setTimeout(()=>controller.abort(),ms);
  try{
@@ -1664,8 +1664,17 @@ function familySearchPlan(query){
  if(/\ble\s+beau\b/i.test(n)){
   return {
    family:"le-beau",
-   primary:"Le Beau",
-   variants:["Le Beau Le Parfum","Le Beau Paradise Garden","Le Beau Narcisse","Le Beau Flower Edition"],
+   // Una sola ricerca "Le Beau" non è sufficiente: alcuni negozi
+   // restituiscono solo la referenza base. Cerchiamo quindi tutte le
+   // referenze della famiglia IN PARALLELO e renderizziamo una sola volta.
+   terms:[
+    "Le Beau",
+    "Le Beau Le Parfum",
+    "Le Beau Le Parfum Intense",
+    "Le Beau Paradise Garden",
+    "Le Beau Narcisse",
+    "Le Beau Flower Edition"
+   ],
    allowed:[
     {id:"SH-0073",names:["le beau"]},
     {id:"SH-0074",names:["le beau le parfum","le beau le parfum intense"]},
@@ -1719,46 +1728,55 @@ async function searchPerfume(){
  window.__shSearchRequest=requestId;
  try{
   const plan=familySearchPlan(q);
-  const primaryTerm=plan?plan.primary:q;
-  const data=await fetchJSONWithTimeout(backend()+"/search?q="+encodeURIComponent(primaryTerm),60000);
+
+  /*
+   * IMPORTANTE: non mostriamo più una prima risposta e poi aggiungiamo
+   * varianti in ritardo. Per le famiglie eseguiamo tutte le query previste
+   * in parallelo, raccogliamo le risposte entro un limite breve e facciamo
+   * UN SOLO render finale. In questo modo la ricerca non sembra terminata
+   * per poi cambiare risultati qualche secondo dopo.
+   */
+  const terms=plan?.terms?.length?plan.terms:[q];
+  const timeoutMs=plan?25000:20000;
+  const responses=await Promise.allSettled(terms.map(term=>
+   fetchJSONWithTimeout(backend()+"/search?q="+encodeURIComponent(term),timeoutMs)
+  ));
+
   if(window.__shSearchRequest!==requestId)return;
 
-  let merged=data;
+  const successful=responses
+   .filter(r=>r.status==="fulfilled")
+   .map(r=>r.value);
+
+  if(!successful.length)throw new Error("Nessuna ricerca completata");
+
+  const merged={
+   comparisons:successful.flatMap(d=>Array.isArray(d?.comparisons)?d.comparisons:[]),
+   results:successful.flatMap(d=>Array.isArray(d?.results)?d.results:[]),
+   errors:Object.assign({},...successful.map(d=>d?.errors||{}))
+  };
+
   let groups=shGroupData(merged);
   if(plan)groups=filterFamilyGroups(groups,plan);
+
+  // Render UNA SOLA VOLTA: nessuna variante può comparire dopo la fine
+  // apparente della ricerca.
   showProducts(groups);
   currentProductGroups=groups;
   updateBestPricesFromGroups(groups);
-  refreshWishlistFromResults(groups.flatMap(g=>g.offers.map(o=>({name:g.name||"",brand:g.brand||"",price:shPrice(o),price_value:o.price_value,store:o.store||"",url:o.url||""}))));
+  refreshWishlistFromResults(groups.flatMap(g=>g.offers.map(o=>({
+   name:g.name||"",brand:g.brand||"",price:shPrice(o),
+   price_value:o.price_value,store:o.store||"",url:o.url||""
+  }))));
 
-  if(data.errors&&Object.keys(data.errors).length){
-   const errorRows=Object.entries(data.errors).map(([store,error])=>`<div style="margin-top:7px"><strong>${esc(store)}</strong>: ${esc(String(error||"Errore non specificato"))}</div>`).join("");
-   errorsBox.innerHTML=`<div>Alcuni negozi non hanno risposto nella ricerca iniziale.</div>${errorRows}`;
-  }
-
-  // La ricerca principale è finita: il pulsante torna subito disponibile.
-  // Le eventuali varianti mancanti continuano in background.
-  clearInterval(dotsTimer);
-  searchButton.disabled=false;
-  searchButton.classList.remove("searching");
-  searchButton.textContent="INIZIA LA RICERCA";
-
-  if(plan){
-   const present=familyPresentIds(groups,plan);
-   const missing=plan.allowed.filter(x=>!present.has(x.id));
-   for(const target of missing){
-    if(window.__shSearchRequest!==requestId)break;
-    try{
-     const extra=await fetchJSONWithTimeout(backend()+"/search?q="+encodeURIComponent(target.names[0]),30000);
-     if(window.__shSearchRequest!==requestId)break;
-     merged=mergeSearchData(merged,extra);
-     groups=filterFamilyGroups(shGroupData(merged),plan);
-     showProducts(groups);
-     currentProductGroups=groups;
-     updateBestPricesFromGroups(groups);
-     refreshWishlistFromResults(groups.flatMap(g=>g.offers.map(o=>({name:g.name||"",brand:g.brand||"",price:shPrice(o),price_value:o.price_value,store:o.store||"",url:o.url||""}))));
-    }catch(e){ console.warn("Family variant skipped:",target.names[0],e); }
-   }
+  const failed=responses.filter(r=>r.status==="rejected").length;
+  if((merged.errors&&Object.keys(merged.errors).length)||failed){
+   const base=failed
+    ?`Alcune richieste non hanno risposto entro ${timeoutMs/1000} secondi.`
+    :"Alcuni negozi non hanno risposto.";
+   const errorRows=Object.entries(merged.errors||{})
+    .map(([store,error])=>`<div style="margin-top:7px"><strong>${esc(store)}</strong>: ${esc(String(error||"Errore non specificato"))}</div>`).join("");
+   errorsBox.innerHTML=`<div>${base}</div>${errorRows}`;
   }
  }catch(e){
   console.error(e);
