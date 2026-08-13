@@ -669,95 +669,65 @@ def _extract_product_variants(
     product_name,
     product_url,
 ):
-    """
-    Estrae i formati dalla pagina prodotto Deloox senza fare uno scan globale.
-
-    Regola generale:
-    il formato e il prezzo devono trovarsi nello stesso blocco DOM locale.
-    In questo modo un "85 ml" presente in un'altra parte della pagina non viene
-    associato al prezzo della variante del prodotto.
-    """
     soup = BeautifulSoup(
         html,
         "html.parser",
     )
 
+    strings = [
+        _clean(value)
+        for value in soup.stripped_strings
+        if _clean(value)
+    ]
+
     results = []
     seen_sizes = set()
 
-    # Prima scelta: elementi DOM che rappresentano esplicitamente una variante.
-    variant_nodes = soup.select(
-        "[class*='variant'], [class*='Variant'], "
-        "[class*='option'], [class*='Option'], "
-        "[class*='volume'], [class*='Volume'], "
-        "[class*='size'], [class*='Size']"
-    )
+    for index, value in enumerate(strings):
+        size_match = SIZE_FULL_RE.fullmatch(value)
 
-    candidates = []
-
-    for node in variant_nodes:
-        text = _clean(node.get_text(" ", strip=True))
-        if not text:
+        if not size_match:
             continue
 
-        matches = SIZE_FULL_RE.findall(text)
-        if not matches:
-            continue
+        size = size_match.group(1).replace(
+            ",",
+            ".",
+        )
 
-        price = _extract_price(text)
-        if not price:
-            continue
-
-        for size in matches:
-            candidates.append((size, price))
-
-    # Seconda scelta: risaliamo dal nodo che contiene "X ml" solo fino al
-    # primo blocco DOM locale che contiene un prezzo.
-    if not candidates:
-        for text_node in soup.find_all(
-            string=SIZE_FULL_RE,
-        ):
-            value = _clean(text_node)
-            size_match = SIZE_FULL_RE.fullmatch(value)
-
-            if not size_match:
-                continue
-
-            size = size_match.group(1).replace(
-                ",",
-                ".",
-            )
-
-            parent = text_node.parent
-
-            for _ in range(6):
-                if parent is None:
-                    break
-
-                block_text = _clean(
-                    parent.get_text(" ", strip=True)
-                )
-
-                # Evita contenitori enormi che possono comprendere
-                # raccomandazioni o altri prodotti.
-                if len(block_text) > 700:
-                    parent = parent.parent
-                    continue
-
-                price = _extract_price(block_text)
-
-                if price:
-                    candidates.append(
-                        (size, price)
-                    )
-                    break
-
-                parent = parent.parent
-
-    for size, price in candidates:
         size_label = f"{size} ml"
 
         if size_label in seen_sizes:
+            continue
+
+        chunk = []
+        sold_out = False
+
+        for next_index in range(
+            index + 1,
+            min(index + 30, len(strings)),
+        ):
+            next_value = strings[next_index]
+
+            if SIZE_FULL_RE.fullmatch(next_value):
+                break
+
+            chunk.append(next_value)
+
+            if any(
+                word in next_value.lower()
+                for word in SOLD_OUT
+            ):
+                sold_out = True
+                break
+
+        if sold_out:
+            continue
+
+        price = _extract_price(
+            " ".join(chunk)
+        )
+
+        if not price:
             continue
 
         seen_sizes.add(size_label)
@@ -781,25 +751,17 @@ def _extract_product_variants(
     return results
 
 
-
 def _extract_jsonld_variants(
     html,
     product_name,
     product_url,
 ):
-    """
-    Fallback JSON-LD conservativo.
-
-    Il formato viene letto esclusivamente dal nome del Product JSON-LD.
-    Non vengono più analizzati campi descrittivi generici.
-    """
     soup = BeautifulSoup(
         html,
         "html.parser",
     )
 
     results = []
-    seen = set()
 
     for script in soup.find_all(
         "script",
@@ -809,43 +771,31 @@ def _extract_jsonld_variants(
             data = json.loads(
                 script.string or script.get_text()
             )
+
         except (
             json.JSONDecodeError,
             TypeError,
         ):
             continue
 
-        objects = []
-
-        if isinstance(data, list):
-            objects.extend(data)
-        elif isinstance(data, dict):
-            objects.append(data)
-
-            graph = data.get("@graph")
-            if isinstance(graph, list):
-                objects.extend(graph)
+        objects = (
+            data
+            if isinstance(data, list)
+            else [data]
+        )
 
         for item in objects:
             if not isinstance(item, dict):
                 continue
 
-            item_type = item.get("@type")
+            item_text = " ".join([
+                str(item.get("name", "")),
+                str(item.get("description", "")),
+            ])
 
-            if isinstance(item_type, list):
-                if "Product" not in item_type:
-                    continue
-            elif item_type != "Product":
-                continue
-
-            name = _clean(
-                item.get("name", "")
+            size_match = SIZE_RE.search(
+                item_text
             )
-
-            if not name:
-                continue
-
-            size_match = SIZE_RE.search(name)
 
             if not size_match:
                 continue
@@ -890,9 +840,7 @@ def _extract_jsonld_variants(
                 if "outofstock" in availability:
                     continue
 
-                price_text = str(
-                    price
-                ).replace(
+                price_text = str(price).replace(
                     ".",
                     ",",
                 )
@@ -900,24 +848,10 @@ def _extract_jsonld_variants(
                 if "," not in price_text:
                     price_text += ",00"
 
-                key = (
-                    size,
-                    price_text,
-                )
-
-                if key in seen:
-                    continue
-
-                seen.add(key)
-
                 results.append({
                     "store": STORE,
-                    "name": (
-                        f"{product_name} {size} ml"
-                    ),
-                    "price": (
-                        f"{price_text} €"
-                    ),
+                    "name": f"{product_name} {size} ml",
+                    "price": f"{price_text} €",
                     "url": product_url,
                     "available": True,
                     "availability": "in_stock",
@@ -925,7 +859,6 @@ def _extract_jsonld_variants(
                 })
 
     return results
-
 
 
 def _size_number(item):
