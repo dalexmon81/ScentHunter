@@ -505,6 +505,23 @@ def resolve_actual_price(product: Dict[str, Any]) -> Dict[str, Any]:
     if value is not None:
         item["price_value"] = value
 
+    # --- PATCH MINIMA: logging diagnostico e filtro conservativo per prezzi sospetti ---
+    try:
+        # Log diagnostico se il prodotto contiene "eros" nella name
+        # o se il prezzo parsed è molto basso (<5.0 EUR)
+        if norm(item.get("name", "")).find("eros") != -1 or (item.get("price_value") is not None and item.get("price_value") < 5.0):
+            print(f"SUSPECT_PRICE: store={item.get('store')} url={item.get('url')} name={item.get('name')!r} raw_price={raw_price!r} price_value={item.get('price_value')} size_ml={size}")
+    except Exception:
+        pass
+
+    # Se abbiamo un prezzo molto basso (<5 EUR) per confezioni di dimensione
+    # ragionevole (>=30 ml), consideriamo il prezzo sospetto e lo invalidiamo
+    # per il ranking (non rimuoviamo la stringa item['price'] per debug).
+    if item.get("price_value") is not None and size is not None and size >= 30.0 and item["price_value"] < 5.0:
+        item.pop("price_value", None)
+        item["price_invalidated"] = True
+    # --- fine patch ---
+
     return item
 
 
