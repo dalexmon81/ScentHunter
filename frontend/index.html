@@ -1722,6 +1722,42 @@ async function searchFamilyTerms(terms){
   return merged;
 }
 
+async function filterLeBeauFalsePositives(data){
+  if(!data || typeof data!=="object")return data;
+
+  const isFalseLeBeau=(o={})=>{
+    const brand=String(o.brand||"").toLowerCase().replace(/[^a-z0-9à-ÿ]+/gi," ").replace(/\s+/g," ").trim();
+    const name=String(o.name||"").toLowerCase().replace(/[^a-z0-9à-ÿ]+/gi," ").replace(/\s+/g," ").trim();
+
+    // Quando la ricerca è nella famiglia Le Beau, "Kenzo - Le Monde Est Beau"
+    // è un falso positivo e non deve mai entrare nei risultati.
+    return brand==="kenzo" && /\ble monde est beau\b/.test(name);
+  };
+
+  const out={...data};
+
+  if(Array.isArray(data.results)){
+    out.results=data.results.filter(o=>!isFalseLeBeau(o));
+  }
+
+  if(Array.isArray(data.comparisons)){
+    out.comparisons=data.comparisons.map(g=>{
+      if(!g || typeof g!=="object")return g;
+      const ng={...g};
+      if(Array.isArray(g.offers)){
+        ng.offers=g.offers.filter(o=>!isFalseLeBeau({...o,brand:o.brand||g.brand,name:o.name||g.name}));
+      }
+      return ng;
+    }).filter(g=>{
+      if(!g || typeof g!=="object")return true;
+      if(Array.isArray(g.offers) && g.offers.length===0)return false;
+      return !isFalseLeBeau(g);
+    });
+  }
+
+  return out;
+}
+
 async function searchPerfume(){
   const q=queryInput.value.trim();
   if(!q){statusBox.textContent="";resultsBox.innerHTML="";errorsBox.innerHTML="";return}
@@ -1734,7 +1770,8 @@ async function searchPerfume(){
   try{
     const terms=familySearchTerms(q);
     const data=await searchFamilyTerms(terms);
-    const groups=shGroupData(data);
+    const filteredData=filterLeBeauFalsePositives(data);
+    const groups=shGroupData(filteredData);
     showProducts(groups);
     currentProductGroups=groups;
     updateBestPricesFromGroups(groups);
