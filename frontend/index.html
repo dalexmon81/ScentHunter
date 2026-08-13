@@ -1722,16 +1722,22 @@ async function searchFamilyTerms(terms){
   return merged;
 }
 
-async function filterLeBeauFalsePositives(data){
-  if(!data || typeof data!=="object")return data;
+async function filterLeBeauFalsePositives(data, isLeBeauFamily=false){
+  if(!data || typeof data!=="object" || !isLeBeauFamily)return data;
 
-  const isFalseLeBeau=(o={})=>{
-    const brand=String(o.brand||"").toLowerCase().replace(/[^a-z0-9à-ÿ]+/gi," ").replace(/\s+/g," ").trim();
-    const name=String(o.name||"").toLowerCase().replace(/[^a-z0-9à-ÿ]+/gi," ").replace(/\s+/g," ").trim();
+  const clean=(v)=>String(v??"").toLowerCase()
+    .replace(/[^a-z0-9à-ÿ]+/gi," ")
+    .replace(/\s+/g," ").trim();
 
-    // Quando la ricerca è nella famiglia Le Beau, "Kenzo - Le Monde Est Beau"
-    // è un falso positivo e non deve mai entrare nei risultati.
-    return brand==="kenzo" && /\ble monde est beau\b/.test(name);
+  const isFalseLeBeau=(o={}, parent={})=>{
+    // Controlliamo tutti i campi utili perché alcuni scraper restituiscono
+    // il marchio separato, altri incorporano "Kenzo -" direttamente nel nome.
+    const text=[
+      o.brand,o.name,o.canonical,o.display_name,o.product_name,o.title,
+      parent.brand,parent.name,parent.canonical,parent.display_name,parent.product_name,parent.title
+    ].map(clean).filter(Boolean).join(" ");
+
+    return /\bkenzo\b/.test(text) && /\ble monde est beau\b/.test(text);
   };
 
   const out={...data};
@@ -1745,7 +1751,7 @@ async function filterLeBeauFalsePositives(data){
       if(!g || typeof g!=="object")return g;
       const ng={...g};
       if(Array.isArray(g.offers)){
-        ng.offers=g.offers.filter(o=>!isFalseLeBeau({...o,brand:o.brand||g.brand,name:o.name||g.name}));
+        ng.offers=g.offers.filter(o=>!isFalseLeBeau(o,g));
       }
       return ng;
     }).filter(g=>{
@@ -1770,7 +1776,7 @@ async function searchPerfume(){
   try{
     const terms=familySearchTerms(q);
     const data=await searchFamilyTerms(terms);
-    const filteredData=filterLeBeauFalsePositives(data);
+    const filteredData=filterLeBeauFalsePositives(data,/\ble\s+beau\b/.test(normalizePerfumeName(q)));
     const groups=shGroupData(filteredData);
     showProducts(groups);
     currentProductGroups=groups;
