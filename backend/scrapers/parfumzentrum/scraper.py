@@ -148,7 +148,75 @@ def _extract_price_from_html(html):
     """
     soup = BeautifulSoup(html or "", "html.parser")
 
-    # 1) JSON-LD: è la fonte più affidabile.
+    # 1) PREZZO VISIBILE REALE.
+    #
+    # Parfum-Zentrum mostra il prezzo attuale e quello precedente
+    # barrato nello stesso blocco. Il JSON-LD/meta della pagina può
+    # contenere il prezzo precedente, quindi NON lo usiamo come prima
+    # fonte. Prima cerchiamo esclusivamente prezzi visibili che non
+    # appartengano a elementi barrati.
+    def _is_struck(node):
+        current = node
+        for _ in range(5):
+            if current is None:
+                break
+
+            tag_name = str(getattr(current, "name", "") or "").lower()
+            if tag_name in {"s", "strike", "del"}:
+                return True
+
+            classes = " ".join(current.get("class", []) or []).lower()
+            style = str(current.get("style", "") or "").lower()
+
+            if any(x in classes for x in (
+                "old-price", "oldprice", "previous-price", "previousprice",
+                "line-through", "linethrough", "strike", "strikethrough",
+            )):
+                return True
+
+            if "text-decoration:line-through" in style.replace(" ", ""):
+                return True
+            if "text-decoration: line-through" in style:
+                return True
+
+            current = getattr(current, "parent", None)
+
+        return False
+
+    price_nodes = []
+    for node in soup.find_all(["div", "span", "p", "strong", "b"]):
+        if _is_struck(node):
+            continue
+
+        txt = node.get_text(" ", strip=True)
+        if not txt or "€" not in txt:
+            continue
+
+        low = txt.lower()
+        if "grundpreis" in low or "€/l" in low or "pro liter" in low:
+            continue
+
+        # Prefer a node containing a single normal product price.
+        matches = re.findall(
+            r"(?<![\d.,])(\d{1,4}(?:[.,]\d{2}))(?:\s*€)",
+            txt
+        )
+        if len(matches) == 1:
+            price_nodes.append((node, matches[0]))
+
+    if price_nodes:
+        # Il primo candidato nel DOM è normalmente il prezzo corrente
+        # della scheda/formato. Evitiamo comunque contenitori enormi
+        # che includono più prezzi.
+        price_nodes.sort(key=lambda item: len(item[0].get_text(" ", strip=True)))
+        for node, value in price_nodes:
+            price = _format_price(value)
+            if price:
+                return price
+
+    # 2) JSON-LD/meta strutturati: usati solo come fallback.
+    # Possono contenere il prezzo precedente, quindi arrivano dopo
+    # il prezzo visibile corrente.
     for script in soup.find_all("script", type="application/ld+json"):
         raw = script.string or script.get_text()
         if not raw:
@@ -194,7 +262,6 @@ def _extract_price_from_html(html):
                     else:
                         stack.append(child)
 
-    # 2) Meta prezzo strutturato.
     for attrs in (
         {"property": "product:price:amount"},
         {"property": "og:price:amount"},
@@ -206,26 +273,7 @@ def _extract_price_from_html(html):
             if price:
                 return price
 
-    # 3) Prezzo visibile.
-    # Prima cerchiamo contenitori che abbiano il simbolo € ma NON
-    # la dicitura Grundpreis (prezzo per litro).
-    for node in soup.find_all(["div", "span", "p", "strong", "b"]):
-        txt = node.get_text(" ", strip=True)
-        if not txt or "€" not in txt:
-            continue
-
-        low = txt.lower()
-        if "grundpreis" in low or "€/l" in low or "pro liter" in low:
-            continue
-
-        # Prezzo con esattamente due decimali.
-        m = re.search(r"(?<![\d.,])(\d{1,4}(?:[.,]\d{2}))(?:\s*€)", txt)
-        if m:
-            price = _format_price(m.group(1))
-            if price:
-                return price
-
-    # 4) Ultimo fallback sul testo della pagina.
+    # 3) Ultimo fallback sul testo completo della pagina.
     text_content = soup.get_text(" ", strip=True)
     patterns = [
         r"(\d{1,4}[.,]\d{2})\s*€\s*inkl\.",
@@ -234,7 +282,6 @@ def _extract_price_from_html(html):
 
     for pattern in patterns:
         for m in re.finditer(pattern, text_content, re.I):
-            # Ignora prezzi per litro.
             left = text_content[max(0, m.start() - 100):m.start()].lower()
             if "grundpreis" in left or "pro liter" in left:
                 continue
