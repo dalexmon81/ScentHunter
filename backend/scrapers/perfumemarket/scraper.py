@@ -45,6 +45,10 @@ VERBOSE = os.getenv("PERFUME_VERBOSE", "1") in ("1", "true", "True", "yes")
 MATCH_THRESHOLD = float(os.getenv("PERFUME_MATCH_THRESHOLD", "0.6"))
 CANDIDATE_MIN_SCORE = float(os.getenv("PERFUME_CANDIDATE_MIN_SCORE", "0.35"))
 MAX_RENDER_PER_SEARCH = int(os.getenv("PERFUME_MAX_RENDER_PER_SEARCH", "30"))
+REQUEST_TIMEOUT = float(os.getenv("PERFUME_HTTP_TIMEOUT", "6"))
+RESULT_CACHE_SECONDS = float(os.getenv("PERFUME_RESULT_CACHE_SECONDS", "90"))
+RESULT_CACHE = {}
+MAX_FAST_CANDIDATES = int(os.getenv("PERFUME_FAST_CANDIDATES", "4"))
 HTTP_TIMEOUT = float(os.getenv("PERFUME_HTTP_TIMEOUT", "8"))
 
 # HTTP defaults
@@ -103,25 +107,6 @@ def _query_tokens_filtered(query):
     if not tokens:
         tokens = _tokens(query)
     return tokens
-
-
-# Discovery-only relaxation: gender words can hide valid variants such as
-# "Club De Nuit Intense Overdose" when the user searches "Club De Nuit Intense Man".
-# The original query is ALWAYS kept for final product-page verification.
-DISCOVERY_RELAX_WORDS = {"man", "woman", "men", "women", "male", "female"}
-
-def _discovery_queries(query):
-    original = str(query or "").strip()
-    if not original:
-        return []
-
-    queries = [original]
-    tokens = _tokens(original)
-    relaxed_tokens = [t for t in tokens if t not in DISCOVERY_RELAX_WORDS]
-    relaxed = " ".join(relaxed_tokens).strip()
-    if relaxed and relaxed.lower() != original.lower():
-        queries.append(relaxed)
-    return queries
 
 def _compact_normalize(s):
     t = unicodedata.normalize("NFKD", str(s or "")).lower()
@@ -783,216 +768,118 @@ def search(query):
     query = str(query or "").strip()
     if not query:
         return []
+
+    cache_key = query.lower()
+    cached = RESULT_CACHE.get(cache_key)
+    if cached and time.time() - cached[0] < RESULT_CACHE_SECONDS:
+        log(f"CACHE_HIT query={query!r} count={len(cached[1])}")
+        return [dict(item) for item in cached[1]]
+
+    started = time.time()
+    log(f"SEARCH_START query={query!r}")
     session = _create_session()
     results = []
     seen = set()
     render_state = {"count": 0}
 
-    # Prime home to get cookies
     try:
-        r = request_with_rate_limit(session, "GET", BASE_URL, timeout=HTTP_TIMEOUT)
-        if r and r.status_code == 200:
-            vlog("Primed home page for cookies")
-        time.sleep(random.uniform(0.12, 0.6))
-    except Exception as e:
-        vlog(f"Home prime failed: {e}")
-
-    # 1) Fast discovery first: Shopify search/catalog sources.
-    # IMPORTANT: the sitemap is NOT touched here. It is only used later as a
-    # targeted recovery source when the fast sources return too few verified
-    # products. This prevents the sitemap from consuming requests before the
-    # relevant Shopify candidates have been checked.
-
-    # Collect candidates from catalog and suggest and search-html (do NOT accept until verified)
-    candidates = []
-
-    # catalog.json
-    catalog_endpoints = (
-        BASE_URL + "/products.json?limit=250",
-        BASE_URL + "/collections/all-perfumes/products.json?limit=250",
-    )
-    for endpoint in catalog_endpoints:
-        for page in range(1, 8):
-            url = endpoint + ("&page=" + str(page) if "?" in endpoint else "?page=" + str(page))
-            try:
-                resp = request_with_rate_limit(session, "GET", url, timeout=HTTP_TIMEOUT)
-            except Exception as e:
-                vlog(f"CATALOG GET FAILED {e} -> {url}")
-                break
-            if resp.status_code != 200:
-                break
-            try:
-                payload = resp.json()
-            except Exception:
-                _debug_dump(f"catalog_bad_json_{page}", resp.text[:10000])
-                break
-            for discovery_query in _discovery_queries(query):
-                cats = _parse_catalog_json(payload, discovery_query)
-                candidates.extend(cats)
-            products = payload.get("products") or []
-            if len(products) < 250:
-                break
-            time.sleep(0.08)
-        # we do not break early here; collected candidates will be verified
-
-    # suggest.json - run the original query plus one discovery-only relaxed
-    # variant without gender words, because Shopify can rank variants such as
-    # Overdose out of the result set for a gendered query.
-    for discovery_query in _discovery_queries(query):
-        try:
-            suggest_url = BASE_URL + "/search/suggest.json?q=" + quote(discovery_query) + "&resources[type]=product&resources[limit]=10"
-            r = request_with_rate_limit(session, "GET", suggest_url, timeout=HTTP_TIMEOUT)
-            if r.ok:
-                try:
-                    cats = _parse_search_suggest(r.json(), discovery_query)
-                    candidates.extend(cats)
-                except Exception:
-                    _debug_dump("suggest_parse_error", r.text[:8000])
-        except Exception as e:
-            vlog(f"SUGGEST ERROR: {e}")
-
-    # search HTML (two variants) - collect candidates, not final accept
-    for discovery_query in _discovery_queries(query):
-        for url in (
-            BASE_URL + "/search?q=" + quote(discovery_query) + "&type=product",
-            BASE_URL + "/search?q=" + quote(discovery_query),
-        ):
-            try:
-                r = request_with_rate_limit(session, "GET", url, timeout=HTTP_TIMEOUT)
-                r.raise_for_status()
-            except Exception as e:
-                vlog(f"SEARCH HTML ERROR: {e}")
-                continue
-            cats = _parse_search_html(r.text, discovery_query)
-            candidates.extend(cats)
-
-    vlog(f"DISCOVERY_QUERIES: {_discovery_queries(query)}")
-    vlog(f"Collected candidates from sources: {len(candidates)}")
-    vlog("FAST_DISCOVERY_COMPLETE: search/suggest/catalog candidates ready for verification")
-
-    # Verify candidates by fetching product page (strong identity verification)
-    # To avoid excessive load, allow limiting number of verifications (configurable)
-    verify_limit = int(os.getenv("PERFUME_VERIFY_CANDIDATE_LIMIT", "120"))
-    verified = 0
-    # Prioritize the most relevant candidates and remove duplicate URLs before verification.
-    # IMPORTANT: keep the BEST candidate for each URL, not the first one encountered.
-    # The same product can be returned by catalog.json, suggest.json and search HTML
-    # with different scores. Keeping the first occurrence could discard an exact
-    # score=1.0 candidate before the final sort.
-    best_candidate_by_url = {}
-    candidates_without_url = []
-    for _candidate in candidates:
-        _candidate_url = _candidate.get("url")
-        if not _candidate_url:
-            candidates_without_url.append(_candidate)
-            continue
-        _score = float(_candidate.get("score", 0.0) or 0.0)
-        _existing = best_candidate_by_url.get(_candidate_url)
-        if _existing is None or _score > float(_existing.get("score", 0.0) or 0.0):
-            best_candidate_by_url[_candidate_url] = _candidate
-
-    ordered_candidates = list(best_candidate_by_url.values()) + candidates_without_url
-    ordered_candidates.sort(key=lambda _candidate: _candidate.get("score", 0.0) or 0.0, reverse=True)
-    candidates = ordered_candidates
-    vlog(f"Candidates deduplicated: {len(candidates)} unique URLs")
-    for _priority_candidate in candidates[:10]:
-        vlog(
-            f"CANDIDATE_PRIORITY url={_priority_candidate.get('url')} "
-            f"score={float(_priority_candidate.get('score', 0.0) or 0.0):.3f} "
-            f"source={_priority_candidate.get('source')} "
-            f"price_present={'yes' if _priority_candidate.get('price') else 'no'}"
+        # FAST PATH: search HTML first. The previous implementation started with
+        # up to 14 catalog requests + suggest + two searches, which made the
+        # 28-second ScentHunter global timeout almost inevitable and triggered 429s.
+        search_urls = (
+            BASE_URL + "/search?q=" + quote(query) + "&type=product",
+            BASE_URL + "/search?q=" + quote(query),
         )
-
-    for cand in candidates:
-        if verified >= verify_limit or len(results) >= int(os.getenv("PERFUME_MAX_RESULTS", "200")):
-            break
-        # If candidate already present in results (by url) skip
-        url = cand.get("url")
-        if any(url == it.get("url") for it in results):
-            continue
-        # If candidate already has price in payload/card, still verify by page as requested
-        item = _verify_candidate_by_page(session, cand, query, render_state)
-        verified += 1
-        if item:
-            key = (item["name"].lower(), item["price"])
-            if key not in seen:
-                seen.add(key)
-                results.append(item)
-                vlog(f"CANDIDATE_VERIFIED_ADD {url} -> {item['name']!r}")
-        else:
-            vlog(f"CANDIDATE_REJECTED {url} score_prelim={cand.get('score'):.3f}")
-
-    # Supplemental sitemap recovery only after fast discovery/verification.
-    # Do NOT scan the first N sitemap products blindly: that can miss a valid
-    # variant simply because it appears later in the sitemap. First download
-    # the sitemap index, then keep only product URLs whose slug is genuinely
-    # relevant to the query. For example, "club de nuit intens" matches both
-    # .../club-de-nuit-intense-man and .../club-de-nuit-intense-overdose.
-    if len(results) < int(os.getenv("PERFUME_SUPPLEMENTAL_RESULTS_THRESHOLD", "4")):
-        try:
-            sitemap_list = _get_sitemap_urls(session)
-        except Exception as e:
-            sitemap_list = []
-            vlog(f"SITEMAP INDEX ERROR: {e}")
-
-        product_urls = [u for u in sitemap_list if "/products/" in u.lower()]
-        qtokens = _query_tokens_filtered(query)
-        relevant_sitemap_urls = []
-        for u in product_urls:
-            score = _token_weighted_score(query, u)
-            if score >= CANDIDATE_MIN_SCORE:
-                relevant_sitemap_urls.append((score, u))
-        relevant_sitemap_urls.sort(key=lambda x: x[0], reverse=True)
-        vlog(
-            f"SITEMAP_TARGETED: total_products={len(product_urls)} "
-            f"relevant={len(relevant_sitemap_urls)} query_tokens={qtokens}"
-        )
-
-        extra_scan_limit = int(os.getenv("PERFUME_SUPPLEMENTAL_SCAN_LIMIT", "120"))
-        for _score, u in relevant_sitemap_urls[:extra_scan_limit]:
-            if len(results) >= int(os.getenv("PERFUME_MAX_RESULTS", "200")):
-                break
+        candidates = []
+        for url in search_urls:
             try:
-                resp = request_with_rate_limit(session, "GET", u, timeout=HTTP_TIMEOUT)
-            except Exception:
+                resp = request_with_rate_limit(session, "GET", url, timeout=REQUEST_TIMEOUT)
+                if resp.status_code == 200 and resp.text:
+                    candidates.extend(_parse_search_html(resp.text, query))
+            except Exception as exc:
+                vlog(f"FAST_SEARCH_ERROR url={url} err={exc}")
+
+        # Deduplicate and keep the strongest candidates only.
+        best = {}
+        for cand in candidates:
+            url = cand.get("url")
+            if not url:
                 continue
-            if resp.status_code != 200:
-                continue
-            item = _parse_product_page(resp.text, query, u)
+            old = best.get(url)
+            if old is None or float(cand.get("score", 0) or 0) > float(old.get("score", 0) or 0):
+                best[url] = cand
+        ordered = sorted(best.values(), key=lambda x: float(x.get("score", 0) or 0), reverse=True)
+        log(f"FAST_DISCOVERY candidates={len(ordered)}")
+
+        for cand in ordered[:MAX_FAST_CANDIDATES]:
+            item = _verify_candidate_by_page(session, cand, query, render_state)
             if item:
-                k = (item["name"].lower(), item["price"])
-                if k not in seen:
-                    seen.add(k)
+                key = (item["name"].lower(), item["price"], item["url"])
+                if key not in seen:
+                    seen.add(key)
                     results.append(item)
-                    vlog(f"SITEMAP_EXTRA_ADD {u} -> {item['name']!r}")
+                    vlog(f"FAST_VERIFIED_ADD {cand.get('url')} -> {item.get('name')!r} price={item.get('price')}")
 
-    # Playwright fallback only if enabled and still no results
-    if not results and ENABLE_PLAYWRIGHT:
-        html = render_search_with_playwright(query)
-        if html:
-            items = []
-            # parse rendered html for candidates and verify
-            cats = _parse_search_html(html, query)
-            for c in cats:
-                item = _verify_candidate_by_page(session, c, query, render_state)
-                if item:
-                    k = (item["name"].lower(), item["price"])
-                    if k not in seen:
-                        seen.add(k)
-                        results.append(item)
-                        vlog(f"PLAYWRIGHT_VERIFIED_ADD {c['url']} -> {item['name']!r}")
-        else:
-            vlog("Playwright rendered no HTML")
+        # Only if the fast path found nothing do we use ONE suggest request.
+        # This avoids the repeated suggest 429 loop seen in Railway logs.
+        if not results:
+            try:
+                suggest_url = BASE_URL + "/search/suggest.json?q=" + quote(query) + "&resources[type]=product&resources[limit]=10"
+                resp = request_with_rate_limit(session, "GET", suggest_url, timeout=REQUEST_TIMEOUT)
+                if resp.status_code == 200:
+                    payload = resp.json()
+                    for cand in _parse_search_suggest(payload, query)[:MAX_FAST_CANDIDATES]:
+                        item = _verify_candidate_by_page(session, cand, query, render_state)
+                        if item:
+                            key = (item["name"].lower(), item["price"], item["url"])
+                            if key not in seen:
+                                seen.add(key)
+                                results.append(item)
+            except Exception as exc:
+                vlog(f"SUGGEST_FALLBACK_ERROR err={exc}")
 
-    # Final reporting
-    log(f"SEARCH COMPLETE: found_total={len(results)}")
-    for i, it in enumerate(results[:100], 1):
-        log(f"RESULT {i}: {it.get('name')!r} | {it.get('price')} | {it.get('url')}")
-    try:
-        session.close()
-    except Exception:
-        pass
-    return results
+        # Sitemap/catalog/Playwright are now recovery paths only, and only when
+        # the fast paths returned nothing. This keeps normal searches bounded.
+        if not results:
+            try:
+                sitemap_list = _get_sitemap_urls(session)
+                relevant = []
+                for u in sitemap_list:
+                    if "/products/" not in u.lower():
+                        continue
+                    score = _token_weighted_score(query, u)
+                    if score >= CANDIDATE_MIN_SCORE:
+                        relevant.append((score, u))
+                relevant.sort(key=lambda x: x[0], reverse=True)
+                vlog(f"SITEMAP_RECOVERY relevant={len(relevant)}")
+                for _score, u in relevant[:MAX_FAST_CANDIDATES]:
+                    try:
+                        resp = request_with_rate_limit(session, "GET", u, timeout=REQUEST_TIMEOUT)
+                    except Exception:
+                        continue
+                    if resp.status_code != 200:
+                        continue
+                    item = _parse_product_page(resp.text, query, u)
+                    if item:
+                        key = (item["name"].lower(), item["price"], item["url"])
+                        if key not in seen:
+                            seen.add(key)
+                            results.append(item)
+            except Exception as exc:
+                vlog(f"SITEMAP_RECOVERY_ERROR err={exc}")
+
+        log(f"SEARCH_COMPLETE: found_total={len(results)} elapsed={time.time()-started:.2f}s")
+        for i, it in enumerate(results[:20], 1):
+            log(f"RESULT {i}: {it.get('name')!r} | {it.get('price')} | {it.get('url')}")
+
+        RESULT_CACHE[cache_key] = (time.time(), [dict(item) for item in results])
+        return results
+    finally:
+        try:
+            session.close()
+        except Exception:
+            pass
+
 
 # Local unit tests for scoring logic and sample titles (offline).
 # These tests are NOT live network tests; they help verify that the token-weighted scoring
