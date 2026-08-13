@@ -676,7 +676,7 @@ def build_search_attempts(
     discovered_brands: Optional[List[str]] = None,
     family_candidates: Optional[List[str]] = None,
 ) -> List[str]:
-    """Costruisce query generiche; nessun nome di profumo è hard-coded."""
+    """Costruisce query mirate senza hard-codificare nomi di profumi."""
     raw = str(query or "").strip()
     normalized = norm(raw)
     attempts: List[str] = []
@@ -689,6 +689,16 @@ def build_search_attempts(
 
     # Prima la query esatta.
     add(raw)
+
+    # EDT ed EDP sono due referenze distinte della stessa famiglia.
+    # Se l'utente NON ha specificato la concentrazione, le cerchiamo
+    # esplicitamente entrambe e le mettiamo davanti alle altre espansioni.
+    # Questo evita che il limite di 8 tentativi faccia sparire una delle
+    # due referenze (per esempio Eros pour Femme EDP).
+    requested_concentration = _query_concentration(raw)
+    if not requested_concentration:
+        add(f"{raw} Eau de Toilette")
+        add(f"{raw} Eau de Parfum")
 
     # Se il catalogo conosce già le referenze della famiglia, usiamo quelle
     # come query mirate. Questo evita di lanciare 10-20 ricerche sullo stesso
