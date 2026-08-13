@@ -339,6 +339,7 @@ body{position:relative}
 <div class="navitem"><b class="navicon"><svg viewBox="0 0 24 24"><circle cx="12" cy="7" r="3"/><path d="M7 21v-3a5 5 0 0 1 10 0v3H7z"/></svg></b>Profilo</div>
 </nav>
 <script>
+let isSearching = false;
 const queryInput=document.getElementById("query"),searchButton=document.getElementById("searchButton"),statusBox=document.getElementById("status"),resultsBox=document.getElementById("results"),errorsBox=document.getElementById("errorsBox");
 
 const WISH_KEY="scenthunter_wishlist_v4";
