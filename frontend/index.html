@@ -55,6 +55,7 @@ button{border:0;font-weight:800} #searchButton{display:block!important} #status{
 .hero-actions .herobtn{width:100%;margin:0;padding:15px 18px;border-radius:18px}
 .hero.hero-search .bottle{right:8px!important;top:25px!important;bottom:auto!important;width:140px;height:135px}
 #searchOutput{scroll-margin-top:12px}
+#status{display:block!important}
 @media(max-width:390px){
  .hero.hero-search{min-height:320px;padding:24px 16px 18px}
  .hero.hero-search .bottle{width:118px;height:118px;right:4px!important;top:28px!important}
@@ -1684,8 +1685,12 @@ async function searchLeBeauFamily(onPartial){
   "Jean Paul Gaultier Le Beau Flower Edition"
  ];
  const merged={comparisons:[],results:[],errors:{}};
- const timeoutMs=15000;
- const concurrency=5;
+ // Il backend usa gia 2 worker e impone 15s per la ricerca.
+ // Non lanciamo 5 /search contemporaneamente: su Render Free significa
+ // fino a 10 scraper simultanei e la ricerca puo saltare tutta.
+ // Le 5 varianti vengono comunque cercate con un solo click, ma una alla volta.
+ const timeoutMs=25000;
+ const concurrency=1;
 
  for(let i=0;i<terms.length;i+=concurrency){
   const batch=terms.slice(i,i+concurrency);
