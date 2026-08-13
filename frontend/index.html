@@ -1056,10 +1056,10 @@ function shGroupData(data){
 
   function concentrationHint(o){
     const raw=String(o&&((o.name||"")+" "+(o.concentration||""))||"").toLowerCase();
-    if(/\\beau\\s+de\\s+toilette\\b|\\bedt\\b/.test(raw))return "Eau de Toilette";
-    if(/\\beau\\s+de\\s+parfum\\b|\\bedp\\b/.test(raw))return "Eau de Parfum";
-    if(/\\bextrait(?:\\s+de\\s+parfum)?\\b/.test(raw))return "Extrait de Parfum";
-    if(/\\beau\\s+de\\s+cologne\\b|\\bedc\\b/.test(raw))return "Eau de Cologne";
+    if(/\beau\s+de\s+toilette\b|\bedt\b/.test(raw))return "Eau de Toilette";
+    if(/\beau\s+de\s+parfum\b|\bedp\b/.test(raw))return "Eau de Parfum";
+    if(/\bextrait(?:\s+de\s+parfum)?\b/.test(raw))return "Extrait de Parfum";
+    if(/\beau\s+de\s+cologne\b|\bedc\b/.test(raw))return "Eau de Cologne";
     return "";
   }
 
@@ -1089,11 +1089,13 @@ function shGroupData(data){
     }
     if(!directMaster)directMaster=resolveMasterProduct(rawBrand,rawName);
     if(directMaster){
+      const masterConcentration=String(directMaster.concentration||hint||"").trim();
       return {
         brand:directMaster.brand||rawBrand,
         name:directMaster.name||rawName,
-        key:norm(directMaster.brand||rawBrand)+"|"+norm(directMaster.name||rawName),
-        catalog_id:directMaster.id||""
+        key:norm(directMaster.brand||rawBrand)+"|"+norm(directMaster.name||rawName)+"|"+norm(masterConcentration),
+        catalog_id:directMaster.id||"",
+        concentration:masterConcentration
       };
     }
 
@@ -1102,14 +1104,16 @@ function shGroupData(data){
       const detectedBrand=findBrand(o);
       const masterLiquid=resolveMasterProduct(detectedBrand,pretty(lb));
       if(masterLiquid){
+        const liquidConcentration=String(masterLiquid.concentration||concentrationHint(o)||"").trim();
         return {
           brand:masterLiquid.brand||detectedBrand,
           name:masterLiquid.name||pretty(lb),
-          key:norm(masterLiquid.brand||detectedBrand)+"|"+norm(masterLiquid.name||pretty(lb)),
-          catalog_id:masterLiquid.id||""
+          key:norm(masterLiquid.brand||detectedBrand)+"|"+norm(masterLiquid.name||pretty(lb))+"|"+norm(liquidConcentration),
+          catalog_id:masterLiquid.id||"",
+          concentration:liquidConcentration
         };
       }
-      return {brand:detectedBrand,name:pretty(lb),key:norm(detectedBrand)+"|"+lb};
+      return {brand:detectedBrand,name:pretty(lb),key:norm(detectedBrand)+"|"+lb+"|"+norm(concentrationHint(o)),concentration:concentrationHint(o)};
     }
     const brand=findBrand(o);
     let name=cleanProductName(o,brand);
@@ -1118,16 +1122,19 @@ function shGroupData(data){
     // esattamente a una referenza verificata, usiamo il nome canonico.
     const master=resolveMasterProduct(brand,name);
     if(master){
+      const masterConcentration=String(master.concentration||hint||"").trim();
       return {
         brand:master.brand||brand,
         name:master.name||name,
-        key:norm(master.brand||brand)+"|"+norm(master.name||name),
-        catalog_id:master.id||""
+        key:norm(master.brand||brand)+"|"+norm(master.name||name)+"|"+norm(masterConcentration),
+        catalog_id:master.id||"",
+        concentration:masterConcentration
       };
     }
 
-    const key=(norm(brand)+"|"+norm(name)).replace(/\|+$/g,"");
-    return {brand,name,key};
+    const detectedConcentration=concentrationHint(o);
+    const key=(norm(brand)+"|"+norm(name)+"|"+norm(detectedConcentration)).replace(/\|+$/g,"");
+    return {brand,name,key,concentration:detectedConcentration};
   }
 
   const identities=raw.map(o=>productIdentity(o));
@@ -1153,7 +1160,7 @@ function shGroupData(data){
       const inherited=nameToBrand.get(norm(id.name));
       if(inherited){
         id.brand=inherited;
-        id.key=norm(inherited)+"|"+norm(id.name);
+        id.key=norm(inherited)+"|"+norm(id.name)+"|"+norm(id.concentration||"");
       }
     }
   });
@@ -1199,7 +1206,7 @@ function shGroupData(data){
         display_name:id.brand?id.brand+" - "+id.name:id.name,
         catalog_id:id.catalog_id||"",
         size_ml:"",
-        concentration:o.concentration||"",
+        concentration:id.concentration||o.concentration||"",
         image:o.image||o.image_url||o.thumbnail||"",
         offers:[]
       });
@@ -1214,19 +1221,22 @@ function shGroupData(data){
     if(id.brand)normalizedOffer.brand=id.brand;
     if(id.name)normalizedOffer.name=id.name;
     if(id.catalog_id)normalizedOffer.catalog_id=id.catalog_id;
+    if(id.concentration)normalizedOffer.concentration=id.concentration;
     if(size)normalizedOffer.size_ml=size;
 
     const store=String(o.store||"").trim().toLowerCase();
     const url=String(o.url||"").split("?")[0].toLowerCase();
     const offerSize=size||"unknown";
     const offerName=norm(id.name);
+    const offerConcentration=norm(id.concentration||o.concentration||"");
 
     const existingIndex=g.offers.findIndex(x=>{
       const xs=String(x.store||"").trim().toLowerCase();
       const xu=String(x.url||"").split("?")[0].toLowerCase();
       const xsize=sizeOf(x)||"unknown";
       const xn=norm(x.name||"");
-      return xs===store&&xu===url&&xsize===offerSize&&xn===offerName;
+      const xc=norm(x.concentration||"");
+      return xs===store&&xu===url&&xsize===offerSize&&xn===offerName&&xc===offerConcentration;
     });
 
     if(existingIndex>=0){
