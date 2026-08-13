@@ -205,7 +205,7 @@ def _price_from_structured_html(html: str, target_size_ml: Optional[float] = Non
 # - se uno scraper dichiara esplicitamente OUT OF STOCK, lo manteniamo;
 # - se la pagina prodotto conferma OUT OF STOCK, lo marchiamo centralmente;
 # - se la pagina conferma IN STOCK, lo marchiamo come disponibile;
-# - se non riusciamo a determinare lo stock, NON eliminiamo mai il prodotto.
+# - se non riusciamo di determinare lo stock, NON eliminiamo mai il prodotto.
 # In questo modo lo stock è normalizzato nel backend e non dipende da
 # correzioni specifiche per singolo profumo o singolo negozio.
 
@@ -229,9 +229,8 @@ _STOCK_OOS_MARKERS = (
     "non disponible",
     "non-disponible",
     "ce produit n'est plus disponible",
-    "ce produit n’est plus disponible",
-    "ce produit n'est plus disponible à la vente",
-    "ce produit n’est plus disponible à la vente",
+    "ce produit n’est plus disponibile",
+    "ce produit n'est più disponibile a la vendita",
     "esaurito",
     "non disponibile",
     "questo prodotto non è più disponibile",
@@ -515,11 +514,20 @@ def resolve_actual_price(product: Dict[str, Any]) -> Dict[str, Any]:
         pass
 
     # Se abbiamo un prezzo molto basso (<5 EUR) per confezioni di dimensione
-    # ragionevole (>=30 ml), consideriamo il prezzo sospetto e lo invalidiamo
-    # per il ranking (non rimuoviamo la stringa item['price'] per debug).
-    if item.get("price_value") is not None and size is not None and size >= 30.0 and item["price_value"] < 5.0:
+    # ragionevole (>=30 ml) o se non abbiamo size (None) e il prezzo è molto basso,
+    # consideriamo il prezzo sospetto e lo invalidiamo per il ranking.
+    # In tal caso rimuoviamo sia price_value sia price (stringa) per evitare
+    # che il frontend lo mostri come "da 4,99€" e che venga selezionato.
+    if item.get("price_value") is not None and item["price_value"] < 5.0 and (size is None or size >= 30.0):
+        # Invalidate numeric value and the displayed string
         item.pop("price_value", None)
+        # Remove the price string so UI won't present the suspicious value
+        item["price"] = ""
         item["price_invalidated"] = True
+        try:
+            print(f"SUSPECT_PRICE_INVALIDATED: store={item.get('store')} url={item.get('url')} name={item.get('name')!r} original_raw_price={raw_price!r}")
+        except Exception:
+            pass
     # --- fine patch ---
 
     return item
