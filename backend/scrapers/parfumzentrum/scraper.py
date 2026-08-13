@@ -1,4 +1,3 @@
-import json
 import re
 import requests
 import xml.etree.ElementTree as ET
@@ -11,43 +10,23 @@ SITEMAP_URL = BASE_URL + "/sitemap.xml"
 SESSION = requests.Session()
 
 HEADERS = {
-    "User-Agent": (
-        "Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) "
-        "AppleWebKit/605.1.15 Version/18.0 Mobile/15E148 Safari/604.1"
-    ),
+    "User-Agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 Version/18.0 Mobile/15E148 Safari/604.1",
     "Accept-Language": "de-DE,de;q=0.9,en;q=0.8",
 }
 
 IGNORED_MATCH_WORDS = {
     "eau", "de", "parfum", "perfume", "edp", "edt",
     "spray", "ml", "pour", "for",
-    "woman", "man", "men", "women",
 }
 
-COUPON_WORDS = (
-    "preis inkl. code",
-    "rabattcode",
-    "gutschein",
-    "coupon",
-    "promo",
-    "aktion",
-    "code",
-)
-
-OLD_PRICE_CLASS_WORDS = (
-    "old", "was", "strike", "compare", "cross",
-    "previous", "original", "regular",
-)
-
-def _tokens(text: str):
+def _tokens(text):
     return [
         x.lower()
         for x in re.findall(r"[A-Za-zÀ-ÿ0-9]+", unquote(text))
         if len(x) > 1
     ]
 
-
-def _all_tokens_match(text: str, query: str) -> bool:
+def _all_tokens_match(text, query):
     text_tokens = set(_tokens(text))
     query_tokens = {
         token
@@ -63,15 +42,13 @@ def _all_tokens_match(text: str, query: str) -> bool:
 
     return query_tokens.issubset(text_tokens)
 
-
-def _xml_urls(xml_text: str):
+def _xml_urls(xml_text):
     root = ET.fromstring(xml_text)
     return [
         el.text.strip()
         for el in root.iter()
         if el.tag.endswith("loc") and el.text
     ]
-
 
 def _get_sitemap_urls():
     r = SESSION.get(SITEMAP_URL, headers=HEADERS, timeout=4)
@@ -84,7 +61,6 @@ def _get_sitemap_urls():
     r.raise_for_status()
     xml_text = r.text
     r.close()
-
     urls = _xml_urls(xml_text)
 
     child_maps = [
@@ -105,7 +81,7 @@ def _get_sitemap_urls():
             if rr.status_code in (403, 429):
                 print(f"PARFUMZENTRUM SITEMAP BLOCKED: HTTP {rr.status_code}")
                 rr.close()
-                continue
+                break
 
             if rr.status_code == 200:
                 xml_text = rr.text
@@ -118,195 +94,163 @@ def _get_sitemap_urls():
 
     return out
 
+def _format_price(value):
+    """
+    Normalizza un prezzo in euro.
+    Gestisce valori come:
+    69.95 / 69,95 / 69.95 € / 1.149,80
+    """
+    raw = str(value or "").strip()
+    if not raw:
+        return ""
 
-def _extract_number(text: str):
-    m = re.search(r"(\d{1,4}[.,]\d{2})\s*€", text)
+    raw = raw.replace("\xa0", " ").strip()
+    m = re.search(r"\d[\d.,]*", raw)
     if not m:
+        return ""
+
+    number = m.group(0)
+
+    # Formato europeo: 1.149,80
+    if "," in number:
+        if "." in number:
+            number = number.replace(".", "").replace(",", ".")
+        else:
+            number = number.replace(",", ".")
+    # Formato decimale semplice: 69.95
+    elif number.count(".") == 1:
+        left, right = number.split(".")
+        if len(right) != 2:
+            number = number.replace(".", "")
+    # Separatore migliaia senza decimali: 1.149
+    elif number.count(".") > 1:
+        number = number.replace(".", "")
+
+    try:
+        value_float = float(number)
+    except ValueError:
+        return ""
+
+    if value_float <= 0:
+        return ""
+
+    return f"{value_float:.2f}".replace(".", ",") + "€"
+
+
+def _extract_price_from_html(html):
+    """
+    Estrae il prezzo di vendita reale.
+    Ordine:
+      1) JSON-LD Product/Offer
+      2) meta price
+      3) prezzo visibile vicino al prodotto
+    Non usa il Grundpreis €/l come prezzo del prodotto.
+    """
+    soup = BeautifulSoup(html or "", "html.parser")
+
+    # 1) JSON-LD: è la fonte più affidabile.
+    for script in soup.find_all("script", type="application/ld+json"):
+        raw = script.string or script.get_text()
+        if not raw:
+            continue
+
+        try:
+            data = __import__("json").loads(raw)
+        except Exception:
+            continue
+
+        stack = data if isinstance(data, list) else [data]
+
+        while stack:
+            item = stack.pop(0)
+
+            if isinstance(item, list):
+                stack.extend(item)
+                continue
+
+            if not isinstance(item, dict):
+                continue
+
+            item_type = str(item.get("@type", "")).lower()
+
+            if item_type == "product" or "offers" in item:
+                offers = item.get("offers")
+                offer_list = offers if isinstance(offers, list) else [offers]
+
+                for offer in offer_list:
+                    if not isinstance(offer, dict):
+                        continue
+
+                    for key in ("price", "lowPrice"):
+                        price = _format_price(offer.get(key))
+                        if price:
+                            return price
+
+            for key in ("mainEntity", "item", "@graph"):
+                child = item.get(key)
+                if child:
+                    if isinstance(child, list):
+                        stack.extend(child)
+                    else:
+                        stack.append(child)
+
+    # 2) Meta prezzo strutturato.
+    for attrs in (
+        {"property": "product:price:amount"},
+        {"property": "og:price:amount"},
+        {"itemprop": "price"},
+    ):
+        tag = soup.find("meta", attrs=attrs)
+        if tag and tag.get("content"):
+            price = _format_price(tag["content"])
+            if price:
+                return price
+
+    # 3) Prezzo visibile.
+    # Prima cerchiamo contenitori che abbiano il simbolo € ma NON
+    # la dicitura Grundpreis (prezzo per litro).
+    for node in soup.find_all(["div", "span", "p", "strong", "b"]):
+        txt = node.get_text(" ", strip=True)
+        if not txt or "€" not in txt:
+            continue
+
+        low = txt.lower()
+        if "grundpreis" in low or "€/l" in low or "pro liter" in low:
+            continue
+
+        # Prezzo con esattamente due decimali.
+        m = re.search(r"(?<![\d.,])(\d{1,4}(?:[.,]\d{2}))(?:\s*€)", txt)
+        if m:
+            price = _format_price(m.group(1))
+            if price:
+                return price
+
+    # 4) Ultimo fallback sul testo della pagina.
+    text_content = soup.get_text(" ", strip=True)
+    patterns = [
+        r"(\d{1,4}[.,]\d{2})\s*€\s*inkl\.",
+        r"(\d{1,4}[.,]\d{2})\s*€",
+    ]
+
+    for pattern in patterns:
+        for m in re.finditer(pattern, text_content, re.I):
+            # Ignora prezzi per litro.
+            left = text_content[max(0, m.start() - 100):m.start()].lower()
+            if "grundpreis" in left or "pro liter" in left:
+                continue
+
+            price = _format_price(m.group(1))
+            if price:
+                return price
+
+    return ""
+
+
+def _extract_product(url, query):
+    try:
+        r = SESSION.get(url, headers=HEADERS, timeout=6)
+    except Exception:
         return None
-    return m.group(1).replace(".", ",")
-
-
-def _is_coupon_text(text: str) -> bool:
-    t = (text or "").lower()
-    return any(word in t for word in COUPON_WORDS)
-
-
-def _has_old_price_marker(tag) -> bool:
-    if tag is None:
-        return False
-
-    if getattr(tag, "name", None) in ("del", "s", "strike"):
-        return True
-
-    classes = " ".join(tag.get("class") or []).lower()
-    if any(word in classes for word in OLD_PRICE_CLASS_WORDS):
-        return True
-
-    style = (tag.get("style") or "").replace(" ", "").lower()
-    return "line-through" in style or "text-decoration:line-through" in style
-
-
-def _node_is_coupon_or_old(tag) -> bool:
-    if tag is None:
-        return False
-
-    node = tag
-
-    # Only inspect a short local DOM context. Do NOT climb to the whole
-    # product container, otherwise the normal price gets contaminated by
-    # a separate coupon block elsewhere on the page.
-    for _ in range(4):
-        if node is None:
-            break
-
-        if _has_old_price_marker(node):
-            return True
-
-        text = node.get_text(" ", strip=True)
-        if _is_coupon_text(text):
-            return True
-
-        node = getattr(node, "parent", None)
-
-    return False
-
-
-def _extract_current_price(container):
-    """
-    Estrae SOLO un prezzo corrente dal contenitore della singola variante.
-
-    Priorità:
-      1. prezzo in un elemento dedicato, non barrato/non coupon
-      2. testo diretto non barrato/non coupon
-
-    Non usa mai il primo numero trovato in un blocco generico.
-    """
-    candidates = []
-
-    # Elementi con attributi/schema di prezzo.
-    for tag in container.find_all(True):
-        if _node_is_coupon_or_old(tag):
-            continue
-
-        candidate = (
-            tag.get("content")
-            or tag.get("data-price")
-            or tag.get("data-product-price")
-            or tag.get("data-final-price")
-            or tag.get_text(" ", strip=True)
-        )
-
-        if not candidate or "€" not in candidate:
-            continue
-
-        classes = " ".join(tag.get("class") or []).lower()
-        score = 0
-
-        if tag.get("itemprop") == "price":
-            score += 100
-        if any(x in classes for x in ("price", "product-price", "current", "final")):
-            score += 50
-        if tag.name in ("span", "strong", "b"):
-            score += 10
-
-        value = _extract_number(candidate)
-        if value:
-            candidates.append((score, len(candidate), value))
-
-    if candidates:
-        candidates.sort(key=lambda x: (-x[0], x[1]))
-        return candidates[0][2]
-
-    # Ultimo fallback: solo testo del contenitore, ma senza del/s/coupon.
-    pieces = []
-    for string in container.stripped_strings:
-        parent = getattr(string, "parent", None)
-        if _node_is_coupon_or_old(parent):
-            continue
-        text = str(string)
-        if "€" in text:
-            value = _extract_number(text)
-            if value:
-                pieces.append(value)
-
-    return pieces[0] if pieces else None
-
-
-def _size_tokens(text: str):
-    return [
-        int(m.group(1))
-        for m in re.finditer(r"\b(\d{1,4})\s*ml\b", text or "", re.I)
-    ]
-
-
-def _extract_variants(soup: BeautifulSoup):
-    """
-    Associa formato -> prezzo cercando il più piccolo contenitore DOM che:
-      - contiene esattamente un formato (es. 50 ml)
-      - contiene un prezzo
-      - non è un blocco coupon
-      - non confonde il prezzo barrato con quello corrente.
-
-    Non risale arbitrariamente fino all'H1 e non usa prezzi di altri prodotti.
-    """
-    by_size = {}
-
-    # Cerca prima elementi piccoli. Un contenitore che comprende più formati
-    # (es. l'intero selettore 30/50/100 ml) viene scartato.
-    candidates = []
-
-    for tag in soup.find_all(True):
-        text = tag.get_text(" ", strip=True)
-
-        if "ml" not in text or "€" not in text:
-            continue
-
-        sizes = sorted(set(_size_tokens(text)))
-        if len(sizes) != 1:
-            continue
-
-        if _is_coupon_text(text):
-            continue
-
-        # Evita body/html e contenitori enormi.
-        if len(text) > 1200:
-            continue
-
-        size = sizes[0]
-        price = _extract_current_price(tag)
-        if not price:
-            continue
-
-        candidates.append((size, len(text), tag, price))
-
-    # Per ogni formato scegliamo il contenitore più piccolo.
-    candidates.sort(key=lambda row: row[1])
-
-    for size, text_len, tag, price in candidates:
-        if size not in by_size:
-            by_size[size] = {
-                "size_ml": str(size),
-                "price": price + "€",
-            }
-
-    return [
-        by_size[size]
-        for size in sorted(by_size)
-    ]
-
-
-def _canonical_name(name: str) -> str:
-    # H1 di Parfum-Zentrum contiene il formato, ma ScentHunter deve
-    # raggruppare 30/50/100 ml dello stesso profumo.
-    name = re.sub(r"\s+\d{1,4}\s*ml\b", "", name, flags=re.I)
-    name = re.sub(r"\s+\(\s*woman\s*\)", "", name, flags=re.I)
-    name = re.sub(r"\s+\(\s*man\s*\)", "", name, flags=re.I)
-    name = re.sub(r"\s+", " ", name).strip()
-    return name
-
-
-def _extract_product(url: str, query: str):
-    r = SESSION.get(url, headers=HEADERS, timeout=4)
 
     if r.status_code in (403, 429):
         print(f"PARFUMZENTRUM PRODUCT BLOCKED: HTTP {r.status_code}")
@@ -326,9 +270,24 @@ def _extract_product(url: str, query: str):
     if not h1:
         return None
 
-    raw_name = " ".join(h1.stripped_strings)
+    name = " ".join(h1.stripped_strings)
 
-    if not _all_tokens_match(raw_name, query):
+    # Il formato e la concentrazione devono viaggiare con l'offerta.
+    # Parfum-Zentrum espone entrambe le informazioni nel titolo H1, per esempio:
+    # "Eros pour Femme Eau De Toilette 100 ml (woman)".
+    size_match = re.search(r"(?<!\\d)(\\d{1,4})\\s*ml\\b", name, re.I)
+    size_ml = int(size_match.group(1)) if size_match else None
+
+    concentration = ""
+    if re.search(r"\\beau\\s+de\\s+toilette\\b|\\bedt\\b", name, re.I):
+        concentration = "Eau de Toilette"
+    elif re.search(r"\\beau\\s+de\\s+parfum\\b|\\bedp\\b", name, re.I):
+        concentration = "Eau de Parfum"
+    elif re.search(r"\\bextrait(?:\\s+de\\s+parfum)?\\b", name, re.I):
+        concentration = "Extrait de Parfum"
+
+    # Il controllo definitivo resta sul nome reale del prodotto.
+    if not _all_tokens_match(name, query):
         return None
 
     unavailable_phrases = (
@@ -338,158 +297,116 @@ def _extract_product(url: str, query: str):
         "ausverkauft",
     )
 
-    # Solo il contesto immediato dell'H1 per lo stock.
-    chunks = []
-    node = h1
-
-    for _ in range(5):
-        if not node:
-            break
-        txt = node.get_text(" ", strip=True)
-        if txt:
-            chunks.append(txt)
-        node = node.parent
-
-    page_near_h1 = " ".join(chunks).lower()
+    page_near_h1 = soup.get_text(" ", strip=True).lower()
 
     if any(x in page_near_h1 for x in unavailable_phrases):
         return None
 
-    name = _canonical_name(raw_name)
+    price = _extract_price_from_html(html)
 
-    variants = _extract_variants(soup)
-
-    if not variants:
-        # Fallback molto stretto: prezzo esplicitamente associato alla
-        # confezione mostrata nell'H1.
-        target_size = re.search(r"\b(\d{1,4})\s*ml\b", raw_name, re.I)
-        target_size = target_size.group(1) if target_size else None
-
-        price = None
-
-        # Cerca un contenitore piccolo che contenga esattamente il formato H1.
-        if target_size:
-            for tag in soup.find_all(True):
-                text = tag.get_text(" ", strip=True)
-                if (
-                    f"{target_size} ml".lower() in text.lower()
-                    and "€" in text
-                    and len(text) <= 500
-                    and len(set(_size_tokens(text))) == 1
-                ):
-                    price = _extract_current_price(tag)
-                    if price:
-                        break
-
-        if not price:
-            return None
-
-        variants = [{
-            "size_ml": target_size,
-            "price": price + "€",
-        }]
-
-    # Prezzo principale = prezzo minimo tra i formati realmente estratti.
-    # Il backend/frontend usa variants per mostrare i formati.
-    def numeric(v):
-        return float(v["price"].replace("€", "").replace(",", "."))
-
-    main_variant = min(variants, key=numeric)
+    if not price:
+        return None
 
     return {
         "store": "ParfumZentrum",
         "name": name,
-        "price": main_variant["price"],
+        "price": price,
         "url": url,
-        "variants": variants,
+        "size_ml": size_ml,
+        "concentration": concentration,
     }
 
 
-def _merge_product(existing, new):
+def _candidate_score(url, query):
     """
-    Unisce più URL Parfum-Zentrum dello stesso profumo in un solo risultato.
-    Mantiene tutti i formati senza duplicare la stessa variante.
+    Ordina i candidati sitemap mettendo davanti quelli più vicini
+    alla query. Non basta più prendere i primi URL della sitemap.
     """
-    variants = list(existing.get("variants") or [])
+    q = [
+        t for t in _tokens(query)
+        if t not in IGNORED_MATCH_WORDS
+    ]
+    u = _tokens(url)
 
-    for variant in new.get("variants") or []:
-        key = str(variant.get("size_ml") or "")
-        old = next(
-            (v for v in variants if str(v.get("size_ml") or "") == key),
-            None,
-        )
+    score = sum(10 for token in q if token in u)
 
-        if old is None:
-            variants.append(dict(variant))
-        else:
-            old_price = _extract_number(old.get("price", ""))
-            new_price = _extract_number(variant.get("price", ""))
-            if old_price is None or (
-                new_price is not None and new_price < old_price
-            ):
-                old["price"] = variant["price"]
+    normalized_query = " ".join(q)
+    normalized_url = " ".join(u)
 
-    variants.sort(
-        key=lambda v: int(re.sub(r"\D", "", str(v.get("size_ml") or "0")) or 0)
-    )
+    if normalized_query and normalized_query in normalized_url:
+        score += 40
 
-    existing["variants"] = variants
+    # Bonus per sequenza dei token.
+    if q:
+        joined = " ".join(u)
+        if all(token in joined for token in q):
+            score += len(q)
 
-    if variants:
-        main = min(
-            variants,
-            key=lambda v: float(
-                v["price"].replace("€", "").replace(",", ".")
-            ),
-        )
-        existing["price"] = main["price"]
-
-    return existing
+    return score
 
 
-def search(query: str):
+def search(query):
+    query = (query or "").strip()
+
+    if not query:
+        return []
+
     try:
         urls = _get_sitemap_urls()
     except Exception as e:
         print("ERRORE SITEMAP:", e)
         return []
 
+    # Discovery generica:
+    # non limitiamo più la verifica ai primi 6 URL della sitemap.
+    # Prima raccogliamo TUTTI i candidati che contengono i token
+    # significativi della query, poi li ordiniamo per pertinenza.
     candidates = []
 
     for url in urls:
-        if re.search(r"_z\d+/?$", url) and _all_tokens_match(url, query):
+        if not re.search(r"_z\d+/?$", url):
+            continue
+
+        if _all_tokens_match(url, query):
             candidates.append(url)
 
-    results_by_name = {}
+    candidates.sort(
+        key=lambda u: _candidate_score(u, query),
+        reverse=True,
+    )
+
+    # Limite alto ma controllato: evita una scansione enorme senza
+    # perdere prodotti validi che nella sitemap non sono nei primi 6.
+    candidates = candidates[:24]
+
+    results = []
+    seen = set()
 
     try:
-        # Sei pagine massimo per evitare che il sitemap diventi un collo di
-        # bottiglia. Poi uniamo le pagine dello stesso profumo.
-        for url in candidates[:6]:
+        for url in candidates:
             try:
                 item = _extract_product(url, query)
-            except Exception as exc:
-                print(f"PARFUMZENTRUM PRODUCT ERROR url={url} err={exc}")
+            except Exception as e:
+                print("ERRORE PRODOTTO PARFUMZENTRUM:", repr(e))
                 item = None
 
-            if not item:
-                continue
+            if item:
+                key = (
+                    item["name"].lower(),
+                    item["price"],
+                )
 
-            key = re.sub(r"\s+", " ", item["name"].lower()).strip()
-
-            if key in results_by_name:
-                _merge_product(results_by_name[key], item)
-            else:
-                results_by_name[key] = item
-
+                if key not in seen:
+                    seen.add(key)
+                    results.append(item)
     finally:
         SESSION.close()
 
-    return list(results_by_name.values())
-
+    return results
 
 if __name__ == "__main__":
-    results = search("Versace Eros pour Femme Eau de Toilette")
+    results = search("Khadlaj Onyx Gold")
     print("RISULTATI:", len(results))
+
     for item in results[:10]:
         print(item)
