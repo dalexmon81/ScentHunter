@@ -680,7 +680,11 @@ function shGroupData(data){
         name:o.name||g.name||"Profumo",
         size_ml:o.size_ml||o.size||g.size_ml||"",
         concentration:o.concentration||g.concentration||"",
-        image:o.image||o.image_url||o.thumbnail||g.image||""
+        image:o.image||o.image_url||o.thumbnail||g.image||"",
+        _source_name:o.name||g.name||"",
+        _source_brand:o.brand||g.brand||"",
+        _source_url:o.url||"",
+        _source_store:o.store||""
       });
     });
   });
@@ -1212,6 +1216,10 @@ function shGroupData(data){
     if(!g.image)g.image=o.image||o.image_url||o.thumbnail||"";
 
     const normalizedOffer={...o};
+    normalizedOffer._source_name=o._source_name||o.name||"";
+    normalizedOffer._source_brand=o._source_brand||o.brand||"";
+    normalizedOffer._source_url=o._source_url||o.url||"";
+    normalizedOffer._source_store=o._source_store||o.store||"";
     if(id.brand)normalizedOffer.brand=id.brand;
     if(id.name)normalizedOffer.name=id.name;
     if(id.catalog_id)normalizedOffer.catalog_id=id.catalog_id;
@@ -1265,26 +1273,53 @@ function shGroupData(data){
     g.offers=cleanOffers;
 
     /*
-     * FORMATI REALI DEL CATALOGO:
-     * se il gruppo e' associato a una referenza master, accettiamo solo
-     * i formati dichiarati dal catalogo. Questo vale per TUTTI i negozi,
-     * non solo ParfumZentrum. Evita categorie inventate come 30/40/50/80/
-     * 90/100/200 ml quando la referenza ha altri formati.
+     * LE BEAU — controllo stretto delle offerte.
      *
-     * Se lo scraper non comunica gli ml, conserviamo comunque l'offerta:
-     * non inventiamo un formato, ma non perdiamo il prezzo.
+     * Gli scraper possono restituire una pagina/prodotto sbagliato sotto una
+     * ricerca corretta (es. Deloox: Le Beau -> Le Male EDT;
+     * Parfum-Zentrum: Le Beau -> Narcisse).
+     * Prima di mostrare un link manteniamo quindi il nome ORIGINALE dello
+     * scraper e verifichiamo che corrisponda davvero alla variante richiesta.
+     *
+     * Inoltre limitiamo i negozi ai retailer che risultano avere realmente
+     * quella referenza e rispettiamo i formati noti della singola variante.
      */
-    g.offers=g.offers.filter(o=>{
-      if(!g.catalog_id)return true;
+    const LE_BEAU_RULES={
+      "SH-0073":{stores:["deloox","sabina","parfumzentrum","perfumemarket","notino"],sizes:["75","125"],match:s=>{
+        const n=norm(s);
+        return /\ble\s+beau\b/.test(n) && !/\ble\s+parfum\b|\bintense\b|\bparadise\s+garden\b|\bnarcisse\b|\bflower\s+edition\b|\ble\s+male\b/.test(n);
+      }},
+      "SH-0074":{stores:["deloox","sabina","perfumemarket","notino"],sizes:["75","125"],match:s=>{
+        const n=norm(s);
+        return /\ble\s+beau\b/.test(n) && /\ble\s+parfum\b|\bintense\b/.test(n) && !/\bparadise\s+garden\b|\bnarcisse\b|\bflower\s+edition\b|\ble\s+male\b/.test(n);
+      }},
+      "SH-0075":{stores:["deloox","sabina","notino"],sizes:["75","125"],match:s=>{
+        const n=norm(s);
+        return /\ble\s+beau\b/.test(n) && /\bparadise\s+garden\b/.test(n) && !/\ble\s+male\b/.test(n);
+      }},
+      "SH-0076":{stores:["deloox","sabina"],sizes:["75","125"],match:s=>{
+        const n=norm(s);
+        return /\ble\s+beau\b/.test(n) && /\bnarcisse\b/.test(n) && !/\ble\s+male\b/.test(n);
+      }},
+      "SH-0077":{stores:["deloox"],sizes:["125"],match:s=>{
+        const n=norm(s);
+        return /\ble\s+beau\b/.test(n) && /\bflower\s+edition\b/.test(n) && !/\ble\s+male\b/.test(n);
+      }}
+    };
 
-      const master=MASTER_CATALOG.find(p=>p.id===g.catalog_id);
-      if(!master||!Array.isArray(master.formats_ml)||!master.formats_ml.length)return true;
+    const leBeauRule=g.catalog_id?LE_BEAU_RULES[g.catalog_id]:null;
+    g.offers=g.offers.filter(o=>{
+      if(!leBeauRule)return true;
+      const store=String(o.store||'').trim().toLowerCase();
+      if(!leBeauRule.stores.includes(store))return false;
+
+      const sourceName=String(o._source_name||o.name||'').trim();
+      if(!leBeauRule.match(sourceName))return false;
 
       const s=sizeOf(o);
-      if(!s)return true;
-
-      const known=master.formats_ml.map(v=>String(v));
-      return known.includes(String(s));
+      if(s && !leBeauRule.sizes.includes(String(s)))return false;
+      if(!s && leBeauRule.sizes.length===1)o.size_ml=leBeauRule.sizes[0];
+      return true;
     });
 
     g.offers.sort((a,b)=>{
@@ -1686,66 +1721,90 @@ async function searchLeBeauFamily(onPartial){
   "Jean Paul Gaultier Le Beau Flower Edition"
  ];
  const merged={comparisons:[],results:[],errors:{}};
- // Il backend usa gia 2 worker e impone 15s per la ricerca.
- // Non lanciamo 5 /search contemporaneamente: su Render Free significa
- // fino a 10 scraper simultanei e la ricerca puo saltare tutta.
- // Le 5 varianti vengono comunque cercate con un solo click, ma una alla volta.
+
+ // Una variante alla volta: il backend usa gia 2 worker e /search ha un
+ // limite interno di 15s. Cosi non saturiamo Render e manteniamo la ricerca
+ // progressiva che ora funziona.
  const timeoutMs=25000;
- const concurrency=1;
+ const fallbackTimeoutMs=14500;
 
- for(let i=0;i<terms.length;i+=concurrency){
-  const batch=terms.slice(i,i+concurrency);
-  statusBox.textContent=`Cerco Le Beau… ${Math.min(i+batch.length,terms.length)}/${terms.length}`;
+ const expectedStores={
+  "Jean Paul Gaultier Le Beau":["deloox","sabina","parfumzentrum","perfumemarket","notino"],
+  "Jean Paul Gaultier Le Beau Le Parfum":["deloox","sabina","perfumemarket","notino"],
+  "Jean Paul Gaultier Le Beau Paradise Garden":["deloox","sabina","notino"],
+  "Jean Paul Gaultier Le Beau Narcisse":["deloox","sabina"],
+  "Jean Paul Gaultier Le Beau Flower Edition":["deloox"]
+ };
 
-  let responses=await Promise.allSettled(batch.map(term=>
-   fetchJSONWithTimeout(
+ for(let i=0;i<terms.length;i++){
+  const term=terms[i];
+  statusBox.textContent=`Cerco Le Beau… ${i+1}/${terms.length}`;
+
+  let data={results:[],comparisons:[],errors:{}};
+  try{
+   data=await fetchJSONWithTimeout(
     backend()+"/search?q="+encodeURIComponent(term),
     timeoutMs
-   )
-  ));
+   )||data;
 
-  // Una variante puo' fallire per un problema momentaneo del backend.
-  // La riproviamo una sola volta prima di considerarla non disponibile.
-  const retryIndexes=[];
-  responses.forEach((r,index)=>{
-   if(r.status!=="fulfilled")retryIndexes.push(index);
-  });
-
-  if(retryIndexes.length){
-   statusBox.textContent=`Riprovando Le Beau… ${Math.min(i+batch.length,terms.length)}/${terms.length}`;
-   const retries=await Promise.allSettled(retryIndexes.map(index=>
-    fetchJSONWithTimeout(
-     backend()+"/search?q="+encodeURIComponent(batch[index]),
-     timeoutMs
-    )
-   ));
-   retries.forEach((r,j)=>{
-    if(r.status==="fulfilled")responses[retryIndexes[j]]=r;
+   if(Array.isArray(data.comparisons))merged.comparisons.push(...data.comparisons);
+   if(Array.isArray(data.results))merged.results.push(...data.results);
+   if(data.errors&&typeof data.errors==="object")Object.entries(data.errors).forEach(([store,error])=>{
+    if(!merged.errors[store])merged.errors[store]=error;
    });
+  }catch(e){
+   merged.errors["ricerca "+term]=String(e?.message||"timeout");
   }
 
-  responses.forEach((r,index)=>{
-   const term=batch[index];
-   if(r.status==="fulfilled"){
-    const data=r.value||{};
-    if(Array.isArray(data.comparisons))merged.comparisons.push(...data.comparisons);
-    if(Array.isArray(data.results))merged.results.push(...data.results);
-    if(data.errors&&typeof data.errors==="object")Object.entries(data.errors).forEach(([store,error])=>{
-     if(!merged.errors[store])merged.errors[store]=error;
-    });
-   }else{
-    merged.errors["ricerca "+term]=String(r.reason?.message||"timeout");
-   }
+  // Mostra subito il risultato normale.
+  if(typeof onPartial==="function")onPartial(merged,false);
+
+  // Fallback mirato: per ogni variante recuperiamo solo i retailer attesi
+  // che non sono comparsi nella risposta /search. Massimo 2 insieme, in linea
+  // con i 2 worker del backend. I risultati arrivano progressivamente.
+  const returnedStores=new Set();
+  (Array.isArray(data.results)?data.results:[]).forEach(o=>{
+   const st=String(o?.store||o?.shop||"").trim().toLowerCase();
+   if(st)returnedStores.add(st);
+  });
+  (Array.isArray(data.comparisons)?data.comparisons:[]).forEach(g=>{
+   (Array.isArray(g?.offers)?g.offers:[]).forEach(o=>{
+    const st=String(o?.store||o?.shop||"").trim().toLowerCase();
+    if(st)returnedStores.add(st);
+   });
   });
 
-  // Mostra subito cio' che e' gia' arrivato.
-  if(typeof onPartial==="function")onPartial(merged,false);
+  const missing=(expectedStores[term]||[]).filter(store=>!returnedStores.has(store));
+  for(let j=0;j<missing.length;j+=2){
+   const pair=missing.slice(j,j+2);
+   statusBox.textContent=`Cerco Le Beau… ${i+1}/${terms.length} · recupero ${j+1}/${missing.length}`;
+
+   const fallbackResponses=await Promise.allSettled(pair.map(store=>
+    fetchJSONWithTimeout(
+     backend()+"/test-store?store="+encodeURIComponent(store)+"&q="+encodeURIComponent(term),
+     fallbackTimeoutMs
+    )
+   ));
+
+   fallbackResponses.forEach((r,k)=>{
+    const store=pair[k];
+    if(r.status!=="fulfilled"){
+     merged.errors[store]=String(r.reason?.message||"timeout");
+     return;
+    }
+    const fd=r.value||{};
+    if(Array.isArray(fd.results))merged.results.push(...fd.results);
+    if(Array.isArray(fd.comparisons))merged.comparisons.push(...fd.comparisons);
+    if(fd.error)merged.errors[store]=fd.error;
+   });
+
+   if(typeof onPartial==="function")onPartial(merged,false);
+  }
  }
 
  if(typeof onPartial==="function")onPartial(merged,true);
  return merged;
 }
-
 async function searchPerfume(){
  const q=queryInput.value.trim();if(!q){statusBox.textContent="";resultsBox.innerHTML="";errorsBox.innerHTML="";return}
  searchButton.disabled=true;searchButton.classList.add("searching");
