@@ -1851,6 +1851,16 @@ function filterLeBeauFamilyGroups(groups,q){
   });
 }
 
+function leBeauSearchTerms(){
+  return [
+    "Le Beau",
+    "Le Beau Le Parfum Intense",
+    "Le Beau Paradise Garden",
+    "Le Beau Narcisse",
+    "Le Beau Flower Edition"
+  ];
+}
+
 async function searchPerfume(){
  const q=queryInput.value.trim();if(!q){statusBox.textContent="";resultsBox.innerHTML="";errorsBox.innerHTML="";return}
  searchButton.disabled=true;searchButton.classList.add("searching");
@@ -1859,22 +1869,71 @@ async function searchPerfume(){
  updateSearchButton();
  const dotsTimer=setInterval(updateSearchButton,500);
  statusBox.textContent="";resultsBox.innerHTML="";errorsBox.innerHTML="";
+ const requestId=Date.now()+Math.random();
+ window.__shSearchRequest=requestId;
  try{
-  const term=q;
-  const data=await fetchJSONWithTimeout(
-    backend()+"/search?q="+encodeURIComponent(term),
-    180000
-  );
-  const groups=filterLeBeauFamilyGroups(shGroupData(data),term);showProducts(groups);
+  const family=isLeBeauFamilyQuery(q);
+  const terms=family?leBeauSearchTerms():[q];
+
+  // Le Beau: massimo 3 richieste contemporanee. Ogni richiesta ha un limite
+  // breve, così uno scraper lento non può bloccare la ricerca per minuti.
+  const timeoutMs=family?12000:180000;
+  const concurrency=family?3:1;
+  const responses=[];
+
+  for(let i=0;i<terms.length;i+=concurrency){
+   if(window.__shSearchRequest!==requestId)return;
+   const batch=terms.slice(i,i+concurrency);
+   statusBox.textContent=family
+    ?`Cerco ${q}… (${Math.min(i+batch.length,terms.length)}/${terms.length})`
+    :`Cerco ${q}…`;
+
+   const batchResults=await Promise.allSettled(batch.map(term=>
+    fetchJSONWithTimeout(
+      backend()+"/search?q="+encodeURIComponent(term),
+      timeoutMs
+    )
+   ));
+   responses.push(...batchResults);
+  }
+
+  if(window.__shSearchRequest!==requestId)return;
+
+  const successful=responses
+   .filter(r=>r.status==="fulfilled")
+   .map(r=>r.value);
+
+  if(!successful.length)throw new Error("Nessuna ricerca completata");
+
+  const merged={
+   comparisons:successful.flatMap(d=>Array.isArray(d?.comparisons)?d.comparisons:[]),
+   results:successful.flatMap(d=>Array.isArray(d?.results)?d.results:[]),
+   errors:Object.assign({},...successful.map(d=>d?.errors||{}))
+  };
+
+  let groups=filterLeBeauFamilyGroups(shGroupData(merged),q);
+  showProducts(groups);
   currentProductGroups=groups;
   updateBestPricesFromGroups(groups);
-  refreshWishlistFromResults(groups.flatMap(g=>g.offers.map(o=>({name:g.name||"",brand:g.brand||"",price:shPrice(o),price_value:o.price_value,store:o.store||"",url:o.url||""}))));
-  if(data.errors&&Object.keys(data.errors).length){
-   const errorRows=Object.entries(data.errors).map(([store,error])=>`<div style="margin-top:7px"><strong>${esc(store)}</strong>: ${esc(String(error||"Errore non specificato"))}</div>`).join("");
-   errorsBox.innerHTML=`<div>Alcuni negozi non hanno risposto:</div>${errorRows}`;
+  refreshWishlistFromResults(groups.flatMap(g=>g.offers.map(o=>({
+    name:g.name||"",brand:g.brand||"",price:shPrice(o),price_value:o.price_value,
+    store:o.store||"",url:o.url||""
+  }))));
+
+  // I timeout dei singoli negozi non vengono mostrati nella pagina.
+  // Mostriamo solo i risultati effettivamente arrivati.
+  errorsBox.innerHTML="";
+ }catch(e){
+  console.error(e);
+  if(window.__shSearchRequest===requestId)statusBox.textContent="Impossibile completare la ricerca.";
+ }finally{
+  clearInterval(dotsTimer);
+  if(window.__shSearchRequest===requestId){
+   searchButton.disabled=false;
+   searchButton.classList.remove("searching");
+   searchButton.textContent="INIZIA LA RICERCA";
   }
- }catch(e){console.error(e);statusBox.textContent="Impossibile completare la ricerca."}
- finally{clearInterval(dotsTimer);searchButton.disabled=false;searchButton.classList.remove("searching");searchButton.textContent="INIZIA LA RICERCA"}
+ }
 }
 
 searchButton.addEventListener("click",searchPerfume);queryInput.addEventListener("keydown",e=>{if(e.key==="Enter"){e.preventDefault();searchPerfume()}});
