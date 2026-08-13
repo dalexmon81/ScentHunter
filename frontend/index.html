@@ -1056,10 +1056,10 @@ function shGroupData(data){
 
   function concentrationHint(o){
     const raw=String(o&&((o.name||"")+" "+(o.concentration||""))||"").toLowerCase();
-    if(/\beau\s+de\s+toilette\b|\bedt\b/.test(raw))return "Eau de Toilette";
-    if(/\beau\s+de\s+parfum\b|\bedp\b/.test(raw))return "Eau de Parfum";
-    if(/\bextrait(?:\s+de\s+parfum)?\b/.test(raw))return "Extrait de Parfum";
-    if(/\beau\s+de\s+cologne\b|\bedc\b/.test(raw))return "Eau de Cologne";
+    if(/\\beau\\s+de\\s+toilette\\b|\\bedt\\b/.test(raw))return "Eau de Toilette";
+    if(/\\beau\\s+de\\s+parfum\\b|\\bedp\\b/.test(raw))return "Eau de Parfum";
+    if(/\\bextrait(?:\\s+de\\s+parfum)?\\b/.test(raw))return "Extrait de Parfum";
+    if(/\\beau\\s+de\\s+cologne\\b|\\bedc\\b/.test(raw))return "Eau de Cologne";
     return "";
   }
 
