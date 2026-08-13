@@ -54,9 +54,6 @@ STORES = [
     "notino",
 ]
 
-SLOW_STORES = {"parfumzentrum", "perfumemarket"}
-SLOW_STORE_MAX_ATTEMPTS = 2
-
 BASE_DIR = os.path.dirname(__file__)
 HISTORY_PATH = os.path.join(BASE_DIR, "price_history.json")
 
@@ -70,7 +67,7 @@ CATALOG_FILENAME = "SCENTHUNTER CATALOGO CORRETTO.json"
 
 VARIANT_MARKERS = {
     "pour femme", "pour homme", "femme", "homme",
-    "flame", "energy", "night", "night out",
+    "flame", "energy", "parfum", "night", "night out",
     "rebel", "elixir", "intense", "extreme",
     "limited", "limited edition", "collector",
     "collector edition", "collector's edition",
@@ -138,6 +135,12 @@ def norm(value: Any) -> str:
         " ",
         value,
     )
+
+    # Uniforma le diverse grafie della numerazione Chanel e simili:
+    # "N 19", "N° 19", "No. 19", "No 19" -> "no 19".
+    # In questo modo la stessa famiglia non viene spezzata in gruppi
+    # diversi solo per la nomenclatura usata dallo store.
+    value = re.sub(r"\b(?:no|n)\s*(?=\d)", "no ", value)
 
     return re.sub(
         r"\s+",
@@ -497,7 +500,14 @@ def canonical_product_name(product: Dict[str, Any], family_query: str = "") -> s
             continue
         collapsed.append(word)
     name = " ".join(collapsed)
-    return re.sub(r"(?<=\d)(?=[A-Za-z])|(?<=[A-Za-z])(?=\d)", " ", name).strip()
+    name = re.sub(r"(?<=\d)(?=[A-Za-z])|(?<=[A-Za-z])(?=\d)", " ", name).strip()
+
+    # Canonicalizza la nomenclatura numerica Chanel anche nel NOME VISIBILE,
+    # non solo nella chiave di confronto. In questo modo "N 19" e "No. 19"
+    # non vengono mostrati come due famiglie/categorie differenti.
+    name = re.sub(r"\b(?:no\.?|n)\s*(\d+)\b", r"No. \1", name, flags=re.I)
+
+    return name
 
 
 def normalize_product(product: Dict[str, Any], family_query: str = "") -> Dict[str, Any]:
@@ -611,20 +621,26 @@ def build_search_attempts(
         if value_norm and value_norm not in {norm(x) for x in attempts}:
             attempts.append(value)
 
+    # Prima la query esatta.
     add(raw)
-    # Un solo passaggio aggiuntivo sul brand scoperto permette di recuperare
-    # varianti che il motore interno del negozio non mostra con la query esatta.
+
+    # Se il catalogo conosce già le referenze della famiglia, usiamo quelle
+    # come query mirate. Questo evita di lanciare 10-20 ricerche sullo stesso
+    # negozio e, soprattutto, permette di recuperare separatamente EDT/EDP.
+    if family_candidates:
+        for family_name in family_candidates:
+            add(family_name)
+        for hint in catalog_hints or []:
+            add(hint)
+        return attempts[:8]
+
+    # Fallback per query che non hanno corrispondenze nel catalogo.
     for brand in discovered_brands or []:
         add(brand)
-        # Query composta: alcuni negozi restituiscono più varianti quando
-        # ricevono brand + famiglia invece del solo brand.
         add(f"{brand} {raw}")
     for hint in catalog_hints or []:
         add(hint)
-    # Ogni variante del catalogo diventa una query autonoma dello scraper.
-    # Non c'è alcun elenco manuale di Eros/9 PM/Born in Roma.
-    for family_name in family_candidates or []:
-        add(family_name)
+
     tokens = [t for t in normalized.split() if t not in IGNORED_WORDS]
     if tokens:
         add(" ".join(tokens))
@@ -635,8 +651,9 @@ def build_search_attempts(
     compact = re.sub(r"(?<=\d)\s+(?=[a-z])|(?<=[a-z])\s+(?=\d)", "", normalized)
     if compact != normalized:
         add(compact)
-    limit = SLOW_STORE_MAX_ATTEMPTS if store in SLOW_STORES else 20
-    return attempts[:limit]
+
+    # Anche nel fallback non superiamo 8 tentativi per negozio.
+    return attempts[:8]
 
 
 def run_store(
@@ -650,18 +667,23 @@ def run_store(
     raw_query = str(query or "").strip()
     initial_results = module.search(raw_query) or []
     discovered_brands: List[str] = []
-    brand_seen = set()
-    for item in initial_results:
-        if not isinstance(item, dict):
-            continue
-        brand = str(item.get("brand") or "").strip()
-        if brand and norm(brand) not in brand_seen:
-            brand_seen.add(norm(brand))
-            discovered_brands.append(brand)
-    for brand in _catalog_brand_candidates(raw_query):
-        if norm(brand) not in brand_seen:
-            brand_seen.add(norm(brand))
-            discovered_brands.append(brand)
+
+    # Se abbiamo già le referenze della famiglia dal catalogo, non serve
+    # fare una seconda espansione per brand: aggiungere altre query qui
+    # moltiplica inutilmente i tempi dello scraper.
+    if not family_candidates:
+        brand_seen = set()
+        for item in initial_results:
+            if not isinstance(item, dict):
+                continue
+            brand = str(item.get("brand") or "").strip()
+            if brand and norm(brand) not in brand_seen:
+                brand_seen.add(norm(brand))
+                discovered_brands.append(brand)
+        for brand in _catalog_brand_candidates(raw_query):
+            if norm(brand) not in brand_seen:
+                brand_seen.add(norm(brand))
+                discovered_brands.append(brand)
 
     attempts = build_search_attempts(
         store,
@@ -895,43 +917,31 @@ def search_perfume(q: str):
     catalog_hints: List[str] = _catalog_brand_candidates(query)
     family_candidates: List[str] = _catalog_family_candidates(query)
 
-    # NON 8 insieme: su Render Free abbiamo osservato exit 137.
-    # Due worker riducono nettamente RAM e connessioni simultanee.
-    # ParfumZentrum e PerfumeMarket vengono messi per primi nella coda,
-    # cosi' non restano in attesa dietro agli altri store.
-    search_order = [
-        store for store in ("parfumzentrum", "perfumemarket")
-        if store in STORES
-    ] + [store for store in STORES if store not in {"parfumzentrum", "perfumemarket"}]
-
-    executor = ThreadPoolExecutor(max_workers=2)
-    futures = {}
-    for store in search_order:
-        print(f"SCENTHUNTER: STORE_START {store} query={query!r}", flush=True)
-        futures[
-            executor.submit(
-                run_store,
-                store,
-                query,
-                catalog_hints,
-                family_candidates,
-            )
-        ] = store
+    # Tutti gli store vengono avviati in parallelo: un negozio lento non deve
+    # tenere in coda gli altri. Il limite globale evita che una singola ricerca
+    # resti bloccata indefinitamente.
+    executor = ThreadPoolExecutor(max_workers=len(STORES))
+    futures = {
+        executor.submit(
+            run_store,
+            store,
+            query,
+            catalog_hints,
+            family_candidates,
+        ): store
+        for store in STORES
+    }
 
     try:
-        for future in as_completed(futures, timeout=28):
+        for future in as_completed(futures, timeout=60):
             store = futures[future]
             try:
-                store_results = future.result()
-                all_results.extend(store_results)
-                print(
-                    f"SCENTHUNTER: STORE_DONE {store} count={len(store_results)}",
-                    flush=True,
-                )
+                all_results.extend(future.result())
             except Exception as error:
                 errors[store] = f"{type(error).__name__}: {error}"
                 traceback.print_exc()
     except TimeoutError:
+        # Restituisce comunque tutti i risultati già completati.
         pass
     finally:
         for future, store in futures.items():
