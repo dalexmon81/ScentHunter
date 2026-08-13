@@ -1054,13 +1054,40 @@ function shGroupData(data){
     return "liquid brun";
   }
 
+  function concentrationHint(o){
+    const raw=String(o&&((o.name||"")+" "+(o.concentration||""))||"").toLowerCase();
+    if(/\\beau\\s+de\\s+toilette\\b|\\bedt\\b/.test(raw))return "Eau de Toilette";
+    if(/\\beau\\s+de\\s+parfum\\b|\\bedp\\b/.test(raw))return "Eau de Parfum";
+    if(/\\bextrait(?:\\s+de\\s+parfum)?\\b/.test(raw))return "Extrait de Parfum";
+    if(/\\beau\\s+de\\s+cologne\\b|\\bedc\\b/.test(raw))return "Eau de Cologne";
+    return "";
+  }
+
   function productIdentity(o){
     // Primo tentativo: il dato originale dello scraper. Questo permette
     // al catalogo di conservare nomi canonici che la pulizia commerciale
     // potrebbe altrimenti accorciare (es. "Hawas for Him").
     const rawBrand=cleanBrandText(o.brand);
     const rawName=cleanBrandText(o.name);
-    const directMaster=resolveMasterProduct(rawBrand,rawName);
+    const hint=concentrationHint(o);
+
+    // Se il nome originale contiene una concentrazione esplicita,
+    // preferiamo la referenza master con la stessa concentrazione.
+    // Questo evita che "Eau de Toilette" venga confusa con "Eau de Parfum"
+    // dopo la pulizia commerciale del nome.
+    let directMaster=null;
+    if(hint){
+      const rb=norm(rawBrand);
+      const rn=norm(rawName);
+      const candidates=MASTER_CATALOG.filter(p=>{
+        if(norm(p.concentration||"")!==norm(hint))return false;
+        if(rb && norm(p.brand||"")!==rb)return false;
+        const names=[p.name,...(Array.isArray(p.aliases)?p.aliases:[])].map(norm);
+        return names.some(a=>a===rn || (a.length>=6 && rn.includes(a)));
+      });
+      if(candidates.length===1)directMaster=candidates[0];
+    }
+    if(!directMaster)directMaster=resolveMasterProduct(rawBrand,rawName);
     if(directMaster){
       return {
         brand:directMaster.brand||rawBrand,
