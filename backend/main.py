@@ -508,23 +508,58 @@ def resolve_actual_price(product: Dict[str, Any]) -> Dict[str, Any]:
     return item
 
 
+def _requested_concentration(query: str) -> Optional[str]:
+    raw = norm(query)
+    if re.search(r"\beau de toilette\b|\bedt\b", raw):
+        return "eau de toilette"
+    if re.search(r"\beau de parfum\b|\bedp\b", raw):
+        return "eau de parfum"
+    if re.search(r"\bextrait(?: de parfum)?\b", raw):
+        return "extrait de parfum"
+    if re.search(r"\beau de cologne\b|\bedc\b", raw):
+        return "eau de cologne"
+    return None
+
+
+def _product_concentration(product: Dict[str, Any]) -> str:
+    raw = norm(
+        " ".join(
+            str(product.get(key) or "")
+            for key in ("name", "title", "product_name", "concentration")
+        )
+    )
+    if re.search(r"\beau de toilette\b|\bedt\b", raw):
+        return "eau de toilette"
+    if re.search(r"\beau de parfum\b|\bedp\b", raw):
+        return "eau de parfum"
+    if re.search(r"\bextrait(?: de parfum)?\b", raw):
+        return "extrait de parfum"
+    if re.search(r"\beau de cologne\b|\bedc\b", raw):
+        return "eau de cologne"
+    return ""
+
+
 def matches(product: Dict[str, Any], query: str) -> bool:
     """
     Match generale del prodotto.
 
-    IMPORTANTE: non scartiamo automaticamente le varianti (Limited Edition,
-    Elixir, Rebel, ecc.). La UI deve poterle mostrare come prodotti distinti.
-    Filtriamo invece i veri non-profumi (gift set, deodoranti, kit...).
-
-    Per alcune referenze verificate, uno store può usare un alias reale del
-    nome canonico. In quel caso accettiamo l'alias solo se è esplicitamente
-    associato alla query, senza trasformare la ricerca in una ricerca ampia.
+    Le varianti restano distinte. Se la query NON specifica la
+    concentrazione, EDT/EDP possono comparire entrambe.
+    Se invece la query specifica EDT/EDP/Extrait/EDC, il prodotto deve
+    avere la stessa concentrazione. Questo evita che una ricerca esplicita
+    "Eau de Parfum" restituisca anche la Eau de Toilette.
     """
     name_tokens = set(norm(product.get("name", "")).split())
     query_all_tokens = set(norm(query).split())
 
     if not name_tokens or not query_all_tokens:
         return False
+
+    requested_concentration = _requested_concentration(query)
+    if requested_concentration:
+        product_concentration = _product_concentration(product)
+        if product_concentration != requested_concentration:
+            return False
 
     for phrase in NON_PERFUME:
         phrase_tokens = set(norm(phrase).split())
@@ -547,8 +582,6 @@ def matches(product: Dict[str, Any], query: str) -> bool:
     if bool(query_tokens) and query_tokens.issubset(name_tokens):
         return True
 
-    # Alias stretti e verificati: per esempio alcuni store chiamano
-    # "9 PM Pour Femme" con il nome "9PM Purple Femme".
     for alias in _query_aliases(query):
         alias_tokens = {
             token
@@ -559,6 +592,7 @@ def matches(product: Dict[str, Any], query: str) -> bool:
             return True
 
     return False
+
 
 
 def load_scraper(store: str):
