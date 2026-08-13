@@ -1647,7 +1647,7 @@ function chooseOffer(gi,sizeKey,oi){
   }
 }
 
-async function fetchJSONWithTimeout(url,ms=90000){
+async function fetchJSONWithTimeout(url,ms=45000){
  const controller=new AbortController();
  const timer=setTimeout(()=>controller.abort(),ms);
  try{
@@ -1657,9 +1657,33 @@ async function fetchJSONWithTimeout(url,ms=90000){
  }finally{clearTimeout(timer)}
 }
 
-function isLeBeauFamilyQuery(query){
- const q=normalizePerfumeName(query||"");
- return /\ble\s+beau\b/.test(q);
+function familySearchPlan(query){
+ const n=normalizePerfumeName(query||"").toLowerCase().trim();
+ if(/(?:^|\s)9\s*pm(?:\s|$)/i.test(n)){
+  return {
+   base:"9 PM",
+   terms:["9 PM","9PM Elixir","9PM Night Out","9PM Rebel","9 PM Pour Femme"],
+   filter:g=>{
+    const name=normalizePerfumeName(g?.name||"").toLowerCase();
+    const brand=normalizePerfumeName(g?.brand||"").toLowerCase();
+    return brand==="afnan" && /^9\s*pm\b/i.test(name);
+   }
+  };
+ }
+ if(/\ble\s+beau\b/i.test(n)){
+  return {
+   base:"Jean Paul Gaultier Le Beau",
+   terms:[
+    "Jean Paul Gaultier Le Beau",
+    "Jean Paul Gaultier Le Beau Le Parfum",
+    "Jean Paul Gaultier Le Beau Paradise Garden",
+    "Jean Paul Gaultier Le Beau Narcisse",
+    "Jean Paul Gaultier Le Beau Flower Edition"
+   ],
+   filter:g=>isLeBeauFamilyGroup(g)
+  };
+ }
+ return null;
 }
 
 function isLeBeauFamilyGroup(g){
@@ -1675,101 +1699,140 @@ function isLeBeauFamilyGroup(g){
  ].some(x=>name===normalizePerfumeName(x));
 }
 
-async function searchLeBeauFamily(){
- // Prima facciamo UNA sola ricerca ampia. In questo modo non lanciamo
- // cinque cicli completi degli scraper e non blocchiamo la ricerca per minuti.
- const baseTerm="Jean Paul Gaultier Le Beau";
- const merged={comparisons:[],results:[],errors:{}};
+function mergeSearchData(target,data){
+ if(!data)return;
+ if(Array.isArray(data.comparisons))target.comparisons.push(...data.comparisons);
+ if(Array.isArray(data.results))target.results.push(...data.results);
+ if(data.errors&&typeof data.errors==="object")Object.entries(data.errors).forEach(([k,v])=>{
+  if(!target.errors[k])target.errors[k]=v;
+ });
+}
 
- const appendData=(data)=>{
-  if(Array.isArray(data.comparisons))merged.comparisons.push(...data.comparisons);
-  if(Array.isArray(data.results))merged.results.push(...data.results);
-  if(data.errors&&typeof data.errors==="object")Object.entries(data.errors).forEach(([store,error])=>{
-   if(!merged.errors[store])merged.errors[store]=error;
+function applyMasterFormats(groups){
+ groups.forEach(g=>{
+  if(!g.catalog_id)return;
+  const master=MASTER_CATALOG.find(p=>p.id===g.catalog_id);
+  if(!master||!Array.isArray(master.formats_ml)||!master.formats_ml.length)return;
+  const allowed=master.formats_ml.map(Number).filter(Number.isFinite);
+  const isLeBeauParfum=master.id==="SH-0074";
+  const normalized=[];
+  (g.offers||[]).forEach(o=>{
+   let size=Number(sizeOf(o));
+   if(Number.isFinite(size)){
+    // Deloox/Sabina hanno riportato 100/200 ml per Le Beau Le Parfum,
+    // ma la referenza reale è esclusivamente 75/125 ml.
+    if(isLeBeauParfum && size===100)size=75;
+    else if(isLeBeauParfum && size===200)size=125;
+    else if(!allowed.includes(size))return;
+    o.size_ml=size;
+   }
+   normalized.push(o);
   });
+  g.offers=normalized;
+ });
+ return groups.filter(g=>(g.offers||[]).length);
+}
+
+let activeSearchId=0;
+
+async function completeFamilyInBackground(plan,merged,searchId){
+ const currentGroups=()=>{
+  let groups=shGroupData(merged);
+  applyMasterFormats(groups);
+  if(plan.filter)groups=groups.filter(plan.filter);
+  return groups;
  };
-
- try{
-  const data=await fetchJSONWithTimeout(
-   backend()+"/search?q="+encodeURIComponent(baseTerm),
-   120000
-  );
-  appendData(data);
- }catch(e){
-  merged.errors["ricerca "+baseTerm]=String(e?.message||"timeout");
-  return merged;
- }
-
- // Controlliamo cosa è già arrivato. Cerchiamo soltanto le varianti realmente
- // mancanti, invece di ripetere cinque ricerche ogni volta.
- const found=new Set();
- try{
-  const baseGroups=shGroupData(merged);
-  baseGroups.filter(isLeBeauFamilyGroup).forEach(g=>{
-   found.add(normalizePerfumeName(g.name||""));
-  });
- }catch(_){ }
-
- const wanted=[
-  ["le beau","Jean Paul Gaultier Le Beau"],
-  ["le beau le parfum intense","Jean Paul Gaultier Le Beau Le Parfum"],
-  ["le beau paradise garden","Jean Paul Gaultier Le Beau Paradise Garden"],
-  ["le beau narcisse","Jean Paul Gaultier Le Beau Narcisse"],
-  ["le beau flower edition","Jean Paul Gaultier Le Beau Flower Edition"]
- ];
-
- // Al massimo due richieste di recupero contemporaneamente: abbastanza rapide
- // da recuperare Narcisse/Flower senza sovraccaricare tutti gli scraper.
- const missing=wanted.filter(([name])=>!found.has(normalizePerfumeName(name)));
- for(let i=0;i<missing.length;i+=2){
-  const batch=missing.slice(i,i+2);
-  const results=await Promise.all(batch.map(async ([,term])=>{
+ let groups=currentGroups();
+ const found=new Set(groups.map(g=>normalizePerfumeName(g.name||"")));
+ const missing=plan.terms.filter(term=>{
+  const n=normalizePerfumeName(term);
+  return ![...found].some(x=>x===n||n.includes(x)||x.includes(n));
+ });
+ // Le Beau Le Parfum è lo stesso master di Le Beau Le Parfum Intense.
+ const filtered=missing.filter(term=>normalizePerfumeName(term)!==normalizePerfumeName(plan.base));
+ for(let i=0;i<filtered.length;i+=2){
+  if(searchId!==activeSearchId)return;
+  const batch=filtered.slice(i,i+2);
+  const responses=await Promise.all(batch.map(async term=>{
    try{
     return await fetchJSONWithTimeout(
      backend()+"/search?q="+encodeURIComponent(term),
-     75000
+     30000
     );
    }catch(e){
     return {comparisons:[],results:[],errors:{["ricerca "+term]:String(e?.message||"timeout")}};
    }
   }));
-  results.forEach(appendData);
+  responses.forEach(d=>mergeSearchData(merged,d));
+  if(searchId!==activeSearchId)return;
+  groups=currentGroups();
+  if(groups.length){
+   showProducts(groups);
+   currentProductGroups=groups;
+   updateBestPricesFromGroups(groups);
+   refreshWishlistFromResults(groups.flatMap(g=>g.offers.map(o=>({name:g.name||"",brand:g.brand||"",price:shPrice(o),price_value:o.price_value,store:o.store||"",url:o.url||""}))));
+  }
  }
- return merged;
 }
 
 async function searchPerfume(){
- const q=queryInput.value.trim();if(!q){statusBox.textContent="";resultsBox.innerHTML="";errorsBox.innerHTML="";return}
+ const q=queryInput.value.trim();
+ if(!q){statusBox.textContent="";resultsBox.innerHTML="";errorsBox.innerHTML="";return}
+ const searchId=++activeSearchId;
  searchButton.disabled=true;searchButton.classList.add("searching");
  let dots=0;
- const updateSearchButton=()=>{dots=(dots+1)%4;searchButton.innerHTML='<span class="search-fixed">CERCO</span><span class="search-dots">'+". ".trim().repeat(0)+". ".trim().repeat(dots)+'</span>'};
+ const updateSearchButton=()=>{dots=(dots+1)%4;searchButton.innerHTML='<span class="search-fixed">CERCO</span><span class="search-dots">'+". ".repeat(dots)+'</span>'};
  updateSearchButton();
  const dotsTimer=setInterval(updateSearchButton,500);
  statusBox.textContent="";resultsBox.innerHTML="";errorsBox.innerHTML="";
  try{
-  let data;
-  if(isLeBeauFamilyQuery(q)){
-   data=await searchLeBeauFamily();
+  const plan=familySearchPlan(q);
+  if(plan){
+   const merged={comparisons:[],results:[],errors:{}};
+   try{
+    const data=await fetchJSONWithTimeout(
+     backend()+"/search?q="+encodeURIComponent(plan.base),
+     45000
+    );
+    mergeSearchData(merged,data);
+   }catch(e){
+    merged.errors["ricerca "+plan.base]=String(e?.message||"timeout");
+   }
+
+   let groups=shGroupData(merged);
+   applyMasterFormats(groups);
+   if(plan.filter)groups=groups.filter(plan.filter);
+   showProducts(groups);
+   currentProductGroups=groups;
+   updateBestPricesFromGroups(groups);
+   refreshWishlistFromResults(groups.flatMap(g=>g.offers.map(o=>({name:g.name||"",brand:g.brand||"",price:shPrice(o),price_value:o.price_value,store:o.store||"",url:o.url||""}))));
+   if(merged.errors&&Object.keys(merged.errors).length){
+    const errorRows=Object.entries(merged.errors).map(([store,error])=>`<div style="margin-top:7px"><strong>${esc(store)}</strong>: ${esc(String(error||"Errore non specificato"))}</div>`).join("");
+    errorsBox.innerHTML=`<div>Alcuni negozi non hanno risposto nella ricerca iniziale.</div>${errorRows}`;
+   }
+   // Le varianti mancanti vengono recuperate dopo aver mostrato subito
+   // quello che la ricerca principale ha già trovato.
+   setTimeout(()=>completeFamilyInBackground(plan,merged,searchId),0);
   }else{
-   data=await fetchJSONWithTimeout(
-    backend()+"/search?q="+encodeURIComponent(q),
-    180000
-   );
-  }
-
-  let groups=shGroupData(data);
-
-  // La ricerca "Le Beau" deve contenere solo la famiglia Jean Paul Gaultier.
-  // Elimina quindi falsi positivi come Kenzo Le Monde Est Beau.
-  if(isLeBeauFamilyQuery(q))groups=groups.filter(isLeBeauFamilyGroup);
-
-  showProducts(groups);
-  currentProductGroups=groups;
-  updateBestPricesFromGroups(groups);
-  refreshWishlistFromResults(groups.flatMap(g=>g.offers.map(o=>({name:g.name||"",brand:g.brand||"",price:shPrice(o),price_value:o.price_value,store:o.store||"",url:o.url||""}))));
-  if(data.errors&&Object.keys(data.errors).length){
-   const errorRows=Object.entries(data.errors).map(([store,error])=>`<div style="margin-top:7px"><strong>${esc(store)}</strong>: ${esc(String(error||"Errore non specificato"))}</div>`).join("");
-   errorsBox.innerHTML=`<div>Alcuni negozi non hanno risposto:</div>${errorRows}`;
+   let data;
+   try{
+    data=await fetchJSONWithTimeout(
+     backend()+"/search?q="+encodeURIComponent(q),
+     45000
+    );
+   }catch(e){
+    data={comparisons:[],results:[],errors:{["ricerca "+q]:String(e?.message||"timeout")}};
+   }
+   let groups=shGroupData(data);
+   applyMasterFormats(groups);
+   showProducts(groups);
+   currentProductGroups=groups;
+   updateBestPricesFromGroups(groups);
+   refreshWishlistFromResults(groups.flatMap(g=>g.offers.map(o=>({name:g.name||"",brand:g.brand||"",price:shPrice(o),price_value:o.price_value,store:o.store||"",url:o.url||""}))));
+   if(data.errors&&Object.keys(data.errors).length){
+    const errorRows=Object.entries(data.errors).map(([store,error])=>`<div style="margin-top:7px"><strong>${esc(store)}</strong>: ${esc(String(error||"Errore non specificato"))}</div>`).join("");
+    errorsBox.innerHTML=`<div>Alcuni negozi non hanno risposto:</div>${errorRows}`;
+   }
   }
  }catch(e){console.error(e);statusBox.textContent="Impossibile completare la ricerca."}
  finally{clearInterval(dotsTimer);searchButton.disabled=false;searchButton.classList.remove("searching");searchButton.textContent="INIZIA LA RICERCA"}
