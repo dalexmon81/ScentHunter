@@ -1,14 +1,23 @@
 import json
 import re
+import time
 import requests
 import xml.etree.ElementTree as ET
 from bs4 import BeautifulSoup
 from urllib.parse import unquote
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
 BASE_URL = "https://www.parfum-zentrum.de"
 SITEMAP_URL = BASE_URL + "/sitemap.xml"
 
-SESSION = requests.Session()
+SITEMAP_CACHE = None
+SITEMAP_CACHE_TIME = 0.0
+SITEMAP_CACHE_SECONDS = 900
+RESULT_CACHE = {}
+RESULT_CACHE_SECONDS = 90
+REQUEST_TIMEOUT = 4
+MAX_CANDIDATES = 6
+MAX_WORKERS = 4
 
 HEADERS = {
     "User-Agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 Version/18.0 Mobile/15E148 Safari/604.1",
@@ -81,49 +90,56 @@ def _xml_urls(xml_text):
     ]
 
 
+def _new_session():
+    session = requests.Session()
+    session.headers.update(HEADERS)
+    return session
+
+
 def _get_sitemap_urls():
-    r = SESSION.get(SITEMAP_URL, headers=HEADERS, timeout=4)
+    global SITEMAP_CACHE, SITEMAP_CACHE_TIME
 
-    if r.status_code in (403, 429):
-        print(f"PARFUMZENTRUM BLOCKED: HTTP {r.status_code}")
-        r.close()
-        return []
+    now = time.time()
+    if SITEMAP_CACHE is not None and now - SITEMAP_CACHE_TIME < SITEMAP_CACHE_SECONDS:
+        print(f"PARFUMZENTRUM: SITEMAP_CACHE_HIT urls={len(SITEMAP_CACHE)}", flush=True)
+        return SITEMAP_CACHE
 
-    r.raise_for_status()
-    xml_text = r.text
-    r.close()
-    urls = _xml_urls(xml_text)
+    session = _new_session()
+    try:
+        print("PARFUMZENTRUM: SITEMAP_GET_START", flush=True)
+        r = session.get(SITEMAP_URL, timeout=REQUEST_TIMEOUT)
+        if r.status_code in (403, 429):
+            print(f"PARFUMZENTRUM: SITEMAP_BLOCKED HTTP={r.status_code}", flush=True)
+            return []
+        r.raise_for_status()
+        urls = _xml_urls(r.text)
 
-    child_maps = [
-        u for u in urls
-        if "sitemap" in u.lower()
-        and u.lower().endswith((".xml", ".xml.gz"))
-    ]
+        child_maps = [
+            u for u in urls
+            if "sitemap" in u.lower()
+            and u.lower().endswith((".xml", ".xml.gz"))
+        ]
 
-    if not child_maps:
-        return urls
+        if not child_maps:
+            SITEMAP_CACHE = urls
+            SITEMAP_CACHE_TIME = now
+            return urls
 
-    out = []
+        out = []
+        for sm in child_maps:
+            try:
+                rr = session.get(sm, timeout=REQUEST_TIMEOUT)
+                if rr.status_code == 200:
+                    out.extend(_xml_urls(rr.text))
+            except requests.RequestException as exc:
+                print(f"PARFUMZENTRUM: SITEMAP_CHILD_ERROR {type(exc).__name__}", flush=True)
 
-    for sm in child_maps:
-        try:
-            rr = SESSION.get(sm, headers=HEADERS, timeout=4)
-
-            if rr.status_code in (403, 429):
-                print(f"PARFUMZENTRUM SITEMAP BLOCKED: HTTP {rr.status_code}")
-                rr.close()
-                break
-
-            if rr.status_code == 200:
-                xml_text = rr.text
-                rr.close()
-                out.extend(_xml_urls(xml_text))
-            else:
-                rr.close()
-        except Exception:
-            pass
-
-    return out
+        SITEMAP_CACHE = out
+        SITEMAP_CACHE_TIME = now
+        print(f"PARFUMZENTRUM: SITEMAP_READY urls={len(out)}", flush=True)
+        return out
+    finally:
+        session.close()
 
 
 def _parse_price(value):
@@ -438,128 +454,146 @@ def _extract_global_price(soup, chunks):
 
 
 def _extract_product(url, query):
-    r = SESSION.get(url, headers=HEADERS, timeout=4)
+    session = _new_session()
+    try:
+        r = session.get(url, timeout=REQUEST_TIMEOUT)
 
-    if r.status_code in (403, 429):
-        print(f"PARFUMZENTRUM PRODUCT BLOCKED: HTTP {r.status_code}")
+        if r.status_code in (403, 429):
+            print(f"PARFUMZENTRUM PRODUCT BLOCKED: HTTP {r.status_code}")
+            r.close()
+            return []
+
+        if r.status_code != 200:
+            r.close()
+            return []
+
+        html = r.text
         r.close()
-        return []
 
-    if r.status_code != 200:
-        r.close()
-        return []
+        soup = BeautifulSoup(html, "html.parser")
+        h1 = soup.find("h1")
 
-    html = r.text
-    r.close()
+        if not h1:
+            return []
 
-    soup = BeautifulSoup(html, "html.parser")
-    h1 = soup.find("h1")
+        name = " ".join(h1.stripped_strings)
 
-    if not h1:
-        return []
+        if not _all_tokens_match(name, query):
+            return []
 
-    name = " ".join(h1.stripped_strings)
+        chunks = []
+        node = h1
 
-    if not _all_tokens_match(name, query):
-        return []
+        for _ in range(8):
+            if not node:
+                break
 
-    chunks = []
-    node = h1
+            txt = node.get_text(" ", strip=True)
 
-    for _ in range(8):
-        if not node:
-            break
+            if txt:
+                chunks.append(txt)
 
-        txt = node.get_text(" ", strip=True)
+            node = node.parent
 
-        if txt:
-            chunks.append(txt)
+        page_near_h1 = " ".join(chunks[:5]).lower()
 
-        node = node.parent
+        if any(x in page_near_h1 for x in UNAVAILABLE_PHRASES):
+            return []
 
-    page_near_h1 = " ".join(chunks[:5]).lower()
+        # Prima cosa: estraiamo tutte le varianti realmente visibili.
+        variants = _extract_visible_variants(soup)
 
-    if any(x in page_near_h1 for x in UNAVAILABLE_PHRASES):
-        return []
+        # Se il DOM non espone le coppie formato/prezzo, usiamo JSON-LD solo per
+        # formati esplicitamente identificabili. Non inventiamo il formato.
+        if not variants:
+            for size, price in _jsonld_variants(soup):
+                if size is not None:
+                    variants[size] = price
 
-    # Prima cosa: estraiamo tutte le varianti realmente visibili.
-    variants = _extract_visible_variants(soup)
+        if variants:
+            results = []
+            for size_ml, price in sorted(variants.items()):
+                results.append({
+                    "store": "ParfumZentrum",
+                    # Il formato nel nome serve anche a mantenere distinte le
+                    # varianti nel dedup del backend; la UI lo rimuove dal nome
+                    # visualizzato e usa size_ml per creare i gruppi.
+                    "name": f"{name} {size_ml} ml",
+                    "size_ml": str(size_ml),
+                    "price": price,
+                    "url": url,
+                })
+            return results
 
-    # Se il DOM non espone le coppie formato/prezzo, usiamo JSON-LD solo per
-    # formati esplicitamente identificabili. Non inventiamo il formato.
-    if not variants:
-        for size, price in _jsonld_variants(soup):
-            if size is not None:
-                variants[size] = price
+        # Nessuna variante esplicita: fallback a un solo prezzo sicuro.
+        price = _extract_global_price(soup, chunks)
+        if not price:
+            return []
 
-    if variants:
-        results = []
-        for size_ml, price in sorted(variants.items()):
-            results.append({
-                "store": "ParfumZentrum",
-                # Il formato nel nome serve anche a mantenere distinte le
-                # varianti nel dedup del backend; la UI lo rimuove dal nome
-                # visualizzato e usa size_ml per creare i gruppi.
-                "name": f"{name} {size_ml} ml",
-                "size_ml": str(size_ml),
-                "price": price,
-                "url": url,
-            })
-        return results
-
-    # Nessuna variante esplicita: fallback a un solo prezzo sicuro.
-    price = _extract_global_price(soup, chunks)
-    if not price:
-        return []
-
-    return [{
-        "store": "ParfumZentrum",
-        "name": name,
-        "price": price,
-        "url": url,
-    }]
-
+        return [{
+            "store": "ParfumZentrum",
+            "name": name,
+            "price": price,
+            "url": url,
+        }]
+    finally:
+        session.close()
 
 def search(query):
-    try:
-        urls = _get_sitemap_urls()
-    except Exception as e:
-        print("ERRORE SITEMAP:", e)
+    query = str(query or "").strip()
+    if not query:
         return []
 
-    candidates = []
+    cache_key = query.lower()
+    cached = RESULT_CACHE.get(cache_key)
+    if cached and time.time() - cached[0] < RESULT_CACHE_SECONDS:
+        print(f"PARFUMZENTRUM: CACHE_HIT query={query!r} count={len(cached[1])}", flush=True)
+        return [dict(item) for item in cached[1]]
 
-    for url in urls:
-        if re.search(r"_z\d+/?$", url) and _all_tokens_match(url, query):
-            candidates.append(url)
+    started = time.time()
+    print(f"PARFUMZENTRUM: SEARCH_START query={query!r}", flush=True)
+
+    try:
+        urls = _get_sitemap_urls()
+    except Exception as exc:
+        print(f"PARFUMZENTRUM: SITEMAP_ERROR {type(exc).__name__}: {exc}", flush=True)
+        return []
+
+    candidates = [
+        url for url in urls
+        if re.search(r"_z\d+/?$", url) and _all_tokens_match(url, query)
+    ]
+    candidates = candidates[:MAX_CANDIDATES]
+    print(f"PARFUMZENTRUM: CANDIDATES count={len(candidates)}", flush=True)
 
     results = []
     seen = set()
-
-    try:
-        for url in candidates[:6]:
-            try:
-                items = _extract_product(url, query)
-            except Exception as e:
-                print("ERRORE PRODOTTO PARFUMZENTRUM:", repr(e))
-                items = []
-
-            for item in items:
-                if not item:
+    if candidates:
+        with ThreadPoolExecutor(max_workers=min(MAX_WORKERS, len(candidates))) as executor:
+            future_map = {executor.submit(_extract_product, url, query): url for url in candidates}
+            for future in as_completed(future_map):
+                url = future_map[future]
+                try:
+                    items = future.result() or []
+                except Exception as exc:
+                    print(f"PARFUMZENTRUM: PRODUCT_ERROR url={url} error={type(exc).__name__}: {exc}", flush=True)
                     continue
-
-                key = (
-                    item["name"].lower(),
-                    item["url"],
-                    item.get("size_ml", ""),
-                )
-
-                if key not in seen:
+                for item in items:
+                    if not item:
+                        continue
+                    key = (item.get("name", "").lower(), item.get("url", ""), item.get("size_ml", ""))
+                    if key in seen:
+                        continue
                     seen.add(key)
                     results.append(item)
-    finally:
-        SESSION.close()
+                    print(
+                        f"PARFUMZENTRUM: RESULT name={item.get('name')!r} size={item.get('size_ml')} price={item.get('price')}",
+                        flush=True,
+                    )
 
+    results.sort(key=lambda x: (x.get("name", "").lower(), int(x.get("size_ml") or 0)))
+    RESULT_CACHE[cache_key] = (time.time(), [dict(item) for item in results])
+    print(f"PARFUMZENTRUM: SEARCH_COMPLETE count={len(results)} elapsed={time.time()-started:.2f}s", flush=True)
     return results
 
 
