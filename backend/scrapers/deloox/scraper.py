@@ -169,7 +169,7 @@ def _tokens(value):
     ]
 
 
-def _matches_soft(text, query, minimum=1.0):
+def _matches_soft(text, query, minimum=0.55):
     text_tokens = set(_tokens(text))
     query_tokens = set(_tokens(query))
 
@@ -291,7 +291,7 @@ def _is_relevant_product(text, query):
     if not _matches_soft(
         text,
         query,
-        minimum=1.0,
+        minimum=0.55,
     ):
         return False
 
@@ -468,6 +468,13 @@ def _extract_category(html, query):
         if "/product/" not in product_url.lower():
             continue
 
+        # Controllo fondamentale contro prodotti estranei.
+        if not _url_matches_query(
+            product_url,
+            query,
+        ):
+            continue
+
         card = _find_product_card(link)
 
         card_text = _clean(
@@ -486,7 +493,7 @@ def _extract_category(html, query):
         if not _matches_soft(
             card_text,
             query,
-            minimum=1.0,
+            minimum=0.55,
         ):
             continue
 
@@ -495,7 +502,7 @@ def _extract_category(html, query):
         if not query_tokens.issubset(card_tokens):
             # Allow the card if a stricter soft similarity check passes,
             # or if the anchor title / a heading inside the card contains all query tokens.
-            if not _matches_soft(card_text, query, minimum=1.0):
+            if not _matches_soft(card_text, query, minimum=0.75):
                 link_title = _clean(link.get("title") or "")
                 if link_title and set(_tokens(query)).issubset(set(_tokens(link_title))):
                     pass
@@ -534,7 +541,7 @@ def _extract_category(html, query):
         if (
             link_name
             and not SIZE_FULL_RE.fullmatch(link_name)
-            and _matches_soft(link_name, query, minimum=1.0)
+            and _matches_soft(link_name, query, minimum=0.55)
             and set(_tokens(query)).issubset(set(_tokens(link_name)))
         ):
             product_name = link_name
@@ -589,7 +596,7 @@ def _extract_brand_page(html, query):
             if not _matches_soft(
                 text,
                 query,
-                minimum=1.0,
+                minimum=0.55,
             ):
                 node = node.parent
                 continue
@@ -622,6 +629,12 @@ def _extract_brand_page(html, query):
                 ).split("?")[0]
 
                 if "/product/" not in candidate_url.lower():
+                    continue
+
+                if not _url_matches_query(
+                    candidate_url,
+                    query,
+                ):
                     continue
 
                 product_link = candidate_url
