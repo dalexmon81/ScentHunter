@@ -1657,54 +1657,6 @@ async function fetchJSONWithTimeout(url,ms=90000){
  }finally{clearTimeout(timer)}
 }
 
-function isLeBeauFamilyQuery(term){
- const n=normalizePerfumeName(term||"");
- return /(^| )le beau( |$)/.test(n) && !/le beau male/.test(n) && !/la belle/.test(n);
-}
-
-function leBeauFamilyQueries(term){
- /*
-  * LE BEAU: una ricerca troppo specifica come "Le Beau Le Parfum"
-  * può far restituire al backend solo una parte della linea.
-  * In questo caso l'INDEX amplia la ricerca in modo trasparente,
-  * senza modificare scraper o backend, e poi riunisce i risultati.
-  *
-  * Le cinque referenze della linea che vogliamo mostrare:
-  * 1. Le Beau
-  * 2. Le Beau Le Parfum
-  * 3. Le Beau Paradise Garden
-  * 4. Le Beau Flower Edition
-  * 5. Le Beau Narcisse
-  */
- if(!isLeBeauFamilyQuery(term))return [term];
- return [
-   "Le Beau",
-   "Le Beau Le Parfum",
-   "Le Beau Paradise Garden",
-   "Le Beau Flower Edition",
-   "Le Beau Narcisse"
- ];
-}
-
-function mergeSearchData(dataList){
- const comparisons=[];
- const results=[];
- const errors={};
-
- (Array.isArray(dataList)?dataList:[]).forEach(data=>{
-   if(!data||typeof data!=="object")return;
-   if(Array.isArray(data.comparisons))comparisons.push(...data.comparisons);
-   if(Array.isArray(data.results))results.push(...data.results);
-   if(data.errors&&typeof data.errors==="object"){
-     Object.entries(data.errors).forEach(([store,error])=>{
-       if(error && !errors[store])errors[store]=error;
-     });
-   }
- });
-
- return {comparisons,results,errors};
-}
-
 async function searchPerfume(){
  const q=queryInput.value.trim();if(!q){statusBox.textContent="";resultsBox.innerHTML="";errorsBox.innerHTML="";return}
  searchButton.disabled=true;searchButton.classList.add("searching");
@@ -1714,31 +1666,15 @@ async function searchPerfume(){
  const dotsTimer=setInterval(updateSearchButton,500);
  statusBox.textContent="";resultsBox.innerHTML="";errorsBox.innerHTML="";
  try{
-  const terms=leBeauFamilyQueries(q);
-
-  /*
-   * Per la famiglia Le Beau facciamo le cinque ricerche in parallelo.
-   * Le richieste restano indipendenti: se un negozio fallisce su una
-   * query, non blocca le altre quattro.
-   */
-  const dataList=await Promise.all(
-    terms.map(term=>fetchJSONWithTimeout(
-      backend()+"/search?q="+encodeURIComponent(term),
-      180000
-    ).catch(error=>({
-      comparisons:[],
-      results:[],
-      errors:{[`ricerca "${term}"`]:String(error?.message||error||"Errore non specificato")}
-    })))
+  const term=q;
+  const data=await fetchJSONWithTimeout(
+    backend()+"/search?q="+encodeURIComponent(term),
+    180000
   );
-
-  const data=mergeSearchData(dataList);
-  const groups=shGroupData(data);
-  showProducts(groups);
+  const groups=shGroupData(data);showProducts(groups);
   currentProductGroups=groups;
   updateBestPricesFromGroups(groups);
   refreshWishlistFromResults(groups.flatMap(g=>g.offers.map(o=>({name:g.name||"",brand:g.brand||"",price:shPrice(o),price_value:o.price_value,store:o.store||"",url:o.url||""}))));
-
   if(data.errors&&Object.keys(data.errors).length){
    const errorRows=Object.entries(data.errors).map(([store,error])=>`<div style="margin-top:7px"><strong>${esc(store)}</strong>: ${esc(String(error||"Errore non specificato"))}</div>`).join("");
    errorsBox.innerHTML=`<div>Alcuni negozi non hanno risposto:</div>${errorRows}`;
