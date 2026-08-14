@@ -560,7 +560,7 @@ def build_search_attempts(
     compact = re.sub(r"(?<=\d)\s+(?=[a-z])|(?<=[a-z])\s+(?=\d)", "", normalized)
     if compact != normalized:
         add(compact)
-    return attempts[:12]
+    return attempts[:6]
 
 
 def run_store(
