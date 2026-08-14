@@ -510,29 +510,18 @@ def _find_product_card(link):
 
 def _url_matches_query(product_url, query):
     """
-    Match the canonical product URL to the requested product.
+    URL relevance check.
 
-    Generic queries keep the existing tolerant behavior. For a specific
-    variant, however, every distinctive variant token must be present in the
-    URL. This prevents:
-        Le Beau Narcisse -> /.../le-beau-.../
-    from being accepted simply because "le" and "beau" overlap.
+    Keep this deliberately tolerant. The URL is only a discovery hint; the
+    authoritative identity check is _page_matches_query(), which reads the
+    real product page. Requiring "narcisse" to appear in the slug caused the
+    correct Deloox result to disappear when Deloox used a generic family slug.
     """
     url_tokens = set(_tokens(product_url))
     query_tokens = set(_tokens(query))
 
     if not query_tokens:
         return False
-
-    family_tokens = {
-        "jean", "paul", "gaultier",
-        "le", "beau",
-        "eau", "de", "toilette",
-    }
-    distinctive = query_tokens - family_tokens
-
-    if distinctive:
-        return distinctive.issubset(url_tokens)
 
     if query_tokens.issubset(url_tokens):
         return True
@@ -542,6 +531,7 @@ def _url_matches_query(product_url, query):
         for token in query_tokens
         if token in url_tokens
     )
+
     return (found / len(query_tokens)) >= 0.55
 
 
@@ -602,9 +592,12 @@ def _find_matching_product_url(card, query):
 
 def _find_variant_product_urls(html, query):
     """
-    Extract product URLs from a page whose visible/linked text explicitly
-    contains the distinctive variant token(s). Used as a second discovery
-    pass for variants such as Narcisse.
+    Second-pass discovery for a specific variant.
+
+    The variant name can live in the card/title while Deloox's canonical
+    product URL uses a family slug. Therefore discovery accepts the link when
+    the surrounding card identifies the requested variant; the actual page
+    identity is verified later by _page_matches_query().
     """
     query_tokens = set(_tokens(query))
     family_tokens = {
@@ -639,24 +632,17 @@ def _find_variant_product_urls(html, query):
             or "",
         )
 
-        context = label
         card = _find_product_card(anchor)
+        context = label
+
         if card is not None:
             context = _clean(
                 card.get_text(" ", strip=True)
             )
 
         context_tokens = set(_tokens(context))
-        url_tokens = set(_tokens(url))
 
-        if not distinctive.issubset(
-            context_tokens | url_tokens
-        ):
-            continue
-
-        if not distinctive.issubset(url_tokens):
-            # The page can mention Narcisse while the link itself is generic.
-            # That is exactly the false-link case we are trying to prevent.
+        if not distinctive.issubset(context_tokens):
             continue
 
         if url not in seen:
@@ -664,6 +650,7 @@ def _find_variant_product_urls(html, query):
             results.append(url)
 
     return results
+
 
 def _page_matches_query(html, query):
     """
@@ -1034,6 +1021,15 @@ def _extract_product_variants(
         )
 
         if not price:
+            # Deloox sometimes inserts availability/UI strings between the
+            # size and price. Inspect a bounded neighborhood around the size
+            # before declaring the variant absent.
+            nearby = " ".join(
+                strings[index + 1:index + 80]
+            )
+            price = _extract_price(nearby)
+
+        if not price:
             continue
 
         seen_sizes.add(size_label)
@@ -1320,18 +1316,6 @@ def search(query):
     }
     distinctive = query_tokens - family_tokens
 
-    if distinctive:
-        scored = [
-            item
-            for item in scored
-            if distinctive.issubset(
-                set(_tokens(item[1]["url"]))
-            )
-        ]
-
-        if not scored:
-            return []
-
     best_score = scored[0][0]
     minimum_score = best_score - 45
 
@@ -1369,18 +1353,21 @@ def search(query):
             product_url,
         )
 
-        if not variants:
-            variants = _extract_jsonld_variants(
-                product_response.text,
-                item["name"],
-                product_url,
-            )
+        jsonld_variants = _extract_jsonld_variants(
+            product_response.text,
+            item["name"],
+            product_url,
+        )
+
+        # Merge both sources instead of treating JSON-LD as an all-or-nothing
+        # fallback. This is important for Deloox pages where one size is
+        # visible in the rendered text and another is exposed only in JSON-LD.
+        variants.extend(jsonld_variants)
 
         for variant in variants:
             key = (
                 variant["url"],
                 variant.get("size", ""),
-                variant["price"],
             )
 
             if key in seen_variants:
@@ -1417,4 +1404,4 @@ if __name__ == "__main__":
             print("NESSUN RISULTATO")
         else:
             for result in results:
-                print(re
+                print(result)
