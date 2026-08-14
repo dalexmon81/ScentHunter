@@ -1165,27 +1165,19 @@ function shGroupData(data){
 
   /*
    * FORMATI:
-   * il MASTER_CATALOG è la fonte di verità anche per il formato.
+   * se almeno un negozio comunica una misura, un'offerta dello stesso
+   * prodotto che non comunica gli ml eredita quella misura quando esiste
+   * una sola misura possibile.
    *
-   * Regola generale:
-   * - se una referenza master ha UN SOLO formato reale, quel formato
-   *   prevale sempre sul formato eventualmente dichiarato dallo scraper;
-   * - se la referenza master ha PIÙ formati, manteniamo il formato
-   *   dichiarato dallo scraper;
-   * - se lo scraper non comunica il formato e, per quella stessa
-   *   referenza, tutti gli altri negozi indicano una sola misura,
-   *   ereditiamo quella misura;
-   * - se non abbiamo alcuna misura, non inventiamo un formato.
-   *
-   * In questo modo un negozio che sbaglia il formato non può spostare
-   * una referenza con formato unico nella scheda sbagliata. La regola
-   * vale per TUTTO il catalogo, non per un profumo specifico.
+   * Se nessun negozio comunica la misura, NON creiamo una categoria
+   * artificiale "Formato non specificato": il prodotto ha semplicemente
+   * un'unica categoria di formato senza etichetta numerica.
    */
   const inferredSizeByGroup=new Map();
   raw.forEach((o,i)=>{
     const id=identities[i];
     const size=sizeOf(o);
-    if(!id.key||!size)return;
+    if(!id.key||!size||liquidBrunFamily(o))return;
     if(!inferredSizeByGroup.has(id.key))inferredSizeByGroup.set(id.key,new Set());
     inferredSizeByGroup.get(id.key).add(size);
   });
@@ -1197,25 +1189,12 @@ function shGroupData(data){
     if(!id.key||!id.name)return;
 
     const explicitSize=sizeOf(o);
-    const master=id.catalog_id
-      ?MASTER_CATALOG.find(p=>p.id===id.catalog_id)
-      :null;
-    const masterFormats=Array.isArray(master?.formats_ml)
-      ?master.formats_ml.map(v=>String(v))
-      :[];
-
-    // Se il catalogo conosce un solo formato, è quello canonico.
-    // Ignoriamo quindi un eventuale formato errato restituito dallo scraper.
-    const catalogSingleSize=(masterFormats.length===1)
-      ?masterFormats[0]
-      :"";
-
+    const lb=liquidBrunFamily(o);
     const knownSizes=inferredSizeByGroup.get(id.key);
     const inferredSize=(
-      !explicitSize&&knownSizes&&knownSizes.size===1
+      !lb&&!explicitSize&&knownSizes&&knownSizes.size===1
     )?[...knownSizes][0]:"";
-
-    const size=catalogSingleSize||explicitSize||inferredSize;
+    const size=explicitSize||inferredSize;
 
     if(!map.has(id.key)){
       map.set(id.key,{
@@ -1860,7 +1839,7 @@ async function searchPerfume(){
   }else{
    data=await fetchJSONWithTimeout(
     backend()+"/search?q="+encodeURIComponent(q),
-    60000
+    30000
    );
    renderData(data,true);
   }
