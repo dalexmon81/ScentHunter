@@ -52,231 +52,199 @@ def _looks_like_product_url(url):
     return bool(url and PRODUCT_URL_RE.match(url))
 
 
-def _extract_variants_from_html(text):
-    """Estrae tutte le varianti formato/prezzo dalla pagina prodotto Sabina.
+def _extract_size_from_html(text):
+    """Estrae la misura reale della confezione dalla pagina prodotto Sabina.
 
-    Sabina può mostrare più formati nella stessa scheda (es. 75 ML e
-    125 ML). La ricerca può invece restituire una sola card senza il formato.
-    Per questo leggiamo le varianti direttamente dalla pagina prodotto.
+    Alcuni risultati di ricerca Sabina non riportano i ml nel nome.
+    In quei casi leggiamo la misura dichiarata nella pagina prodotto,
+    senza indovinare in base al prezzo o al nome.
     """
     if not text:
-        return []
+        return ""
 
+    # 1) Prima cerchiamo nei JSON-LD eventuali proprietà strutturate.
+    try:
+        soup = BeautifulSoup(text, "html.parser")
+        for script in soup.select('script[type="application/ld+json"]'):
+            try:
+                data = json.loads(script.get_text(strip=True))
+            except Exception:
+                continue
+
+            def walk_size(obj):
+                if isinstance(obj, dict):
+                    for key, value in obj.items():
+                        key_l = str(key).lower()
+                        if key_l in {"size", "volume", "netcontent", "capacity", "contentvolume"}:
+                            m = re.search(r"(?<!\d)(\d{2,4})\s*ml\b", str(value), re.I)
+                            if m:
+                                return m.group(1)
+                        found = walk_size(value)
+                        if found:
+                            return found
+                elif isinstance(obj, list):
+                    for value in obj:
+                        found = walk_size(value)
+                        if found:
+                            return found
+                return ""
+
+            found = walk_size(data)
+            if found:
+                return found
+    except Exception:
+        pass
+
+    # 2) Dato visibile della scheda prodotto. Sabina usa più lingue.
     soup = BeautifulSoup(text, "html.parser")
-    variants = []
-    seen = set()
-
-    def add_variant(size, price):
-        if not size or not price:
-            return
-        size = str(size).strip()
-        price = _price(price)
-        if not price:
-            return
-        key = (size, price)
-        if key not in seen:
-            seen.add(key)
-            variants.append({"size_ml": size, "price": price})
-
-    def walk(obj):
-        if isinstance(obj, dict):
-            low = {str(k).lower(): v for k, v in obj.items()}
-
-            size = None
-            for key in (
-                "size", "volume", "netcontent", "capacity", "contentvolume",
-                "description",
-            ):
-                if key in low:
-                    m = re.search(r"(?<!\d)(\d{2,4})\s*ml\b", str(low[key]), re.I)
-                    if m:
-                        size = m.group(1)
-                        break
-
-            price = None
-            for key in (
-                "price", "final_price", "finalprice", "sale_price",
-                "saleprice", "price_amount", "priceamount",
-            ):
-                if key in low:
-                    price = low[key]
-                    break
-
-            if size and price:
-                add_variant(size, price)
-
-            for value in obj.values():
-                walk(value)
-
-        elif isinstance(obj, list):
-            for value in obj:
-                walk(value)
-
-    # 1) JSON-LD / dati strutturati.
-    for script in soup.select('script[type="application/ld+json"]'):
-        try:
-            data = json.loads(script.get_text(strip=True))
-            walk(data)
-        except Exception:
-            continue
-
-    # 2) Elementi che rappresentano direttamente le opzioni di formato.
-    for el in soup.find_all(["option", "label", "li", "button", "span", "div"]):
-        txt = _clean(el.get_text(" ", strip=True))
-        if not txt or len(txt) > 500:
-            continue
-
-        sizes = re.findall(r"(?<!\d)(\d{2,4})\s*ml\b", txt, re.I)
-        if not sizes:
-            continue
-
-        prices = re.findall(
-            r"(?<!\d)(\d{1,4}(?:[.,]\d{2}))\s*[€$£]",
-            txt,
-        )
-        if not prices:
-            continue
-
-        if len(sizes) == 1:
-            add_variant(sizes[0], prices[0])
-        elif len(sizes) == len(prices):
-            for size, price in zip(sizes, prices):
-                add_variant(size, price)
-        else:
-            for size in sizes:
-                pos = txt.lower().find(size.lower())
-                before = txt[max(0, pos - 80):pos]
-                after = txt[pos:pos + 160]
-                nearby = re.findall(
-                    r"(?<!\d)(\d{1,4}(?:[.,]\d{2}))\s*[€$£]",
-                    before + " " + after,
-                )
-                if nearby:
-                    add_variant(size, nearby[0])
-
-    # 3) Fallback sul testo visibile.
     visible = _clean(soup.get_text(" ", strip=True))
-    for m in re.finditer(r"(?<!\d)(\d{2,4})\s*ml\b", visible, re.I):
-        size = m.group(1)
-        window = visible[m.start():m.start() + 180]
-        pm = re.search(
-            r"(?<!\d)(\d{1,4}(?:[.,]\d{2}))\s*[€$£]",
-            window,
-        )
-        if pm:
-            add_variant(size, pm.group(1))
+    patterns = [
+        r"(?:dimensione|tamaño|taille|größe|groesse|size)\s*:?\s*(\d{2,4})\s*ml\b",
+        r"(?:dimensione|tamaño|taille|größe|groesse|size)[^0-9]{0,120}(\d{2,4})\s*ml\b",
+    ]
+    for pattern in patterns:
+        m = re.search(pattern, visible, re.I)
+        if m:
+            return m.group(1)
 
-    return variants
+    # 3) Fallback HTML: utile quando il testo è spezzato tra elementi/tag.
+    compact = re.sub(r"\s+", " ", text)
+    for pattern in patterns:
+        m = re.search(pattern, compact, re.I)
+        if m:
+            return m.group(1)
+
+    return ""
 
 
-def _extract_size_from_html(text, preferred_size=""):
-    """Compatibilità: restituisce una misura dalla pagina prodotto."""
-    variants = _extract_variants_from_html(text)
+def _extract_variant_from_html(text, requested_size):
+    """Estrae formato e, quando disponibile, il prezzo della variante richiesta."""
+    if not text or not requested_size:
+        return "", None
 
-    preferred = re.search(
-        r"(?<!\d)(\d{2,4})\s*ml\b",
-        str(preferred_size or ""),
-        re.I,
-    )
-    if preferred:
-        wanted = preferred.group(1)
-        for variant in variants:
-            if variant["size_ml"] == wanted:
-                return wanted
+    size = str(requested_size).strip()
+    if not re.fullmatch(r"\d{2,4}", size):
+        return "", None
 
-    return variants[0]["size_ml"] if variants else ""
+    try:
+        soup = BeautifulSoup(text, "html.parser")
+        for node in soup.find_all(string=re.compile(rf"(?<!\d){re.escape(size)}\s*ML\b", re.I)):
+            parent = getattr(node, "parent", None)
+            candidates = [node, parent]
+            if parent is not None:
+                candidates.extend([parent.parent, parent.parent.parent])
+            for candidate in candidates:
+                if not candidate:
+                    continue
+                block = _clean(candidate.get_text(" ", strip=True))
+                if not re.search(rf"(?<!\d){re.escape(size)}\s*ML\b", block, re.I):
+                    continue
+                m = re.search(
+                    rf"(?<!\d){re.escape(size)}\s*ML\b.{{0,180}}?"
+                    r"(\d{1,4}(?:[.,]\d{2}))\s*€",
+                    block,
+                    re.I,
+                )
+                if m:
+                    return size, m.group(1).replace(".", ",") + " €"
+        visible = _clean(soup.get_text(" ", strip=True))
+    except Exception:
+        visible = _clean(text)
+
+    patterns = [
+        rf"(?<!\d){re.escape(size)}\s*ML\b.{{0,220}}?(\d{{1,4}}(?:[.,]\d{{2}}))\s*€",
+        rf"(\d{{1,4}}(?:[.,]\d{{2}}))\s*€.{{0,220}}?(?<!\d){re.escape(size)}\s*ML\b",
+    ]
+    for source_text in (visible, re.sub(r"\s+", " ", text)):
+        for pattern in patterns:
+            m = re.search(pattern, source_text, re.I)
+            if m:
+                return size, m.group(1).replace(".", ",") + " €"
+
+    if re.search(rf"(?<!\d){re.escape(size)}\s*ML\b", visible, re.I):
+        return size, None
+
+    return "", None
 
 
 MAX_SIZE_ENRICH_REQUESTS = 3
 
 
-def _enrich_product_sizes(session, rows, query=""):
-    """Aggiunge formato/prezzo reali delle varianti dalla pagina prodotto.
-
-    Se la query contiene un formato (es. 125 ml), la relativa variante viene
-    selezionata dalla scheda prodotto. Questo evita di restituire il prezzo
-    della variante predefinita (spesso 75 ml) quando l'utente ha chiesto 125 ml.
-    """
+def _enrich_product_sizes(session, rows, requested_sizes=None):
+    """Aggiunge size_ml e verifica la variante richiesta quando il formato è nel query."""
     enriched = []
     cache = {}
     enrichment_requests = 0
-
-    requested_size = ""
-    m = re.search(r"(?<!\d)(\d{2,4})\s*ml\b", _clean(query), re.I)
-    if m:
-        requested_size = m.group(1)
+    requested_sizes = {str(x) for x in (requested_sizes or [])}
 
     for row in rows:
         item = dict(row)
         name = _clean(item.get("name"))
         existing = re.search(r"\b(\d{1,4})\s*ml\b", name, re.I)
-
+        row_size = existing.group(1) if existing else str(item.get("size_ml") or "").strip()
         url = str(item.get("url") or "").split("#")[0]
+
         if not url:
-            if existing:
-                item["size_ml"] = existing.group(1)
+            if row_size:
+                item["size_ml"] = row_size
             enriched.append(item)
             continue
 
-        if existing and not requested_size:
-            item["size_ml"] = existing.group(1)
-            enriched.append(item)
-            continue
-
-        if url in cache:
-            variants = cache[url]
-        elif enrichment_requests >= MAX_SIZE_ENRICH_REQUESTS:
-            variants = []
-        else:
-            variants = []
-            enrichment_requests += 1
+        if requested_sizes and not row_size and enrichment_requests < MAX_SIZE_ENRICH_REQUESTS:
+            size_found = ""
+            variant_price = None
             try:
                 r = _get(session, url)
                 if r is not None:
                     page = r.text
                     r.close()
-                    variants = _extract_variants_from_html(page)
+                    for requested in requested_sizes:
+                        size_found, variant_price = _extract_variant_from_html(page, requested)
+                        if size_found:
+                            break
             except Exception:
-                variants = []
-            cache[url] = variants
+                size_found, variant_price = "", None
+            enrichment_requests += 1
+            if size_found:
+                row_size = size_found
+                if variant_price:
+                    item["price"] = variant_price
 
-        if requested_size:
-            selected = next(
-                (v for v in variants if v["size_ml"] == requested_size),
-                None,
-            )
-            if selected:
-                item["size_ml"] = selected["size_ml"]
-                item["price"] = selected["price"]
-            else:
-                # Non fingiamo che una variante diversa sia quella richiesta.
-                continue
-        elif variants:
-            item["size_ml"] = variants[0]["size_ml"]
-            item["price"] = variants[0]["price"]
+        if not row_size and enrichment_requests < MAX_SIZE_ENRICH_REQUESTS:
+            try:
+                if url in cache:
+                    row_size = cache[url]
+                else:
+                    r = _get(session, url)
+                    size = ""
+                    if r is not None:
+                        page = r.text
+                        r.close()
+                        size = _extract_size_from_html(page)
+                    cache[url] = size
+                    row_size = size
+                enrichment_requests += 1
+            except Exception:
+                row_size = ""
 
+        if row_size:
+            item["size_ml"] = str(row_size)
         enriched.append(item)
 
     return enriched
 
 
-def _dedupe(rows, query):
+def _dedupe(rows, query, strict_size=True):
     q = _clean(query).lower()
-
-    # Il formato è un filtro sulla variante, non una parola che deve essere
-    # necessariamente presente nel nome della card di ricerca.
-    words = [
-        w for w in re.findall(r"[a-z0-9À-ÿ]+", q)
-        if len(w) > 1 and w != "ml" and not w.isdigit()
-    ]
-
+    requested_sizes = set(re.findall(r"(?<!\d)(\d{2,4})\s*ml\b", q, re.I))
+    q_without_size = re.sub(r"(?<!\d)\d{2,4}\s*ml\b", " ", q, flags=re.I)
+    words = [w for w in re.findall(r"[a-z0-9À-ÿ]+", q_without_size) if len(w) > 1]
     out, seen = [], set()
 
     for row in rows:
         name = _clean(row.get("name"))
         url = row.get("url")
         price = _price(row.get("price"))
-
         if not name or not url or not price:
             continue
 
@@ -284,8 +252,17 @@ def _dedupe(rows, query):
         if words and not all(w in hay for w in words):
             continue
 
-        size = str(row.get("size_ml") or "").strip()
-        key = (name.lower(), url.split("?")[0], size)
+        row_size = str(row.get("size_ml") or "").strip()
+        if not row_size:
+            m = re.search(r"\b(\d{1,4})\s*ml\b", name, re.I)
+            if m:
+                row_size = m.group(1)
+
+        if strict_size and requested_sizes:
+            if not row_size or row_size not in requested_sizes:
+                continue
+
+        key = (name.lower(), url.split("?")[0], row_size)
         if key in seen:
             continue
         seen.add(key)
@@ -296,8 +273,8 @@ def _dedupe(rows, query):
             "price": price,
             "url": url.split("#")[0],
         }
-        if size:
-            item["size_ml"] = size
+        if row_size:
+            item["size_ml"] = row_size
         out.append(item)
 
     return out
@@ -349,7 +326,7 @@ def _walk_json(obj, query):
                 walk(v)
 
     walk(obj)
-    return _dedupe(rows, query)
+    return _dedupe(rows, query, strict_size=False)
 
 
 def _parse_html(text, query):
@@ -385,42 +362,34 @@ def _parse_html(text, query):
         if not pm:
             continue
 
-        # Preferenza: titolo strutturato della card; poi title/aria-label;
-        # solo alla fine il testo grezzo del link. In questo modo non
-        # incorporiamo prezzo, sconto o altre informazioni nel nome prodotto.
-        candidates = []
-
+        # Preferenza: title/aria-label/testo link; poi heading nella card.
+        candidates = [
+            a.get("title"),
+            a.get("aria-label"),
+            a.get_text(" ", strip=True),
+        ]
         for sel in ("h1", "h2", "h3", "h4", ".name", ".product-name", ".product-title"):
             el = container.select_one(sel)
             if el:
                 candidates.append(el.get_text(" ", strip=True))
 
-        candidates.extend([
-            a.get("title"),
-            a.get("aria-label"),
-            a.get_text(" ", strip=True),
-        ])
-
-        name = next(
-            (
-                _clean(x)
-                for x in candidates
-                if _clean(x)
-                and _clean(x).lower() not in {"vedi", "vedi tutto", "acquista", "immagine"}
-            ),
-            "",
-        )
+        name = max((_clean(x) for x in candidates if _clean(x)), key=len, default="")
         if not name or name.lower() in {"vedi", "vedi tutto", "acquista", "immagine"}:
             continue
 
-        rows.append({
+        row = {
             "store": STORE,
             "name": name,
             "price": pm.group(1) + " €",
             "url": url,
-        })
+        }
+        size_matches = re.findall(r"(?<!\d)(\d{2,4})\s*ml\b", text_block, re.I)
+        requested_sizes = set(re.findall(r"(?<!\d)(\d{2,4})\s*ml\b", query, re.I))
+        if len(size_matches) == 1 and (not requested_sizes or size_matches[0] in requested_sizes):
+            row["size_ml"] = size_matches[0]
+        rows.append(row)
 
-    return _dedupe(rows, query)
+    return _dedupe(rows, query, strict_size=False)
 
 
 def _get(session, url, **kwargs):
@@ -466,24 +435,11 @@ def search(query):
     except Exception:
         pass
 
-    # Sabina può non restituire nulla quando il formato (es. 125 ml)
-    # è incluso nella query, anche se il prodotto esiste e la scheda contiene
-    # quella variante. Prima proviamo la query completa, poi la stessa query
-    # senza il formato; il formato verrà selezionato dalla pagina prodotto.
-    queries = [query]
-    query_without_size = _clean(
-        re.sub(r"(?<!\d)\d{2,4}\s*ml\b", " ", query, flags=re.I)
-    )
-    if query_without_size and query_without_size.casefold() != query.casefold():
-        queries.append(query_without_size)
-
-    urls = []
-    for search_query in queries:
-        urls.extend([
-            BASE + "/it/ricerca?search_query=" + quote_plus(search_query),
-            BASE + "/it/ricerca_old?s=" + quote_plus(search_query),
-            BASE + "/it/ricerca_old?search_query=" + quote_plus(search_query),
-        ])
+    urls = [
+        BASE + "/it/ricerca?search_query=" + quote_plus(query),
+        BASE + "/it/ricerca_old?s=" + quote_plus(query),
+        BASE + "/it/ricerca_old?search_query=" + quote_plus(query),
+    ]
 
     try:
         for url in urls:
@@ -502,7 +458,11 @@ def search(query):
                 results.extend(parsed)
 
                 if results:
-                    return _enrich_product_sizes(s, _dedupe(results, query), query)
+                    requested_sizes = set(re.findall(r"(?<!\d)(\d{2,4})\s*ml\b", query, re.I))
+                    enriched = _enrich_product_sizes(s, results, requested_sizes)
+                    filtered = _dedupe(enriched, query, strict_size=True)
+                    if filtered:
+                        return filtered
             except Exception:
                 continue
 
@@ -575,7 +535,11 @@ def search(query):
                         rows = _parse_html(response_text, query)
 
                     if rows:
-                        return _enrich_product_sizes(s, _dedupe(rows, query), query)
+                        requested_sizes = set(re.findall(r"(?<!\d)(\d{2,4})\s*ml\b", query, re.I))
+                        enriched = _enrich_product_sizes(s, rows, requested_sizes)
+                        filtered = _dedupe(enriched, query, strict_size=True)
+                        if filtered:
+                            return filtered
 
                 except Exception:
                     continue
