@@ -580,7 +580,13 @@ def _find_matching_product_url(card, query):
 
 
 def _page_matches_query(html, query):
-    """Use the real product page as the final identity check."""
+    """
+    Final identity check.
+
+    For variant queries, the page must contain the distinctive variant token.
+    This prevents a generic "Le Beau" page from being accepted for
+    "Le Beau Narcisse".
+    """
     soup = BeautifulSoup(html, "html.parser")
     names = []
 
@@ -589,23 +595,16 @@ def _page_matches_query(html, query):
         if value:
             names.append(value)
 
-    for script in soup.find_all(
-        "script",
-        type="application/ld+json",
-    ):
+    for script in soup.find_all("script", type="application/ld+json"):
         try:
-            data = json.loads(
-                script.string or script.get_text()
-            )
+            data = json.loads(script.string or script.get_text())
         except (json.JSONDecodeError, TypeError):
             continue
 
         objects = data if isinstance(data, list) else [data]
-
         for item in objects:
             if not isinstance(item, dict):
                 continue
-
             if str(item.get("@type", "")).lower() == "product":
                 value = _clean(item.get("name"))
                 if value:
@@ -615,10 +614,32 @@ def _page_matches_query(html, query):
     if not query_tokens:
         return False
 
+    # These tokens identify the family rather than the specific variant.
+    family_tokens = {
+        "jean", "paul", "gaultier", "le", "beau",
+        "eau", "de", "toilette",
+    }
+    distinctive = query_tokens - family_tokens
+
     for name in names:
-        if query_tokens.issubset(set(_tokens(name))):
-            if not _contains_non_fragrance_product(name):
-                return True
+        name_tokens = set(_tokens(name))
+
+        if _contains_non_fragrance_product(name):
+            continue
+
+        # For a variant query such as "Le Beau Narcisse", Narcisse is
+        # mandatory. A page saying only "Le Beau" must be rejected.
+        if distinctive:
+            if not distinctive.issubset(name_tokens):
+                continue
+        elif not query_tokens.issubset(name_tokens):
+            continue
+
+        # For generic Le Beau queries the normal token check remains.
+        if not distinctive and not query_tokens.issubset(name_tokens):
+            continue
+
+        return True
 
     return False
 
@@ -903,7 +924,7 @@ def _extract_product_variants(
 
         for next_index in range(
             index + 1,
-            min(index + 30, len(strings)),
+            len(strings),
         ):
             next_value = strings[next_index]
 
