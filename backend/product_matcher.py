@@ -1,4 +1,4 @@
-""""ScentHunter central product identity matcher."""
+"""ScentHunter central product identity matcher."""
 from __future__ import annotations
 import re, unicodedata
 from dataclasses import dataclass
