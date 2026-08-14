@@ -217,20 +217,19 @@ def _url_matches_query(product_url, query):
 
 
 def _anchor_belongs_to_query(link, query, heading=""):
+    """Return True when this exact anchor is a plausible product/variant link.
+
+    Deloox cards can expose the product name on one anchor and the bottle size
+    on another anchor. A size-only anchor therefore needs the surrounding
+    product identity, while a clearly named anchor is preferred.
     """
-    Keep the URL attached to the same product anchor.
-    A larger card can contain links for related products or other variants;
-    card text alone must never make an unrelated anchor look like the query.
-    """
-    query_tokens = set(_tokens(query))
     link_name = _clean(link.get_text(" ", strip=True))
     link_title = _clean(link.get("title") or "")
 
-    if link_title and not _matches_soft(link_title, query, minimum=0.75):
-        return False
-
-    if link_name and not SIZE_FULL_RE.fullmatch(link_name):
-        return _matches_soft(link_name, query, minimum=0.75)
+    for value in (link_name, link_title):
+        if value and not SIZE_FULL_RE.fullmatch(value):
+            if _matches_soft(value, query, minimum=0.75):
+                return True
 
     if heading and _matches_soft(heading, query, minimum=0.75):
         return True
@@ -238,30 +237,69 @@ def _anchor_belongs_to_query(link, query, heading=""):
     return False
 
 
+def _best_product_anchor(card, query, original_link):
+    """Choose the product URL belonging to this card, not an arbitrary URL.
+
+    Some Deloox cards contain several product anchors (image, name, size).
+    Score all of them and prefer the one whose own text/title identifies the
+    requested product. Only if no named anchor exists do we keep the original
+    anchor when it is a size-only link and the card identity matches.
+    """
+    candidates = []
+    seen = set()
+    for anchor in card.find_all("a", href=True):
+        href = _clean(anchor.get("href"))
+        url = urljoin(BASE_URL, href).split("?")[0]
+        if "/product/" not in url.lower() or url in seen:
+            continue
+        seen.add(url)
+
+        name = _clean(anchor.get_text(" ", strip=True))
+        title = _clean(anchor.get("title") or "")
+        aria = _clean(anchor.get("aria-label") or "")
+        identity = " ".join(v for v in (name, title, aria) if v)
+
+        score = -100
+        if identity and not SIZE_FULL_RE.fullmatch(identity):
+            score = _match_score(identity, query)
+        elif anchor is original_link:
+            score = -5
+
+        candidates.append((score, url, anchor, identity))
+
+    if not candidates:
+        return None
+
+    candidates.sort(key=lambda item: item[0], reverse=True)
+    best = candidates[0]
+
+    # A named anchor must actually resemble the requested product.
+    if best[0] > 0:
+        return best[1], best[2], best[3]
+
+    # Size-only cards can still be valid; the page itself is verified later.
+    original_href = _clean(original_link.get("href"))
+    original_url = urljoin(BASE_URL, original_href).split("?")[0]
+    if "/product/" in original_url.lower():
+        return original_url, original_link, _clean(original_link.get_text(" ", strip=True))
+
+    return None
+
 def _extract_category(html, query):
     soup = BeautifulSoup(html, "html.parser")
     results = []
     seen = set()
-    query_tokens = set(_tokens(query))
 
     for link in soup.find_all("a", href=True):
         href = _clean(link.get("href"))
-        product_url = urljoin(BASE_URL, href).split("?")[0]
-        if "/product/" not in product_url.lower():
+        if "/product/" not in href.lower():
             continue
 
-        # The URL is only a locator. Do NOT require the query words to be
-        # present in the URL: some Deloox product URLs are legacy/redirect URLs.
-        # The product identity is taken from the same link/card and verified
-        # later from the actual product page.
         card = _find_product_card(link)
         card_text = _clean(card.get_text(" ", strip=True))
-
         if any(word in card_text.lower() for word in SOLD_OUT):
             continue
 
-        link_name = _clean(link.get_text(" ", strip=True))
-        link_title = _clean(link.get("title") or "")
         heading = ""
         for tag in ("h1", "h2", "h3", "h4"):
             node_h = card.find(tag)
@@ -269,31 +307,39 @@ def _extract_category(html, query):
                 heading = _clean(node_h.get_text(" ", strip=True))
                 break
 
-        if not _anchor_belongs_to_query(link, query, heading):
-            continue
-
-        identity_text = " ".join(
-            value for value in (link_name, link_title, heading, card_text) if value
-        )
+        identity_text = " ".join(v for v in (
+            _clean(link.get_text(" ", strip=True)),
+            _clean(link.get("title") or ""),
+            _clean(link.get("aria-label") or ""),
+            heading,
+            card_text,
+        ) if v)
 
         if not _matches_soft(identity_text, query, minimum=0.55):
             continue
-
         if not _is_relevant_product(identity_text, query):
             continue
+
+        selected = _best_product_anchor(card, query, link)
+        if not selected:
+            continue
+        product_url, product_anchor, anchor_identity = selected
 
         price = _extract_price(card_text)
         if not price:
             continue
 
-        # Prefer the name attached to the exact anchor; fall back to the
-        # heading/card only when the anchor itself contains just a size.
         product_name = query
-        for candidate_name in (link_name, link_title, heading):
+        for candidate_name in (
+            _clean(product_anchor.get_text(" ", strip=True)),
+            _clean(product_anchor.get("title") or ""),
+            _clean(product_anchor.get("aria-label") or ""),
+            heading,
+        ):
             if (
                 candidate_name
                 and not SIZE_FULL_RE.fullmatch(candidate_name)
-                and query_tokens.issubset(set(_tokens(candidate_name)))
+                and _matches_soft(candidate_name, query, minimum=0.75)
             ):
                 product_name = candidate_name
                 break
@@ -301,7 +347,6 @@ def _extract_category(html, query):
         if product_url in seen:
             continue
         seen.add(product_url)
-
         results.append({
             "store": STORE,
             "name": product_name,
@@ -314,72 +359,7 @@ def _extract_category(html, query):
     return results
 
 def _extract_brand_page(html, query):
-    soup = BeautifulSoup(html, "html.parser")
-    results = []
-    seen = set()
-    query_tokens = set(_tokens(query))
-
-    for link in soup.find_all("a", href=True):
-        href = _clean(link.get("href"))
-        product_url = urljoin(BASE_URL, href).split("?")[0]
-        if "/product/" not in product_url.lower():
-            continue
-
-        card = _find_product_card(link)
-        card_text = _clean(card.get_text(" ", strip=True))
-
-        if any(word in card_text.lower() for word in SOLD_OUT):
-            continue
-
-        link_name = _clean(link.get_text(" ", strip=True))
-        link_title = _clean(link.get("title") or "")
-
-        heading = ""
-        for tag in ("h1", "h2", "h3", "h4"):
-            node_h = card.find(tag)
-            if node_h:
-                heading = _clean(node_h.get_text(" ", strip=True))
-                break
-
-        if not _anchor_belongs_to_query(link, query, heading):
-            continue
-
-        identity_text = " ".join(
-            value for value in (link_name, link_title, heading, card_text) if value
-        )
-        if not _matches_soft(identity_text, query, minimum=0.55):
-            continue
-        if not _is_relevant_product(identity_text, query):
-            continue
-
-        price = _extract_price(card_text)
-        if not price:
-            continue
-
-        product_name = query
-        for candidate_name in (link_name, link_title, heading):
-            if (
-                candidate_name
-                and not SIZE_FULL_RE.fullmatch(candidate_name)
-                and query_tokens.issubset(set(_tokens(candidate_name)))
-            ):
-                product_name = candidate_name
-                break
-
-        if product_url in seen:
-            continue
-        seen.add(product_url)
-
-        results.append({
-            "store": STORE,
-            "name": product_name,
-            "price": price,
-            "url": product_url,
-            "available": True,
-            "availability": "in_stock",
-        })
-
-    return results
+    return _extract_category(html, query)
 
 def _page_product_names(html):
     """Extract authoritative product names from the product page."""
