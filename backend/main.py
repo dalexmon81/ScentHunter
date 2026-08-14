@@ -10,6 +10,8 @@ import os
 import re
 import traceback
 import unicodedata
+import threading
+import uuid
 from concurrent.futures import ThreadPoolExecutor, TimeoutError, wait
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
@@ -47,6 +49,12 @@ FRONTEND_INDEX = Path(__file__).resolve().parent.parent / "frontend" / "index.ht
 PRODUCT_CATALOG_PATH = os.path.join(BASE_DIR, "product_catalog.json")
 _STORE_CACHE: Dict[tuple, tuple] = {}
 _STORE_CACHE_TTL = 90.0
+
+# Background search jobs: the backend continues searching independently of the browser.
+_SEARCH_EXECUTOR = ThreadPoolExecutor(max_workers=2, thread_name_prefix="scent-search")
+_SEARCH_JOBS: Dict[str, Dict[str, Any]] = {}
+_SEARCH_JOBS_LOCK = threading.Lock()
+_SEARCH_JOB_TTL = 2 * 60 * 60
 
 VARIANTS = {
     "pour femme", "night out", "rebel", "elixir", "intense",
@@ -514,65 +522,28 @@ def resolve_actual_price(product: Dict[str, Any]) -> Dict[str, Any]:
 
 
 def matches(product: Dict[str, Any], query: str) -> bool:
-    """
-    Match generale del prodotto.
-
-    Il nome mostrato dal negozio non è sempre completo: alcuni store mettono
-    il brand solo nel campo brand o nell'URL della scheda. Per questo il match
-    usa l'identità complessiva dell'offerta: brand + nome + URL.
-
-    Le varianti reali (Narcisse, Le Parfum, Limited Edition, ecc.) restano
-    prodotti distinti: non vengono rinominate né fuse qui.
-    """
+    """Match using the complete product identity: brand + name + URL."""
     name = str(product.get("name") or product.get("title") or product.get("product_name") or "")
     brand = str(product.get("brand") or product.get("manufacturer") or "")
     url = str(product.get("url") or product.get("product_url") or "")
-
     name_tokens = set(norm(name).split())
     query_all_tokens = set(norm(query).split())
-
     if not name_tokens or not query_all_tokens:
         return False
-
-    # I veri non-profumi vengono filtrati sul nome dell'offerta.
     for phrase in NON_PERFUME:
         phrase_tokens = set(norm(phrase).split())
-        if (
-            phrase_tokens
-            and phrase_tokens.issubset(name_tokens)
-            and not phrase_tokens.issubset(query_all_tokens)
-        ):
+        if phrase_tokens and phrase_tokens.issubset(name_tokens) and not phrase_tokens.issubset(query_all_tokens):
             return False
-
-    # Identità completa: molti negozi, come Sabina, possono omettere il brand
-    # dal titolo ma averlo nel campo brand o nell'URL.
-    identity_tokens = set(
-        norm(" ".join((brand, name, url))).split()
-    )
-
-    query_tokens = {
-        token
-        for token in query_all_tokens
-        if token not in IGNORED_WORDS
-    }
-
-    if not query_tokens:
-        query_tokens = query_all_tokens
-
+    query_tokens = {t for t in query_all_tokens if t not in IGNORED_WORDS} or query_all_tokens
+    identity_tokens = set(norm(" ".join((brand, name, url))).split())
     if query_tokens.issubset(identity_tokens):
         return True
-
-    # Alias stretti e verificati.
     for alias in _query_aliases(query):
-        alias_tokens = {
-            token
-            for token in norm(alias).split()
-            if token not in IGNORED_WORDS
-        }
+        alias_tokens = {t for t in norm(alias).split() if t not in IGNORED_WORDS}
         if alias_tokens and alias_tokens.issubset(identity_tokens):
             return True
-
     return False
+
 
 def load_scraper(store: str):
     return importlib.import_module(f"scrapers.{store}.scraper")
@@ -952,23 +923,15 @@ def sort_by_price(products: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
     return sorted(products, key=key)
 
 
-def search_perfume(query: str) -> Dict[str, Any]:
+def _search_perfume_single(query: str) -> Dict[str, Any]:
     query = str(query or "").strip()
     if not query:
         return {"query": query, "count": 0, "results": [], "comparisons": [], "errors": {}}
 
     results: List[Dict[str, Any]] = []
     errors: Dict[str, str] = {}
-
-    executor = ThreadPoolExecutor(
-        max_workers=len(STORES),
-        thread_name_prefix="scent-store",
-    )
-    future_to_store = {
-        executor.submit(run_store, store, query, True): store
-        for store in STORES
-    }
-
+    executor = ThreadPoolExecutor(max_workers=len(STORES), thread_name_prefix="scent-store")
+    future_to_store = {executor.submit(run_store, store, query, True): store for store in STORES}
     done, not_done = wait(future_to_store, timeout=55)
 
     for future in done:
@@ -984,72 +947,93 @@ def search_perfume(query: str) -> Dict[str, Any]:
         future.cancel()
 
     executor.shutdown(wait=False, cancel_futures=True)
-
     results = _canonicalize_results(results, query)
     results = sort_by_price(unique_results(results))
-
-    return {
-        "query": query,
-        "count": len(results),
-        "results": results,
-        "comparisons": [],
-        "errors": errors,
-    }
+    return {"query": query, "count": len(results), "results": results, "comparisons": [], "errors": errors}
 
 
+def search_perfume(query: str) -> Dict[str, Any]:
+    query = str(query or "").strip()
+    if not query:
+        return {"query": query, "count": 0, "results": [], "comparisons": [], "errors": {}}
 
-# ============================================================
-# QUERY EXPANSION — PRODUCT FAMILIES
-# ============================================================
+    terms = expand_family_queries(query) if "expand_family_queries" in globals() else [query]
+    terms = terms or [query]
+    merged_results: List[Dict[str, Any]] = []
+    merged_errors: Dict[str, str] = {}
 
-def expand_family_queries(raw_query: str) -> list[str]:
-    """
-    Return the original query plus safe, semantically equivalent variants.
+    for term in terms:
+        data = _search_perfume_single(term)
+        merged_results.extend(data.get("results") or [])
+        for store, error in (data.get("errors") or {}).items():
+            merged_errors.setdefault(store, error)
 
-    For Jean Paul Gaultier Le Beau we explicitly separate the known
-    references instead of asking every store for the generic "Le Beau"
-    only. This is a discovery aid: results are still validated and
-    deduplicated by the normal pipeline.
-    """
-    raw = str(raw_query or "").strip()
-    q = norm(raw)
-    if not q:
-        return []
-
-    attempts = [raw]
-    seen = {q}
-
-    if "jean paul gaultier" in q and "le beau" in q:
-        variants = [
-            "Jean Paul Gaultier Le Beau",
-            "Jean Paul Gaultier Le Beau Eau de Toilette",
-            "Jean Paul Gaultier Le Beau Narcisse",
-            "Jean Paul Gaultier Le Beau Paradise Garden",
-            "Jean Paul Gaultier Le Beau Flower Edition",
-            "Jean Paul Gaultier Le Beau Le Parfum",
-            "Jean Paul Gaultier Le Beau Le Parfum Intense",
-        ]
-        for variant in variants:
-            key = norm(variant)
-            if key not in seen:
-                attempts.append(variant)
-                seen.add(key)
-
-    return attempts
+    merged_results = sort_by_price(unique_results(merged_results))
+    return {"query": query, "count": len(merged_results), "results": merged_results, "comparisons": [], "errors": merged_errors}
 
 
-def result_dedupe_key(item):
-    """Stable result key that preserves product variants/formats."""
-    store = norm(item.get("store") or item.get("source") or "")
-    brand = norm(item.get("brand") or "")
-    name = norm(item.get("name") or "")
-    size = norm(item.get("size") or item.get("format") or "")
-    url = str(item.get("url") or "").split("#")[0].split("?")[0].strip().lower()
-    return (store, brand, name, size, url)
+def _cleanup_search_jobs_locked(now: Optional[float] = None) -> None:
+    now = now or datetime.now(timezone.utc).timestamp()
+    for job_id, job in list(_SEARCH_JOBS.items()):
+        updated = float(job.get("updated_at") or job.get("created_at") or now)
+        if job.get("status") in {"completed", "failed"} and now - updated > _SEARCH_JOB_TTL:
+            _SEARCH_JOBS.pop(job_id, None)
+
+
+def _run_search_job(job_id: str, query: str) -> None:
+    try:
+        result = search_perfume(query)
+        with _SEARCH_JOBS_LOCK:
+            job = _SEARCH_JOBS.get(job_id)
+            if job:
+                job["status"] = "completed"
+                job["result"] = result
+                job["updated_at"] = datetime.now(timezone.utc).timestamp()
+    except Exception as exc:
+        traceback.print_exc()
+        with _SEARCH_JOBS_LOCK:
+            job = _SEARCH_JOBS.get(job_id)
+            if job:
+                job["status"] = "failed"
+                job["error"] = f"{type(exc).__name__}: {exc}"
+                job["updated_at"] = datetime.now(timezone.utc).timestamp()
+
 
 @app.get("/search")
 def search(q: str):
-    return search_perfume(q)
+    query = str(q or "").strip()
+    if not query:
+        raise HTTPException(status_code=400, detail="Parametro q mancante")
+
+    job_id = uuid.uuid4().hex
+    now = datetime.now(timezone.utc).timestamp()
+    with _SEARCH_JOBS_LOCK:
+        _cleanup_search_jobs_locked(now)
+        _SEARCH_JOBS[job_id] = {
+            "job_id": job_id,
+            "query": query,
+            "status": "running",
+            "created_at": now,
+            "updated_at": now,
+        }
+
+    _SEARCH_EXECUTOR.submit(_run_search_job, job_id, query)
+    return {"job_id": job_id, "query": query, "status": "running"}
+
+
+@app.get("/search-status/{job_id}")
+def search_status(job_id: str):
+    with _SEARCH_JOBS_LOCK:
+        _cleanup_search_jobs_locked()
+        job = _SEARCH_JOBS.get(str(job_id or "").strip())
+        if not job:
+            raise HTTPException(status_code=404, detail="Ricerca non trovata o scaduta")
+        response = {"job_id": job["job_id"], "query": job["query"], "status": job["status"]}
+        if job["status"] == "completed":
+            response.update(job.get("result") or {})
+        elif job["status"] == "failed":
+            response["error"] = job.get("error", "Ricerca fallita")
+        return response
 
 
 @app.get("/test-store")
