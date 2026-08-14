@@ -1,6 +1,6 @@
 """ScentHunter central product identity matcher."""
 from __future__ import annotations
-import re, unicodedata
+import re, unicodedata, hashlib
 from dataclasses import dataclass
 from typing import Any, Dict, Iterable, List, Optional, Sequence, Tuple
 
@@ -11,6 +11,26 @@ def normalize(value: Any) -> str:
     value=re.sub(r"(?<=\d)(?=[a-z])|(?<=[a-z])(?=\d)", " ", value)
     value=re.sub(r"[^a-z0-9]+", " ", value)
     return re.sub(r"\s+", " ", value).strip()
+
+def stable_auto_id(brand: Any, name: Any) -> str:
+    key=f"{normalize(brand)}::{normalize(name)}"
+    return "SH-AUTO-" + hashlib.sha1(key.encode("utf-8")).hexdigest()[:12]
+
+def extract_size_ml(text: str) -> Optional[int]:
+    """Compatibility helper used by backend/main.py."""
+    if not text:
+        return None
+    text = normalize(text)
+    match = re.search(r"(\d+(?:\.\d+)?)\s*(ml|millilitri|litri|l|oz|fl\.?\s*oz)", text, re.I)
+    if not match:
+        return None
+    value = float(match.group(1))
+    unit = match.group(2).lower()
+    if unit in ("l", "litri"):
+        return int(value * 1000)
+    if unit in ("oz", "fl. oz", "fl oz"):
+        return int(value * 29.5735)
+    return int(value)
 
 def first_value(item: Dict[str, Any], keys: Sequence[str]) -> str:
     for key in keys:
