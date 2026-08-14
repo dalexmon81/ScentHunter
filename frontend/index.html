@@ -1052,13 +1052,21 @@ function shGroupData(data){
   function liquidBrunFamily(o){
     const rawName=String(o.name||"").toLowerCase();
     const brand=String(o.brand||"").toLowerCase();
-    const s=(brand+" "+rawName).replace(/[^a-z0-9]+/gi," ").replace(/\s+/g," ").trim();
+    const store=String(o.store||"").toLowerCase().trim();
+    const s=(brand+" "+rawName).replace(/[^a-z0-9]+/gi," " ).replace(/\s+/g," " ).trim();
     if(!/liquid\s+brun/.test(s))return "";
     if(/mystery\s+box/.test(s))return "mystery box liquid brun";
+
+    // Deloox: la referenza da 150 ml viene pubblicata anche come
+    // "Liquid Brun" senza la dicitura "Limited Edition".
+    // È la stessa Limited Edition 150 ml e NON deve creare una seconda
+    // referenza "Liquid Brun 150 ml". Il Liquid Brun standard resta 100 ml.
+    const size=sizeOf(o);
+    if(store==="deloox" && size==="150")return "liquid brun limited edition";
+
     if(/limited\s+edition/.test(s))return "liquid brun limited edition";
     return "liquid brun";
   }
-
   function concentrationHint(o){
     const raw=String(o&&((o.name||"")+" "+(o.concentration||""))||"").toLowerCase();
     if(/\\beau\\s+de\\s+toilette\\b|\\bedt\\b/.test(raw))return "Eau de Toilette";
@@ -1191,10 +1199,18 @@ function shGroupData(data){
     const explicitSize=sizeOf(o);
     const lb=liquidBrunFamily(o);
     const knownSizes=inferredSizeByGroup.get(id.key);
+
+    // LIQUID BRUN: il formato canonico del catalogo prevale sempre
+    // sul formato eventualmente inventato/errato dallo scraper.
+    // Liquid Brun = 100 ml; Liquid Brun Limited Edition = 150 ml.
+    const canonicalLiquidSize = id.catalog_id==="SH-0030" ? "100"
+      : id.catalog_id==="SH-0031" ? "150"
+      : "";
+
     const inferredSize=(
       !lb&&!explicitSize&&knownSizes&&knownSizes.size===1
     )?[...knownSizes][0]:"";
-    const size=explicitSize||inferredSize;
+    const size=canonicalLiquidSize||explicitSize||inferredSize;
 
     if(!map.has(id.key)){
       map.set(id.key,{
