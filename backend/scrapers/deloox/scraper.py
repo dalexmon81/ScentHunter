@@ -499,11 +499,36 @@ def _page_matches_query(html, query):
 
 
 def _extract_product_variants(html, product_name, product_url):
+    """
+    Extract every size/price pair from the actual Deloox product page.
+
+    Deloox renders size blocks sequentially. A block can contain both a
+    crossed/retail price and the current selling price. We therefore parse the
+    text between one size marker and the next and take the LAST EUR price in
+    that block. This keeps 75 ml and 125 ml attached to their own prices.
+    """
     soup = BeautifulSoup(html, "html.parser")
     results = []
     seen_sizes = set()
 
-    def add_variant(size_label, price, url=None):
+    def prices_in(text_value):
+        found = []
+        for match in PRICE_RE.finditer(_clean(text_value)):
+            if match.group("euro_before"):
+                found.append(
+                    f"{match.group('euro_before')},{match.group('cents_before')} €"
+                )
+            elif match.group("euro_after"):
+                found.append(
+                    f"{match.group('euro_after')},{match.group('cents_after')} €"
+                )
+            elif match.group("integer_before"):
+                found.append(f"{match.group('integer_before')},00 €")
+            elif match.group("integer_after"):
+                found.append(f"{match.group('integer_after')},00 €")
+        return found
+
+    def add_variant(size_label, price):
         if not price or size_label in seen_sizes:
             return
         seen_sizes.add(size_label)
@@ -511,81 +536,51 @@ def _extract_product_variants(html, product_name, product_url):
             "store": STORE,
             "name": f"{product_name} {size_label}",
             "price": price,
-            "url": url or product_url,
+            "url": product_url,
             "available": True,
             "availability": "in_stock",
             "size": size_label,
         })
 
-    # Deloox exposes size selectors as sibling anchors next to the main
-    # product anchor. Collect every visible ml value first.
-    for anchor in soup.find_all("a", href=True):
-        label = _clean(anchor.get_text(" ", strip=True))
-        match = SIZE_FULL_RE.fullmatch(label)
-        if not match:
-            continue
+    # Use the rendered text order, not a broad ancestor/card.
+    strings = [_clean(value) for value in soup.stripped_strings if _clean(value)]
+    size_positions = []
 
-        size = match.group(1).replace(",", ".")
-        size_label = f"{size} ml"
+    for index, value in enumerate(strings):
+        match = SIZE_FULL_RE.fullmatch(value)
+        if match:
+            size_positions.append((index, f"{match.group(1).replace(',', '.')} ml"))
 
-        # Look for the nearest product/card context and its price.
-        node = anchor
-        price = None
-        for _ in range(8):
-            if node is None:
-                break
-            context = _clean(node.get_text(" ", strip=True))
-            price = _extract_price(context)
-            if price:
-                break
-            node = node.parent
+    for position, (index, size_label) in enumerate(size_positions):
+        next_index = (
+            size_positions[position + 1][0]
+            if position + 1 < len(size_positions)
+            else len(strings)
+        )
 
-        if not price:
-            # Some size anchors contain only the size while the price is in
-            # the parent product block; search a little more broadly.
-            node = anchor.parent
-            for _ in range(5):
-                if node is None:
-                    break
-                context = _clean(node.get_text(" ", strip=True))
-                price = _extract_price(context)
-                if price:
-                    break
-                node = node.parent
+        segment = " ".join(strings[index + 1:next_index])
 
-        if price:
-            add_variant(size_label, price, product_url)
+        # Do not cross an obvious availability boundary. The price for this
+        # size must occur before the next size marker.
+        prices = prices_in(segment)
+        if prices:
+            add_variant(size_label, prices[-1])
 
-    # Fallback for product pages where size selectors are not anchors.
+    # Fallback: some versions of the page expose the size as an anchor and
+    # omit it from the normal text stream. Only inspect the small anchor
+    # subtree in that case; never climb to the whole product card.
     if not results:
-        strings = [_clean(value) for value in soup.stripped_strings if _clean(value)]
-        for index, value in enumerate(strings):
-            size_match = SIZE_FULL_RE.fullmatch(value)
-            if not size_match:
+        for anchor in soup.find_all("a", href=True):
+            label = _clean(anchor.get_text(" ", strip=True))
+            match = SIZE_FULL_RE.fullmatch(label)
+            if not match:
                 continue
 
-            size = size_match.group(1).replace(",", ".")
-            size_label = f"{size} ml"
-            if size_label in seen_sizes:
-                continue
-
-            chunk = []
-            sold_out = False
-            for next_index in range(index + 1, min(index + 40, len(strings))):
-                next_value = strings[next_index]
-                if SIZE_FULL_RE.fullmatch(next_value):
-                    break
-                chunk.append(next_value)
-                if any(word in next_value.lower() for word in SOLD_OUT):
-                    sold_out = True
-                    break
-
-            if sold_out:
-                continue
-
-            price = _extract_price(" ".join(chunk))
-            if price:
-                add_variant(size_label, price, product_url)
+            size_label = f"{match.group(1).replace(',', '.')} ml"
+            local_text = _clean(anchor.parent.get_text(" ", strip=True))
+            prices = prices_in(local_text)
+            if prices:
+                add_variant(size_label, prices[-1])
 
     return results
 
@@ -679,10 +674,15 @@ def search(query):
         if variant_category_url:
             category_urls.append(variant_category_url)
 
-        # Use the broad brand category only when no dedicated variant
-        # category was found. Mixing both sources can reintroduce unrelated
-        # product candidates for families with very similar names.
-        if not variant_category_url:
+        # Always supplement a dedicated variant category with the brand
+        # category. Deloox can expose only one size or an incomplete subset
+        # in a dedicated category, while the brand page can expose the same
+        # canonical product with the complete variant set. The final
+        # product-page identity check prevents unrelated products from
+        # surviving this broader discovery.
+        if brand_category_url.rstrip("/") not in {
+            url.rstrip("/") for url in category_urls
+        }:
             category_urls.append(brand_category_url)
 
         candidates = []
@@ -755,7 +755,6 @@ def search(query):
                 key = (
                     variant["url"],
                     variant.get("size", ""),
-                    variant["price"],
                 )
                 if key in seen_variants:
                     continue
