@@ -345,6 +345,12 @@ const WISH_KEY="scenthunter_wishlist_v4";
 const PREV_WISH_KEY="scenthunter_wishlist_v3";
 const OLD_WISH_KEY="scenthunter_wishlist_v1";
 
+function displayPerfumeName(v){
+  return String(v||"")
+    .replace(/\b\d{1,4}(?:[.,]\d+)?\s*ml\b/gi," ")
+    .replace(/\s+/g," ")
+    .trim();
+}
 function normalizePerfumeName(v){
   return String(v||"")
     .toLowerCase()
