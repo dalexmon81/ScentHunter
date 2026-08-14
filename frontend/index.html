@@ -1839,7 +1839,7 @@ async function searchPerfume(){
   }else{
    data=await fetchJSONWithTimeout(
     backend()+"/search?q="+encodeURIComponent(q),
-    30000
+    60000
    );
    renderData(data,true);
   }
