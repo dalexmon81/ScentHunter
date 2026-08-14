@@ -17,7 +17,7 @@ from urllib.parse import urlencode
 from urllib.request import Request, urlopen
 from urllib.error import HTTPError, URLError
 
-from product_matcher import ProductMatcher, CatalogProduct, extract_size_ml
+from product_matcher import ProductMatcher
 
 
 app = FastAPI(title="ScentHunter API", version="1.0.0")
@@ -45,12 +45,13 @@ BASE_DIR = os.path.dirname(__file__)
 HISTORY_PATH = os.path.join(BASE_DIR, "price_history.json")
 FRONTEND_INDEX = Path(__file__).resolve().parent.parent / "frontend" / "index.html"
 PRODUCT_CATALOG_PATH = os.path.join(BASE_DIR, "product_catalog.json")
+_STORE_CACHE: Dict[tuple, tuple] = {}
+_STORE_CACHE_TTL = 90.0
 
-
-
-
-
-
+VARIANTS = {
+    "pour femme", "night out", "rebel", "elixir", "intense",
+    "extreme", "limited edition", "collector edition", "collector's edition",
+}
 
 NON_PERFUME = {
     "gift set", "set regalo", "coffret", "bundle", "deodorant",
@@ -59,121 +60,9 @@ NON_PERFUME = {
 }
 
 IGNORED_WORDS = {
-    "eau", "de", "parfum", "perfume", "edp", "edt",
+    "eau", "de", "perfume", "edp", "edt",
     "extrait", "spray", "ml", "for", "by",
 }
-
-
-_CATALOG_CACHE = None
-
-
-def load_product_catalog() -> list[dict]:
-    global _CATALOG_CACHE
-
-    if _CATALOG_CACHE is not None:
-        return _CATALOG_CACHE
-
-    try:
-        with open(PRODUCT_CATALOG_PATH, "r", encoding="utf-8") as handle:
-            data = json.load(handle)
-    except (OSError, ValueError, json.JSONDecodeError):
-        data = []
-
-    # Catalog V2 is an object with a ``products`` array. Keep the rest of
-    # main.py independent from the storage schema by exposing the small
-    # legacy-shaped view expected by the generic query/matcher code.
-    if isinstance(data, dict):
-        products = data.get("products")
-        data = products if isinstance(products, list) else []
-    elif not isinstance(data, list):
-        data = []
-
-    normalized = []
-    for item in data:
-        if not isinstance(item, dict):
-            continue
-
-        normalized.append({
-            **item,
-            "id": item.get("id") or item.get("catalog_id") or item.get("product_id") or "",
-            "catalog_id": item.get("catalog_id") or item.get("product_id") or item.get("id") or "",
-            "brand": item.get("brand") or item.get("brand_name") or "",
-            "name": item.get("name") or item.get("family_name") or "",
-            "aliases": item.get("aliases") or [],
-            "formats_ml": item.get("formats_ml") or item.get("sizes_ml") or [],
-            "gtins": item.get("gtins") or item.get("ean") or [],
-            "mpns": item.get("mpns") or item.get("mpn") or [],
-        })
-
-    _CATALOG_CACHE = normalized
-    return _CATALOG_CACHE
-
-
-def catalog_match_candidates(query: str, limit: int = 12) -> list[dict]:
-    """Find canonical catalog candidates using only generic token rules."""
-    q = norm(query)
-    if not q:
-        return []
-
-    q_tokens = set(token for token in q.split() if token not in IGNORED_WORDS)
-    if not q_tokens:
-        q_tokens = set(q.split())
-
-    ranked = []
-
-    for item in load_product_catalog():
-        brand = str(item.get("brand") or "")
-        name = str(item.get("name") or "")
-        aliases = item.get("aliases") or []
-
-        texts = [brand, name]
-        if isinstance(aliases, list):
-            texts.extend(str(alias) for alias in aliases)
-
-        haystack = norm(" ".join(texts))
-        tokens = set(haystack.split())
-
-        overlap = len(q_tokens & tokens)
-        if not overlap:
-            continue
-
-        coverage = overlap / max(1, len(q_tokens))
-
-        exact = 1 if q == norm(f"{brand} {name}") else 0
-        name_contains = 1 if q in norm(name) else 0
-
-        ranked.append((
-            exact,
-            name_contains,
-            coverage,
-            overlap,
-            -len(name),
-            item,
-        ))
-
-    ranked.sort(key=lambda row: row[:5], reverse=True)
-    return [row[5] for row in ranked[:limit]]
-
-
-def catalog_search_queries(query: str, limit: int = 8) -> list[str]:
-    """Generate store queries from the canonical catalog, never from exceptions."""
-    raw = str(query or "").strip()
-    candidates = catalog_match_candidates(raw, limit)
-
-    attempts = [raw] if raw else []
-    seen = {norm(raw)} if raw else set()
-
-    for item in candidates:
-        brand = str(item.get("brand") or "").strip()
-        name = str(item.get("name") or "").strip()
-        candidate = " ".join(part for part in (brand, name) if part)
-
-        key = norm(candidate)
-        if key and key not in seen:
-            attempts.append(candidate)
-            seen.add(key)
-
-    return attempts
 
 
 def norm(value: Any) -> str:
@@ -607,83 +496,102 @@ def resolve_actual_price(product: Dict[str, Any]) -> Dict[str, Any]:
 
 
 def matches(product: Dict[str, Any], query: str) -> bool:
-    """Generic result validation; no product/store-specific exceptions."""
-    name = str(
-        product.get("name")
-        or product.get("title")
-        or product.get("product_name")
-        or ""
+    """Generic post-match validation. Product identities come only from the catalog."""
+    identity = norm(
+        f"{product.get('canonical_brand', '')} "
+        f"{product.get('canonical_name', '')} "
+        f"{product.get('name', '')}"
     )
-
-    # Brand may be supplied separately by the scraper. It must participate
-    # in generic validation; otherwise a query such as "Jean Paul Gaultier"
-    # is rejected when the scraper returns name="Le Beau" + brand="Jean Paul Gaultier".
-    brand = str(
-        product.get("brand")
-        or product.get("manufacturer")
-        or product.get("maker")
-        or ""
-    )
-
-    source = product.get("source")
-    if isinstance(source, dict):
-        name = " ".join(
-            part for part in (
-                name,
-                str(source.get("source_name") or ""),
-            )
-            if part
-        )
-        brand = " ".join(
-            part for part in (
-                brand,
-                str(source.get("source_brand") or ""),
-            )
-            if part
-        )
-
-    searchable_text = norm(f"{brand} {name}")
-
-    query_tokens = {
+    tokens = {
         token for token in norm(query).split()
         if token not in IGNORED_WORDS
     }
-    name_tokens = set(searchable_text.split())
+    return bool(identity and tokens and tokens.issubset(set(identity.split())))
 
-    if not query_tokens or not name_tokens:
-        return False
-
-    for phrase in NON_PERFUME:
-        phrase_tokens = set(norm(phrase).split())
-        if phrase_tokens and phrase_tokens.issubset(name_tokens):
-            query_phrase = phrase_tokens.issubset(query_tokens)
-            if not query_phrase:
-                return False
-
-    return query_tokens.issubset(name_tokens)
 
 def load_scraper(store: str):
     return importlib.import_module(f"scrapers.{store}.scraper")
 
-def build_search_attempts(store: str, query: str) -> List[str]:
-    """Generic query expansion driven by the catalog, not by product names."""
-    attempts = catalog_search_queries(query)
-    if not attempts:
-        attempts = [query]
 
-    normalized = norm(query)
+def build_search_attempts(store: str, query: str) -> List[str]:
+    """Only generic query normalization; no product or store exceptions."""
+    raw = str(query or "").strip()
+    if not raw:
+        return []
+
+    attempts = [raw]
+    normalized = norm(raw)
     compact = re.sub(
         r"(?<=\d)\s+(?=[a-z])|(?<=[a-z])\s+(?=\d)",
         "",
         normalized,
     )
-
-    if compact and compact not in {norm(item) for item in attempts}:
+    if compact and compact != normalized:
         attempts.append(compact)
 
-    return attempts[:10]
+    return attempts
 
-def run_store(store: str, query: str) -> List[Dict[str, Any]]:
+
+
+def _load_catalog_products() -> List[Dict[str, Any]]:
+    try:
+        with open(PRODUCT_CATALOG_PATH, "r", encoding="utf-8") as file:
+            payload = json.load(file)
+    except (OSError, ValueError, TypeError):
+        return []
+
+    if isinstance(payload, dict):
+        products = payload.get("products", [])
+    elif isinstance(payload, list):
+        products = payload
+    else:
+        products = []
+
+    return [item for item in products if isinstance(item, dict)]
+
+
+def _canonicalize_results(results: List[Dict[str, Any]], query: str) -> List[Dict[str, Any]]:
+    if not results:
+        return []
+
+    matcher = ProductMatcher(_load_catalog_products())
+    matched = []
+    for item in results:
+        if not isinstance(item, dict):
+            continue
+        result = matcher.match(item)
+        if result is not None:
+            matched.append(result)
+    return matched
+
+
+def _cache_get(store: str, query: str) -> Optional[List[Dict[str, Any]]]:
+    key = (store, norm(query))
+    cached = _STORE_CACHE.get(key)
+    if not cached:
+        return None
+    timestamp, value = cached
+    if (datetime.now(timezone.utc).timestamp() - timestamp) > _STORE_CACHE_TTL:
+        _STORE_CACHE.pop(key, None)
+        return None
+    return [dict(item) for item in value]
+
+
+def _cache_put(store: str, query: str, value: List[Dict[str, Any]]) -> None:
+    # Cache only completed searches. Errors/timeouts never become cached
+    # "empty" answers, which is important for intermittent retailers.
+    _STORE_CACHE[(store, norm(query))] = (
+        datetime.now(timezone.utc).timestamp(),
+        [dict(item) for item in value],
+    )
+
+
+def run_store(store: str, query: str, use_cache: bool = False) -> List[Dict[str, Any]]:
+    if use_cache:
+        cached = _cache_get(store, query)
+        if cached is not None:
+            return cached
+
     module = load_scraper(store)
     search_fn = getattr(module, "search", None)
 
@@ -703,15 +611,22 @@ def run_store(store: str, query: str) -> List[Dict[str, Any]]:
 
             product = dict(item)
             product.setdefault("store", store)
-            product = normalize_stock(product)
 
+            # Regola generale stock senza richieste HTTP aggiuntive.
+            product = normalize_stock(product)
             if product.get("available") is not False:
                 product = resolve_actual_price(product)
+
+            # Keep different package sizes from the same canonical URL.
+            # Example:  75 ml and  125 ml.
+            size_ml = product.get("size_ml")
+            if size_ml in (None, ""):
+                size_ml = _product_size_ml(product)
 
             key = (
                 str(product.get("url", "")).lower(),
                 norm(product.get("name", "")),
-                str(product.get("size_ml") or product.get("size") or ""),
+                str(size_ml or "").strip(),
             )
 
             if key in seen:
@@ -719,20 +634,35 @@ def run_store(store: str, query: str) -> List[Dict[str, Any]]:
 
             seen.add(key)
 
-            if matches(product, query):
-                output.append(product)
+            # IMPORTANT: do not apply the old raw-name query filter here.
+            # The new ProductMatcher must see the raw offer first, because
+            # several stores omit the brand from the title. Filtering here
+            # was dropping valid offers before canonical identity was resolved.
+            output.append(product)
+
+    if use_cache:
+        _cache_put(store, query, output)
 
     return output
+
 
 def unique_results(products: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
     unique: List[Dict[str, Any]] = []
     seen = set()
 
     for product in products:
+        # The same canonical URL can legitimately represent multiple
+        # package sizes (for example  75 ml and 125 ml).
+        # Size is therefore part of the offer identity.
+        size_ml = product.get("size_ml")
+        if size_ml in (None, ""):
+            size_ml = _product_size_ml(product)
+
         key = (
             str(product.get("store", "")).lower(),
+            str(product.get("product_identity") or "").lower(),
             str(product.get("url", "")).lower(),
-            norm(product.get("name", "")),
+            str(size_ml or "").strip(),
         )
 
         if key in seen:
@@ -759,15 +689,8 @@ def sort_by_price(products: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
 
 def search_perfume(query: str) -> Dict[str, Any]:
     query = str(query or "").strip()
-
     if not query:
-        return {
-            "query": query,
-            "count": 0,
-            "results": [],
-            "comparisons": [],
-            "errors": {},
-        }
+        return {"query": query, "count": 0, "results": [], "comparisons": [], "errors": {}}
 
     results: List[Dict[str, Any]] = []
     errors: Dict[str, str] = {}
@@ -776,9 +699,8 @@ def search_perfume(query: str) -> Dict[str, Any]:
         max_workers=len(STORES),
         thread_name_prefix="scent-store",
     )
-
     future_to_store = {
-        executor.submit(run_store, store, query): store
+        executor.submit(run_store, store, query, True): store
         for store in STORES
     }
 
@@ -798,41 +720,26 @@ def search_perfume(query: str) -> Dict[str, Any]:
 
     executor.shutdown(wait=False, cancel_futures=True)
 
-    # Central identity step. Scrapers only provide RAW offers.
-    catalog = load_product_catalog()
-    if catalog:
-        try:
-            matcher = ProductMatcher(catalog)
-            canonical_results = []
+    results = _canonicalize_results(results, query)
 
-            for item in results:
-                matched = matcher.match(item)
-                if matched is not None:
-                    canonical_results.append(matched)
+    # Query filtering happens AFTER canonicalization. This lets the matcher
+    # use canonical_brand + canonical_name when a store title omits the brand.
+    query_tokens = [
+        token for token in norm(query).split()
+        if token not in IGNORED_WORDS
+    ]
 
-            # Do not silently discard RAW offers when the catalog has no match.
-            # They remain visible but are marked unresolved for later catalog work.
-            matched_ids = {id(item) for item in canonical_results}
-            canonical_by_key = {
-                result_dedupe_key(item): item
-                for item in canonical_results
-            }
+    filtered_results = []
+    for product in results:
+        canonical_text = norm(
+            f"{product.get('canonical_brand', '')} "
+            f"{product.get('canonical_name', '')} "
+            f"{product.get('name', '')}"
+        )
+        if query_tokens and all(token in canonical_text for token in query_tokens):
+            filtered_results.append(product)
 
-            final_results = list(canonical_by_key.values())
-
-            for item in results:
-                key = result_dedupe_key(item)
-                if key not in canonical_by_key:
-                    unresolved = dict(item)
-                    unresolved["match_method"] = "unresolved"
-                    unresolved["match_score"] = 0.0
-                    final_results.append(unresolved)
-
-            results = final_results
-        except Exception as exc:
-            errors["identity_engine"] = str(exc) or exc.__class__.__name__
-
-    results = sort_by_price(unique_results(results))
+    results = sort_by_price(unique_results(filtered_results))
 
     return {
         "query": query,
@@ -842,20 +749,9 @@ def search_perfume(query: str) -> Dict[str, Any]:
         "errors": errors,
     }
 
-def expand_family_queries(raw_query: str) -> list[str]:
-    """Backward-compatible wrapper around the catalog-driven query engine."""
-    return catalog_search_queries(raw_query, limit=8)
 
 
-def result_dedupe_key(item):
-    """Stable result key that preserves product variants/formats."""
-    store = norm(item.get("store") or item.get("source") or "")
-    brand = norm(item.get("brand") or "")
-    name = norm(item.get("name") or "")
-    size = norm(item.get("size") or item.get("format") or "")
-    url = str(item.get("url") or "").split("#")[0].split("?")[0].strip().lower()
-    return (store, brand, name, size, url)
-
+# ============================================================
 @app.get("/search")
 def search(q: str):
     return search_perfume(q)
@@ -876,7 +772,7 @@ def test_store(store: str, q: str):
         raise HTTPException(status_code=400, detail="Parametro q mancante")
 
     try:
-        results = run_store(store, query)
+        results = run_store(store, query, False)
         return {
             "store": store,
             "query": query,
@@ -1101,115 +997,31 @@ def suggest(q: str):
             "source": "catalog",
         }
 
-    if len(query) >= 3:
-        try:
-            catalog_queries = [raw_query]
-
-            for token in query.split():
-                if len(token) >= 3 and token not in catalog_queries:
-                    catalog_queries.append(token)
-
-            catalog_results: List[Dict[str, Any]] = []
-            catalog_seen = set()
-
-            for catalog_query in catalog_queries:
-                for item in fragella_search(catalog_query, 10):
-                    key = (
-                        str(item.get("catalog_id") or "").strip()
-                        or f"{norm(item.get('brand'))}|{norm(item.get('name'))}"
-                    )
-
-                    if key in catalog_seen:
-                        continue
-
-                    catalog_seen.add(key)
-                    catalog_results.append(item)
-
-            suggestions = rank_catalog_suggestions(
-                catalog_results,
-                raw_query,
-            )
-
-            if suggestions:
-                return {
-                    "query": q,
-                    "count": len(suggestions),
-                    "suggestions": suggestions,
-                    "source": "catalog",
-                }
-
-        except (
-            HTTPError,
-            URLError,
-            TimeoutError,
-            ValueError,
-            json.JSONDecodeError,
-        ) as error:
-            print("Catalog suggest error:", repr(error))
-        except Exception:
-            traceback.print_exc()
-
     suggestions = []
     seen = set()
 
-    for store in STORES:
-        try:
-            module = load_scraper(store)
-            attempts = expand_family_queries(raw_query)
+    for item in _load_catalog_products():
+        name = str(item.get("name") or item.get("title") or "").strip()
+        brand = str(item.get("brand") or "").strip()
+        if not name:
+            continue
 
-            if query not in [norm(a) for a in attempts]:
-                attempts.append(query)
+        text = norm(f"{brand} {name}")
+        tokens = [token for token in query.split() if len(token) >= 2]
+        if tokens and not all(token in text for token in tokens):
+            continue
 
-            for attempt in attempts:
-                if not attempt:
-                    continue
+        key = str(item.get("id") or item.get("catalog_id") or "").strip() or text
+        if key in seen:
+            continue
+        seen.add(key)
 
-                results = module.search(attempt) or []
-
-                for product in results:
-                    if not isinstance(product, dict):
-                        continue
-
-                    name = str(
-                        product.get("name")
-                        or product.get("title")
-                        or product.get("product_name")
-                        or ""
-                    ).strip()
-
-                    if not name:
-                        continue
-
-                    normalized_name = norm(name)
-                    brand = str(product.get("brand") or "").strip()
-                    haystack = norm(f"{brand} {name}")
-                    words = [word for word in query.split() if word]
-
-                    if not all(word in haystack for word in words):
-                        continue
-
-                    if any(
-                        norm(phrase) in normalized_name
-                        for phrase in NON_PERFUME
-                    ):
-                        continue
-
-                    key = (norm(brand), normalized_name)
-
-                    if key in seen:
-                        continue
-
-                    seen.add(key)
-
-                    suggestions.append({
-                        "name": name,
-                        "store": product.get("store", store),
-                        "brand": brand,
-                        "image": product_image(product),
-                    })
-
-        except Exception:
-            traceback.print_exc()
+        suggestions.append({
+            "name": name,
+            "brand": brand,
+            "catalog_id": item.get("id") or item.get("catalog_id") or "",
+            "image": item.get("image") or item.get("image_url") or "",
+        })
 
     suggestions.sort(
         key=lambda item: (
@@ -1225,7 +1037,7 @@ def suggest(q: str):
         "query": q,
         "count": len(suggestions),
         "suggestions": suggestions,
-        "source": "stores-fallback",
+        "source": "catalog",
     }
 
 
@@ -1279,3 +1091,4 @@ def product(name: str, brand: str = ""):
     }
 
 
+# ============================================================
