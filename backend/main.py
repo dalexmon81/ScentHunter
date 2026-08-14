@@ -673,7 +673,7 @@ def build_search_attempts(store: str, query: str) -> List[str]:
     if compact and compact not in {norm(item) for item in attempts}:
         attempts.append(compact)
 
-    return attempts[:32]
+    return attempts[:6]
 
 def run_store(store: str, query: str) -> List[Dict[str, Any]]:
     module = load_scraper(store)
