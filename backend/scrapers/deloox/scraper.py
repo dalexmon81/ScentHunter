@@ -247,21 +247,34 @@ def _extract_price(text):
     return f"{integer},{cents} €"
 
 
-def _get(session, url):
-    try:
-        response = session.get(
-            url,
-            headers=HEADERS,
-            timeout=TIMEOUT,
-            allow_redirects=True,
-        )
+def _get(session, url, retries=3):
+    """
+    Bounded retry for intermittent/incomplete Deloox responses.
+    """
+    last_error = None
 
-        response.raise_for_status()
-        return response
+    for attempt in range(max(1, retries)):
+        try:
+            response = session.get(
+                url,
+                headers=HEADERS,
+                timeout=TIMEOUT,
+                allow_redirects=True,
+            )
+            response.raise_for_status()
 
-    except requests.RequestException as error:
-        print(f"DELOOX ERROR: {error}")
-        return None
+            if len(response.text or "") < 5000 and attempt + 1 < retries:
+                continue
+
+            return response
+
+        except requests.RequestException as error:
+            last_error = error
+
+    if last_error:
+        print(f"DELOOX ERROR: {last_error}")
+
+    return None
 
 
 def _query_wants_non_fragrance(query):
@@ -985,6 +998,15 @@ def _extract_product_variants(
         )
 
         if not price:
+            nearby = " ".join(
+                strings[
+                    index + 1:
+                    min(index + 80, len(strings))
+                ]
+            )
+            price = _extract_price(nearby)
+
+        if not price:
             continue
 
         seen_sizes.add(size_label)
@@ -1164,36 +1186,39 @@ def search(query):
     seen_candidate_urls = set()
 
     for current_category_url in category_urls:
-        response = _get(
-            session,
-            current_category_url,
-        )
+        # Deloox listings can be incomplete on an individual request.
+        # Two bounded reads are merged; duplicate product URLs are removed.
+        for _ in range(2):
+            response = _get(
+                session,
+                current_category_url,
+            )
 
-        if response is None:
-            continue
+            if response is None:
+                continue
 
-        current_candidates = _extract_category(
-            response.text,
-            query,
-        )
-
-        if not current_candidates:
-            current_candidates = _extract_brand_page(
+            current_candidates = _extract_category(
                 response.text,
                 query,
             )
 
-        for item in current_candidates:
-            clean_url = (
-                item["url"]
-                .split("#")[0]
-                .split("?")[0]
-            )
-            if clean_url in seen_candidate_urls:
-                continue
+            if not current_candidates:
+                current_candidates = _extract_brand_page(
+                    response.text,
+                    query,
+                )
 
-            seen_candidate_urls.add(clean_url)
-            candidates.append(item)
+            for item in current_candidates:
+                clean_url = (
+                    item["url"]
+                    .split("#")[0]
+                    .split("?")[0]
+                )
+                if clean_url in seen_candidate_urls:
+                    continue
+
+                seen_candidate_urls.add(clean_url)
+                candidates.append(item)
 
     if not candidates:
         return []
@@ -1273,18 +1298,20 @@ def search(query):
             product_url,
         )
 
-        if not variants:
-            variants = _extract_jsonld_variants(
-                product_response.text,
-                item["name"],
-                product_url,
-            )
+        jsonld_variants = _extract_jsonld_variants(
+            product_response.text,
+            item["name"],
+            product_url,
+        )
+
+        # Merge both sources: one can expose 75 ml while the other exposes
+        # 125 ml. JSON-LD is not an all-or-nothing fallback anymore.
+        variants.extend(jsonld_variants)
 
         for variant in variants:
             key = (
                 variant["url"],
                 variant.get("size", ""),
-                variant["price"],
             )
 
             if key in seen_variants:
