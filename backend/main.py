@@ -17,7 +17,7 @@ from urllib.parse import urlencode
 from urllib.request import Request, urlopen
 from urllib.error import HTTPError, URLError
 
-from product_matcher import ProductMatcher, CatalogProduct, stable_auto_id
+from product_matcher import ProductMatcher, CatalogProduct, extract_size_ml, stable_auto_id
 
 
 app = FastAPI(title="ScentHunter API", version="1.0.0")
@@ -517,20 +517,24 @@ def matches(product: Dict[str, Any], query: str) -> bool:
     """
     Match generale del prodotto.
 
-    IMPORTANTE: non scartiamo automaticamente le varianti (Limited Edition,
-    Elixir, Rebel, ecc.). La UI deve poterle mostrare come prodotti distinti.
-    Filtriamo invece i veri non-profumi (gift set, deodoranti, kit...).
+    Il nome mostrato dal negozio non è sempre completo: alcuni store mettono
+    il brand solo nel campo brand o nell'URL della scheda. Per questo il match
+    usa l'identità complessiva dell'offerta: brand + nome + URL.
 
-    Per alcune referenze verificate, uno store può usare un alias reale del
-    nome canonico. In quel caso accettiamo l'alias solo se è esplicitamente
-    associato alla query, senza trasformare la ricerca in una ricerca ampia.
+    Le varianti reali (Narcisse, Le Parfum, Limited Edition, ecc.) restano
+    prodotti distinti: non vengono rinominate né fuse qui.
     """
-    name_tokens = set(norm(product.get("name", "")).split())
+    name = str(product.get("name") or product.get("title") or product.get("product_name") or "")
+    brand = str(product.get("brand") or product.get("manufacturer") or "")
+    url = str(product.get("url") or product.get("product_url") or "")
+
+    name_tokens = set(norm(name).split())
     query_all_tokens = set(norm(query).split())
 
     if not name_tokens or not query_all_tokens:
         return False
 
+    # I veri non-profumi vengono filtrati sul nome dell'offerta.
     for phrase in NON_PERFUME:
         phrase_tokens = set(norm(phrase).split())
         if (
@@ -539,6 +543,12 @@ def matches(product: Dict[str, Any], query: str) -> bool:
             and not phrase_tokens.issubset(query_all_tokens)
         ):
             return False
+
+    # Identità completa: molti negozi, come Sabina, possono omettere il brand
+    # dal titolo ma averlo nel campo brand o nell'URL.
+    identity_tokens = set(
+        norm(" ".join((brand, name, url))).split()
+    )
 
     query_tokens = {
         token
@@ -549,22 +559,20 @@ def matches(product: Dict[str, Any], query: str) -> bool:
     if not query_tokens:
         query_tokens = query_all_tokens
 
-    if bool(query_tokens) and query_tokens.issubset(name_tokens):
+    if query_tokens.issubset(identity_tokens):
         return True
 
-    # Alias stretti e verificati: per esempio alcuni store chiamano
-    # "9 PM Pour Femme" con il nome "9PM Purple Femme".
+    # Alias stretti e verificati.
     for alias in _query_aliases(query):
         alias_tokens = {
             token
             for token in norm(alias).split()
             if token not in IGNORED_WORDS
         }
-        if alias_tokens and alias_tokens.issubset(name_tokens):
+        if alias_tokens and alias_tokens.issubset(identity_tokens):
             return True
 
     return False
-
 
 def load_scraper(store: str):
     return importlib.import_module(f"scrapers.{store}.scraper")
