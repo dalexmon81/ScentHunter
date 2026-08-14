@@ -1205,5 +1205,15 @@ async function searchPerfume(){
 
 searchButton.addEventListener("click",searchPerfume);queryInput.addEventListener("keydown",e=>{if(e.key==="Enter"){e.preventDefault();searchPerfume()}});
 renderWishlist();syncHearts();
+
+function displayPerfumeName(name) {
+  return String(name || "")
+    .replace(/\s*\(?\s*\d+(?:[.,]\d+)?\s*(?:ml|mL|cl|oz)\s*\)?/gi, "")
+    .replace(/\s*[-–—]?\s*(?:eau\s+de\s+toilette|eau\s+de\s+parfum|eau\s+de\s+cologne|eau\s+fra[iî]che|edt|edp|edc|parfum|perfume)\b/gi, "")
+    .replace(/\s*\(?\s*(?:man|men|woman|women|pour\s+(?:homme|femme))\s*\)?/gi, "")
+    .replace(/\s*[-–—]\s*$/g, "")
+    .replace(/\s{2,}/g, " ")
+    .trim();
+}
 </script>
 </body></html>
