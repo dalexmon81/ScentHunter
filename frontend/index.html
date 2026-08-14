@@ -1715,6 +1715,71 @@ function isLeBeauFamilyGroup(g){
  ].some(x=>name===normalizePerfumeName(x));
 }
 
+function mergeSearchData(base,extra){
+ return {
+  comparisons:[...(base?.comparisons||[]),...(extra?.comparisons||[])],
+  results:[...(base?.results||[]),...(extra?.results||[])],
+  errors:{...(base?.errors||{}),...(extra?.errors||{})}
+ };
+}
+
+function renderProgressiveData(data,q,final=false){
+ let groups=shGroupData(data||{});
+ if(isLeBeauFamilyQuery(q))groups=groups.filter(isLeBeauFamilyGroup);
+ showProducts(groups);
+ currentProductGroups=groups;
+ if(typeof updateBestPricesFromGroups==="function")updateBestPricesFromGroups(groups);
+ refreshWishlistFromResults(groups.flatMap(g=>g.offers.map(o=>({
+  name:g.name||"",brand:g.brand||"",price:shPrice(o),price_value:o.price_value,
+  store:o.store||"",url:o.url||""
+ }))));
+ errorsBox.innerHTML="";
+ if(final){
+  statusBox.textContent=groups.length
+   ?`Ricerca completata: ${groups.length} prodotti trovati.`
+   :"Nessun risultato trovato.";
+ }
+}
+
+async function runProgressiveRequests(requests,onResult){
+ const queue=[...requests];
+ const worker=async()=>{
+  while(queue.length){
+   const request=queue.shift();
+   if(!request)break;
+   try{
+    const data=await fetchJSONWithTimeout(request.url,request.timeout||30000);
+    await onResult(data,request);
+   }catch(error){
+    await onResult({results:[],comparisons:[],errors:{[request.label||request.url]:String(error?.message||"timeout")}},request);
+   }
+  }
+ };
+ await Promise.all([worker(),worker()]);
+}
+
+async function searchNormalProgressively(q,onPartial){
+ const stores=[
+  "bplatz","deloox","parfumcity","parfumzentrum",
+  "perfumemarket","sabina","orioudh","notino"
+ ];
+ const merged={comparisons:[],results:[],errors:{}};
+ const requests=stores.map(store=>({
+  label:store,
+  url:backend()+"/test-store?store="+encodeURIComponent(store)+"&q="+encodeURIComponent(q),
+  timeout:30000
+ }));
+
+ await runProgressiveRequests(requests,async(data,request)=>{
+  if(Array.isArray(data?.results))merged.results.push(...data.results);
+  if(Array.isArray(data?.comparisons))merged.comparisons.push(...data.comparisons);
+  if(data?.error)merged.errors[request.label]=data.error;
+  else if(data?.errors&&typeof data.errors==="object")Object.assign(merged.errors,data.errors);
+  onPartial(merged,false,request.label);
+ });
+ return merged;
+}
+
 async function searchLeBeauFamily(onPartial){
  const terms=[
   "Jean Paul Gaultier Le Beau",
@@ -1723,14 +1788,6 @@ async function searchLeBeauFamily(onPartial){
   "Jean Paul Gaultier Le Beau Narcisse",
   "Jean Paul Gaultier Le Beau Flower Edition"
  ];
- const merged={comparisons:[],results:[],errors:{}};
-
- // Una variante alla volta: il backend usa gia 2 worker e /search ha un
- // limite interno di 15s. Cosi non saturiamo Render e manteniamo la ricerca
- // progressiva che ora funziona.
- const timeoutMs=25000;
- const fallbackTimeoutMs=14500;
-
  const expectedStores={
   "Jean Paul Gaultier Le Beau":["deloox","sabina","parfumzentrum","perfumemarket","notino"],
   "Jean Paul Gaultier Le Beau Le Parfum":["deloox","sabina","perfumemarket","notino"],
@@ -1738,150 +1795,51 @@ async function searchLeBeauFamily(onPartial){
   "Jean Paul Gaultier Le Beau Narcisse":["deloox","sabina"],
   "Jean Paul Gaultier Le Beau Flower Edition":["deloox"]
  };
-
- for(let i=0;i<terms.length;i++){
-  const term=terms[i];
-  statusBox.textContent=`Cerco Le Beau… ${i+1}/${terms.length}`;
-
-  let data={results:[],comparisons:[],errors:{}};
-  try{
-   data=await fetchJSONWithTimeout(
-    backend()+"/search?q="+encodeURIComponent(term),
-    timeoutMs
-   )||data;
-
-   if(Array.isArray(data.comparisons))merged.comparisons.push(...data.comparisons);
-   if(Array.isArray(data.results))merged.results.push(...data.results);
-   if(data.errors&&typeof data.errors==="object")Object.entries(data.errors).forEach(([store,error])=>{
-    if(!merged.errors[store])merged.errors[store]=error;
-   });
-  }catch(e){
-   merged.errors["ricerca "+term]=String(e?.message||"timeout");
-  }
-
-  // Mostra subito il risultato normale.
-  if(typeof onPartial==="function")onPartial(merged,false);
-
-  // Fallback mirato: per ogni variante recuperiamo solo i retailer attesi
-  // che non sono comparsi nella risposta /search. Massimo 2 insieme, in linea
-  // con i 2 worker del backend. I risultati arrivano progressivamente.
-  const returnedStores=new Set();
-  (Array.isArray(data.results)?data.results:[]).forEach(o=>{
-   const st=String(o?.store||o?.shop||"").trim().toLowerCase();
-   if(st)returnedStores.add(st);
-  });
-  (Array.isArray(data.comparisons)?data.comparisons:[]).forEach(g=>{
-   (Array.isArray(g?.offers)?g.offers:[]).forEach(o=>{
-    const st=String(o?.store||o?.shop||"").trim().toLowerCase();
-    if(st)returnedStores.add(st);
+ const merged={comparisons:[],results:[],errors:{}};
+ const requests=[];
+ terms.forEach(term=>{
+  (expectedStores[term]||[]).forEach(store=>{
+   requests.push({
+    label:store+" · "+term,
+    term,
+    store,
+    url:backend()+"/test-store?store="+encodeURIComponent(store)+"&q="+encodeURIComponent(term),
+    timeout:30000
    });
   });
+ });
 
-  const missing=(expectedStores[term]||[]).filter(store=>!returnedStores.has(store));
-  for(let j=0;j<missing.length;j+=2){
-   const pair=missing.slice(j,j+2);
-   statusBox.textContent=`Cerco Le Beau… ${i+1}/${terms.length} · recupero ${j+1}/${missing.length}`;
-
-   const fallbackResponses=await Promise.allSettled(pair.map(store=>
-    fetchJSONWithTimeout(
-     backend()+"/test-store?store="+encodeURIComponent(store)+"&q="+encodeURIComponent(term),
-     fallbackTimeoutMs
-    )
-   ));
-
-   fallbackResponses.forEach((r,k)=>{
-    const store=pair[k];
-    if(r.status!=="fulfilled"){
-     merged.errors[store]=String(r.reason?.message||"timeout");
-     return;
-    }
-    const fd=r.value||{};
-    if(Array.isArray(fd.results))merged.results.push(...fd.results);
-    if(Array.isArray(fd.comparisons))merged.comparisons.push(...fd.comparisons);
-    if(fd.error)merged.errors[store]=fd.error;
-   });
-
-   if(typeof onPartial==="function")onPartial(merged,false);
-  }
- }
-
- if(typeof onPartial==="function")onPartial(merged,true);
+ let completed=0;
+ await runProgressiveRequests(requests,async(data,request)=>{
+  completed++;
+  if(Array.isArray(data?.results))merged.results.push(...data.results);
+  if(Array.isArray(data?.comparisons))merged.comparisons.push(...data.comparisons);
+  if(data?.error)merged.errors[request.store]=data.error;
+  else if(data?.errors&&typeof data.errors==="object")Object.assign(merged.errors,data.errors);
+  statusBox.textContent=`Cerco Le Beau… ${completed}/${requests.length}`;
+  onPartial(merged,false);
+ });
+ onPartial(merged,true);
  return merged;
-}
-async function startSearchJob(q){
-  const response=await fetch(backend()+"/search?q="+encodeURIComponent(q),{
-    headers:{"Accept":"application/json"}
-  });
-  if(!response.ok)throw new Error("HTTP "+response.status);
-  const job=await response.json();
-  if(!job.job_id)throw new Error("Il backend non ha creato la ricerca.");
-  localStorage.setItem(SEARCH_JOB_KEY,JSON.stringify({job_id:job.job_id,query:q}));
-  return job.job_id;
-}
-
-async function waitSearchJob(jobId,q){
-  while(true){
-    const data=await fetchJSONWithTimeout(
-      backend()+"/search-status/"+encodeURIComponent(jobId),
-      15000
-    );
-
-    if(data.status==="completed")return data;
-
-    if(data.status==="failed"){
-      throw new Error(data.error||"Ricerca fallita.");
-    }
-
-    statusBox.textContent="Ricerca in corso…";
-    await new Promise(resolve=>setTimeout(resolve,2000));
-  }
-}
-
-function renderCompletedSearch(data,q){
-  let groups=shGroupData(data||{});
-
-  // Mantiene il filtro già presente per Le Beau: niente falsi positivi
-  // come Kenzo Le Monde Est Beau.
-  if(typeof isLeBeauFamilyQuery==="function" && isLeBeauFamilyQuery(q)){
-    groups=groups.filter(isLeBeauFamilyGroup);
-  }
-
-  showProducts(groups);
-  currentProductGroups=groups;
-  if(typeof updateBestPricesFromGroups==="function")updateBestPricesFromGroups(groups);
-
-  refreshWishlistFromResults(
-    groups.flatMap(g=>g.offers.map(o=>({
-      name:g.name||"",
-      brand:g.brand||"",
-      price:shPrice(o),
-      price_value:o.price_value,
-      store:o.store||"",
-      url:o.url||""
-    })))
-  );
-
-  errorsBox.innerHTML="";
-  statusBox.textContent=groups.length
-    ? `Ricerca completata: ${groups.length} prodotti trovati.`
-    : "Nessun risultato trovato.";
 }
 
 async function searchPerfume(){
  const q=queryInput.value.trim();
  if(!q){
-   statusBox.textContent="";
-   resultsBox.innerHTML="";
-   errorsBox.innerHTML="";
-   return;
+  statusBox.textContent="";resultsBox.innerHTML="";errorsBox.innerHTML="";
+  return;
  }
+
+ // Ogni nuova ricerca invalida immediatamente la precedente.
+ const requestId=Date.now()+Math.random();
+ window.__shSearchRequest=requestId;
 
  searchButton.disabled=true;
  searchButton.classList.add("searching");
  let dots=0;
  const updateSearchButton=()=>{
-   dots=(dots+1)%4;
-   searchButton.innerHTML='<span class="search-fixed">CERCO</span><span class="search-dots">'+". ".repeat(dots)+'</span>';
+  dots=(dots+1)%4;
+  searchButton.innerHTML='<span class="search-fixed">CERCO</span><span class="search-dots">'+". ".repeat(dots)+'</span>';
  };
  updateSearchButton();
  const dotsTimer=setInterval(updateSearchButton,500);
@@ -1891,54 +1849,33 @@ async function searchPerfume(){
  errorsBox.innerHTML="";
 
  try{
-   const jobId=await startSearchJob(q);
-   statusBox.textContent="Ricerca in corso… puoi anche uscire da ScentHunter.";
-   const data=await waitSearchJob(jobId,q);
-   localStorage.removeItem(SEARCH_JOB_KEY);
-   renderCompletedSearch(data,q);
+  const renderPartial=(data,final=false)=>{
+   if(window.__shSearchRequest!==requestId)return;
+   renderProgressiveData(data,q,final);
+  };
+
+  if(isLeBeauFamilyQuery(q)){
+   await searchLeBeauFamily(renderPartial);
+  }else{
+   const data=await searchNormalProgressively(q,renderPartial);
+   if(window.__shSearchRequest===requestId)renderProgressiveData(data,q,true);
+  }
  }catch(e){
+  if(window.__shSearchRequest===requestId){
    console.error(e);
    statusBox.textContent=String(e?.message||"Impossibile completare la ricerca.");
+  }
  }finally{
-   clearInterval(dotsTimer);
+  clearInterval(dotsTimer);
+  if(window.__shSearchRequest===requestId){
    searchButton.disabled=false;
    searchButton.classList.remove("searching");
    searchButton.textContent="INIZIA LA RICERCA";
+  }
  }
 }
 
-async function resumeSearchJob(){
-  let saved=null;
-  try{saved=JSON.parse(localStorage.getItem(SEARCH_JOB_KEY)||"null")}catch(e){saved=null}
-  if(!saved||!saved.job_id||!saved.query)return;
-
-  queryInput.value=saved.query;
-  searchButton.disabled=true;
-  searchButton.classList.add("searching");
-  searchButton.textContent="CERCO…";
-  statusBox.textContent="Riprendo la ricerca in corso…";
-  resultsBox.innerHTML="";
-  errorsBox.innerHTML="";
-
-  try{
-    const data=await waitSearchJob(saved.job_id,saved.query);
-    localStorage.removeItem(SEARCH_JOB_KEY);
-    renderCompletedSearch(data,saved.query);
-  }catch(e){
-    if(String(e?.message||"").includes("404")){
-      localStorage.removeItem(SEARCH_JOB_KEY);
-    }
-    console.error(e);
-    statusBox.textContent=String(e?.message||"Impossibile riprendere la ricerca.");
-  }finally{
-    searchButton.disabled=false;
-    searchButton.classList.remove("searching");
-    searchButton.textContent="INIZIA LA RICERCA";
-  }
-}
-
-
 searchButton.addEventListener("click",searchPerfume);queryInput.addEventListener("keydown",e=>{if(e.key==="Enter"){e.preventDefault();searchPerfume()}});
-renderWishlist();syncHearts();resumeSearchJob();
+renderWishlist();syncHearts();
 </script>
 </body></html>
