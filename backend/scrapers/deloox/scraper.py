@@ -336,6 +336,83 @@ def _url_matches_query(product_url, query):
     return found / len(query_tokens) >= 0.55
 
 
+
+def _is_gift_set_url(url):
+    value = _norm(url)
+    return bool(re.search(r"\b(gift|set|coffret|geschenk|cadeau)\b", value))
+
+
+def _product_url_candidates(link):
+    """
+    Return product URLs from the same compact Deloox product card.
+    The main anchor is preferred, but if it points to a gift set while a
+    sibling anchor points to the actual fragrance, the fragrance wins.
+    """
+    card = _find_product_card(link)
+    candidates = []
+
+    for anchor in card.find_all("a", href=True):
+        href = _clean(anchor.get("href"))
+        url = urljoin(BASE_URL, href).split("?")[0]
+        if "/product/" not in url.lower():
+            continue
+
+        text_value = _clean(
+            anchor.get_text(" ", strip=True)
+            or anchor.get("title")
+            or anchor.get("aria-label")
+            or ""
+        )
+        candidates.append((url, text_value))
+
+    # Always include the original link even if the compact-card heuristic
+    # did not return it.
+    original = urljoin(
+        BASE_URL, _clean(link.get("href"))
+    ).split("?")[0]
+    if "/product/" in original.lower() and not any(u == original for u, _ in candidates):
+        candidates.append((original, _clean(link.get_text(" ", strip=True))))
+
+    # Deduplicate while preserving order.
+    out=[]
+    seen=set()
+    for url, label in candidates:
+        key=url.rstrip("/")
+        if key not in seen:
+            seen.add(key)
+            out.append((url,label))
+    return out
+
+
+def _choose_product_url(link, query):
+    """
+    Choose the best canonical product URL from the card.
+
+    A URL containing "gift/set" is never preferred for a normal perfume
+    query. If all available links are gift sets, return None rather than
+    returning a false product URL.
+    """
+    candidates = _product_url_candidates(link)
+    if not candidates:
+        return None
+
+    scored=[]
+    for url,label in candidates:
+        gift = _is_gift_set_url(url)
+        score = _match_score(label, query)
+        if _url_matches_query(url, query):
+            score += 0.35
+        if gift:
+            score -= 1000
+        scored.append((score, url, label))
+
+    scored.sort(reverse=True)
+
+    if not scored or scored[0][0] < -500:
+        return None
+    return scored[0][1]
+
+
 def _extract_category(html, query):
     """
     Discover products from Deloox category pages.
@@ -355,8 +432,8 @@ def _extract_category(html, query):
 
     for link in soup.find_all("a", href=True):
         href = _clean(link.get("href"))
-        product_url = urljoin(BASE_URL, href).split("?")[0]
-        if "/product/" not in product_url.lower():
+        product_url = _choose_product_url(link, query)
+        if not product_url:
             continue
 
         # Deloox size selectors can also be links. They are not the product
@@ -404,7 +481,7 @@ def _extract_category(html, query):
             "store": STORE,
             "name": identity,
             "price": price,
-            "url": product_url,
+            "url": variant_url or product_url,
             "available": True,
             "availability": "in_stock",
         })
@@ -418,10 +495,8 @@ def _extract_brand_page(html, query):
     query_tokens = set(_tokens(query))
 
     for link in soup.find_all("a", href=True):
-        product_url = urljoin(
-            BASE_URL, _clean(link.get("href"))
-        ).split("?")[0]
-        if "/product/" not in product_url.lower():
+        product_url = _choose_product_url(link, query)
+        if not product_url:
             continue
 
         link_name = _clean(link.get_text(" ", strip=True))
@@ -522,12 +597,16 @@ def _page_matches_query(html, query):
 
     The category/URL search is only discovery. Before a Deloox link is returned,
     the actual product page must identify itself as the requested product.
-    This blocks cases where a category result/redirect points to a different
-    fragrance (for example Le Beau -> Le Male).
+    Gift sets are explicitly rejected for a normal perfume query.
     """
     names = _page_product_names(html)
     if not names:
         return False
+
+    page_identity = _norm(" ".join(names))
+    if "gift set" in page_identity or "coffret" in page_identity:
+        if "gift" not in set(_tokens(query)) and "set" not in set(_tokens(query)):
+            return False
 
     # Prefer an exact token match; never accept a page merely because the URL
     # contains some of the requested words.
@@ -589,7 +668,7 @@ def _extract_product_variants(html, product_name, product_url):
                 found.append(f"{match.group('integer_after')},00 €")
         return found
 
-    def add_variant(size_label, price):
+    def add_variant(size_label, price, variant_url=None):
         if not price or size_label in seen_sizes:
             return
         seen_sizes.add(size_label)
@@ -602,6 +681,24 @@ def _extract_product_variants(html, product_name, product_url):
             "availability": "in_stock",
             "size": size_label,
         })
+
+    def size_variant_url(size_label):
+        target = _norm(size_label)
+        soup_links = []
+        for anchor in soup.find_all("a", href=True):
+            label = _clean(
+                anchor.get_text(" ", strip=True)
+                or anchor.get("title")
+                or anchor.get("aria-label")
+                or ""
+            )
+            if _norm(label) != target:
+                continue
+            href = _clean(anchor.get("href"))
+            url = urljoin(BASE_URL, href).split("?")[0]
+            if "/product/" in url.lower() and not _is_gift_set_url(url):
+                soup_links.append(url)
+        return soup_links[0] if soup_links else None
 
     # Use the rendered text order, not a broad ancestor/card.
     strings = [_clean(value) for value in soup.stripped_strings if _clean(value)]
@@ -625,7 +722,7 @@ def _extract_product_variants(html, product_name, product_url):
         # size must occur before the next size marker.
         prices = prices_in(segment)
         if prices:
-            add_variant(size_label, prices[-1])
+            add_variant(size_label, prices[-1], size_variant_url(size_label))
 
     # Fallback: some versions of the page expose the size as an anchor and
     # omit it from the normal text stream. Only inspect the small anchor
@@ -641,7 +738,7 @@ def _extract_product_variants(html, product_name, product_url):
             local_text = _clean(anchor.parent.get_text(" ", strip=True))
             prices = prices_in(local_text)
             if prices:
-                add_variant(size_label, prices[-1])
+                add_variant(size_label, prices[-1], size_variant_url(size_label))
 
     return results
 
