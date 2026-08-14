@@ -216,119 +216,74 @@ def _url_matches_query(product_url, query):
     return found / len(query_tokens) >= 0.55
 
 
-def _discover_category_pages(session, category_url, html, max_pages=5):
-    """Trova pagine successive della categoria senza conoscere la struttura esatta."""
-    pages = [category_url]
-    seen = {category_url.split("#")[0].split("?")[0]}
-    soup = BeautifulSoup(html, "html.parser")
+def _url_matches_name(product_url, product_name):
+    """
+    Check that the URL identifies the same product name.
 
-    for link in soup.find_all("a", href=True):
-        href = _clean(link.get("href"))
-        url = urljoin(BASE_URL, href).split("#")[0]
-        if "/category/" not in url.lower():
-            continue
-        label = _norm(link.get_text(" ", strip=True))
-        href_norm = _norm(url)
-        if (
-            "next" in label
-            or "pagina" in label
-            or "page" in href_norm
-            or "p=" in href.lower()
-            or "page=" in href.lower()
-        ):
-            if url not in seen:
-                seen.add(url)
-                pages.append(url)
-        if len(pages) >= max_pages:
-            break
-
-    return pages
-
-
-def _candidate_name_matches(link, card, query):
-    """Il nome del prodotto deve essere ricavato dal link/titolo/heading, non dal breadcrumb."""
-    query_tokens = set(_tokens(query))
-    if not query_tokens:
+    A card can contain several anchors, and the visible title can be correct
+    while one of the anchors points somewhere else. We therefore require the
+    product URL to carry a meaningful overlap with the exact product name.
+    Brand words alone are not enough.
+    """
+    url_tokens = set(_tokens(product_url))
+    name_tokens = set(_tokens(product_name))
+    if not url_tokens or not name_tokens:
         return False
 
+    # Product URLs normally contain the distinctive product-line tokens.
+    # Ignore generic words that are frequently absent from slugs.
+    generic = {
+        "jean", "paul", "gaultier", "eau", "de", "toilette", "parfum",
+        "edp", "edt", "intense", "edition", "for", "men", "women",
+    }
+    distinctive = [token for token in name_tokens if token not in generic]
+
+    if not distinctive:
+        return _matches_soft(product_url, product_name, minimum=0.60)
+
+    found = sum(token in url_tokens for token in distinctive)
+    return found / len(distinctive) >= 0.60
+
+
+def _product_anchor_name(link):
+    """Return only text that belongs to this exact product anchor."""
     values = [
         _clean(link.get_text(" ", strip=True)),
         _clean(link.get("title") or ""),
         _clean(link.get("aria-label") or ""),
     ]
-
-    for tag in ("h1", "h2", "h3", "h4"):
-        node = card.find(tag)
-        if node:
-            values.append(_clean(node.get_text(" ", strip=True)))
-
     for value in values:
-        if not value or SIZE_FULL_RE.fullmatch(value):
-            continue
-        tokens = set(_tokens(value))
-        if query_tokens.issubset(tokens):
-            return True
-
-    return False
+        if value and not SIZE_FULL_RE.fullmatch(value):
+            return value
+    return ""
 
 
-def _extract_category_candidates(html, query):
-    """Scoperta più ampia: URL = candidato, nome del prodotto = criterio."""
-    soup = BeautifulSoup(html, "html.parser")
-    results = []
-    seen = set()
+def _product_container(link):
+    """
+    Find the smallest useful product card around an exact /product/ anchor.
 
-    for link in soup.find_all("a", href=True):
-        href = _clean(link.get("href"))
-        product_url = urljoin(BASE_URL, href).split("?")[0].split("#")[0]
-        if "/product/" not in product_url.lower():
-            continue
+    The old scraper climbed a fixed number of parents until it found a price or
+    size. On modern Deloox pages that can cross the product-card boundary and
+    attach the title/price of one product to the URL of another product.
+    """
+    node = link
+    for _ in range(6):
+        if node is None:
+            break
 
-        card = _find_product_card(link)
-        card_text = _clean(card.get_text(" ", strip=True))
+        product_links = []
+        for anchor in node.find_all("a", href=True):
+            href = urljoin(BASE_URL, _clean(anchor.get("href"))).split("?")[0]
+            if "/product/" in href.lower():
+                product_links.append(href)
 
-        if any(word in card_text.lower() for word in SOLD_OUT):
-            continue
-        if not _candidate_name_matches(link, card, query):
-            continue
+        if len(set(product_links)) == 1:
+            return node
 
-        # Evita prodotti non-profumo ma non richiede più che l'URL contenga
-        # le parole della query: il nome reale della scheda è la prova.
-        product_name = (
-            _clean(link.get_text(" ", strip=True))
-            or _clean(link.get("title") or "")
-        )
-        if not product_name or SIZE_FULL_RE.fullmatch(product_name):
-            for tag in ("h1", "h2", "h3", "h4"):
-                node = card.find(tag)
-                if node:
-                    product_name = _clean(node.get_text(" ", strip=True))
-                    if product_name:
-                        break
+        node = node.parent
 
-        if not product_name:
-            continue
-        if not _is_relevant_product(product_name, query):
-            continue
+    return link
 
-        price = _extract_price(card_text)
-        if not price:
-            continue
-
-        if product_url in seen:
-            continue
-        seen.add(product_url)
-
-        results.append({
-            "store": STORE,
-            "name": product_name,
-            "price": price,
-            "url": product_url,
-            "available": True,
-            "availability": "in_stock",
-        })
-
-    return results
 
 def _extract_category(html, query):
     soup = BeautifulSoup(html, "html.parser")
@@ -336,56 +291,80 @@ def _extract_category(html, query):
     seen = set()
     query_tokens = set(_tokens(query))
 
+    # Deloox product cards contain several anchors (image, title, sizes,
+    # price). The product URL must always come from the exact product anchor,
+    # never from an unrelated anchor inside a broad parent container.
+    product_anchors = []
     for link in soup.find_all("a", href=True):
         href = _clean(link.get("href"))
         product_url = urljoin(BASE_URL, href).split("?")[0]
         if "/product/" not in product_url.lower():
             continue
+        product_anchors.append((link, product_url))
+
+    for link, product_url in product_anchors:
+        anchor_name = _product_anchor_name(link)
+
+        # If this anchor itself identifies another product, never borrow the
+        # name from a surrounding card.
+        if anchor_name and not _is_relevant_product(anchor_name, query):
+            continue
+
+        container = _product_container(link)
+        container_text = _clean(container.get_text(" ", strip=True))
+
+        if any(word in container_text.lower() for word in SOLD_OUT):
+            continue
+
+        # The query must be supported by product-specific evidence first.
+        # We allow the surrounding card to supply the title only when it
+        # contains exactly one product URL.
+        product_name = anchor_name
+        if not product_name:
+            headings = []
+            for tag in ("h1", "h2", "h3", "h4"):
+                for heading in container.find_all(tag):
+                    value = _clean(heading.get_text(" ", strip=True))
+                    if value:
+                        headings.append(value)
+
+            for value in headings:
+                if _is_relevant_product(value, query):
+                    product_name = value
+                    break
+
+        if not product_name:
+            # Last safe fallback: inspect links that point to the exact same
+            # product URL. This is safer than borrowing text from a broad
+            # ancestor and also handles image/price anchors with no text.
+            for sibling in soup.find_all("a", href=True):
+                sibling_url = urljoin(
+                    BASE_URL, _clean(sibling.get("href"))
+                ).split("?")[0]
+                if sibling_url != product_url:
+                    continue
+                value = _product_anchor_name(sibling)
+                if value and _is_relevant_product(value, query):
+                    product_name = value
+                    break
+
+        if not product_name or not _is_relevant_product(product_name, query):
+            continue
+
+        # Never pair a visible product name with an unrelated URL.
+        if not _url_matches_name(product_url, product_name):
+            continue
+
         if not _url_matches_query(product_url, query):
-            continue
+            # For searches such as "Le Beau", the product title is the
+            # authoritative discovery signal; do not reject a correct product
+            # solely because Deloox's slug is incomplete.
+            if not _matches_soft(product_name, query, minimum=0.80):
+                continue
 
-        card = _find_product_card(link)
-        card_text = _clean(card.get_text(" ", strip=True))
-
-        if any(word in card_text.lower() for word in SOLD_OUT):
-            continue
-        if not _matches_soft(card_text, query, minimum=0.55):
-            continue
-
-        card_tokens = set(_tokens(card_text))
-        if not query_tokens.issubset(card_tokens):
-            if not _matches_soft(card_text, query, minimum=0.75):
-                link_title = _clean(link.get("title") or "")
-                if not (link_title and query_tokens.issubset(set(_tokens(link_title)))):
-                    heading = None
-                    for tag in ("h1", "h2", "h3", "h4"):
-                        node_h = card.find(tag)
-                        if node_h:
-                            heading = _clean(node_h.get_text(" ", strip=True))
-                            break
-                    if not (heading and query_tokens.issubset(set(_tokens(heading)))):
-                        continue
-
-        if not _is_relevant_product(card_text, query):
-            continue
-
-        price = _extract_price(card_text)
+        price = _extract_price(container_text)
         if not price:
             continue
-
-        product_name = query
-        link_name = _clean(link.get_text(" ", strip=True))
-        if (
-            link_name
-            and not SIZE_FULL_RE.fullmatch(link_name)
-            and _matches_soft(link_name, query, minimum=0.55)
-            and query_tokens.issubset(set(_tokens(link_name)))
-        ):
-            product_name = link_name
-        else:
-            link_title = _clean(link.get("title") or "")
-            if link_title and query_tokens.issubset(set(_tokens(link_title))):
-                product_name = link_title
 
         if product_url in seen:
             continue
@@ -402,61 +381,81 @@ def _extract_category(html, query):
 
     return results
 
-
 def _extract_brand_page(html, query):
+    """
+    Extract products from a brand/category page without mixing a card title
+    with the first product URL found in a larger ancestor.
+
+    The old implementation could climb into a container containing several
+    products and then choose the first matching /product/ link inside it.
+    That is exactly the kind of title/URL mismatch we saw with Le Beau -> Le Male.
+    """
     soup = BeautifulSoup(html, "html.parser")
     results = []
     seen = set()
 
     for link in soup.find_all("a", href=True):
-        node = link
+        href = _clean(link.get("href"))
+        product_url = urljoin(BASE_URL, href).split("?")[0]
+        if "/product/" not in product_url.lower():
+            continue
 
-        for _ in range(8):
-            if node is None:
-                break
+        anchor_name = _product_anchor_name(link)
 
-            text = _clean(node.get_text(" ", strip=True))
-            if not _matches_soft(text, query, minimum=0.55):
-                node = node.parent
+        # A visible product name and its URL must agree before we use them.
+        if anchor_name:
+            if not _is_relevant_product(anchor_name, query):
+                continue
+            if not _url_matches_name(product_url, anchor_name):
                 continue
 
-            price = _extract_price(text)
-            if not price:
-                node = node.parent
-                continue
+        container = _product_container(link)
+        text = _clean(container.get_text(" ", strip=True))
 
-            if any(word in text.lower() for word in SOLD_OUT):
-                node = node.parent
-                continue
+        if any(word in text.lower() for word in SOLD_OUT):
+            continue
 
-            product_link = None
-            for anchor in node.find_all("a", href=True):
-                candidate_url = urljoin(BASE_URL, anchor.get("href", "")).split("?")[0]
-                if "/product/" not in candidate_url.lower():
+        product_name = anchor_name
+        if not product_name:
+            for sibling in soup.find_all("a", href=True):
+                sibling_url = urljoin(
+                    BASE_URL, _clean(sibling.get("href"))
+                ).split("?")[0]
+                if sibling_url != product_url:
                     continue
-                if not _url_matches_query(candidate_url, query):
-                    continue
-                product_link = candidate_url
-                break
+                value = _product_anchor_name(sibling)
+                if value and _is_relevant_product(value, query):
+                    product_name = value
+                    break
 
-            if (
-                product_link
-                and product_link not in seen
-                and _is_relevant_product(text, query)
-            ):
-                seen.add(product_link)
-                results.append({
-                    "store": STORE,
-                    "name": query,
-                    "price": price,
-                    "url": product_link,
-                    "available": True,
-                    "availability": "in_stock",
-                })
-            break
+        if not product_name or not _is_relevant_product(product_name, query):
+            continue
+
+        if not _url_matches_name(product_url, product_name):
+            continue
+
+        if not _url_matches_query(product_url, query):
+            if not _matches_soft(product_name, query, minimum=0.80):
+                continue
+
+        price = _extract_price(text)
+        if not price:
+            continue
+
+        if product_url in seen:
+            continue
+
+        seen.add(product_url)
+        results.append({
+            "store": STORE,
+            "name": product_name,
+            "price": price,
+            "url": product_url,
+            "available": True,
+            "availability": "in_stock",
+        })
 
     return results
-
 
 def _page_product_names(html):
     """Extract authoritative product names from the product page."""
@@ -669,24 +668,7 @@ def search(query):
         if response is None:
             return []
 
-        # Prima scoperta: usiamo il nome reale del candidato, non il solo URL.
-        candidates = _extract_category_candidates(response.text, query)
-
-        # Se la categoria contiene paginazione, cerchiamo anche nelle pagine
-        # successive: il primo candidato sbagliato non deve chiudere la ricerca.
-        if not candidates:
-            for page_url in _discover_category_pages(
-                session, category_url, response.text, max_pages=5
-            )[1:]:
-                page_response = _get(session, page_url)
-                if page_response is None:
-                    continue
-                candidates.extend(
-                    _extract_category_candidates(page_response.text, query)
-                )
-
-        if not candidates:
-            candidates = _extract_category(response.text, query)
+        candidates = _extract_category(response.text, query)
         if not candidates:
             candidates = _extract_brand_page(response.text, query)
         if not candidates:
@@ -699,8 +681,8 @@ def search(query):
             product_url = item["url"].split("#")[0].split("?")[0]
             if product_url in seen_urls:
                 continue
-            # O URL matching è solo un filtro ausiliario. La prova decisiva
-            # sarà il nome reale della página do produto.
+            if not _url_matches_query(product_url, query):
+                continue
             seen_urls.add(product_url)
             scored.append((_match_score(item["name"], query), item))
 
@@ -715,8 +697,9 @@ def search(query):
         seen_variants = set()
 
         for score, item in scored:
-            # Non fermarsi al primo punteggio: il candidato migliore può essere
-            # una pagina sbagliata. Verifichiamo tutti i candidati rilevanti.
+            if score < minimum_score:
+                break
+
             product_url = item["url"].split("#")[0].split("?")[0]
             product_response = _get(session, product_url)
             if product_response is None:
