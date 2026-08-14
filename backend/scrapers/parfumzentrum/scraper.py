@@ -1,4 +1,3 @@
-import json
 import re
 import requests
 import xml.etree.ElementTree as ET
@@ -50,31 +49,19 @@ def _matches_query(name, query):
     if not wanted or not wanted.issubset(name_tokens):
         return False
 
-    requested_concentration = _concentration(query)
-    return (
-        not requested_concentration
-        or _concentration(name) == requested_concentration
-    )
+    requested = _concentration(query)
+    return not requested or _concentration(name) == requested
 
 
 def _parse_price(value):
-    if value is None:
-        return None
-
-    raw = str(value).strip().replace("\xa0", " ")
+    raw = str(value or "").strip().replace("\xa0", " ")
     raw = raw.replace("€", "").strip()
-
-    # JSON-LD normally supplies a plain decimal number.
-    if re.fullmatch(r"\d+(?:\.\d+)?", raw):
-        number = float(raw)
-        return number if 0 < number < 10000 else None
 
     match = re.search(r"\d{1,5}(?:[.,]\d{2})", raw)
     if not match:
         return None
 
     number = match.group(0)
-
     if "," in number:
         if "." in number:
             number = number.replace(".", "").replace(",", ".")
@@ -84,11 +71,11 @@ def _parse_price(value):
         number = number.replace(".", "")
 
     try:
-        result = float(number)
+        price = float(number)
     except ValueError:
         return None
 
-    return result if 0 < result < 10000 else None
+    return price if 0 < price < 10000 else None
 
 
 def _xml_urls(xml_text):
@@ -101,250 +88,154 @@ def _xml_urls(xml_text):
 
 
 def _get_sitemap_urls():
-    response = SESSION.get(SITEMAP_URL, headers=HEADERS, timeout=10)
+    response = SESSION.get(SITEMAP_URL, headers=HEADERS, timeout=15)
     response.raise_for_status()
     urls = _xml_urls(response.text)
     response.close()
 
-    child_maps = [
+    children = [
         url for url in urls
-        if "sitemap" in url.lower()
-        and url.lower().endswith(".xml")
+        if "sitemap" in url.lower() and url.lower().endswith(".xml")
     ]
 
-    if not child_maps:
+    if not children:
         return urls
 
-    output = []
-    for sitemap in child_maps:
+    result = []
+    for sitemap in children:
         try:
-            child = SESSION.get(sitemap, headers=HEADERS, timeout=10)
-            if child.status_code == 200:
-                output.extend(_xml_urls(child.text))
-            child.close()
+            response = SESSION.get(sitemap, headers=HEADERS, timeout=15)
+            if response.status_code == 200:
+                result.extend(_xml_urls(response.text))
+            response.close()
         except requests.RequestException:
             continue
 
-    return output
+    return result
 
 
-def _jsonld_offer_prices(soup):
-    prices = []
+def _url_matches_query(url, query):
+    url_tokens = set(_tokens(url))
+    wanted = {x for x in _tokens(query) if x not in STOPWORDS}
 
-    for script in soup.find_all("script", type="application/ld+json"):
-        raw = script.string or script.get_text()
-        if not raw:
-            continue
+    # Sitemap slugs are a discovery hint only. Require at least the
+    # distinctive non-generic query terms, but do not require every word:
+    # store slugs can omit brand words or reorder them.
+    distinctive = {
+        token for token in wanted
+        if token not in {"jean", "paul", "gaultier", "eau", "toilette", "parfum"}
+    }
 
-        try:
-            data = json.loads(raw)
-        except Exception:
-            continue
+    if distinctive:
+        return any(token in url_tokens for token in distinctive)
 
-        queue = [data]
-        while queue:
-            item = queue.pop(0)
-
-            if isinstance(item, list):
-                queue.extend(item)
-                continue
-
-            if not isinstance(item, dict):
-                continue
-
-            offers = item.get("offers")
-            if isinstance(offers, dict):
-                offers = [offers]
-
-            if isinstance(offers, list):
-                for offer in offers:
-                    if not isinstance(offer, dict):
-                        continue
-                    price = _parse_price(offer.get("price"))
-                    if price is not None:
-                        prices.append(price)
-
-            for value in item.values():
-                if isinstance(value, (dict, list)):
-                    queue.append(value)
-
-    return prices
+    return bool(wanted.intersection(url_tokens))
 
 
-def _meta_price(soup):
-    # These are product-level price fields, not arbitrary page text.
-    selectors = [
-        ('meta[property="product:price:amount"]', "content"),
-        ('meta[itemprop="price"]', "content"),
-        ('meta[name="price"]', "content"),
-        ('[itemprop="price"]', "content"),
-    ]
+def _product_header_text(soup):
+    h1 = soup.find("h1")
+    if not h1:
+        return ""
 
-    for selector, attribute in selectors:
-        for node in soup.select(selector):
-            value = node.get(attribute) if node.has_attr(attribute) else node.get_text(" ", strip=True)
-            price = _parse_price(value)
-            if price is not None:
-                return price
+    # The important product block is between the H1 and the product
+    # description. This keeps unrelated recommendation/footer prices out.
+    container = h1.parent
+    best = h1
+
+    for _ in range(6):
+        if container is None:
+            break
+
+        text = container.get_text(" ", strip=True)
+        low = text.lower()
+
+        if "produktbeschreibung" in low or "in den warenkorb" in low:
+            best = container
+            break
+
+        if len(text) < 12000:
+            best = container
+
+        container = container.parent
+
+    text = best.get_text(" ", strip=True)
+
+    if "produktbeschreibung" in text.lower():
+        text = text[:text.lower().find("produktbeschreibung")]
+
+    return text
+
+
+def _price_for_size_from_header(header_text, size_ml):
+    """
+    ParfumZentrum exposes the available size/price pairs in the product
+    header, e.g. '125 ml 67,95 € 75 ml 50,95 €', followed by the active
+    price and Grundpreis.
+
+    We use the size/price pair belonging to the page's own size. This is
+    generic and works for any product with multiple bottle sizes.
+    """
+    if size_ml is None:
+        return None
+
+    number = re.escape(str(int(size_ml))) if float(size_ml).is_integer() else re.escape(str(size_ml).replace(".", ","))
+
+    pattern = re.compile(
+        rf"(?<![\d.,]){number}\s*ml\s+"
+        rf"(\d{{1,5}}(?:[.,]\d{{2}}))\s*€",
+        re.I,
+    )
+
+    match = pattern.search(header_text)
+    if match:
+        return _parse_price(match.group(1))
+
+    # Alternate order used by some themes: price then size.
+    reverse = re.compile(
+        rf"(\d{{1,5}}(?:[.,]\d{{2}}))\s*€\s*"
+        rf"{number}\s*ml",
+        re.I,
+    )
+    match = reverse.search(header_text)
+    if match:
+        return _parse_price(match.group(1))
 
     return None
 
 
-def _node_price(node):
-    if node is None:
-        return None
+def _active_price_from_header(header_text, size_ml):
+    # First and strongest source: the size/price pair.
+    price = _price_for_size_from_header(header_text, size_ml)
+    if price is not None:
+        return price
 
-    # Prefer semantic price attributes.
-    for attr in ("content", "data-price", "data-product-price", "value"):
-        if node.has_attr(attr):
-            price = _parse_price(node.get(attr))
-            if price is not None:
-                return price
-
-    return _parse_price(node.get_text(" ", strip=True))
-
-
-def _is_bad_price_context(node):
-    current = node
-
-    for _ in range(8):
-        if current is None:
-            break
-
-        text = current.get_text(" ", strip=True).lower()
-        marker = (
-            " ".join(current.get("class", [])).lower()
-            + " "
-            + str(current.get("id", "")).lower()
-        )
-
-        if any(word in text for word in (
-            "grundpreis", "pro liter", "per liter", "€/l",
-            "preis inkl. code", "preis inkl code",
-        )):
-            return True
-
-        if any(word in marker for word in (
-            "coupon", "voucher", "gutschein", "rabattcode",
-            "discount", "promo", "recommend", "related",
-            "cross-sell", "upsell",
-        )):
-            return True
-
-        current = current.parent
-
-    return False
-
-
-def _is_struck(node):
-    if node.find_parent(["del", "s", "strike"]):
-        return True
-
-    current = node
-    for _ in range(6):
-        if current is None:
-            break
-
-        marker = (
-            " ".join(current.get("class", [])).lower()
-            + " "
-            + str(current.get("id", "")).lower()
-        )
-
-        if any(word in marker for word in (
-            "old-price", "old_price", "regular-price", "list-price",
-            "list_price", "strike", "strikethrough", "was-price",
-            "compare-price", "crossed",
-        )):
-            return True
-
-        current = current.parent
-
-    return False
-
-
-def _visible_product_price(soup):
-    """
-    Last-resort visible-price extraction.
-
-    It is deliberately restricted to semantic product-price elements and
-    their immediate product/purchase containers. It never scans arbitrary
-    page text for the first euro amount.
-    """
-    selectors = [
-        '[itemprop="price"]',
-        '[data-price]',
-        '[data-product-price]',
-        '.product-price',
-        '.product_price',
-        '.price--current',
-        '.price-current',
-        '.current-price',
-        '.current_price',
-        '.final-price',
-        '.final_price',
-        '.sale-price',
-        '.sale_price',
-    ]
+    # Fallback only when the page exposes a single size. We take the first
+    # purchase-price-looking amount before Grundpreis, never a crossed price.
+    before_base = re.split(
+        r"\bgrundpreis\b",
+        header_text,
+        maxsplit=1,
+        flags=re.I,
+    )[0]
 
     candidates = []
+    for match in re.finditer(r"(?<![\d.,])(\d{1,5}(?:[.,]\d{2}))\s*€", before_base):
+        value = _parse_price(match.group(1))
+        if value is None:
+            continue
 
-    for selector in selectors:
-        for node in soup.select(selector):
-            if _is_struck(node) or _is_bad_price_context(node):
-                continue
+        context = before_base[max(0, match.start()-80):match.end()+30].lower()
+        if "code" in context or "coupon" in context:
+            continue
 
-            price = _node_price(node)
-            if price is None:
-                continue
+        candidates.append(value)
 
-            score = 0
-            marker = (
-                " ".join(node.get("class", [])).lower()
-                + " "
-                + str(node.get("id", "")).lower()
-            )
-            if "product" in marker:
-                score += 20
-            if "current" in marker or "final" in marker or "sale" in marker:
-                score += 15
-
-            parent_text = ""
-            if node.parent:
-                parent_text = node.parent.get_text(" ", strip=True).lower()
-
-            if "in den warenkorb" in parent_text:
-                score += 40
-            if "inkl. mwst" in parent_text:
-                score += 10
-
-            candidates.append((score, price))
-
-    if not candidates:
-        return None
-
-    candidates.sort(key=lambda item: (item[0], -item[1]), reverse=True)
-    return candidates[0][1]
-
-
-def _extract_price(soup):
-    # 1. Product structured data is the strongest generic source.
-    structured = _jsonld_offer_prices(soup)
-    if structured:
-        return structured[0]
-
-    # 2. Product meta/semantic price.
-    meta = _meta_price(soup)
-    if meta is not None:
-        return meta
-
-    # 3. Semantic visible product-price elements.
-    return _visible_product_price(soup)
+    return candidates[-1] if candidates else None
 
 
 def _extract_product(url, query):
     try:
-        response = SESSION.get(url, headers=HEADERS, timeout=10)
+        response = SESSION.get(url, headers=HEADERS, timeout=15)
     except requests.RequestException:
         return None
 
@@ -352,17 +243,14 @@ def _extract_product(url, query):
         response.close()
         return None
 
-    html = response.text
+    soup = BeautifulSoup(response.text, "html.parser")
     response.close()
-
-    soup = BeautifulSoup(html, "html.parser")
 
     h1 = soup.find("h1")
     if not h1:
         return None
 
     name = " ".join(h1.stripped_strings)
-
     if not _matches_query(name, query):
         return None
 
@@ -373,33 +261,23 @@ def _extract_product(url, query):
     )
     size_ml = None
     if size_match:
-        try:
-            size_ml = float(size_match.group(1).replace(",", "."))
-        except ValueError:
-            pass
+        size_ml = float(size_match.group(1).replace(",", "."))
 
     concentration = ""
-    if re.search(r"\beau\s+de\s+toilette\b|\bedt\b", name, re.I):
+    if _concentration(name) == "edt":
         concentration = "Eau de Toilette"
-    elif re.search(r"\beau\s+de\s+parfum\b|\bedp\b", name, re.I):
+    elif _concentration(name) == "edp":
         concentration = "Eau de Parfum"
-    elif re.search(r"\bextrait(?:\s+de\s+parfum)?\b", name, re.I):
+    elif _concentration(name) == "extrait":
         concentration = "Extrait de Parfum"
 
-    page_text = soup.get_text(" ", strip=True).lower()
-    if any(x in page_text for x in (
-        "nicht lieferbar", "nicht vorrätig", "ausverkauft",
-    )):
-        return None
-
-    price = _extract_price(soup)
-    if price is None:
-        return None
+    header = _product_header_text(soup)
+    price = _active_price_from_header(header, size_ml)
 
     return {
         "store": "ParfumZentrum",
         "name": name,
-        "price": f"{price:.2f}€",
+        "price": f"{price:.2f}€" if price is not None else None,
         "url": url,
         "size_ml": size_ml,
         "concentration": concentration,
@@ -407,26 +285,12 @@ def _extract_product(url, query):
 
 
 def _candidate_score(url, query):
-    query_tokens = [
-        token for token in _tokens(query)
-        if token not in STOPWORDS
-    ]
-    url_tokens = _tokens(url)
-
-    score = sum(10 for token in query_tokens if token in url_tokens)
-
-    if query_tokens and all(token in url_tokens for token in query_tokens):
-        score += 30
-
-    requested = _concentration(query)
-    if requested == "edt" and ("toilette" in url_tokens or "edt" in url_tokens):
-        score += 40
-    elif requested == "edp" and ("parfum" in url_tokens or "edp" in url_tokens):
-        score += 40
-    elif requested == "extrait" and "extrait" in url_tokens:
-        score += 40
-
-    return score
+    query_tokens = {
+        x for x in _tokens(query)
+        if x not in STOPWORDS
+    }
+    url_tokens = set(_tokens(url))
+    return sum(10 for token in query_tokens if token in url_tokens)
 
 
 def search(query):
@@ -443,7 +307,7 @@ def search(query):
     candidates = [
         url for url in urls
         if re.search(r"_z\d+/?$", url)
-        and _matches_query(url, query)
+        and _url_matches_query(url, query)
     ]
 
     candidates.sort(
@@ -454,7 +318,7 @@ def search(query):
     results = []
     seen = set()
 
-    for url in candidates[:24]:
+    for url in candidates[:40]:
         try:
             item = _extract_product(url, query)
         except Exception as error:
@@ -466,8 +330,8 @@ def search(query):
 
         key = (
             item["name"].lower(),
-            item["price"],
             item["size_ml"],
+            item["concentration"].lower(),
         )
 
         if key in seen:
