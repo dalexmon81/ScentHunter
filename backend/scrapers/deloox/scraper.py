@@ -289,6 +289,17 @@ def _url_matches_query(product_url, query):
 
 
 def _extract_category(html, query):
+    """
+    Discover products from Deloox category pages.
+
+    Deloox's category markup separates the main product link from the
+    individual size links. The main product anchor carries the product name
+    and the canonical /product/<id>/ URL. Size anchors are separate links.
+
+    Therefore discovery must start from the named product anchor itself.
+    We never choose a /product/ URL from a sibling size anchor or from an
+    arbitrary link inside the surrounding card.
+    """
     soup = BeautifulSoup(html, "html.parser")
     results = []
     seen = set()
@@ -299,7 +310,30 @@ def _extract_category(html, query):
         product_url = urljoin(BASE_URL, href).split("?")[0]
         if "/product/" not in product_url.lower():
             continue
-        if not _url_matches_query(product_url, query):
+
+        # Deloox size selectors can also be links. They are not the product
+        # identity anchor, so reject anchors whose visible text is only a
+        # size, ellipsis, or otherwise contains no product-name information.
+        link_name = _clean(link.get_text(" ", strip=True))
+        link_title = _clean(link.get("title") or "")
+        link_aria = _clean(link.get("aria-label") or "")
+
+        identity_texts = [
+            value for value in (link_name, link_title, link_aria)
+            if value and not SIZE_FULL_RE.fullmatch(value)
+        ]
+        if not identity_texts:
+            continue
+
+        # The canonical product anchor must itself identify the requested
+        # product. Do not infer identity from the surrounding card.
+        identity = max(
+            identity_texts,
+            key=lambda value: _match_score(value, query)
+        )
+        if not _matches_soft(identity, query, minimum=0.80):
+            continue
+        if not query_tokens.issubset(set(_tokens(identity))):
             continue
 
         card = _find_product_card(link)
@@ -307,43 +341,12 @@ def _extract_category(html, query):
 
         if any(word in card_text.lower() for word in SOLD_OUT):
             continue
-        if not _matches_soft(card_text, query, minimum=0.55):
-            continue
-
-        card_tokens = set(_tokens(card_text))
-        if not query_tokens.issubset(card_tokens):
-            if not _matches_soft(card_text, query, minimum=0.75):
-                link_title = _clean(link.get("title") or "")
-                if not (link_title and query_tokens.issubset(set(_tokens(link_title)))):
-                    heading = None
-                    for tag in ("h1", "h2", "h3", "h4"):
-                        node_h = card.find(tag)
-                        if node_h:
-                            heading = _clean(node_h.get_text(" ", strip=True))
-                            break
-                    if not (heading and query_tokens.issubset(set(_tokens(heading)))):
-                        continue
-
-        if not _is_relevant_product(card_text, query):
+        if not _is_relevant_product(identity, query):
             continue
 
         price = _extract_price(card_text)
         if not price:
             continue
-
-        product_name = query
-        link_name = _clean(link.get_text(" ", strip=True))
-        if (
-            link_name
-            and not SIZE_FULL_RE.fullmatch(link_name)
-            and _matches_soft(link_name, query, minimum=0.55)
-            and query_tokens.issubset(set(_tokens(link_name)))
-        ):
-            product_name = link_name
-        else:
-            link_title = _clean(link.get("title") or "")
-            if link_title and query_tokens.issubset(set(_tokens(link_title))):
-                product_name = link_title
 
         if product_url in seen:
             continue
@@ -351,7 +354,7 @@ def _extract_category(html, query):
 
         results.append({
             "store": STORE,
-            "name": product_name,
+            "name": identity,
             "price": price,
             "url": product_url,
             "available": True,
@@ -360,61 +363,63 @@ def _extract_category(html, query):
 
     return results
 
-
 def _extract_brand_page(html, query):
     soup = BeautifulSoup(html, "html.parser")
     results = []
     seen = set()
+    query_tokens = set(_tokens(query))
 
     for link in soup.find_all("a", href=True):
-        node = link
+        product_url = urljoin(
+            BASE_URL, _clean(link.get("href"))
+        ).split("?")[0]
+        if "/product/" not in product_url.lower():
+            continue
 
-        for _ in range(8):
-            if node is None:
-                break
+        link_name = _clean(link.get_text(" ", strip=True))
+        link_title = _clean(link.get("title") or "")
+        link_aria = _clean(link.get("aria-label") or "")
 
-            text = _clean(node.get_text(" ", strip=True))
-            if not _matches_soft(text, query, minimum=0.55):
-                node = node.parent
-                continue
+        identity_texts = [
+            value for value in (link_name, link_title, link_aria)
+            if value and not SIZE_FULL_RE.fullmatch(value)
+        ]
+        if not identity_texts:
+            continue
 
-            price = _extract_price(text)
-            if not price:
-                node = node.parent
-                continue
+        identity = max(
+            identity_texts,
+            key=lambda value: _match_score(value, query)
+        )
 
-            if any(word in text.lower() for word in SOLD_OUT):
-                node = node.parent
-                continue
+        if not _matches_soft(identity, query, minimum=0.80):
+            continue
+        if not query_tokens.issubset(set(_tokens(identity))):
+            continue
 
-            product_link = None
-            for anchor in node.find_all("a", href=True):
-                candidate_url = urljoin(BASE_URL, anchor.get("href", "")).split("?")[0]
-                if "/product/" not in candidate_url.lower():
-                    continue
-                if not _url_matches_query(candidate_url, query):
-                    continue
-                product_link = candidate_url
-                break
+        card = _find_product_card(link)
+        text = _clean(card.get_text(" ", strip=True))
+        if any(word in text.lower() for word in SOLD_OUT):
+            continue
 
-            if (
-                product_link
-                and product_link not in seen
-                and _is_relevant_product(text, query)
-            ):
-                seen.add(product_link)
-                results.append({
-                    "store": STORE,
-                    "name": query,
-                    "price": price,
-                    "url": product_link,
-                    "available": True,
-                    "availability": "in_stock",
-                })
-            break
+        price = _extract_price(text)
+        if not price or not _is_relevant_product(identity, query):
+            continue
+
+        if product_url in seen:
+            continue
+        seen.add(product_url)
+
+        results.append({
+            "store": STORE,
+            "name": identity,
+            "price": price,
+            "url": product_url,
+            "available": True,
+            "availability": "in_stock",
+        })
 
     return results
-
 
 def _page_product_names(html):
     """Extract authoritative product names from the product page."""
@@ -495,55 +500,94 @@ def _page_matches_query(html, query):
 
 def _extract_product_variants(html, product_name, product_url):
     soup = BeautifulSoup(html, "html.parser")
-    strings = [_clean(value) for value in soup.stripped_strings if _clean(value)]
-
     results = []
     seen_sizes = set()
 
-    for index, value in enumerate(strings):
-        size_match = SIZE_FULL_RE.fullmatch(value)
-        if not size_match:
-            continue
-
-        size = size_match.group(1).replace(",", ".")
-        size_label = f"{size} ml"
-
-        if size_label in seen_sizes:
-            continue
-
-        chunk = []
-        sold_out = False
-        for next_index in range(index + 1, min(index + 30, len(strings))):
-            next_value = strings[next_index]
-            if SIZE_FULL_RE.fullmatch(next_value):
-                break
-            chunk.append(next_value)
-            if any(word in next_value.lower() for word in SOLD_OUT):
-                sold_out = True
-                break
-
-        if sold_out:
-            continue
-
-        price = _extract_price(" ".join(chunk))
-        if not price:
-            continue
-
+    def add_variant(size_label, price, url=None):
+        if not price or size_label in seen_sizes:
+            return
         seen_sizes.add(size_label)
-        slug = re.sub(r"[^a-z0-9]+", "-", size_label.lower()).strip("-")
-
         results.append({
             "store": STORE,
             "name": f"{product_name} {size_label}",
             "price": price,
-            "url": f"{product_url}#{slug}",
+            "url": url or product_url,
             "available": True,
             "availability": "in_stock",
             "size": size_label,
         })
 
-    return results
+    # Deloox exposes size selectors as sibling anchors next to the main
+    # product anchor. Collect every visible ml value first.
+    for anchor in soup.find_all("a", href=True):
+        label = _clean(anchor.get_text(" ", strip=True))
+        match = SIZE_FULL_RE.fullmatch(label)
+        if not match:
+            continue
 
+        size = match.group(1).replace(",", ".")
+        size_label = f"{size} ml"
+
+        # Look for the nearest product/card context and its price.
+        node = anchor
+        price = None
+        for _ in range(8):
+            if node is None:
+                break
+            context = _clean(node.get_text(" ", strip=True))
+            price = _extract_price(context)
+            if price:
+                break
+            node = node.parent
+
+        if not price:
+            # Some size anchors contain only the size while the price is in
+            # the parent product block; search a little more broadly.
+            node = anchor.parent
+            for _ in range(5):
+                if node is None:
+                    break
+                context = _clean(node.get_text(" ", strip=True))
+                price = _extract_price(context)
+                if price:
+                    break
+                node = node.parent
+
+        if price:
+            add_variant(size_label, price, product_url)
+
+    # Fallback for product pages where size selectors are not anchors.
+    if not results:
+        strings = [_clean(value) for value in soup.stripped_strings if _clean(value)]
+        for index, value in enumerate(strings):
+            size_match = SIZE_FULL_RE.fullmatch(value)
+            if not size_match:
+                continue
+
+            size = size_match.group(1).replace(",", ".")
+            size_label = f"{size} ml"
+            if size_label in seen_sizes:
+                continue
+
+            chunk = []
+            sold_out = False
+            for next_index in range(index + 1, min(index + 40, len(strings))):
+                next_value = strings[next_index]
+                if SIZE_FULL_RE.fullmatch(next_value):
+                    break
+                chunk.append(next_value)
+                if any(word in next_value.lower() for word in SOLD_OUT):
+                    sold_out = True
+                    break
+
+            if sold_out:
+                continue
+
+            price = _extract_price(" ".join(chunk))
+            if price:
+                add_variant(size_label, price, product_url)
+
+    return results
 
 def _extract_jsonld_variants(html, product_name, product_url):
     soup = BeautifulSoup(html, "html.parser")
@@ -635,9 +679,11 @@ def search(query):
         if variant_category_url:
             category_urls.append(variant_category_url)
 
-        # Always retain the brand category as a fallback because not every
-        # product has its own Deloox category.
-        category_urls.append(brand_category_url)
+        # Use the broad brand category only when no dedicated variant
+        # category was found. Mixing both sources can reintroduce unrelated
+        # product candidates for families with very similar names.
+        if not variant_category_url:
+            category_urls.append(brand_category_url)
 
         candidates = []
         seen_candidate_urls = set()
