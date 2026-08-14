@@ -142,17 +142,29 @@ def catalog_search_queries(query: str, limit: int = 8) -> list[str]:
     attempts = [raw] if raw else []
     seen = {norm(raw)} if raw else set()
 
+    def add_attempt(value: Any) -> None:
+        value = str(value or "").strip()
+        key = norm(value)
+        if key and key not in seen:
+            attempts.append(value)
+            seen.add(key)
+
     for item in candidates:
         brand = str(item.get("brand") or item.get("brand_name") or "").strip()
         name = str(item.get("name") or item.get("family_name") or "").strip()
-        candidate = " ".join(part for part in (brand, name) if part)
+        add_attempt(" ".join(part for part in (brand, name) if part))
 
-        key = norm(candidate)
-        if key and key not in seen:
-            attempts.append(candidate)
-            seen.add(key)
+        aliases = item.get("aliases") or []
+        if isinstance(aliases, list):
+            for alias in aliases:
+                alias = str(alias or "").strip()
+                if not alias:
+                    continue
+                add_attempt(alias)
+                if brand and norm(brand) not in norm(alias):
+                    add_attempt(f"{brand} {alias}")
 
-    return attempts
+    return attempts[:max(10, limit)]
 
 
 def norm(value: Any) -> str:
@@ -642,7 +654,7 @@ def build_search_attempts(store: str, query: str) -> List[str]:
     if compact and compact not in {norm(item) for item in attempts}:
         attempts.append(compact)
 
-    return attempts[:10]
+    return attempts[:32]
 
 def run_store(store: str, query: str) -> List[Dict[str, Any]]:
     module = load_scraper(store)
