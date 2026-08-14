@@ -431,11 +431,19 @@ def _category_links(html):
 
 
 def _find_variant_category(session, brand_url, query):
-    """Find an exact Deloox variant category through at most two hops."""
+    """
+    Discover a dedicated Deloox variant category through the site's own
+    category navigation.
+
+    This is intentionally bounded:
+      brand page -> relevant family/category pages -> exact variant category.
+
+    We do NOT infer a product URL from the query. The category taxonomy is used
+    only to locate the right product listing; the existing product-card logic
+    remains responsible for the actual candidates.
+    """
     query_tokens = set(_tokens(query))
 
-    # Only activate this bridge for a multi-word variant query. Generic
-    # Le Beau should keep using the proven brand discovery.
     if len(query_tokens) < 3:
         return None
 
@@ -449,39 +457,68 @@ def _find_variant_category(session, brand_url, query):
 
         if not overlap:
             return -1
+
         if tokens == query_tokens:
             return 1000
+
         if query_tokens.issubset(tokens):
             return 900
+
+        # Family bridge: "Le Beau" is useful for "Le Beau Narcisse".
         if len(overlap) >= 2:
             return 500 + int(
                 100 * len(overlap) / len(query_tokens)
             )
+
         return -1
 
+    # First inspect the brand page itself.
+    root_links = _category_links(root.text)
+
+    exact = []
     bridges = []
 
-    for label, url in _category_links(root.text):
+    for label, url in root_links:
         value = score(label)
 
         if value >= 900:
-            return url
-
-        if value >= 500:
+            exact.append((value, url))
+        elif value >= 500:
             bridges.append((value, url))
 
+    if exact:
+        exact.sort(reverse=True)
+        return exact[0][1]
+
+    # Then inspect several relevant family/category pages. Deloox's sidebar
+    # navigation can expose sibling categories (e.g. Le Beau Narcisse) from a
+    # neighboring Le Beau category page, so one bridge page is not sufficient.
     bridges.sort(reverse=True)
 
-    for _, bridge_url in bridges[:2]:
+    visited = {
+        brand_url.rstrip("/"),
+    }
+
+    for _, bridge_url in bridges[:5]:
+        normalized_bridge = bridge_url.rstrip("/")
+
+        if normalized_bridge in visited:
+            continue
+
+        visited.add(normalized_bridge)
+
         page = _get(session, bridge_url)
         if page is None:
             continue
 
         for label, url in _category_links(page.text):
-            if score(label) >= 900:
+            value = score(label)
+
+            if value >= 900:
                 return url
 
     return None
+
 
 def _find_product_card(link):
     node = link
@@ -509,30 +546,20 @@ def _find_product_card(link):
 
 
 def _url_matches_query(product_url, query):
-    """
-    URL relevance check.
-
-    Keep this deliberately tolerant. The URL is only a discovery hint; the
-    authoritative identity check is _page_matches_query(), which reads the
-    real product page. Requiring "narcisse" to appear in the slug caused the
-    correct Deloox result to disappear when Deloox used a generic family slug.
-    """
     url_tokens = set(_tokens(product_url))
     query_tokens = set(_tokens(query))
 
     if not query_tokens:
         return False
 
+    # If URL contains all tokens, it's a match.
     if query_tokens.issubset(url_tokens):
         return True
 
-    found = sum(
-        1
-        for token in query_tokens
-        if token in url_tokens
-    )
-
+    # Otherwise accept if a sufficient fraction of query tokens appear in URL.
+    found = sum(1 for t in query_tokens if t in url_tokens)
     return (found / len(query_tokens)) >= 0.55
+
 
 
 def _is_gift_set_url(url):
@@ -589,79 +616,13 @@ def _find_matching_product_url(card, query):
     return best_url
 
 
-
-def _find_variant_product_urls(html, query):
-    """
-    Second-pass discovery for a specific variant.
-
-    Accept a product link when the requested distinctive token is present in
-    either the anchor label/title or its surrounding product card. The real
-    product page remains authoritative.
-    """
-    query_tokens = set(_tokens(query))
-    family_tokens = {
-        "jean", "paul", "gaultier",
-        "le", "beau",
-        "eau", "de", "toilette",
-    }
-    distinctive = query_tokens - family_tokens
-
-    if not distinctive:
-        return []
-
-    soup = BeautifulSoup(html, "html.parser")
-    results = []
-    seen = set()
-
-    for anchor in soup.find_all("a", href=True):
-        url = urljoin(
-            BASE_URL,
-            _clean(anchor.get("href")),
-        ).split("?")[0]
-
-        if "/product/" not in url.lower():
-            continue
-        if _is_gift_set_url(url):
-            continue
-
-        label = _clean(
-            anchor.get_text(" ", strip=True)
-            or anchor.get("title")
-            or anchor.get("aria-label")
-            or "",
-        )
-
-        card = _find_product_card(anchor)
-        card_text = (
-            _clean(card.get_text(" ", strip=True))
-            if card is not None
-            else ""
-        )
-
-        # URL is only a hint. Let the visible anchor/card identify the
-        # variant; _page_matches_query() will validate the destination.
-        label_tokens = set(_tokens(label))
-        card_tokens = set(_tokens(card_text))
-
-        if not (
-            distinctive.issubset(label_tokens)
-            or distinctive.issubset(card_tokens)
-        ):
-            continue
-
-        if url not in seen:
-            seen.add(url)
-            results.append(url)
-
-    return results
-
-
 def _page_matches_query(html, query):
     """
-    Authoritative product identity check.
+    Final identity check.
 
-    H1 and JSON-LD are preferred, with Deloox's visible "product line" field
-    as an additional identity source.
+    For variant queries, the page must contain the distinctive variant token.
+    This prevents a generic "Le Beau" page from being accepted for
+    "Le Beau Narcisse".
     """
     soup = BeautifulSoup(html, "html.parser")
     names = []
@@ -671,34 +632,16 @@ def _page_matches_query(html, query):
         if value:
             names.append(value)
 
-    # Product line is often the exact family/variant name on Deloox pages.
-    body_text = _clean(soup.get_text(" ", strip=True))
-    for match in re.finditer(
-        r"\bproduct\s+line\b\s*[:\-]?\s*([A-Za-z0-9&'’.\- ]{3,120})",
-        body_text,
-        flags=re.I,
-    ):
-        value = _clean(match.group(1))
-        if value:
-            names.append(value)
-
-    for script in soup.find_all(
-        "script",
-        type="application/ld+json",
-    ):
+    for script in soup.find_all("script", type="application/ld+json"):
         try:
-            data = json.loads(
-                script.string or script.get_text()
-            )
+            data = json.loads(script.string or script.get_text())
         except (json.JSONDecodeError, TypeError):
             continue
 
         objects = data if isinstance(data, list) else [data]
-
         for item in objects:
             if not isinstance(item, dict):
                 continue
-
             if str(item.get("@type", "")).lower() == "product":
                 value = _clean(item.get("name"))
                 if value:
@@ -708,9 +651,9 @@ def _page_matches_query(html, query):
     if not query_tokens:
         return False
 
+    # These tokens identify the family rather than the specific variant.
     family_tokens = {
-        "jean", "paul", "gaultier",
-        "le", "beau",
+        "jean", "paul", "gaultier", "le", "beau",
         "eau", "de", "toilette",
     }
     distinctive = query_tokens - family_tokens
@@ -721,15 +664,261 @@ def _page_matches_query(html, query):
         if _contains_non_fragrance_product(name):
             continue
 
+        # For a variant query such as "Le Beau Narcisse", Narcisse is
+        # mandatory. A page saying only "Le Beau" must be rejected.
         if distinctive:
             if not distinctive.issubset(name_tokens):
                 continue
         elif not query_tokens.issubset(name_tokens):
             continue
 
+        # For generic Le Beau queries the normal token check remains.
+        if not distinctive and not query_tokens.issubset(name_tokens):
+            continue
+
         return True
 
     return False
+
+def _extract_category(html, query):
+    soup = BeautifulSoup(
+        html,
+        "html.parser",
+    )
+
+    results = []
+    seen = set()
+
+    query_tokens = set(
+        _tokens(query)
+    )
+
+    for link in soup.find_all(
+        "a",
+        href=True,
+    ):
+        href = _clean(
+            link.get("href")
+        )
+
+        product_url = urljoin(
+            BASE_URL,
+            href,
+        ).split("?")[0]
+
+        if "/product/" not in product_url.lower():
+            continue
+
+        card = _find_product_card(link)
+
+        # Deloox can expose a normal perfume and a gift set inside the same
+        # visual card. Never let the clicked gift-set URL become the perfume
+        # result; resolve the sibling product link from the same card first.
+        if _is_gift_set_url(product_url):
+            replacement_url = _find_matching_product_url(
+                card,
+                query,
+            )
+            if not replacement_url:
+                continue
+            product_url = replacement_url
+
+        # Controllo fondamentale contro prodotti estranei.
+        if not _url_matches_query(
+            product_url,
+            query,
+        ):
+            continue
+
+
+        card_text = _clean(
+            card.get_text(
+                " ",
+                strip=True,
+            )
+        )
+
+        if any(
+            word in card_text.lower()
+            for word in SOLD_OUT
+        ):
+            continue
+
+        if not _matches_soft(
+            card_text,
+            query,
+            minimum=0.55,
+        ):
+            continue
+
+        card_tokens = set(_tokens(card_text))
+
+        if not query_tokens.issubset(card_tokens):
+            # Allow the card if a stricter soft similarity check passes,
+            # or if the anchor title / a heading inside the card contains all query tokens.
+            if not _matches_soft(card_text, query, minimum=0.75):
+                link_title = _clean(link.get("title") or "")
+                if link_title and set(_tokens(query)).issubset(set(_tokens(link_title))):
+                    pass
+                else:
+                    heading = None
+                    for h in ("h1", "h2", "h3", "h4"):
+                        node_h = card.find(h)
+                        if node_h:
+                            heading = _clean(node_h.get_text(" ", strip=True))
+                            break
+                    if heading and set(_tokens(query)).issubset(set(_tokens(heading))):
+                        pass
+                    else:
+                        continue
+
+        if not _is_relevant_product(
+            card_text,
+            query,
+        ):
+            continue
+
+        price = _extract_price(card_text)
+
+        if not price:
+            continue
+
+        product_name = query
+
+        link_name = _clean(
+            link.get_text(
+                " ",
+                strip=True,
+            )
+        )
+
+        if (
+            link_name
+            and not SIZE_FULL_RE.fullmatch(link_name)
+            and _matches_soft(link_name, query, minimum=0.55)
+            and set(_tokens(query)).issubset(set(_tokens(link_name)))
+        ):
+            product_name = link_name
+        else:
+            link_title = _clean(link.get("title") or "")
+            if link_title and set(_tokens(query)).issubset(set(_tokens(link_title))):
+                product_name = link_title
+
+        if product_url in seen:
+            continue
+
+        seen.add(product_url)
+
+        results.append({
+            "store": STORE,
+            "name": product_name,
+            "price": price,
+            "url": product_url,
+            "available": True,
+            "availability": "in_stock",
+        })
+
+    return results
+
+
+def _extract_brand_page(html, query):
+    soup = BeautifulSoup(
+        html,
+        "html.parser",
+    )
+
+    results = []
+    seen = set()
+
+    for link in soup.find_all(
+        "a",
+        href=True,
+    ):
+        node = link
+
+        for _ in range(8):
+            if node is None:
+                break
+
+            text = _clean(
+                node.get_text(
+                    " ",
+                    strip=True,
+                )
+            )
+
+            if not _matches_soft(
+                text,
+                query,
+                minimum=0.55,
+            ):
+                node = node.parent
+                continue
+
+            price = _extract_price(text)
+
+            if not price:
+                node = node.parent
+                continue
+
+            if any(
+                word in text.lower()
+                for word in SOLD_OUT
+            ):
+                node = node.parent
+                continue
+
+            product_link = None
+
+            for anchor in node.find_all(
+                "a",
+                href=True,
+            ):
+                candidate_url = urljoin(
+                    BASE_URL,
+                    anchor.get(
+                        "href",
+                        "",
+                    ),
+                ).split("?")[0]
+
+                if "/product/" not in candidate_url.lower():
+                    continue
+
+                if _is_gift_set_url(candidate_url):
+                    continue
+
+                if not _url_matches_query(
+                    candidate_url,
+                    query,
+                ):
+                    continue
+
+                product_link = candidate_url
+                break
+
+            if (
+                product_link
+                and product_link not in seen
+                and _is_relevant_product(
+                    text,
+                    query,
+                )
+            ):
+                seen.add(product_link)
+
+                results.append({
+                    "store": STORE,
+                    "name": query,
+                    "price": price,
+                    "url": product_link,
+                    "available": True,
+                    "availability": "in_stock",
+                })
+
+            break
+
+    return results
 
 
 def _extract_product_variants(
@@ -794,15 +983,6 @@ def _extract_product_variants(
         price = _extract_price(
             " ".join(chunk)
         )
-
-        if not price:
-            # Deloox sometimes inserts availability/UI strings between the
-            # size and price. Inspect a bounded neighborhood around the size
-            # before declaring the variant absent.
-            nearby = " ".join(
-                strings[index + 1:index + 80]
-            )
-            price = _extract_price(nearby)
 
         if not price:
             continue
@@ -1003,32 +1183,6 @@ def search(query):
                 query,
             )
 
-        # For a distinctive variant, add only product URLs whose own slug
-        # contains the distinctive token. This prevents the generic Le Beau
-        # URL from surviving as the Narcisse result.
-        variant_urls = _find_variant_product_urls(
-            response.text,
-            query,
-        )
-
-        existing_urls = {
-            item["url"].split("#")[0].split("?")[0]
-            for item in current_candidates
-        }
-
-        for variant_url in variant_urls:
-            if variant_url in existing_urls:
-                continue
-
-            current_candidates.append({
-                "store": STORE,
-                "name": query,
-                "price": None,
-                "url": variant_url,
-                "available": True,
-                "availability": "in_stock",
-            })
-
         for item in current_candidates:
             clean_url = (
                 item["url"]
@@ -1082,15 +1236,6 @@ def search(query):
         reverse=True,
     )
 
-    # For a distinctive variant, only keep candidates that actually carry
-    # the variant in the canonical URL. Never let the generic family URL win.
-    query_tokens = set(_tokens(query))
-    family_tokens = {
-        "jean", "paul", "gaultier",
-        "le", "beau", "eau", "de", "toilette",
-    }
-    distinctive = query_tokens - family_tokens
-
     best_score = scored[0][0]
     minimum_score = best_score - 45
 
@@ -1128,21 +1273,18 @@ def search(query):
             product_url,
         )
 
-        jsonld_variants = _extract_jsonld_variants(
-            product_response.text,
-            item["name"],
-            product_url,
-        )
-
-        # Merge both sources instead of treating JSON-LD as an all-or-nothing
-        # fallback. This is important for Deloox pages where one size is
-        # visible in the rendered text and another is exposed only in JSON-LD.
-        variants.extend(jsonld_variants)
+        if not variants:
+            variants = _extract_jsonld_variants(
+                product_response.text,
+                item["name"],
+                product_url,
+            )
 
         for variant in variants:
             key = (
                 variant["url"],
                 variant.get("size", ""),
+                variant["price"],
             )
 
             if key in seen_variants:
@@ -1158,10 +1300,9 @@ def search(query):
 
         return final_results[:20]
 
-    # Never return an unvalidated candidate. For a variant such as Narcisse,
-    # a generic Le Beau URL may pass the loose discovery score but fail the
-    # authoritative product-page identity check. Returning it here recreates
-    # the exact false-link bug we are fixing.
+    # Never return a candidate that failed the authoritative product-page
+    # check. The old fallback was the direct cause of:
+    #   "Le Beau Narcisse" -> generic "Le Beau" URL.
     return []
 
 
