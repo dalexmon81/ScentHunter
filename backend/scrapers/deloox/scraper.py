@@ -206,108 +206,104 @@ def _find_product_card(link):
 
 
 def _url_matches_query(product_url, query):
-    """Use the URL only as a strict discovery guard.
-
-    A partial URL match is dangerous for fragrance variants:
-    - Le Beau Narcisse can partially match a Le Beau URL.
-    - Jean Paul Gaultier Le Beau can partially match Le Male.
-
-    The URL must therefore contain every meaningful query token. The actual
-    product page is still verified later.
-    """
+    """Use URL only as a weak discovery hint, never as product identity."""
     url_tokens = set(_tokens(product_url))
     query_tokens = set(_tokens(query))
     if not query_tokens:
         return False
-    return query_tokens.issubset(url_tokens)
+    # The URL is often incomplete (brand omitted, concentration omitted), so
+    # it must never be the reason a valid product is rejected.
+    return bool(url_tokens & query_tokens)
+
+
+def _anchor_identity(anchor):
+    """Return the useful product identity exposed by one anchor."""
+    values = [
+        _clean(anchor.get_text(" ", strip=True)),
+        _clean(anchor.get("title") or ""),
+        _clean(anchor.get("aria-label") or ""),
+        _clean(anchor.get("data-product-name") or ""),
+    ]
+    return [value for value in values if value]
+
+
+def _product_anchor_groups(soup):
+    """
+    Group all anchors by their exact product URL.
+
+    Deloox commonly has several anchors for the SAME product (image, product
+    name, price). We first establish the URL identity, then collect the text
+    identity from every anchor pointing to that exact URL. This prevents a
+    product name from one item being paired with the URL of another item.
+    """
+    groups = {}
+    for anchor in soup.find_all("a", href=True):
+        href = _clean(anchor.get("href"))
+        product_url = urljoin(BASE_URL, href).split("?")[0]
+        if "/product/" not in product_url.lower():
+            continue
+        entry = groups.setdefault(product_url, {"anchors": [], "texts": []})
+        entry["anchors"].append(anchor)
+        entry["texts"].extend(_anchor_identity(anchor))
+    return groups
+
+
+def _best_product_identity(texts, query):
+    """Choose the strongest textual identity for a product URL."""
+    best = None
+    best_score = -9999
+    for text in texts:
+        score = _match_score(text, query)
+        if score > best_score:
+            best_score = score
+            best = text
+    return best, best_score
 
 
 def _extract_category(html, query):
-    """
-    Discover product candidates without mixing the name of one product with
-    the URL of another.
-
-    The important rule is: the URL being returned is the URL of the SAME
-    product anchor we are evaluating.  We never search the whole card for
-    another /product/ link.
-    """
     soup = BeautifulSoup(html, "html.parser")
     results = []
     seen = set()
-    query_tokens = set(_tokens(query))
 
-    for link in soup.find_all("a", href=True):
-        href = _clean(link.get("href"))
-        product_url = urljoin(BASE_URL, href).split("?")[0]
-        if "/product/" not in product_url.lower():
+    for product_url, group in _product_anchor_groups(soup).items():
+        identity, identity_score = _best_product_identity(group["texts"], query)
+        if not identity:
+            # Image-only links are not enough to identify a product safely.
+            continue
+        if identity_score < 0:
+            continue
+        query_tokens = set(_tokens(query))
+        identity_tokens = set(_tokens(identity))
+        # For Deloox the product-name anchor is authoritative. Every query
+        # token must be present; soft matching here is what allowed Le Male
+        # to masquerade as Le Beau.
+        if not query_tokens.issubset(identity_tokens):
+            continue
+        if not _is_relevant_product(identity, query):
             continue
 
-        # URL is a discovery guard only. It must contain the complete query,
-        # otherwise variants can cross-match (Narcisse -> Le Beau, etc.).
-        if not _url_matches_query(product_url, query):
-            continue
-
-        anchor_text = _clean(link.get_text(" ", strip=True))
-        title_text = _clean(link.get("title") or "")
-        aria_text = _clean(link.get("aria-label") or "")
-
-        # Build context from the SAME product block, but never take a URL
-        # from that context. The URL remains the current anchor's href.
-        context_texts = [anchor_text, title_text, aria_text]
-        node = link
-        best_context = ""
-        for _ in range(8):
-            if node is None:
-                break
-            local = _clean(node.get_text(" ", strip=True))
-            if local:
-                context_texts.append(local)
-                # Prefer the smallest ancestor that contains a heading.
-                heading = None
-                for tag in ("h1", "h2", "h3", "h4"):
-                    node_h = node.find(tag)
-                    if node_h:
-                        heading = _clean(node_h.get_text(" ", strip=True))
-                        break
-                if heading:
-                    best_context = heading
-                    break
-            node = node.parent
-
-        if best_context:
-            context_texts.insert(0, best_context)
-
-        # A candidate must identify the requested product in its own anchor
-        # metadata or its immediate product block.
-        candidate_text = " ".join(dict.fromkeys(t for t in context_texts if t))
-        if not _matches_soft(candidate_text, query, minimum=0.80):
-            continue
-        if not _is_relevant_product(candidate_text, query):
-            continue
-        if any(word in candidate_text.lower() for word in SOLD_OUT):
-            continue
-
-        card = _find_product_card(link)
+        # Price/availability can come from the local product card, but the URL
+        # is ALWAYS the exact grouped product_url, never another anchor inside
+        # that card.
+        source_anchor = max(
+            group["anchors"],
+            key=lambda a: _match_score(" ".join(_anchor_identity(a)), query),
+        )
+        card = _find_product_card(source_anchor)
         card_text = _clean(card.get_text(" ", strip=True))
+        if any(word in card_text.lower() for word in SOLD_OUT):
+            continue
+
         price = _extract_price(card_text)
         if not price:
-            price = _extract_price(candidate_text)
-        if not price:
             continue
-
-        # Prefer the product heading/title, then anchor text, but never derive
-        # the URL from any other anchor.
-        product_name = best_context or title_text or anchor_text or query
-        if SIZE_FULL_RE.fullmatch(product_name):
-            product_name = query
 
         if product_url in seen:
             continue
         seen.add(product_url)
-
         results.append({
             "store": STORE,
-            "name": product_name,
+            "name": identity,
             "price": price,
             "url": product_url,
             "available": True,
@@ -315,72 +311,14 @@ def _extract_category(html, query):
         })
 
     return results
+
 
 def _extract_brand_page(html, query):
-    soup = BeautifulSoup(html, "html.parser")
-    results = []
-    seen = set()
+    # Use the same URL/name grouping as the normal category extractor. The
+    # brand page is often structurally different, but the product identity
+    # rule must remain identical.
+    return _extract_category(html, query)
 
-    for link in soup.find_all("a", href=True):
-        href = _clean(link.get("href"))
-        product_url = urljoin(BASE_URL, href).split("?")[0]
-        if "/product/" not in product_url.lower():
-            continue
-        if not _url_matches_query(product_url, query):
-            continue
-
-        anchor_text = _clean(link.get_text(" ", strip=True))
-        title_text = _clean(link.get("title") or "")
-        aria_text = _clean(link.get("aria-label") or "")
-
-        node = link
-        context_texts = [anchor_text, title_text, aria_text]
-        heading = ""
-        for _ in range(8):
-            if node is None:
-                break
-            local = _clean(node.get_text(" ", strip=True))
-            if local:
-                context_texts.append(local)
-            for tag in ("h1", "h2", "h3", "h4"):
-                node_h = node.find(tag)
-                if node_h:
-                    heading = _clean(node_h.get_text(" ", strip=True))
-                    context_texts.insert(0, heading)
-                    break
-            if heading:
-                break
-            node = node.parent
-
-        candidate_text = " ".join(dict.fromkeys(t for t in context_texts if t))
-        if not _matches_soft(candidate_text, query, minimum=0.80):
-            continue
-        if not _is_relevant_product(candidate_text, query):
-            continue
-        if any(word in candidate_text.lower() for word in SOLD_OUT):
-            continue
-
-        card = _find_product_card(link)
-        price = _extract_price(_clean(card.get_text(" ", strip=True)))
-        if not price:
-            price = _extract_price(candidate_text)
-        if not price:
-            continue
-
-        if product_url in seen:
-            continue
-        seen.add(product_url)
-
-        results.append({
-            "store": STORE,
-            "name": heading or title_text or anchor_text or query,
-            "price": price,
-            "url": product_url,
-            "available": True,
-            "availability": "in_stock",
-        })
-
-    return results
 
 def _page_product_names(html):
     """Extract authoritative product names from the product page."""
@@ -454,9 +392,9 @@ def _page_matches_query(html, query):
             if _is_relevant_product(name, query):
                 return True
 
-    # A small fallback is allowed for generic searches such as "Le Beau",
-    # where the product page may append concentration/size/marketing text.
-    return any(_matches_soft(name, query, minimum=0.80) for name in names)
+    # Do not use a soft fallback here. It can turn Le Male into a false
+    # positive for a Le Beau query because most tokens overlap.
+    return False
 
 
 def _extract_product_variants(html, product_name, product_url):
