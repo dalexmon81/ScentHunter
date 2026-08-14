@@ -1237,4 +1237,3 @@ def product(name: str, brand: str = ""):
         "message": "" if offers else "Nessuna offerta disponibile al momento",
     }
 
-
