@@ -639,10 +639,18 @@ def unique_results(products: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
     seen = set()
 
     for product in products:
+        # The same canonical URL can legitimately represent multiple
+        # package sizes (for example Narcisse 75 ml and 125 ml).
+        # Size is therefore part of the offer identity.
+        size_ml = product.get("size_ml")
+        if size_ml in (None, ""):
+            size_ml = _product_size_ml(product)
+
         key = (
             str(product.get("store", "")).lower(),
             str(product.get("url", "")).lower(),
             norm(product.get("name", "")),
+            str(size_ml or "").strip(),
         )
 
         if key in seen:
