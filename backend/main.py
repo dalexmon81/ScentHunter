@@ -79,10 +79,33 @@ def load_product_catalog() -> list[dict]:
     except (OSError, ValueError, json.JSONDecodeError):
         data = []
 
-    if not isinstance(data, list):
+    # Catalog V2 is an object with a ``products`` array. Keep the rest of
+    # main.py independent from the storage schema by exposing the small
+    # legacy-shaped view expected by the generic query/matcher code.
+    if isinstance(data, dict):
+        products = data.get("products")
+        data = products if isinstance(products, list) else []
+    elif not isinstance(data, list):
         data = []
 
-    _CATALOG_CACHE = [item for item in data if isinstance(item, dict)]
+    normalized = []
+    for item in data:
+        if not isinstance(item, dict):
+            continue
+
+        normalized.append({
+            **item,
+            "id": item.get("id") or item.get("catalog_id") or item.get("product_id") or "",
+            "catalog_id": item.get("catalog_id") or item.get("product_id") or item.get("id") or "",
+            "brand": item.get("brand") or item.get("brand_name") or "",
+            "name": item.get("name") or item.get("family_name") or "",
+            "aliases": item.get("aliases") or [],
+            "formats_ml": item.get("formats_ml") or item.get("sizes_ml") or [],
+            "gtins": item.get("gtins") or item.get("ean") or [],
+            "mpns": item.get("mpns") or item.get("mpn") or [],
+        })
+
+    _CATALOG_CACHE = normalized
     return _CATALOG_CACHE
 
 
@@ -592,22 +615,40 @@ def matches(product: Dict[str, Any], query: str) -> bool:
         or ""
     )
 
+    # Brand may be supplied separately by the scraper. It must participate
+    # in generic validation; otherwise a query such as "Jean Paul Gaultier"
+    # is rejected when the scraper returns name="Le Beau" + brand="Jean Paul Gaultier".
+    brand = str(
+        product.get("brand")
+        or product.get("manufacturer")
+        or product.get("maker")
+        or ""
+    )
+
     source = product.get("source")
     if isinstance(source, dict):
         name = " ".join(
             part for part in (
                 name,
                 str(source.get("source_name") or ""),
+            )
+            if part
+        )
+        brand = " ".join(
+            part for part in (
+                brand,
                 str(source.get("source_brand") or ""),
             )
             if part
         )
 
+    searchable_text = norm(f"{brand} {name}")
+
     query_tokens = {
         token for token in norm(query).split()
         if token not in IGNORED_WORDS
     }
-    name_tokens = set(norm(name).split())
+    name_tokens = set(searchable_text.split())
 
     if not query_tokens or not name_tokens:
         return False
@@ -1236,4 +1277,5 @@ def product(name: str, brand: str = ""):
         "errors": data["errors"],
         "message": "" if offers else "Nessuna offerta disponibile al momento",
     }
+
 
