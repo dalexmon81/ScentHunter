@@ -1,0 +1,2 @@
+[deploy]
+preDeployCommand = ["python backend/sabina_http_diagnostic.py"]
