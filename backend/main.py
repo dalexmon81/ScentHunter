@@ -134,7 +134,7 @@ def catalog_match_candidates(query: str, limit: int = 12) -> list[dict]:
     return [row[5] for row in ranked[:limit]]
 
 
-    def catalog_search_queries(query: str, limit: int = 8) -> list[str]:
+def catalog_search_queries(query: str, limit: int = 8) -> list[str]:
     """Generate a bounded set of generic catalog queries including aliases."""
     raw = str(query or "").strip()
     candidates = catalog_match_candidates(raw, limit)
@@ -142,7 +142,7 @@ def catalog_match_candidates(query: str, limit: int = 12) -> list[dict]:
     attempts = [raw] if raw else []
     seen = {norm(raw)} if raw else set()
 
-    def add_attempt(value: Any) -> None:
+ def add_attempt(value: Any) -> None:
         value = str(value or "").strip()
         key = norm(value)
 
