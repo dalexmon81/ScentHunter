@@ -1,6 +1,6 @@
 """ScentHunter central product identity matcher."""
 from __future__ import annotations
-import re, unicodedata
+import re, unicodedata, hashlib
 from dataclasses import dataclass
 from typing import Any, Dict, Iterable, List, Optional, Sequence, Tuple
 
@@ -10,7 +10,11 @@ def normalize(value: Any) -> str:
     value="".join(ch for ch in value if not unicodedata.combining(ch))
     value=re.sub(r"(?<=\d)(?=[a-z])|(?<=[a-z])(?=\d)", " ", value)
     value=re.sub(r"[^a-z0-9]+", " ", value)
-    return re.sub(r"\s+", " ", value).strip()
+    return re.sub(r"\s+"," ",value).strip()
+
+def stable_auto_id(brand: Any, name: Any) -> str:
+    key=f"{normalize(brand)}::{normalize(name)}"
+    return "SH-AUTO-" + hashlib.sha1(key.encode("utf-8")).hexdigest()[:12]
 
 def first_value(item: Dict[str, Any], keys: Sequence[str]) -> str:
     for key in keys:
@@ -76,7 +80,8 @@ class ProductMatcher:
     def match(self,offer:Dict[str,Any])->Optional[Dict[str,Any]]:
         p,method,score=self._best_match(offer)
         if p is None:return None
-        r=dict(offer); r.update(catalog_id=p.catalog_id,canonical_brand=p.brand,canonical_name=p.name,match_method=method,match_score=round(score,4),product_identity=p.catalog_id)
+        r=dict(offer)
+        r.update(catalog_id=p.catalog_id,canonical_brand=p.brand,canonical_name=p.name,match_method=method,match_score=round(score,4),product_identity=p.catalog_id)
         s=size_ml(offer)
         if s is not None:r["size_ml"]=s
         r["variant_id"]=f"{p.catalog_id}:{s:g}" if s is not None else p.catalog_id
@@ -111,7 +116,11 @@ class ProductMatcher:
         return .45+.55*best if brand_score else .95*best
 
 def offer_key(offer:Dict[str,Any])->Tuple[str,str,str,str]:
-    store=normalize(offer.get("store") or offer.get("source")); identity=normalize(offer.get("product_identity") or offer.get("catalog_id")); s=size_ml(offer); size="" if s is None else f"{s:g}"; url=str(offer.get("url") or "").split("#",1)[0].split("?",1)[0].strip().lower(); return store,identity,size,url
+    store=normalize(offer.get("store") or offer.get("source"))
+    identity=normalize(offer.get("product_identity") or offer.get("catalog_id"))
+    s=size_ml(offer); size="" if s is None else f"{s:g}"
+    url=str(offer.get("url") or "").split("#",1)[0].split("?",1)[0].strip().lower()
+    return store,identity,size,url
 
 def attach_matches(offers:Iterable[Dict[str,Any]],catalog:Iterable[Dict[str,Any]|CatalogProduct])->List[Dict[str,Any]]:
     matcher=ProductMatcher(catalog); out=[]
