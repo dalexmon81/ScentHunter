@@ -79,7 +79,9 @@ def load_product_catalog() -> list[dict]:
     except (OSError, ValueError, json.JSONDecodeError):
         data = []
 
-    if not isinstance(data, list):
+    if isinstance(data, dict):
+        data = data.get("products", [])
+    elif not isinstance(data, list):
         data = []
 
     _CATALOG_CACHE = [item for item in data if isinstance(item, dict)]
@@ -99,8 +101,8 @@ def catalog_match_candidates(query: str, limit: int = 12) -> list[dict]:
     ranked = []
 
     for item in load_product_catalog():
-        brand = str(item.get("brand") or "")
-        name = str(item.get("name") or "")
+        brand = str(item.get("brand") or item.get("brand_name") or "")
+        name = str(item.get("name") or item.get("family_name") or "")
         aliases = item.get("aliases") or []
 
         texts = [brand, name]
@@ -141,8 +143,8 @@ def catalog_search_queries(query: str, limit: int = 8) -> list[str]:
     seen = {norm(raw)} if raw else set()
 
     for item in candidates:
-        brand = str(item.get("brand") or "").strip()
-        name = str(item.get("name") or "").strip()
+        brand = str(item.get("brand") or item.get("brand_name") or "").strip()
+        name = str(item.get("name") or item.get("family_name") or "").strip()
         candidate = " ".join(part for part in (brand, name) if part)
 
         key = norm(candidate)
@@ -807,17 +809,110 @@ def expand_family_queries(raw_query: str) -> list[str]:
 
 
 def result_dedupe_key(item):
-    """Stable result key that preserves product variants/formats."""
+    """Stable offer key based on canonical catalog identity and format."""
     store = norm(item.get("store") or item.get("source") or "")
-    brand = norm(item.get("brand") or "")
-    name = norm(item.get("name") or "")
-    size = norm(item.get("size") or item.get("format") or "")
+    identity = norm(
+        item.get("catalog_id")
+        or item.get("product_identity")
+        or item.get("product_id")
+        or ""
+    )
+    if not identity:
+        identity = norm(
+            f"{item.get('canonical_brand') or item.get('brand') or ''} "
+            f"{item.get('canonical_name') or item.get('name') or ''}"
+        )
+    size = norm(str(
+        item.get("size_ml") or item.get("size") or item.get("format") or ""
+    ))
     url = str(item.get("url") or "").split("#")[0].split("?")[0].strip().lower()
-    return (store, brand, name, size, url)
+    return (store, identity, size, url)
 
 @app.get("/search")
 def search(q: str):
     return search_perfume(q)
+
+
+@app.get("/search-stream")
+def search_stream(q: str):
+    """SSE search: each store returns independently."""
+    from fastapi.responses import StreamingResponse
+
+    query = str(q or "").strip()
+
+    def events():
+        if not query:
+            yield "event: done\\ndata: " + json.dumps({
+                "query": query, "done": True, "results": [], "errors": {}
+            }) + "\\n\\n"
+            return
+
+        executor = ThreadPoolExecutor(
+            max_workers=len(STORES),
+            thread_name_prefix="scent-stream",
+        )
+        futures = {
+            executor.submit(run_store, store, query): store
+            for store in STORES
+        }
+        pending = set(futures)
+
+        try:
+            while pending:
+                done, pending = wait(pending, timeout=0.25)
+
+                for future in done:
+                    store = futures[future]
+                    try:
+                        raw = future.result() or []
+                        catalog = load_product_catalog()
+                        matched = []
+                        unresolved = []
+
+                        if catalog:
+                            matcher = ProductMatcher(catalog)
+                            for item in raw:
+                                result = matcher.match(item)
+                                if result is not None:
+                                    matched.append(result)
+                                else:
+                                    unresolved.append(item)
+                        else:
+                            unresolved = raw
+
+                        yield "event: store\\ndata: " + json.dumps({
+                            "query": query,
+                            "store": store,
+                            "results": matched + unresolved,
+                            "errors": {},
+                            "done": False,
+                        }, ensure_ascii=False) + "\\n\\n"
+                    except Exception as exc:
+                        yield "event: store\\ndata: " + json.dumps({
+                            "query": query,
+                            "store": store,
+                            "results": [],
+                            "errors": {store: str(exc) or exc.__class__.__name__},
+                            "done": False,
+                        }, ensure_ascii=False) + "\\n\\n"
+
+            yield "event: done\\ndata: " + json.dumps({
+                "query": query, "done": True, "results": [], "errors": {}
+            }) + "\\n\\n"
+        finally:
+            for future in futures:
+                future.cancel()
+            executor.shutdown(wait=False, cancel_futures=True)
+
+    return StreamingResponse(
+        events(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+            "X-Accel-Buffering": "no",
+        },
+    )
 
 
 @app.get("/test-store")
