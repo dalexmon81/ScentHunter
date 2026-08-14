@@ -711,6 +711,56 @@ def search_perfume(query: str) -> Dict[str, Any]:
     }
 
 
+
+# ============================================================
+# QUERY EXPANSION — PRODUCT FAMILIES
+# ============================================================
+
+def expand_family_queries(raw_query: str) -> list[str]:
+    """
+    Return the original query plus safe, semantically equivalent variants.
+
+    For Jean Paul Gaultier Le Beau we explicitly separate the known
+    references instead of asking every store for the generic "Le Beau"
+    only. This is a discovery aid: results are still validated and
+    deduplicated by the normal pipeline.
+    """
+    raw = str(raw_query or "").strip()
+    q = norm(raw)
+    if not q:
+        return []
+
+    attempts = [raw]
+    seen = {q}
+
+    if "jean paul gaultier" in q and "le beau" in q:
+        variants = [
+            "Jean Paul Gaultier Le Beau",
+            "Jean Paul Gaultier Le Beau Eau de Toilette",
+            "Jean Paul Gaultier Le Beau Narcisse",
+            "Jean Paul Gaultier Le Beau Paradise Garden",
+            "Jean Paul Gaultier Le Beau Flower Edition",
+            "Jean Paul Gaultier Le Beau Le Parfum",
+            "Jean Paul Gaultier Le Beau Le Parfum Intense",
+        ]
+        for variant in variants:
+            key = norm(variant)
+            if key not in seen:
+                attempts.append(variant)
+                seen.add(key)
+
+    return attempts
+
+
+def result_dedupe_key(item):
+    """Stable result key that preserves product variants/formats."""
+    store = norm(item.get("store") or item.get("source") or "")
+    brand = norm(item.get("brand") or "")
+    name = norm(item.get("name") or "")
+    size = norm(item.get("size") or item.get("format") or "")
+    url = str(item.get("url") or "").split("#")[0].split("?")[0].strip().lower()
+    return (store, brand, name, size, url)
+
 @app.get("/search")
 def search(q: str):
     return search_perfume(q)
@@ -1010,9 +1060,9 @@ def suggest(q: str):
     for store in STORES:
         try:
             module = load_scraper(store)
-            attempts = [raw_query]
+            attempts = expand_family_queries(raw_query)
 
-            if query not in attempts:
+            if query not in [norm(a) for a in attempts]:
                 attempts.append(query)
 
             for attempt in attempts:
@@ -1132,3 +1182,17 @@ def product(name: str, brand: str = ""):
         "errors": data["errors"],
         "message": "" if offers else "Nessuna offerta disponibile al momento",
     }
+
+
+# ============================================================
+# REGRESSION NOTE
+# ============================================================
+# Le Beau family searches must expand to:
+#   Le Beau / EDT
+#   Le Beau Narcisse
+#   Le Beau Paradise Garden
+#   Le Beau Flower Edition
+#   Le Beau Le Parfum / Intense
+# and must preserve the original query as the first attempt.
+# Product-page validation remains authoritative; expansion never accepts
+# a wrong product merely because it shares "Le Beau".
