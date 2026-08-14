@@ -19,7 +19,7 @@ HEADERS = {
     "Accept": "text/html,application/xhtml+xml,application/json;q=0.9,*/*;q=0.8",
     "Referer": BASE + "/it/",
 }
-PRICE_RE = re.compile(r"(?<!\d)(\d{1,4}(?:[.,]\d{2}))\s*€")
+PRICE_RE = re.compile(r"(?:€|\$|£)\s*(\d{1,4}(?:[.,]\d{2}))|(?<!\d)(\d{1,4}(?:[.,]\d{2}))\s*(?:€|\$|£)", re.I)
 PRODUCT_URL_RE = re.compile(
     r"^https?://(?:www\.)?sabina\.com/(?:it|fr|en|es|de|pt)/"
     r"(?!content|ricerca|ricerca_old|marchi|negozi|contatto|faq|"
@@ -36,7 +36,8 @@ def _price(value):
         return f"{float(value):.2f}".replace(".", ",") + " €"
     text = _clean(value)
     m = PRICE_RE.search(text) or re.search(r"(?<!\d)(\d{1,4}(?:[.,]\d{2}))(?!\d)", text)
-    return (m.group(1).replace(".", ",") + " €") if m else None
+    value = next((g for g in m.groups() if g is not None), None) if m else None
+    return (value.replace(".", ",") + " €") if value else None
 
 def _looks_like_product_url(url):
     return bool(url and PRODUCT_URL_RE.match(url))
@@ -177,7 +178,7 @@ def _parse_html(text, query):
                 break
             container = parent
             txt = _clean(container.get_text(" ", strip=True))
-            if "€" in txt and len(txt) < 1800:
+            if re.search(r"(?:€|\$|£)", txt) and len(txt) < 1800:
                 break
         text_block = _clean(container.get_text(" ", strip=True))
         pm = PRICE_RE.search(text_block)
@@ -200,7 +201,7 @@ def _parse_html(text, query):
                 break
         if name.lower() in {"vedi", "vedi tutto", "acquista", "immagine"}:
             continue
-        rows.append({"store": STORE, "name": name, "price": pm.group(1) + " €", "url": url})
+        rows.append({"store": STORE, "name": name, "price": next((g for g in pm.groups() if g is not None), "") .replace(".", ",") + " €", "url": url})
     return _dedupe(rows, query)
 
 def _get(session, url, **kwargs):
