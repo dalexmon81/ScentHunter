@@ -149,30 +149,25 @@ def _contains_non_fragrance_product(text):
 def _is_relevant_product(text, query):
     if not _matches_soft(text, query, minimum=0.55):
         return False
+
+    query_tokens = set(_tokens(query))
     if not _query_wants_non_fragrance(query) and _contains_non_fragrance_product(text):
         return False
+
+    # A gift set is a different commercial product from the perfume itself.
+    # Only accept it when the user explicitly searched for a set.
+    if "gift" not in query_tokens and "set" not in query_tokens:
+        if re.search(r"\bgift\s+set\b", _norm(text)):
+            return False
+
     return True
 
 
 
-def _find_variant_category(session, brand_category_url, query):
-    """
-    Discovery layer: Deloox often exposes a dedicated category for a
-    fragrance family/variant (for example "Le Beau", "Le Beau Narcisse",
-    "Le Beau Le Parfum"). Prefer that category when its label is a strong
-    match for the requested query. This keeps product-name discovery tied
-    to Deloox's own taxonomy instead of guessing an URL from a product card.
-    """
-    response = _get(session, brand_category_url)
-    if response is None:
-        return None
-
-    soup = BeautifulSoup(response.text, "html.parser")
-    query_tokens = set(_tokens(query))
-    if not query_tokens:
-        return None
-
-    candidates = []
+def _category_links_from_page(html):
+    """Return Deloox category links with their visible labels."""
+    soup = BeautifulSoup(html, "html.parser")
+    found = []
     seen = set()
 
     for link in soup.find_all("a", href=True):
@@ -180,51 +175,111 @@ def _find_variant_category(session, brand_category_url, query):
         url = urljoin(BASE_URL, href).split("?")[0]
         if "/category/" not in url.lower():
             continue
-        if url.rstrip("/") == brand_category_url.rstrip("/"):
-            continue
 
-        label = _clean(link.get_text(" ", strip=True))
+        label = _clean(
+            link.get_text(" ", strip=True)
+            or link.get("title")
+            or link.get("aria-label")
+            or ""
+        )
         if not label:
             continue
 
-        label_tokens = set(_tokens(label))
-        overlap = query_tokens & label_tokens
-        if not overlap:
-            continue
-
-        # The category label must identify a meaningful part of the query.
-        # Prefer the most specific category: more query tokens, then fewer
-        # unrelated label tokens.
-        overlap_count = len(overlap)
-        query_coverage = overlap_count / len(query_tokens)
-        label_precision = overlap_count / len(label_tokens)
-
-        # At least two shared tokens is the safe general case for fragrance
-        # variant categories. A one-token category is accepted only when it
-        # is an exact match to the complete normalized query.
-        exact = label_tokens == query_tokens
-        if not exact and overlap_count < 2:
-            continue
-
-        key = (url, _norm(label))
+        key = (url.rstrip("/"), _norm(label))
         if key in seen:
             continue
         seen.add(key)
-        candidates.append((
-            exact,
-            overlap_count,
-            query_coverage,
-            label_precision,
-            -len(label_tokens),
-            url,
-        ))
+        found.append((label, url))
 
-    if not candidates:
+    return found
+
+
+def _category_match_score(label, query):
+    """Score a Deloox taxonomy label against the requested variant."""
+    q = set(_tokens(query))
+    l = set(_tokens(label))
+    if not q or not l:
+        return -1
+
+    overlap = len(q & l)
+    if not overlap:
+        return -1
+
+    coverage = overlap / len(q)
+    precision = overlap / len(l)
+
+    # Exact taxonomy match is strongest.
+    if q == l:
+        return 1000
+
+    # Prefer labels that contain the complete query.
+    if q.issubset(l):
+        return 900 + int(100 * precision)
+
+    # For family navigation, allow a parent such as "Le Beau" to be used
+    # as a bridge to discover a child such as "Le Beau Narcisse".
+    if overlap >= 2:
+        return 500 + int(100 * coverage) + int(50 * precision)
+
+    return -1
+
+
+def _find_variant_category(session, brand_category_url, query):
+    """
+    Discover the requested Deloox variant through Deloox's own taxonomy.
+
+    Important difference from the old implementation:
+    1. inspect the brand category;
+    2. if the exact variant is not there, follow the best family/category
+       link and inspect its category navigation;
+    3. return the exact variant category when Deloox exposes one.
+
+    This mirrors Deloox's real navigation: the Jean Paul Gaultier area can
+    expose "Le Beau", and a Le Beau category can expose siblings such as
+    "Le Beau Flower Edition", "Le Beau Le Parfum" and "Le Beau Narcisse".
+    """
+    response = _get(session, brand_category_url)
+    if response is None:
         return None
 
-    candidates.sort(reverse=True)
-    return candidates[0][-1]
+    direct = _category_links_from_page(response.text)
+    candidates = []
 
+    for label, url in direct:
+        if url.rstrip("/") == brand_category_url.rstrip("/"):
+            continue
+        score = _category_match_score(label, query)
+        if score >= 900:
+            candidates.append((score, url))
+
+    if candidates:
+        candidates.sort(reverse=True)
+        return candidates[0][1]
+
+    # No exact variant in the brand page. Use the best family bridge.
+    bridge_candidates = []
+    for label, url in direct:
+        if url.rstrip("/") == brand_category_url.rstrip("/"):
+            continue
+        score = _category_match_score(label, query)
+        if score >= 500:
+            bridge_candidates.append((score, url))
+
+    bridge_candidates.sort(reverse=True)
+
+    # Inspect only a few high-quality taxonomy bridges. This is deliberately
+    # shallow so a normal perfume search does not explode into a crawler.
+    for _, bridge_url in bridge_candidates[:3]:
+        bridge_response = _get(session, bridge_url)
+        if bridge_response is None:
+            continue
+
+        for label, url in _category_links_from_page(bridge_response.text):
+            score = _category_match_score(label, query)
+            if score >= 900:
+                return url
+
+    return None
 
 def _find_brand_category(session, query):
     query_tokens = set(_tokens(query))
@@ -288,82 +343,15 @@ def _url_matches_query(product_url, query):
     return found / len(query_tokens) >= 0.55
 
 
-def _extract_category(html, query):
+def _extract_product_candidates(html, query):
     """
-    Discover products from Deloox category pages.
+    Discover canonical product URLs without requiring the anchor text to be
+    a perfect copy of the query.
 
-    Deloox's category markup separates the main product link from the
-    individual size links. The main product anchor carries the product name
-    and the canonical /product/<id>/ URL. Size anchors are separate links.
-
-    Therefore discovery must start from the named product anchor itself.
-    We never choose a /product/ URL from a sibling size anchor or from an
-    arbitrary link inside the surrounding card.
+    The anchor, title, aria-label, nearby headings and product card are all
+    candidate identity signals. They are NOT authoritative. Every candidate
+    is later opened and checked against the real product page.
     """
-    soup = BeautifulSoup(html, "html.parser")
-    results = []
-    seen = set()
-    query_tokens = set(_tokens(query))
-
-    for link in soup.find_all("a", href=True):
-        href = _clean(link.get("href"))
-        product_url = urljoin(BASE_URL, href).split("?")[0]
-        if "/product/" not in product_url.lower():
-            continue
-
-        # Deloox size selectors can also be links. They are not the product
-        # identity anchor, so reject anchors whose visible text is only a
-        # size, ellipsis, or otherwise contains no product-name information.
-        link_name = _clean(link.get_text(" ", strip=True))
-        link_title = _clean(link.get("title") or "")
-        link_aria = _clean(link.get("aria-label") or "")
-
-        identity_texts = [
-            value for value in (link_name, link_title, link_aria)
-            if value and not SIZE_FULL_RE.fullmatch(value)
-        ]
-        if not identity_texts:
-            continue
-
-        # The canonical product anchor must itself identify the requested
-        # product. Do not infer identity from the surrounding card.
-        identity = max(
-            identity_texts,
-            key=lambda value: _match_score(value, query)
-        )
-        if not _matches_soft(identity, query, minimum=0.80):
-            continue
-        if not query_tokens.issubset(set(_tokens(identity))):
-            continue
-
-        card = _find_product_card(link)
-        card_text = _clean(card.get_text(" ", strip=True))
-
-        if any(word in card_text.lower() for word in SOLD_OUT):
-            continue
-        if not _is_relevant_product(identity, query):
-            continue
-
-        price = _extract_price(card_text)
-        if not price:
-            continue
-
-        if product_url in seen:
-            continue
-        seen.add(product_url)
-
-        results.append({
-            "store": STORE,
-            "name": identity,
-            "price": price,
-            "url": product_url,
-            "available": True,
-            "availability": "in_stock",
-        })
-
-    return results
-
-def _extract_brand_page(html, query):
     soup = BeautifulSoup(html, "html.parser")
     results = []
     seen = set()
@@ -373,37 +361,62 @@ def _extract_brand_page(html, query):
         product_url = urljoin(
             BASE_URL, _clean(link.get("href"))
         ).split("?")[0]
+
         if "/product/" not in product_url.lower():
             continue
 
-        link_name = _clean(link.get_text(" ", strip=True))
-        link_title = _clean(link.get("title") or "")
-        link_aria = _clean(link.get("aria-label") or "")
+        values = [
+            _clean(link.get_text(" ", strip=True)),
+            _clean(link.get("title") or ""),
+            _clean(link.get("aria-label") or ""),
+        ]
 
-        identity_texts = [
-            value for value in (link_name, link_title, link_aria)
+        # Use the nearest compact product context only as a discovery signal.
+        card = _find_product_card(link)
+        card_text = _clean(card.get_text(" ", strip=True))
+        if card_text:
+            values.append(card_text)
+
+        # Headings inside the same product context are often the cleanest
+        # visible identity, especially when the anchor contains only an icon.
+        for heading in card.find_all(["h2", "h3", "h4"], limit=3):
+            value = _clean(heading.get_text(" ", strip=True))
+            if value:
+                values.append(value)
+
+        values = [
+            value for value in values
             if value and not SIZE_FULL_RE.fullmatch(value)
         ]
-        if not identity_texts:
+        if not values:
             continue
 
-        identity = max(
-            identity_texts,
-            key=lambda value: _match_score(value, query)
-        )
+        # Prefer the shortest strong identity containing query terms. This
+        # avoids using an entire card as the product name.
+        ranked = []
+        for value in values:
+            tokens = set(_tokens(value))
+            overlap = len(tokens & query_tokens)
+            score = _match_score(value, query)
+            if overlap:
+                score += overlap * 0.25
+            ranked.append((score, -len(value), value))
 
-        if not _matches_soft(identity, query, minimum=0.80):
-            continue
-        if not query_tokens.issubset(set(_tokens(identity))):
-            continue
+        ranked.sort(reverse=True)
+        identity = ranked[0][2]
 
-        card = _find_product_card(link)
-        text = _clean(card.get_text(" ", strip=True))
-        if any(word in text.lower() for word in SOLD_OUT):
-            continue
+        # Discovery is intentionally permissive. A candidate only needs a
+        # meaningful relationship to the query in the card/context. The real
+        # product page is checked later.
+        if query_tokens:
+            context_tokens = set(_tokens(" ".join(values)))
+            if not (query_tokens & context_tokens):
+                # For a query like "Le Beau Narcisse", Deloox may expose only
+                # "Narcisse" in the local label. Keep it if a strong single
+                # variant token is present; page validation will decide.
+                continue
 
-        price = _extract_price(text)
-        if not price or not _is_relevant_product(identity, query):
+        if any(word in card_text.lower() for word in SOLD_OUT):
             continue
 
         if product_url in seen:
@@ -413,7 +426,7 @@ def _extract_brand_page(html, query):
         results.append({
             "store": STORE,
             "name": identity,
-            "price": price,
+            "price": _extract_price(card_text),
             "url": product_url,
             "available": True,
             "availability": "in_stock",
@@ -421,13 +434,34 @@ def _extract_brand_page(html, query):
 
     return results
 
+
+def _extract_category(html, query):
+    return _extract_product_candidates(html, query)
+
+def _extract_brand_page(html, query):
+    return _extract_product_candidates(html, query)
+
 def _page_product_names(html):
-    """Extract authoritative product names from the product page."""
+    """Extract authoritative product identity fields from the product page."""
     soup = BeautifulSoup(html, "html.parser")
     names = []
 
+    # H1 is the strongest visible product identity.
     for node in soup.find_all("h1"):
         value = _clean(node.get_text(" ", strip=True))
+        if value:
+            names.append(value)
+
+    # Deloox exposes "product line" in the product-information section.
+    # Keep it as an additional identity signal, not as a replacement for H1.
+    body_text = _clean(soup.get_text(" ", strip=True))
+    product_line_match = re.search(
+        r"\bproduct\s+line\b\s*[:\-]?\s*([A-Za-z0-9&'’.\- ]{3,120})",
+        body_text,
+        flags=re.I,
+    )
+    if product_line_match:
+        value = _clean(product_line_match.group(1))
         if value:
             names.append(value)
 
@@ -457,7 +491,6 @@ def _page_product_names(html):
                 if child:
                     stack.extend(child if isinstance(child, list) else [child])
 
-    # Keep order and remove duplicates.
     unique = []
     seen = set()
     for name in names:
@@ -466,7 +499,6 @@ def _page_product_names(html):
             seen.add(key)
             unique.append(name)
     return unique
-
 
 def _page_matches_query(html, query):
     """
@@ -512,8 +544,24 @@ def _extract_product_variants(html, product_name, product_url):
     seen_sizes = set()
 
     def prices_in(text_value):
+        value = _clean(text_value)
+
+        # Deloox prints the reference price immediately before the current
+        # selling price, e.g.:
+        #   Retail price: 106.00 € 68,99
+        # If we feed that whole string to PRICE_RE, the regex can stop on
+        # "106.00 €" and never see the real price. Remove every retail-price
+        # fragment first, then parse what remains.
+        value = re.sub(
+            r"\bretail\s+price\b\s*:?\s*€?\s*"
+            r"\d{1,4}(?:[,.]\d{2})?",
+            " ",
+            value,
+            flags=re.I,
+        )
+
         found = []
-        for match in PRICE_RE.finditer(_clean(text_value)):
+        for match in PRICE_RE.finditer(value):
             if match.group("euro_before"):
                 found.append(
                     f"{match.group('euro_before')},{match.group('cents_before')} €"
@@ -739,9 +787,12 @@ def search(query):
             if not _page_matches_query(product_response.text, query):
                 continue
 
+            authoritative_names = _page_product_names(product_response.text)
+            authoritative_name = authoritative_names[0] if authoritative_names else item["name"]
+
             variants = _extract_product_variants(
                 product_response.text,
-                item["name"],
+                authoritative_name,
                 product_url,
             )
             if not variants:
