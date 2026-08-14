@@ -23,6 +23,13 @@ def normalize(value: Any) -> str:
     return re.sub(r"\s+", " ", value).strip()
 
 
+def _name_for_matching(value: Any) -> str:
+    """Normalize an offer name while ignoring package size for identity matching."""
+    text = normalize(value)
+    text = re.sub(r"\b\d{1,4}(?:[.,]\d+)?\s*(?:ml|cl)\b", " ", text, flags=re.I)
+    return re.sub(r"\s+", " ", text).strip()
+
+
 def stable_auto_id(brand: Any, name: Any) -> str:
     key = f"{normalize(brand)}::{normalize(name)}"
     return "SH-AUTO-" + hashlib.sha1(key.encode("utf-8")).hexdigest()[:12]
@@ -215,7 +222,7 @@ class ProductMatcher:
         value = first_value(offer, self.BRAND_KEYS)
 
         if value:
-            return normalize(value)
+            return _name_for_matching(value)
 
         source = _nested_source(offer)
         value = first_value(source, ("source_brand", "brand", "manufacturer"))
@@ -226,12 +233,12 @@ class ProductMatcher:
         value = first_value(offer, self.NAME_KEYS)
 
         if value:
-            return normalize(value)
+            return _name_for_matching(value)
 
         source = _nested_source(offer)
         value = first_value(source, ("source_name", "name", "title"))
 
-        return normalize(value) if value else ""
+        return _name_for_matching(value) if value else ""
 
     def match(self, offer: Dict[str, Any]) -> Optional[Dict[str, Any]]:
         product, method, score = self._best_match(offer)
@@ -341,11 +348,19 @@ class ProductMatcher:
                 else 0.0
             )
 
-            # A shorter name must NOT match a longer canonical product name
-            # merely because it is a substring. This prevents "Hawas" from
-            # becoming "Hawas Ice", for example.
+            # A shorter canonical name may match a longer offer name only
+            # when the extra words are generic concentration/format words.
+            # Real variants (Narcisse, Flower Edition, Paradise Garden,
+            # Le Parfum, etc.) must never be swallowed by the family name.
             if candidate in name:
-                f_score = max(f_score, 0.92)
+                extra_tokens = query_tokens - candidate_tokens
+                generic_extras = {
+                    "eau", "de", "parfum", "edp", "edt", "extrait",
+                    "spray", "men", "man", "woman", "femme", "homme",
+                    "vaporisateur", "natural"
+                }
+                if extra_tokens.issubset(generic_extras):
+                    f_score = max(f_score, 0.92)
 
             best = max(best, f_score)
 
