@@ -509,20 +509,40 @@ def _find_product_card(link):
 
 
 def _url_matches_query(product_url, query):
+    """
+    Match the canonical product URL to the requested product.
+
+    Generic queries keep the existing tolerant behavior. For a specific
+    variant, however, every distinctive variant token must be present in the
+    URL. This prevents:
+        Le Beau Narcisse -> /.../le-beau-.../
+    from being accepted simply because "le" and "beau" overlap.
+    """
     url_tokens = set(_tokens(product_url))
     query_tokens = set(_tokens(query))
 
     if not query_tokens:
         return False
 
-    # If URL contains all tokens, it's a match.
+    family_tokens = {
+        "jean", "paul", "gaultier",
+        "le", "beau",
+        "eau", "de", "toilette",
+    }
+    distinctive = query_tokens - family_tokens
+
+    if distinctive:
+        return distinctive.issubset(url_tokens)
+
     if query_tokens.issubset(url_tokens):
         return True
 
-    # Otherwise accept if a sufficient fraction of query tokens appear in URL.
-    found = sum(1 for t in query_tokens if t in url_tokens)
+    found = sum(
+        1
+        for token in query_tokens
+        if token in url_tokens
+    )
     return (found / len(query_tokens)) >= 0.55
-
 
 
 def _is_gift_set_url(url):
@@ -578,6 +598,72 @@ def _find_matching_product_url(card, query):
 
     return best_url
 
+
+
+def _find_variant_product_urls(html, query):
+    """
+    Extract product URLs from a page whose visible/linked text explicitly
+    contains the distinctive variant token(s). Used as a second discovery
+    pass for variants such as Narcisse.
+    """
+    query_tokens = set(_tokens(query))
+    family_tokens = {
+        "jean", "paul", "gaultier",
+        "le", "beau",
+        "eau", "de", "toilette",
+    }
+    distinctive = query_tokens - family_tokens
+
+    if not distinctive:
+        return []
+
+    soup = BeautifulSoup(html, "html.parser")
+    results = []
+    seen = set()
+
+    for anchor in soup.find_all("a", href=True):
+        url = urljoin(
+            BASE_URL,
+            _clean(anchor.get("href")),
+        ).split("?")[0]
+
+        if "/product/" not in url.lower():
+            continue
+        if _is_gift_set_url(url):
+            continue
+
+        label = _clean(
+            anchor.get_text(" ", strip=True)
+            or anchor.get("title")
+            or anchor.get("aria-label")
+            or "",
+        )
+
+        context = label
+        card = _find_product_card(anchor)
+        if card is not None:
+            context = _clean(
+                card.get_text(" ", strip=True)
+            )
+
+        context_tokens = set(_tokens(context))
+        url_tokens = set(_tokens(url))
+
+        if not distinctive.issubset(
+            context_tokens | url_tokens
+        ):
+            continue
+
+        if not distinctive.issubset(url_tokens):
+            # The page can mention Narcisse while the link itself is generic.
+            # That is exactly the false-link case we are trying to prevent.
+            continue
+
+        if url not in seen:
+            seen.add(url)
+            results.append(url)
+
+    return results
 
 def _page_matches_query(html, query):
     """
@@ -1146,6 +1232,32 @@ def search(query):
                 query,
             )
 
+        # For a distinctive variant, add only product URLs whose own slug
+        # contains the distinctive token. This prevents the generic Le Beau
+        # URL from surviving as the Narcisse result.
+        variant_urls = _find_variant_product_urls(
+            response.text,
+            query,
+        )
+
+        existing_urls = {
+            item["url"].split("#")[0].split("?")[0]
+            for item in current_candidates
+        }
+
+        for variant_url in variant_urls:
+            if variant_url in existing_urls:
+                continue
+
+            current_candidates.append({
+                "store": STORE,
+                "name": query,
+                "price": None,
+                "url": variant_url,
+                "available": True,
+                "availability": "in_stock",
+            })
+
         for item in current_candidates:
             clean_url = (
                 item["url"]
@@ -1198,6 +1310,27 @@ def search(query):
         key=lambda item: item[0],
         reverse=True,
     )
+
+    # For a distinctive variant, only keep candidates that actually carry
+    # the variant in the canonical URL. Never let the generic family URL win.
+    query_tokens = set(_tokens(query))
+    family_tokens = {
+        "jean", "paul", "gaultier",
+        "le", "beau", "eau", "de", "toilette",
+    }
+    distinctive = query_tokens - family_tokens
+
+    if distinctive:
+        scored = [
+            item
+            for item in scored
+            if distinctive.issubset(
+                set(_tokens(item[1]["url"]))
+            )
+        ]
+
+        if not scored:
+            return []
 
     best_score = scored[0][0]
     minimum_score = best_score - 45
@@ -1284,4 +1417,4 @@ if __name__ == "__main__":
             print("NESSUN RISULTATO")
         else:
             for result in results:
-                print(result)
+                print(re
