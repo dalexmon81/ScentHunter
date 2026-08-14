@@ -1,1463 +1,3360 @@
-[
-  {
-    "id": "SH-0022",
-    "brand": "Afnan",
-    "name": "9 PM",
-    "concentration": "Eau de Parfum",
-    "formats_ml": [
-      100
-    ],
-    "aliases": [
-      "Afnan - 9 PM",
-      "Afnan 9 PM"
-    ],
-    "status": "verificato",
-    "notes": "Verificato tramite fonte esterna; mantenere questa referenza come nome canonico del catalogo.",
-    "verification_sources": [
-      "https://fr.afnan.com/en/products/9-pm"
-    ]
-  },
-  {
-    "id": "SH-0024",
-    "brand": "Afnan",
-    "name": "9 PM Elixir",
-    "concentration": "Extrait de Parfum",
-    "formats_ml": [
-      100
-    ],
-    "aliases": [
-      "Afnan - 9 PM Elixir",
-      "Afnan 9 PM Elixir",
-      "9 PM Elixir Parfum Intense",
-      "Afnan - 9 PM Elixir Parfum Intense",
-      "Afnan 9 PM Elixir Parfum Intense",
-      "Afnan - 9PM Elixir",
-      "Afnan 9PM Elixir"
-    ],
-    "status": "verificato",
-    "notes": "Verificato tramite fonte esterna; mantenere questa referenza come nome canonico del catalogo.",
-    "verification_sources": [
-      "https://fr.afnan.com/products/9-pm-elixir"
-    ]
-  },
-  {
-    "id": "SH-0025",
-    "brand": "Afnan",
-    "name": "9 PM Night Out",
-    "concentration": "Extrait de Parfum",
-    "formats_ml": [
-      100
-    ],
-    "aliases": [
-      "Afnan - 9 PM Night Out",
-      "Afnan 9 PM Night Out",
-      "Afnan - 9PM Night Out",
-      "Afnan 9PM Night Out"
-    ],
-    "status": "verificato",
-    "notes": "Verificato tramite fonte esterna; mantenere questa referenza come nome canonico del catalogo.",
-    "verification_sources": [
-      "https://sk.afnan.com/products/9pm-night-out"
-    ]
-  },
-  {
-    "id": "SH-0023",
-    "brand": "Afnan",
-    "name": "9 PM Rebel",
-    "concentration": "Eau de Parfum",
-    "formats_ml": [
-      100
-    ],
-    "aliases": [
-      "Afnan - 9 PM Rebel",
-      "Afnan 9 PM Rebel",
-      "Afnan - 9PM Rebel",
-      "Afnan 9PM Rebel"
-    ],
-    "status": "verificato",
-    "notes": "Verificato tramite fonte esterna; mantenere questa referenza come nome canonico del catalogo.",
-    "verification_sources": [
-      "https://be.afnan.com/products/9-pm-rebel"
-    ]
-  },
-  {
-    "id": "SH-0067",
-    "brand": "Afnan",
-    "name": "9 PM - Pour Femme",
-    "concentration": "Eau de Parfum",
-    "formats_ml": [
-      100
-    ],
-    "aliases": [
-      "Afnan - 9 PM Pour Femme",
-      "Afnan 9 PM Pour Femme",
-      "9 PM Pour Femme",
-      "9PM Pour Femme",
-      "9pm Purple Femme",
-      "Afnan 9pm Purple Femme"
-    ],
-    "status": "verificato",
-    "notes": "Verificato tramite fonte ufficiale Afnan; nome canonico, formato e alias aggiornati.",
-    "verification_sources": [
-      "https://fr.afnan.com/en/products/9-pm-pour-femme"
-    ]
-  },
-  {
-    "id": "SH-0068",
-    "brand": "Afnan",
-    "name": "9 AM",
-    "concentration": "Eau de Parfum",
-    "formats_ml": [
-      100
-    ],
-    "aliases": [
-      "Afnan - 9 AM",
-      "Afnan 9 AM",
-      "9AM"
-    ],
-    "status": "verificato",
-    "notes": "Verificato tramite fonte ufficiale Afnan; nome canonico, formato e alias aggiornati.",
-    "verification_sources": [
-      "https://fr.afnan.com/en/products/9-am"
-    ]
-  },
-  {
-    "id": "SH-0069",
-    "brand": "Afnan",
-    "name": "9 AM Dive",
-    "concentration": "Eau de Parfum",
-    "formats_ml": [
-      100
-    ],
-    "aliases": [
-      "Afnan - 9 AM Dive",
-      "Afnan 9 AM Dive",
-      "9AM Dive"
-    ],
-    "status": "verificato",
-    "notes": "Verificato tramite fonte ufficiale Afnan; nome canonico, formato e alias aggiornati.",
-    "verification_sources": [
-      "https://fr.afnan.com/en/products/9-am-dive"
-    ]
-  },
-  {
-    "id": "SH-0070",
-    "brand": "Afnan",
-    "name": "9 AM - Pour Femme",
-    "concentration": "Eau de Parfum",
-    "formats_ml": [
-      100
-    ],
-    "aliases": [
-      "Afnan - 9 AM Pour Femme",
-      "Afnan 9 AM Pour Femme",
-      "9 AM Pour Femme",
-      "9AM Pour Femme"
-    ],
-    "status": "verificato",
-    "notes": "Verificato tramite fonte ufficiale Afnan; nome canonico, formato e alias aggiornati.",
-    "verification_sources": [
-      "https://fr.afnan.com/en/products/9-am-pour-femme"
-    ]
-  },
-  {
-    "id": "SH-0026",
-    "brand": "Afnan",
-    "name": "Supremacy Collector's Edition",
-    "concentration": "Eau de Parfum",
-    "formats_ml": [
-      100
-    ],
-    "aliases": [
-      "Afnan - Supremacy Collector's Edition",
-      "Afnan Supremacy Collector's Edition"
-    ],
-    "status": "verificato",
-    "notes": "Verificato tramite fonte esterna; mantenere questa referenza come nome canonico del catalogo.",
-    "verification_sources": [
-      "https://it.afnan.com/en/products/supremacy-collectors-edition"
-    ]
-  },
-  {
-    "id": "SH-0027",
-    "brand": "Afnan",
-    "name": "Supremacy in Heaven",
-    "concentration": "Eau de Parfum",
-    "formats_ml": [
-      100
-    ],
-    "aliases": [
-      "Afnan - Supremacy in Heaven",
-      "Afnan Supremacy in Heaven"
-    ],
-    "status": "verificato",
-    "notes": "Verificato tramite fonte esterna; mantenere questa referenza come nome canonico del catalogo.",
-    "verification_sources": [
-      "https://fr.afnan.com/products/supremacy-in-heaven"
-    ]
-  },
-  {
-    "id": "SH-0035",
-    "brand": "Afnan",
-    "name": "Turathi Blue",
-    "concentration": "Eau de Parfum",
-    "formats_ml": [
-      90
-    ],
-    "aliases": [
-      "Afnan Turathi Blue",
-      "Turathi Blue Pour Homme",
-      "Turathi Blue EDP",
-      "Turathi Blue 90 ML"
-    ],
-    "status": "verificato",
-    "notes": "Verificato con fonte prodotto/brand; nome canonico, concentrazione, formato e alias aggiornati.",
-    "verification_sources": [
-      "https://fr.afnan.com/products/turathi-blue-homme"
-    ]
-  },
-  {
-    "id": "SH-0060",
-    "brand": "Afnan",
-    "name": "Turathi Brown",
-    "concentration": "Eau de Parfum",
-    "formats_ml": [
-      90
-    ],
-    "aliases": [
-      "Afnan Turathi Brown",
-      "Turathi Brown Pour Homme",
-      "Turathi Brown EDP",
-      "Turathi Brown 90 ML"
-    ],
-    "status": "verificato",
-    "notes": "Verificato con fonte prodotto/brand; nome canonico, concentrazione, formato e alias aggiornati.",
-    "verification_sources": [
-      "https://egypt.afnan.com/products/turathi-brown-homme"
-    ]
-  },
-  {
-    "id": "SH-0061",
-    "brand": "Afnan",
-    "name": "Turathi Electric",
-    "concentration": "Eau de Parfum",
-    "formats_ml": [
-      90
-    ],
-    "aliases": [
-      "Afnan Turathi Electric",
-      "Turathi Electric EDP",
-      "Turathi Electric 90 ML"
-    ],
-    "status": "verificato",
-    "notes": "Verificato con fonte prodotto/brand; nome canonico, concentrazione, formato e alias aggiornati.",
-    "verification_sources": [
-      "https://fr.afnan.com/products/turathi-electric"
-    ]
-  },
-  {
-    "id": "SH-0059",
-    "brand": "Afnan",
-    "name": "Turathi Red",
-    "concentration": "Eau de Parfum",
-    "formats_ml": [
-      90
-    ],
-    "aliases": [
-      "Afnan Turathi Red",
-      "Turathi Red Pour Femme",
-      "Turathi Red EDP",
-      "Turathi Red 90 ML"
-    ],
-    "status": "verificato",
-    "notes": "Verificato con fonte prodotto/brand; nome canonico, concentrazione, formato e alias aggiornati.",
-    "verification_sources": [
-      "https://afnan.com/products/turathi-red-femme"
-    ]
-  },
-  {
-    "id": "SH-0033",
-    "brand": "Ahmed Al Maghribi",
-    "name": "Kaaf",
-    "concentration": "Eau de Parfum",
-    "formats_ml": [
-      100
-    ],
-    "aliases": [
-      "Ahmed Al Maghribi Kaaf",
-      "Kaaf by Ahmed Al Maghribi",
-      "Kaaf EDP"
-    ],
-    "status": "verificato",
-    "notes": "Verificato con fonte prodotto/brand; nome canonico, formati e alias aggiornati.",
-    "verification_sources": [
-      "https://ae.ahmedalmaghribi.com/en/shop/perfumes/occidental-fragrance/kaaf"
-    ]
-  },
-  {
-    "id": "SH-0017",
-    "brand": "Armaf",
-    "name": "Club de Nuit Intense Man",
-    "concentration": "Eau de Parfum",
-    "formats_ml": [
-      30,
-      105,
-      250
-    ],
-    "aliases": [
-      "Armaf Club de Nuit Intense Man",
-      "Club de Nuit Intense Man By Armaf",
-      "Armaf - Club de Nuit Intense Man"
-    ],
-    "status": "verificato",
-    "notes": "Nome già incontrato nello storico ScentHunter; formato/alias da verificare prima dell'integrazione."
-  },
-  {
-    "id": "SH-0018",
-    "brand": "Armaf",
-    "name": "Club de Nuit Precieux",
-    "concentration": "Eau de Parfum",
-    "formats_ml": [
-      105
-    ],
-    "aliases": [
-      "Armaf Club de Nuit Precieux",
-      "Club de Nuit Precieux",
-      "Armaf - Club de Nuit Precieux"
-    ],
-    "status": "verificato",
-    "notes": "Verificato con fonte ufficiale o rivenditore autorizzato/affidabile."
-  },
-  {
-    "id": "SH-0021",
-    "brand": "Armaf",
-    "name": "Odyssey Artisto Red",
-    "concentration": "",
-    "formats_ml": [
-      100
-    ],
-    "aliases": [
-      "Armaf Odyssey Artisto Red",
-      "Odyssey Artisto Red By Armaf",
-      "Odyssey Artisto Red 100ml"
-    ],
-    "status": "verificato",
-    "notes": "Verificato con fonte prodotto/brand; nome canonico, formati e alias aggiornati.",
-    "verification_sources": [
-      "https://armafperfume.us/products/odyssey-artisto"
-    ]
-  },
-  {
-    "id": "SH-0019",
-    "brand": "Armaf",
-    "name": "Odyssey Mandarin Sky",
-    "concentration": "Eau de Parfum",
-    "formats_ml": [
-      100
-    ],
-    "aliases": [
-      "Armaf - Odyssey Mandarin Sky",
-      "Armaf Odyssey Mandarin Sky"
-    ],
-    "status": "verificato",
-    "notes": "Verificato tramite fonte esterna; mantenere questa referenza come nome canonico del catalogo.",
-    "verification_sources": [
-      "https://www.douglas.be/fr/p/5011971086"
-    ]
-  },
-  {
-    "id": "SH-0020",
-    "brand": "Armaf",
-    "name": "Odyssey Spectra",
-    "concentration": "Eau de Parfum",
-    "formats_ml": [
-      60,
-      100,
-      200
-    ],
-    "aliases": [
-      "Armaf Odyssey Spectra",
-      "Odyssey Spectra By Armaf",
-      "Armaf - Odyssey Spectra"
-    ],
-    "status": "verificato",
-    "notes": "Nome già incontrato nello storico ScentHunter; formato/alias da verificare prima dell'integrazione."
-  },
-  {
-    "id": "SH-0014",
-    "brand": "Azzaro",
-    "name": "Forever Wanted Elixir",
-    "concentration": "Parfum",
-    "formats_ml": [
-      50,
-      100
-    ],
-    "aliases": [],
-    "status": "verificato",
-    "notes": "Verificato tramite fonte esterna; mantenere questa referenza come nome canonico del catalogo.",
-    "verification_sources": [
-      "https://www.iciparisxl.lu/azzaro/forever-wanted-elixir/parfum-bois-pour-homme/p/BP_1370389"
-    ]
-  },
-  {
-    "id": "SH-0011",
-    "brand": "Azzaro",
-    "name": "The Most Wanted",
-    "concentration": "Eau de Parfum Intense",
-    "formats_ml": [
-      50,
-      100
-    ],
-    "aliases": [
-      "Azzaro The Most Wanted",
-      "Azzaro The Most Wanted Eau de Parfum Intense",
-      "The Most Wanted Eau de Parfum Intense"
-    ],
-    "status": "verificato",
-    "notes": "Verificato con fonte ufficiale o rivenditore autorizzato/affidabile."
-  },
-  {
-    "id": "SH-0012",
-    "brand": "Azzaro",
-    "name": "The Most Wanted Parfum",
-    "concentration": "Parfum Intense",
-    "formats_ml": [
-      50,
-      100,
-      150
-    ],
-    "aliases": [
-      "Azzaro The Most Wanted Parfum",
-      "Azzaro The Most Wanted Parfum Intense",
-      "The Most Wanted Parfum Intense"
-    ],
-    "status": "verificato",
-    "notes": "Verificato con fonte ufficiale o rivenditore autorizzato/affidabile."
-  },
-  {
-    "id": "SH-0013",
-    "brand": "Azzaro",
-    "name": "Wanted by Night",
-    "concentration": "Eau de Parfum",
-    "formats_ml": [
-      50,
-      100,
-      150
-    ],
-    "aliases": [
-      "Azzaro Wanted by Night",
-      "Azzaro Wanted By Night Eau de Parfum",
-      "Wanted by Night Eau de Parfum"
-    ],
-    "status": "verificato",
-    "notes": "Verificato con fonte ufficiale o rivenditore autorizzato/affidabile."
-  },
-  {
-    "id": "SH-0041",
-    "brand": "Chanel",
-    "name": "Bleu de Chanel",
-    "concentration": "Eau de Parfum",
-    "formats_ml": [
-      50,
-      100
-    ],
-    "aliases": [
-      "Bleu de Chanel Eau de Parfum",
-      "Bleu de Chanel EDP",
-      "Chanel Bleu de Chanel Eau de Parfum"
-    ],
-    "status": "verificato",
-    "notes": "Nome già incontrato nello storico ScentHunter; formato/alias da verificare prima dell'integrazione."
-  },
-  {
-    "id": "SH-0037",
-    "brand": "Creed",
-    "name": "Aventus",
-    "concentration": "Eau de Parfum",
-    "formats_ml": [
-      30,
-      50,
-      100,
-      240,
-      490
-    ],
-    "aliases": [
-      "Creed Aventus",
-      "Aventus By Creed"
-    ],
-    "status": "verificato",
-    "notes": "Nome già incontrato nello storico ScentHunter; formato/alias da verificare prima dell'integrazione."
-  },
-  {
-    "id": "SH-0038",
-    "brand": "Creed",
-    "name": "Green Irish Tweed",
-    "concentration": "Eau de Parfum",
-    "formats_ml": [
-      50,
-      100,
-      240,
-      490
-    ],
-    "aliases": [
-      "Creed Green Irish Tweed",
-      "Green Irish Tweed By Creed"
-    ],
-    "status": "verificato",
-    "notes": "Nome già incontrato nello storico ScentHunter; formato/alias da verificare prima dell'integrazione."
-  },
-  {
-    "id": "SH-0039",
-    "brand": "Dior",
-    "name": "Sauvage",
-    "concentration": "Eau de Toilette",
-    "formats_ml": [
-      30,
-      60,
-      100,
-      200
-    ],
-    "aliases": [
-      "Dior Sauvage",
-      "Dior Sauvage Eau de Toilette",
-      "Sauvage Eau de Toilette"
-    ],
-    "status": "verificato",
-    "notes": "Verificato con fonte ufficiale o rivenditore autorizzato/affidabile."
-  },
-  {
-    "id": "SH-0040",
-    "brand": "Dior",
-    "name": "Sauvage Elixir",
-    "concentration": "Elixir",
-    "formats_ml": [
-      60,
-      100,
-      150
-    ],
-    "aliases": [
-      "Dior Sauvage Elixir",
-      "Sauvage Elixir",
-      "Sauvage Elixir Parfum"
-    ],
-    "status": "verificato",
-    "notes": "Verificato con fonte ufficiale o rivenditore autorizzato/affidabile."
-  },
-  {
-    "id": "SH-0032",
-    "brand": "Dumont",
-    "name": "Nitro Red",
-    "concentration": "",
-    "formats_ml": [
-      100
-    ],
-    "aliases": [
-      "Dumont Nitro Red",
-      "Nitro Red 100 ML",
-      "Nitro Red by Dumont"
-    ],
-    "status": "verificato",
-    "notes": "Verificato sul sito ufficiale Dumont; formato 100 ml. La fonte non indica una concentrazione specifica.",
-    "verification_sources": [
-      "https://www.dumontparis.com/product/nitro-red/"
-    ]
-  },
-  {
-    "id": "SH-0030",
-    "brand": "French Avenue",
-    "name": "Liquid Brun",
-    "concentration": "Eau de Parfum",
-    "formats_ml": [
-      100
-    ],
-    "aliases": [
-      "French Avenue Liquid Brun",
-      "Liquid Brun",
-      "Liquid Brun Eau de Parfum",
-      "Liquid Brun 100 ML"
-    ],
-    "status": "verificato",
-    "notes": "Verificato sul sito ufficiale French Avenue; Eau de Parfum, 100 ml.",
-    "verification_sources": [
-      "https://www.french-avenue-parfum.com/produit/eau-de-parfum-liquid-brun/"
-    ]
-  },
-  {
-    "id": "SH-0031",
-    "brand": "French Avenue",
-    "name": "Liquid Brun Limited Edition",
-    "concentration": "Extrait de Parfum",
-    "formats_ml": [
-      150
-    ],
-    "aliases": [
-      "French Avenue Liquid Brun Limited Edition",
-      "Liquid Brun Limited Edition 150ml",
-      "Liquid Brun Limited Edition Extrait de Parfum"
-    ],
-    "status": "verificato",
-    "notes": "Verificato con fonte prodotto/brand; nome canonico, concentrazione, formato e alias aggiornati.",
-    "verification_sources": [
-      "https://www.french-avenue-parfum.com/produit/liquid-brun-limited-edition-french-avenue/"
-    ]
-  },
-  {
-    "id": "SH-0043",
-    "brand": "Giorgio Armani",
-    "name": "Acqua di Gio Profondo",
-    "concentration": "",
-    "formats_ml": [
-      75,
-      125
-    ],
-    "aliases": [
-      "Acqua di Gio Profondo",
-      "Acqua di Giò Profondo",
-      "Acqua di Gio Profondo Eau de Parfum",
-      "Giorgio Armani Acqua di Gio Profondo"
-    ],
-    "status": "verificato",
-    "notes": "Verificato con fonte prodotto/brand; formati e grafia canonica aggiornati."
-  },
-  {
-    "id": "SH-0044",
-    "brand": "Giorgio Armani",
-    "name": "Stronger With You Intensely",
-    "concentration": "",
-    "formats_ml": [
-      30,
-      50,
-      100
-    ],
-    "aliases": [
-      "Emporio Armani Stronger With You Intensely",
-      "Stronger With You Intensely",
-      "Armani Stronger With You Intensely",
-      "Stronger With You Intensely Eau de Parfum"
-    ],
-    "status": "verificato",
-    "notes": "Verificato con fonte prodotto/brand; formati e grafia canonica aggiornati."
-  },
-  {
-    "id": "SH-0051",
-    "brand": "Givenchy",
-    "name": "Gentleman Reserve Privee",
-    "concentration": "Eau de Parfum",
-    "formats_ml": [
-      60,
-      100
-    ],
-    "aliases": [
-      "Givenchy Gentleman Réserve Privée",
-      "Givenchy Gentleman Reserve Privee",
-      "Gentleman Réserve Privée Eau de Parfum"
-    ],
-    "status": "verificato",
-    "notes": "Verificato con fonte prodotto/brand; nome canonico, formati e alias aggiornati.",
-    "verification_sources": [
-      "https://www.givenchybeauty.com/int/en/p/gentleman-reserve-privee-F10100159.html"
-    ]
-  },
-  {
-    "id": "SH-0050",
-    "brand": "Givenchy",
-    "name": "Gentleman Society",
-    "concentration": "Eau de Parfum",
-    "formats_ml": [
-      40,
-      60,
-      100,
-      200
-    ],
-    "aliases": [
-      "Givenchy Gentleman Society",
-      "Gentleman Society Eau de Parfum",
-      "Gentleman Society EDP"
-    ],
-    "status": "verificato",
-    "notes": "Nome già incontrato nello storico ScentHunter; formato/alias da verificare prima dell'integrazione."
-  },
-  {
-    "id": "SH-0016",
-    "brand": "Jean Paul Gaultier",
-    "name": "Le Male Elixir",
-    "concentration": "Parfum",
-    "formats_ml": [
-      75,
-      125,
-      200
-    ],
-    "aliases": [],
-    "status": "verificato",
-    "notes": "Verificato tramite fonte esterna; mantenere questa referenza come nome canonico del catalogo.",
-    "verification_sources": [
-      "https://www.jeanpaulgaultier.com/eu/fr/p/gamme-le-male/le-male-elixir-parfum-000000000065189083"
-    ]
-  },
-  {
-    "id": "SH-0015",
-    "brand": "Jean Paul Gaultier",
-    "name": "Le Male Le Parfum",
-    "concentration": "Eau de Parfum Intense",
-    "formats_ml": [
-      75,
-      125,
-      200
-    ],
-    "aliases": [
-      "Jean Paul Gaultier Le Male Le Parfum",
-      "Le Male Le Parfum Eau de Parfum",
-      "Le Male Le Parfum Eau de Parfum Intense"
-    ],
-    "status": "verificato",
-    "notes": "Verificato con fonte ufficiale o rivenditore autorizzato/affidabile."
-  },
-  {
-    "id": "SH-0054",
-    "brand": "Khadlaj",
-    "name": "Island",
-    "concentration": "Extrait de Parfum",
-    "formats_ml": [
-      100
-    ],
-    "aliases": [
-      "Khadlaj Island",
-      "Island By Khadlaj",
-      "Island Extrait de Parfum",
-      "Island 100 ML",
-      "Khadlaj Island Parfum"
-    ],
-    "status": "verificato",
-    "notes": "Verificato con fonte prodotto/brand; nome canonico, concentrazione, formato e alias aggiornati.",
-    "catalog_note": "Referenza confermata: Khadlaj Island. Le diciture Island, Island Parfum e Island Extrait de Parfum sono trattate come lo stesso profumo. Set/cofanetti esclusi.",
-    "verification_sources": [
-      "https://khadlaj-perfumes.com/collections/top-selling/products/island-100-ml-extrait-de-parfum-spray-for-men-and-women"
-    ]
-  },
-  {
-    "id": "SH-0055",
-    "brand": "Khadlaj",
-    "name": "Island Dreams",
-    "concentration": "Extrait de Parfum",
-    "formats_ml": [
-      100
-    ],
-    "aliases": [
-      "Khadlaj Island Dreams",
-      "Island Dreams By Khadlaj",
-      "Island Dreams Extrait de Parfum",
-      "Island Dreams 100 ML"
-    ],
-    "status": "verificato",
-    "notes": "Verificato con fonte prodotto/brand; nome canonico, concentrazione, formato e alias aggiornati.",
-    "verification_sources": [
-      "https://www.notino.be/khadlaj/island-dreams-extrait-de-parfum-mixte/"
-    ]
-  },
-  {
-    "id": "SH-0056",
-    "brand": "Khadlaj",
-    "name": "Island Vanilla Dunes",
-    "concentration": "Extrait de Parfum",
-    "formats_ml": [
-      100
-    ],
-    "aliases": [
-      "Khadlaj Island Vanilla Dunes",
-      "Island Vanilla Dunes By Khadlaj",
-      "Island Vanilla Dunes Extrait de Parfum",
-      "Island Vanilla Dunes 100 ML"
-    ],
-    "status": "verificato",
-    "notes": "Verificato con fonte prodotto/brand; nome canonico, concentrazione, formato e alias aggiornati.",
-    "verification_sources": [
-      "https://khadlaj-perfumes.com/products/khadlaj-island-vanilla-dunes-100-ml-extrait-de-parfum-spray-for-men"
-    ]
-  },
-  {
-    "id": "SH-0053",
-    "brand": "Lancôme",
-    "name": "Idôle",
-    "concentration": "",
-    "formats_ml": [
-      25,
-      50,
-      100
-    ],
-    "aliases": [
-      "Lancôme Idôle",
-      "Lancome Idole",
-      "Lancôme Idôle Eau de Parfum",
-      "Idole Eau de Parfum"
-    ],
-    "status": "verificato",
-    "notes": "Verificato con fonte prodotto/brand; formati e grafia canonica aggiornati."
-  },
-  {
-    "id": "SH-0052",
-    "brand": "Lancôme",
-    "name": "La Vie Est Belle",
-    "concentration": "",
-    "formats_ml": [
-      30,
-      50,
-      75,
-      100,
-      150
-    ],
-    "aliases": [
-      "Lancôme La Vie Est Belle",
-      "Lancome La Vie Est Belle",
-      "La Vie Est Belle Eau de Parfum",
-      "La Vie Est Belle EDP"
-    ],
-    "status": "verificato",
-    "notes": "Verificato con fonte prodotto/brand; formati e grafia canonica aggiornati."
-  },
-  {
-    "id": "SH-0065",
-    "brand": "Lattafa",
-    "name": "Art of Universe",
-    "concentration": "Eau de Parfum",
-    "formats_ml": [
-      100
-    ],
-    "aliases": [
-      "Lattafa Art of Universe",
-      "Lattafa Pride Art of Universe",
-      "Art of Universe EDP",
-      "Art of Universe 100 ML"
-    ],
-    "status": "verificato",
-    "notes": "Verificato con fonte prodotto/brand; nome canonico, concentrazione, formato e alias aggiornati.",
-    "verification_sources": [
-      "https://www.shop-apotheke.com/beauty/upmCLHFTK/art-of-universe-eau-de-parfum.htm"
-    ]
-  },
-  {
-    "id": "SH-0028",
-    "brand": "Lattafa",
-    "name": "Asad Bourbon",
-    "concentration": "Eau de Parfum",
-    "formats_ml": [
-      100
-    ],
-    "aliases": [
-      "Lattafa - Asad Bourbon",
-      "Lattafa Asad Bourbon"
-    ],
-    "status": "verificato",
-    "notes": "Verificato tramite fonte esterna; mantenere questa referenza come nome canonico del catalogo.",
-    "verification_sources": [
-      "https://www.elpais.com/escaparate/belleza/perfumes-arabes-hombre.html"
-    ]
-  },
-  {
-    "id": "SH-0029",
-    "brand": "Lattafa",
-    "name": "Nebras",
-    "concentration": "",
-    "formats_ml": [
-      100
-    ],
-    "aliases": [
-      "Lattafa Nebras",
-      "Nebras Lattafa",
-      "Lattafa - Nebras"
-    ],
-    "status": "verificato",
-    "notes": "Verificato con fonte prodotto/brand; formati e grafia canonica aggiornati."
-  },
-  {
-    "id": "SH-0036",
-    "brand": "Maison Alhambra",
-    "name": "Jean Lowe Immortal",
-    "concentration": "Eau de Parfum",
-    "formats_ml": [
-      100
-    ],
-    "aliases": [
-      "Jean Lowe Immortel",
-      "Jean Lowe Immortal",
-      "Maison Alhambra Jean Lowe Immortal",
-      "Jean Lowe Immortal Eau de Parfum"
-    ],
-    "status": "verificato",
-    "notes": "Verificato con fonte prodotto/brand; nome canonico, formati e alias aggiornati.",
-    "verification_sources": [
-      "https://maisonvalentry.com/collections/maison-alhambra/products/immortel"
-    ]
-  },
-  {
-    "id": "SH-0058",
-    "brand": "Miu Miu",
-    "name": "L'Eau Rosée",
-    "concentration": "",
-    "formats_ml": [
-      30,
-      50,
-      100
-    ],
-    "aliases": [
-      "Miu Miu L'Eau Rosée",
-      "Miu Miu Eau Rosée",
-      "Miu Miu L Eau Rosee",
-      "L'Eau Rosee Miu Miu"
-    ],
-    "status": "verificato",
-    "notes": "Verificato con fonte prodotto/brand; formati e grafia canonica aggiornati."
-  },
-  {
-    "id": "SH-0057",
-    "brand": "Miu Miu",
-    "name": "Miutine",
-    "concentration": "",
-    "formats_ml": [
-      30,
-      50,
-      100
-    ],
-    "aliases": [
-      "Miu Miu Miutine",
-      "Miutine Miu Miu",
-      "Miutine Eau de Parfum"
-    ],
-    "status": "verificato",
-    "notes": "Verificato con fonte prodotto/brand; formati e grafia canonica aggiornati."
-  },
-  {
-    "id": "SH-0048",
-    "brand": "Prada",
-    "name": "Luna Rossa Carbon",
-    "concentration": "Eau de Toilette",
-    "formats_ml": [
-      50,
-      100
-    ],
-    "aliases": [
-      "Prada Luna Rossa Carbon",
-      "Luna Rossa Carbon EDT",
-      "Prada Luna Rossa Carbon EDT"
-    ],
-    "status": "verificato",
-    "notes": "Nome già incontrato nello storico ScentHunter; formato/alias da verificare prima dell'integrazione."
-  },
-  {
-    "id": "SH-0049",
-    "brand": "Prada",
-    "name": "Luna Rossa Ocean",
-    "concentration": "Eau de Toilette",
-    "formats_ml": [
-      50,
-      100
-    ],
-    "aliases": [
-      "Prada Luna Rossa Ocean",
-      "Luna Rossa Ocean EDT",
-      "Prada Luna Rossa Ocean EDT"
-    ],
-    "status": "verificato",
-    "notes": "Nome già incontrato nello storico ScentHunter; formato/alias da verificare prima dell'integrazione."
-  },
-  {
-    "id": "SH-0005",
-    "brand": "Rasasi",
-    "name": "Hawas Black",
-    "concentration": "Eau de Parfum",
-    "formats_ml": [
-      100
-    ],
-    "aliases": [
-      "Hawas Black",
-      "Hawas Black 100 ML",
-      "Hawas Black EDP",
-      "Rasasi Hawas Black"
-    ],
-    "status": "verificato",
-    "notes": "Verificato tramite fonte esterna; mantenere questa referenza come nome canonico del catalogo.",
-    "verification_sources": [
-      "https://www.notino.be/rasasi/hawas-black-eau-de-parfum-pour-homme/"
-    ]
-  },
-  {
-    "id": "SH-0004",
-    "brand": "Rasasi",
-    "name": "Hawas Fire",
-    "concentration": "Eau de Parfum",
-    "formats_ml": [
-      100
-    ],
-    "aliases": [
-      "Hawas Fire",
-      "Hawas Fire 100 ML",
-      "Hawas Fire Eau de Parfum",
-      "Rasasi Hawas Fire"
-    ],
-    "status": "verificato",
-    "notes": "Nome già incontrato nello storico ScentHunter; formato/alias da verificare prima dell'integrazione."
-  },
-  {
-    "id": "SH-0001",
-    "brand": "Rasasi",
-    "name": "Hawas for Him",
-    "concentration": "Eau de Parfum",
-    "formats_ml": [
-      100
-    ],
-    "aliases": [
-      "Hawas Men",
-      "Hawas for Him",
-      "Hawas for Him 100 ML",
-      "Rasasi Hawas for Him"
-    ],
-    "status": "verificato",
-    "notes": "Verificato tramite fonte esterna; mantenere questa referenza come nome canonico del catalogo.",
-    "verification_sources": [
-      "https://imrasasi.com/products/hawas-men-100-ml",
-      "https://www.notino.be/rasasi/hawas-for-men-eau-de-parfum-pour-homme/"
-    ]
-  },
-  {
-    "id": "SH-0002",
-    "brand": "Rasasi",
-    "name": "Hawas Ice",
-    "concentration": "Eau de Parfum",
-    "formats_ml": [
-      100
-    ],
-    "aliases": [
-      "Hawas Ice",
-      "Hawas Ice 100 ML",
-      "Hawas Ice EDP",
-      "Rasasi Hawas Ice"
-    ],
-    "status": "verificato",
-    "notes": "Nome già incontrato nello storico ScentHunter; formato/alias da verificare prima dell'integrazione."
-  },
-  {
-    "id": "SH-0003",
-    "brand": "Rasasi",
-    "name": "Hawas Kobra",
-    "concentration": "Eau de Parfum",
-    "formats_ml": [
-      100
-    ],
-    "aliases": [
-      "Hawas Kobra",
-      "Hawas Kobra 100 ML",
-      "Hawas Kobra Eau de Parfum",
-      "Rasasi Hawas Kobra"
-    ],
-    "status": "verificato",
-    "notes": "Nome già incontrato nello storico ScentHunter; formato/alias da verificare prima dell'integrazione."
-  },
-  {
-    "id": "SH-0066",
-    "brand": "Rayhaan",
-    "name": "Aquatica",
-    "concentration": "Eau de Parfum",
-    "formats_ml": [
-      100
-    ],
-    "aliases": [
-      "Rayhaan Aquatica",
-      "Rayhaan Aquatica EDP",
-      "Aquatica Rayhaan",
-      "Rayhaan Aquatica 100 ML"
-    ],
-    "status": "verificato",
-    "notes": "Verificato con fonte prodotto/brand; nome canonico, concentrazione, formato e alias aggiornati.",
-    "verification_sources": [
-      "https://rayhaanperfumes.com/products/rayhaan-aquatica?variant=44716035440687"
-    ]
-  },
-  {
-    "id": "SH-0064",
-    "brand": "Rayhaan",
-    "name": "Valhalla",
-    "concentration": "Eau de Parfum",
-    "formats_ml": [
-      100
-    ],
-    "aliases": [
-      "Rayhaan Valhalla",
-      "Rayhaan Valhalla EDP",
-      "Valhalla Rayhaan",
-      "Rayhaan Valhalla 100 ML"
-    ],
-    "status": "verificato",
-    "notes": "Verificato con fonte prodotto/brand; nome canonico, concentrazione, formato e alias aggiornati.",
-    "verification_sources": [
-      "https://www.bol.com/nl/nl/p/rayhaan-valhalla-eau-de-parfum-100ml/9300000237610063/"
-    ]
-  },
-  {
-    "id": "SH-0063",
-    "brand": "Rayhaan",
-    "name": "Wolf",
-    "concentration": "Eau de Parfum",
-    "formats_ml": [
-      100
-    ],
-    "aliases": [
-      "Rayhaan Wolf",
-      "Rayhaan Wolf EDP",
-      "Wolf Rayhaan",
-      "Rayhaan Wolf 100 ML"
-    ],
-    "status": "verificato",
-    "notes": "Verificato con fonte prodotto/brand; nome canonico, concentrazione, formato e alias aggiornati.",
-    "verification_sources": [
-      "https://www.bol.com/be/nl/p/rayhaan-wolf-eau-de-parfum-100ml/9300000286370662"
-    ]
-  },
-  {
-    "id": "SH-0062",
-    "brand": "Royal Blend",
-    "name": "Sequoia",
-    "concentration": "Extrait de Parfum",
-    "formats_ml": [
-      100
-    ],
-    "aliases": [
-      "Royal Blend Sequoia",
-      "French Avenue Royal Blend Sequoia",
-      "Royal Blend Sequoia Extrait de Parfum"
-    ],
-    "status": "verificato",
-    "notes": "Verificato con fonte prodotto/brand; nome canonico, formati e alias aggiornati.",
-    "verification_sources": [
-      "https://maisonvalentry.com/products/royal-blend-sequoia"
-    ]
-  },
-  {
-    "id": "SH-0034",
-    "brand": "Rue Broca",
-    "name": "Theoreme Homme",
-    "concentration": "Eau de Parfum",
-    "formats_ml": [
-      90
-    ],
-    "aliases": [
-      "Rue Broca Theoreme Homme",
-      "Theoreme Homme Eau de Parfum",
-      "Theoreme Homme 90 ml"
-    ],
-    "status": "verificato",
-    "notes": "Verificato con fonte prodotto/brand; nome canonico, formati e alias aggiornati.",
-    "verification_sources": [
-      "https://www.notino.be/afnan/theoreme-homme-eau-de-parfum-pour-homme/"
-    ]
-  },
-  {
-    "id": "SH-0006",
-    "brand": "Valentino",
-    "name": "Born in Roma Uomo",
-    "concentration": "Eau de Toilette",
-    "formats_ml": [
-      50,
-      100,
-      150
-    ],
-    "aliases": [
-      "Born In Roma For Him",
-      "Born In Roma Uomo 100 ML",
-      "Born In Roma Uomo Eau de Toilette",
-      "Born in Roma Uomo",
-      "Valentino Born in Roma Uomo"
-    ],
-    "status": "verificato",
-    "notes": "Nome già incontrato nello storico ScentHunter; formato/alias da verificare prima dell'integrazione."
-  },
-  {
-    "id": "SH-0008",
-    "brand": "Valentino",
-    "name": "Born in Roma Uomo Extradose",
-    "concentration": "Eau de Parfum",
-    "formats_ml": [
-      50,
-      100
-    ],
-    "aliases": [
-      "Born In Roma Extradose",
-      "Born In Roma Uomo Extradose 100 ML",
-      "Born in Roma Uomo Extradose",
-      "Valentino - Born in Roma Uomo Extradose",
-      "Valentino Born in Roma Uomo Extradose"
-    ],
-    "status": "verificato",
-    "notes": "Verificato tramite fonte esterna; mantenere questa referenza come nome canonico del catalogo.",
-    "verification_sources": [
-      "https://www.iciparisxl.lu/valentino/born-in-roma-uomo-extradose-/parfum-pour-homme/p/BP_1351615"
-    ]
-  },
-  {
-    "id": "SH-0007",
-    "brand": "Valentino",
-    "name": "Born in Roma Uomo Intense",
-    "concentration": "Eau de Parfum",
-    "formats_ml": [
-      50,
-      100
-    ],
-    "aliases": [
-      "Born In Roma Uomo Intense 100 ML",
-      "Born in Roma Uomo Eau de Parfum Intense",
-      "Born in Roma Uomo Intense",
-      "Valentino - Born in Roma Uomo Intense",
-      "Valentino Born in Roma Uomo Intense"
-    ],
-    "status": "verificato",
-    "notes": "Verificato tramite fonte esterna; mantenere questa referenza come nome canonico del catalogo.",
-    "verification_sources": [
-      "https://www.valentino-beauty.com/it_IT/profumi/fragranze-maschili/born-in-roma-uomo/born-in-roma-uomo-eau-de-parfum-intense/MPL01907.html"
-    ]
-  },
-  {
-    "id": "SH-0009",
-    "brand": "Valentino",
-    "name": "Born in Roma Yellow Dream Uomo",
-    "concentration": "Eau de Toilette",
-    "formats_ml": [
-      50
-    ],
-    "aliases": [
-      "Born In Roma Yellow Dream For Him",
-      "Born in Roma Uomo Yellow Dream",
-      "Born in Roma Uomo Yellow Dream 50 ML",
-      "Valentino Born in Roma Uomo Yellow Dream"
-    ],
-    "status": "verificato",
-    "notes": "Nome già incontrato nello storico ScentHunter; formato/alias da verificare prima dell'integrazione."
-  },
-  {
-    "id": "SH-0010",
-    "brand": "Valentino",
-    "name": "Uomo Born in Roma Coral Fantasy",
-    "concentration": "Eau de Toilette",
-    "formats_ml": [
-      50,
-      100
-    ],
-    "aliases": [
-      "Born In Roma Coral Fantasy For Him",
-      "Born in Roma Uomo Coral Fantasy",
-      "Born in Roma Uomo Coral Fantasy 100 ML",
-      "Valentino - Uomo Born in Roma Coral Fantasy",
-      "Valentino Born in Roma Uomo Coral Fantasy",
-      "Valentino Uomo Born in Roma Coral Fantasy"
-    ],
-    "status": "verificato",
-    "notes": "Verificato tramite fonte esterna; mantenere questa referenza come nome canonico del catalogo.",
-    "verification_sources": [
-      "https://www.valentino-beauty.de/en_GB/fragrances/men-s-fragrance/born-in-roma-uomo-coral-fantasy/MPL01750.html"
-    ]
-  },
-  {
-    "id": "SH-0047",
-    "brand": "Versace",
-    "name": "Dylan Blue",
-    "concentration": "Eau de Toilette",
-    "formats_ml": [
-      50,
-      100,
-      200
-    ],
-    "aliases": [
-      "Versace Dylan Blue",
-      "Dylan Blue Pour Homme",
-      "Dylan Blue Pour Homme EDT"
-    ],
-    "status": "verificato",
-    "notes": "Verificato con fonte prodotto/brand; nome canonico, formati e alias aggiornati.",
-    "verification_sources": [
-      "https://www.versace.com/dk/en/men/accessories/fragrances-body-care/dylan-blue-pour-homme/"
-    ]
-  },
-  {
-    "id": "SH-0045",
-    "brand": "Versace",
-    "name": "Eros",
-    "concentration": "Eau de Toilette",
-    "formats_ml": [
-      50,
-      100,
-      200
-    ],
-    "aliases": [
-      "Versace Eros",
-      "Eros Pour Homme",
-      "Eros Eau de Toilette",
-      "Eros EDT"
-    ],
-    "status": "verificato",
-    "notes": "Verificato sul sito ufficiale Versace; Eau de Toilette, 50/100/200 ml.",
-    "verification_sources": [
-      "https://www.versace.com/fr/fr/homme/accessoires/parfums-et-soins-du-corps/eros/eau-de-toilette-eros-50%C2%A0ml/R740008-R050MLS_RTU_TU_RNUL__.html"
-    ]
-  },
-  {
-    "id": "SH-0071",
-    "brand": "Versace",
-    "name": "Eros pour Femme Eau de Toilette",
-    "concentration": "Eau de Toilette",
-    "formats_ml": [
-      30,
-      50,
-      100
-    ],
-    "aliases": [
-      "Versace Eros pour Femme Eau De Toilette",
-      "Eros pour Femme Eau De Toilette",
-      "Eros pour Femme EDT",
-      "Versace Eros Pour Femme EDT"
-    ],
-    "status": "verificato",
-    "notes": "Verificato su Parfum-Zentrum e sito ufficiale Versace; Eau de Toilette, 30/50/100 ml.",
-    "verification_sources": [
-      "https://www.parfum-zentrum.de/versace-eros-pour-femme-eau-de-toilette-100-ml-woman_z695946/",
-      "https://www.versace.com/us/en/women/accessories/fragrances-body-care/eros-pour-femme/eros-pour-femme-edt-100-ml-gold/R750132-R100MLS_RNUL.html"
-    ]
-  },
-  {
-    "id": "SH-0072",
-    "brand": "Versace",
-    "name": "Eros pour Femme Eau de Parfum",
-    "concentration": "Eau de Parfum",
-    "formats_ml": [
-      100
-    ],
-    "aliases": [
-      "Versace Eros pour Femme Eau De Parfum",
-      "Eros pour Femme Eau De Parfum",
-      "Eros pour Femme EDP",
-      "Versace Eros Pour Femme EDP"
-    ],
-    "status": "verificato",
-    "notes": "Referenza distinta dalla Eau de Toilette; mantenuta separata per evitare l'unione di prezzi e formati.",
-    "verification_sources": [
-      "https://www.parfum-zentrum.de/versace_v208/"
-    ]
-  },
-  {
-    "id": "SH-0046",
-    "brand": "Versace",
-    "name": "Eros Flame",
-    "concentration": "Eau de Parfum",
-    "formats_ml": [
-      50,
-      100,
-      200
-    ],
-    "aliases": [
-      "Versace Eros Flame",
-      "Eros Flame EDP",
-      "Eros Flame Eau de Parfum"
-    ],
-    "status": "verificato",
-    "notes": "Verificato sul sito ufficiale Versace; Eau de Parfum, 50/100/200 ml.",
-    "verification_sources": [
-      "https://www.versace.com/de/de/herren/accessoires/dufte/eros-flame/"
-    ]
-  },
-  {
-    "id": "SH-0042",
-    "brand": "Yves Saint Laurent",
-    "name": "Y Eau de Parfum",
-    "concentration": "Eau de Parfum",
-    "formats_ml": [
-      40,
-      60,
-      100,
-      200
-    ],
-    "aliases": [
-      "Y Eau de Parfum",
-      "Y EDP",
-      "Yves Saint Laurent Y Eau de Parfum",
-      "Y EDP 100 ML"
-    ],
-    "status": "verificato",
-    "notes": "Verificato con fonte prodotto/brand; nome canonico, concentrazione, formato e alias aggiornati.",
-    "verification_sources": [
-      "https://www.yslbeauty.com/int/fragrance/fragrance-for-him/y/y--eau-de-parfum/3614272050341.html"
-    ]
-  },
-  {
-    "id": "AUTO-99930ac1f284e75e",
-    "brand": "Jean Paul Gaultier",
-    "name": "Le Beau",
-    "concentration": "",
-    "formats_ml": [
-      100
-    ],
-    "aliases": [
-      "Jean Paul Gaultier Le Beau",
-      "Le Beau"
-    ],
-    "status": "verificato",
-    "notes": "Famiglia Le Beau; referenza canonica per separare le varianti nel matcher ScentHunter."
-  },
-  {
-    "id": "AUTO-80d529d2fb4486be",
-    "brand": "Jean Paul Gaultier",
-    "name": "Le Beau Le Parfum",
-    "concentration": "",
-    "formats_ml": [
-      75,
-      125
-    ],
-    "aliases": [
-      "Jean Paul Gaultier Le Beau Le Parfum",
-      "Le Beau Le Parfum"
-    ],
-    "status": "verificato",
-    "notes": "Famiglia Le Beau; referenza canonica per separare le varianti nel matcher ScentHunter."
-  },
-  {
-    "id": "AUTO-ed99b73ace7869ac",
-    "brand": "Jean Paul Gaultier",
-    "name": "Le Beau Paradise Garden",
-    "concentration": "",
-    "formats_ml": [
-      100
-    ],
-    "aliases": [
-      "Jean Paul Gaultier Le Beau Paradise Garden",
-      "Le Beau Paradise Garden"
-    ],
-    "status": "verificato",
-    "notes": "Famiglia Le Beau; referenza canonica per separare le varianti nel matcher ScentHunter."
-  },
-  {
-    "id": "AUTO-51a78cb5157774e5",
-    "brand": "Jean Paul Gaultier",
-    "name": "Le Beau Narcisse",
-    "concentration": "",
-    "formats_ml": [
-      75,
-      125
-    ],
-    "aliases": [
-      "Jean Paul Gaultier Le Beau Narcisse",
-      "Le Beau Narcisse"
-    ],
-    "status": "verificato",
-    "notes": "Famiglia Le Beau; referenza canonica per separare le varianti nel matcher ScentHunter."
-  },
-  {
-    "id": "AUTO-cbbce985c43e6ee2",
-    "brand": "Jean Paul Gaultier",
-    "name": "Le Beau Flower Edition",
-    "concentration": "",
-    "formats_ml": [
-      100
-    ],
-    "aliases": [
-      "Jean Paul Gaultier Le Beau Flower Edition",
-      "Le Beau Flower Edition"
-    ],
-    "status": "verificato",
-    "notes": "Famiglia Le Beau; referenza canonica per separare le varianti nel matcher ScentHunter."
+{
+  "schema_version": "2.0",
+  "brands": [
+    {
+      "brand_id": "BR-2ef1c0509245",
+      "brand_name": "Afnan",
+      "aliases": []
+    },
+    {
+      "brand_id": "BR-2a1a19c556e1",
+      "brand_name": "Ahmed Al Maghribi",
+      "aliases": []
+    },
+    {
+      "brand_id": "BR-74678a4acb5a",
+      "brand_name": "Armaf",
+      "aliases": []
+    },
+    {
+      "brand_id": "BR-980b6ab81163",
+      "brand_name": "Azzaro",
+      "aliases": []
+    },
+    {
+      "brand_id": "BR-cec11f954e07",
+      "brand_name": "Chanel",
+      "aliases": []
+    },
+    {
+      "brand_id": "BR-ddbbf6166888",
+      "brand_name": "Creed",
+      "aliases": []
+    },
+    {
+      "brand_id": "BR-dfa0da1116d7",
+      "brand_name": "Dior",
+      "aliases": []
+    },
+    {
+      "brand_id": "BR-df9184b6955d",
+      "brand_name": "Dumont",
+      "aliases": []
+    },
+    {
+      "brand_id": "BR-1ff7ddae3e65",
+      "brand_name": "French Avenue",
+      "aliases": []
+    },
+    {
+      "brand_id": "BR-79830313f68a",
+      "brand_name": "Giorgio Armani",
+      "aliases": []
+    },
+    {
+      "brand_id": "BR-4b4e85b947c2",
+      "brand_name": "Givenchy",
+      "aliases": []
+    },
+    {
+      "brand_id": "BR-40da243dc8c5",
+      "brand_name": "Jean Paul Gaultier",
+      "aliases": []
+    },
+    {
+      "brand_id": "BR-828333957fb5",
+      "brand_name": "Khadlaj",
+      "aliases": []
+    },
+    {
+      "brand_id": "BR-7133154010a8",
+      "brand_name": "Lancôme",
+      "aliases": []
+    },
+    {
+      "brand_id": "BR-4a09cd2c70e0",
+      "brand_name": "Lattafa",
+      "aliases": []
+    },
+    {
+      "brand_id": "BR-8afe8e2d859d",
+      "brand_name": "Maison Alhambra",
+      "aliases": []
+    },
+    {
+      "brand_id": "BR-ab5d37630703",
+      "brand_name": "Miu Miu",
+      "aliases": []
+    },
+    {
+      "brand_id": "BR-18b53c4f2af7",
+      "brand_name": "Prada",
+      "aliases": []
+    },
+    {
+      "brand_id": "BR-1be6e01b7664",
+      "brand_name": "Rasasi",
+      "aliases": []
+    },
+    {
+      "brand_id": "BR-a5f75996d6b5",
+      "brand_name": "Rayhaan",
+      "aliases": []
+    },
+    {
+      "brand_id": "BR-5d8690e552ed",
+      "brand_name": "Royal Blend",
+      "aliases": []
+    },
+    {
+      "brand_id": "BR-c397865cbbd8",
+      "brand_name": "Rue Broca",
+      "aliases": []
+    },
+    {
+      "brand_id": "BR-2399d281a15d",
+      "brand_name": "Valentino",
+      "aliases": []
+    },
+    {
+      "brand_id": "BR-5aa86e0581a0",
+      "brand_name": "Versace",
+      "aliases": []
+    },
+    {
+      "brand_id": "BR-19a1571d8303",
+      "brand_name": "Yves Saint Laurent",
+      "aliases": []
+    }
+  ],
+  "products": [
+    {
+      "product_id": "SH-0022",
+      "brand_id": "BR-2ef1c0509245",
+      "brand_name": "Afnan",
+      "family_name": "9 PM",
+      "concentration": "Eau de Parfum",
+      "gender": null,
+      "aliases": [
+        "Afnan - 9 PM",
+        "Afnan 9 PM"
+      ],
+      "source_status": "verificato",
+      "source_notes": "Verificato tramite fonte esterna; mantenere questa referenza come nome canonico del catalogo.",
+      "verification_sources": [
+        "https://fr.afnan.com/en/products/9-pm"
+      ]
+    },
+    {
+      "product_id": "SH-0024",
+      "brand_id": "BR-2ef1c0509245",
+      "brand_name": "Afnan",
+      "family_name": "9 PM Elixir",
+      "concentration": "Extrait de Parfum",
+      "gender": null,
+      "aliases": [
+        "Afnan - 9 PM Elixir",
+        "Afnan 9 PM Elixir",
+        "9 PM Elixir Parfum Intense",
+        "Afnan - 9 PM Elixir Parfum Intense",
+        "Afnan 9 PM Elixir Parfum Intense",
+        "Afnan - 9PM Elixir",
+        "Afnan 9PM Elixir"
+      ],
+      "source_status": "verificato",
+      "source_notes": "Verificato tramite fonte esterna; mantenere questa referenza come nome canonico del catalogo.",
+      "verification_sources": [
+        "https://fr.afnan.com/products/9-pm-elixir"
+      ]
+    },
+    {
+      "product_id": "SH-0025",
+      "brand_id": "BR-2ef1c0509245",
+      "brand_name": "Afnan",
+      "family_name": "9 PM Night Out",
+      "concentration": "Extrait de Parfum",
+      "gender": null,
+      "aliases": [
+        "Afnan - 9 PM Night Out",
+        "Afnan 9 PM Night Out",
+        "Afnan - 9PM Night Out",
+        "Afnan 9PM Night Out"
+      ],
+      "source_status": "verificato",
+      "source_notes": "Verificato tramite fonte esterna; mantenere questa referenza come nome canonico del catalogo.",
+      "verification_sources": [
+        "https://sk.afnan.com/products/9pm-night-out"
+      ]
+    },
+    {
+      "product_id": "SH-0023",
+      "brand_id": "BR-2ef1c0509245",
+      "brand_name": "Afnan",
+      "family_name": "9 PM Rebel",
+      "concentration": "Eau de Parfum",
+      "gender": null,
+      "aliases": [
+        "Afnan - 9 PM Rebel",
+        "Afnan 9 PM Rebel",
+        "Afnan - 9PM Rebel",
+        "Afnan 9PM Rebel"
+      ],
+      "source_status": "verificato",
+      "source_notes": "Verificato tramite fonte esterna; mantenere questa referenza come nome canonico del catalogo.",
+      "verification_sources": [
+        "https://be.afnan.com/products/9-pm-rebel"
+      ]
+    },
+    {
+      "product_id": "SH-0067",
+      "brand_id": "BR-2ef1c0509245",
+      "brand_name": "Afnan",
+      "family_name": "9 PM - Pour Femme",
+      "concentration": "Eau de Parfum",
+      "gender": null,
+      "aliases": [
+        "Afnan - 9 PM Pour Femme",
+        "Afnan 9 PM Pour Femme",
+        "9 PM Pour Femme",
+        "9PM Pour Femme",
+        "9pm Purple Femme",
+        "Afnan 9pm Purple Femme"
+      ],
+      "source_status": "verificato",
+      "source_notes": "Verificato tramite fonte ufficiale Afnan; nome canonico, formato e alias aggiornati.",
+      "verification_sources": [
+        "https://fr.afnan.com/en/products/9-pm-pour-femme"
+      ]
+    },
+    {
+      "product_id": "SH-0068",
+      "brand_id": "BR-2ef1c0509245",
+      "brand_name": "Afnan",
+      "family_name": "9 AM",
+      "concentration": "Eau de Parfum",
+      "gender": null,
+      "aliases": [
+        "Afnan - 9 AM",
+        "Afnan 9 AM",
+        "9AM"
+      ],
+      "source_status": "verificato",
+      "source_notes": "Verificato tramite fonte ufficiale Afnan; nome canonico, formato e alias aggiornati.",
+      "verification_sources": [
+        "https://fr.afnan.com/en/products/9-am"
+      ]
+    },
+    {
+      "product_id": "SH-0069",
+      "brand_id": "BR-2ef1c0509245",
+      "brand_name": "Afnan",
+      "family_name": "9 AM Dive",
+      "concentration": "Eau de Parfum",
+      "gender": null,
+      "aliases": [
+        "Afnan - 9 AM Dive",
+        "Afnan 9 AM Dive",
+        "9AM Dive"
+      ],
+      "source_status": "verificato",
+      "source_notes": "Verificato tramite fonte ufficiale Afnan; nome canonico, formato e alias aggiornati.",
+      "verification_sources": [
+        "https://fr.afnan.com/en/products/9-am-dive"
+      ]
+    },
+    {
+      "product_id": "SH-0070",
+      "brand_id": "BR-2ef1c0509245",
+      "brand_name": "Afnan",
+      "family_name": "9 AM - Pour Femme",
+      "concentration": "Eau de Parfum",
+      "gender": null,
+      "aliases": [
+        "Afnan - 9 AM Pour Femme",
+        "Afnan 9 AM Pour Femme",
+        "9 AM Pour Femme",
+        "9AM Pour Femme"
+      ],
+      "source_status": "verificato",
+      "source_notes": "Verificato tramite fonte ufficiale Afnan; nome canonico, formato e alias aggiornati.",
+      "verification_sources": [
+        "https://fr.afnan.com/en/products/9-am-pour-femme"
+      ]
+    },
+    {
+      "product_id": "SH-0026",
+      "brand_id": "BR-2ef1c0509245",
+      "brand_name": "Afnan",
+      "family_name": "Supremacy Collector's Edition",
+      "concentration": "Eau de Parfum",
+      "gender": null,
+      "aliases": [
+        "Afnan - Supremacy Collector's Edition",
+        "Afnan Supremacy Collector's Edition"
+      ],
+      "source_status": "verificato",
+      "source_notes": "Verificato tramite fonte esterna; mantenere questa referenza come nome canonico del catalogo.",
+      "verification_sources": [
+        "https://it.afnan.com/en/products/supremacy-collectors-edition"
+      ]
+    },
+    {
+      "product_id": "SH-0027",
+      "brand_id": "BR-2ef1c0509245",
+      "brand_name": "Afnan",
+      "family_name": "Supremacy in Heaven",
+      "concentration": "Eau de Parfum",
+      "gender": null,
+      "aliases": [
+        "Afnan - Supremacy in Heaven",
+        "Afnan Supremacy in Heaven"
+      ],
+      "source_status": "verificato",
+      "source_notes": "Verificato tramite fonte esterna; mantenere questa referenza come nome canonico del catalogo.",
+      "verification_sources": [
+        "https://fr.afnan.com/products/supremacy-in-heaven"
+      ]
+    },
+    {
+      "product_id": "SH-0035",
+      "brand_id": "BR-2ef1c0509245",
+      "brand_name": "Afnan",
+      "family_name": "Turathi Blue",
+      "concentration": "Eau de Parfum",
+      "gender": null,
+      "aliases": [
+        "Afnan Turathi Blue",
+        "Turathi Blue Pour Homme",
+        "Turathi Blue EDP",
+        "Turathi Blue 90 ML"
+      ],
+      "source_status": "verificato",
+      "source_notes": "Verificato con fonte prodotto/brand; nome canonico, concentrazione, formato e alias aggiornati.",
+      "verification_sources": [
+        "https://fr.afnan.com/products/turathi-blue-homme"
+      ]
+    },
+    {
+      "product_id": "SH-0060",
+      "brand_id": "BR-2ef1c0509245",
+      "brand_name": "Afnan",
+      "family_name": "Turathi Brown",
+      "concentration": "Eau de Parfum",
+      "gender": null,
+      "aliases": [
+        "Afnan Turathi Brown",
+        "Turathi Brown Pour Homme",
+        "Turathi Brown EDP",
+        "Turathi Brown 90 ML"
+      ],
+      "source_status": "verificato",
+      "source_notes": "Verificato con fonte prodotto/brand; nome canonico, concentrazione, formato e alias aggiornati.",
+      "verification_sources": [
+        "https://egypt.afnan.com/products/turathi-brown-homme"
+      ]
+    },
+    {
+      "product_id": "SH-0061",
+      "brand_id": "BR-2ef1c0509245",
+      "brand_name": "Afnan",
+      "family_name": "Turathi Electric",
+      "concentration": "Eau de Parfum",
+      "gender": null,
+      "aliases": [
+        "Afnan Turathi Electric",
+        "Turathi Electric EDP",
+        "Turathi Electric 90 ML"
+      ],
+      "source_status": "verificato",
+      "source_notes": "Verificato con fonte prodotto/brand; nome canonico, concentrazione, formato e alias aggiornati.",
+      "verification_sources": [
+        "https://fr.afnan.com/products/turathi-electric"
+      ]
+    },
+    {
+      "product_id": "SH-0059",
+      "brand_id": "BR-2ef1c0509245",
+      "brand_name": "Afnan",
+      "family_name": "Turathi Red",
+      "concentration": "Eau de Parfum",
+      "gender": null,
+      "aliases": [
+        "Afnan Turathi Red",
+        "Turathi Red Pour Femme",
+        "Turathi Red EDP",
+        "Turathi Red 90 ML"
+      ],
+      "source_status": "verificato",
+      "source_notes": "Verificato con fonte prodotto/brand; nome canonico, concentrazione, formato e alias aggiornati.",
+      "verification_sources": [
+        "https://afnan.com/products/turathi-red-femme"
+      ]
+    },
+    {
+      "product_id": "SH-0033",
+      "brand_id": "BR-2a1a19c556e1",
+      "brand_name": "Ahmed Al Maghribi",
+      "family_name": "Kaaf",
+      "concentration": "Eau de Parfum",
+      "gender": null,
+      "aliases": [
+        "Ahmed Al Maghribi Kaaf",
+        "Kaaf by Ahmed Al Maghribi",
+        "Kaaf EDP"
+      ],
+      "source_status": "verificato",
+      "source_notes": "Verificato con fonte prodotto/brand; nome canonico, formati e alias aggiornati.",
+      "verification_sources": [
+        "https://ae.ahmedalmaghribi.com/en/shop/perfumes/occidental-fragrance/kaaf"
+      ]
+    },
+    {
+      "product_id": "SH-0017",
+      "brand_id": "BR-74678a4acb5a",
+      "brand_name": "Armaf",
+      "family_name": "Club de Nuit Intense Man",
+      "concentration": "Eau de Parfum",
+      "gender": null,
+      "aliases": [
+        "Armaf Club de Nuit Intense Man",
+        "Club de Nuit Intense Man By Armaf",
+        "Armaf - Club de Nuit Intense Man"
+      ],
+      "source_status": "verificato",
+      "source_notes": "Nome già incontrato nello storico ScentHunter; formato/alias da verificare prima dell'integrazione.",
+      "verification_sources": []
+    },
+    {
+      "product_id": "SH-0018",
+      "brand_id": "BR-74678a4acb5a",
+      "brand_name": "Armaf",
+      "family_name": "Club de Nuit Precieux",
+      "concentration": "Eau de Parfum",
+      "gender": null,
+      "aliases": [
+        "Armaf Club de Nuit Precieux",
+        "Club de Nuit Precieux",
+        "Armaf - Club de Nuit Precieux"
+      ],
+      "source_status": "verificato",
+      "source_notes": "Verificato con fonte ufficiale o rivenditore autorizzato/affidabile.",
+      "verification_sources": []
+    },
+    {
+      "product_id": "SH-0021",
+      "brand_id": "BR-74678a4acb5a",
+      "brand_name": "Armaf",
+      "family_name": "Odyssey Artisto Red",
+      "concentration": null,
+      "gender": null,
+      "aliases": [
+        "Armaf Odyssey Artisto Red",
+        "Odyssey Artisto Red By Armaf",
+        "Odyssey Artisto Red 100ml"
+      ],
+      "source_status": "verificato",
+      "source_notes": "Verificato con fonte prodotto/brand; nome canonico, formati e alias aggiornati.",
+      "verification_sources": [
+        "https://armafperfume.us/products/odyssey-artisto"
+      ]
+    },
+    {
+      "product_id": "SH-0019",
+      "brand_id": "BR-74678a4acb5a",
+      "brand_name": "Armaf",
+      "family_name": "Odyssey Mandarin Sky",
+      "concentration": "Eau de Parfum",
+      "gender": null,
+      "aliases": [
+        "Armaf - Odyssey Mandarin Sky",
+        "Armaf Odyssey Mandarin Sky"
+      ],
+      "source_status": "verificato",
+      "source_notes": "Verificato tramite fonte esterna; mantenere questa referenza come nome canonico del catalogo.",
+      "verification_sources": [
+        "https://www.douglas.be/fr/p/5011971086"
+      ]
+    },
+    {
+      "product_id": "SH-0020",
+      "brand_id": "BR-74678a4acb5a",
+      "brand_name": "Armaf",
+      "family_name": "Odyssey Spectra",
+      "concentration": "Eau de Parfum",
+      "gender": null,
+      "aliases": [
+        "Armaf Odyssey Spectra",
+        "Odyssey Spectra By Armaf",
+        "Armaf - Odyssey Spectra"
+      ],
+      "source_status": "verificato",
+      "source_notes": "Nome già incontrato nello storico ScentHunter; formato/alias da verificare prima dell'integrazione.",
+      "verification_sources": []
+    },
+    {
+      "product_id": "SH-0014",
+      "brand_id": "BR-980b6ab81163",
+      "brand_name": "Azzaro",
+      "family_name": "Forever Wanted Elixir",
+      "concentration": "Parfum",
+      "gender": null,
+      "aliases": [],
+      "source_status": "verificato",
+      "source_notes": "Verificato tramite fonte esterna; mantenere questa referenza come nome canonico del catalogo.",
+      "verification_sources": [
+        "https://www.iciparisxl.lu/azzaro/forever-wanted-elixir/parfum-bois-pour-homme/p/BP_1370389"
+      ]
+    },
+    {
+      "product_id": "SH-0011",
+      "brand_id": "BR-980b6ab81163",
+      "brand_name": "Azzaro",
+      "family_name": "The Most Wanted",
+      "concentration": "Eau de Parfum Intense",
+      "gender": null,
+      "aliases": [
+        "Azzaro The Most Wanted",
+        "Azzaro The Most Wanted Eau de Parfum Intense",
+        "The Most Wanted Eau de Parfum Intense"
+      ],
+      "source_status": "verificato",
+      "source_notes": "Verificato con fonte ufficiale o rivenditore autorizzato/affidabile.",
+      "verification_sources": []
+    },
+    {
+      "product_id": "SH-0012",
+      "brand_id": "BR-980b6ab81163",
+      "brand_name": "Azzaro",
+      "family_name": "The Most Wanted Parfum",
+      "concentration": "Parfum Intense",
+      "gender": null,
+      "aliases": [
+        "Azzaro The Most Wanted Parfum",
+        "Azzaro The Most Wanted Parfum Intense",
+        "The Most Wanted Parfum Intense"
+      ],
+      "source_status": "verificato",
+      "source_notes": "Verificato con fonte ufficiale o rivenditore autorizzato/affidabile.",
+      "verification_sources": []
+    },
+    {
+      "product_id": "SH-0013",
+      "brand_id": "BR-980b6ab81163",
+      "brand_name": "Azzaro",
+      "family_name": "Wanted by Night",
+      "concentration": "Eau de Parfum",
+      "gender": null,
+      "aliases": [
+        "Azzaro Wanted by Night",
+        "Azzaro Wanted By Night Eau de Parfum",
+        "Wanted by Night Eau de Parfum"
+      ],
+      "source_status": "verificato",
+      "source_notes": "Verificato con fonte ufficiale o rivenditore autorizzato/affidabile.",
+      "verification_sources": []
+    },
+    {
+      "product_id": "SH-0041",
+      "brand_id": "BR-cec11f954e07",
+      "brand_name": "Chanel",
+      "family_name": "Bleu de Chanel",
+      "concentration": "Eau de Parfum",
+      "gender": null,
+      "aliases": [
+        "Bleu de Chanel Eau de Parfum",
+        "Bleu de Chanel EDP",
+        "Chanel Bleu de Chanel Eau de Parfum"
+      ],
+      "source_status": "verificato",
+      "source_notes": "Nome già incontrato nello storico ScentHunter; formato/alias da verificare prima dell'integrazione.",
+      "verification_sources": []
+    },
+    {
+      "product_id": "SH-0037",
+      "brand_id": "BR-ddbbf6166888",
+      "brand_name": "Creed",
+      "family_name": "Aventus",
+      "concentration": "Eau de Parfum",
+      "gender": null,
+      "aliases": [
+        "Creed Aventus",
+        "Aventus By Creed"
+      ],
+      "source_status": "verificato",
+      "source_notes": "Nome già incontrato nello storico ScentHunter; formato/alias da verificare prima dell'integrazione.",
+      "verification_sources": []
+    },
+    {
+      "product_id": "SH-0038",
+      "brand_id": "BR-ddbbf6166888",
+      "brand_name": "Creed",
+      "family_name": "Green Irish Tweed",
+      "concentration": "Eau de Parfum",
+      "gender": null,
+      "aliases": [
+        "Creed Green Irish Tweed",
+        "Green Irish Tweed By Creed"
+      ],
+      "source_status": "verificato",
+      "source_notes": "Nome già incontrato nello storico ScentHunter; formato/alias da verificare prima dell'integrazione.",
+      "verification_sources": []
+    },
+    {
+      "product_id": "SH-0039",
+      "brand_id": "BR-dfa0da1116d7",
+      "brand_name": "Dior",
+      "family_name": "Sauvage",
+      "concentration": "Eau de Toilette",
+      "gender": null,
+      "aliases": [
+        "Dior Sauvage",
+        "Dior Sauvage Eau de Toilette",
+        "Sauvage Eau de Toilette"
+      ],
+      "source_status": "verificato",
+      "source_notes": "Verificato con fonte ufficiale o rivenditore autorizzato/affidabile.",
+      "verification_sources": []
+    },
+    {
+      "product_id": "SH-0040",
+      "brand_id": "BR-dfa0da1116d7",
+      "brand_name": "Dior",
+      "family_name": "Sauvage Elixir",
+      "concentration": "Elixir",
+      "gender": null,
+      "aliases": [
+        "Dior Sauvage Elixir",
+        "Sauvage Elixir",
+        "Sauvage Elixir Parfum"
+      ],
+      "source_status": "verificato",
+      "source_notes": "Verificato con fonte ufficiale o rivenditore autorizzato/affidabile.",
+      "verification_sources": []
+    },
+    {
+      "product_id": "SH-0032",
+      "brand_id": "BR-df9184b6955d",
+      "brand_name": "Dumont",
+      "family_name": "Nitro Red",
+      "concentration": null,
+      "gender": null,
+      "aliases": [
+        "Dumont Nitro Red",
+        "Nitro Red 100 ML",
+        "Nitro Red by Dumont"
+      ],
+      "source_status": "verificato",
+      "source_notes": "Verificato sul sito ufficiale Dumont; formato 100 ml. La fonte non indica una concentrazione specifica.",
+      "verification_sources": [
+        "https://www.dumontparis.com/product/nitro-red/"
+      ]
+    },
+    {
+      "product_id": "SH-0030",
+      "brand_id": "BR-1ff7ddae3e65",
+      "brand_name": "French Avenue",
+      "family_name": "Liquid Brun",
+      "concentration": "Eau de Parfum",
+      "gender": null,
+      "aliases": [
+        "French Avenue Liquid Brun",
+        "Liquid Brun",
+        "Liquid Brun Eau de Parfum",
+        "Liquid Brun 100 ML"
+      ],
+      "source_status": "verificato",
+      "source_notes": "Verificato sul sito ufficiale French Avenue; Eau de Parfum, 100 ml.",
+      "verification_sources": [
+        "https://www.french-avenue-parfum.com/produit/eau-de-parfum-liquid-brun/"
+      ]
+    },
+    {
+      "product_id": "SH-0031",
+      "brand_id": "BR-1ff7ddae3e65",
+      "brand_name": "French Avenue",
+      "family_name": "Liquid Brun Limited Edition",
+      "concentration": "Extrait de Parfum",
+      "gender": null,
+      "aliases": [
+        "French Avenue Liquid Brun Limited Edition",
+        "Liquid Brun Limited Edition 150ml",
+        "Liquid Brun Limited Edition Extrait de Parfum"
+      ],
+      "source_status": "verificato",
+      "source_notes": "Verificato con fonte prodotto/brand; nome canonico, concentrazione, formato e alias aggiornati.",
+      "verification_sources": [
+        "https://www.french-avenue-parfum.com/produit/liquid-brun-limited-edition-french-avenue/"
+      ]
+    },
+    {
+      "product_id": "SH-0043",
+      "brand_id": "BR-79830313f68a",
+      "brand_name": "Giorgio Armani",
+      "family_name": "Acqua di Gio Profondo",
+      "concentration": null,
+      "gender": null,
+      "aliases": [
+        "Acqua di Gio Profondo",
+        "Acqua di Giò Profondo",
+        "Acqua di Gio Profondo Eau de Parfum",
+        "Giorgio Armani Acqua di Gio Profondo"
+      ],
+      "source_status": "verificato",
+      "source_notes": "Verificato con fonte prodotto/brand; formati e grafia canonica aggiornati.",
+      "verification_sources": []
+    },
+    {
+      "product_id": "SH-0044",
+      "brand_id": "BR-79830313f68a",
+      "brand_name": "Giorgio Armani",
+      "family_name": "Stronger With You Intensely",
+      "concentration": null,
+      "gender": null,
+      "aliases": [
+        "Emporio Armani Stronger With You Intensely",
+        "Stronger With You Intensely",
+        "Armani Stronger With You Intensely",
+        "Stronger With You Intensely Eau de Parfum"
+      ],
+      "source_status": "verificato",
+      "source_notes": "Verificato con fonte prodotto/brand; formati e grafia canonica aggiornati.",
+      "verification_sources": []
+    },
+    {
+      "product_id": "SH-0051",
+      "brand_id": "BR-4b4e85b947c2",
+      "brand_name": "Givenchy",
+      "family_name": "Gentleman Reserve Privee",
+      "concentration": "Eau de Parfum",
+      "gender": null,
+      "aliases": [
+        "Givenchy Gentleman Réserve Privée",
+        "Givenchy Gentleman Reserve Privee",
+        "Gentleman Réserve Privée Eau de Parfum"
+      ],
+      "source_status": "verificato",
+      "source_notes": "Verificato con fonte prodotto/brand; nome canonico, formati e alias aggiornati.",
+      "verification_sources": [
+        "https://www.givenchybeauty.com/int/en/p/gentleman-reserve-privee-F10100159.html"
+      ]
+    },
+    {
+      "product_id": "SH-0050",
+      "brand_id": "BR-4b4e85b947c2",
+      "brand_name": "Givenchy",
+      "family_name": "Gentleman Society",
+      "concentration": "Eau de Parfum",
+      "gender": null,
+      "aliases": [
+        "Givenchy Gentleman Society",
+        "Gentleman Society Eau de Parfum",
+        "Gentleman Society EDP"
+      ],
+      "source_status": "verificato",
+      "source_notes": "Nome già incontrato nello storico ScentHunter; formato/alias da verificare prima dell'integrazione.",
+      "verification_sources": []
+    },
+    {
+      "product_id": "SH-0016",
+      "brand_id": "BR-40da243dc8c5",
+      "brand_name": "Jean Paul Gaultier",
+      "family_name": "Le Male Elixir",
+      "concentration": "Parfum",
+      "gender": null,
+      "aliases": [],
+      "source_status": "verificato",
+      "source_notes": "Verificato tramite fonte esterna; mantenere questa referenza come nome canonico del catalogo.",
+      "verification_sources": [
+        "https://www.jeanpaulgaultier.com/eu/fr/p/gamme-le-male/le-male-elixir-parfum-000000000065189083"
+      ]
+    },
+    {
+      "product_id": "SH-0015",
+      "brand_id": "BR-40da243dc8c5",
+      "brand_name": "Jean Paul Gaultier",
+      "family_name": "Le Male Le Parfum",
+      "concentration": "Eau de Parfum Intense",
+      "gender": null,
+      "aliases": [
+        "Jean Paul Gaultier Le Male Le Parfum",
+        "Le Male Le Parfum Eau de Parfum",
+        "Le Male Le Parfum Eau de Parfum Intense"
+      ],
+      "source_status": "verificato",
+      "source_notes": "Verificato con fonte ufficiale o rivenditore autorizzato/affidabile.",
+      "verification_sources": []
+    },
+    {
+      "product_id": "SH-0054",
+      "brand_id": "BR-828333957fb5",
+      "brand_name": "Khadlaj",
+      "family_name": "Island",
+      "concentration": "Extrait de Parfum",
+      "gender": null,
+      "aliases": [
+        "Khadlaj Island",
+        "Island By Khadlaj",
+        "Island Extrait de Parfum",
+        "Island 100 ML",
+        "Khadlaj Island Parfum"
+      ],
+      "source_status": "verificato",
+      "source_notes": "Verificato con fonte prodotto/brand; nome canonico, concentrazione, formato e alias aggiornati.",
+      "verification_sources": [
+        "https://khadlaj-perfumes.com/collections/top-selling/products/island-100-ml-extrait-de-parfum-spray-for-men-and-women"
+      ]
+    },
+    {
+      "product_id": "SH-0055",
+      "brand_id": "BR-828333957fb5",
+      "brand_name": "Khadlaj",
+      "family_name": "Island Dreams",
+      "concentration": "Extrait de Parfum",
+      "gender": null,
+      "aliases": [
+        "Khadlaj Island Dreams",
+        "Island Dreams By Khadlaj",
+        "Island Dreams Extrait de Parfum",
+        "Island Dreams 100 ML"
+      ],
+      "source_status": "verificato",
+      "source_notes": "Verificato con fonte prodotto/brand; nome canonico, concentrazione, formato e alias aggiornati.",
+      "verification_sources": [
+        "https://www.notino.be/khadlaj/island-dreams-extrait-de-parfum-mixte/"
+      ]
+    },
+    {
+      "product_id": "SH-0056",
+      "brand_id": "BR-828333957fb5",
+      "brand_name": "Khadlaj",
+      "family_name": "Island Vanilla Dunes",
+      "concentration": "Extrait de Parfum",
+      "gender": null,
+      "aliases": [
+        "Khadlaj Island Vanilla Dunes",
+        "Island Vanilla Dunes By Khadlaj",
+        "Island Vanilla Dunes Extrait de Parfum",
+        "Island Vanilla Dunes 100 ML"
+      ],
+      "source_status": "verificato",
+      "source_notes": "Verificato con fonte prodotto/brand; nome canonico, concentrazione, formato e alias aggiornati.",
+      "verification_sources": [
+        "https://khadlaj-perfumes.com/products/khadlaj-island-vanilla-dunes-100-ml-extrait-de-parfum-spray-for-men"
+      ]
+    },
+    {
+      "product_id": "SH-0053",
+      "brand_id": "BR-7133154010a8",
+      "brand_name": "Lancôme",
+      "family_name": "Idôle",
+      "concentration": null,
+      "gender": null,
+      "aliases": [
+        "Lancôme Idôle",
+        "Lancome Idole",
+        "Lancôme Idôle Eau de Parfum",
+        "Idole Eau de Parfum"
+      ],
+      "source_status": "verificato",
+      "source_notes": "Verificato con fonte prodotto/brand; formati e grafia canonica aggiornati.",
+      "verification_sources": []
+    },
+    {
+      "product_id": "SH-0052",
+      "brand_id": "BR-7133154010a8",
+      "brand_name": "Lancôme",
+      "family_name": "La Vie Est Belle",
+      "concentration": null,
+      "gender": null,
+      "aliases": [
+        "Lancôme La Vie Est Belle",
+        "Lancome La Vie Est Belle",
+        "La Vie Est Belle Eau de Parfum",
+        "La Vie Est Belle EDP"
+      ],
+      "source_status": "verificato",
+      "source_notes": "Verificato con fonte prodotto/brand; formati e grafia canonica aggiornati.",
+      "verification_sources": []
+    },
+    {
+      "product_id": "SH-0065",
+      "brand_id": "BR-4a09cd2c70e0",
+      "brand_name": "Lattafa",
+      "family_name": "Art of Universe",
+      "concentration": "Eau de Parfum",
+      "gender": null,
+      "aliases": [
+        "Lattafa Art of Universe",
+        "Lattafa Pride Art of Universe",
+        "Art of Universe EDP",
+        "Art of Universe 100 ML"
+      ],
+      "source_status": "verificato",
+      "source_notes": "Verificato con fonte prodotto/brand; nome canonico, concentrazione, formato e alias aggiornati.",
+      "verification_sources": [
+        "https://www.shop-apotheke.com/beauty/upmCLHFTK/art-of-universe-eau-de-parfum.htm"
+      ]
+    },
+    {
+      "product_id": "SH-0028",
+      "brand_id": "BR-4a09cd2c70e0",
+      "brand_name": "Lattafa",
+      "family_name": "Asad Bourbon",
+      "concentration": "Eau de Parfum",
+      "gender": null,
+      "aliases": [
+        "Lattafa - Asad Bourbon",
+        "Lattafa Asad Bourbon"
+      ],
+      "source_status": "verificato",
+      "source_notes": "Verificato tramite fonte esterna; mantenere questa referenza come nome canonico del catalogo.",
+      "verification_sources": [
+        "https://www.elpais.com/escaparate/belleza/perfumes-arabes-hombre.html"
+      ]
+    },
+    {
+      "product_id": "SH-0029",
+      "brand_id": "BR-4a09cd2c70e0",
+      "brand_name": "Lattafa",
+      "family_name": "Nebras",
+      "concentration": null,
+      "gender": null,
+      "aliases": [
+        "Lattafa Nebras",
+        "Nebras Lattafa",
+        "Lattafa - Nebras"
+      ],
+      "source_status": "verificato",
+      "source_notes": "Verificato con fonte prodotto/brand; formati e grafia canonica aggiornati.",
+      "verification_sources": []
+    },
+    {
+      "product_id": "SH-0036",
+      "brand_id": "BR-8afe8e2d859d",
+      "brand_name": "Maison Alhambra",
+      "family_name": "Jean Lowe Immortal",
+      "concentration": "Eau de Parfum",
+      "gender": null,
+      "aliases": [
+        "Jean Lowe Immortel",
+        "Jean Lowe Immortal",
+        "Maison Alhambra Jean Lowe Immortal",
+        "Jean Lowe Immortal Eau de Parfum"
+      ],
+      "source_status": "verificato",
+      "source_notes": "Verificato con fonte prodotto/brand; nome canonico, formati e alias aggiornati.",
+      "verification_sources": [
+        "https://maisonvalentry.com/collections/maison-alhambra/products/immortel"
+      ]
+    },
+    {
+      "product_id": "SH-0058",
+      "brand_id": "BR-ab5d37630703",
+      "brand_name": "Miu Miu",
+      "family_name": "L'Eau Rosée",
+      "concentration": null,
+      "gender": null,
+      "aliases": [
+        "Miu Miu L'Eau Rosée",
+        "Miu Miu Eau Rosée",
+        "Miu Miu L Eau Rosee",
+        "L'Eau Rosee Miu Miu"
+      ],
+      "source_status": "verificato",
+      "source_notes": "Verificato con fonte prodotto/brand; formati e grafia canonica aggiornati.",
+      "verification_sources": []
+    },
+    {
+      "product_id": "SH-0057",
+      "brand_id": "BR-ab5d37630703",
+      "brand_name": "Miu Miu",
+      "family_name": "Miutine",
+      "concentration": null,
+      "gender": null,
+      "aliases": [
+        "Miu Miu Miutine",
+        "Miutine Miu Miu",
+        "Miutine Eau de Parfum"
+      ],
+      "source_status": "verificato",
+      "source_notes": "Verificato con fonte prodotto/brand; formati e grafia canonica aggiornati.",
+      "verification_sources": []
+    },
+    {
+      "product_id": "SH-0048",
+      "brand_id": "BR-18b53c4f2af7",
+      "brand_name": "Prada",
+      "family_name": "Luna Rossa Carbon",
+      "concentration": "Eau de Toilette",
+      "gender": null,
+      "aliases": [
+        "Prada Luna Rossa Carbon",
+        "Luna Rossa Carbon EDT",
+        "Prada Luna Rossa Carbon EDT"
+      ],
+      "source_status": "verificato",
+      "source_notes": "Nome già incontrato nello storico ScentHunter; formato/alias da verificare prima dell'integrazione.",
+      "verification_sources": []
+    },
+    {
+      "product_id": "SH-0049",
+      "brand_id": "BR-18b53c4f2af7",
+      "brand_name": "Prada",
+      "family_name": "Luna Rossa Ocean",
+      "concentration": "Eau de Toilette",
+      "gender": null,
+      "aliases": [
+        "Prada Luna Rossa Ocean",
+        "Luna Rossa Ocean EDT",
+        "Prada Luna Rossa Ocean EDT"
+      ],
+      "source_status": "verificato",
+      "source_notes": "Nome già incontrato nello storico ScentHunter; formato/alias da verificare prima dell'integrazione.",
+      "verification_sources": []
+    },
+    {
+      "product_id": "SH-0005",
+      "brand_id": "BR-1be6e01b7664",
+      "brand_name": "Rasasi",
+      "family_name": "Hawas Black",
+      "concentration": "Eau de Parfum",
+      "gender": null,
+      "aliases": [
+        "Hawas Black",
+        "Hawas Black 100 ML",
+        "Hawas Black EDP",
+        "Rasasi Hawas Black"
+      ],
+      "source_status": "verificato",
+      "source_notes": "Verificato tramite fonte esterna; mantenere questa referenza come nome canonico del catalogo.",
+      "verification_sources": [
+        "https://www.notino.be/rasasi/hawas-black-eau-de-parfum-pour-homme/"
+      ]
+    },
+    {
+      "product_id": "SH-0004",
+      "brand_id": "BR-1be6e01b7664",
+      "brand_name": "Rasasi",
+      "family_name": "Hawas Fire",
+      "concentration": "Eau de Parfum",
+      "gender": null,
+      "aliases": [
+        "Hawas Fire",
+        "Hawas Fire 100 ML",
+        "Hawas Fire Eau de Parfum",
+        "Rasasi Hawas Fire"
+      ],
+      "source_status": "verificato",
+      "source_notes": "Nome già incontrato nello storico ScentHunter; formato/alias da verificare prima dell'integrazione.",
+      "verification_sources": []
+    },
+    {
+      "product_id": "SH-0001",
+      "brand_id": "BR-1be6e01b7664",
+      "brand_name": "Rasasi",
+      "family_name": "Hawas for Him",
+      "concentration": "Eau de Parfum",
+      "gender": null,
+      "aliases": [
+        "Hawas Men",
+        "Hawas for Him",
+        "Hawas for Him 100 ML",
+        "Rasasi Hawas for Him"
+      ],
+      "source_status": "verificato",
+      "source_notes": "Verificato tramite fonte esterna; mantenere questa referenza come nome canonico del catalogo.",
+      "verification_sources": [
+        "https://imrasasi.com/products/hawas-men-100-ml",
+        "https://www.notino.be/rasasi/hawas-for-men-eau-de-parfum-pour-homme/"
+      ]
+    },
+    {
+      "product_id": "SH-0002",
+      "brand_id": "BR-1be6e01b7664",
+      "brand_name": "Rasasi",
+      "family_name": "Hawas Ice",
+      "concentration": "Eau de Parfum",
+      "gender": null,
+      "aliases": [
+        "Hawas Ice",
+        "Hawas Ice 100 ML",
+        "Hawas Ice EDP",
+        "Rasasi Hawas Ice"
+      ],
+      "source_status": "verificato",
+      "source_notes": "Nome già incontrato nello storico ScentHunter; formato/alias da verificare prima dell'integrazione.",
+      "verification_sources": []
+    },
+    {
+      "product_id": "SH-0003",
+      "brand_id": "BR-1be6e01b7664",
+      "brand_name": "Rasasi",
+      "family_name": "Hawas Kobra",
+      "concentration": "Eau de Parfum",
+      "gender": null,
+      "aliases": [
+        "Hawas Kobra",
+        "Hawas Kobra 100 ML",
+        "Hawas Kobra Eau de Parfum",
+        "Rasasi Hawas Kobra"
+      ],
+      "source_status": "verificato",
+      "source_notes": "Nome già incontrato nello storico ScentHunter; formato/alias da verificare prima dell'integrazione.",
+      "verification_sources": []
+    },
+    {
+      "product_id": "SH-0066",
+      "brand_id": "BR-a5f75996d6b5",
+      "brand_name": "Rayhaan",
+      "family_name": "Aquatica",
+      "concentration": "Eau de Parfum",
+      "gender": null,
+      "aliases": [
+        "Rayhaan Aquatica",
+        "Rayhaan Aquatica EDP",
+        "Aquatica Rayhaan",
+        "Rayhaan Aquatica 100 ML"
+      ],
+      "source_status": "verificato",
+      "source_notes": "Verificato con fonte prodotto/brand; nome canonico, concentrazione, formato e alias aggiornati.",
+      "verification_sources": [
+        "https://rayhaanperfumes.com/products/rayhaan-aquatica?variant=44716035440687"
+      ]
+    },
+    {
+      "product_id": "SH-0064",
+      "brand_id": "BR-a5f75996d6b5",
+      "brand_name": "Rayhaan",
+      "family_name": "Valhalla",
+      "concentration": "Eau de Parfum",
+      "gender": null,
+      "aliases": [
+        "Rayhaan Valhalla",
+        "Rayhaan Valhalla EDP",
+        "Valhalla Rayhaan",
+        "Rayhaan Valhalla 100 ML"
+      ],
+      "source_status": "verificato",
+      "source_notes": "Verificato con fonte prodotto/brand; nome canonico, concentrazione, formato e alias aggiornati.",
+      "verification_sources": [
+        "https://www.bol.com/nl/nl/p/rayhaan-valhalla-eau-de-parfum-100ml/9300000237610063/"
+      ]
+    },
+    {
+      "product_id": "SH-0063",
+      "brand_id": "BR-a5f75996d6b5",
+      "brand_name": "Rayhaan",
+      "family_name": "Wolf",
+      "concentration": "Eau de Parfum",
+      "gender": null,
+      "aliases": [
+        "Rayhaan Wolf",
+        "Rayhaan Wolf EDP",
+        "Wolf Rayhaan",
+        "Rayhaan Wolf 100 ML"
+      ],
+      "source_status": "verificato",
+      "source_notes": "Verificato con fonte prodotto/brand; nome canonico, concentrazione, formato e alias aggiornati.",
+      "verification_sources": [
+        "https://www.bol.com/be/nl/p/rayhaan-wolf-eau-de-parfum-100ml/9300000286370662"
+      ]
+    },
+    {
+      "product_id": "SH-0062",
+      "brand_id": "BR-5d8690e552ed",
+      "brand_name": "Royal Blend",
+      "family_name": "Sequoia",
+      "concentration": "Extrait de Parfum",
+      "gender": null,
+      "aliases": [
+        "Royal Blend Sequoia",
+        "French Avenue Royal Blend Sequoia",
+        "Royal Blend Sequoia Extrait de Parfum"
+      ],
+      "source_status": "verificato",
+      "source_notes": "Verificato con fonte prodotto/brand; nome canonico, formati e alias aggiornati.",
+      "verification_sources": [
+        "https://maisonvalentry.com/products/royal-blend-sequoia"
+      ]
+    },
+    {
+      "product_id": "SH-0034",
+      "brand_id": "BR-c397865cbbd8",
+      "brand_name": "Rue Broca",
+      "family_name": "Theoreme Homme",
+      "concentration": "Eau de Parfum",
+      "gender": null,
+      "aliases": [
+        "Rue Broca Theoreme Homme",
+        "Theoreme Homme Eau de Parfum",
+        "Theoreme Homme 90 ml"
+      ],
+      "source_status": "verificato",
+      "source_notes": "Verificato con fonte prodotto/brand; nome canonico, formati e alias aggiornati.",
+      "verification_sources": [
+        "https://www.notino.be/afnan/theoreme-homme-eau-de-parfum-pour-homme/"
+      ]
+    },
+    {
+      "product_id": "SH-0006",
+      "brand_id": "BR-2399d281a15d",
+      "brand_name": "Valentino",
+      "family_name": "Born in Roma Uomo",
+      "concentration": "Eau de Toilette",
+      "gender": null,
+      "aliases": [
+        "Born In Roma For Him",
+        "Born In Roma Uomo 100 ML",
+        "Born In Roma Uomo Eau de Toilette",
+        "Born in Roma Uomo",
+        "Valentino Born in Roma Uomo"
+      ],
+      "source_status": "verificato",
+      "source_notes": "Nome già incontrato nello storico ScentHunter; formato/alias da verificare prima dell'integrazione.",
+      "verification_sources": []
+    },
+    {
+      "product_id": "SH-0008",
+      "brand_id": "BR-2399d281a15d",
+      "brand_name": "Valentino",
+      "family_name": "Born in Roma Uomo Extradose",
+      "concentration": "Eau de Parfum",
+      "gender": null,
+      "aliases": [
+        "Born In Roma Extradose",
+        "Born In Roma Uomo Extradose 100 ML",
+        "Born in Roma Uomo Extradose",
+        "Valentino - Born in Roma Uomo Extradose",
+        "Valentino Born in Roma Uomo Extradose"
+      ],
+      "source_status": "verificato",
+      "source_notes": "Verificato tramite fonte esterna; mantenere questa referenza come nome canonico del catalogo.",
+      "verification_sources": [
+        "https://www.iciparisxl.lu/valentino/born-in-roma-uomo-extradose-/parfum-pour-homme/p/BP_1351615"
+      ]
+    },
+    {
+      "product_id": "SH-0007",
+      "brand_id": "BR-2399d281a15d",
+      "brand_name": "Valentino",
+      "family_name": "Born in Roma Uomo Intense",
+      "concentration": "Eau de Parfum",
+      "gender": null,
+      "aliases": [
+        "Born In Roma Uomo Intense 100 ML",
+        "Born in Roma Uomo Eau de Parfum Intense",
+        "Born in Roma Uomo Intense",
+        "Valentino - Born in Roma Uomo Intense",
+        "Valentino Born in Roma Uomo Intense"
+      ],
+      "source_status": "verificato",
+      "source_notes": "Verificato tramite fonte esterna; mantenere questa referenza come nome canonico del catalogo.",
+      "verification_sources": [
+        "https://www.valentino-beauty.com/it_IT/profumi/fragranze-maschili/born-in-roma-uomo/born-in-roma-uomo-eau-de-parfum-intense/MPL01907.html"
+      ]
+    },
+    {
+      "product_id": "SH-0009",
+      "brand_id": "BR-2399d281a15d",
+      "brand_name": "Valentino",
+      "family_name": "Born in Roma Yellow Dream Uomo",
+      "concentration": "Eau de Toilette",
+      "gender": null,
+      "aliases": [
+        "Born In Roma Yellow Dream For Him",
+        "Born in Roma Uomo Yellow Dream",
+        "Born in Roma Uomo Yellow Dream 50 ML",
+        "Valentino Born in Roma Uomo Yellow Dream"
+      ],
+      "source_status": "verificato",
+      "source_notes": "Nome già incontrato nello storico ScentHunter; formato/alias da verificare prima dell'integrazione.",
+      "verification_sources": []
+    },
+    {
+      "product_id": "SH-0010",
+      "brand_id": "BR-2399d281a15d",
+      "brand_name": "Valentino",
+      "family_name": "Uomo Born in Roma Coral Fantasy",
+      "concentration": "Eau de Toilette",
+      "gender": null,
+      "aliases": [
+        "Born In Roma Coral Fantasy For Him",
+        "Born in Roma Uomo Coral Fantasy",
+        "Born in Roma Uomo Coral Fantasy 100 ML",
+        "Valentino - Uomo Born in Roma Coral Fantasy",
+        "Valentino Born in Roma Uomo Coral Fantasy",
+        "Valentino Uomo Born in Roma Coral Fantasy"
+      ],
+      "source_status": "verificato",
+      "source_notes": "Verificato tramite fonte esterna; mantenere questa referenza come nome canonico del catalogo.",
+      "verification_sources": [
+        "https://www.valentino-beauty.de/en_GB/fragrances/men-s-fragrance/born-in-roma-uomo-coral-fantasy/MPL01750.html"
+      ]
+    },
+    {
+      "product_id": "SH-0047",
+      "brand_id": "BR-5aa86e0581a0",
+      "brand_name": "Versace",
+      "family_name": "Dylan Blue",
+      "concentration": "Eau de Toilette",
+      "gender": null,
+      "aliases": [
+        "Versace Dylan Blue",
+        "Dylan Blue Pour Homme",
+        "Dylan Blue Pour Homme EDT"
+      ],
+      "source_status": "verificato",
+      "source_notes": "Verificato con fonte prodotto/brand; nome canonico, formati e alias aggiornati.",
+      "verification_sources": [
+        "https://www.versace.com/dk/en/men/accessories/fragrances-body-care/dylan-blue-pour-homme/"
+      ]
+    },
+    {
+      "product_id": "SH-0045",
+      "brand_id": "BR-5aa86e0581a0",
+      "brand_name": "Versace",
+      "family_name": "Eros",
+      "concentration": "Eau de Toilette",
+      "gender": null,
+      "aliases": [
+        "Versace Eros",
+        "Eros Pour Homme",
+        "Eros Eau de Toilette",
+        "Eros EDT"
+      ],
+      "source_status": "verificato",
+      "source_notes": "Verificato sul sito ufficiale Versace; Eau de Toilette, 50/100/200 ml.",
+      "verification_sources": [
+        "https://www.versace.com/fr/fr/homme/accessoires/parfums-et-soins-du-corps/eros/eau-de-toilette-eros-50%C2%A0ml/R740008-R050MLS_RTU_TU_RNUL__.html"
+      ]
+    },
+    {
+      "product_id": "SH-0071",
+      "brand_id": "BR-5aa86e0581a0",
+      "brand_name": "Versace",
+      "family_name": "Eros pour Femme Eau de Toilette",
+      "concentration": "Eau de Toilette",
+      "gender": null,
+      "aliases": [
+        "Versace Eros pour Femme Eau De Toilette",
+        "Eros pour Femme Eau De Toilette",
+        "Eros pour Femme EDT",
+        "Versace Eros Pour Femme EDT"
+      ],
+      "source_status": "verificato",
+      "source_notes": "Verificato su Parfum-Zentrum e sito ufficiale Versace; Eau de Toilette, 30/50/100 ml.",
+      "verification_sources": [
+        "https://www.parfum-zentrum.de/versace-eros-pour-femme-eau-de-toilette-100-ml-woman_z695946/",
+        "https://www.versace.com/us/en/women/accessories/fragrances-body-care/eros-pour-femme/eros-pour-femme-edt-100-ml-gold/R750132-R100MLS_RNUL.html"
+      ]
+    },
+    {
+      "product_id": "SH-0072",
+      "brand_id": "BR-5aa86e0581a0",
+      "brand_name": "Versace",
+      "family_name": "Eros pour Femme Eau de Parfum",
+      "concentration": "Eau de Parfum",
+      "gender": null,
+      "aliases": [
+        "Versace Eros pour Femme Eau De Parfum",
+        "Eros pour Femme Eau De Parfum",
+        "Eros pour Femme EDP",
+        "Versace Eros Pour Femme EDP"
+      ],
+      "source_status": "verificato",
+      "source_notes": "Referenza distinta dalla Eau de Toilette; mantenuta separata per evitare l'unione di prezzi e formati.",
+      "verification_sources": [
+        "https://www.parfum-zentrum.de/versace_v208/"
+      ]
+    },
+    {
+      "product_id": "SH-0046",
+      "brand_id": "BR-5aa86e0581a0",
+      "brand_name": "Versace",
+      "family_name": "Eros Flame",
+      "concentration": "Eau de Parfum",
+      "gender": null,
+      "aliases": [
+        "Versace Eros Flame",
+        "Eros Flame EDP",
+        "Eros Flame Eau de Parfum"
+      ],
+      "source_status": "verificato",
+      "source_notes": "Verificato sul sito ufficiale Versace; Eau de Parfum, 50/100/200 ml.",
+      "verification_sources": [
+        "https://www.versace.com/de/de/herren/accessoires/dufte/eros-flame/"
+      ]
+    },
+    {
+      "product_id": "SH-0042",
+      "brand_id": "BR-19a1571d8303",
+      "brand_name": "Yves Saint Laurent",
+      "family_name": "Y Eau de Parfum",
+      "concentration": "Eau de Parfum",
+      "gender": null,
+      "aliases": [
+        "Y Eau de Parfum",
+        "Y EDP",
+        "Yves Saint Laurent Y Eau de Parfum",
+        "Y EDP 100 ML"
+      ],
+      "source_status": "verificato",
+      "source_notes": "Verificato con fonte prodotto/brand; nome canonico, concentrazione, formato e alias aggiornati.",
+      "verification_sources": [
+        "https://www.yslbeauty.com/int/fragrance/fragrance-for-him/y/y--eau-de-parfum/3614272050341.html"
+      ]
+    },
+    {
+      "product_id": "AUTO-99930ac1f284e75e",
+      "brand_id": "BR-40da243dc8c5",
+      "brand_name": "Jean Paul Gaultier",
+      "family_name": "Le Beau",
+      "concentration": null,
+      "gender": null,
+      "aliases": [
+        "Jean Paul Gaultier Le Beau",
+        "Le Beau"
+      ],
+      "source_status": "verificato",
+      "source_notes": "Famiglia Le Beau; referenza canonica per separare le varianti nel matcher ScentHunter.",
+      "verification_sources": []
+    },
+    {
+      "product_id": "AUTO-80d529d2fb4486be",
+      "brand_id": "BR-40da243dc8c5",
+      "brand_name": "Jean Paul Gaultier",
+      "family_name": "Le Beau",
+      "concentration": null,
+      "gender": null,
+      "aliases": [
+        "Jean Paul Gaultier Le Beau Le Parfum",
+        "Le Beau Le Parfum"
+      ],
+      "source_status": "verificato",
+      "source_notes": "Famiglia Le Beau; referenza canonica per separare le varianti nel matcher ScentHunter.",
+      "verification_sources": []
+    },
+    {
+      "product_id": "AUTO-ed99b73ace7869ac",
+      "brand_id": "BR-40da243dc8c5",
+      "brand_name": "Jean Paul Gaultier",
+      "family_name": "Le Beau",
+      "concentration": null,
+      "gender": null,
+      "aliases": [
+        "Jean Paul Gaultier Le Beau Paradise Garden",
+        "Le Beau Paradise Garden"
+      ],
+      "source_status": "verificato",
+      "source_notes": "Famiglia Le Beau; referenza canonica per separare le varianti nel matcher ScentHunter.",
+      "verification_sources": []
+    },
+    {
+      "product_id": "AUTO-51a78cb5157774e5",
+      "brand_id": "BR-40da243dc8c5",
+      "brand_name": "Jean Paul Gaultier",
+      "family_name": "Le Beau",
+      "concentration": null,
+      "gender": null,
+      "aliases": [
+        "Jean Paul Gaultier Le Beau Narcisse",
+        "Le Beau Narcisse"
+      ],
+      "source_status": "verificato",
+      "source_notes": "Famiglia Le Beau; referenza canonica per separare le varianti nel matcher ScentHunter.",
+      "verification_sources": []
+    },
+    {
+      "product_id": "AUTO-cbbce985c43e6ee2",
+      "brand_id": "BR-40da243dc8c5",
+      "brand_name": "Jean Paul Gaultier",
+      "family_name": "Le Beau",
+      "concentration": null,
+      "gender": null,
+      "aliases": [
+        "Jean Paul Gaultier Le Beau Flower Edition",
+        "Le Beau Flower Edition"
+      ],
+      "source_status": "verificato",
+      "source_notes": "Famiglia Le Beau; referenza canonica per separare le varianti nel matcher ScentHunter.",
+      "verification_sources": []
+    }
+  ],
+  "variants": [
+    {
+      "variant_id": "VAR-e964dfbad9e295f7",
+      "product_id": "SH-0022",
+      "size_ml": 100,
+      "gtins": [],
+      "mpns": [],
+      "aliases": [
+        "Afnan - 9 PM",
+        "Afnan 9 PM"
+      ],
+      "store_mappings": []
+    },
+    {
+      "variant_id": "VAR-36e1d7d76c95f43e",
+      "product_id": "SH-0024",
+      "size_ml": 100,
+      "gtins": [],
+      "mpns": [],
+      "aliases": [
+        "Afnan - 9 PM Elixir",
+        "Afnan 9 PM Elixir",
+        "9 PM Elixir Parfum Intense",
+        "Afnan - 9 PM Elixir Parfum Intense",
+        "Afnan 9 PM Elixir Parfum Intense",
+        "Afnan - 9PM Elixir",
+        "Afnan 9PM Elixir"
+      ],
+      "store_mappings": []
+    },
+    {
+      "variant_id": "VAR-c6b1c445d513764e",
+      "product_id": "SH-0025",
+      "size_ml": 100,
+      "gtins": [],
+      "mpns": [],
+      "aliases": [
+        "Afnan - 9 PM Night Out",
+        "Afnan 9 PM Night Out",
+        "Afnan - 9PM Night Out",
+        "Afnan 9PM Night Out"
+      ],
+      "store_mappings": []
+    },
+    {
+      "variant_id": "VAR-bf1ec70d8359ac63",
+      "product_id": "SH-0023",
+      "size_ml": 100,
+      "gtins": [],
+      "mpns": [],
+      "aliases": [
+        "Afnan - 9 PM Rebel",
+        "Afnan 9 PM Rebel",
+        "Afnan - 9PM Rebel",
+        "Afnan 9PM Rebel"
+      ],
+      "store_mappings": []
+    },
+    {
+      "variant_id": "VAR-3fae6aba9696ca3f",
+      "product_id": "SH-0067",
+      "size_ml": 100,
+      "gtins": [],
+      "mpns": [],
+      "aliases": [
+        "Afnan - 9 PM Pour Femme",
+        "Afnan 9 PM Pour Femme",
+        "9 PM Pour Femme",
+        "9PM Pour Femme",
+        "9pm Purple Femme",
+        "Afnan 9pm Purple Femme"
+      ],
+      "store_mappings": []
+    },
+    {
+      "variant_id": "VAR-8e4d03960b2dcb22",
+      "product_id": "SH-0068",
+      "size_ml": 100,
+      "gtins": [],
+      "mpns": [],
+      "aliases": [
+        "Afnan - 9 AM",
+        "Afnan 9 AM",
+        "9AM"
+      ],
+      "store_mappings": []
+    },
+    {
+      "variant_id": "VAR-12501a58d78e8808",
+      "product_id": "SH-0069",
+      "size_ml": 100,
+      "gtins": [],
+      "mpns": [],
+      "aliases": [
+        "Afnan - 9 AM Dive",
+        "Afnan 9 AM Dive",
+        "9AM Dive"
+      ],
+      "store_mappings": []
+    },
+    {
+      "variant_id": "VAR-e277ec5747e12ccc",
+      "product_id": "SH-0070",
+      "size_ml": 100,
+      "gtins": [],
+      "mpns": [],
+      "aliases": [
+        "Afnan - 9 AM Pour Femme",
+        "Afnan 9 AM Pour Femme",
+        "9 AM Pour Femme",
+        "9AM Pour Femme"
+      ],
+      "store_mappings": []
+    },
+    {
+      "variant_id": "VAR-0ea6ea1cf6418e2d",
+      "product_id": "SH-0026",
+      "size_ml": 100,
+      "gtins": [],
+      "mpns": [],
+      "aliases": [
+        "Afnan - Supremacy Collector's Edition",
+        "Afnan Supremacy Collector's Edition"
+      ],
+      "store_mappings": []
+    },
+    {
+      "variant_id": "VAR-5ac46b30f0f7bc4f",
+      "product_id": "SH-0027",
+      "size_ml": 100,
+      "gtins": [],
+      "mpns": [],
+      "aliases": [
+        "Afnan - Supremacy in Heaven",
+        "Afnan Supremacy in Heaven"
+      ],
+      "store_mappings": []
+    },
+    {
+      "variant_id": "VAR-20b37130c6e3ecf1",
+      "product_id": "SH-0035",
+      "size_ml": 90,
+      "gtins": [],
+      "mpns": [],
+      "aliases": [
+        "Afnan Turathi Blue",
+        "Turathi Blue Pour Homme",
+        "Turathi Blue EDP",
+        "Turathi Blue 90 ML"
+      ],
+      "store_mappings": []
+    },
+    {
+      "variant_id": "VAR-7901755a53a45e9f",
+      "product_id": "SH-0060",
+      "size_ml": 90,
+      "gtins": [],
+      "mpns": [],
+      "aliases": [
+        "Afnan Turathi Brown",
+        "Turathi Brown Pour Homme",
+        "Turathi Brown EDP",
+        "Turathi Brown 90 ML"
+      ],
+      "store_mappings": []
+    },
+    {
+      "variant_id": "VAR-220c0a437825416b",
+      "product_id": "SH-0061",
+      "size_ml": 90,
+      "gtins": [],
+      "mpns": [],
+      "aliases": [
+        "Afnan Turathi Electric",
+        "Turathi Electric EDP",
+        "Turathi Electric 90 ML"
+      ],
+      "store_mappings": []
+    },
+    {
+      "variant_id": "VAR-18d4669808160144",
+      "product_id": "SH-0059",
+      "size_ml": 90,
+      "gtins": [],
+      "mpns": [],
+      "aliases": [
+        "Afnan Turathi Red",
+        "Turathi Red Pour Femme",
+        "Turathi Red EDP",
+        "Turathi Red 90 ML"
+      ],
+      "store_mappings": []
+    },
+    {
+      "variant_id": "VAR-8c1c9dd09d158da6",
+      "product_id": "SH-0033",
+      "size_ml": 100,
+      "gtins": [],
+      "mpns": [],
+      "aliases": [
+        "Ahmed Al Maghribi Kaaf",
+        "Kaaf by Ahmed Al Maghribi",
+        "Kaaf EDP"
+      ],
+      "store_mappings": []
+    },
+    {
+      "variant_id": "VAR-57819b91e199f709",
+      "product_id": "SH-0017",
+      "size_ml": 30,
+      "gtins": [],
+      "mpns": [],
+      "aliases": [
+        "Armaf Club de Nuit Intense Man",
+        "Club de Nuit Intense Man By Armaf",
+        "Armaf - Club de Nuit Intense Man"
+      ],
+      "store_mappings": []
+    },
+    {
+      "variant_id": "VAR-9371ef132c0225ce",
+      "product_id": "SH-0017",
+      "size_ml": 105,
+      "gtins": [],
+      "mpns": [],
+      "aliases": [
+        "Armaf Club de Nuit Intense Man",
+        "Club de Nuit Intense Man By Armaf",
+        "Armaf - Club de Nuit Intense Man"
+      ],
+      "store_mappings": []
+    },
+    {
+      "variant_id": "VAR-5ce617b4ee92de50",
+      "product_id": "SH-0017",
+      "size_ml": 250,
+      "gtins": [],
+      "mpns": [],
+      "aliases": [
+        "Armaf Club de Nuit Intense Man",
+        "Club de Nuit Intense Man By Armaf",
+        "Armaf - Club de Nuit Intense Man"
+      ],
+      "store_mappings": []
+    },
+    {
+      "variant_id": "VAR-911b6201a9619873",
+      "product_id": "SH-0018",
+      "size_ml": 105,
+      "gtins": [],
+      "mpns": [],
+      "aliases": [
+        "Armaf Club de Nuit Precieux",
+        "Club de Nuit Precieux",
+        "Armaf - Club de Nuit Precieux"
+      ],
+      "store_mappings": []
+    },
+    {
+      "variant_id": "VAR-5283e8faf07cd19b",
+      "product_id": "SH-0021",
+      "size_ml": 100,
+      "gtins": [],
+      "mpns": [],
+      "aliases": [
+        "Armaf Odyssey Artisto Red",
+        "Odyssey Artisto Red By Armaf",
+        "Odyssey Artisto Red 100ml"
+      ],
+      "store_mappings": []
+    },
+    {
+      "variant_id": "VAR-7912dd382465e879",
+      "product_id": "SH-0019",
+      "size_ml": 100,
+      "gtins": [],
+      "mpns": [],
+      "aliases": [
+        "Armaf - Odyssey Mandarin Sky",
+        "Armaf Odyssey Mandarin Sky"
+      ],
+      "store_mappings": []
+    },
+    {
+      "variant_id": "VAR-c6f83703cd4649b5",
+      "product_id": "SH-0020",
+      "size_ml": 60,
+      "gtins": [],
+      "mpns": [],
+      "aliases": [
+        "Armaf Odyssey Spectra",
+        "Odyssey Spectra By Armaf",
+        "Armaf - Odyssey Spectra"
+      ],
+      "store_mappings": []
+    },
+    {
+      "variant_id": "VAR-7b17cc2f853078e3",
+      "product_id": "SH-0020",
+      "size_ml": 100,
+      "gtins": [],
+      "mpns": [],
+      "aliases": [
+        "Armaf Odyssey Spectra",
+        "Odyssey Spectra By Armaf",
+        "Armaf - Odyssey Spectra"
+      ],
+      "store_mappings": []
+    },
+    {
+      "variant_id": "VAR-b5fb6fb1498f5640",
+      "product_id": "SH-0020",
+      "size_ml": 200,
+      "gtins": [],
+      "mpns": [],
+      "aliases": [
+        "Armaf Odyssey Spectra",
+        "Odyssey Spectra By Armaf",
+        "Armaf - Odyssey Spectra"
+      ],
+      "store_mappings": []
+    },
+    {
+      "variant_id": "VAR-dacf0a8c057f9fce",
+      "product_id": "SH-0014",
+      "size_ml": 50,
+      "gtins": [],
+      "mpns": [],
+      "aliases": [],
+      "store_mappings": []
+    },
+    {
+      "variant_id": "VAR-03c7ab359ec4ff67",
+      "product_id": "SH-0014",
+      "size_ml": 100,
+      "gtins": [],
+      "mpns": [],
+      "aliases": [],
+      "store_mappings": []
+    },
+    {
+      "variant_id": "VAR-5ba09092946a1b81",
+      "product_id": "SH-0011",
+      "size_ml": 50,
+      "gtins": [],
+      "mpns": [],
+      "aliases": [
+        "Azzaro The Most Wanted",
+        "Azzaro The Most Wanted Eau de Parfum Intense",
+        "The Most Wanted Eau de Parfum Intense"
+      ],
+      "store_mappings": []
+    },
+    {
+      "variant_id": "VAR-d24d9312793c6287",
+      "product_id": "SH-0011",
+      "size_ml": 100,
+      "gtins": [],
+      "mpns": [],
+      "aliases": [
+        "Azzaro The Most Wanted",
+        "Azzaro The Most Wanted Eau de Parfum Intense",
+        "The Most Wanted Eau de Parfum Intense"
+      ],
+      "store_mappings": []
+    },
+    {
+      "variant_id": "VAR-e326ada30c56c9e6",
+      "product_id": "SH-0012",
+      "size_ml": 50,
+      "gtins": [],
+      "mpns": [],
+      "aliases": [
+        "Azzaro The Most Wanted Parfum",
+        "Azzaro The Most Wanted Parfum Intense",
+        "The Most Wanted Parfum Intense"
+      ],
+      "store_mappings": []
+    },
+    {
+      "variant_id": "VAR-d9095e651f60f756",
+      "product_id": "SH-0012",
+      "size_ml": 100,
+      "gtins": [],
+      "mpns": [],
+      "aliases": [
+        "Azzaro The Most Wanted Parfum",
+        "Azzaro The Most Wanted Parfum Intense",
+        "The Most Wanted Parfum Intense"
+      ],
+      "store_mappings": []
+    },
+    {
+      "variant_id": "VAR-177c7bde26ff314d",
+      "product_id": "SH-0012",
+      "size_ml": 150,
+      "gtins": [],
+      "mpns": [],
+      "aliases": [
+        "Azzaro The Most Wanted Parfum",
+        "Azzaro The Most Wanted Parfum Intense",
+        "The Most Wanted Parfum Intense"
+      ],
+      "store_mappings": []
+    },
+    {
+      "variant_id": "VAR-685ba2d95764453f",
+      "product_id": "SH-0013",
+      "size_ml": 50,
+      "gtins": [],
+      "mpns": [],
+      "aliases": [
+        "Azzaro Wanted by Night",
+        "Azzaro Wanted By Night Eau de Parfum",
+        "Wanted by Night Eau de Parfum"
+      ],
+      "store_mappings": []
+    },
+    {
+      "variant_id": "VAR-c8593d9cd51c1e0e",
+      "product_id": "SH-0013",
+      "size_ml": 100,
+      "gtins": [],
+      "mpns": [],
+      "aliases": [
+        "Azzaro Wanted by Night",
+        "Azzaro Wanted By Night Eau de Parfum",
+        "Wanted by Night Eau de Parfum"
+      ],
+      "store_mappings": []
+    },
+    {
+      "variant_id": "VAR-c38f559a115262c5",
+      "product_id": "SH-0013",
+      "size_ml": 150,
+      "gtins": [],
+      "mpns": [],
+      "aliases": [
+        "Azzaro Wanted by Night",
+        "Azzaro Wanted By Night Eau de Parfum",
+        "Wanted by Night Eau de Parfum"
+      ],
+      "store_mappings": []
+    },
+    {
+      "variant_id": "VAR-4b8b75fe7005f62b",
+      "product_id": "SH-0041",
+      "size_ml": 50,
+      "gtins": [],
+      "mpns": [],
+      "aliases": [
+        "Bleu de Chanel Eau de Parfum",
+        "Bleu de Chanel EDP",
+        "Chanel Bleu de Chanel Eau de Parfum"
+      ],
+      "store_mappings": []
+    },
+    {
+      "variant_id": "VAR-d9025c404308dc6d",
+      "product_id": "SH-0041",
+      "size_ml": 100,
+      "gtins": [],
+      "mpns": [],
+      "aliases": [
+        "Bleu de Chanel Eau de Parfum",
+        "Bleu de Chanel EDP",
+        "Chanel Bleu de Chanel Eau de Parfum"
+      ],
+      "store_mappings": []
+    },
+    {
+      "variant_id": "VAR-9662b5cd36903885",
+      "product_id": "SH-0037",
+      "size_ml": 30,
+      "gtins": [],
+      "mpns": [],
+      "aliases": [
+        "Creed Aventus",
+        "Aventus By Creed"
+      ],
+      "store_mappings": []
+    },
+    {
+      "variant_id": "VAR-7d659f6936e037b8",
+      "product_id": "SH-0037",
+      "size_ml": 50,
+      "gtins": [],
+      "mpns": [],
+      "aliases": [
+        "Creed Aventus",
+        "Aventus By Creed"
+      ],
+      "store_mappings": []
+    },
+    {
+      "variant_id": "VAR-d883df119dd4893d",
+      "product_id": "SH-0037",
+      "size_ml": 100,
+      "gtins": [],
+      "mpns": [],
+      "aliases": [
+        "Creed Aventus",
+        "Aventus By Creed"
+      ],
+      "store_mappings": []
+    },
+    {
+      "variant_id": "VAR-6ca9c5bf472eef63",
+      "product_id": "SH-0037",
+      "size_ml": 240,
+      "gtins": [],
+      "mpns": [],
+      "aliases": [
+        "Creed Aventus",
+        "Aventus By Creed"
+      ],
+      "store_mappings": []
+    },
+    {
+      "variant_id": "VAR-4a95e03eaa5f2494",
+      "product_id": "SH-0037",
+      "size_ml": 490,
+      "gtins": [],
+      "mpns": [],
+      "aliases": [
+        "Creed Aventus",
+        "Aventus By Creed"
+      ],
+      "store_mappings": []
+    },
+    {
+      "variant_id": "VAR-f532a149153c3b0c",
+      "product_id": "SH-0038",
+      "size_ml": 50,
+      "gtins": [],
+      "mpns": [],
+      "aliases": [
+        "Creed Green Irish Tweed",
+        "Green Irish Tweed By Creed"
+      ],
+      "store_mappings": []
+    },
+    {
+      "variant_id": "VAR-af9a8408fb737b85",
+      "product_id": "SH-0038",
+      "size_ml": 100,
+      "gtins": [],
+      "mpns": [],
+      "aliases": [
+        "Creed Green Irish Tweed",
+        "Green Irish Tweed By Creed"
+      ],
+      "store_mappings": []
+    },
+    {
+      "variant_id": "VAR-02fe1ed202c6725e",
+      "product_id": "SH-0038",
+      "size_ml": 240,
+      "gtins": [],
+      "mpns": [],
+      "aliases": [
+        "Creed Green Irish Tweed",
+        "Green Irish Tweed By Creed"
+      ],
+      "store_mappings": []
+    },
+    {
+      "variant_id": "VAR-2b9e027d1ce737cd",
+      "product_id": "SH-0038",
+      "size_ml": 490,
+      "gtins": [],
+      "mpns": [],
+      "aliases": [
+        "Creed Green Irish Tweed",
+        "Green Irish Tweed By Creed"
+      ],
+      "store_mappings": []
+    },
+    {
+      "variant_id": "VAR-4b712eabb64bbab5",
+      "product_id": "SH-0039",
+      "size_ml": 30,
+      "gtins": [],
+      "mpns": [],
+      "aliases": [
+        "Dior Sauvage",
+        "Dior Sauvage Eau de Toilette",
+        "Sauvage Eau de Toilette"
+      ],
+      "store_mappings": []
+    },
+    {
+      "variant_id": "VAR-870276467a85e945",
+      "product_id": "SH-0039",
+      "size_ml": 60,
+      "gtins": [],
+      "mpns": [],
+      "aliases": [
+        "Dior Sauvage",
+        "Dior Sauvage Eau de Toilette",
+        "Sauvage Eau de Toilette"
+      ],
+      "store_mappings": []
+    },
+    {
+      "variant_id": "VAR-e3f54b1a9a552789",
+      "product_id": "SH-0039",
+      "size_ml": 100,
+      "gtins": [],
+      "mpns": [],
+      "aliases": [
+        "Dior Sauvage",
+        "Dior Sauvage Eau de Toilette",
+        "Sauvage Eau de Toilette"
+      ],
+      "store_mappings": []
+    },
+    {
+      "variant_id": "VAR-6d8d52a29f7a6819",
+      "product_id": "SH-0039",
+      "size_ml": 200,
+      "gtins": [],
+      "mpns": [],
+      "aliases": [
+        "Dior Sauvage",
+        "Dior Sauvage Eau de Toilette",
+        "Sauvage Eau de Toilette"
+      ],
+      "store_mappings": []
+    },
+    {
+      "variant_id": "VAR-5fa4e74c17f50000",
+      "product_id": "SH-0040",
+      "size_ml": 60,
+      "gtins": [],
+      "mpns": [],
+      "aliases": [
+        "Dior Sauvage Elixir",
+        "Sauvage Elixir",
+        "Sauvage Elixir Parfum"
+      ],
+      "store_mappings": []
+    },
+    {
+      "variant_id": "VAR-4156f3fdf5ababe0",
+      "product_id": "SH-0040",
+      "size_ml": 100,
+      "gtins": [],
+      "mpns": [],
+      "aliases": [
+        "Dior Sauvage Elixir",
+        "Sauvage Elixir",
+        "Sauvage Elixir Parfum"
+      ],
+      "store_mappings": []
+    },
+    {
+      "variant_id": "VAR-16617711583a42bb",
+      "product_id": "SH-0040",
+      "size_ml": 150,
+      "gtins": [],
+      "mpns": [],
+      "aliases": [
+        "Dior Sauvage Elixir",
+        "Sauvage Elixir",
+        "Sauvage Elixir Parfum"
+      ],
+      "store_mappings": []
+    },
+    {
+      "variant_id": "VAR-234fd6de1baa4b0f",
+      "product_id": "SH-0032",
+      "size_ml": 100,
+      "gtins": [],
+      "mpns": [],
+      "aliases": [
+        "Dumont Nitro Red",
+        "Nitro Red 100 ML",
+        "Nitro Red by Dumont"
+      ],
+      "store_mappings": []
+    },
+    {
+      "variant_id": "VAR-f87146c82d167f4c",
+      "product_id": "SH-0030",
+      "size_ml": 100,
+      "gtins": [],
+      "mpns": [],
+      "aliases": [
+        "French Avenue Liquid Brun",
+        "Liquid Brun",
+        "Liquid Brun Eau de Parfum",
+        "Liquid Brun 100 ML"
+      ],
+      "store_mappings": []
+    },
+    {
+      "variant_id": "VAR-f5aff76b4bb5de8a",
+      "product_id": "SH-0031",
+      "size_ml": 150,
+      "gtins": [],
+      "mpns": [],
+      "aliases": [
+        "French Avenue Liquid Brun Limited Edition",
+        "Liquid Brun Limited Edition 150ml",
+        "Liquid Brun Limited Edition Extrait de Parfum"
+      ],
+      "store_mappings": []
+    },
+    {
+      "variant_id": "VAR-89c2a2a86bedb3c5",
+      "product_id": "SH-0043",
+      "size_ml": 75,
+      "gtins": [],
+      "mpns": [],
+      "aliases": [
+        "Acqua di Gio Profondo",
+        "Acqua di Giò Profondo",
+        "Acqua di Gio Profondo Eau de Parfum",
+        "Giorgio Armani Acqua di Gio Profondo"
+      ],
+      "store_mappings": []
+    },
+    {
+      "variant_id": "VAR-09a73d0a5594cf49",
+      "product_id": "SH-0043",
+      "size_ml": 125,
+      "gtins": [],
+      "mpns": [],
+      "aliases": [
+        "Acqua di Gio Profondo",
+        "Acqua di Giò Profondo",
+        "Acqua di Gio Profondo Eau de Parfum",
+        "Giorgio Armani Acqua di Gio Profondo"
+      ],
+      "store_mappings": []
+    },
+    {
+      "variant_id": "VAR-6cbb789dacd90655",
+      "product_id": "SH-0044",
+      "size_ml": 30,
+      "gtins": [],
+      "mpns": [],
+      "aliases": [
+        "Emporio Armani Stronger With You Intensely",
+        "Stronger With You Intensely",
+        "Armani Stronger With You Intensely",
+        "Stronger With You Intensely Eau de Parfum"
+      ],
+      "store_mappings": []
+    },
+    {
+      "variant_id": "VAR-941d8437b51ce923",
+      "product_id": "SH-0044",
+      "size_ml": 50,
+      "gtins": [],
+      "mpns": [],
+      "aliases": [
+        "Emporio Armani Stronger With You Intensely",
+        "Stronger With You Intensely",
+        "Armani Stronger With You Intensely",
+        "Stronger With You Intensely Eau de Parfum"
+      ],
+      "store_mappings": []
+    },
+    {
+      "variant_id": "VAR-fa5e25f412cfe09e",
+      "product_id": "SH-0044",
+      "size_ml": 100,
+      "gtins": [],
+      "mpns": [],
+      "aliases": [
+        "Emporio Armani Stronger With You Intensely",
+        "Stronger With You Intensely",
+        "Armani Stronger With You Intensely",
+        "Stronger With You Intensely Eau de Parfum"
+      ],
+      "store_mappings": []
+    },
+    {
+      "variant_id": "VAR-5110af916cadfb82",
+      "product_id": "SH-0051",
+      "size_ml": 60,
+      "gtins": [],
+      "mpns": [],
+      "aliases": [
+        "Givenchy Gentleman Réserve Privée",
+        "Givenchy Gentleman Reserve Privee",
+        "Gentleman Réserve Privée Eau de Parfum"
+      ],
+      "store_mappings": []
+    },
+    {
+      "variant_id": "VAR-f3a30bb5347381d2",
+      "product_id": "SH-0051",
+      "size_ml": 100,
+      "gtins": [],
+      "mpns": [],
+      "aliases": [
+        "Givenchy Gentleman Réserve Privée",
+        "Givenchy Gentleman Reserve Privee",
+        "Gentleman Réserve Privée Eau de Parfum"
+      ],
+      "store_mappings": []
+    },
+    {
+      "variant_id": "VAR-3cdeca321fbd91fb",
+      "product_id": "SH-0050",
+      "size_ml": 40,
+      "gtins": [],
+      "mpns": [],
+      "aliases": [
+        "Givenchy Gentleman Society",
+        "Gentleman Society Eau de Parfum",
+        "Gentleman Society EDP"
+      ],
+      "store_mappings": []
+    },
+    {
+      "variant_id": "VAR-003146cb0c87f8e6",
+      "product_id": "SH-0050",
+      "size_ml": 60,
+      "gtins": [],
+      "mpns": [],
+      "aliases": [
+        "Givenchy Gentleman Society",
+        "Gentleman Society Eau de Parfum",
+        "Gentleman Society EDP"
+      ],
+      "store_mappings": []
+    },
+    {
+      "variant_id": "VAR-2f04c347deb9fd82",
+      "product_id": "SH-0050",
+      "size_ml": 100,
+      "gtins": [],
+      "mpns": [],
+      "aliases": [
+        "Givenchy Gentleman Society",
+        "Gentleman Society Eau de Parfum",
+        "Gentleman Society EDP"
+      ],
+      "store_mappings": []
+    },
+    {
+      "variant_id": "VAR-059249538aaa7165",
+      "product_id": "SH-0050",
+      "size_ml": 200,
+      "gtins": [],
+      "mpns": [],
+      "aliases": [
+        "Givenchy Gentleman Society",
+        "Gentleman Society Eau de Parfum",
+        "Gentleman Society EDP"
+      ],
+      "store_mappings": []
+    },
+    {
+      "variant_id": "VAR-657a92b9fbbde432",
+      "product_id": "SH-0016",
+      "size_ml": 75,
+      "gtins": [],
+      "mpns": [],
+      "aliases": [],
+      "store_mappings": []
+    },
+    {
+      "variant_id": "VAR-48d2f64270a6daa5",
+      "product_id": "SH-0016",
+      "size_ml": 125,
+      "gtins": [],
+      "mpns": [],
+      "aliases": [],
+      "store_mappings": []
+    },
+    {
+      "variant_id": "VAR-3f2995f9f7fd0f37",
+      "product_id": "SH-0016",
+      "size_ml": 200,
+      "gtins": [],
+      "mpns": [],
+      "aliases": [],
+      "store_mappings": []
+    },
+    {
+      "variant_id": "VAR-15b67cc6cf7486af",
+      "product_id": "SH-0015",
+      "size_ml": 75,
+      "gtins": [],
+      "mpns": [],
+      "aliases": [
+        "Jean Paul Gaultier Le Male Le Parfum",
+        "Le Male Le Parfum Eau de Parfum",
+        "Le Male Le Parfum Eau de Parfum Intense"
+      ],
+      "store_mappings": []
+    },
+    {
+      "variant_id": "VAR-08582f10d55bc391",
+      "product_id": "SH-0015",
+      "size_ml": 125,
+      "gtins": [],
+      "mpns": [],
+      "aliases": [
+        "Jean Paul Gaultier Le Male Le Parfum",
+        "Le Male Le Parfum Eau de Parfum",
+        "Le Male Le Parfum Eau de Parfum Intense"
+      ],
+      "store_mappings": []
+    },
+    {
+      "variant_id": "VAR-d33d5f02d14a46dd",
+      "product_id": "SH-0015",
+      "size_ml": 200,
+      "gtins": [],
+      "mpns": [],
+      "aliases": [
+        "Jean Paul Gaultier Le Male Le Parfum",
+        "Le Male Le Parfum Eau de Parfum",
+        "Le Male Le Parfum Eau de Parfum Intense"
+      ],
+      "store_mappings": []
+    },
+    {
+      "variant_id": "VAR-8d5622390142ed50",
+      "product_id": "SH-0054",
+      "size_ml": 100,
+      "gtins": [],
+      "mpns": [],
+      "aliases": [
+        "Khadlaj Island",
+        "Island By Khadlaj",
+        "Island Extrait de Parfum",
+        "Island 100 ML",
+        "Khadlaj Island Parfum"
+      ],
+      "store_mappings": []
+    },
+    {
+      "variant_id": "VAR-a4a49c8d0900cc4a",
+      "product_id": "SH-0055",
+      "size_ml": 100,
+      "gtins": [],
+      "mpns": [],
+      "aliases": [
+        "Khadlaj Island Dreams",
+        "Island Dreams By Khadlaj",
+        "Island Dreams Extrait de Parfum",
+        "Island Dreams 100 ML"
+      ],
+      "store_mappings": []
+    },
+    {
+      "variant_id": "VAR-ee993455df2e3903",
+      "product_id": "SH-0056",
+      "size_ml": 100,
+      "gtins": [],
+      "mpns": [],
+      "aliases": [
+        "Khadlaj Island Vanilla Dunes",
+        "Island Vanilla Dunes By Khadlaj",
+        "Island Vanilla Dunes Extrait de Parfum",
+        "Island Vanilla Dunes 100 ML"
+      ],
+      "store_mappings": []
+    },
+    {
+      "variant_id": "VAR-d1997e92e48dca27",
+      "product_id": "SH-0053",
+      "size_ml": 25,
+      "gtins": [],
+      "mpns": [],
+      "aliases": [
+        "Lancôme Idôle",
+        "Lancome Idole",
+        "Lancôme Idôle Eau de Parfum",
+        "Idole Eau de Parfum"
+      ],
+      "store_mappings": []
+    },
+    {
+      "variant_id": "VAR-81ebdc4e4a1286db",
+      "product_id": "SH-0053",
+      "size_ml": 50,
+      "gtins": [],
+      "mpns": [],
+      "aliases": [
+        "Lancôme Idôle",
+        "Lancome Idole",
+        "Lancôme Idôle Eau de Parfum",
+        "Idole Eau de Parfum"
+      ],
+      "store_mappings": []
+    },
+    {
+      "variant_id": "VAR-e02993af10b0ec4b",
+      "product_id": "SH-0053",
+      "size_ml": 100,
+      "gtins": [],
+      "mpns": [],
+      "aliases": [
+        "Lancôme Idôle",
+        "Lancome Idole",
+        "Lancôme Idôle Eau de Parfum",
+        "Idole Eau de Parfum"
+      ],
+      "store_mappings": []
+    },
+    {
+      "variant_id": "VAR-081650cdd70de003",
+      "product_id": "SH-0052",
+      "size_ml": 30,
+      "gtins": [],
+      "mpns": [],
+      "aliases": [
+        "Lancôme La Vie Est Belle",
+        "Lancome La Vie Est Belle",
+        "La Vie Est Belle Eau de Parfum",
+        "La Vie Est Belle EDP"
+      ],
+      "store_mappings": []
+    },
+    {
+      "variant_id": "VAR-ab508a745342effa",
+      "product_id": "SH-0052",
+      "size_ml": 50,
+      "gtins": [],
+      "mpns": [],
+      "aliases": [
+        "Lancôme La Vie Est Belle",
+        "Lancome La Vie Est Belle",
+        "La Vie Est Belle Eau de Parfum",
+        "La Vie Est Belle EDP"
+      ],
+      "store_mappings": []
+    },
+    {
+      "variant_id": "VAR-01fdeda040be32c6",
+      "product_id": "SH-0052",
+      "size_ml": 75,
+      "gtins": [],
+      "mpns": [],
+      "aliases": [
+        "Lancôme La Vie Est Belle",
+        "Lancome La Vie Est Belle",
+        "La Vie Est Belle Eau de Parfum",
+        "La Vie Est Belle EDP"
+      ],
+      "store_mappings": []
+    },
+    {
+      "variant_id": "VAR-cfc47f0f76506a7d",
+      "product_id": "SH-0052",
+      "size_ml": 100,
+      "gtins": [],
+      "mpns": [],
+      "aliases": [
+        "Lancôme La Vie Est Belle",
+        "Lancome La Vie Est Belle",
+        "La Vie Est Belle Eau de Parfum",
+        "La Vie Est Belle EDP"
+      ],
+      "store_mappings": []
+    },
+    {
+      "variant_id": "VAR-d4efd330e1b89dac",
+      "product_id": "SH-0052",
+      "size_ml": 150,
+      "gtins": [],
+      "mpns": [],
+      "aliases": [
+        "Lancôme La Vie Est Belle",
+        "Lancome La Vie Est Belle",
+        "La Vie Est Belle Eau de Parfum",
+        "La Vie Est Belle EDP"
+      ],
+      "store_mappings": []
+    },
+    {
+      "variant_id": "VAR-754901b59012c11f",
+      "product_id": "SH-0065",
+      "size_ml": 100,
+      "gtins": [],
+      "mpns": [],
+      "aliases": [
+        "Lattafa Art of Universe",
+        "Lattafa Pride Art of Universe",
+        "Art of Universe EDP",
+        "Art of Universe 100 ML"
+      ],
+      "store_mappings": []
+    },
+    {
+      "variant_id": "VAR-5f46914986376f32",
+      "product_id": "SH-0028",
+      "size_ml": 100,
+      "gtins": [],
+      "mpns": [],
+      "aliases": [
+        "Lattafa - Asad Bourbon",
+        "Lattafa Asad Bourbon"
+      ],
+      "store_mappings": []
+    },
+    {
+      "variant_id": "VAR-beca64cadfe1e6a3",
+      "product_id": "SH-0029",
+      "size_ml": 100,
+      "gtins": [],
+      "mpns": [],
+      "aliases": [
+        "Lattafa Nebras",
+        "Nebras Lattafa",
+        "Lattafa - Nebras"
+      ],
+      "store_mappings": []
+    },
+    {
+      "variant_id": "VAR-e003beff66377f77",
+      "product_id": "SH-0036",
+      "size_ml": 100,
+      "gtins": [],
+      "mpns": [],
+      "aliases": [
+        "Jean Lowe Immortel",
+        "Jean Lowe Immortal",
+        "Maison Alhambra Jean Lowe Immortal",
+        "Jean Lowe Immortal Eau de Parfum"
+      ],
+      "store_mappings": []
+    },
+    {
+      "variant_id": "VAR-1005ea539edfc310",
+      "product_id": "SH-0058",
+      "size_ml": 30,
+      "gtins": [],
+      "mpns": [],
+      "aliases": [
+        "Miu Miu L'Eau Rosée",
+        "Miu Miu Eau Rosée",
+        "Miu Miu L Eau Rosee",
+        "L'Eau Rosee Miu Miu"
+      ],
+      "store_mappings": []
+    },
+    {
+      "variant_id": "VAR-7e494c95b388a509",
+      "product_id": "SH-0058",
+      "size_ml": 50,
+      "gtins": [],
+      "mpns": [],
+      "aliases": [
+        "Miu Miu L'Eau Rosée",
+        "Miu Miu Eau Rosée",
+        "Miu Miu L Eau Rosee",
+        "L'Eau Rosee Miu Miu"
+      ],
+      "store_mappings": []
+    },
+    {
+      "variant_id": "VAR-6bc6592fd10c15ae",
+      "product_id": "SH-0058",
+      "size_ml": 100,
+      "gtins": [],
+      "mpns": [],
+      "aliases": [
+        "Miu Miu L'Eau Rosée",
+        "Miu Miu Eau Rosée",
+        "Miu Miu L Eau Rosee",
+        "L'Eau Rosee Miu Miu"
+      ],
+      "store_mappings": []
+    },
+    {
+      "variant_id": "VAR-2f81b91dc4c9811d",
+      "product_id": "SH-0057",
+      "size_ml": 30,
+      "gtins": [],
+      "mpns": [],
+      "aliases": [
+        "Miu Miu Miutine",
+        "Miutine Miu Miu",
+        "Miutine Eau de Parfum"
+      ],
+      "store_mappings": []
+    },
+    {
+      "variant_id": "VAR-05014574d3f00d18",
+      "product_id": "SH-0057",
+      "size_ml": 50,
+      "gtins": [],
+      "mpns": [],
+      "aliases": [
+        "Miu Miu Miutine",
+        "Miutine Miu Miu",
+        "Miutine Eau de Parfum"
+      ],
+      "store_mappings": []
+    },
+    {
+      "variant_id": "VAR-a6775a3415c506f4",
+      "product_id": "SH-0057",
+      "size_ml": 100,
+      "gtins": [],
+      "mpns": [],
+      "aliases": [
+        "Miu Miu Miutine",
+        "Miutine Miu Miu",
+        "Miutine Eau de Parfum"
+      ],
+      "store_mappings": []
+    },
+    {
+      "variant_id": "VAR-90ec770338585b5c",
+      "product_id": "SH-0048",
+      "size_ml": 50,
+      "gtins": [],
+      "mpns": [],
+      "aliases": [
+        "Prada Luna Rossa Carbon",
+        "Luna Rossa Carbon EDT",
+        "Prada Luna Rossa Carbon EDT"
+      ],
+      "store_mappings": []
+    },
+    {
+      "variant_id": "VAR-dcf83834d071881e",
+      "product_id": "SH-0048",
+      "size_ml": 100,
+      "gtins": [],
+      "mpns": [],
+      "aliases": [
+        "Prada Luna Rossa Carbon",
+        "Luna Rossa Carbon EDT",
+        "Prada Luna Rossa Carbon EDT"
+      ],
+      "store_mappings": []
+    },
+    {
+      "variant_id": "VAR-02ece2f63661e72b",
+      "product_id": "SH-0049",
+      "size_ml": 50,
+      "gtins": [],
+      "mpns": [],
+      "aliases": [
+        "Prada Luna Rossa Ocean",
+        "Luna Rossa Ocean EDT",
+        "Prada Luna Rossa Ocean EDT"
+      ],
+      "store_mappings": []
+    },
+    {
+      "variant_id": "VAR-96c0fcbe81a164cb",
+      "product_id": "SH-0049",
+      "size_ml": 100,
+      "gtins": [],
+      "mpns": [],
+      "aliases": [
+        "Prada Luna Rossa Ocean",
+        "Luna Rossa Ocean EDT",
+        "Prada Luna Rossa Ocean EDT"
+      ],
+      "store_mappings": []
+    },
+    {
+      "variant_id": "VAR-d4313db8daae999d",
+      "product_id": "SH-0005",
+      "size_ml": 100,
+      "gtins": [],
+      "mpns": [],
+      "aliases": [
+        "Hawas Black",
+        "Hawas Black 100 ML",
+        "Hawas Black EDP",
+        "Rasasi Hawas Black"
+      ],
+      "store_mappings": []
+    },
+    {
+      "variant_id": "VAR-767495d4fa3107d5",
+      "product_id": "SH-0004",
+      "size_ml": 100,
+      "gtins": [],
+      "mpns": [],
+      "aliases": [
+        "Hawas Fire",
+        "Hawas Fire 100 ML",
+        "Hawas Fire Eau de Parfum",
+        "Rasasi Hawas Fire"
+      ],
+      "store_mappings": []
+    },
+    {
+      "variant_id": "VAR-88298414c7b02d98",
+      "product_id": "SH-0001",
+      "size_ml": 100,
+      "gtins": [],
+      "mpns": [],
+      "aliases": [
+        "Hawas Men",
+        "Hawas for Him",
+        "Hawas for Him 100 ML",
+        "Rasasi Hawas for Him"
+      ],
+      "store_mappings": []
+    },
+    {
+      "variant_id": "VAR-66abc1eb1054f27d",
+      "product_id": "SH-0002",
+      "size_ml": 100,
+      "gtins": [],
+      "mpns": [],
+      "aliases": [
+        "Hawas Ice",
+        "Hawas Ice 100 ML",
+        "Hawas Ice EDP",
+        "Rasasi Hawas Ice"
+      ],
+      "store_mappings": []
+    },
+    {
+      "variant_id": "VAR-6fa5ac5ea0fcc6b4",
+      "product_id": "SH-0003",
+      "size_ml": 100,
+      "gtins": [],
+      "mpns": [],
+      "aliases": [
+        "Hawas Kobra",
+        "Hawas Kobra 100 ML",
+        "Hawas Kobra Eau de Parfum",
+        "Rasasi Hawas Kobra"
+      ],
+      "store_mappings": []
+    },
+    {
+      "variant_id": "VAR-e2cc3951b1445b9f",
+      "product_id": "SH-0066",
+      "size_ml": 100,
+      "gtins": [],
+      "mpns": [],
+      "aliases": [
+        "Rayhaan Aquatica",
+        "Rayhaan Aquatica EDP",
+        "Aquatica Rayhaan",
+        "Rayhaan Aquatica 100 ML"
+      ],
+      "store_mappings": []
+    },
+    {
+      "variant_id": "VAR-14d4e6e85f518fcc",
+      "product_id": "SH-0064",
+      "size_ml": 100,
+      "gtins": [],
+      "mpns": [],
+      "aliases": [
+        "Rayhaan Valhalla",
+        "Rayhaan Valhalla EDP",
+        "Valhalla Rayhaan",
+        "Rayhaan Valhalla 100 ML"
+      ],
+      "store_mappings": []
+    },
+    {
+      "variant_id": "VAR-8a151a1d1f2ea1e1",
+      "product_id": "SH-0063",
+      "size_ml": 100,
+      "gtins": [],
+      "mpns": [],
+      "aliases": [
+        "Rayhaan Wolf",
+        "Rayhaan Wolf EDP",
+        "Wolf Rayhaan",
+        "Rayhaan Wolf 100 ML"
+      ],
+      "store_mappings": []
+    },
+    {
+      "variant_id": "VAR-c6fba85697e14a9e",
+      "product_id": "SH-0062",
+      "size_ml": 100,
+      "gtins": [],
+      "mpns": [],
+      "aliases": [
+        "Royal Blend Sequoia",
+        "French Avenue Royal Blend Sequoia",
+        "Royal Blend Sequoia Extrait de Parfum"
+      ],
+      "store_mappings": []
+    },
+    {
+      "variant_id": "VAR-a1fed5e9c166e1b3",
+      "product_id": "SH-0034",
+      "size_ml": 90,
+      "gtins": [],
+      "mpns": [],
+      "aliases": [
+        "Rue Broca Theoreme Homme",
+        "Theoreme Homme Eau de Parfum",
+        "Theoreme Homme 90 ml"
+      ],
+      "store_mappings": []
+    },
+    {
+      "variant_id": "VAR-2cfbf0809834a63b",
+      "product_id": "SH-0006",
+      "size_ml": 50,
+      "gtins": [],
+      "mpns": [],
+      "aliases": [
+        "Born In Roma For Him",
+        "Born In Roma Uomo 100 ML",
+        "Born In Roma Uomo Eau de Toilette",
+        "Born in Roma Uomo",
+        "Valentino Born in Roma Uomo"
+      ],
+      "store_mappings": []
+    },
+    {
+      "variant_id": "VAR-7fb1fbbdbcfcdad9",
+      "product_id": "SH-0006",
+      "size_ml": 100,
+      "gtins": [],
+      "mpns": [],
+      "aliases": [
+        "Born In Roma For Him",
+        "Born In Roma Uomo 100 ML",
+        "Born In Roma Uomo Eau de Toilette",
+        "Born in Roma Uomo",
+        "Valentino Born in Roma Uomo"
+      ],
+      "store_mappings": []
+    },
+    {
+      "variant_id": "VAR-029fedf0b87fdf4a",
+      "product_id": "SH-0006",
+      "size_ml": 150,
+      "gtins": [],
+      "mpns": [],
+      "aliases": [
+        "Born In Roma For Him",
+        "Born In Roma Uomo 100 ML",
+        "Born In Roma Uomo Eau de Toilette",
+        "Born in Roma Uomo",
+        "Valentino Born in Roma Uomo"
+      ],
+      "store_mappings": []
+    },
+    {
+      "variant_id": "VAR-aa9e4cd38b46b53b",
+      "product_id": "SH-0008",
+      "size_ml": 50,
+      "gtins": [],
+      "mpns": [],
+      "aliases": [
+        "Born In Roma Extradose",
+        "Born In Roma Uomo Extradose 100 ML",
+        "Born in Roma Uomo Extradose",
+        "Valentino - Born in Roma Uomo Extradose",
+        "Valentino Born in Roma Uomo Extradose"
+      ],
+      "store_mappings": []
+    },
+    {
+      "variant_id": "VAR-0a9ae8aa06eb849b",
+      "product_id": "SH-0008",
+      "size_ml": 100,
+      "gtins": [],
+      "mpns": [],
+      "aliases": [
+        "Born In Roma Extradose",
+        "Born In Roma Uomo Extradose 100 ML",
+        "Born in Roma Uomo Extradose",
+        "Valentino - Born in Roma Uomo Extradose",
+        "Valentino Born in Roma Uomo Extradose"
+      ],
+      "store_mappings": []
+    },
+    {
+      "variant_id": "VAR-19457046a055c60e",
+      "product_id": "SH-0007",
+      "size_ml": 50,
+      "gtins": [],
+      "mpns": [],
+      "aliases": [
+        "Born In Roma Uomo Intense 100 ML",
+        "Born in Roma Uomo Eau de Parfum Intense",
+        "Born in Roma Uomo Intense",
+        "Valentino - Born in Roma Uomo Intense",
+        "Valentino Born in Roma Uomo Intense"
+      ],
+      "store_mappings": []
+    },
+    {
+      "variant_id": "VAR-5fb2eb5a8f42882d",
+      "product_id": "SH-0007",
+      "size_ml": 100,
+      "gtins": [],
+      "mpns": [],
+      "aliases": [
+        "Born In Roma Uomo Intense 100 ML",
+        "Born in Roma Uomo Eau de Parfum Intense",
+        "Born in Roma Uomo Intense",
+        "Valentino - Born in Roma Uomo Intense",
+        "Valentino Born in Roma Uomo Intense"
+      ],
+      "store_mappings": []
+    },
+    {
+      "variant_id": "VAR-dd8951b2fb094a28",
+      "product_id": "SH-0009",
+      "size_ml": 50,
+      "gtins": [],
+      "mpns": [],
+      "aliases": [
+        "Born In Roma Yellow Dream For Him",
+        "Born in Roma Uomo Yellow Dream",
+        "Born in Roma Uomo Yellow Dream 50 ML",
+        "Valentino Born in Roma Uomo Yellow Dream"
+      ],
+      "store_mappings": []
+    },
+    {
+      "variant_id": "VAR-7ada3d9f7762f005",
+      "product_id": "SH-0010",
+      "size_ml": 50,
+      "gtins": [],
+      "mpns": [],
+      "aliases": [
+        "Born In Roma Coral Fantasy For Him",
+        "Born in Roma Uomo Coral Fantasy",
+        "Born in Roma Uomo Coral Fantasy 100 ML",
+        "Valentino - Uomo Born in Roma Coral Fantasy",
+        "Valentino Born in Roma Uomo Coral Fantasy",
+        "Valentino Uomo Born in Roma Coral Fantasy"
+      ],
+      "store_mappings": []
+    },
+    {
+      "variant_id": "VAR-307258bd369c0e3f",
+      "product_id": "SH-0010",
+      "size_ml": 100,
+      "gtins": [],
+      "mpns": [],
+      "aliases": [
+        "Born In Roma Coral Fantasy For Him",
+        "Born in Roma Uomo Coral Fantasy",
+        "Born in Roma Uomo Coral Fantasy 100 ML",
+        "Valentino - Uomo Born in Roma Coral Fantasy",
+        "Valentino Born in Roma Uomo Coral Fantasy",
+        "Valentino Uomo Born in Roma Coral Fantasy"
+      ],
+      "store_mappings": []
+    },
+    {
+      "variant_id": "VAR-a45dc0d587fbde3f",
+      "product_id": "SH-0047",
+      "size_ml": 50,
+      "gtins": [],
+      "mpns": [],
+      "aliases": [
+        "Versace Dylan Blue",
+        "Dylan Blue Pour Homme",
+        "Dylan Blue Pour Homme EDT"
+      ],
+      "store_mappings": []
+    },
+    {
+      "variant_id": "VAR-cb5908f8e4749243",
+      "product_id": "SH-0047",
+      "size_ml": 100,
+      "gtins": [],
+      "mpns": [],
+      "aliases": [
+        "Versace Dylan Blue",
+        "Dylan Blue Pour Homme",
+        "Dylan Blue Pour Homme EDT"
+      ],
+      "store_mappings": []
+    },
+    {
+      "variant_id": "VAR-86c956bdcd3751e7",
+      "product_id": "SH-0047",
+      "size_ml": 200,
+      "gtins": [],
+      "mpns": [],
+      "aliases": [
+        "Versace Dylan Blue",
+        "Dylan Blue Pour Homme",
+        "Dylan Blue Pour Homme EDT"
+      ],
+      "store_mappings": []
+    },
+    {
+      "variant_id": "VAR-5a3bea54255454d0",
+      "product_id": "SH-0045",
+      "size_ml": 50,
+      "gtins": [],
+      "mpns": [],
+      "aliases": [
+        "Versace Eros",
+        "Eros Pour Homme",
+        "Eros Eau de Toilette",
+        "Eros EDT"
+      ],
+      "store_mappings": []
+    },
+    {
+      "variant_id": "VAR-be52781dda7caca6",
+      "product_id": "SH-0045",
+      "size_ml": 100,
+      "gtins": [],
+      "mpns": [],
+      "aliases": [
+        "Versace Eros",
+        "Eros Pour Homme",
+        "Eros Eau de Toilette",
+        "Eros EDT"
+      ],
+      "store_mappings": []
+    },
+    {
+      "variant_id": "VAR-d3de2210b99053d8",
+      "product_id": "SH-0045",
+      "size_ml": 200,
+      "gtins": [],
+      "mpns": [],
+      "aliases": [
+        "Versace Eros",
+        "Eros Pour Homme",
+        "Eros Eau de Toilette",
+        "Eros EDT"
+      ],
+      "store_mappings": []
+    },
+    {
+      "variant_id": "VAR-3deb6556fb518c65",
+      "product_id": "SH-0071",
+      "size_ml": 30,
+      "gtins": [],
+      "mpns": [],
+      "aliases": [
+        "Versace Eros pour Femme Eau De Toilette",
+        "Eros pour Femme Eau De Toilette",
+        "Eros pour Femme EDT",
+        "Versace Eros Pour Femme EDT"
+      ],
+      "store_mappings": []
+    },
+    {
+      "variant_id": "VAR-38990c787398b761",
+      "product_id": "SH-0071",
+      "size_ml": 50,
+      "gtins": [],
+      "mpns": [],
+      "aliases": [
+        "Versace Eros pour Femme Eau De Toilette",
+        "Eros pour Femme Eau De Toilette",
+        "Eros pour Femme EDT",
+        "Versace Eros Pour Femme EDT"
+      ],
+      "store_mappings": []
+    },
+    {
+      "variant_id": "VAR-28d9a30a9a66f624",
+      "product_id": "SH-0071",
+      "size_ml": 100,
+      "gtins": [],
+      "mpns": [],
+      "aliases": [
+        "Versace Eros pour Femme Eau De Toilette",
+        "Eros pour Femme Eau De Toilette",
+        "Eros pour Femme EDT",
+        "Versace Eros Pour Femme EDT"
+      ],
+      "store_mappings": []
+    },
+    {
+      "variant_id": "VAR-62828fce23f1cd8f",
+      "product_id": "SH-0072",
+      "size_ml": 100,
+      "gtins": [],
+      "mpns": [],
+      "aliases": [
+        "Versace Eros pour Femme Eau De Parfum",
+        "Eros pour Femme Eau De Parfum",
+        "Eros pour Femme EDP",
+        "Versace Eros Pour Femme EDP"
+      ],
+      "store_mappings": []
+    },
+    {
+      "variant_id": "VAR-9877a63d8b9e7240",
+      "product_id": "SH-0046",
+      "size_ml": 50,
+      "gtins": [],
+      "mpns": [],
+      "aliases": [
+        "Versace Eros Flame",
+        "Eros Flame EDP",
+        "Eros Flame Eau de Parfum"
+      ],
+      "store_mappings": []
+    },
+    {
+      "variant_id": "VAR-b42fa9ac68f200f9",
+      "product_id": "SH-0046",
+      "size_ml": 100,
+      "gtins": [],
+      "mpns": [],
+      "aliases": [
+        "Versace Eros Flame",
+        "Eros Flame EDP",
+        "Eros Flame Eau de Parfum"
+      ],
+      "store_mappings": []
+    },
+    {
+      "variant_id": "VAR-911bcb657933e9cd",
+      "product_id": "SH-0046",
+      "size_ml": 200,
+      "gtins": [],
+      "mpns": [],
+      "aliases": [
+        "Versace Eros Flame",
+        "Eros Flame EDP",
+        "Eros Flame Eau de Parfum"
+      ],
+      "store_mappings": []
+    },
+    {
+      "variant_id": "VAR-3beeaa576ad65247",
+      "product_id": "SH-0042",
+      "size_ml": 40,
+      "gtins": [],
+      "mpns": [],
+      "aliases": [
+        "Y Eau de Parfum",
+        "Y EDP",
+        "Yves Saint Laurent Y Eau de Parfum",
+        "Y EDP 100 ML"
+      ],
+      "store_mappings": []
+    },
+    {
+      "variant_id": "VAR-2c102352839a83a0",
+      "product_id": "SH-0042",
+      "size_ml": 60,
+      "gtins": [],
+      "mpns": [],
+      "aliases": [
+        "Y Eau de Parfum",
+        "Y EDP",
+        "Yves Saint Laurent Y Eau de Parfum",
+        "Y EDP 100 ML"
+      ],
+      "store_mappings": []
+    },
+    {
+      "variant_id": "VAR-177809dcdccb8068",
+      "product_id": "SH-0042",
+      "size_ml": 100,
+      "gtins": [],
+      "mpns": [],
+      "aliases": [
+        "Y Eau de Parfum",
+        "Y EDP",
+        "Yves Saint Laurent Y Eau de Parfum",
+        "Y EDP 100 ML"
+      ],
+      "store_mappings": []
+    },
+    {
+      "variant_id": "VAR-90325dd3c54cc809",
+      "product_id": "SH-0042",
+      "size_ml": 200,
+      "gtins": [],
+      "mpns": [],
+      "aliases": [
+        "Y Eau de Parfum",
+        "Y EDP",
+        "Yves Saint Laurent Y Eau de Parfum",
+        "Y EDP 100 ML"
+      ],
+      "store_mappings": []
+    },
+    {
+      "variant_id": "VAR-18f42af31f916e99",
+      "product_id": "AUTO-99930ac1f284e75e",
+      "size_ml": 100,
+      "gtins": [],
+      "mpns": [],
+      "aliases": [
+        "Jean Paul Gaultier Le Beau",
+        "Le Beau"
+      ],
+      "store_mappings": []
+    },
+    {
+      "variant_id": "VAR-9fca49cecab68ac9",
+      "product_id": "AUTO-80d529d2fb4486be",
+      "size_ml": 75,
+      "gtins": [],
+      "mpns": [],
+      "aliases": [
+        "Jean Paul Gaultier Le Beau Le Parfum",
+        "Le Beau Le Parfum"
+      ],
+      "store_mappings": []
+    },
+    {
+      "variant_id": "VAR-da68c06df43ad7ad",
+      "product_id": "AUTO-80d529d2fb4486be",
+      "size_ml": 125,
+      "gtins": [],
+      "mpns": [],
+      "aliases": [
+        "Jean Paul Gaultier Le Beau Le Parfum",
+        "Le Beau Le Parfum"
+      ],
+      "store_mappings": []
+    },
+    {
+      "variant_id": "VAR-ec01f613e504635e",
+      "product_id": "AUTO-ed99b73ace7869ac",
+      "size_ml": 100,
+      "gtins": [],
+      "mpns": [],
+      "aliases": [
+        "Jean Paul Gaultier Le Beau Paradise Garden",
+        "Le Beau Paradise Garden"
+      ],
+      "store_mappings": []
+    },
+    {
+      "variant_id": "VAR-88268d5d7d40c4e4",
+      "product_id": "AUTO-51a78cb5157774e5",
+      "size_ml": 75,
+      "gtins": [],
+      "mpns": [],
+      "aliases": [
+        "Jean Paul Gaultier Le Beau Narcisse",
+        "Le Beau Narcisse"
+      ],
+      "store_mappings": []
+    },
+    {
+      "variant_id": "VAR-3ce89efec89194bd",
+      "product_id": "AUTO-51a78cb5157774e5",
+      "size_ml": 125,
+      "gtins": [],
+      "mpns": [],
+      "aliases": [
+        "Jean Paul Gaultier Le Beau Narcisse",
+        "Le Beau Narcisse"
+      ],
+      "store_mappings": []
+    },
+    {
+      "variant_id": "VAR-c24baa3cbe33f786",
+      "product_id": "AUTO-cbbce985c43e6ee2",
+      "size_ml": 100,
+      "gtins": [],
+      "mpns": [],
+      "aliases": [
+        "Jean Paul Gaultier Le Beau Flower Edition",
+        "Le Beau Flower Edition"
+      ],
+      "store_mappings": []
+    }
+  ],
+  "offers": [],
+  "metadata": {
+    "source": "backend/product_catalog.json",
+    "migration_mode": "lossless_structural_migration",
+    "family_inference": "only explicit family declarations from source notes; no perfume-specific rules added",
+    "gtin_mpn_policy": "empty unless present in source catalog"
   }
-]
+}
