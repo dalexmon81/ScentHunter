@@ -17,7 +17,7 @@ from urllib.parse import urlencode
 from urllib.request import Request, urlopen
 from urllib.error import HTTPError, URLError
 
-from product_matcher import ProductMatcher, CatalogProduct, extract_size_ml, stable_auto_id
+from product_matcher import ProductMatcher, CatalogProduct, stable_auto_id
 
 
 app = FastAPI(title="ScentHunter API", version="1.0.0")
