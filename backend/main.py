@@ -764,7 +764,7 @@ def _canonicalize_results(results: List[Dict[str, Any]], query: str) -> List[Dic
 
     catalog = _build_match_catalog(query, results)
     matcher = ProductMatcher(catalog)
-    matched = [matcher.match(item) for item in results if isinstance(item, dict)]
+    matched = [matched_item for matched_item in (matcher.match(item) for item in results if isinstance(item, dict)) if matched_item is not None]
 
     registry = _load_product_registry()
     registry_map = {
