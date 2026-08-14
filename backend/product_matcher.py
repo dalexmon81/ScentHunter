@@ -7,50 +7,56 @@ from typing import Any, Dict, Iterable, List, Optional, Sequence, Tuple
 def normalize(value: Any) -> str:
     value=str(value or "").strip().lower()
     value=unicodedata.normalize("NFKD", value)
-    value=re.sub(r"[^\w\s]", " ", value)
-    return re.sub(r"\s+", " ", value).strip()
+    value="".join(ch for ch in value if not unicodedata.combining(ch))
+    value=re.sub(r"(?<=\d)(?=[a-z])|(?<=[a-z])(?=\d)", " ", value)
+    value=re.sub(r"[^a-z0-9]+", " ", value)
+    return re.sub(r"\s+"," ",value).strip()
 
-def stable_auto_id(brand: str, name: str, size_ml: Optional[int] = None, concentration: Optional[str] = None) -> str:
-    """
-    Generate a stable, deterministic product ID from brand, name, size, and concentration.
-    Used for catalog deduplication and matching.
-    """
-    brand_norm = normalize(brand)
-    name_norm = normalize(name)
-    size_str = f"{size_ml:04d}" if size_ml else "0000"
-    conc_norm = normalize(concentration or "")
-    key = f"{brand_norm}|{name_norm}|{size_str}|{conc_norm}"
-    hash_hex = hashlib.sha256(key.encode('utf-8')).hexdigest()[:12].upper()
-    return f"AUTO-{hash_hex}"
+def stable_auto_id(brand: Any, name: Any) -> str:
+    key=f"{normalize(brand)}::{normalize(name)}"
+    return "SH-AUTO-" + hashlib.sha1(key.encode("utf-8")).hexdigest()[:12]
 
-def extract_size_ml(text: str) -> Optional[int]:
-    """Extract size in ml from product text."""
-    if not text:
-        return None
-    text = normalize(text)
-    match = re.search(r"(\d+(?:\.\d+)?)\s*(ml|millilitri|litri|l|oz|fl\.?\s*oz)", text, re.I)
-    if not match:
-        return None
-    value = float(match.group(1))
-    unit = match.group(2).lower()
-    if unit in ("l", "litri"):
-        return int(value * 1000)
-    elif unit in ("oz", "fl. oz", "fl oz"):
-        return int(value * 29.5735)
-    else:
-        return int(value)
+def first_value(item: Dict[str, Any], keys: Sequence[str]) -> str:
+    for key in keys:
+        value=item.get(key)
+        if value is not None and str(value).strip(): return str(value).strip()
+    return ""
+
+def identifier(item: Dict[str, Any], keys: Sequence[str]) -> str:
+    value=first_value(item, keys)
+    return normalize(value).replace(" ", "") if value else ""
+
+def size_ml(item: Dict[str, Any]) -> Optional[float]:
+    explicit=item.get("size_ml")
+    if explicit not in (None, ""):
+        try: return float(str(explicit).replace(",", "."))
+        except (TypeError, ValueError): pass
+    text=" ".join(str(item.get(k) or "") for k in ("name","title","product_name","size","format"))
+    m=re.search(r"\b(\d{1,4}(?:[.,]\d+)?)\s*(ml|cl)\b", text, re.I)
+    if not m: return None
+    value=float(m.group(1).replace(",", "."))
+    return value*10 if m.group(2).lower()=="cl" else value
 
 @dataclass(frozen=True)
 class CatalogProduct:
     catalog_id: str
     brand: str
     name: str
-    size_ml: Optional[int] = None
-    concentration: Optional[str] = None
-    gtins: Tuple[str, ...] = ()
-    mpns: Tuple[str, ...] = ()
-    aliases: Tuple[str, ...] = ()
-    
+    aliases: Tuple[str,...]=()
+    formats_ml: Tuple[float,...]=()
+    gtins: Tuple[str,...]=()
+    mpns: Tuple[str,...]=()
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any]):
+        return cls(
+            str(data.get("id") or data.get("catalog_id") or "").strip(),
+            str(data.get("brand") or "").strip(),
+            str(data.get("name") or "").strip(),
+            tuple(str(x).strip() for x in (data.get("aliases") or []) if str(x).strip()),
+            tuple(float(x) for x in (data.get("formats_ml") or []) if str(x).strip()),
+            tuple(identifier({"v":x},("v",)) for x in (data.get("gtins") or data.get("ean") or []) if str(x).strip()),
+            tuple(identifier({"v":x},("v",)) for x in (data.get("mpns") or data.get("mpn") or []) if str(x).strip()),
+        )
     @property
     def normalized_brand(self): return normalize(self.brand)
     @property
@@ -62,77 +68,64 @@ class ProductMatcher:
     GTIN_KEYS=("gtin","ean","ean13","ean_code","barcode","upc")
     MPN_KEYS=("mpn","manufacturer_part_number","manufacturerNumber")
     CATALOG_KEYS=("catalog_id","master_id","item_group_id","product_id")
-    
-    def __init__(self, catalog: Iterable[Dict[str, Any]]):
-        self.catalog = tuple(self._load_catalog(catalog))
-    
-    def _load_catalog(self, catalog: Iterable[Dict[str, Any]]) -> Iterable[CatalogProduct]:
-        for item in catalog:
-            if not isinstance(item, dict):
-                continue
-            catalog_id = item.get("catalog_id") or item.get("id") or item.get("master_id") or ""
-            brand = item.get("brand", "").strip()
-            name = item.get("name", "").strip()
-            if not brand or not name:
-                continue
-            size_ml = item.get("size_ml") or extract_size_ml(item.get("name", "") or item.get("full_name", ""))
-            concentration = item.get("concentration", "")
-            gtins = tuple(str(x) for x in (item.get("gtins") or item.get("ean") or []) if str(x).strip())
-            mpns = tuple(str(x) for x in (item.get("mpns") or item.get("mpn") or []) if str(x).strip())
-            aliases = tuple(item.get("aliases") or [])
-            yield CatalogProduct(
-                catalog_id=str(catalog_id),
-                brand=brand,
-                name=name,
-                size_ml=size_ml,
-                concentration=concentration,
-                gtins=gtins,
-                mpns=mpns,
-                aliases=aliases
-            )
-    
-    def match(self, offer: Dict[str, Any]) -> Optional[Dict[str, Any]]:
-        offer_brand = normalize(offer.get("brand", ""))
-        offer_name = normalize(offer.get("name", "") or offer.get("title", "") or offer.get("product_name", ""))
-        offer_size = offer.get("size_ml") or extract_size_ml(offer.get("name", "") or offer.get("title", ""))
-        if not offer_brand or not offer_name:
-            return None
-        best_match = None
-        best_score = 0
-        for product in self.catalog:
-            score = 0
-            if offer_brand != product.normalized_brand:
-                brand_match = False
-                for alias in product.normalized_aliases:
-                    if offer_brand in alias or alias in offer_brand:
-                        brand_match = True
-                        break
-                if not brand_match:
-                    continue
-            else:
-                score += 100
-            if offer_name == product.normalized_name:
-                score += 200
-            elif offer_name in product.normalized_name or product.normalized_name in offer_name:
-                score += 150
-            else:
-                alias_match = False
-                for alias in product.normalized_aliases:
-                    if offer_name == alias or offer_name in alias or alias in offer_name:
-                        alias_match = True
-                        score += 100
-                        break
-                if not alias_match:
-                    offer_tokens = set(offer_name.split())
-                    product_tokens = set(product.normalized_name.split())
-                    overlap = offer_tokens & product_tokens
-                    if len(overlap) >= 2:
-                        score += 50 + len(overlap) * 10
-            if offer_size and product.size_ml and offer_size == product.size_ml:
-                score += 50
-            if score > best_score and score >= 100:
-                best_score = score
-                best_match = product
-        if best_match:
-            return {"catalog_id": best_match.catalog_id, "brand": best_match.brand, "name": best_match.name, "size_ml": best_match.size_ml, "concentration": best_match.concentration, "matched": True}
-        return None
+    BRAND_KEYS=("brand","manufacturer","maker")
+    NAME_KEYS=("name","title","product_name")
+    def __init__(self,catalog:Iterable[Dict[str,Any]|CatalogProduct]):
+        self.catalog=[x if isinstance(x,CatalogProduct) else CatalogProduct.from_dict(x) for x in catalog]
+        self._by_gtin={}; self._by_mpn={}; self._by_catalog_id={}
+        for p in self.catalog:
+            if p.catalog_id: self._by_catalog_id[normalize(p.catalog_id)]=p
+            for x in p.gtins: self._by_gtin.setdefault(x,[]).append(p)
+            for x in p.mpns: self._by_mpn.setdefault(x,[]).append(p)
+    def match(self,offer:Dict[str,Any])->Optional[Dict[str,Any]]:
+        p,method,score=self._best_match(offer)
+        if p is None:return None
+        r=dict(offer)
+        r.update(catalog_id=p.catalog_id,canonical_brand=p.brand,canonical_name=p.name,match_method=method,match_score=round(score,4),product_identity=p.catalog_id)
+        s=size_ml(offer)
+        if s is not None:r["size_ml"]=s
+        r["variant_id"]=f"{p.catalog_id}:{s:g}" if s is not None else p.catalog_id
+        return r
+    def _best_match(self,offer):
+        g=identifier(offer,self.GTIN_KEYS)
+        if g in self._by_gtin and len(self._by_gtin[g])==1:return self._by_gtin[g][0],"gtin",1.0
+        m=identifier(offer,self.MPN_KEYS)
+        if m in self._by_mpn and len(self._by_mpn[m])==1:return self._by_mpn[m][0],"mpn",.99
+        c=identifier(offer,self.CATALOG_KEYS)
+        if c in self._by_catalog_id:return self._by_catalog_id[c],"catalog_id",.98
+        brand=normalize(first_value(offer,self.BRAND_KEYS)); name=normalize(first_value(offer,self.NAME_KEYS))
+        if not name:return None,"none",0.0
+        best=(None,0.0,"none")
+        for p in self.catalog:
+            score=self._text_score(brand,name,p)
+            if score>best[1]:best=(p,score,"exact_name" if score>=.94 else "token_score")
+        if best[0] is None or best[1]<.86:return None,"none",best[1]
+        return best[0], best[2], best[1]
+    @staticmethod
+    def _text_score(brand,name,p):
+        brand_score=1.0 if brand and brand==p.normalized_brand else 0.0
+        best=0.0
+        for candidate in (p.normalized_name,)+p.normalized_aliases:
+            if not candidate:continue
+            if name==candidate:best=max(best,1.0);continue
+            a=set(name.split()); b=set(candidate.split()); inter=len(a&b)
+            recall=inter/len(b) if b else 0; precision=inter/max(1,len(a))
+            f=(2*recall*precision/(recall+precision)) if recall+precision else 0
+            if candidate in name or name in candidate:f=max(f,.92)
+            best=max(best,f)
+        return .45+.55*best if brand_score else .95*best
+
+def offer_key(offer:Dict[str,Any])->Tuple[str,str,str,str]:
+    store=normalize(offer.get("store") or offer.get("source"))
+    identity=normalize(offer.get("product_identity") or offer.get("catalog_id"))
+    s=size_ml(offer); size="" if s is None else f"{s:g}"
+    url=str(offer.get("url") or "").split("#",1)[0].split("?",1)[0].strip().lower()
+    return store,identity,size,url
+
+def attach_matches(offers:Iterable[Dict[str,Any]],catalog:Iterable[Dict[str,Any]|CatalogProduct])->List[Dict[str,Any]]:
+    matcher=ProductMatcher(catalog); out=[]
+    for offer in offers:
+        if isinstance(offer,dict):
+            matched=matcher.match(offer)
+            if matched is not None:out.append(matched)
+    return out
