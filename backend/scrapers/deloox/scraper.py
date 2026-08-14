@@ -216,6 +216,120 @@ def _url_matches_query(product_url, query):
     return found / len(query_tokens) >= 0.55
 
 
+def _discover_category_pages(session, category_url, html, max_pages=5):
+    """Trova pagine successive della categoria senza conoscere la struttura esatta."""
+    pages = [category_url]
+    seen = {category_url.split("#")[0].split("?")[0]}
+    soup = BeautifulSoup(html, "html.parser")
+
+    for link in soup.find_all("a", href=True):
+        href = _clean(link.get("href"))
+        url = urljoin(BASE_URL, href).split("#")[0]
+        if "/category/" not in url.lower():
+            continue
+        label = _norm(link.get_text(" ", strip=True))
+        href_norm = _norm(url)
+        if (
+            "next" in label
+            or "pagina" in label
+            or "page" in href_norm
+            or "p=" in href.lower()
+            or "page=" in href.lower()
+        ):
+            if url not in seen:
+                seen.add(url)
+                pages.append(url)
+        if len(pages) >= max_pages:
+            break
+
+    return pages
+
+
+def _candidate_name_matches(link, card, query):
+    """Il nome del prodotto deve essere ricavato dal link/titolo/heading, non dal breadcrumb."""
+    query_tokens = set(_tokens(query))
+    if not query_tokens:
+        return False
+
+    values = [
+        _clean(link.get_text(" ", strip=True)),
+        _clean(link.get("title") or ""),
+        _clean(link.get("aria-label") or ""),
+    ]
+
+    for tag in ("h1", "h2", "h3", "h4"):
+        node = card.find(tag)
+        if node:
+            values.append(_clean(node.get_text(" ", strip=True)))
+
+    for value in values:
+        if not value or SIZE_FULL_RE.fullmatch(value):
+            continue
+        tokens = set(_tokens(value))
+        if query_tokens.issubset(tokens):
+            return True
+
+    return False
+
+
+def _extract_category_candidates(html, query):
+    """Scoperta più ampia: URL = candidato, nome del prodotto = criterio."""
+    soup = BeautifulSoup(html, "html.parser")
+    results = []
+    seen = set()
+
+    for link in soup.find_all("a", href=True):
+        href = _clean(link.get("href"))
+        product_url = urljoin(BASE_URL, href).split("?")[0].split("#")[0]
+        if "/product/" not in product_url.lower():
+            continue
+
+        card = _find_product_card(link)
+        card_text = _clean(card.get_text(" ", strip=True))
+
+        if any(word in card_text.lower() for word in SOLD_OUT):
+            continue
+        if not _candidate_name_matches(link, card, query):
+            continue
+
+        # Evita prodotti non-profumo ma non richiede più che l'URL contenga
+        # le parole della query: il nome reale della scheda è la prova.
+        product_name = (
+            _clean(link.get_text(" ", strip=True))
+            or _clean(link.get("title") or "")
+        )
+        if not product_name or SIZE_FULL_RE.fullmatch(product_name):
+            for tag in ("h1", "h2", "h3", "h4"):
+                node = card.find(tag)
+                if node:
+                    product_name = _clean(node.get_text(" ", strip=True))
+                    if product_name:
+                        break
+
+        if not product_name:
+            continue
+        if not _is_relevant_product(product_name, query):
+            continue
+
+        price = _extract_price(card_text)
+        if not price:
+            continue
+
+        if product_url in seen:
+            continue
+        seen.add(product_url)
+
+        results.append({
+            "store": STORE,
+            "name": product_name,
+            "price": price,
+            "url": product_url,
+            "available": True,
+            "availability": "in_stock",
+        })
+
+    return results
+
 def _extract_category(html, query):
     soup = BeautifulSoup(html, "html.parser")
     results = []
@@ -391,22 +505,6 @@ def _page_product_names(html):
     return unique
 
 
-def _redirected_product_url_matches_query(final_url, query):
-    """
-    Controllo finale dell'URL dopo eventuali redirect di Deloox.
-
-    Se la richiesta viene reindirizzata a una pagina prodotto diversa,
-    l'URL finale deve contenere tutti i token significativi della query.
-    In questo modo un candidato "Le Beau" che Deloox reindirizza a
-    "Le Male" viene scartato prima di essere mostrato.
-    """
-    url_tokens = set(_tokens(final_url))
-    query_tokens = set(_tokens(query))
-    if not url_tokens or not query_tokens:
-        return False
-    return query_tokens.issubset(url_tokens)
-
-
 def _page_matches_query(html, query):
     """
     FINAL PRODUCT-ID CHECK.
@@ -432,9 +530,9 @@ def _page_matches_query(html, query):
             if _is_relevant_product(name, query):
                 return True
 
-    # Nessun fallback morbido: se il nome reale della pagina non contiene
-    # tutti i token della query, il prodotto non viene accettato.
-    return False
+    # A small fallback is allowed for generic searches such as "Le Beau",
+    # where the product page may append concentration/size/marketing text.
+    return any(_matches_soft(name, query, minimum=0.80) for name in names)
 
 
 def _extract_product_variants(html, product_name, product_url):
@@ -571,7 +669,24 @@ def search(query):
         if response is None:
             return []
 
-        candidates = _extract_category(response.text, query)
+        # Prima scoperta: usiamo il nome reale del candidato, non il solo URL.
+        candidates = _extract_category_candidates(response.text, query)
+
+        # Se la categoria contiene paginazione, cerchiamo anche nelle pagine
+        # successive: il primo candidato sbagliato non deve chiudere la ricerca.
+        if not candidates:
+            for page_url in _discover_category_pages(
+                session, category_url, response.text, max_pages=5
+            )[1:]:
+                page_response = _get(session, page_url)
+                if page_response is None:
+                    continue
+                candidates.extend(
+                    _extract_category_candidates(page_response.text, query)
+                )
+
+        if not candidates:
+            candidates = _extract_category(response.text, query)
         if not candidates:
             candidates = _extract_brand_page(response.text, query)
         if not candidates:
@@ -584,8 +699,8 @@ def search(query):
             product_url = item["url"].split("#")[0].split("?")[0]
             if product_url in seen_urls:
                 continue
-            if not _url_matches_query(product_url, query):
-                continue
+            # O URL matching è solo un filtro ausiliario. La prova decisiva
+            # sarà il nome reale della página do produto.
             seen_urls.add(product_url)
             scored.append((_match_score(item["name"], query), item))
 
@@ -600,24 +715,14 @@ def search(query):
         seen_variants = set()
 
         for score, item in scored:
-            if score < minimum_score:
-                break
-
+            # Non fermarsi al primo punteggio: il candidato migliore può essere
+            # una pagina sbagliata. Verifichiamo tutti i candidati rilevanti.
             product_url = item["url"].split("#")[0].split("?")[0]
             product_response = _get(session, product_url)
             if product_response is None:
                 continue
 
-            # FINAL REDIRECT CHECK: Deloox può reindirizzare un URL candidato
-            # verso una scheda diversa. In quel caso non esponiamo il link.
-            final_url = str(product_response.url or "").split("?")[0].split("#")[0]
-            if final_url and final_url != product_url:
-                if not _redirected_product_url_matches_query(final_url, query):
-                    continue
-
-            # FINAL PRODUCT CHECK: la scheda reale deve identificare il
-            # prodotto cercato; non basta che il candidato provenga dalla
-            # categoria o che l'URL iniziale sembri corretto.
+            # NEW: verify the real product page before exposing any offer.
             if not _page_matches_query(product_response.text, query):
                 continue
 
