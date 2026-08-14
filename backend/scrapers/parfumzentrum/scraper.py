@@ -18,16 +18,16 @@ HEADERS = {
 }
 
 STOPWORDS = {
-    "eau", "de", "the", "for", "and", "spray", "ml", "man", "woman",
-    "men", "women", "herren", "damen",
+    "eau", "de", "the", "for", "and", "spray", "ml",
+    "man", "woman", "men", "women", "herren", "damen",
 }
 
 
 def _tokens(text):
     return [
-        x.lower()
-        for x in re.findall(r"[A-Za-zÀ-ÿ0-9]+", unquote(str(text or "")))
-        if len(x) > 1
+        token.lower()
+        for token in re.findall(r"[A-Za-zÀ-ÿ0-9]+", unquote(str(text or "")))
+        if len(token) > 1
     ]
 
 
@@ -44,9 +44,14 @@ def _concentration(text):
 
 def _matches_query(name, query):
     name_tokens = set(_tokens(name))
-    wanted = {x for x in _tokens(query) if x not in STOPWORDS}
+    wanted = {token for token in _tokens(query) if token not in STOPWORDS}
 
-    if not wanted or not wanted.issubset(name_tokens):
+    if not wanted:
+        return False
+
+    # A product page must contain every meaningful query token.
+    # This is deliberately generic: no brand/product names and no exceptions.
+    if not wanted.issubset(name_tokens):
         return False
 
     requested = _concentration(query)
@@ -62,11 +67,9 @@ def _parse_price(value):
         return None
 
     number = match.group(0)
+
     if "," in number:
-        if "." in number:
-            number = number.replace(".", "").replace(",", ".")
-        else:
-            number = number.replace(",", ".")
+        number = number.replace(".", "").replace(",", ".")
     elif number.count(".") > 1:
         number = number.replace(".", "")
 
@@ -114,22 +117,35 @@ def _get_sitemap_urls():
     return result
 
 
-def _url_matches_query(url, query):
-    url_tokens = set(_tokens(url))
-    wanted = {x for x in _tokens(query) if x not in STOPWORDS}
-
-    # Sitemap slugs are a discovery hint only. Require at least the
-    # distinctive non-generic query terms, but do not require every word:
-    # store slugs can omit brand words or reorder them.
-    distinctive = {
-        token for token in wanted
-        if token not in {"jean", "paul", "gaultier", "eau", "toilette", "parfum"}
+def _query_terms(query):
+    return {
+        token
+        for token in _tokens(query)
+        if token not in STOPWORDS
     }
 
-    if distinctive:
-        return any(token in url_tokens for token in distinctive)
 
-    return bool(wanted.intersection(url_tokens))
+def _url_matches_query(url, query):
+    wanted = _query_terms(query)
+    if not wanted:
+        return False
+
+    url_tokens = set(_tokens(url))
+
+    # Discovery is now strict instead of "any token".
+    # This prevents generic words such as "le" or "beau" from filling
+    # the candidate pool and pushing relevant variants out of the limit.
+    return wanted.issubset(url_tokens)
+
+
+def _candidate_score(url, query):
+    wanted = _query_terms(query)
+    url_tokens = set(_tokens(url))
+
+    return (
+        len(wanted.intersection(url_tokens)),
+        -len(url_tokens),
+    )
 
 
 def _product_header_text(soup):
@@ -137,9 +153,7 @@ def _product_header_text(soup):
     if not h1:
         return ""
 
-    # The important product block is between the H1 and the product
-    # description. This keeps unrelated recommendation/footer prices out.
-    container = h1.parent
+    container = h1
     best = h1
 
     for _ in range(6):
@@ -160,77 +174,125 @@ def _product_header_text(soup):
 
     text = best.get_text(" ", strip=True)
 
-    if "produktbeschreibung" in text.lower():
-        text = text[:text.lower().find("produktbeschreibung")]
+    marker = text.lower().find("produktbeschreibung")
+    if marker >= 0:
+        text = text[:marker]
 
     return text
 
 
-def _price_for_size_from_header(header_text, size_ml):
-    """
-    ParfumZentrum exposes the available size/price pairs in the product
-    header, e.g. '125 ml 67,95 € 75 ml 50,95 €', followed by the active
-    price and Grundpreis.
+def _size_from_name(name):
+    match = re.search(
+        r"(?<!\d)(\d{1,4}(?:[.,]\d+)?)\s*ml\b",
+        name,
+        re.I,
+    )
+    if not match:
+        return None
 
-    We use the size/price pair belonging to the page's own size. This is
-    generic and works for any product with multiple bottle sizes.
-    """
+    try:
+        return float(match.group(1).replace(",", "."))
+    except ValueError:
+        return None
+
+
+def _is_old_or_non_purchase_node(node):
+    if node.name in {"del", "s", "strike"}:
+        return True
+
+    marker = (
+        " ".join(node.get("class", [])).lower()
+        + " "
+        + str(node.get("id", "")).lower()
+    )
+
+    return any(word in marker for word in (
+        "old-price", "old_price", "compare-price", "compare_price",
+        "list-price", "list_price", "regular-price", "regular_price",
+        "coupon", "voucher", "gutschein", "rabattcode",
+        "discount", "promo", "grundpreis", "base-price", "base_price",
+    ))
+
+
+def _local_price_for_size(soup, size_ml):
     if size_ml is None:
         return None
 
-    number = re.escape(str(int(size_ml))) if float(size_ml).is_integer() else re.escape(str(size_ml).replace(".", ","))
-
-    pattern = re.compile(
-        rf"(?<![\d.,]){number}\s*ml\s+"
-        rf"(\d{{1,5}}(?:[.,]\d{{2}}))\s*€",
+    size_text = str(int(size_ml)) if float(size_ml).is_integer() else str(size_ml)
+    size_re = re.compile(
+        rf"(?<![\d.,]){re.escape(size_text)}\s*ml\b",
         re.I,
     )
+    price_re = re.compile(r"(?<![\d.,])(\d{1,5}(?:[.,]\d{2}))\s*€")
 
-    match = pattern.search(header_text)
-    if match:
-        return _parse_price(match.group(1))
+    # Look at the smallest useful DOM block containing the requested size.
+    # Prices inside del/s/old-price blocks are explicitly excluded.
+    for text_node in soup.find_all(string=size_re):
+        node = text_node.parent
 
-    # Alternate order used by some themes: price then size.
-    reverse = re.compile(
-        rf"(\d{{1,5}}(?:[.,]\d{{2}}))\s*€\s*"
-        rf"{number}\s*ml",
-        re.I,
-    )
-    match = reverse.search(header_text)
-    if match:
-        return _parse_price(match.group(1))
+        for _ in range(5):
+            if node is None:
+                break
+
+            local_text = node.get_text(" ", strip=True)
+            if len(local_text) > 1200:
+                node = node.parent
+                continue
+
+            if size_re.search(local_text):
+                prices = []
+
+                for price_node in node.find_all(string=price_re):
+                    parent = price_node.parent
+                    if _is_old_or_non_purchase_node(parent):
+                        continue
+
+                    # Exclude Grundpreis/coupon text locally.
+                    context = node.get_text(" ", strip=True).lower()
+                    if "grundpreis" in context and "warenkorb" not in context:
+                        # Keep searching upward for the actual purchase block.
+                        pass
+
+                    match = price_re.search(str(price_node))
+                    if match:
+                        value = _parse_price(match.group(1))
+                        if value is not None:
+                            prices.append(value)
+
+                if prices:
+                    # In a normal variant card the first non-barrato price
+                    # is the active selling price.
+                    return prices[0]
+
+            node = node.parent
 
     return None
 
 
-def _active_price_from_header(header_text, size_ml):
-    # First and strongest source: the size/price pair.
-    price = _price_for_size_from_header(header_text, size_ml)
-    if price is not None:
-        return price
+def _fallback_single_price(soup, size_ml):
+    header = _product_header_text(soup)
 
-    # Fallback only when the page exposes a single size. We take the first
-    # purchase-price-looking amount before Grundpreis, never a crossed price.
-    before_base = re.split(
-        r"\bgrundpreis\b",
-        header_text,
-        maxsplit=1,
-        flags=re.I,
-    )[0]
+    if size_ml is not None:
+        match = re.search(
+            rf"(?<![\d.,]){re.escape(str(int(size_ml)))}\s*ml\b"
+            rf".{{0,160}}?(\d{{1,5}}(?:[.,]\d{{2}}))\s*€",
+            header,
+            re.I,
+        )
+        if match:
+            return _parse_price(match.group(1))
 
-    candidates = []
-    for match in re.finditer(r"(?<![\d.,])(\d{1,5}(?:[.,]\d{2}))\s*€", before_base):
+    before_base = re.split(r"\bgrundpreis\b", header, maxsplit=1, flags=re.I)[0]
+
+    for match in re.finditer(
+        r"(?<![\d.,])(\d{1,5}(?:[.,]\d{2}))\s*€",
+        before_base,
+    ):
         value = _parse_price(match.group(1))
-        if value is None:
-            continue
+        if value is not None:
+            return value
 
-        context = before_base[max(0, match.start()-80):match.end()+30].lower()
-        if "code" in context or "coupon" in context:
-            continue
-
-        candidates.append(value)
-
-    return candidates[-1] if candidates else None
+    return None
 
 
 def _extract_product(url, query):
@@ -251,28 +313,25 @@ def _extract_product(url, query):
         return None
 
     name = " ".join(h1.stripped_strings)
+
     if not _matches_query(name, query):
         return None
 
-    size_match = re.search(
-        r"(?<!\d)(\d{1,4}(?:[.,]\d+)?)\s*ml\b",
-        name,
-        re.I,
-    )
-    size_ml = None
-    if size_match:
-        size_ml = float(size_match.group(1).replace(",", "."))
+    size_ml = _size_from_name(name)
 
     concentration = ""
-    if _concentration(name) == "edt":
+    concentration_code = _concentration(name)
+    if concentration_code == "edt":
         concentration = "Eau de Toilette"
-    elif _concentration(name) == "edp":
+    elif concentration_code == "edp":
         concentration = "Eau de Parfum"
-    elif _concentration(name) == "extrait":
+    elif concentration_code == "extrait":
         concentration = "Extrait de Parfum"
 
-    header = _product_header_text(soup)
-    price = _active_price_from_header(header, size_ml)
+    price = _local_price_for_size(soup, size_ml)
+
+    if price is None:
+        price = _fallback_single_price(soup, size_ml)
 
     return {
         "store": "ParfumZentrum",
@@ -282,15 +341,6 @@ def _extract_product(url, query):
         "size_ml": size_ml,
         "concentration": concentration,
     }
-
-
-def _candidate_score(url, query):
-    query_tokens = {
-        x for x in _tokens(query)
-        if x not in STOPWORDS
-    }
-    url_tokens = set(_tokens(url))
-    return sum(10 for token in query_tokens if token in url_tokens)
 
 
 def search(query):
@@ -318,7 +368,9 @@ def search(query):
     results = []
     seen = set()
 
-    for url in candidates[:40]:
+    # The old logic used "any distinctive token" and then [:40].
+    # That was the reason broad searches lost valid variants.
+    for url in candidates[:100]:
         try:
             item = _extract_product(url, query)
         except Exception as error:
