@@ -618,9 +618,16 @@ def run_store(store: str, query: str) -> List[Dict[str, Any]]:
             if product.get("available") is not False:
                 product = resolve_actual_price(product)
 
+            # Keep different package sizes from the same canonical URL.
+            # Example: Narcisse 75 ml and Narcisse 125 ml.
+            size_ml = product.get("size_ml")
+            if size_ml in (None, ""):
+                size_ml = _product_size_ml(product)
+
             key = (
                 str(product.get("url", "")).lower(),
                 norm(product.get("name", "")),
+                str(size_ml or "").strip(),
             )
 
             if key in seen:
