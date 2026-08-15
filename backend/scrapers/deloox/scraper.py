@@ -340,9 +340,9 @@ def _category_product_line_links(html, query):
 
 
 def _category_pages(session):
-    # Current Deloox top-level fragrance categories.
-    # The previous IDs (1075660 / 1075750) are obsolete and can return
-    # pages that no longer expose the current Product-line filters.
+    # These are Deloox's current perfume category URLs verified from the
+    # public site structure. We use both genders because Born in Roma exists
+    # as separate Uomo/Donna product lines.
     return (
         BASE_URL + "/category/1000054/mens-fragrances.html",
         BASE_URL + "/category/1075639/womens-fragrances.html",
@@ -398,7 +398,7 @@ def _discover_from_categories(session, query, max_urls=80):
         # First, discover the exact Product line links exposed by Deloox.
         product_line_links = _category_product_line_links(r.text, query)
 
-        # If Deloox's current HTML does not expose a filter link, also inspect
+            # If Deloox's current HTML does not expose a filter link, inspect
         # the current category page itself for product cards.
         candidate_pages = product_line_links or [category_url]
 
@@ -421,7 +421,7 @@ def _discover_from_categories(session, query, max_urls=80):
     return urls[:max_urls]
 
 
-def _sitemap_category_urls(session, query, max_sitemaps=48, max_urls=50):
+def _sitemap_category_urls(session, query, max_sitemaps=12, max_urls=30):
     """Discover dedicated Deloox category/Product-line pages from sitemaps."""
     query_tokens = tokens(query)
     if not query_tokens:
@@ -490,7 +490,7 @@ def _sitemap_category_urls(session, query, max_sitemaps=48, max_urls=50):
     return category_urls[:max_urls]
 
 
-def _sitemap_product_urls(session, query, max_sitemaps=48, max_urls=120):
+def _sitemap_product_urls(session, query, max_sitemaps=12, max_urls=80):
     query_tokens = tokens(query)
     if not query_tokens:
         return []
@@ -560,44 +560,6 @@ def _sitemap_product_urls(session, query, max_sitemaps=48, max_urls=120):
     return product_urls
 
 
-
-def _discover_from_broad_categories(session, query, max_urls=80, max_pages=12):
-    """Fallback for Deloox when the Product-line filter is not exposed.
-
-    Deloox's broad men's/women's fragrance pages are paginated.  A product can
-    therefore be present on a later page even when its dedicated Product-line
-    category is not discoverable from the first page.
-    """
-    urls = []
-    seen = set()
-
-    for base in _category_pages(session):
-        for page_no in range(1, max_pages + 1):
-            page_url = base if page_no == 1 else base + "?page=" + str(page_no)
-            try:
-                r = session.get(page_url, headers=HEADERS, timeout=TIMEOUT)
-            except requests.RequestException:
-                break
-
-            if r.status_code >= 400:
-                break
-
-            page_urls = _candidate_product_urls(r.text, query)
-            if not page_urls:
-                # Do not stop immediately: the page can legitimately contain
-                # no matching card while later pages still do.
-                continue
-
-            for product_url in page_urls:
-                if product_url not in seen:
-                    seen.add(product_url)
-                    urls.append(product_url)
-                    if len(urls) >= max_urls:
-                        return urls[:max_urls]
-
-    return urls[:max_urls]
-
-
 def _discover(session, q):
     urls = []
     seen = set()
@@ -633,14 +595,10 @@ def _discover(session, q):
                     return urls[:80]
 
     # TERTIARY: dedicated Product-line category pages discovered from sitemap.
-    # IMPORTANT: do this BEFORE broad pagination.  The sitemap is much cheaper
-    # and more reliable for products that are not present on the first category
-    # pages.  Broad pagination can otherwise consume the request budget before
-    # the exact product is discovered.
     # This is important for other product lines whose category URLs are
     # exposed in Deloox's sitemap.
     for category_url in _sitemap_category_urls(
-        session, q, max_sitemaps=48, max_urls=50
+        session, q, max_sitemaps=12, max_urls=30
     ):
         try:
             page = session.get(
@@ -659,19 +617,7 @@ def _discover(session, q):
                 if len(urls) >= 80:
                     return urls[:80]
 
-    # QUATERNARY: broad category pagination fallback.
-    # Keep this late and deliberately short: it is only a recovery path when
-    # the dedicated category and sitemap routes do not expose the product.
-    for product_url in _discover_from_broad_categories(
-        session, q, max_urls=80, max_pages=2
-    ):
-        if product_url not in seen:
-            seen.add(product_url)
-            urls.append(product_url)
-        if len(urls) >= 80:
-            return urls[:80]
-
-    # QUINARY: legacy/current search endpoints, retained as fallback.
+    # QUATERNARY: legacy/current search endpoints, retained as fallback.
     endpoints = [
         BASE_URL + "/en/search?query=" + quote_plus(q),
         BASE_URL + "/en/search?search=" + quote_plus(q),
@@ -699,7 +645,7 @@ def _discover(session, q):
     # LAST RESORT: direct product sitemap discovery.
     if not urls:
         for url in _sitemap_product_urls(
-            session, q, max_sitemaps=48, max_urls=120
+            session, q, max_sitemaps=12, max_urls=80
         ):
             if url not in seen:
                 seen.add(url)
