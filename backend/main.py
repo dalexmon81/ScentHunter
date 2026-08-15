@@ -598,7 +598,7 @@ def resolve_actual_price(product: Dict[str, Any]) -> Dict[str, Any]:
 
 
 def matches(product: Dict[str, Any], query: str) -> bool:
-    """Generic result validation with catalog-aware fallback."""
+    """Generic result validation; no product/store-specific exceptions."""
     name = str(
         product.get("name")
         or product.get("title")
@@ -633,67 +633,48 @@ def matches(product: Dict[str, Any], query: str) -> bool:
             if not query_phrase:
                 return False
 
-    # Fast path: the raw store title contains the whole query.
-    if query_tokens.issubset(name_tokens):
-        return True
-
-    # Fallback: some shops omit the brand from the product title
-    # (e.g. "Le Beau Eau de Toilette Homme"). Use the canonical catalog
-    # to connect the store title to the requested identity.
-    candidates = catalog_match_candidates(query, limit=12)
-    if not candidates:
-        return False
-
-    product_text = norm(name)
-    product_tokens = set(product_text.split())
-
-    for candidate in candidates:
-        brand = norm(candidate.get("brand") or candidate.get("brand_name") or "")
-        family = norm(candidate.get("name") or candidate.get("family_name") or "")
-        aliases = candidate.get("aliases") or []
-
-        identity_names = [family]
-        if isinstance(aliases, list):
-            identity_names.extend(norm(alias) for alias in aliases if str(alias).strip())
-
-        for identity_name in identity_names:
-            if not identity_name:
-                continue
-            identity_tokens = set(identity_name.split())
-            overlap = len(product_tokens & identity_tokens)
-            if overlap >= 2 and overlap / max(1, len(identity_tokens)) >= 0.75:
-                # If the query explicitly names a brand, the candidate must
-                # belong to that brand.
-                if brand:
-                    query_brand_tokens = set(brand.split())
-                    if query_brand_tokens.issubset(set(norm(query).split())):
-                        return True
-                else:
-                    return True
-
-    return False
-
+    return query_tokens.issubset(name_tokens)
 
 def load_scraper(store: str):
     return importlib.import_module(f"scrapers.{store}.scraper")
 
 def build_search_attempts(store: str, query: str) -> List[str]:
-    """Generic query expansion driven by the catalog, not by product names."""
-    attempts = catalog_search_queries(query)
-    if not attempts:
-        attempts = [query]
+    """Small, deterministic expansion: original query first, then at most 2 catalog variants."""
+    raw = str(query or "").strip()
+    if not raw:
+        return []
 
-    normalized = norm(query)
+    candidates = catalog_search_queries(raw, limit=3)
+    attempts: List[str] = []
+    seen = set()
+
+    def add(value: Any) -> None:
+        value = str(value or "").strip()
+        key = norm(value)
+        if key and key not in seen:
+            attempts.append(value)
+            seen.add(key)
+
+    add(raw)
+
+    # The previous implementation could perform up to 32 sequential searches
+    # for every store. That multiplied latency and caused the frontend timeout.
+    for candidate in candidates:
+        add(candidate)
+        if len(attempts) >= 3:
+            break
+
+    normalized = norm(raw)
     compact = re.sub(
         r"(?<=\d)\s+(?=[a-z])|(?<=[a-z])\s+(?=\d)",
         "",
         normalized,
     )
+    if len(attempts) < 3:
+        add(compact)
 
-    if compact and compact not in {norm(item) for item in attempts}:
-        attempts.append(compact)
+    return attempts[:3]
 
-    return attempts[:32]
 
 def run_store(store: str, query: str) -> List[Dict[str, Any]]:
     module = load_scraper(store)
@@ -710,8 +691,10 @@ def run_store(store: str, query: str) -> List[Dict[str, Any]]:
         try:
             results = search_fn(attempt) or []
         except Exception:
-            # One failed expansion must not cancel the whole store search.
+            # One failed expansion must not cancel the whole store.
             continue
+
+        found_this_attempt = 0
 
         for item in results:
             if not isinstance(item, dict):
@@ -737,6 +720,12 @@ def run_store(store: str, query: str) -> List[Dict[str, Any]]:
 
             if matches(product, query):
                 output.append(product)
+                found_this_attempt += 1
+
+        # Once a valid result is found, stop hammering the same store with
+        # additional aliases/variants.
+        if found_this_attempt:
+            break
 
     return output
 
@@ -798,7 +787,7 @@ def search_perfume(query: str) -> Dict[str, Any]:
         for store in STORES
     }
 
-    done, not_done = wait(future_to_store, timeout=55)
+    done, not_done = wait(future_to_store, timeout=20)
 
     for future in done:
         store = future_to_store[future]
