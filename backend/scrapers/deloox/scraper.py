@@ -632,20 +632,11 @@ def _discover(session, q):
                 if len(urls) >= 80:
                     return urls[:80]
 
-    # TERTIARY: broad category pagination fallback.
-    # This catches products whose Product-line filter is not exposed in the
-    # first category response and whose dedicated category is not in the
-    # sitemap subset we can reach.
-    for product_url in _discover_from_broad_categories(
-        session, q, max_urls=80, max_pages=12
-    ):
-        if product_url not in seen:
-            seen.add(product_url)
-            urls.append(product_url)
-        if len(urls) >= 80:
-            return urls[:80]
-
     # TERTIARY: dedicated Product-line category pages discovered from sitemap.
+    # IMPORTANT: do this BEFORE broad pagination.  The sitemap is much cheaper
+    # and more reliable for products that are not present on the first category
+    # pages.  Broad pagination can otherwise consume the request budget before
+    # the exact product is discovered.
     # This is important for other product lines whose category URLs are
     # exposed in Deloox's sitemap.
     for category_url in _sitemap_category_urls(
@@ -668,7 +659,19 @@ def _discover(session, q):
                 if len(urls) >= 80:
                     return urls[:80]
 
-    # QUATERNARY: legacy/current search endpoints, retained as fallback.
+    # QUATERNARY: broad category pagination fallback.
+    # Keep this late and deliberately short: it is only a recovery path when
+    # the dedicated category and sitemap routes do not expose the product.
+    for product_url in _discover_from_broad_categories(
+        session, q, max_urls=80, max_pages=2
+    ):
+        if product_url not in seen:
+            seen.add(product_url)
+            urls.append(product_url)
+        if len(urls) >= 80:
+            return urls[:80]
+
+    # QUINARY: legacy/current search endpoints, retained as fallback.
     endpoints = [
         BASE_URL + "/en/search?query=" + quote_plus(q),
         BASE_URL + "/en/search?search=" + quote_plus(q),
