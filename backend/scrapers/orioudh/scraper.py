@@ -24,57 +24,6 @@ IGNORED_QUERY_WORDS = {
 }
 
 
-
-# ScentHunter routing rule:
-# These three stores are Arabic-fragrance specialists. They should NOT be
-# queried for clearly identified designer / niche brands. Unknown brands are
-# intentionally NOT blocked, so a new Arabic brand is never lost.
-NON_ARABIC_BRANDS = {
-    "acqua di parma", "aerin", "amouage", "armani", "azzaro", "bdk",
-    "bdk parfums", "bentley", "biotherm", "boucheron", "burberry",
-    "bvlgari", "bulgari", "byredo", "calvin klein", "carolina herrera",
-    "cartier", "chanel", "chloe", "chloé", "clinique", "coach",
-    "comptoir sud pacifique", "creed", "david beckham", "dior",
-    "diptyque", "dolce & gabbana", "dolce gabbana", "dunhill",
-    "elizabeth arden", "elie saab", "emilio pucci", "estee lauder",
-    "estée lauder", "etat libre d'orange", "fragrance du bois",
-    "frederic malle", "frederic malle", "givenchy", "guerlain",
-    "gucci", "hugo boss", "issey miyake", "jaguar", "jean paul gaultier",
-    "jil sander", "jimmy choo", "jo malone", "jovan", "juliette has a gun",
-    "kenzo", "kilian", "la mer", "lalique", "lancome", "lancôme",
-    "lanvin", "le labo", "loewe", "lorenzo villoresi", "maison crivelli",
-    "maison francis kurkdjian", "maison margiela", "marc jacobs",
-    "mancera", "mariah carey", "memo paris", "michael kors", "miller harris",
-    "montblanc", "moschino", "mugler", "narciso rodriguez", "nars",
-    "nautica", "nishane", "paco rabanne", "parfums de marly", "philosophy",
-    "prada", "ralph lauren", "revlon", "roberto cavalli", "roger & gallet",
-    "salvatore ferragamo", "serge lutens", "shiseido", "sisley",
-    "snif", "tom ford", "tommy hilfiger", "trussardi", "valentino",
-    "van cleef & arpels", "versace", "viktor & rolf", "vilhelm parfumerie",
-    "yves saint laurent", "ysl", "zadig & voltaire", "zara",
-    "xerjoff", "ex nihilo", "initio", "ormonde jayne", "penhaligon's",
-    "penhaligons", "roja", "roja parfums", "the merchant of venice",
-    "tiziana terenzi", "nasomatto", "ortho parisi", "parle moi de parfum",
-    "atelier des ors", "bdk parfums", "bois 1920", "carner barcelona",
-    "essential parfums", "histoires de parfums", "laboratorio olfattivo",
-    "liquides imaginaires", "mancera", "montale", "parle moi de parfum",
-    "profumum roma", "room 1015", "state of mind", "une nuit nomade",
-}
-
-def _is_non_arabic_brand_query(query):
-    """Return True only for a clearly recognized designer/niche brand.
-
-    We deliberately do not guess from unknown names. The three Arabic-only
-    stores are skipped only when the query contains a known non-Arabic brand.
-    """
-    text = norm(query) if "norm" in globals() else clean(query).lower()
-    text = re.sub(r"\s+", " ", text).strip()
-    return any(
-        re.search(r"(?<![a-z0-9])" + re.escape(norm(brand)) + r"(?![a-z0-9])", text)
-        for brand in NON_ARABIC_BRANDS
-    )
-
-
 def _clean(value) -> str:
     return re.sub(r"\s+", " ", html.unescape(str(value or ""))).strip()
 
@@ -102,6 +51,13 @@ def _matches(text: str, query: str) -> bool:
 def _price(value) -> Optional[float]:
     if value in (None, ""):
         return None
+
+    # Orioudh is Shopify. In the product JSON (`/products/...js`) Shopify
+    # returns variant prices as integer cents: 3185 = 31.85 €.
+    if isinstance(value, (int, float)) and not isinstance(value, bool):
+        amount = float(value) / 100.0
+        return round(amount, 2) if amount > 0 else None
+
     raw = _clean(value).replace("€", "").strip()
     match = re.search(r"\d+(?:[.,]\d{1,2})?", raw)
     if not match:
@@ -268,14 +224,49 @@ def _discovery(session: requests.Session, query: str) -> List[str]:
                     anchor.get("title")
                     or anchor.get_text(" ", strip=True)
                 )
+                # Some Shopify themes render the product card without putting
+                # the real product name in the anchor text/title. The product
+                # URL slug is still reliable and contains the searchable name.
+                candidate_text = f"{title} {product_url}"
                 if (
                     "/products/" in product_url
-                    and _matches(title, query)
+                    and _matches(candidate_text, query)
                     and product_url not in seen
                 ):
                     seen.add(product_url)
                     urls.append(product_url)
     except requests.RequestException:
+        pass
+
+    # Final Shopify fallback. Some themes/search configurations expose the
+    # product in the JSON search endpoint even when predictive search or the
+    # rendered search page does not expose a usable product title.
+    try:
+        response = session.get(
+            BASE_URL + "/search.json",
+            params={"q": query, "type": "product", "limit": 50},
+            headers=HEADERS,
+            timeout=TIMEOUT,
+        )
+        if response.ok:
+            data = response.json()
+            for product in (data.get("products") or []):
+                if not isinstance(product, dict):
+                    continue
+                title = _clean(product.get("title"))
+                vendor = _clean(product.get("vendor"))
+                product_url = urljoin(
+                    BASE_URL, product.get("url") or ""
+                ).split("?")[0]
+                candidate_text = f"{title} {vendor} {product_url}"
+                if (
+                    "/products/" in product_url
+                    and _matches(candidate_text, query)
+                    and product_url not in seen
+                ):
+                    seen.add(product_url)
+                    urls.append(product_url)
+    except (requests.RequestException, ValueError, TypeError):
         pass
 
     return urls
@@ -350,7 +341,7 @@ def _raw_offer(
         },
         # Compatibility fields for the current API during migration.
         "name": source_name,
-        "price": _format_price(price),
+        "price": (f"{price:.2f}".replace(".", ",") + " €") if price is not None else "",
         "url": url,
         "available": variant.get("available") is True,
     }
@@ -390,9 +381,6 @@ def _extract_product(
 def search(query: str) -> List[Dict[str, Any]]:
     query = _clean(query)
     if not query:
-        return []
-
-    if _is_non_arabic_brand_query(query):
         return []
 
     session = requests.Session()
