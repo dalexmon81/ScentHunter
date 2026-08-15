@@ -729,94 +729,6 @@ def run_store(store: str, query: str) -> List[Dict[str, Any]]:
 
     return output
 
-def _result_identity_key(product: Dict[str, Any]):
-    """Identità del prodotto, indipendente dal negozio."""
-    identity = norm(
-        product.get("catalog_id")
-        or product.get("product_identity")
-        or ""
-    )
-    if not identity:
-        identity = norm(
-            f"{product.get('canonical_brand') or product.get('brand') or ''} "
-            f"{product.get('canonical_name') or product.get('name') or ''}"
-        )
-
-    size = _product_size_ml(product)
-    return identity, (round(size, 2) if size is not None else None)
-
-
-def merge_product_results(products: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
-    """
-    Unisce nella stessa scheda le offerte dello stesso prodotto provenienti
-    da negozi diversi.
-
-    Esempio:
-      Jean Paul Gaultier Le Beau + PerfumeMarket
-      Jean Paul Gaultier Le Beau + Parfumzentrum
-    -> UNA scheda con due offerte.
-
-    Prodotti diversi (es. Le Beau / Le Beau Le Parfum) restano separati.
-    """
-    groups: Dict[Any, Dict[str, Any]] = {}
-
-    for product in products:
-        item = dict(product)
-        key = _result_identity_key(item)
-
-        if key not in groups:
-            base = dict(item)
-            base["offers"] = [dict(item)]
-            base["stores"] = (
-                [str(item.get("store"))]
-                if item.get("store")
-                else []
-            )
-            base["store_count"] = len(base["stores"])
-            groups[key] = base
-            continue
-
-        group = groups[key]
-        offers = group.setdefault("offers", [])
-
-        offer_key = (
-            norm(item.get("store") or ""),
-            str(item.get("url") or "").split("#")[0].split("?")[0].lower(),
-        )
-
-        if not any(
-            (
-                norm(existing.get("store") or ""),
-                str(existing.get("url") or "").split("#")[0].split("?")[0].lower(),
-            ) == offer_key
-            for existing in offers
-        ):
-            offers.append(dict(item))
-
-        store = str(item.get("store") or "").strip()
-        if store and store not in group["stores"]:
-            group["stores"].append(store)
-
-        # La scheda principale mostra sempre l'offerta migliore.
-        current_price = price_num(group.get("price"))
-        new_price = price_num(item.get("price"))
-
-        if (
-            new_price is not None
-            and (current_price is None or new_price < current_price)
-        ):
-            for field in (
-                "store", "url", "price", "price_value", "available",
-                "availability", "stock_status", "image",
-            ):
-                if field in item:
-                    group[field] = item[field]
-
-        group["store_count"] = len(group["stores"])
-
-    return list(groups.values())
-
-
 def unique_results(products: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
     unique: List[Dict[str, Any]] = []
     seen = set()
@@ -925,9 +837,9 @@ def search_perfume(query: str) -> Dict[str, Any]:
         except Exception as exc:
             errors["identity_engine"] = str(exc) or exc.__class__.__name__
 
-    # Una scheda per prodotto/formato: le offerte dei diversi negozi
-    # vengono raccolte nello stesso elemento.
-    results = merge_product_results(unique_results(results))
+    # aggregate across stores by canonical product/variant key
+    results = aggregate_products(results)
+    # note: after aggregation, sort_by_price expects list of products; price_num will still work on product['price']
     results = sort_by_price(results)
 
     return {
