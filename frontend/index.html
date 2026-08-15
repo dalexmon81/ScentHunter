@@ -1341,6 +1341,18 @@ function shGroupData(data){
       }
     }
 
+    // Correzione SOLO VISIVA dei nomi Valentino Born in Roma:
+    // Uomo/Donna deve sempre stare alla fine del nome.
+    // Non modifica ricerca, matching, offerte, formati o raggruppamento.
+    if(norm(g.brand)==="valentino" && /\bborn\s+in\s+roma\b/i.test(g.name)){
+      const genderMatch=g.name.match(/\b(uomo|donna)\b/i);
+      if(genderMatch){
+        const gender=genderMatch[1];
+        const withoutGender=g.name.replace(/\b(uomo|donna)\b/i," ").replace(/\s+/g," ").trim();
+        g.name=withoutGender+" "+gender.charAt(0).toUpperCase()+gender.slice(1).toLowerCase();
+      }
+    }
+
     g.display_name=g.brand?g.brand+" - "+g.name:g.name;
   });
 
@@ -1928,3 +1940,8 @@ async function searchPerfume(){
  }
  finally{clearInterval(dotsTimer);searchButton.disabled=false;searchButton.classList.remove("searching");searchButton.textContent="INIZIA LA RICERCA"}
 }
+
+searchButton.addEventListener("click",searchPerfume);queryInput.addEventListener("keydown",e=>{if(e.key==="Enter"){e.preventDefault();searchPerfume()}});
+renderWishlist();syncHearts();
+</script>
+</body></html>
