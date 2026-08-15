@@ -213,13 +213,49 @@ def _product(url, html, query):
     }
 
 
-def _candidate_product_urls(html, query, require_query=True):
-    """Extract Deloox product URLs from anchors, JSON and JS.
+def _candidate_queries(query):
+    """Generate broader discovery queries without weakening final matching.
 
-    On search/Product-line pages the URL is a discovery candidate even when
-    the slug does not contain every query token. Final exact product-name
-    validation is performed by _product().
+    Deloox discovery is inconsistent for some products. A full query such as
+    "Hawas for Him" may return no product cards, while the meaningful token
+    "Hawas" does. We therefore search several progressively broader forms.
+    Final validation is still performed by _product() against the original
+    query.
     """
+    normalized = norm(query)
+    if not normalized:
+        return []
+
+    stop = {
+        "for", "the", "and", "with", "de", "da", "del", "della",
+        "du", "des", "di", "by", "e",
+    }
+
+    searches = [clean(query)]
+    meaningful = [t for t in normalized.split() if t not in stop and len(t) > 1]
+
+    # Full normalized query.
+    if normalized not in searches:
+        searches.append(normalized)
+
+    # Compact query is useful for product names containing number/letter
+    # spacing differences.
+    compact = re.sub(r"(?<=\d)\s+(?=[a-z])|(?<=[a-z])\s+(?=\d)", "", normalized)
+    if compact and compact not in searches:
+        searches.append(compact)
+
+    # Then search each meaningful token, longest first. This is the important
+    # fallback for Deloox: "Hawas", "Supremacy", "Eros" can discover a product
+    # whose full-name search endpoint fails.
+    for token in sorted(meaningful, key=lambda x: (-len(x), x)):
+        if token not in searches:
+            searches.append(token)
+
+    return searches
+
+
+def _candidate_product_urls(html, query, discovery_query=None):
+    """Extract Deloox product URLs from anchors, JSON and JS."""
     soup = BeautifulSoup(html, "html.parser")
     found = []
     seen = set()
@@ -248,17 +284,11 @@ def _candidate_product_urls(html, query, require_query=True):
         if url in seen:
             return
 
-        # Dedicated search/Product-line pages can contain valid product
-        # URLs whose slug/card text does not contain every query token.
-        if not require_query:
-            seen.add(url)
-            found.append(url)
-            return
-
-        # Broad category pages stay query-aware to avoid collecting
-        # hundreds of unrelated products.
+        # Discovery may intentionally use a broader query token. The
+        # original query is still checked later by _product().
+        discovery = discovery_query or query
         haystack = f"{context} {url}"
-        if matches(haystack, query):
+        if matches(haystack, discovery):
             seen.add(url)
             found.append(url)
 
@@ -413,14 +443,15 @@ def _discover_from_categories(session, query, max_urls=80):
             if page.status_code >= 400:
                 continue
 
-            for product_url in _candidate_product_urls(
-                page.text, query, require_query=not bool(product_line_links)
-            ):
-                if product_url not in seen:
-                    seen.add(product_url)
-                    urls.append(product_url)
-                    if len(urls) >= max_urls:
-                        return urls[:max_urls]
+            for discovery_query in _candidate_queries(query):
+                for product_url in _candidate_product_urls(
+                    page.text, query, discovery_query=discovery_query
+                ):
+                    if product_url not in seen:
+                        seen.add(product_url)
+                        urls.append(product_url)
+                        if len(urls) >= max_urls:
+                            return urls[:max_urls]
 
     return urls[:max_urls]
 
@@ -499,6 +530,12 @@ def _sitemap_product_urls(session, query, max_sitemaps=12, max_urls=80):
     if not query_tokens:
         return []
 
+    discovery_tokens = []
+    for candidate in _candidate_queries(query):
+        for token in tokens(candidate):
+            if token not in discovery_tokens:
+                discovery_tokens.append(token)
+
     sitemap_roots = (
         BASE_URL + "/sitemap.xml",
         BASE_URL + "/sitemap_index.xml",
@@ -551,7 +588,11 @@ def _sitemap_product_urls(session, query, max_sitemaps=12, max_urls=80):
             low = value.lower()
 
             if "/product/" in low:
-                if query_tokens.issubset(tokens(value)):
+                product_tokens = tokens(value)
+                if (
+                    query_tokens.issubset(product_tokens)
+                    or any(token in product_tokens for token in discovery_tokens)
+                ):
                     if value not in seen_products:
                         seen_products.add(value)
                         product_urls.append(value)
@@ -591,12 +632,15 @@ def _discover(session, q):
         if page.status_code >= 400:
             continue
 
-        for product_url in _candidate_product_urls(page.text, q):
-            if product_url not in seen:
-                seen.add(product_url)
-                urls.append(product_url)
-                if len(urls) >= 80:
-                    return urls[:80]
+        for discovery_query in _candidate_queries(q):
+            for product_url in _candidate_product_urls(
+                page.text, q, discovery_query=discovery_query
+            ):
+                if product_url not in seen:
+                    seen.add(product_url)
+                    urls.append(product_url)
+                    if len(urls) >= 80:
+                        return urls[:80]
 
     # TERTIARY: dedicated Product-line category pages discovered from sitemap.
     # This is important for other product lines whose category URLs are
@@ -614,12 +658,15 @@ def _discover(session, q):
         if page.status_code >= 400:
             continue
 
-        for product_url in _candidate_product_urls(page.text, q):
-            if product_url not in seen:
-                seen.add(product_url)
-                urls.append(product_url)
-                if len(urls) >= 80:
-                    return urls[:80]
+        for discovery_query in _candidate_queries(q):
+            for product_url in _candidate_product_urls(
+                page.text, q, discovery_query=discovery_query
+            ):
+                if product_url not in seen:
+                    seen.add(product_url)
+                    urls.append(product_url)
+                    if len(urls) >= 80:
+                        return urls[:80]
 
     # QUATERNARY: legacy/current search endpoints, retained as fallback.
     endpoints = [
@@ -638,12 +685,13 @@ def _discover(session, q):
         if r.status_code >= 400:
             continue
 
-        for url in _candidate_product_urls(
-            r.text, q, require_query=False
-        ):
-            if url not in seen:
-                seen.add(url)
-                urls.append(url)
+        for discovery_query in _candidate_queries(q):
+            for url in _candidate_product_urls(
+                r.text, q, discovery_query=discovery_query
+            ):
+                if url not in seen:
+                    seen.add(url)
+                    urls.append(url)
 
         if len(urls) >= 80:
             return urls[:80]
