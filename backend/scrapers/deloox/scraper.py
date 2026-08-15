@@ -222,22 +222,29 @@ def _product(url, html, query):
     }
 
 
-def _candidate_product_urls(html, query):
-    """Extract Deloox product URLs from anchors, JSON and JS."""
+
+def _candidate_product_urls(html, query=None, max_urls=80):
+    """Extract product URLs without requiring the query to be in the href.
+
+    Deloox can put the product name in a card, JSON blob, or sibling element
+    while the href itself contains only the numeric product id/slug.  Discovery
+    therefore collects product URLs first and lets _product() perform the
+    authoritative name match.
+    """
     soup = BeautifulSoup(html, "html.parser")
-    found = []
+    scored = {}
     seen = set()
+
+    q_tokens = tokens(query or "")
 
     def add(raw_url, context=""):
         if not raw_url:
             return
-
         raw_url = clean(raw_url).replace("\\/", "/")
         if raw_url.startswith(("javascript:", "mailto:", "#")):
             return
 
         url = urljoin(BASE_URL, raw_url).split("#")[0].split("?")[0]
-
         try:
             parsed = urlparse(url)
         except Exception:
@@ -245,452 +252,249 @@ def _candidate_product_urls(html, query):
 
         if parsed.netloc.lower() not in {"deloox.com", "www.deloox.com"}:
             return
-
         if "/product/" not in parsed.path.lower():
             return
 
-        if url in seen:
-            return
+        # Score matching cards highly, but NEVER discard a product URL merely
+        # because the query text is not present in the anchor/href.
+        ctx = norm(f"{context} {url}")
+        score = 0
+        if q_tokens and q_tokens.issubset(tokens(ctx)):
+            score = 100
+        elif q_tokens:
+            score = sum(1 for t in q_tokens if t in tokens(ctx)) * 10
 
-        # Search/category pages often put the product title in nearby text.
-        # Accept the URL if either the URL slug or surrounding card text
-        # contains the query tokens.
-        haystack = f"{context} {url}"
-        if matches(haystack, query):
-            seen.add(url)
-            found.append(url)
+        scored[url] = max(scored.get(url, -1), score)
 
+    # Anchor + surrounding card text.
     for a in soup.find_all("a", href=True):
-        add(a.get("href"), a.get_text(" ", strip=True))
+        context = a.get_text(" ", strip=True)
+        parent = a.parent
+        for _ in range(2):
+            if parent is None:
+                break
+            context += " " + parent.get_text(" ", strip=True)
+            parent = parent.parent
+        add(a.get("href"), context)
 
+    # Product URLs embedded in JSON/JS.
     patterns = [
         r'https?://(?:www\.)?deloox\.com/[^"\'>\s]+/product/[^"\'>\s]+',
         r'["\']((?:/)?(?:en/)?product/[^"\']+)["\']',
+        r'["\']((?:https?:)?//(?:www\.)?deloox\.com/[^"\']*/product/[^"\']+)["\']',
     ]
     for pattern in patterns:
         for raw in re.findall(pattern, html, re.I):
-            add(raw)
+            add(raw, html[:4000])
 
-    return found
-
-
-def _category_product_line_links(html, query):
-    """Find Deloox Product line filter/category links matching the query."""
-    soup = BeautifulSoup(html, "html.parser")
-    links = []
-    seen = set()
-    q_tokens = tokens(query)
-
-    for a in soup.find_all("a", href=True):
-        label = clean(a.get_text(" ", strip=True))
-        href = clean(a.get("href"))
-
-        if not label or not href:
-            continue
-
-        # Only consider links whose visible label is a close Product line
-        # match. This avoids crawling unrelated Valentino/body-product links.
-        if not q_tokens.issubset(tokens(label)):
-            continue
-
-        url = urljoin(BASE_URL, href).split("#")[0]
-        if url in seen:
-            continue
-
-        parsed = urlparse(url)
-        if parsed.netloc.lower() not in {"deloox.com", "www.deloox.com"}:
-            continue
-
-        # A category/filter URL normally contains /category/.  Product links
-        # are deliberately excluded here.
-        if "/category/" not in parsed.path.lower():
-            continue
-
-        seen.add(url)
-        links.append(url)
-
-    return links
+    ranked = sorted(scored.items(), key=lambda x: (-x[1], x[0]))
+    return [u for u, _ in ranked[:max_urls]]
 
 
-def _category_pages(session):
-    # Deloox exposes perfume Product Lines through several category pages.
-    # We intentionally inspect multiple entry points and pagination so a
-    # query such as "Born in Roma" is not limited to whichever line happens
-    # to appear on the first category page.
+def _search_endpoints(q):
+    enc = quote_plus(q)
+    # Keep these deliberately small. Search is the primary Deloox discovery
+    # path; category crawling is only a fallback.
     return (
+        BASE_URL + "/en/search?query=" + enc,
+        BASE_URL + "/en/search?search=" + enc,
+        BASE_URL + "/en/search?q=" + enc,
+        BASE_URL + "/en?search=" + enc,
+    )
+
+
+def _fetch(session, url, timeout=6):
+    try:
+        r = session.get(
+            url,
+            headers=HEADERS,
+            timeout=timeout,
+            allow_redirects=True,
+        )
+        return r
+    except requests.RequestException:
+        return None
+
+
+def _discover_search(session, q, max_urls=40):
+    urls = []
+    seen = set()
+
+    queries = _special_query_variants(q) if "born in roma" in norm(q) else [q]
+
+    for search_q in queries:
+        for endpoint in _search_endpoints(search_q):
+            r = _fetch(session, endpoint, timeout=6)
+            if r is None or r.status_code >= 400:
+                continue
+
+            for url in _candidate_product_urls(
+                r.text, search_q, max_urls=max_urls
+            ):
+                if url not in seen:
+                    seen.add(url)
+                    urls.append(url)
+                if len(urls) >= max_urls:
+                    return urls[:max_urls]
+
+    return urls[:max_urls]
+
+
+def _discover_from_categories_limited(session, query, max_urls=24):
+    """Small fallback only; never paginate entire Deloox categories."""
+    urls, seen = [], set()
+
+    roots = (
         BASE_URL + "/category/1075639/womens-fragrances.html",
         BASE_URL + "/category/1075750/mens-perfume.html",
         BASE_URL + "/category/1025540/trending.html",
     )
 
+    for root in roots:
+        r = _fetch(session, root, timeout=6)
+        if r is None or r.status_code >= 400:
+            continue
 
-def _pagination_urls(page_url, max_pages=12):
-    """Generate conservative Deloox pagination variants."""
-    base = page_url.split("?")[0]
-    for page in range(1, max_pages + 1):
-        yield f"{base}?page={page}"
+        for u in _candidate_product_urls(r.text, query, max_urls=40):
+            if u not in seen:
+                seen.add(u)
+                urls.append(u)
+            if len(urls) >= max_urls:
+                return urls[:max_urls]
 
+        # Follow at most two visible Product Line/category links matching
+        # the query. No pagination here.
+        soup = BeautifulSoup(r.text, "html.parser")
+        followed = 0
+        for a in soup.find_all("a", href=True):
+            label = clean(a.get_text(" ", strip=True))
+            href = clean(a.get("href"))
+            if not label or not href:
+                continue
+            if not tokens(query).intersection(tokens(label)):
+                continue
 
-def _discover_from_categories(session, query, max_urls=160):
-    urls = []
-    seen = set()
-    visited_pages = set()
+            u = urljoin(BASE_URL, href).split("#")[0]
+            parsed = urlparse(u)
+            if parsed.netloc.lower() not in {"deloox.com", "www.deloox.com"}:
+                continue
+            if "/category/" not in parsed.path.lower():
+                continue
+            if u in seen:
+                continue
 
-    def add_products(html):
-        for product_url in _candidate_product_urls(html, query):
-            if product_url not in seen:
-                seen.add(product_url)
-                urls.append(product_url)
+            rr = _fetch(session, u, timeout=6)
+            followed += 1
+            if rr is None or rr.status_code >= 400:
+                if followed >= 2:
+                    break
+                continue
+
+            for pu in _candidate_product_urls(rr.text, query, max_urls=40):
+                if pu not in seen:
+                    seen.add(pu)
+                    urls.append(pu)
                 if len(urls) >= max_urls:
-                    return True
-        return False
+                    return urls[:max_urls]
 
-    for category_root in _category_pages(session):
-        # First inspect the root page.
-        page_candidates = [category_root]
-
-        try:
-            root = session.get(category_root, headers=HEADERS, timeout=TIMEOUT)
-        except requests.RequestException:
-            root = None
-
-        if root is not None and root.status_code < 400:
-            visited_pages.add(category_root)
-            if add_products(root.text):
-                return urls[:max_urls]
-
-            # Discover every visible category/filter link whose label
-            # contains the query tokens. This catches Product Line links.
-            soup = BeautifulSoup(root.text, "html.parser")
-            q_tokens = tokens(query)
-
-            for a in soup.find_all("a", href=True):
-                label = clean(a.get_text(" ", strip=True))
-                href = clean(a.get("href"))
-                if not label or not href:
-                    continue
-                if not q_tokens.issubset(tokens(label)):
-                    continue
-
-                candidate = urljoin(BASE_URL, href).split("#")[0]
-                parsed = urlparse(candidate)
-
-                if parsed.netloc.lower() not in {
-                    "deloox.com",
-                    "www.deloox.com",
-                }:
-                    continue
-
-                # Product-line/category/filter links are useful; individual
-                # product URLs are handled separately by _candidate_product_urls.
-                if "/category/" in parsed.path.lower():
-                    page_candidates.append(candidate)
-
-        # Add paginated variants for both the root category and discovered
-        # Product Line pages. This is the key difference from V2.
-        expanded = []
-        for page_url in page_candidates:
-            expanded.append(page_url)
-            expanded.extend(_pagination_urls(page_url, max_pages=12))
-
-        for page_url in expanded:
-            if page_url in visited_pages:
-                continue
-            visited_pages.add(page_url)
-
-            try:
-                page = session.get(page_url, headers=HEADERS, timeout=TIMEOUT)
-            except requests.RequestException:
-                continue
-
-            if page.status_code >= 400:
-                continue
-
-            if add_products(page.text):
-                return urls[:max_urls]
-
-            # A paginated category may expose a Product Line link only on
-            # one page. Follow it immediately and inspect its own pages.
-            line_links = _category_product_line_links(page.text, query)
-
-            for line_url in line_links:
-                if line_url in visited_pages:
-                    continue
-
-                line_pages = [line_url]
-                line_pages.extend(_pagination_urls(line_url, max_pages=12))
-
-                for lp in line_pages:
-                    if lp in visited_pages:
-                        continue
-                    visited_pages.add(lp)
-
-                    try:
-                        line_page = session.get(
-                            lp, headers=HEADERS, timeout=TIMEOUT
-                        )
-                    except requests.RequestException:
-                        continue
-
-                    if line_page.status_code >= 400:
-                        continue
-
-                    if add_products(line_page.text):
-                        return urls[:max_urls]
+            if followed >= 2:
+                break
 
     return urls[:max_urls]
 
 
-def _sitemap_product_urls(session, query, max_sitemaps=12, max_urls=160):
-    query_tokens = tokens(query)
-    if not query_tokens:
+def _sitemap_product_urls(session, query, max_sitemaps=2, max_urls=24):
+    """Last-resort sitemap lookup; never crawl a large sitemap tree."""
+    q_tokens = tokens(query)
+    if not q_tokens:
         return []
 
-    sitemap_roots = (
+    pending = [
         BASE_URL + "/sitemap.xml",
         BASE_URL + "/sitemap_index.xml",
-        BASE_URL + "/sitemap-index.xml",
-        BASE_URL + "/en/sitemap.xml",
-    )
-
-    pending = list(sitemap_roots)
+    ]
     seen_sitemaps = set()
-    product_urls = []
-    seen_products = set()
+    out = []
 
-    def fetch_xml(url):
-        try:
-            r = session.get(url, headers=HEADERS, timeout=TIMEOUT)
-        except requests.RequestException:
-            return None
-        if r.status_code >= 400:
-            return None
+    while pending and len(seen_sitemaps) < max_sitemaps and len(out) < max_urls:
+        sm = pending.pop(0)
+        if sm in seen_sitemaps:
+            continue
+        seen_sitemaps.add(sm)
 
-        ctype = (r.headers.get("content-type") or "").lower()
+        r = _fetch(session, sm, timeout=6)
+        if r is None or r.status_code >= 400:
+            continue
+
         body = r.text.lstrip()
-        if "xml" not in ctype and not body.startswith(
-            ("<?xml", "<urlset", "<sitemapindex")
-        ):
-            return None
-        return r.text
-
-    while (
-        pending
-        and len(seen_sitemaps) < max_sitemaps
-        and len(product_urls) < max_urls
-    ):
-        sitemap_url = pending.pop(0)
-        if sitemap_url in seen_sitemaps:
-            continue
-        seen_sitemaps.add(sitemap_url)
-
-        xml = fetch_xml(sitemap_url)
-        if not xml:
+        if not body.startswith(("<?xml", "<urlset", "<sitemapindex")):
             continue
 
-        soup = BeautifulSoup(xml, "xml")
-
+        soup = BeautifulSoup(r.text, "xml")
         for loc in soup.find_all("loc"):
             value = clean(loc.get_text())
             if not value:
                 continue
-
             low = value.lower()
 
-            if "/product/" in low:
-                if query_tokens.issubset(tokens(value)):
-                    if value not in seen_products:
-                        seen_products.add(value)
-                        product_urls.append(value)
-                        if len(product_urls) >= max_urls:
-                            break
-            elif low.endswith(".xml") or "sitemap" in low:
-                if value not in seen_sitemaps:
+            if "/product/" in low and q_tokens.issubset(tokens(value)):
+                if value not in out:
+                    out.append(value)
+                    if len(out) >= max_urls:
+                        break
+            elif "sitemap" in low and low.endswith(".xml"):
+                if value not in seen_sitemaps and len(seen_sitemaps) < max_sitemaps:
                     pending.append(value)
 
-    return product_urls
+    return out[:max_urls]
 
 
 def _special_query_variants(q):
-    """Return targeted Deloox queries for known product families.
-
-    Deloox can expose only part of a product family for a generic search.
-    For known families, search the family plus each known variant so the
-    discovery stage can collect separate product URLs. Final validation still
-    uses the original query in _product(), so unrelated products are rejected.
-    """
+    """Targeted variants for product families that Deloox splits."""
     nq = norm(q)
 
     if "born in roma" in nq:
         return [
             "Born in Roma",
-            "Born in Roma Coral Fantasy",
-            "Born in Roma Eau de Parfum",
-            "Born in Roma Extradose",
-            "Born in Roma Green Stravaganza",
-            "Born in Roma Intense",
-            "Born in Roma Ivory",
-            "Born in Roma Purple Melancholia",
-            "Born in Roma The Gold",
-            "Born in Roma Yellow Dream",
             "Valentino Born in Roma",
-            "Valentino Born in Roma Coral Fantasy",
-            "Valentino Born in Roma Eau de Parfum",
-            "Valentino Born in Roma Extradose",
-            "Valentino Born in Roma Green Stravaganza",
-            "Valentino Born in Roma Intense",
-            "Valentino Born in Roma Ivory",
-            "Valentino Born in Roma Purple Melancholia",
-            "Valentino Born in Roma The Gold",
-            "Valentino Born in Roma Yellow Dream",
+            "Born in Roma Uomo",
+            "Born in Roma Donna",
+            "Born in Roma Extradose",
+            "Born in Roma Intense",
+            "Born in Roma Coral Fantasy",
+            "Born in Roma Green Stravaganza",
+            "Born in Roma Yellow Dream",
         ]
 
     return [q]
 
 
-
-def _discover_born_in_roma(session, max_urls=24):
-    """Discovery mirata: categorie + ricerca, senza crawl massivo."""
-    urls, seen = [], set()
-
-    def add_from_html(html, query):
-        for u in _candidate_product_urls(html, query):
-            if u not in seen:
-                seen.add(u)
-                urls.append(u)
-                if len(urls) >= max_urls:
-                    return True
-        return False
-
-    category_roots = (
-        BASE_URL + "/category/1075639/womens-fragrances.html",
-        BASE_URL + "/category/1075750/mens-perfume.html",
-        BASE_URL + "/category/1025540/trending.html",
-    )
-
-    for root_url in category_roots:
-        try:
-            r = session.get(root_url, headers=HEADERS, timeout=TIMEOUT)
-        except requests.RequestException:
-            continue
-        if r.status_code >= 400:
-            continue
-
-        if add_from_html(r.text, "Born in Roma"):
-            return urls[:max_urls]
-
-        soup = BeautifulSoup(r.text, "html.parser")
-        linked = []
-        for a in soup.find_all("a", href=True):
-            label = clean(a.get_text(" ", strip=True))
-            href = clean(a.get("href"))
-            if "born in roma" not in norm(label):
-                continue
-            u = urljoin(BASE_URL, href).split("#")[0]
-            p = urlparse(u)
-            if p.netloc.lower() not in {"deloox.com", "www.deloox.com"}:
-                continue
-            if "/product/" in p.path.lower() or "/category/" not in p.path.lower():
-                continue
-            if u not in linked:
-                linked.append(u)
-
-        for line_url in linked[:4]:
-            for page_url in (
-                line_url,
-                line_url + ("&" if "?" in line_url else "?") + "page=2",
-            ):
-                try:
-                    r = session.get(page_url, headers=HEADERS, timeout=TIMEOUT)
-                except requests.RequestException:
-                    continue
-                if r.status_code >= 400:
-                    continue
-                if add_from_html(r.text, "Born in Roma"):
-                    return urls[:max_urls]
-
-    # Fallback: motore di ricerca Deloox.
-    for search_q in (
-        "Born in Roma",
-        "Valentino Born in Roma",
-        "Born in Roma Uomo",
-        "Born in Roma Extradose",
-        "Born in Roma Intense",
-        "Born in Roma Coral Fantasy",
-    ):
-        for endpoint in (
-            BASE_URL + "/en/search?query=" + quote_plus(search_q),
-            BASE_URL + "/en/search?search=" + quote_plus(search_q),
-            BASE_URL + "/en/search?q=" + quote_plus(search_q),
-        ):
-            try:
-                r = session.get(endpoint, headers=HEADERS, timeout=TIMEOUT)
-            except requests.RequestException:
-                continue
-            if r.status_code >= 400:
-                continue
-            if add_from_html(r.text, search_q):
-                return urls[:max_urls]
-
-    # Recupero minimo: massimo 2 sitemap, solo se non abbiamo trovato URL.
-    if not urls:
-        for u in _sitemap_product_urls(
-            session, "Born in Roma", max_sitemaps=2, max_urls=max_urls
-        ):
-            if u not in seen:
-                seen.add(u)
-                urls.append(u)
-            if len(urls) >= max_urls:
-                break
-
-    return urls[:max_urls]
-
-
 def _discover(session, q):
-    if "born in roma" in norm(q):
-        return _discover_born_in_roma(session, max_urls=24)
+    # IMPORTANT: search first. The old adapter spent most of its time
+    # crawling category pages before it ever reached Deloox's search endpoint.
+    urls = _discover_search(session, q, max_urls=40)
+    if urls:
+        return urls[:40]
 
-    urls, seen = [], set()
+    # Only if search produced nothing, try a tiny category fallback.
+    urls = _discover_from_categories_limited(session, q, max_urls=24)
+    if urls:
+        return urls[:24]
 
-    for url in _discover_from_categories(session, q, max_urls=40):
-        if url not in seen:
-            seen.add(url)
-            urls.append(url)
-        if len(urls) >= 40:
-            return urls[:40]
+    # Last resort: a very small sitemap lookup.
+    return _sitemap_product_urls(
+        session, q, max_sitemaps=2, max_urls=24
+    )[:24]
 
-    endpoints = [
-        BASE_URL + "/en/search?query=" + quote_plus(q),
-        BASE_URL + "/en/search?search=" + quote_plus(q),
-        BASE_URL + "/en?search=" + quote_plus(q),
-        BASE_URL + "/en/search?q=" + quote_plus(q),
-    ]
 
-    for endpoint in endpoints:
-        try:
-            r = session.get(endpoint, headers=HEADERS, timeout=TIMEOUT)
-        except requests.RequestException:
-            continue
-        if r.status_code >= 400:
-            continue
-        for url in _candidate_product_urls(r.text, q):
-            if url not in seen:
-                seen.add(url)
-                urls.append(url)
-                if len(urls) >= 160:
-                    return urls[:40]
-
-    if not urls:
-        for url in _sitemap_product_urls(
-            session, q, max_sitemaps=4, max_urls=40
-        ):
-            if url not in seen:
-                seen.add(url)
-                urls.append(url)
-            if len(urls) >= 160:
-                break
-
-    return urls[:40]
+def _parse_product_safe(session, url, query):
+    r = _fetch(session, url, timeout=7)
+    if r is None or r.status_code >= 400:
+        return None
+    try:
+        return _product(url, r.text, query)
+    except Exception:
+        return None
 
 
 def search(query):
@@ -703,32 +507,37 @@ def search(query):
     seen = set()
 
     try:
-        for url in _discover(session, query)[:24]:
-            try:
-                r = session.get(url, headers=HEADERS, timeout=TIMEOUT)
-            except requests.RequestException:
-                continue
+        urls = _discover(session, query)[:24]
 
-            if r.status_code >= 400:
-                continue
+        # Keep product fetching bounded. Four workers are enough to avoid
+        # turning a slow Deloox response into a deployment-wide timeout.
+        from concurrent.futures import ThreadPoolExecutor, as_completed
 
-            item = _product(url, r.text, query)
-            if not item:
-                continue
+        with ThreadPoolExecutor(max_workers=4) as pool:
+            futures = {
+                pool.submit(_parse_product_safe, session, url, query): url
+                for url in urls
+            }
 
-            sku_value = None
-            sku = item["identity"].get("sku")
-            if sku:
-                sku_value = sku.get("value")
+            for future in as_completed(futures):
+                item = future.result()
+                if not item:
+                    continue
 
-            key = (url, sku_value)
+                sku_value = None
+                sku = item["identity"].get("sku")
+                if sku:
+                    sku_value = sku.get("value")
 
-            if key in seen:
-                continue
+                key = (item["url"], sku_value)
+                if key in seen:
+                    continue
 
-            seen.add(key)
-            results.append(item)
+                seen.add(key)
+                results.append(item)
 
+        # Stable presentation order.
+        results.sort(key=lambda x: (x.get("name") or "").lower())
         return results
     finally:
         session.close()
@@ -736,7 +545,6 @@ def search(query):
 
 def scrape(query):
     return search(query)
-
 
 if __name__ == "__main__":
     import argparse
