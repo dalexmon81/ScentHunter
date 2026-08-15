@@ -44,14 +44,14 @@ app.add_middleware(
 # ============================================================
 
 STORES = [
-    "deloox",
-    "notino",
     "bplatz",
+    "deloox",
     "parfumcity",
     "parfumzentrum",
     "perfumemarket",
     "sabina",
     "orioudh",
+    "notino",
 ]
 
 BASE_DIR = os.path.dirname(__file__)
@@ -987,7 +987,7 @@ def search_perfume(q: str):
     # Tutti gli store vengono avviati in parallelo: un negozio lento non deve
     # tenere in coda gli altri. Il limite globale evita che una singola ricerca
     # resti bloccata indefinitamente.
-    executor = ThreadPoolExecutor(max_workers=2)
+    executor = ThreadPoolExecutor(max_workers=8)
     futures = {
         executor.submit(
             run_store,
