@@ -176,6 +176,217 @@ def norm(value: Any) -> str:
     return re.sub(r"\s+", " ", value).strip()
 
 
+def _clean_display_text(value: Any) -> str:
+    """Pulisce il testo mostrato senza perdere EDP/EDT/genere."""
+    text = str(value or "").strip()
+    if not text:
+        return ""
+    text = re.sub(r"\b\d{1,4}(?:[.,]\d+)?\s*(?:ml|cl)\b", " ", text, flags=re.I)
+    return re.sub(r"\s+", " ", text).strip(" -–—|/")
+
+
+def _normalized_display_tokens(value: Any) -> List[str]:
+    return [token for token in norm(value).split() if token]
+
+
+def _remove_phrase_from_text(text: str, phrase: str) -> str:
+    """Rimuove brand/nome già rappresentati, mantenendo il resto del nome RAW."""
+    if not text or not phrase:
+        return text
+
+    target = _normalized_display_tokens(phrase)
+    if not target:
+        return text
+
+    words = re.findall(
+        r"[A-Za-zÀ-ÖØ-öø-ÿ0-9]+(?:['’][A-Za-zÀ-ÖØ-öø-ÿ0-9]+)?",
+        text,
+    )
+    normalized_words = [norm(word) for word in words]
+    n = len(target)
+
+    for start in range(len(normalized_words) - n + 1):
+        if normalized_words[start:start + n] == target:
+            kept = words[:start] + words[start + n:]
+            return re.sub(r"\s+", " ", " ".join(kept)).strip(" -–—|/")
+
+    return text
+
+
+def _normalize_variant_label(value: Any) -> str:
+    text = _clean_display_text(value)
+    if not text:
+        return ""
+
+    n = norm(text)
+
+    concentration_map = {
+        "eau de parfum": "EDP",
+        "eau parfum": "EDP",
+        "edp": "EDP",
+        "eau de toilette": "EDT",
+        "eau toilette": "EDT",
+        "edt": "EDT",
+        "eau de cologne": "EDC",
+        "eau cologne": "EDC",
+        "edc": "EDC",
+        "extrait de parfum": "Extrait",
+    }
+    gender_map = {
+        "uomo": "Uomo",
+        "homme": "Uomo",
+        "man": "Uomo",
+        "men": "Uomo",
+        "male": "Uomo",
+        "pour homme": "Uomo",
+        "donna": "Donna",
+        "femme": "Donna",
+        "woman": "Donna",
+        "women": "Donna",
+        "female": "Donna",
+        "pour femme": "Donna",
+        "unisex": "Unisex",
+        "unisexe": "Unisex",
+    }
+
+    if n in concentration_map:
+        return concentration_map[n]
+    if n in gender_map:
+        return gender_map[n]
+
+    if n.startswith("eau de parfum"):
+        suffix = n[len("eau de parfum"):].strip()
+        return "EDP" + (f" {gender_map[suffix]}" if suffix in gender_map else "")
+    if n.startswith("eau de toilette"):
+        suffix = n[len("eau de toilette"):].strip()
+        return "EDT" + (f" {gender_map[suffix]}" if suffix in gender_map else "")
+
+    return text
+
+
+def _structured_variant_text(product: Dict[str, Any]) -> str:
+    """Recupera concentrazione/genere da eventuali campi strutturati."""
+    source = product.get("source") if isinstance(product.get("source"), dict) else {}
+    attributes = product.get("attributes") if isinstance(product.get("attributes"), dict) else {}
+
+    values = []
+    keys = (
+        "concentration", "type", "product_type", "productType",
+        "gender", "sex", "for_who", "forWho", "audience", "target",
+        "target_group",
+    )
+
+    for key in keys:
+        for container in (product, source, attributes):
+            value = container.get(key) if isinstance(container, dict) else None
+            if isinstance(value, dict):
+                value = value.get("value")
+            if value not in (None, ""):
+                value = _normalize_variant_label(value)
+                if value and norm(value) not in {norm(v) for v in values}:
+                    values.append(value)
+                break
+
+    return " - ".join(values)
+
+
+def _normalize_remainder_variants(text: str) -> str:
+    """Normalizza le varianti presenti nel nome RAW."""
+    if not text:
+        return ""
+
+    out = _clean_display_text(text)
+    replacements = [
+        (r"\beau\s+de\s+parfum\b", "EDP"),
+        (r"\beau\s+de\s+toilette\b", "EDT"),
+        (r"\beau\s+de\s+cologne\b", "EDC"),
+        (r"\bextrait\s+de\s+parfum\b", "Extrait"),
+        (r"\b(?:pour\s+)?homme\b", "Uomo"),
+        (r"\b(?:pour\s+)?men\b", "Uomo"),
+        (r"\b(?:pour\s+)?man\b", "Uomo"),
+        (r"\b(?:pour\s+)?male\b", "Uomo"),
+        (r"\b(?:pour\s+)?femme\b", "Donna"),
+        (r"\b(?:pour\s+)?women\b", "Donna"),
+        (r"\b(?:pour\s+)?woman\b", "Donna"),
+        (r"\b(?:pour\s+)?female\b", "Donna"),
+    ]
+    for pattern, replacement in replacements:
+        out = re.sub(pattern, replacement, out, flags=re.I)
+
+    return re.sub(r"\s+", " ", out).strip(" -–—|/")
+
+
+def build_display_name(product: Dict[str, Any]) -> str:
+    """
+    Nome API/frontend:
+    Brand - Nome Profumo - resto (EDP/EDT/Uomo/Donna/...).
+    """
+    brand = _clean_display_text(
+        product.get("canonical_brand")
+        or product.get("brand")
+        or product.get("manufacturer")
+        or product.get("maker")
+        or ""
+    )
+    canonical_name = _clean_display_text(
+        product.get("canonical_name")
+        or product.get("name")
+        or product.get("title")
+        or product.get("product_name")
+        or "Profumo"
+    )
+    raw_name = _clean_display_text(
+        product.get("name")
+        or product.get("title")
+        or product.get("product_name")
+        or ""
+    )
+
+    remainder = raw_name
+    if brand:
+        remainder = _remove_phrase_from_text(remainder, brand)
+    if canonical_name:
+        remainder = _remove_phrase_from_text(remainder, canonical_name)
+
+    remainder = _normalize_remainder_variants(remainder)
+    structured = _structured_variant_text(product)
+    remainder_norm = norm(remainder)
+
+    if structured:
+        missing = [
+            value for value in structured.split(" - ")
+            if norm(value) and norm(value) not in remainder_norm
+        ]
+        if missing:
+            remainder = " - ".join(x for x in (remainder, *missing) if x)
+
+    result = " - ".join(
+        part for part in (brand, canonical_name, remainder) if part
+    )
+    result = re.sub(r"\s*-\s*-\s*", " - ", result)
+    return re.sub(r"\s+", " ", result).strip(" -") or "Profumo"
+
+
+def decorate_display_identity(product: Dict[str, Any]) -> Dict[str, Any]:
+    item = dict(product)
+    item["display_brand"] = _clean_display_text(
+        item.get("canonical_brand")
+        or item.get("brand")
+        or item.get("manufacturer")
+        or item.get("maker")
+        or ""
+    )
+    item["display_product_name"] = _clean_display_text(
+        item.get("canonical_name")
+        or item.get("name")
+        or item.get("title")
+        or item.get("product_name")
+        or "Profumo"
+    )
+    item["display_name"] = build_display_name(item)
+    return item
+
+
 def price_num(value: Any) -> Optional[float]:
     match = re.search(r"(\d{1,5}(?:[.,]\d{1,2})?)", str(value or ""))
     if not match:
@@ -749,89 +960,6 @@ def unique_results(products: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
     return unique
 
 
-
-def _aggregate_product_key(product: Dict[str, Any]):
-    """Chiave stabile del prodotto: stessa identità + stesso formato."""
-    identity = norm(
-        product.get("catalog_id")
-        or product.get("product_identity")
-        or product.get("product_id")
-        or ""
-    )
-
-    if not identity:
-        identity = norm(
-            f"{product.get('canonical_brand') or product.get('brand') or ''} "
-            f"{product.get('canonical_name') or product.get('name') or ''}"
-        )
-
-    size = product.get("size_ml") or product.get("size") or product.get("format") or ""
-    size_ml = _product_size_ml(product)
-
-    return (
-        identity,
-        round(size_ml, 2) if size_ml is not None else norm(str(size)),
-    )
-
-
-def aggregate_products(products: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
-    """
-    Unisce le offerte dello stesso prodotto provenienti da negozi diversi.
-
-    Importante:
-    - non elimina i prodotti trovati dagli scraper;
-    - Le Beau e Le Beau Le Parfum restano distinti se il catalog matcher
-      assegna loro identità diverse;
-    - ogni scheda conserva tutte le offerte nel campo 'offers'.
-    """
-    groups: Dict[Any, Dict[str, Any]] = {}
-
-    for product in products:
-        item = dict(product)
-        key = _aggregate_product_key(item)
-
-        if key not in groups:
-            item["offers"] = [dict(item)]
-            item["stores_count"] = 1 if item.get("store") else 0
-            groups[key] = item
-            continue
-
-        group = groups[key]
-        offers = group.setdefault("offers", [])
-
-        store = norm(str(item.get("store") or ""))
-        url = str(item.get("url") or "").split("#")[0].split("?")[0].strip().lower()
-
-        duplicate = any(
-            norm(str(offer.get("store") or "")) == store
-            and str(offer.get("url") or "").split("#")[0].split("?")[0].strip().lower() == url
-            for offer in offers
-        )
-
-        if not duplicate:
-            offers.append(dict(item))
-
-        # La scheda mantiene come prezzo principale il prezzo più basso.
-        current = price_num(group.get("price"))
-        incoming = price_num(item.get("price"))
-
-        if incoming is not None and (current is None or incoming < current):
-            for field in (
-                "price", "price_value", "store", "url", "available",
-                "availability", "image", "size_ml", "size", "format"
-            ):
-                if field in item:
-                    group[field] = item[field]
-
-        group["stores_count"] = len({
-            norm(str(offer.get("store") or ""))
-            for offer in offers
-            if offer.get("store")
-        })
-
-    return list(groups.values())
-
-
 def sort_by_price(products: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
     def key(product):
         availability = str(product.get("availability") or "").lower()
@@ -920,10 +1048,13 @@ def search_perfume(query: str) -> Dict[str, Any]:
         except Exception as exc:
             errors["identity_engine"] = str(exc) or exc.__class__.__name__
 
-    # aggregate across stores by canonical product/variant key
-    results = aggregate_products(results)
-    # note: after aggregation, sort_by_price expects list of products; price_num will still work on product['price']
-    results = sort_by_price(results)
+    results = [
+        decorate_display_identity(item)
+        for item in results
+        if isinstance(item, dict)
+    ]
+
+    results = sort_by_price(unique_results(results))
 
     return {
         "query": query,
@@ -1010,10 +1141,16 @@ def search_stream(q: str):
                         else:
                             unresolved = raw
 
+                        stream_results = [
+                            decorate_display_identity(item)
+                            for item in (matched + unresolved)
+                            if isinstance(item, dict)
+                        ]
+
                         yield "event: store\\ndata: " + json.dumps({
                             "query": query,
                             "store": store,
-                            "results": matched + unresolved,
+                            "results": stream_results,
                             "errors": {},
                             "done": False,
                         }, ensure_ascii=False) + "\\n\\n"
@@ -1060,7 +1197,11 @@ def test_store(store: str, q: str):
         raise HTTPException(status_code=400, detail="Parametro q mancante")
 
     try:
-        results = run_store(store, query)
+        results = [
+            decorate_display_identity(item)
+            for item in run_store(store, query)
+            if isinstance(item, dict)
+        ]
         return {
             "store": store,
             "query": query,
