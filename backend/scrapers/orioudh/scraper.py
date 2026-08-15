@@ -42,39 +42,6 @@ def _query_tokens(query: str) -> List[str]:
     ]
 
 
-def _product_line_key(item: Dict[str, Any]) -> tuple:
-    """Canonical identity for duplicate Shopify listings of the same perfume.
-
-    Gender qualifiers are ignored, so Titan and Titan Uomo belong to the same
-    perfume family. Edition qualifiers such as Limited Edition are preserved,
-    so Liquid Brun and Liquid Brun Limited Edition remain separate.
-
-    Vendor/brand is not used as a key because Shopify may expose duplicate
-    listings with different or missing vendor metadata.
-    """
-    source = item.get("source") or {}
-    name = _norm(source.get("source_name"))
-
-    removable = set(IGNORED_QUERY_WORDS) | {
-        "men", "male", "herren", "homme", "hommes",
-        "women", "female", "damen", "femme", "femmes",
-        "unisex", "unisexe",
-        "uomo", "donna",
-        "french", "avenue",
-        "khadlaj",
-    }
-
-    tokens = [
-        token for token in name.split()
-        if token not in removable and not token.isdigit()
-    ]
-
-    attributes = item.get("attributes") or {}
-    size = (attributes.get("size_ml") or {}).get("value")
-    concentration = (attributes.get("concentration") or {}).get("value")
-
-    return (" ".join(tokens), size, concentration)
-
 def _matches(text: str, query: str) -> bool:
     haystack = _norm(text)
     tokens = _query_tokens(query)
@@ -305,6 +272,44 @@ def _discovery(session: requests.Session, query: str) -> List[str]:
     return urls
 
 
+
+def _canonical_product_line(product_name: str, vendor: str) -> str:
+    """
+    Canonical Product Line for ScentHunter grouping.
+    Same perfume + same real format stays on one product card.
+    Generic gender/brand/concentration/format words do not split the line.
+    Edition/variant words remain, so Limited Edition stays separate.
+    """
+    name = _clean(product_name)
+    vendor_n = _norm(vendor)
+    n = _norm(name)
+
+    if vendor_n:
+        n = re.sub(rf"\b{re.escape(vendor_n)}\b", " ", n)
+
+    # Remove concentration descriptors as a unit before removing generic
+    # words such as "parfum".
+    n = re.sub(
+        r"\b(?:eau de parfum|eau de toilette|extrait de parfum|edp|edt)\b",
+        " ",
+        n,
+    )
+
+    generic = {
+        "men", "man", "male", "homme", "herren",
+        "women", "woman", "female", "femme", "damen",
+        "uomo", "donna", "unisex", "unisexe",
+        "perfume", "parfum", "by",
+    }
+    for word in generic:
+        n = re.sub(rf"\b{re.escape(word)}\b", " ", n)
+
+    n = re.sub(r"\b\d+(?:[.,]\d+)?\s*(?:ml|milliliters?|cl)\b", " ", n)
+    n = re.sub(r"[^a-z0-9]+", " ", n)
+    n = re.sub(r"\s+", " ", n).strip()
+
+    return n or _norm(name)
+
 def _raw_offer(
     product: Dict[str, Any],
     variant: Dict[str, Any],
@@ -313,11 +318,13 @@ def _raw_offer(
     product_name = _clean(product.get("title"))
     variant_name = _clean(variant.get("title"))
     if variant_name and variant_name != "Default Title":
-        source_name = f"{product_name} {variant_name}".strip()
+        raw_source_name = f"{product_name} {variant_name}".strip()
     else:
-        source_name = product_name
+        raw_source_name = product_name
 
     vendor = _clean(product.get("vendor")) or None
+    product_line = _canonical_product_line(raw_source_name, vendor or "")
+    source_name = product_line
     variant_id = variant.get("id")
     product_id = product.get("id")
     sku = _clean(variant.get("sku")) or None
@@ -356,6 +363,7 @@ def _raw_offer(
                 if concentration else None
             ),
             "gender": {"value": gender, "source": "product_source"},
+            "product_line": {"value": product_line, "source": "canonical_name"},
             "packaging_type": {"value": "product", "source": "default"},
         },
         "offer": {
@@ -433,50 +441,7 @@ def search(query: str) -> List[Dict[str, Any]]:
                 seen.add(key)
                 results.append(item)
 
-        # Shopify can expose the same product line through more than one
-        # product URL. This is especially visible on Liquid Brun: one
-        # listing is available while another duplicate listing is marked
-        # out of stock. Keep one offer for the same store/product line,
-        # preferring a real in-stock offer.
-        grouped = {}
-        for item in results:
-            key = (item.get("store"), _product_line_key(item))
-            grouped.setdefault(key, []).append(item)
-
-        final_results = []
-        for group in grouped.values():
-            in_stock = [
-                item for item in group
-                if item.get("offer", {}).get("availability") == "in_stock"
-            ]
-            not_out_of_stock = [
-                item for item in group
-                if item.get("offer", {}).get("availability") != "out_of_stock"
-            ]
-
-            # Never let a stale/unavailable duplicate hide a real offer.
-            # Priority: explicitly in stock > unknown/not marked out of stock
-            # > genuinely out of stock.
-            if in_stock:
-                candidates = in_stock
-            elif not_out_of_stock:
-                candidates = not_out_of_stock
-            else:
-                candidates = group
-
-            # One store offer per product line. Prefer the cheapest valid
-            # offer when several available duplicate listings remain.
-            candidates = sorted(
-                candidates,
-                key=lambda item: (
-                    item.get("offer", {}).get("price")
-                    if item.get("offer", {}).get("price") is not None
-                    else float("inf")
-                ),
-            )
-            final_results.append(candidates[0])
-
-        return final_results
+        return results
     finally:
         session.close()
 
