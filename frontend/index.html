@@ -1958,14 +1958,31 @@ const SEARCH_STORES=[
  "perfumemarket","sabina","orioudh","notino"
 ];
 
+async function getSearchStores(term){
+ try{
+  const routing=await fetchJSONWithTimeout(
+   backend()+"/routing?q="+encodeURIComponent(term),
+   8000
+  );
+  const routed=Array.isArray(routing?.stores)
+   ? routing.stores.map(v=>String(v||"").trim().toLowerCase()).filter(Boolean)
+   : [];
+  const valid=[...new Set(routed)].filter(store=>SEARCH_STORES.includes(store));
+  if(valid.length)return valid;
+ }catch(e){}
+ return [...SEARCH_STORES];
+}
+
 async function searchStoresProgressive(term,onPartial){
  const merged={query:term,comparisons:[],results:[],errors:{}};
  const timeoutMs=15000;
  const concurrency=2;
+ const stores=await getSearchStores(term);
+ const totalStores=stores.length;
 
- for(let i=0;i<SEARCH_STORES.length;i+=concurrency){
-  const pair=SEARCH_STORES.slice(i,i+concurrency);
-  statusBox.textContent=`Cerco ${term}… ${Math.min(i+concurrency,SEARCH_STORES.length)}/${SEARCH_STORES.length}`;
+ for(let i=0;i<stores.length;i+=concurrency){
+  const pair=stores.slice(i,i+concurrency);
+  statusBox.textContent=`Cerco ${term}… ${Math.min(i+concurrency,totalStores)}/${totalStores}`;
 
   const responses=await Promise.allSettled(pair.map(store=>
    fetchJSONWithTimeout(
