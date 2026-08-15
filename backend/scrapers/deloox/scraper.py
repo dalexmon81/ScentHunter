@@ -214,39 +214,25 @@ def _product(url, html, query):
 
 
 def _candidate_queries(query):
-    """Generate broader discovery queries without weakening final matching.
-
-    Deloox discovery is inconsistent for some products. A full query such as
-    "Hawas for Him" may return no product cards, while the meaningful token
-    "Hawas" does. We therefore search several progressively broader forms.
-    Final validation is still performed by _product() against the original
-    query.
-    """
+    """Generate progressively broader Deloox discovery queries."""
     normalized = norm(query)
     if not normalized:
         return []
 
     stop = {
         "for", "the", "and", "with", "de", "da", "del", "della",
-        "du", "des", "di", "by", "e",
+        "du", "des", "di", "by", "e", "in", "of",
     }
 
     searches = [clean(query)]
-    meaningful = [t for t in normalized.split() if t not in stop and len(t) > 1]
+    meaningful = [
+        token for token in normalized.split()
+        if token not in stop and len(token) > 1
+    ]
 
-    # Full normalized query.
     if normalized not in searches:
         searches.append(normalized)
 
-    # Compact query is useful for product names containing number/letter
-    # spacing differences.
-    compact = re.sub(r"(?<=\d)\s+(?=[a-z])|(?<=[a-z])\s+(?=\d)", "", normalized)
-    if compact and compact not in searches:
-        searches.append(compact)
-
-    # Then search each meaningful token, longest first. This is the important
-    # fallback for Deloox: "Hawas", "Supremacy", "Eros" can discover a product
-    # whose full-name search endpoint fails.
     for token in sorted(meaningful, key=lambda x: (-len(x), x)):
         if token not in searches:
             searches.append(token)
@@ -255,10 +241,19 @@ def _candidate_queries(query):
 
 
 def _candidate_product_urls(html, query, discovery_query=None):
-    """Extract Deloox product URLs from anchors, JSON and JS."""
+    """Extract Deloox product URLs from HTML, JSON, JSON-LD and JS.
+
+    Discovery is deliberately broad. Deloox can expose a product title in
+    serialized product-card data while the visible href contains only a
+    numeric /product/<id>/ URL. We collect those URLs first and let _product()
+    perform the strict final validation against the original query.
+    """
     soup = BeautifulSoup(html, "html.parser")
     found = []
     seen = set()
+
+    discovery = discovery_query or query
+    q_tokens = tokens(discovery)
 
     def add(raw_url, context=""):
         if not raw_url:
@@ -277,31 +272,74 @@ def _candidate_product_urls(html, query, discovery_query=None):
 
         if parsed.netloc.lower() not in {"deloox.com", "www.deloox.com"}:
             return
-
         if "/product/" not in parsed.path.lower():
             return
-
         if url in seen:
             return
 
-        # Discovery may intentionally use a broader query token. The
-        # original query is still checked later by _product().
-        discovery = discovery_query or query
+        # For broad discovery, accept a product URL when either the URL,
+        # nearby card text, or serialized context contains a useful query
+        # token. The original query is checked later by _product().
         haystack = f"{context} {url}"
-        if matches(haystack, discovery):
-            seen.add(url)
-            found.append(url)
+        if q_tokens and not matches(haystack, discovery):
+            if not any(token in tokens(haystack) for token in q_tokens):
+                return
 
+        seen.add(url)
+        found.append(url)
+
+    # 1) Normal anchors and nearby card text.
     for a in soup.find_all("a", href=True):
         add(a.get("href"), a.get_text(" ", strip=True))
 
-    patterns = [
-        r'https?://(?:www\.)?deloox\.com/[^"\'>\s]+/product/[^"\'>\s]+',
-        r'["\']((?:/)?(?:en/)?product/[^"\']+)["\']',
+    # 2) Every literal Deloox product URL in raw HTML/JS.
+    product_patterns = [
+        r'https?://(?:www\.)?deloox\.com/[^"\'<>\s]+/product/[^"\'<>\s]+',
+        r'["\']((?:/)?(?:en/|it/|nl/)?product/[^"\']+)["\']',
+        r'["\']((?:https?:)?//(?:www\.)?deloox\.com/[^"\']*/product/[^"\']+)["\']',
     ]
-    for pattern in patterns:
+    for pattern in product_patterns:
         for raw in re.findall(pattern, html, re.I):
+            if isinstance(raw, tuple):
+                raw = "".join(raw)
             add(raw)
+
+    # 3) JSON / JSON-LD / serialized state. Associate each product URL with
+    # the surrounding object/text so numeric URLs can still be discovered.
+    for script in soup.find_all("script"):
+        body = script.get_text(" ", strip=False)
+        if not body or "/product/" not in body.lower():
+            continue
+
+        # Capture product URL plus a local context window. This handles
+        # structures such as {"name":"Rasasi Hawas","url":"/product/123..."}.
+        for match in re.finditer(
+            r'(?P<url>(?:https?:)?//(?:www\.)?deloox\.com/[^"\'<>\s]+/product/[^"\'<>\s]+|'
+            r'/?(?:en/|it/|nl/)?product/[^"\'<>\s]+)',
+            body,
+            re.I,
+        ):
+            pos = match.start()
+            context = body[max(0, pos - 1200): min(len(body), match.end() + 1200)]
+            add(match.group("url"), context)
+
+    # 4) Product-card elements can carry the title in data-* attributes.
+    for tag in soup.find_all(True):
+        attrs = tag.attrs or {}
+        attr_text = " ".join(
+            clean(v) for v in attrs.values()
+            if isinstance(v, (str, int, float))
+        )
+        if "/product/" not in attr_text.lower():
+            continue
+
+        for m in re.finditer(
+            r'(?:https?:)?//(?:www\.)?deloox\.com/[^"\'>\s]+/product/[^"\'>\s]+|'
+            r'/?(?:en/|it/|nl/)?product/[^"\'>\s]+',
+            attr_text,
+            re.I,
+        ):
+            add(m.group(0), f"{tag.get_text(' ', strip=True)} {attr_text}")
 
     return found
 
@@ -443,15 +481,12 @@ def _discover_from_categories(session, query, max_urls=80):
             if page.status_code >= 400:
                 continue
 
-            for discovery_query in _candidate_queries(query):
-                for product_url in _candidate_product_urls(
-                    page.text, query, discovery_query=discovery_query
-                ):
-                    if product_url not in seen:
-                        seen.add(product_url)
-                        urls.append(product_url)
-                        if len(urls) >= max_urls:
-                            return urls[:max_urls]
+            for product_url in _candidate_product_urls(page.text, query):
+                if product_url not in seen:
+                    seen.add(product_url)
+                    urls.append(product_url)
+                    if len(urls) >= max_urls:
+                        return urls[:max_urls]
 
     return urls[:max_urls]
 
@@ -530,12 +565,6 @@ def _sitemap_product_urls(session, query, max_sitemaps=12, max_urls=80):
     if not query_tokens:
         return []
 
-    discovery_tokens = []
-    for candidate in _candidate_queries(query):
-        for token in tokens(candidate):
-            if token not in discovery_tokens:
-                discovery_tokens.append(token)
-
     sitemap_roots = (
         BASE_URL + "/sitemap.xml",
         BASE_URL + "/sitemap_index.xml",
@@ -588,11 +617,7 @@ def _sitemap_product_urls(session, query, max_sitemaps=12, max_urls=80):
             low = value.lower()
 
             if "/product/" in low:
-                product_tokens = tokens(value)
-                if (
-                    query_tokens.issubset(product_tokens)
-                    or any(token in product_tokens for token in discovery_tokens)
-                ):
+                if query_tokens.issubset(tokens(value)):
                     if value not in seen_products:
                         seen_products.add(value)
                         product_urls.append(value)
@@ -632,15 +657,12 @@ def _discover(session, q):
         if page.status_code >= 400:
             continue
 
-        for discovery_query in _candidate_queries(q):
-            for product_url in _candidate_product_urls(
-                page.text, q, discovery_query=discovery_query
-            ):
-                if product_url not in seen:
-                    seen.add(product_url)
-                    urls.append(product_url)
-                    if len(urls) >= 80:
-                        return urls[:80]
+        for product_url in _candidate_product_urls(page.text, q):
+            if product_url not in seen:
+                seen.add(product_url)
+                urls.append(product_url)
+                if len(urls) >= 80:
+                    return urls[:80]
 
     # TERTIARY: dedicated Product-line category pages discovered from sitemap.
     # This is important for other product lines whose category URLs are
@@ -658,13 +680,38 @@ def _discover(session, q):
         if page.status_code >= 400:
             continue
 
-        for discovery_query in _candidate_queries(q):
-            for product_url in _candidate_product_urls(
-                page.text, q, discovery_query=discovery_query
+        for product_url in _candidate_product_urls(page.text, q):
+            if product_url not in seen:
+                seen.add(product_url)
+                urls.append(product_url)
+                if len(urls) >= 80:
+                    return urls[:80]
+
+    # PROGRESSIVE SEARCH FALLBACK: Deloox may return zero cards for the
+    # full phrase but return the relevant product for a meaningful token.
+    # Final validation remains against the original query in _product().
+    for discovery_query in _candidate_queries(q):
+        endpoints = [
+            BASE_URL + "/en/search?query=" + quote_plus(discovery_query),
+            BASE_URL + "/en/search?search=" + quote_plus(discovery_query),
+            BASE_URL + "/en/search?q=" + quote_plus(discovery_query),
+        ]
+
+        for endpoint in endpoints:
+            try:
+                r = session.get(endpoint, headers=HEADERS, timeout=TIMEOUT)
+            except requests.RequestException:
+                continue
+
+            if r.status_code >= 400:
+                continue
+
+            for url in _candidate_product_urls(
+                r.text, q, discovery_query=discovery_query
             ):
-                if product_url not in seen:
-                    seen.add(product_url)
-                    urls.append(product_url)
+                if url not in seen:
+                    seen.add(url)
+                    urls.append(url)
                     if len(urls) >= 80:
                         return urls[:80]
 
@@ -685,13 +732,10 @@ def _discover(session, q):
         if r.status_code >= 400:
             continue
 
-        for discovery_query in _candidate_queries(q):
-            for url in _candidate_product_urls(
-                r.text, q, discovery_query=discovery_query
-            ):
-                if url not in seen:
-                    seen.add(url)
-                    urls.append(url)
+        for url in _candidate_product_urls(r.text, q):
+            if url not in seen:
+                seen.add(url)
+                urls.append(url)
 
         if len(urls) >= 80:
             return urls[:80]
