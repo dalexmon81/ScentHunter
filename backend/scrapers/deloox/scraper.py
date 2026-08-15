@@ -318,7 +318,7 @@ def _category_pages(session):
     # query such as "Born in Roma" is not limited to whichever line happens
     # to appear on the first category page.
     return (
-        BASE_URL + "/category/1075660/womens-perfume.html",
+        BASE_URL + "/category/1075639/womens-fragrances.html",
         BASE_URL + "/category/1075750/mens-perfume.html",
         BASE_URL + "/category/1025540/trending.html",
     )
@@ -548,59 +548,146 @@ def _special_query_variants(q):
     return [q]
 
 
-def _discover(session, q):
-    urls = []
-    seen = set()
 
-    def add_url(url):
+def _discover_born_in_roma(session, max_urls=120):
+    """Fast discovery for Born in Roma using Deloox Product Line filters."""
+    urls, seen = [], set()
+
+    roots = (
+        BASE_URL + "/category/1075639/womens-fragrances.html",
+        BASE_URL + "/category/1075750/mens-perfume.html",
+        BASE_URL + "/category/1025540/trending.html",
+    )
+
+    def add_products(html):
+        for u in _candidate_product_urls(html, "Born in Roma"):
+            if u not in seen:
+                seen.add(u)
+                urls.append(u)
+                if len(urls) >= max_urls:
+                    return True
+        return False
+
+    def born_links(html):
+        soup = BeautifulSoup(html, "html.parser")
+        out = []
+        for a in soup.find_all("a", href=True):
+            label = clean(a.get_text(" ", strip=True))
+            href = clean(a.get("href"))
+            if not label or "born in roma" not in norm(label):
+                continue
+            u = urljoin(BASE_URL, href).split("#")[0]
+            p = urlparse(u)
+            if p.netloc.lower() not in {"deloox.com", "www.deloox.com"}:
+                continue
+            if "/product/" in p.path.lower():
+                continue
+            if u not in out:
+                out.append(u)
+        return out
+
+    filter_pages = []
+    for root in roots:
+        try:
+            r = session.get(root, headers=HEADERS, timeout=TIMEOUT)
+        except requests.RequestException:
+            continue
+        if r.status_code >= 400:
+            continue
+
+        if add_products(r.text):
+            return urls[:max_urls]
+
+        for u in born_links(r.text):
+            if u not in filter_pages:
+                filter_pages.append(u)
+
+    for page_url in filter_pages:
+        pages = [page_url]
+        base = page_url.split("?")[0]
+        for page in range(2, 7):
+            pages.append(f"{base}?page={page}")
+
+        for u in pages:
+            try:
+                r = session.get(u, headers=HEADERS, timeout=TIMEOUT)
+            except requests.RequestException:
+                continue
+            if r.status_code >= 400:
+                continue
+            if add_products(r.text):
+                return urls[:max_urls]
+
+    # Small fallback: two direct searches, instead of 20+ requests.
+    for search_q in ("Born in Roma", "Valentino Born in Roma"):
+        endpoint = BASE_URL + "/en/search?query=" + quote_plus(search_q)
+        try:
+            r = session.get(endpoint, headers=HEADERS, timeout=TIMEOUT)
+        except requests.RequestException:
+            continue
+        if r.status_code >= 400:
+            continue
+        for u in _candidate_product_urls(r.text, search_q):
+            if u not in seen:
+                seen.add(u)
+                urls.append(u)
+                if len(urls) >= max_urls:
+                    return urls[:max_urls]
+
+    if not urls:
+        for u in _sitemap_product_urls(
+            session, "Born in Roma", max_sitemaps=50, max_urls=max_urls
+        ):
+            if u not in seen:
+                seen.add(u)
+                urls.append(u)
+                if len(urls) >= max_urls:
+                    break
+
+    return urls[:max_urls]
+
+
+def _discover(session, q):
+    if "born in roma" in norm(q):
+        return _discover_born_in_roma(session, max_urls=120)
+
+    urls, seen = [], set()
+
+    for url in _discover_from_categories(session, q, max_urls=160):
         if url not in seen:
             seen.add(url)
             urls.append(url)
+        if len(urls) >= 160:
+            return urls[:160]
 
-    # For normal searches we keep the existing discovery flow.
-    # For known families (currently Born in Roma), we additionally run
-    # targeted searches for each variant. This avoids relying on a single
-    # Deloox result page, which may expose only a subset of the family.
-    queries = _special_query_variants(q)
+    endpoints = [
+        BASE_URL + "/en/search?query=" + quote_plus(q),
+        BASE_URL + "/en/search?search=" + quote_plus(q),
+        BASE_URL + "/en?search=" + quote_plus(q),
+        BASE_URL + "/en/search?q=" + quote_plus(q),
+    ]
 
-    for search_q in queries:
-        # PRIMARY: current Deloox category/Product-line structure.
-        for url in _discover_from_categories(session, search_q, max_urls=160):
-            # Always add the URL here. _product() later validates it against
-            # the original user query, so variant-specific discovery does not
-            # weaken the final product match.
-            add_url(url)
-            if len(urls) >= 160:
-                return urls[:160]
-
-        # SECONDARY: legacy/current search endpoints.
-        endpoints = [
-            BASE_URL + "/en/search?query=" + quote_plus(search_q),
-            BASE_URL + "/en/search?search=" + quote_plus(search_q),
-            BASE_URL + "/en?search=" + quote_plus(search_q),
-            BASE_URL + "/en/search?q=" + quote_plus(search_q),
-        ]
-
-        for endpoint in endpoints:
-            try:
-                r = session.get(endpoint, headers=HEADERS, timeout=TIMEOUT)
-            except requests.RequestException:
-                continue
-
-            if r.status_code >= 400:
-                continue
-
-            for url in _candidate_product_urls(r.text, search_q):
-                add_url(url)
+    for endpoint in endpoints:
+        try:
+            r = session.get(endpoint, headers=HEADERS, timeout=TIMEOUT)
+        except requests.RequestException:
+            continue
+        if r.status_code >= 400:
+            continue
+        for url in _candidate_product_urls(r.text, q):
+            if url not in seen:
+                seen.add(url)
+                urls.append(url)
                 if len(urls) >= 160:
                     return urls[:160]
 
-    # LAST RESORT: sitemap discovery for the original query.
     if not urls:
         for url in _sitemap_product_urls(
             session, q, max_sitemaps=12, max_urls=160
         ):
-            add_url(url)
+            if url not in seen:
+                seen.add(url)
+                urls.append(url)
             if len(urls) >= 160:
                 break
 
