@@ -550,71 +550,105 @@ def _special_query_variants(q):
 
 
 def _discover_born_in_roma(session, max_urls=24):
-    """Discovery leggera e sicura per Born in Roma.
-
-    Evita il crawl massivo delle categorie e delle sitemap che può consumare
-    molta RAM. Usa poche query mirate e raccoglie un numero limitato di URL.
-    """
+    """Discovery mirata: categorie + ricerca, senza crawl massivo."""
     urls, seen = [], set()
 
-    search_queries = (
+    def add_from_html(html, query):
+        for u in _candidate_product_urls(html, query):
+            if u not in seen:
+                seen.add(u)
+                urls.append(u)
+                if len(urls) >= max_urls:
+                    return True
+        return False
+
+    category_roots = (
+        BASE_URL + "/category/1075639/womens-fragrances.html",
+        BASE_URL + "/category/1075750/mens-perfume.html",
+        BASE_URL + "/category/1025540/trending.html",
+    )
+
+    for root_url in category_roots:
+        try:
+            r = session.get(root_url, headers=HEADERS, timeout=TIMEOUT)
+        except requests.RequestException:
+            continue
+        if r.status_code >= 400:
+            continue
+
+        if add_from_html(r.text, "Born in Roma"):
+            return urls[:max_urls]
+
+        soup = BeautifulSoup(r.text, "html.parser")
+        linked = []
+        for a in soup.find_all("a", href=True):
+            label = clean(a.get_text(" ", strip=True))
+            href = clean(a.get("href"))
+            if "born in roma" not in norm(label):
+                continue
+            u = urljoin(BASE_URL, href).split("#")[0]
+            p = urlparse(u)
+            if p.netloc.lower() not in {"deloox.com", "www.deloox.com"}:
+                continue
+            if "/product/" in p.path.lower() or "/category/" not in p.path.lower():
+                continue
+            if u not in linked:
+                linked.append(u)
+
+        for line_url in linked[:4]:
+            for page_url in (
+                line_url,
+                line_url + ("&" if "?" in line_url else "?") + "page=2",
+            ):
+                try:
+                    r = session.get(page_url, headers=HEADERS, timeout=TIMEOUT)
+                except requests.RequestException:
+                    continue
+                if r.status_code >= 400:
+                    continue
+                if add_from_html(r.text, "Born in Roma"):
+                    return urls[:max_urls]
+
+    # Fallback: motore di ricerca Deloox.
+    for search_q in (
         "Born in Roma",
         "Valentino Born in Roma",
         "Born in Roma Uomo",
-        "Born in Roma Donna",
         "Born in Roma Extradose",
-        "Born in Roma Coral Fantasy",
         "Born in Roma Intense",
-        "Born in Roma Green Stravaganza",
-        "Born in Roma Yellow Dream",
-    )
-
-    for search_q in search_queries:
-        endpoint = BASE_URL + "/en/search?query=" + quote_plus(search_q)
-        try:
-            r = session.get(endpoint, headers=HEADERS, timeout=TIMEOUT)
-        except requests.RequestException:
-            continue
-
-        if r.status_code >= 400:
-            continue
-
-        for u in _candidate_product_urls(r.text, search_q):
-            if u in seen:
-                continue
-            seen.add(u)
-            urls.append(u)
-            if len(urls) >= max_urls:
-                return urls
-
-    # Ultimo fallback molto leggero: una sola categoria per genere.
-    # Non vengono seguite paginazioni né sitemap.
-    for category_url in (
-        BASE_URL + "/category/1075639/womens-fragrances.html",
-        BASE_URL + "/category/1075750/mens-perfume.html",
+        "Born in Roma Coral Fantasy",
     ):
-        try:
-            r = session.get(category_url, headers=HEADERS, timeout=TIMEOUT)
-        except requests.RequestException:
-            continue
-
-        if r.status_code >= 400:
-            continue
-
-        for u in _candidate_product_urls(r.text, "Born in Roma"):
-            if u in seen:
+        for endpoint in (
+            BASE_URL + "/en/search?query=" + quote_plus(search_q),
+            BASE_URL + "/en/search?search=" + quote_plus(search_q),
+            BASE_URL + "/en/search?q=" + quote_plus(search_q),
+        ):
+            try:
+                r = session.get(endpoint, headers=HEADERS, timeout=TIMEOUT)
+            except requests.RequestException:
                 continue
-            seen.add(u)
-            urls.append(u)
-            if len(urls) >= max_urls:
-                return urls
+            if r.status_code >= 400:
+                continue
+            if add_from_html(r.text, search_q):
+                return urls[:max_urls]
 
-    return urls
+    # Recupero minimo: massimo 2 sitemap, solo se non abbiamo trovato URL.
+    if not urls:
+        for u in _sitemap_product_urls(
+            session, "Born in Roma", max_sitemaps=2, max_urls=max_urls
+        ):
+            if u not in seen:
+                seen.add(u)
+                urls.append(u)
+            if len(urls) >= max_urls:
+                break
+
+    return urls[:max_urls]
 
 
 def _discover(session, q):
     if "born in roma" in norm(q):
-        return _discover_born_in_roma(session, max_urls=120)
+        return _discover_born_in_roma(session, max_urls=24)
 
     urls, seen = [], set()
 
