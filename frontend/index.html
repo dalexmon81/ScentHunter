@@ -1830,7 +1830,7 @@ async function searchLeBeauFamily(onPartial){
 
  for(let i=0;i<terms.length;i++){
   const term=terms[i];
-  statusBox.textContent=`Cerco Le Beau… ${i+1}/${terms.length}`;
+  statusBox.textContent=`Cerco Le Beau… ${i+1}/8`;
 
   let data={results:[],comparisons:[],errors:{}};
   try{
@@ -1869,7 +1869,7 @@ async function searchLeBeauFamily(onPartial){
   const missing=(expectedStores[term]||[]).filter(store=>!returnedStores.has(store));
   for(let j=0;j<missing.length;j+=2){
    const pair=missing.slice(j,j+2);
-   statusBox.textContent=`Cerco Le Beau… ${i+1}/${terms.length} · recupero ${j+1}/${missing.length}`;
+   statusBox.textContent=`Cerco Le Beau… ${i+1}/8 · recupero ${j+1}/${missing.length}`;
 
    const fallbackResponses=await Promise.allSettled(pair.map(store=>
     fetchJSONWithTimeout(
