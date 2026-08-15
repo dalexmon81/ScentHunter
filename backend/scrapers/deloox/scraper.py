@@ -97,26 +97,158 @@ def _product(url,html,query):
         "name":name,"price":f"{price:.2f}".replace(".",",")+" €","url":url,"available":avail=="in_stock",
     }
 
-def _discover(session,q):
-    urls=[];seen=set()
-    endpoints=[
-        BASE_URL+"/en/search?query="+quote_plus(q),
-        BASE_URL+"/en/search?search="+quote_plus(q),
-        BASE_URL+"/en?search="+quote_plus(q),
+def _candidate_product_urls(html, query):
+    """Estrae URL prodotto anche quando Deloox non usa normali anchor cards."""
+    soup = BeautifulSoup(html, "html.parser")
+    found = []
+    seen = set()
+
+    def add(raw_url, context=""):
+        if not raw_url:
+            return
+        raw_url = clean(raw_url)
+        if raw_url.startswith(("javascript:", "mailto:", "#")):
+            return
+        url = urljoin(BASE_URL, raw_url).split("#")[0].split("?")[0]
+        if not re.match(r"^https?://(?:www\.)?deloox\.com/", url, re.I):
+            return
+        path = url.lower()
+        if "/product/" not in path:
+            return
+        if url in seen:
+            return
+        if matches((context or "") + " " + url, query):
+            seen.add(url)
+            found.append(url)
+
+    for a in soup.find_all("a", href=True):
+        add(a.get("href"), a.get_text(" ", strip=True))
+
+    # Alcune versioni del sito inseriscono i product URL in JSON/JS
+    # invece che in un normale <a>.
+    for raw in re.findall(r'https?://(?:www\.)?deloox\.com/[^"\'\s<>]+/product/[^"\'\s<>]+', html, re.I):
+        add(raw)
+
+    for raw in re.findall(r'["\']((?:/)?(?:en/)?product/[^"\']+)["\']', html, re.I):
+        add(raw)
+
+    return found
+
+
+def _sitemap_product_urls(session, query, max_sitemaps=12, max_urls=80):
+    """
+    Fallback quando la ricerca Deloox non restituisce le card prodotto.
+    Legge sitemap XML e prende solo URL che contengono i token della query.
+    Non scarica pagine prodotto qui: le pagine vengono lette da search().
+    """
+    query_tokens = tokens(query)
+    if not query_tokens:
+        return []
+
+    sitemap_roots = (
+        BASE_URL + "/sitemap.xml",
+        BASE_URL + "/sitemap_index.xml",
+        BASE_URL + "/sitemap-index.xml",
+        BASE_URL + "/en/sitemap.xml",
+    )
+
+    pending = list(sitemap_roots)
+    seen_sitemaps = set()
+    product_urls = []
+    seen_products = set()
+
+    def fetch_xml(url):
+        try:
+            r = session.get(url, headers=HEADERS, timeout=TIMEOUT)
+        except requests.RequestException:
+            return None
+        if r.status_code >= 400:
+            return None
+        ctype = (r.headers.get("content-type") or "").lower()
+        if "xml" not in ctype and not r.text.lstrip().startswith(("<?xml", "<urlset", "<sitemapindex")):
+            return None
+        return r.text
+
+    while pending and len(seen_sitemaps) < max_sitemaps and len(product_urls) < max_urls:
+        sitemap_url = pending.pop(0)
+        if sitemap_url in seen_sitemaps:
+            continue
+        seen_sitemaps.add(sitemap_url)
+
+        xml = fetch_xml(sitemap_url)
+        if not xml:
+            continue
+
+        try:
+            soup = BeautifulSoup(xml, "xml")
+        except Exception:
+            continue
+
+        for loc in soup.find_all("loc"):
+            value = clean(loc.get_text())
+            if not value:
+                continue
+            low = value.lower()
+            if "/product/" in low:
+                # Sitemaps contain canonical URLs, so query matching can
+                # be done directly on the URL slug.
+                if query_tokens.issubset(tokens(value)):
+                    if value not in seen_products:
+                        seen_products.add(value)
+                        product_urls.append(value)
+                        if len(product_urls) >= max_urls:
+                            break
+            elif low.endswith(".xml") or "sitemap" in low:
+                if value not in seen_sitemaps and len(seen_sitemaps) + len(pending) < max_sitemaps * 3:
+                    pending.append(value)
+
+    return product_urls
+
+
+def _discover(session, q):
+    urls = []
+    seen = set()
+
+    # Manteniamo gli endpoint già usati dal progetto e ne aggiungiamo
+    # alcune varianti comuni senza cambiare il comportamento dei risultati
+    # quando il sito risponde normalmente.
+    endpoints = [
+        BASE_URL + "/en/search?query=" + quote_plus(q),
+        BASE_URL + "/en/search?search=" + quote_plus(q),
+        BASE_URL + "/en?search=" + quote_plus(q),
+        BASE_URL + "/en/search?q=" + quote_plus(q),
     ]
+
     for endpoint in endpoints:
-        try:r=session.get(endpoint,headers=HEADERS,timeout=TIMEOUT)
-        except requests.RequestException:continue
-        if r.status_code>=400:continue
-        soup=BeautifulSoup(r.text,"html.parser")
-        for a in soup.select('a[href*="/product/"]'):
-            url=urljoin(BASE_URL,a.get("href","")).split("?")[0]
-            text=clean(a.get_text(" ",strip=True))
-            if url in seen:continue
-            if matches(text+" "+url,q):
-                seen.add(url);urls.append(url)
-            if len(urls)>=20:return urls
-    return urls
+        try:
+            r = session.get(endpoint, headers=HEADERS, timeout=TIMEOUT)
+        except requests.RequestException:
+            continue
+        if r.status_code >= 400:
+            continue
+
+        for url in _candidate_product_urls(r.text, q):
+            if url not in seen:
+                seen.add(url)
+                urls.append(url)
+
+        # Non imponiamo più il vecchio limite di 20 URL.
+        # Limitiamo comunque una singola ricerca a 80 pagine prodotto:
+        # è abbastanza per una famiglia come Born in Roma senza trasformare
+        # ogni query in un crawl del sito.
+        if len(urls) >= 80:
+            return urls[:80]
+
+    # Fallback solo se la ricerca non ha prodotto URL.
+    if not urls:
+        for url in _sitemap_product_urls(session, q, max_sitemaps=12, max_urls=80):
+            if url not in seen:
+                seen.add(url)
+                urls.append(url)
+            if len(urls) >= 80:
+                break
+
+    return urls[:80]
 
 def search(query):
     query=clean(query)
