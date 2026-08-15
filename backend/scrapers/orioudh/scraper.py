@@ -42,10 +42,40 @@ def _query_tokens(query: str) -> List[str]:
     ]
 
 
-def _matches(text: str, query: str) -> bool:
-    haystack = _norm(text)
+def _matches(text: str, query: str, vendor: str = "") -> bool:
+    """
+    Validate a discovered product against the user query.
+
+    A query can be represented across Shopify fields:
+      "Khadlaj Titan"
+        title  = "Titan by Khadlaj - Men Perfume - EDP - 100 ml"
+        vendor = "Khadlaj"
+
+    The match is therefore checked against the combined title/vendor text,
+    but also explicitly against the two fields separately. This prevents a
+    valid product from being discarded merely because the store splits brand
+    and product name across fields.
+    """
     tokens = _query_tokens(query)
-    return bool(tokens) and all(token in haystack for token in tokens)
+    if not tokens:
+        return False
+
+    title_text = _norm(text)
+    vendor_text = _norm(vendor)
+
+    # Normal case: all query tokens occur somewhere in title + vendor.
+    combined = f"{title_text} {vendor_text}".strip()
+    if all(token in combined for token in tokens):
+        return True
+
+    # Explicit field-aware case: allow the brand/product terms to be split
+    # between title and vendor. This is especially important for Shopify
+    # results such as "Titan by Khadlaj" with vendor="Khadlaj".
+    if vendor_text:
+        if all(token in title_text or token in vendor_text for token in tokens):
+            return True
+
+    return False
 
 
 def _price(value) -> Optional[float]:
@@ -211,7 +241,7 @@ def _discovery(session: requests.Session, query: str) -> List[str]:
                 continue
             title = _clean(product.get("title"))
             vendor = _clean(product.get("vendor"))
-            if not _matches(title + " " + vendor, query):
+            if not _matches(title, query, vendor):
                 continue
 
             product_url = urljoin(BASE_URL, product.get("url") or "")
@@ -243,7 +273,7 @@ def _discovery(session: requests.Session, query: str) -> List[str]:
                 candidate_text = f"{title} {product_url}"
                 if (
                     "/products/" in product_url
-                    and _matches(candidate_text, query)
+                    and _matches(title, query, vendor)
                     and product_url not in seen
                 ):
                     seen.add(product_url)
@@ -274,7 +304,7 @@ def _discovery(session: requests.Session, query: str) -> List[str]:
                 candidate_text = f"{title} {vendor} {product_url}"
                 if (
                     "/products/" in product_url
-                    and _matches(candidate_text, query)
+                    and _matches(title, query, vendor)
                     and product_url not in seen
                 ):
                     seen.add(product_url)
