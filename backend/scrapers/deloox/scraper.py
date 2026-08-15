@@ -549,102 +549,67 @@ def _special_query_variants(q):
 
 
 
-def _discover_born_in_roma(session, max_urls=120):
-    """Fast discovery for Born in Roma using Deloox Product Line filters."""
+def _discover_born_in_roma(session, max_urls=24):
+    """Discovery leggera e sicura per Born in Roma.
+
+    Evita il crawl massivo delle categorie e delle sitemap che può consumare
+    molta RAM. Usa poche query mirate e raccoglie un numero limitato di URL.
+    """
     urls, seen = [], set()
 
-    roots = (
-        BASE_URL + "/category/1075639/womens-fragrances.html",
-        BASE_URL + "/category/1075750/mens-perfume.html",
-        BASE_URL + "/category/1025540/trending.html",
+    search_queries = (
+        "Born in Roma",
+        "Valentino Born in Roma",
+        "Born in Roma Uomo",
+        "Born in Roma Donna",
+        "Born in Roma Extradose",
+        "Born in Roma Coral Fantasy",
+        "Born in Roma Intense",
+        "Born in Roma Green Stravaganza",
+        "Born in Roma Yellow Dream",
     )
 
-    def add_products(html):
-        for u in _candidate_product_urls(html, "Born in Roma"):
-            if u not in seen:
-                seen.add(u)
-                urls.append(u)
-                if len(urls) >= max_urls:
-                    return True
-        return False
-
-    def born_links(html):
-        soup = BeautifulSoup(html, "html.parser")
-        out = []
-        for a in soup.find_all("a", href=True):
-            label = clean(a.get_text(" ", strip=True))
-            href = clean(a.get("href"))
-            if not label or "born in roma" not in norm(label):
-                continue
-            u = urljoin(BASE_URL, href).split("#")[0]
-            p = urlparse(u)
-            if p.netloc.lower() not in {"deloox.com", "www.deloox.com"}:
-                continue
-            if "/product/" in p.path.lower():
-                continue
-            if u not in out:
-                out.append(u)
-        return out
-
-    filter_pages = []
-    for root in roots:
-        try:
-            r = session.get(root, headers=HEADERS, timeout=TIMEOUT)
-        except requests.RequestException:
-            continue
-        if r.status_code >= 400:
-            continue
-
-        if add_products(r.text):
-            return urls[:max_urls]
-
-        for u in born_links(r.text):
-            if u not in filter_pages:
-                filter_pages.append(u)
-
-    for page_url in filter_pages:
-        pages = [page_url]
-        base = page_url.split("?")[0]
-        for page in range(2, 7):
-            pages.append(f"{base}?page={page}")
-
-        for u in pages:
-            try:
-                r = session.get(u, headers=HEADERS, timeout=TIMEOUT)
-            except requests.RequestException:
-                continue
-            if r.status_code >= 400:
-                continue
-            if add_products(r.text):
-                return urls[:max_urls]
-
-    # Small fallback: two direct searches, instead of 20+ requests.
-    for search_q in ("Born in Roma", "Valentino Born in Roma"):
+    for search_q in search_queries:
         endpoint = BASE_URL + "/en/search?query=" + quote_plus(search_q)
         try:
             r = session.get(endpoint, headers=HEADERS, timeout=TIMEOUT)
         except requests.RequestException:
             continue
+
         if r.status_code >= 400:
             continue
+
         for u in _candidate_product_urls(r.text, search_q):
-            if u not in seen:
-                seen.add(u)
-                urls.append(u)
-                if len(urls) >= max_urls:
-                    return urls[:max_urls]
+            if u in seen:
+                continue
+            seen.add(u)
+            urls.append(u)
+            if len(urls) >= max_urls:
+                return urls
 
-    if not urls:
-        for u in _sitemap_product_urls(
-            session, "Born in Roma", max_sitemaps=50, max_urls=max_urls
-        ):
-            if u not in seen:
-                seen.add(u)
-                urls.append(u)
-                if len(urls) >= max_urls:
-                    break
+    # Ultimo fallback molto leggero: una sola categoria per genere.
+    # Non vengono seguite paginazioni né sitemap.
+    for category_url in (
+        BASE_URL + "/category/1075639/womens-fragrances.html",
+        BASE_URL + "/category/1075750/mens-perfume.html",
+    ):
+        try:
+            r = session.get(category_url, headers=HEADERS, timeout=TIMEOUT)
+        except requests.RequestException:
+            continue
 
-    return urls[:max_urls]
+        if r.status_code >= 400:
+            continue
+
+        for u in _candidate_product_urls(r.text, "Born in Roma"):
+            if u in seen:
+                continue
+            seen.add(u)
+            urls.append(u)
+            if len(urls) >= max_urls:
+                return urls
+
+    return urls
 
 
 def _discover(session, q):
@@ -653,12 +618,12 @@ def _discover(session, q):
 
     urls, seen = [], set()
 
-    for url in _discover_from_categories(session, q, max_urls=160):
+    for url in _discover_from_categories(session, q, max_urls=40):
         if url not in seen:
             seen.add(url)
             urls.append(url)
-        if len(urls) >= 160:
-            return urls[:160]
+        if len(urls) >= 40:
+            return urls[:40]
 
     endpoints = [
         BASE_URL + "/en/search?query=" + quote_plus(q),
@@ -679,11 +644,11 @@ def _discover(session, q):
                 seen.add(url)
                 urls.append(url)
                 if len(urls) >= 160:
-                    return urls[:160]
+                    return urls[:40]
 
     if not urls:
         for url in _sitemap_product_urls(
-            session, q, max_sitemaps=12, max_urls=160
+            session, q, max_sitemaps=4, max_urls=40
         ):
             if url not in seen:
                 seen.add(url)
@@ -691,7 +656,7 @@ def _discover(session, q):
             if len(urls) >= 160:
                 break
 
-    return urls[:160]
+    return urls[:40]
 
 
 def search(query):
@@ -704,7 +669,7 @@ def search(query):
     seen = set()
 
     try:
-        for url in _discover(session, query):
+        for url in _discover(session, query)[:24]:
             try:
                 r = session.get(url, headers=HEADERS, timeout=TIMEOUT)
             except requests.RequestException:
