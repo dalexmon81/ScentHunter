@@ -69,7 +69,6 @@ VARIANT_MARKERS = {
     "pour femme", "pour homme", "femme", "homme",
     "flame", "energy", "parfum", "night", "night out",
     "rebel", "elixir", "intense", "extreme",
-    "extradose", "extra dose",
     "limited", "limited edition", "collector",
     "collector edition", "collector's edition",
     "special edition", "anniversary", "ice",
@@ -638,31 +637,21 @@ def matches(product: Dict[str, Any], query: str) -> bool:
     # trasformarsi automaticamente in una variante specifica.
     if not all(token in matching_name for token in tokens):
         return False
-    # Controllo varianti SEMPRE, non solo quando la query contiene già una
-    # variante. Una query generica come "Liquid Brun" non deve accettare
-    # automaticamente "Liquid Brun Limited Edition".
-    query_tokens = set(tokens)
-    name_tokens = set(name.split())
-
-    for marker in VARIANT_MARKERS:
-        marker_norm = norm(marker)
-
-        if marker_norm in {
-            "parfum", "extrait", "edp", "edt",
-            "eau de parfum", "eau de toilette",
-        }:
-            continue
-
-        marker_tokens = set(marker_norm.split())
-        if not marker_tokens:
-            continue
-
-        marker_in_name = marker_tokens.issubset(name_tokens)
-        marker_in_query = marker_tokens.issubset(query_tokens)
-
-        if marker_in_name and not marker_in_query:
-            return False
-
+    if _query_has_variant_marker(query):
+        query_tokens = set(tokens)
+        name_tokens = set(name.split())
+        for marker in VARIANT_MARKERS:
+            marker_norm = norm(marker)
+            # "parfum", "extrait", "edp" ed "edt" fanno parte della
+            # concentrazione e vengono gestiti separatamente sopra.
+            if marker_norm in {
+                "parfum", "extrait", "edp", "edt",
+                "eau de parfum", "eau de toilette",
+            }:
+                continue
+            marker_tokens = set(marker_norm.split())
+            if marker_tokens and marker_tokens.issubset(name_tokens) and not marker_tokens.issubset(query_tokens):
+                return False
     return True
 
 
