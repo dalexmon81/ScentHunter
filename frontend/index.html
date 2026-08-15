@@ -361,6 +361,19 @@ function normalizePerfumeName(v){
     .replace(/[^a-z0-9]+/gi," ")
     .replace(/\s+/g," ").trim();
 }
+function displayPerfumeName(name,brand){
+  const b=normalizePerfumeName(brand||"");
+  let n=String(name||"").replace(/\s+/g," ").trim();
+  if(b!=="valentino" || !/\bborn\s+in\s+roma\b/i.test(n))return n;
+
+  let gender="";
+  n=n.replace(/\b(uomo|donna)\b/gi,m=>{
+    if(!gender)gender=m;
+    return " ";
+  }).replace(/\s+/g," ").trim();
+
+  return gender ? (n+" "+gender).trim() : n;
+}
 function perfumeKey(x){
   return normalizePerfumeName(x.name||"");
 }
@@ -1059,20 +1072,6 @@ function shGroupData(data){
     return "liquid brun";
   }
 
-  function normalizeValentinoGenderLast(name,brand){
-    const b=norm(brand||"");
-    let n=String(name||"").replace(/\s+/g," ").trim();
-    if(b!=="valentino" || !/\bborn\s+in\s+roma\b/i.test(n))return n;
-
-    let gender="";
-    n=n.replace(/\b(uomo|donna)\b/gi,m=>{
-      if(!gender)gender=m;
-      return " ";
-    }).replace(/\s+/g," ").trim();
-
-    return gender ? (n+" "+gender).trim() : n;
-  }
-
   function concentrationHint(o){
     const raw=String(o&&((o.name||"")+" "+(o.concentration||""))||"").toLowerCase();
     if(/\\beau\\s+de\\s+toilette\\b|\\bedt\\b/.test(raw))return "Eau de Toilette";
@@ -1108,12 +1107,10 @@ function shGroupData(data){
     }
     if(!directMaster)directMaster=resolveMasterProduct(rawBrand,rawName);
     if(directMaster){
-      const masterBrand=directMaster.brand||rawBrand;
-      const masterName=normalizeValentinoGenderLast(directMaster.name||rawName,masterBrand);
       return {
-        brand:masterBrand,
-        name:masterName,
-        key:norm(masterBrand)+"|"+norm(masterName),
+        brand:directMaster.brand||rawBrand,
+        name:directMaster.name||rawName,
+        key:norm(directMaster.brand||rawBrand)+"|"+norm(directMaster.name||rawName),
         catalog_id:directMaster.id||""
       };
     }
@@ -1139,17 +1136,14 @@ function shGroupData(data){
     // esattamente a una referenza verificata, usiamo il nome canonico.
     const master=resolveMasterProduct(brand,name);
     if(master){
-      const masterBrand=master.brand||brand;
-      const masterName=normalizeValentinoGenderLast(master.name||name,masterBrand);
       return {
-        brand:masterBrand,
-        name:masterName,
-        key:norm(masterBrand)+"|"+norm(masterName),
+        brand:master.brand||brand,
+        name:master.name||name,
+        key:norm(master.brand||brand)+"|"+norm(master.name||name),
         catalog_id:master.id||""
       };
     }
 
-    name=normalizeValentinoGenderLast(name,brand);
     const key=(norm(brand)+"|"+norm(name)).replace(/\|+$/g,"");
     return {brand,name,key};
   }
@@ -1557,9 +1551,9 @@ function showProducts(groups){
     const best=g.offers.find(o=>!isOfferOutOfStock(o))||null;
 
     return `<article class="product-choice" onclick='openProduct(${i})'>
-      <div class="result-image">${img?`<img src="${esc(img)}" alt="${esc(g.name)}" onerror="this.outerHTML='🧴'">`:"🧴"}</div>
+      <div class="result-image">${img?`<img src="${esc(img)}" alt="${esc(displayPerfumeName(g.name,g.brand))}" onerror="this.outerHTML='🧴'">`:"🧴"}</div>
       <div class="product-choice-main">
-        <div class="name">${esc(g.brand ? g.brand+" - "+g.name : g.name)}</div>
+        <div class="name">${esc(g.brand ? g.brand+" - "+displayPerfumeName(g.name,g.brand) : displayPerfumeName(g.name,g.brand))}</div>
         ${best?`<div class="bestprice">da ${esc(shPrice(best))}</div>`:`<div class="bestprice">OUT OF STOCK</div>`}
       </div>
       <div class="arrow">›</div>
@@ -1598,10 +1592,10 @@ function openProduct(i){
     resultsBox.innerHTML=`<article class="comparison">
       <button class="detail-back" onclick="showProducts(currentProductGroups)">← Torna ai profumi</button>
       <div class="comparison-head">
-        <div class="result-image">${img?`<img src="${esc(img)}" alt="${esc(g.name)}" onerror="this.outerHTML='🧴'">`:"🧴"}</div>
+        <div class="result-image">${img?`<img src="${esc(img)}" alt="${esc(displayPerfumeName(g.name,g.brand))}" onerror="this.outerHTML='🧴'">`:"🧴"}</div>
         <div class="result-main">
           <div class="store">${esc(g.brand||"")}</div>
-          <div class="name">${esc(g.name)}</div>
+          <div class="name">${esc(displayPerfumeName(g.name,g.brand))}</div>
         </div>
       </div>
       <div class="bestlabel">FORMATO</div>
@@ -1660,10 +1654,10 @@ function openProduct(i){
   resultsBox.innerHTML=`<article class="comparison">
     <button class="detail-back" onclick="showProducts(currentProductGroups)">← Torna ai profumi</button>
     <div class="comparison-head">
-      <div class="result-image">${img?`<img src="${esc(img)}" alt="${esc(g.name)}" onerror="this.outerHTML='🧴'">`:"🧴"}</div>
+      <div class="result-image">${img?`<img src="${esc(img)}" alt="${esc(displayPerfumeName(g.name,g.brand))}" onerror="this.outerHTML='🧴'">`:"🧴"}</div>
       <div class="result-main">
         <div class="store">${esc(g.brand||"")}</div>
-        <div class="name">${esc(g.name)}</div>
+        <div class="name">${esc(displayPerfumeName(g.name,g.brand))}</div>
       </div>
     </div>
     <div class="bestlabel">SCEGLI IL FORMATO</div>
@@ -1700,10 +1694,10 @@ function openSize(gi,sizeKey,fromFormats=true){
   resultsBox.innerHTML=`<article class="comparison">
     <button class="detail-back" onclick="${fromFormats?`openProduct(${gi})`:`showProducts(currentProductGroups)`}">${fromFormats?'← Torna ai formati':'← Torna ai profumi'}</button>
     <div class="comparison-head">
-      <div class="result-image">${img?`<img src="${esc(img)}" alt="${esc(g.name)}" onerror="this.outerHTML='🧴'">`:"🧴"}</div>
+      <div class="result-image">${img?`<img src="${esc(img)}" alt="${esc(displayPerfumeName(g.name,g.brand))}" onerror="this.outerHTML='🧴'">`:"🧴"}</div>
       <div class="result-main">
         <div class="store">${esc(g.brand||"")}</div>
-        <div class="name">${esc(g.name)}</div>
+        <div class="name">${esc(displayPerfumeName(g.name,g.brand))}</div>
         ${sizeKey?`<div class="offer-meta">${esc(formatLabel(sizeKey))}</div>`:""}
       </div>
     </div>
