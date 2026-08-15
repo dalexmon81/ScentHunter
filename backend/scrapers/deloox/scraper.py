@@ -31,8 +31,16 @@ def norm(v):
     return re.sub(r"\s+", " ", re.sub(r"[^a-z0-9]+", " ", clean(v).lower())).strip()
 
 
+QUERY_STOPWORDS = {
+    "a", "al", "and", "by", "da", "de", "del", "della", "di",
+    "for", "in", "la", "le", "of", "the", "un", "una", "with",
+}
+
 def tokens(v):
-    return {x for x in norm(v).split() if len(x) > 1}
+    return {
+        x for x in norm(v).split()
+        if len(x) > 1 and x not in QUERY_STOPWORDS
+    }
 
 
 def matches(text, q):
@@ -75,25 +83,7 @@ def parse_price(v):
         return None
 
 
-def availability(text="", offer_availability=None):
-    """Normalize Deloox stock status.
-
-    Deloox exposes the authoritative stock state in JSON-LD as
-    offers.availability (usually schema.org/InStock or OutOfStock).
-    The visible page text is only a fallback because it can contain
-    generic words such as "available" that do not describe stock.
-    """
-    raw = clean(offer_availability)
-
-    # JSON-LD is authoritative when present.
-    if raw:
-        t = norm(raw)
-        if any(x in t for x in ("outofstock", "soldout", "unavailable")):
-            return "out_of_stock"
-        if any(x in t for x in ("instock", "available", "op voorraad")):
-            return "in_stock"
-
-    # Fallback to page text.
+def availability(text):
     t = norm(text)
     if any(
         x in t
@@ -105,7 +95,7 @@ def availability(text="", offer_availability=None):
         )
     ):
         return "out_of_stock"
-    if any(x in t for x in ("in stock", "op voorraad")):
+    if any(x in t for x in ("in stock", "available", "op voorraad")):
         return "in_stock"
     return "unknown"
 
@@ -179,11 +169,7 @@ def _product(url, html, query):
     if isinstance(image, list):
         image = image[0] if image else None
 
-    # Deloox puts the real stock state in offers.availability.
-    # Do not infer "out of stock" merely because the page text is
-    # ambiguous; pass the structured value to the normalizer first.
-    offer_availability = offer.get("availability")
-    avail = availability(text, offer_availability)
+    avail = availability(text)
 
     return {
         "store": STORE,
@@ -354,12 +340,13 @@ def _category_product_line_links(html, query):
 
 
 def _category_pages(session):
-    # These are Deloox's current perfume category URLs verified from the
-    # public site structure. We use both genders because Born in Roma exists
-    # as separate Uomo/Donna product lines.
+    # Current Deloox top-level fragrance categories.
+    # The previous IDs (1075660 / 1075750) are obsolete and can return
+    # pages that no longer expose the current Product-line filters.
     return (
-        BASE_URL + "/category/1075660/womens-perfume.html",
-        BASE_URL + "/category/1075750/mens-perfume.html",
+        BASE_URL + "/category/1000054/mens-fragrances.html",
+        BASE_URL + "/category/1075639/womens-fragrances.html",
+        BASE_URL + "/category/1000063/womens-fragrances.html",
     )
 
 
@@ -434,7 +421,7 @@ def _discover_from_categories(session, query, max_urls=80):
     return urls[:max_urls]
 
 
-def _sitemap_category_urls(session, query, max_sitemaps=12, max_urls=30):
+def _sitemap_category_urls(session, query, max_sitemaps=48, max_urls=50):
     """Discover dedicated Deloox category/Product-line pages from sitemaps."""
     query_tokens = tokens(query)
     if not query_tokens:
@@ -503,7 +490,7 @@ def _sitemap_category_urls(session, query, max_sitemaps=12, max_urls=30):
     return category_urls[:max_urls]
 
 
-def _sitemap_product_urls(session, query, max_sitemaps=12, max_urls=80):
+def _sitemap_product_urls(session, query, max_sitemaps=48, max_urls=120):
     query_tokens = tokens(query)
     if not query_tokens:
         return []
@@ -573,6 +560,44 @@ def _sitemap_product_urls(session, query, max_sitemaps=12, max_urls=80):
     return product_urls
 
 
+
+def _discover_from_broad_categories(session, query, max_urls=80, max_pages=12):
+    """Fallback for Deloox when the Product-line filter is not exposed.
+
+    Deloox's broad men's/women's fragrance pages are paginated.  A product can
+    therefore be present on a later page even when its dedicated Product-line
+    category is not discoverable from the first page.
+    """
+    urls = []
+    seen = set()
+
+    for base in _category_pages(session):
+        for page_no in range(1, max_pages + 1):
+            page_url = base if page_no == 1 else base + "?page=" + str(page_no)
+            try:
+                r = session.get(page_url, headers=HEADERS, timeout=TIMEOUT)
+            except requests.RequestException:
+                break
+
+            if r.status_code >= 400:
+                break
+
+            page_urls = _candidate_product_urls(r.text, query)
+            if not page_urls:
+                # Do not stop immediately: the page can legitimately contain
+                # no matching card while later pages still do.
+                continue
+
+            for product_url in page_urls:
+                if product_url not in seen:
+                    seen.add(product_url)
+                    urls.append(product_url)
+                    if len(urls) >= max_urls:
+                        return urls[:max_urls]
+
+    return urls[:max_urls]
+
+
 def _discover(session, q):
     urls = []
     seen = set()
@@ -607,11 +632,24 @@ def _discover(session, q):
                 if len(urls) >= 80:
                     return urls[:80]
 
+    # TERTIARY: broad category pagination fallback.
+    # This catches products whose Product-line filter is not exposed in the
+    # first category response and whose dedicated category is not in the
+    # sitemap subset we can reach.
+    for product_url in _discover_from_broad_categories(
+        session, q, max_urls=80, max_pages=12
+    ):
+        if product_url not in seen:
+            seen.add(product_url)
+            urls.append(product_url)
+        if len(urls) >= 80:
+            return urls[:80]
+
     # TERTIARY: dedicated Product-line category pages discovered from sitemap.
     # This is important for other product lines whose category URLs are
     # exposed in Deloox's sitemap.
     for category_url in _sitemap_category_urls(
-        session, q, max_sitemaps=12, max_urls=30
+        session, q, max_sitemaps=48, max_urls=50
     ):
         try:
             page = session.get(
@@ -658,7 +696,7 @@ def _discover(session, q):
     # LAST RESORT: direct product sitemap discovery.
     if not urls:
         for url in _sitemap_product_urls(
-            session, q, max_sitemaps=12, max_urls=80
+            session, q, max_sitemaps=48, max_urls=120
         ):
             if url not in seen:
                 seen.add(url)
