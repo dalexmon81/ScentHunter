@@ -304,36 +304,91 @@ def _category_product_line_links(html, query):
 
 
 def _category_pages(session):
-    # These are Deloox's current perfume category URLs verified from the
-    # public site structure. We use both genders because Born in Roma exists
-    # as separate Uomo/Donna product lines.
+    # Deloox exposes perfume Product Lines through several category pages.
+    # We intentionally inspect multiple entry points and pagination so a
+    # query such as "Born in Roma" is not limited to whichever line happens
+    # to appear on the first category page.
     return (
         BASE_URL + "/category/1075660/womens-perfume.html",
         BASE_URL + "/category/1075750/mens-perfume.html",
+        BASE_URL + "/category/1025540/trending.html",
     )
 
 
-def _discover_from_categories(session, query, max_urls=80):
+def _pagination_urls(page_url, max_pages=12):
+    """Generate conservative Deloox pagination variants."""
+    base = page_url.split("?")[0]
+    for page in range(1, max_pages + 1):
+        yield f"{base}?page={page}"
+
+
+def _discover_from_categories(session, query, max_urls=160):
     urls = []
     seen = set()
+    visited_pages = set()
 
-    for category_url in _category_pages(session):
+    def add_products(html):
+        for product_url in _candidate_product_urls(html, query):
+            if product_url not in seen:
+                seen.add(product_url)
+                urls.append(product_url)
+                if len(urls) >= max_urls:
+                    return True
+        return False
+
+    for category_root in _category_pages(session):
+        # First inspect the root page.
+        page_candidates = [category_root]
+
         try:
-            r = session.get(category_url, headers=HEADERS, timeout=TIMEOUT)
+            root = session.get(category_root, headers=HEADERS, timeout=TIMEOUT)
         except requests.RequestException:
-            continue
+            root = None
 
-        if r.status_code >= 400:
-            continue
+        if root is not None and root.status_code < 400:
+            visited_pages.add(category_root)
+            if add_products(root.text):
+                return urls[:max_urls]
 
-        # First, discover the exact Product line links exposed by Deloox.
-        product_line_links = _category_product_line_links(r.text, query)
+            # Discover every visible category/filter link whose label
+            # contains the query tokens. This catches Product Line links.
+            soup = BeautifulSoup(root.text, "html.parser")
+            q_tokens = tokens(query)
 
-        # If Deloox's current HTML does not expose a filter link, also inspect
-        # the current category page itself for product cards.
-        candidate_pages = product_line_links or [category_url]
+            for a in soup.find_all("a", href=True):
+                label = clean(a.get_text(" ", strip=True))
+                href = clean(a.get("href"))
+                if not label or not href:
+                    continue
+                if not q_tokens.issubset(tokens(label)):
+                    continue
 
-        for page_url in candidate_pages:
+                candidate = urljoin(BASE_URL, href).split("#")[0]
+                parsed = urlparse(candidate)
+
+                if parsed.netloc.lower() not in {
+                    "deloox.com",
+                    "www.deloox.com",
+                }:
+                    continue
+
+                # Product-line/category/filter links are useful; individual
+                # product URLs are handled separately by _candidate_product_urls.
+                if "/category/" in parsed.path.lower():
+                    page_candidates.append(candidate)
+
+        # Add paginated variants for both the root category and discovered
+        # Product Line pages. This is the key difference from V2.
+        expanded = []
+        for page_url in page_candidates:
+            expanded.append(page_url)
+            expanded.extend(_pagination_urls(page_url, max_pages=12))
+
+        for page_url in expanded:
+            if page_url in visited_pages:
+                continue
+            visited_pages.add(page_url)
+
             try:
                 page = session.get(page_url, headers=HEADERS, timeout=TIMEOUT)
             except requests.RequestException:
@@ -342,17 +397,42 @@ def _discover_from_categories(session, query, max_urls=80):
             if page.status_code >= 400:
                 continue
 
-            for product_url in _candidate_product_urls(page.text, query):
-                if product_url not in seen:
-                    seen.add(product_url)
-                    urls.append(product_url)
-                    if len(urls) >= max_urls:
+            if add_products(page.text):
+                return urls[:max_urls]
+
+            # A paginated category may expose a Product Line link only on
+            # one page. Follow it immediately and inspect its own pages.
+            line_links = _category_product_line_links(page.text, query)
+
+            for line_url in line_links:
+                if line_url in visited_pages:
+                    continue
+
+                line_pages = [line_url]
+                line_pages.extend(_pagination_urls(line_url, max_pages=12))
+
+                for lp in line_pages:
+                    if lp in visited_pages:
+                        continue
+                    visited_pages.add(lp)
+
+                    try:
+                        line_page = session.get(
+                            lp, headers=HEADERS, timeout=TIMEOUT
+                        )
+                    except requests.RequestException:
+                        continue
+
+                    if line_page.status_code >= 400:
+                        continue
+
+                    if add_products(line_page.text):
                         return urls[:max_urls]
 
     return urls[:max_urls]
 
 
-def _sitemap_product_urls(session, query, max_sitemaps=12, max_urls=80):
+def _sitemap_product_urls(session, query, max_sitemaps=12, max_urls=160):
     query_tokens = tokens(query)
     if not query_tokens:
         return []
@@ -427,12 +507,12 @@ def _discover(session, q):
     seen = set()
 
     # PRIMARY: current Deloox category/Product-line structure.
-    for url in _discover_from_categories(session, q, max_urls=80):
+    for url in _discover_from_categories(session, q, max_urls=160):
         if url not in seen:
             seen.add(url)
             urls.append(url)
-        if len(urls) >= 80:
-            return urls[:80]
+        if len(urls) >= 160:
+            return urls[:160]
 
     # SECONDARY: legacy/current search endpoints, retained as fallback.
     endpoints = [
@@ -456,21 +536,21 @@ def _discover(session, q):
                 seen.add(url)
                 urls.append(url)
 
-        if len(urls) >= 80:
-            return urls[:80]
+        if len(urls) >= 160:
+            return urls[:160]
 
     # LAST RESORT: sitemap discovery.
     if not urls:
         for url in _sitemap_product_urls(
-            session, q, max_sitemaps=12, max_urls=80
+            session, q, max_sitemaps=12, max_urls=160
         ):
             if url not in seen:
                 seen.add(url)
                 urls.append(url)
-            if len(urls) >= 80:
+            if len(urls) >= 160:
                 break
 
-    return urls[:80]
+    return urls[:160]
 
 
 def search(query):
