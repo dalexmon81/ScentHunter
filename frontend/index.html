@@ -1436,6 +1436,30 @@ function getSizeGroups(g){
     map.get(size).push(o);
   });
 
+  /*
+   * REGOLA FORMATO UNICO:
+   * se tutte le offerte appartengono allo stesso formato reale e uno
+   * scraper non ha riportato il formato per una o più offerte, non creiamo
+   * un falso secondo formato "vuoto".
+   *
+   * Esempio reale:
+   *   Liquid Brun 100 ml -> 5 negozi
+   *   Orioudh -> 1 negozio OUT OF STOCK, formato non dichiarato
+   *
+   * In presenza di un solo formato numerico noto, le offerte senza formato
+   * vengono quindi accorpate a quel formato. In questo modo restano nella
+   * stessa scheda dei negozi, con il relativo stato OUT OF STOCK/link.
+   *
+   * Se esistono due o più formati numerici reali, invece, le offerte senza
+   * formato restano separate: non possiamo sapere a quale formato appartengano.
+   */
+  const knownSizes=[...map.keys()].filter(Boolean);
+  if(knownSizes.length===1 && map.has("")){
+    const onlySize=knownSizes[0];
+    map.set(onlySize,[...(map.get(onlySize)||[]),...(map.get("")||[])]);
+    map.delete("");
+  }
+
   return [...map.entries()].map(([size,offers])=>{
     offers.sort((a,b)=>{
       const ao=isOfferOutOfStock(a),bo=isOfferOutOfStock(b);
