@@ -1344,15 +1344,43 @@ function shGroupData(data){
     g.display_name=g.brand?g.brand+" - "+g.name:g.name;
   });
 
+  function isGenderVariantProduct(g){
+    if(!g)return false;
+
+    const clean=v=>String(v||"")
+      .toLowerCase()
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g,"")
+      .replace(/[’‘]/g,"'")
+      .replace(/\s+/g," ")
+      .trim();
+
+    const text=clean([
+      g.name,
+      g.brand,
+      g.concentration
+    ].filter(Boolean).join(" "));
+
+    // Le varianti esplicitamente Uomo/Donna (e le equivalenti commerciali)
+    // devono stare sempre dopo il nome principale della stessa famiglia.
+    return /(?:^|\s)(?:uomo|donna|man|woman|men|women)(?:\s|$)/.test(text)
+      || /(?:pour\s+homme|pour\s+femme|for\s+him|for\s+her)/.test(text);
+  }
+
   // Ordine dei risultati visualizzati:
-  // 1) prima i veri profumi, ordinati per brand + nome canonico
-  // 2) alla fine i prodotti che NON sono profumi (deodoranti, shower gel,
-  //    body lotion, mystery box, ecc.).
+  // 1) prima i veri profumi
+  // 2) dentro i profumi, le varianti Uomo/Donna alla fine
+  // 3) poi brand + nome canonico
+  // 4) alla fine i prodotti che NON sono profumi.
   // I set/cofanetti che contengono chiaramente un profumo restano tra i profumi.
   groups.sort((a,b)=>{
     const aNonPerfume=isNonPerfumeProduct(a);
     const bNonPerfume=isNonPerfumeProduct(b);
     if(aNonPerfume!==bNonPerfume)return aNonPerfume?1:-1;
+
+    const aGender=isGenderVariantProduct(a);
+    const bGender=isGenderVariantProduct(b);
+    if(aGender!==bGender)return aGender?1:-1;
 
     const brandCmp=String(a.brand||"").localeCompare(String(b.brand||""),"it",{sensitivity:"base"});
     if(brandCmp!==0)return brandCmp;
