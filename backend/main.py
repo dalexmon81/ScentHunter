@@ -44,14 +44,14 @@ app.add_middleware(
 # ============================================================
 
 STORES = [
-    "bplatz",
     "deloox",
+    "notino",
+    "bplatz",
     "parfumcity",
     "parfumzentrum",
     "perfumemarket",
     "sabina",
     "orioudh",
-    "notino",
 ]
 
 BASE_DIR = os.path.dirname(__file__)
