@@ -164,13 +164,26 @@ def _product_json(session: requests.Session, url: str) -> Optional[Dict[str, Any
 
 
 def _discovery(session: requests.Session, query: str) -> List[str]:
-    queries = [query]
     tokens = _query_tokens(query)
+
+    # First use the complete query, then broader/simplified searches.
+    # Orioudh may index the brand in `vendor` and the perfume name in the
+    # product title (e.g. "Titan by Khadlaj"). Searching the complete
+    # "Khadlaj Titan" string can therefore miss a perfectly valid product.
+    queries = [query]
 
     if len(tokens) >= 2:
         broader = " ".join(tokens[:2])
         if broader and _norm(broader) != _norm(query):
             queries.append(broader)
+
+        # Important fallback: search the actual perfume token as well.
+        # The final validation below still requires ALL query tokens to be
+        # present in title + vendor, so this broadens discovery without
+        # accepting unrelated Khadlaj products.
+        for token in reversed(tokens):
+            if token and _norm(token) not in {_norm(q) for q in queries}:
+                queries.append(token)
 
     urls = []
     seen = set()
