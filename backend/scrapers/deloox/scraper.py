@@ -75,21 +75,79 @@ def parse_price(v):
         return None
 
 
-def availability(text):
-    t = norm(text)
-    if any(
-        x in t
-        for x in (
-            "sold out",
-            "out of stock",
-            "not available",
-            "currently unavailable",
-        )
-    ):
-        return "out_of_stock"
-    if any(x in t for x in ("in stock", "available", "op voorraad")):
-        return "in_stock"
+def availability_from_sources(data, soup):
+    """Prefer structured offer availability; never classify from unrelated page text."""
+    offers = data.get("offers") if isinstance(data, dict) else None
+    if isinstance(offers, dict):
+        offers = [offers]
+    if isinstance(offers, list):
+        for offer in offers:
+            if not isinstance(offer, dict):
+                continue
+            raw = offer.get("availability") or offer.get("availabilityStatus") or offer.get("stock")
+            if raw:
+                t = norm(raw)
+                if any(x in t for x in ("instock", "in stock", "available")):
+                    return "in_stock"
+                if any(x in t for x in ("outofstock", "out of stock", "soldout", "sold out", "unavailable", "not available")):
+                    return "out_of_stock"
+
+    # Secondary: explicit HTML metadata, not the full page text.
+    for tag in soup.select('[itemprop="availability"], meta[property="product:availability"], meta[name="availability"]'):
+        raw = tag.get("content") or tag.get_text(" ", strip=True)
+        t = norm(raw)
+        if any(x in t for x in ("instock", "in stock", "available")):
+            return "in_stock"
+        if any(x in t for x in ("outofstock", "out of stock", "soldout", "sold out", "unavailable", "not available")):
+            return "out_of_stock"
+
+    # Last resort: inspect only elements whose own text is an explicit stock message.
+    for node in soup.find_all(string=re.compile(r"\b(?:in stock|out of stock|sold out|not available|unavailable)\b", re.I)):
+        t = norm(node)
+        if "out of stock" in t or "sold out" in t or "not available" in t or "unavailable" in t:
+            return "out_of_stock"
+        if "in stock" in t:
+            return "in_stock"
+
     return "unknown"
+
+
+def _selected_size(soup, data, h1_name):
+    """Extract the actually selected bottle size, avoiding stale JSON-LD names."""
+    # H1 is authoritative when it contains a size.
+    m = re.search(r"(?<!\d)(\d{1,4})\s*ml\b", h1_name or "", re.I)
+    if m:
+        return int(m.group(1))
+
+    # Selected/checked form controls are the best source for variant pages.
+    selectors = [
+        'input[type="radio"][checked]',
+        'input[type="radio"][aria-checked="true"]',
+        'input[checked][name*="size" i]',
+        'option[selected]',
+        '[aria-selected="true"]',
+    ]
+    for selector in selectors:
+        for node in soup.select(selector):
+            chunks = [node.get("value", ""), node.get("aria-label", ""), node.get("data-value", ""), node.get("data-size", ""), node.get_text(" ", strip=True)]
+            parent = node.parent
+            if parent:
+                chunks.append(parent.get_text(" ", strip=True))
+            grand = parent.parent if parent else None
+            if grand:
+                chunks.append(grand.get_text(" ", strip=True))
+            blob = " ".join(chunks)
+            m = re.search(r"(?<!\d)(\d{1,4})\s*ml\b", blob, re.I)
+            if m:
+                return int(m.group(1))
+
+    # Fallback to structured name only after H1/selected controls.
+    structured_name = clean(data.get("name")) if isinstance(data, dict) else ""
+    m = re.search(r"(?<!\d)(\d{1,4})\s*ml\b", structured_name, re.I)
+    if m:
+        return int(m.group(1))
+
+    return None
 
 
 def _jsonld(soup):
@@ -119,9 +177,10 @@ def _product(url, html, query):
     data = _jsonld(soup)
 
     h1 = soup.find("h1")
-    name = clean(data.get("name")) or (
-        clean(h1.get_text(" ", strip=True)) if h1 else ""
-    )
+    h1_name = clean(h1.get_text(" ", strip=True)) if h1 else ""
+    # Deloox JSON-LD can contain a stale/SEO size (e.g. 30 ml) while the
+    # visible product page offers 50/100 ml. Prefer the visible H1.
+    name = h1_name or clean(data.get("name"))
 
     if not name or not matches(name, query):
         return None
@@ -161,7 +220,8 @@ def _product(url, html, query):
     if isinstance(image, list):
         image = image[0] if image else None
 
-    avail = availability(text)
+    avail = availability_from_sources(data, soup)
+    selected_size = _selected_size(soup, data, h1_name)
 
     return {
         "store": STORE,
@@ -182,9 +242,9 @@ def _product(url, html, query):
         },
         "attributes": {
             "size_ml": {
-                "value": size_ml(name),
-                "source": "product_name",
-            } if size_ml(name) is not None else None,
+                "value": selected_size,
+                "source": "selected_variant_or_product_name",
+            } if selected_size is not None else None,
             "concentration": {
                 "value": concentration(name),
                 "source": "product_name",
@@ -332,12 +392,13 @@ def _category_product_line_links(html, query):
 
 
 def _category_pages(session):
-    # These are Deloox's current perfume category URLs verified from the
-    # public site structure. We use both genders because Born in Roma exists
-    # as separate Uomo/Donna product lines.
+    # Broad Deloox entry points. Pagination and Product Line links are followed
+    # so a family is not limited to the first visible result.
     return (
+        BASE_URL + "/category/1075639/womens-fragrances.html",
         BASE_URL + "/category/1075660/womens-perfume.html",
         BASE_URL + "/category/1075750/mens-perfume.html",
+        BASE_URL + "/category/1025540/trending.html",
     )
 
 
@@ -354,9 +415,10 @@ def _targeted_category_seed_urls(query):
 
     # Liquid Brun has a dedicated Deloox category page.
     if "liquid brun" in q:
-        seeds.append(
-            BASE_URL + "/en/category/1132834/liquid-brun.html"
-        )
+        seeds.extend([
+            BASE_URL + "/en/category/1132834/liquid-brun.html",
+            BASE_URL + "/category/1132834/liquid-brun.html",
+        ])
 
     # French Avenue's category index exposes both the regular Liquid Brun
     # 100 ml and the Limited Edition 150 ml, plus other French Avenue lines.
@@ -373,112 +435,76 @@ def _targeted_category_seed_urls(query):
     return [u for u in seeds if not (u in seen or seen.add(u))]
 
 
-def _discover_from_categories(session, query, max_urls=80):
+def _pagination_urls(page_url, max_pages=8):
+    base = page_url.split("?")[0]
+    for page in range(1, max_pages + 1):
+        yield f"{base}?page={page}"
+
+
+def _discover_from_categories(session, query, max_urls=120):
     urls = []
     seen = set()
+    visited = set()
 
-    for category_url in _category_pages(session):
+    def add_products(html):
+        for product_url in _candidate_product_urls(html, query):
+            if product_url not in seen:
+                seen.add(product_url)
+                urls.append(product_url)
+                if len(urls) >= max_urls:
+                    return True
+        return False
+
+    roots = list(_category_pages(session))
+    roots.extend(_targeted_category_seed_urls(query))
+
+    for root in roots:
+        page_candidates = [root]
         try:
-            r = session.get(category_url, headers=HEADERS, timeout=TIMEOUT)
+            r = session.get(root, headers=HEADERS, timeout=TIMEOUT)
         except requests.RequestException:
             continue
-
         if r.status_code >= 400:
             continue
 
-        # First, discover the exact Product line links exposed by Deloox.
-        product_line_links = _category_product_line_links(r.text, query)
+        if add_products(r.text):
+            return urls[:max_urls]
 
-        # If Deloox's current HTML does not expose a filter link, also inspect
-        # the current category page itself for product cards.
-        candidate_pages = product_line_links or [category_url]
+        # Discover Product Line/category links whose visible label matches the query.
+        page_candidates.extend(_category_product_line_links(r.text, query))
 
-        for page_url in candidate_pages:
+        expanded = []
+        for page_url in page_candidates:
+            expanded.extend(_pagination_urls(page_url, max_pages=8))
+
+        for page_url in expanded:
+            if page_url in visited:
+                continue
+            visited.add(page_url)
             try:
                 page = session.get(page_url, headers=HEADERS, timeout=TIMEOUT)
             except requests.RequestException:
                 continue
-
             if page.status_code >= 400:
                 continue
-
-            for product_url in _candidate_product_urls(page.text, query):
-                if product_url not in seen:
-                    seen.add(product_url)
-                    urls.append(product_url)
-                    if len(urls) >= max_urls:
+            if add_products(page.text):
+                return urls[:max_urls]
+            # A later page may expose the exact Product Line link.
+            for line_url in _category_product_line_links(page.text, query):
+                for lp in _pagination_urls(line_url, max_pages=8):
+                    if lp in visited:
+                        continue
+                    visited.add(lp)
+                    try:
+                        line_page = session.get(lp, headers=HEADERS, timeout=TIMEOUT)
+                    except requests.RequestException:
+                        continue
+                    if line_page.status_code >= 400:
+                        continue
+                    if add_products(line_page.text):
                         return urls[:max_urls]
 
     return urls[:max_urls]
-
-
-def _sitemap_category_urls(session, query, max_sitemaps=12, max_urls=30):
-    """Discover dedicated Deloox category/Product-line pages from sitemaps."""
-    query_tokens = tokens(query)
-    if not query_tokens:
-        return []
-
-    sitemap_roots = (
-        BASE_URL + "/sitemap.xml",
-        BASE_URL + "/sitemap_index.xml",
-        BASE_URL + "/sitemap-index.xml",
-        BASE_URL + "/en/sitemap.xml",
-    )
-
-    pending = list(sitemap_roots)
-    seen_sitemaps = set()
-    category_urls = []
-    seen_categories = set()
-
-    def fetch_xml(url):
-        try:
-            r = session.get(url, headers=HEADERS, timeout=TIMEOUT)
-        except requests.RequestException:
-            return None
-        if r.status_code >= 400:
-            return None
-        body = r.text.lstrip()
-        ctype = (r.headers.get("content-type") or "").lower()
-        if "xml" not in ctype and not body.startswith(
-            ("<?xml", "<urlset", "<sitemapindex")
-        ):
-            return None
-        return r.text
-
-    while (
-        pending
-        and len(seen_sitemaps) < max_sitemaps
-        and len(category_urls) < max_urls
-    ):
-        sitemap_url = pending.pop(0)
-        if sitemap_url in seen_sitemaps:
-            continue
-        seen_sitemaps.add(sitemap_url)
-
-        xml = fetch_xml(sitemap_url)
-        if not xml:
-            continue
-
-        soup = BeautifulSoup(xml, "xml")
-        for loc in soup.find_all("loc"):
-            value = clean(loc.get_text())
-            if not value:
-                continue
-
-            low = value.lower()
-            if "/category/" in low and low.endswith(".html"):
-                slug = low.rsplit("/", 1)[-1][:-5]
-                if query_tokens.issubset(tokens(slug)):
-                    if value not in seen_categories:
-                        seen_categories.add(value)
-                        category_urls.append(value)
-                        if len(category_urls) >= max_urls:
-                            break
-            elif low.endswith(".xml") or "sitemap" in low:
-                if value not in seen_sitemaps:
-                    pending.append(value)
-
-    return category_urls[:max_urls]
 
 
 def _sitemap_product_urls(session, query, max_sitemaps=12, max_urls=80):
