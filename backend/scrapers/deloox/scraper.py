@@ -75,7 +75,25 @@ def parse_price(v):
         return None
 
 
-def availability(text):
+def availability(text="", offer_availability=None):
+    """Normalize Deloox stock status.
+
+    Deloox exposes the authoritative stock state in JSON-LD as
+    offers.availability (usually schema.org/InStock or OutOfStock).
+    The visible page text is only a fallback because it can contain
+    generic words such as "available" that do not describe stock.
+    """
+    raw = clean(offer_availability)
+
+    # JSON-LD is authoritative when present.
+    if raw:
+        t = norm(raw)
+        if any(x in t for x in ("outofstock", "soldout", "unavailable")):
+            return "out_of_stock"
+        if any(x in t for x in ("instock", "available", "op voorraad")):
+            return "in_stock"
+
+    # Fallback to page text.
     t = norm(text)
     if any(
         x in t
@@ -87,7 +105,7 @@ def availability(text):
         )
     ):
         return "out_of_stock"
-    if any(x in t for x in ("in stock", "available", "op voorraad")):
+    if any(x in t for x in ("in stock", "op voorraad")):
         return "in_stock"
     return "unknown"
 
@@ -161,7 +179,11 @@ def _product(url, html, query):
     if isinstance(image, list):
         image = image[0] if image else None
 
-    avail = availability(text)
+    # Deloox puts the real stock state in offers.availability.
+    # Do not infer "out of stock" merely because the page text is
+    # ambiguous; pass the structured value to the normalizer first.
+    offer_availability = offer.get("availability")
+    avail = availability(text, offer_availability)
 
     return {
         "store": STORE,
