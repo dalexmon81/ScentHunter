@@ -4,7 +4,6 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 
 import importlib
-import hashlib
 import json
 from html import unescape
 import os
@@ -20,7 +19,7 @@ from urllib.parse import urlencode
 from urllib.request import Request, urlopen
 from urllib.error import HTTPError, URLError
 
-from product_matcher import ProductMatcher, CatalogProduct
+from product_matcher import ProductMatcher, CatalogProduct, extract_size_ml, stable_auto_id
 
 
 app = FastAPI(title="ScentHunter API", version="1.0.0")
@@ -578,46 +577,14 @@ def build_search_attempts(store: str, query: str) -> List[str]:
 
 
 def _load_product_registry() -> List[Dict[str, Any]]:
-    """Load the catalog in both legacy-list and schema-v2 formats."""
     try:
         with open(PRODUCT_CATALOG_PATH, "r", encoding="utf-8") as file:
             data = json.load(file)
-
         if isinstance(data, list):
             return [item for item in data if isinstance(item, dict)]
-
-        if isinstance(data, dict):
-            products = data.get("products")
-            if isinstance(products, list):
-                normalized: List[Dict[str, Any]] = []
-                for item in products:
-                    if not isinstance(item, dict):
-                        continue
-                    row = dict(item)
-                    # Schema v2 -> matcher schema.
-                    if not row.get("catalog_id"):
-                        row["catalog_id"] = (
-                            row.get("product_id")
-                            or row.get("id")
-                            or row.get("master_id")
-                            or ""
-                        )
-                    if not row.get("brand"):
-                        row["brand"] = row.get("brand_name") or row.get("manufacturer") or ""
-                    if not row.get("name"):
-                        row["name"] = row.get("family_name") or row.get("product_name") or row.get("title") or ""
-                    normalized.append(row)
-                return normalized
-    except Exception as exc:
-        print(f"CATALOG LOAD ERROR | {type(exc).__name__}: {exc}", flush=True)
+    except Exception:
+        pass
     return []
-
-
-def _stable_auto_id(brand: str, name: str) -> str:
-    """Stable local fallback ID; avoids depending on a missing matcher export."""
-    key = norm(f"{brand}|{name}")
-    digest = hashlib.sha1(key.encode("utf-8")).hexdigest()[:12]
-    return f"AUTO-{digest}"
 
 
 def _save_product_registry(data: List[Dict[str, Any]]) -> None:
@@ -633,8 +600,7 @@ def _build_match_catalog(query: str, offers: List[Dict[str, Any]]) -> List[Dict[
 
     Strong external catalog IDs are preferred.  When they are unavailable,
     offers are clustered by brand + product-name similarity.  The clustering
-    deliberately requires a high token overlap, so one product family cannot
-    swallow a distinct variant or limited edition.
+    Edition".
     """
     registry = _load_product_registry()
     catalog: List[Dict[str, Any]] = []
@@ -683,8 +649,7 @@ def _build_match_catalog(query: str, offers: List[Dict[str, Any]]) -> List[Dict[
     def canonical_name(value: str) -> str:
         value = re.sub(r"\s+", " ", value).strip()
         # Concentration descriptors are attributes, not product identities.
-        # Keep standalone product-name words; only strip unambiguous
-        # trailing concentration descriptors.
+        # product name. Only strip unambiguous trailing descriptors.
         patterns = (
             r"\s+eau\s+de\s+parfum$",
             r"\s+eau\s+de\s+toilette$",
@@ -703,7 +668,6 @@ def _build_match_catalog(query: str, offers: List[Dict[str, Any]]) -> List[Dict[
 
         # Strong asymmetric rule: a canonical product name may appear inside
         # an offer title with only generic concentration/gender words added.
-        # Variant-specific words are never treated as generic.
         if ta.issubset(tb) and generic_extras_ok(tb - ta):
             return 0.96
         if tb.issubset(ta) and generic_extras_ok(ta - tb):
@@ -760,7 +724,7 @@ def _build_match_catalog(query: str, offers: List[Dict[str, Any]]) -> List[Dict[
 
         if selected is None:
             selected = {
-                "catalog_id": _stable_auto_id(brand, clean_name),
+                "catalog_id": stable_auto_id(brand, clean_name),
                 "brand": brand,
                 "name": canonical_name(clean_name.strip()),
                 "aliases": [],
@@ -888,7 +852,6 @@ def run_store(store: str, query: str, use_cache: bool = False) -> List[Dict[str,
                 product = resolve_actual_price(product)
 
             # Keep different package sizes from the same canonical URL.
-            # Different package sizes remain distinct.
             size_ml = product.get("size_ml")
             if size_ml in (None, ""):
                 size_ml = _product_size_ml(product)
@@ -919,7 +882,6 @@ def unique_results(products: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
 
     for product in products:
         # The same canonical URL can legitimately represent multiple
-        # package sizes remain part of the offer identity.
         # Size is therefore part of the offer identity.
         size_ml = product.get("size_ml")
         if size_ml in (None, ""):
@@ -1483,3 +1445,4 @@ def product(name: str, brand: str = ""):
         "errors": data["errors"],
         "message": "" if offers else "Nessuna offerta disponibile al momento",
     }
+
