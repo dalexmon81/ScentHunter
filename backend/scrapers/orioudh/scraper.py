@@ -400,32 +400,45 @@ def search(query: str) -> List[Dict[str, Any]]:
                 seen.add(key)
                 results.append(item)
 
-        # Orioudh can expose the same real product through more than one
-        # Shopify product URL. In that case one URL can be available while
-        # another duplicate/legacy listing is out of stock. The frontend
-        # must not show the second listing as a separate store offer.
+        # Shopify/Orioudh can expose the same physical product through
+        # different product URLs/listings. Those duplicate listings can carry
+        # slightly different metadata (for example gender/concentration may
+        # be missing on one listing) and can therefore not be deduplicated by
+        # the raw Shopify IDs alone.
         #
-        # Group by the product identity visible in the actual product data,
-        # not only by Shopify product_id: duplicate Shopify listings can have
-        # different product IDs. We keep the available offer when the same
-        # brand/name/format/concentration/gender combination appears both
-        # in stock and out of stock.
+        # Build a stable product key from the actual product name after
+        # removing only generic fragrance/store descriptors. Keep the size:
+        # this is essential because Liquid Brun 100 ml and Limited Edition
+        # 150 ml are different products.
+        generic_words = {
+            "eau", "de", "parfum", "perfume", "edp", "edt", "extrait",
+            "extract", "spray", "for", "by", "pour", "men", "man", "male",
+            "women", "woman", "female", "herren", "homme", "hommes",
+            "damen", "femme", "femmes", "unisex", "unisexe", "ml", "cl",
+        }
+
+        def _identity_name(item):
+            source = item.get("source") or {}
+            name = _norm(source.get("source_name"))
+            brand = _norm(source.get("source_brand"))
+
+            if brand:
+                name = re.sub(r"\b" + re.escape(brand) + r"\b", " ", name)
+
+            tokens = [
+                token for token in name.split()
+                if token not in generic_words
+                and not re.fullmatch(r"\d+(?:\.\d+)?", token)
+            ]
+            return " ".join(tokens)
+
         def _dedupe_key(item):
             source = item.get("source") or {}
             attrs = item.get("attributes") or {}
-
-            brand = _norm(source.get("source_brand"))
-            name = _norm(source.get("source_name"))
-            size = (attrs.get("size_ml") or {}).get("value")
-            concentration = _norm((attrs.get("concentration") or {}).get("value"))
-            gender = _norm((attrs.get("gender") or {}).get("value"))
-
             return (
-                brand,
-                name,
-                size,
-                concentration,
-                gender,
+                _norm(source.get("source_brand")),
+                _identity_name(item),
+                (attrs.get("size_ml") or {}).get("value"),
             )
 
         groups = {}
@@ -434,25 +447,26 @@ def search(query: str) -> List[Dict[str, Any]]:
 
         filtered = []
         for group in groups.values():
+            # If at least one listing for this exact product/size is really
+            # available, an unavailable/unknown duplicate is a false duplicate
+            # and must not become a second store offer.
             in_stock = [
                 item for item in group
                 if item.get("offer", {}).get("availability") == "in_stock"
             ]
 
-            # If the same product identity has a real available offer,
-            # discard duplicate out-of-stock listings.
             if in_stock:
                 group = in_stock
 
-            # A store should expose one offer for one product identity.
-            # If multiple available duplicates remain, keep the cheapest.
-            group = sorted(
-                group,
+            # One Orioudh offer per real product/size. If multiple valid
+            # listings remain, keep the cheapest available one.
+            group.sort(
                 key=lambda item: (
+                    0 if item.get("offer", {}).get("availability") == "in_stock" else 1,
                     item.get("offer", {}).get("price")
                     if item.get("offer", {}).get("price") is not None
-                    else float("inf")
-                ),
+                    else float("inf"),
+                )
             )
             filtered.append(group[0])
 
