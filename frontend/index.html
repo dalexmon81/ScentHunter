@@ -1059,6 +1059,20 @@ function shGroupData(data){
     return "liquid brun";
   }
 
+  function normalizeValentinoGenderLast(name,brand){
+    const b=norm(brand||"");
+    let n=String(name||"").replace(/\s+/g," ").trim();
+    if(b!=="valentino" || !/\bborn\s+in\s+roma\b/i.test(n))return n;
+
+    let gender="";
+    n=n.replace(/\b(uomo|donna)\b/gi,m=>{
+      if(!gender)gender=m;
+      return " ";
+    }).replace(/\s+/g," ").trim();
+
+    return gender ? (n+" "+gender).trim() : n;
+  }
+
   function concentrationHint(o){
     const raw=String(o&&((o.name||"")+" "+(o.concentration||""))||"").toLowerCase();
     if(/\\beau\\s+de\\s+toilette\\b|\\bedt\\b/.test(raw))return "Eau de Toilette";
@@ -1094,10 +1108,12 @@ function shGroupData(data){
     }
     if(!directMaster)directMaster=resolveMasterProduct(rawBrand,rawName);
     if(directMaster){
+      const masterBrand=directMaster.brand||rawBrand;
+      const masterName=normalizeValentinoGenderLast(directMaster.name||rawName,masterBrand);
       return {
-        brand:directMaster.brand||rawBrand,
-        name:directMaster.name||rawName,
-        key:norm(directMaster.brand||rawBrand)+"|"+norm(directMaster.name||rawName),
+        brand:masterBrand,
+        name:masterName,
+        key:norm(masterBrand)+"|"+norm(masterName),
         catalog_id:directMaster.id||""
       };
     }
@@ -1123,14 +1139,17 @@ function shGroupData(data){
     // esattamente a una referenza verificata, usiamo il nome canonico.
     const master=resolveMasterProduct(brand,name);
     if(master){
+      const masterBrand=master.brand||brand;
+      const masterName=normalizeValentinoGenderLast(master.name||name,masterBrand);
       return {
-        brand:master.brand||brand,
-        name:master.name||name,
-        key:norm(master.brand||brand)+"|"+norm(master.name||name),
+        brand:masterBrand,
+        name:masterName,
+        key:norm(masterBrand)+"|"+norm(masterName),
         catalog_id:master.id||""
       };
     }
 
+    name=normalizeValentinoGenderLast(name,brand);
     const key=(norm(brand)+"|"+norm(name)).replace(/\|+$/g,"");
     return {brand,name,key};
   }
@@ -1344,43 +1363,15 @@ function shGroupData(data){
     g.display_name=g.brand?g.brand+" - "+g.name:g.name;
   });
 
-  function isGenderVariantProduct(g){
-    if(!g)return false;
-
-    const clean=v=>String(v||"")
-      .toLowerCase()
-      .normalize("NFD")
-      .replace(/[\u0300-\u036f]/g,"")
-      .replace(/[’‘]/g,"'")
-      .replace(/\s+/g," ")
-      .trim();
-
-    const text=clean([
-      g.name,
-      g.brand,
-      g.concentration
-    ].filter(Boolean).join(" "));
-
-    // Le varianti esplicitamente Uomo/Donna (e le equivalenti commerciali)
-    // devono stare sempre dopo il nome principale della stessa famiglia.
-    return /(?:^|\s)(?:uomo|donna|man|woman|men|women)(?:\s|$)/.test(text)
-      || /(?:pour\s+homme|pour\s+femme|for\s+him|for\s+her)/.test(text);
-  }
-
   // Ordine dei risultati visualizzati:
-  // 1) prima i veri profumi
-  // 2) dentro i profumi, le varianti Uomo/Donna alla fine
-  // 3) poi brand + nome canonico
-  // 4) alla fine i prodotti che NON sono profumi.
+  // 1) prima i veri profumi, ordinati per brand + nome canonico
+  // 2) alla fine i prodotti che NON sono profumi (deodoranti, shower gel,
+  //    body lotion, mystery box, ecc.).
   // I set/cofanetti che contengono chiaramente un profumo restano tra i profumi.
   groups.sort((a,b)=>{
     const aNonPerfume=isNonPerfumeProduct(a);
     const bNonPerfume=isNonPerfumeProduct(b);
     if(aNonPerfume!==bNonPerfume)return aNonPerfume?1:-1;
-
-    const aGender=isGenderVariantProduct(a);
-    const bGender=isGenderVariantProduct(b);
-    if(aGender!==bGender)return aGender?1:-1;
 
     const brandCmp=String(a.brand||"").localeCompare(String(b.brand||""),"it",{sensitivity:"base"});
     if(brandCmp!==0)return brandCmp;
