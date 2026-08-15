@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import hashlib
 import re
+import time
 import unicodedata
 from dataclasses import dataclass
 from typing import Any, Dict, Iterable, List, Optional, Sequence, Tuple
@@ -33,11 +34,13 @@ def extract_size_ml(text: str) -> Optional[int]:
         return None
 
     text = normalize(text)
+
     match = re.search(
         r"(\d+(?:\.\d+)?)\s*(ml|millilitri|litri|l|oz|fl\.?\s*oz)",
         text,
         re.I,
     )
+
     if not match:
         return None
 
@@ -53,67 +56,126 @@ def extract_size_ml(text: str) -> Optional[int]:
     return int(value)
 
 
-def first_value(item: Dict[str, Any], keys: Sequence[str]) -> str:
+def first_value(
+    item: Dict[str, Any],
+    keys: Sequence[str],
+) -> str:
     for key in keys:
         value = item.get(key)
+
         if value is not None and str(value).strip():
             return str(value).strip()
+
     return ""
 
 
-def _nested_source(item: Dict[str, Any]) -> Dict[str, Any]:
+def _nested_source(
+    item: Dict[str, Any],
+) -> Dict[str, Any]:
     value = item.get("source")
-    return value if isinstance(value, dict) else {}
+
+    return (
+        value
+        if isinstance(value, dict)
+        else {}
+    )
 
 
-def _nested_identity(item: Dict[str, Any]) -> Dict[str, Any]:
+def _nested_identity(
+    item: Dict[str, Any],
+) -> Dict[str, Any]:
     value = item.get("identity")
-    return value if isinstance(value, dict) else {}
+
+    return (
+        value
+        if isinstance(value, dict)
+        else {}
+    )
 
 
-def _nested_attributes(item: Dict[str, Any]) -> Dict[str, Any]:
+def _nested_attributes(
+    item: Dict[str, Any],
+) -> Dict[str, Any]:
     value = item.get("attributes")
-    return value if isinstance(value, dict) else {}
+
+    return (
+        value
+        if isinstance(value, dict)
+        else {}
+    )
 
 
-def _nested_attribute_value(item: Dict[str, Any], key: str) -> Any:
+def _nested_attribute_value(
+    item: Dict[str, Any],
+    key: str,
+) -> Any:
     value = _nested_attributes(item).get(key)
+
     if isinstance(value, dict):
         return value.get("value")
+
     return value
 
 
-def identifier(item: Dict[str, Any], keys: Sequence[str]) -> str:
+def identifier(
+    item: Dict[str, Any],
+    keys: Sequence[str],
+) -> str:
     value = first_value(item, keys)
 
     if not value:
         identity = _nested_identity(item)
         value = first_value(identity, keys)
 
-    return normalize(value).replace(" ", "") if value else ""
+    return (
+        normalize(value).replace(" ", "")
+        if value
+        else ""
+    )
 
 
-def size_ml(item: Dict[str, Any]) -> Optional[float]:
+def size_ml(
+    item: Dict[str, Any],
+) -> Optional[float]:
+
     explicit = item.get("size_ml")
 
     if explicit in (None, ""):
-        explicit = _nested_attribute_value(item, "size_ml")
+        explicit = _nested_attribute_value(
+            item,
+            "size_ml",
+        )
 
     if explicit not in (None, ""):
         try:
-            return float(str(explicit).replace(",", "."))
-        except (TypeError, ValueError):
+            return float(
+                str(explicit).replace(",", ".")
+            )
+        except (
+            TypeError,
+            ValueError,
+        ):
             pass
 
     text = " ".join(
         str(item.get(k) or "")
-        for k in ("name", "title", "product_name", "size", "format")
+        for k in (
+            "name",
+            "title",
+            "product_name",
+            "size",
+            "format",
+        )
     )
 
     source = _nested_source(item)
+
     text += " " + " ".join(
         str(source.get(k) or "")
-        for k in ("source_name", "name")
+        for k in (
+            "source_name",
+            "name",
+        )
     )
 
     match = re.search(
@@ -125,7 +187,9 @@ def size_ml(item: Dict[str, Any]) -> Optional[float]:
     if not match:
         return None
 
-    value = float(match.group(1).replace(",", "."))
+    value = float(
+        match.group(1).replace(",", ".")
+    )
 
     if match.group(2).lower() == "cl":
         value *= 10
@@ -144,29 +208,68 @@ class CatalogProduct:
     mpns: Tuple[str, ...] = ()
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]):
+    def from_dict(
+        cls,
+        data: Dict[str, Any],
+    ):
         return cls(
-            str(data.get("id") or data.get("catalog_id") or "").strip(),
-            str(data.get("brand") or "").strip(),
-            str(data.get("name") or "").strip(),
+            str(
+                data.get("id")
+                or data.get("catalog_id")
+                or ""
+            ).strip(),
+
+            str(
+                data.get("brand")
+                or ""
+            ).strip(),
+
+            str(
+                data.get("name")
+                or ""
+            ).strip(),
+
             tuple(
                 str(x).strip()
-                for x in (data.get("aliases") or [])
+                for x in (
+                    data.get("aliases")
+                    or []
+                )
                 if str(x).strip()
             ),
+
             tuple(
                 float(x)
-                for x in (data.get("formats_ml") or [])
+                for x in (
+                    data.get("formats_ml")
+                    or []
+                )
                 if str(x).strip()
             ),
+
             tuple(
-                identifier({"v": x}, ("v",))
-                for x in (data.get("gtins") or data.get("ean") or [])
+                identifier(
+                    {"v": x},
+                    ("v",),
+                )
+                for x in (
+                    data.get("gtins")
+                    or data.get("ean")
+                    or []
+                )
                 if str(x).strip()
             ),
+
             tuple(
-                identifier({"v": x}, ("v",))
-                for x in (data.get("mpns") or data.get("mpn") or [])
+                identifier(
+                    {"v": x},
+                    ("v",),
+                )
+                for x in (
+                    data.get("mpns")
+                    or data.get("mpn")
+                    or []
+                )
                 if str(x).strip()
             ),
         )
@@ -181,19 +284,62 @@ class CatalogProduct:
 
     @property
     def normalized_aliases(self):
-        return tuple(normalize(x) for x in self.aliases)
+        return tuple(
+            normalize(x)
+            for x in self.aliases
+        )
 
 
 class ProductMatcher:
-    GTIN_KEYS = ("gtin", "ean", "ean13", "ean_code", "barcode", "upc")
-    MPN_KEYS = ("mpn", "manufacturer_part_number", "manufacturerNumber")
-    CATALOG_KEYS = ("catalog_id", "master_id", "item_group_id", "product_id")
-    BRAND_KEYS = ("brand", "manufacturer", "maker")
-    NAME_KEYS = ("name", "title", "product_name")
 
-    def __init__(self, catalog: Iterable[Dict[str, Any] | CatalogProduct]):
+    GTIN_KEYS = (
+        "gtin",
+        "ean",
+        "ean13",
+        "ean_code",
+        "barcode",
+        "upc",
+    )
+
+    MPN_KEYS = (
+        "mpn",
+        "manufacturer_part_number",
+        "manufacturerNumber",
+    )
+
+    CATALOG_KEYS = (
+        "catalog_id",
+        "master_id",
+        "item_group_id",
+        "product_id",
+    )
+
+    BRAND_KEYS = (
+        "brand",
+        "manufacturer",
+        "maker",
+    )
+
+    NAME_KEYS = (
+        "name",
+        "title",
+        "product_name",
+    )
+
+    def __init__(
+        self,
+        catalog: Iterable[
+            Dict[str, Any] | CatalogProduct
+        ],
+    ):
+
         self.catalog = [
-            x if isinstance(x, CatalogProduct) else CatalogProduct.from_dict(x)
+            x
+            if isinstance(
+                x,
+                CatalogProduct,
+            )
+            else CatalogProduct.from_dict(x)
             for x in catalog
         ]
 
@@ -202,60 +348,210 @@ class ProductMatcher:
         self._by_catalog_id = {}
 
         for product in self.catalog:
+
             if product.catalog_id:
-                self._by_catalog_id[normalize(product.catalog_id)] = product
+                self._by_catalog_id[
+                    normalize(
+                        product.catalog_id
+                    )
+                ] = product
 
             for value in product.gtins:
-                self._by_gtin.setdefault(value, []).append(product)
+                self._by_gtin.setdefault(
+                    value,
+                    [],
+                ).append(product)
 
             for value in product.mpns:
-                self._by_mpn.setdefault(value, []).append(product)
+                self._by_mpn.setdefault(
+                    value,
+                    [],
+                ).append(product)
 
-    def _offer_brand(self, offer: Dict[str, Any]) -> str:
-        value = first_value(offer, self.BRAND_KEYS)
+    def _offer_brand(
+        self,
+        offer: Dict[str, Any],
+    ) -> str:
+
+        value = first_value(
+            offer,
+            self.BRAND_KEYS,
+        )
 
         if value:
             return normalize(value)
 
         source = _nested_source(offer)
-        value = first_value(source, ("source_brand", "brand", "manufacturer"))
 
-        return normalize(value) if value else ""
+        value = first_value(
+            source,
+            (
+                "source_brand",
+                "brand",
+                "manufacturer",
+            ),
+        )
 
-    def _offer_name(self, offer: Dict[str, Any]) -> str:
-        value = first_value(offer, self.NAME_KEYS)
+        return (
+            normalize(value)
+            if value
+            else ""
+        )
+
+    def _offer_name(
+        self,
+        offer: Dict[str, Any],
+    ) -> str:
+
+        value = first_value(
+            offer,
+            self.NAME_KEYS,
+        )
 
         if value:
             return normalize(value)
 
         source = _nested_source(offer)
-        value = first_value(source, ("source_name", "name", "title"))
 
-        return normalize(value) if value else ""
+        value = first_value(
+            source,
+            (
+                "source_name",
+                "name",
+                "title",
+            ),
+        )
 
-    def match(self, offer: Dict[str, Any]) -> Optional[Dict[str, Any]]:
-        product, method, score = self._best_match(offer)
+        return (
+            normalize(value)
+            if value
+            else ""
+        )
+
+    def match(
+        self,
+        offer: Dict[str, Any],
+    ) -> Optional[Dict[str, Any]]:
+
+        # ========================================================
+        # DIAGNOSTICA TEMPORANEA
+        # ========================================================
+
+        started = time.perf_counter()
+
+        store = str(
+            offer.get("store")
+            or ""
+        )
+
+        name = str(
+            offer.get("name")
+            or offer.get("title")
+            or offer.get("product_name")
+            or ""
+        )
+
+        brand = str(
+            offer.get("brand")
+            or ""
+        )
+
+        price = str(
+            offer.get("price")
+            or ""
+        )
+
+        url = str(
+            offer.get("url")
+            or ""
+        )
+
+        raw_size = (
+            offer.get("size_ml")
+            or offer.get("size")
+            or offer.get("format")
+            or ""
+        )
+
+        print(
+            "SCENTHUNTER: MATCHER_RAW "
+            f"store={store!r} "
+            f"brand={brand!r} "
+            f"name={name!r} "
+            f"size={raw_size!r} "
+            f"price={price!r} "
+            f"url={url!r}",
+            flush=True,
+        )
+
+        # ========================================================
+        # MATCHING ORIGINALE
+        # ========================================================
+
+        product, method, score = (
+            self._best_match(offer)
+        )
+
+        elapsed_ms = (
+            time.perf_counter()
+            - started
+        ) * 1000.0
+
+        # ========================================================
+        # DIAGNOSTICA RISULTATO
+        # ========================================================
 
         if product is None:
+
+            print(
+                "SCENTHUNTER: "
+                "MATCHER_UNRESOLVED "
+                f"store={store!r} "
+                f"name={name!r} "
+                f"score={score:.4f} "
+                f"elapsed_ms={elapsed_ms:.1f}",
+                flush=True,
+            )
+
             return None
+
+        print(
+            "SCENTHUNTER: "
+            "MATCHER_RESULT "
+            f"store={store!r} "
+            f"raw_name={name!r} "
+            f"catalog_id={product.catalog_id!r} "
+            f"canonical_name={product.name!r} "
+            f"method={method} "
+            f"score={score:.4f} "
+            f"elapsed_ms={elapsed_ms:.1f}",
+            flush=True,
+        )
 
         result = dict(offer)
 
-        # Preserve the RAW blocks exactly as supplied by the scraper while
-        # exposing the canonical identity as flat fields for the API/frontend.
+        # Preserve the RAW blocks exactly as supplied by
+        # the scraper while exposing the canonical identity
+        # as flat fields for the API/frontend.
+
         result.update(
             catalog_id=product.catalog_id,
             canonical_brand=product.brand,
             canonical_name=product.name,
             match_method=method,
-            match_score=round(score, 4),
+            match_score=round(
+                score,
+                4,
+            ),
             product_identity=product.catalog_id,
         )
 
         resolved_size = size_ml(offer)
 
         if resolved_size is not None:
-            result["size_ml"] = resolved_size
+            result["size_ml"] = (
+                resolved_size
+            )
 
         result["variant_id"] = (
             f"{product.catalog_id}:{resolved_size:g}"
@@ -265,47 +561,135 @@ class ProductMatcher:
 
         return result
 
-    def _best_match(self, offer):
-        gtin = identifier(offer, self.GTIN_KEYS)
+    def _best_match(
+        self,
+        offer,
+    ):
 
-        if gtin in self._by_gtin and len(self._by_gtin[gtin]) == 1:
-            return self._by_gtin[gtin][0], "gtin", 1.0
+        gtin = identifier(
+            offer,
+            self.GTIN_KEYS,
+        )
 
-        mpn = identifier(offer, self.MPN_KEYS)
+        if (
+            gtin in self._by_gtin
+            and len(
+                self._by_gtin[gtin]
+            ) == 1
+        ):
+            return (
+                self._by_gtin[gtin][0],
+                "gtin",
+                1.0,
+            )
 
-        if mpn in self._by_mpn and len(self._by_mpn[mpn]) == 1:
-            return self._by_mpn[mpn][0], "mpn", 0.99
+        mpn = identifier(
+            offer,
+            self.MPN_KEYS,
+        )
 
-        catalog_id = identifier(offer, self.CATALOG_KEYS)
+        if (
+            mpn in self._by_mpn
+            and len(
+                self._by_mpn[mpn]
+            ) == 1
+        ):
+            return (
+                self._by_mpn[mpn][0],
+                "mpn",
+                0.99,
+            )
 
-        if catalog_id in self._by_catalog_id:
-            return self._by_catalog_id[catalog_id], "catalog_id", 0.98
+        catalog_id = identifier(
+            offer,
+            self.CATALOG_KEYS,
+        )
 
-        brand = self._offer_brand(offer)
-        name = self._offer_name(offer)
+        if (
+            catalog_id
+            in self._by_catalog_id
+        ):
+            return (
+                self._by_catalog_id[
+                    catalog_id
+                ],
+                "catalog_id",
+                0.98,
+            )
+
+        brand = self._offer_brand(
+            offer
+        )
+
+        name = self._offer_name(
+            offer
+        )
 
         if not name:
-            return None, "none", 0.0
+            return (
+                None,
+                "none",
+                0.0,
+            )
 
-        best = (None, 0.0, "none")
+        best = (
+            None,
+            0.0,
+            "none",
+        )
 
         for product in self.catalog:
-            score = self._text_score(brand, name, product)
+
+            score = self._text_score(
+                brand,
+                name,
+                product,
+            )
 
             if score > best[1]:
-                method = "exact_name" if score >= 0.94 else "token_score"
-                best = (product, score, method)
 
-        if best[0] is None or best[1] < 0.86:
-            return None, "none", best[1]
+                method = (
+                    "exact_name"
+                    if score >= 0.94
+                    else "token_score"
+                )
 
-        return best[0], best[2], best[1]
+                best = (
+                    product,
+                    score,
+                    method,
+                )
+
+        if (
+            best[0] is None
+            or best[1] < 0.86
+        ):
+            return (
+                None,
+                "none",
+                best[1],
+            )
+
+        return (
+            best[0],
+            best[2],
+            best[1],
+        )
 
     @staticmethod
-    def _text_score(brand: str, name: str, product: CatalogProduct):
+    def _text_score(
+        brand: str,
+        name: str,
+        product: CatalogProduct,
+    ):
+
         brand_score = (
             1.0
-            if brand and brand == product.normalized_brand
+            if (
+                brand
+                and brand
+                == product.normalized_brand
+            )
             else 0.0
         )
 
@@ -315,65 +699,125 @@ class ProductMatcher:
             product.normalized_name,
             *product.normalized_aliases,
         ):
+
             if not candidate:
                 continue
 
             if name == candidate:
-                best = max(best, 1.0)
+                best = max(
+                    best,
+                    1.0,
+                )
                 continue
 
-            query_tokens = set(name.split())
-            candidate_tokens = set(candidate.split())
+            query_tokens = set(
+                name.split()
+            )
 
-            intersection = len(query_tokens & candidate_tokens)
+            candidate_tokens = set(
+                candidate.split()
+            )
+
+            intersection = len(
+                query_tokens
+                & candidate_tokens
+            )
 
             recall = (
-                intersection / len(candidate_tokens)
+                intersection
+                / len(candidate_tokens)
                 if candidate_tokens
                 else 0.0
             )
 
-            precision = intersection / max(1, len(query_tokens))
+            precision = (
+                intersection
+                / max(
+                    1,
+                    len(query_tokens),
+                )
+            )
 
             f_score = (
-                2 * recall * precision / (recall + precision)
+                2
+                * recall
+                * precision
+                / (
+                    recall
+                    + precision
+                )
                 if recall + precision
                 else 0.0
             )
 
-            # A shorter name must NOT match a longer canonical product name
-            # merely because it is a substring. This prevents "Hawas" from
-            # becoming "Hawas Ice", for example.
+            # A shorter name must NOT match a longer
+            # canonical product name merely because it
+            # is a substring.
+            #
+            # Example:
+            # Hawas must not become Hawas Ice.
+
             if candidate in name:
-                f_score = max(f_score, 0.92)
+                f_score = max(
+                    f_score,
+                    0.92,
+                )
 
-            best = max(best, f_score)
+            best = max(
+                best,
+                f_score,
+            )
 
-        return 0.45 + 0.55 * best if brand_score else 0.95 * best
+        return (
+            0.45 + 0.55 * best
+            if brand_score
+            else 0.95 * best
+        )
 
 
 def offer_key(
     offer: Dict[str, Any],
-) -> Tuple[str, str, str, str]:
+) -> Tuple[
+    str,
+    str,
+    str,
+    str,
+]:
+
     store = normalize(
         offer.get("store")
-        or _nested_source(offer).get("store")
+        or _nested_source(
+            offer
+        ).get("store")
         or ""
     )
 
     identity = normalize(
-        offer.get("product_identity")
-        or offer.get("catalog_id")
+        offer.get(
+            "product_identity"
+        )
+        or offer.get(
+            "catalog_id"
+        )
         or ""
     )
 
-    resolved_size = size_ml(offer)
-    size = "" if resolved_size is None else f"{resolved_size:g}"
+    resolved_size = size_ml(
+        offer
+    )
+
+    size = (
+        ""
+        if resolved_size is None
+        else f"{resolved_size:g}"
+    )
 
     url = (
         str(
             offer.get("url")
-            or _nested_source(offer).get("url")
+            or _nested_source(
+                offer
+            ).get("url")
             or ""
         )
         .split("#", 1)[0]
@@ -382,21 +826,46 @@ def offer_key(
         .lower()
     )
 
-    return store, identity, size, url
+    return (
+        store,
+        identity,
+        size,
+        url,
+    )
 
 
 def attach_matches(
-    offers: Iterable[Dict[str, Any]],
-    catalog: Iterable[Dict[str, Any] | CatalogProduct],
-) -> List[Dict[str, Any]]:
-    matcher = ProductMatcher(catalog)
+    offers: Iterable[
+        Dict[str, Any]
+    ],
+    catalog: Iterable[
+        Dict[str, Any]
+        | CatalogProduct
+    ],
+) -> List[
+    Dict[str, Any]
+]:
+
+    matcher = ProductMatcher(
+        catalog
+    )
+
     output = []
 
     for offer in offers:
-        if isinstance(offer, dict):
-            matched = matcher.match(offer)
+
+        if isinstance(
+            offer,
+            dict,
+        ):
+
+            matched = matcher.match(
+                offer
+            )
 
             if matched is not None:
-                output.append(matched)
+                output.append(
+                    matched
+                )
 
     return output
