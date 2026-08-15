@@ -400,42 +400,61 @@ def search(query: str) -> List[Dict[str, Any]]:
                 seen.add(key)
                 results.append(item)
 
-        # Shopify can expose more than one variant for the same product.
-        # If at least one variant of that exact Shopify product is actually
-        # available, do not also return its unavailable variants as separate
-        # OUT OF STOCK offers. This is especially important for Orioudh:
-        # the same Liquid Brun product can otherwise produce one real offer
-        # plus a false duplicate OUT OF STOCK row.
-        product_groups = {}
-        for item in results:
-            product_id = (
-                (item.get("identity", {}).get("store_product_id") or {}).get("value")
+        # Orioudh can expose the same real product through more than one
+        # Shopify product URL. In that case one URL can be available while
+        # another duplicate/legacy listing is out of stock. The frontend
+        # must not show the second listing as a separate store offer.
+        #
+        # Group by the product identity visible in the actual product data,
+        # not only by Shopify product_id: duplicate Shopify listings can have
+        # different product IDs. We keep the available offer when the same
+        # brand/name/format/concentration/gender combination appears both
+        # in stock and out of stock.
+        def _dedupe_key(item):
+            source = item.get("source") or {}
+            attrs = item.get("attributes") or {}
+
+            brand = _norm(source.get("source_brand"))
+            name = _norm(source.get("source_name"))
+            size = (attrs.get("size_ml") or {}).get("value")
+            concentration = _norm((attrs.get("concentration") or {}).get("value"))
+            gender = _norm((attrs.get("gender") or {}).get("value"))
+
+            return (
+                brand,
+                name,
+                size,
+                concentration,
+                gender,
             )
-            if product_id is not None:
-                product_groups.setdefault(product_id, []).append(item)
+
+        groups = {}
+        for item in results:
+            groups.setdefault(_dedupe_key(item), []).append(item)
 
         filtered = []
-        for item in results:
-            product_id = (
-                (item.get("identity", {}).get("store_product_id") or {}).get("value")
+        for group in groups.values():
+            in_stock = [
+                item for item in group
+                if item.get("offer", {}).get("availability") == "in_stock"
+            ]
+
+            # If the same product identity has a real available offer,
+            # discard duplicate out-of-stock listings.
+            if in_stock:
+                group = in_stock
+
+            # A store should expose one offer for one product identity.
+            # If multiple available duplicates remain, keep the cheapest.
+            group = sorted(
+                group,
+                key=lambda item: (
+                    item.get("offer", {}).get("price")
+                    if item.get("offer", {}).get("price") is not None
+                    else float("inf")
+                ),
             )
-            if product_id is None:
-                filtered.append(item)
-                continue
-
-            group = product_groups.get(product_id, [])
-            has_in_stock = any(
-                x.get("offer", {}).get("availability") == "in_stock"
-                for x in group
-            )
-
-            if (
-                has_in_stock
-                and item.get("offer", {}).get("availability") == "out_of_stock"
-            ):
-                continue
-
-            filtered.append(item)
+            filtered.append(group[0])
 
         return filtered
     finally:
