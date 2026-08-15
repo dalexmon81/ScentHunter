@@ -1897,6 +1897,62 @@ async function searchLeBeauFamily(onPartial){
  if(typeof onPartial==="function")onPartial(merged,true);
  return merged;
 }
+function buildCatalogFallbackQueries(query){
+  const raw=String(query||"").trim();
+  if(!raw||typeof MASTER_CATALOG==="undefined"||!Array.isArray(MASTER_CATALOG))return [];
+
+  const normalizeQuery=v=>normalizePerfumeName(v||"").toLowerCase().trim();
+  const ignored=new Set(["eau","de","parfum","perfume","edp","edt","extrait","spray","ml","for","by"]);
+  const qTokens=new Set(normalizeQuery(raw).split(" ").filter(Boolean).filter(x=>!ignored.has(x)));
+  if(!qTokens.size)return [];
+
+  const ranked=[];
+  MASTER_CATALOG.forEach(item=>{
+    const brand=String(item.brand||"").trim();
+    const name=String(item.name||"").trim();
+    const aliases=Array.isArray(item.aliases)?item.aliases:[];
+    const hay=normalizeQuery([brand,name,...aliases].join(" "));
+    const tokens=new Set(hay.split(" ").filter(Boolean));
+    const overlap=[...qTokens].filter(t=>tokens.has(t)).length;
+    if(!overlap)return;
+
+    const coverage=overlap/qTokens.size;
+    const exactName=normalizeQuery(raw)===normalizeQuery(name)?1:0;
+    const nameContains=normalizeQuery(name).includes(normalizeQuery(raw))?1:0;
+    ranked.push({item,score:[exactName,nameContains,coverage,overlap,-name.length]});
+  });
+
+  ranked.sort((a,b)=>{
+    for(let i=0;i<a.score.length;i++){
+      if(a.score[i]!==b.score[i])return b.score[i]-a.score[i];
+    }
+    return 0;
+  });
+
+  const out=[];
+  const seen=new Set();
+  const add=value=>{
+    const v=String(value||"").trim();
+    const key=normalizeQuery(v);
+    if(!key||seen.has(key)||key===normalizeQuery(raw))return;
+    seen.add(key);
+    out.push(v);
+  };
+
+  // Prima il nome canonico senza brand: molti motori degli store gestiscono
+  // meglio "Born in Roma Uomo" di "Valentino Born in Roma Uomo".
+  ranked.slice(0,6).forEach(({item})=>{
+    add(item.name);
+    const aliases=Array.isArray(item.aliases)?item.aliases:[];
+    aliases.forEach(alias=>{
+      if(out.length<4)add(alias);
+    });
+    if(out.length<4 && item.brand && item.name)add(item.brand+" "+item.name);
+  });
+
+  return out.slice(0,4);
+}
+
 async function searchPerfume(){
  const q=queryInput.value.trim();if(!q){statusBox.textContent="";resultsBox.innerHTML="";errorsBox.innerHTML="";return}
  searchButton.disabled=true;searchButton.classList.add("searching");
@@ -1933,6 +1989,38 @@ async function searchPerfume(){
     backend()+"/search?q="+encodeURIComponent(q),
     30000
    );
+
+   // Regola generale di recupero: se la query esatta non produce nulla,
+   // usa automaticamente le referenze del catalogo master per provare il
+   // nome canonico/alias. Non esistono eccezioni per singoli profumi.
+   let groups=shGroupData(data||{});
+   if(!groups.length){
+     const fallbackQueries=buildCatalogFallbackQueries(q);
+     if(fallbackQueries.length){
+       const responses=await Promise.all(
+         fallbackQueries.map(term=>
+           fetchJSONWithTimeout(
+             backend()+"/search?q="+encodeURIComponent(term),
+             30000
+           ).catch(()=>({results:[],comparisons:[],errors:{}}))
+         )
+       );
+
+       const merged={
+         query:q,
+         results:Array.isArray(data?.results)?[...data.results]:[],
+         comparisons:Array.isArray(data?.comparisons)?[...data.comparisons]:[],
+         errors:{...(data?.errors||{})}
+       };
+
+       responses.forEach(response=>{
+         if(Array.isArray(response?.results))merged.results.push(...response.results);
+         if(Array.isArray(response?.comparisons))merged.comparisons.push(...response.comparisons);
+       });
+       data=merged;
+     }
+   }
+
    renderData(data,true);
   }
  }catch(e){
