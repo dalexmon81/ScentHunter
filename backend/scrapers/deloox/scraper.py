@@ -341,6 +341,38 @@ def _category_pages(session):
     )
 
 
+def _targeted_category_seed_urls(query):
+    """
+    Deloox sometimes exposes a product line on a dedicated category page
+    without exposing that category URL through the sitemap used by the
+    scraper. Keep a small, query-aware seed map for these cases, then fall
+    back to the broader brand category pages.
+    """
+    q = norm(query)
+
+    seeds = []
+
+    # Liquid Brun has a dedicated Deloox category page.
+    if "liquid brun" in q:
+        seeds.append(
+            BASE_URL + "/en/category/1132834/liquid-brun.html"
+        )
+
+    # French Avenue's category index exposes both the regular Liquid Brun
+    # 100 ml and the Limited Edition 150 ml, plus other French Avenue lines.
+    if "liquid brun" in q or "french avenue" in q:
+        seeds.extend(
+            [
+                BASE_URL + "/en/category/1121334/french-avenue-mens-fragrances.html",
+                BASE_URL + "/en/category/1121322/french-avenue-fragrances.html",
+            ]
+        )
+
+    # De-duplicate while preserving order.
+    seen = set()
+    return [u for u in seeds if not (u in seen or seen.add(u))]
+
+
 def _discover_from_categories(session, query, max_urls=80):
     urls = []
     seen = set()
@@ -531,10 +563,31 @@ def _discover(session, q):
         if len(urls) >= 80:
             return urls[:80]
 
-    # SECONDARY: dedicated Product-line category pages.
-    # This is important for products such as Liquid Brun: Deloox can expose
-    # them on a dedicated /category/<id>/<slug>.html page even when they are
-    # not present on the first generic perfume category page.
+    # SECONDARY: targeted Deloox category seeds.
+    # Some dedicated Product-line pages are real and indexed by Deloox but
+    # are not exposed by the sitemap endpoints we can reach from the scraper.
+    # Check those exact category pages before relying on sitemap discovery.
+    for category_url in _targeted_category_seed_urls(q):
+        try:
+            page = session.get(
+                category_url, headers=HEADERS, timeout=TIMEOUT
+            )
+        except requests.RequestException:
+            continue
+
+        if page.status_code >= 400:
+            continue
+
+        for product_url in _candidate_product_urls(page.text, q):
+            if product_url not in seen:
+                seen.add(product_url)
+                urls.append(product_url)
+                if len(urls) >= 80:
+                    return urls[:80]
+
+    # TERTIARY: dedicated Product-line category pages discovered from sitemap.
+    # This is important for other product lines whose category URLs are
+    # exposed in Deloox's sitemap.
     for category_url in _sitemap_category_urls(
         session, q, max_sitemaps=12, max_urls=30
     ):
@@ -555,7 +608,7 @@ def _discover(session, q):
                 if len(urls) >= 80:
                     return urls[:80]
 
-    # TERTIARY: legacy/current search endpoints, retained as fallback.
+    # QUATERNARY: legacy/current search endpoints, retained as fallback.
     endpoints = [
         BASE_URL + "/en/search?query=" + quote_plus(q),
         BASE_URL + "/en/search?search=" + quote_plus(q),
