@@ -1776,23 +1776,14 @@ function chooseOffer(gi,sizeKey,oi){
   }
 }
 
-async function fetchJSONWithTimeout(url,ms=90000,retries=1){
- let lastError;
- for(let attempt=0;attempt<=retries;attempt++){
-  const controller=new AbortController();
-  const timer=setTimeout(()=>controller.abort(),ms);
-  try{
-   const response=await fetch(url,{signal:controller.signal,headers:{"Accept":"application/json"}});
-   if(!response.ok)throw new Error("HTTP "+response.status);
-   return await response.json();
-  }catch(e){
-   lastError=e;
-   const aborted=e?.name==="AbortError"||/aborted|abort/i.test(String(e?.message||""));
-   if(!aborted||attempt>=retries)throw e;
-   await new Promise(resolve=>setTimeout(resolve,350));
-  }finally{clearTimeout(timer)}
- }
- throw lastError||new Error("Impossibile completare la richiesta.");
+async function fetchJSONWithTimeout(url,ms=90000){
+ const controller=new AbortController();
+ const timer=setTimeout(()=>controller.abort(),ms);
+ try{
+  const response=await fetch(url,{signal:controller.signal,headers:{"Accept":"application/json"}});
+  if(!response.ok)throw new Error("HTTP "+response.status);
+  return await response.json();
+ }finally{clearTimeout(timer)}
 }
 
 function isLeBeauFamilyQuery(query){
@@ -1962,6 +1953,49 @@ function buildCatalogFallbackQueries(query){
   return out.slice(0,4);
 }
 
+const SEARCH_STORES=[
+ "bplatz","deloox","parfumcity","parfumzentrum",
+ "perfumemarket","sabina","orioudh","notino"
+];
+
+async function searchStoresProgressive(term,onPartial){
+ const merged={query:term,comparisons:[],results:[],errors:{}};
+ const timeoutMs=15000;
+ const concurrency=2;
+
+ for(let i=0;i<SEARCH_STORES.length;i+=concurrency){
+  const pair=SEARCH_STORES.slice(i,i+concurrency);
+  statusBox.textContent=`Cerco ${term}… ${Math.min(i+concurrency,SEARCH_STORES.length)}/${SEARCH_STORES.length}`;
+
+  const responses=await Promise.allSettled(pair.map(store=>
+   fetchJSONWithTimeout(
+    backend()+"/test-store?store="+encodeURIComponent(store)+"&q="+encodeURIComponent(term),
+    timeoutMs
+   )
+  ));
+
+  responses.forEach((r,k)=>{
+   const store=pair[k];
+   if(r.status!=="fulfilled"){
+    merged.errors[store]=String(r.reason?.message||"timeout");
+    return;
+   }
+   const data=r.value||{};
+   if(Array.isArray(data.results))merged.results.push(...data.results);
+   if(Array.isArray(data.comparisons))merged.comparisons.push(...data.comparisons);
+   if(data.errors&&typeof data.errors==="object")Object.entries(data.errors).forEach(([name,error])=>{
+    if(!merged.errors[name])merged.errors[name]=error;
+   });
+   if(data.error)merged.errors[store]=data.error;
+  });
+
+  if(typeof onPartial==="function")onPartial(merged,false);
+ }
+
+ if(typeof onPartial==="function")onPartial(merged,true);
+ return merged;
+}
+
 async function searchPerfume(){
  const q=queryInput.value.trim();if(!q){statusBox.textContent="";resultsBox.innerHTML="";errorsBox.innerHTML="";return}
  searchButton.disabled=true;searchButton.classList.add("searching");
@@ -1994,42 +2028,35 @@ async function searchPerfume(){
   if(isLeBeauFamilyQuery(q)){
    data=await searchLeBeauFamily(renderData);
   }else{
-   data=await fetchJSONWithTimeout(
-    backend()+"/search?q="+encodeURIComponent(q),
-    45000,
-    1
-   );
+   // Regola generale: tutte le ricerche usano la stessa logica progressiva
+   // già collaudata per Le Beau. Massimo 2 negozi alla volta, così un singolo
+   // scraper lento non blocca l'intera ricerca e i risultati appaiono man mano.
+   data=await searchStoresProgressive(q,renderData);
 
    // Regola generale di recupero: se la query esatta non produce nulla,
    // usa automaticamente le referenze del catalogo master per provare il
-   // nome canonico/alias. Non esistono eccezioni per singoli profumi.
+   // nome canonico/alias. I fallback vengono eseguiti uno alla volta per
+   // evitare una seconda raffica simultanea di richieste.
    let groups=shGroupData(data||{});
    if(!groups.length){
-     const fallbackQueries=buildCatalogFallbackQueries(q);
-     if(fallbackQueries.length){
-       const responses=await Promise.all(
-         fallbackQueries.map(term=>
-           fetchJSONWithTimeout(
-             backend()+"/search?q="+encodeURIComponent(term),
-             45000,
-             1
-           ).catch(()=>({results:[],comparisons:[],errors:{}}))
-         )
-       );
-
-       const merged={
-         query:q,
-         results:Array.isArray(data?.results)?[...data.results]:[],
-         comparisons:Array.isArray(data?.comparisons)?[...data.comparisons]:[],
-         errors:{...(data?.errors||{})}
-       };
-
-       responses.forEach(response=>{
-         if(Array.isArray(response?.results))merged.results.push(...response.results);
-         if(Array.isArray(response?.comparisons))merged.comparisons.push(...response.comparisons);
-       });
-       data=merged;
+    const fallbackQueries=buildCatalogFallbackQueries(q);
+    for(let i=0;i<fallbackQueries.length;i++){
+     const term=fallbackQueries[i];
+     statusBox.textContent=`Provo una ricerca alternativa… ${i+1}/${fallbackQueries.length}`;
+     try{
+      const fallbackData=await searchStoresProgressive(term,null);
+      if(Array.isArray(fallbackData?.results))data.results.push(...fallbackData.results);
+      if(Array.isArray(fallbackData?.comparisons))data.comparisons.push(...fallbackData.comparisons);
+      if(fallbackData?.errors&&typeof fallbackData.errors==="object")Object.entries(fallbackData.errors).forEach(([store,error])=>{
+       if(!data.errors[store])data.errors[store]=error;
+      });
+      groups=shGroupData(data||{});
+      renderData(data,i===fallbackQueries.length-1||groups.length>0);
+      if(groups.length)break;
+     }catch(e){
+      console.warn("Fallback ricerca",term,e);
      }
+    }
    }
 
    renderData(data,true);
