@@ -39,6 +39,172 @@ STORES = [
     "notino",
 ]
 
+
+# ============================================================
+# STORE ROUTING — BRAND CLASSIFICATION
+# ============================================================
+# Regola:
+#   ARABIC_BRANDS       -> tutti gli 8 store
+#   DESIGNER_NICHE_BRANDS -> solo i 5 store più generalisti
+#   UNKNOWN             -> tutti gli 8 store (mai restringere alla cieca)
+#
+# La classificazione è volutamente conservativa: un brand non presente
+# nelle liste non viene considerato automaticamente designer/niche.
+ALL_STORES = STORES[:]
+
+DESIGNER_NICHE_STORES = [
+    "deloox",
+    "parfumcity",
+    "parfumzentrum",
+    "sabina",
+    "notino",
+]
+
+ARABIC_BRANDS = {
+    "afnan",
+    "ajmal",
+    "al haramain",
+    "al rehab",
+    "ard al zaafaran",
+    "armaf",
+    "asdaaf",
+    "ahmed al maghribi",
+    "arabian oud",
+    "fragrance world",
+    "gulf orchid",
+    "jawan",
+    "jovoy",
+    "khadlaj",
+    "lattafa",
+    "maison alhambra",
+    "maison d orient",
+    "maison d'orient",
+    "nabeel",
+    "naseej al oud",
+    "paris corner",
+    "rayhaan",
+    "rasasi",
+    "riiffs",
+    "swiss arabian",
+    "the woods collection",
+    "zimaya",
+    "emir",
+    "french avenue",
+    "dumont",
+    "nusuk",
+    "surrati",
+    "jannah",
+    "shaghaf",
+}
+
+# Alias di brand molto comuni nelle query/prodotti.
+ARABIC_BRAND_ALIASES = {
+    "9 pm": "afnan",
+    "9pm": "afnan",
+    "supremacy": "afnan",
+    "club de nuit": "armaf",
+    "cdnim": "armaf",
+    "khamrah": "lattafa",
+    "asad": "lattafa",
+    "yara": "lattafa",
+    "fakhar": "lattafa",
+    "haya": "lattafa",
+    "maahir": "lattafa",
+    "oud for glory": "lattafa",
+    "ana abiyedh": "lattafa",
+    "detour noir": "al haramain",
+}
+
+# Brand designer / niche riconosciuti esplicitamente.
+# L'elenco è volutamente limitato ai brand che vogliamo instradare
+# con certezza verso i 5 store generalisti.
+DESIGNER_NICHE_BRANDS = {
+    "acqua di parma",
+    "azzaro",
+    "burberry",
+    "bvlgari",
+    "calvin klein",
+    "carolina herrera",
+    "cartier",
+    "chanel",
+    "creed",
+    "dior",
+    "dolce & gabbana",
+    "emporio armani",
+    "giorgio armani",
+    "givenchy",
+    "gucci",
+    "hermes",
+    "hugo boss",
+    "issey miyake",
+    "jean paul gaultier",
+    "jil sander",
+    "jo malone",
+    "kenzo",
+    "lalique",
+    "lancome",
+    "marc jacobs",
+    "montblanc",
+    "moschino",
+    "narciso rodriguez",
+    "paco rabanne",
+    "parfums de marly",
+    "prada",
+    "ralph lauren",
+    "tom ford",
+    "versace",
+    "viktor & rolf",
+    "yves saint laurent",
+    "xerjoff",
+    "initio",
+    "amouage",
+    "diptyque",
+    "le labo",
+    "maison francis kurkdjian",
+    "memo paris",
+    "montale",
+    "mancera",
+    "nasomatto",
+    "penhaligon's",
+    "byredo",
+    "nishane",
+    "kilian",
+}
+
+def classify_query_brand(query: str) -> str:
+    """Restituisce ARABIC, DESIGNER_NICHE o UNKNOWN senza inventare il brand."""
+    q = norm(query)
+    if not q:
+        return "UNKNOWN"
+
+    # Prima gli alias di prodotto/famiglia verificati.
+    for alias, brand in ARABIC_BRAND_ALIASES.items():
+        if norm(alias) in q:
+            return "ARABIC"
+
+    # Poi i nomi espliciti di brand.
+    for brand in ARABIC_BRANDS:
+        if norm(brand) in q:
+            return "ARABIC"
+
+    for brand in DESIGNER_NICHE_BRANDS:
+        if norm(brand) in q:
+            return "DESIGNER_NICHE"
+
+    return "UNKNOWN"
+
+def stores_for_query(query: str) -> List[str]:
+    classification = classify_query_brand(query)
+
+    if classification == "ARABIC":
+        return ALL_STORES[:]
+
+    if classification == "DESIGNER_NICHE":
+        return DESIGNER_NICHE_STORES[:]
+
+    # Brand non riconosciuto: ricerca completa.
+    return ALL_STORES[:]
+
 BASE_DIR = os.path.dirname(__file__)
 HISTORY_PATH = os.path.join(BASE_DIR, "price_history.json")
 FRONTEND_INDEX = Path(__file__).resolve().parent.parent / "frontend" / "index.html"
@@ -680,13 +846,16 @@ def search_perfume(query: str) -> Dict[str, Any]:
     # di margine alla rete/browser per ricevere la risposta JSON.
     SEARCH_TIMEOUT_SECONDS = 40
 
+    selected_stores = stores_for_query(query)
+    errors["__routing__"] = classify_query_brand(query)
+
     executor = ThreadPoolExecutor(
-        max_workers=len(STORES),
+        max_workers=len(selected_stores),
         thread_name_prefix="scent-store",
     )
     future_to_store = {
         executor.submit(run_store, store, query): store
-        for store in STORES
+        for store in selected_stores
     }
 
     # Aspettiamo al massimo 40 secondi per l'intera ricerca. Gli scraper
@@ -782,6 +951,16 @@ def result_dedupe_key(item):
 def search(q: str):
     return search_perfume(q)
 
+
+
+@app.get("/routing")
+def routing(q: str):
+    classification = classify_query_brand(q)
+    return {
+        "query": q,
+        "classification": classification,
+        "stores": stores_for_query(q),
+    }
 
 @app.get("/test-store")
 def test_store(store: str, q: str):
@@ -886,7 +1065,11 @@ def root():
 
 @app.get("/health")
 def health():
-    return {"status": "healthy", "stores": STORES}
+    return {
+        "status": "healthy",
+        "stores": STORES,
+        "designer_niche_stores": DESIGNER_NICHE_STORES,
+    }
 
 
 def fragella_search(query: str, limit: int = 10) -> List[Dict[str, Any]]:
