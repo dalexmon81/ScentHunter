@@ -1,4 +1,4 @@
-"""Deloox adapter for ScentHunter.
+""""""Deloox adapter for ScentHunter.
 
 Discovery strategy:
 - Prefer Deloox's current category pages and their Product line filter links.
@@ -344,9 +344,8 @@ def _category_pages(session):
     # public site structure. We use both genders because Born in Roma exists
     # as separate Uomo/Donna product lines.
     return (
-        BASE_URL + "/category/1000054/mens-fragrances.html",
-        BASE_URL + "/category/1075639/womens-fragrances.html",
-        BASE_URL + "/category/1000063/womens-fragrances.html",
+        BASE_URL + "/category/1075660/womens-perfume.html",
+        BASE_URL + "/category/1075750/mens-perfume.html",
     )
 
 
@@ -398,7 +397,7 @@ def _discover_from_categories(session, query, max_urls=80):
         # First, discover the exact Product line links exposed by Deloox.
         product_line_links = _category_product_line_links(r.text, query)
 
-            # If Deloox's current HTML does not expose a filter link, inspect
+        # If Deloox's current HTML does not expose a filter link, also inspect
         # the current category page itself for product cards.
         candidate_pages = product_line_links or [category_url]
 
