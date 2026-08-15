@@ -42,6 +42,47 @@ def _query_tokens(query: str) -> List[str]:
     ]
 
 
+def _product_line_key(item: Dict[str, Any]) -> tuple:
+    """
+    Conservative product-line identity used only to collapse duplicate
+    Shopify listings from the same store.
+
+    It deliberately keeps meaningful name words (for example "Uomo"),
+    while removing vendor, concentration, gender and format words. This
+    prevents "Liquid Brun" duplicate listings from becoming two offers,
+    without merging distinct names such as "Titan" and "Titan Uomo".
+    """
+    source = item.get("source") or {}
+    name = _norm(source.get("source_name"))
+    brand = _norm(source.get("source_brand"))
+
+    removable = set(IGNORED_QUERY_WORDS) | {
+        "men", "male", "homme", "hommes",
+        "women", "female", "femme", "femmes",
+        "unisex", "unisexe",
+        "french", "avenue",
+    }
+
+    tokens = []
+    for token in name.split():
+        if token in removable:
+            continue
+        if token.isdigit():
+            continue
+        tokens.append(token)
+
+    # Remove the brand from the name if it is still present.
+    brand_tokens = set(brand.split())
+    tokens = [token for token in tokens if token not in brand_tokens]
+
+    return (
+        brand,
+        " ".join(tokens),
+        (item.get("attributes") or {}).get("size_ml", {}).get("value"),
+        (item.get("attributes") or {}).get("concentration", {}).get("value"),
+    )
+
+
 def _matches(text: str, query: str) -> bool:
     haystack = _norm(text)
     tokens = _query_tokens(query)
@@ -400,77 +441,41 @@ def search(query: str) -> List[Dict[str, Any]]:
                 seen.add(key)
                 results.append(item)
 
-        # Shopify/Orioudh can expose the same physical product through
-        # different product URLs/listings. Those duplicate listings can carry
-        # slightly different metadata (for example gender/concentration may
-        # be missing on one listing) and can therefore not be deduplicated by
-        # the raw Shopify IDs alone.
-        #
-        # Build a stable product key from the actual product name after
-        # removing only generic fragrance/store descriptors. Keep the size:
-        # this is essential because Liquid Brun 100 ml and Limited Edition
-        # 150 ml are different products.
-        generic_words = {
-            "eau", "de", "parfum", "perfume", "edp", "edt", "extrait",
-            "extract", "spray", "for", "by", "pour", "men", "man", "male",
-            "women", "woman", "female", "herren", "homme", "hommes",
-            "damen", "femme", "femmes", "unisex", "unisexe", "ml", "cl",
-        }
-
-        def _identity_name(item):
-            source = item.get("source") or {}
-            name = _norm(source.get("source_name"))
-            brand = _norm(source.get("source_brand"))
-
-            if brand:
-                name = re.sub(r"\b" + re.escape(brand) + r"\b", " ", name)
-
-            tokens = [
-                token for token in name.split()
-                if token not in generic_words
-                and not re.fullmatch(r"\d+(?:\.\d+)?", token)
-            ]
-            return " ".join(tokens)
-
-        def _dedupe_key(item):
-            source = item.get("source") or {}
-            attrs = item.get("attributes") or {}
-            return (
-                _norm(source.get("source_brand")),
-                _identity_name(item),
-                (attrs.get("size_ml") or {}).get("value"),
-            )
-
-        groups = {}
+        # Shopify can expose the same product line through more than one
+        # product URL. This is especially visible on Liquid Brun: one
+        # listing is available while another duplicate listing is marked
+        # out of stock. Keep one offer for the same store/product line,
+        # preferring a real in-stock offer.
+        grouped = {}
         for item in results:
-            groups.setdefault(_dedupe_key(item), []).append(item)
+            key = (item.get("store"), _product_line_key(item))
+            grouped.setdefault(key, []).append(item)
 
-        filtered = []
-        for group in groups.values():
-            # If at least one listing for this exact product/size is really
-            # available, an unavailable/unknown duplicate is a false duplicate
-            # and must not become a second store offer.
+        final_results = []
+        for group in grouped.values():
             in_stock = [
                 item for item in group
                 if item.get("offer", {}).get("availability") == "in_stock"
             ]
 
             if in_stock:
-                group = in_stock
+                candidates = in_stock
+            else:
+                candidates = group
 
-            # One Orioudh offer per real product/size. If multiple valid
-            # listings remain, keep the cheapest available one.
-            group.sort(
+            # One store offer per product line. Prefer the cheapest valid
+            # offer when several available duplicate listings remain.
+            candidates = sorted(
+                candidates,
                 key=lambda item: (
-                    0 if item.get("offer", {}).get("availability") == "in_stock" else 1,
                     item.get("offer", {}).get("price")
                     if item.get("offer", {}).get("price") is not None
-                    else float("inf"),
-                )
+                    else float("inf")
+                ),
             )
-            filtered.append(group[0])
+            final_results.append(candidates[0])
 
-        return filtered
+        return final_results
     finally:
         session.close()
 
