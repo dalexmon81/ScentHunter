@@ -135,55 +135,36 @@ def catalog_match_candidates(query: str, limit: int = 12) -> list[dict]:
 
 
 def catalog_search_queries(query: str, limit: int = 8) -> list[str]:
-    """Generate a bounded set of generic catalog queries including aliases."""
+    """Generate store queries from the canonical catalog, never from exceptions."""
     raw = str(query or "").strip()
     candidates = catalog_match_candidates(raw, limit)
 
     attempts = [raw] if raw else []
     seen = {norm(raw)} if raw else set()
 
- def add_attempt(value: Any) -> None:
+    def add_attempt(value: Any) -> None:
         value = str(value or "").strip()
         key = norm(value)
-
         if key and key not in seen:
             attempts.append(value)
             seen.add(key)
 
-    add_attempt(raw)
-
     for item in candidates:
-        brand = str(
-            item.get("brand")
-            or item.get("brand_name")
-            or ""
-        ).strip()
-
-        name = str(
-            item.get("name")
-            or item.get("family_name")
-            or ""
-        ).strip()
-
-        add_attempt(" ".join(
-            part for part in (brand, name) if part
-        ))
+        brand = str(item.get("brand") or item.get("brand_name") or "").strip()
+        name = str(item.get("name") or item.get("family_name") or "").strip()
+        add_attempt(" ".join(part for part in (brand, name) if part))
 
         aliases = item.get("aliases") or []
-
         if isinstance(aliases, list):
             for alias in aliases:
                 alias = str(alias or "").strip()
-
                 if not alias:
                     continue
-
                 add_attempt(alias)
-
                 if brand and norm(brand) not in norm(alias):
                     add_attempt(f"{brand} {alias}")
 
-    return attempts[:6]
+    return attempts[:max(10, limit)]
 
 
 def norm(value: Any) -> str:
