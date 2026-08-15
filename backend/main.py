@@ -46,13 +46,11 @@ HISTORY_PATH = os.path.join(BASE_DIR, "price_history.json")
 FRONTEND_INDEX = Path(__file__).resolve().parent.parent / "frontend" / "index.html"
 PRODUCT_CATALOG_PATH = os.path.join(BASE_DIR, "product_catalog.json")
 
-# Variants used to distinguish EDT vs EDP etc. Kept deliberately conservative.
-VARIANTS = {
-    "eau de parfum", "eau de toilette", "pour femme", "pour homme",
-    "le parfum", "intense", "extrait", "limited edition", "night out",
-    "elixir", "collector edition", "collector's edition", "parfum",
-    "edp", "edt",
-}
+
+
+
+
+
 
 NON_PERFUME = {
     "gift set", "set regalo", "coffret", "bundle", "deodorant",
@@ -296,7 +294,7 @@ def _price_from_structured_html(html: str, target_size_ml: Optional[float] = Non
 # - se uno scraper dichiara esplicitamente OUT OF STOCK, lo manteniamo;
 # - se la pagina prodotto conferma OUT OF STOCK, lo marchiamo centralmente;
 # - se la pagina conferma IN STOCK, lo marchiamo come disponibile;
-# - se non riusciamo di determinare lo stock, NON eliminiamo mai il prodotto.
+# - se non riusciamo a determinare lo stock, NON eliminiamo mai il prodotto.
 # In questo modo lo stock è normalizzato nel backend e non dipende da
 # correzioni specifiche per singolo profumo o singolo negozio.
 
@@ -320,8 +318,9 @@ _STOCK_OOS_MARKERS = (
     "non disponible",
     "non-disponible",
     "ce produit n'est plus disponible",
-    "ce produit n’est plus disponibile",
-    "ce produit n'est più disponibile a la vendita",
+    "ce produit n’est plus disponible",
+    "ce produit n'est plus disponible à la vente",
+    "ce produit n’est plus disponible à la vente",
     "esaurito",
     "non disponibile",
     "questo prodotto non è più disponibile",
@@ -750,82 +749,87 @@ def unique_results(products: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
     return unique
 
 
-# -------------------------
-# AGGREGAZIONE PRODOTTI
-# -------------------------
-def _extract_variant_tokens(name: str) -> List[str]:
-    s = (name or "").lower()
-    found = []
-    # match longer phrases first to avoid partial matches
-    for v in sorted(VARIANTS, key=lambda x: -len(x)):
-        if v in s:
-            found.append(v)
-            s = s.replace(v, " ")
-    return found
 
-def _base_name_without_variants(name: str, variant_tokens: List[str]) -> str:
-    n = norm(name)
-    for v in variant_tokens:
-        n = re.sub(re.escape(norm(v)), " ", n)
-    return re.sub(r"\s+", " ", n).strip()
+def _aggregate_product_key(product: Dict[str, Any]):
+    """Chiave stabile del prodotto: stessa identità + stesso formato."""
+    identity = norm(
+        product.get("catalog_id")
+        or product.get("product_identity")
+        or product.get("product_id")
+        or ""
+    )
+
+    if not identity:
+        identity = norm(
+            f"{product.get('canonical_brand') or product.get('brand') or ''} "
+            f"{product.get('canonical_name') or product.get('name') or ''}"
+        )
+
+    size = product.get("size_ml") or product.get("size") or product.get("format") or ""
+    size_ml = _product_size_ml(product)
+
+    return (
+        identity,
+        round(size_ml, 2) if size_ml is not None else norm(str(size)),
+    )
+
 
 def aggregate_products(products: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
     """
-    Raggruppa offerte che rappresentano lo stesso prodotto/variante.
-    Restituisce una lista di prodotti aggregati, ciascuno con campo 'offers' contenente le offerte originali.
-    """
-    groups: Dict[tuple, Dict[str, Any]] = {}
-    for p in products:
-        brand = str(p.get("brand") or "").strip()
-        name = str(p.get("canonical_name") or p.get("name") or "").strip()
-        brand_n = norm(brand)
-        variant_tokens = _extract_variant_tokens(name)
-        base = _base_name_without_variants(name, variant_tokens)
-        key = (brand_n, base, tuple(sorted(variant_tokens)))
-        if key not in groups:
-            groups[key] = {
-                "name_candidates": [],
-                "brand": brand,
-                "offers": [],
-                "price_value": None,
-                "price": None,
-                "formats": {},
-            }
-        entry = groups[key]
-        entry["name_candidates"].append(name)
-        entry["offers"].append(dict(p))
-        price_val = price_num(p.get("price"))
-        if price_val is not None:
-            cur = entry.get("price_value")
-            if cur is None or price_val < cur:
-                entry["price_value"] = price_val
-                entry["price"] = p.get("price")
-        size_ml = _product_size_ml(p)
-        if size_ml is not None:
-            fm = entry["formats"].setdefault(int(size_ml), [])
-            fm.append(p)
+    Unisce le offerte dello stesso prodotto provenienti da negozi diversi.
 
-    out = []
-    for key, entry in groups.items():
-        canonical_name = max(entry["name_candidates"], key=lambda s: len(s)) if entry["name_candidates"] else ""
-        primary_url = ""
-        if entry["offers"]:
-            primary_url = str(entry["offers"][0].get("url") or "").split("#")[0].split("?")[0].strip()
-        aggregated = {
-            "name": canonical_name,
-            "brand": entry["brand"],
-            "offers": entry["offers"],
-            "price_value": entry["price_value"],
-            "price": entry["price"],
-            "formats": entry["formats"],
-            "stores_count": len(entry["offers"]),
-            "primary_url": primary_url,
-        }
-        out.append(aggregated)
-    return out
-# -------------------------
-# Fine aggregazione
-# -------------------------
+    Importante:
+    - non elimina i prodotti trovati dagli scraper;
+    - Le Beau e Le Beau Le Parfum restano distinti se il catalog matcher
+      assegna loro identità diverse;
+    - ogni scheda conserva tutte le offerte nel campo 'offers'.
+    """
+    groups: Dict[Any, Dict[str, Any]] = {}
+
+    for product in products:
+        item = dict(product)
+        key = _aggregate_product_key(item)
+
+        if key not in groups:
+            item["offers"] = [dict(item)]
+            item["stores_count"] = 1 if item.get("store") else 0
+            groups[key] = item
+            continue
+
+        group = groups[key]
+        offers = group.setdefault("offers", [])
+
+        store = norm(str(item.get("store") or ""))
+        url = str(item.get("url") or "").split("#")[0].split("?")[0].strip().lower()
+
+        duplicate = any(
+            norm(str(offer.get("store") or "")) == store
+            and str(offer.get("url") or "").split("#")[0].split("?")[0].strip().lower() == url
+            for offer in offers
+        )
+
+        if not duplicate:
+            offers.append(dict(item))
+
+        # La scheda mantiene come prezzo principale il prezzo più basso.
+        current = price_num(group.get("price"))
+        incoming = price_num(item.get("price"))
+
+        if incoming is not None and (current is None or incoming < current):
+            for field in (
+                "price", "price_value", "store", "url", "available",
+                "availability", "image", "size_ml", "size", "format"
+            ):
+                if field in item:
+                    group[field] = item[field]
+
+        group["stores_count"] = len({
+            norm(str(offer.get("store") or ""))
+            for offer in offers
+            if offer.get("store")
+        })
+
+    return list(groups.values())
 
 
 def sort_by_price(products: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
@@ -916,9 +920,9 @@ def search_perfume(query: str) -> Dict[str, Any]:
         except Exception as exc:
             errors["identity_engine"] = str(exc) or exc.__class__.__name__
 
-    # Aggregate offers into canonical product entries before sorting/returning.
+    # aggregate across stores by canonical product/variant key
     results = aggregate_products(results)
-
+    # note: after aggregation, sort_by_price expects list of products; price_num will still work on product['price']
     results = sort_by_price(results)
 
     return {
