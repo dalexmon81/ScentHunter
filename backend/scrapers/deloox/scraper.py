@@ -1,10 +1,14 @@
 """Deloox adapter for ScentHunter.
 
 Discovery strategy:
-- Prefer Deloox's current category pages and their Product line filter links.
-- Fall back to Deloox search endpoints and sitemap discovery.
+- Prefer Deloox's current category pages and Product line filter links.
+- Search BOTH the main category and Product line pages.
+- Fall back to targeted category seeds.
+- Fall back to sitemap discovery.
+- Fall back to Deloox search endpoints.
 - Product pages are parsed through JSON-LD/page content.
 """
+
 from __future__ import annotations
 
 import json
@@ -13,6 +17,7 @@ from urllib.parse import quote_plus, urljoin, urlparse
 
 import requests
 from bs4 import BeautifulSoup
+
 
 STORE = "Deloox"
 BASE_URL = "https://www.deloox.com"
@@ -28,6 +33,10 @@ HEADERS = {
 }
 
 
+# =========================================================
+# BASIC HELPERS
+# =========================================================
+
 def clean(v):
     return re.sub(r"\s+", " ", str(v or "")).strip()
 
@@ -41,13 +50,25 @@ def norm(v):
 
 
 def tokens(v):
-    return {x for x in norm(v).split() if len(x) > 1}
+    return {
+        x
+        for x in norm(v).split()
+        if len(x) > 1
+    }
 
 
 def matches(text, q):
     q_tokens = tokens(q)
-    return bool(q_tokens) and q_tokens.issubset(tokens(text))
 
+    return (
+        bool(q_tokens)
+        and q_tokens.issubset(tokens(text))
+    )
+
+
+# =========================================================
+# PRODUCT ATTRIBUTES
+# =========================================================
 
 def size_ml(*values):
     m = re.search(
@@ -59,24 +80,44 @@ def size_ml(*values):
     if not m:
         return None
 
-    n = float(m.group(1).replace(",", "."))
+    n = float(
+        m.group(1).replace(",", ".")
+    )
 
     if m.group(2).lower() == "cl":
         n *= 10
 
-    return int(n) if n.is_integer() else n
+    return (
+        int(n)
+        if n.is_integer()
+        else n
+    )
 
 
 def concentration(*values):
-    t = norm(" ".join(clean(x) for x in values))
+    t = norm(
+        " ".join(
+            clean(x)
+            for x in values
+        )
+    )
 
-    if re.search(r"\beau de toilette\b|\bedt\b", t):
+    if re.search(
+        r"\beau de toilette\b|\bedt\b",
+        t,
+    ):
         return "Eau de Toilette"
 
-    if re.search(r"\beau de parfum\b|\bedp\b", t):
+    if re.search(
+        r"\beau de parfum\b|\bedp\b",
+        t,
+    ):
         return "Eau de Parfum"
 
-    if re.search(r"\bextrait(?: de parfum)?\b", t):
+    if re.search(
+        r"\bextrait(?: de parfum)?\b",
+        t,
+    ):
         return "Extrait de Parfum"
 
     return None
@@ -85,22 +126,67 @@ def concentration(*values):
 def parse_price(v):
     s = clean(v)
 
-    m = re.search(
-        r"(?:€\s*)?(\d{1,4}(?:[.,]\d{2})?)(?:\s*€)?",
+    if not s:
+        return None
+
+    # Prefer prices containing the euro symbol.
+    euro_match = re.search(
+        r"€\s*(\d{1,4}(?:[.,]\d{2})?)",
         s,
     )
 
-    if not m:
+    if euro_match:
+        try:
+            return round(
+                float(
+                    euro_match.group(1)
+                    .replace(",", ".")
+                ),
+                2,
+            )
+        except ValueError:
+            pass
+
+    match = re.search(
+        r"(\d{1,4}(?:[.,]\d{2})?)\s*€",
+        s,
+    )
+
+    if match:
+        try:
+            return round(
+                float(
+                    match.group(1)
+                    .replace(",", ".")
+                ),
+                2,
+            )
+        except ValueError:
+            pass
+
+    # Generic fallback.
+    match = re.search(
+        r"\b(\d{1,4}(?:[.,]\d{2})?)\b",
+        s,
+    )
+
+    if not match:
         return None
 
     try:
-        return round(float(m.group(1).replace(",", ".")), 2)
+        return round(
+            float(
+                match.group(1)
+                .replace(",", ".")
+            ),
+            2,
+        )
     except ValueError:
         return None
 
 
 def availability(text):
-    """Normalize Deloox availability values."""
+    """Normalize Deloox availability."""
 
     t = norm(text)
 
@@ -129,91 +215,176 @@ def availability(text):
     return "unknown"
 
 
+# =========================================================
+# JSON-LD
+# =========================================================
+
 def _jsonld(soup):
     for script in soup.select(
         'script[type="application/ld+json"]'
     ):
         try:
             data = json.loads(
-                script.get_text(strip=True)
+                script.get_text(
+                    strip=True
+                )
             )
         except Exception:
             continue
 
-        stack = data if isinstance(data, list) else [data]
+        stack = (
+            data
+            if isinstance(data, list)
+            else [data]
+        )
 
         while stack:
-            x = stack.pop(0)
+            item = stack.pop(0)
 
-            if isinstance(x, list):
-                stack.extend(x)
+            if isinstance(item, list):
+                stack.extend(item)
                 continue
 
-            if not isinstance(x, dict):
+            if not isinstance(item, dict):
                 continue
 
-            if x.get("@type") == "Product" or "offers" in x:
-                return x
+            item_type = item.get("@type")
 
-            if isinstance(x.get("@graph"), list):
-                stack.extend(x["@graph"])
+            if (
+                item_type == "Product"
+                or "offers" in item
+            ):
+                return item
+
+            graph = item.get("@graph")
+
+            if isinstance(graph, list):
+                stack.extend(graph)
 
     return {}
 
 
+# =========================================================
+# PRODUCT PARSER
+# =========================================================
+
 def _product(url, html, query):
-    soup = BeautifulSoup(html, "html.parser")
+    soup = BeautifulSoup(
+        html,
+        "html.parser",
+    )
+
     data = _jsonld(soup)
+
+    # -----------------------------------------------------
+    # NAME
+    # -----------------------------------------------------
 
     h1 = soup.find("h1")
 
-    name = clean(data.get("name")) or (
-        clean(h1.get_text(" ", strip=True))
+    name = clean(
+        data.get("name")
+    ) or (
+        clean(
+            h1.get_text(
+                " ",
+                strip=True,
+            )
+        )
         if h1
         else ""
     )
 
-    if not name or not matches(name, query):
+    if not name:
         return None
 
-    # Deloox product pages expose the product line separately.
-    product_line = ""
+    # Strict validation against the ORIGINAL query.
+    if not matches(
+        name,
+        query,
+    ):
+        return None
 
-    text = soup.get_text(" ", strip=True)
+    # -----------------------------------------------------
+    # PAGE TEXT
+    # -----------------------------------------------------
 
-    m = re.search(
-        r"product line\s+(.+?)(?:for whom|fragrance type|season|spray|article number)",
-        text,
-        re.I,
+    text = soup.get_text(
+        " ",
+        strip=True,
     )
 
-    if m:
-        product_line = clean(m.group(1))
+    # -----------------------------------------------------
+    # PRODUCT LINE
+    # -----------------------------------------------------
 
-    # Brand
+    product_line = ""
+
+    product_line_patterns = [
+        r"product line\s+(.+?)(?:for whom|fragrance type|season|spray|article number)",
+        r"product line\s*:\s*(.+?)(?:for whom|fragrance type|season|spray|article number)",
+    ]
+
+    for pattern in product_line_patterns:
+        match = re.search(
+            pattern,
+            text,
+            re.I,
+        )
+
+        if match:
+            product_line = clean(
+                match.group(1)
+            )
+            break
+
+    # -----------------------------------------------------
+    # BRAND
+    # -----------------------------------------------------
+
     brand = data.get("brand")
 
-    if isinstance(brand, dict):
+    if isinstance(
+        brand,
+        dict,
+    ):
         brand = brand.get("name")
 
-    # Offers
+    # -----------------------------------------------------
+    # OFFERS
+    # -----------------------------------------------------
+
     offers = data.get("offers")
 
-    if isinstance(offers, list):
+    if isinstance(
+        offers,
+        list,
+    ):
         offer = next(
             (
-                x
-                for x in offers
-                if isinstance(x, dict)
+                item
+                for item in offers
+                if isinstance(
+                    item,
+                    dict,
+                )
             ),
             {},
         )
-    elif isinstance(offers, dict):
+
+    elif isinstance(
+        offers,
+        dict,
+    ):
         offer = offers
+
     else:
         offer = {}
 
-    # Price
+    # -----------------------------------------------------
+    # PRICE
+    # -----------------------------------------------------
+
     price = parse_price(
         offer.get("price")
     )
@@ -224,12 +395,10 @@ def _product(url, html, query):
     if price is None:
         return None
 
-    # ---------------------------------------------------------
-    # GTIN
-    #
-    # Deloox can expose gtin13, gtin14 or gtin.
-    # Prefer the more specific values in that order.
-    # ---------------------------------------------------------
+    # -----------------------------------------------------
+    # IDENTIFIERS
+    # -----------------------------------------------------
+
     gtin = clean(
         data.get("gtin13")
         or data.get("gtin14")
@@ -237,36 +406,44 @@ def _product(url, html, query):
         or ""
     ) or None
 
-    # MPN
     mpn = clean(
-        data.get("mpn") or ""
+        data.get("mpn")
+        or ""
     ) or None
 
-    # SKU
     sku = clean(
-        data.get("sku") or ""
+        data.get("sku")
+        or ""
     ) or None
 
-    # Image
+    # -----------------------------------------------------
+    # IMAGE
+    # -----------------------------------------------------
+
     image = data.get("image")
 
-    if isinstance(image, list):
-        image = image[0] if image else None
+    if isinstance(
+        image,
+        list,
+    ):
+        image = (
+            image[0]
+            if image
+            else None
+        )
 
-    # ---------------------------------------------------------
-    # Availability
-    #
-    # Deloox JSON-LD uses:
-    # http://schema.org/InStock
-    #
-    # The normalized page text can therefore become "instock".
-    # ---------------------------------------------------------
+    # -----------------------------------------------------
+    # AVAILABILITY
+    # -----------------------------------------------------
+
     avail = availability(text)
 
-    # If JSON-LD explicitly contains an availability value,
-    # use it as an additional reliable source.
+    # Prefer explicit JSON-LD availability.
     jsonld_availability = clean(
-        offer.get("availability") or ""
+        offer.get(
+            "availability"
+        )
+        or ""
     )
 
     if jsonld_availability:
@@ -275,8 +452,10 @@ def _product(url, html, query):
         )
 
         if (
-            "instock" in availability_norm
-            or "in stock" in availability_norm
+            "instock"
+            in availability_norm
+            or "in stock"
+            in availability_norm
         ):
             avail = "in_stock"
 
@@ -291,6 +470,13 @@ def _product(url, html, query):
         ):
             avail = "out_of_stock"
 
+    # -----------------------------------------------------
+    # RESULT
+    # -----------------------------------------------------
+
+    size_value = size_ml(name)
+    concentration_value = concentration(name)
+
     return {
         "store": STORE,
 
@@ -299,7 +485,10 @@ def _product(url, html, query):
             "source_brand": clean(brand),
             "url": url,
             "image": (
-                urljoin(url, str(image))
+                urljoin(
+                    url,
+                    str(image),
+                )
                 if image
                 else None
             ),
@@ -346,19 +535,19 @@ def _product(url, html, query):
         "attributes": {
             "size_ml": (
                 {
-                    "value": size_ml(name),
+                    "value": size_value,
                     "source": "product_name",
                 }
-                if size_ml(name) is not None
+                if size_value is not None
                 else None
             ),
 
             "concentration": (
                 {
-                    "value": concentration(name),
+                    "value": concentration_value,
                     "source": "product_name",
                 }
-                if concentration(name)
+                if concentration_value
                 else None
             ),
 
@@ -400,7 +589,10 @@ def _product(url, html, query):
         "name": name,
 
         "price": (
-            f"{price:.2f}".replace(".", ",")
+            f"{price:.2f}".replace(
+                ".",
+                ",",
+            )
             + " €"
         ),
 
@@ -412,8 +604,12 @@ def _product(url, html, query):
     }
 
 
+# =========================================================
+# SEARCH QUERY VARIANTS
+# =========================================================
+
 def _candidate_queries(query):
-    """Generate progressively broader Deloox discovery queries."""
+    """Generate progressively broader Deloox queries."""
 
     normalized = norm(query)
 
@@ -438,7 +634,9 @@ def _candidate_queries(query):
         "of",
     }
 
-    searches = [clean(query)]
+    searches = [
+        clean(query)
+    ]
 
     meaningful = [
         token
@@ -448,11 +646,16 @@ def _candidate_queries(query):
     ]
 
     if normalized not in searches:
-        searches.append(normalized)
+        searches.append(
+            normalized
+        )
 
     for token in sorted(
         meaningful,
-        key=lambda x: (-len(x), x),
+        key=lambda x: (
+            -len(x),
+            x,
+        ),
     ):
         if token not in searches:
             searches.append(token)
@@ -460,14 +663,27 @@ def _candidate_queries(query):
     return searches
 
 
+# =========================================================
+# PRODUCT URL DISCOVERY
+# =========================================================
+
 def _candidate_product_urls(
     html,
     query,
     discovery_query=None,
     accept_all_products=False,
 ):
-    """Extract Deloox product URLs from HTML,
-    JSON, JSON-LD and JS.
+    """
+    Extract Deloox product URLs from:
+
+    - HTML anchors
+    - raw HTML
+    - JSON
+    - JSON-LD
+    - serialized JS state
+    - product-card attributes
+
+    Final validation is performed by _product().
     """
 
     soup = BeautifulSoup(
@@ -479,18 +695,27 @@ def _candidate_product_urls(
     seen = set()
 
     discovery = (
-        discovery_query or query
+        discovery_query
+        or query
     )
 
-    q_tokens = tokens(discovery)
+    q_tokens = tokens(
+        discovery
+    )
 
-    def add(raw_url, context=""):
+    def add(
+        raw_url,
+        context="",
+    ):
         if not raw_url:
             return
 
         raw_url = (
             clean(raw_url)
-            .replace("\\/", "/")
+            .replace(
+                "\\/",
+                "/",
+            )
         )
 
         if raw_url.startswith(
@@ -503,7 +728,10 @@ def _candidate_product_urls(
             return
 
         url = (
-            urljoin(BASE_URL, raw_url)
+            urljoin(
+                BASE_URL,
+                raw_url,
+            )
             .split("#")[0]
             .split("?")[0]
         )
@@ -519,7 +747,10 @@ def _candidate_product_urls(
         }:
             return
 
-        if "/product/" not in parsed.path.lower():
+        if (
+            "/product/"
+            not in parsed.path.lower()
+        ):
             return
 
         if url in seen:
@@ -529,6 +760,12 @@ def _candidate_product_urls(
             f"{context} {url}"
         )
 
+        # When reading a Product Line page,
+        # accept all product URLs from that page.
+        #
+        # _product() performs the strict
+        # final validation using the real
+        # product name.
         if (
             not accept_all_products
             and q_tokens
@@ -538,7 +775,9 @@ def _candidate_product_urls(
             )
         ):
             if not any(
-                token in tokens(haystack)
+                token in tokens(
+                    haystack
+                )
                 for token in q_tokens
             ):
                 return
@@ -546,7 +785,10 @@ def _candidate_product_urls(
         seen.add(url)
         found.append(url)
 
-    # 1) Normal anchors
+    # -----------------------------------------------------
+    # 1. NORMAL ANCHORS
+    # -----------------------------------------------------
+
     for a in soup.find_all(
         "a",
         href=True,
@@ -559,28 +801,55 @@ def _candidate_product_urls(
             ),
         )
 
-    # 2) Literal product URLs
+    # -----------------------------------------------------
+    # 2. RAW PRODUCT URLS
+    # -----------------------------------------------------
+
     product_patterns = [
-        r'https?://(?:www\.)?deloox\.com/[^"\'<>\s]+/product/[^"\'<>\s]+',
+        (
+            r'https?://(?:www\.)?deloox\.com/'
+            r'[^"\'<>\s]+/product/'
+            r'[^"\'<>\s]+'
+        ),
 
-        r'["\']((?:/)?(?:en/|it/|nl/)?product/[^"\']+)["\']',
+        (
+            r'["\']((?:/)?'
+            r'(?:en/|it/|nl/)?product/'
+            r'[^"\']+)["\']'
+        ),
 
-        r'["\']((?:https?:)?//(?:www\.)?deloox\.com/[^"\']*/product/[^"\']+)["\']',
+        (
+            r'["\']((?:https?:)?//'
+            r'(?:www\.)?deloox\.com/'
+            r'[^"\']*/product/'
+            r'[^"\']+)["\']'
+        ),
     ]
 
     for pattern in product_patterns:
+
         for raw in re.findall(
             pattern,
             html,
             re.I,
         ):
-            if isinstance(raw, tuple):
+
+            if isinstance(
+                raw,
+                tuple,
+            ):
                 raw = "".join(raw)
 
             add(raw)
 
-    # 3) JSON / JSON-LD / serialized state
-    for script in soup.find_all("script"):
+    # -----------------------------------------------------
+    # 3. JSON / JSON-LD / JS STATE
+    # -----------------------------------------------------
+
+    for script in soup.find_all(
+        "script"
+    ):
+
         body = script.get_text(
             " ",
             strip=False,
@@ -588,23 +857,41 @@ def _candidate_product_urls(
 
         if (
             not body
-            or "/product/" not in body.lower()
+            or "/product/"
+            not in body.lower()
         ):
             continue
 
+        pattern = (
+            r'(?P<url>'
+            r'(?:https?:)?//'
+            r'(?:www\.)?deloox\.com/'
+            r'[^"\'<>\s]+/product/'
+            r'[^"\'<>\s]+'
+            r'|'
+            r'/?(?:en/|it/|nl/)?'
+            r'product/'
+            r'[^"\'<>\s]+'
+            r')'
+        )
+
         for match in re.finditer(
-            r'(?P<url>(?:https?:)?//(?:www\.)?deloox\.com/[^"\'<>\s]+/product/[^"\'<>\s]+|'
-            r'/?(?:en/|it/|nl/)?product/[^"\'<>\s]+)',
+            pattern,
             body,
             re.I,
         ):
+
             pos = match.start()
 
             context = body[
-                max(0, pos - 1200):
+                max(
+                    0,
+                    pos - 1200,
+                ):
                 min(
                     len(body),
-                    match.end() + 1200,
+                    match.end()
+                    + 1200,
                 )
             ]
 
@@ -613,8 +900,12 @@ def _candidate_product_urls(
                 context,
             )
 
-    # 4) Product-card data attributes
+    # -----------------------------------------------------
+    # 4. PRODUCT CARD DATA ATTRIBUTES
+    # -----------------------------------------------------
+
     for tag in soup.find_all(True):
+
         attrs = tag.attrs or {}
 
         attr_text = " ".join(
@@ -636,14 +927,25 @@ def _candidate_product_urls(
         ):
             continue
 
-        for m in re.finditer(
-            r'(?:https?:)?//(?:www\.)?deloox\.com/[^"\'>\s]+/product/[^"\'>\s]+|'
-            r'/?(?:en/|it/|nl/)?product/[^"\'>\s]+',
+        pattern = (
+            r'(?:https?:)?//'
+            r'(?:www\.)?deloox\.com/'
+            r'[^"\'>\s]+/product/'
+            r'[^"\'>\s]+'
+            r'|'
+            r'/?(?:en/|it/|nl/)?'
+            r'product/'
+            r'[^"\'>\s]+'
+        )
+
+        for match in re.finditer(
+            pattern,
             attr_text,
             re.I,
         ):
+
             add(
-                m.group(0),
+                match.group(0),
                 (
                     f"{tag.get_text(' ', strip=True)} "
                     f"{attr_text}"
@@ -653,11 +955,18 @@ def _candidate_product_urls(
     return found
 
 
+# =========================================================
+# PRODUCT LINE / FILTER LINKS
+# =========================================================
+
 def _category_product_line_links(
     html,
     query,
 ):
-    """Find Deloox Product-line filter/category URLs."""
+    """
+    Find Deloox Product Line filter/category URLs
+    matching the requested query.
+    """
 
     soup = BeautifulSoup(
         html,
@@ -667,7 +976,9 @@ def _category_product_line_links(
     links = []
     seen = set()
 
-    q_tokens = tokens(query)
+    q_tokens = tokens(
+        query
+    )
 
     if not q_tokens:
         return links
@@ -675,20 +986,29 @@ def _category_product_line_links(
     def url_ok(raw_url):
         raw_url = (
             clean(raw_url)
-            .replace("\\/", "/")
+            .replace(
+                "\\/",
+                "/",
+            )
         )
 
-        if not raw_url or raw_url.startswith(
-            (
-                "javascript:",
-                "mailto:",
-                "#",
+        if (
+            not raw_url
+            or raw_url.startswith(
+                (
+                    "javascript:",
+                    "mailto:",
+                    "#",
+                )
             )
         ):
             return None
 
         url = (
-            urljoin(BASE_URL, raw_url)
+            urljoin(
+                BASE_URL,
+                raw_url,
+            )
             .split("#")[0]
         )
 
@@ -704,6 +1024,7 @@ def _category_product_line_links(
             return None
 
         path = parsed.path.lower()
+
         query_string = (
             parsed.query.lower()
         )
@@ -721,12 +1042,16 @@ def _category_product_line_links(
         label="",
         context="",
     ):
-        url = url_ok(raw_url)
+        url = url_ok(
+            raw_url
+        )
 
         if not url:
             return
 
-        parsed = urlparse(url)
+        parsed = urlparse(
+            url
+        )
 
         haystack = " ".join(
             (
@@ -737,6 +1062,9 @@ def _category_product_line_links(
             )
         )
 
+        # All meaningful query tokens
+        # must appear somewhere in the
+        # filter context.
         if not q_tokens.issubset(
             tokens(haystack)
         ):
@@ -748,26 +1076,32 @@ def _category_product_line_links(
         seen.add(url)
         links.append(url)
 
-    # Normal anchors
+    # -----------------------------------------------------
+    # 1. NORMAL ANCHORS
+    # -----------------------------------------------------
+
     for a in soup.find_all(
         "a",
         href=True,
     ):
+
         label = a.get_text(
             " ",
             strip=True,
         )
 
-        href = a.get("href")
-
         add(
-            href,
+            a.get("href"),
             label,
             label,
         )
 
-    # data-url / data-href / data-link
+    # -----------------------------------------------------
+    # 2. DATA URL ATTRIBUTES
+    # -----------------------------------------------------
+
     for tag in soup.find_all(True):
+
         attrs = tag.attrs or {}
 
         label = tag.get_text(
@@ -781,7 +1115,10 @@ def _category_product_line_links(
             "data-link",
             "data-target",
         ):
-            value = attrs.get(key)
+
+            value = attrs.get(
+                key
+            )
 
             if isinstance(
                 value,
@@ -793,32 +1130,48 @@ def _category_product_line_links(
                     label,
                 )
 
-    # Raw HTML / JS
+    # -----------------------------------------------------
+    # 3. RAW HTML / JS
+    # -----------------------------------------------------
+
     raw = html.replace(
         "\\\\/",
         "/",
     )
 
     url_pattern = re.compile(
-        r'(?:https?:)?//(?:www\.)?deloox\.com[^"\'<>\s]+|'
-        r'/(?:en/|it/|nl/)?category/[^"\'<>\s]+',
+        r'(?:https?:)?//'
+        r'(?:www\.)?deloox\.com'
+        r'[^"\'<>\s]+'
+        r'|'
+        r'/(?:en/|it/|nl/)?'
+        r'category/'
+        r'[^"\'<>\s]+',
         re.I,
     )
 
-    for m in url_pattern.finditer(raw):
-        raw_url = m.group(0)
+    for match in url_pattern.finditer(
+        raw
+    ):
+
+        raw_url = match.group(0)
 
         if (
-            "filter" not in raw_url.lower()
-            and "category/" not in raw_url.lower()
+            "filter"
+            not in raw_url.lower()
+            and "category/"
+            not in raw_url.lower()
         ):
             continue
 
         context = raw[
-            max(0, m.start() - 1800):
+            max(
+                0,
+                match.start() - 1800,
+            ):
             min(
                 len(raw),
-                m.end() + 1800,
+                match.end() + 1800,
             )
         ]
 
@@ -831,40 +1184,66 @@ def _category_product_line_links(
     return links[:40]
 
 
-def _category_pages(session):
-    """Current Deloox fragrance category roots."""
+# =========================================================
+# CATEGORY ROOTS
+# =========================================================
+
+def _category_pages():
+    """
+    Current Deloox fragrance category roots.
+    """
 
     return (
         BASE_URL
-        + "/category/1000054/mens-fragrances.html",
+        + "/category/1000054/"
+        + "mens-fragrances.html",
 
         BASE_URL
-        + "/category/1075639/womens-fragrances.html",
+        + "/category/1075639/"
+        + "womens-fragrances.html",
 
         BASE_URL
-        + "/category/1075750/mens-perfume.html",
+        + "/category/1075750/"
+        + "mens-perfume.html",
     )
 
 
-def _targeted_category_seed_urls(query):
-    """Query-aware Deloox category seeds."""
+# =========================================================
+# TARGETED CATEGORY SEEDS
+# =========================================================
+
+def _targeted_category_seed_urls(
+    query
+):
+    """
+    Query-aware Deloox category seeds.
+    """
 
     q = norm(query)
 
     seeds = []
 
-    # Liquid Brun
+    # -----------------------------------------------------
+    # LIQUID BRUN
+    # -----------------------------------------------------
+
     if "liquid brun" in q:
+
         seeds.append(
             BASE_URL
-            + "/en/category/1132834/liquid-brun.html"
+            + "/en/category/1132834/"
+            + "liquid-brun.html"
         )
 
-    # French Avenue
+    # -----------------------------------------------------
+    # FRENCH AVENUE
+    # -----------------------------------------------------
+
     if (
         "liquid brun" in q
         or "french avenue" in q
     ):
+
         seeds.extend(
             [
                 BASE_URL
@@ -877,30 +1256,51 @@ def _targeted_category_seed_urls(query):
             ]
         )
 
-    # De-duplicate
+    # -----------------------------------------------------
+    # DEDUPE
+    # -----------------------------------------------------
+
     seen = set()
 
-    return [
-        u
-        for u in seeds
-        if not (
-            u in seen
-            or seen.add(u)
-        )
-    ]
+    result = []
 
+    for url in seeds:
+
+        if url in seen:
+            continue
+
+        seen.add(url)
+        result.append(url)
+
+    return result
+
+
+# =========================================================
+# CATEGORY DISCOVERY
+# =========================================================
 
 def _discover_from_categories(
     session,
     query,
     max_urls=80,
 ):
+    """
+    Discover products from Deloox category pages.
+
+    IMPORTANT:
+    We search BOTH:
+      1. the original category
+      2. Product Line filter pages
+
+    We do not use the filter page as an exclusive
+    replacement for the main category.
+    """
+
     urls = []
     seen = set()
 
-    for category_url in _category_pages(
-        session
-    ):
+    for category_url in _category_pages():
+
         try:
             r = session.get(
                 category_url,
@@ -913,6 +1313,7 @@ def _discover_from_categories(
         if r.status_code >= 400:
             continue
 
+        # Find Product Line filter links.
         product_line_links = (
             _category_product_line_links(
                 r.text,
@@ -920,12 +1321,44 @@ def _discover_from_categories(
             )
         )
 
-        candidate_pages = (
-            product_line_links
-            or [category_url]
-        )
+        # -------------------------------------------------
+        # IMPORTANT FIX
+        #
+        # Always search the main category first.
+        # Then search the matching Product Line pages.
+        # -------------------------------------------------
 
-        for page_url in candidate_pages:
+        candidate_pages = [
+            (
+                category_url,
+                False,
+            )
+        ]
+
+        for product_line_url in product_line_links:
+
+            if product_line_url == category_url:
+                continue
+
+            if any(
+                product_line_url == existing_url
+                for existing_url, _ in candidate_pages
+            ):
+                continue
+
+            candidate_pages.append(
+                (
+                    product_line_url,
+                    True,
+                )
+            )
+
+        # -------------------------------------------------
+        # PROCESS PAGES
+        # -------------------------------------------------
+
+        for page_url, filtered in candidate_pages:
+
             try:
                 page = session.get(
                     page_url,
@@ -938,22 +1371,36 @@ def _discover_from_categories(
             if page.status_code >= 400:
                 continue
 
-            for product_url in _candidate_product_urls(
-                page.text,
-                query,
-                accept_all_products=(
-                    page_url != category_url
-                ),
-            ):
-                if product_url not in seen:
-                    seen.add(product_url)
-                    urls.append(product_url)
+            candidates = (
+                _candidate_product_urls(
+                    page.text,
+                    query,
+                    accept_all_products=filtered,
+                )
+            )
 
-                    if len(urls) >= max_urls:
-                        return urls[:max_urls]
+            for product_url in candidates:
+
+                if product_url in seen:
+                    continue
+
+                seen.add(
+                    product_url
+                )
+
+                urls.append(
+                    product_url
+                )
+
+                if len(urls) >= max_urls:
+                    return urls[:max_urls]
 
     return urls[:max_urls]
 
+
+# =========================================================
+# SITEMAP CATEGORY DISCOVERY
+# =========================================================
 
 def _sitemap_category_urls(
     session,
@@ -961,9 +1408,14 @@ def _sitemap_category_urls(
     max_sitemaps=12,
     max_urls=30,
 ):
-    """Discover dedicated Deloox category/Product-line pages."""
+    """
+    Discover dedicated Deloox category/Product Line pages
+    from sitemap files.
+    """
 
-    query_tokens = tokens(query)
+    query_tokens = tokens(
+        query
+    )
 
     if not query_tokens:
         return []
@@ -975,12 +1427,16 @@ def _sitemap_category_urls(
         BASE_URL + "/en/sitemap.xml",
     )
 
-    pending = list(sitemap_roots)
+    pending = list(
+        sitemap_roots
+    )
+
     seen_sitemaps = set()
     category_urls = []
     seen_categories = set()
 
     def fetch_xml(url):
+
         try:
             r = session.get(
                 url,
@@ -995,13 +1451,16 @@ def _sitemap_category_urls(
 
         body = r.text.lstrip()
 
-        ctype = (
-            r.headers.get("content-type")
+        content_type = (
+            r.headers.get(
+                "content-type"
+            )
             or ""
         ).lower()
 
         if (
-            "xml" not in ctype
+            "xml"
+            not in content_type
             and not body.startswith(
                 (
                     "<?xml",
@@ -1021,12 +1480,17 @@ def _sitemap_category_urls(
         and len(category_urls)
         < max_urls
     ):
-        sitemap_url = pending.pop(0)
+
+        sitemap_url = pending.pop(
+            0
+        )
 
         if sitemap_url in seen_sitemaps:
             continue
 
-        seen_sitemaps.add(sitemap_url)
+        seen_sitemaps.add(
+            sitemap_url
+        )
 
         xml = fetch_xml(
             sitemap_url
@@ -1040,7 +1504,10 @@ def _sitemap_category_urls(
             "xml",
         )
 
-        for loc in soup.find_all("loc"):
+        for loc in soup.find_all(
+            "loc"
+        ):
+
             value = clean(
                 loc.get_text()
             )
@@ -1050,33 +1517,67 @@ def _sitemap_category_urls(
 
             low = value.lower()
 
+            # Category
             if (
-                "/category/" in low
-                and low.endswith(".html")
+                "/category/"
+                in low
+                and low.endswith(
+                    ".html"
+                )
             ):
+
                 slug = (
-                    low.rsplit("/", 1)[-1][:-5]
+                    low.rsplit(
+                        "/",
+                        1,
+                    )[-1][:-5]
                 )
 
                 if query_tokens.issubset(
                     tokens(slug)
                 ):
-                    if value not in seen_categories:
-                        seen_categories.add(value)
-                        category_urls.append(value)
 
-                        if len(category_urls) >= max_urls:
+                    if (
+                        value
+                        not in seen_categories
+                    ):
+
+                        seen_categories.add(
+                            value
+                        )
+
+                        category_urls.append(
+                            value
+                        )
+
+                        if (
+                            len(category_urls)
+                            >= max_urls
+                        ):
                             break
 
+            # Nested sitemap
             elif (
                 low.endswith(".xml")
                 or "sitemap" in low
             ):
-                if value not in seen_sitemaps:
-                    pending.append(value)
 
-    return category_urls[:max_urls]
+                if (
+                    value
+                    not in seen_sitemaps
+                ):
+                    pending.append(
+                        value
+                    )
 
+    return category_urls[
+        :max_urls
+    ]
+
+
+# =========================================================
+# SITEMAP PRODUCT DISCOVERY
+# =========================================================
 
 def _sitemap_product_urls(
     session,
@@ -1084,7 +1585,9 @@ def _sitemap_product_urls(
     max_sitemaps=12,
     max_urls=80,
 ):
-    query_tokens = tokens(query)
+    query_tokens = tokens(
+        query
+    )
 
     if not query_tokens:
         return []
@@ -1096,12 +1599,16 @@ def _sitemap_product_urls(
         BASE_URL + "/en/sitemap.xml",
     )
 
-    pending = list(sitemap_roots)
+    pending = list(
+        sitemap_roots
+    )
+
     seen_sitemaps = set()
     product_urls = []
     seen_products = set()
 
     def fetch_xml(url):
+
         try:
             r = session.get(
                 url,
@@ -1114,15 +1621,18 @@ def _sitemap_product_urls(
         if r.status_code >= 400:
             return None
 
-        ctype = (
-            r.headers.get("content-type")
+        content_type = (
+            r.headers.get(
+                "content-type"
+            )
             or ""
         ).lower()
 
         body = r.text.lstrip()
 
         if (
-            "xml" not in ctype
+            "xml"
+            not in content_type
             and not body.startswith(
                 (
                     "<?xml",
@@ -1142,12 +1652,17 @@ def _sitemap_product_urls(
         and len(product_urls)
         < max_urls
     ):
-        sitemap_url = pending.pop(0)
+
+        sitemap_url = pending.pop(
+            0
+        )
 
         if sitemap_url in seen_sitemaps:
             continue
 
-        seen_sitemaps.add(sitemap_url)
+        seen_sitemaps.add(
+            sitemap_url
+        )
 
         xml = fetch_xml(
             sitemap_url
@@ -1161,7 +1676,10 @@ def _sitemap_product_urls(
             "xml",
         )
 
-        for loc in soup.find_all("loc"):
+        for loc in soup.find_all(
+            "loc"
+        ):
+
             value = clean(
                 loc.get_text()
             )
@@ -1171,37 +1689,77 @@ def _sitemap_product_urls(
 
             low = value.lower()
 
+            # Product URL
             if "/product/" in low:
+
                 if query_tokens.issubset(
                     tokens(value)
                 ):
-                    if value not in seen_products:
-                        seen_products.add(value)
-                        product_urls.append(value)
 
-                        if len(product_urls) >= max_urls:
+                    if (
+                        value
+                        not in seen_products
+                    ):
+
+                        seen_products.add(
+                            value
+                        )
+
+                        product_urls.append(
+                            value
+                        )
+
+                        if (
+                            len(product_urls)
+                            >= max_urls
+                        ):
                             break
 
+            # Nested sitemap
             elif (
                 low.endswith(".xml")
                 or "sitemap" in low
             ):
-                if value not in seen_sitemaps:
-                    pending.append(value)
 
-    return product_urls
+                if (
+                    value
+                    not in seen_sitemaps
+                ):
+                    pending.append(
+                        value
+                    )
+
+    return product_urls[
+        :max_urls
+    ]
 
 
-def _discover(session, q):
+# =========================================================
+# MASTER DISCOVERY
+# =========================================================
+
+def _discover(
+    session,
+    q,
+):
+    """
+    Complete Deloox discovery pipeline.
+    """
+
     urls = []
     seen = set()
 
-    # PRIMARY
+    # -----------------------------------------------------
+    # 1. PRIMARY:
+    # CATEGORY + PRODUCT LINE
+    # -----------------------------------------------------
+
     for url in _discover_from_categories(
         session,
         q,
         max_urls=80,
     ):
+
         if url not in seen:
             seen.add(url)
             urls.append(url)
@@ -1209,10 +1767,14 @@ def _discover(session, q):
         if len(urls) >= 80:
             return urls[:80]
 
-    # SECONDARY
-    for category_url in _targeted_category_seed_urls(
-        q
+    # -----------------------------------------------------
+    # 2. TARGETED CATEGORY SEEDS
+    # -----------------------------------------------------
+
+    for category_url in (
+        _targeted_category_seed_urls(q)
     ):
+
         try:
             page = session.get(
                 category_url,
@@ -1225,24 +1787,41 @@ def _discover(session, q):
         if page.status_code >= 400:
             continue
 
-        for product_url in _candidate_product_urls(
-            page.text,
-            q,
-        ):
-            if product_url not in seen:
-                seen.add(product_url)
-                urls.append(product_url)
+        candidates = (
+            _candidate_product_urls(
+                page.text,
+                q,
+                accept_all_products=True,
+            )
+        )
 
-                if len(urls) >= 80:
-                    return urls[:80]
+        for product_url in candidates:
 
-    # TERTIARY
+            if product_url in seen:
+                continue
+
+            seen.add(
+                product_url
+            )
+
+            urls.append(
+                product_url
+            )
+
+            if len(urls) >= 80:
+                return urls[:80]
+
+    # -----------------------------------------------------
+    # 3. SITEMAP CATEGORY PAGES
+    # -----------------------------------------------------
+
     for category_url in _sitemap_category_urls(
         session,
         q,
         max_sitemaps=12,
         max_urls=30,
     ):
+
         try:
             page = session.get(
                 category_url,
@@ -1255,34 +1834,66 @@ def _discover(session, q):
         if page.status_code >= 400:
             continue
 
-        for product_url in _candidate_product_urls(
-            page.text,
-            q,
-        ):
-            if product_url not in seen:
-                seen.add(product_url)
-                urls.append(product_url)
+        candidates = (
+            _candidate_product_urls(
+                page.text,
+                q,
+                accept_all_products=True,
+            )
+        )
 
-                if len(urls) >= 80:
-                    return urls[:80]
+        for product_url in candidates:
 
-    # PROGRESSIVE SEARCH FALLBACK
-    for discovery_query in _candidate_queries(q):
+            if product_url in seen:
+                continue
+
+            seen.add(
+                product_url
+            )
+
+            urls.append(
+                product_url
+            )
+
+            if len(urls) >= 80:
+                return urls[:80]
+
+    # -----------------------------------------------------
+    # 4. PROGRESSIVE SEARCH FALLBACK
+    # -----------------------------------------------------
+
+    for discovery_query in _candidate_queries(
+        q
+    ):
+
         endpoints = [
-            BASE_URL
-            + "/en/search?query="
-            + quote_plus(discovery_query),
+            (
+                BASE_URL
+                + "/en/search?query="
+                + quote_plus(
+                    discovery_query
+                )
+            ),
 
-            BASE_URL
-            + "/en/search?search="
-            + quote_plus(discovery_query),
+            (
+                BASE_URL
+                + "/en/search?search="
+                + quote_plus(
+                    discovery_query
+                )
+            ),
 
-            BASE_URL
-            + "/en/search?q="
-            + quote_plus(discovery_query),
+            (
+                BASE_URL
+                + "/en/search?q="
+                + quote_plus(
+                    discovery_query
+                )
+            ),
         ]
 
         for endpoint in endpoints:
+
             try:
                 r = session.get(
                     endpoint,
@@ -1295,38 +1906,62 @@ def _discover(session, q):
             if r.status_code >= 400:
                 continue
 
-            for url in _candidate_product_urls(
-                r.text,
-                q,
-                discovery_query=discovery_query,
-            ):
-                if url not in seen:
-                    seen.add(url)
-                    urls.append(url)
+            candidates = (
+                _candidate_product_urls(
+                    r.text,
+                    q,
+                    discovery_query=discovery_query,
+                )
+            )
 
-                    if len(urls) >= 80:
-                        return urls[:80]
+            for url in candidates:
 
-    # QUATERNARY
+                if url in seen:
+                    continue
+
+                seen.add(
+                    url
+                )
+
+                urls.append(
+                    url
+                )
+
+                if len(urls) >= 80:
+                    return urls[:80]
+
+    # -----------------------------------------------------
+    # 5. LEGACY SEARCH ENDPOINTS
+    # -----------------------------------------------------
+
     endpoints = [
-        BASE_URL
-        + "/en/search?query="
-        + quote_plus(q),
+        (
+            BASE_URL
+            + "/en/search?query="
+            + quote_plus(q)
+        ),
 
-        BASE_URL
-        + "/en/search?search="
-        + quote_plus(q),
+        (
+            BASE_URL
+            + "/en/search?search="
+            + quote_plus(q)
+        ),
 
-        BASE_URL
-        + "/en?search="
-        + quote_plus(q),
+        (
+            BASE_URL
+            + "/en?search="
+            + quote_plus(q)
+        ),
 
-        BASE_URL
-        + "/en/search?q="
-        + quote_plus(q),
+        (
+            BASE_URL
+            + "/en/search?q="
+            + quote_plus(q)
+        ),
     ]
 
     for endpoint in endpoints:
+
         try:
             r = session.get(
                 endpoint,
@@ -1339,28 +1974,53 @@ def _discover(session, q):
         if r.status_code >= 400:
             continue
 
-        for url in _candidate_product_urls(
-            r.text,
-            q,
-        ):
-            if url not in seen:
-                seen.add(url)
-                urls.append(url)
+        candidates = (
+            _candidate_product_urls(
+                r.text,
+                q,
+            )
+        )
+
+        for url in candidates:
+
+            if url in seen:
+                continue
+
+            seen.add(
+                url
+            )
+
+            urls.append(
+                url
+            )
 
         if len(urls) >= 80:
             return urls[:80]
 
-    # LAST RESORT
+    # -----------------------------------------------------
+    # 6. LAST RESORT:
+    # PRODUCT SITEMAP
+    # -----------------------------------------------------
+
     if not urls:
+
         for url in _sitemap_product_urls(
             session,
             q,
             max_sitemaps=12,
             max_urls=80,
         ):
-            if url not in seen:
-                seen.add(url)
-                urls.append(url)
+
+            if url in seen:
+                continue
+
+            seen.add(
+                url
+            )
+
+            urls.append(
+                url
+            )
 
             if len(urls) >= 80:
                 break
@@ -1368,13 +2028,33 @@ def _discover(session, q):
     return urls[:80]
 
 
+# =========================================================
+# DIAGNOSTIC SEARCH
+# =========================================================
+
 def diagnose_search(
     session,
     query,
 ):
-    """Return a compact discovery trace."""
+    """
+    Return a compact discovery trace.
 
-    query = clean(query)
+    Useful for debugging:
+
+    category
+      ↓
+    Product Line filter
+      ↓
+    candidate product URLs
+      ↓
+    validated products
+      ↓
+    search fallback
+    """
+
+    query = clean(
+        query
+    )
 
     report = {
         "query": query,
@@ -1390,9 +2070,12 @@ def diagnose_search(
 
     seen_candidates = set()
 
-    for category_url in _category_pages(
-        session
-    ):
+    # -----------------------------------------------------
+    # CATEGORY TRACE
+    # -----------------------------------------------------
+
+    for category_url in _category_pages():
+
         entry = {
             "url": category_url,
             "status": None,
@@ -1407,20 +2090,29 @@ def diagnose_search(
                 timeout=TIMEOUT,
             )
 
-            entry["status"] = r.status_code
+            entry["status"] = (
+                r.status_code
+            )
 
         except requests.RequestException as exc:
-            entry["error"] = str(exc)
+
+            entry["error"] = str(
+                exc
+            )
 
             report[
                 "category_endpoints"
-            ].append(entry)
+            ].append(
+                entry
+            )
 
             continue
 
         report[
             "category_endpoints"
-        ].append(entry)
+        ].append(
+            entry
+        )
 
         if r.status_code >= 400:
             continue
@@ -1432,21 +2124,38 @@ def diagnose_search(
             )
         )
 
-        entry["filter_urls"] = filter_urls[:20]
+        entry[
+            "filter_urls"
+        ] = filter_urls[:20]
 
         report[
             "filter_urls"
-        ].extend(filter_urls)
+        ].extend(
+            filter_urls
+        )
 
-        pages = (
-            [(category_url, False)]
-            + [
-                (u, True)
-                for u in filter_urls
-            ]
+        # -------------------------------------------------
+        # IMPORTANT:
+        # Diagnose both category and filters.
+        # -------------------------------------------------
+
+        pages = [
+            (
+                category_url,
+                False,
+            )
+        ]
+
+        pages.extend(
+            (
+                filter_url,
+                True,
+            )
+            for filter_url in filter_urls
         )
 
         for page_url, filtered in pages:
+
             try:
                 page = session.get(
                     page_url,
@@ -1459,10 +2168,12 @@ def diagnose_search(
             if page.status_code >= 400:
                 continue
 
-            candidates = _candidate_product_urls(
-                page.text,
-                query,
-                accept_all_products=filtered,
+            candidates = (
+                _candidate_product_urls(
+                    page.text,
+                    query,
+                    accept_all_products=filtered,
+                )
             )
 
             entry[
@@ -1471,33 +2182,50 @@ def diagnose_search(
                 candidates[:40]
             )
 
-            for u in candidates:
-                if u not in seen_candidates:
-                    seen_candidates.add(u)
+            for candidate_url in candidates:
 
+                if candidate_url in seen_candidates:
+                    continue
+
+                seen_candidates.add(
+                    candidate_url
+                )
+
+                report[
+                    "candidate_urls"
+                ].append(
+                    candidate_url
+                )
+
+                if len(
                     report[
                         "candidate_urls"
-                    ].append(u)
-
-                    if len(
-                        report["candidate_urls"]
-                    ) >= 80:
-                        break
+                    ]
+                ) >= 80:
+                    break
 
             if len(
-                report["candidate_urls"]
+                report[
+                    "candidate_urls"
+                ]
             ) >= 80:
                 break
 
         if len(
-            report["candidate_urls"]
+            report[
+                "candidate_urls"
+            ]
         ) >= 80:
             break
 
-    # Validate candidates
+    # -----------------------------------------------------
+    # VALIDATE PRODUCTS
+    # -----------------------------------------------------
+
     for url in report[
         "candidate_urls"
     ]:
+
         try:
             r = session.get(
                 url,
@@ -1519,9 +2247,14 @@ def diagnose_search(
         if item:
             report[
                 "validated_products"
-            ].append(item)
+            ].append(
+                item
+            )
 
-    # Search fallback diagnostics
+    # -----------------------------------------------------
+    # SEARCH FALLBACK DIAGNOSTICS
+    # -----------------------------------------------------
+
     for endpoint in (
         BASE_URL
         + "/en/search?query="
@@ -1535,6 +2268,7 @@ def diagnose_search(
         + "/en/search?q="
         + quote_plus(query),
     ):
+
         try:
             r = session.get(
                 endpoint,
@@ -1552,20 +2286,29 @@ def diagnose_search(
             )
 
         except requests.RequestException as exc:
+
             report[
                 "search_fallback"
             ].append(
                 {
                     "url": endpoint,
-                    "error": str(exc),
+                    "error": str(
+                        exc
+                    ),
                 }
             )
 
     return report
 
 
+# =========================================================
+# PUBLIC SEARCH
+# =========================================================
+
 def search(query):
-    query = clean(query)
+    query = clean(
+        query
+    )
 
     if not query:
         return []
@@ -1576,10 +2319,14 @@ def search(query):
     seen = set()
 
     try:
-        for url in _discover(
+
+        discovered_urls = _discover(
             session,
             query,
-        ):
+        )
+
+        for url in discovered_urls:
+
             try:
                 r = session.get(
                     url,
@@ -1601,11 +2348,17 @@ def search(query):
             if not item:
                 continue
 
+            # -------------------------------------------------
+            # DEDUPE
+            # -------------------------------------------------
+
             sku_value = None
 
-            sku = item[
-                "identity"
-            ].get("sku")
+            sku = (
+                item[
+                    "identity"
+                ].get("sku")
+            )
 
             if sku:
                 sku_value = sku.get(
@@ -1620,8 +2373,13 @@ def search(query):
             if key in seen:
                 continue
 
-            seen.add(key)
-            results.append(item)
+            seen.add(
+                key
+            )
+
+            results.append(
+                item
+            )
 
         return results
 
@@ -1629,11 +2387,22 @@ def search(query):
         session.close()
 
 
-def scrape(query):
-    return search(query)
+# =========================================================
+# SCRAPER ALIAS
+# =========================================================
 
+def scrape(query):
+    return search(
+        query
+    )
+
+
+# =========================================================
+# CLI
+# =========================================================
 
 if __name__ == "__main__":
+
     import argparse
 
     parser = argparse.ArgumentParser()
@@ -1646,7 +2415,9 @@ if __name__ == "__main__":
 
     print(
         json.dumps(
-            search(args.query),
+            search(
+                args.query
+            ),
             ensure_ascii=False,
             indent=2,
         )
