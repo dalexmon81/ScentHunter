@@ -43,45 +43,37 @@ def _query_tokens(query: str) -> List[str]:
 
 
 def _product_line_key(item: Dict[str, Any]) -> tuple:
-    """
-    Conservative product-line identity used only to collapse duplicate
-    Shopify listings from the same store.
+    """Canonical identity for duplicate Shopify listings of the same perfume.
 
-    It deliberately keeps meaningful name words (for example "Uomo"),
-    while removing vendor, concentration, gender and format words. This
-    prevents "Liquid Brun" duplicate listings from becoming two offers,
-    without merging distinct names such as "Titan" and "Titan Uomo".
+    Gender qualifiers are ignored, so Titan and Titan Uomo belong to the same
+    perfume family. Edition qualifiers such as Limited Edition are preserved,
+    so Liquid Brun and Liquid Brun Limited Edition remain separate.
+
+    Vendor/brand is not used as a key because Shopify may expose duplicate
+    listings with different or missing vendor metadata.
     """
     source = item.get("source") or {}
     name = _norm(source.get("source_name"))
-    brand = _norm(source.get("source_brand"))
 
     removable = set(IGNORED_QUERY_WORDS) | {
-        "men", "male", "homme", "hommes",
-        "women", "female", "femme", "femmes",
+        "men", "male", "herren", "homme", "hommes",
+        "women", "female", "damen", "femme", "femmes",
         "unisex", "unisexe",
+        "uomo", "donna",
         "french", "avenue",
+        "khadlaj",
     }
 
-    tokens = []
-    for token in name.split():
-        if token in removable:
-            continue
-        if token.isdigit():
-            continue
-        tokens.append(token)
+    tokens = [
+        token for token in name.split()
+        if token not in removable and not token.isdigit()
+    ]
 
-    # Remove the brand from the name if it is still present.
-    brand_tokens = set(brand.split())
-    tokens = [token for token in tokens if token not in brand_tokens]
+    attributes = item.get("attributes") or {}
+    size = (attributes.get("size_ml") or {}).get("value")
+    concentration = (attributes.get("concentration") or {}).get("value")
 
-    return (
-        brand,
-        " ".join(tokens),
-        (item.get("attributes") or {}).get("size_ml", {}).get("value"),
-        (item.get("attributes") or {}).get("concentration", {}).get("value"),
-    )
-
+    return (" ".join(tokens), size, concentration)
 
 def _matches(text: str, query: str) -> bool:
     haystack = _norm(text)
@@ -457,9 +449,18 @@ def search(query: str) -> List[Dict[str, Any]]:
                 item for item in group
                 if item.get("offer", {}).get("availability") == "in_stock"
             ]
+            not_out_of_stock = [
+                item for item in group
+                if item.get("offer", {}).get("availability") != "out_of_stock"
+            ]
 
+            # Never let a stale/unavailable duplicate hide a real offer.
+            # Priority: explicitly in stock > unknown/not marked out of stock
+            # > genuinely out of stock.
             if in_stock:
                 candidates = in_stock
+            elif not_out_of_stock:
+                candidates = not_out_of_stock
             else:
                 candidates = group
 
