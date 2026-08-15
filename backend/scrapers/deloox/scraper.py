@@ -31,17 +31,8 @@ def norm(v):
     return re.sub(r"\s+", " ", re.sub(r"[^a-z0-9]+", " ", clean(v).lower())).strip()
 
 
-QUERY_STOPWORDS = {
-    "in", "for", "the", "of", "de", "da", "del", "della",
-    "du", "des", "di", "e", "and",
-}
-
-
 def tokens(v):
-    return {
-        x for x in norm(v).split()
-        if len(x) > 1 and x not in QUERY_STOPWORDS
-    }
+    return {x for x in norm(v).split() if len(x) > 1}
 
 
 def matches(text, q):
@@ -225,10 +216,9 @@ def _product(url, html, query):
 def _candidate_product_urls(html, query, require_query=True):
     """Extract Deloox product URLs from anchors, JSON and JS.
 
-    Search result pages and dedicated Product-line pages can contain valid
-    product URLs whose localized slug/card text does not contain every query
-    token. In those contexts discovery should collect the URLs first and let
-    _product() perform the final exact product-name check.
+    On search/Product-line pages the URL is a discovery candidate even when
+    the slug does not contain every query token. Final exact product-name
+    validation is performed by _product().
     """
     soup = BeautifulSoup(html, "html.parser")
     found = []
@@ -258,17 +248,15 @@ def _candidate_product_urls(html, query, require_query=True):
         if url in seen:
             return
 
-        # On dedicated search/Product-line pages, the URL itself is already
-        # a valid discovery candidate. The final product-name validation is
-        # performed by _product(), which prevents unrelated results from
-        # leaking into the returned set.
+        # Dedicated search/Product-line pages can contain valid product
+        # URLs whose slug/card text does not contain every query token.
         if not require_query:
             seen.add(url)
             found.append(url)
             return
 
-        # Broad category pages still use query-aware discovery to avoid
-        # collecting hundreds of unrelated products.
+        # Broad category pages stay query-aware to avoid collecting
+        # hundreds of unrelated products.
         haystack = f"{context} {url}"
         if matches(haystack, query):
             seen.add(url)
