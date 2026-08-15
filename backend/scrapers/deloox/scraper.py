@@ -213,11 +213,47 @@ def _product(url, html, query):
     }
 
 
-def _candidate_product_urls(html, query):
-    """Extract Deloox product URLs from anchors, JSON and JS."""
+def _candidate_queries(query):
+    """Generate progressively broader Deloox discovery queries."""
+    normalized = norm(query)
+    if not normalized:
+        return []
+
+    stop = {
+        "for", "the", "and", "with", "de", "da", "del", "della",
+        "du", "des", "di", "by", "e", "in", "of",
+    }
+
+    searches = [clean(query)]
+    meaningful = [
+        token for token in normalized.split()
+        if token not in stop and len(token) > 1
+    ]
+
+    if normalized not in searches:
+        searches.append(normalized)
+
+    for token in sorted(meaningful, key=lambda x: (-len(x), x)):
+        if token not in searches:
+            searches.append(token)
+
+    return searches
+
+
+def _candidate_product_urls(html, query, discovery_query=None):
+    """Extract Deloox product URLs from HTML, JSON, JSON-LD and JS.
+
+    Discovery is deliberately broad. Deloox can expose a product title in
+    serialized product-card data while the visible href contains only a
+    numeric /product/<id>/ URL. We collect those URLs first and let _product()
+    perform the strict final validation against the original query.
+    """
     soup = BeautifulSoup(html, "html.parser")
     found = []
     seen = set()
+
+    discovery = discovery_query or query
+    q_tokens = tokens(discovery)
 
     def add(raw_url, context=""):
         if not raw_url:
@@ -236,31 +272,74 @@ def _candidate_product_urls(html, query):
 
         if parsed.netloc.lower() not in {"deloox.com", "www.deloox.com"}:
             return
-
         if "/product/" not in parsed.path.lower():
             return
-
         if url in seen:
             return
 
-        # Search/category pages often put the product title in nearby text.
-        # Accept the URL if either the URL slug or surrounding card text
-        # contains the query tokens.
+        # For broad discovery, accept a product URL when either the URL,
+        # nearby card text, or serialized context contains a useful query
+        # token. The original query is checked later by _product().
         haystack = f"{context} {url}"
-        if matches(haystack, query):
-            seen.add(url)
-            found.append(url)
+        if q_tokens and not matches(haystack, discovery):
+            if not any(token in tokens(haystack) for token in q_tokens):
+                return
 
+        seen.add(url)
+        found.append(url)
+
+    # 1) Normal anchors and nearby card text.
     for a in soup.find_all("a", href=True):
         add(a.get("href"), a.get_text(" ", strip=True))
 
-    patterns = [
-        r'https?://(?:www\.)?deloox\.com/[^"\'>\s]+/product/[^"\'>\s]+',
-        r'["\']((?:/)?(?:en/)?product/[^"\']+)["\']',
+    # 2) Every literal Deloox product URL in raw HTML/JS.
+    product_patterns = [
+        r'https?://(?:www\.)?deloox\.com/[^"\'<>\s]+/product/[^"\'<>\s]+',
+        r'["\']((?:/)?(?:en/|it/|nl/)?product/[^"\']+)["\']',
+        r'["\']((?:https?:)?//(?:www\.)?deloox\.com/[^"\']*/product/[^"\']+)["\']',
     ]
-    for pattern in patterns:
+    for pattern in product_patterns:
         for raw in re.findall(pattern, html, re.I):
+            if isinstance(raw, tuple):
+                raw = "".join(raw)
             add(raw)
+
+    # 3) JSON / JSON-LD / serialized state. Associate each product URL with
+    # the surrounding object/text so numeric URLs can still be discovered.
+    for script in soup.find_all("script"):
+        body = script.get_text(" ", strip=False)
+        if not body or "/product/" not in body.lower():
+            continue
+
+        # Capture product URL plus a local context window. This handles
+        # structures such as {"name":"Rasasi Hawas","url":"/product/123..."}.
+        for match in re.finditer(
+            r'(?P<url>(?:https?:)?//(?:www\.)?deloox\.com/[^"\'<>\s]+/product/[^"\'<>\s]+|'
+            r'/?(?:en/|it/|nl/)?product/[^"\'<>\s]+)',
+            body,
+            re.I,
+        ):
+            pos = match.start()
+            context = body[max(0, pos - 1200): min(len(body), match.end() + 1200)]
+            add(match.group("url"), context)
+
+    # 4) Product-card elements can carry the title in data-* attributes.
+    for tag in soup.find_all(True):
+        attrs = tag.attrs or {}
+        attr_text = " ".join(
+            clean(v) for v in attrs.values()
+            if isinstance(v, (str, int, float))
+        )
+        if "/product/" not in attr_text.lower():
+            continue
+
+        for m in re.finditer(
+            r'(?:https?:)?//(?:www\.)?deloox\.com/[^"\'>\s]+/product/[^"\'>\s]+|'
+            r'/?(?:en/|it/|nl/)?product/[^"\'>\s]+',
+            attr_text,
+            re.I,
+        ):
+            add(m.group(0), f"{tag.get_text(' ', strip=True)} {attr_text}")
 
     return found
 
@@ -551,6 +630,102 @@ def _sitemap_product_urls(session, query, max_sitemaps=12, max_urls=80):
     return product_urls
 
 
+
+def diagnose_search(session, q):
+    """Return discovery diagnostics without changing normal search behavior.
+
+    This is intentionally diagnostic: it records which Deloox endpoints are
+    reachable, how many product URLs are present in each response, which
+    candidate URLs survive discovery, and which candidate product pages pass
+    the final _product() validation.
+    """
+    report = {
+        "query": q,
+        "queries_tried": [],
+        "endpoints": [],
+    }
+
+    for discovery_query in _candidate_queries(q):
+        report["queries_tried"].append(discovery_query)
+
+        endpoints = [
+            BASE_URL + "/en/search?query=" + quote_plus(discovery_query),
+            BASE_URL + "/en/search?search=" + quote_plus(discovery_query),
+            BASE_URL + "/en/search?q=" + quote_plus(discovery_query),
+        ]
+
+        for endpoint in endpoints:
+            item = {
+                "query": discovery_query,
+                "url": endpoint,
+                "status": None,
+                "html_product_url_count": 0,
+                "candidate_urls": [],
+                "validated_products": [],
+                "error": None,
+            }
+
+            try:
+                r = session.get(endpoint, headers=HEADERS, timeout=TIMEOUT)
+                item["status"] = r.status_code
+            except requests.RequestException as exc:
+                item["error"] = f"{type(exc).__name__}: {exc}"
+                report["endpoints"].append(item)
+                continue
+
+            if r.status_code >= 400:
+                report["endpoints"].append(item)
+                continue
+
+            # Count every literal /product/ occurrence before our filtering.
+            item["html_product_url_count"] = len(
+                re.findall(r"/product/", r.text, re.I)
+            )
+
+            candidates = _candidate_product_urls(
+                r.text, q, discovery_query=discovery_query
+            )
+            item["candidate_urls"] = candidates[:20]
+
+            # Open only the first 10 candidates so the diagnostic stays fast.
+            for product_url in candidates[:10]:
+                try:
+                    pr = session.get(
+                        product_url, headers=HEADERS, timeout=TIMEOUT
+                    )
+                except requests.RequestException as exc:
+                    item["validated_products"].append({
+                        "url": product_url,
+                        "status": None,
+                        "accepted": False,
+                        "error": f"{type(exc).__name__}: {exc}",
+                    })
+                    continue
+
+                product = None
+                if pr.status_code < 400:
+                    try:
+                        product = _product(product_url, pr.text, q)
+                    except Exception as exc:
+                        item["validated_products"].append({
+                            "url": product_url,
+                            "status": pr.status_code,
+                            "accepted": False,
+                            "error": f"{type(exc).__name__}: {exc}",
+                        })
+                        continue
+
+                item["validated_products"].append({
+                    "url": product_url,
+                    "status": pr.status_code,
+                    "accepted": bool(product),
+                    "name": product.get("name") if product else None,
+                })
+
+            report["endpoints"].append(item)
+
+    return report
+
 def _discover(session, q):
     urls = []
     seen = set()
@@ -607,6 +782,34 @@ def _discover(session, q):
                 urls.append(product_url)
                 if len(urls) >= 80:
                     return urls[:80]
+
+    # PROGRESSIVE SEARCH FALLBACK: Deloox may return zero cards for the
+    # full phrase but return the relevant product for a meaningful token.
+    # Final validation remains against the original query in _product().
+    for discovery_query in _candidate_queries(q):
+        endpoints = [
+            BASE_URL + "/en/search?query=" + quote_plus(discovery_query),
+            BASE_URL + "/en/search?search=" + quote_plus(discovery_query),
+            BASE_URL + "/en/search?q=" + quote_plus(discovery_query),
+        ]
+
+        for endpoint in endpoints:
+            try:
+                r = session.get(endpoint, headers=HEADERS, timeout=TIMEOUT)
+            except requests.RequestException:
+                continue
+
+            if r.status_code >= 400:
+                continue
+
+            for url in _candidate_product_urls(
+                r.text, q, discovery_query=discovery_query
+            ):
+                if url not in seen:
+                    seen.add(url)
+                    urls.append(url)
+                    if len(urls) >= 80:
+                        return urls[:80]
 
     # QUATERNARY: legacy/current search endpoints, retained as fallback.
     endpoints = [
