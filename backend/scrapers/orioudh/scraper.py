@@ -275,26 +275,35 @@ def _discovery(session: requests.Session, query: str) -> List[str]:
 
 def _canonical_product_line(product_name: str, vendor: str) -> str:
     """
-    Canonical Product Line for ScentHunter grouping.
-    Same perfume + same real format stays on one product card.
-    Generic gender/brand/concentration/format words do not split the line.
-    Edition/variant words remain, so Limited Edition stays separate.
-    """
-    name = _clean(product_name)
-    vendor_n = _norm(vendor)
-    n = _norm(name)
+    Product Line canonica per il raggruppamento Orioudh.
 
+    Regola:
+    - brand/vendor, parole di genere, concentrazione e formato non creano
+      una nuova Product Line;
+    - le parole che identificano una vera edizione/variante restano.
+      Esempio: Liquid Brun != Liquid Brun Limited Edition.
+    """
+    n = _norm(product_name)
+    vendor_n = _norm(vendor)
+
+    # Il brand non deve creare una seconda identità:
+    # "Titan" e "Khadlaj - Titan Uomo" -> "titan".
     if vendor_n:
         n = re.sub(rf"\b{re.escape(vendor_n)}\b", " ", n)
 
-    # Remove concentration descriptors as a unit before removing generic
-    # words such as "parfum".
+    # Concentrazione/formato sono attributi, non parte della Product Line.
     n = re.sub(
         r"\b(?:eau de parfum|eau de toilette|extrait de parfum|edp|edt)\b",
         " ",
         n,
     )
+    n = re.sub(
+        r"\b\d+(?:[.,]\d+)?\s*(?:ml|milliliters?|cl)\b",
+        " ",
+        n,
+    )
 
+    # Parole generiche che non distinguono il profumo.
     generic = {
         "men", "man", "male", "homme", "herren",
         "women", "woman", "female", "femme", "damen",
@@ -304,11 +313,34 @@ def _canonical_product_line(product_name: str, vendor: str) -> str:
     for word in generic:
         n = re.sub(rf"\b{re.escape(word)}\b", " ", n)
 
-    n = re.sub(r"\b\d+(?:[.,]\d+)?\s*(?:ml|milliliters?|cl)\b", " ", n)
-    n = re.sub(r"[^a-z0-9]+", " ", n)
     n = re.sub(r"\s+", " ", n).strip()
+    return n or _norm(product_name)
 
-    return n or _norm(name)
+
+def _product_line_key(item: Dict[str, Any]) -> tuple:
+    """
+    Chiave reale di raggruppamento: Product Line + formato.
+
+    Il formato resta nella chiave perché due prodotti della stessa famiglia
+    ma con formati diversi devono essere schede diverse.
+    """
+    source = item.get("source") or {}
+    attrs = item.get("attributes") or {}
+
+    product_line = (
+        (attrs.get("product_line") or {}).get("value")
+        or _canonical_product_line(
+            source.get("source_name") or item.get("name") or "",
+            source.get("source_brand") or "",
+        )
+    )
+
+    size = (attrs.get("size_ml") or {}).get("value")
+
+    return (
+        _norm(product_line),
+        size,
+    )
 
 def _raw_offer(
     product: Dict[str, Any],
@@ -318,13 +350,12 @@ def _raw_offer(
     product_name = _clean(product.get("title"))
     variant_name = _clean(variant.get("title"))
     if variant_name and variant_name != "Default Title":
-        raw_source_name = f"{product_name} {variant_name}".strip()
+        source_name = f"{product_name} {variant_name}".strip()
     else:
-        raw_source_name = product_name
+        source_name = product_name
 
     vendor = _clean(product.get("vendor")) or None
-    product_line = _canonical_product_line(raw_source_name, vendor or "")
-    source_name = product_line
+    product_line = _canonical_product_line(source_name, vendor or "")
     variant_id = variant.get("id")
     product_id = product.get("id")
     sku = _clean(variant.get("sku")) or None
@@ -441,9 +472,69 @@ def search(query: str) -> List[Dict[str, Any]]:
                 seen.add(key)
                 results.append(item)
 
-        return results
+        # IMPORTANT:
+        # Orioudh can expose the same perfume through different Shopify
+        # product URLs/names. They must become ONE ScentHunter offer when
+        # Product Line + format are the same.
+        #
+        # Example:
+        #   Titan 100 ml
+        #   Khadlaj - Titan Uomo 100 ml
+        #        -> one Orioudh offer
+        #
+        # But:
+        #   Liquid Brun 100 ml
+        #   Liquid Brun Limited Edition 150 ml
+        #        -> two different offers.
+        grouped = {}
+        for item in results:
+            key = (item.get("store"), _product_line_key(item))
+            grouped.setdefault(key, []).append(item)
+
+        final_results = []
+
+        for group in grouped.values():
+            in_stock = [
+                item
+                for item in group
+                if item.get("offer", {}).get("availability") == "in_stock"
+            ]
+
+            # If any duplicate listing is genuinely available, the OOS
+            # duplicate is never exposed.
+            candidates = in_stock if in_stock else group
+
+            # Cheapest valid listing wins when multiple duplicate URLs are
+            # available for the same Product Line + format.
+            candidates = sorted(
+                candidates,
+                key=lambda item: (
+                    item.get("offer", {}).get("price")
+                    if item.get("offer", {}).get("price") is not None
+                    else float("inf")
+                ),
+            )
+
+            chosen = candidates[0]
+
+            # Normalize the visible name to the canonical Product Line.
+            # This makes Titan/Titan Uomo one card in the current MAIN too.
+            source = chosen.get("source") or {}
+            attrs = chosen.get("attributes") or {}
+            canonical = (attrs.get("product_line") or {}).get("value")
+
+            if canonical:
+                chosen = dict(chosen)
+                chosen["name"] = canonical
+                chosen["source"] = dict(source)
+                chosen["source"]["source_name"] = canonical
+
+            final_results.append(chosen)
+
+        return final_results
     finally:
         session.close()
+
 
 
 def scrape(query: str) -> List[Dict[str, Any]]:
