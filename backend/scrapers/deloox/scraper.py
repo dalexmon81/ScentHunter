@@ -1,4 +1,4 @@
-""""""Deloox adapter for ScentHunter.
+"""Deloox adapter for ScentHunter.
 
 Discovery strategy:
 - Prefer Deloox's current category pages and their Product line filter links.
@@ -32,9 +32,10 @@ def norm(v):
 
 
 QUERY_STOPWORDS = {
-    "a", "al", "and", "by", "da", "de", "del", "della", "di",
-    "for", "in", "la", "le", "of", "the", "un", "una", "with",
+    "in", "for", "the", "of", "de", "da", "del", "della",
+    "du", "des", "di", "e", "and",
 }
+
 
 def tokens(v):
     return {
@@ -221,8 +222,14 @@ def _product(url, html, query):
     }
 
 
-def _candidate_product_urls(html, query):
-    """Extract Deloox product URLs from anchors, JSON and JS."""
+def _candidate_product_urls(html, query, require_query=True):
+    """Extract Deloox product URLs from anchors, JSON and JS.
+
+    Search result pages and dedicated Product-line pages can contain valid
+    product URLs whose localized slug/card text does not contain every query
+    token. In those contexts discovery should collect the URLs first and let
+    _product() perform the final exact product-name check.
+    """
     soup = BeautifulSoup(html, "html.parser")
     found = []
     seen = set()
@@ -251,9 +258,17 @@ def _candidate_product_urls(html, query):
         if url in seen:
             return
 
-        # Search/category pages often put the product title in nearby text.
-        # Accept the URL if either the URL slug or surrounding card text
-        # contains the query tokens.
+        # On dedicated search/Product-line pages, the URL itself is already
+        # a valid discovery candidate. The final product-name validation is
+        # performed by _product(), which prevents unrelated results from
+        # leaking into the returned set.
+        if not require_query:
+            seen.add(url)
+            found.append(url)
+            return
+
+        # Broad category pages still use query-aware discovery to avoid
+        # collecting hundreds of unrelated products.
         haystack = f"{context} {url}"
         if matches(haystack, query):
             seen.add(url)
@@ -410,7 +425,9 @@ def _discover_from_categories(session, query, max_urls=80):
             if page.status_code >= 400:
                 continue
 
-            for product_url in _candidate_product_urls(page.text, query):
+            for product_url in _candidate_product_urls(
+                page.text, query, require_query=not bool(product_line_links)
+            ):
                 if product_url not in seen:
                     seen.add(product_url)
                     urls.append(product_url)
@@ -633,7 +650,9 @@ def _discover(session, q):
         if r.status_code >= 400:
             continue
 
-        for url in _candidate_product_urls(r.text, q):
+        for url in _candidate_product_urls(
+            r.text, q, require_query=False
+        ):
             if url not in seen:
                 seen.add(url)
                 urls.append(url)
