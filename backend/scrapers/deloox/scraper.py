@@ -630,6 +630,102 @@ def _sitemap_product_urls(session, query, max_sitemaps=12, max_urls=80):
     return product_urls
 
 
+
+def diagnose_search(session, q):
+    """Return discovery diagnostics without changing normal search behavior.
+
+    This is intentionally diagnostic: it records which Deloox endpoints are
+    reachable, how many product URLs are present in each response, which
+    candidate URLs survive discovery, and which candidate product pages pass
+    the final _product() validation.
+    """
+    report = {
+        "query": q,
+        "queries_tried": [],
+        "endpoints": [],
+    }
+
+    for discovery_query in _candidate_queries(q):
+        report["queries_tried"].append(discovery_query)
+
+        endpoints = [
+            BASE_URL + "/en/search?query=" + quote_plus(discovery_query),
+            BASE_URL + "/en/search?search=" + quote_plus(discovery_query),
+            BASE_URL + "/en/search?q=" + quote_plus(discovery_query),
+        ]
+
+        for endpoint in endpoints:
+            item = {
+                "query": discovery_query,
+                "url": endpoint,
+                "status": None,
+                "html_product_url_count": 0,
+                "candidate_urls": [],
+                "validated_products": [],
+                "error": None,
+            }
+
+            try:
+                r = session.get(endpoint, headers=HEADERS, timeout=TIMEOUT)
+                item["status"] = r.status_code
+            except requests.RequestException as exc:
+                item["error"] = f"{type(exc).__name__}: {exc}"
+                report["endpoints"].append(item)
+                continue
+
+            if r.status_code >= 400:
+                report["endpoints"].append(item)
+                continue
+
+            # Count every literal /product/ occurrence before our filtering.
+            item["html_product_url_count"] = len(
+                re.findall(r"/product/", r.text, re.I)
+            )
+
+            candidates = _candidate_product_urls(
+                r.text, q, discovery_query=discovery_query
+            )
+            item["candidate_urls"] = candidates[:20]
+
+            # Open only the first 10 candidates so the diagnostic stays fast.
+            for product_url in candidates[:10]:
+                try:
+                    pr = session.get(
+                        product_url, headers=HEADERS, timeout=TIMEOUT
+                    )
+                except requests.RequestException as exc:
+                    item["validated_products"].append({
+                        "url": product_url,
+                        "status": None,
+                        "accepted": False,
+                        "error": f"{type(exc).__name__}: {exc}",
+                    })
+                    continue
+
+                product = None
+                if pr.status_code < 400:
+                    try:
+                        product = _product(product_url, pr.text, q)
+                    except Exception as exc:
+                        item["validated_products"].append({
+                            "url": product_url,
+                            "status": pr.status_code,
+                            "accepted": False,
+                            "error": f"{type(exc).__name__}: {exc}",
+                        })
+                        continue
+
+                item["validated_products"].append({
+                    "url": product_url,
+                    "status": pr.status_code,
+                    "accepted": bool(product),
+                    "name": product.get("name") if product else None,
+                })
+
+            report["endpoints"].append(item)
+
+    return report
+
 def _discover(session, q):
     urls = []
     seen = set()
