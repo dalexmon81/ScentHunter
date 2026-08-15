@@ -103,7 +103,7 @@ body{position:relative}
 .wishlist-change .old{color:#9a9aa0;text-decoration:line-through;margin-right:6px}
 .wishlist-badge{display:inline-block;margin-top:7px;padding:4px 8px;border-radius:999px;background:#173522;color:#62e58d;font-size:11px;font-weight:900}
 .wishlist-card .wishpic{width:62px;height:70px;border-radius:14px;background:#101214;display:flex;align-items:center;justify-content:center;font-size:34px;flex:0 0 auto}
-.wishlist-info{min-width:0;flex:1}.wishlist-brand{font-size:12px;color:#aaa}.wishlist-name{font-weight:800;font-size:17px;margin:3px 0}.wishlist-price{color:#55ce78;font-weight:900}.wishlist-shop{font-size:12px;color:#aaa;margin-top:3px}
+.wishlist-info{min-width:0;flex:1}.wishlist-brand{font-size:12px;color:#aaa}.wishlist-name{font-weight:800;font-size:17px;margin:3px 0}.wishlist-size{font-size:12px;color:#a9aaa9;margin-top:2px}.wishlist-price{color:#55ce78;font-weight:900}.wishlist-shop{font-size:12px;color:#aaa;margin-top:3px}
 .remove-wish{background:none;color:#e7b83f;font-size:25px;padding:8px;cursor:pointer}
 .heart,.wish-result{cursor:pointer;user-select:none}.heart.saved,.wish-result.saved{color:#e7b83f}
 .result-top,.comparison-top{display:flex;justify-content:space-between;gap:10px;align-items:flex-start}
@@ -346,42 +346,122 @@ const PREV_WISH_KEY="scenthunter_wishlist_v3";
 const OLD_WISH_KEY="scenthunter_wishlist_v1";
 
 function displayPerfumeName(v){
-  return String(v||"")
-    .replace(/\b\d{1,4}(?:[.,]\d+)?\s*ml\b/gi," ")
-    .replace(/\s+/g," ")
-    .trim();
+  return cleanProductDisplayName("",String(v||""));
 }
+
 function normalizePerfumeName(v){
   return String(v||"")
     .toLowerCase()
-    // Per confronti e raggruppamenti, considera equivalenti le lettere
-    // accentate e non accentate: "Rosée" = "Rosee".
     .normalize("NFD")
     .replace(/[\u0300-\u036f]/g,"")
-    // Manteniamo i marcatori di versione/concentrazione nel nome.
-    .replace(/\b\d+\s*ml\b/g," ")
+    .replace(/\b\d{1,4}(?:[.,]\d+)?\s*(?:ml|cl|oz)\b/gi," ")
+    // Uniforma forme come "9PM" / "9 PM".
+    .replace(/(\d)([a-z])/gi,"$1 $2")
+    .replace(/([a-z])(\d)/gi,"$1 $2")
     .replace(/[^a-z0-9]+/gi," ")
-    .replace(/\s+/g," ").trim();
+    .replace(/\s+/g," ")
+    .trim();
 }
+
+function concentrationKey(v){
+  const s=normalizePerfumeName(v);
+  if(!s)return "";
+  if(/\b(?:eau de parfum|edp)\b/.test(s))return "edp";
+  if(/\b(?:eau de toilette|edt)\b/.test(s))return "edt";
+  if(/\b(?:eau de cologne|edc)\b/.test(s))return "edc";
+  if(/\b(?:extrait de parfum|extrait|extract)\b/.test(s))return "extrait";
+  if(/\b(?:eau fraiche|eau fraiche)\b/.test(s))return "eau_fraiche";
+  if(/\bparfum\b|\bperfume\b/.test(s))return "parfum";
+  if(/\belixir\b/.test(s))return "elixir";
+  return "";
+}
+
+function cleanProductBase(brand,name){
+  let n=normalizePerfumeName(name);
+  const b=normalizePerfumeName(brand);
+
+  // Il formato e la concentrazione non fanno parte dell'identità di famiglia.
+  n=n
+    .replace(/\b(?:eau de parfum|eau de toilette|eau de cologne|eau fraiche|edp|edt|edc)\b/g," ")
+    .replace(/\b(?:extrait de parfum|extrait|extract|parfum|perfume|elixir)\b/g," ")
+    // Descrittori commerciali/di negozio che non identificano il profumo.
+    .replace(/\b(?:tester|unisex|women|woman|men|man|femme|homme|uomo|donna)\b/g," ")
+    .replace(/\b(?:spray|vaporisateur|vaporizzatore)\b/g," ")
+    .replace(/\bby\b/g," ")
+    // "pour homme/femme" e il "de" finale di titoli troncati tipo "Extrait de".
+    .replace(/\bpour\b/g," ")
+    .replace(/\s+\bde\b\s*$/g," ")
+    .replace(/\s+/g," ")
+    .trim();
+
+  // Evita "French Avenue - Liquid Brun" + "French Avenue Liquid Brun"
+  // e tutte le altre permutazioni della marca nel titolo.
+  const bt=b.split(/\s+/).filter(Boolean);
+  const nt=n.split(/\s+/).filter(Boolean);
+  if(bt.length){
+    for(let i=0;i<=nt.length-bt.length;i++){
+      let same=true;
+      for(let j=0;j<bt.length;j++){
+        if(nt[i+j]!==bt[j]){same=false;break;}
+      }
+      if(same){
+        nt.splice(i,bt.length);
+        break;
+      }
+    }
+  }
+
+  return nt.join(" ").trim();
+}
+
+function cleanProductDisplayName(brand,name){
+  let n=String(name||"").trim();
+  if(!n)return "Profumo";
+
+  // Mantiene il testo leggibile, ma elimina solo rumore evidente.
+  n=n
+    .replace(/\b\d{1,4}(?:[.,]\d+)?\s*(?:ml|cl|oz)\b/gi," ")
+    .replace(/\b(?:eau\s+de\s+parfum|eau\s+de\s+toilette|eau\s+de\s+cologne|eau\s+fra[iî]che|edp|edt|edc|extrait\s+de\s+parfum|extrait|extract|parfum|perfume|elixir)\b/gi," ")
+    .replace(/\b(?:tester|unisex|women|woman|men|man|femme|homme|uomo|donna)\b/gi," ")
+    .replace(/\b(?:spray|vaporisateur|vaporizzatore)\b/gi," ")
+    .replace(/\bby\b/gi," ")
+    .replace(/\b(?:pour\s+homme|pour\s+femme|pour\s+men|pour\s+women)\b/gi," ")
+    .replace(/\s+\bde\b\s*$/i," ")
+    .replace(/\s*[\|\u00b7]\s*/g," ")
+    .replace(/\s{2,}/g," ")
+    .trim();
+
+  const b=String(brand||"").trim();
+  if(b){
+    const escaped=b.replace(/[.*+?^${}()|[\]\\]/g,"\\$&");
+    n=n.replace(new RegExp("^\\s*"+escaped+"\\s*[-–—:]?\\s*","i"),"");
+    n=n.replace(new RegExp("\\s*[-–—:]?\\s*"+escaped+"\\s*$","i"),"");
+  }
+
+  return n||cleanProductBase(brand,name)||"Profumo";
+}
+
+function productIdentity(o){
+  const brand=String(o?.brand||o?.canonical_brand||"").trim();
+  const rawName=String(o?.name||o?.canonical_name||o?.title||o?.product_name||"").trim();
+  const explicitConc=String(o?.concentration||"").trim();
+  const conc=concentrationKey(explicitConc||rawName);
+  const base=cleanProductBase(brand,rawName);
+  return {
+    brandKey:normalizePerfumeName(brand),
+    baseKey:normalizePerfumeName(base),
+    concentrationKey:conc
+  };
+}
+
 function perfumeKey(x){
-  const name=normalizePerfumeName(x.name||"");
-  const concentration=normalizePerfumeName(x.concentration||"");
-  return [name,concentration].filter(Boolean).join("|");
+  const id=productIdentity(x||{});
+  return [id.brandKey,id.baseKey,id.concentrationKey].filter(Boolean).join("|");
 }
+
 function samePerfume(a,b){
   const A=perfumeKey(a),B=perfumeKey(b);
-  if(!A||!B)return false;
-  if(A===B)return true;
-  const longer=A.length>=B.length?A:B;
-  const shorter=A.length>=B.length?B:A;
-  // Consente solo un prefisso breve (tipicamente la marca):
-  // Non unisce varianti aggiunte in coda:
-  // "hawas daarej passione" != "hawas daarej".
-  if(longer.endsWith(" "+shorter)){
-    const prefix=longer.slice(0,longer.length-shorter.length).trim();
-    return prefix.split(/\s+/).filter(Boolean).length<=2;
-  }
-  return false;
+  return !!A && !!B && A===B;
 }
 function wishId(x){return perfumeKey(x)+"|"+offerId(x)}
 function sameWishOffer(a,b){
@@ -414,16 +494,18 @@ function parsePrice(v){
   const n=parseFloat(String(v||"").replace(/[^\d,.-]/g,"").replace(",","."));
   return Number.isFinite(n)?n:null;
 }
-function offerId(x){
-  return [
-    normalizePerfumeName(x.name||""),
-    String(x.shop||"").toLowerCase().trim(),
-    String(x.price||"").trim()
-  ].join("|");
-}
 function formatEuro(n){
   return Number(n).toLocaleString("it-IT",{minimumFractionDigits:2,maximumFractionDigits:2})+" €";
 }
+function offerId(x){
+  // Identificatore stabile dell'offerta: il prezzo può cambiare e non deve
+  // trasformare la stessa offerta in una nuova voce della Wishlist.
+  const shop=String(x?.shop||x?.store||"").toLowerCase().trim();
+  const size=String(x?.size_ml||x?.size||"").trim();
+  const url=String(x?.url||x?.link||"").split("#")[0].split("?")[0].toLowerCase().trim();
+  return [perfumeKey(x||{}),shop,size,url].join("|");
+}
+
 function updateTrackedWish(item){
   const list=getWishlist();
   const found=list.find(x=>sameWishOffer(x,item));
@@ -456,6 +538,8 @@ function refreshWishlistFromResults(results){
     if(updateTrackedWish({
       brand:i.brand||"",
       name:i.name||"",
+      concentration:i.concentration||"",
+      size_ml:i.size_ml||i.size||"",
       price:i.price||((i.price_value!=null)?formatEuro(i.price_value):""),
       shop:i.store||i.shop||"",
       url:i.url||"",
@@ -521,6 +605,7 @@ function renderWishlist(){
       <div class="wishlist-info">
         <div class="wishlist-brand">${esc(x.brand||"")}</div>
         <div class="wishlist-name">${esc(x.name||"Profumo")}</div>
+        ${x.size_ml?`<div class="wishlist-size">${esc(formatLabel(x.size_ml))}</div>`:""}
         <div class="wishlist-selected-shop">${esc(x.shop||"Negozio")}</div>
         ${out?`<div class="wishlist-outstock">OUT OF STOCK</div>`:(x.price?`<div class="wishlist-price">${esc(x.price)}</div>`:"")}
         ${(!out&&selectedUrl)?`<a class="wishShop" href="${esc(selectedUrl)}" target="_blank" rel="noopener noreferrer">VAI AL NEGOZIO →</a>`:""}
@@ -539,6 +624,8 @@ function getBestKnownOfferForWishlist(item){
     return {
       brand:item.brand||"",
       name:item.name||"",
+      concentration:item.concentration||"",
+      size_ml:item.size_ml||"",
       price:item.bestPrice,
       price_value:item.bestPriceValue,
       shop:item.bestShop,
@@ -551,12 +638,21 @@ function getBestKnownOfferForWishlist(item){
   // il miglior prezzo solo tra le offerte realmente disponibili.
   let candidates=[];
   currentProductGroups.forEach(g=>{
-    if(!samePerfume({name:g.name||""},item))return;
+    if(!samePerfume({
+      brand:g.brand||"",
+      name:g.name||"",
+      concentration:g.concentration||""
+    },item))return;
     (g.offers||[]).forEach(o=>{
       if(isOfferOutOfStock(o))return;
+      const offerSize=sizeOfOffer(o)||"";
+      const wantedSize=String(item.size_ml||item.size||"");
+      if(wantedSize && offerSize!==wantedSize)return;
       candidates.push({
         brand:g.brand||o.brand||"",
         name:g.name||o.name||"",
+        concentration:g.concentration||o.concentration||"",
+        size_ml:offerSize,
         price:shPrice(o),
         price_value:o.price_value,
         shop:o.store||o.shop||"",
@@ -574,9 +670,18 @@ function updateBestPricesFromGroups(groups){
   const list=getWishlist();
   let changed=false;
   list.forEach(item=>{
-    const g=groups.find(group=>samePerfume({name:group.name||""},item));
+    const g=groups.find(group=>samePerfume({
+      brand:group.brand||"",
+      name:group.name||"",
+      concentration:group.concentration||""
+    },item));
     if(!g)return;
-    const available=(g.offers||[]).filter(o=>!isOfferOutOfStock(o));
+    const wantedSize=String(item.size_ml||item.size||"");
+    const available=(g.offers||[]).filter(o=>{
+      if(isOfferOutOfStock(o))return false;
+      const offerSize=sizeOfOffer(o)||"";
+      return !wantedSize || offerSize===wantedSize;
+    });
     if(!available.length){
       if(!item.bestOutOfStock || item.bestShop || item.bestPrice){
         item.bestOutOfStock=true;
@@ -594,7 +699,7 @@ function updateBestPricesFromGroups(groups){
     const bv=Number(best.price_value);
     const next={
       bestOutOfStock:false,
-      bestShop:best.store||"",
+      bestShop:best.store||best.shop||"",
       bestPrice:bp,
       bestPriceValue:Number.isFinite(bv)?bv:null,
       bestUrl:best.url||""
@@ -612,6 +717,8 @@ function syncHearts(){
     const item={
       brand:h.dataset.brand||"",
       name:h.dataset.name||"",
+      concentration:h.dataset.concentration||"",
+      size_ml:h.dataset.size||"",
       price:h.dataset.price||"",
       shop:h.dataset.shop||"",
       url:h.dataset.url||"",
@@ -625,6 +732,8 @@ function syncHearts(){
     const item={
       brand:h.dataset.brand||"",
       name:h.dataset.name||"",
+      concentration:h.dataset.concentration||"",
+      size_ml:h.dataset.size||"",
       price:h.dataset.price||"",
       shop:h.dataset.shop||"",
       url:h.dataset.url||"",
@@ -637,7 +746,7 @@ function syncHearts(){
 }
 document.addEventListener("click",e=>{
   const h=e.target.closest(".heart[data-name],.wish-result[data-name]");
-  if(h){toggleWish({brand:h.dataset.brand||"",name:h.dataset.name||"",price:h.dataset.price||"",shop:h.dataset.shop||"",url:h.dataset.url||"",pic:h.dataset.pic||"🧴"});return}
+  if(h){toggleWish({brand:h.dataset.brand||"",name:h.dataset.name||"",concentration:h.dataset.concentration||"",size_ml:h.dataset.size||"",price:h.dataset.price||"",shop:h.dataset.shop||"",url:h.dataset.url||"",pic:h.dataset.pic||"🧴"});return}
   const r=e.target.closest("[data-remove]");if(r){removeWish(r.dataset.remove);return}
   const nav=e.target.closest(".navitem[data-view]");
   if(nav){
@@ -663,21 +772,24 @@ function backend(){
 let currentProductGroups=[];
 
 function shPrice(o){
-  if(o&&o.price)return String(o.price);
+  // Se il backend fornisce price_value, è la fonte numerica affidabile.
+  // Evita visualizzazioni errate come "3185,00 €" quando il valore reale è 31.85.
   const n=Number(o&&o.price_value);
-  return Number.isFinite(n)?formatEuro(n):"";
+  if(Number.isFinite(n))return formatEuro(n);
+  if(o&&o.price)return String(o.price);
+  return "";
 }
+
 function shNum(o){
   const n=Number(o&&o.price_value);
   if(Number.isFinite(n))return n;
   const p=parsePrice(o&&o.price);
   return p===null?Infinity:p;
 }
+
 function shGroupData(data){
-  // Il backend nuovo è l'unica fonte di identità del prodotto.
-  // Il frontend NON deve più avere cataloghi, eccezioni per singoli
-  // profumi o chiamate /test-store: riceve offerte RAW già normalizzate
-  // e, quando possibile, con catalog_id/canonical_brand/canonical_name.
+  // Il backend fornisce i risultati grezzi; il frontend li raggruppa con
+  // una regola generale. NON usiamo eccezioni per singoli profumi.
   const raw=[];
 
   (Array.isArray(data?.results)?data.results:[]).forEach(o=>{
@@ -714,15 +826,17 @@ function shGroupData(data){
     return m?m[1]:"";
   }
 
+  // IDENTITÀ DI FAMIGLIA:
+  // - la marca resta distinta;
+  // - formato e parole commerciali vengono ignorati;
+  // - EDP/EDT/Extrait/Elixir restano distinti;
+  // - "French Avenue Liquid Brun", "Liquid Brun by French Avenue"
+  //   e "Liquid Brun French Avenue" finiscono nella stessa famiglia;
+  // - "Liquid Brun Limited Edition" resta una famiglia distinta.
   function identityKey(o){
-    // IDENTITÀ: il catalogo decide quando disponibile.
-    // Fallback: brand + nome + concentrazione, mantenendo le versioni distinte.
-    const catalog=String(o.catalog_id||"").trim();
-    if(catalog)return "catalog:"+catalog.toLowerCase();
-    const brand=normalizePerfumeName(o.brand||"");
-    const name=normalizePerfumeName(o.name||"");
-    const concentration=normalizePerfumeName(o.concentration||"");
-    return "raw:"+[brand,name,concentration].filter(Boolean).join("|");
+    const id=productIdentity(o);
+    if(!id.baseKey)return "";
+    return "family:"+[id.brandKey,id.baseKey,id.concentrationKey].filter(Boolean).join("|");
   }
 
   const map=new Map();
@@ -735,13 +849,13 @@ function shGroupData(data){
     if(!map.has(key)){
       map.set(key,{
         brand:o.brand||"",
-        name:o.name||"Profumo",
+        name:cleanProductDisplayName(o.brand||"",o.name||"Profumo"),
         canonical:o.canonical_name||o.name||"",
-        display_name:o.brand?(o.brand+" - "+o.name):o.name,
         catalog_id:o.catalog_id||"",
-        concentration:o.concentration||"",
+        concentration:concentrationKey(o.concentration||o.name||""),
         image:o.image||"",
-        offers:[]
+        offers:[],
+        _nameCandidates:[]
       });
     }
 
@@ -750,9 +864,13 @@ function shGroupData(data){
     if(!g.image&&o.image)g.image=o.image;
     if(!g.catalog_id&&o.catalog_id)g.catalog_id=o.catalog_id;
 
+    const candidate=cleanProductDisplayName(g.brand||o.brand||"",o.name||"");
+    if(candidate)g._nameCandidates.push(candidate);
+
     const offer={...o};
     if(g.brand)offer.brand=g.brand;
     if(g.name)offer.name=g.name;
+    if(g.concentration)offer.concentration=g.concentration;
     if(size)offer.size_ml=size;
 
     const store=String(offer.store||offer.shop||"").trim().toLowerCase();
@@ -776,8 +894,21 @@ function shGroupData(data){
   const groups=[...map.values()];
 
   groups.forEach(g=>{
-    // Una sola offerta per negozio e formato. Se lo stesso scraper produce
-    // duplicati, teniamo il prezzo numericamente migliore.
+    // Scegli il nome più pulito e corto tra i titoli delle fonti.
+    // Questo elimina duplicazioni di marca e testi commerciali senza
+    // modificare il nome delle varianti reali.
+    const candidates=[...(g._nameCandidates||[]),g.name||""]
+      .map(x=>String(x||"").trim())
+      .filter(Boolean);
+    candidates.sort((a,b)=>{
+      const aw=normalizePerfumeName(a).split(/\s+/).filter(Boolean).length;
+      const bw=normalizePerfumeName(b).split(/\s+/).filter(Boolean).length;
+      if(aw!==bw)return aw-bw;
+      return a.length-b.length;
+    });
+    if(candidates[0])g.name=candidates[0];
+
+    // Una sola offerta per negozio e formato.
     const byStoreSize=new Map();
     g.offers.forEach(o=>{
       const store=String(o.store||o.shop||"").trim().toLowerCase();
@@ -793,11 +924,10 @@ function shGroupData(data){
       return shNum(a)-shNum(b);
     });
 
-    // Identità canonica dal backend, fallback ai dati raw solo per risultati
-    // non ancora risolti dal catalogo.
     g.brand=String(g.brand||"").trim();
     g.name=String(g.name||"Profumo").trim();
     g.display_name=g.brand?(g.brand+" - "+g.name):g.name;
+    delete g._nameCandidates;
   });
 
   groups.sort((a,b)=>{
@@ -976,14 +1106,12 @@ function showProducts(groups){
       </article>`;
     }
 
-    // Più formati: comportamento originale, con passaggio alla scelta formato.
-    const best=g.offers.find(o=>!isOfferOutOfStock(o))||null;
-
+    // Più formati: prima scheda SOLO prodotto/nome.
+    // Prezzi e ml compaiono nella schermata successiva "SCEGLI IL FORMATO".
     return `<article class="product-choice" onclick='openProduct(${i})'>
       <div class="result-image">${img?`<img src="${esc(img)}" alt="${esc(displayPerfumeName(g.name))}" onerror="this.outerHTML='🧴'">`:"🧴"}</div>
       <div class="product-choice-main">
         <div class="name">${esc(displayPerfumeName(g.brand ? g.brand+" - "+g.name : g.name))}</div>
-        ${best?`<div class="bestprice">da ${esc(shPrice(best))}</div>`:`<div class="bestprice">OUT OF STOCK</div>`}
       </div>
       <div class="arrow">›</div>
     </article>`;
@@ -994,6 +1122,8 @@ function toggleWishButton(el){
   toggleWish({
     brand:el.dataset.brand||"",
     name:el.dataset.name||"",
+    concentration:el.dataset.concentration||"",
+    size_ml:el.dataset.size||"",
     price:el.dataset.price||"",
     shop:el.dataset.shop||"",
     url:el.dataset.url||"",
@@ -1065,6 +1195,8 @@ function openSize(gi,sizeKey,fromFormats=true){
       const item={
         brand:g.brand||o.brand||"",
         name:g.name||o.name||"",
+        concentration:g.concentration||o.concentration||"",
+        size_ml:sizeKey||"",
         price:isOut?"":shPrice(o),
         shop:o.store||o.shop||"",
         url:o.url||"",
@@ -1085,6 +1217,8 @@ function openSize(gi,sizeKey,fromFormats=true){
             <button class="offer-heart ${on?"saved":""}"
               data-brand="${esc(item.brand)}"
               data-name="${esc(item.name)}"
+              data-concentration="${esc(item.concentration||"")}"
+              data-size="${esc(item.size_ml||"")}"
               data-price="${esc(item.price)}"
               data-shop="${esc(item.shop)}"
               data-url="${esc(item.url)}"
@@ -1114,6 +1248,8 @@ function chooseOffer(gi,sizeKey,oi){
   const item={
     brand:g.brand||o.brand||"",
     name:g.name||o.name||"",
+    concentration:g.concentration||o.concentration||"",
+    size_ml:sizeKey||"",
     price:isOut?"":shPrice(o),
     shop:o.store||o.shop||"",
     url:o.url||"",
