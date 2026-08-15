@@ -209,7 +209,7 @@ def _product(url, html, query):
         "name": name,
         "price": f"{price:.2f}".replace(".", ",") + " €",
         "url": url,
-        "available": avail == "in_stock",
+        "available": True if avail == "in_stock" else False if avail == "out_of_stock" else None,
     }
 
 
