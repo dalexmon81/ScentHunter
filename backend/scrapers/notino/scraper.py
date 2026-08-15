@@ -47,8 +47,10 @@ def parse_price(v):
 
 def availability(value):
     t=norm(value)
-    if any(x in t for x in ("out of stock","rupture de stock","indisponible","epuise","épuisé")):return "out_of_stock"
-    if any(x in t for x in ("in stock","en stock","disponible","available")):return "in_stock"
+    if any(x in t for x in ("out of stock","outofstock","rupture de stock","indisponible","epuise","épuisé")):
+        return "out_of_stock"
+    if any(x in t for x in ("in stock","instock","en stock","disponible","available")):
+        return "in_stock"
     return "unknown"
 
 def _jsonld(soup):
@@ -66,6 +68,22 @@ def _jsonld(soup):
                 if isinstance(x.get(key),(dict,list)):stack.append(x[key])
     return out
 
+def _jsonld_size_ml(product, offer):
+    candidates=[]
+    for obj in (offer, product):
+        if not isinstance(obj,dict):
+            continue
+        for key in ("name","description","category"):
+            value=obj.get(key)
+            if value:
+                candidates.append(clean(value))
+    for value in candidates:
+        size=size_ml(value)
+        if size is not None:
+            return size
+    return None
+
+
 def _raw(product,url):
     name=clean(product.get("name"))
     brand=product.get("brand")
@@ -75,6 +93,7 @@ def _raw(product,url):
     offer=next((x for x in offers if isinstance(x,dict)),{})
     price=parse_price(offer.get("price"))
     avail=availability(offer.get("availability"))
+    size=_jsonld_size_ml(product, offer)
     gtin=clean(product.get("gtin13") or product.get("gtin") or "") or None
     sku=clean(product.get("sku") or "") or None
     image=product.get("image")
@@ -89,7 +108,7 @@ def _raw(product,url):
             "store_product_id":{"value":sku,"source":"notino_sku"} if sku else None,
         },
         "attributes":{
-            "size_ml":{"value":size_ml(name),"source":"product_name"} if size_ml(name) is not None else None,
+            "size_ml":{"value":size,"source":"jsonld_offer_or_product"} if size is not None else None,
             "concentration":{"value":concentration(name),"source":"product_name"} if concentration(name) else None,
             "gender":{"value":"unknown","source":"not_explicit"},
             "packaging_type":{"value":"product","source":"default"},
