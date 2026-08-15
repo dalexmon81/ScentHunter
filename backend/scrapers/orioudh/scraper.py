@@ -400,7 +400,44 @@ def search(query: str) -> List[Dict[str, Any]]:
                 seen.add(key)
                 results.append(item)
 
-        return results
+        # Shopify can expose more than one variant for the same product.
+        # If at least one variant of that exact Shopify product is actually
+        # available, do not also return its unavailable variants as separate
+        # OUT OF STOCK offers. This is especially important for Orioudh:
+        # the same Liquid Brun product can otherwise produce one real offer
+        # plus a false duplicate OUT OF STOCK row.
+        product_groups = {}
+        for item in results:
+            product_id = (
+                (item.get("identity", {}).get("store_product_id") or {}).get("value")
+            )
+            if product_id is not None:
+                product_groups.setdefault(product_id, []).append(item)
+
+        filtered = []
+        for item in results:
+            product_id = (
+                (item.get("identity", {}).get("store_product_id") or {}).get("value")
+            )
+            if product_id is None:
+                filtered.append(item)
+                continue
+
+            group = product_groups.get(product_id, [])
+            has_in_stock = any(
+                x.get("offer", {}).get("availability") == "in_stock"
+                for x in group
+            )
+
+            if (
+                has_in_stock
+                and item.get("offer", {}).get("availability") == "out_of_stock"
+            ):
+                continue
+
+            filtered.append(item)
+
+        return filtered
     finally:
         session.close()
 
