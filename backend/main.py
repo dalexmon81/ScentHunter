@@ -17,523 +17,7 @@ from urllib.parse import urlencode
 from urllib.request import Request, urlopen
 from urllib.error import HTTPError, URLError
 
-
-
-
-# ============================================================
-# ScentHunter — Product identity matcher embedded in this file
-# This keeps the backend self-contained for iPhone copy/paste use.
-# ============================================================
-
-def _pm_normalize(value: Any) -> str:
-    value = str(value or "").strip().lower()
-    value = unicodedata.normalize("NFKD", value)
-    value = "".join(ch for ch in value if not unicodedata.combining(ch))
-    value = re.sub(r"(?<=\d)(?=[a-z])|(?<=[a-z])(?=\d)", " ", value)
-    value = re.sub(r"[^a-z0-9]+", " ", value)
-    return re.sub(r"\s+", " ", value).strip()
-
-
-def _pm_stable_id(brand: Any, name: Any) -> str:
-    key = f"{_pm_normalize(brand)}::{_pm_normalize(name)}"
-    return "SH-AUTO-" + hashlib.sha1(key.encode("utf-8")).hexdigest()[:12]
-
-
-def extract_size_ml(text: str) -> Optional[int]:
-    if not text:
-        return None
-    text = _pm_normalize(text)
-    match = re.search(
-        r"(\d+(?:\.\d+)?)\s*(ml|millilitri|litri|l|oz|fl\.?\s*oz)",
-        text,
-        re.I,
-    )
-    if not match:
-        return None
-
-    value = float(match.group(1))
-    unit = match.group(2).lower()
-
-    if unit in ("l", "litri"):
-        return int(value * 1000)
-    if unit in ("oz", "fl. oz", "fl oz"):
-        return int(value * 29.5735)
-    return int(value)
-
-
-def _pm_first_value(item: Dict[str, Any], keys) -> str:
-    for key in keys:
-        value = item.get(key)
-        if value is not None and str(value).strip():
-            return str(value).strip()
-    return ""
-
-
-def _pm_source(item: Dict[str, Any]) -> Dict[str, Any]:
-    value = item.get("source")
-    return value if isinstance(value, dict) else {}
-
-
-def _pm_identity(item: Dict[str, Any]) -> Dict[str, Any]:
-    value = item.get("identity")
-    return value if isinstance(value, dict) else {}
-
-
-def _pm_attributes(item: Dict[str, Any]) -> Dict[str, Any]:
-    value = item.get("attributes")
-    return value if isinstance(value, dict) else {}
-
-
-def _pm_attr(item: Dict[str, Any], key: str) -> Any:
-    value = _pm_attributes(item).get(key)
-    if isinstance(value, dict):
-        return value.get("value")
-    return value
-
-
-def _pm_identifier(item: Dict[str, Any], keys) -> str:
-    value = _pm_first_value(item, keys)
-    if not value:
-        value = _pm_first_value(_pm_identity(item), keys)
-    return _pm_normalize(value).replace(" ", "") if value else ""
-
-
-def _pm_size_ml(item: Dict[str, Any]) -> Optional[float]:
-    explicit = item.get("size_ml")
-    if explicit in (None, ""):
-        explicit = _pm_attr(item, "size_ml")
-
-    if explicit not in (None, ""):
-        try:
-            return float(str(explicit).replace(",", "."))
-        except (TypeError, ValueError):
-            pass
-
-    text = " ".join(
-        str(item.get(k) or "")
-        for k in ("name", "title", "product_name", "size", "format")
-    )
-    source = _pm_source(item)
-    text += " " + " ".join(
-        str(source.get(k) or "")
-        for k in ("source_name", "name")
-    )
-
-    match = re.search(
-        r"\b(\d{1,4}(?:[.,]\d+)?)\s*(ml|cl)\b",
-        text,
-        re.I,
-    )
-    if not match:
-        return None
-
-    value = float(match.group(1).replace(",", "."))
-    if match.group(2).lower() == "cl":
-        value *= 10
-    return value
-
-
-@dataclass(frozen=True)
-class CatalogProduct:
-    catalog_id: str
-    brand: str
-    name: str
-    aliases: tuple = ()
-    formats_ml: tuple = ()
-    gtins: tuple = ()
-    mpns: tuple = ()
-
-    @classmethod
-    def from_dict(cls, data: Dict[str, Any]):
-        return cls(
-            str(
-                data.get("id")
-                or data.get("catalog_id")
-                or data.get("product_id")
-                or ""
-            ).strip(),
-            str(
-                data.get("brand")
-                or data.get("brand_name")
-                or ""
-            ).strip(),
-            str(
-                data.get("name")
-                or data.get("family_name")
-                or ""
-            ).strip(),
-            tuple(
-                str(x).strip()
-                for x in (data.get("aliases") or [])
-                if str(x).strip()
-            ),
-            tuple(
-                float(x)
-                for x in (data.get("formats_ml") or [])
-                if str(x).strip()
-            ),
-            tuple(
-                _pm_identifier({"v": x}, ("v",))
-                for x in (
-                    data.get("gtins")
-                    or data.get("ean")
-                    or []
-                )
-                if str(x).strip()
-            ),
-            tuple(
-                _pm_identifier({"v": x}, ("v",))
-                for x in (
-                    data.get("mpns")
-                    or data.get("mpn")
-                    or []
-                )
-                if str(x).strip()
-            ),
-        )
-
-    @property
-    def normalized_brand(self):
-        return _pm_normalize(self.brand)
-
-    @property
-    def normalized_name(self):
-        return _pm_normalize(self.name)
-
-    @property
-    def normalized_aliases(self):
-        return tuple(_pm_normalize(x) for x in self.aliases)
-
-
-class ProductMatcher:
-    GTIN_KEYS = (
-        "gtin", "ean", "ean13", "ean_code", "barcode", "upc"
-    )
-    MPN_KEYS = (
-        "mpn", "manufacturer_part_number", "manufacturerNumber"
-    )
-    CATALOG_KEYS = (
-        "catalog_id", "master_id", "item_group_id", "product_id"
-    )
-    BRAND_KEYS = ("brand", "manufacturer", "maker")
-    NAME_KEYS = ("name", "title", "product_name")
-
-    def __init__(self, catalog):
-        self.catalog = [
-            x if isinstance(x, CatalogProduct)
-            else CatalogProduct.from_dict(x)
-            for x in catalog
-        ]
-
-        self._by_gtin = {}
-        self._by_mpn = {}
-        self._by_catalog_id = {}
-
-        for product in self.catalog:
-            if product.catalog_id:
-                self._by_catalog_id[
-                    _pm_normalize(product.catalog_id)
-                ] = product
-
-            for value in product.gtins:
-                self._by_gtin.setdefault(value, []).append(product)
-
-            for value in product.mpns:
-                self._by_mpn.setdefault(value, []).append(product)
-
-    def _offer_brand(self, offer):
-        value = _pm_first_value(offer, self.BRAND_KEYS)
-        if value:
-            return _pm_normalize(value)
-
-        source = _pm_source(offer)
-        value = _pm_first_value(
-            source,
-            ("source_brand", "brand", "manufacturer"),
-        )
-        return _pm_normalize(value) if value else ""
-
-    def _offer_name(self, offer):
-        value = _pm_first_value(offer, self.NAME_KEYS)
-        if value:
-            return _pm_normalize(value)
-
-        source = _pm_source(offer)
-        value = _pm_first_value(
-            source,
-            ("source_name", "name", "title"),
-        )
-        return _pm_normalize(value) if value else ""
-
-    def _display_name(self, product, offer_name):
-        """
-        Sceglie il nome completo dell'alias che corrisponde meglio
-        al nome reale trovato dal negozio.
-
-        Questo evita il problema:
-          Le Beau
-          Le Beau Le Parfum
-        che non devono diventare un unico prodotto.
-        """
-        offer_n = _pm_normalize(offer_name)
-        best = product.name
-        best_score = -1.0
-
-        for candidate in (product.name, *product.aliases):
-            candidate_n = _pm_normalize(candidate)
-            if not candidate_n:
-                continue
-
-            candidate_tokens = set(candidate_n.split())
-            offer_tokens = set(offer_n.split())
-
-            if candidate_n == offer_n:
-                score = 10.0
-            elif (
-                candidate_tokens
-                and candidate_tokens.issubset(offer_tokens)
-            ):
-                score = (
-                    5.0
-                    + len(candidate_tokens)
-                    / max(1, len(offer_tokens))
-                )
-            else:
-                score = (
-                    len(candidate_tokens & offer_tokens)
-                    / max(1, len(candidate_tokens))
-                )
-
-            if score > best_score:
-                best_score = score
-                best = candidate
-
-        brand_n = _pm_normalize(product.brand)
-        best_n = _pm_normalize(best)
-
-        if brand_n and best_n.startswith(brand_n + " "):
-            best = best[len(product.brand):].strip(" -–—:")
-
-        return best or product.name
-
-    def match(self, offer):
-        product, method, score = self._best_match(offer)
-
-        if product is None:
-            return None
-
-        result = dict(offer)
-        offer_name = self._offer_name(offer)
-        canonical_name = self._display_name(
-            product,
-            offer_name,
-        )
-
-        # IMPORTANTISSIMO:
-        # Il frontend raggruppa i negozi usando catalog_id.
-        # Qui creiamo un ID stabile basato su BRAND + NOME COMPLETO.
-        #
-        # Quindi:
-        #   PerfumeMarket — Jean Paul Gaultier Le Beau 100 ml
-        #   Parfumzentrum — Jean Paul Gaultier Le Beau 100 ml
-        # diventano UNA SOLA SCHEDA.
-        #
-        # Mentre:
-        #   Le Beau
-        #   Le Beau Le Parfum
-        # restano DUE schede diverse.
-        #
-        # La dimensione NON entra nell'identità: 75/100/125 ml
-        # vengono gestiti dal frontend come formati dello stesso prodotto.
-        group_id = _pm_stable_id(
-            product.brand,
-            canonical_name,
-        )
-
-        result.update(
-            catalog_id=group_id,
-            source_catalog_id=product.catalog_id,
-            canonical_brand=product.brand,
-            canonical_name=canonical_name,
-            match_method=method,
-            match_score=round(score, 4),
-            product_identity=group_id,
-        )
-
-        resolved_size = _pm_size_ml(offer)
-
-        if resolved_size is not None:
-            result["size_ml"] = resolved_size
-
-        result["variant_id"] = (
-            f"{group_id}:{resolved_size:g}"
-            if resolved_size is not None
-            else group_id
-        )
-
-        return result
-
-    def _best_match(self, offer):
-        gtin = _pm_identifier(
-            offer,
-            self.GTIN_KEYS,
-        )
-
-        if (
-            gtin in self._by_gtin
-            and len(self._by_gtin[gtin]) == 1
-        ):
-            return self._by_gtin[gtin][0], "gtin", 1.0
-
-        mpn = _pm_identifier(
-            offer,
-            self.MPN_KEYS,
-        )
-
-        if (
-            mpn in self._by_mpn
-            and len(self._by_mpn[mpn]) == 1
-        ):
-            return self._by_mpn[mpn][0], "mpn", 0.99
-
-        catalog_id = _pm_identifier(
-            offer,
-            self.CATALOG_KEYS,
-        )
-
-        if catalog_id in self._by_catalog_id:
-            return (
-                self._by_catalog_id[catalog_id],
-                "catalog_id",
-                0.98,
-            )
-
-        brand = self._offer_brand(offer)
-        name = self._offer_name(offer)
-
-        if not name:
-            return None, "none", 0.0
-
-        best = (None, 0.0, "none")
-
-        for product in self.catalog:
-            score = self._text_score(
-                brand,
-                name,
-                product,
-            )
-
-            if score > best[1]:
-                method = (
-                    "exact_name"
-                    if score >= 0.94
-                    else "token_score"
-                )
-                best = (
-                    product,
-                    score,
-                    method,
-                )
-
-        if best[0] is None or best[1] < 0.86:
-            return None, "none", best[1]
-
-        return best[0], best[2], best[1]
-
-    @staticmethod
-    def _text_score(brand, name, product):
-        brand_score = (
-            1.0
-            if brand
-            and brand == product.normalized_brand
-            else 0.0
-        )
-
-        best = 0.0
-
-        for candidate in (
-            product.normalized_name,
-            *product.normalized_aliases,
-        ):
-            if not candidate:
-                continue
-
-            if name == candidate:
-                best = max(best, 1.0)
-                continue
-
-            query_tokens = set(name.split())
-            candidate_tokens = set(candidate.split())
-            intersection = len(
-                query_tokens & candidate_tokens
-            )
-
-            recall = (
-                intersection / len(candidate_tokens)
-                if candidate_tokens
-                else 0.0
-            )
-
-            precision = intersection / max(
-                1,
-                len(query_tokens),
-            )
-
-            f_score = (
-                2 * recall * precision
-                / (recall + precision)
-                if recall + precision
-                else 0.0
-            )
-
-            # Evita che un nome corto diventi automaticamente
-            # una variante di un nome più lungo.
-            if candidate in name:
-                f_score = max(
-                    f_score,
-                    0.92,
-                )
-
-            best = max(best, f_score)
-
-        return (
-            0.45 + 0.55 * best
-            if brand_score
-            else 0.95 * best
-        )
-
-
-def pm_offer_key(offer):
-    store = _pm_normalize(
-        offer.get("store")
-        or _pm_source(offer).get("store")
-        or ""
-    )
-
-    identity = _pm_normalize(
-        offer.get("product_identity")
-        or offer.get("catalog_id")
-        or ""
-    )
-
-    resolved_size = _pm_size_ml(offer)
-    size = (
-        ""
-        if resolved_size is None
-        else f"{resolved_size:g}"
-    )
-
-    url = str(
-        offer.get("url")
-        or _pm_source(offer).get("url")
-        or ""
-    ).split("#", 1)[0].split("?", 1)[0].strip().lower()
-
-    return store, identity, size, url
-
-# ============================================================
-# Fine ProductMatcher embedded
-# ============================================================
+from product_matcher import ProductMatcher, CatalogProduct, extract_size_ml
 
 
 app = FastAPI(title="ScentHunter API", version="1.0.0")
@@ -1245,6 +729,94 @@ def run_store(store: str, query: str) -> List[Dict[str, Any]]:
 
     return output
 
+def _result_identity_key(product: Dict[str, Any]):
+    """Identità del prodotto, indipendente dal negozio."""
+    identity = norm(
+        product.get("catalog_id")
+        or product.get("product_identity")
+        or ""
+    )
+    if not identity:
+        identity = norm(
+            f"{product.get('canonical_brand') or product.get('brand') or ''} "
+            f"{product.get('canonical_name') or product.get('name') or ''}"
+        )
+
+    size = _product_size_ml(product)
+    return identity, (round(size, 2) if size is not None else None)
+
+
+def merge_product_results(products: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    """
+    Unisce nella stessa scheda le offerte dello stesso prodotto provenienti
+    da negozi diversi.
+
+    Esempio:
+      Jean Paul Gaultier Le Beau + PerfumeMarket
+      Jean Paul Gaultier Le Beau + Parfumzentrum
+    -> UNA scheda con due offerte.
+
+    Prodotti diversi (es. Le Beau / Le Beau Le Parfum) restano separati.
+    """
+    groups: Dict[Any, Dict[str, Any]] = {}
+
+    for product in products:
+        item = dict(product)
+        key = _result_identity_key(item)
+
+        if key not in groups:
+            base = dict(item)
+            base["offers"] = [dict(item)]
+            base["stores"] = (
+                [str(item.get("store"))]
+                if item.get("store")
+                else []
+            )
+            base["store_count"] = len(base["stores"])
+            groups[key] = base
+            continue
+
+        group = groups[key]
+        offers = group.setdefault("offers", [])
+
+        offer_key = (
+            norm(item.get("store") or ""),
+            str(item.get("url") or "").split("#")[0].split("?")[0].lower(),
+        )
+
+        if not any(
+            (
+                norm(existing.get("store") or ""),
+                str(existing.get("url") or "").split("#")[0].split("?")[0].lower(),
+            ) == offer_key
+            for existing in offers
+        ):
+            offers.append(dict(item))
+
+        store = str(item.get("store") or "").strip()
+        if store and store not in group["stores"]:
+            group["stores"].append(store)
+
+        # La scheda principale mostra sempre l'offerta migliore.
+        current_price = price_num(group.get("price"))
+        new_price = price_num(item.get("price"))
+
+        if (
+            new_price is not None
+            and (current_price is None or new_price < current_price)
+        ):
+            for field in (
+                "store", "url", "price", "price_value", "available",
+                "availability", "stock_status", "image",
+            ):
+                if field in item:
+                    group[field] = item[field]
+
+        group["store_count"] = len(group["stores"])
+
+    return list(groups.values())
+
+
 def unique_results(products: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
     unique: List[Dict[str, Any]] = []
     seen = set()
@@ -1353,7 +925,10 @@ def search_perfume(query: str) -> Dict[str, Any]:
         except Exception as exc:
             errors["identity_engine"] = str(exc) or exc.__class__.__name__
 
-    results = sort_by_price(unique_results(results))
+    # Una scheda per prodotto/formato: le offerte dei diversi negozi
+    # vengono raccolte nello stesso elemento.
+    results = merge_product_results(unique_results(results))
+    results = sort_by_price(results)
 
     return {
         "query": query,
