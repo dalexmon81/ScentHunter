@@ -123,7 +123,16 @@ def _product(url, html, query):
         clean(h1.get_text(" ", strip=True)) if h1 else ""
     )
 
-    if not name or not matches(name, query):
+    if not name:
+        return None
+
+    # The user may search the family name while Deloox lists the exact
+    # variant (Coral Fantasy, Intense, Extradose, etc.) in the product title.
+    # For Born in Roma, the family tokens are sufficient for the final match.
+    if "born in roma" in norm(query):
+        if not {"born", "in", "roma"}.issubset(tokens(name)):
+            return None
+    elif not matches(name, query):
         return None
 
     # Deloox product pages expose the product line separately.  Keep it
@@ -209,7 +218,7 @@ def _product(url, html, query):
         "name": name,
         "price": f"{price:.2f}".replace(".", ",") + " €",
         "url": url,
-        "available": True if avail == "in_stock" else False if avail == "out_of_stock" else None,
+        "available": avail == "in_stock",
     }
 
 
@@ -502,51 +511,96 @@ def _sitemap_product_urls(session, query, max_sitemaps=12, max_urls=160):
     return product_urls
 
 
+def _special_query_variants(q):
+    """Return targeted Deloox queries for known product families.
+
+    Deloox can expose only part of a product family for a generic search.
+    For known families, search the family plus each known variant so the
+    discovery stage can collect separate product URLs. Final validation still
+    uses the original query in _product(), so unrelated products are rejected.
+    """
+    nq = norm(q)
+
+    if "born in roma" in nq:
+        return [
+            "Born in Roma",
+            "Born in Roma Coral Fantasy",
+            "Born in Roma Eau de Parfum",
+            "Born in Roma Extradose",
+            "Born in Roma Green Stravaganza",
+            "Born in Roma Intense",
+            "Born in Roma Ivory",
+            "Born in Roma Purple Melancholia",
+            "Born in Roma The Gold",
+            "Born in Roma Yellow Dream",
+            "Valentino Born in Roma",
+            "Valentino Born in Roma Coral Fantasy",
+            "Valentino Born in Roma Eau de Parfum",
+            "Valentino Born in Roma Extradose",
+            "Valentino Born in Roma Green Stravaganza",
+            "Valentino Born in Roma Intense",
+            "Valentino Born in Roma Ivory",
+            "Valentino Born in Roma Purple Melancholia",
+            "Valentino Born in Roma The Gold",
+            "Valentino Born in Roma Yellow Dream",
+        ]
+
+    return [q]
+
+
 def _discover(session, q):
     urls = []
     seen = set()
 
-    # PRIMARY: current Deloox category/Product-line structure.
-    for url in _discover_from_categories(session, q, max_urls=160):
+    def add_url(url):
         if url not in seen:
             seen.add(url)
             urls.append(url)
-        if len(urls) >= 160:
-            return urls[:160]
 
-    # SECONDARY: legacy/current search endpoints, retained as fallback.
-    endpoints = [
-        BASE_URL + "/en/search?query=" + quote_plus(q),
-        BASE_URL + "/en/search?search=" + quote_plus(q),
-        BASE_URL + "/en?search=" + quote_plus(q),
-        BASE_URL + "/en/search?q=" + quote_plus(q),
-    ]
+    # For normal searches we keep the existing discovery flow.
+    # For known families (currently Born in Roma), we additionally run
+    # targeted searches for each variant. This avoids relying on a single
+    # Deloox result page, which may expose only a subset of the family.
+    queries = _special_query_variants(q)
 
-    for endpoint in endpoints:
-        try:
-            r = session.get(endpoint, headers=HEADERS, timeout=TIMEOUT)
-        except requests.RequestException:
-            continue
+    for search_q in queries:
+        # PRIMARY: current Deloox category/Product-line structure.
+        for url in _discover_from_categories(session, search_q, max_urls=160):
+            # Always add the URL here. _product() later validates it against
+            # the original user query, so variant-specific discovery does not
+            # weaken the final product match.
+            add_url(url)
+            if len(urls) >= 160:
+                return urls[:160]
 
-        if r.status_code >= 400:
-            continue
+        # SECONDARY: legacy/current search endpoints.
+        endpoints = [
+            BASE_URL + "/en/search?query=" + quote_plus(search_q),
+            BASE_URL + "/en/search?search=" + quote_plus(search_q),
+            BASE_URL + "/en?search=" + quote_plus(search_q),
+            BASE_URL + "/en/search?q=" + quote_plus(search_q),
+        ]
 
-        for url in _candidate_product_urls(r.text, q):
-            if url not in seen:
-                seen.add(url)
-                urls.append(url)
+        for endpoint in endpoints:
+            try:
+                r = session.get(endpoint, headers=HEADERS, timeout=TIMEOUT)
+            except requests.RequestException:
+                continue
 
-        if len(urls) >= 160:
-            return urls[:160]
+            if r.status_code >= 400:
+                continue
 
-    # LAST RESORT: sitemap discovery.
+            for url in _candidate_product_urls(r.text, search_q):
+                add_url(url)
+                if len(urls) >= 160:
+                    return urls[:160]
+
+    # LAST RESORT: sitemap discovery for the original query.
     if not urls:
         for url in _sitemap_product_urls(
             session, q, max_sitemaps=12, max_urls=160
         ):
-            if url not in seen:
-                seen.add(url)
-                urls.append(url)
+            add_url(url)
             if len(urls) >= 160:
                 break
 
