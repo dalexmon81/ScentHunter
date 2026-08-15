@@ -240,7 +240,7 @@ def _candidate_queries(query):
     return searches
 
 
-def _candidate_product_urls(html, query, discovery_query=None):
+def _candidate_product_urls(html, query, discovery_query=None, accept_all_products=False):
     """Extract Deloox product URLs from HTML, JSON, JSON-LD and JS.
 
     Discovery is deliberately broad. Deloox can expose a product title in
@@ -277,11 +277,12 @@ def _candidate_product_urls(html, query, discovery_query=None):
         if url in seen:
             return
 
-        # For broad discovery, accept a product URL when either the URL,
-        # nearby card text, or serialized context contains a useful query
-        # token. The original query is checked later by _product().
+        # On an exact Product-line filter page, the page itself is already
+        # the discovery constraint. Do not require every query token to be
+        # repeated in the product-card text; _product() still validates the
+        # original query against the actual product name.
         haystack = f"{context} {url}"
-        if q_tokens and not matches(haystack, discovery):
+        if not accept_all_products and q_tokens and not matches(haystack, discovery):
             if not any(token in tokens(haystack) for token in q_tokens):
                 return
 
@@ -345,77 +346,96 @@ def _candidate_product_urls(html, query, discovery_query=None):
 
 
 def _category_product_line_links(html, query):
-    """Find Deloox Product-line category URLs matching the query.
+    """Find Deloox Product-line filter/category URLs matching *query*.
 
-    Deloox does not always render Product-line filters as normal <a> tags.
-    Some are present only in serialized HTML/JSON or in data attributes.
-    Therefore we inspect both parsed links and raw category URLs.
+    Current Deloox pages expose Product line filters as links that usually
+    keep the category URL and add an encoded ``filters[...]`` query string.
+    Older code only accepted ``/category/...`` paths and therefore missed
+    these filter links entirely. We inspect href/data-* URLs and their local
+    text context, while allowing the final product-page validator to make
+    the strict decision.
     """
     soup = BeautifulSoup(html, "html.parser")
     links = []
     seen = set()
     q_tokens = tokens(query)
+    if not q_tokens:
+        return links
 
-    def add(raw_url, label=""):
-        raw_url = clean(raw_url).replace("\\/","/")
-        if not raw_url:
-            return
-
+    def url_ok(raw_url):
+        raw_url = clean(raw_url).replace("\\/", "/")
+        if not raw_url or raw_url.startswith(("javascript:", "mailto:", "#")):
+            return None
         url = urljoin(BASE_URL, raw_url).split("#")[0]
         try:
             parsed = urlparse(url)
         except Exception:
-            return
-
+            return None
         if parsed.netloc.lower() not in {"deloox.com", "www.deloox.com"}:
-            return
-        if "/category/" not in parsed.path.lower():
-            return
+            return None
+        path = parsed.path.lower()
+        query_string = parsed.query.lower()
+        if "/category/" not in path and "filter" not in query_string:
+            return None
+        return url
 
-        # Prefer an exact match on the category slug, but also accept a
-        # matching visible label when Deloox uses a localized slug.
-        slug_text = parsed.path.rsplit("/", 1)[-1]
-        if slug_text.lower().endswith(".html"):
-            slug_text = slug_text[:-5]
-
-        if not (
-            q_tokens.issubset(tokens(slug_text))
-            or q_tokens.issubset(tokens(label))
-        ):
+    def add(raw_url, label="", context=""):
+        url = url_ok(raw_url)
+        if not url:
             return
-
+        parsed = urlparse(url)
+        haystack = " ".join((label, context, parsed.path, parsed.query))
+        # Require all meaningful query tokens in the filter/category context.
+        if not q_tokens.issubset(tokens(haystack)):
+            return
         if url in seen:
             return
         seen.add(url)
         links.append(url)
 
-    # Normal visible links.
+    # Normal anchors. Product-line filter labels such as
+    # "Hawas For Him (1)" are the most useful signal.
     for a in soup.find_all("a", href=True):
-        add(a.get("href"), a.get_text(" ", strip=True))
+        label = a.get_text(" ", strip=True)
+        href = a.get("href")
+        add(href, label, label)
 
-    # Deloox can expose filter/category links inside JSON, data attributes,
-    # escaped URLs, or scripts without an <a> element.
+    # data-url / data-href / data-link are used by some filter widgets.
+    for tag in soup.find_all(True):
+        attrs = tag.attrs or {}
+        label = tag.get_text(" ", strip=True)
+        for key in ("data-url", "data-href", "data-link", "data-target"):
+            value = attrs.get(key)
+            if isinstance(value, str):
+                add(value, label, label)
+
+    # Raw HTML/JS: recover encoded filter URLs and associate them with a local
+    # text window. This also handles links rendered only after hydration.
     raw = html.replace("\\\\/", "/")
-    patterns = [
-        r'(?:"|\\\')((?:https?:)?//(?:www\\.)?deloox\\.com)?'
-        r'(/(?:en/|it/|nl/)?category/\\d+/[^"\\\'<>\\s]+\\.html)',
-        r'(?:"|\\\')((?:/)?(?:en/|it/|nl/)?category/\\d+/[^"\\\'<>\\s]+\\.html)(?:"|\\\')',
-    ]
-    for pattern in patterns:
-        for match in re.findall(pattern, raw, re.I):
-            if isinstance(match, tuple):
-                match = "".join(match)
-            add(match)
+    url_pattern = re.compile(
+        r'(?:https?:)?//(?:www\.)?deloox\.com[^"\'<>\s]+|'
+        r'/(?:en/|it/|nl/)?category/[^"\'<>\s]+',
+        re.I,
+    )
+    for m in url_pattern.finditer(raw):
+        raw_url = m.group(0)
+        if "filter" not in raw_url.lower() and "category/" not in raw_url.lower():
+            continue
+        context = raw[max(0, m.start()-1800):min(len(raw), m.end()+1800)]
+        add(raw_url, context, context)
 
-    return links
+    # Keep only actual filter/category pages, not unrelated navigation.
+    return links[:40]
 
 
 def _category_pages(session):
-    # These are Deloox's current perfume category URLs verified from the
-    # public site structure. We use both genders because Born in Roma exists
-    # as separate Uomo/Donna product lines.
+    # Current Deloox fragrance category roots. The old 1075660 women's
+    # root is obsolete; Deloox currently exposes 1075639 for women and
+    # 1000054 for the broad men's catalogue. Keep 1075750 as a narrow
+    # men's-perfume fallback.
     return (
-        BASE_URL + "/category/1075660/womens-perfume.html",
+        BASE_URL + "/category/1000054/mens-fragrances.html",
+        BASE_URL + "/category/1075639/womens-fragrances.html",
         BASE_URL + "/category/1075750/mens-perfume.html",
     )
 
@@ -481,7 +501,9 @@ def _discover_from_categories(session, query, max_urls=80):
             if page.status_code >= 400:
                 continue
 
-            for product_url in _candidate_product_urls(page.text, query):
+            for product_url in _candidate_product_urls(
+                page.text, query, accept_all_products=(page_url != category_url)
+            ):
                 if product_url not in seen:
                     seen.add(product_url)
                     urls.append(product_url)
@@ -630,102 +652,6 @@ def _sitemap_product_urls(session, query, max_sitemaps=12, max_urls=80):
     return product_urls
 
 
-
-def diagnose_search(session, q):
-    """Return discovery diagnostics without changing normal search behavior.
-
-    This is intentionally diagnostic: it records which Deloox endpoints are
-    reachable, how many product URLs are present in each response, which
-    candidate URLs survive discovery, and which candidate product pages pass
-    the final _product() validation.
-    """
-    report = {
-        "query": q,
-        "queries_tried": [],
-        "endpoints": [],
-    }
-
-    for discovery_query in _candidate_queries(q):
-        report["queries_tried"].append(discovery_query)
-
-        endpoints = [
-            BASE_URL + "/en/search?query=" + quote_plus(discovery_query),
-            BASE_URL + "/en/search?search=" + quote_plus(discovery_query),
-            BASE_URL + "/en/search?q=" + quote_plus(discovery_query),
-        ]
-
-        for endpoint in endpoints:
-            item = {
-                "query": discovery_query,
-                "url": endpoint,
-                "status": None,
-                "html_product_url_count": 0,
-                "candidate_urls": [],
-                "validated_products": [],
-                "error": None,
-            }
-
-            try:
-                r = session.get(endpoint, headers=HEADERS, timeout=TIMEOUT)
-                item["status"] = r.status_code
-            except requests.RequestException as exc:
-                item["error"] = f"{type(exc).__name__}: {exc}"
-                report["endpoints"].append(item)
-                continue
-
-            if r.status_code >= 400:
-                report["endpoints"].append(item)
-                continue
-
-            # Count every literal /product/ occurrence before our filtering.
-            item["html_product_url_count"] = len(
-                re.findall(r"/product/", r.text, re.I)
-            )
-
-            candidates = _candidate_product_urls(
-                r.text, q, discovery_query=discovery_query
-            )
-            item["candidate_urls"] = candidates[:20]
-
-            # Open only the first 10 candidates so the diagnostic stays fast.
-            for product_url in candidates[:10]:
-                try:
-                    pr = session.get(
-                        product_url, headers=HEADERS, timeout=TIMEOUT
-                    )
-                except requests.RequestException as exc:
-                    item["validated_products"].append({
-                        "url": product_url,
-                        "status": None,
-                        "accepted": False,
-                        "error": f"{type(exc).__name__}: {exc}",
-                    })
-                    continue
-
-                product = None
-                if pr.status_code < 400:
-                    try:
-                        product = _product(product_url, pr.text, q)
-                    except Exception as exc:
-                        item["validated_products"].append({
-                            "url": product_url,
-                            "status": pr.status_code,
-                            "accepted": False,
-                            "error": f"{type(exc).__name__}: {exc}",
-                        })
-                        continue
-
-                item["validated_products"].append({
-                    "url": product_url,
-                    "status": pr.status_code,
-                    "accepted": bool(product),
-                    "name": product.get("name") if product else None,
-                })
-
-            report["endpoints"].append(item)
-
-    return report
-
 def _discover(session, q):
     urls = []
     seen = set()
@@ -848,6 +774,94 @@ def _discover(session, q):
                 break
 
     return urls[:80]
+
+
+def diagnose_search(session, query):
+    """Return a compact discovery trace for the Deloox scraper.
+
+    The trace is deliberately focused on the failure seen in production:
+    category roots, Product-line filter URLs, candidate product URLs and the
+    final JSON-LD validation. Search endpoints are reported separately as a
+    fallback, but a 404 there is no longer treated as the primary path.
+    """
+    query = clean(query)
+    report = {
+        "query": query,
+        "category_endpoints": [],
+        "filter_urls": [],
+        "candidate_urls": [],
+        "validated_products": [],
+        "search_fallback": [],
+    }
+    if not query:
+        return report
+
+    seen_candidates = set()
+    for category_url in _category_pages(session):
+        entry = {"url": category_url, "status": None, "filter_urls": [], "candidate_urls": []}
+        try:
+            r = session.get(category_url, headers=HEADERS, timeout=TIMEOUT)
+            entry["status"] = r.status_code
+        except requests.RequestException as exc:
+            entry["error"] = str(exc)
+            report["category_endpoints"].append(entry)
+            continue
+        report["category_endpoints"].append(entry)
+        if r.status_code >= 400:
+            continue
+
+        filter_urls = _category_product_line_links(r.text, query)
+        entry["filter_urls"] = filter_urls[:20]
+        report["filter_urls"].extend(filter_urls)
+
+        pages = [(category_url, False)] + [(u, True) for u in filter_urls]
+        for page_url, filtered in pages:
+            try:
+                page = session.get(page_url, headers=HEADERS, timeout=TIMEOUT)
+            except requests.RequestException as exc:
+                continue
+            if page.status_code >= 400:
+                continue
+            candidates = _candidate_product_urls(
+                page.text, query, accept_all_products=filtered
+            )
+            entry["candidate_urls"].extend(candidates[:40])
+            for u in candidates:
+                if u not in seen_candidates:
+                    seen_candidates.add(u)
+                    report["candidate_urls"].append(u)
+                    if len(report["candidate_urls"]) >= 80:
+                        break
+            if len(report["candidate_urls"]) >= 80:
+                break
+        if len(report["candidate_urls"]) >= 80:
+            break
+
+    for url in report["candidate_urls"]:
+        try:
+            r = session.get(url, headers=HEADERS, timeout=TIMEOUT)
+        except requests.RequestException:
+            continue
+        if r.status_code >= 400:
+            continue
+        item = _product(url, r.text, query)
+        if item:
+            report["validated_products"].append(item)
+
+    # Keep the old /en/search probe only as a diagnostic fallback. Deloox has
+    # been returning 404 for these endpoints, so it is never the primary path.
+    for endpoint in (
+        BASE_URL + "/en/search?query=" + quote_plus(query),
+        BASE_URL + "/en/search?search=" + quote_plus(query),
+        BASE_URL + "/en/search?q=" + quote_plus(query),
+    ):
+        try:
+            r = session.get(endpoint, headers=HEADERS, timeout=TIMEOUT)
+            report["search_fallback"].append({"url": endpoint, "status": r.status_code})
+        except requests.RequestException as exc:
+            report["search_fallback"].append({"url": endpoint, "error": str(exc)})
+
+    return report
 
 
 def search(query):
