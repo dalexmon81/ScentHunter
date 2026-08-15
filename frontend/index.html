@@ -1603,6 +1603,7 @@ function openProduct(i){
         <div class="format-icon">🧴</div>
         <div class="product-choice-main">
           <div class="name">${esc(formatLabel(s.size)||"Formato")}</div>
+          ${s.best?`<div class="bestprice">da ${esc(shPrice(s.best))}</div>`:`<div class="bestprice">OUT OF STOCK</div>`}
           <div class="offer-meta">${offers.length} ${offers.length===1?"negozio":"negozi"}</div>
         </div>
       </div>
