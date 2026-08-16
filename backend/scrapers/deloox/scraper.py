@@ -303,11 +303,10 @@ def _candidate_product_urls(html, query=None):
 
         haystack = norm(f"{context} {url}")
         hits = sum(1 for tok in q_tokens if tok in haystack)
-        # Keep plausible candidates. Full query matching gets highest priority,
-        # but a single strong token is still allowed for discovery.
-        if q_tokens and hits == 0:
-            return
-
+        # Do not discard numeric product URLs merely because the query is not
+        # present in the href/card text. Deloox can expose product IDs without
+        # the name in the surrounding HTML. The final _product() parser remains
+        # the authoritative query validator.
         previous = scored.get(url)
         if previous is None or hits > previous[0]:
             scored[url] = (hits, context)
@@ -341,7 +340,19 @@ def _candidate_product_urls(html, query=None):
         scored.items(),
         key=lambda item: (-item[1][0], len(item[0]), item[0])
     )
-    return [url for url, _meta in ordered]
+
+    # Prefer candidates whose surrounding card/serialized data actually contains
+    # query tokens. If Deloox exposes only numeric product URLs with no useful
+    # context, keep a bounded fallback set anyway and let _product() perform the
+    # authoritative name validation on the product page.
+    exact = [
+        url for url, meta in ordered
+        if q_tokens and meta[0] == len(q_tokens)
+    ]
+    if exact:
+        return exact[:80]
+
+    return [url for url, _meta in ordered[:80]]
 
 
 def _category_product_line_links(html, query):
@@ -766,7 +777,13 @@ def _sitemap_product_urls(session, query, max_sitemaps=12, max_urls=80):
 
 
 def _discover(session, q):
-    """Generic Deloox discovery. No product-specific exceptions."""
+    """Generic Deloox discovery. Search first, then category/catalog fallbacks.
+
+    Deloox's current search route can return the useful product cards quickly,
+    while broad category crawling can require many HTTP requests. Discovery
+    therefore starts with the search surface and only falls back to the slower
+    catalogue/category/sitemap paths when search yields no candidates.
+    """
     urls = []
     seen = set()
 
@@ -779,13 +796,42 @@ def _discover(session, q):
                     return True
         return False
 
-    # 1) Broad categories and their Product Line links.
-    if add_many(_discover_from_categories(session, q, max_urls=80)):
+    # 1) PRIMARY: Deloox search routes.
+    # The current /en/search?q=... route is known to return a real HTML result
+    # page. Try it first; the other parameter variants are compatibility
+    # fallbacks for older Deloox deployments.
+    endpoints = [
+        BASE_URL + "/en/search?q=" + quote_plus(q),
+        BASE_URL + "/en/search?query=" + quote_plus(q),
+        BASE_URL + "/en/search?search=" + quote_plus(q),
+        BASE_URL + "/en?search=" + quote_plus(q),
+        BASE_URL + "/search?q=" + quote_plus(q),
+        BASE_URL + "/search?query=" + quote_plus(q),
+    ]
+
+    for endpoint in endpoints:
+        try:
+            r = session.get(endpoint, headers=HEADERS, timeout=TIMEOUT)
+        except requests.RequestException:
+            continue
+
+        if r.status_code >= 400:
+            continue
+
+        candidates = _candidate_product_urls(r.text, q)
+        if candidates:
+            add_many(candidates)
+            return urls[:80]
+
+    # 2) SECONDARY: broad categories and matching Product Line links.
+    # This is slower, so it is used only when the search surface did not expose
+    # usable product candidates.
+    category_candidates = _discover_from_categories(session, q, max_urls=80)
+    if category_candidates:
+        add_many(category_candidates)
         return urls[:80]
 
-    # 2) Generic catalogue/Product Line discovery.
-    # The broad category roots do not necessarily expose every Product Line.
-    # Deloox's catalogue page is the next generic bridge to those categories.
+    # 3) GENERIC catalogue/Product Line discovery.
     catalog_category = _find_catalog_filter_url(session, q)
     if catalog_category:
         try:
@@ -794,51 +840,56 @@ def _discover(session, q):
             page = None
 
         if page is not None and page.status_code < 400:
-            if add_many(_candidate_product_urls(page.text, q)):
+            catalog_candidates = _candidate_product_urls(page.text, q)
+            if catalog_candidates:
+                add_many(catalog_candidates)
                 return urls[:80]
 
-    # 3) Generic Product Line/category discovery from Deloox sitemaps.
-    for category_url in _sitemap_category_urls(session, q, max_sitemaps=16, max_urls=50):
+    # 4) GENERIC Product Line/category discovery from Deloox sitemaps.
+    for category_url in _sitemap_category_urls(
+        session, q, max_sitemaps=16, max_urls=50
+    ):
         try:
             page = session.get(category_url, headers=HEADERS, timeout=TIMEOUT)
         except requests.RequestException:
             continue
+
         if page.status_code >= 400:
             continue
-        if add_many(_candidate_product_urls(page.text, q)):
+
+        category_candidates = _candidate_product_urls(page.text, q)
+        if category_candidates:
+            add_many(category_candidates)
             return urls[:80]
 
+        # Keep pagination bounded. It is a fallback, not the primary path.
         for page_url in _pagination_urls(category_url, max_pages=8):
             try:
-                page2 = session.get(page_url, headers=HEADERS, timeout=TIMEOUT)
+                page2 = session.get(
+                    page_url,
+                    headers=HEADERS,
+                    timeout=TIMEOUT,
+                )
             except requests.RequestException:
                 continue
+
             if page2.status_code >= 400:
                 continue
-            if add_many(_candidate_product_urls(page2.text, q)):
+
+            page_candidates = _candidate_product_urls(page2.text, q)
+            if page_candidates:
+                add_many(page_candidates)
                 return urls[:80]
 
-    # 4) Deloox search routes.
-    endpoints = [
-        BASE_URL + "/en/search?query=" + quote_plus(q),
-        BASE_URL + "/en/search?search=" + quote_plus(q),
-        BASE_URL + "/en?search=" + quote_plus(q),
-        BASE_URL + "/en/search?q=" + quote_plus(q),
-        BASE_URL + "/search?query=" + quote_plus(q),
-        BASE_URL + "/search?q=" + quote_plus(q),
-    ]
-    for endpoint in endpoints:
-        try:
-            r = session.get(endpoint, headers=HEADERS, timeout=TIMEOUT)
-        except requests.RequestException:
-            continue
-        if r.status_code >= 400:
-            continue
-        if add_many(_candidate_product_urls(r.text, q)):
-            return urls[:80]
-
-    # 5) Product sitemap last.
-    add_many(_sitemap_product_urls(session, q, max_sitemaps=16, max_urls=80))
+    # 5) LAST RESORT: product sitemap.
+    sitemap_candidates = _sitemap_product_urls(
+        session,
+        q,
+        max_sitemaps=16,
+        max_urls=80,
+    )
+    if sitemap_candidates:
+        add_many(sitemap_candidates)
     return urls[:80]
 
 def diagnostic_discovery(query):
