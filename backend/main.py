@@ -1380,3 +1380,184 @@ def test_deloox_step4(q: str = "Liquid Brun"):
     finally:
         session.close()
 
+
+@app.get("/test-deloox-step5")
+def test_deloox_step5(q: str = "Liquid Brun"):
+    """Step 5: discover and exercise Deloox's own search form, dynamically."""
+    import time as _time
+    import requests as _requests
+    from bs4 import BeautifulSoup as _BeautifulSoup
+    from urllib.parse import urljoin as _urljoin, urlparse as _urlparse, parse_qs as _parse_qs
+
+    query = str(q or "").strip()
+    started = _time.perf_counter()
+    homepage = "https://www.deloox.com/"
+    session = _requests.Session()
+
+    headers = {
+        "User-Agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) "
+                      "AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 "
+                      "Mobile/15E148 Safari/604.1",
+        "Accept-Language": "en-GB,en;q=0.9",
+    }
+
+    try:
+        r = session.get(homepage, headers=headers, timeout=10)
+        soup = _BeautifulSoup(r.text or "", "html.parser")
+
+        forms = []
+        search_forms = []
+
+        for form in soup.find_all("form"):
+            action = _urljoin(homepage, form.get("action") or "")
+            method = (form.get("method") or "get").lower()
+            inputs = []
+            has_queryish = False
+
+            for inp in form.find_all(["input", "button"]):
+                name = inp.get("name")
+                value = inp.get("value")
+                typ = inp.get("type")
+                text = " ".join(inp.stripped_strings).strip()
+                item = {
+                    "tag": inp.name,
+                    "name": name,
+                    "type": typ,
+                    "value": value,
+                    "text": text[:100],
+                }
+                inputs.append(item)
+
+                blob = " ".join(
+                    str(x or "") for x in [name, value, typ, text]
+                ).lower()
+                if any(k in blob for k in (
+                    "search", "query", "keyword", "q", "term", "zoek"
+                )):
+                    has_queryish = True
+
+            item = {
+                "action": action,
+                "method": method,
+                "inputs": inputs[:30],
+            }
+            forms.append(item)
+            if has_queryish:
+                search_forms.append(item)
+
+        # Also inspect links/scripts for search-like routes, without opening them.
+        search_routes = []
+        seen_routes = set()
+
+        for a in soup.find_all("a", href=True):
+            href = _urljoin(homepage, a.get("href", "").strip())
+            blob = (href + " " + " ".join(a.stripped_strings)).lower()
+            if any(k in blob for k in ("search", "zoeken", "zoek")):
+                if href not in seen_routes:
+                    seen_routes.add(href)
+                    search_routes.append({
+                        "source": "link",
+                        "url": href,
+                        "text": " ".join(a.stripped_strings).strip()[:120],
+                    })
+
+        for tag in soup.find_all(["script", "link"]):
+            href = tag.get("src") or tag.get("href")
+            if href:
+                href = _urljoin(homepage, href)
+                if "search" in href.lower() and href not in seen_routes:
+                    seen_routes.add(href)
+                    search_routes.append({
+                        "source": tag.name,
+                        "url": href,
+                        "text": "",
+                    })
+
+        # Pick the first real GET form that has a text-like search input.
+        chosen = None
+        for form in search_forms:
+            if form["method"] == "get":
+                for inp in form["inputs"]:
+                    name = (inp.get("name") or "").lower()
+                    typ = (inp.get("type") or "").lower()
+                    if typ in ("search", "text") or name in ("q", "query", "search", "keyword", "term"):
+                        chosen = form
+                        break
+            if chosen:
+                break
+
+        search_result = None
+
+        if chosen:
+            query_name = None
+            for inp in chosen["inputs"]:
+                name = inp.get("name")
+                typ = (inp.get("type") or "").lower()
+                if name and (typ in ("search", "text") or name.lower() in ("q", "query", "search", "keyword", "term")):
+                    query_name = name
+                    break
+
+            if query_name:
+                # Exactly ONE search request, using the site's own discovered form.
+                sr = session.get(
+                    chosen["action"],
+                    params={query_name: query},
+                    headers=headers,
+                    timeout=12,
+                )
+                ss = _BeautifulSoup(sr.text or "", "html.parser")
+
+                links = []
+                seen = set()
+                for a in ss.find_all("a", href=True):
+                    href = _urljoin(chosen["action"], a.get("href", "").strip())
+                    if href in seen:
+                        continue
+                    parsed = _urlparse(href)
+                    if parsed.netloc.lower().endswith("deloox.com"):
+                        text = " ".join(a.stripped_strings).strip()
+                        path = parsed.path.lower()
+                        if "/product/" in path or "/category/" in path:
+                            seen.add(href)
+                            links.append({
+                                "text": text[:160],
+                                "url": href,
+                                "kind": "product" if "/product/" in path else "category",
+                            })
+
+                search_result = {
+                    "action": chosen["action"],
+                    "method": chosen["method"],
+                    "query_parameter": query_name,
+                    "status": sr.status_code,
+                    "bytes": len(sr.content),
+                    "result_links": links[:150],
+                }
+
+        return {
+            "step": 5,
+            "query": query,
+            "seconds": round(_time.perf_counter() - started, 3),
+            "homepage_status": r.status_code,
+            "homepage_bytes": len(r.content),
+            "search_forms": search_forms,
+            "search_routes_seen": search_routes[:50],
+            "chosen_form": chosen,
+            "search_result": search_result,
+            "message": (
+                "SEARCH DISCOVERY ONLY — the endpoint/form is discovered from Deloox. "
+                "No product page is opened. No Deloox product/category URL is hardcoded."
+            ),
+        }
+
+    except Exception as exc:
+        return {
+            "step": 5,
+            "query": query,
+            "seconds": round(_time.perf_counter() - started, 3),
+            "error": f"{type(exc).__name__}: {exc}",
+            "message": "Deloox search-form discovery failed; no product pages opened",
+        }
+    finally:
+        session.close()
+
