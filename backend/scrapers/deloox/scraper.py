@@ -700,6 +700,70 @@ def _discover(session, q):
 
     return urls[:80]
 
+
+def diagnose_targeted_category(query="Liquid Brun"):
+    import time
+    q = norm(query)
+    report = {"query": query, "steps": []}
+    started_all = time.perf_counter()
+    session = requests.Session()
+    try:
+        seeds = _targeted_category_seed_urls(q)
+        report["targeted_urls"] = seeds
+        for seed in seeds:
+            t0 = time.perf_counter()
+            try:
+                r = session.get(seed, headers=HEADERS, timeout=10)
+                item = {
+                    "url": seed,
+                    "seconds": round(time.perf_counter() - t0, 3),
+                    "status": r.status_code,
+                    "bytes": len(r.content),
+                }
+                if r.status_code < 400:
+                    candidates = _candidate_product_urls(r.text, q)
+                    item["candidate_count"] = len(candidates)
+                    item["candidate_urls"] = candidates[:20]
+
+                    previews = []
+                    for u in candidates[:5]:
+                        pt = time.perf_counter()
+                        try:
+                            pr = session.get(u, headers=HEADERS, timeout=10)
+                            preview = {
+                                "url": u,
+                                "seconds": round(time.perf_counter() - pt, 3),
+                                "status": pr.status_code,
+                                "bytes": len(pr.content),
+                            }
+                            if pr.status_code < 400:
+                                try:
+                                    p = _product(u, pr.text, q)
+                                    preview["parser_match"] = bool(p)
+                                    if p:
+                                        preview["name"] = p.get("name")
+                                        preview["brand"] = p.get("brand")
+                                except Exception as exc:
+                                    preview["parser_error"] = f"{type(exc).__name__}: {exc}"
+                            previews.append(preview)
+                        except Exception as exc:
+                            previews.append({
+                                "url": u,
+                                "error": f"{type(exc).__name__}: {exc}"
+                            })
+                    item["product_previews"] = previews
+                report["steps"].append(item)
+            except Exception as exc:
+                report["steps"].append({
+                    "url": seed,
+                    "seconds": round(time.perf_counter() - t0, 3),
+                    "error": f"{type(exc).__name__}: {exc}",
+                })
+        report["total_seconds"] = round(time.perf_counter() - started_all, 3)
+        return report
+    finally:
+        session.close()
+
 def search(query):
     query = clean(query)
     if not query:
