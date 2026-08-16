@@ -997,6 +997,120 @@ def diagnose_deloox_products_raw(q: str):
 
 
 # ============================================================
+# API - DIAGNOSTICA PRODOTTO DELOOX STEP 4
+# ============================================================
+
+@app.get("/diagnose-deloox-product")
+def diagnose_deloox_product(q: str = "Liquid Brun"):
+    """
+    Quarto step diagnostico.
+
+    Parte dall'URL prodotto gia' trovato nello STEP 3 e fa UNA sola richiesta
+    HTTP alla pagina prodotto. Poi esegue ESATTAMENTE _product() del vero
+    scraper Deloox e restituisce i dati necessari per capire se e dove viene
+    scartato il prodotto.
+
+    NON esegue search(), discover(), categorie o sitemap.
+    """
+    query = str(q or "").strip() or "Liquid Brun"
+    product_url = (
+        "https://www.deloox.com/en/product/1385920/"
+        "french-avenue-liquid-brun-extrait-de-parfum-limited-edition-150-ml.html"
+    )
+    headers = {
+        "User-Agent": (
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+            "AppleWebKit/537.36 (KHTML, like Gecko) "
+            "Chrome/131.0.0.0 Safari/537.36"
+        ),
+        "Accept-Language": "en-GB,en;q=0.9",
+        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+    }
+
+    started = time.monotonic()
+
+    try:
+        request = Request(product_url, headers=headers, method="GET")
+        with urlopen(request, timeout=8) as response:
+            body = response.read()
+            status = response.status
+            content_type = response.headers.get("Content-Type")
+
+        html = body.decode("utf-8", errors="ignore")
+        module = load_scraper("deloox")
+        soup = module.BeautifulSoup(html, "html.parser")
+
+        h1 = soup.find("h1")
+        h1_name = module.clean(h1.get_text(" ", strip=True)) if h1 else ""
+        data = module._jsonld(soup)
+        structured_name = module.clean(data.get("name")) if isinstance(data, dict) else ""
+        name = h1_name or structured_name
+        matches_result = bool(name and module.matches(name, query))
+
+        offers = data.get("offers") if isinstance(data, dict) else None
+        offers = offers if isinstance(offers, list) else [offers]
+        offer = next((x for x in offers if isinstance(x, dict)), {})
+        jsonld_price = module.parse_price(offer.get("price"))
+        page_text = soup.get_text(" ", strip=True)
+        fallback_price = module.parse_price(page_text)
+        selected_size = module._selected_size(soup, data, h1_name)
+
+        # Esecuzione del vero punto di uscita del parser.
+        result = module._product(product_url, html, query)
+
+        elapsed_ms = round((time.monotonic() - started) * 1000)
+
+        return {
+            "query": query,
+            "url": product_url,
+            "status": status,
+            "elapsed_ms": elapsed_ms,
+            "response_bytes": len(body),
+            "content_type": content_type,
+            "h1_name": h1_name,
+            "structured_name": structured_name,
+            "name_used_by_product": name,
+            "matches_query": matches_result,
+            "jsonld_price": jsonld_price,
+            "fallback_page_price": fallback_price,
+            "selected_size_ml": selected_size,
+            "product_result_is_none": result is None,
+            "product_result": result,
+            "parser": "scrapers.deloox.scraper._product",
+            "error": None,
+        }
+
+    except HTTPError as error:
+        return {
+            "query": query,
+            "url": product_url,
+            "status": error.code,
+            "elapsed_ms": round((time.monotonic() - started) * 1000),
+            "response_bytes": 0,
+            "error": f"HTTPError: {error}",
+        }
+    except URLError as error:
+        return {
+            "query": query,
+            "url": product_url,
+            "status": None,
+            "elapsed_ms": round((time.monotonic() - started) * 1000),
+            "response_bytes": 0,
+            "error": f"URLError: {error.reason}",
+        }
+    except Exception as error:
+        traceback.print_exc()
+        return {
+            "query": query,
+            "url": product_url,
+            "status": None,
+            "elapsed_ms": round((time.monotonic() - started) * 1000),
+            "response_bytes": 0,
+            "error": f"{type(error).__name__}: {error}",
+        }
+
+
+# ============================================================
 # API - SUGGEST
 # ============================================================
 
