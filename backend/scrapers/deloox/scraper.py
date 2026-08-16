@@ -729,6 +729,82 @@ def _discover(session, q):
     return urls[:24]
 
 
+
+def diagnose_search(session, query):
+    """Deep Deloox discovery diagnostic; does not change normal search."""
+    query = clean(query)
+    report = {
+        "query": query,
+        "category_endpoints": [],
+        "filter_urls": [],
+        "candidate_urls": [],
+        "validated_products": [],
+        "search_fallback": [],
+    }
+    if not query:
+        return report
+
+    seen_candidates = set()
+    for category_url in _category_pages():
+        entry = {"url": category_url, "status": None, "filter_urls": [], "candidate_urls": []}
+        try:
+            r = session.get(category_url, headers=HEADERS, timeout=TIMEOUT)
+            entry["status"] = r.status_code
+        except requests.RequestException as exc:
+            entry["error"] = str(exc)
+            report["category_endpoints"].append(entry)
+            continue
+        report["category_endpoints"].append(entry)
+        if r.status_code >= 400:
+            continue
+        filter_urls = _category_product_line_links(r.text, query)
+        entry["filter_urls"] = filter_urls[:20]
+        report["filter_urls"].extend(filter_urls)
+        pages = [(category_url, False)] + [(url, True) for url in filter_urls]
+        for page_url, filtered in pages:
+            try:
+                page = session.get(page_url, headers=HEADERS, timeout=TIMEOUT)
+            except requests.RequestException:
+                continue
+            if page.status_code >= 400:
+                continue
+            candidates = _candidate_product_urls(page.text, query, accept_all_products=filtered)
+            entry["candidate_urls"].extend(candidates[:40])
+            for url in candidates:
+                if url in seen_candidates:
+                    continue
+                seen_candidates.add(url)
+                report["candidate_urls"].append(url)
+                if len(report["candidate_urls"]) >= 80:
+                    break
+            if len(report["candidate_urls"]) >= 80:
+                break
+        if len(report["candidate_urls"]) >= 80:
+            break
+
+    for url in report["candidate_urls"]:
+        try:
+            r = session.get(url, headers=HEADERS, timeout=TIMEOUT)
+        except requests.RequestException:
+            continue
+        if r.status_code >= 400:
+            continue
+        item = _product(url, r.text, query)
+        if item:
+            report["validated_products"].append(item)
+
+    for endpoint in (
+        BASE_URL + "/en/search?query=" + quote_plus(query),
+        BASE_URL + "/en/search?search=" + quote_plus(query),
+        BASE_URL + "/en/search?q=" + quote_plus(query),
+    ):
+        try:
+            r = session.get(endpoint, headers=HEADERS, timeout=TIMEOUT)
+            report["search_fallback"].append({"url": endpoint, "status": r.status_code})
+        except requests.RequestException as exc:
+            report["search_fallback"].append({"url": endpoint, "error": str(exc)})
+    return report
+
 def search(query):
     query = clean(query)
     if not query:
