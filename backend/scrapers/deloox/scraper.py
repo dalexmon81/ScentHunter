@@ -31,16 +31,8 @@ def norm(v):
     return re.sub(r"\s+", " ", re.sub(r"[^a-z0-9]+", " ", clean(v).lower())).strip()
 
 
-QUERY_STOPWORDS = {
-    "a", "al", "and", "by", "da", "de", "del", "della", "di",
-    "for", "in", "la", "le", "of", "the", "un", "una", "with",
-}
-
 def tokens(v):
-    return {
-        x for x in norm(v).split()
-        if len(x) > 1 and x not in QUERY_STOPWORDS
-    }
+    return {x for x in norm(v).split() if len(x) > 1}
 
 
 def matches(text, q):
@@ -340,13 +332,12 @@ def _category_product_line_links(html, query):
 
 
 def _category_pages(session):
-    # Current Deloox top-level fragrance categories.
-    # The previous IDs (1075660 / 1075750) are obsolete and can return
-    # pages that no longer expose the current Product-line filters.
+    # These are Deloox's current perfume category URLs verified from the
+    # public site structure. We use both genders because Born in Roma exists
+    # as separate Uomo/Donna product lines.
     return (
-        BASE_URL + "/category/1000054/mens-fragrances.html",
-        BASE_URL + "/category/1075639/womens-fragrances.html",
-        BASE_URL + "/category/1000063/womens-fragrances.html",
+        BASE_URL + "/category/1075660/womens-perfume.html",
+        BASE_URL + "/category/1075750/mens-perfume.html",
     )
 
 
@@ -421,7 +412,7 @@ def _discover_from_categories(session, query, max_urls=80):
     return urls[:max_urls]
 
 
-def _sitemap_category_urls(session, query, max_sitemaps=48, max_urls=50):
+def _sitemap_category_urls(session, query, max_sitemaps=12, max_urls=30):
     """Discover dedicated Deloox category/Product-line pages from sitemaps."""
     query_tokens = tokens(query)
     if not query_tokens:
@@ -490,7 +481,7 @@ def _sitemap_category_urls(session, query, max_sitemaps=48, max_urls=50):
     return category_urls[:max_urls]
 
 
-def _sitemap_product_urls(session, query, max_sitemaps=48, max_urls=120):
+def _sitemap_product_urls(session, query, max_sitemaps=12, max_urls=80):
     query_tokens = tokens(query)
     if not query_tokens:
         return []
@@ -560,51 +551,22 @@ def _sitemap_product_urls(session, query, max_sitemaps=48, max_urls=120):
     return product_urls
 
 
-
-def _discover_from_broad_categories(session, query, max_urls=80, max_pages=12):
-    """Fallback for Deloox when the Product-line filter is not exposed.
-
-    Deloox's broad men's/women's fragrance pages are paginated.  A product can
-    therefore be present on a later page even when its dedicated Product-line
-    category is not discoverable from the first page.
-    """
-    urls = []
-    seen = set()
-
-    for base in _category_pages(session):
-        for page_no in range(1, max_pages + 1):
-            page_url = base if page_no == 1 else base + "?page=" + str(page_no)
-            try:
-                r = session.get(page_url, headers=HEADERS, timeout=TIMEOUT)
-            except requests.RequestException:
-                break
-
-            if r.status_code >= 400:
-                break
-
-            page_urls = _candidate_product_urls(r.text, query)
-            if not page_urls:
-                # Do not stop immediately: the page can legitimately contain
-                # no matching card while later pages still do.
-                continue
-
-            for product_url in page_urls:
-                if product_url not in seen:
-                    seen.add(product_url)
-                    urls.append(product_url)
-                    if len(urls) >= max_urls:
-                        return urls[:max_urls]
-
-    return urls[:max_urls]
-
-
 def _discover(session, q):
     urls = []
     seen = set()
 
-    # PRIMARY: query-aware Deloox product-line/category seeds.
-    # Check these first so a specific product line is not buried behind
-    # broad category, pagination and sitemap requests.
+    # PRIMARY: current Deloox category/Product-line structure.
+    for url in _discover_from_categories(session, q, max_urls=80):
+        if url not in seen:
+            seen.add(url)
+            urls.append(url)
+        if len(urls) >= 80:
+            return urls[:80]
+
+    # SECONDARY: targeted Deloox category seeds.
+    # Some dedicated Product-line pages are real and indexed by Deloox but
+    # are not exposed by the sitemap endpoints we can reach from the scraper.
+    # Check those exact category pages before relying on sitemap discovery.
     for category_url in _targeted_category_seed_urls(q):
         try:
             page = session.get(
@@ -620,30 +582,14 @@ def _discover(session, q):
             if product_url not in seen:
                 seen.add(product_url)
                 urls.append(product_url)
-            if len(urls) >= 80:
-                return urls[:80]
+                if len(urls) >= 80:
+                    return urls[:80]
 
-    # SECONDARY: current Deloox category/Product-line structure.
-    for product_url in _discover_from_categories(session, q, max_urls=80):
-        if product_url not in seen:
-            seen.add(product_url)
-            urls.append(product_url)
-        if len(urls) >= 80:
-            return urls[:80]
-
-    # TERTIARY: broad category pagination fallback.
-    for product_url in _discover_from_broad_categories(
-        session, q, max_urls=80, max_pages=12
-    ):
-        if product_url not in seen:
-            seen.add(product_url)
-            urls.append(product_url)
-        if len(urls) >= 80:
-            return urls[:80]
-
-    # QUATERNARY: dedicated Product-line category pages from sitemap.
+    # TERTIARY: dedicated Product-line category pages discovered from sitemap.
+    # This is important for other product lines whose category URLs are
+    # exposed in Deloox's sitemap.
     for category_url in _sitemap_category_urls(
-        session, q, max_sitemaps=48, max_urls=50
+        session, q, max_sitemaps=12, max_urls=30
     ):
         try:
             page = session.get(
@@ -659,10 +605,10 @@ def _discover(session, q):
             if product_url not in seen:
                 seen.add(product_url)
                 urls.append(product_url)
-            if len(urls) >= 80:
-                return urls[:80]
+                if len(urls) >= 80:
+                    return urls[:80]
 
-    # QUINARY: legacy/current search endpoints, retained as fallback.
+    # QUATERNARY: legacy/current search endpoints, retained as fallback.
     endpoints = [
         BASE_URL + "/en/search?query=" + quote_plus(q),
         BASE_URL + "/en/search?search=" + quote_plus(q),
@@ -690,7 +636,7 @@ def _discover(session, q):
     # LAST RESORT: direct product sitemap discovery.
     if not urls:
         for url in _sitemap_product_urls(
-            session, q, max_sitemaps=48, max_urls=120
+            session, q, max_sitemaps=12, max_urls=80
         ):
             if url not in seen:
                 seen.add(url)
@@ -700,69 +646,6 @@ def _discover(session, q):
 
     return urls[:80]
 
-
-def diagnose_targeted_category(query="Liquid Brun"):
-    import time
-    q = norm(query)
-    report = {"query": query, "steps": []}
-    started_all = time.perf_counter()
-    session = requests.Session()
-    try:
-        seeds = _targeted_category_seed_urls(q)
-        report["targeted_urls"] = seeds
-        for seed in seeds:
-            t0 = time.perf_counter()
-            try:
-                r = session.get(seed, headers=HEADERS, timeout=10)
-                item = {
-                    "url": seed,
-                    "seconds": round(time.perf_counter() - t0, 3),
-                    "status": r.status_code,
-                    "bytes": len(r.content),
-                }
-                if r.status_code < 400:
-                    candidates = _candidate_product_urls(r.text, q)
-                    item["candidate_count"] = len(candidates)
-                    item["candidate_urls"] = candidates[:20]
-
-                    previews = []
-                    for u in candidates[:5]:
-                        pt = time.perf_counter()
-                        try:
-                            pr = session.get(u, headers=HEADERS, timeout=10)
-                            preview = {
-                                "url": u,
-                                "seconds": round(time.perf_counter() - pt, 3),
-                                "status": pr.status_code,
-                                "bytes": len(pr.content),
-                            }
-                            if pr.status_code < 400:
-                                try:
-                                    p = _product(u, pr.text, q)
-                                    preview["parser_match"] = bool(p)
-                                    if p:
-                                        preview["name"] = p.get("name")
-                                        preview["brand"] = p.get("brand")
-                                except Exception as exc:
-                                    preview["parser_error"] = f"{type(exc).__name__}: {exc}"
-                            previews.append(preview)
-                        except Exception as exc:
-                            previews.append({
-                                "url": u,
-                                "error": f"{type(exc).__name__}: {exc}"
-                            })
-                    item["product_previews"] = previews
-                report["steps"].append(item)
-            except Exception as exc:
-                report["steps"].append({
-                    "url": seed,
-                    "seconds": round(time.perf_counter() - t0, 3),
-                    "error": f"{type(exc).__name__}: {exc}",
-                })
-        report["total_seconds"] = round(time.perf_counter() - started_all, 3)
-        return report
-    finally:
-        session.close()
 
 def search(query):
     query = clean(query)
