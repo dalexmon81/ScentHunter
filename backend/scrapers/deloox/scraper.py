@@ -556,7 +556,23 @@ def _category_product_line_links(html, query):
             )
         )
 
-        if not q_tokens.issubset(tokens(haystack)):
+        # The query can contain the brand plus a product line. Deloox
+        # often exposes the Product line filter without repeating the brand
+        # in its label. Require at least the product-name tokens here; the
+        # actual product page is still validated strictly by _product().
+        meaningful = [
+            t for t in q_tokens
+            if t not in {"for", "the", "and", "with", "de", "da", "del", "della", "du", "des", "di", "by", "e", "in", "of"}
+        ]
+        if not meaningful:
+            meaningful = list(q_tokens)
+
+        # A filter is acceptable when it contains most of the meaningful
+        # product tokens. This allows: Armaf + Club de Nuit Sillage ->
+        # Club De Nuit Sillage, while avoiding unrelated filters.
+        matched = sum(1 for token in meaningful if token in tokens(haystack))
+        required = len(meaningful) if len(meaningful) <= 2 else max(2, len(meaningful) - 1)
+        if matched < required:
             return
 
         if url in seen:
@@ -614,6 +630,113 @@ def _category_product_line_links(html, query):
     return links[:40]
 
 
+
+def _brand_category_links(html, query):
+    """
+    Discover the Deloox brand category page from the query.
+
+    This is the missing generic step in the test scraper:
+    Deloox's main fragrance category contains links such as Armaf,
+    Rasasi, Versace, etc. Their brand pages contain the Product line
+    filters and the actual product cards.
+
+    We only return brand links whose visible brand name overlaps the
+    query, so this does not crawl hundreds of unrelated brands.
+    """
+
+    soup = BeautifulSoup(html, "html.parser")
+    q_tokens = tokens(query)
+
+    if not q_tokens:
+        return []
+
+    found = []
+    seen = set()
+
+    ignored = {
+        "fragrances",
+        "mens fragrances",
+        "womens fragrances",
+        "all brands",
+        "men",
+        "women",
+        "unisex",
+        "new",
+        "gifts",
+        "trending",
+    }
+
+    for a in soup.find_all("a", href=True):
+        label = clean(a.get_text(" ", strip=True))
+        href = a.get("href")
+
+        if not label or not href:
+            continue
+
+        label_n = norm(label)
+
+        if label_n in ignored:
+            continue
+
+        # A brand may contain several words. We require at least one
+        # meaningful query token in the visible brand label.
+        overlap = [
+            token
+            for token in q_tokens
+            if token in tokens(label)
+        ]
+
+        if not overlap:
+            continue
+
+        url = urljoin(BASE_URL, href).split("#")[0]
+
+        try:
+            parsed = urlparse(url)
+        except Exception:
+            continue
+
+        if parsed.netloc.lower() not in {
+            "deloox.com",
+            "www.deloox.com",
+        }:
+            continue
+
+        path = parsed.path.lower()
+
+        # Brand category URLs currently look like:
+        # /category/1079036/armaf-fragrances.html
+        # /it/categoria/1080044/rasasi-profumi.html
+        if (
+            "/category/" not in path
+            and "/categoria/" not in path
+        ):
+            continue
+
+        if url in seen:
+            continue
+
+        seen.add(url)
+
+        found.append({
+            "url": url,
+            "brand": label,
+            "overlap": len(overlap),
+        })
+
+    found.sort(
+        key=lambda item: (
+            -item["overlap"],
+            len(item["brand"]),
+        )
+    )
+
+    return [
+        item["url"]
+        for item in found[:5]
+    ]
+
+
 def _category_pages():
     return (
         BASE_URL + "/category/1000054/mens-fragrances.html",
@@ -653,10 +776,66 @@ def _targeted_category_seed_urls(query):
 
 
 def _discover_from_categories(session, query, max_urls=80):
+    """
+    Generic Deloox category discovery.
+
+    Order:
+      1. Main men's/women's fragrance category.
+      2. Brand category pages whose brand name appears in the query.
+      3. Product-line filter pages exposed by those categories.
+      4. Product cards from the resulting pages.
+
+    The important part is that the scraper no longer depends on a
+    hard-coded perfume. Hawas/Eros remain deterministic test seeds,
+    while other products can be reached through their real Deloox
+    brand/product-line structure.
+    """
+
     urls = []
     seen = set()
+    visited_pages = set()
 
+    def collect(page_url, query_for_cards, filtered=False):
+        if page_url in visited_pages:
+            return False
+
+        visited_pages.add(page_url)
+
+        try:
+            page = session.get(
+                page_url,
+                headers=HEADERS,
+                timeout=TIMEOUT,
+            )
+        except requests.RequestException:
+            return False
+
+        if page.status_code >= 400:
+            return False
+
+        candidates = _candidate_product_urls(
+            page.text,
+            query_for_cards,
+            accept_all_products=filtered,
+        )
+
+        for product_url in candidates:
+            if product_url in seen:
+                continue
+
+            seen.add(product_url)
+            urls.append(product_url)
+
+            if len(urls) >= max_urls:
+                return True
+
+        return False
+
+    # First inspect the broad fragrance roots.
     for category_url in _category_pages():
+        if category_url in visited_pages:
+            continue
+
         try:
             r = session.get(
                 category_url,
@@ -669,55 +848,89 @@ def _discover_from_categories(session, query, max_urls=80):
         if r.status_code >= 400:
             continue
 
-        # MAIN CATEGORY FIRST
-        candidate_pages = [(category_url, False)]
+        visited_pages.add(category_url)
 
-        # THEN matching Product Line pages
-        for product_line_url in _category_product_line_links(
+        # -----------------------------------------------------
+        # A. BRAND DISCOVERY
+        # -----------------------------------------------------
+        #
+        # Example:
+        # "Armaf Club de Nuit Sillage"
+        # -> Armaf brand page
+        # -> Club de Nuit Sillage product-line filter
+        # -> product page
+        #
+        brand_pages = _brand_category_links(
             r.text,
             query,
-        ):
-            if product_line_url == category_url:
-                continue
+        )
 
-            if any(
-                product_line_url == existing
-                for existing, _ in candidate_pages
-            ):
-                continue
-
-            candidate_pages.append(
-                (product_line_url, True)
-            )
-
-        for page_url, filtered in candidate_pages:
+        for brand_url in brand_pages:
             try:
-                page = session.get(
-                    page_url,
+                brand_page = session.get(
+                    brand_url,
                     headers=HEADERS,
                     timeout=TIMEOUT,
                 )
             except requests.RequestException:
                 continue
 
-            if page.status_code >= 400:
+            if brand_page.status_code >= 400:
                 continue
 
-            candidates = _candidate_product_urls(
-                page.text,
+            visited_pages.add(brand_url)
+
+            # First try the exact Product-line filters.
+            filter_urls = _category_product_line_links(
+                brand_page.text,
                 query,
-                accept_all_products=filtered,
             )
 
-            for product_url in candidates:
-                if product_url in seen:
-                    continue
-
-                seen.add(product_url)
-                urls.append(product_url)
-
-                if len(urls) >= max_urls:
+            for filter_url in filter_urls[:10]:
+                if collect(
+                    filter_url,
+                    query,
+                    filtered=True,
+                ):
                     return urls[:max_urls]
+
+            # If no exact filter was found, inspect the brand page
+            # itself. _product() will perform the final strict check.
+            if collect(
+                brand_url,
+                query,
+                filtered=True,
+            ):
+                return urls[:max_urls]
+
+            if len(urls) >= max_urls:
+                return urls[:max_urls]
+
+        # -----------------------------------------------------
+        # B. MAIN CATEGORY PRODUCT-LINE FILTERS
+        # -----------------------------------------------------
+        filter_urls = _category_product_line_links(
+            r.text,
+            query,
+        )
+
+        for filter_url in filter_urls[:10]:
+            if collect(
+                filter_url,
+                query,
+                filtered=True,
+            ):
+                return urls[:max_urls]
+
+        # -----------------------------------------------------
+        # C. CURRENT PAGE PRODUCT CARDS
+        # -----------------------------------------------------
+        if collect(
+            category_url,
+            query,
+            filtered=False,
+        ):
+            return urls[:max_urls]
 
     return urls[:max_urls]
 
@@ -912,42 +1125,50 @@ def _sitemap_product_urls(
 
 
 def _discover(session, query):
-    """Fast, bounded discovery.
+    """Fast bounded discovery with deterministic seeds plus generic Deloox navigation."""
 
-    The previous version could collect up to 80 candidates and then search
-    them sequentially. With a 10-second request timeout that can make one
-    query take many minutes. For the normal search path we therefore:
-      1. try deterministic exact seeds;
-      2. use category discovery with a small candidate budget;
-      3. use search/sitemap only as short fallbacks.
-    """
     urls = []
     seen = set()
 
     def add(url):
-        if url and url not in seen and len(urls) < 12:
+        if (
+            url
+            and url not in seen
+            and len(urls) < 16
+        ):
             seen.add(url)
             urls.append(url)
 
-    # 1. Deterministic exact product seeds for known test cases.
     q = norm(query)
+
+    # ---------------------------------------------------------
+    # 1. Known test seeds
+    # ---------------------------------------------------------
+    #
+    # These are NOT the scraper strategy. They simply preserve the
+    # already-working Hawas/Eros regression tests.
     for url in DIRECT_PRODUCT_SEEDS.get(q, []):
         add(url)
 
     if urls:
         return urls
 
-    # 2. Categories, but never collect dozens of candidates.
+    # ---------------------------------------------------------
+    # 2. GENERIC CATEGORY -> BRAND -> PRODUCT LINE
+    # ---------------------------------------------------------
     for url in _discover_from_categories(
         session,
         query,
-        max_urls=12,
+        max_urls=16,
     ):
         add(url)
-        if len(urls) >= 12:
+
+        if len(urls) >= 16:
             return urls
 
-    # 3. Targeted category seeds.
+    # ---------------------------------------------------------
+    # 3. Targeted category seeds
+    # ---------------------------------------------------------
     for category_url in _targeted_category_seed_urls(query):
         try:
             page = session.get(
@@ -967,29 +1188,28 @@ def _discover(session, query):
             accept_all_products=True,
         ):
             add(product_url)
-            if len(urls) >= 12:
+
+            if len(urls) >= 16:
                 return urls
 
-    # 4. Product sitemap fallback.
-    #
-    # Deloox's /en/search endpoints can return 404. The product sitemap is
-    # therefore a more useful fallback for product lines whose category page
-    # does not expose a matching filter. _sitemap_product_urls() already
-    # matches all meaningful query tokens against the product URL.
+    # ---------------------------------------------------------
+    # 4. Sitemap fallback
+    # ---------------------------------------------------------
     for product_url in _sitemap_product_urls(
         session,
         query,
         max_sitemaps=8,
-        max_urls=12,
+        max_urls=16,
     ):
         add(product_url)
-        if len(urls) >= 12:
+
+        if len(urls) >= 16:
             return urls
 
-    # 5. Search fallback: keep it bounded and last.
-    discovery_queries = _candidate_queries(query)[:2]
-
-    for discovery_query in discovery_queries:
+    # ---------------------------------------------------------
+    # 5. Search endpoint fallback
+    # ---------------------------------------------------------
+    for discovery_query in _candidate_queries(query)[:2]:
         endpoint = (
             BASE_URL
             + "/en/search?query="
@@ -1014,10 +1234,11 @@ def _discover(session, query):
             discovery_query=discovery_query,
         ):
             add(product_url)
-            if len(urls) >= 12:
+
+            if len(urls) >= 16:
                 return urls
 
-    return urls[:12]
+    return urls[:16]
 
 
 def diagnose_search(session, query):
