@@ -816,17 +816,7 @@ def _sitemap_product_urls(session, query, max_sitemaps=12, max_urls=80):
 
 
 def _discover(session, q):
-    """Discover Deloox product URLs without allowing dead search routes to block.
-
-    Order is deliberate:
-    1) proven query-specific category seeds;
-    2) matching Product Line links from broad categories;
-    3) catalogue/sitemap fallbacks;
-    4) search routes last, with a short discovery timeout.
-
-    Deloox search endpoints have recently been capable of hanging for many
-    seconds from Railway. They must never be the first or only discovery path.
-    """
+    """Discover Deloox product URLs using only generic catalogue/category paths."""
     urls = []
     seen = set()
 
@@ -839,39 +829,24 @@ def _discover(session, q):
                     return True
         return False
 
-    # 1) BROAD CATEGORY / PRODUCT LINE DISCOVERY.
-    category_candidates = _discover_from_categories(
-        session, q, max_urls=80
-    )
+    category_candidates = _discover_from_categories(session, q, max_urls=80)
     if category_candidates:
         add_many(category_candidates)
         return urls[:80]
 
-    # 2) GENERIC CATALOGUE FILTER.
     catalog_category = _find_catalog_filter_url(session, q)
     if catalog_category:
         try:
-            page = session.get(
-                catalog_category,
-                headers=HEADERS,
-                timeout=DISCOVERY_TIMEOUT,
-            )
+            page = session.get(catalog_category, headers=HEADERS, timeout=DISCOVERY_TIMEOUT)
         except requests.RequestException:
             page = None
         if page is not None and page.status_code < 400:
             if add_many(_candidate_product_urls(page.text, q)):
                 return urls[:80]
 
-    # 3) SITEMAP CATEGORY FALLBACK. Keep this bounded.
-    for category_url in _sitemap_category_urls(
-        session, q, max_sitemaps=4, max_urls=12
-    ):
+    for category_url in _sitemap_category_urls(session, q, max_sitemaps=4, max_urls=12):
         try:
-            page = session.get(
-                category_url,
-                headers=HEADERS,
-                timeout=DISCOVERY_TIMEOUT,
-            )
+            page = session.get(category_url, headers=HEADERS, timeout=DISCOVERY_TIMEOUT)
         except requests.RequestException:
             continue
         if page.status_code >= 400:
@@ -879,19 +854,13 @@ def _discover(session, q):
         if add_many(_candidate_product_urls(page.text, q)):
             return urls[:80]
 
-    # 4) SEARCH LAST. Only two modern routes are attempted and each has a short
-    # timeout so a dead Deloox search service cannot consume the whole request.
     endpoints = [
         BASE_URL + "/en/search?q=" + quote_plus(q),
         BASE_URL + "/en/search?query=" + quote_plus(q),
     ]
     for endpoint in endpoints:
         try:
-            r = session.get(
-                endpoint,
-                headers=HEADERS,
-                timeout=DISCOVERY_TIMEOUT,
-            )
+            r = session.get(endpoint, headers=HEADERS, timeout=DISCOVERY_TIMEOUT)
         except requests.RequestException:
             continue
         if r.status_code >= 400:
@@ -899,60 +868,118 @@ def _discover(session, q):
         if add_many(_candidate_product_urls(r.text, q)):
             return urls[:80]
 
-    # 5) LAST RESORT: product sitemap, still bounded.
-    sitemap_candidates = _sitemap_product_urls(
-        session, q, max_sitemaps=4, max_urls=40
-    )
+    sitemap_candidates = _sitemap_product_urls(session, q, max_sitemaps=4, max_urls=40)
     if sitemap_candidates:
         add_many(sitemap_candidates)
 
     return urls[:80]
 
 
-def diagnostic_discovery(query):
-    session = requests.Session()
-    out = {"query": query, "stages": []}
+def _diagnostic_get(session, url, stage, out):
+    t0 = time.monotonic()
     try:
-        catalog_t0 = time.monotonic()
-        try:
-            catalog_links = _catalog_filter_links(session)
-            catalog_error = None
-        except Exception as exc:
-            catalog_links = []
-            catalog_error = f"{type(exc).__name__}: {exc}"
-        out["catalog_discovery"] = {
-            "url": CATALOG_URL,
-            "seconds": round(time.monotonic() - catalog_t0, 3),
-            "link_count": len(catalog_links),
-            "matching_url": _find_catalog_filter_url(session, query) if not catalog_error else None,
-            "error": catalog_error,
-        }
+        r = session.get(url, headers=HEADERS, timeout=DISCOVERY_TIMEOUT)
+    except requests.RequestException as exc:
+        out.append({"stage": stage, "url": url, "error": type(exc).__name__ + ":" + str(exc)})
+        return None
+    out.append({"stage": stage, "url": url, "status": r.status_code,
+                "seconds": round(time.monotonic() - t0, 3), "bytes": len(r.text)})
+    return r if r.status_code < 400 else None
 
-        roots = list(_category_pages(session))
-        out["category_roots"] = roots
-        for root in roots:
-            t0 = time.monotonic()
-            try:
-                r = session.get(root, headers=HEADERS, timeout=3)
-            except requests.RequestException as exc:
-                out["stages"].append({"stage":"category","url":root,"error":type(exc).__name__+":"+str(exc)})
+
+def _diagnostic_product(session, url, query, out):
+    entry = {"stage": "product", "url": url}
+    try:
+        r = session.get(url, headers=HEADERS, timeout=TIMEOUT)
+    except requests.RequestException as exc:
+        entry["error"] = type(exc).__name__ + ":" + str(exc)
+        out.append(entry)
+        return None
+    entry["status"] = r.status_code
+    if r.status_code >= 400:
+        entry["result"] = "HTTP_REJECTED"
+        out.append(entry)
+        return None
+    soup = BeautifulSoup(r.text, "html.parser")
+    data = _jsonld(soup)
+    h1 = soup.find("h1")
+    h1_name = clean(h1.get_text(" ", strip=True)) if h1 else ""
+    name = h1_name or clean(data.get("name"))
+    entry["h1"] = h1_name
+    entry["structured_name"] = clean(data.get("name")) if isinstance(data, dict) else ""
+    entry["matches_query"] = bool(name and matches(name, query))
+    offers = data.get("offers") if isinstance(data, dict) else None
+    offers = offers if isinstance(offers, list) else [offers]
+    offer = next((x for x in offers if isinstance(x, dict)), {})
+    price = parse_price(offer.get("price"))
+    if price is None:
+        price = parse_price(soup.get_text(" ", strip=True))
+    entry["price"] = price
+    entry["sku"] = clean(data.get("sku") or "") if isinstance(data, dict) else ""
+    if not name:
+        entry["result"] = "REJECTED_NO_NAME"
+    elif not matches(name, query):
+        entry["result"] = "REJECTED_NAME_MISMATCH"
+    elif price is None:
+        entry["result"] = "REJECTED_NO_PRICE"
+    else:
+        item = _product(url, r.text, query)
+        entry["result"] = "ACCEPTED" if item else "REJECTED_PRODUCT_VALIDATION"
+    out.append(entry)
+    return entry.get("result") == "ACCEPTED"
+
+
+def diagnostic_discovery(query):
+    """Trace every generic Deloox discovery layer and product rejection reason."""
+    session = requests.Session()
+    out = {"query": query, "generic_only": True, "stages": []}
+    try:
+        for root in _category_pages(session):
+            r = _diagnostic_get(session, root, "category_root", out["stages"])
+            if r is None:
                 continue
-            elapsed = round(time.monotonic()-t0,3)
-            out["stages"].append({"stage":"category","url":root,"status":r.status_code,"seconds":elapsed,"bytes":len(r.text)})
-            if r.status_code >= 400:
-                continue
+            direct = _candidate_product_urls(r.text, query)
+            out["stages"].append({"stage": "direct_candidates", "source": root, "count": len(direct), "urls": direct[:20]})
             links = _category_product_line_links(r.text, query)
-            out["stages"].append({"stage":"product_line_links","source":root,"count":len(links),"links":links[:10]})
-            for link in links[:3]:
-                t1=time.monotonic()
-                try:
-                    pr=session.get(link,headers=HEADERS,timeout=3)
-                except requests.RequestException as exc:
-                    out["stages"].append({"stage":"product_line_page","url":link,"error":type(exc).__name__+":"+str(exc)})
+            out["stages"].append({"stage": "matching_category_links", "source": root, "count": len(links), "links": links[:20]})
+            for link in links[:10]:
+                page = _diagnostic_get(session, link, "product_line_page", out["stages"])
+                if page is None:
                     continue
-                e1=round(time.monotonic()-t1,3)
-                urls=_candidate_product_urls(pr.text,query) if pr.status_code<400 else []
-                out["stages"].append({"stage":"product_line_page","url":link,"status":pr.status_code,"seconds":e1,"bytes":len(pr.text),"product_urls":len(urls),"sample":urls[:5]})
+                urls = _candidate_product_urls(page.text, query)
+                out["stages"].append({"stage": "candidate_urls", "source": link, "count": len(urls), "urls": urls[:20]})
+                for url in urls[:20]:
+                    _diagnostic_product(session, url, query, out["stages"])
+
+        catalog = _find_catalog_filter_url(session, query)
+        out["stages"].append({"stage": "catalog_match", "url": catalog})
+        if catalog:
+            page = _diagnostic_get(session, catalog, "catalog_page", out["stages"])
+            if page is not None:
+                urls = _candidate_product_urls(page.text, query)
+                out["stages"].append({"stage": "catalog_candidates", "count": len(urls), "urls": urls[:20]})
+                for url in urls[:20]:
+                    _diagnostic_product(session, url, query, out["stages"])
+
+        sitemap_categories = _sitemap_category_urls(session, query, max_sitemaps=4, max_urls=12)
+        out["stages"].append({"stage": "sitemap_categories", "count": len(sitemap_categories), "urls": sitemap_categories[:20]})
+        for category in sitemap_categories[:12]:
+            page = _diagnostic_get(session, category, "sitemap_category_page", out["stages"])
+            if page is None:
+                continue
+            urls = _candidate_product_urls(page.text, query)
+            out["stages"].append({"stage": "sitemap_candidates", "source": category, "count": len(urls), "urls": urls[:20]})
+            for url in urls[:20]:
+                _diagnostic_product(session, url, query, out["stages"])
+
+        for endpoint in (BASE_URL + "/en/search?q=" + quote_plus(query), BASE_URL + "/en/search?query=" + quote_plus(query)):
+            page = _diagnostic_get(session, endpoint, "search_endpoint", out["stages"])
+            if page is None:
+                continue
+            urls = _candidate_product_urls(page.text, query)
+            out["stages"].append({"stage": "search_candidates", "source": endpoint, "count": len(urls), "urls": urls[:20]})
+            for url in urls[:20]:
+                _diagnostic_product(session, url, query, out["stages"])
         return out
     finally:
         session.close()
