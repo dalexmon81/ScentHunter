@@ -691,14 +691,14 @@ def test_store(store: str, q: str):
 @app.get("/diagnose-deloox-http")
 def diagnose_deloox_http(q: str):
     """
-    Diagnostica esclusivamente la prima richiesta HTTP verso Deloox.
-    NON chiama lo scraper, categorie, sitemap o pagine prodotto.
+    Diagnostica esclusivamente una singola richiesta HTTP alla categoria Liquid Brun di Deloox.
+    NON chiama lo scraper, ricerca interna, sitemap o pagine prodotto.
     """
     query = str(q or "").strip()
     if not query:
         raise HTTPException(status_code=400, detail="Parametro q mancante")
 
-    url = "https://www.deloox.com/en/search?query=" + urlencode({"": query})[1:]
+    url = "https://www.deloox.com/en/category/1132834/liquid-brun.html"
     headers = {
         "User-Agent": (
             "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
