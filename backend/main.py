@@ -1075,3 +1075,53 @@ def test_deloox_diagnostic(q: str):
     except Exception as error:
         traceback.print_exc()
         return {"query": query, "error": f"{type(error).__name__}: {error}"}
+
+
+@app.get("/test-deloox-step1")
+def test_deloox_step1(q: str = "Liquid Brun"):
+    """One-request Deloox diagnostic. Deliberately does NOT load the scraper."""
+    import time as _time
+    import requests as _requests
+
+    query = str(q or "").strip()
+    url = "https://www.deloox.com/category/1075750/mens-perfume.html"
+    started = _time.perf_counter()
+
+    try:
+        r = _requests.get(
+            url,
+            headers={
+                "User-Agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) "
+                              "AppleWebKit/605.1.15 Version/17.0 Mobile/15E148 Safari/604.1",
+                "Accept-Language": "en-GB,en;q=0.9",
+            },
+            timeout=8,
+        )
+        elapsed = round(_time.perf_counter() - started, 3)
+        body = r.text or ""
+        q_norm = re.sub(r"[^a-z0-9]+", " ", query.lower()).strip()
+        body_norm = re.sub(r"[^a-z0-9]+", " ", body.lower())
+        tokens = [x for x in q_norm.split() if len(x) > 1]
+
+        return {
+            "step": 1,
+            "query": query,
+            "url": url,
+            "seconds": elapsed,
+            "status": r.status_code,
+            "bytes": len(r.content),
+            "query_tokens_seen": {
+                token: token in body_norm for token in tokens
+            },
+            "message": "ONE REQUEST ONLY — no scraper, no pagination, no sitemap, no product validation",
+        }
+    except Exception as error:
+        return {
+            "step": 1,
+            "query": query,
+            "url": url,
+            "seconds": round(_time.perf_counter() - started, 3),
+            "error": f"{type(error).__name__}: {error}",
+            "message": "ONE REQUEST ONLY — failure occurred before any scraper logic",
+        }
+
