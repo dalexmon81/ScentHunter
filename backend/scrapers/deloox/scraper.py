@@ -399,16 +399,15 @@ def _candidate_product_urls(
 
         haystack = f"{context} {url}"
 
+        # Require ALL query tokens during normal discovery.
+        # This prevents generic words such as "for" from admitting
+        # unrelated products like "Narciso Rodriguez For Her".
         if (
             not accept_all_products
             and q_tokens
-            and not matches(haystack, discovery)
+            and not q_tokens.issubset(tokens(haystack))
         ):
-            if not any(
-                token in tokens(haystack)
-                for token in q_tokens
-            ):
-                return
+            return
 
         seen.add(url)
         found.append(url)
