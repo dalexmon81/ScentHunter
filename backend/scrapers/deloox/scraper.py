@@ -410,9 +410,12 @@ def _category_product_line_links(html, query):
 
 
 def _category_pages(session):
-    # Broad Deloox entry points. Pagination and Product Line links are followed
-    # so a family is not limited to the first visible result.
+    # Broad Deloox entry points.
+    # The current men's-fragrances root is important because Deloox exposes
+    # many men's Product Line links there (including Liquid Brun).
+    # Keep the older roots as fallbacks.
     return (
+        BASE_URL + "/category/1000054/mens-fragrances.html",
         BASE_URL + "/category/1075639/womens-fragrances.html",
         BASE_URL + "/category/1075660/womens-perfume.html",
         BASE_URL + "/category/1075750/mens-perfume.html",
