@@ -290,11 +290,55 @@ def _product(url, html, query):
     }
 
 
-def _candidate_product_urls(html, query):
-    """Extract Deloox product URLs from anchors, JSON and JS."""
+def _candidate_queries(query):
+    """Build a small set of generic Deloox search queries.
+
+    The original query is always first. Broadening is only used for discovery;
+    the final product name is still validated by _product(), so this does not
+    whitelist any specific perfume or brand.
+    """
+    q = clean(query)
+    if not q:
+        return []
+
+    variants = [q]
+
+    parts = q.split()
+    # Generic fallback: remove common concentration/size words only.
+    removable = {
+        "parfum", "perfume", "eau", "de", "toilette", "toilette",
+        "edt", "edp", "extrait", "extract"
+    }
+    broad = " ".join(p for p in parts if p.lower() not in removable).strip()
+    if broad and broad.lower() != q.lower():
+        variants.append(broad)
+
+    out = []
+    seen = set()
+    for item in variants:
+        key = norm(item)
+        if key and key not in seen:
+            seen.add(key)
+            out.append(item)
+    return out
+
+
+def _candidate_product_urls(
+    html,
+    query,
+    discovery_query=None,
+    accept_all_products=False,
+):
+    """Extract Deloox product URLs from anchors, JSON and JS.
+
+    Discovery may use a broader query, but final matching is performed by
+    _product() against the original query. Therefore this function never
+    creates a product result by itself.
+    """
     soup = BeautifulSoup(html, "html.parser")
     found = []
     seen = set()
+    discovery_query = clean(discovery_query or query)
 
     def add(raw_url, context=""):
         if not raw_url:
@@ -320,13 +364,15 @@ def _candidate_product_urls(html, query):
         if url in seen:
             return
 
-        # Search/category pages often put the product title in nearby text.
-        # Accept the URL if either the URL slug or surrounding card text
-        # contains the query tokens.
-        haystack = f"{context} {url}"
-        if matches(haystack, query):
-            seen.add(url)
-            found.append(url)
+        # During search discovery we want candidate URLs, not final matches.
+        # _product() performs the authoritative product-name validation later.
+        if not accept_all_products:
+            haystack = f"{context} {url}"
+            if not matches(haystack, query):
+                return
+
+        seen.add(url)
+        found.append(url)
 
     for a in soup.find_all("a", href=True):
         add(a.get("href"), a.get_text(" ", strip=True))
@@ -335,11 +381,13 @@ def _candidate_product_urls(html, query):
         r'https?://(?:www\.)?deloox\.com/[^"\'>\s]+/product/[^"\'>\s]+',
         r'["\']((?:/)?(?:en/)?product/[^"\']+)["\']',
     ]
+
     for pattern in patterns:
         for raw in re.findall(pattern, html, re.I):
             add(raw)
 
     return found
+
 
 
 def _category_product_line_links(html, query):
