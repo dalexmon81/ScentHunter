@@ -4,7 +4,7 @@ Design borrowed from the working ParfumZentrum / Orioudh / Bplatz scrapers:
     query variants -> candidate URL discovery -> strict product validation
     -> structured product extraction -> deduplication.
 
-Important: there are NO product-name exceptions (for example Liquid Brun).
+Important: there are NO product-name exceptions.
 """
 from __future__ import annotations
 
@@ -21,9 +21,9 @@ BASE_URL = "https://www.deloox.com"
 TIMEOUT = 12
 HEADERS = {
     "User-Agent": (
-        "Mozilla/5.0 (X11; Linux x86_64) "
-        "AppleWebKit/537.36 (KHTML, like Gecko) "
-        "Chrome/131.0.0.0 Safari/537.36"
+        "Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) "
+        "AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.0 "
+        "Mobile/15E148 Safari/604.1"
     ),
     "Accept-Language": "en-GB,en;q=0.9,it;q=0.8",
     "Accept": "text/html,application/xhtml+xml,application/json;q=0.9,*/*;q=0.8",
@@ -109,7 +109,7 @@ def candidate_queries(query: str):
         if len(token) >= 3:
             add(token)
 
-    # Also try adjacent pairs for names such as "French Avenue Liquid Brun".
+    # Also try adjacent pairs for multi-word product names.
     for a, b in combinations(tokens, 2):
         if len(a) >= 3 and len(b) >= 3:
             add(f"{a} {b}")
@@ -133,32 +133,41 @@ def _absolute_product_url(raw_url: str):
 
 
 def _extract_product_urls(html: str, query: str):
-    """Collect Deloox product URLs broadly; _extract_product() validates names."""
+    """Extract candidate product URLs without requiring an exact slug match."""
     soup = BeautifulSoup(html or "", "html.parser")
-    found = []
+    candidates = []
     seen = set()
+    wanted = query_tokens(query)
 
-    def add(raw_url):
+    def add(raw_url, context=""):
         url = _absolute_product_url(raw_url)
         if not url or url in seen:
             return
+        # Discovery score only. Do not reject a product just because its URL
+        # is opaque; the product page itself is the authority.
+        score_text = norm(f"{context} {url}")
+        score = sum(1 for token in wanted if token in score_text)
+        if score == 0:
+            # Keep a small number of opaque candidates from a search result.
+            # They will be strictly rejected later if the name is wrong.
+            return
         seen.add(url)
-        found.append(url)
+        candidates.append((score, url))
 
     for a in soup.find_all("a", href=True):
-        add(a.get("href"))
+        add(a.get("href"), a.get_text(" ", strip=True))
 
-    raw = (html or "").replace("\\\\/", "/")
+    raw = (html or "").replace("\\/", "/")
     patterns = [
         r'https?://(?:www\.)?deloox\.com/[^"\'<>\s]+/product/[^"\'<>\s]+',
         r'["\']((?:/)?(?:[a-z]{2}/)?product/[^"\']+)["\']',
-        r'["\']((?:https?:)?//(?:www\.)?deloox\.com/[^"\']*/product/[^"\']+)["\']',
     ]
     for pattern in patterns:
         for raw_url in re.findall(pattern, raw, re.I):
             add(raw_url)
 
-    return found[:150]
+    candidates.sort(key=lambda x: (-x[0], len(x[1])))
+    return [url for _, url in candidates]
 
 
 def _discover_from_search(session: requests.Session, query: str, max_urls=80):
@@ -258,61 +267,14 @@ def _discover_search_form(session: requests.Session, query: str, max_urls=50):
 
 
 def _category_seed_pages():
-    # Broad current Deloox fragrance roots.
-    # No product-specific seeds or perfume-name exceptions.
+    # Generic category entry points only. No product-specific exceptions.
     return (
-        BASE_URL + "/category/1000054/mens-fragrances.html",
-        BASE_URL + "/category/1075639/womens-fragrances.html",
-        BASE_URL + "/category/1075750/mens-perfume.html",
         BASE_URL + "/category/1075660/womens-perfume.html",
+        BASE_URL + "/category/1075750/mens-perfume.html",
     )
 
 
-def _category_links(html: str, query: str, max_links=80):
-    """Return relevant Deloox category/filter links without product exceptions."""
-    soup = BeautifulSoup(html or "", "html.parser")
-    wanted = query_tokens(query)
-    ranked = []
-    seen = set()
-
-    def add(raw_url, label="", context=""):
-        if not raw_url:
-            return
-        url = urljoin(BASE_URL, clean(raw_url).replace("\\\\/", "/")).split("#")[0]
-        parsed = urlparse(url)
-        if parsed.netloc.lower() not in {"deloox.com", "www.deloox.com"}:
-            return
-        if "/category/" not in parsed.path.lower() and "filter" not in parsed.query.lower():
-            return
-        if url in seen:
-            return
-        hay = norm(f"{label} {context} {parsed.path} {parsed.query}")
-        score = sum(1 for token in wanted if token in hay)
-        if score <= 0:
-            return
-        seen.add(url)
-        ranked.append((score, url))
-
-    for a in soup.find_all("a", href=True):
-        label = a.get_text(" ", strip=True)
-        add(a.get("href"), label, label)
-
-    raw = (html or "").replace("\\\\/","/")
-    for m in re.finditer(
-        r'(?:https?:)?//(?:www\.)?deloox\.com[^"\'<>\s]+|'
-        r'/(?:en/|it/|nl/)?category/[^"\'<>\s]+',
-        raw,
-        re.I,
-    ):
-        context = raw[max(0, m.start()-1500):min(len(raw), m.end()+1500)]
-        add(m.group(0), context, context)
-
-    ranked.sort(key=lambda x: (-x[0], len(x[1])))
-    return [u for _, u in ranked[:max_links]]
-
-
-def _discover_from_categories(session: requests.Session, query: str, max_urls=80):
-    """Category-first discovery. Search endpoints are only a later fallback."""
+def _discover_from_categories(session: requests.Session, query: str, max_urls=60):
     urls = []
     seen = set()
 
@@ -324,35 +286,60 @@ def _discover_from_categories(session: requests.Session, query: str, max_urls=80
         if r.status_code >= 400:
             continue
 
-        # Current page cards.
+        # First use product cards already present on the category page.
         for url in _extract_product_urls(r.text, query):
             if url not in seen:
                 seen.add(url)
                 urls.append(url)
                 if len(urls) >= max_urls:
-                    return urls[:max_urls]
+                    return urls
 
-        # Query-relevant category/product-line pages.
-        for page_url in _category_links(r.text, query, max_links=40):
+        # Then inspect category/product-line links and follow only relevant ones.
+        soup = BeautifulSoup(r.text or "", "html.parser")
+        links = []
+        link_seen = set()
+        wanted = query_tokens(query)
+
+        for a in soup.find_all("a", href=True):
+            href = urljoin(category_url, a.get("href", ""))
+            parsed = urlparse(href)
+            if parsed.netloc.lower() not in {"deloox.com", "www.deloox.com"}:
+                continue
+            if "/category/" not in parsed.path.lower():
+                continue
+            label = a.get_text(" ", strip=True)
+            score_text = norm(f"{label} {href}")
+            score = sum(1 for token in wanted if token in score_text)
+            if score <= 0 or href in link_seen:
+                continue
+            link_seen.add(href)
+            links.append((score, href))
+
+        links.sort(key=lambda x: (-x[0], len(x[1])))
+        for _, page_url in links[:12]:
             try:
                 page = session.get(page_url, headers=HEADERS, timeout=TIMEOUT)
             except requests.RequestException:
                 continue
             if page.status_code >= 400:
                 continue
-
             for url in _extract_product_urls(page.text, query):
                 if url not in seen:
                     seen.add(url)
                     urls.append(url)
                     if len(urls) >= max_urls:
-                        return urls[:max_urls]
+                        return urls
 
-    return urls[:max_urls]
+    return urls
 
 
-def _sitemap_category_urls(session: requests.Session, query: str, max_sitemaps=20, max_urls=80):
-    """Find category pages whose slug matches at least one query token."""
+def _sitemap_category_urls(session: requests.Session, query: str, max_sitemaps=20, max_urls=40):
+    """Discover query-relevant Deloox category/product-line pages from sitemaps.
+
+    This is completely generic: no perfume name, brand or product URL is
+    hard-coded.  A category is considered relevant when at least one
+    meaningful query token occurs in its slug.
+    """
     wanted = query_tokens(query)
     if not wanted:
         return []
@@ -363,6 +350,7 @@ def _sitemap_category_urls(session: requests.Session, query: str, max_sitemaps=2
         BASE_URL + "/sitemap-index.xml",
         BASE_URL + "/en/sitemap.xml",
     )
+
     pending = list(roots)
     seen_maps = set()
     found = []
@@ -375,9 +363,14 @@ def _sitemap_category_urls(session: requests.Session, query: str, max_sitemaps=2
         seen_maps.add(sitemap_url)
 
         try:
-            r = session.get(sitemap_url, headers=HEADERS, timeout=TIMEOUT)
+            r = session.get(
+                sitemap_url,
+                headers=HEADERS,
+                timeout=TIMEOUT,
+            )
         except requests.RequestException:
             continue
+
         if r.status_code >= 400:
             continue
 
@@ -386,25 +379,35 @@ def _sitemap_category_urls(session: requests.Session, query: str, max_sitemaps=2
             continue
 
         soup = BeautifulSoup(body, "xml")
+
         for loc in soup.find_all("loc"):
             value = clean(loc.get_text())
             if not value:
                 continue
+
             low = value.lower()
 
             if "/category/" in low and low.endswith(".html"):
                 slug = low.rsplit("/", 1)[-1][:-5]
-                slug_tokens = query_tokens(slug)
-                if any(
-                    token in slug_tokens or
-                    any(token in st or st in token for st in slug_tokens if len(st) >= 3)
+                slug_norm = norm(slug)
+                hits = sum(
+                    1
                     for token in wanted
-                ):
-                    if value not in seen_categories:
-                        seen_categories.add(value)
-                        found.append(value)
-                        if len(found) >= max_urls:
-                            break
+                    if token in slug_norm
+                )
+
+                if hits <= 0:
+                    continue
+
+                if value in seen_categories:
+                    continue
+
+                seen_categories.add(value)
+                found.append(value)
+
+                if len(found) >= max_urls:
+                    break
+
             elif low.endswith(".xml") or "sitemap" in low:
                 if value not in seen_maps:
                     pending.append(value)
@@ -469,41 +472,55 @@ def _sitemap_product_urls(session: requests.Session, query: str, max_sitemaps=20
 
 
 def discover(session: requests.Session, query: str):
-    """Unified discovery. No product-specific branches."""
+    """Unified generic discovery pipeline. No product-specific branches."""
     urls = []
     seen = set()
 
-    def add_many(values):
+    def add_many(values, limit=80):
         for url in values:
             if url in seen:
                 continue
             seen.add(url)
             urls.append(url)
-            if len(urls) >= 80:
+            if len(urls) >= limit:
                 return True
         return False
 
-    # 1. Broad current category pages and relevant category/filter pages.
-    if add_many(_discover_from_categories(session, query, max_urls=80)):
-        return urls[:80]
-
-    # 2. Category pages found through Deloox sitemaps.
-    for category_url in _sitemap_category_urls(session, query, max_sitemaps=20, max_urls=40):
-        try:
-            page = session.get(category_url, headers=HEADERS, timeout=TIMEOUT)
-        except requests.RequestException:
-            continue
-        if page.status_code >= 400:
-            continue
-        if add_many(_extract_product_urls(page.text, query)):
-            return urls[:80]
-
-    # 3. Deloox search endpoints are fallback only.
+    # 1. Deloox search endpoints.
     if add_many(_discover_from_search(session, query, max_urls=80)):
         return urls[:80]
 
-    # 4. Final product-sitemap fallback.
-    add_many(_sitemap_product_urls(session, query, max_sitemaps=20, max_urls=80))
+    # 2. Deloox's own search form, if the current site exposes one.
+    if add_many(_discover_search_form(session, query, max_urls=50)):
+        return urls[:80]
+
+    # 3. Product sitemaps: when the product slug contains the requested
+    #    words this is the fastest direct route and needs no product exception.
+    if add_many(_sitemap_product_urls(session, query, max_sitemaps=20, max_urls=80)):
+        return urls[:80]
+
+    # 4. Category sitemaps: find dedicated product-line/category pages using
+    #    the query tokens, then inspect only those pages.
+    for category_url in _sitemap_category_urls(
+        session, query, max_sitemaps=20, max_urls=40
+    ):
+        try:
+            page = session.get(
+                category_url,
+                headers=HEADERS,
+                timeout=TIMEOUT,
+            )
+        except requests.RequestException:
+            continue
+
+        if page.status_code >= 400:
+            continue
+
+        if add_many(_extract_product_urls(page.text, query)):
+            return urls[:80]
+
+    # 5. Generic category discovery remains the broad fallback.
+    add_many(_discover_from_categories(session, query, max_urls=60))
     return urls[:80]
 
 
