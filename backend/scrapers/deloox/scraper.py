@@ -539,77 +539,70 @@ def _product(url, html, query):
 
 
 def _candidate_queries(query):
-    """Build robust Deloox discovery queries.
+    """Build generic Deloox discovery queries without product exceptions.
 
-    Deloox search is not consistent for branded products: for example,
-    "Hawas for Him" may return nothing while "Hawas" or "Rasasi Hawas"
-    exposes the product pages.  Keep the original query first so final
-    validation remains authoritative, but add conservative aliases.
+    Deloox search is inconsistent: a full branded product name can return
+    nothing while the same product is discoverable through its family/name.
+    We therefore progressively broaden the discovery query.  The original
+    query is always kept first and _product() remains the final authority.
     """
-
     q = clean(query)
-
     if not q:
         return []
 
+    parts = q.split()
+    nq = norm(q)
     variants = [q]
 
-    parts = q.split()
-
     removable = {
-        "parfum",
-        "perfume",
-        "eau",
-        "de",
-        "toilette",
-        "edt",
-        "edp",
-        "extrait",
-        "extract",
+        "parfum", "perfume", "eau", "de", "du", "des", "da", "del",
+        "della", "toilette", "edt", "edp", "extrait", "extract",
+        "for", "the", "and", "with", "by", "of", "in", "pour",
+        "homme", "femme", "men", "women", "man", "woman",
     }
 
-    broad = " ".join(
-        p
-        for p in parts
-        if p.lower() not in removable
-    ).strip()
-
-    if broad and broad.lower() != q.lower():
+    # Remove generic concentration/gender words.
+    broad_parts = [p for p in parts if p.lower() not in removable]
+    broad = " ".join(broad_parts).strip()
+    if broad and norm(broad) != nq:
         variants.append(broad)
 
-    nq = norm(q)
+    # Compact number/name variants such as "9 PM" -> "9PM".
+    compact = re.sub(
+        r"(?<=\d)\s+(?=[a-z])|(?<=[a-z])\s+(?=\d)",
+        "",
+        nq,
+    )
+    if compact and compact != nq:
+        variants.append(compact)
 
-    # Deloox-specific aliases for the Rasasi Hawas family.
-    # These are discovery-only aliases: _product() still validates
-    # against the user's original query.
-    if "hawas" in nq:
-        variants.extend(
-            [
-                "Hawas",
-                "Rasasi Hawas",
-                "Rasasi Hawas for Him",
-            ]
-        )
+    # Generic brand-removal fallback.  Deloox often indexes the product
+    # under the fragrance family/name rather than "Brand + family + variant".
+    # Try progressively shorter leading-token forms, never as final matching.
+    for start in range(1, len(parts)):
+        candidate = " ".join(parts[start:]).strip()
+        if candidate and len(norm(candidate).split()) >= 1:
+            variants.append(candidate)
 
-    # More generally, if a query contains a likely product family name,
-    # also try the shorter family query. This helps sites whose search
-    # index ignores trailing gender/concentration words.
-    if len(parts) >= 3:
-        family = " ".join(parts[:2]).strip()
-        if family and norm(family) != nq:
-            variants.append(family)
+    # Also try the first two meaningful words as a family seed.
+    meaningful = [p for p in parts if p.lower() not in removable and len(p) > 1]
+    if len(meaningful) >= 2:
+        variants.append(" ".join(meaningful[:2]))
+
+    # Finally try each meaningful token, longest first. This mirrors the
+    # successful broad-family discovery behaviour without hard-coding brands.
+    for token in sorted(set(meaningful), key=lambda x: (-len(x), x.lower())):
+        variants.append(token)
 
     out = []
     seen = set()
-
     for item in variants:
         key = norm(item)
-
         if key and key not in seen:
             seen.add(key)
-            out.append(item)
+            out.append(clean(item))
 
-    return out
+    return out[:12]
 
 
 def _candidate_product_urls(
@@ -1447,21 +1440,58 @@ def _search(
 
 
 def _targeted_known_product_urls(query):
-    """Return a few proven/current product URLs for known Deloox families.
+    """Generate generic product-URL candidates from the requested name.
 
-    These are cheap candidates only; _product() still validates the page
-    before anything is returned to ScentHunter.
+    These are discovery candidates only. Every URL is fetched and validated
+    by _product() against the original query before it can reach ScentHunter.
+    No brand, product or numeric Deloox ID is hard-coded here.
     """
-    q = norm(query)
+    q = clean(query)
+    if not q:
+        return []
+
+    parts = q.split()
+    removable = {
+        "parfum", "perfume", "eau", "de", "du", "des", "da", "del",
+        "della", "toilette", "edt", "edp", "extrait", "extract",
+        "for", "the", "and", "with", "by", "of", "in", "pour",
+        "homme", "femme", "men", "women", "man", "woman",
+    }
+
+    candidates = []
+    def add_candidate(value):
+        value = norm(value)
+        if not value:
+            return
+        slug = re.sub(r"\s+", "-", value).strip("-")
+        if slug and slug not in candidates:
+            candidates.append(slug)
+
+    # Full name first, then progressively remove leading brand tokens.
+    add_candidate(q)
+    for start in range(1, len(parts)):
+        add_candidate(" ".join(parts[start:]))
+
+    # Generic concentration/gender cleanup.
+    broad = " ".join(p for p in parts if p.lower() not in removable)
+    add_candidate(broad)
+
+    # Keep the number of speculative URLs small; normal search/category
+    # discovery remains the primary path.
+    candidates = candidates[:8]
+
     urls = []
+    prefixes = (
+        "/product/",
+        "/products/",
+        "/en/product/",
+        "/en/products/",
+    )
+    for slug in candidates:
+        for prefix in prefixes:
+            urls.append(BASE_URL + prefix + slug + ".html")
 
-    if "hawas" in q and "him" in q:
-        urls.append(
-            BASE_URL
-            + "/product/1282489/rasasi-hawas-for-him-eau-de-parfum-100-ml.html"
-        )
-
-    return urls
+    return urls[:32]
 
 
 def _fast_targeted_search(session, query):
@@ -1636,34 +1666,12 @@ def _discover(
             if len(urls) >= 24:
                 break
 
-    # 6. Conservative slug guesses for product families whose Deloox
-    # search index is incomplete.  These are only candidates; _product()
-    # fetches each page and rejects anything that does not match q.
-    nq = norm(q)
-    if "hawas" in nq:
-        slug_guesses = (
-            "hawas-for-him",
-            "rasasi-hawas-for-him",
-            "hawas-for-him-eau-de-parfum",
-            "hawas-for-him-kobra",
-        )
-
-        for slug in slug_guesses:
-            for prefix in (
-                "/product/",
-                "/products/",
-                "/en/product/",
-                "/en/products/",
-            ):
-                add(
-                    BASE_URL
-                    + prefix
-                    + slug
-                    + ".html"
-                )
-
-                if len(urls) >= 24:
-                    return urls[:24]
+    # 6. Generic slug guesses for families whose Deloox search index is
+    # incomplete. These are candidates only; _product() validates q.
+    for candidate_url in _targeted_known_product_urls(q):
+        add(candidate_url)
+        if len(urls) >= 24:
+            return urls[:24]
 
     return urls[:24]
 
