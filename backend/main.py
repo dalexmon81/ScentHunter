@@ -1709,3 +1709,134 @@ def test_deloox_step6(q: str = "Liquid Brun"):
             "error": f"{type(exc).__name__}: {exc}",
         }
 
+
+@app.get('/test-deloox-step7')
+def test_deloox_step7(q: str = 'Liquid Brun'):
+    """Step 7: call Deloox's discovered /api/search endpoint and extract product candidates."""
+    import time as _time
+    import requests as _requests
+    import json as _json
+    import re as _re
+    from bs4 import BeautifulSoup as _BeautifulSoup
+    from urllib.parse import urljoin as _urljoin
+
+    query = str(q or '').strip()
+    started = _time.perf_counter()
+    api_url = 'https://www.deloox.com/api/search'
+    headers = {
+        'User-Agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1',
+        'Accept-Language': 'en-GB,en;q=0.9',
+        'Accept': 'application/json, text/plain, */*',
+        'Referer': 'https://www.deloox.com/',
+    }
+
+    def clean_url(value):
+        if not isinstance(value, str) or not value:
+            return ''
+        if value.startswith('//'):
+            return 'https:' + value
+        return _urljoin('https://www.deloox.com/', value)
+
+    def text_norm(value):
+        return ' '.join(str(value or '').lower().split())
+
+    def query_match(name):
+        n = text_norm(name)
+        qn = text_norm(query)
+        if not n or not qn:
+            return False
+        return all(tok in n for tok in qn.split())
+
+    def extract_from_html(body):
+        soup = _BeautifulSoup(body, 'html.parser')
+        out = []
+        seen = set()
+        for a in soup.find_all('a', href=True):
+            href = clean_url(a.get('href'))
+            if '/product/' not in href.lower():
+                continue
+            name = ' '.join(a.stripped_strings)
+            if not name:
+                img = a.find('img')
+                name = img.get('alt', '') if img else ''
+            key = (name, href)
+            if key in seen:
+                continue
+            seen.add(key)
+            out.append({'name': name[:250], 'url': href})
+        return out
+
+    def extract_from_obj(obj):
+        candidates = []
+        seen = set()
+        product_key_names = {'name','title','product_name','productName','display_name','displayName'}
+        url_key_names = {'url','href','link','product_url','productUrl','canonical_url','canonicalUrl'}
+
+        def walk(x):
+            if isinstance(x, dict):
+                name = ''
+                url = ''
+                for k, v in x.items():
+                    if k in product_key_names and isinstance(v, str):
+                        name = v.strip()
+                    if k in url_key_names and isinstance(v, str):
+                        url = clean_url(v)
+                if '/product/' in url.lower():
+                    key = (name, url)
+                    if key not in seen:
+                        seen.add(key)
+                        candidates.append({'name': name[:250], 'url': url})
+                for v in x.values():
+                    walk(v)
+            elif isinstance(x, list):
+                for v in x:
+                    walk(v)
+        walk(obj)
+        return candidates
+
+    try:
+        r = _requests.get(api_url, params={'q': query}, headers=headers, timeout=15)
+        body = r.text or ''
+        candidates = []
+        content_type = (r.headers.get('content-type') or '').lower()
+        parsed_type = 'html'
+        if 'json' in content_type:
+            try:
+                data = r.json()
+                parsed_type = 'json'
+                candidates = extract_from_obj(data)
+            except Exception:
+                parsed_type = 'json-invalid'
+        if not candidates and '<html' in body.lower() or ('<a ' in body.lower() and '/product/' in body.lower()):
+            candidates = extract_from_html(body)
+
+        # Keep only candidates plausibly related to the query, but retain a small sample if none match.
+        exact = [c for c in candidates if query_match(c.get('name', ''))]
+        result = exact if exact else candidates[:50]
+
+        return {
+            'step': 7,
+            'query': query,
+            'seconds': round(_time.perf_counter() - started, 3),
+            'api_url': r.url,
+            'status': r.status_code,
+            'content_type': content_type,
+            'bytes': len(r.content),
+            'parsed_as': parsed_type,
+            'product_candidates': len(candidates),
+            'query_matched_candidates': len(exact),
+            'results': result[:50],
+            'contains_liquid': 'liquid' in text_norm(body),
+            'contains_brun': 'brun' in text_norm(body),
+            'contains_product_path': '/product/' in body.lower(),
+            'message': 'DIRECT DELOOX API TEST — /api/search queried once; no product pages opened.'
+        }
+    except Exception as exc:
+        return {
+            'step': 7,
+            'query': query,
+            'seconds': round(_time.perf_counter() - started, 3),
+            'api_url': api_url,
+            'error': f'{type(exc).__name__}: {exc}',
+            'message': 'Direct Deloox API request failed.'
+        }
