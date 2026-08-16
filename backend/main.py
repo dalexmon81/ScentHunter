@@ -7,7 +7,7 @@ import traceback
 import requests
 from concurrent.futures import ThreadPoolExecutor, TimeoutError as FutureTimeout
 
-app = FastAPI(title="ScentHunter - Deloox REAL Diagnostic", version="2.5")
+app = FastAPI(title="ScentHunter - Deloox REAL Diagnostic", version="2.6")
 
 MODULE_NAME = "scrapers.deloox.scraper"
 
@@ -428,77 +428,116 @@ def diagnose_deloox(q: str):
         })
 
 
-    # 9. Test the proposed discovery fix WITHOUT changing the real scraper.
-    # Temporarily replace _category_pages() only in memory with the
-    # current Deloox category pages, then run the real discovery code.
+    # 9. Test the REAL category pages used by the current scraper.
+    # The previous diagnostic injected guessed category URLs, which was
+    # not a valid test of the scraper's actual _category_pages().
     try:
-        original_category_pages = getattr(
-            scraper,
-            "_category_pages",
-            None,
-        )
+        category_pages_fn = getattr(scraper, "_category_pages", None)
 
-        if callable(original_category_pages):
-            scraper._category_pages = lambda: (
-                scraper.BASE_URL
-                + "/category/1000054/mens-fragrances.html",
-                scraper.BASE_URL
-                + "/category/1075639/womens-fragrances.html",
-                scraper.BASE_URL
-                + "/en/category/1025540/trending.html?page=60",
-            )
-
-            with requests.Session() as test_session:
-                proposed_urls = scraper._discover_from_categories(
-                    test_session,
-                    query,
-                    max_urls=24,
-                )
-
+        if not callable(category_pages_fn):
             report["steps"].append({
-                "step": "9_proposed_current_category_discovery",
-                "status": "OK",
-                "value": {
-                    "category_pages_tested": [
-                        scraper.BASE_URL
-                        + "/category/1000054/mens-fragrances.html",
-                        scraper.BASE_URL
-                        + "/category/1075639/womens-fragrances.html",
-                        scraper.BASE_URL
-                        + "/en/category/1025540/trending.html?page=60",
-                    ],
-                    "discovered_count": len(proposed_urls),
-                    "urls": proposed_urls[:24],
-                },
-            })
-
-            scraper._category_pages = original_category_pages
-        else:
-            report["steps"].append({
-                "step": "9_proposed_current_category_discovery",
+                "step": "9_real_category_page_analysis",
                 "status": "ERROR",
                 "error": "_category_pages not available",
             })
+        else:
+            session = scraper.requests.Session()
+            category_pages = list(category_pages_fn())
+            page_checks = []
+
+            for category_url in category_pages[:6]:
+                entry = {
+                    "category_url": category_url,
+                }
+
+                try:
+                    rr = session.get(
+                        category_url,
+                        headers=scraper.HEADERS,
+                        timeout=scraper.TIMEOUT,
+                    )
+                    entry["http_status"] = rr.status_code
+                    entry["bytes"] = len(rr.content)
+
+                    if rr.status_code >= 400:
+                        entry["all_product_candidates"] = 0
+                        entry["matching_candidates"] = []
+                    else:
+                        all_candidates = scraper._candidate_product_urls(
+                            rr.text,
+                            query,
+                            discovery_query=query,
+                            accept_all_products=True,
+                        )
+                        matching_candidates = scraper._candidate_product_urls(
+                            rr.text,
+                            query,
+                            discovery_query=query,
+                            accept_all_products=False,
+                        )
+
+                        entry["all_product_candidates"] = len(all_candidates)
+                        entry["all_product_urls"] = all_candidates[:20]
+                        entry["matching_candidates"] = matching_candidates[:20]
+
+                except Exception as exc:
+                    entry["error"] = f"{type(exc).__name__}: {exc}"
+
+                page_checks.append(entry)
+
+            report["steps"].append({
+                "step": "9_real_category_page_analysis",
+                "status": "OK",
+                "value": {
+                    "category_pages": category_pages,
+                    "checks": page_checks,
+                },
+            })
+
+            session.close()
 
     except Exception as exc:
-        try:
-            if callable(original_category_pages):
-                scraper._category_pages = original_category_pages
-        except Exception:
-            pass
+        report["steps"].append({
+            "step": "9_real_category_page_analysis",
+            "status": "ERROR",
+            "error": f"{type(exc).__name__}: {exc}",
+            "traceback": traceback.format_exc(),
+        })
+
+    # 10. Run the current category discovery exactly as the scraper does,
+    # but also report the category pages it actually uses. This connects
+    # the real category HTML to _discover_from_categories().
+    try:
+        session = scraper.requests.Session()
+        real_discovered = scraper._discover_from_categories(
+            session,
+            query,
+            max_urls=24,
+        )
 
         report["steps"].append({
-            "step": "9_proposed_current_category_discovery",
+            "step": "10_real_category_discovery",
+            "status": "OK",
+            "value": {
+                "discovered_count": len(real_discovered),
+                "urls": real_discovered[:24],
+            },
+        })
+        session.close()
+
+    except Exception as exc:
+        report["steps"].append({
+            "step": "10_real_category_discovery",
             "status": "ERROR",
             "error": f"{type(exc).__name__}: {exc}",
             "traceback": traceback.format_exc(),
         })
 
     report["diagnosis"] = (
-        "4_real_search chiama direttamente search(). "
-        "Lo step 6 separa discovery, download pagina e _product(): "
-        "se gli URL vengono scoperti ma _product() li rifiuta, "
-        "il punto di perdita è la validazione del prodotto."
+        "Il prodotto Hawas corrente risulta raggiungibile e accettato da _product(). "
+        "Gli URL restituiti dalla discovery precedente sono invece vecchi/404. "
+        "Gli step 9-10 ora verificano le vere _category_pages() del scraper e "
+        "se il loro HTML contiene il prodotto Hawas prima di modificare il codice."
     )
 
     return report
