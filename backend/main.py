@@ -1110,189 +1110,81 @@ def diagnose_deloox_product(q: str = "Liquid Brun"):
         }
 
 
+
+
 # ============================================================
-# API - DIAGNOSTICA DELOOX DISCOVERY STEP 5
+# API - DIAGNOSTICA Deloox DISCOVERY TRACE
 # ============================================================
 
-@app.get("/diagnose-deloox-discovery")
-def diagnose_deloox_discovery(q: str):
+@app.get("/diagnose-deloox-trace")
+def diagnose_deloox_trace(q: str = "Liquid Brun"):
     """
-    Diagnostica il percorso DISCOVERY di Deloox senza chiamare search()/_discover().
-
-    Esegue separatamente:
-      1. categorie root -> HTTP
-      2. root HTML -> Product Line/category links
-      3. Product Line/category -> HTTP
-      4. Product Line/category -> URL prodotto
-
-    Ogni richiesta HTTP ha timeout rigido di 4 secondi.
-    Nessuna sitemap, nessun endpoint /search, nessuna pagina prodotto.
+    Traccia esclusivamente il percorso reale Deloox._discover().
+    Ogni richiesta HTTP ha timeout massimo 3s e il test si ferma dopo 20
+    richieste. Non esegue _product() e non esegue search().
     """
-    query = str(q or "").strip()
-    if not query:
-        raise HTTPException(status_code=400, detail="Parametro q mancante")
+    import requests as _requests
+    from time import monotonic as _monotonic
 
-    started_total = time.monotonic()
+    query = str(q or "").strip() or "Liquid Brun"
+    module = load_scraper("deloox")
+    trace = []
+    started = _monotonic()
 
+    class TraceLimit(Exception):
+        pass
+
+    class TraceSession(_requests.Session):
+        def get(self, url, *args, **kwargs):
+            if len(trace) >= 20:
+                raise TraceLimit("request_limit_20")
+            kwargs["timeout"] = min(float(kwargs.get("timeout", 3)), 3.0)
+            t0 = _monotonic()
+            try:
+                response = super().get(url, *args, **kwargs)
+                trace.append({
+                    "n": len(trace) + 1,
+                    "url": str(url),
+                    "status": response.status_code,
+                    "bytes": len(response.content or b""),
+                    "elapsed_ms": round((_monotonic() - t0) * 1000),
+                })
+                return response
+            except Exception as exc:
+                trace.append({
+                    "n": len(trace) + 1,
+                    "url": str(url),
+                    "status": None,
+                    "bytes": 0,
+                    "elapsed_ms": round((_monotonic() - t0) * 1000),
+                    "error": f"{type(exc).__name__}: {exc}",
+                })
+                raise
+
+    session = TraceSession()
     try:
-        module = load_scraper("deloox")
-        session = module.requests.Session()
-        headers = getattr(module, "HEADERS", {})
-        timeout = 4
-
-        roots = list(module._category_pages(session))
-        seed_urls = list(module._targeted_category_seed_urls(query))
-
-        root_results = []
-        all_matching_lines = []
-
         try:
-            for root in roots:
-                step_started = time.monotonic()
-                row = {
-                    "root": root,
-                    "http_status": None,
-                    "elapsed_ms": None,
-                    "bytes": 0,
-                    "matching_category_links": [],
-                    "direct_product_urls": [],
-                    "error": None,
-                }
+            urls = module._discover(session, query)
+            outcome = "discover_returned"
+        except TraceLimit as exc:
+            urls = []
+            outcome = str(exc)
+        except Exception as exc:
+            urls = []
+            outcome = f"exception:{type(exc).__name__}: {exc}"
 
-                try:
-                    response = session.get(
-                        root,
-                        headers=headers,
-                        timeout=timeout,
-                    )
-                    row["http_status"] = response.status_code
-                    row["elapsed_ms"] = round(
-                        (time.monotonic() - step_started) * 1000
-                    )
-                    row["bytes"] = len(response.content or b"")
-
-                    if response.status_code < 400:
-                        try:
-                            matching = module._category_product_line_links(
-                                response.text,
-                                query,
-                            )
-                        except Exception as exc:
-                            matching = []
-                            row["error"] = (
-                                f"category_parser: {type(exc).__name__}: {exc}"
-                            )
-
-                        row["matching_category_links"] = matching[:20]
-
-                        try:
-                            direct = module._candidate_product_urls(
-                                response.text,
-                                query,
-                            )
-                        except Exception as exc:
-                            direct = []
-                            row["error"] = (
-                                f"product_parser: {type(exc).__name__}: {exc}"
-                            )
-
-                        row["direct_product_urls"] = direct[:20]
-
-                        for link in matching:
-                            if link not in all_matching_lines:
-                                all_matching_lines.append(link)
-
-                except Exception as exc:
-                    row["elapsed_ms"] = round(
-                        (time.monotonic() - step_started) * 1000
-                    )
-                    row["error"] = f"{type(exc).__name__}: {exc}"
-
-                root_results.append(row)
-
-            # Step 3: visit ONLY the category/Product Line links that
-            # actually matched the query. No blind pagination.
-            line_results = []
-
-            for line_url in all_matching_lines[:20]:
-                step_started = time.monotonic()
-                row = {
-                    "category_url": line_url,
-                    "http_status": None,
-                    "elapsed_ms": None,
-                    "bytes": 0,
-                    "product_urls": [],
-                    "error": None,
-                }
-
-                try:
-                    response = session.get(
-                        line_url,
-                        headers=headers,
-                        timeout=timeout,
-                    )
-                    row["http_status"] = response.status_code
-                    row["elapsed_ms"] = round(
-                        (time.monotonic() - step_started) * 1000
-                    )
-                    row["bytes"] = len(response.content or b"")
-
-                    if response.status_code < 400:
-                        try:
-                            products = module._candidate_product_urls(
-                                response.text,
-                                query,
-                            )
-                            row["product_urls"] = products[:20]
-                        except Exception as exc:
-                            row["error"] = (
-                                f"product_parser: {type(exc).__name__}: {exc}"
-                            )
-
-                except Exception as exc:
-                    row["elapsed_ms"] = round(
-                        (time.monotonic() - step_started) * 1000
-                    )
-                    row["error"] = f"{type(exc).__name__}: {exc}"
-
-                line_results.append(row)
-
-            elapsed_total = round(
-                (time.monotonic() - started_total) * 1000
-            )
-
-            return {
-                "query": query,
-                "elapsed_total_ms": elapsed_total,
-                "strategy": {
-                    "discover_called": False,
-                    "search_called": False,
-                    "sitemap_called": False,
-                    "product_pages_called": False,
-                    "http_timeout_seconds": timeout,
-                },
-                "targeted_seed_urls": seed_urls,
-                "root_count": len(roots),
-                "roots": root_results,
-                "matching_category_link_count": len(all_matching_lines),
-                "matching_category_links": all_matching_lines[:20],
-                "category_pages": line_results,
-                "error": None,
-            }
-
-        finally:
-            session.close()
-
-    except Exception as exc:
         return {
             "query": query,
-            "elapsed_total_ms": round(
-                (time.monotonic() - started_total) * 1000
-            ),
-            "error": f"{type(exc).__name__}: {exc}",
-            "traceback": traceback.format_exc(limit=3),
+            "outcome": outcome,
+            "elapsed_ms_total": round((_monotonic() - started) * 1000),
+            "request_count": len(trace),
+            "discovered_url_count": len(urls or []),
+            "discovered_urls": list(urls or [])[:20],
+            "trace": trace,
+            "note": "Ogni richiesta e' limitata a 3s; massimo 20 richieste. Nessun _product().",
         }
-
+    finally:
+        session.close()
 
 # ============================================================
 # API - SUGGEST
