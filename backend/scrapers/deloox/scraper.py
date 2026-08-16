@@ -508,9 +508,8 @@ def _category_product_line_links(html, query):
     # escaped URLs, or scripts without an <a> element.
     raw = html.replace("\\\\/", "/")
     patterns = [
-        r'(?:"|\\\')((?:https?:)?//(?:www\\.)?deloox\\.com)?'
-        r'(/(?:en/|it/|nl/)?category/\\d+/[^"\\\'<>\\s]+\\.html)',
-        r'(?:"|\\\')((?:/)?(?:en/|it/|nl/)?category/\\d+/[^"\\\'<>\\s]+\\.html)(?:"|\\\')',
+        r'(?:(?:https?:)?//(?:www\.)?deloox\.com)?/(?:en/|it/|nl/)?category/\d+/[^"\'<>\s]+\.html',
+        r'(?:(?:https?:)?//(?:www\.)?deloox\.com)?/(?:en/|it/|nl/)?category/\d+/[^"\'<>\s]+\.html',
     ]
     for pattern in patterns:
         for match in re.findall(pattern, raw, re.I):
@@ -579,9 +578,9 @@ def _catalog_filter_links(session):
     # Some Deloox catalogue links are serialized in JSON/data attributes.
     raw = html.replace("\\\\/", "/")
     patterns = (
-        r'https?://(?:www\\.)?deloox\\.com(?:/en)?/category/\\d+/[^"\'<>\\s]+\\.html',
-        r'["\']((?:https?:)?//(?:www\\.)?deloox\\.com(?:/en)?/category/\\d+/[^"\'<>\\s]+\\.html)["\']',
-        r'["\']((?:/)?(?:en/)?category/\\d+/[^"\'<>\\s]+\\.html)["\']',
+        r'https?://(?:www\.)?deloox\.com(?:/en)?/category/\d+/[^"\'<>\s]+\.html',
+        r'["\']((?:https?:)?//(?:www\.)?deloox\.com(?:/en)?/category/\d+/[^"\'<>\s]+\.html)["\']',
+        r'["\']((?:/)?(?:en/)?category/\d+/[^"\'<>\s]+\.html)["\']',
     )
     for pattern in patterns:
         for raw_url in re.findall(pattern, raw, re.I):
