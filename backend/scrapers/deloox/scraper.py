@@ -280,7 +280,7 @@ def _candidate_product_urls(html, query=None):
 
     Deloox can serialize many product URLs inside one large script.  The old
     code used the whole script as context for every URL, so a single occurrence
-    of "Liquid Brun" (for example the category title) could authorize unrelated
+    of a category title could authorize unrelated
     products such as 4711, Cacharel or Prada.
 
     This version associates each URL with its nearest product name/title when
@@ -575,11 +575,13 @@ def _find_catalog_filter_url(session, query):
 
 def _category_pages(session):
     # Broad Deloox entry points. Pagination and Product Line links are followed
-    # so a family is not limited to the first visible result.
+    # so a family is not limited to the first visible result. These are generic
+    # catalogue roots only; no perfume, brand, SKU or product is hard-coded.
     return (
+        BASE_URL + "/category/1000003/fragrances.html",
         BASE_URL + "/category/1075639/womens-fragrances.html",
         BASE_URL + "/category/1075660/womens-perfume.html",
-        BASE_URL + "/category/1075750/mens-perfume.html",
+        BASE_URL + "/category/1000054/mens-fragrances.html",
         BASE_URL + "/category/1025540/trending.html",
     )
 
@@ -650,24 +652,6 @@ def _sitemap_category_urls(session, query, max_sitemaps=16, max_urls=50):
     return found
 
 
-def _targeted_category_seed_urls(query):
-    """Return only proven, query-specific Deloox category seeds.
-
-    Deloox currently exposes Liquid Brun on a dedicated category page, while
-    its search endpoints can hang from server-side requests. This seed is a
-    discovery shortcut, not a product result: the page is still parsed and
-    every product is validated against the original query.
-    """
-    q = norm(query)
-    seeds = []
-
-    if "liquid brun" in q:
-        seeds.append(BASE_URL + "/en/category/1132834/liquid-brun.html")
-
-    seen = set()
-    return [u for u in seeds if not (u in seen or seen.add(u))]
-
-
 def _pagination_urls(page_url, max_pages=8):
     base = page_url.split("?")[0]
     for page in range(1, max_pages + 1):
@@ -703,7 +687,6 @@ def _discover_from_categories(session, query, max_urls=120):
         return False
 
     roots = list(_category_pages(session))
-    roots.extend(_targeted_category_seed_urls(query))
 
     for root in roots:
         try:
@@ -856,26 +839,7 @@ def _discover(session, q):
                     return True
         return False
 
-    # 1) PROVEN TARGETED CATEGORY SEEDS.
-    # This is intentionally before search because Deloox's search surface can
-    # hang while the dedicated Product Line page responds normally.
-    for category_url in _targeted_category_seed_urls(q):
-        try:
-            page = session.get(
-                category_url,
-                headers=HEADERS,
-                timeout=DISCOVERY_TIMEOUT,
-            )
-        except requests.RequestException:
-            continue
-        if page.status_code >= 400:
-            continue
-        targeted_candidates = _candidate_product_urls(page.text, q)
-        if targeted_candidates:
-            add_many(targeted_candidates)
-            return urls[:80]
-
-    # 2) BROAD CATEGORY / PRODUCT LINE DISCOVERY.
+    # 1) BROAD CATEGORY / PRODUCT LINE DISCOVERY.
     category_candidates = _discover_from_categories(
         session, q, max_urls=80
     )
@@ -883,7 +847,7 @@ def _discover(session, q):
         add_many(category_candidates)
         return urls[:80]
 
-    # 3) GENERIC CATALOGUE FILTER.
+    # 2) GENERIC CATALOGUE FILTER.
     catalog_category = _find_catalog_filter_url(session, q)
     if catalog_category:
         try:
@@ -898,7 +862,7 @@ def _discover(session, q):
             if add_many(_candidate_product_urls(page.text, q)):
                 return urls[:80]
 
-    # 4) SITEMAP CATEGORY FALLBACK. Keep this bounded.
+    # 3) SITEMAP CATEGORY FALLBACK. Keep this bounded.
     for category_url in _sitemap_category_urls(
         session, q, max_sitemaps=4, max_urls=12
     ):
@@ -915,7 +879,7 @@ def _discover(session, q):
         if add_many(_candidate_product_urls(page.text, q)):
             return urls[:80]
 
-    # 5) SEARCH LAST. Only two modern routes are attempted and each has a short
+    # 4) SEARCH LAST. Only two modern routes are attempted and each has a short
     # timeout so a dead Deloox search service cannot consume the whole request.
     endpoints = [
         BASE_URL + "/en/search?q=" + quote_plus(q),
@@ -935,7 +899,7 @@ def _discover(session, q):
         if add_many(_candidate_product_urls(r.text, q)):
             return urls[:80]
 
-    # 6) LAST RESORT: product sitemap, still bounded.
+    # 5) LAST RESORT: product sitemap, still bounded.
     sitemap_candidates = _sitemap_product_urls(
         session, q, max_sitemaps=4, max_urls=40
     )
