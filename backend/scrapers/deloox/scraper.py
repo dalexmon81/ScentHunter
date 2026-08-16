@@ -395,11 +395,29 @@ def _category_pages(session):
     # Broad Deloox entry points. Pagination and Product Line links are followed
     # so a family is not limited to the first visible result.
     return (
+        # Current Deloox fragrance roots.
+        BASE_URL + "/category/1000054/mens-fragrances.html",
         BASE_URL + "/category/1075639/womens-fragrances.html",
+        # Legacy roots kept as fallback.
         BASE_URL + "/category/1075660/womens-perfume.html",
         BASE_URL + "/category/1075750/mens-perfume.html",
         BASE_URL + "/category/1025540/trending.html",
     )
+
+
+def _targeted_product_seed_urls(query):
+    """
+    Fallback diretto per prodotti che Deloox continua a indicizzare ma che
+    talvolta non espone nei risultati della ricerca/categoria.
+    La pagina Deloox del Liquid Brun originale è ancora indicizzata.
+    """
+    q = norm(query)
+    if "liquid brun" not in q:
+        return []
+
+    return [
+        BASE_URL + "/product/1355229/french-avenue-liquid-brun-eau-de-parfum-100-ml.html",
+    ]
 
 
 def _targeted_category_seed_urls(query):
@@ -580,6 +598,12 @@ def _sitemap_product_urls(session, query, max_sitemaps=12, max_urls=80):
 def _discover(session, q):
     urls = []
     seen = set()
+
+    # PRIMARY: direct product seeds for known indexed products.
+    for url in _targeted_product_seed_urls(q):
+        if url not in seen:
+            seen.add(url)
+            urls.append(url)
 
     # PRIMARY: current Deloox category/Product-line structure.
     for url in _discover_from_categories(session, q, max_urls=80):
