@@ -75,19 +75,96 @@ def parse_price(v):
         return None
 
 
-def availability(text):
+def availability(text, offer=None, soup=None):
+    """Determine availability from product-specific signals only.
+
+    IMPORTANT: do not scan the entire product page for ``out of stock``
+    before checking structured data. Deloox can mention that phrase in
+    unrelated/recommendation/filter content even when the current product
+    is purchasable.
+
+    Priority:
+      1. JSON-LD Product/Offer availability (most reliable)
+      2. product-page purchase controls / availability elements
+      3. only then a tightly scoped textual fallback
+    """
+
+    # 1) Structured data. Schema.org normally exposes values such as
+    # https://schema.org/InStock, OutOfStock, LimitedAvailability, etc.
+    if isinstance(offer, dict):
+        raw = clean(
+            offer.get("availability")
+            or offer.get("itemAvailability")
+            or offer.get("availabilityStatus")
+            or ""
+        ).lower()
+        if raw:
+            if any(x in raw for x in (
+                "outofstock", "out_of_stock", "soldout", "sold_out",
+                "discontinued", "unavailable",
+            )):
+                return "out_of_stock"
+            if any(x in raw for x in (
+                "instock", "in_stock", "limitedavailability",
+                "preorder", "pre_order",
+            )):
+                return "in_stock"
+
+    # 2) Look only at elements that are likely to describe the current
+    # product's purchase/stock state. Do NOT use soup.get_text() here.
+    if soup is not None:
+        scoped_parts = []
+
+        selectors = [
+            '[itemprop="availability"]',
+            '[data-testid*="availability" i]',
+            '[data-test*="availability" i]',
+            '[class*="availability" i]',
+            '[class*="stock" i]',
+            '[class*="add-to-cart" i]',
+            '[class*="buy" i]',
+            'button[type="submit"]',
+        ]
+
+        seen_nodes = set()
+        for selector in selectors:
+            try:
+                nodes = soup.select(selector)
+            except Exception:
+                nodes = []
+            for node in nodes[:20]:
+                marker = id(node)
+                if marker in seen_nodes:
+                    continue
+                seen_nodes.add(marker)
+                scoped_parts.append(
+                    clean(node.get("content") or node.get("aria-label") or node.get_text(" ", strip=True))
+                )
+
+        scoped = norm(" ".join(x for x in scoped_parts if x))
+        if scoped:
+            if any(x in scoped for x in (
+                "sold out", "out of stock", "not available",
+                "currently unavailable", "unavailable",
+            )):
+                return "out_of_stock"
+            if any(x in scoped for x in (
+                "in stock", "available", "op voorraad", "add to cart",
+                "add to basket", "buy now", "bestellen",
+            )):
+                return "in_stock"
+
+    # 3) Deliberately conservative fallback. Only use the whole-page text
+    # when there is NO structured/scoped signal at all. This prevents a
+    # recommendation card saying "out of stock" from poisoning the product.
     t = norm(text)
-    if any(
-        x in t
-        for x in (
-            "sold out",
-            "out of stock",
-            "not available",
-            "currently unavailable",
-        )
-    ):
+    if any(x in t for x in (
+        "sold out",
+        "out of stock",
+        "currently unavailable",
+    )):
         return "out_of_stock"
-    if any(x in t for x in ("in stock", "available", "op voorraad")):
+    if any(x in t for x in ("in stock", "op voorraad")):
         return "in_stock"
     return "unknown"
 
@@ -161,7 +238,7 @@ def _product(url, html, query):
     if isinstance(image, list):
         image = image[0] if image else None
 
-    avail = availability(text)
+    avail = availability(text, offer=offer, soup=soup)
 
     return {
         "store": STORE,
