@@ -1289,6 +1289,112 @@ def _sitemap_product_urls(
     return product_urls
 
 
+
+def _search(
+    session,
+    q,
+):
+    """Run Deloox's real internal search and return validated products."""
+
+    q = clean(q)
+
+    if not q:
+        return []
+
+    discovery_queries = _candidate_queries(q)[:6]
+
+    search_endpoints = (
+        "/en/search?query=",
+        "/en/search?search=",
+        "/en/search?q=",
+    )
+
+    results = []
+    seen_urls = set()
+    seen_products = set()
+
+    for discovery_query in discovery_queries:
+        for route in search_endpoints:
+            endpoint = (
+                BASE_URL
+                + route
+                + quote_plus(discovery_query)
+            )
+
+            try:
+                r = session.get(
+                    endpoint,
+                    headers=HEADERS,
+                    timeout=TIMEOUT,
+                )
+            except requests.RequestException:
+                continue
+
+            if r.status_code >= 400:
+                continue
+
+            candidate_urls = _candidate_product_urls(
+                r.text,
+                q,
+                discovery_query=discovery_query,
+                accept_all_products=True,
+            )
+
+            for product_url in candidate_urls:
+                if product_url in seen_urls:
+                    continue
+
+                seen_urls.add(product_url)
+
+                try:
+                    page = session.get(
+                        product_url,
+                        headers=HEADERS,
+                        timeout=TIMEOUT,
+                    )
+                except requests.RequestException:
+                    continue
+
+                if page.status_code >= 400:
+                    continue
+
+                item = _product(
+                    product_url,
+                    page.text,
+                    q,
+                )
+
+                if not item:
+                    continue
+
+                sku = (
+                    item.get("identity", {})
+                    .get("sku")
+                )
+
+                sku_value = (
+                    sku.get("value")
+                    if isinstance(sku, dict)
+                    else None
+                )
+
+                key = (
+                    product_url,
+                    sku_value,
+                )
+
+                if key in seen_products:
+                    continue
+
+                seen_products.add(key)
+                results.append(item)
+
+                if len(results) >= 24:
+                    return results[:24]
+
+    return results[:24]
+
+
 def _discover(
     session,
     q,
@@ -1680,23 +1786,33 @@ def search(query):
 
     session = requests.Session()
 
-    results = []
-    seen = set()
-
     try:
-
-        for url in _discover(
+        # FIRST: use Deloox's internal search.
+        results = _search(
             session,
             query,
-        ):
+        )
 
+        if results:
+            return results
+
+        # SECOND: only when internal search returns nothing,
+        # fall back to the proven discovery mechanism.
+        discovered_urls = _discover(
+            session,
+            query,
+        )
+
+        results = []
+        seen = set()
+
+        for url in discovered_urls:
             try:
                 r = session.get(
                     url,
                     headers=HEADERS,
                     timeout=TIMEOUT,
                 )
-
             except requests.RequestException:
                 continue
 
@@ -1712,16 +1828,12 @@ def search(query):
             if not item:
                 continue
 
-            sku_value = None
-
-            sku = item[
-                "identity"
-            ].get("sku")
-
-            if sku:
-                sku_value = sku.get(
-                    "value"
-                )
+            sku = item.get("identity", {}).get("sku")
+            sku_value = (
+                sku.get("value")
+                if isinstance(sku, dict)
+                else None
+            )
 
             key = (
                 url,
@@ -1732,7 +1844,6 @@ def search(query):
                 continue
 
             seen.add(key)
-
             results.append(item)
 
         return results
