@@ -687,21 +687,36 @@ def test_store(store: str, q: str):
 # API - DIAGNOSTICA PERCORSO DELOOX (NON MODIFICA LA RICERCA)
 # ============================================================
 
+def _diagnostic_call(fn, timeout_seconds):
+    """Esegue fn con timeout reale senza aspettare il worker alla fine."""
+    executor = ThreadPoolExecutor(max_workers=1)
+    future = executor.submit(fn)
+    try:
+        value = future.result(timeout=timeout_seconds)
+        return {"status": "OK", "value": value, "seconds": timeout_seconds}
+    except TimeoutError:
+        future.cancel()
+        return {
+            "status": "TIMEOUT",
+            "timeout_seconds": timeout_seconds,
+            "message": "Lo stadio non ha risposto entro il limite.",
+        }
+    except Exception as exc:
+        return {
+            "status": "ERROR",
+            "error": f"{type(exc).__name__}: {exc}",
+            "traceback": traceback.format_exc(),
+        }
+    finally:
+        # IMPORTANTISSIMO: non usare 'with ThreadPoolExecutor' qui.
+        # shutdown(wait=False) permette all'endpoint HTTP di rispondere
+        # anche se il worker dello scraper è ancora bloccato.
+        executor.shutdown(wait=False, cancel_futures=True)
+
+
 @app.get("/diagnose-deloox-path")
 def diagnose_deloox_path(q: str):
-    """
-    Diagnostica chirurgica del percorso Deloox.
-    Non modifica /search e non modifica /test-store.
-
-    Esegue separatamente:
-      1) caricamento scraper reale
-      2) candidate queries del Deloox
-      3) ogni attempt generato dal Main -> scraper.search()
-      4) _discover() direttamente, se disponibile
-
-    Ogni chiamata potenzialmente bloccante ha un timeout indipendente,
-    così l'endpoint non rimane appeso all'infinito.
-    """
+    """Diagnosi chirurgica del percorso Deloox, senza ricerca infinita."""
     query = str(q or "").strip()
     if not query:
         raise HTTPException(status_code=400, detail="Parametro q mancante")
@@ -712,7 +727,7 @@ def diagnose_deloox_path(q: str):
         "steps": [],
     }
 
-    # 1) Scraper reale
+    # 1) Carica esattamente lo scraper Deloox presente nel progetto.
     try:
         module = load_scraper("deloox")
         report["steps"].append({
@@ -725,33 +740,24 @@ def diagnose_deloox_path(q: str):
             "step": "1_load_scraper",
             "status": "ERROR",
             "error": f"{type(exc).__name__}: {exc}",
+            "traceback": traceback.format_exc(),
         })
         return report
 
-    # 2) Query interne dello scraper
+    # 2) Candidate queries: timeout senza 'with'.
     candidate_fn = getattr(module, "_candidate_queries", None)
     if callable(candidate_fn):
-        try:
-            with ThreadPoolExecutor(max_workers=1) as ex:
-                future = ex.submit(candidate_fn, query)
-                try:
-                    candidates = future.result(timeout=5)
-                    report["steps"].append({
-                        "step": "2_candidate_queries",
-                        "status": "OK",
-                        "queries": candidates,
-                    })
-                except TimeoutError:
-                    report["steps"].append({
-                        "step": "2_candidate_queries",
-                        "status": "TIMEOUT",
-                        "timeout_seconds": 5,
-                    })
-        except Exception as exc:
+        result = _diagnostic_call(lambda: candidate_fn(query), 5)
+        if result["status"] == "OK":
             report["steps"].append({
                 "step": "2_candidate_queries",
-                "status": "ERROR",
-                "error": f"{type(exc).__name__}: {exc}",
+                "status": "OK",
+                "queries": result["value"],
+            })
+        else:
+            report["steps"].append({
+                "step": "2_candidate_queries",
+                **result,
             })
     else:
         report["steps"].append({
@@ -759,32 +765,32 @@ def diagnose_deloox_path(q: str):
             "status": "MISSING",
         })
 
-    # 3) Attempts esattamente come li genera il Main, uno alla volta.
+    # 3) Primo attempt esattamente come lo genera il Main.
     attempts = build_search_attempts("deloox", query)
     report["attempts"] = attempts
 
-    for index, attempt in enumerate(attempts, start=1):
+    if attempts:
+        attempt = attempts[0]
+        result = _diagnostic_call(lambda: module.search(attempt), 12)
         row = {
-            "step": f"3_search_attempt_{index}",
+            "step": "3_search_attempt_1",
             "attempt": attempt,
+            **result,
         }
-        try:
-            with ThreadPoolExecutor(max_workers=1) as ex:
-                future = ex.submit(module.search, attempt)
-                try:
-                    value = future.result(timeout=12)
-                    row["status"] = "OK"
-                    row["result_count"] = len(value) if hasattr(value, "__len__") else None
-                    row["results"] = value if isinstance(value, list) else repr(value)
-                except TimeoutError:
-                    row["status"] = "TIMEOUT"
-                    row["timeout_seconds"] = 12
-        except Exception as exc:
-            row["status"] = "ERROR"
-            row["error"] = f"{type(exc).__name__}: {exc}"
+        if result["status"] == "OK":
+            value = result["value"]
+            row["result_count"] = len(value) if hasattr(value, "__len__") else None
+            row["results"] = value if isinstance(value, list) else repr(value)
+            row.pop("value", None)
         report["steps"].append(row)
+    else:
+        report["steps"].append({
+            "step": "3_search_attempt_1",
+            "status": "SKIPPED",
+            "reason": "Nessun attempt generato dal Main",
+        })
 
-    # 4) _discover() diretto: serve a distinguere search() da discovery.
+    # 4) _discover diretto: secondo punto di confronto.
     discover_fn = getattr(module, "_discover", None)
     if callable(discover_fn):
         try:
@@ -793,30 +799,28 @@ def diagnose_deloox_path(q: str):
             params = list(sig.parameters)
             if len(params) == 2:
                 requests_mod = getattr(module, "requests", None)
-                session = requests_mod.Session() if requests_mod else None
-                if session is None:
+                if requests_mod is None:
                     report["steps"].append({
                         "step": "4_direct_discover",
                         "status": "SKIPPED",
-                        "reason": "requests.Session non disponibile",
+                        "reason": "requests non disponibile nello scraper",
                     })
                 else:
-                    with ThreadPoolExecutor(max_workers=1) as ex:
-                        future = ex.submit(discover_fn, session, query)
-                        try:
-                            urls = future.result(timeout=15)
-                            report["steps"].append({
-                                "step": "4_direct_discover",
-                                "status": "OK",
-                                "url_count": len(urls) if hasattr(urls, "__len__") else None,
-                                "urls": urls,
-                            })
-                        except TimeoutError:
-                            report["steps"].append({
-                                "step": "4_direct_discover",
-                                "status": "TIMEOUT",
-                                "timeout_seconds": 15,
-                            })
+                    session = requests_mod.Session()
+                    result = _diagnostic_call(
+                        lambda: discover_fn(session, query),
+                        15,
+                    )
+                    row = {
+                        "step": "4_direct_discover",
+                        **result,
+                    }
+                    if result["status"] == "OK":
+                        urls = result["value"]
+                        row["url_count"] = len(urls) if hasattr(urls, "__len__") else None
+                        row["urls"] = urls
+                        row.pop("value", None)
+                    report["steps"].append(row)
             else:
                 report["steps"].append({
                     "step": "4_direct_discover",
@@ -828,6 +832,7 @@ def diagnose_deloox_path(q: str):
                 "step": "4_direct_discover",
                 "status": "ERROR",
                 "error": f"{type(exc).__name__}: {exc}",
+                "traceback": traceback.format_exc(),
             })
     else:
         report["steps"].append({
@@ -838,7 +843,6 @@ def diagnose_deloox_path(q: str):
     return report
 
 
-# ============================================================
 # API - SUGGEST
 # ============================================================
 
