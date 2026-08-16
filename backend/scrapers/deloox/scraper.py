@@ -1,4 +1,4 @@
-"""Deloox adapter for ScentHunter.
+"""Deloox adapter for ScentHunter with generic catalogue-structure diagnostics.
 
 Discovery strategy:
 - Prefer Deloox's current category pages and their Product line filter links.
@@ -283,6 +283,54 @@ def _product(url, html, query):
         "available": avail == "in_stock",
     }
 
+
+
+def _inspect_category_structure(html, query, url, max_query_hits=8, max_product_hits=8, max_category_hits=8):
+    """Diagnostic only: reveal how Deloox serializes catalogue data.
+
+    This does not select candidates and contains no product-specific knowledge.
+    It reports structural markers and short local snippets from the live HTML.
+    """
+    raw = html or ""
+    low = raw.lower()
+    q = clean(query)
+
+    def snippets(term, limit):
+        term_low = term.lower()
+        out = []
+        start = 0
+        while len(out) < limit:
+            pos = low.find(term_low, start)
+            if pos < 0:
+                break
+            left = max(0, pos - 220)
+            right = min(len(raw), pos + len(term) + 420)
+            snippet = clean(raw[left:right])
+            out.append({"offset": pos, "snippet": snippet})
+            start = pos + max(1, len(term))
+        return out
+
+    structural_terms = (
+        "__next_data__", "__nuxt__", "application/ld+json", "productName",
+        "product_name", "productTitle", "category", "product line",
+        "productline", "collection", "breadcrumbs", "itemListElement",
+        "data-product", "data-category", "apollo", "graphql"
+    )
+    markers = {term: low.count(term.lower()) for term in structural_terms if term.lower() in low}
+
+    _dbg(
+        "category_structure",
+        query=q,
+        url=url,
+        bytes=len(raw),
+        html_category_count=low.count("/category/"),
+        html_product_count=low.count("/product/"),
+        query_count=low.count(norm(q)) if norm(q) else 0,
+        structural_markers=markers,
+        query_snippets=snippets(q, max_query_hits) if q else [],
+        product_snippets=snippets("/product/", max_product_hits),
+        category_snippets=snippets("/category/", max_category_hits),
+    )
 
 def _candidate_product_urls(html, query=None):
     """Extract only product URLs with a LOCAL match to the query.
@@ -696,6 +744,11 @@ def _discover_from_categories(session, query, max_urls=120):
             continue
         if r.status_code >= 400:
             continue
+
+        # Diagnostic only: inspect the actual response structure before any
+        # candidate/category parser is allowed to interpret it.
+        if root == roots[0]:
+            _inspect_category_structure(r.text, query, root)
 
         if add_products(r.text, root):
             return urls[:max_urls]
