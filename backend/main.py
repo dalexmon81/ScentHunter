@@ -1111,6 +1111,190 @@ def diagnose_deloox_product(q: str = "Liquid Brun"):
 
 
 # ============================================================
+# API - DIAGNOSTICA DELOOX DISCOVERY STEP 5
+# ============================================================
+
+@app.get("/diagnose-deloox-discovery")
+def diagnose_deloox_discovery(q: str):
+    """
+    Diagnostica il percorso DISCOVERY di Deloox senza chiamare search()/_discover().
+
+    Esegue separatamente:
+      1. categorie root -> HTTP
+      2. root HTML -> Product Line/category links
+      3. Product Line/category -> HTTP
+      4. Product Line/category -> URL prodotto
+
+    Ogni richiesta HTTP ha timeout rigido di 4 secondi.
+    Nessuna sitemap, nessun endpoint /search, nessuna pagina prodotto.
+    """
+    query = str(q or "").strip()
+    if not query:
+        raise HTTPException(status_code=400, detail="Parametro q mancante")
+
+    started_total = time.monotonic()
+
+    try:
+        module = load_scraper("deloox")
+        session = module.requests.Session()
+        headers = getattr(module, "HEADERS", {})
+        timeout = 4
+
+        roots = list(module._category_pages(session))
+        seed_urls = list(module._targeted_category_seed_urls(query))
+
+        root_results = []
+        all_matching_lines = []
+
+        try:
+            for root in roots:
+                step_started = time.monotonic()
+                row = {
+                    "root": root,
+                    "http_status": None,
+                    "elapsed_ms": None,
+                    "bytes": 0,
+                    "matching_category_links": [],
+                    "direct_product_urls": [],
+                    "error": None,
+                }
+
+                try:
+                    response = session.get(
+                        root,
+                        headers=headers,
+                        timeout=timeout,
+                    )
+                    row["http_status"] = response.status_code
+                    row["elapsed_ms"] = round(
+                        (time.monotonic() - step_started) * 1000
+                    )
+                    row["bytes"] = len(response.content or b"")
+
+                    if response.status_code < 400:
+                        try:
+                            matching = module._category_product_line_links(
+                                response.text,
+                                query,
+                            )
+                        except Exception as exc:
+                            matching = []
+                            row["error"] = (
+                                f"category_parser: {type(exc).__name__}: {exc}"
+                            )
+
+                        row["matching_category_links"] = matching[:20]
+
+                        try:
+                            direct = module._candidate_product_urls(
+                                response.text,
+                                query,
+                            )
+                        except Exception as exc:
+                            direct = []
+                            row["error"] = (
+                                f"product_parser: {type(exc).__name__}: {exc}"
+                            )
+
+                        row["direct_product_urls"] = direct[:20]
+
+                        for link in matching:
+                            if link not in all_matching_lines:
+                                all_matching_lines.append(link)
+
+                except Exception as exc:
+                    row["elapsed_ms"] = round(
+                        (time.monotonic() - step_started) * 1000
+                    )
+                    row["error"] = f"{type(exc).__name__}: {exc}"
+
+                root_results.append(row)
+
+            # Step 3: visit ONLY the category/Product Line links that
+            # actually matched the query. No blind pagination.
+            line_results = []
+
+            for line_url in all_matching_lines[:20]:
+                step_started = time.monotonic()
+                row = {
+                    "category_url": line_url,
+                    "http_status": None,
+                    "elapsed_ms": None,
+                    "bytes": 0,
+                    "product_urls": [],
+                    "error": None,
+                }
+
+                try:
+                    response = session.get(
+                        line_url,
+                        headers=headers,
+                        timeout=timeout,
+                    )
+                    row["http_status"] = response.status_code
+                    row["elapsed_ms"] = round(
+                        (time.monotonic() - step_started) * 1000
+                    )
+                    row["bytes"] = len(response.content or b"")
+
+                    if response.status_code < 400:
+                        try:
+                            products = module._candidate_product_urls(
+                                response.text,
+                                query,
+                            )
+                            row["product_urls"] = products[:20]
+                        except Exception as exc:
+                            row["error"] = (
+                                f"product_parser: {type(exc).__name__}: {exc}"
+                            )
+
+                except Exception as exc:
+                    row["elapsed_ms"] = round(
+                        (time.monotonic() - step_started) * 1000
+                    )
+                    row["error"] = f"{type(exc).__name__}: {exc}"
+
+                line_results.append(row)
+
+            elapsed_total = round(
+                (time.monotonic() - started_total) * 1000
+            )
+
+            return {
+                "query": query,
+                "elapsed_total_ms": elapsed_total,
+                "strategy": {
+                    "discover_called": False,
+                    "search_called": False,
+                    "sitemap_called": False,
+                    "product_pages_called": False,
+                    "http_timeout_seconds": timeout,
+                },
+                "targeted_seed_urls": seed_urls,
+                "root_count": len(roots),
+                "roots": root_results,
+                "matching_category_link_count": len(all_matching_lines),
+                "matching_category_links": all_matching_lines[:20],
+                "category_pages": line_results,
+                "error": None,
+            }
+
+        finally:
+            session.close()
+
+    except Exception as exc:
+        return {
+            "query": query,
+            "elapsed_total_ms": round(
+                (time.monotonic() - started_total) * 1000
+            ),
+            "error": f"{type(exc).__name__}: {exc}",
+            "traceback": traceback.format_exc(limit=3),
+        }
+
+
+# ============================================================
 # API - SUGGEST
 # ============================================================
 
@@ -1411,6 +1595,152 @@ def suggest(q: str):
                         for word in words
                     ):
                         continue
+
+                    if any(
+                        norm(phrase) in normalized_name
+                        for phrase in NON_PERFUME
+                    ):
+                        continue
+
+                    key = (
+                        norm(brand),
+                        normalized_name,
+                    )
+
+                    if key in seen:
+                        continue
+
+                    seen.add(key)
+
+                    suggestions.append({
+                        "name": name,
+                        "store": product.get(
+                            "store",
+                            store,
+                        ),
+                        "brand": brand,
+                        "image": product_image(product),
+                    })
+
+        except Exception:
+            traceback.print_exc()
+
+    suggestions.sort(
+        key=lambda item: (
+            0
+            if norm(item.get("name", "")).startswith(query)
+            else 1,
+            len(item.get("name", "")),
+            item.get("name", "").lower(),
+        )
+    )
+
+    suggestions = suggestions[:8]
+
+    return {
+        "query": q,
+        "count": len(suggestions),
+        "suggestions": suggestions,
+        "source": "stores-fallback",
+    }
+
+
+# ============================================================
+# API - AUTOCOMPLETE
+# ============================================================
+
+@app.get("/autocomplete")
+def autocomplete(q: str):
+    return suggest(q)
+
+
+# ============================================================
+# API - PRODUCT
+# ============================================================
+
+@app.get("/product")
+def product(
+    name: str,
+    brand: str = "",
+):
+
+    data = search_perfume(
+        name
+    )
+
+    offers: List[Dict[str, Any]] = []
+
+    for product_data in data["results"]:
+
+        value = price_num(
+            product_data.get("price")
+        )
+
+        if value is None:
+            continue
+
+        offer = dict(
+            product_data
+        )
+
+        offer["price_value"] = value
+        offer["image"] = product_image(
+            offer
+        )
+
+        offers.append(
+            offer
+        )
+
+    offers.sort(
+        key=lambda offer: offer[
+            "price_value"
+        ]
+    )
+
+    best_offer = (
+        offers[0]
+        if offers
+        else None
+    )
+
+    history = update_price_history(
+        name=name,
+        brand=brand,
+        best_offer=best_offer,
+    )
+
+    image = next(
+        (
+            offer["image"]
+            for offer in offers
+            if offer.get("image")
+        ),
+        "",
+    )
+
+    lowest_price = (
+        best_offer.get("price")
+        if best_offer
+        else None
+    )
+
+    return {
+        "name": name,
+        "brand": brand,
+        "image": image,
+        "lowest_price": lowest_price,
+        "best_offer": best_offer,
+        "offers": offers,
+        "history": history,
+        "errors": data["errors"],
+        "message": (
+            ""
+            if offers
+            else "Nessuna offerta disponibile al momento"
+        ),
+    }
+               continue
 
                     if any(
                         norm(phrase) in normalized_name
