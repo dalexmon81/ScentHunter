@@ -275,84 +275,126 @@ def _product(url, html, query):
 
 
 def _candidate_product_urls(html, query=None):
-    """Discover product URLs broadly; strict identity validation happens in _product().
+    """Extract only product URLs with a LOCAL match to the query.
 
-    Important: discovery must NOT contain hard-coded product exceptions and must not
-    require the entire query to be present in the href. Deloox often stores the product
-    name in card text/JSON while the href is only a numeric product URL.
+    Deloox can serialize many product URLs inside one large script.  The old
+    code used the whole script as context for every URL, so a single occurrence
+    of "Liquid Brun" (for example the category title) could authorize unrelated
+    products such as 4711, Cacharel or Prada.
+
+    This version associates each URL with its nearest product name/title when
+    available.  If no name is available, the URL slug/card text itself must
+    contain every query token.  There is deliberately no "return arbitrary
+    numeric /product/ URLs" fallback.
     """
     soup = BeautifulSoup(html, "html.parser")
-    scored = {}
+    found = []
+    seen = set()
     q_tokens = tokens(query or "")
+
+    if not q_tokens:
+        return []
 
     def add(raw_url, context=""):
         if not raw_url:
             return
+
         raw_url = clean(raw_url).replace("\\/", "/")
         if raw_url.startswith(("javascript:", "mailto:", "#")):
             return
+
         url = urljoin(BASE_URL, raw_url).split("#")[0].split("?")[0]
         try:
             parsed = urlparse(url)
         except Exception:
             return
+
         if parsed.netloc.lower() not in {"deloox.com", "www.deloox.com"}:
             return
         if "/product/" not in parsed.path.lower():
             return
+        if url in seen:
+            return
 
-        haystack = norm(f"{context} {url}")
-        hits = sum(1 for tok in q_tokens if tok in haystack)
-        # Do not discard numeric product URLs merely because the query is not
-        # present in the href/card text. Deloox can expose product IDs without
-        # the name in the surrounding HTML. The final _product() parser remains
-        # the authoritative query validator.
-        previous = scored.get(url)
-        if previous is None or hits > previous[0]:
-            scored[url] = (hits, context)
+        if not matches(f"{context} {url}", query):
+            return
 
+        seen.add(url)
+        found.append(url)
+
+    # Normal anchors: use the link/card itself, not the whole page.
     for a in soup.find_all("a", href=True):
-        add(a.get("href"), a.get_text(" ", strip=True))
-
-    # Raw HTML / JS product URLs.
-    patterns = [
-        r'https?://(?:www\.)?deloox\.com/[^"\'>\s]+/product/[^"\'>\s]+',
-        r'["\']((?:/)?(?:en/|it/|nl/)?product/[^"\']+)["\']',
-        r'["\']((?:https?:)?//(?:www\.)?deloox\.com/[^"\']*/product/[^"\']+)["\']',
-    ]
-    for pattern in patterns:
-        for raw in re.findall(pattern, html, re.I):
-            if isinstance(raw, tuple):
-                raw = "".join(raw)
-            add(raw, "")
-
-    # Serialized JSON / data attributes may contain product names next to URLs.
-    for tag in soup.find_all(["script", "div", "article", "li"]):
-        blob = str(tag)
-        if "/product/" not in blob.lower():
+        href = clean(a.get("href", ""))
+        if "/product/" not in href.lower():
             continue
-        urls = re.findall(r'(?:(?:https?:)?//(?:www\.)?deloox\.com)?[^"\'<>\s]*?/product/[^"\'<>\s]+', blob, re.I)
-        text = tag.get_text(" ", strip=True)[:1000]
-        for raw in urls:
-            add(raw, text)
 
-    ordered = sorted(
-        scored.items(),
-        key=lambda item: (-item[1][0], len(item[0]), item[0])
+        context_parts = [
+            a.get_text(" ", strip=True),
+            a.get("aria-label", ""),
+            a.get("title", ""),
+            a.get("data-name", ""),
+            a.get("data-product-name", ""),
+        ]
+        context = " ".join(clean(x) for x in context_parts if clean(x))
+
+        # Only use a parent card when the anchor itself carries no useful name.
+        # Never use a broad grandparent: listing containers often contain many
+        # unrelated products.
+        if not context and a.parent:
+            context = a.parent.get_text(" ", strip=True)
+
+        add(href, context)
+
+    raw = html.replace("\\\\/", "/")
+    patterns = (
+        r'https?://(?:www\.)?deloox\.com[^"\'<>\s]*/product/[^"\'<>\s]+',
+        r'(?<![A-Za-z0-9])(?:/|(?:en|it|nl)/)product/[^"\'<>\s]+',
     )
 
-    # Prefer candidates whose surrounding card/serialized data actually contains
-    # query tokens. If Deloox exposes only numeric product URLs with no useful
-    # context, keep a bounded fallback set anyway and let _product() perform the
-    # authoritative name validation on the product page.
-    exact = [
-        url for url, meta in ordered
-        if q_tokens and meta[0] == len(q_tokens)
-    ]
-    if exact:
-        return exact[:80]
+    def local_product_context(blob, start, end):
+        """Return the nearest product-name field, or a small local window."""
+        # First try the smallest JSON/JS object containing this URL.  This is
+        # much safer than a large window because the same script can contain
+        # dozens of products and a page-level category title.
+        obj_left = blob.rfind("{", 0, start)
+        obj_right = blob.find("}", end)
+        if obj_left >= 0 and obj_right >= end and (obj_right - obj_left) <= 4000:
+            object_text = blob[obj_left:obj_right + 1]
+            name_patterns = (
+                r'"(?:name|productName|product_name|title|productTitle)"\s*:\s*"([^"]{1,300})"',
+                r"'(?:name|productName|product_name|title|productTitle)'\s*:\s*'([^']{1,300})'",
+                r'\b(?:name|productName|product_name|title|productTitle)\s*:\s*"([^"]{1,300})"',
+                r"\b(?:name|productName|product_name|title|productTitle)\s*:\s*'([^']{1,300})'",
+            )
+            for np in name_patterns:
+                nm = re.search(np, object_text, re.I)
+                if nm:
+                    return nm.group(1)
 
-    return [url for url, _meta in ordered[:80]]
+        # No clean object/name association: do NOT guess from nearby page text.
+        # The URL itself is still passed as context by add(), so slugged product
+        # URLs can be accepted; numeric-only URLs are rejected.
+        return ""
+
+    # Scan scripts/serialized blocks.  Each URL gets its own nearest local name.
+    for tag in soup.find_all(["script", "div", "article", "li"]):
+        blob = tag.get_text() if tag.name == "script" else tag.get_text(" ", strip=True)
+        if "/product/" not in blob.lower():
+            continue
+
+        for pattern in patterns:
+            for match in re.finditer(pattern, blob, re.I):
+                context = local_product_context(blob, match.start(), match.end())
+                add(match.group(0), context)
+
+    # Final raw-HTML pass for product URLs outside parsed tags.  Again, use only
+    # the nearest local product-name field/window.
+    for pattern in patterns:
+        for match in re.finditer(pattern, raw, re.I):
+            context = local_product_context(raw, match.start(), match.end())
+            add(match.group(0), context)
+
+    return found[:80]
 
 
 def _category_product_line_links(html, query):
