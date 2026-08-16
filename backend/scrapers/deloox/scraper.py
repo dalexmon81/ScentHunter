@@ -582,9 +582,9 @@ def _catalog_filter_links(session):
     # Some Deloox catalogue links are serialized in JSON/data attributes.
     raw = html.replace("\\/", "/")
     patterns = (
-        r'https?://(?:www\\.)?deloox\\.com(?:/en)?/category/\\d+/[^"\'<>\\s]+\\.html',
-        r'["\']((?:https?:)?//(?:www\\.)?deloox\\.com(?:/en)?/category/\\d+/[^"\'<>\\s]+\\.html)["\']',
-        r'["\']((?:/)?(?:en/)?category/\\d+/[^"\'<>\\s]+\\.html)["\']',
+        r'https?://(?:www\.)?deloox\.com(?:/en|/it|/nl)?/category/\d+/[^"\'<>\s]+\.html',
+        r'["\']((?:https?:)?//(?:www\.)?deloox\.com(?:/en|/it|/nl)?/category/\d+/[^"\'<>\s]+\.html)["\']',
+        r'["\']((?:/)?(?:en/|it/|nl/)?category/\d+/[^"\'<>\s]+\.html)["\']',
     )
     for pattern in patterns:
         for raw_url in re.findall(pattern, raw, re.I):
@@ -638,11 +638,10 @@ def _category_pages(session):
     # so a family is not limited to the first visible result. These are generic
     # catalogue roots only; no perfume, brand, SKU or product is hard-coded.
     return (
-        BASE_URL + "/category/1000003/fragrances.html",
-        BASE_URL + "/category/1075639/womens-fragrances.html",
-        BASE_URL + "/category/1075660/womens-perfume.html",
-        BASE_URL + "/category/1000054/mens-fragrances.html",
-        BASE_URL + "/category/1025540/trending.html",
+        BASE_URL + "/en/category/1103659/fragrances.html",
+        BASE_URL + "/en/category/1075639/womens-fragrances.html",
+        BASE_URL + "/en/category/1075750/mens-perfume.html",
+        BASE_URL + "/en/category/1025540/trending.html",
     )
 
 
