@@ -5,6 +5,8 @@ Design borrowed from the working ParfumZentrum / Orioudh / Bplatz scrapers:
     -> structured product extraction -> deduplication.
 
 Important: there are NO product-name exceptions (for example Liquid Brun).
+Discovery can broaden the search query, but final product validation always
+uses the original user query.
 """
 from __future__ import annotations
 
@@ -132,30 +134,46 @@ def _absolute_product_url(raw_url: str):
     return url
 
 
-def _extract_product_urls(html: str, query: str):
-    """Extract candidate product URLs without requiring an exact slug match."""
+def _extract_product_urls(html: str, query: str, discovery_query: str | None = None):
+    """Extract candidate product URLs for discovery.
+
+    ``discovery_query`` may be a broader fallback such as ``Kobra`` while
+    ``query`` remains the original user query (``Hawas Kobra``).  Discovery
+    is intentionally broad; the product page is still validated strictly
+    against the original query in ``_extract_product``.
+    """
     soup = BeautifulSoup(html or "", "html.parser")
     candidates = []
     seen = set()
-    wanted = query_tokens(query)
+    discovery = discovery_query or query
+    wanted = query_tokens(discovery)
 
     def add(raw_url, context=""):
         url = _absolute_product_url(raw_url)
         if not url or url in seen:
             return
-        # Discovery score only. Do not reject a product just because its URL
-        # is opaque; the product page itself is the authority.
+
         score_text = norm(f"{context} {url}")
         score = sum(1 for token in wanted if token in score_text)
         if score == 0:
-            # Keep a small number of opaque candidates from a search result.
-            # They will be strictly rejected later if the name is wrong.
             return
+
         seen.add(url)
         candidates.append((score, url))
 
+    # Deloox sometimes keeps the product title in a parent/card element
+    # while the <a> itself contains only an image or an empty label.  Include
+    # nearby card text for discovery, but keep strict validation on the final
+    # product page.
     for a in soup.find_all("a", href=True):
-        add(a.get("href"), a.get_text(" ", strip=True))
+        context = a.get_text(" ", strip=True)
+        parent = a.parent
+        for _ in range(3):
+            if parent is None:
+                break
+            context += " " + parent.get_text(" ", strip=True)
+            parent = parent.parent
+        add(a.get("href"), context)
 
     raw = (html or "").replace("\\/", "/")
     patterns = [
@@ -164,7 +182,15 @@ def _extract_product_urls(html: str, query: str):
     ]
     for pattern in patterns:
         for raw_url in re.findall(pattern, raw, re.I):
-            add(raw_url)
+            # For embedded URLs, inspect a small surrounding window because
+            # product names may live next to the URL in serialized card data.
+            for match in re.finditer(pattern, raw, re.I):
+                if match.group(0) != raw_url:
+                    continue
+                start = max(0, match.start() - 1800)
+                end = min(len(raw), match.end() + 1800)
+                add(raw_url, raw[start:end])
+                break
 
     candidates.sort(key=lambda x: (-x[0], len(x[1])))
     return [url for _, url in candidates]
@@ -199,7 +225,7 @@ def _discover_from_search(session: requests.Session, query: str, max_urls=80):
             if r.status_code >= 400 or not r.text:
                 continue
 
-            for url in _extract_product_urls(r.text, query):
+            for url in _extract_product_urls(r.text, query, discovery_query=search_query):
                 if url in seen:
                     continue
                 seen.add(url)
@@ -257,7 +283,7 @@ def _discover_search_form(session: requests.Session, query: str, max_urls=50):
                 continue
             if r.status_code >= 400:
                 continue
-            for url in _extract_product_urls(r.text, query):
+            for url in _extract_product_urls(r.text, query, discovery_query=search_query):
                 if url not in seen:
                     seen.add(url)
                     urls.append(url)
@@ -410,7 +436,21 @@ def discover(session: requests.Session, query: str):
         if len(urls) >= 80:
             return urls
 
-    # 3. Generic category discovery.
+    # 3. One more search-form pass with the broadest meaningful token.
+    # This is especially important for Deloox products such as Hawas Kobra:
+    # the site can return the product for "Kobra" even when the full query
+    # "Hawas Kobra" does not expose a usable product card.
+    for discovery_query in candidate_queries(query):
+        if len(query_tokens(discovery_query)) != 1:
+            continue
+        for url in _discover_from_search(session, discovery_query, max_urls=40):
+            if url not in seen:
+                seen.add(url)
+                urls.append(url)
+            if len(urls) >= 80:
+                return urls
+
+    # 4. Generic category discovery.
     for url in _discover_from_categories(session, query, max_urls=60):
         if url not in seen:
             seen.add(url)
@@ -418,7 +458,7 @@ def discover(session: requests.Session, query: str):
         if len(urls) >= 80:
             return urls
 
-    # 4. Sitemap discovery, like ParfumZentrum.
+    # 5. Sitemap discovery, like ParfumZentrum.
     for url in _sitemap_product_urls(session, query, max_sitemaps=20, max_urls=80):
         if url not in seen:
             seen.add(url)
