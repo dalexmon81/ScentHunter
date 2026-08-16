@@ -184,7 +184,24 @@ def product_search_text(product: Dict[str, Any]) -> str:
         product.get("url"),
         product.get("product_line"),
         product.get("variant"),
+        product.get("size"),
+        product.get("size_ml"),
+        product.get("volume"),
+        product.get("volume_ml"),
+        product.get("format"),
+        product.get("format_ml"),
+        product.get("pack_size"),
     )
+
+    # Alcuni scraper possono mettere la taglia dentro attributes.
+    attributes = product.get("attributes")
+    if isinstance(attributes, dict):
+        values += tuple(
+            value
+            for key, value in attributes.items()
+            if any(token in norm(key) for token in ("size", "volume", "format"))
+        )
+
     return norm(" ".join(str(value or "") for value in values))
 
 
@@ -194,12 +211,14 @@ def has_small_size(product: Dict[str, Any]) -> bool:
     della taglia.
     """
     text = product_search_text(product)
+
     for match in re.finditer(r"(?<!\d)(\d+(?:[.,]\d+)?)\s*ml\b", text):
         try:
-            if float(match.group(1).replace(",", ".")) <= 5:
+            if float(match.group(1).replace(",", ".")) <= 10:
                 return True
         except ValueError:
             continue
+
     return False
 
 
