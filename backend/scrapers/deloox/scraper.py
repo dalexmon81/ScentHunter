@@ -12,6 +12,7 @@ import re
 from urllib.parse import quote_plus, urljoin, urlparse
 
 import requests
+import time
 from bs4 import BeautifulSoup
 
 STORE = "Deloox"
@@ -717,6 +718,40 @@ def _discover(session, q):
     add_many(_sitemap_product_urls(session, q, max_sitemaps=16, max_urls=80))
     return urls[:80]
 
+def diagnostic_discovery(query):
+    session = requests.Session()
+    out = {"query": query, "stages": []}
+    try:
+        roots = list(_category_pages(session))
+        out["category_roots"] = roots
+        for root in roots:
+            t0 = time.monotonic()
+            try:
+                r = session.get(root, headers=HEADERS, timeout=3)
+            except requests.RequestException as exc:
+                out["stages"].append({"stage":"category","url":root,"error":type(exc).__name__+":"+str(exc)})
+                continue
+            elapsed = round(time.monotonic()-t0,3)
+            out["stages"].append({"stage":"category","url":root,"status":r.status_code,"seconds":elapsed,"bytes":len(r.text)})
+            if r.status_code >= 400:
+                continue
+            links = _category_product_line_links(r.text, query)
+            out["stages"].append({"stage":"product_line_links","source":root,"count":len(links),"links":links[:10]})
+            for link in links[:3]:
+                t1=time.monotonic()
+                try:
+                    pr=session.get(link,headers=HEADERS,timeout=3)
+                except requests.RequestException as exc:
+                    out["stages"].append({"stage":"product_line_page","url":link,"error":type(exc).__name__+":"+str(exc)})
+                    continue
+                e1=round(time.monotonic()-t1,3)
+                urls=_candidate_product_urls(pr.text,query) if pr.status_code<400 else []
+                out["stages"].append({"stage":"product_line_page","url":link,"status":pr.status_code,"seconds":e1,"bytes":len(pr.text),"product_urls":len(urls),"sample":urls[:5]})
+        return out
+    finally:
+        session.close()
+
+
 def search(query):
     query = clean(query)
     if not query:
@@ -764,15 +799,9 @@ def scrape(query):
 
 if __name__ == "__main__":
     import argparse
-
     parser = argparse.ArgumentParser()
     parser.add_argument("query")
+    parser.add_argument("--diagnose", action="store_true")
     args = parser.parse_args()
-
-    print(
-        json.dumps(
-            search(args.query),
-            ensure_ascii=False,
-            indent=2,
-        )
-    )
+    payload = diagnostic_discovery(args.query) if args.diagnose else search(args.query)
+    print(json.dumps(payload, ensure_ascii=False, indent=2))
