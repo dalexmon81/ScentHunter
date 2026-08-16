@@ -6,7 +6,7 @@ import time
 import traceback
 from concurrent.futures import ThreadPoolExecutor, TimeoutError as FutureTimeout
 
-app = FastAPI(title="ScentHunter - Deloox REAL Diagnostic", version="2.3")
+app = FastAPI(title="ScentHunter - Deloox REAL Diagnostic", version="2.4")
 
 MODULE_NAME = "scrapers.deloox.scraper"
 
@@ -421,6 +421,73 @@ def diagnose_deloox(q: str):
     except Exception as exc:
         report["steps"].append({
             "step": "8_known_current_urls",
+            "status": "ERROR",
+            "error": f"{type(exc).__name__}: {exc}",
+            "traceback": traceback.format_exc(),
+        })
+
+
+    # 9. Test the proposed discovery fix WITHOUT changing the real scraper.
+    # Temporarily replace _category_pages() only in memory with the
+    # current Deloox category pages, then run the real discovery code.
+    try:
+        original_category_pages = getattr(
+            scraper,
+            "_category_pages",
+            None,
+        )
+
+        if callable(original_category_pages):
+            scraper._category_pages = lambda: (
+                scraper.BASE_URL
+                + "/category/1000054/mens-fragrances.html",
+                scraper.BASE_URL
+                + "/category/1075639/womens-fragrances.html",
+                scraper.BASE_URL
+                + "/en/category/1025540/trending.html?page=60",
+            )
+
+            with requests.Session() as test_session:
+                proposed_urls = scraper._discover_from_categories(
+                    test_session,
+                    query,
+                    max_urls=24,
+                )
+
+            report["steps"].append({
+                "step": "9_proposed_current_category_discovery",
+                "status": "OK",
+                "value": {
+                    "category_pages_tested": [
+                        scraper.BASE_URL
+                        + "/category/1000054/mens-fragrances.html",
+                        scraper.BASE_URL
+                        + "/category/1075639/womens-fragrances.html",
+                        scraper.BASE_URL
+                        + "/en/category/1025540/trending.html?page=60",
+                    ],
+                    "discovered_count": len(proposed_urls),
+                    "urls": proposed_urls[:24],
+                },
+            })
+
+            scraper._category_pages = original_category_pages
+        else:
+            report["steps"].append({
+                "step": "9_proposed_current_category_discovery",
+                "status": "ERROR",
+                "error": "_category_pages not available",
+            })
+
+    except Exception as exc:
+        try:
+            if callable(original_category_pages):
+                scraper._category_pages = original_category_pages
+        except Exception:
+            pass
+
+        report["steps"].append({
+            "step": "9_proposed_current_category_discovery",
             "status": "ERROR",
             "error": f"{type(exc).__name__}: {exc}",
             "traceback": traceback.format_exc(),
