@@ -410,6 +410,115 @@ def _category_product_line_links(html, query):
     return links
 
 
+
+CATALOG_URL = BASE_URL + "/en/category/1025540/trending.html?page=60"
+CATALOG_FILTER_LINKS = None
+
+
+def _catalog_filter_links(session):
+    """Discover Deloox category/Product Line links from the live catalogue.
+
+    This is a generic discovery bridge. It contains no perfume, brand or
+    product-specific exceptions.
+    """
+    global CATALOG_FILTER_LINKS
+    if CATALOG_FILTER_LINKS is not None:
+        return CATALOG_FILTER_LINKS
+
+    try:
+        response = session.get(CATALOG_URL, headers=HEADERS, timeout=TIMEOUT)
+    except requests.RequestException:
+        return []
+
+    if response.status_code >= 400:
+        return []
+
+    html = response.text or ""
+    soup = BeautifulSoup(html, "html.parser")
+    links = []
+    seen = set()
+
+    def add(raw_url, label=""):
+        raw_url = clean(raw_url).replace("\\/", "/")
+        if not raw_url:
+            return
+
+        url = urljoin(BASE_URL, raw_url).split("#")[0]
+        try:
+            parsed = urlparse(url)
+        except Exception:
+            return
+
+        if parsed.netloc.lower() not in {"deloox.com", "www.deloox.com"}:
+            return
+        if "/category/" not in parsed.path.lower():
+            return
+        if url in seen:
+            return
+
+        seen.add(url)
+        links.append((clean(label), url))
+
+    # Normal catalogue/filter links.
+    for a in soup.find_all("a", href=True):
+        href = clean(a.get("href", ""))
+        if "/category/" in href.lower():
+            add(href, a.get_text(" ", strip=True))
+
+    # Some Deloox catalogue links are serialized in JSON/data attributes.
+    raw = html.replace("\\\\/", "/")
+    patterns = (
+        r'https?://(?:www\\.)?deloox\\.com(?:/en)?/category/\\d+/[^"\'<>\\s]+\\.html',
+        r'["\']((?:https?:)?//(?:www\\.)?deloox\\.com(?:/en)?/category/\\d+/[^"\'<>\\s]+\\.html)["\']',
+        r'["\']((?:/)?(?:en/)?category/\\d+/[^"\'<>\\s]+\\.html)["\']',
+    )
+    for pattern in patterns:
+        for raw_url in re.findall(pattern, raw, re.I):
+            if isinstance(raw_url, tuple):
+                raw_url = "".join(raw_url)
+            add(raw_url)
+
+    CATALOG_FILTER_LINKS = links
+    return CATALOG_FILTER_LINKS
+
+
+def _find_catalog_filter_url(session, query):
+    """Find the strongest catalogue category whose label/slug matches query."""
+    q_tokens = tokens(query)
+    if not q_tokens:
+        return None
+
+    candidates = []
+    for label, url in _catalog_filter_links(session):
+        path_name = urlparse(url).path.rsplit("/", 1)[-1]
+        if path_name.lower().endswith(".html"):
+            path_name = path_name[:-5]
+
+        label_tokens = set(tokens(label))
+        slug_tokens = set(tokens(path_name))
+        label_hits = len(q_tokens & label_tokens)
+        slug_hits = len(q_tokens & slug_tokens)
+        hits = max(label_hits, slug_hits)
+
+        if hits == 0:
+            continue
+
+        score = hits * 100
+        if q_tokens.issubset(label_tokens):
+            score += 1000
+        if q_tokens.issubset(slug_tokens):
+            score += 900
+        score += min(label_hits, slug_hits) * 10
+
+        candidates.append((score, label, url))
+
+    if not candidates:
+        return None
+
+    candidates.sort(key=lambda item: (-item[0], len(item[1]), item[2]))
+    return candidates[0][2]
+
+
 def _category_pages(session):
     # Broad Deloox entry points. Pagination and Product Line links are followed
     # so a family is not limited to the first visible result.
@@ -674,7 +783,21 @@ def _discover(session, q):
     if add_many(_discover_from_categories(session, q, max_urls=80)):
         return urls[:80]
 
-    # 2) Generic Product Line/category discovery from Deloox sitemaps.
+    # 2) Generic catalogue/Product Line discovery.
+    # The broad category roots do not necessarily expose every Product Line.
+    # Deloox's catalogue page is the next generic bridge to those categories.
+    catalog_category = _find_catalog_filter_url(session, q)
+    if catalog_category:
+        try:
+            page = session.get(catalog_category, headers=HEADERS, timeout=TIMEOUT)
+        except requests.RequestException:
+            page = None
+
+        if page is not None and page.status_code < 400:
+            if add_many(_candidate_product_urls(page.text, q)):
+                return urls[:80]
+
+    # 3) Generic Product Line/category discovery from Deloox sitemaps.
     for category_url in _sitemap_category_urls(session, q, max_sitemaps=16, max_urls=50):
         try:
             page = session.get(category_url, headers=HEADERS, timeout=TIMEOUT)
@@ -695,7 +818,7 @@ def _discover(session, q):
             if add_many(_candidate_product_urls(page2.text, q)):
                 return urls[:80]
 
-    # 3) Deloox search routes.
+    # 4) Deloox search routes.
     endpoints = [
         BASE_URL + "/en/search?query=" + quote_plus(q),
         BASE_URL + "/en/search?search=" + quote_plus(q),
@@ -714,7 +837,7 @@ def _discover(session, q):
         if add_many(_candidate_product_urls(r.text, q)):
             return urls[:80]
 
-    # 4) Product sitemap last.
+    # 5) Product sitemap last.
     add_many(_sitemap_product_urls(session, q, max_sitemaps=16, max_urls=80))
     return urls[:80]
 
@@ -722,6 +845,21 @@ def diagnostic_discovery(query):
     session = requests.Session()
     out = {"query": query, "stages": []}
     try:
+        catalog_t0 = time.monotonic()
+        try:
+            catalog_links = _catalog_filter_links(session)
+            catalog_error = None
+        except Exception as exc:
+            catalog_links = []
+            catalog_error = f"{type(exc).__name__}: {exc}"
+        out["catalog_discovery"] = {
+            "url": CATALOG_URL,
+            "seconds": round(time.monotonic() - catalog_t0, 3),
+            "link_count": len(catalog_links),
+            "matching_url": _find_catalog_filter_url(session, query) if not catalog_error else None,
+            "error": catalog_error,
+        }
+
         roots = list(_category_pages(session))
         out["category_roots"] = roots
         for root in roots:
