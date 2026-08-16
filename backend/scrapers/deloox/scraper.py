@@ -539,21 +539,17 @@ def _product(url, html, query):
 
 
 def _candidate_queries(query):
-    """Build generic Deloox discovery queries without product exceptions.
+    """Build generic discovery queries without product-specific exceptions.
 
-    Deloox search is inconsistent: a full branded product name can return
-    nothing while the same product is discoverable through its family/name.
-    We therefore progressively broaden the discovery query.  The original
-    query is always kept first and _product() remains the final authority.
+    Deloox search/category discovery can fail for a complete product name while
+    succeeding with a shorter family/name query.  We progressively broaden the
+    discovery query, but the original query remains authoritative in _product().
     """
     q = clean(query)
     if not q:
         return []
 
     parts = q.split()
-    nq = norm(q)
-    variants = [q]
-
     removable = {
         "parfum", "perfume", "eau", "de", "du", "des", "da", "del",
         "della", "toilette", "edt", "edp", "extrait", "extract",
@@ -561,13 +557,24 @@ def _candidate_queries(query):
         "homme", "femme", "men", "women", "man", "woman",
     }
 
-    # Remove generic concentration/gender words.
-    broad_parts = [p for p in parts if p.lower() not in removable]
-    broad = " ".join(broad_parts).strip()
-    if broad and norm(broad) != nq:
+    variants = [q]
+
+    broad = " ".join(
+        p for p in parts if p.lower() not in removable
+    ).strip()
+    if broad and norm(broad) != norm(q):
         variants.append(broad)
 
-    # Compact number/name variants such as "9 PM" -> "9PM".
+    # Remove leading words progressively. This is the generic equivalent of
+    # the old Hawas-family fallback: it lets Deloox discover the family/product
+    # even when the brand or variant at the beginning is not indexed together.
+    for start in range(1, len(parts)):
+        candidate = " ".join(parts[start:]).strip()
+        if candidate:
+            variants.append(candidate)
+
+    # Compact number/name spelling, e.g. 9 PM <-> 9PM.
+    nq = norm(q)
     compact = re.sub(
         r"(?<=\d)\s+(?=[a-z])|(?<=[a-z])\s+(?=\d)",
         "",
@@ -576,21 +583,11 @@ def _candidate_queries(query):
     if compact and compact != nq:
         variants.append(compact)
 
-    # Generic brand-removal fallback.  Deloox often indexes the product
-    # under the fragrance family/name rather than "Brand + family + variant".
-    # Try progressively shorter leading-token forms, never as final matching.
-    for start in range(1, len(parts)):
-        candidate = " ".join(parts[start:]).strip()
-        if candidate and len(norm(candidate).split()) >= 1:
-            variants.append(candidate)
-
-    # Also try the first two meaningful words as a family seed.
-    meaningful = [p for p in parts if p.lower() not in removable and len(p) > 1]
-    if len(meaningful) >= 2:
-        variants.append(" ".join(meaningful[:2]))
-
-    # Finally try each meaningful token, longest first. This mirrors the
-    # successful broad-family discovery behaviour without hard-coding brands.
+    # Meaningful tokens are useful as a last discovery fallback.
+    meaningful = [
+        p for p in parts
+        if p.lower() not in removable and len(p) > 1
+    ]
     for token in sorted(set(meaningful), key=lambda x: (-len(x), x.lower())):
         variants.append(token)
 
@@ -602,7 +599,7 @@ def _candidate_queries(query):
             seen.add(key)
             out.append(clean(item))
 
-    return out[:12]
+    return out
 
 
 def _candidate_product_urls(
@@ -1440,58 +1437,13 @@ def _search(
 
 
 def _targeted_known_product_urls(query):
-    """Generate generic product-URL candidates from the requested name.
+    """Return no hard-coded product URLs.
 
-    These are discovery candidates only. Every URL is fetched and validated
-    by _product() against the original query before it can reach ScentHunter.
-    No brand, product or numeric Deloox ID is hard-coded here.
+    Product-specific URL exceptions are intentionally forbidden. Discovery is
+    handled generically by search/category/sitemap paths, and _product() is the
+    final authority for the original query.
     """
-    q = clean(query)
-    if not q:
-        return []
-
-    parts = q.split()
-    removable = {
-        "parfum", "perfume", "eau", "de", "du", "des", "da", "del",
-        "della", "toilette", "edt", "edp", "extrait", "extract",
-        "for", "the", "and", "with", "by", "of", "in", "pour",
-        "homme", "femme", "men", "women", "man", "woman",
-    }
-
-    candidates = []
-    def add_candidate(value):
-        value = norm(value)
-        if not value:
-            return
-        slug = re.sub(r"\s+", "-", value).strip("-")
-        if slug and slug not in candidates:
-            candidates.append(slug)
-
-    # Full name first, then progressively remove leading brand tokens.
-    add_candidate(q)
-    for start in range(1, len(parts)):
-        add_candidate(" ".join(parts[start:]))
-
-    # Generic concentration/gender cleanup.
-    broad = " ".join(p for p in parts if p.lower() not in removable)
-    add_candidate(broad)
-
-    # Keep the number of speculative URLs small; normal search/category
-    # discovery remains the primary path.
-    candidates = candidates[:8]
-
-    urls = []
-    prefixes = (
-        "/product/",
-        "/products/",
-        "/en/product/",
-        "/en/products/",
-    )
-    for slug in candidates:
-        for prefix in prefixes:
-            urls.append(BASE_URL + prefix + slug + ".html")
-
-    return urls[:32]
+    return []
 
 
 def _fast_targeted_search(session, query):
@@ -1610,31 +1562,32 @@ def _discover(
     if urls:
         return urls[:24]
 
-    # 3. TARGETED CATEGORY FALLBACK:
-    # Only after the cheap paths fail. This is deliberately limited to
-    # the category discovery already scoped by _discover_from_categories.
-    for url in _discover_from_categories(
-        session,
-        q,
-        max_urls=12,
-    ):
-        add(url)
+    # 3. GENERIC CATEGORY FALLBACK:
+    # Repeat category discovery with the same broadened aliases used by the
+    # search endpoints. This is the important generic replacement for the old
+    # Hawas-only URL exception: a shorter family query can expose the correct
+    # Product Line page even when the complete query cannot.
+    for discovery_query in _candidate_queries(q):
+        for url in _discover_from_categories(
+            session,
+            discovery_query,
+            max_urls=12,
+        ):
+            add(url)
+            if len(urls) >= 24:
+                return urls[:24]
 
-        if len(urls) >= 24:
-            return urls[:24]
-
-    # 4. SECONDARY SITEMAP FALLBACK.
-    # Kept after targeted discovery because sitemap traversal is slower.
-    for product_url in _sitemap_product_urls(
-        session,
-        q,
-        max_sitemaps=2,
-        max_urls=12,
-    ):
-        add(product_url)
-
-        if len(urls) >= 24:
-            return urls[:24]
+    # 4. SECONDARY SITEMAP FALLBACK, also using broadened aliases.
+    for discovery_query in _candidate_queries(q):
+        for product_url in _sitemap_product_urls(
+            session,
+            discovery_query,
+            max_sitemaps=2,
+            max_urls=12,
+        ):
+            add(product_url)
+            if len(urls) >= 24:
+                return urls[:24]
 
     # 5. Last-resort older route.
     endpoint = (
@@ -1666,13 +1619,7 @@ def _discover(
             if len(urls) >= 24:
                 break
 
-    # 6. Generic slug guesses for families whose Deloox search index is
-    # incomplete. These are candidates only; _product() validates q.
-    for candidate_url in _targeted_known_product_urls(q):
-        add(candidate_url)
-        if len(urls) >= 24:
-            return urls[:24]
-
+    # No product-specific slug guesses.
     return urls[:24]
 
 
