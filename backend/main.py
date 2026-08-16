@@ -1561,3 +1561,151 @@ def test_deloox_step5(q: str = "Liquid Brun"):
     finally:
         session.close()
 
+
+@app.get("/test-deloox-step6")
+def test_deloox_step6(q: str = "Liquid Brun"):
+    """Step 6: inspect Deloox's search implementation clues without opening products."""
+    import re as _re
+    import time as _time
+    import requests as _requests
+    from bs4 import BeautifulSoup as _BeautifulSoup
+    from urllib.parse import urljoin as _urljoin
+
+    query = str(q or "").strip()
+    started = _time.perf_counter()
+    homepage = "https://www.deloox.com/"
+    headers = {
+        "User-Agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) "
+                      "AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 "
+                      "Mobile/15E148 Safari/604.1",
+        "Accept-Language": "en-GB,en;q=0.9",
+    }
+
+    try:
+        r = _requests.get(homepage, headers=headers, timeout=10)
+        html = r.text or ""
+        soup = _BeautifulSoup(html, "html.parser")
+
+        clues = []
+        seen = set()
+
+        def add(kind, value, context=""):
+            key = (kind, value)
+            if value and key not in seen:
+                seen.add(key)
+                clues.append({
+                    "kind": kind,
+                    "value": value,
+                    "context": context[:240]
+                })
+
+        # Form + input metadata
+        for form in soup.find_all("form"):
+            action = _urljoin(homepage, form.get("action") or "")
+            add("form_action", action, str(form)[:500])
+            for inp in form.find_all("input"):
+                name = inp.get("name")
+                typ = inp.get("type")
+                data = " ".join(
+                    f"{k}={v}" for k, v in inp.attrs.items()
+                    if str(k).startswith("data-")
+                )
+                if name or data or typ in ("search", "text"):
+                    add("input", f"name={name} type={typ} data={data}", str(inp)[:400])
+
+        # Script srcs and inline JS around search/autocomplete/API clues.
+        for s in soup.find_all("script"):
+            src = s.get("src")
+            if src:
+                full = _urljoin(homepage, src)
+                low = full.lower()
+                if any(k in low for k in (
+                    "search", "autocomplete", "algolia", "elastic", "api"
+                )):
+                    add("script_src", full)
+            else:
+                text = s.string or s.get_text(" ", strip=True)
+                low = text.lower()
+                if any(k in low for k in (
+                    "autocomplete", "algolia", "elastic", "search.html",
+                    "/search", "api/", "searchapi", "suggest"
+                )):
+                    # Return only compact matching snippets, not the whole script.
+                    for pat in (
+                        r'.{0,100}(?:autocomplete|algolia|elastic|search\.html|/search|api/|searchapi|suggest).{0,180}',
+                    ):
+                        for m in _re.finditer(pat, text, flags=_re.I):
+                            add("inline_js", m.group(0))
+
+        # Raw HTML clues: URLs and data attributes containing search/autocomplete.
+        for m in _re.finditer(
+            r'(?i)(?:https?://[^"\']+|/[A-Za-z0-9_./?-]+)'
+            r'(?:search|autocomplete|suggest|api)[A-Za-z0-9_./?=&%-]*',
+            html
+        ):
+            add("html_route", m.group(0)[:500])
+
+        # Crucial: test only the discovered form route, once, and inspect whether q is echoed.
+        search_probe = None
+        form = next(
+            (
+                f for f in soup.find_all("form")
+                if (f.get("action") or "").lower().find("search") >= 0
+            ),
+            None
+        )
+        if form:
+            action = _urljoin(homepage, form.get("action") or "")
+            q_name = None
+            for inp in form.find_all("input"):
+                name = inp.get("name")
+                typ = (inp.get("type") or "").lower()
+                if name and (typ in ("search", "text") or name.lower() in ("q", "query", "search", "keyword", "term")):
+                    q_name = name
+                    break
+            if q_name:
+                sr = _requests.get(
+                    action,
+                    params={q_name: query},
+                    headers=headers,
+                    timeout=10,
+                )
+                body = sr.text or ""
+                norm = " ".join(body.lower().split())
+                nq = " ".join(query.lower().split())
+                search_probe = {
+                    "url": sr.url,
+                    "status": sr.status_code,
+                    "bytes": len(sr.content),
+                    "query_echoed": nq in norm,
+                    "contains_liquid": "liquid" in norm,
+                    "contains_brun": "brun" in norm,
+                    "contains_product_path": "/product/" in body.lower(),
+                    "title": (
+                        _BeautifulSoup(body, "html.parser").title.get_text(" ", strip=True)
+                        if _BeautifulSoup(body, "html.parser").title else ""
+                    ),
+                }
+
+        return {
+            "step": 6,
+            "query": query,
+            "seconds": round(_time.perf_counter() - started, 3),
+            "homepage_status": r.status_code,
+            "homepage_bytes": len(r.content),
+            "clues": clues[:120],
+            "search_probe": search_probe,
+            "message": (
+                "SEARCH IMPLEMENTATION CLUES ONLY — no product page opened. "
+                "If the q probe ignores the query, use the discovered JS/API clue next."
+            ),
+        }
+
+    except Exception as exc:
+        return {
+            "step": 6,
+            "query": query,
+            "seconds": round(_time.perf_counter() - started, 3),
+            "error": f"{type(exc).__name__}: {exc}",
+        }
+
