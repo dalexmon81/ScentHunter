@@ -12,57 +12,6 @@ HEADERS = {
     "Accept-Language": "nl-NL,nl;q=0.9,en;q=0.8",
 }
 
-
-# ScentHunter routing rule:
-# These three stores are Arabic-fragrance specialists. They should NOT be
-# queried for clearly identified designer / niche brands. Unknown brands are
-# intentionally NOT blocked, so a new Arabic brand is never lost.
-NON_ARABIC_BRANDS = {
-    "acqua di parma", "aerin", "amouage", "armani", "azzaro", "bdk",
-    "bdk parfums", "bentley", "biotherm", "boucheron", "burberry",
-    "bvlgari", "bulgari", "byredo", "calvin klein", "carolina herrera",
-    "cartier", "chanel", "chloe", "chloé", "clinique", "coach",
-    "comptoir sud pacifique", "creed", "david beckham", "dior",
-    "diptyque", "dolce & gabbana", "dolce gabbana", "dunhill",
-    "elizabeth arden", "elie saab", "emilio pucci", "estee lauder",
-    "estée lauder", "etat libre d'orange", "fragrance du bois",
-    "frederic malle", "frederic malle", "givenchy", "guerlain",
-    "gucci", "hugo boss", "issey miyake", "jaguar", "jean paul gaultier",
-    "jil sander", "jimmy choo", "jo malone", "jovan", "juliette has a gun",
-    "kenzo", "kilian", "la mer", "lalique", "lancome", "lancôme",
-    "lanvin", "le labo", "loewe", "lorenzo villoresi", "maison crivelli",
-    "maison francis kurkdjian", "maison margiela", "marc jacobs",
-    "mancera", "mariah carey", "memo paris", "michael kors", "miller harris",
-    "montblanc", "moschino", "mugler", "narciso rodriguez", "nars",
-    "nautica", "nishane", "paco rabanne", "parfums de marly", "philosophy",
-    "prada", "ralph lauren", "revlon", "roberto cavalli", "roger & gallet",
-    "salvatore ferragamo", "serge lutens", "shiseido", "sisley",
-    "snif", "tom ford", "tommy hilfiger", "trussardi", "valentino",
-    "van cleef & arpels", "versace", "viktor & rolf", "vilhelm parfumerie",
-    "yves saint laurent", "ysl", "zadig & voltaire", "zara",
-    "xerjoff", "ex nihilo", "initio", "ormonde jayne", "penhaligon's",
-    "penhaligons", "roja", "roja parfums", "the merchant of venice",
-    "tiziana terenzi", "nasomatto", "ortho parisi", "parle moi de parfum",
-    "atelier des ors", "bdk parfums", "bois 1920", "carner barcelona",
-    "essential parfums", "histoires de parfums", "laboratorio olfattivo",
-    "liquides imaginaires", "mancera", "montale", "parle moi de parfum",
-    "profumum roma", "room 1015", "state of mind", "une nuit nomade",
-}
-
-def _is_non_arabic_brand_query(query):
-    """Return True only for a clearly recognized designer/niche brand.
-
-    We deliberately do not guess from unknown names. The three Arabic-only
-    stores are skipped only when the query contains a known non-Arabic brand.
-    """
-    text = norm(query) if "norm" in globals() else clean(query).lower()
-    text = re.sub(r"\s+", " ", text).strip()
-    return any(
-        re.search(r"(?<![a-z0-9])" + re.escape(norm(brand)) + r"(?![a-z0-9])", text)
-        for brand in NON_ARABIC_BRANDS
-    )
-
-
 def clean(value):
     return re.sub(r"\s+", " ", str(value or "")).strip()
 
@@ -92,6 +41,12 @@ def size_ml(*values):
         value *= 10
     return int(value) if value.is_integer() else value
 
+
+def valid_size(size):
+    # ScentHunter compares normal retail bottles, not tiny samples/decants.
+    # Anything below 10 ml is excluded (e.g. the unwanted 2 ml listing).
+    return size is None or size >= 10
+
 def concentration(*values):
     text = norm(" ".join(clean(x) for x in values))
     if re.search(r"\beau de toilette\b|\bedt\b", text): return "Eau de Toilette"
@@ -109,7 +64,10 @@ def product_page(session, url, query):
     soup = BeautifulSoup(r.text, "html.parser")
     h1 = soup.find("h1")
     name = clean(h1.get_text(" ", strip=True)) if h1 else ""
+    detected_size = size_ml(name)
     if not name or not matches(name, query):
+        return None
+    if not valid_size(detected_size):
         return None
 
     amount = None
@@ -165,7 +123,7 @@ def product_page(session, url, query):
             "store_variant_id": None,
         },
         "attributes": {
-            "size_ml": {"value": size_ml(name), "source": "product_title"} if size_ml(name) else None,
+            "size_ml": {"value": detected_size, "source": "product_title"} if detected_size is not None else None,
             "concentration": {"value": concentration(name), "source": "product_title"} if concentration(name) else None,
             "gender": {"value": "unknown", "source": "not_explicit"},
             "packaging_type": {"value": "product", "source": "default"},
@@ -187,9 +145,6 @@ def search(query):
     query = clean(query)
     if not query:
         return []
-
-    if _is_non_arabic_brand_query(query):
-        return []
     session = requests.Session()
     try:
         r = session.get(BASE_URL + "/search?q=" + quote_plus(query), headers=HEADERS, timeout=TIMEOUT)
@@ -210,7 +165,9 @@ def search(query):
                 card = card.parent
             if card is None:
                 continue
-            if matches(clean(card.get_text(" ", strip=True)), query):
+            card_text = clean(card.get_text(" ", strip=True))
+            card_size = size_ml(card_text)
+            if matches(card_text, query) and valid_size(card_size):
                 seen.add(url)
                 urls.append(url)
         results = []
