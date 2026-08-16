@@ -1186,6 +1186,120 @@ def diagnose_deloox_trace(q: str = "Liquid Brun"):
     finally:
         session.close()
 
+
+# ============================================================
+# DIAGNOSTICA DELOOX SEARCH PARSE - STEP 6
+# ============================================================
+
+@app.get("/diagnose-deloox-search-parse")
+def diagnose_deloox_search_parse(q: str = "Liquid Brun"):
+    """
+    Una sola richiesta al search endpoint Deloox che nella trace precedente
+    ha risposto 200. Confronta:
+    - occorrenze raw di /product/
+    - href /product/ presenti negli <a>
+    - candidati restituiti dal vero _candidate_product_urls()
+    Nessun _discover(), nessun _product(), nessun crawling.
+    """
+    import requests as _requests
+    from bs4 import BeautifulSoup as _BeautifulSoup
+    from urllib.parse import quote_plus as _quote_plus
+
+    query = str(q or "").strip() or "Liquid Brun"
+    url = f"https://www.deloox.com/en/search?query={_quote_plus(query)}"
+
+    module = load_scraper("deloox")
+    started = time.monotonic()
+
+    try:
+        response = _requests.get(
+            url,
+            headers=getattr(module, "HEADERS", {}),
+            timeout=8,
+        )
+        html = response.text or ""
+
+        soup = _BeautifulSoup(html, "html.parser")
+
+        raw_paths = re.findall(
+            r"/product/[^\"'<>\\s]+",
+            html,
+            re.I,
+        )
+
+        anchor_urls = []
+        anchor_details = []
+        for a in soup.find_all("a", href=True):
+            href = str(a.get("href") or "")
+            if "/product/" not in href.lower():
+                continue
+            label = a.get_text(" ", strip=True)
+            anchor_urls.append(href)
+            anchor_details.append({
+                "href": href,
+                "label": label[:300],
+            })
+
+        parser_urls = module._candidate_product_urls(
+            html,
+            query,
+        )
+
+        # Mostra i punti raw attorno a /product/ per capire se il nome del
+        # profumo è vicino all'URL oppure è serializzato altrove.
+        contexts = []
+        seen_contexts = set()
+        lower_html = html.lower()
+        pos = 0
+        while len(contexts) < 12:
+            idx = lower_html.find("/product/", pos)
+            if idx < 0:
+                break
+            start = max(0, idx - 300)
+            end = min(len(html), idx + 500)
+            snippet = html[start:end]
+            key = snippet[:800]
+            if key not in seen_contexts:
+                seen_contexts.add(key)
+                contexts.append(snippet)
+            pos = idx + 9
+
+        return {
+            "query": query,
+            "url": url,
+            "status": response.status_code,
+            "elapsed_ms": round((time.monotonic() - started) * 1000),
+            "response_bytes": len(response.content or b""),
+            "raw_product_path_occurrences": len(raw_paths),
+            "raw_product_paths_sample": raw_paths[:30],
+            "anchor_product_url_count": len(anchor_urls),
+            "anchor_product_details": anchor_details[:30],
+            "parser_candidate_count": len(parser_urls),
+            "parser_candidate_urls": parser_urls[:30],
+            "raw_contexts": contexts,
+            "parser": "scrapers.deloox.scraper._candidate_product_urls",
+            "error": None,
+        }
+
+    except Exception as exc:
+        return {
+            "query": query,
+            "url": url,
+            "status": None,
+            "elapsed_ms": round((time.monotonic() - started) * 1000),
+            "response_bytes": 0,
+            "raw_product_path_occurrences": None,
+            "raw_product_paths_sample": [],
+            "anchor_product_url_count": None,
+            "anchor_product_details": [],
+            "parser_candidate_count": None,
+            "parser_candidate_urls": [],
+            "raw_contexts": [],
+            "parser": "scrapers.deloox.scraper._candidate_product_urls",
+            "error": f"{type(exc).__name__}: {exc}",
+        }
+
+
 # ============================================================
 # API - SUGGEST
 # ============================================================
