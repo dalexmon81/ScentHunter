@@ -857,15 +857,47 @@ def _category_product_line_links(
 
 
 def _category_pages():
-    """Current Deloox perfume category pages."""
+    """Current Deloox perfume/fragrance category pages."""
 
     return (
+        # Broad fragrance categories are important because Deloox does
+        # not expose every product through the narrower perfume pages.
+        BASE_URL
+        + "/category/1000054/mens-fragrances.html",
+
         BASE_URL
         + "/category/1075660/womens-perfume.html",
 
         BASE_URL
         + "/category/1075750/mens-perfume.html",
     )
+
+
+def _category_page_variants(
+    category_url,
+    max_pages=8,
+):
+    """Return pagination pages only for Deloox's broad fragrance category."""
+
+    # The broad men's-fragrances category is the one that currently
+    # contains products which are absent from the narrower perfume page.
+    # Keep pagination scoped to this category so a fallback search does
+    # not multiply requests for every other category.
+    if not category_url.lower().endswith(
+        "/category/1000054/mens-fragrances.html"
+    ):
+        return [category_url]
+
+    urls = [category_url]
+
+    for page_number in range(2, max_pages + 1):
+        urls.append(
+            category_url
+            + "?page="
+            + str(page_number)
+        )
+
+    return urls
 
 
 def _targeted_category_seed_urls(
@@ -939,57 +971,76 @@ def _discover_from_categories(
             category_url
         )
 
-        try:
-            r = session.get(
-                category_url,
-                headers=HEADERS,
-                timeout=TIMEOUT,
-            )
-        except requests.RequestException:
-            continue
-
-        if r.status_code >= 400:
-            continue
-
-        product_line_links = (
-            _category_product_line_links(
-                r.text,
-                query,
-            )
+        # Deloox can hide a valid product several pages deep inside a
+        # broad category.  Hawas for Him is currently on page 7 of
+        # /category/1000054/mens-fragrances.html, so checking only the
+        # first category page is not sufficient.
+        category_page_urls = _category_page_variants(
+            category_url,
+            max_pages=8,
         )
 
-        candidate_pages = (
-            product_line_links
-            or [category_url]
-        )
-
-        for page_url in candidate_pages:
+        for category_page_url in category_page_urls:
             try:
-                page = session.get(
-                    page_url,
+                r = session.get(
+                    category_page_url,
                     headers=HEADERS,
                     timeout=TIMEOUT,
                 )
             except requests.RequestException:
                 continue
 
-            if page.status_code >= 400:
+            if r.status_code >= 400:
                 continue
 
-            for product_url in (
-                _candidate_product_urls(
-                    page.text,
+            product_line_links = (
+                _category_product_line_links(
+                    r.text,
                     query,
                 )
-            ):
-                if product_url in seen:
-                    continue
+            )
 
-                seen.add(product_url)
-                urls.append(product_url)
+            if product_line_links:
+                candidate_pages = [
+                    (page_url, None)
+                    for page_url in product_line_links
+                ]
+            else:
+                # Reuse the category response we already downloaded.
+                candidate_pages = [
+                    (category_page_url, r.text)
+                ]
 
-                if len(urls) >= max_urls:
-                    return urls[:max_urls]
+            for page_url, page_html in candidate_pages:
+                if page_html is None:
+                    try:
+                        page = session.get(
+                            page_url,
+                            headers=HEADERS,
+                            timeout=TIMEOUT,
+                        )
+                    except requests.RequestException:
+                        continue
+
+                    if page.status_code >= 400:
+                        continue
+
+                    page_html = page.text
+
+                for product_url in (
+                    _candidate_product_urls(
+                        page_html,
+                        query,
+                    )
+                ):
+                    if product_url in seen:
+                        continue
+
+                    seen.add(product_url)
+                    urls.append(product_url)
+
+                    if len(urls) >= max_urls:
+                        return urls[:max_urls]
 
     return urls[:max_urls]
 
