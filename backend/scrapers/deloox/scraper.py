@@ -985,6 +985,26 @@ def diagnostic_discovery(query):
         session.close()
 
 
+
+def diagnostic_five_queries():
+    """Run the same generic discovery trace for the five control queries.
+
+    This function deliberately contains no product-specific URL, SKU, category,
+    brand rule, or exception. It only defines the diagnostic test set.
+    """
+    queries = [
+        "Liquid Brun",
+        "Liquid Brun Limited Edition",
+        "Hawas Ice",
+        "Hawas Kobra",
+        "Eros Flame",
+    ]
+    return {
+        "generic_only": True,
+        "queries": queries,
+        "results": [diagnostic_discovery(q) for q in queries],
+    }
+
 def search(query):
     query = clean(query)
     if not query:
@@ -1033,8 +1053,14 @@ def scrape(query):
 if __name__ == "__main__":
     import argparse
     parser = argparse.ArgumentParser()
-    parser.add_argument("query")
+    parser.add_argument("query", nargs="?", default="")
     parser.add_argument("--diagnose", action="store_true")
+    parser.add_argument("--diagnose-five", action="store_true")
     args = parser.parse_args()
-    payload = diagnostic_discovery(args.query) if args.diagnose else search(args.query)
+    if args.diagnose_five:
+        payload = diagnostic_five_queries()
+    elif args.diagnose:
+        payload = diagnostic_discovery(args.query)
+    else:
+        payload = search(args.query)
     print(json.dumps(payload, ensure_ascii=False, indent=2))
