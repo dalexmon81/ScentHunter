@@ -1053,9 +1053,49 @@ def diagnose_deloox_step(q: str = "Hawas Kobra"):
         row["seconds"] = round(_time.perf_counter() - started, 3)
         row["message"] = (
             "deloox_module.search() non ha restituito entro 12 secondi. "
-            "Il problema è dentro lo scraper Deloox, non nel filtro finale del Main."
+            "Ora catturiamo lo stack della thread per individuare la riga "
+            "esatta dello scraper dove è bloccato."
         )
         future.cancel()
+
+        # DIAGNOSI REALE: individua la thread worker e ne cattura lo stack.
+        # Questo non modifica il comportamento dello scraper.
+        import sys
+        import threading
+        import traceback as _traceback
+
+        worker_stacks = []
+        frames = sys._current_frames()
+
+        for thread in threading.enumerate():
+            if thread is threading.current_thread():
+                continue
+
+            frame = frames.get(thread.ident)
+            if frame is None:
+                continue
+
+            stack = _traceback.format_stack(frame)
+            stack_text = "".join(stack)
+
+            # Mostriamo soprattutto le frame del nostro codice.
+            if (
+                "scrapers/deloox" in stack_text
+                or "scrapers\\deloox" in stack_text
+                or "deloox" in stack_text.lower()
+            ):
+                worker_stacks.append({
+                    "thread_name": thread.name,
+                    "thread_id": thread.ident,
+                    "stack": stack,
+                })
+
+        row["worker_stacks"] = worker_stacks
+        row["diagnostic"] = (
+            "Cerca nell'output la frame più bassa appartenente a "
+            "scrapers/deloox: quella è la funzione/riga dove search() "
+            "stava lavorando quando è scattato il timeout."
+        )
 
     except Exception as exc:
         row["status"] = "error"
