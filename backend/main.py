@@ -765,6 +765,105 @@ def diagnose_deloox_category(q: str):
 
 
 # ============================================================
+# API - DIAGNOSTICA ESTRAZIONE URL PRODOTTO DELOOX
+# ============================================================
+
+@app.get("/diagnose-deloox-products")
+def diagnose_deloox_products(q: str):
+    """
+    Secondo step diagnostico: una sola richiesta alla categoria Deloox,
+    poi esegue esclusivamente il parser degli URL prodotto del vero scraper.
+    NON apre nessuna pagina prodotto e NON esegue discover/search.
+    """
+    query = str(q or "").strip()
+    if not query:
+        raise HTTPException(status_code=400, detail="Parametro q mancante")
+
+    url = "https://www.deloox.com/en/category/1132834/liquid-brun.html"
+    headers = {
+        "User-Agent": (
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+            "AppleWebKit/537.36 (KHTML, like Gecko) "
+            "Chrome/131.0.0.0 Safari/537.36"
+        ),
+        "Accept-Language": "en-GB,en;q=0.9",
+        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+    }
+
+    started = time.monotonic()
+
+    try:
+        request = Request(url, headers=headers, method="GET")
+        with urlopen(request, timeout=8) as response:
+            body = response.read()
+            status = response.status
+            content_type = response.headers.get("Content-Type")
+
+        # Usa ESATTAMENTE il parser del vero scraper Deloox.
+        module = load_scraper("deloox")
+        extractor = getattr(module, "_candidate_product_urls")
+        product_urls = extractor(body.decode("utf-8", errors="ignore"), query)
+
+        elapsed_ms = round((time.monotonic() - started) * 1000)
+
+        return {
+            "query": query,
+            "url": url,
+            "status": status,
+            "elapsed_ms": elapsed_ms,
+            "response_bytes": len(body),
+            "content_type": content_type,
+            "product_url_count": len(product_urls),
+            "product_urls": product_urls[:20],
+            "parser": "scrapers.deloox.scraper._candidate_product_urls",
+            "error": None,
+        }
+
+    except HTTPError as error:
+        elapsed_ms = round((time.monotonic() - started) * 1000)
+        return {
+            "query": query,
+            "url": url,
+            "status": error.code,
+            "elapsed_ms": elapsed_ms,
+            "response_bytes": 0,
+            "product_url_count": 0,
+            "product_urls": [],
+            "parser": "not_run",
+            "error": f"HTTPError: {error}",
+        }
+
+    except URLError as error:
+        elapsed_ms = round((time.monotonic() - started) * 1000)
+        return {
+            "query": query,
+            "url": url,
+            "status": None,
+            "elapsed_ms": elapsed_ms,
+            "response_bytes": 0,
+            "product_url_count": 0,
+            "product_urls": [],
+            "parser": "not_run",
+            "error": f"URLError: {error.reason}",
+        }
+
+    except Exception as error:
+        elapsed_ms = round((time.monotonic() - started) * 1000)
+        traceback.print_exc()
+        return {
+            "query": query,
+            "url": url,
+            "status": None,
+            "elapsed_ms": elapsed_ms,
+            "response_bytes": 0,
+            "product_url_count": 0,
+            "product_urls": [],
+            "parser": "error",
+            "error": f"{type(error).__name__}: {error}",
+        }
+
+
+# ============================================================
 # API - SUGGEST
 # ============================================================
 
