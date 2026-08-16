@@ -1,4 +1,4 @@
-from pathlib import Path
+ pathlib import Path
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
@@ -688,8 +688,8 @@ def test_store(store: str, q: str):
 # API - DIAGNOSTICA HTTP DELOOX (UNA SOLA RICHIESTA)
 # ============================================================
 
-@app.get("/diagnose-deloox-http")
-def diagnose_deloox_http(q: str):
+@app.get("/diagnose-deloox-category")
+def diagnose_deloox_category(q: str):
     """
     Diagnostica esclusivamente una singola richiesta HTTP alla categoria Liquid Brun di Deloox.
     NON chiama lo scraper, ricerca interna, sitemap o pagine prodotto.
