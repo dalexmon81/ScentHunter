@@ -864,6 +864,139 @@ def diagnose_deloox_products(q: str):
 
 
 # ============================================================
+# API - DIAGNOSTICA RAW VS PARSER DELOOX
+# ============================================================
+
+@app.get("/diagnose-deloox-products-raw")
+def diagnose_deloox_products_raw(q: str):
+    """
+    Terzo step diagnostico: separa il contenuto realmente ricevuto da Deloox
+    dal filtro del parser.
+
+    Fa UNA sola richiesta HTTP alla categoria Liquid Brun.
+    NON apre pagine prodotto e NON esegue discover/search.
+
+    Serve a distinguere questi casi:
+      A) Deloox invia davvero un solo URL prodotto;
+      B) Deloox invia molti URL ma il parser non li riconosce;
+      C) gli URL sono presenti nel JavaScript/JSON ma non come normali <a>.
+    """
+    query = str(q or "").strip()
+    if not query:
+        raise HTTPException(status_code=400, detail="Parametro q mancante")
+
+    url = "https://www.deloox.com/en/category/1132834/liquid-brun.html"
+    headers = {
+        "User-Agent": (
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+            "AppleWebKit/537.36 (KHTML, like Gecko) "
+            "Chrome/131.0.0.0 Safari/537.36"
+        ),
+        "Accept-Language": "en-GB,en;q=0.9",
+        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+    }
+
+    started = time.monotonic()
+
+    try:
+        request = Request(url, headers=headers, method="GET")
+        with urlopen(request, timeout=8) as response:
+            body = response.read()
+            status = response.status
+            content_type = response.headers.get("Content-Type")
+
+        html = body.decode("utf-8", errors="ignore")
+        module = load_scraper("deloox")
+        soup = module.BeautifulSoup(html, "html.parser")
+
+        # 1) Tutte le occorrenze testuali di /product/ nel documento.
+        all_product_paths = re.findall(
+            r"(?:https?:)?//(?:www\\.)?deloox\\.com[^\"'<>\\s]*?/product/[^\"'<>\\s]+|(?:/)(?:en/|it/|nl/)?product/[^\"'<>\\s]+",
+            html,
+            re.I,
+        )
+
+        # 2) URL prodotto esposti da normali tag <a>.
+        anchor_product_urls = []
+        for a in soup.find_all("a", href=True):
+            href = str(a.get("href") or "")
+            if "/product/" in href.lower():
+                absolute = urljoin("https://www.deloox.com", href).split("#")[0].split("?")[0]
+                if absolute not in anchor_product_urls:
+                    anchor_product_urls.append(absolute)
+
+        # 3) URL prodotto presenti nei blocchi serializzati/script.
+        serialized_product_urls = []
+        for tag in soup.find_all(["script", "div", "article", "li"]):
+            blob = str(tag)
+            if "/product/" not in blob.lower():
+                continue
+            found = re.findall(
+                r"(?:(?:https?:)?//(?:www\\.)?deloox\\.com)?[^\"'<>\\s]*?/product/[^\"'<>\\s]+",
+                blob,
+                re.I,
+            )
+            for raw in found:
+                absolute = urljoin("https://www.deloox.com", raw).split("#")[0].split("?")[0]
+                if "/product/" in absolute.lower() and absolute not in serialized_product_urls:
+                    serialized_product_urls.append(absolute)
+
+        # 4) Il risultato del vero parser, per confronto diretto.
+        parser_urls = module._candidate_product_urls(html, query)
+
+        elapsed_ms = round((time.monotonic() - started) * 1000)
+
+        return {
+            "query": query,
+            "url": url,
+            "status": status,
+            "elapsed_ms": elapsed_ms,
+            "response_bytes": len(body),
+            "content_type": content_type,
+            "raw_product_path_occurrences": len(all_product_paths),
+            "anchor_product_url_count": len(anchor_product_urls),
+            "anchor_product_urls": anchor_product_urls[:30],
+            "serialized_product_url_count": len(serialized_product_urls),
+            "serialized_product_urls": serialized_product_urls[:30],
+            "parser_product_url_count": len(parser_urls),
+            "parser_product_urls": parser_urls[:30],
+            "parser": "scrapers.deloox.scraper._candidate_product_urls",
+            "error": None,
+        }
+
+    except HTTPError as error:
+        elapsed_ms = round((time.monotonic() - started) * 1000)
+        return {
+            "query": query,
+            "url": url,
+            "status": error.code,
+            "elapsed_ms": elapsed_ms,
+            "response_bytes": 0,
+            "error": f"HTTPError: {error}",
+        }
+    except URLError as error:
+        elapsed_ms = round((time.monotonic() - started) * 1000)
+        return {
+            "query": query,
+            "url": url,
+            "status": None,
+            "elapsed_ms": elapsed_ms,
+            "response_bytes": 0,
+            "error": f"URLError: {error.reason}",
+        }
+    except Exception as error:
+        traceback.print_exc()
+        return {
+            "query": query,
+            "url": url,
+            "status": None,
+            "elapsed_ms": round((time.monotonic() - started) * 1000),
+            "response_bytes": 0,
+            "error": f"{type(error).__name__}: {error}",
+        }
+
+
+# ============================================================
 # API - SUGGEST
 # ============================================================
 
