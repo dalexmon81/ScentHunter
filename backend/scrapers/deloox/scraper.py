@@ -1464,6 +1464,47 @@ def _targeted_known_product_urls(query):
     return urls
 
 
+def _fast_targeted_search(session, query):
+    """Validate proven product URLs before any broad Deloox discovery.
+
+    This is deliberately the first search path for known products. It avoids
+    wasting time on Deloox search endpoints and category/sitemap traversal when
+    we already know the exact product page. The product page remains the final
+    authority: a URL is returned only if _product() validates it.
+    """
+    results = []
+    seen = set()
+
+    for url in _targeted_known_product_urls(query):
+        if url in seen:
+            continue
+
+        seen.add(url)
+
+        try:
+            page = session.get(
+                url,
+                headers=HEADERS,
+                timeout=TIMEOUT,
+            )
+        except requests.RequestException:
+            continue
+
+        if page.status_code >= 400:
+            continue
+
+        item = _product(
+            url,
+            page.text,
+            query,
+        )
+
+        if item:
+            results.append(item)
+
+    return results
+
+
 def _discover(
     session,
     q,
@@ -1863,7 +1904,18 @@ def search(query):
     session = requests.Session()
 
     try:
-        # FIRST: use Deloox's internal search.
+        # FIRST: validate proven/current product URLs.
+        # This must happen before Deloox's broad search/discovery paths: for
+        # known products it turns a potentially long search into one request.
+        targeted_results = _fast_targeted_search(
+            session,
+            query,
+        )
+
+        if targeted_results:
+            return targeted_results
+
+        # SECOND: use Deloox's internal search.
         results = _search(
             session,
             query,
@@ -1872,7 +1924,7 @@ def search(query):
         if results:
             return results
 
-        # SECOND: only when internal search returns nothing,
+        # THIRD: only when internal search returns nothing,
         # fall back to the proven discovery mechanism.
         discovered_urls = _discover(
             session,
