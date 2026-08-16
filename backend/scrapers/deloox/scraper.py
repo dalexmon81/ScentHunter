@@ -1,16 +1,14 @@
-"""Deloox scraper - rebuilt from the working scraper architecture.
+"""Deloox adapter for ScentHunter.
 
-Design borrowed from the working ParfumZentrum / Orioudh / Bplatz scrapers:
-    query variants -> candidate URL discovery -> strict product validation
-    -> structured product extraction -> deduplication.
-
-Important: there are NO product-name exceptions (for example Liquid Brun).
+Discovery strategy:
+- Prefer Deloox's current category pages and their Product line filter links.
+- Fall back to Deloox search endpoints and sitemap discovery.
+- Product pages are parsed through JSON-LD/page content.
 """
 from __future__ import annotations
 
 import json
 import re
-from itertools import combinations
 from urllib.parse import quote_plus, urljoin, urlparse
 
 import requests
@@ -18,592 +16,262 @@ from bs4 import BeautifulSoup
 
 STORE = "Deloox"
 BASE_URL = "https://www.deloox.com"
-TIMEOUT = 12
+TIMEOUT = 10
 HEADERS = {
-    "User-Agent": (
-        "Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) "
-        "AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.0 "
-        "Mobile/15E148 Safari/604.1"
-    ),
-    "Accept-Language": "en-GB,en;q=0.9,it;q=0.8",
-    "Accept": "text/html,application/xhtml+xml,application/json;q=0.9,*/*;q=0.8",
-}
-
-IGNORED_QUERY_WORDS = {
-    "eau", "de", "parfum", "perfume", "edp", "edt", "extrait",
-    "spray", "ml", "for", "by", "pour", "the", "and", "men",
-    "man", "women", "woman", "herren", "damen",
-}
-
-NON_PERFUME_WORDS = {
-    "gift set", "set regalo", "coffret", "bundle", "deodorant",
-    "deo spray", "shower gel", "body lotion", "after shave",
-    "aftershave", "travel set", "discovery set", "kit",
+    "User-Agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 Version/17.0 Mobile/15E148 Safari/604.1",
+    "Accept-Language": "en-GB,en;q=0.9",
 }
 
 
-def clean(value) -> str:
-    return re.sub(r"\s+", " ", str(value or "")).strip()
+def clean(v):
+    return re.sub(r"\s+", " ", str(v or "")).strip()
 
 
-def norm(value) -> str:
-    value = clean(value).lower()
-    value = re.sub(r"(?<=\d)(?=[a-z])|(?<=[a-z])(?=\d)", " ", value)
-    value = re.sub(r"[^a-z0-9]+", " ", value)
-    return re.sub(r"\s+", " ", value).strip()
+def norm(v):
+    return re.sub(r"\s+", " ", re.sub(r"[^a-z0-9]+", " ", clean(v).lower())).strip()
 
 
-def query_tokens(query: str):
-    return [
-        x for x in norm(query).split()
-        if x and x not in IGNORED_QUERY_WORDS
-    ]
+def tokens(v):
+    return {x for x in norm(v).split() if len(x) > 1}
 
 
-def matches_name(name: str, query: str) -> bool:
-    wanted = query_tokens(query)
-    have = set(norm(name).split())
-    return bool(wanted) and all(token in have for token in wanted)
+def matches(text, q):
+    q_tokens = tokens(q)
+    return bool(q_tokens) and q_tokens.issubset(tokens(text))
 
 
-def relevant_text(text: str, query: str) -> bool:
-    """Looser discovery match: tokens may be in a URL/card context."""
-    wanted = query_tokens(query)
-    haystack = norm(text)
-    return bool(wanted) and all(token in haystack for token in wanted)
-
-
-def candidate_queries(query: str):
-    """Small, deterministic query ladder like the working scrapers."""
-    raw = clean(query)
-    n = norm(raw)
-    if not n:
-        return []
-
-    out = []
-
-    def add(value):
-        value = clean(value)
-        key = norm(value)
-        if value and key and key not in {norm(x) for x in out}:
-            out.append(value)
-
-    add(raw)
-
-    tokens = query_tokens(raw)
-    if tokens:
-        add(" ".join(tokens))
-
-    compact = re.sub(
-        r"(?<=\d)\s+(?=[a-z])|(?<=[a-z])\s+(?=\d)",
-        "",
-        n,
+def size_ml(*values):
+    m = re.search(
+        r"(?<!\d)(\d+(?:[.,]\d+)?)\s*(ml|cl)\b",
+        " ".join(clean(x) for x in values),
+        re.I,
     )
-    if compact != n:
-        add(compact)
-
-    # Individual meaningful tokens help when Deloox's search engine is poor
-    # with multi-word names. The final product page still performs strict
-    # validation, so discovery can be broad without corrupting results.
-    for token in tokens:
-        if len(token) >= 3:
-            add(token)
-
-    # Also try adjacent pairs for names such as "French Avenue Liquid Brun".
-    for a, b in combinations(tokens, 2):
-        if len(a) >= 3 and len(b) >= 3:
-            add(f"{a} {b}")
-        if len(out) >= 10:
-            break
-
-    return out[:10]
-
-
-def _absolute_product_url(raw_url: str):
-    raw_url = clean(raw_url).replace("\\/", "/")
-    if not raw_url or raw_url.startswith(("javascript:", "mailto:", "#")):
+    if not m:
         return None
-    url = urljoin(BASE_URL, raw_url).split("#")[0].split("?")[0]
-    parsed = urlparse(url)
-    if parsed.netloc.lower() not in {"deloox.com", "www.deloox.com"}:
-        return None
-    if "/product/" not in parsed.path.lower():
-        return None
-    return url
+    n = float(m.group(1).replace(",", "."))
+    n *= 10 if m.group(2).lower() == "cl" else 1
+    return int(n) if n.is_integer() else n
 
 
-def _extract_product_urls(html: str, query: str):
-    """Extract candidate product URLs without requiring an exact slug match."""
-    soup = BeautifulSoup(html or "", "html.parser")
-    candidates = []
-    seen = set()
-    wanted = query_tokens(query)
-
-    def add(raw_url, context=""):
-        url = _absolute_product_url(raw_url)
-        if not url or url in seen:
-            return
-        # Discovery score only. Do not reject a product just because its URL
-        # is opaque; the product page itself is the authority.
-        score_text = norm(f"{context} {url}")
-        score = sum(1 for token in wanted if token in score_text)
-        if score == 0:
-            # Keep a small number of opaque candidates from a search result.
-            # They will be strictly rejected later if the name is wrong.
-            return
-        seen.add(url)
-        candidates.append((score, url))
-
-    for a in soup.find_all("a", href=True):
-        add(a.get("href"), a.get_text(" ", strip=True))
-
-    raw = (html or "").replace("\\/", "/")
-    patterns = [
-        r'https?://(?:www\.)?deloox\.com/[^"\'<>\s]+/product/[^"\'<>\s]+',
-        r'["\']((?:/)?(?:[a-z]{2}/)?product/[^"\']+)["\']',
-    ]
-    for pattern in patterns:
-        for raw_url in re.findall(pattern, raw, re.I):
-            add(raw_url)
-
-    candidates.sort(key=lambda x: (-x[0], len(x[1])))
-    return [url for _, url in candidates]
+def concentration(*values):
+    t = norm(" ".join(clean(x) for x in values))
+    if re.search(r"\beau de toilette\b|\bedt\b", t):
+        return "Eau de Toilette"
+    if re.search(r"\beau de parfum\b|\bedp\b", t):
+        return "Eau de Parfum"
+    if re.search(r"\bextrait(?: de parfum)?\b", t):
+        return "Extrait de Parfum"
+    return None
 
 
-def _discover_from_search(session: requests.Session, query: str, max_urls=80):
-    """Search-driven discovery, modelled after Bplatz/Orioudh."""
-    endpoints = (
-        BASE_URL + "/en/search?query={}",
-        BASE_URL + "/en/search?search={}",
-        BASE_URL + "/en/search?q={}",
-        BASE_URL + "/en?search={}",
-        BASE_URL + "/search?query={}",
-        BASE_URL + "/search?q={}",
-    )
-
-    urls = []
-    seen = set()
-
-    for search_query in candidate_queries(query):
-        encoded = quote_plus(search_query)
-        for template in endpoints:
-            try:
-                r = session.get(
-                    template.format(encoded),
-                    headers=HEADERS,
-                    timeout=TIMEOUT,
-                )
-            except requests.RequestException:
-                continue
-
-            if r.status_code >= 400 or not r.text:
-                continue
-
-            for url in _extract_product_urls(r.text, query):
-                if url in seen:
-                    continue
-                seen.add(url)
-                urls.append(url)
-                if len(urls) >= max_urls:
-                    return urls
-
-    return urls
-
-
-def _discover_search_form(session: requests.Session, query: str, max_urls=50):
-    """Use Deloox's own current search form when it is discoverable."""
-    try:
-        r = session.get(BASE_URL + "/", headers=HEADERS, timeout=TIMEOUT)
-    except requests.RequestException:
-        return []
-    if r.status_code >= 400:
-        return []
-
-    soup = BeautifulSoup(r.text or "", "html.parser")
-    forms = []
-
-    for form in soup.find_all("form"):
-        action = urljoin(BASE_URL + "/", form.get("action") or "")
-        method = (form.get("method") or "get").lower()
-        if method != "get":
-            continue
-
-        qname = None
-        for inp in form.find_all("input"):
-            name = clean(inp.get("name"))
-            typ = clean(inp.get("type")).lower()
-            if name and (
-                typ in {"search", "text"}
-                or name.lower() in {"q", "query", "search", "keyword", "term"}
-            ):
-                qname = name
-                break
-
-        if qname:
-            forms.append((action, qname))
-
-    urls = []
-    seen = set()
-    for action, qname in forms[:2]:
-        for search_query in candidate_queries(query)[:5]:
-            try:
-                r = session.get(
-                    action,
-                    params={qname: search_query},
-                    headers=HEADERS,
-                    timeout=TIMEOUT,
-                )
-            except requests.RequestException:
-                continue
-            if r.status_code >= 400:
-                continue
-            for url in _extract_product_urls(r.text, query):
-                if url not in seen:
-                    seen.add(url)
-                    urls.append(url)
-                    if len(urls) >= max_urls:
-                        return urls
-    return urls
-
-
-def _category_seed_pages():
-    # Generic category entry points only. No product-specific exceptions.
-    return (
-        BASE_URL + "/category/1075660/womens-perfume.html",
-        BASE_URL + "/category/1075750/mens-perfume.html",
-    )
-
-
-def _discover_from_categories(session: requests.Session, query: str, max_urls=60):
-    urls = []
-    seen = set()
-
-    for category_url in _category_seed_pages():
-        try:
-            r = session.get(category_url, headers=HEADERS, timeout=TIMEOUT)
-        except requests.RequestException:
-            continue
-        if r.status_code >= 400:
-            continue
-
-        # First use product cards already present on the category page.
-        for url in _extract_product_urls(r.text, query):
-            if url not in seen:
-                seen.add(url)
-                urls.append(url)
-                if len(urls) >= max_urls:
-                    return urls
-
-        # Then inspect category/product-line links and follow only relevant ones.
-        soup = BeautifulSoup(r.text or "", "html.parser")
-        links = []
-        link_seen = set()
-        wanted = query_tokens(query)
-
-        for a in soup.find_all("a", href=True):
-            href = urljoin(category_url, a.get("href", ""))
-            parsed = urlparse(href)
-            if parsed.netloc.lower() not in {"deloox.com", "www.deloox.com"}:
-                continue
-            if "/category/" not in parsed.path.lower():
-                continue
-            label = a.get_text(" ", strip=True)
-            score_text = norm(f"{label} {href}")
-            score = sum(1 for token in wanted if token in score_text)
-            if score <= 0 or href in link_seen:
-                continue
-            link_seen.add(href)
-            links.append((score, href))
-
-        links.sort(key=lambda x: (-x[0], len(x[1])))
-        for _, page_url in links[:12]:
-            try:
-                page = session.get(page_url, headers=HEADERS, timeout=TIMEOUT)
-            except requests.RequestException:
-                continue
-            if page.status_code >= 400:
-                continue
-            for url in _extract_product_urls(page.text, query):
-                if url not in seen:
-                    seen.add(url)
-                    urls.append(url)
-                    if len(urls) >= max_urls:
-                        return urls
-
-    return urls
-
-
-def _sitemap_product_urls(session: requests.Session, query: str, max_sitemaps=20, max_urls=80):
-    """Sitemap discovery modelled after ParfumZentrum."""
-    wanted = query_tokens(query)
-    if not wanted:
-        return []
-
-    roots = (
-        BASE_URL + "/sitemap.xml",
-        BASE_URL + "/sitemap_index.xml",
-        BASE_URL + "/sitemap-index.xml",
-        BASE_URL + "/en/sitemap.xml",
-    )
-
-    pending = list(roots)
-    seen_maps = set()
-    found = []
-    seen_products = set()
-
-    while pending and len(seen_maps) < max_sitemaps and len(found) < max_urls:
-        sitemap_url = pending.pop(0)
-        if sitemap_url in seen_maps:
-            continue
-        seen_maps.add(sitemap_url)
-
-        try:
-            r = session.get(sitemap_url, headers=HEADERS, timeout=TIMEOUT)
-        except requests.RequestException:
-            continue
-        if r.status_code >= 400:
-            continue
-
-        body = r.text or ""
-        if "<loc" not in body.lower():
-            continue
-
-        soup = BeautifulSoup(body, "xml")
-        for loc in soup.find_all("loc"):
-            url = clean(loc.get_text())
-            if not url:
-                continue
-            low = url.lower()
-
-            if "/product/" in low:
-                score = sum(1 for token in wanted if token in norm(url))
-                if score >= max(1, len(wanted) - 1) and url not in seen_products:
-                    seen_products.add(url)
-                    found.append(url)
-                    if len(found) >= max_urls:
-                        break
-            elif low.endswith(".xml") or "sitemap" in low:
-                if url not in seen_maps:
-                    pending.append(url)
-
-    return found
-
-
-def discover(session: requests.Session, query: str):
-    """Unified discovery pipeline. No product-specific branch."""
-    urls = []
-    seen = set()
-
-    # 1. Search is the primary discovery mechanism, as in Bplatz/Orioudh.
-    for url in _discover_from_search(session, query, max_urls=80):
-        if url not in seen:
-            seen.add(url)
-            urls.append(url)
-        if len(urls) >= 80:
-            return urls
-
-    # 2. Use Deloox's own form if search URLs were incomplete.
-    for url in _discover_search_form(session, query, max_urls=50):
-        if url not in seen:
-            seen.add(url)
-            urls.append(url)
-        if len(urls) >= 80:
-            return urls
-
-    # 3. Generic category discovery.
-    for url in _discover_from_categories(session, query, max_urls=60):
-        if url not in seen:
-            seen.add(url)
-            urls.append(url)
-        if len(urls) >= 80:
-            return urls
-
-    # 4. Sitemap discovery, like ParfumZentrum.
-    for url in _sitemap_product_urls(session, query, max_sitemaps=20, max_urls=80):
-        if url not in seen:
-            seen.add(url)
-            urls.append(url)
-        if len(urls) >= 80:
-            break
-
-    return urls[:80]
-
-
-def _jsonld_product(soup):
-    for script in soup.select('script[type="application/ld+json"]'):
-        raw = script.get_text(strip=True)
-        if not raw:
-            continue
-        try:
-            data = json.loads(raw)
-        except Exception:
-            continue
-
-        queue = data if isinstance(data, list) else [data]
-        while queue:
-            item = queue.pop(0)
-            if isinstance(item, list):
-                queue.extend(item)
-                continue
-            if not isinstance(item, dict):
-                continue
-            typ = item.get("@type")
-            if typ == "Product" or "offers" in item:
-                return item
-            graph = item.get("@graph")
-            if isinstance(graph, list):
-                queue.extend(graph)
-    return {}
-
-
-def parse_price(value):
-    if value in (None, ""):
-        return None
-    m = re.search(r"\d{1,5}(?:[.,]\d{1,2})?", clean(value))
+def parse_price(v):
+    s = clean(v)
+    m = re.search(r"(?:€\s*)?(\d{1,4}(?:[.,]\d{2})?)(?:\s*€)?", s)
     if not m:
         return None
     try:
-        n = float(m.group(0).replace(",", "."))
+        return round(float(m.group(1).replace(",", ".")), 2)
     except ValueError:
         return None
-    return round(n, 2) if 0 < n < 10000 else None
 
 
-def _availability(soup, offer):
-    # Structured data first: never let unrelated recommendation cards decide.
+def availability(text, offer=None, soup=None):
+    """Determine availability from product-specific signals only.
+
+    IMPORTANT: do not scan the entire product page for ``out of stock``
+    before checking structured data. Deloox can mention that phrase in
+    unrelated/recommendation/filter content even when the current product
+    is purchasable.
+
+    Priority:
+      1. JSON-LD Product/Offer availability (most reliable)
+      2. product-page purchase controls / availability elements
+      3. only then a tightly scoped textual fallback
+    """
+
+    # 1) Structured data. Schema.org normally exposes values such as
+    # https://schema.org/InStock, OutOfStock, LimitedAvailability, etc.
     if isinstance(offer, dict):
-        raw = norm(offer.get("availability") or "")
+        raw = clean(
+            offer.get("availability")
+            or offer.get("itemAvailability")
+            or offer.get("availabilityStatus")
+            or ""
+        ).lower()
         if raw:
-            if any(x in raw for x in ("outofstock", "soldout", "discontinued", "unavailable")):
+            if any(x in raw for x in (
+                "outofstock", "out_of_stock", "soldout", "sold_out",
+                "discontinued", "unavailable",
+            )):
                 return "out_of_stock"
-            if any(x in raw for x in ("instock", "limitedavailability", "preorder")):
+            if any(x in raw for x in (
+                "instock", "in_stock", "limitedavailability",
+                "preorder", "pre_order",
+            )):
                 return "in_stock"
 
-    scoped = []
-    selectors = [
-        '[itemprop="availability"]',
-        '[class*="availability" i]',
-        '[class*="stock" i]',
-        '[class*="add-to-cart" i]',
-        '[class*="buy" i]',
-        'button[type="submit"]',
-    ]
-    seen = set()
-    for selector in selectors:
-        try:
-            nodes = soup.select(selector)
-        except Exception:
-            nodes = []
-        for node in nodes[:20]:
-            if id(node) in seen:
-                continue
-            seen.add(id(node))
-            scoped.append(clean(node.get("content") or node.get("aria-label") or node.get_text(" ", strip=True)))
+    # 2) Look only at elements that are likely to describe the current
+    # product's purchase/stock state. Do NOT use soup.get_text() here.
+    if soup is not None:
+        scoped_parts = []
 
-    text = norm(" ".join(scoped))
-    if text:
-        if any(x in text for x in ("sold out", "out of stock", "not available", "unavailable")):
-            return "out_of_stock"
-        if any(x in text for x in ("in stock", "available", "add to cart", "add to basket", "buy now", "bestellen")):
-            return "in_stock"
+        selectors = [
+            '[itemprop="availability"]',
+            '[data-testid*="availability" i]',
+            '[data-test*="availability" i]',
+            '[class*="availability" i]',
+            '[class*="stock" i]',
+            '[class*="add-to-cart" i]',
+            '[class*="buy" i]',
+            'button[type="submit"]',
+        ]
 
+        seen_nodes = set()
+        for selector in selectors:
+            try:
+                nodes = soup.select(selector)
+            except Exception:
+                nodes = []
+            for node in nodes[:20]:
+                marker = id(node)
+                if marker in seen_nodes:
+                    continue
+                seen_nodes.add(marker)
+                scoped_parts.append(
+                    clean(node.get("content") or node.get("aria-label") or node.get_text(" ", strip=True))
+                )
+
+        scoped = norm(" ".join(x for x in scoped_parts if x))
+        if scoped:
+            if any(x in scoped for x in (
+                "sold out", "out of stock", "not available",
+                "currently unavailable", "unavailable",
+            )):
+                return "out_of_stock"
+            if any(x in scoped for x in (
+                "in stock", "available", "op voorraad", "add to cart",
+                "add to basket", "buy now", "bestellen",
+            )):
+                return "in_stock"
+
+    # 3) Deliberately conservative fallback. Only use the whole-page text
+    # when there is NO structured/scoped signal at all. This prevents a
+    # recommendation card saying "out of stock" from poisoning the product.
+    t = norm(text)
+    if any(x in t for x in (
+        "sold out",
+        "out of stock",
+        "currently unavailable",
+    )):
+        return "out_of_stock"
+    if any(x in t for x in ("in stock", "op voorraad")):
+        return "in_stock"
     return "unknown"
 
 
-def _extract_product(url: str, html: str, query: str):
-    soup = BeautifulSoup(html or "", "html.parser")
-    data = _jsonld_product(soup)
+def _jsonld(soup):
+    for script in soup.select('script[type="application/ld+json"]'):
+        try:
+            data = json.loads(script.get_text(strip=True))
+        except Exception:
+            continue
+
+        stack = data if isinstance(data, list) else [data]
+        while stack:
+            x = stack.pop(0)
+            if isinstance(x, list):
+                stack.extend(x)
+                continue
+            if not isinstance(x, dict):
+                continue
+            if x.get("@type") == "Product" or "offers" in x:
+                return x
+            if isinstance(x.get("@graph"), list):
+                stack.extend(x["@graph"])
+    return {}
+
+
+def _product(url, html, query):
+    soup = BeautifulSoup(html, "html.parser")
+    data = _jsonld(soup)
 
     h1 = soup.find("h1")
-    h1_name = clean(h1.get_text(" ", strip=True)) if h1 else ""
-    name = clean(data.get("name")) or h1_name
+    name = clean(data.get("name")) or (
+        clean(h1.get_text(" ", strip=True)) if h1 else ""
+    )
 
-    # The product page, not the search URL, is authoritative.
-    if not name or not matches_name(name, query):
+    if not name or not matches(name, query):
         return None
 
-    # Explicitly reject obvious non-product variants unless requested.
-    name_n = norm(name)
-    q_n = norm(query)
-    if any(norm(x) in name_n and norm(x) not in q_n for x in NON_PERFUME_WORDS):
-        return None
+    # Deloox product pages expose the product line separately.  Keep it
+    # available as extra source context, but use the actual product name
+    # for the strict query match.
+    product_line = ""
+    text = soup.get_text(" ", strip=True)
+    m = re.search(
+        r"product line\s+(.+?)(?:for whom|fragrance type|season|spray|article number)",
+        text,
+        re.I,
+    )
+    if m:
+        product_line = clean(m.group(1))
 
     brand = data.get("brand")
     if isinstance(brand, dict):
         brand = brand.get("name")
-    brand = clean(brand)
 
     offers = data.get("offers")
-    if isinstance(offers, dict):
-        offers = [offers]
-    elif not isinstance(offers, list):
-        offers = []
+    offers = offers if isinstance(offers, list) else [offers]
     offer = next((x for x in offers if isinstance(x, dict)), {})
 
     price = parse_price(offer.get("price"))
     if price is None:
-        # Product-level semantic fields before any broad page-text fallback.
-        for selector in (
-            '[itemprop="price"]',
-            'meta[property="product:price:amount"]',
-            'meta[itemprop="price"]',
-            'meta[name="price"]',
-        ):
-            node = soup.select_one(selector)
-            if node:
-                price = parse_price(node.get("content") or node.get_text(" ", strip=True))
-                if price is not None:
-                    break
+        price = parse_price(text)
     if price is None:
         return None
+
+    gtin = clean(data.get("gtin13") or data.get("gtin") or "") or None
+    mpn = clean(data.get("mpn") or "") or None
+    sku = clean(data.get("sku") or "") or None
 
     image = data.get("image")
     if isinstance(image, list):
         image = image[0] if image else None
-    image = urljoin(url, str(image)) if image else ""
 
-    size = None
-    m = re.search(r"(?<!\d)(\d+(?:[.,]\d+)?)\s*(ml|cl)\b", name, re.I)
-    if m:
-        size = float(m.group(1).replace(",", "."))
-        if m.group(2).lower() == "cl":
-            size *= 10
-        if size.is_integer():
-            size = int(size)
-
-    concentration = None
-    n = norm(name)
-    if "eau de toilette" in n or " edt" in f" {n}":
-        concentration = "Eau de Toilette"
-    elif "eau de parfum" in n or " edp" in f" {n}":
-        concentration = "Eau de Parfum"
-    elif "extrait" in n:
-        concentration = "Extrait de Parfum"
-
-    gtin = clean(data.get("gtin13") or data.get("gtin") or "") or None
-    sku = clean(data.get("sku") or "") or None
-    mpn = clean(data.get("mpn") or "") or None
-    avail = _availability(soup, offer)
+    avail = availability(text, offer=offer, soup=soup)
 
     return {
         "store": STORE,
         "source": {
             "source_name": name,
-            "source_brand": brand,
+            "source_brand": clean(brand),
             "url": url,
-            "image": image,
+            "image": urljoin(url, str(image)) if image else None,
         },
         "identity": {
             "gtin": {"value": gtin, "source": "jsonld"} if gtin else None,
             "mpn": {"value": mpn, "source": "jsonld"} if mpn else None,
             "sku": {"value": sku, "source": "jsonld"} if sku else None,
-            "store_product_id": {"value": sku, "source": "deloox_sku"} if sku else None,
+            "store_product_id": {
+                "value": sku,
+                "source": "deloox_sku",
+            } if sku else None,
         },
         "attributes": {
-            "size_ml": {"value": size, "source": "product_name"} if size is not None else None,
-            "concentration": {"value": concentration, "source": "product_name"} if concentration else None,
+            "size_ml": {
+                "value": size_ml(name),
+                "source": "product_name",
+            } if size_ml(name) is not None else None,
+            "concentration": {
+                "value": concentration(name),
+                "source": "product_name",
+            } if concentration(name) else None,
             "gender": {"value": "unknown", "source": "not_explicit"},
             "packaging_type": {"value": "product", "source": "default"},
+            "product_line": {
+                "value": product_line,
+                "source": "deloox_page",
+            } if product_line else None,
         },
         "offer": {
             "price": price,
@@ -618,9 +286,442 @@ def _extract_product(url: str, html: str, query: str):
         "name": name,
         "price": f"{price:.2f}".replace(".", ",") + " €",
         "url": url,
-        # Unknown is deliberately NOT treated as out-of-stock.
-        "available": avail != "out_of_stock",
+        "available": avail == "in_stock",
     }
+
+
+def _candidate_product_urls(html, query):
+    """Extract Deloox product URLs from anchors, JSON and JS."""
+    soup = BeautifulSoup(html, "html.parser")
+    found = []
+    seen = set()
+
+    def add(raw_url, context=""):
+        if not raw_url:
+            return
+
+        raw_url = clean(raw_url).replace("\\/", "/")
+        if raw_url.startswith(("javascript:", "mailto:", "#")):
+            return
+
+        url = urljoin(BASE_URL, raw_url).split("#")[0].split("?")[0]
+
+        try:
+            parsed = urlparse(url)
+        except Exception:
+            return
+
+        if parsed.netloc.lower() not in {"deloox.com", "www.deloox.com"}:
+            return
+
+        if "/product/" not in parsed.path.lower():
+            return
+
+        if url in seen:
+            return
+
+        # Search/category pages often put the product title in nearby text.
+        # Accept the URL if either the URL slug or surrounding card text
+        # contains the query tokens.
+        haystack = f"{context} {url}"
+        if matches(haystack, query):
+            seen.add(url)
+            found.append(url)
+
+    for a in soup.find_all("a", href=True):
+        add(a.get("href"), a.get_text(" ", strip=True))
+
+    patterns = [
+        r'https?://(?:www\.)?deloox\.com/[^"\'>\s]+/product/[^"\'>\s]+',
+        r'["\']((?:/)?(?:en/)?product/[^"\']+)["\']',
+    ]
+    for pattern in patterns:
+        for raw in re.findall(pattern, html, re.I):
+            add(raw)
+
+    return found
+
+
+def _category_product_line_links(html, query):
+    """Find Deloox Product-line category URLs matching the query.
+
+    Deloox does not always render Product-line filters as normal <a> tags.
+    Some are present only in serialized HTML/JSON or in data attributes.
+    Therefore we inspect both parsed links and raw category URLs.
+    """
+    soup = BeautifulSoup(html, "html.parser")
+    links = []
+    seen = set()
+    q_tokens = tokens(query)
+
+    def add(raw_url, label=""):
+        raw_url = clean(raw_url).replace("\\/","/")
+        if not raw_url:
+            return
+
+        url = urljoin(BASE_URL, raw_url).split("#")[0]
+        try:
+            parsed = urlparse(url)
+        except Exception:
+            return
+
+        if parsed.netloc.lower() not in {"deloox.com", "www.deloox.com"}:
+            return
+        if "/category/" not in parsed.path.lower():
+            return
+
+        # Prefer an exact match on the category slug, but also accept a
+        # matching visible label when Deloox uses a localized slug.
+        slug_text = parsed.path.rsplit("/", 1)[-1]
+        if slug_text.lower().endswith(".html"):
+            slug_text = slug_text[:-5]
+
+        if not (
+            q_tokens.issubset(tokens(slug_text))
+            or q_tokens.issubset(tokens(label))
+        ):
+            return
+
+        if url in seen:
+            return
+        seen.add(url)
+        links.append(url)
+
+    # Normal visible links.
+    for a in soup.find_all("a", href=True):
+        add(a.get("href"), a.get_text(" ", strip=True))
+
+    # Deloox can expose filter/category links inside JSON, data attributes,
+    # escaped URLs, or scripts without an <a> element.
+    raw = html.replace("\\\\/", "/")
+    patterns = [
+        r'(?:"|\\\')((?:https?:)?//(?:www\\.)?deloox\\.com)?'
+        r'(/(?:en/|it/|nl/)?category/\\d+/[^"\\\'<>\\s]+\\.html)',
+        r'(?:"|\\\')((?:/)?(?:en/|it/|nl/)?category/\\d+/[^"\\\'<>\\s]+\\.html)(?:"|\\\')',
+    ]
+    for pattern in patterns:
+        for match in re.findall(pattern, raw, re.I):
+            if isinstance(match, tuple):
+                match = "".join(match)
+            add(match)
+
+    return links
+
+
+def _category_pages(session):
+    # These are Deloox's current perfume category URLs verified from the
+    # public site structure. We use both genders because Born in Roma exists
+    # as separate Uomo/Donna product lines.
+    return (
+        BASE_URL + "/category/1075660/womens-perfume.html",
+        BASE_URL + "/category/1075750/mens-perfume.html",
+    )
+
+
+def _targeted_category_seed_urls(query):
+    """
+    Deloox sometimes exposes a product line on a dedicated category page
+    without exposing that category URL through the sitemap used by the
+    scraper. Keep a small, query-aware seed map for these cases, then fall
+    back to the broader brand category pages.
+    """
+    q = norm(query)
+
+    seeds = []
+
+    # Liquid Brun has a dedicated Deloox category page.
+    if "liquid brun" in q:
+        seeds.append(
+            BASE_URL + "/en/category/1132834/liquid-brun.html"
+        )
+
+    # French Avenue's category index exposes both the regular Liquid Brun
+    # 100 ml and the Limited Edition 150 ml, plus other French Avenue lines.
+    if "liquid brun" in q or "french avenue" in q:
+        seeds.extend(
+            [
+                BASE_URL + "/en/category/1121334/french-avenue-mens-fragrances.html",
+                BASE_URL + "/en/category/1121322/french-avenue-fragrances.html",
+            ]
+        )
+
+    # De-duplicate while preserving order.
+    seen = set()
+    return [u for u in seeds if not (u in seen or seen.add(u))]
+
+
+def _discover_from_categories(session, query, max_urls=80):
+    urls = []
+    seen = set()
+
+    for category_url in _category_pages(session):
+        try:
+            r = session.get(category_url, headers=HEADERS, timeout=TIMEOUT)
+        except requests.RequestException:
+            continue
+
+        if r.status_code >= 400:
+            continue
+
+        # First, discover the exact Product line links exposed by Deloox.
+        product_line_links = _category_product_line_links(r.text, query)
+
+        # If Deloox's current HTML does not expose a filter link, also inspect
+        # the current category page itself for product cards.
+        candidate_pages = product_line_links or [category_url]
+
+        for page_url in candidate_pages:
+            try:
+                page = session.get(page_url, headers=HEADERS, timeout=TIMEOUT)
+            except requests.RequestException:
+                continue
+
+            if page.status_code >= 400:
+                continue
+
+            for product_url in _candidate_product_urls(page.text, query):
+                if product_url not in seen:
+                    seen.add(product_url)
+                    urls.append(product_url)
+                    if len(urls) >= max_urls:
+                        return urls[:max_urls]
+
+    return urls[:max_urls]
+
+
+def _sitemap_category_urls(session, query, max_sitemaps=12, max_urls=30):
+    """Discover dedicated Deloox category/Product-line pages from sitemaps."""
+    query_tokens = tokens(query)
+    if not query_tokens:
+        return []
+
+    sitemap_roots = (
+        BASE_URL + "/sitemap.xml",
+        BASE_URL + "/sitemap_index.xml",
+        BASE_URL + "/sitemap-index.xml",
+        BASE_URL + "/en/sitemap.xml",
+    )
+
+    pending = list(sitemap_roots)
+    seen_sitemaps = set()
+    category_urls = []
+    seen_categories = set()
+
+    def fetch_xml(url):
+        try:
+            r = session.get(url, headers=HEADERS, timeout=TIMEOUT)
+        except requests.RequestException:
+            return None
+        if r.status_code >= 400:
+            return None
+        body = r.text.lstrip()
+        ctype = (r.headers.get("content-type") or "").lower()
+        if "xml" not in ctype and not body.startswith(
+            ("<?xml", "<urlset", "<sitemapindex")
+        ):
+            return None
+        return r.text
+
+    while (
+        pending
+        and len(seen_sitemaps) < max_sitemaps
+        and len(category_urls) < max_urls
+    ):
+        sitemap_url = pending.pop(0)
+        if sitemap_url in seen_sitemaps:
+            continue
+        seen_sitemaps.add(sitemap_url)
+
+        xml = fetch_xml(sitemap_url)
+        if not xml:
+            continue
+
+        soup = BeautifulSoup(xml, "xml")
+        for loc in soup.find_all("loc"):
+            value = clean(loc.get_text())
+            if not value:
+                continue
+
+            low = value.lower()
+            if "/category/" in low and low.endswith(".html"):
+                slug = low.rsplit("/", 1)[-1][:-5]
+                if query_tokens.issubset(tokens(slug)):
+                    if value not in seen_categories:
+                        seen_categories.add(value)
+                        category_urls.append(value)
+                        if len(category_urls) >= max_urls:
+                            break
+            elif low.endswith(".xml") or "sitemap" in low:
+                if value not in seen_sitemaps:
+                    pending.append(value)
+
+    return category_urls[:max_urls]
+
+
+def _sitemap_product_urls(session, query, max_sitemaps=12, max_urls=80):
+    query_tokens = tokens(query)
+    if not query_tokens:
+        return []
+
+    sitemap_roots = (
+        BASE_URL + "/sitemap.xml",
+        BASE_URL + "/sitemap_index.xml",
+        BASE_URL + "/sitemap-index.xml",
+        BASE_URL + "/en/sitemap.xml",
+    )
+
+    pending = list(sitemap_roots)
+    seen_sitemaps = set()
+    product_urls = []
+    seen_products = set()
+
+    def fetch_xml(url):
+        try:
+            r = session.get(url, headers=HEADERS, timeout=TIMEOUT)
+        except requests.RequestException:
+            return None
+        if r.status_code >= 400:
+            return None
+
+        ctype = (r.headers.get("content-type") or "").lower()
+        body = r.text.lstrip()
+        if "xml" not in ctype and not body.startswith(
+            ("<?xml", "<urlset", "<sitemapindex")
+        ):
+            return None
+        return r.text
+
+    while (
+        pending
+        and len(seen_sitemaps) < max_sitemaps
+        and len(product_urls) < max_urls
+    ):
+        sitemap_url = pending.pop(0)
+        if sitemap_url in seen_sitemaps:
+            continue
+        seen_sitemaps.add(sitemap_url)
+
+        xml = fetch_xml(sitemap_url)
+        if not xml:
+            continue
+
+        soup = BeautifulSoup(xml, "xml")
+
+        for loc in soup.find_all("loc"):
+            value = clean(loc.get_text())
+            if not value:
+                continue
+
+            low = value.lower()
+
+            if "/product/" in low:
+                if query_tokens.issubset(tokens(value)):
+                    if value not in seen_products:
+                        seen_products.add(value)
+                        product_urls.append(value)
+                        if len(product_urls) >= max_urls:
+                            break
+            elif low.endswith(".xml") or "sitemap" in low:
+                if value not in seen_sitemaps:
+                    pending.append(value)
+
+    return product_urls
+
+
+def _discover(session, q):
+    urls = []
+    seen = set()
+
+    # PRIMARY: current Deloox category/Product-line structure.
+    for url in _discover_from_categories(session, q, max_urls=80):
+        if url not in seen:
+            seen.add(url)
+            urls.append(url)
+        if len(urls) >= 80:
+            return urls[:80]
+
+    # SECONDARY: targeted Deloox category seeds.
+    # Some dedicated Product-line pages are real and indexed by Deloox but
+    # are not exposed by the sitemap endpoints we can reach from the scraper.
+    # Check those exact category pages before relying on sitemap discovery.
+    for category_url in _targeted_category_seed_urls(q):
+        try:
+            page = session.get(
+                category_url, headers=HEADERS, timeout=TIMEOUT
+            )
+        except requests.RequestException:
+            continue
+
+        if page.status_code >= 400:
+            continue
+
+        for product_url in _candidate_product_urls(page.text, q):
+            if product_url not in seen:
+                seen.add(product_url)
+                urls.append(product_url)
+                if len(urls) >= 80:
+                    return urls[:80]
+
+    # TERTIARY: dedicated Product-line category pages discovered from sitemap.
+    # This is important for other product lines whose category URLs are
+    # exposed in Deloox's sitemap.
+    for category_url in _sitemap_category_urls(
+        session, q, max_sitemaps=12, max_urls=30
+    ):
+        try:
+            page = session.get(
+                category_url, headers=HEADERS, timeout=TIMEOUT
+            )
+        except requests.RequestException:
+            continue
+
+        if page.status_code >= 400:
+            continue
+
+        for product_url in _candidate_product_urls(page.text, q):
+            if product_url not in seen:
+                seen.add(product_url)
+                urls.append(product_url)
+                if len(urls) >= 80:
+                    return urls[:80]
+
+    # QUATERNARY: legacy/current search endpoints, retained as fallback.
+    endpoints = [
+        BASE_URL + "/en/search?query=" + quote_plus(q),
+        BASE_URL + "/en/search?search=" + quote_plus(q),
+        BASE_URL + "/en?search=" + quote_plus(q),
+        BASE_URL + "/en/search?q=" + quote_plus(q),
+    ]
+
+    for endpoint in endpoints:
+        try:
+            r = session.get(endpoint, headers=HEADERS, timeout=TIMEOUT)
+        except requests.RequestException:
+            continue
+
+        if r.status_code >= 400:
+            continue
+
+        for url in _candidate_product_urls(r.text, q):
+            if url not in seen:
+                seen.add(url)
+                urls.append(url)
+
+        if len(urls) >= 80:
+            return urls[:80]
+
+    # LAST RESORT: direct product sitemap discovery.
+    if not urls:
+        for url in _sitemap_product_urls(
+            session, q, max_sitemaps=12, max_urls=80
+        ):
+            if url not in seen:
+                seen.add(url)
+                urls.append(url)
+            if len(urls) >= 80:
+                break
+
+    return urls[:80]
 
 
 def search(query):
@@ -631,29 +732,34 @@ def search(query):
     session = requests.Session()
     results = []
     seen = set()
+
     try:
-        candidate_urls = discover(session, query)
-        for url in candidate_urls:
+        for url in _discover(session, query):
             try:
                 r = session.get(url, headers=HEADERS, timeout=TIMEOUT)
             except requests.RequestException:
                 continue
+
             if r.status_code >= 400:
                 continue
 
-            item = _extract_product(url, r.text, query)
+            item = _product(url, r.text, query)
             if not item:
                 continue
 
-            sku = item.get("identity", {}).get("sku")
-            sku_value = sku.get("value") if isinstance(sku, dict) else sku
-            key = (url, sku_value, norm(item.get("name")))
+            sku_value = None
+            sku = item["identity"].get("sku")
+            if sku:
+                sku_value = sku.get("value")
+
+            key = (url, sku_value)
+
             if key in seen:
                 continue
+
             seen.add(key)
             results.append(item)
 
-        results.sort(key=lambda x: (x.get("offer", {}).get("price") is None, x.get("offer", {}).get("price") or 0))
         return results
     finally:
         session.close()
@@ -661,3 +767,19 @@ def search(query):
 
 def scrape(query):
     return search(query)
+
+
+if __name__ == "__main__":
+    import argparse
+
+    parser = argparse.ArgumentParser()
+    parser.add_argument("query")
+    args = parser.parse_args()
+
+    print(
+        json.dumps(
+            search(args.query),
+            ensure_ascii=False,
+            indent=2,
+        )
+    )
