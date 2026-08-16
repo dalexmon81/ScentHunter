@@ -947,6 +947,82 @@ def update_price_history(
     return history
 
 
+
+# ============================================================
+# DIAGNOSI DELOOX - SOLO TEST, NON TOCCA /search
+# ============================================================
+
+@app.get("/diagnose-deloox-step")
+def diagnose_deloox_step(q: str = "Hawas Kobra"):
+    import time as _time
+
+    query = str(q or "").strip()
+    if not query:
+        raise HTTPException(status_code=400, detail="Parametro q mancante")
+
+    report = {
+        "query": query,
+        "steps": [],
+        "message": (
+            "Diagnosi a livelli. Se lo step 3 resta in started, "
+            "il blocco è dentro scrapers.deloox.scraper.search()."
+        ),
+    }
+
+    def run_step(name, fn):
+        started = _time.perf_counter()
+        row = {
+            "step": name,
+            "status": "started",
+        }
+        try:
+            value = fn()
+            row["status"] = "ok"
+            row["seconds"] = round(_time.perf_counter() - started, 3)
+            if isinstance(value, dict):
+                row.update(value)
+            return value
+        except Exception as exc:
+            row["status"] = "error"
+            row["seconds"] = round(_time.perf_counter() - started, 3)
+            row["error"] = f"{type(exc).__name__}: {exc}"
+            return None
+        finally:
+            report["steps"].append(row)
+
+    attempts_info = run_step(
+        "1_build_search_attempts",
+        lambda: {
+            "attempts": build_search_attempts("deloox", query),
+        },
+    )
+
+    attempts = (attempts_info or {}).get("attempts") or []
+
+    module_info = run_step(
+        "2_load_deloox_module",
+        lambda: {
+            "module": load_scraper("deloox").__name__,
+        },
+    )
+
+    if module_info is None:
+        return report
+
+    deloox_module = load_scraper("deloox")
+    attempt = attempts[0] if attempts else query
+
+    run_step(
+        "3_direct_deloox_search",
+        lambda: {
+            "attempt": attempt,
+            "result_count": len(deloox_module.search(attempt) or []),
+        },
+    )
+
+    return report
+
+
 # ============================================================
 # API - ROOT
 # ============================================================
@@ -1042,128 +1118,6 @@ def search_perfume(q: str):
         "results": results,
         "errors": errors,
     }
-
-
-@app.get("/diagnose-deloox")
-def diagnose_deloox(q: str):
-    """
-    Diagnosi Deloox isolata.
-    NON modifica /search e NON modifica /test-store.
-
-    Mostra:
-    - query originale
-    - attempts generati dal Main
-    - risultati grezzi restituiti da run_store()
-    - errori
-    - per ogni risultato: nome, url, prezzo, store
-    """
-    query = str(q or "").strip()
-
-    if not query:
-        raise HTTPException(
-            status_code=400,
-            detail="Parametro q mancante",
-        )
-
-    attempts = build_search_attempts("deloox", query)
-
-    report = {
-        "query": query,
-        "attempts": attempts,
-        "store": "deloox",
-        "raw_results": [],
-        "count": 0,
-        "error": None,
-    }
-
-    try:
-        results = run_store("deloox", query)
-        report["count"] = len(results)
-
-        for item in results:
-            if not isinstance(item, dict):
-                continue
-
-            report["raw_results"].append({
-                "name": item.get("name", ""),
-                "brand": item.get("brand", ""),
-                "url": item.get("url", ""),
-                "price": item.get("price", ""),
-                "image": product_image(item),
-                "store": item.get("store", ""),
-            })
-
-        return report
-
-    except Exception as error:
-        traceback.print_exc()
-        report["error"] = f"{type(error).__name__}: {error}"
-        return report
-
-
-@app.get("/diagnose-deloox-attempts")
-def diagnose_deloox_attempts(q: str):
-    """
-    Diagnosi più profonda: esegue singolarmente ogni attempt generato
-    dal Main e mostra quanti risultati arrivano PRIMA del filtro finale
-    di /search.
-    """
-    query = str(q or "").strip()
-
-    if not query:
-        raise HTTPException(
-            status_code=400,
-            detail="Parametro q mancante",
-        )
-
-    attempts = build_search_attempts("deloox", query)
-    report = {
-        "query": query,
-        "attempts": attempts,
-        "results_by_attempt": [],
-    }
-
-    try:
-        module = load_scraper("deloox")
-
-        for attempt in attempts:
-            row = {
-                "attempt": attempt,
-                "count": 0,
-                "results": [],
-                "error": None,
-            }
-
-            try:
-                raw = module.search(attempt) or []
-                row["count"] = len(raw)
-
-                for item in raw:
-                    if not isinstance(item, dict):
-                        continue
-
-                    row["results"].append({
-                        "name": item.get("name", ""),
-                        "brand": item.get("brand", ""),
-                        "url": item.get("url", ""),
-                        "price": item.get("price", ""),
-                        "store": item.get("store", "deloox"),
-                        "matches_original_query": matches(item, query),
-                    })
-
-            except Exception as error:
-                row["error"] = f"{type(error).__name__}: {error}"
-
-            report["results_by_attempt"].append(row)
-
-        return report
-
-    except Exception as error:
-        traceback.print_exc()
-        raise HTTPException(
-            status_code=500,
-            detail=f"{type(error).__name__}: {error}",
-        )
 
 
 # ============================================================
