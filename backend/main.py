@@ -1125,3 +1125,82 @@ def test_deloox_step1(q: str = "Liquid Brun"):
             "message": "ONE REQUEST ONLY — failure occurred before any scraper logic",
         }
 
+
+@app.get("/test-deloox-step2")
+def test_deloox_step2(q: str = "Liquid Brun"):
+    """Step 2: one category request + URL extraction only. No product requests."""
+    import time as _time
+    import requests as _requests
+    from bs4 import BeautifulSoup as _BeautifulSoup
+    from urllib.parse import urljoin as _urljoin
+
+    query = str(q or "").strip()
+    url = "https://www.deloox.com/category/1075750/mens-perfume.html"
+    started = _time.perf_counter()
+
+    try:
+        r = _requests.get(
+            url,
+            headers={
+                "User-Agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) "
+                              "AppleWebKit/605.1.15 Version/17.0 Mobile/15E148 Safari/604.1",
+                "Accept-Language": "en-GB,en;q=0.9",
+            },
+            timeout=8,
+        )
+        html = r.text or ""
+        soup = _BeautifulSoup(html, "html.parser")
+
+        all_links = []
+        product_links = []
+        seen = set()
+
+        for a in soup.find_all("a", href=True):
+            href = _urljoin(url, a.get("href", "").strip())
+            if href in seen:
+                continue
+            seen.add(href)
+            all_links.append(href)
+
+            path = href.lower()
+            if "/product/" in path:
+                product_links.append(href)
+
+        q_norm = re.sub(r"[^a-z0-9]+", " ", query.lower()).strip()
+        tokens = [x for x in q_norm.split() if len(x) > 1]
+
+        # Show only links whose visible anchor text or href contains query tokens.
+        matching_links = []
+        for a in soup.find_all("a", href=True):
+            text = " ".join(a.stripped_strings)
+            combined = (text + " " + a.get("href", "")).lower()
+            if tokens and all(t in combined for t in tokens):
+                matching_links.append({
+                    "text": text[:180],
+                    "url": _urljoin(url, a.get("href", "").strip())
+                })
+
+        return {
+            "step": 2,
+            "query": query,
+            "url": url,
+            "seconds": round(_time.perf_counter() - started, 3),
+            "status": r.status_code,
+            "bytes": len(r.content),
+            "all_links": len(all_links),
+            "product_links": len(product_links),
+            "sample_product_urls": product_links[:30],
+            "matching_query_links": matching_links[:30],
+            "message": "ONE REQUEST ONLY — URL extraction only; ZERO product pages opened",
+        }
+
+    except Exception as error:
+        return {
+            "step": 2,
+            "query": query,
+            "url": url,
+            "seconds": round(_time.perf_counter() - started, 3),
+            "error": f"{type(error).__name__}: {error}",
+            "message": "Failure during URL extraction; ZERO product pages opened",
+        }
+
