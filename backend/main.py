@@ -6,7 +6,7 @@ import time
 import traceback
 from concurrent.futures import ThreadPoolExecutor, TimeoutError as FutureTimeout
 
-app = FastAPI(title="ScentHunter - Deloox REAL Diagnostic", version="2.1")
+app = FastAPI(title="ScentHunter - Deloox REAL Diagnostic", version="2.3")
 
 MODULE_NAME = "scrapers.deloox.scraper"
 
@@ -338,6 +338,89 @@ def diagnose_deloox(q: str):
     except Exception as exc:
         report["steps"].append({
             "step": "7_discovery_source_attribution",
+            "status": "ERROR",
+            "error": f"{type(exc).__name__}: {exc}",
+            "traceback": traceback.format_exc(),
+        })
+
+
+    # 8. Test known CURRENT Deloox URLs independently.
+    # These URLs are taken from current indexed Deloox pages and are
+    # diagnostic-only: no scraper code is changed.
+    try:
+        session = scraper.requests.Session()
+
+        known_urls = [
+            scraper.BASE_URL
+            + "/product/1282489/"
+            + "rasasi-hawas-for-him-eau-de-parfum-100-ml.html",
+
+            scraper.BASE_URL
+            + "/category/1000054/"
+            + "mens-fragrances.html",
+
+            scraper.BASE_URL
+            + "/it/categoria/1080044/"
+            + "rasasi-profumi.html",
+        ]
+
+        known_checks = []
+
+        for url in known_urls:
+            try:
+                rr = session.get(
+                    url,
+                    headers=scraper.HEADERS,
+                    timeout=scraper.TIMEOUT,
+                )
+
+                item = None
+                if rr.status_code < 400 and "/product/" in url:
+                    item = scraper._product(
+                        url,
+                        rr.text,
+                        query,
+                    )
+
+                known_checks.append({
+                    "url": url,
+                    "http_status": rr.status_code,
+                    "content_type": rr.headers.get("content-type"),
+                    "bytes": len(rr.content),
+                    "product_result": (
+                        "ACCEPTED"
+                        if item
+                        else (
+                            "REJECTED"
+                            if "/product/" in url
+                            and rr.status_code < 400
+                            else None
+                        )
+                    ),
+                    "product_name": (
+                        item.get("name")
+                        if item
+                        else None
+                    ),
+                })
+
+            except Exception as exc:
+                known_checks.append({
+                    "url": url,
+                    "error": f"{type(exc).__name__}: {exc}",
+                })
+
+        report["steps"].append({
+            "step": "8_known_current_urls",
+            "status": "OK",
+            "value": known_checks,
+        })
+
+        session.close()
+
+    except Exception as exc:
+        report["steps"].append({
+            "step": "8_known_current_urls",
             "status": "ERROR",
             "error": f"{type(exc).__name__}: {exc}",
             "traceback": traceback.format_exc(),
