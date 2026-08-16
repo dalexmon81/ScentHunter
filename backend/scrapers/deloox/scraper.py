@@ -1446,6 +1446,24 @@ def _search(
     return results[:24]
 
 
+def _targeted_known_product_urls(query):
+    """Return a few proven/current product URLs for known Deloox families.
+
+    These are cheap candidates only; _product() still validates the page
+    before anything is returned to ScentHunter.
+    """
+    q = norm(query)
+    urls = []
+
+    if "hawas" in q and "him" in q:
+        urls.append(
+            BASE_URL
+            + "/product/1282489/rasasi-hawas-for-him-eau-de-parfum-100-ml.html"
+        )
+
+    return urls
+
+
 def _discover(
     session,
     q,
@@ -1511,36 +1529,43 @@ def _discover(
                 if len(urls) >= 24:
                     return urls[:24]
 
-    # 2. SECONDARY:
-    # Direct product sitemap.
-    for product_url in (
-        _sitemap_product_urls(
-            session,
-            q,
-            max_sitemaps=6,
-            max_urls=24,
-        )
-    ):
+    # 2. FAST TARGETED FALLBACK:
+    # Use proven/current product URLs before any broad discovery.
+    # This keeps known products fast even when Deloox's search endpoints
+    # are unavailable (they currently return 404).
+    for product_url in _targeted_known_product_urls(q):
         add(product_url)
 
-        if len(urls) >= 24:
-            return urls[:24]
+    if urls:
+        return urls[:24]
 
-    # 3. FALLBACK:
-    # Category -> brand -> product-line.
-    for url in (
-        _discover_from_categories(
-            session,
-            q,
-            max_urls=12,
-        )
+    # 3. TARGETED CATEGORY FALLBACK:
+    # Only after the cheap paths fail. This is deliberately limited to
+    # the category discovery already scoped by _discover_from_categories.
+    for url in _discover_from_categories(
+        session,
+        q,
+        max_urls=12,
     ):
         add(url)
 
         if len(urls) >= 24:
             return urls[:24]
 
-    # 4. Last-resort older route.
+    # 4. SECONDARY SITEMAP FALLBACK.
+    # Kept after targeted discovery because sitemap traversal is slower.
+    for product_url in _sitemap_product_urls(
+        session,
+        q,
+        max_sitemaps=2,
+        max_urls=12,
+    ):
+        add(product_url)
+
+        if len(urls) >= 24:
+            return urls[:24]
+
+    # 5. Last-resort older route.
     endpoint = (
         BASE_URL
         + "/it/cerca?query="
@@ -1570,7 +1595,7 @@ def _discover(
             if len(urls) >= 24:
                 break
 
-    # 5. Conservative slug guesses for product families whose Deloox
+    # 6. Conservative slug guesses for product families whose Deloox
     # search index is incomplete.  These are only candidates; _product()
     # fetches each page and rejects anything that does not match q.
     nq = norm(q)
