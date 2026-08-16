@@ -716,10 +716,17 @@ def _pagination_urls(page_url, max_pages=8):
 
 
 def _discover_from_categories(session, query, max_urls=120):
-    """Generic category discovery with bounded traversal and diagnostics."""
+    """Generic category discovery with bounded traversal and diagnostics.
+
+    Deloox category pages are paginated and the normal search endpoint is not
+    reliable.  The first page can therefore contain no matching product even
+    though a later catalogue page does.  Follow the category's own pagination
+    links until a match is found, while keeping the traversal bounded.
+    """
     urls = []
     seen = set()
     visited = set()
+    max_root_pages = 60
 
     def add_products(html, source):
         candidates = _candidate_product_urls(html, query)
@@ -732,67 +739,136 @@ def _discover_from_categories(session, query, max_urls=120):
                     return True
         return False
 
+    def next_page_url(html, current_url):
+        """Return Deloox's explicit rel=next URL when present."""
+        soup = BeautifulSoup(html, "html.parser")
+        link = soup.find("link", attrs={"rel": lambda value: value and "next" in str(value).lower()})
+        if link and link.get("href"):
+            return urljoin(current_url, clean(link.get("href"))).split("#")[0]
+        return None
+
     roots = list(_category_pages(session))
     _dbg("category_roots", query=query, roots=roots)
 
     for root in roots:
-        try:
-            r = session.get(root, headers=HEADERS, timeout=DISCOVERY_TIMEOUT)
-            _dbg("category_fetch", query=query, url=root, status=r.status_code, bytes=len(r.text or ""))
-        except requests.RequestException as exc:
-            _dbg("category_fetch_error", query=query, url=root, error=f"{type(exc).__name__}: {exc}")
-            continue
-        if r.status_code >= 400:
-            continue
+        page_url = root
+        root_page_limit = max_root_pages if root in roots[:3] else 1
+        for page_index in range(root_page_limit):
+            if page_url in visited:
+                break
+            visited.add(page_url)
 
-        # Diagnostic only: inspect the actual response structure before any
-        # candidate/category parser is allowed to interpret it.
-        if root == roots[0]:
-            _inspect_category_structure(r.text, query, root)
+            try:
+                r = session.get(page_url, headers=HEADERS, timeout=DISCOVERY_TIMEOUT)
+                _dbg(
+                    "category_fetch",
+                    query=query,
+                    url=page_url,
+                    status=r.status_code,
+                    bytes=len(r.text or ""),
+                    page=page_index + 1,
+                )
+            except requests.RequestException as exc:
+                _dbg("category_fetch_error", query=query, url=page_url, error=f"{type(exc).__name__}: {exc}")
+                break
 
-        if add_products(r.text, root):
-            return urls[:max_urls]
+            if r.status_code >= 400:
+                break
 
-        matching_lines = _category_product_line_links(r.text, query)
-        _dbg("matching_category_links", query=query, source=root, count=len(matching_lines), links=matching_lines[:20])
+            if root == roots[0] and page_index == 0:
+                _inspect_category_structure(r.text, query, page_url)
 
-        for line_url in matching_lines:
-            candidates = [line_url, next(_pagination_urls(line_url, max_pages=1))]
-            for page_url in candidates:
-                if page_url in visited:
-                    continue
-                visited.add(page_url)
-                try:
-                    page = session.get(page_url, headers=HEADERS, timeout=DISCOVERY_TIMEOUT)
-                    _dbg("category_link_fetch", query=query, url=page_url, status=page.status_code, bytes=len(page.text or ""))
-                except requests.RequestException as exc:
-                    _dbg("category_link_fetch_error", query=query, url=page_url, error=f"{type(exc).__name__}: {exc}")
-                    continue
-                if page.status_code >= 400:
-                    continue
+            if add_products(r.text, page_url):
+                return urls[:max_urls]
 
-                if add_products(page.text, page_url):
-                    return urls[:max_urls]
+            matching_lines = _category_product_line_links(r.text, query)
+            _dbg(
+                "matching_category_links",
+                query=query,
+                source=page_url,
+                count=len(matching_lines),
+                links=matching_lines[:20],
+            )
 
-                nested_lines = _category_product_line_links(page.text, query)
-                _dbg("nested_category_links", query=query, source=page_url, count=len(nested_lines), links=nested_lines[:20])
-                for nested_line in nested_lines:
-                    if nested_line in visited:
+            for line_url in matching_lines:
+                candidates = [line_url, next(_pagination_urls(line_url, max_pages=1))]
+                for category_page_url in candidates:
+                    if category_page_url in visited:
                         continue
-                    visited.add(nested_line)
+                    visited.add(category_page_url)
                     try:
-                        nested = session.get(nested_line, headers=HEADERS, timeout=DISCOVERY_TIMEOUT)
-                        _dbg("nested_category_fetch", query=query, url=nested_line, status=nested.status_code, bytes=len(nested.text or ""))
+                        page = session.get(
+                            category_page_url,
+                            headers=HEADERS,
+                            timeout=DISCOVERY_TIMEOUT,
+                        )
+                        _dbg(
+                            "category_link_fetch",
+                            query=query,
+                            url=category_page_url,
+                            status=page.status_code,
+                            bytes=len(page.text or ""),
+                        )
                     except requests.RequestException as exc:
-                        _dbg("nested_category_fetch_error", query=query, url=nested_line, error=f"{type(exc).__name__}: {exc}")
+                        _dbg(
+                            "category_link_fetch_error",
+                            query=query,
+                            url=category_page_url,
+                            error=f"{type(exc).__name__}: {exc}",
+                        )
                         continue
-                    if nested.status_code >= 400:
+                    if page.status_code >= 400:
                         continue
-                    if add_products(nested.text, nested_line):
+
+                    if add_products(page.text, category_page_url):
                         return urls[:max_urls]
+
+                    nested_lines = _category_product_line_links(page.text, query)
+                    _dbg(
+                        "nested_category_links",
+                        query=query,
+                        source=category_page_url,
+                        count=len(nested_lines),
+                        links=nested_lines[:20],
+                    )
+                    for nested_line in nested_lines:
+                        if nested_line in visited:
+                            continue
+                        visited.add(nested_line)
+                        try:
+                            nested = session.get(
+                                nested_line,
+                                headers=HEADERS,
+                                timeout=DISCOVERY_TIMEOUT,
+                            )
+                            _dbg(
+                                "nested_category_fetch",
+                                query=query,
+                                url=nested_line,
+                                status=nested.status_code,
+                                bytes=len(nested.text or ""),
+                            )
+                        except requests.RequestException as exc:
+                            _dbg(
+                                "nested_category_fetch_error",
+                                query=query,
+                                url=nested_line,
+                                error=f"{type(exc).__name__}: {exc}",
+                            )
+                            continue
+                        if nested.status_code >= 400:
+                            continue
+                        if add_products(nested.text, nested_line):
+                            return urls[:max_urls]
+
+            next_url = next_page_url(r.text, page_url)
+            if not next_url or next_url == page_url:
+                break
+            page_url = next_url
 
     _dbg("category_discovery_done", query=query, count=len(urls), urls=urls[:20])
     return urls[:max_urls]
+
 
 def _sitemap_product_urls(session, query, max_sitemaps=12, max_urls=80):
     query_tokens = tokens(query)
