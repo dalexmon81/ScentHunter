@@ -684,6 +684,161 @@ def test_store(store: str, q: str):
 
 
 # ============================================================
+# API - DIAGNOSTICA PERCORSO DELOOX (NON MODIFICA LA RICERCA)
+# ============================================================
+
+@app.get("/diagnose-deloox-path")
+def diagnose_deloox_path(q: str):
+    """
+    Diagnostica chirurgica del percorso Deloox.
+    Non modifica /search e non modifica /test-store.
+
+    Esegue separatamente:
+      1) caricamento scraper reale
+      2) candidate queries del Deloox
+      3) ogni attempt generato dal Main -> scraper.search()
+      4) _discover() direttamente, se disponibile
+
+    Ogni chiamata potenzialmente bloccante ha un timeout indipendente,
+    così l'endpoint non rimane appeso all'infinito.
+    """
+    query = str(q or "").strip()
+    if not query:
+        raise HTTPException(status_code=400, detail="Parametro q mancante")
+
+    report = {
+        "query": query,
+        "store": "deloox",
+        "steps": [],
+    }
+
+    # 1) Scraper reale
+    try:
+        module = load_scraper("deloox")
+        report["steps"].append({
+            "step": "1_load_scraper",
+            "status": "OK",
+            "module_file": getattr(module, "__file__", None),
+        })
+    except Exception as exc:
+        report["steps"].append({
+            "step": "1_load_scraper",
+            "status": "ERROR",
+            "error": f"{type(exc).__name__}: {exc}",
+        })
+        return report
+
+    # 2) Query interne dello scraper
+    candidate_fn = getattr(module, "_candidate_queries", None)
+    if callable(candidate_fn):
+        try:
+            with ThreadPoolExecutor(max_workers=1) as ex:
+                future = ex.submit(candidate_fn, query)
+                try:
+                    candidates = future.result(timeout=5)
+                    report["steps"].append({
+                        "step": "2_candidate_queries",
+                        "status": "OK",
+                        "queries": candidates,
+                    })
+                except TimeoutError:
+                    report["steps"].append({
+                        "step": "2_candidate_queries",
+                        "status": "TIMEOUT",
+                        "timeout_seconds": 5,
+                    })
+        except Exception as exc:
+            report["steps"].append({
+                "step": "2_candidate_queries",
+                "status": "ERROR",
+                "error": f"{type(exc).__name__}: {exc}",
+            })
+    else:
+        report["steps"].append({
+            "step": "2_candidate_queries",
+            "status": "MISSING",
+        })
+
+    # 3) Attempts esattamente come li genera il Main, uno alla volta.
+    attempts = build_search_attempts("deloox", query)
+    report["attempts"] = attempts
+
+    for index, attempt in enumerate(attempts, start=1):
+        row = {
+            "step": f"3_search_attempt_{index}",
+            "attempt": attempt,
+        }
+        try:
+            with ThreadPoolExecutor(max_workers=1) as ex:
+                future = ex.submit(module.search, attempt)
+                try:
+                    value = future.result(timeout=12)
+                    row["status"] = "OK"
+                    row["result_count"] = len(value) if hasattr(value, "__len__") else None
+                    row["results"] = value if isinstance(value, list) else repr(value)
+                except TimeoutError:
+                    row["status"] = "TIMEOUT"
+                    row["timeout_seconds"] = 12
+        except Exception as exc:
+            row["status"] = "ERROR"
+            row["error"] = f"{type(exc).__name__}: {exc}"
+        report["steps"].append(row)
+
+    # 4) _discover() diretto: serve a distinguere search() da discovery.
+    discover_fn = getattr(module, "_discover", None)
+    if callable(discover_fn):
+        try:
+            import inspect
+            sig = inspect.signature(discover_fn)
+            params = list(sig.parameters)
+            if len(params) == 2:
+                requests_mod = getattr(module, "requests", None)
+                session = requests_mod.Session() if requests_mod else None
+                if session is None:
+                    report["steps"].append({
+                        "step": "4_direct_discover",
+                        "status": "SKIPPED",
+                        "reason": "requests.Session non disponibile",
+                    })
+                else:
+                    with ThreadPoolExecutor(max_workers=1) as ex:
+                        future = ex.submit(discover_fn, session, query)
+                        try:
+                            urls = future.result(timeout=15)
+                            report["steps"].append({
+                                "step": "4_direct_discover",
+                                "status": "OK",
+                                "url_count": len(urls) if hasattr(urls, "__len__") else None,
+                                "urls": urls,
+                            })
+                        except TimeoutError:
+                            report["steps"].append({
+                                "step": "4_direct_discover",
+                                "status": "TIMEOUT",
+                                "timeout_seconds": 15,
+                            })
+            else:
+                report["steps"].append({
+                    "step": "4_direct_discover",
+                    "status": "SKIPPED",
+                    "signature": str(sig),
+                })
+        except Exception as exc:
+            report["steps"].append({
+                "step": "4_direct_discover",
+                "status": "ERROR",
+                "error": f"{type(exc).__name__}: {exc}",
+            })
+    else:
+        report["steps"].append({
+            "step": "4_direct_discover",
+            "status": "MISSING",
+        })
+
+    return report
+
+
+# ============================================================
 # API - SUGGEST
 # ============================================================
 
