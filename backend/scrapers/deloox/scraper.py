@@ -1279,28 +1279,23 @@ def _sitemap_product_urls(
     return product_urls
 
 
-def _discover(
+def _search(
     session,
     q,
 ):
-    """Generic Deloox discovery with direct search FIRST."""
+    """Run Deloox's real internal search and return validated products.
 
-    urls = []
-    seen = set()
+    This is deliberately separate from discovery.  Deloox can return zero
+    results for a valid product while the product page is still reachable.
+    The caller can therefore use an empty result as the signal to start the
+    broader discovery fallback.
+    """
 
-    def add(url):
-        if (
-            url
-            and url not in seen
-            and len(urls) < 24
-        ):
-            seen.add(url)
-            urls.append(url)
+    q = clean(q)
 
-    # 1. PRIMARY:
-    # Deloox's own search surface.
-    # Use all conservative discovery aliases.  The original query is
-    # always first; validation later still uses q.
+    if not q:
+        return []
+
     discovery_queries = _candidate_queries(q)[:6]
 
     search_endpoints = (
@@ -1308,6 +1303,10 @@ def _discover(
         "/en/search?search=",
         "/en/search?q=",
     )
+
+    results = []
+    seen_urls = set()
+    seen_products = set()
 
     for discovery_query in discovery_queries:
         for route in search_endpoints:
@@ -1331,20 +1330,87 @@ def _discover(
             if r.status_code >= 400:
                 continue
 
-            for product_url in (
-                _candidate_product_urls(
-                    r.text,
+            candidate_urls = _candidate_product_urls(
+                r.text,
+                q,
+                discovery_query=discovery_query,
+                accept_all_products=True,
+            )
+
+            for product_url in candidate_urls:
+                if product_url in seen_urls:
+                    continue
+
+                seen_urls.add(product_url)
+
+                try:
+                    page = session.get(
+                        product_url,
+                        headers=HEADERS,
+                        timeout=TIMEOUT,
+                    )
+                except requests.RequestException:
+                    continue
+
+                if page.status_code >= 400:
+                    continue
+
+                item = _product(
+                    product_url,
+                    page.text,
                     q,
-                    discovery_query=discovery_query,
-                    accept_all_products=True,
                 )
-            ):
-                add(product_url)
 
-                if len(urls) >= 24:
-                    return urls[:24]
+                if not item:
+                    continue
 
-    # 2. SECONDARY:
+                sku = (
+                    item.get("identity", {})
+                    .get("sku")
+                )
+
+                sku_value = (
+                    sku.get("value")
+                    if isinstance(sku, dict)
+                    else None
+                )
+
+                key = (
+                    product_url,
+                    sku_value,
+                )
+
+                if key in seen_products:
+                    continue
+
+                seen_products.add(key)
+                results.append(item)
+
+                if len(results) >= 24:
+                    return results[:24]
+
+    return results[:24]
+
+
+def _discover(
+    session,
+    q,
+):
+    """Fallback discovery used only when Deloox internal search finds nothing."""
+
+    urls = []
+    seen = set()
+
+    def add(url):
+        if (
+            url
+            and url not in seen
+            and len(urls) < 24
+        ):
+            seen.add(url)
+            urls.append(url)
+
+    # 1. PRIMARY FALLBACK:
     # Direct product sitemap.
     for product_url in (
         _sitemap_product_urls(
@@ -1359,7 +1425,7 @@ def _discover(
         if len(urls) >= 24:
             return urls[:24]
 
-    # 3. FALLBACK:
+    # 2. FALLBACK:
     # Category -> brand -> product-line.
     for url in (
         _discover_from_categories(
@@ -1373,7 +1439,7 @@ def _discover(
         if len(urls) >= 24:
             return urls[:24]
 
-    # 4. Last-resort older route.
+    # 3. Last-resort older route.
     endpoint = (
         BASE_URL
         + "/it/cerca?query="
@@ -1403,10 +1469,13 @@ def _discover(
             if len(urls) >= 24:
                 break
 
-    # 5. Conservative slug guesses for product families whose Deloox
+    # 4. Conservative slug guesses for product families whose Deloox
     # search index is incomplete.  These are only candidates; _product()
     # fetches each page and rejects anything that does not match q.
+    # These are only candidates; _product() fetches each page and rejects
+    # anything that does not match q.
     nq = norm(q)
+
     if "hawas" in nq:
         slug_guesses = (
             "hawas-for-him",
@@ -1433,6 +1502,8 @@ def _discover(
                     return urls[:24]
 
     return urls[:24]
+
+
 
 
 def diagnose_search(
@@ -1670,23 +1741,32 @@ def search(query):
 
     session = requests.Session()
 
-    results = []
-    seen = set()
-
     try:
-
-        for url in _discover(
+        # FIRST: use Deloox's own search and keep its validated products.
+        results = _search(
             session,
             query,
-        ):
+        )
 
+        if results:
+            return results
+
+        # SECOND: only when the real search returns nothing, use discovery.
+        discovered_urls = _discover(
+            session,
+            query,
+        )
+
+        results = []
+        seen = set()
+
+        for url in discovered_urls:
             try:
                 r = session.get(
                     url,
                     headers=HEADERS,
                     timeout=TIMEOUT,
                 )
-
             except requests.RequestException:
                 continue
 
@@ -1702,11 +1782,11 @@ def search(query):
             if not item:
                 continue
 
-            sku_value = None
-
             sku = item[
                 "identity"
             ].get("sku")
+
+            sku_value = None
 
             if sku:
                 sku_value = sku.get(
@@ -1722,13 +1802,14 @@ def search(query):
                 continue
 
             seen.add(key)
-
             results.append(item)
 
         return results
 
     finally:
         session.close()
+
+
 
 
 def scrape(query):
