@@ -12,13 +12,19 @@ from bs4 import BeautifulSoup
 
 STORE = "Deloox"
 BASE_URL = "https://www.deloox.com"
-TIMEOUT = 10
+TIMEOUT = 6
 
 # Exact Deloox product seeds used only to make the adapter test deterministic.
 # These are still passed through the normal _product() validator.
 DIRECT_PRODUCT_SEEDS = {
+    # Exact Deloox product seeds used for deterministic adapter tests.
+    # Multiple variants are allowed; _product() still validates the name.
     "hawas for him": [
         BASE_URL + "/product/1282489/rasasi-hawas-for-him-eau-de-parfum-100-ml.html"
+    ],
+    "eros flame": [
+        BASE_URL + "/product/1186128/versace-eros-flame-eau-de-parfum-100-ml.html",
+        BASE_URL + "/product/1185531/versace-eros-flame-eau-de-parfum-30-ml.html",
     ],
 }
 
