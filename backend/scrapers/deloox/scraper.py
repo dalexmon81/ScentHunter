@@ -395,29 +395,11 @@ def _category_pages(session):
     # Broad Deloox entry points. Pagination and Product Line links are followed
     # so a family is not limited to the first visible result.
     return (
-        # Current Deloox fragrance roots.
-        BASE_URL + "/category/1000054/mens-fragrances.html",
         BASE_URL + "/category/1075639/womens-fragrances.html",
-        # Legacy roots kept as fallback.
         BASE_URL + "/category/1075660/womens-perfume.html",
         BASE_URL + "/category/1075750/mens-perfume.html",
         BASE_URL + "/category/1025540/trending.html",
     )
-
-
-def _targeted_product_seed_urls(query):
-    """
-    Fallback diretto per prodotti che Deloox continua a indicizzare ma che
-    talvolta non espone nei risultati della ricerca/categoria.
-    La pagina Deloox del Liquid Brun originale è ancora indicizzata.
-    """
-    q = norm(query)
-    if "liquid brun" not in q:
-        return []
-
-    return [
-        BASE_URL + "/product/1355229/french-avenue-liquid-brun-eau-de-parfum-100-ml.html",
-    ]
 
 
 def _targeted_category_seed_urls(query):
@@ -599,12 +581,6 @@ def _discover(session, q):
     urls = []
     seen = set()
 
-    # PRIMARY: direct product seeds for known indexed products.
-    for url in _targeted_product_seed_urls(q):
-        if url not in seen:
-            seen.add(url)
-            urls.append(url)
-
     # PRIMARY: current Deloox category/Product-line structure.
     for url in _discover_from_categories(session, q, max_urls=80):
         if url not in seen:
@@ -696,6 +672,182 @@ def _discover(session, q):
 
     return urls[:80]
 
+
+
+def diagnose_search(query):
+    """Diagnostic-only path. Does not alter search()."""
+    import time
+
+    query = clean(query)
+    report = {
+        "query": query,
+        "total_seconds": 0.0,
+        "stages": [],
+        "category_pages": [],
+        "targeted_categories": [],
+        "broad_categories": [],
+        "sitemaps": [],
+        "search_endpoints": [],
+        "candidates": [],
+        "products": [],
+    }
+    all_start = time.perf_counter()
+    session = requests.Session()
+
+    def timed_request(url, timeout=6):
+        started = time.perf_counter()
+        try:
+            r = session.get(url, headers=HEADERS, timeout=timeout)
+            return r, round(time.perf_counter() - started, 3), None
+        except Exception as exc:
+            return None, round(time.perf_counter() - started, 3), f"{type(exc).__name__}: {exc}"
+
+    try:
+        # Stage 1: top category roots only.
+        started = time.perf_counter()
+        for url in _category_pages(session):
+            r, sec, err = timed_request(url)
+            item = {"url": url, "seconds": sec, "status": None if r is None else r.status_code}
+            if err:
+                item["error"] = err
+            elif r is not None and r.status_code < 400:
+                urls = _candidate_product_urls(r.text, query)
+                item["candidate_count"] = len(urls)
+            report["category_pages"].append(item)
+        report["stages"].append({
+            "name": "category_roots",
+            "seconds": round(time.perf_counter() - started, 3)
+        })
+
+        # Stage 2: targeted Liquid Brun/category seeds.
+        started = time.perf_counter()
+        for url in _targeted_category_seed_urls(query):
+            r, sec, err = timed_request(url)
+            item = {"url": url, "seconds": sec, "status": None if r is None else r.status_code}
+            if err:
+                item["error"] = err
+            elif r is not None and r.status_code < 400:
+                urls = _candidate_product_urls(r.text, query)
+                item["candidate_count"] = len(urls)
+                item["candidate_urls"] = urls[:20]
+                for u in urls:
+                    if u not in report["candidates"]:
+                        report["candidates"].append(u)
+            report["targeted_categories"].append(item)
+        report["stages"].append({
+            "name": "targeted_categories",
+            "seconds": round(time.perf_counter() - started, 3)
+        })
+
+        # Stage 3: broad pagination — inspect only the first 12 pages,
+        # but time every request so the bottleneck is visible.
+        started = time.perf_counter()
+        for base in _category_pages(session):
+            for page_no in range(1, 13):
+                url = base if page_no == 1 else base + "?page=" + str(page_no)
+                r, sec, err = timed_request(url)
+                item = {"url": url, "page": page_no, "seconds": sec,
+                        "status": None if r is None else r.status_code}
+                if err:
+                    item["error"] = err
+                    report["broad_categories"].append(item)
+                    break
+                if r is None or r.status_code >= 400:
+                    report["broad_categories"].append(item)
+                    break
+                urls = _candidate_product_urls(r.text, query)
+                item["candidate_count"] = len(urls)
+                if urls:
+                    item["candidate_urls"] = urls[:20]
+                    for u in urls:
+                        if u not in report["candidates"]:
+                            report["candidates"].append(u)
+                report["broad_categories"].append(item)
+        report["stages"].append({
+            "name": "broad_category_pagination",
+            "seconds": round(time.perf_counter() - started, 3)
+        })
+
+        # Stage 4: only the sitemap roots, not a 48-sitemap crawl.
+        started = time.perf_counter()
+        for url in (
+            BASE_URL + "/sitemap.xml",
+            BASE_URL + "/sitemap_index.xml",
+            BASE_URL + "/sitemap-index.xml",
+            BASE_URL + "/en/sitemap.xml",
+        ):
+            r, sec, err = timed_request(url)
+            item = {"url": url, "seconds": sec,
+                    "status": None if r is None else r.status_code}
+            if err:
+                item["error"] = err
+            elif r is not None and r.status_code < 400:
+                item["bytes"] = len(r.text)
+            report["sitemaps"].append(item)
+        report["stages"].append({
+            "name": "sitemap_roots",
+            "seconds": round(time.perf_counter() - started, 3)
+        })
+
+        # Stage 5: search endpoints, timed individually.
+        started = time.perf_counter()
+        for url in (
+            BASE_URL + "/en/search?query=" + quote_plus(query),
+            BASE_URL + "/en/search?search=" + quote_plus(query),
+            BASE_URL + "/en/search?q=" + quote_plus(query),
+        ):
+            r, sec, err = timed_request(url)
+            item = {"url": url, "seconds": sec,
+                    "status": None if r is None else r.status_code}
+            if err:
+                item["error"] = err
+            elif r is not None and r.status_code < 400:
+                urls = _candidate_product_urls(r.text, query)
+                item["candidate_count"] = len(urls)
+                for u in urls:
+                    if u not in report["candidates"]:
+                        report["candidates"].append(u)
+            report["search_endpoints"].append(item)
+        report["stages"].append({
+            "name": "search_endpoints",
+            "seconds": round(time.perf_counter() - started, 3)
+        })
+
+        # Stage 6: validate only first 12 candidates, each independently timed.
+        started = time.perf_counter()
+        for i, url in enumerate(report["candidates"][:12], 1):
+            r, sec, err = timed_request(url, timeout=7)
+            item = {"index": i, "url": url, "seconds": sec,
+                    "status": None if r is None else r.status_code}
+            if err:
+                item["result"] = "request_error"
+                item["error"] = err
+            elif r is None or r.status_code >= 400:
+                item["result"] = "http_error"
+            else:
+                try:
+                    product = _product(url, r.text, query)
+                    if product:
+                        item["result"] = "MATCH"
+                        item["name"] = product.get("name")
+                        item["price"] = product.get("price")
+                    else:
+                        item["result"] = "PARSER_REJECTED"
+                except Exception as exc:
+                    item["result"] = "PARSER_ERROR"
+                    item["error"] = f"{type(exc).__name__}: {exc}"
+            report["products"].append(item)
+        report["stages"].append({
+            "name": "product_validation",
+            "seconds": round(time.perf_counter() - started, 3),
+            "validated": min(12, len(report["candidates"]))
+        })
+
+    finally:
+        session.close()
+
+    report["total_seconds"] = round(time.perf_counter() - all_start, 3)
+    return report
 
 def search(query):
     query = clean(query)
