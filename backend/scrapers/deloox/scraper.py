@@ -420,6 +420,72 @@ def _category_pages(session):
     )
 
 
+def _sitemap_category_urls(session, query, max_sitemaps=16, max_urls=50):
+    """Find relevant Deloox category/Product Line URLs generically."""
+    q_tokens = tokens(query)
+    if not q_tokens:
+        return []
+
+    roots = (
+        BASE_URL + "/sitemap.xml",
+        BASE_URL + "/sitemap_index.xml",
+        BASE_URL + "/sitemap-index.xml",
+        BASE_URL + "/en/sitemap.xml",
+    )
+    pending = list(roots)
+    seen_sitemaps = set()
+    found = []
+    seen_urls = set()
+
+    while pending and len(seen_sitemaps) < max_sitemaps and len(found) < max_urls:
+        sitemap_url = pending.pop(0)
+        if sitemap_url in seen_sitemaps:
+            continue
+        seen_sitemaps.add(sitemap_url)
+        try:
+            r = session.get(sitemap_url, headers=HEADERS, timeout=TIMEOUT)
+        except requests.RequestException:
+            continue
+        if r.status_code >= 400:
+            continue
+
+        body = (r.text or "").lstrip()
+        if not body.startswith(("<?xml", "<urlset", "<sitemapindex")):
+            continue
+
+        soup = BeautifulSoup(r.text, "xml")
+        for loc in soup.find_all("loc"):
+            value = clean(loc.get_text())
+            if not value:
+                continue
+            low = value.lower()
+
+            if low.endswith(".xml") or "sitemap" in low:
+                if value not in seen_sitemaps and value not in pending:
+                    pending.append(value)
+                continue
+
+            parsed = urlparse(value)
+            if parsed.netloc.lower() not in {"deloox.com", "www.deloox.com"}:
+                continue
+            path = parsed.path.lower()
+            if "/category/" not in path or not path.endswith(".html"):
+                continue
+
+            slug = path.rsplit("/", 1)[-1][:-5]
+            if not q_tokens.issubset(tokens(slug)):
+                continue
+
+            clean_url = value.split("#")[0].split("?")[0]
+            if clean_url not in seen_urls:
+                seen_urls.add(clean_url)
+                found.append(clean_url)
+                if len(found) >= max_urls:
+                    break
+
+    return found
+
+
 def _targeted_category_seed_urls(query):
     """No product-specific exceptions. Discovery must work generically."""
     return []
@@ -568,7 +634,7 @@ def _sitemap_product_urls(session, query, max_sitemaps=12, max_urls=80):
 
 
 def _discover(session, q):
-    """Generic Deloox discovery for any perfume query. No product-specific seeds."""
+    """Generic Deloox discovery. No product-specific exceptions."""
     urls = []
     seen = set()
 
@@ -581,7 +647,32 @@ def _discover(session, q):
                     return True
         return False
 
-    # 1) Deloox's own search routes first. This is the most query-specific source.
+    # 1) Broad categories and their Product Line links.
+    if add_many(_discover_from_categories(session, q, max_urls=80)):
+        return urls[:80]
+
+    # 2) Generic Product Line/category discovery from Deloox sitemaps.
+    for category_url in _sitemap_category_urls(session, q, max_sitemaps=16, max_urls=50):
+        try:
+            page = session.get(category_url, headers=HEADERS, timeout=TIMEOUT)
+        except requests.RequestException:
+            continue
+        if page.status_code >= 400:
+            continue
+        if add_many(_candidate_product_urls(page.text, q)):
+            return urls[:80]
+
+        for page_url in _pagination_urls(category_url, max_pages=8):
+            try:
+                page2 = session.get(page_url, headers=HEADERS, timeout=TIMEOUT)
+            except requests.RequestException:
+                continue
+            if page2.status_code >= 400:
+                continue
+            if add_many(_candidate_product_urls(page2.text, q)):
+                return urls[:80]
+
+    # 3) Deloox search routes.
     endpoints = [
         BASE_URL + "/en/search?query=" + quote_plus(q),
         BASE_URL + "/en/search?search=" + quote_plus(q),
@@ -600,35 +691,9 @@ def _discover(session, q):
         if add_many(_candidate_product_urls(r.text, q)):
             return urls[:80]
 
-    # 2) Broad perfume categories + discovered Product Line pages.
-    for url in _discover_from_categories(session, q, max_urls=80):
-        if url not in seen:
-            seen.add(url)
-            urls.append(url)
-        if len(urls) >= 80:
-            return urls[:80]
-
-    # 3) Dedicated Product Line pages discovered from Deloox sitemaps.
-    for category_url in _sitemap_category_urls(session, q, max_sitemaps=16, max_urls=50):
-        try:
-            page = session.get(category_url, headers=HEADERS, timeout=TIMEOUT)
-        except requests.RequestException:
-            continue
-        if page.status_code >= 400:
-            continue
-        if add_many(_candidate_product_urls(page.text, q)):
-            return urls[:80]
-
-    # 4) Direct product sitemap as last resort.
-    for url in _sitemap_product_urls(session, q, max_sitemaps=16, max_urls=80):
-        if url not in seen:
-            seen.add(url)
-            urls.append(url)
-        if len(urls) >= 80:
-            break
-
+    # 4) Product sitemap last.
+    add_many(_sitemap_product_urls(session, q, max_sitemaps=16, max_urls=80))
     return urls[:80]
-
 
 def search(query):
     query = clean(query)
