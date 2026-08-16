@@ -529,7 +529,13 @@ def _product(url, html, query):
 
 
 def _candidate_queries(query):
-    """Build generic Deloox discovery queries."""
+    """Build robust Deloox discovery queries.
+
+    Deloox search is not consistent for branded products: for example,
+    "Hawas for Him" may return nothing while "Hawas" or "Rasasi Hawas"
+    exposes the product pages.  Keep the original query first so final
+    validation remains authoritative, but add conservative aliases.
+    """
 
     q = clean(query)
 
@@ -555,16 +561,33 @@ def _candidate_queries(query):
     broad = " ".join(
         p
         for p in parts
-        if p.lower()
-        not in removable
+        if p.lower() not in removable
     ).strip()
 
-    if (
-        broad
-        and broad.lower()
-        != q.lower()
-    ):
+    if broad and broad.lower() != q.lower():
         variants.append(broad)
+
+    nq = norm(q)
+
+    # Deloox-specific aliases for the Rasasi Hawas family.
+    # These are discovery-only aliases: _product() still validates
+    # against the user's original query.
+    if "hawas" in nq:
+        variants.extend(
+            [
+                "Hawas",
+                "Rasasi Hawas",
+                "Rasasi Hawas for Him",
+            ]
+        )
+
+    # More generally, if a query contains a likely product family name,
+    # also try the shorter family query. This helps sites whose search
+    # index ignores trailing gender/concentration words.
+    if len(parts) >= 3:
+        family = " ".join(parts[:2]).strip()
+        if family and norm(family) != nq:
+            variants.append(family)
 
     out = []
     seen = set()
@@ -572,10 +595,7 @@ def _candidate_queries(query):
     for item in variants:
         key = norm(item)
 
-        if (
-            key
-            and key not in seen
-        ):
+        if key and key not in seen:
             seen.add(key)
             out.append(item)
 
@@ -1279,9 +1299,9 @@ def _discover(
 
     # 1. PRIMARY:
     # Deloox's own search surface.
-    discovery_queries = (
-        _candidate_queries(q)[:2]
-    )
+    # Use all conservative discovery aliases.  The original query is
+    # always first; validation later still uses q.
+    discovery_queries = _candidate_queries(q)[:6]
 
     search_endpoints = (
         "/en/search?query=",
@@ -1330,8 +1350,8 @@ def _discover(
         _sitemap_product_urls(
             session,
             q,
-            max_sitemaps=2,
-            max_urls=12,
+            max_sitemaps=6,
+            max_urls=24,
         )
     ):
         add(product_url)
@@ -1382,6 +1402,35 @@ def _discover(
 
             if len(urls) >= 24:
                 break
+
+    # 5. Conservative slug guesses for product families whose Deloox
+    # search index is incomplete.  These are only candidates; _product()
+    # fetches each page and rejects anything that does not match q.
+    nq = norm(q)
+    if "hawas" in nq:
+        slug_guesses = (
+            "hawas-for-him",
+            "rasasi-hawas-for-him",
+            "hawas-for-him-eau-de-parfum",
+            "hawas-for-him-kobra",
+        )
+
+        for slug in slug_guesses:
+            for prefix in (
+                "/product/",
+                "/products/",
+                "/en/product/",
+                "/en/products/",
+            ):
+                add(
+                    BASE_URL
+                    + prefix
+                    + slug
+                    + ".html"
+                )
+
+                if len(urls) >= 24:
+                    return urls[:24]
 
     return urls[:24]
 
