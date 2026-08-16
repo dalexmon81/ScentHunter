@@ -42,40 +42,44 @@ def _query_tokens(query: str) -> List[str]:
     ]
 
 
-def _matches(text: str, query: str, vendor: str = "") -> bool:
+def _matches(text: str, query: str) -> bool:
     """
-    Validate a discovered product against the user query.
+    Strict product identity check.
 
-    A query can be represented across Shopify fields:
-      "Khadlaj Titan"
-        title  = "Titan by Khadlaj - Men Perfume - EDP - 100 ml"
-        vendor = "Khadlaj"
+    A multi-word query must be represented by ALL significant words in the
+    candidate, in the same order. Ignored connector words (for/de/parfum...)
+    are allowed between them.
 
-    The match is therefore checked against the combined title/vendor text,
-    but also explicitly against the two fields separately. This prevents a
-    valid product from being discarded merely because the store splits brand
-    and product name across fields.
+    This prevents a sibling variant such as "Hawas Kobra" from being accepted
+    for a query such as "Hawas for Him", while keeping the rule generic.
     """
+    haystack = _norm(text)
+    query_norm = _norm(query)
     tokens = _query_tokens(query)
+
     if not tokens:
         return False
 
-    title_text = _norm(text)
-    vendor_text = _norm(vendor)
+    # Every significant token must be present as a complete normalized word.
+    hay_tokens = set(haystack.split())
+    if not all(token in hay_tokens for token in tokens):
+        return False
 
-    # Normal case: all query tokens occur somewhere in title + vendor.
-    combined = f"{title_text} {vendor_text}".strip()
-    if all(token in combined for token in tokens):
-        return True
+    # For multi-token queries, also require the significant tokens to occur
+    # in order. This is deliberately independent of any perfume name.
+    if len(tokens) >= 2:
+        positions = []
+        hay_parts = haystack.split()
+        start = 0
+        for token in tokens:
+            try:
+                pos = hay_parts.index(token, start)
+            except ValueError:
+                return False
+            positions.append(pos)
+            start = pos + 1
 
-    # Explicit field-aware case: allow the brand/product terms to be split
-    # between title and vendor. This is especially important for Shopify
-    # results such as "Titan by Khadlaj" with vendor="Khadlaj".
-    if vendor_text:
-        if all(token in title_text or token in vendor_text for token in tokens):
-            return True
-
-    return False
+    return True
 
 
 def _price(value) -> Optional[float]:
@@ -241,7 +245,7 @@ def _discovery(session: requests.Session, query: str) -> List[str]:
                 continue
             title = _clean(product.get("title"))
             vendor = _clean(product.get("vendor"))
-            if not _matches(title, query, vendor):
+            if not _matches(title + " " + vendor, query):
                 continue
 
             product_url = urljoin(BASE_URL, product.get("url") or "")
@@ -273,7 +277,7 @@ def _discovery(session: requests.Session, query: str) -> List[str]:
                 candidate_text = f"{title} {product_url}"
                 if (
                     "/products/" in product_url
-                    and _matches(title, query, vendor)
+                    and _matches(candidate_text, query)
                     and product_url not in seen
                 ):
                     seen.add(product_url)
@@ -304,7 +308,7 @@ def _discovery(session: requests.Session, query: str) -> List[str]:
                 candidate_text = f"{title} {vendor} {product_url}"
                 if (
                     "/products/" in product_url
-                    and _matches(title, query, vendor)
+                    and _matches(candidate_text, query)
                     and product_url not in seen
                 ):
                     seen.add(product_url)
@@ -514,6 +518,20 @@ def search(query: str) -> List[Dict[str, Any]]:
                     continue
                 seen.add(key)
                 results.append(item)
+
+        # Final identity guard: only expose products that still match the
+        # ORIGINAL user query after the product JSON has been read.
+        # This is intentionally generic and contains no perfume-specific rule.
+        results = [
+            item for item in results
+            if _matches(
+                " ".join([
+                    ((item.get("source") or {}).get("source_name") or ""),
+                    ((item.get("source") or {}).get("source_brand") or ""),
+                ]),
+                query,
+            )
+        ]
 
         # IMPORTANT:
         # Orioudh can expose the same perfume through different Shopify
