@@ -410,12 +410,9 @@ def _category_product_line_links(html, query):
 
 
 def _category_pages(session):
-    # Broad Deloox entry points.
-    # The current men's-fragrances root is important because Deloox exposes
-    # many men's Product Line links there (including Liquid Brun).
-    # Keep the older roots as fallbacks.
+    # Broad Deloox entry points. Pagination and Product Line links are followed
+    # so a family is not limited to the first visible result.
     return (
-        BASE_URL + "/category/1000054/mens-fragrances.html",
         BASE_URL + "/category/1075639/womens-fragrances.html",
         BASE_URL + "/category/1075660/womens-perfume.html",
         BASE_URL + "/category/1075750/mens-perfume.html",
@@ -501,6 +498,20 @@ def _pagination_urls(page_url, max_pages=8):
 
 
 def _discover_from_categories(session, query, max_urls=120):
+    """Discover products from Deloox category roots without blind crawling.
+
+    The previous version paginated every broad category (and every discovered
+    category link) before moving on. That can create dozens of HTTP requests
+    for a single search and makes the normal search appear to hang.
+
+    The generic strategy is:
+    1. Request each broad root once.
+    2. Check that page for direct product candidates.
+    3. Extract only Product Line/category links whose label or slug matches
+       the actual query.
+    4. Visit only those matching category pages and their first pagination
+       pages. No product-specific seed or exception is used.
+    """
     urls = []
     seen = set()
     visited = set()
@@ -518,7 +529,6 @@ def _discover_from_categories(session, query, max_urls=120):
     roots.extend(_targeted_category_seed_urls(query))
 
     for root in roots:
-        page_candidates = [root]
         try:
             r = session.get(root, headers=HEADERS, timeout=TIMEOUT)
         except requests.RequestException:
@@ -529,38 +539,47 @@ def _discover_from_categories(session, query, max_urls=120):
         if add_products(r.text):
             return urls[:max_urls]
 
-        # Discover Product Line/category links whose visible label matches the query.
-        page_candidates.extend(_category_product_line_links(r.text, query))
+        # IMPORTANT: do not paginate the broad root blindly.
+        # First find only category/Product Line links that actually match q.
+        matching_lines = _category_product_line_links(r.text, query)
 
-        expanded = []
-        for page_url in page_candidates:
-            expanded.extend(_pagination_urls(page_url, max_pages=8))
+        for line_url in matching_lines:
+            candidates = [line_url]
+            # Check only the first pagination page for a matching line.
+            candidates.append(next(_pagination_urls(line_url, max_pages=1)))
 
-        for page_url in expanded:
-            if page_url in visited:
-                continue
-            visited.add(page_url)
-            try:
-                page = session.get(page_url, headers=HEADERS, timeout=TIMEOUT)
-            except requests.RequestException:
-                continue
-            if page.status_code >= 400:
-                continue
-            if add_products(page.text):
-                return urls[:max_urls]
-            # A later page may expose the exact Product Line link.
-            for line_url in _category_product_line_links(page.text, query):
-                for lp in _pagination_urls(line_url, max_pages=8):
-                    if lp in visited:
+            for page_url in candidates:
+                if page_url in visited:
+                    continue
+                visited.add(page_url)
+
+                try:
+                    page = session.get(page_url, headers=HEADERS, timeout=TIMEOUT)
+                except requests.RequestException:
+                    continue
+                if page.status_code >= 400:
+                    continue
+
+                if add_products(page.text):
+                    return urls[:max_urls]
+
+                # A matching Product Line can expose a localized/alternate
+                # category URL on its own page. Follow only those exact matches.
+                for nested_line in _category_product_line_links(page.text, query):
+                    if nested_line in visited:
                         continue
-                    visited.add(lp)
+                    visited.add(nested_line)
                     try:
-                        line_page = session.get(lp, headers=HEADERS, timeout=TIMEOUT)
+                        nested = session.get(
+                            nested_line,
+                            headers=HEADERS,
+                            timeout=TIMEOUT,
+                        )
                     except requests.RequestException:
                         continue
-                    if line_page.status_code >= 400:
+                    if nested.status_code >= 400:
                         continue
-                    if add_products(line_page.text):
+                    if add_products(nested.text):
                         return urls[:max_urls]
 
     return urls[:max_urls]
