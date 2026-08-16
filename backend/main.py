@@ -233,6 +233,116 @@ def diagnose_deloox(q: str):
             timeout=45,
         ))
 
+
+    # 7. Identify exactly which discovery source produces the candidate URLs.
+    # This is diagnostic-only: no scraper code is changed.
+    try:
+        session = scraper.requests.Session()
+        source_report = []
+
+        # 7A. Deloox internal search endpoints
+        candidate_queries = candidate_fn(query) if callable(candidate_fn) else [query]
+        search_endpoints = (
+            "/en/search?query=",
+            "/en/search?search=",
+            "/en/search?q=",
+        )
+        search_sources = []
+        for dq in candidate_queries[:6]:
+            for route in search_endpoints:
+                endpoint = scraper.BASE_URL + route + scraper.quote_plus(dq)
+                try:
+                    rr = session.get(endpoint, headers=scraper.HEADERS, timeout=scraper.TIMEOUT)
+                    urls = scraper._candidate_product_urls(
+                        rr.text,
+                        query,
+                        discovery_query=dq,
+                        accept_all_products=True,
+                    ) if rr.status_code < 400 else []
+                    search_sources.append({
+                        "query": dq,
+                        "endpoint": endpoint,
+                        "http_status": rr.status_code,
+                        "candidate_count": len(urls),
+                        "candidate_urls": urls[:20],
+                    })
+                except Exception as exc:
+                    search_sources.append({
+                        "query": dq,
+                        "endpoint": endpoint,
+                        "error": f"{type(exc).__name__}: {exc}",
+                    })
+
+        source_report.append({
+            "source": "internal_search_endpoints",
+            "checks": search_sources,
+        })
+
+        # 7B. Product sitemaps
+        try:
+            sitemap_urls = scraper._sitemap_product_urls(
+                session, query, max_sitemaps=12, max_urls=80
+            )
+            source_report.append({
+                "source": "product_sitemaps",
+                "count": len(sitemap_urls),
+                "urls": sitemap_urls[:30],
+            })
+        except Exception as exc:
+            source_report.append({
+                "source": "product_sitemaps",
+                "error": f"{type(exc).__name__}: {exc}",
+            })
+
+        # 7C. Category discovery
+        try:
+            category_urls = scraper._discover_from_categories(
+                session, query, max_urls=80
+            )
+            source_report.append({
+                "source": "categories",
+                "count": len(category_urls),
+                "urls": category_urls[:30],
+            })
+        except Exception as exc:
+            source_report.append({
+                "source": "categories",
+                "error": f"{type(exc).__name__}: {exc}",
+            })
+
+        # 7D. Legacy Italian search endpoint
+        try:
+            endpoint = scraper.BASE_URL + "/it/cerca?query=" + scraper.quote_plus(query)
+            rr = session.get(endpoint, headers=scraper.HEADERS, timeout=scraper.TIMEOUT)
+            urls = scraper._candidate_product_urls(
+                rr.text, query, accept_all_products=True
+            ) if rr.status_code < 400 else []
+            source_report.append({
+                "source": "legacy_it_search",
+                "http_status": rr.status_code,
+                "candidate_count": len(urls),
+                "candidate_urls": urls[:30],
+            })
+        except Exception as exc:
+            source_report.append({
+                "source": "legacy_it_search",
+                "error": f"{type(exc).__name__}: {exc}",
+            })
+
+        report["steps"].append({
+            "step": "7_discovery_source_attribution",
+            "status": "OK",
+            "value": source_report,
+        })
+        session.close()
+    except Exception as exc:
+        report["steps"].append({
+            "step": "7_discovery_source_attribution",
+            "status": "ERROR",
+            "error": f"{type(exc).__name__}: {exc}",
+            "traceback": traceback.format_exc(),
+        })
+
     report["diagnosis"] = (
         "4_real_search chiama direttamente search(). "
         "Lo step 6 separa discovery, download pagina e _product(): "
