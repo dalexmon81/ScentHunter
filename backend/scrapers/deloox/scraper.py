@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import json
 import re
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from urllib.parse import quote_plus, urljoin, urlparse
 
 import requests
@@ -539,67 +540,52 @@ def _product(url, html, query):
 
 
 def _candidate_queries(query):
-    """Build generic discovery queries without product-specific exceptions.
-
-    Deloox search/category discovery can fail for a complete product name while
-    succeeding with a shorter family/name query.  We progressively broaden the
-    discovery query, but the original query remains authoritative in _product().
-    """
+    """Generate generic discovery variants; no product-specific exceptions."""
     q = clean(query)
     if not q:
         return []
 
     parts = q.split()
-    removable = {
-        "parfum", "perfume", "eau", "de", "du", "des", "da", "del",
-        "della", "toilette", "edt", "edp", "extrait", "extract",
-        "for", "the", "and", "with", "by", "of", "in", "pour",
-        "homme", "femme", "men", "women", "man", "woman",
+    stop = {
+        "for", "the", "and", "with", "de", "da", "del", "della",
+        "du", "des", "di", "by", "e", "in", "of", "pour",
+        "parfum", "perfume", "eau", "toilette", "edt", "edp",
+        "extrait", "extract", "homme", "femme", "men", "women",
+        "man", "woman",
     }
 
     variants = [q]
 
-    broad = " ".join(
-        p for p in parts if p.lower() not in removable
-    ).strip()
+    meaningful = [p for p in parts if p.lower() not in stop and len(p) > 1]
+
+    # Remove generic concentration/gender words.
+    broad = " ".join(meaningful).strip()
     if broad and norm(broad) != norm(q):
         variants.append(broad)
 
-    # Remove leading words progressively. This is the generic equivalent of
-    # the old Hawas-family fallback: it lets Deloox discover the family/product
-    # even when the brand or variant at the beginning is not indexed together.
-    for start in range(1, len(parts)):
-        candidate = " ".join(parts[start:]).strip()
-        if candidate:
-            variants.append(candidate)
+    # Brand + first product token, then the product part alone.
+    if len(meaningful) >= 2:
+        variants.append(" ".join(meaningful[:2]))
+        variants.append(" ".join(meaningful[1:]))
 
-    # Compact number/name spelling, e.g. 9 PM <-> 9PM.
-    nq = norm(q)
-    compact = re.sub(
-        r"(?<=\d)\s+(?=[a-z])|(?<=[a-z])\s+(?=\d)",
-        "",
-        nq,
-    )
-    if compact and compact != nq:
-        variants.append(compact)
+    # Progressive product-family fallbacks.
+    if len(meaningful) >= 3:
+        variants.append(" ".join(meaningful[:2]))
+        variants.append(" ".join(meaningful[-2:]))
 
-    # Meaningful tokens are useful as a last discovery fallback.
-    meaningful = [
-        p for p in parts
-        if p.lower() not in removable and len(p) > 1
-    ]
-    for token in sorted(set(meaningful), key=lambda x: (-len(x), x.lower())):
+    # Individual meaningful tokens, longest first.
+    for token in sorted(set(meaningful), key=lambda x: (-len(x), x)):
         variants.append(token)
 
     out = []
     seen = set()
-    for item in variants:
-        key = norm(item)
+    for value in variants:
+        key = norm(value)
         if key and key not in seen:
             seen.add(key)
-            out.append(clean(item))
+            out.append(value)
 
-    return out
+    return out[:8]
 
 
 def _candidate_product_urls(
@@ -1437,12 +1423,7 @@ def _search(
 
 
 def _targeted_known_product_urls(query):
-    """Return no hard-coded product URLs.
-
-    Product-specific URL exceptions are intentionally forbidden. Discovery is
-    handled generically by search/category/sitemap paths, and _product() is the
-    final authority for the original query.
-    """
+    """No product-specific URLs. Discovery is fully generic."""
     return []
 
 
@@ -1487,30 +1468,27 @@ def _fast_targeted_search(session, query):
     return results
 
 
-def _discover(
-    session,
-    q,
-):
-    """Generic Deloox discovery with direct search FIRST."""
+def _discover(session, q):
+    """Fast generic Deloox discovery.
 
+    The previous flow executed the same Deloox search endpoints twice:
+    once in _search() and again here. That could consume the Main's global
+    28-second budget before category discovery was ever reached.
+
+    We now have one discovery pipeline:
+    search -> category/product-line discovery -> sitemap.
+    No product-specific URLs or branches.
+    """
     urls = []
     seen = set()
 
     def add(url):
-        if (
-            url
-            and url not in seen
-            and len(urls) < 24
-        ):
+        if url and url not in seen and len(urls) < 24:
             seen.add(url)
             urls.append(url)
 
-    # 1. PRIMARY:
-    # Deloox's own search surface.
-    # Use all conservative discovery aliases.  The original query is
-    # always first; validation later still uses q.
-    discovery_queries = _candidate_queries(q)[:6]
-
+    # 1) Deloox search: only the most useful generic variants.
+    discovery_queries = _candidate_queries(q)[:4]
     search_endpoints = (
         "/en/search?query=",
         "/en/search?search=",
@@ -1519,17 +1497,9 @@ def _discover(
 
     for discovery_query in discovery_queries:
         for route in search_endpoints:
-            endpoint = (
-                BASE_URL
-                + route
-                + quote_plus(
-                    discovery_query
-                )
-            )
-
             try:
                 r = session.get(
-                    endpoint,
+                    BASE_URL + route + quote_plus(discovery_query),
                     headers=HEADERS,
                     timeout=TIMEOUT,
                 )
@@ -1539,46 +1509,30 @@ def _discover(
             if r.status_code >= 400:
                 continue
 
-            for product_url in (
-                _candidate_product_urls(
-                    r.text,
-                    q,
-                    discovery_query=discovery_query,
-                    accept_all_products=True,
-                )
+            for product_url in _candidate_product_urls(
+                r.text,
+                q,
+                discovery_query=discovery_query,
+                accept_all_products=True,
             ):
                 add(product_url)
-
                 if len(urls) >= 24:
                     return urls[:24]
 
-    # 2. FAST TARGETED FALLBACK:
-    # Use proven/current product URLs before any broad discovery.
-    # This keeps known products fast even when Deloox's search endpoints
-    # are unavailable (they currently return 404).
-    for product_url in _targeted_known_product_urls(q):
-        add(product_url)
-
-    if urls:
-        return urls[:24]
-
-    # 3. GENERIC CATEGORY FALLBACK:
-    # Repeat category discovery with the same broadened aliases used by the
-    # search endpoints. This is the important generic replacement for the old
-    # Hawas-only URL exception: a shorter family query can expose the correct
-    # Product Line page even when the complete query cannot.
-    for discovery_query in _candidate_queries(q):
-        for url in _discover_from_categories(
+    # 2) Generic category discovery. This is the path that previously
+    # proved capable of finding Deloox products when search returned 0.
+    for discovery_query in _candidate_queries(q)[:4]:
+        for product_url in _discover_from_categories(
             session,
             discovery_query,
             max_urls=12,
         ):
-            add(url)
+            add(product_url)
             if len(urls) >= 24:
                 return urls[:24]
 
-    # 4. SECONDARY SITEMAP FALLBACK, also using broadened aliases.
-    for discovery_query in _candidate_queries(q):
+    # 3) Sitemap fallback.
+    for discovery_query in _candidate_queries(q)[:3]:
         for product_url in _sitemap_product_urls(
             session,
             discovery_query,
@@ -1589,37 +1543,6 @@ def _discover(
             if len(urls) >= 24:
                 return urls[:24]
 
-    # 5. Last-resort older route.
-    endpoint = (
-        BASE_URL
-        + "/it/cerca?query="
-        + quote_plus(q)
-    )
-
-    try:
-        r = session.get(
-            endpoint,
-            headers=HEADERS,
-            timeout=TIMEOUT,
-        )
-    except requests.RequestException:
-        return urls[:24]
-
-    if r.status_code < 400:
-        for product_url in (
-            _candidate_product_urls(
-                r.text,
-                q,
-                discovery_query=q,
-                accept_all_products=True,
-            )
-        ):
-            add(product_url)
-
-            if len(urls) >= 24:
-                break
-
-    # No product-specific slug guesses.
     return urls[:24]
 
 
@@ -1852,44 +1775,19 @@ def diagnose_search(
 
 def search(query):
     query = clean(query)
-
     if not query:
         return []
 
     session = requests.Session()
-
     try:
-        # FIRST: validate proven/current product URLs.
-        # This must happen before Deloox's broad search/discovery paths: for
-        # known products it turns a potentially long search into one request.
-        targeted_results = _fast_targeted_search(
-            session,
-            query,
-        )
-
-        if targeted_results:
-            return targeted_results
-
-        # SECOND: use Deloox's internal search.
-        results = _search(
-            session,
-            query,
-        )
-
-        if results:
-            return results
-
-        # THIRD: only when internal search returns nothing,
-        # fall back to the proven discovery mechanism.
-        discovered_urls = _discover(
-            session,
-            query,
-        )
+        discovered_urls = _discover(session, query)
+        if not discovered_urls:
+            return []
 
         results = []
         seen = set()
 
-        for url in discovered_urls:
+        def fetch_product(url):
             try:
                 r = session.get(
                     url,
@@ -1897,40 +1795,51 @@ def search(query):
                     timeout=TIMEOUT,
                 )
             except requests.RequestException:
-                continue
+                return None
 
             if r.status_code >= 400:
-                continue
+                return None
 
-            item = _product(
-                url,
-                r.text,
-                query,
-            )
+            return _product(url, r.text, query)
 
-            if not item:
-                continue
+        # Product pages are independent; validate them in parallel so
+        # discovery does not consume the Main's global timeout.
+        with ThreadPoolExecutor(max_workers=6) as executor:
+            futures = {
+                executor.submit(fetch_product, url): url
+                for url in discovered_urls[:12]
+            }
 
-            sku = item.get("identity", {}).get("sku")
-            sku_value = (
-                sku.get("value")
-                if isinstance(sku, dict)
-                else None
-            )
+            for future in as_completed(futures):
+                try:
+                    item = future.result()
+                except Exception:
+                    item = None
 
-            key = (
-                url,
-                sku_value,
-            )
+                if not item:
+                    continue
 
-            if key in seen:
-                continue
+                sku = item.get("identity", {}).get("sku")
+                sku_value = (
+                    sku.get("value")
+                    if isinstance(sku, dict)
+                    else None
+                )
+                key = (
+                    item.get("url"),
+                    sku_value,
+                )
 
-            seen.add(key)
-            results.append(item)
+                if key in seen:
+                    continue
 
-        return results
+                seen.add(key)
+                results.append(item)
 
+                if len(results) >= 24:
+                    break
+
+        return results[:24]
     finally:
         session.close()
 
