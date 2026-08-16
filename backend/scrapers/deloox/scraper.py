@@ -26,23 +26,19 @@ STORE = "Deloox"
 BASE_URL = "https://www.deloox.com"
 
 TIMEOUT = 10
-DISCOVERY_TIMEOUT = 6
-JINA_TIMEOUT = 20
+DISCOVERY_TIMEOUT = 4
 
-# Deloox can return a tiny JavaScript shell to plain requests.  Do not assume
-# that a small 200 response is the real catalogue: try a normal desktop
-# browser profile first, then a mobile profile, and finally a public reader
-# fallback for pages that still return only the shell.
-MIN_REAL_CATEGORY_BYTES = 5_000
+# A normal catalogue page should be substantially larger than the tiny
+# JavaScript/redirect/challenge shells Deloox can return to plain requests.
+MIN_REAL_CATEGORY_BYTES = 10_000
 
 DEBUG_DISCOVERY = os.getenv("DELOOX_DEBUG", "1") != "0"
-USE_JINA_FALLBACK = os.getenv("DELOOX_JINA_FALLBACK", "1") != "0"
 
 HEADERS = {
     "User-Agent": (
-        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
-        "AppleWebKit/537.36 (KHTML, like Gecko) "
-        "Chrome/131.0.0.0 Safari/537.36"
+        "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) "
+        "AppleWebKit/605.1.15 (KHTML, like Gecko) "
+        "Version/17.0 Mobile/15E148 Safari/604.1"
     ),
     "Accept": (
         "text/html,application/xhtml+xml,application/xml;"
@@ -52,36 +48,11 @@ HEADERS = {
     "Cache-Control": "no-cache",
     "Pragma": "no-cache",
     "Upgrade-Insecure-Requests": "1",
-    "Sec-Fetch-Dest": "document",
-    "Sec-Fetch-Mode": "navigate",
-    "Sec-Fetch-Site": "none",
-    "Sec-Fetch-User": "?1",
+    "Connection": "keep-alive",
 }
 
-REQUEST_PROFILES = [
-    HEADERS,
-    {
-        **HEADERS,
-        "User-Agent": (
-            "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
-            "AppleWebKit/537.36 (KHTML, like Gecko) "
-            "Chrome/131.0.0.0 Safari/537.36"
-        ),
-    },
-    {
-        "User-Agent": (
-            "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) "
-            "AppleWebKit/605.1.15 (KHTML, like Gecko) "
-            "Version/17.0 Mobile/15E148 Safari/604.1"
-        ),
-        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
-        "Accept-Language": "en-GB,en;q=0.9",
-    },
-]
 
-CATALOG_URL = BASE_URL + "/en/category/1025540/trending.html?page=1"
-CATALOG_FILTER_LINKS = None
-CATALOG_URL = BASE_URL + "/en/category/1025540/trending.html?page=1"
+CATALOG_URL = BASE_URL + "/en/category/1025540/trending.html?page=60"
 CATALOG_FILTER_LINKS = None
 
 
@@ -211,144 +182,54 @@ def _response_kind(response):
     return "html_without_product_urls"
 
 
-def _response_score(response):
-    """Score a response so we can prefer real catalogue HTML over a shell."""
-    if response is None:
-        return -10_000
-    html = response.text or ""
-    low = html.lower()
-    score = min(len(response.content or b""), 100_000) / 1000.0
-    if "/product/" in low:
-        score += 100
-    if 'application/ld+json' in low:
-        score += 60
-    if "<h1" in low:
-        score += 20
-    if "category" in low:
-        score += 10
-    if any(x in low for x in ("captcha", "cloudflare", "just a moment", "enable javascript")):
-        score -= 100
-    if len(response.content or b"") < 5000:
-        score -= 40
-    return score
-
-
-def _looks_real_page(response):
-    if response is None or response.status_code >= 400:
-        return False
-    html = response.text or ""
-    low = html.lower()
-    size = len(response.content or b"")
-    if size >= MIN_REAL_CATEGORY_BYTES:
-        return True
-    # Product pages can legitimately be smaller than a catalogue page, so
-    # structural markers are accepted even below the byte threshold.
-    return (
-        ("<h1" in low and ("application/ld+json" in low or "/product/" in low))
-        or low.count("/product/") >= 2
-    )
-
-
-def _jina_response(session, url, timeout=JINA_TIMEOUT):
-    """Fetch a public Deloox page through Jina Reader when direct HTTP is a shell."""
-    if not USE_JINA_FALLBACK:
-        return None
-    if not any(part in url.lower() for part in ("/category/", "/search", "/product/")):
-        return None
-
-    reader_url = "https://r.jina.ai/" + url
+def _fetch(session, url, timeout=DISCOVERY_TIMEOUT, debug=True):
+    """GET with diagnostics and redirect visibility."""
     try:
         response = session.get(
-            reader_url,
-            headers={
-                "User-Agent": "ScentHunter/1.0",
-                "Accept": "text/plain,text/markdown;q=0.9,*/*;q=0.5",
-            },
+            url,
+            headers=HEADERS,
             timeout=timeout,
             allow_redirects=True,
         )
     except requests.RequestException as exc:
         _dbg(
-            "jina_fetch_error",
-            requested_url=url,
+            "http_fetch_error",
+            url=url,
             error=f"{type(exc).__name__}: {exc}",
         )
         return None
 
-    if response.status_code >= 400 or not (response.text or "").strip():
+    if debug:
+        soup = BeautifulSoup(response.text or "", "html.parser")
+        title = (
+            clean(soup.title.get_text(" ", strip=True))
+            if soup.title
+            else ""
+        )
+        body_text = clean(soup.get_text(" ", strip=True))
+
         _dbg(
-            "jina_fetch_failed",
+            "http_response_debug",
             requested_url=url,
+            final_url=response.url,
             status=response.status_code,
             bytes=len(response.content or b""),
+            content_type=response.headers.get("content-type"),
+            kind=_response_kind(response),
+            history=[
+                {
+                    "status": h.status_code,
+                    "url": h.url,
+                    "location": h.headers.get("location"),
+                }
+                for h in response.history
+            ],
+            title=title,
+            body_preview=body_text[:500],
+            html_preview=(response.text or "")[:1000],
         )
-        return None
 
-    # Turn the reader result into a normal Response so the rest of the adapter
-    # can keep using one fetch pipeline.
-    response.url = url
-    response.headers["X-ScentHunter-Fetch-Source"] = "jina"
-    _dbg(
-        "jina_fetch",
-        requested_url=url,
-        status=response.status_code,
-        bytes=len(response.content or b""),
-        final_url=response.url,
-    )
     return response
-
-
-def _fetch(session, url, timeout=DISCOVERY_TIMEOUT, debug=True):
-    """GET a Deloox page with desktop/mobile profiles and a reader fallback."""
-    best = None
-
-    for profile_index, headers in enumerate(REQUEST_PROFILES, start=1):
-        try:
-            response = session.get(
-                url,
-                headers=headers,
-                timeout=timeout,
-                allow_redirects=True,
-            )
-        except requests.RequestException as exc:
-            _dbg(
-                "http_fetch_error",
-                url=url,
-                profile=profile_index,
-                error=f"{type(exc).__name__}: {exc}",
-            )
-            continue
-
-        if best is None or _response_score(response) > _response_score(best):
-            best = response
-
-        if debug:
-            soup = BeautifulSoup(response.text or "", "html.parser")
-            title = clean(soup.title.get_text(" ", strip=True)) if soup.title else ""
-            body_text = clean(soup.get_text(" ", strip=True))
-            _dbg(
-                "http_response_debug",
-                requested_url=url,
-                final_url=response.url,
-                profile=profile_index,
-                status=response.status_code,
-                bytes=len(response.content or b""),
-                content_type=response.headers.get("content-type"),
-                kind=_response_kind(response),
-                real=_looks_real_page(response),
-                title=title,
-                body_preview=body_text[:300],
-            )
-
-        if _looks_real_page(response):
-            return response
-
-    # If all direct profiles return the same tiny shell, try a public reader.
-    jina = _jina_response(session, url)
-    if jina is not None:
-        return jina
-
-    return best
 
 
 def availability_from_sources(data, soup):
@@ -551,91 +432,7 @@ def _jsonld(soup):
     return {}
 
 
-def _product_from_reader(url, text, query):
-    """Parse the plain Markdown returned by Jina Reader."""
-    clean_text = clean(text)
-    if not clean_text or not matches(clean_text, query):
-        return None
-
-    # Prefer a Markdown H1/H2 that contains the complete query.
-    name = ""
-    for line in (text or "").splitlines():
-        line = clean(re.sub(r"^#+\s*", "", line))
-        if line and matches(line, query) and len(line) <= 300:
-            name = line
-            break
-    if not name:
-        # Deloox reader pages often put the product name near the top.
-        for line in (text or "").splitlines()[:40]:
-            line = clean(line)
-            if line and matches(line, query) and len(line) <= 300:
-                name = line
-                break
-    if not name:
-        return None
-
-    price = None
-    for line in (text or "").splitlines()[:120]:
-        if "€" in line or "EUR" in line.upper():
-            price = parse_price(line)
-            if price is not None:
-                break
-    if price is None:
-        price = parse_price(clean_text)
-    if price is None:
-        return None
-
-    size = size_ml(name, clean_text)
-    return {
-        "store": STORE,
-        "source": {
-            "source_name": name,
-            "source_brand": "",
-            "url": url,
-            "image": None,
-        },
-        "identity": {
-            "gtin": None,
-            "mpn": None,
-            "sku": None,
-            "store_product_id": None,
-        },
-        "attributes": {
-            "size_ml": {
-                "value": size,
-                "source": "reader_text",
-            } if size is not None else None,
-            "concentration": {
-                "value": concentration(name),
-                "source": "product_name",
-            } if concentration(name) else None,
-            "gender": {"value": "unknown", "source": "not_explicit"},
-            "packaging_type": {"value": "product", "source": "default"},
-            "product_line": None,
-        },
-        "offer": {
-            "price": price,
-            "currency": "EUR",
-            "availability": "unknown",
-        },
-        "provenance": {
-            "source_page": url,
-            "product_source": "jina_reader",
-        },
-        "raw_data": {"reader_text": text[:12000]},
-        "name": name,
-        "price": f"{price:.2f}".replace(".", ",") + " €",
-        "url": url,
-        "available": False,
-    }
-
-
 def _product(url, html, query):
-    if "<html" not in (html or "").lower() and "<body" not in (html or "").lower():
-        reader_item = _product_from_reader(url, html, query)
-        if reader_item:
-            return reader_item
-
     soup = BeautifulSoup(html, "html.parser")
     data = _jsonld(soup)
 
@@ -1251,11 +1048,7 @@ def _catalog_filter_links(session):
 
     html = response.text or ""
 
-    if (
-        len(response.content or b"") < MIN_REAL_CATEGORY_BYTES
-        and response.headers.get("X-ScentHunter-Fetch-Source") != "jina"
-        and not _looks_real_page(response)
-    ):
+    if len(response.content or b"") < MIN_REAL_CATEGORY_BYTES:
         _dbg(
             "catalog_suspicious_response",
             url=CATALOG_URL,
@@ -1737,9 +1530,8 @@ def _discover_from_categories(
             # This is the important fix for the Railway logs:
             # 1531/1535-byte responses are not real catalogue pages.
             if (
-                len(response.content or b"") < MIN_REAL_CATEGORY_BYTES
-                and response.headers.get("X-ScentHunter-Fetch-Source") != "jina"
-                and not _looks_real_page(response)
+                len(response.content or b"")
+                < MIN_REAL_CATEGORY_BYTES
             ):
                 _dbg(
                     "category_suspicious_response",
@@ -1831,9 +1623,8 @@ def _discover_from_categories(
                         continue
 
                     if (
-                        len(page.content or b"") < MIN_REAL_CATEGORY_BYTES
-                        and page.headers.get("X-ScentHunter-Fetch-Source") != "jina"
-                        and not _looks_real_page(page)
+                        len(page.content or b"")
+                        < MIN_REAL_CATEGORY_BYTES
                     ):
                         _dbg(
                             "category_link_suspicious_response",
@@ -2003,7 +1794,24 @@ def _sitemap_product_urls(
 
 
 def _discover(session, q):
-    """Generic Deloox discovery."""
+    """Discover Deloox products using the catalogue hierarchy in the right order.
+
+    IMPORTANT:
+    Deloox exposes dedicated Product Line/category pages such as
+    /category/<id>/liquid-brun.html.  Those pages are a much stronger source
+    than paging through the generic fragrances catalogue.
+
+    Discovery order:
+      1) category URLs from Deloox sitemaps, matched by slug;
+      2) category/filter links exposed by the live catalogue;
+      3) Deloox search endpoints;
+      4) broad catalogue pages only as a last resort;
+      5) product sitemaps as the final fallback.
+
+    We deliberately do NOT spend dozens of requests paging generic category
+    pages before checking whether Deloox already has an exact Product Line
+    category for the query.
+    """
     urls = []
     seen = set()
 
@@ -2030,86 +1838,19 @@ def _discover(session, q):
 
         return False
 
-    # 1. Category discovery.
-    category_candidates = (
-        _discover_from_categories(
-            session,
-            q,
-            max_urls=80,
-        )
-    )
-
-    if category_candidates:
-        _dbg(
-            "discovery_stop",
-            query=q,
-            source="categories",
-            count=len(category_candidates),
-        )
-        add_many(
-            category_candidates,
-            "categories",
-        )
-        return urls[:80]
-
-    # 2. Catalogue filter discovery.
-    catalog_category = (
-        _find_catalog_filter_url(
-            session,
-            q,
-        )
-    )
-
-    _dbg(
-        "catalog_match",
-        query=q,
-        url=catalog_category,
-    )
-
-    if catalog_category:
-        page = _fetch(
-            session,
-            catalog_category,
-            timeout=DISCOVERY_TIMEOUT,
-        )
-
-        if (
-            page is not None
-            and page.status_code < 400
-            and (
-                len(page.content or b"") >= MIN_REAL_CATEGORY_BYTES
-                or page.headers.get("X-ScentHunter-Fetch-Source") == "jina"
-                or _looks_real_page(page)
-            )
-        ):
-            candidates = (
-                _candidate_product_urls(
-                    page.text or "",
-                    q,
-                )
-            )
-
-            _dbg(
-                "catalog_candidates",
-                query=q,
-                count=len(candidates),
-                sample=candidates[:20],
-            )
-
-            if add_many(
-                candidates,
-                "catalog",
-            ):
-                return urls[:80]
-
-    # 3. Category sitemap discovery.
-    sitemap_categories = (
-        _sitemap_category_urls(
-            session,
-            q,
-            max_sitemaps=6,
-            max_urls=12,
-        )
+    # ------------------------------------------------------------------
+    # 1. FIRST: find Deloox's exact Product Line/category page.
+    #
+    # This is the critical change. For "Liquid Brun" Deloox has a dedicated
+    # category page. The previous adapter only tried this AFTER walking the
+    # generic fragrance catalogue, so the real category could be missed or
+    # reached far too late.
+    # ------------------------------------------------------------------
+    sitemap_categories = _sitemap_category_urls(
+        session,
+        q,
+        max_sitemaps=24,
+        max_urls=20,
     )
 
     _dbg(
@@ -2130,12 +1871,21 @@ def _discover(session, q):
             page is None
             or page.status_code >= 400
         ):
+            _dbg(
+                "sitemap_category_fetch_failed",
+                query=q,
+                url=category_url,
+                status=(
+                    page.status_code
+                    if page is not None
+                    else None
+                ),
+            )
             continue
 
         if (
-            len(page.content or b"") < MIN_REAL_CATEGORY_BYTES
-            and page.headers.get("X-ScentHunter-Fetch-Source") != "jina"
-            and not _looks_real_page(page)
+            len(page.content or b"")
+            < MIN_REAL_CATEGORY_BYTES
         ):
             _dbg(
                 "sitemap_category_suspicious_response",
@@ -2146,20 +1896,73 @@ def _discover(session, q):
             )
             continue
 
-        candidates = (
-            _candidate_product_urls(
-                page.text or "",
-                q,
-            )
+        candidates = _candidate_product_urls(
+            page.text or "",
+            q,
+        )
+
+        _dbg(
+            "exact_category_candidates",
+            query=q,
+            category_url=category_url,
+            count=len(candidates),
+            sample=candidates[:20],
         )
 
         if add_many(
             candidates,
-            "sitemap_category",
+            "exact_category",
         ):
             return urls[:80]
 
-    # 4. Search endpoints.
+    # ------------------------------------------------------------------
+    # 2. SECOND: inspect a live catalogue page for a matching Product Line.
+    # ------------------------------------------------------------------
+    catalog_category = _find_catalog_filter_url(
+        session,
+        q,
+    )
+
+    _dbg(
+        "catalog_match",
+        query=q,
+        url=catalog_category,
+    )
+
+    if catalog_category:
+        page = _fetch(
+            session,
+            catalog_category,
+            timeout=DISCOVERY_TIMEOUT,
+        )
+
+        if (
+            page is not None
+            and page.status_code < 400
+            and len(page.content or b"")
+            >= MIN_REAL_CATEGORY_BYTES
+        ):
+            candidates = _candidate_product_urls(
+                page.text or "",
+                q,
+            )
+
+            _dbg(
+                "catalog_candidates",
+                query=q,
+                count=len(candidates),
+                sample=candidates[:20],
+            )
+
+            if add_many(
+                candidates,
+                "catalog",
+            ):
+                return urls[:80]
+
+    # ------------------------------------------------------------------
+    # 3. THIRD: use Deloox's own search routes.
+    # ------------------------------------------------------------------
     endpoints = (
         BASE_URL
         + "/en/search?q="
@@ -2188,9 +1991,8 @@ def _discover(session, q):
             continue
 
         if (
-            len(response.content or b"") < MIN_REAL_CATEGORY_BYTES
-            and response.headers.get("X-ScentHunter-Fetch-Source") != "jina"
-            and not _looks_real_page(response)
+            len(response.content or b"")
+            < MIN_REAL_CATEGORY_BYTES
         ):
             _dbg(
                 "search_suspicious_response",
@@ -2201,11 +2003,17 @@ def _discover(session, q):
             )
             continue
 
-        candidates = (
-            _candidate_product_urls(
-                response.text or "",
-                q,
-            )
+        candidates = _candidate_product_urls(
+            response.text or "",
+            q,
+        )
+
+        _dbg(
+            "search_candidates",
+            query=q,
+            url=endpoint,
+            count=len(candidates),
+            sample=candidates[:20],
         )
 
         if add_many(
@@ -2214,14 +2022,41 @@ def _discover(session, q):
         ):
             return urls[:80]
 
-    # 5. Product sitemap fallback.
-    sitemap_candidates = (
-        _sitemap_product_urls(
-            session,
-            q,
-            max_sitemaps=6,
-            max_urls=40,
+    # ------------------------------------------------------------------
+    # 4. LAST RESORT before product sitemap: broad generic categories.
+    #
+    # This is intentionally late. Generic catalogue pagination is expensive
+    # and was the source of the repeated identical logs.
+    # ------------------------------------------------------------------
+    category_candidates = _discover_from_categories(
+        session,
+        q,
+        max_urls=80,
+    )
+
+    if category_candidates:
+        _dbg(
+            "discovery_stop",
+            query=q,
+            source="categories_fallback",
+            count=len(category_candidates),
         )
+
+        add_many(
+            category_candidates,
+            "categories_fallback",
+        )
+
+        return urls[:80]
+
+    # ------------------------------------------------------------------
+    # 5. FINAL fallback: product sitemaps.
+    # ------------------------------------------------------------------
+    sitemap_candidates = _sitemap_product_urls(
+        session,
+        q,
+        max_sitemaps=16,
+        max_urls=40,
     )
 
     _dbg(
@@ -2245,17 +2080,11 @@ def _discover(session, q):
 
     return urls[:80]
 
-
 def _product_rejection_reason(
     url,
     html,
     query,
 ):
-    if "<html" not in (html or "").lower() and "<body" not in (html or "").lower():
-        if _product_from_reader(url, html, query):
-            return None
-        return "reader_product_parse_failed"
-
     soup = BeautifulSoup(
         html,
         "html.parser",
@@ -2425,9 +2254,8 @@ def diagnostic_discovery(query):
                 continue
 
             if (
-                len(response.content or b"") < MIN_REAL_CATEGORY_BYTES
-                and response.headers.get("X-ScentHunter-Fetch-Source") != "jina"
-                and not _looks_real_page(response)
+                len(response.content or b"")
+                < MIN_REAL_CATEGORY_BYTES
             ):
                 out["stages"].append(
                     {
@@ -2495,8 +2323,6 @@ def diagnostic_discovery(query):
                             page.content or b""
                         )
                         >= MIN_REAL_CATEGORY_BYTES
-                        or page.headers.get("X-ScentHunter-Fetch-Source") == "jina"
-                        or _looks_real_page(page)
                     )
                     else []
                 )
