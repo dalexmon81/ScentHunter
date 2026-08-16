@@ -44,42 +44,46 @@ def _query_tokens(query: str) -> List[str]:
 
 def _matches(text: str, query: str) -> bool:
     """
-    Strict product identity check.
+    Matcha un prodotto alla query, ma mantiene precise le espressioni
+    di genere come "for him", "for women", "pour homme", ecc.
 
-    A multi-word query must be represented by ALL significant words in the
-    candidate, in the same order. Ignored connector words (for/de/parfum...)
-    are allowed between them.
+    Questo evita falsi positivi del tipo:
+        query:    Hawas for Him
+        prodotto: Hawas Kobra for Him
 
-    This prevents a sibling variant such as "Hawas Kobra" from being accepted
-    for a query such as "Hawas for Him", while keeping the rule generic.
+    La presenza di una variante extra resta invece consentita quando la
+    query non contiene una relazione di genere esplicita. Per esempio:
+        query:    Liquid Brun
+        prodotto: Liquid Brun Limited Edition
+    può continuare a essere scoperto.
     """
     haystack = _norm(text)
-    query_norm = _norm(query)
+    query_n = _norm(query)
     tokens = _query_tokens(query)
 
     if not tokens:
         return False
 
-    # Every significant token must be present as a complete normalized word.
-    hay_tokens = set(haystack.split())
-    if not all(token in hay_tokens for token in tokens):
-        return False
+    # Se la query contiene una locuzione di genere, deve comparire come
+    # locuzione contigua nel nome/vendor. Non basta che le singole parole
+    # "for" e "him" siano presenti da qualche parte.
+    gender_phrases = (
+        "for him",
+        "for men",
+        "for women",
+        "for woman",
+        "for man",
+        "pour homme",
+        "pour femmes",
+        "pour femme",
+        "pour homme",
+    )
 
-    # For multi-token queries, also require the significant tokens to occur
-    # in order. This is deliberately independent of any perfume name.
-    if len(tokens) >= 2:
-        positions = []
-        hay_parts = haystack.split()
-        start = 0
-        for token in tokens:
-            try:
-                pos = hay_parts.index(token, start)
-            except ValueError:
-                return False
-            positions.append(pos)
-            start = pos + 1
+    for phrase in gender_phrases:
+        if phrase in query_n and phrase not in haystack:
+            return False
 
-    return True
+    return all(token in haystack for token in tokens)
 
 
 def _price(value) -> Optional[float]:
@@ -518,20 +522,6 @@ def search(query: str) -> List[Dict[str, Any]]:
                     continue
                 seen.add(key)
                 results.append(item)
-
-        # Final identity guard: only expose products that still match the
-        # ORIGINAL user query after the product JSON has been read.
-        # This is intentionally generic and contains no perfume-specific rule.
-        results = [
-            item for item in results
-            if _matches(
-                " ".join([
-                    ((item.get("source") or {}).get("source_name") or ""),
-                    ((item.get("source") or {}).get("source_brand") or ""),
-                ]),
-                query,
-            )
-        ]
 
         # IMPORTANT:
         # Orioudh can expose the same perfume through different Shopify
