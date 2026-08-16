@@ -8,13 +8,8 @@ import json
 import os
 import re
 import traceback
-import time
-from concurrent.futures import ThreadPoolExecutor, as_completed, TimeoutError
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
-from urllib.parse import urlencode, urljoin
-from urllib.request import Request, urlopen
-from urllib.error import HTTPError, URLError
 
 
 # ============================================================
@@ -71,10 +66,7 @@ VARIANTS = {
     "elixir",
     "intense",
     "extreme",
-    # Queste non sono varianti da scartare globalmente:
-    # - Liquid Brun Limited Edition deve comparire nella ricerca "Liquid Brun".
-    # - Hawas Kobra e' una linea distinta e viene gestita con la regola
-    #   contestuale piu' sotto.
+    "limited edition",
     "collector edition",
     "collector's edition",
 }
@@ -111,6 +103,51 @@ IGNORED_WORDS = {
 
 
 # ============================================================
+# LINEE DI RICERCA
+# ============================================================
+# Usa la linea già presente nel frontend, senza creare un secondo index.
+LINE_FAMILIES: Dict[str, List[str]] = {}
+
+
+def load_line_families() -> Dict[str, List[str]]:
+    index_path = FRONTEND_INDEX
+    if not index_path.exists():
+        return {}
+
+    try:
+        text = index_path.read_text(encoding="utf-8", errors="ignore")
+        match = re.search(
+            r"const\s+SCENTHUNTER_AFNAN_LINES\s*=\s*(\{.*?\});",
+            text,
+            flags=re.S,
+        )
+        if not match:
+            return {}
+
+        value = json.loads(match.group(1))
+        if not isinstance(value, dict):
+            return {}
+
+        return {
+            norm(key): [str(item) for item in items if str(item).strip()]
+            for key, items in value.items()
+            if isinstance(items, list)
+        }
+    except Exception:
+        return {}
+
+
+def query_family(query: str) -> Optional[List[str]]:
+    q = norm(query)
+    if not q:
+        return None
+    for root, variants in LINE_FAMILIES.items():
+        if q == root:
+            return variants
+    return None
+
+
+# ============================================================
 # FUNZIONI DI NORMALIZZAZIONE
 # ============================================================
 
@@ -141,6 +178,9 @@ def norm(value: Any) -> str:
         " ",
         value,
     ).strip()
+
+
+LINE_FAMILIES = load_line_families()
 
 
 def price_num(value: Any) -> Optional[float]:
@@ -175,56 +215,6 @@ def product_image(product: Dict[str, Any]) -> str:
     )
 
 
-def product_search_text(product: Dict[str, Any]) -> str:
-    """
-    Testo completo utile per i filtri: alcuni scraper possono avere
-    la variante nel titolo, nell'URL o in un campo secondario.
-    """
-    values = (
-        product.get("name"),
-        product.get("title"),
-        product.get("product_name"),
-        product.get("url"),
-        product.get("product_line"),
-        product.get("variant"),
-        product.get("size"),
-        product.get("size_ml"),
-        product.get("volume"),
-        product.get("volume_ml"),
-        product.get("format"),
-        product.get("format_ml"),
-        product.get("pack_size"),
-    )
-
-    # Alcuni scraper possono mettere la taglia dentro attributes.
-    attributes = product.get("attributes")
-    if isinstance(attributes, dict):
-        values += tuple(
-            value
-            for key, value in attributes.items()
-            if any(token in norm(key) for token in ("size", "volume", "format"))
-        )
-
-    return norm(" ".join(str(value or "") for value in values))
-
-
-def has_small_size(product: Dict[str, Any]) -> bool:
-    """
-    Esclude campioni/mini-taglie fino a 10 ml, salvo ricerca esplicita
-    della taglia.
-    """
-    text = product_search_text(product)
-
-    for match in re.finditer(r"(?<!\d)(\d+(?:[.,]\d+)?)\s*ml\b", text):
-        try:
-            if float(match.group(1).replace(",", ".")) <= 10:
-                return True
-        except ValueError:
-            continue
-
-    return False
-
-
 # ============================================================
 # FILTRO RISULTATI
 # ============================================================
@@ -239,40 +229,25 @@ def matches(product: Dict[str, Any], query: str) -> bool:
     """
     name = norm(product.get("name", ""))
     query_normalized = norm(query)
-    search_text = product_search_text(product)
 
     if not name:
         return False
 
-    # Mini-taglie/campioni (es. 2 ml) non devono entrare nelle offerte
-    # normali. Se un giorno l'utente cercherà esplicitamente "2 ml",
-    # la regola verrà resa permissiva in base alla query.
-    query_has_size = bool(
-        re.search(r"(?<!\d)\d+(?:[.,]\d+)?\s*ml\b", query_normalized)
-    )
-    if has_small_size(product) and not query_has_size:
-        return False
+    family = query_family(query)
+    family_names = {norm(x) for x in family or []}
 
-    # Le varianti realmente generiche restano escluse quando non sono
-    # richieste esplicitamente. Non inseriamo qui "limited edition" o
-    # "kobra": entrambe possono essere prodotti che l'utente vuole
-    # trovare come risultato della linea cercata.
     for phrase in VARIANTS:
         normalized_phrase = norm(phrase)
 
         if (
-            normalized_phrase in search_text
+            normalized_phrase in name
             and normalized_phrase not in query_normalized
+            and not any(
+                variant and variant in name
+                for variant in family_names
+            )
         ):
             return False
-
-    # Hawas for Him e Hawas Kobra sono due linee diverse. Deloox e alcuni
-    # scraper possono descrivere Kobra come "Hawas Kobra for Him"; in quel
-    # caso il semplice controllo dei token farebbe passare il prodotto.
-    # Rendiamo quindi esplicita questa distinzione, senza toccare le altre
-    # ricerche Hawas.
-    if query_normalized == "hawas for him" and "kobra" in name:
-        return False
 
     for phrase in NON_PERFUME:
         normalized_phrase = norm(phrase)
@@ -313,74 +288,40 @@ def load_scraper(store: str):
 
 
 def build_search_attempts(store: str, query: str) -> List[str]:
-    """Poche query mirate: precisa prima, poi più corta."""
-    raw = str(query or "").strip()
-    normalized = norm(raw)
-    attempts: List[str] = []
+    """
+    Una sola richiesta per negozio.
+    Evita retry/varianti automatiche che moltiplicano 403/429
+    e possono mandare Railway in timeout.
+    """
+    query = str(query or "").strip()
+    return [query] if query else []
 
-    def add(value: str) -> None:
-        value = str(value or "").strip()
-        if value and norm(value) not in [norm(x) for x in attempts]:
-            attempts.append(value)
-
-    add(raw)
-
-    tokens = [t for t in normalized.split() if t not in IGNORED_WORDS]
-
-    # Spesso la prima parola è il marchio:
-    # Rasasi Hawas for Him -> Hawas Him
-    # Lattafa Asad Bourbon -> Asad Bourbon
-    if len(tokens) >= 2:
-        add(" ".join(tokens[1:]))
-
-    # Query ancora più semplice per motori che lavorano male con nomi lunghi.
-    if len(tokens) >= 3:
-        add(" ".join(tokens[-2:]))
-    elif tokens:
-        add(" ".join(tokens))
-
-    compact = re.sub(
-        r"(?<=\d)\s+(?=[a-z])|(?<=[a-z])\s+(?=\d)",
-        "",
-        normalized,
-    )
-    if compact != normalized:
-        add(compact)
-
-    return attempts[:3]
 
 def run_store(
     store: str,
     query: str,
 ) -> List[Dict[str, Any]]:
     """
-    Esegue la ricerca su un singolo negozio.
+    Esegue una sola ricerca su un singolo negozio.
+    Un errore del negozio viene propagato al chiamante, che lo registra
+    senza interrompere gli altri negozi.
     """
     module = load_scraper(store)
 
-    attempts = build_search_attempts(
-        store,
-        query,
-    )
+    attempts = build_search_attempts(store, query)
 
     output: List[Dict[str, Any]] = []
     seen = set()
 
     for attempt in attempts:
-
         results = module.search(attempt) or []
 
         for item in results:
-
             if not isinstance(item, dict):
                 continue
 
             product = dict(item)
-
-            product.setdefault(
-                "store",
-                store,
-            )
+            product.setdefault("store", store)
 
             key = (
                 str(product.get("url", "")).lower(),
@@ -390,13 +331,9 @@ def run_store(
             if key in seen:
                 continue
 
-            seen.add(key)
-
             if matches(product, query):
+                seen.add(key)
                 output.append(product)
-
-        if output:
-            break
 
     return output
 
@@ -598,37 +535,28 @@ def search_perfume(q: str):
     query = str(q or "").strip()
 
     if not query:
-        return {"query": "", "count": 0, "results": [], "errors": {}}
+        return {
+            "query": "",
+            "count": 0,
+            "results": [],
+            "errors": {},
+        }
 
     all_results: List[Dict[str, Any]] = []
     errors: Dict[str, str] = {}
 
-    # NON 8 insieme: su Render Free abbiamo osservato exit 137.
-    # Due worker riducono nettamente RAM e connessioni simultanee.
-    executor = ThreadPoolExecutor(max_workers=2)
-    futures = {
-        executor.submit(run_store, store, query): store
-        for store in STORES
-    }
-
-    try:
-        for future in as_completed(futures, timeout=28):
-            store = futures[future]
-            try:
-                all_results.extend(future.result())
-            except Exception as error:
-                errors[store] = f"{type(error).__name__}: {error}"
-                traceback.print_exc()
-    except TimeoutError:
-        pass
-    finally:
-        for future, store in futures.items():
-            if not future.done():
-                if future.cancel():
-                    errors[store] = "Non eseguito: limite tempo ricerca"
-                else:
-                    errors[store] = "Timeout: negozio troppo lento"
-        executor.shutdown(wait=False, cancel_futures=True)
+    # Un solo negozio alla volta e una sola richiesta per negozio.
+    # Se un negozio risponde 403/429/timeout, gli altri continuano.
+    for store in STORES:
+        try:
+            store_results = run_store(store, query)
+            all_results.extend(store_results)
+        except Exception as error:
+            errors[store] = f"{type(error).__name__}: {error}"
+            print(
+                f"SEARCH STORE ERROR | {store} | {type(error).__name__}: {error}",
+                flush=True,
+            )
 
     results = sort_by_price(unique_results(all_results))
 
@@ -641,623 +569,222 @@ def search_perfume(q: str):
 
 
 # ============================================================
-# API - TEST SINGOLO STORE (diagnostica)
+# API - SUGGEST / AUTOCOMPLETE
 # ============================================================
 
-@app.get("/test-store")
-def test_store(store: str, q: str):
-    """
-    Endpoint diagnostico: esegue UN SOLO scraper.
-    Non modifica la normale ricerca /search.
-    """
-    store = str(store or "").strip().lower()
-    query = str(q or "").strip()
+AUTOCOMPLETE_CATALOG = [
+    {"brand": "Rasasi", "name": "Hawas for Him", "image": ""},
+    {"brand": "Rasasi", "name": "Hawas Ice", "image": ""},
+    {"brand": "Rasasi", "name": "Hawas Black", "image": ""},
+    {"brand": "Rasasi", "name": "Hawas Tropical", "image": ""},
+    {"brand": "Rasasi", "name": "Hawas Fire", "image": ""},
+    {"brand": "Rasasi", "name": "Hawas Kobra", "image": ""},
+    {"brand": "Afnan", "name": "9 PM", "image": ""},
+    {"brand": "Afnan", "name": "9 PM Rebel", "image": ""},
+    {"brand": "Afnan", "name": "9 PM Elixir", "image": ""},
+    {"brand": "Afnan", "name": "9 PM Night Out", "image": ""},
+    {"brand": "French Avenue", "name": "Liquid Brun", "image": ""},
+    {"brand": "French Avenue", "name": "Liquid Brun Limited Edition", "image": ""},
+]
 
-    if store not in STORES:
-        raise HTTPException(
-            status_code=400,
-            detail=f"Store non valido. Disponibili: {', '.join(STORES)}",
-        )
+@app.get("/suggest")
+def suggest(q: str):
+    query = norm(q)
+    if len(query) < 2:
+        return {"query": q, "count": 0, "suggestions": [], "source": "local"}
 
-    if not query:
-        raise HTTPException(
-            status_code=400,
-            detail="Parametro q mancante",
-        )
+    words = query.split()
+    hits = []
+    for item in AUTOCOMPLETE_CATALOG:
+        haystack = norm(f"{item.get('brand','')} {item.get('name','')}")
+        if all(word in haystack for word in words):
+            name_n = norm(item.get("name",""))
+            score = 0 if name_n.startswith(query) else (1 if query in name_n else 2)
+            hits.append((score, len(item.get("name","")), item))
 
-    try:
-        results = run_store(store, query)
-        return {
-            "store": store,
-            "query": query,
-            "count": len(results),
-            "results": results,
-        }
-    except Exception as error:
-        traceback.print_exc()
-        return {
-            "store": store,
-            "query": query,
-            "count": 0,
-            "results": [],
-            "error": f"{type(error).__name__}: {error}",
-        }
+    hits.sort(key=lambda x:(x[0],x[1],x[2].get("name","").lower()))
+    suggestions=[x[2] for x in hits[:8]]
+    return {"query": q, "count": len(suggestions), "suggestions": suggestions, "source": "local"}
 
-
-# ============================================================
-# API - DIAGNOSTICA HTTP DELOOX (UNA SOLA RICHIESTA)
-# ============================================================
-
-@app.get("/diagnose-deloox-category")
-def diagnose_deloox_category(q: str):
-    """
-    Diagnostica esclusivamente una singola richiesta HTTP alla categoria Liquid Brun di Deloox.
-    NON chiama lo scraper, ricerca interna, sitemap o pagine prodotto.
-    """
-    query = str(q or "").strip()
-    if not query:
-        raise HTTPException(status_code=400, detail="Parametro q mancante")
-
-    url = "https://www.deloox.com/en/category/1132834/liquid-brun.html"
-    headers = {
-        "User-Agent": (
-            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
-            "AppleWebKit/537.36 (KHTML, like Gecko) "
-            "Chrome/131.0.0.0 Safari/537.36"
-        ),
-        "Accept-Language": "en-GB,en;q=0.9",
-        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
-    }
-
-    started = time.monotonic()
-
-    try:
-        request = Request(url, headers=headers, method="GET")
-        with urlopen(request, timeout=8) as response:
-            body = response.read()
-            elapsed_ms = round((time.monotonic() - started) * 1000)
-
-            return {
-                "query": query,
-                "url": url,
-                "status": response.status,
-                "elapsed_ms": elapsed_ms,
-                "response_bytes": len(body),
-                "content_type": response.headers.get("Content-Type"),
-                "error": None,
-            }
-
-    except HTTPError as error:
-        elapsed_ms = round((time.monotonic() - started) * 1000)
-        return {
-            "query": query,
-            "url": url,
-            "status": error.code,
-            "elapsed_ms": elapsed_ms,
-            "response_bytes": 0,
-            "content_type": error.headers.get("Content-Type") if error.headers else None,
-            "error": f"HTTPError: {error}",
-        }
-
-    except URLError as error:
-        elapsed_ms = round((time.monotonic() - started) * 1000)
-        return {
-            "query": query,
-            "url": url,
-            "status": None,
-            "elapsed_ms": elapsed_ms,
-            "response_bytes": 0,
-            "content_type": None,
-            "error": f"URLError: {error.reason}",
-        }
-
-    except Exception as error:
-        elapsed_ms = round((time.monotonic() - started) * 1000)
-        return {
-            "query": query,
-            "url": url,
-            "status": None,
-            "elapsed_ms": elapsed_ms,
-            "response_bytes": 0,
-            "content_type": None,
-            "error": f"{type(error).__name__}: {error}",
-        }
+@app.get("/autocomplete")
+def autocomplete(q: str):
+    return suggest(q)
 
 
 # ============================================================
-# API - DIAGNOSTICA ESTRAZIONE URL PRODOTTO DELOOX
+# API - PRODUCT
 # ============================================================
 
-@app.get("/diagnose-deloox-products")
-def diagnose_deloox_products(q: str):
-    """
-    Secondo step diagnostico: una sola richiesta alla categoria Deloox,
-    poi esegue esclusivamente il parser degli URL prodotto del vero scraper.
-    NON apre nessuna pagina prodotto e NON esegue discover/search.
-    """
-    query = str(q or "").strip()
-    if not query:
-        raise HTTPException(status_code=400, detail="Parametro q mancante")
+@app.get("/product")
+def product(
+    name: str,
+    brand: str = "",
+):
 
-    url = "https://www.deloox.com/en/category/1132834/liquid-brun.html"
-    headers = {
-        "User-Agent": (
-            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
-            "AppleWebKit/537.36 (KHTML, like Gecko) "
-            "Chrome/131.0.0.0 Safari/537.36"
-        ),
-        "Accept-Language": "en-GB,en;q=0.9",
-        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
-    }
-
-    started = time.monotonic()
-
-    try:
-        request = Request(url, headers=headers, method="GET")
-        with urlopen(request, timeout=8) as response:
-            body = response.read()
-            status = response.status
-            content_type = response.headers.get("Content-Type")
-
-        # Usa ESATTAMENTE il parser del vero scraper Deloox.
-        module = load_scraper("deloox")
-        extractor = getattr(module, "_candidate_product_urls")
-        product_urls = extractor(body.decode("utf-8", errors="ignore"), query)
-
-        elapsed_ms = round((time.monotonic() - started) * 1000)
-
-        return {
-            "query": query,
-            "url": url,
-            "status": status,
-            "elapsed_ms": elapsed_ms,
-            "response_bytes": len(body),
-            "content_type": content_type,
-            "product_url_count": len(product_urls),
-            "product_urls": product_urls[:20],
-            "parser": "scrapers.deloox.scraper._candidate_product_urls",
-            "error": None,
-        }
-
-    except HTTPError as error:
-        elapsed_ms = round((time.monotonic() - started) * 1000)
-        return {
-            "query": query,
-            "url": url,
-            "status": error.code,
-            "elapsed_ms": elapsed_ms,
-            "response_bytes": 0,
-            "product_url_count": 0,
-            "product_urls": [],
-            "parser": "not_run",
-            "error": f"HTTPError: {error}",
-        }
-
-    except URLError as error:
-        elapsed_ms = round((time.monotonic() - started) * 1000)
-        return {
-            "query": query,
-            "url": url,
-            "status": None,
-            "elapsed_ms": elapsed_ms,
-            "response_bytes": 0,
-            "product_url_count": 0,
-            "product_urls": [],
-            "parser": "not_run",
-            "error": f"URLError: {error.reason}",
-        }
-
-    except Exception as error:
-        elapsed_ms = round((time.monotonic() - started) * 1000)
-        traceback.print_exc()
-        return {
-            "query": query,
-            "url": url,
-            "status": None,
-            "elapsed_ms": elapsed_ms,
-            "response_bytes": 0,
-            "product_url_count": 0,
-            "product_urls": [],
-            "parser": "error",
-            "error": f"{type(error).__name__}: {error}",
-        }
-
-
-# ============================================================
-# API - DIAGNOSTICA RAW VS PARSER DELOOX
-# ============================================================
-
-@app.get("/diagnose-deloox-products-raw")
-def diagnose_deloox_products_raw(q: str):
-    """
-    Terzo step diagnostico: separa il contenuto realmente ricevuto da Deloox
-    dal filtro del parser.
-
-    Fa UNA sola richiesta HTTP alla categoria Liquid Brun.
-    NON apre pagine prodotto e NON esegue discover/search.
-
-    Serve a distinguere questi casi:
-      A) Deloox invia davvero un solo URL prodotto;
-      B) Deloox invia molti URL ma il parser non li riconosce;
-      C) gli URL sono presenti nel JavaScript/JSON ma non come normali <a>.
-    """
-    query = str(q or "").strip()
-    if not query:
-        raise HTTPException(status_code=400, detail="Parametro q mancante")
-
-    url = "https://www.deloox.com/en/category/1132834/liquid-brun.html"
-    headers = {
-        "User-Agent": (
-            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
-            "AppleWebKit/537.36 (KHTML, like Gecko) "
-            "Chrome/131.0.0.0 Safari/537.36"
-        ),
-        "Accept-Language": "en-GB,en;q=0.9",
-        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
-    }
-
-    started = time.monotonic()
-
-    try:
-        request = Request(url, headers=headers, method="GET")
-        with urlopen(request, timeout=8) as response:
-            body = response.read()
-            status = response.status
-            content_type = response.headers.get("Content-Type")
-
-        html = body.decode("utf-8", errors="ignore")
-        module = load_scraper("deloox")
-        soup = module.BeautifulSoup(html, "html.parser")
-
-        # 1) Tutte le occorrenze testuali di /product/ nel documento.
-        all_product_paths = re.findall(
-            r"(?:https?:)?//(?:www\\.)?deloox\\.com[^\"'<>\\s]*?/product/[^\"'<>\\s]+|(?:/)(?:en/|it/|nl/)?product/[^\"'<>\\s]+",
-            html,
-            re.I,
-        )
-
-        # 2) URL prodotto esposti da normali tag <a>.
-        anchor_product_urls = []
-        for a in soup.find_all("a", href=True):
-            href = str(a.get("href") or "")
-            if "/product/" in href.lower():
-                absolute = urljoin("https://www.deloox.com", href).split("#")[0].split("?")[0]
-                if absolute not in anchor_product_urls:
-                    anchor_product_urls.append(absolute)
-
-        # 3) URL prodotto presenti nei blocchi serializzati/script.
-        serialized_product_urls = []
-        for tag in soup.find_all(["script", "div", "article", "li"]):
-            blob = str(tag)
-            if "/product/" not in blob.lower():
-                continue
-            found = re.findall(
-                r"(?:(?:https?:)?//(?:www\\.)?deloox\\.com)?[^\"'<>\\s]*?/product/[^\"'<>\\s]+",
-                blob,
-                re.I,
-            )
-            for raw in found:
-                absolute = urljoin("https://www.deloox.com", raw).split("#")[0].split("?")[0]
-                if "/product/" in absolute.lower() and absolute not in serialized_product_urls:
-                    serialized_product_urls.append(absolute)
-
-        # 4) Il risultato del vero parser, per confronto diretto.
-        parser_urls = module._candidate_product_urls(html, query)
-
-        elapsed_ms = round((time.monotonic() - started) * 1000)
-
-        return {
-            "query": query,
-            "url": url,
-            "status": status,
-            "elapsed_ms": elapsed_ms,
-            "response_bytes": len(body),
-            "content_type": content_type,
-            "raw_product_path_occurrences": len(all_product_paths),
-            "anchor_product_url_count": len(anchor_product_urls),
-            "anchor_product_urls": anchor_product_urls[:30],
-            "serialized_product_url_count": len(serialized_product_urls),
-            "serialized_product_urls": serialized_product_urls[:30],
-            "parser_product_url_count": len(parser_urls),
-            "parser_product_urls": parser_urls[:30],
-            "parser": "scrapers.deloox.scraper._candidate_product_urls",
-            "error": None,
-        }
-
-    except HTTPError as error:
-        elapsed_ms = round((time.monotonic() - started) * 1000)
-        return {
-            "query": query,
-            "url": url,
-            "status": error.code,
-            "elapsed_ms": elapsed_ms,
-            "response_bytes": 0,
-            "error": f"HTTPError: {error}",
-        }
-    except URLError as error:
-        elapsed_ms = round((time.monotonic() - started) * 1000)
-        return {
-            "query": query,
-            "url": url,
-            "status": None,
-            "elapsed_ms": elapsed_ms,
-            "response_bytes": 0,
-            "error": f"URLError: {error.reason}",
-        }
-    except Exception as error:
-        traceback.print_exc()
-        return {
-            "query": query,
-            "url": url,
-            "status": None,
-            "elapsed_ms": round((time.monotonic() - started) * 1000),
-            "response_bytes": 0,
-            "error": f"{type(error).__name__}: {error}",
-        }
-
-
-# ============================================================
-# API - DIAGNOSTICA PRODOTTO DELOOX STEP 4
-# ============================================================
-
-@app.get("/diagnose-deloox-product")
-def diagnose_deloox_product(q: str = "Liquid Brun"):
-    """
-    Quarto step diagnostico.
-
-    Parte dall'URL prodotto gia' trovato nello STEP 3 e fa UNA sola richiesta
-    HTTP alla pagina prodotto. Poi esegue ESATTAMENTE _product() del vero
-    scraper Deloox e restituisce i dati necessari per capire se e dove viene
-    scartato il prodotto.
-
-    NON esegue search(), discover(), categorie o sitemap.
-    """
-    query = str(q or "").strip() or "Liquid Brun"
-    product_url = (
-        "https://www.deloox.com/en/product/1385920/"
-        "french-avenue-liquid-brun-extrait-de-parfum-limited-edition-150-ml.html"
+    data = search_perfume(
+        name
     )
-    headers = {
-        "User-Agent": (
-            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
-            "AppleWebKit/537.36 (KHTML, like Gecko) "
-            "Chrome/131.0.0.0 Safari/537.36"
+
+    offers: List[Dict[str, Any]] = []
+
+    for product_data in data["results"]:
+
+        value = price_num(
+            product_data.get("price")
+        )
+
+        if value is None:
+            continue
+
+        offer = dict(
+            product_data
+        )
+
+        offer["price_value"] = value
+        offer["image"] = product_image(
+            offer
+        )
+
+        offers.append(
+            offer
+        )
+
+    offers.sort(
+        key=lambda offer: offer[
+            "price_value"
+        ]
+    )
+
+    best_offer = (
+        offers[0]
+        if offers
+        else None
+    )
+
+    history = update_price_history(
+        name=name,
+        brand=brand,
+        best_offer=best_offer,
+    )
+
+    image = next(
+        (
+            offer["image"]
+            for offer in offers
+            if offer.get("image")
         ),
-        "Accept-Language": "en-GB,en;q=0.9",
-        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+        "",
+    )
+
+    lowest_price = (
+        best_offer.get("price")
+        if best_offer
+        else None
+    )
+
+    return {
+        "name": name,
+        "brand": brand,
+        "image": image,
+        "lowest_price": lowest_price,
+        "best_offer": best_offer,
+        "offers": offers,
+        "history": history,
+        "errors": data["errors"],
+        "message": (
+            ""
+            if offers
+            else "Nessuna offerta disponibile al momento"
+        ),
     }
 
-    started = time.monotonic()
-
-    try:
-        request = Request(product_url, headers=headers, method="GET")
-        with urlopen(request, timeout=8) as response:
-            body = response.read()
-            status = response.status
-            content_type = response.headers.get("Content-Type")
-
-        html = body.decode("utf-8", errors="ignore")
-        module = load_scraper("deloox")
-        soup = module.BeautifulSoup(html, "html.parser")
-
-        h1 = soup.find("h1")
-        h1_name = module.clean(h1.get_text(" ", strip=True)) if h1 else ""
-        data = module._jsonld(soup)
-        structured_name = module.clean(data.get("name")) if isinstance(data, dict) else ""
-        name = h1_name or structured_name
-        matches_result = bool(name and module.matches(name, query))
-
-        offers = data.get("offers") if isinstance(data, dict) else None
-        offers = offers if isinstance(offers, list) else [offers]
-        offer = next((x for x in offers if isinstance(x, dict)), {})
-        jsonld_price = module.parse_price(offer.get("price"))
-        page_text = soup.get_text(" ", strip=True)
-        fallback_price = module.parse_price(page_text)
-        selected_size = module._selected_size(soup, data, h1_name)
-
-        # Esecuzione del vero punto di uscita del parser.
-        result = module._product(product_url, html, query)
-
-        elapsed_ms = round((time.monotonic() - started) * 1000)
-
-        return {
-            "query": query,
-            "url": product_url,
-            "status": status,
-            "elapsed_ms": elapsed_ms,
-            "response_bytes": len(body),
-            "content_type": content_type,
-            "h1_name": h1_name,
-            "structured_name": structured_name,
-            "name_used_by_product": name,
-            "matches_query": matches_result,
-            "jsonld_price": jsonld_price,
-            "fallback_page_price": fallback_price,
-            "selected_size_ml": selected_size,
-            "product_result_is_none": result is None,
-            "product_result": result,
-            "parser": "scrapers.deloox.scraper._product",
-            "error": None,
-        }
-
-    except HTTPError as error:
-        return {
-            "query": query,
-            "url": product_url,
-            "status": error.code,
-            "elapsed_ms": round((time.monotonic() - started) * 1000),
-            "response_bytes": 0,
-            "error": f"HTTPError: {error}",
-        }
-    except URLError as error:
-        return {
-            "query": query,
-            "url": product_url,
-            "status": None,
-            "elapsed_ms": round((time.monotonic() - started) * 1000),
-            "response_bytes": 0,
-            "error": f"URLError: {error.reason}",
-        }
-    except Exception as error:
-        traceback.print_exc()
-        return {
-            "query": query,
-            "url": product_url,
-            "status": None,
-            "elapsed_ms": round((time.monotonic() - started) * 1000),
-            "response_bytes": 0,
-            "error": f"{type(error).__name__}: {error}",
-        }
-
-
-
 
 # ============================================================
-# API - DIAGNOSTICA Deloox DISCOVERY TRACE
+# API - DIAGNOSTICA SITEMAP DELOOX
 # ============================================================
 
-@app.get("/diagnose-deloox-trace")
-def diagnose_deloox_trace(q: str = "Liquid Brun"):
+@app.get("/diagnose-deloox-sitemaps")
+def diagnose_deloox_sitemaps(q: str = "Liquid Brun"):
+    """Verifica direttamente da Railway le sitemap Deloox.
+
+    NON modifica la ricerca normale. Ogni URL ha un timeout indipendente.
+    Cerca anche la presenza della query e della categoria Liquid Brun.
     """
-    Traccia esclusivamente il percorso reale Deloox._discover().
-    Ogni richiesta HTTP ha timeout massimo 3s e il test si ferma dopo 20
-    richieste. Non esegue _product() e non esegue search().
-    """
-    import requests as _requests
-    from time import monotonic as _monotonic
-
-    query = str(q or "").strip() or "Liquid Brun"
-    module = load_scraper("deloox")
-    trace = []
-    started = _monotonic()
-
-    class TraceLimit(Exception):
-        pass
-
-    class TraceSession(_requests.Session):
-        def get(self, url, *args, **kwargs):
-            if len(trace) >= 20:
-                raise TraceLimit("request_limit_20")
-            kwargs["timeout"] = min(float(kwargs.get("timeout", 3)), 3.0)
-            t0 = _monotonic()
-            try:
-                response = super().get(url, *args, **kwargs)
-                trace.append({
-                    "n": len(trace) + 1,
-                    "url": str(url),
-                    "status": response.status_code,
-                    "bytes": len(response.content or b""),
-                    "elapsed_ms": round((_monotonic() - t0) * 1000),
-                })
-                return response
-            except Exception as exc:
-                trace.append({
-                    "n": len(trace) + 1,
-                    "url": str(url),
-                    "status": None,
-                    "bytes": 0,
-                    "elapsed_ms": round((_monotonic() - t0) * 1000),
-                    "error": f"{type(exc).__name__}: {exc}",
-                })
-                raise
-
-    session = TraceSession()
-    try:
-        try:
-            urls = module._discover(session, query)
-            outcome = "discover_returned"
-        except TraceLimit as exc:
-            urls = []
-            outcome = str(exc)
-        except Exception as exc:
-            urls = []
-            outcome = f"exception:{type(exc).__name__}: {exc}"
-
-        return {
-            "query": query,
-            "outcome": outcome,
-            "elapsed_ms_total": round((_monotonic() - started) * 1000),
-            "request_count": len(trace),
-            "discovered_url_count": len(urls or []),
-            "discovered_urls": list(urls or [])[:20],
-            "trace": trace,
-            "note": "Ogni richiesta e' limitata a 3s; massimo 20 richieste. Nessun _product().",
-        }
-    finally:
-        session.close()
-
-
-# ============================================================
-# DIAGNOSTICA DELOOX SEARCH PARSE - STEP 6
-# ============================================================
-
-@app.get("/diagnose-deloox-search-routes")
-def diagnose_deloox_search_routes(q: str = "Liquid Brun"):
-    """Test every Deloox search route variant in ONE call.
-
-    This isolates the exact working endpoint and immediately feeds the
-    successful HTML to the REAL _candidate_product_urls() parser.
-    No _discover() and no _product().
-    """
-    import requests as _requests
-    from bs4 import BeautifulSoup as _BeautifulSoup
-    from urllib.parse import quote_plus as _quote_plus
-
-    query = str(q or "").strip() or "Liquid Brun"
-    encoded = _quote_plus(query)
-    endpoints = [
-        f"https://www.deloox.com/en/search?query={encoded}",
-        f"https://www.deloox.com/en/search?search={encoded}",
-        f"https://www.deloox.com/en?search={encoded}",
-        f"https://www.deloox.com/en/search?q={encoded}",
-        f"https://www.deloox.com/search?query={encoded}",
-        f"https://www.deloox.com/search?q={encoded}",
+    query = str(q or "").strip()
+    targets = [
+        "https://www.deloox.com/sitemap.xml",
+        "https://www.deloox.com/sitemap_category.xml",
+        "https://www.deloox.com/sitemap_product.xml",
     ]
 
-    module = load_scraper("deloox")
-    rows = []
-    session = _requests.Session()
+    report = {
+        "query": query,
+        "targets": [],
+    }
 
-    try:
-        for url in endpoints:
-            started = time.monotonic()
-            try:
-                response = session.get(
-                    url,
-                    headers=getattr(module, "HEADERS", {}),
-                    timeout=5,
-                )
-                html = response.text or ""
-                soup = _BeautifulSoup(html, "html.parser")
-                raw_count = len(re.findall(r"/product/[^\"'<>\\s]+", html, re.I))
-                anchor_count = sum(
-                    1 for a in soup.find_all("a", href=True)
-                    if "/product/" in str(a.get("href") or "").lower()
-                )
-                parser_urls = (
-                    module._candidate_product_urls(html, query)
-                    if response.status_code < 400
-                    else []
-                )
-                rows.append({
-                    "url": url,
-                    "status": response.status_code,
-                    "elapsed_ms": round((time.monotonic() - started) * 1000),
-                    "bytes": len(html),
-                    "raw_product_paths": raw_count,
-                    "anchor_product_urls": anchor_count,
-                    "parser_candidate_count": len(parser_urls),
-                    "parser_candidate_urls": parser_urls[:10],
-                })
-            except Exception as exc:
-                rows.append({
-                    "url": url,
-                    "status": None,
-                    "elapsed_ms": round((time.monotonic() - started) * 1000),
-                    "error": type(exc).__name__ + ":" + str(exc),
-                })
-    finally:
-        session.close()
+    needles = [
+        query.lower(),
+        "/category/1132834/liquid-brun.html",
+        "liquid-brun",
+    ]
 
-    return {"query": query, "routes": rows}
+    for url in targets:
+        started = time.perf_counter()
+        entry = {
+            "url": url,
+            "status": None,
+            "seconds": None,
+            "bytes": 0,
+            "content_type": "",
+            "is_xml": False,
+            "matches": {},
+            "error": None,
+        }
 
+        try:
+            request = Request(
+                url,
+                headers={
+                    "User-Agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 Version/17.0 Mobile/15E148 Safari/604.1",
+                    "Accept-Language": "en-GB,en;q=0.9",
+                },
+            )
+            with urlopen(request, timeout=5) as response:
+                body = response.read()
+                entry["status"] = getattr(response, "status", None)
+                entry["content_type"] = response.headers.get("Content-Type", "")
+
+            text = body.decode("utf-8", errors="ignore")
+            entry["bytes"] = len(body)
+            stripped = text.lstrip()
+            entry["is_xml"] = (
+                "xml" in entry["content_type"].lower()
+                or stripped.startswith("<?xml")
+                or stripped.startswith("<urlset")
+                or stripped.startswith("<sitemapindex")
+            )
+
+            low = text.lower()
+            entry["matches"] = {
+                "query": needles[0] in low if needles[0] else False,
+                "liquid_brun_category": needles[1] in low,
+                "liquid_brun_slug": needles[2] in low,
+            }
+
+            if entry["matches"]["liquid_brun_category"]:
+                idx = low.find(needles[1])
+                entry["context"] = text[max(0, idx - 200): idx + 300]
+
+        except HTTPError as exc:
+            entry["status"] = exc.code
+            entry["error"] = f"HTTPError: {exc.reason}"
+        except (URLError, TimeoutError) as exc:
+            entry["error"] = f"{type(exc).__name__}: {exc}"
+        except Exception as exc:
+            entry["error"] = f"{type(exc).__name__}: {exc}"
+        finally:
+            entry["seconds"] = round(time.perf_counter() - started, 3)
+
+        report["targets"].append(entry)
+
+    return report
