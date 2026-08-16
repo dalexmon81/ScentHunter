@@ -141,8 +141,13 @@ def product_matches(name, query):
         ):
             matched += 1
 
-    # Require the large majority of meaningful query terms.
-    return matched / len(q) >= 0.70
+    # Require all terms when there are only 1-2 meaningful tokens.
+    # For longer names, tolerate one missing naming term because Deloox
+    # often inserts words such as "Club", "de", "For Him", etc.
+    if len(q) <= 2:
+        return matched == len(q)
+
+    return matched / len(q) >= 0.66
 
 
 def size_ml(*values):
@@ -1055,17 +1060,17 @@ def _category_pages(session=None):
     """
 
     return (
-        BASE_URL
-        + "/category/1000054/mens-fragrances.html",
+        BASE_URL + "/category/1000054/mens-fragrances.html",
+        BASE_URL + "/category/1075639/womens-fragrances.html",
+        BASE_URL + "/category/1075750/mens-perfume.html",
+        BASE_URL + "/category/1000003/fragrances.html",
 
-        BASE_URL
-        + "/category/1075639/womens-fragrances.html",
+        BASE_URL + "/it/categoria/1000054/profumi-uomo.html",
+        BASE_URL + "/it/categoria/1075639/profumi-donna.html",
+        BASE_URL + "/it/categoria/1075750/profumi-uomo.html",
+        BASE_URL + "/it/categoria/1000003/profumi.html",
 
-        BASE_URL
-        + "/category/1075750/mens-perfume.html",
-
-        BASE_URL
-        + "/category/1079036/armaf-fragrances.html",
+        BASE_URL + "/category/1079036/armaf-fragrances.html",
     )
 
 
@@ -1128,6 +1133,113 @@ def _targeted_category_seed_urls(query):
         result.append(u)
 
     return result
+
+
+# =========================================================
+# ROBOTS / SITEMAP DISCOVERY
+# =========================================================
+
+def _robots_sitemaps(session):
+    """Read sitemap locations published by Deloox robots.txt."""
+
+    roots = [
+        BASE_URL + "/robots.txt",
+        BASE_URL + "/en/robots.txt",
+        BASE_URL + "/it/robots.txt",
+    ]
+
+    found = []
+    seen = set()
+
+    for robots_url in roots:
+        try:
+            r = session.get(
+                robots_url,
+                headers=HEADERS,
+                timeout=TIMEOUT,
+            )
+        except requests.RequestException:
+            continue
+
+        if r.status_code >= 400:
+            continue
+
+        for line in r.text.splitlines():
+            if not line.lower().startswith("sitemap:"):
+                continue
+
+            value = clean(
+                line.split(":", 1)[1]
+            )
+
+            if not value:
+                continue
+
+            if value not in seen:
+                seen.add(value)
+                found.append(value)
+
+    return found
+
+
+def _common_sitemaps():
+    return [
+        BASE_URL + "/sitemap.xml",
+        BASE_URL + "/sitemap_index.xml",
+        BASE_URL + "/sitemap-index.xml",
+        BASE_URL + "/sitemap.xml.gz",
+        BASE_URL + "/sitemap_index.xml.gz",
+        BASE_URL + "/sitemap-index.xml.gz",
+        BASE_URL + "/en/sitemap.xml",
+        BASE_URL + "/en/sitemap.xml.gz",
+    ]
+
+
+def _xml_locs(xml_text):
+    """Extract <loc> values without depending on XML namespaces."""
+
+    if not xml_text:
+        return []
+
+    return [
+        clean(x)
+        for x in re.findall(
+            r"<loc[^>]*>\s*(.*?)\s*</loc>",
+            xml_text,
+            re.I | re.S,
+        )
+        if clean(x)
+    ]
+
+
+def _fetch_xml(session, url):
+    try:
+        r = session.get(
+            url,
+            headers=HEADERS,
+            timeout=TIMEOUT,
+        )
+    except requests.RequestException:
+        return None
+
+    if r.status_code >= 400:
+        return None
+
+    body = r.text.lstrip()
+
+    if not (
+        "<loc" in body.lower()
+        or body.startswith(
+            (
+                "<?xml",
+                "<urlset",
+                "<sitemapindex",
+            )
+        )
+    ):
+        return None
+
+    return r.text
 
 
 # =========================================================
@@ -1303,14 +1415,19 @@ def _sitemap_category_urls(
 def _sitemap_product_urls(
     session,
     query,
-    max_sitemaps=50,
-    max_urls=150,
+    max_sitemaps=120,
+    max_urls=300,
 ):
     """
-    Discover product URLs from Deloox sitemaps.
+    Robust Deloox product discovery.
 
-    URL matching is deliberately tolerant. The actual product
-    name is validated later by _product().
+    The previous version assumed a small set of sitemap filenames.
+    Deloox can publish the real sitemap locations through robots.txt
+    and/or a sitemap index. This version discovers those locations,
+    follows sitemap indexes recursively, and only then filters product
+    URLs by meaningful query tokens.
+
+    This is the main generic fallback and is not perfume-specific.
     """
 
     query_tokens = search_tokens(query)
@@ -1318,142 +1435,89 @@ def _sitemap_product_urls(
     if not query_tokens:
         return []
 
-    sitemap_roots = (
-        BASE_URL + "/sitemap.xml",
-        BASE_URL + "/sitemap_index.xml",
-        BASE_URL + "/sitemap-index.xml",
-        BASE_URL + "/en/sitemap.xml",
-    )
-
-    pending = list(sitemap_roots)
-
+    pending = []
     seen_sitemaps = set()
     product_urls = []
     seen_products = set()
 
-    def fetch_xml(url):
+    # robots.txt is the first source of truth.
+    pending.extend(
+        _robots_sitemaps(session)
+    )
 
-        try:
-            r = session.get(
-                url,
-                headers=HEADERS,
-                timeout=TIMEOUT,
-            )
-        except requests.RequestException:
-            return None
+    # Keep known roots as fallback.
+    pending.extend(
+        _common_sitemaps()
+    )
 
-        if r.status_code >= 400:
-            return None
+    def relevant_url(url):
+        url_tokens = search_tokens(url)
 
-        ctype = (
-            r.headers.get("content-type")
-            or ""
-        ).lower()
+        if not url_tokens:
+            return False
 
-        body = r.text.lstrip()
+        # Require at least one meaningful query token.
+        # Product pages are validated later against the actual name.
+        for qt in query_tokens:
+            if qt in url_tokens:
+                return True
 
-        if (
-            "xml" not in ctype
-            and not body.startswith(
-                (
-                    "<?xml",
-                    "<urlset",
-                    "<sitemapindex",
-                )
-            )
-        ):
-            return None
+            if any(
+                qt in ut or ut in qt
+                for ut in url_tokens
+                if len(ut) >= 3
+            ):
+                return True
 
-        return r.text
+        return False
 
     while (
         pending
         and len(seen_sitemaps) < max_sitemaps
         and len(product_urls) < max_urls
     ):
-
         sitemap_url = pending.pop(0)
 
         if sitemap_url in seen_sitemaps:
             continue
 
-        seen_sitemaps.add(
-            sitemap_url
-        )
+        seen_sitemaps.add(sitemap_url)
 
-        xml = fetch_xml(
-            sitemap_url
+        xml = _fetch_xml(
+            session,
+            sitemap_url,
         )
 
         if not xml:
             continue
 
-        soup = BeautifulSoup(
-            xml,
-            "xml",
-        )
+        for loc in _xml_locs(xml):
 
-        for loc in soup.find_all("loc"):
-
-            value = clean(
-                loc.get_text()
-            )
-
-            if not value:
-                continue
-
-            low = value.lower()
+            low = loc.lower()
 
             if "/product/" in low:
+                if not relevant_url(loc):
+                    continue
 
-                # Do NOT require every query token to occur in
-                # the URL. Some Deloox product URLs have naming
-                # differences from the visible product name.
-                url_tokens = search_tokens(
-                    value
-                )
+                if loc in seen_products:
+                    continue
 
-                relevant = False
+                seen_products.add(loc)
+                product_urls.append(loc)
 
-                for qt in query_tokens:
+                if len(product_urls) >= max_urls:
+                    break
 
-                    if qt in url_tokens:
-                        relevant = True
-                        break
+                continue
 
-                    if any(
-                        qt in ut or ut in qt
-                        for ut in url_tokens
-                        if len(ut) >= 3
-                    ):
-                        relevant = True
-                        break
-
-                if relevant or not product_urls:
-
-                    if value not in seen_products:
-
-                        seen_products.add(
-                            value
-                        )
-
-                        product_urls.append(
-                            value
-                        )
-
-                        if (
-                            len(product_urls)
-                            >= max_urls
-                        ):
-                            break
-
-            elif (
+            # Sitemap index / nested sitemap.
+            if (
                 low.endswith(".xml")
+                or low.endswith(".xml.gz")
                 or "sitemap" in low
             ):
-
-                if value not in seen_sitemaps:
-                    pending.append(value)
+                if loc not in seen_sitemaps:
+                    pending.append(loc)
 
     return product_urls[:max_urls]
 
@@ -1465,61 +1529,55 @@ def _sitemap_product_urls(
 def _discover_from_categories(
     session,
     query,
-    max_urls=150,
+    max_urls=200,
 ):
     """
-    Discover product URLs from broad category pages and
-    relevant category/filter pages.
+    Discover product URLs from category pages.
+
+    Deloox does not reliably expose every product on page 1.
+    We therefore walk a limited number of pagination pages and stop
+    as soon as enough candidates are collected.
     """
 
     urls = []
     seen = set()
 
-    for category_url in _category_pages(
-        session
-    ):
-
-        try:
-            r = session.get(
-                category_url,
-                headers=HEADERS,
-                timeout=TIMEOUT,
-            )
-        except requests.RequestException:
-            continue
-
-        if r.status_code >= 400:
-            continue
-
-        # First collect direct product links.
+    def add_candidates(html):
         candidates = _candidate_product_urls(
-            r.text,
+            html,
             query,
+            accept_all_products=True,
         )
 
         for product_url in candidates:
-
             if product_url in seen:
                 continue
 
-            seen.add(
-                product_url
-            )
-
-            urls.append(
-                product_url
-            )
+            seen.add(product_url)
+            urls.append(product_url)
 
             if len(urls) >= max_urls:
-                return urls[:max_urls]
+                return True
 
-        # Then try relevant filter/category links.
-        filter_urls = _category_product_line_links(
-            r.text,
-            query,
-        )
+        return False
 
-        for page_url in filter_urls:
+    roots = _category_pages(session)
+
+    for category_url in roots:
+
+        page_urls = [category_url]
+
+        # Deloox uses ?page=N on category pages.
+        for n in range(2, 16):
+            separator = "&" if "?" in category_url else "?"
+            page_urls.append(
+                category_url
+                + separator
+                + "page="
+                + str(n)
+            )
+
+        for page_url in page_urls:
 
             try:
                 page = session.get(
@@ -1533,26 +1591,30 @@ def _discover_from_categories(
             if page.status_code >= 400:
                 continue
 
-            candidates = _candidate_product_urls(
+            if add_candidates(page.text):
+                return urls[:max_urls]
+
+            # Also inspect relevant category/filter links on each page.
+            filter_urls = _category_product_line_links(
                 page.text,
                 query,
-                accept_all_products=True,
             )
 
-            for product_url in candidates:
+            for filter_url in filter_urls[:20]:
 
-                if product_url in seen:
+                try:
+                    filtered = session.get(
+                        filter_url,
+                        headers=HEADERS,
+                        timeout=TIMEOUT,
+                    )
+                except requests.RequestException:
                     continue
 
-                seen.add(
-                    product_url
-                )
+                if filtered.status_code >= 400:
+                    continue
 
-                urls.append(
-                    product_url
-                )
-
-                if len(urls) >= max_urls:
+                if add_candidates(filtered.text):
                     return urls[:max_urls]
 
     return urls[:max_urls]
@@ -1564,45 +1626,52 @@ def _discover(session, q):
     seen = set()
 
     def add_many(values):
-
         for url in values:
-
             if url in seen:
                 continue
 
-            seen.add(
-                url
-            )
+            seen.add(url)
+            urls.append(url)
 
-            urls.append(
-                url
-            )
-
-            if len(urls) >= 150:
+            if len(urls) >= 250:
                 return True
 
         return False
 
     # =====================================================
-    # 1. BROAD CATEGORY DISCOVERY
+    # 1. SITEMAP FIRST
+    # =====================================================
+
+    # This is the most reliable generic path because it does not
+    # depend on Deloox's changing search UI or filter parameters.
+    if add_many(
+        _sitemap_product_urls(
+            session,
+            q,
+            max_sitemaps=120,
+            max_urls=250,
+        )
+    ):
+        return urls[:250]
+
+    # =====================================================
+    # 2. CATEGORY + PAGINATION
     # =====================================================
 
     if add_many(
         _discover_from_categories(
             session,
             q,
-            max_urls=150,
+            max_urls=250,
         )
     ):
-        return urls[:150]
+        return urls[:250]
 
     # =====================================================
-    # 2. TARGETED CATEGORY SEEDS
+    # 3. TARGETED CATEGORY SEEDS
     # =====================================================
 
-    for category_url in _targeted_category_seed_urls(
-        q
-    ):
+    for category_url in _targeted_category_seed_urls(q):
 
         try:
             page = session.get(
@@ -1623,70 +1692,36 @@ def _discover(session, q):
                 accept_all_products=True,
             )
         ):
-            return urls[:150]
-
-    # =====================================================
-    # 3. CATEGORY PAGES FROM SITEMAPS
-    # =====================================================
-
-    for category_url in _sitemap_category_urls(
-        session,
-        q,
-        max_sitemaps=50,
-        max_urls=100,
-    ):
-
-        try:
-            page = session.get(
-                category_url,
-                headers=HEADERS,
-                timeout=TIMEOUT,
-            )
-        except requests.RequestException:
-            continue
-
-        if page.status_code >= 400:
-            continue
-
-        if add_many(
-            _candidate_product_urls(
-                page.text,
-                q,
-                accept_all_products=True,
-            )
-        ):
-            return urls[:150]
+            return urls[:250]
 
     # =====================================================
     # 4. SEARCH ENDPOINTS
     # =====================================================
 
+    # Keep these only as a fallback. Some Deloox search URLs return
+    # 404, so a failed search endpoint must never terminate discovery.
     for discovery_query in _candidate_queries(q):
 
         endpoints = [
             BASE_URL
             + "/en/search?query="
-            + quote_plus(
-                discovery_query
-            ),
+            + quote_plus(discovery_query),
 
             BASE_URL
             + "/en/search?search="
-            + quote_plus(
-                discovery_query
-            ),
+            + quote_plus(discovery_query),
 
             BASE_URL
             + "/en/search?q="
-            + quote_plus(
-                discovery_query
-            ),
+            + quote_plus(discovery_query),
 
             BASE_URL
-            + "/en?search="
-            + quote_plus(
-                discovery_query
-            ),
+            + "/it/cerca?query="
+            + quote_plus(discovery_query),
+
+            BASE_URL
+            + "/search?q="
+            + quote_plus(discovery_query),
         ]
 
         for endpoint in endpoints:
@@ -1711,23 +1746,9 @@ def _discover(session, q):
                     accept_all_products=True,
                 )
             ):
-                return urls[:150]
+                return urls[:250]
 
-    # =====================================================
-    # 5. PRODUCT SITEMAPS
-    # =====================================================
-
-    if add_many(
-        _sitemap_product_urls(
-            session,
-            q,
-            max_sitemaps=50,
-            max_urls=150,
-        )
-    ):
-        return urls[:150]
-
-    return urls[:150]
+    return urls[:250]
 
 
 # =========================================================
