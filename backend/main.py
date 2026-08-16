@@ -1204,3 +1204,86 @@ def test_deloox_step2(q: str = "Liquid Brun"):
             "message": "Failure during URL extraction; ZERO product pages opened",
         }
 
+
+@app.get("/test-deloox-step3")
+def test_deloox_step3(q: str = "Liquid Brun"):
+    """Step 3: category pagination only; no product pages opened."""
+    import time as _time
+    import requests as _requests
+    from bs4 import BeautifulSoup as _BeautifulSoup
+    from urllib.parse import urljoin as _urljoin
+
+    query = str(q or "").strip()
+    base = "https://www.deloox.com/category/1075750/mens-perfume.html"
+    q_norm = re.sub(r"[^a-z0-9]+", " ", query.lower()).strip()
+    tokens = [x for x in q_norm.split() if len(x) > 1]
+    session = _requests.Session()
+    pages = []
+    started_all = _time.perf_counter()
+
+    try:
+        for page_no in range(1, 13):
+            url = base if page_no == 1 else base + "?page=" + str(page_no)
+            started = _time.perf_counter()
+            try:
+                r = session.get(
+                    url,
+                    headers={
+                        "User-Agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) "
+                                      "AppleWebKit/605.1.15 Version/17.0 Mobile/15E148 Safari/604.1",
+                        "Accept-Language": "en-GB,en;q=0.9",
+                    },
+                    timeout=8,
+                )
+                html = r.text or ""
+                soup = _BeautifulSoup(html, "html.parser")
+                product_urls = []
+                matching = []
+                seen = set()
+
+                for a in soup.find_all("a", href=True):
+                    href = _urljoin(url, a.get("href", "").strip())
+                    if "/product/" not in href.lower() or href in seen:
+                        continue
+                    seen.add(href)
+                    product_urls.append(href)
+                    text = " ".join(a.stripped_strings)
+                    combined = (text + " " + href).lower()
+                    if tokens and all(t in combined for t in tokens):
+                        matching.append({"text": text[:160], "url": href})
+
+                pages.append({
+                    "page": page_no,
+                    "url": url,
+                    "seconds": round(_time.perf_counter() - started, 3),
+                    "status": r.status_code,
+                    "bytes": len(r.content),
+                    "product_links": len(product_urls),
+                    "query_matches": matching[:20],
+                    "sample_product_urls": product_urls[:8],
+                })
+
+                # Stop on a page that is clearly not a real category page.
+                if r.status_code >= 400 or not product_urls:
+                    break
+
+            except Exception as exc:
+                pages.append({
+                    "page": page_no,
+                    "url": url,
+                    "seconds": round(_time.perf_counter() - started, 3),
+                    "error": f"{type(exc).__name__}: {exc}",
+                })
+                break
+    finally:
+        session.close()
+
+    return {
+        "step": 3,
+        "query": query,
+        "pages_tested": len(pages),
+        "total_seconds": round(_time.perf_counter() - started_all, 3),
+        "pages": pages,
+        "message": "CATEGORY PAGINATION ONLY — ZERO product pages opened",
+    }
+
