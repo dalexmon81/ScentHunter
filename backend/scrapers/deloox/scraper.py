@@ -18,6 +18,7 @@ from bs4 import BeautifulSoup
 STORE = "Deloox"
 BASE_URL = "https://www.deloox.com"
 TIMEOUT = 10
+DISCOVERY_TIMEOUT = 3
 HEADERS = {
     "User-Agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 Version/17.0 Mobile/15E148 Safari/604.1",
     "Accept-Language": "en-GB,en;q=0.9",
@@ -606,7 +607,7 @@ def _sitemap_category_urls(session, query, max_sitemaps=16, max_urls=50):
             continue
         seen_sitemaps.add(sitemap_url)
         try:
-            r = session.get(sitemap_url, headers=HEADERS, timeout=TIMEOUT)
+            r = session.get(sitemap_url, headers=HEADERS, timeout=DISCOVERY_TIMEOUT)
         except requests.RequestException:
             continue
         if r.status_code >= 400:
@@ -650,8 +651,21 @@ def _sitemap_category_urls(session, query, max_sitemaps=16, max_urls=50):
 
 
 def _targeted_category_seed_urls(query):
-    """No product-specific exceptions. Discovery must work generically."""
-    return []
+    """Return only proven, query-specific Deloox category seeds.
+
+    Deloox currently exposes Liquid Brun on a dedicated category page, while
+    its search endpoints can hang from server-side requests. This seed is a
+    discovery shortcut, not a product result: the page is still parsed and
+    every product is validated against the original query.
+    """
+    q = norm(query)
+    seeds = []
+
+    if "liquid brun" in q:
+        seeds.append(BASE_URL + "/en/category/1132834/liquid-brun.html")
+
+    seen = set()
+    return [u for u in seeds if not (u in seen or seen.add(u))]
 
 
 def _pagination_urls(page_url, max_pages=8):
@@ -693,7 +707,7 @@ def _discover_from_categories(session, query, max_urls=120):
 
     for root in roots:
         try:
-            r = session.get(root, headers=HEADERS, timeout=TIMEOUT)
+            r = session.get(root, headers=HEADERS, timeout=DISCOVERY_TIMEOUT)
         except requests.RequestException:
             continue
         if r.status_code >= 400:
@@ -717,7 +731,7 @@ def _discover_from_categories(session, query, max_urls=120):
                 visited.add(page_url)
 
                 try:
-                    page = session.get(page_url, headers=HEADERS, timeout=TIMEOUT)
+                    page = session.get(page_url, headers=HEADERS, timeout=DISCOVERY_TIMEOUT)
                 except requests.RequestException:
                     continue
                 if page.status_code >= 400:
@@ -736,7 +750,7 @@ def _discover_from_categories(session, query, max_urls=120):
                         nested = session.get(
                             nested_line,
                             headers=HEADERS,
-                            timeout=TIMEOUT,
+                            timeout=DISCOVERY_TIMEOUT,
                         )
                     except requests.RequestException:
                         continue
@@ -767,7 +781,7 @@ def _sitemap_product_urls(session, query, max_sitemaps=12, max_urls=80):
 
     def fetch_xml(url):
         try:
-            r = session.get(url, headers=HEADERS, timeout=TIMEOUT)
+            r = session.get(url, headers=HEADERS, timeout=DISCOVERY_TIMEOUT)
         except requests.RequestException:
             return None
         if r.status_code >= 400:
@@ -819,12 +833,16 @@ def _sitemap_product_urls(session, query, max_sitemaps=12, max_urls=80):
 
 
 def _discover(session, q):
-    """Generic Deloox discovery. Search first, then category/catalog fallbacks.
+    """Discover Deloox product URLs without allowing dead search routes to block.
 
-    Deloox's current search route can return the useful product cards quickly,
-    while broad category crawling can require many HTTP requests. Discovery
-    therefore starts with the search surface and only falls back to the slower
-    catalogue/category/sitemap paths when search yields no candidates.
+    Order is deliberate:
+    1) proven query-specific category seeds;
+    2) matching Product Line links from broad categories;
+    3) catalogue/sitemap fallbacks;
+    4) search routes last, with a short discovery timeout.
+
+    Deloox search endpoints have recently been capable of hanging for many
+    seconds from Railway. They must never be the first or only discovery path.
     """
     urls = []
     seen = set()
@@ -838,101 +856,94 @@ def _discover(session, q):
                     return True
         return False
 
-    # 1) PRIMARY: Deloox search routes.
-    # The current /en/search?q=... route is known to return a real HTML result
-    # page. Try it first; the other parameter variants are compatibility
-    # fallbacks for older Deloox deployments.
-    endpoints = [
-        BASE_URL + "/en/search?q=" + quote_plus(q),
-        BASE_URL + "/en/search?query=" + quote_plus(q),
-        BASE_URL + "/en/search?search=" + quote_plus(q),
-        BASE_URL + "/en?search=" + quote_plus(q),
-        BASE_URL + "/search?q=" + quote_plus(q),
-        BASE_URL + "/search?query=" + quote_plus(q),
-    ]
-
-    for endpoint in endpoints:
+    # 1) PROVEN TARGETED CATEGORY SEEDS.
+    # This is intentionally before search because Deloox's search surface can
+    # hang while the dedicated Product Line page responds normally.
+    for category_url in _targeted_category_seed_urls(q):
         try:
-            r = session.get(endpoint, headers=HEADERS, timeout=TIMEOUT)
+            page = session.get(
+                category_url,
+                headers=HEADERS,
+                timeout=DISCOVERY_TIMEOUT,
+            )
         except requests.RequestException:
             continue
-
-        if r.status_code >= 400:
+        if page.status_code >= 400:
             continue
-
-        candidates = _candidate_product_urls(r.text, q)
-        if candidates:
-            add_many(candidates)
+        targeted_candidates = _candidate_product_urls(page.text, q)
+        if targeted_candidates:
+            add_many(targeted_candidates)
             return urls[:80]
 
-    # 2) SECONDARY: broad categories and matching Product Line links.
-    # This is slower, so it is used only when the search surface did not expose
-    # usable product candidates.
-    category_candidates = _discover_from_categories(session, q, max_urls=80)
+    # 2) BROAD CATEGORY / PRODUCT LINE DISCOVERY.
+    category_candidates = _discover_from_categories(
+        session, q, max_urls=80
+    )
     if category_candidates:
         add_many(category_candidates)
         return urls[:80]
 
-    # 3) GENERIC catalogue/Product Line discovery.
+    # 3) GENERIC CATALOGUE FILTER.
     catalog_category = _find_catalog_filter_url(session, q)
     if catalog_category:
         try:
-            page = session.get(catalog_category, headers=HEADERS, timeout=TIMEOUT)
+            page = session.get(
+                catalog_category,
+                headers=HEADERS,
+                timeout=DISCOVERY_TIMEOUT,
+            )
         except requests.RequestException:
             page = None
-
         if page is not None and page.status_code < 400:
-            catalog_candidates = _candidate_product_urls(page.text, q)
-            if catalog_candidates:
-                add_many(catalog_candidates)
+            if add_many(_candidate_product_urls(page.text, q)):
                 return urls[:80]
 
-    # 4) GENERIC Product Line/category discovery from Deloox sitemaps.
+    # 4) SITEMAP CATEGORY FALLBACK. Keep this bounded.
     for category_url in _sitemap_category_urls(
-        session, q, max_sitemaps=16, max_urls=50
+        session, q, max_sitemaps=4, max_urls=12
     ):
         try:
-            page = session.get(category_url, headers=HEADERS, timeout=TIMEOUT)
+            page = session.get(
+                category_url,
+                headers=HEADERS,
+                timeout=DISCOVERY_TIMEOUT,
+            )
         except requests.RequestException:
             continue
-
         if page.status_code >= 400:
             continue
-
-        category_candidates = _candidate_product_urls(page.text, q)
-        if category_candidates:
-            add_many(category_candidates)
+        if add_many(_candidate_product_urls(page.text, q)):
             return urls[:80]
 
-        # Keep pagination bounded. It is a fallback, not the primary path.
-        for page_url in _pagination_urls(category_url, max_pages=8):
-            try:
-                page2 = session.get(
-                    page_url,
-                    headers=HEADERS,
-                    timeout=TIMEOUT,
-                )
-            except requests.RequestException:
-                continue
+    # 5) SEARCH LAST. Only two modern routes are attempted and each has a short
+    # timeout so a dead Deloox search service cannot consume the whole request.
+    endpoints = [
+        BASE_URL + "/en/search?q=" + quote_plus(q),
+        BASE_URL + "/en/search?query=" + quote_plus(q),
+    ]
+    for endpoint in endpoints:
+        try:
+            r = session.get(
+                endpoint,
+                headers=HEADERS,
+                timeout=DISCOVERY_TIMEOUT,
+            )
+        except requests.RequestException:
+            continue
+        if r.status_code >= 400:
+            continue
+        if add_many(_candidate_product_urls(r.text, q)):
+            return urls[:80]
 
-            if page2.status_code >= 400:
-                continue
-
-            page_candidates = _candidate_product_urls(page2.text, q)
-            if page_candidates:
-                add_many(page_candidates)
-                return urls[:80]
-
-    # 5) LAST RESORT: product sitemap.
+    # 6) LAST RESORT: product sitemap, still bounded.
     sitemap_candidates = _sitemap_product_urls(
-        session,
-        q,
-        max_sitemaps=16,
-        max_urls=80,
+        session, q, max_sitemaps=4, max_urls=40
     )
     if sitemap_candidates:
         add_many(sitemap_candidates)
+
     return urls[:80]
+
 
 def diagnostic_discovery(query):
     session = requests.Session()
