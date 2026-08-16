@@ -6,11 +6,8 @@ import time
 import traceback
 from concurrent.futures import ThreadPoolExecutor, TimeoutError as FutureTimeout
 
-app = FastAPI(title="ScentHunter - Deloox REAL Diagnostic", version="2.0")
+app = FastAPI(title="ScentHunter - Deloox REAL Diagnostic", version="2.1")
 
-# IMPORTANTE: questo Main NON cerca un file inventato.
-# Carica ESATTAMENTE lo scraper usato dal progetto:
-# /app/backend/scrapers/deloox/scraper.py
 MODULE_NAME = "scrapers.deloox.scraper"
 
 
@@ -37,7 +34,6 @@ def run_timeout(label, fn, timeout=15):
             "status": "TIMEOUT",
             "seconds": round(time.perf_counter() - started, 3),
             "timeout": timeout,
-            "message": "La funzione non ha restituito entro il limite diagnostico.",
         }
     except Exception as exc:
         return {
@@ -66,9 +62,8 @@ def root():
         "diagnostic": "REAL",
         "scraper_module": MODULE_NAME,
         "tests": [
-            "/diagnose-deloox?q=Hawas%20Kobra",
-            "/diagnose-deloox?q=Liquid%20Brun",
             "/diagnose-deloox?q=Hawas%20for%20Him",
+            "/diagnose-deloox?q=Liquid%20Brun",
         ],
     }
 
@@ -79,9 +74,12 @@ def diagnose_deloox(q: str):
     if not query:
         raise HTTPException(400, "Parametro q mancante")
 
-    report = {"query": query, "scraper_module": MODULE_NAME, "steps": []}
+    report = {
+        "query": query,
+        "scraper_module": MODULE_NAME,
+        "steps": [],
+    }
 
-    # 1. Carica lo scraper REALE del progetto.
     try:
         scraper = load_scraper()
         report["steps"].append({
@@ -98,21 +96,33 @@ def diagnose_deloox(q: str):
         })
         return report
 
-    # 2. Mostra le funzioni reali e le loro firme.
     names = [
-        "_candidate_queries", "_candidate_product_urls", "_discover",
-        "_discover_from_categories", "_sitemap_product_urls", "search"
+        "_candidate_queries",
+        "_candidate_product_urls",
+        "_discover",
+        "_discover_from_categories",
+        "_sitemap_product_urls",
+        "_search",
+        "_product",
+        "search",
     ]
+
     functions = {}
     for name in names:
         obj = getattr(scraper, name, None)
         functions[name] = {
             "exists": obj is not None,
-            "signature": str(inspect.signature(obj)) if callable(obj) else None,
+            "signature": str(inspect.signature(obj))
+            if callable(obj)
+            else None,
         }
-    report["steps"].append({"step": "2_real_structure", "status": "OK", "functions": functions})
 
-    # 3. Le query che lo scraper costruisce davvero.
+    report["steps"].append({
+        "step": "2_real_structure",
+        "status": "OK",
+        "functions": functions,
+    })
+
     candidate_fn = getattr(scraper, "_candidate_queries", None)
     if callable(candidate_fn):
         report["steps"].append(run_timeout(
@@ -120,65 +130,114 @@ def diagnose_deloox(q: str):
             lambda: candidate_fn(query),
             timeout=5,
         ))
-    else:
-        report["steps"].append({"step": "3_candidate_queries", "status": "MISSING"})
 
-    # 4. Testiamo direttamente search() dello scraper REALE.
-    # Niente filtro Main, niente categorie aggiunte dal Main, niente Deloox finto.
     search_fn = getattr(scraper, "search", None)
     if not callable(search_fn):
-        report["steps"].append({"step": "4_real_search", "status": "MISSING"})
+        report["steps"].append({
+            "step": "4_real_search",
+            "status": "MISSING",
+        })
         return report
 
     result = run_timeout(
         "4_real_search",
         lambda: search_fn(query),
-        timeout=20,
+        timeout=35,
     )
+
     if "value" in result:
         value = result.pop("value")
         result["result_type"] = type(value).__name__
-        result["result_count"] = len(value) if hasattr(value, "__len__") else None
+        result["result_count"] = (
+            len(value) if hasattr(value, "__len__") else None
+        )
         result["result_preview"] = safe_repr(value)
+
     report["steps"].append(result)
 
-    # 5. Se search() ha restituito prodotti, evidenziamo solo Deloox.
-    if "value" in result:
-        pass
-
-    # 6. Se esiste _discover(), lo testiamo separatamente.
+    # Decisive diagnostic:
+    # run discovery, then fetch each discovered URL and call _product()
+    # directly. This tells us exactly whether products are lost during
+    # page fetching/validation after discovery.
     discover_fn = getattr(scraper, "_discover", None)
-    if callable(discover_fn):
-        try:
-            sig = inspect.signature(discover_fn)
-            params = list(sig.parameters)
-            if len(params) == 2:
-                # Caso tipico: _discover(session, query)
-                session_cls = getattr(scraper, "requests", None)
-                session = session_cls.Session() if session_cls else None
-                if session is not None:
-                    report["steps"].append(run_timeout(
-                        "5_real_discover",
-                        lambda: discover_fn(session, query),
-                        timeout=20,
-                    ))
-            else:
-                report["steps"].append({
-                    "step": "5_real_discover",
-                    "status": "SKIPPED",
-                    "reason": f"firma non compatibile: {sig}",
-                })
-        except Exception as exc:
-            report["steps"].append({
-                "step": "5_real_discover",
-                "status": "ERROR",
-                "error": f"{type(exc).__name__}: {exc}",
-                "traceback": traceback.format_exc(),
-            })
+    product_fn = getattr(scraper, "_product", None)
+    requests_mod = getattr(scraper, "requests", None)
+
+    if callable(discover_fn) and callable(product_fn) and requests_mod:
+        def fallback_validation():
+            session = requests_mod.Session()
+
+            urls = discover_fn(session, query)
+            checks = []
+
+            for url in list(urls)[:12]:
+                entry = {
+                    "url": url,
+                }
+
+                try:
+                    page = session.get(
+                        url,
+                        headers=getattr(scraper, "HEADERS", {}),
+                        timeout=getattr(scraper, "TIMEOUT", 4),
+                    )
+
+                    entry["http_status"] = page.status_code
+
+                    if page.status_code >= 400:
+                        entry["product_result"] = "HTTP_ERROR"
+                        checks.append(entry)
+                        continue
+
+                    item = product_fn(
+                        url,
+                        page.text,
+                        query,
+                    )
+
+                    if item:
+                        entry["product_result"] = "ACCEPTED"
+                        entry["name"] = item.get("name")
+                        entry["price"] = item.get("price")
+                        entry["url"] = item.get("url")
+                    else:
+                        entry["product_result"] = "REJECTED"
+                        entry["reason"] = (
+                            "_product() returned None"
+                        )
+
+                except Exception as exc:
+                    entry["product_result"] = "ERROR"
+                    entry["error"] = (
+                        f"{type(exc).__name__}: {exc}"
+                    )
+
+                checks.append(entry)
+
+            return {
+                "discovered_count": len(urls),
+                "checked": checks,
+                "accepted_count": sum(
+                    1 for x in checks
+                    if x.get("product_result") == "ACCEPTED"
+                ),
+                "rejected_count": sum(
+                    1 for x in checks
+                    if x.get("product_result") == "REJECTED"
+                ),
+            }
+
+        report["steps"].append(run_timeout(
+            "6_discovery_then_product_validation",
+            fallback_validation,
+            timeout=45,
+        ))
 
     report["diagnosis"] = (
-        "Questo test usa direttamente scrapers.deloox.scraper del progetto. "
-        "Se 4_real_search restituisce 0 prodotti, il problema è nello scraper Deloox; "
-        "se restituisce prodotti ma il Main non li mostra, il problema è nel Main/normalizzazione."
+        "4_real_search chiama direttamente search(). "
+        "Lo step 6 separa discovery, download pagina e _product(): "
+        "se gli URL vengono scoperti ma _product() li rifiuta, "
+        "il punto di perdita è la validazione del prodotto."
     )
+
     return report
