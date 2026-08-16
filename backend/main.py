@@ -4,9 +4,10 @@ import inspect
 import json
 import time
 import traceback
+import requests
 from concurrent.futures import ThreadPoolExecutor, TimeoutError as FutureTimeout
 
-app = FastAPI(title="ScentHunter - Deloox REAL Diagnostic", version="2.4")
+app = FastAPI(title="ScentHunter - Deloox REAL Diagnostic", version="2.5")
 
 MODULE_NAME = "scrapers.deloox.scraper"
 
