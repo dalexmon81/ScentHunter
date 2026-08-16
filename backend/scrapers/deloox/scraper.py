@@ -1,4 +1,4 @@
-"""Deloox adapter for ScentHunter - test version."""
+"""Deloox adapter for ScentHunter - test version 4."""
 
 from __future__ import annotations
 
@@ -964,7 +964,23 @@ def _discover(session, query):
             if len(urls) >= 12:
                 return urls
 
-    # 4. Search fallback: keep it bounded.
+    # 4. Product sitemap fallback.
+    #
+    # Deloox's /en/search endpoints can return 404. The product sitemap is
+    # therefore a more useful fallback for product lines whose category page
+    # does not expose a matching filter. _sitemap_product_urls() already
+    # matches all meaningful query tokens against the product URL.
+    for product_url in _sitemap_product_urls(
+        session,
+        query,
+        max_sitemaps=8,
+        max_urls=12,
+    ):
+        add(product_url)
+        if len(urls) >= 12:
+            return urls
+
+    # 5. Search fallback: keep it bounded and last.
     discovery_queries = _candidate_queries(query)[:2]
 
     for discovery_query in discovery_queries:
