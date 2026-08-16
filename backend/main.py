@@ -70,10 +70,12 @@ VARIANTS = {
     "elixir",
     "intense",
     "extreme",
-    "limited edition",
+    # Queste non sono varianti da scartare globalmente:
+    # - Liquid Brun Limited Edition deve comparire nella ricerca "Liquid Brun".
+    # - Hawas Kobra e' una linea distinta e viene gestita con la regola
+    #   contestuale piu' sotto.
     "collector edition",
     "collector's edition",
-    "kobra",
 }
 
 NON_PERFUME = {
@@ -250,6 +252,10 @@ def matches(product: Dict[str, Any], query: str) -> bool:
     if has_small_size(product) and not query_has_size:
         return False
 
+    # Le varianti realmente generiche restano escluse quando non sono
+    # richieste esplicitamente. Non inseriamo qui "limited edition" o
+    # "kobra": entrambe possono essere prodotti che l'utente vuole
+    # trovare come risultato della linea cercata.
     for phrase in VARIANTS:
         normalized_phrase = norm(phrase)
 
@@ -258,6 +264,14 @@ def matches(product: Dict[str, Any], query: str) -> bool:
             and normalized_phrase not in query_normalized
         ):
             return False
+
+    # Hawas for Him e Hawas Kobra sono due linee diverse. Deloox e alcuni
+    # scraper possono descrivere Kobra come "Hawas Kobra for Him"; in quel
+    # caso il semplice controllo dei token farebbe passare il prodotto.
+    # Rendiamo quindi esplicita questa distinzione, senza toccare le altre
+    # ricerche Hawas.
+    if query_normalized == "hawas for him" and "kobra" in name:
+        return False
 
     for phrase in NON_PERFUME:
         normalized_phrase = norm(phrase)
