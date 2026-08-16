@@ -617,9 +617,9 @@ def matches(product: Dict[str, Any], query: str) -> bool:
     # piu' la referenza corretta.
     matching_name = name
     if "donna" in name.split():
-        matching_name += " femme women woman"
+        matching_name += " donna femme women woman"
     if "uomo" in name.split():
-        matching_name += " femme homme men man"
+        matching_name += " uomo homme men man"
     matching_name = norm(matching_name)
 
     tokens = [token for token in query_normalized.split() if token not in IGNORED_WORDS]
@@ -633,10 +633,18 @@ def matches(product: Dict[str, Any], query: str) -> bool:
 
     if not tokens:
         return False
-    # La query deve comparire realmente nel nome: una famiglia non deve
-    # trasformarsi automaticamente in una variante specifica.
-    if not all(token in matching_name for token in tokens):
-        return False
+    # La query deve comparire realmente nel nome, nello stesso ordine.
+    # Non basta che le singole parole siano sparse nel titolo:
+    # "Hawas for Him" non deve quindi accettare "Hawas Kobra".
+    # Al contrario, una variante come "Liquid Brun Limited Edition"
+    # continua a essere valida perché contiene la sequenza richiesta.
+    name_tokens = matching_name.split()
+    position = 0
+    for token in tokens:
+        try:
+            position = name_tokens.index(token, position) + 1
+        except ValueError:
+            return False
     if _query_has_variant_marker(query):
         query_tokens = set(tokens)
         name_tokens = set(name.split())
@@ -690,31 +698,16 @@ def build_search_attempts(
     # Prima la query esatta.
     add(raw)
 
-    # Se il catalogo conosce già le referenze della famiglia, usiamo le
-    # denominazioni canoniche come query mirate. La query originale resta
-    # sempre la prima: le varianti vengono poi cercate separatamente.
-    #
-    # IMPORTANTISSIMO:
-    # non fermarsi alle prime 2 referenze. Se una famiglia ha, per esempio,
-    # "Liquid Brun" e "Liquid Brun Limited Edition", entrambe devono poter
-    # arrivare allo scraper. Il filtro finale continua a decidere cosa è
-    # realmente pertinente alla query dell'utente.
+    # Se il catalogo conosce già le referenze della famiglia, usiamo quelle
+    # come query mirate. Questo evita di lanciare 10-20 ricerche sullo stesso
+    # negozio e, soprattutto, permette di recuperare separatamente EDT/EDP.
     if family_candidates:
-        for family_name in family_candidates[:6]:
+        # Query esatta sempre per prima; solo poche varianti mirate.
+        for family_name in family_candidates[:2]:
             add(family_name)
-
-        for hint in (catalog_hints or [])[:2]:
+        for hint in (catalog_hints or [])[:1]:
             add(hint)
-
-        # Fallback generico: nome senza le parole descrittive.
-        tokens = [
-            t for t in normalized.split()
-            if t not in IGNORED_WORDS
-        ]
-        if tokens:
-            add(" ".join(tokens))
-
-        return attempts[:10]
+        return attempts[:4]
 
     # Fallback per query che non hanno corrispondenze nel catalogo.
     for brand in discovered_brands or []:
@@ -1002,7 +995,10 @@ def search_perfume(q: str):
     # Tutti gli store vengono avviati in parallelo: un negozio lento non deve
     # tenere in coda gli altri. Il limite globale evita che una singola ricerca
     # resti bloccata indefinitamente.
-    executor = ThreadPoolExecutor(max_workers=2)
+    # Ogni negozio deve poter lavorare in parallelo: con 8 store e solo
+    # 2 worker, gli ultimi negozi (in particolare Deloox) possono restare
+    # in coda fino al timeout globale anche quando lo scraper funziona.
+    executor = ThreadPoolExecutor(max_workers=len(STORES))
     futures = {
         executor.submit(
             run_store,
