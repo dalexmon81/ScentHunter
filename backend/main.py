@@ -1287,3 +1287,96 @@ def test_deloox_step3(q: str = "Liquid Brun"):
         "message": "CATEGORY PAGINATION ONLY — ZERO product pages opened",
     }
 
+
+@app.get("/test-deloox-step4")
+def test_deloox_step4(q: str = "Liquid Brun"):
+    """Step 4: discover Deloox category structure; no product pages opened."""
+    import time as _time
+    import requests as _requests
+    from bs4 import BeautifulSoup as _BeautifulSoup
+    from urllib.parse import urljoin as _urljoin, urlparse as _urlparse
+
+    query = str(q or "").strip()
+    q_norm = re.sub(r"[^a-z0-9]+", " ", query.lower()).strip()
+    tokens = [x for x in q_norm.split() if len(x) > 1]
+
+    started = _time.perf_counter()
+    homepage = "https://www.deloox.com/"
+    session = _requests.Session()
+
+    try:
+        r = session.get(
+            homepage,
+            headers={
+                "User-Agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) "
+                              "AppleWebKit/605.1.15 Version/17.0 Mobile/15E148 Safari/604.1",
+                "Accept-Language": "en-GB,en;q=0.9",
+            },
+            timeout=10,
+        )
+        soup = _BeautifulSoup(r.text or "", "html.parser")
+
+        categories = []
+        seen = set()
+
+        for a in soup.find_all("a", href=True):
+            href = _urljoin(homepage, a.get("href", "").strip())
+            parsed = _urlparse(href)
+            path = parsed.path.lower()
+            if "/category/" not in path or href in seen:
+                continue
+            seen.add(href)
+
+            text = " ".join(a.stripped_strings).strip()
+            combined = (text + " " + href).lower()
+
+            token_hits = [t for t in tokens if t in combined]
+            perfume_hits = [
+                w for w in (
+                    "perfume", "parfum", "fragrance", "fragrances",
+                    "mens", "men", "women", "woman", "unisex",
+                    "niche", "limited", "new", "exclusive"
+                )
+                if w in combined
+            ]
+
+            score = len(token_hits) * 100 + len(perfume_hits)
+
+            categories.append({
+                "text": text[:160],
+                "url": href,
+                "score": score,
+                "query_token_hits": token_hits,
+                "category_keywords": perfume_hits[:12],
+            })
+
+        categories.sort(
+            key=lambda x: (x["score"], bool(x["text"]), len(x["text"])),
+            reverse=True
+        )
+
+        return {
+            "step": 4,
+            "query": query,
+            "seconds": round(_time.perf_counter() - started, 3),
+            "status": r.status_code,
+            "bytes": len(r.content),
+            "category_links_found": len(categories),
+            "top_categories": categories[:80],
+            "message": (
+                "CATEGORY DISCOVERY ONLY — ONE REQUEST, ZERO product pages opened. "
+                "This step tells us which Deloox category family should be searched next."
+            ),
+        }
+
+    except Exception as exc:
+        return {
+            "step": 4,
+            "query": query,
+            "seconds": round(_time.perf_counter() - started, 3),
+            "error": f"{type(exc).__name__}: {exc}",
+            "message": "Category discovery failed; ZERO product pages opened",
+        }
+    finally:
+        session.close()
+
