@@ -7,6 +7,7 @@ import importlib
 import json
 import os
 import re
+import requests
 import traceback
 from concurrent.futures import ThreadPoolExecutor, as_completed, TimeoutError
 from datetime import datetime, timezone
@@ -70,10 +71,7 @@ VARIANTS = {
     "elixir",
     "intense",
     "extreme",
-    # Queste non sono varianti da scartare globalmente:
-    # - Liquid Brun Limited Edition deve comparire nella ricerca "Liquid Brun".
-    # - Hawas Kobra e' una linea distinta e viene gestita con la regola
-    #   contestuale piu' sotto.
+    "limited edition",
     "collector edition",
     "collector's edition",
 }
@@ -174,56 +172,6 @@ def product_image(product: Dict[str, Any]) -> str:
     )
 
 
-def product_search_text(product: Dict[str, Any]) -> str:
-    """
-    Testo completo utile per i filtri: alcuni scraper possono avere
-    la variante nel titolo, nell'URL o in un campo secondario.
-    """
-    values = (
-        product.get("name"),
-        product.get("title"),
-        product.get("product_name"),
-        product.get("url"),
-        product.get("product_line"),
-        product.get("variant"),
-        product.get("size"),
-        product.get("size_ml"),
-        product.get("volume"),
-        product.get("volume_ml"),
-        product.get("format"),
-        product.get("format_ml"),
-        product.get("pack_size"),
-    )
-
-    # Alcuni scraper possono mettere la taglia dentro attributes.
-    attributes = product.get("attributes")
-    if isinstance(attributes, dict):
-        values += tuple(
-            value
-            for key, value in attributes.items()
-            if any(token in norm(key) for token in ("size", "volume", "format"))
-        )
-
-    return norm(" ".join(str(value or "") for value in values))
-
-
-def has_small_size(product: Dict[str, Any]) -> bool:
-    """
-    Esclude campioni/mini-taglie fino a 10 ml, salvo ricerca esplicita
-    della taglia.
-    """
-    text = product_search_text(product)
-
-    for match in re.finditer(r"(?<!\d)(\d+(?:[.,]\d+)?)\s*ml\b", text):
-        try:
-            if float(match.group(1).replace(",", ".")) <= 10:
-                return True
-        except ValueError:
-            continue
-
-    return False
-
-
 # ============================================================
 # FILTRO RISULTATI
 # ============================================================
@@ -238,40 +186,18 @@ def matches(product: Dict[str, Any], query: str) -> bool:
     """
     name = norm(product.get("name", ""))
     query_normalized = norm(query)
-    search_text = product_search_text(product)
 
     if not name:
         return False
 
-    # Mini-taglie/campioni (es. 2 ml) non devono entrare nelle offerte
-    # normali. Se un giorno l'utente cercherà esplicitamente "2 ml",
-    # la regola verrà resa permissiva in base alla query.
-    query_has_size = bool(
-        re.search(r"(?<!\d)\d+(?:[.,]\d+)?\s*ml\b", query_normalized)
-    )
-    if has_small_size(product) and not query_has_size:
-        return False
-
-    # Le varianti realmente generiche restano escluse quando non sono
-    # richieste esplicitamente. Non inseriamo qui "limited edition" o
-    # "kobra": entrambe possono essere prodotti che l'utente vuole
-    # trovare come risultato della linea cercata.
     for phrase in VARIANTS:
         normalized_phrase = norm(phrase)
 
         if (
-            normalized_phrase in search_text
+            normalized_phrase in name
             and normalized_phrase not in query_normalized
         ):
             return False
-
-    # Hawas for Him e Hawas Kobra sono due linee diverse. Deloox e alcuni
-    # scraper possono descrivere Kobra come "Hawas Kobra for Him"; in quel
-    # caso il semplice controllo dei token farebbe passare il prodotto.
-    # Rendiamo quindi esplicita questa distinzione, senza toccare le altre
-    # ricerche Hawas.
-    if query_normalized == "hawas for him" and "kobra" in name:
-        return False
 
     for phrase in NON_PERFUME:
         normalized_phrase = norm(phrase)
@@ -679,6 +605,66 @@ def test_store(store: str, q: str):
             "query": query,
             "count": 0,
             "results": [],
+            "error": f"{type(error).__name__}: {error}",
+        }
+
+
+# ============================================================
+# API - DIAGNOSTICA DELOOX
+# ============================================================
+
+@app.get("/diagnose-store")
+def diagnose_store(store: str, q: str):
+    """
+    Diagnostica profonda di UN SOLO scraper.
+    Non modifica /search e non modifica /test-store.
+
+    Per ora è pensata per Deloox e restituisce:
+    - endpoint interrogati
+    - status HTTP
+    - quante occorrenze /product/ sono presenti
+    - candidati trovati
+    - quali candidati passano la validazione finale
+    """
+    store = str(store or "").strip().lower()
+    query = str(q or "").strip()
+
+    if store != "deloox":
+        raise HTTPException(
+            status_code=400,
+            detail="Questo endpoint diagnostico è disponibile solo per deloox",
+        )
+
+    if not query:
+        raise HTTPException(
+            status_code=400,
+            detail="Parametro q mancante",
+        )
+
+    try:
+        module = load_scraper(store)
+        diagnose = getattr(module, "diagnose_search", None)
+
+        if not callable(diagnose):
+            raise HTTPException(
+                status_code=500,
+                detail=(
+                    "Lo scraper Deloox caricato non contiene "
+                    "diagnose_search(). Hai bisogno della versione "
+                    "Deloox_scraper_DIAGNOSTIC.py."
+                ),
+            )
+
+        session = requests.Session()
+        return diagnose(session, query)
+
+    except HTTPException:
+        raise
+    except Exception as error:
+        traceback.print_exc()
+        return {
+            "store": store,
+            "query": query,
             "error": f"{type(error).__name__}: {error}",
         }
 
