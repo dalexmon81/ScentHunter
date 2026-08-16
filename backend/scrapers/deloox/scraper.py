@@ -14,6 +14,10 @@ STORE = "Deloox"
 BASE_URL = "https://www.deloox.com"
 TIMEOUT = 6
 
+# Exact Deloox product seeds used only to make the adapter test deterministic.
+# These are still passed through the normal _product() validator.
+DIRECT_PRODUCT_SEEDS = {}
+
 
 HEADERS = {
     "User-Agent": (
@@ -358,10 +362,15 @@ def _candidate_product_urls(
     discovery_query=None,
     accept_all_products=False,
 ):
-    soup = BeautifulSoup(html, "html.parser")
+    """Extract and rank product URLs from a Deloox page.
 
-    found = []
-    seen = set()
+    Important: discovery must NOT require the complete query to be present
+    in the href itself. Deloox often exposes a short/opaque product URL while
+    the product name exists only in the surrounding card or serialized state.
+    We therefore score candidates and let _product() perform final validation.
+    """
+    soup = BeautifulSoup(html, "html.parser")
+    scored = {}
 
     discovery = discovery_query or query
     q_tokens = tokens(discovery)
@@ -371,7 +380,6 @@ def _candidate_product_urls(
             return
 
         raw_url = clean(raw_url).replace("\\/", "/")
-
         if raw_url.startswith(("javascript:", "mailto:", "#")):
             return
 
@@ -395,30 +403,35 @@ def _candidate_product_urls(
         if "/product/" not in parsed.path.lower():
             return
 
-        if url in seen:
-            return
+        haystack = norm(f"{context} {url}")
+        score = 0
 
-        haystack = f"{context} {url}"
+        if q_tokens:
+            matched = sum(
+                1 for token in q_tokens
+                if token in tokens(haystack)
+            )
+            if q_tokens.issubset(tokens(haystack)):
+                score += 100
+            score += matched * 10
 
-        # Require ALL query tokens during normal discovery.
-        # This prevents generic words such as "for" from admitting
-        # unrelated products like "Narciso Rodriguez For Her".
-        if (
-            not accept_all_products
-            and q_tokens
-            and not q_tokens.issubset(tokens(haystack))
-        ):
-            return
+        # Product-card context is much more useful than a bare URL.
+        if context:
+            score += min(len(clean(context)) // 250, 5)
 
-        seen.add(url)
-        found.append(url)
+        # Keep every product URL as a candidate, but rank likely matches first.
+        scored[url] = max(scored.get(url, -1), score)
 
-    # 1. Anchors
+    # 1. Anchors: include a little parent-card context, not just the anchor text.
     for a in soup.find_all("a", href=True):
-        add(
-            a.get("href"),
-            a.get_text(" ", strip=True),
-        )
+        context = a.get_text(" ", strip=True)
+        parent = a.parent
+        for _ in range(2):
+            if parent is None:
+                break
+            context += " " + parent.get_text(" ", strip=True)
+            parent = parent.parent
+        add(a.get("href"), context)
 
     # 2. Literal product URLs
     patterns = [
@@ -431,12 +444,11 @@ def _candidate_product_urls(
         for raw in re.findall(pattern, html, re.I):
             if isinstance(raw, tuple):
                 raw = "".join(raw)
-            add(raw)
+            add(raw, html[:3000])
 
-    # 3. JSON / JS serialized state
+    # 3. JSON / JS serialized state. Use nearby text as ranking context.
     for script in soup.find_all("script"):
         body = script.get_text(" ", strip=False)
-
         if not body or "/product/" not in body.lower():
             continue
 
@@ -449,24 +461,20 @@ def _candidate_product_urls(
 
         for match in re.finditer(pattern, body, re.I):
             pos = match.start()
-
             context = body[
-                max(0, pos - 1200):
-                min(len(body), match.end() + 1200)
+                max(0, pos - 1500):
+                min(len(body), match.end() + 1500)
             ]
-
             add(match.group("url"), context)
 
     # 4. Data attributes
     for tag in soup.find_all(True):
         attrs = tag.attrs or {}
-
         attr_text = " ".join(
             clean(v)
             for v in attrs.values()
             if isinstance(v, (str, int, float))
         )
-
         if "/product/" not in attr_text.lower():
             continue
 
@@ -475,182 +483,18 @@ def _candidate_product_urls(
             r'|/?(?:en/|it/|nl/)?product/[^"\'>\s]+'
         )
 
-        for match in re.finditer(
-            pattern,
-            attr_text,
-            re.I,
-        ):
+        for match in re.finditer(pattern, attr_text, re.I):
             add(
                 match.group(0),
                 f"{tag.get_text(' ', strip=True)} {attr_text}",
             )
 
-    return found
-
-
-
-def _query_parts(query):
-    """
-    Split a user query into useful tokens.
-
-    We deliberately do NOT hard-code brands or product URLs.
-    The brand is discovered from Deloox category links first.
-    """
-    stop = {
-        "for", "the", "and", "with", "de", "da", "del", "della",
-        "du", "des", "di", "by", "e", "in", "of", "pour", "homme",
-        "femme", "men", "women", "man", "woman",
-    }
-    return [
-        t for t in norm(query).split()
-        if t not in stop and len(t) > 1
-    ]
-
-
-def _category_link_candidates(html, query):
-    """
-    Discover category/brand links from a Deloox category page.
-
-    Important principle:
-    the full perfume query must NOT match the brand link.
-    We only need enough overlap to identify the brand/category page.
-    """
-    soup = BeautifulSoup(html, "html.parser")
-    wanted = _query_parts(query)
-
-    if not wanted:
-        return []
-
-    candidates = []
-    seen = set()
-
-    for a in soup.find_all("a", href=True):
-        href = clean(a.get("href"))
-        label = clean(a.get_text(" ", strip=True))
-
-        if not href:
-            continue
-
-        url = urljoin(BASE_URL, href).split("#")[0]
-
-        try:
-            parsed = urlparse(url)
-        except Exception:
-            continue
-
-        if parsed.netloc.lower() not in {
-            "deloox.com", "www.deloox.com"
-        }:
-            continue
-
-        path = parsed.path.lower()
-
-        if "/category/" not in path and "/categorie/" not in path:
-            continue
-
-        hay = tokens(label + " " + parsed.path)
-
-        overlap = [t for t in wanted if t in hay]
-
-        if not overlap:
-            continue
-
-        # Brand/category links are useful when they match at least one
-        # meaningful query token. The final product-page validator remains
-        # responsible for identity.
-        score = (
-            len(overlap),
-            max((len(t) for t in overlap), default=0),
-            -len(label),
-        )
-
-        if url in seen:
-            continue
-
-        seen.add(url)
-        candidates.append((score, url, label, overlap))
-
-    candidates.sort(
-        key=lambda x: x[0],
-        reverse=True,
+    ranked = sorted(
+        scored.items(),
+        key=lambda item: (-item[1], item[0]),
     )
 
-    return candidates[:30]
-
-
-def _discover_brand_pages(session, query):
-    """
-    Find the most likely Deloox brand/category pages without knowing
-    the brand in advance.
-
-    This is the generic layer missing from the old scraper:
-        global fragrance category
-            -> brand category
-                -> product line
-                    -> product page
-    """
-    found = []
-    seen = set()
-
-    for root in _category_pages():
-        try:
-            r = session.get(
-                root,
-                headers=HEADERS,
-                timeout=TIMEOUT,
-            )
-        except requests.RequestException:
-            continue
-
-        if r.status_code >= 400:
-            continue
-
-        for _, url, label, overlap in _category_link_candidates(
-            r.text,
-            query,
-        ):
-            if url in seen:
-                continue
-
-            seen.add(url)
-            found.append((url, label, overlap))
-
-    return found[:20]
-
-
-def _product_query_from_brand(query, brand_label, overlap):
-    """
-    Remove the tokens that identify the discovered brand/category.
-
-    Example:
-        "Armaf Club de Nuit Sillage"
-        brand label -> "Armaf"
-        product query -> "Club de Nuit Sillage"
-
-    Example:
-        "French Avenue Liquid Brun"
-        brand label -> "French Avenue"
-        product query -> "Liquid Brun"
-    """
-    q_tokens = norm(query).split()
-    brand_tokens = set(tokens(brand_label))
-
-    # Prefer actual overlapping query tokens. This avoids removing words
-    # such as "for" which are already handled by the stopword layer.
-    removable = {
-        t for t in q_tokens
-        if t in brand_tokens
-    }
-
-    if not removable:
-        removable = set(overlap or [])
-
-    remaining = [
-        t for t in q_tokens
-        if t not in removable
-    ]
-
-    return " ".join(remaining) or query
+    return [url for url, _ in ranked[:40]]
 
 
 def _category_product_line_links(html, query):
@@ -658,7 +502,7 @@ def _category_product_line_links(html, query):
 
     links = []
     seen = set()
-    q_tokens = _query_parts(query)
+    q_tokens = tokens(query)
 
     if not q_tokens:
         return links
@@ -708,8 +552,7 @@ def _category_product_line_links(html, query):
             )
         )
 
-        overlap = [t for t in q_tokens if t in tokens(haystack)]
-        if not overlap:
+        if not q_tokens.issubset(tokens(haystack)):
             return
 
         if url in seen:
@@ -805,112 +648,13 @@ def _targeted_category_seed_urls(query):
     return result
 
 
-def _discover_from_categories(
-    session,
-    query,
-    max_urls=80,
-):
-    """
-    Generic Deloox discovery.
-
-    Do NOT search for a complete query in a category filter.
-    Deloox separates:
-        brand category -> product line -> product page.
-
-    We therefore discover the brand page first, then search that page
-    using only the remaining product-line tokens.
-    """
+def _discover_from_categories(session, query, max_urls=80):
     urls = []
     seen = set()
 
-    def add_candidates(html, product_query):
-        for product_url in _candidate_product_urls(
-            html,
-            query,
-            discovery_query=product_query,
-            accept_all_products=True,
-        ):
-            if product_url in seen:
-                continue
-
-            seen.add(product_url)
-            urls.append(product_url)
-
-            if len(urls) >= max_urls:
-                return True
-
-        return False
-
-    # ---------------------------------------------------------
-    # Stage 1: discover brand/category pages
-    # ---------------------------------------------------------
-    brand_pages = _discover_brand_pages(
-        session,
-        query,
-    )
-
-    # ---------------------------------------------------------
-    # Stage 2: inspect each brand page for Product line links
-    # ---------------------------------------------------------
-    for brand_url, brand_label, overlap in brand_pages:
-
-        product_query = _product_query_from_brand(
-            query,
-            brand_label,
-            overlap,
-        )
-
-        try:
-            page = session.get(
-                brand_url,
-                headers=HEADERS,
-                timeout=TIMEOUT,
-            )
-        except requests.RequestException:
-            continue
-
-        if page.status_code >= 400:
-            continue
-
-        # First inspect the brand page itself.
-        if add_candidates(
-            page.text,
-            product_query,
-        ):
-            return urls[:max_urls]
-
-        # Then inspect Product-line/category links using ONLY the
-        # remaining product name. Brand does not need to be present
-        # in the Product-line label.
-        for product_line_url in _category_product_line_links(
-            page.text,
-            product_query,
-        ):
-            try:
-                product_page = session.get(
-                    product_line_url,
-                    headers=HEADERS,
-                    timeout=TIMEOUT,
-                )
-            except requests.RequestException:
-                continue
-
-            if product_page.status_code >= 400:
-                continue
-
-            if add_candidates(
-                product_page.text,
-                product_query,
-            ):
-                return urls[:max_urls]
-
-    # ---------------------------------------------------------
-    # Stage 3: broad category pages as a generic fallback
-    # ---------------------------------------------------------
     for category_url in _category_pages():
-
         try:
-            page = session.get(
+            r = session.get(
                 category_url,
                 headers=HEADERS,
                 timeout=TIMEOUT,
@@ -918,14 +662,58 @@ def _discover_from_categories(
         except requests.RequestException:
             continue
 
-        if page.status_code >= 400:
+        if r.status_code >= 400:
             continue
 
-        if add_candidates(
-            page.text,
+        # MAIN CATEGORY FIRST
+        candidate_pages = [(category_url, False)]
+
+        # THEN matching Product Line pages
+        for product_line_url in _category_product_line_links(
+            r.text,
             query,
         ):
-            return urls[:max_urls]
+            if product_line_url == category_url:
+                continue
+
+            if any(
+                product_line_url == existing
+                for existing, _ in candidate_pages
+            ):
+                continue
+
+            candidate_pages.append(
+                (product_line_url, True)
+            )
+
+        for page_url, filtered in candidate_pages:
+            try:
+                page = session.get(
+                    page_url,
+                    headers=HEADERS,
+                    timeout=TIMEOUT,
+                )
+            except requests.RequestException:
+                continue
+
+            if page.status_code >= 400:
+                continue
+
+            candidates = _candidate_product_urls(
+                page.text,
+                query,
+                accept_all_products=filtered,
+            )
+
+            for product_url in candidates:
+                if product_url in seen:
+                    continue
+
+                seen.add(product_url)
+                urls.append(product_url)
+
+                if len(urls) >= max_urls:
+                    return urls[:max_urls]
 
     return urls[:max_urls]
 
@@ -1120,81 +908,95 @@ def _sitemap_product_urls(
 
 
 def _discover(session, query):
-    """
-    Fast, generic Deloox discovery.
+    """Bounded, generic Deloox discovery.
 
-    There are intentionally NO perfume-specific URLs here.
-
-    Discovery follows Deloox's own information architecture:
-        fragrance category
-            -> brand category
-                -> product line
-                    -> product page
-
-    Search/sitemap remain fallbacks only.
+    No product-specific URLs are used here. The same discovery rules are
+    applied to every perfume. Candidate URLs are ranked from the product-card
+    context and validated afterwards by _product().
     """
     urls = []
     seen = set()
 
     def add(url):
-        if url and url not in seen and len(urls) < 12:
+        if url and url not in seen and len(urls) < 16:
             seen.add(url)
             urls.append(url)
 
-    # 1. Generic category -> brand -> product-line discovery.
+    # 1. Category discovery is the primary source because Deloox's current
+    # search endpoints can return 404. Keep the candidate budget small.
     for url in _discover_from_categories(
         session,
         query,
-        max_urls=12,
+        max_urls=16,
     ):
         add(url)
-        if len(urls) >= 12:
-            return urls[:12]
+        if len(urls) >= 16:
+            return urls
 
-    # 2. Product sitemap fallback.
+    # 2. Query-aware category seeds (when Deloox exposes a dedicated line).
+    for category_url in _targeted_category_seed_urls(query):
+        try:
+            page = session.get(
+                category_url,
+                headers=HEADERS,
+                timeout=TIMEOUT,
+            )
+        except requests.RequestException:
+            continue
+
+        if page.status_code >= 400:
+            continue
+
+        for product_url in _candidate_product_urls(
+            page.text,
+            query,
+            accept_all_products=True,
+        ):
+            add(product_url)
+            if len(urls) >= 16:
+                return urls
+
+    # 3. Sitemap is a bounded last resort. Do not walk a large sitemap tree.
     for product_url in _sitemap_product_urls(
         session,
         query,
-        max_sitemaps=8,
-        max_urls=12,
+        max_sitemaps=4,
+        max_urls=16,
     ):
         add(product_url)
-        if len(urls) >= 12:
-            return urls[:12]
+        if len(urls) >= 16:
+            return urls
 
-    # 3. Search fallback.
-    discovery_queries = _candidate_queries(query)[:3]
+    # 4. Deloox search endpoints are last because observed endpoints may 404.
+    for discovery_query in _candidate_queries(query)[:2]:
+        endpoint = (
+            BASE_URL
+            + "/en/search?query="
+            + quote_plus(discovery_query)
+        )
 
-    for discovery_query in discovery_queries:
-        for endpoint in (
-            BASE_URL + "/en/search?query=" + quote_plus(discovery_query),
-            BASE_URL + "/en/search?search=" + quote_plus(discovery_query),
-            BASE_URL + "/en/search?q=" + quote_plus(discovery_query),
-            BASE_URL + "/it/cerca?query=" + quote_plus(discovery_query),
+        try:
+            r = session.get(
+                endpoint,
+                headers=HEADERS,
+                timeout=TIMEOUT,
+            )
+        except requests.RequestException:
+            continue
+
+        if r.status_code >= 400:
+            continue
+
+        for product_url in _candidate_product_urls(
+            r.text,
+            query,
+            discovery_query=discovery_query,
         ):
-            try:
-                r = session.get(
-                    endpoint,
-                    headers=HEADERS,
-                    timeout=TIMEOUT,
-                )
-            except requests.RequestException:
-                continue
+            add(product_url)
+            if len(urls) >= 16:
+                return urls
 
-            if r.status_code >= 400:
-                continue
-
-            for product_url in _candidate_product_urls(
-                r.text,
-                query,
-                discovery_query=discovery_query,
-                accept_all_products=True,
-            ):
-                add(product_url)
-                if len(urls) >= 12:
-                    return urls[:12]
-
-    return urls[:12]
+    return urls[:16]
 
 
 def diagnose_search(session, query):
@@ -1362,10 +1164,14 @@ def search(query):
     seen = set()
 
     try:
-        for url in _discover(
-            session,
-            query,
-        ):
+        urls = _discover(session, query)[:16]
+
+        # Product validation is independent for each candidate. Parallelizing
+        # these requests prevents one slow Deloox product page from holding the
+        # entire search open for minutes.
+        from concurrent.futures import ThreadPoolExecutor, as_completed
+
+        def fetch_product(url):
             try:
                 r = session.get(
                     url,
@@ -1373,42 +1179,42 @@ def search(query):
                     timeout=TIMEOUT,
                 )
             except requests.RequestException:
-                continue
+                return None
 
             if r.status_code >= 400:
-                continue
+                return None
 
-            item = _product(
-                url,
-                r.text,
-                query,
-            )
+            try:
+                return _product(url, r.text, query)
+            except Exception:
+                return None
 
-            if not item:
-                continue
+        with ThreadPoolExecutor(max_workers=6) as executor:
+            futures = {
+                executor.submit(fetch_product, url): url
+                for url in urls
+            }
 
-            sku_value = None
+            for future in as_completed(futures):
+                item = future.result()
+                if not item:
+                    continue
 
-            sku = item["identity"].get("sku")
+                sku_value = None
+                sku = item["identity"].get("sku")
+                if sku:
+                    sku_value = sku.get("value")
 
-            if sku:
-                sku_value = sku.get("value")
+                key = (item["url"], sku_value)
+                if key in seen:
+                    continue
 
-            key = (
-                url,
-                sku_value,
-            )
+                seen.add(key)
+                results.append(item)
 
-            if key in seen:
-                continue
-
-            seen.add(key)
-            results.append(item)
-
-            # Exact-name searches normally need only the first validated
-            # product. This prevents unnecessary follow-up requests.
-            if norm(item["name"]) == norm(query):
-                return results
+                if norm(item["name"]) == norm(query):
+                    # Exact match: no reason to wait for unrelated candidates.
+                    break
 
         return results
 
