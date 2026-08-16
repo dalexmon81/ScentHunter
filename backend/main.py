@@ -1012,14 +1012,61 @@ def diagnose_deloox_step(q: str = "Hawas Kobra"):
     deloox_module = load_scraper("deloox")
     attempt = attempts[0] if attempts else query
 
-    run_step(
-        "3_direct_deloox_search",
-        lambda: {
-            "attempt": attempt,
-            "result_count": len(deloox_module.search(attempt) or []),
-        },
-    )
+    # IMPORTANT: non chiamiamo search() direttamente, altrimenti se lo scraper
+    # si blocca la pagina diagnostica rimane anch'essa "in ricerca".
+    # Usiamo un thread con timeout diagnostico breve.
+    from concurrent.futures import ThreadPoolExecutor, TimeoutError as _TimeoutError
 
+    def _direct_search():
+        return deloox_module.search(attempt) or []
+
+    started = _time.perf_counter()
+    row = {
+        "step": "3_direct_deloox_search",
+        "status": "started",
+        "attempt": attempt,
+        "timeout_seconds": 12,
+    }
+
+    executor = ThreadPoolExecutor(max_workers=1)
+    future = executor.submit(_direct_search)
+
+    try:
+        raw_results = future.result(timeout=12)
+        row["status"] = "ok"
+        row["seconds"] = round(_time.perf_counter() - started, 3)
+        row["result_count"] = len(raw_results)
+
+        row["results"] = [
+            {
+                "name": item.get("name", ""),
+                "url": item.get("url", ""),
+                "price": item.get("price", ""),
+                "store": item.get("store", ""),
+            }
+            for item in raw_results
+            if isinstance(item, dict)
+        ][:20]
+
+    except _TimeoutError:
+        row["status"] = "TIMEOUT"
+        row["seconds"] = round(_time.perf_counter() - started, 3)
+        row["message"] = (
+            "deloox_module.search() non ha restituito entro 12 secondi. "
+            "Il problema è dentro lo scraper Deloox, non nel filtro finale del Main."
+        )
+        future.cancel()
+
+    except Exception as exc:
+        row["status"] = "error"
+        row["seconds"] = round(_time.perf_counter() - started, 3)
+        row["error"] = f"{type(exc).__name__}: {exc}"
+
+    finally:
+        # Non aspettiamo la fine del worker: è proprio ciò che vogliamo diagnosticare.
+        executor.shutdown(wait=False, cancel_futures=True)
+
+    report["steps"].append(row)
     return report
 
 
