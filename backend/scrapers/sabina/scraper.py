@@ -27,16 +27,68 @@ def _product_like(url):
     )
 
 def _links(html, base):
+    """
+    Generic product-link discovery.
+
+    Sabina can expose product URLs in normal <a href> elements, data
+    attributes, or embedded JSON. We collect all generic representations
+    without knowing any individual product URL.
+    """
     soup = BeautifulSoup(html, "html.parser")
     out = []
     seen = set()
-    for a in soup.find_all("a", href=True):
-        href = urljoin(base, a["href"].strip())
+
+    def add(href, txt=""):
+        if not href:
+            return
+        href = str(href).strip()
+        href = href.replace("\\/", "/")
+        href = urljoin(base, href)
+        href = href.split("#", 1)[0]
         if not _product_like(href) or href in seen:
-            continue
+            return
         seen.add(href)
-        txt = " ".join(a.stripped_strings)
-        out.append((href, txt))
+        out.append((href, " ".join(str(txt or "").split())))
+
+    for a in soup.find_all("a", href=True):
+        add(a.get("href"), " ".join(a.stripped_strings))
+
+    url_attrs = {
+        "href", "src", "action", "data-href", "data-url",
+        "data-link", "data-product-url", "data-product-link"
+    }
+    for tag in soup.find_all(True):
+        txt = " ".join(tag.stripped_strings)
+        for attr, value in tag.attrs.items():
+            if isinstance(value, str) and attr.lower() in url_attrs:
+                add(value, txt)
+
+    product_url_re = re.compile(
+        r"https?://(?:www\.)?sabina\.com/[^\"'\s<>\\]+?\.html(?:\?[^\"'\s<>\\]*)?",
+        re.I
+    )
+    relative_url_re = re.compile(
+        r"/[^\"'\s<>\\]+?\.html(?:\?[^\"'\s<>\\]*)?",
+        re.I
+    )
+
+    for script in soup.find_all("script"):
+        raw = script.string or script.get_text() or ""
+        if ".html" not in raw.lower():
+            continue
+        raw = raw.replace("\\/", "/")
+        for m in product_url_re.finditer(raw):
+            add(m.group(0))
+        for m in relative_url_re.finditer(raw):
+            add(m.group(0))
+
+    if not out:
+        raw_html = html.replace("\\/", "/")
+        for m in product_url_re.finditer(raw_html):
+            add(m.group(0))
+        for m in relative_url_re.finditer(raw_html):
+            add(m.group(0))
+
     return out
 
 def search(query):
@@ -65,10 +117,20 @@ def search(query):
             print(f"SABINA_DISCOVERY: SEED status={r.status_code} url={seed} final={r.url} bytes={len(r.content)}")
             if r.status_code != 200:
                 continue
-            for u, txt in _links(r.text, r.url):
+            discovered_links = _links(r.text, r.url)
+            print(f"SABINA_DISCOVERY: LINKS_FOUND={len(discovered_links)}")
+            matched_here = 0
+            for u, txt in discovered_links:
                 sc = _score(query, u + " " + txt)
                 if sc > 0:
+                    matched_here += 1
                     candidates[u] = max(candidates.get(u, 0), sc)
+                    if matched_here <= 10:
+                        print(
+                            f"SABINA_DISCOVERY: MATCH score={sc:.3f} "
+                            f"url={u} text={txt[:160]!r}"
+                        )
+            print(f"SABINA_DISCOVERY: SEED_MATCHES={matched_here}")
         except Exception as e:
             print(f"SABINA_DISCOVERY: SEED_ERROR {seed} {type(e).__name__}: {e}")
 
