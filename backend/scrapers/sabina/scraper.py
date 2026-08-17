@@ -1,17 +1,9 @@
-"""Sabina diagnostic scraper.
+"""Syntax-safe diagnostic Sabina scraper for ScentHunter.
 
-This version is intended to be deployed temporarily as
-scrapers/sabina/scraper.py. It keeps the normal scraper API but emits a
-complete report for every discovery stage so the real failure can be located.
+Temporary diagnostic version. It keeps the public API used by main.py:
+    search(query), scrape(query), search_sabina(query)
 
-Use:
-    /search?q=Liquid%20Brun
-
-Or locally:
-    python scraper.py "Liquid Brun" --diagnose
-
-Optional local fixture:
-    SABINA_FIXTURE_PATH="sabina html.html" python scraper.py "Liquid Brun" --diagnose
+It emits SABINA_DIAGNOSTIC JSON logs for every stage.
 """
 from __future__ import annotations
 
@@ -30,9 +22,9 @@ from bs4 import BeautifulSoup
 STORE = "Sabina"
 BASE = "https://www.sabina.com"
 TIMEOUT = 8
-MAX_PAGES = 140
-MAX_CANDIDATES = 60
-
+MAX_PAGES = 80
+MAX_CANDIDATES = 48
+MAX_RESULTS = 12
 DEBUG = os.getenv("SABINA_DEBUG", "1") != "0"
 FIXTURE_PATH = os.getenv("SABINA_FIXTURE_PATH", "").strip()
 
@@ -59,20 +51,37 @@ ROOTS = (
     BASE + "/fr/891-perfumes-nicho-unisex",
 )
 
+SEARCH_ROUTES = (
+    "/fr/recherche?controller=search&s={query}",
+    "/fr/search?controller=search&s={query}",
+    "/fr/search?s={query}",
+)
+
 NON_PRODUCT_PATH_PARTS = (
     "/content/", "/search", "/recherche", "/login", "/mon-compte",
     "/panier", "/cart", "/contact", "/faq", "/magasins",
     "/ordre-final", "/etat-de-la-commande",
 )
 
+NON_FRAGRANCE = (
+    "body mist", "body spray", "body lotion", "body cream", "body oil",
+    "body wash", "shower gel", "shower oil", "hand cream", "deodorant",
+    "after shave", "aftershave", "hair mist", "hair spray", "soap",
+)
+
 PRICE_RE = re.compile(r"(?:€\s*)?(\d{1,4}(?:[.,]\d{1,2})?)(?:\s*€)?")
 
 
-def _log(stage: str, **data):
-    if not DEBUG:
-        return
-    payload = {"stage": stage, **data}
-    print("SABINA_DIAGNOSTIC " + json.dumps(payload, ensure_ascii=False, default=str), flush=True)
+def _log(stage: str, **data) -> None:
+    if DEBUG:
+        print(
+            "SABINA_DIAGNOSTIC " + json.dumps(
+                {"stage": stage, **data},
+                ensure_ascii=False,
+                default=str,
+            ),
+            flush=True,
+        )
 
 
 def _clean(value) -> str:
@@ -86,30 +95,42 @@ def _norm(value) -> str:
 
 
 def _tokens(value) -> set[str]:
-    return {token for token in re.split(r"[^a-z0-9]+", _norm(value)) if len(token) > 1}
+    return {
+        token
+        for token in re.split(r"[^a-z0-9]+", _norm(value))
+        if len(token) > 1
+    }
 
 
-def _score(query, text) -> float:
+def _score(query, value) -> float:
     wanted = _tokens(query)
     if not wanted:
         return 0.0
-    return len(wanted & _tokens(text)) / len(wanted)
+    return len(wanted & _tokens(value)) / len(wanted)
 
 
-def _clean_url(raw) -> str:
-    absolute = urljoin(BASE, str(raw or ""))
+def _clean_url(raw_url) -> str:
+    absolute = urljoin(BASE, str(raw_url or ""))
     parsed = urlsplit(absolute)
-    return urlunsplit((parsed.scheme.lower(), parsed.netloc.lower(), parsed.path, parsed.query, ""))
+    return urlunsplit(
+        (
+            parsed.scheme.lower(),
+            parsed.netloc.lower(),
+            parsed.path,
+            parsed.query,
+            "",
+        )
+    )
 
 
-def _internal(url) -> bool:
+def _internal(url: str) -> bool:
     try:
         return urlsplit(url).netloc.lower() in {"sabina.com", "www.sabina.com"}
     except Exception:
         return False
 
 
-def _is_product_url(url) -> bool:
+def _is_product_url(url: str) -> bool:
     if not _internal(url):
         return False
     path = urlsplit(url).path.lower()
@@ -117,7 +138,6 @@ def _is_product_url(url) -> bool:
         return False
     if any(part in path for part in NON_PRODUCT_PATH_PARTS):
         return False
-    # Diagnostic version deliberately does not assume a numeric product ID.
     return path.endswith(".html") and path.count("/") >= 3
 
 
@@ -126,144 +146,49 @@ def _price(value):
         return None
     if isinstance(value, (int, float)):
         return f"{float(value):.2f}".replace(".", ",") + " €"
+
     matches = list(PRICE_RE.finditer(_clean(value)))
     for match in reversed(matches):
         try:
-            number = float(match.group(1).replace(",", "."))
+            amount = float(match.group(1).replace(",", "."))
         except ValueError:
             continue
-        if 1 <= number <= 5000:
-            return f"{number:.2f}".replace(".", ",") + " €"
+        if 1 <= amount <= 5000:
+            return f"{amount:.2f}".replace(".", ",") + " €"
     return None
 
 
-def _container_for(anchor):
-    node = anchor
-    fallback = anchor.parent
-    for depth in range(1, 10):
-        node = getattr(node, "parent", None)
-        if node is None:
-            break
-        text = _clean(node.get_text(" ", strip=True))
-        attrs = " ".join(str(node.get(key, "")) for key in ("id", "class", "data-product-id", "data-product-name", "data-testid"))
-        marker = _norm(attrs)
-        if not text or len(text) > 3000:
-            continue
-        if node.name in {"article", "li"} or any(word in marker for word in ("product", "card", "item", "article")):
-            return node, depth
-    return fallback or anchor, None
+def _query_wants_non_fragrance(query: str) -> bool:
+    wanted = _tokens(query)
+    return any(_tokens(value).issubset(wanted) for value in NON_FRAGRANCE)
 
 
-def _name_from_container(container, anchor) -> str:
-    selectors = (
-        "[itemprop='name']", ".product-name", ".product-title", ".product_name",
-        ".name", "h1", "h2", "h3", "h4",
-    )
-    for selector in selectors:
-        try:
-            nodes = container.select(selector)
-        except Exception:
-            nodes = []
-        for node in nodes:
-            value = _clean(node.get("content") or node.get_text(" ", strip=True))
-            if value and not _price(value):
-                return value
-    for value in (anchor.get("title"), anchor.get("aria-label"), anchor.get("data-product-name"), anchor.get_text(" ", strip=True)):
-        value = _clean(value)
-        if value and not _price(value):
-            return value
-    return ""
+def _valid_product_name(name: str, query: str) -> bool:
+    wanted = _tokens(query)
+    actual = _tokens(name)
+    if not wanted or not wanted.issubset(actual):
+        return False
+    if _query_wants_non_fragrance(query):
+        return True
+    normalized = _norm(name)
+    return not any(_norm(value) in normalized for value in NON_FRAGRANCE)
 
 
-def _price_from_container(container) -> str | None:
-    for selector in ("[itemprop='price']", ".price", ".product-price", ".current-price", ".discounted-price", "meta[property='product:price:amount']"):
-        try:
-            nodes = container.select(selector)
-        except Exception:
-            nodes = []
-        for node in nodes:
-            value = node.get("content") or node.get("data-price") or node.get_text(" ", strip=True)
-            price = _price(value)
-            if price:
-                return price
-    return _price(container.get_text(" ", strip=True))
-
-
-def inspect_html(html: str, base_url: str, query: str) -> dict:
-    soup = BeautifulSoup(html or "", "html.parser")
-    raw_hrefs = []
-    product_hrefs = []
-    rejected_hrefs = []
-    rows = []
-    seen = set()
-    container_depths = Counter()
-
-    for index, anchor in enumerate(soup.find_all("a", href=True), 1):
-        raw = _clean(anchor.get("href"))
-        raw_hrefs.append(raw)
-        url = _clean_url(urljoin(base_url, raw))
-        if not _is_product_url(url):
-            if ".html" in url.lower() and _internal(url):
-                rejected_hrefs.append({"index": index, "raw": raw, "normalized": url, "reason": "is_product_url_false"})
-            continue
-
-        product_hrefs.append(url)
-        container, depth = _container_for(anchor)
-        if depth is not None:
-            container_depths[str(depth)] += 1
-        name = _name_from_container(container, anchor)
-        price = _price_from_container(container)
-        slug_text = re.sub(r"[-_/]+", " ", urlsplit(url).path)
-        name_score = _score(query, name)
-        slug_score = _score(query, slug_text)
-        context = _clean(container.get_text(" ", strip=True))
-        context_score = _score(query, context)
-        key = url
-        if key in seen:
-            continue
-        seen.add(key)
-        rows.append({
-            "index": index,
-            "url": url,
-            "name": name,
-            "price": price,
-            "name_score": name_score,
-            "slug_score": slug_score,
-            "context_score": context_score,
-            "container_depth": depth,
-            "container_tag": getattr(container, "name", ""),
-            "container_classes": container.get("class", []) if hasattr(container, "get") else [],
-            "context_sample": context[:500],
-        })
-
-    rows.sort(key=lambda row: (-max(row["name_score"], row["slug_score"]), -row["context_score"], row["index"]))
-    report = {
-        "query": query,
-        "base_url": base_url,
-        "html_bytes": len((html or "").encode("utf-8", errors="ignore")),
-        "anchor_count": len(raw_hrefs),
-        "product_href_count": len(product_hrefs),
-        "unique_product_href_count": len(set(product_hrefs)),
-        "rejected_html_href_count": len(rejected_hrefs),
-        "rejected_html_href_sample": rejected_hrefs[:50],
-        "container_depths": dict(container_depths),
-        "row_count": len(rows),
-        "matching_row_count": sum(1 for row in rows if max(row["name_score"], row["slug_score"]) >= 1.0),
-        "row_sample": rows[:50],
-    }
-    _log("fixture_inspection", **report)
-    return report
-
-
-def _fetch(session, url):
+def _fetch(session: requests.Session, url: str):
     try:
-        response = session.get(url, headers=HEADERS, timeout=TIMEOUT, allow_redirects=True)
+        response = session.get(
+            url,
+            headers=HEADERS,
+            timeout=TIMEOUT,
+            allow_redirects=True,
+        )
     except requests.RequestException as exc:
         _log("fetch_error", url=url, error=f"{type(exc).__name__}: {exc}")
         return None, None
+
     try:
         content_type = (response.headers.get("content-type") or "").lower()
-        data = {
+        payload = {
             "url": url,
             "final_url": response.url,
             "status": response.status_code,
@@ -271,30 +196,152 @@ def _fetch(session, url):
             "bytes": len(response.content or b""),
         }
         if response.status_code != 200 or "html" not in content_type:
-            _log("fetch_rejected", **data)
+            _log("fetch_rejected", **payload)
             return None, None
-        _log("fetch_ok", **data)
+        _log("fetch_ok", **payload)
         return response.url, response.text
     finally:
         response.close()
 
 
-def _extract_pagination(soup, base_url):
-    pages = []
-    seen = set()
-    for anchor in soup.find_all("a", href=True):
-        url = _clean_url(urljoin(base_url, anchor.get("href")))
-        if not _internal(url) or url in seen:
+def _product_container(anchor):
+    node = anchor
+    fallback = anchor.parent
+    for depth in range(1, 10):
+        node = getattr(node, "parent", None)
+        if node is None:
+            break
+        text = _clean(node.get_text(" ", strip=True))
+        if not text or len(text) > 3000:
             continue
-        parsed = urlsplit(url)
-        params = parse_qs(parsed.query)
-        label = _norm(anchor.get_text(" ", strip=True))
-        numbered = any(key in {"p", "page"} and any(value.isdigit() for value in values) for key, values in params.items())
-        navigation = any(word in label for word in ("suivant", "next", "siguiente", "prochaine", "precedent"))
-        if numbered or navigation:
+        attrs = " ".join(
+            str(node.get(key, ""))
+            for key in (
+                "id",
+                "class",
+                "data-product-id",
+                "data-product-name",
+                "data-testid",
+            )
+        )
+        marker = _norm(attrs)
+        if node.name in {"article", "li"} or any(
+            word in marker for word in ("product", "card", "item", "article")
+        ):
+            return node, depth
+    return fallback or anchor, None
+
+
+def _name_from_container(container, anchor) -> str:
+    for selector in (
+        "[itemprop='name']",
+        ".product-name",
+        ".product-title",
+        ".product_name",
+        ".name",
+        "h1",
+        "h2",
+        "h3",
+        "h4",
+    ):
+        for node in container.select(selector):
+            value = _clean(node.get("content") or node.get_text(" ", strip=True))
+            if value and _price(value) is None:
+                return value
+
+    for value in (
+        anchor.get("title"),
+        anchor.get("aria-label"),
+        anchor.get("data-product-name"),
+        anchor.get_text(" ", strip=True),
+    ):
+        value = _clean(value)
+        if value and _price(value) is None:
+            return value
+    return ""
+
+
+def _price_from_container(container):
+    for selector in (
+        "[itemprop='price']",
+        ".price",
+        ".product-price",
+        ".current-price",
+        ".discounted-price",
+        "meta[property='product:price:amount']",
+    ):
+        for node in container.select(selector):
+            value = (
+                node.get("content")
+                or node.get("data-price")
+                or node.get_text(" ", strip=True)
+            )
+            price = _price(value)
+            if price:
+                return price
+    return _price(container.get_text(" ", strip=True))
+
+
+def _extract_listing_rows(html: str, base_url: str, query: str):
+    soup = BeautifulSoup(html or "", "html.parser")
+    rows = []
+    seen = set()
+    raw_anchor_count = 0
+    html_product_like_count = 0
+    rejected_product_like = []
+    depths = Counter()
+
+    for index, anchor in enumerate(soup.find_all("a", href=True), 1):
+        raw_anchor_count += 1
+        raw_url = _clean(anchor.get("href"))
+        url = _clean_url(urljoin(base_url, raw_url))
+        if ".html" in url.lower() and _internal(url):
+            html_product_like_count += 1
+        if not _is_product_url(url):
+            if ".html" in url.lower() and _internal(url):
+                rejected_product_like.append(
+                    {
+                        "index": index,
+                        "raw_url": raw_url,
+                        "normalized_url": url,
+                    }
+                )
+            continue
+
+        container, depth = _product_container(anchor)
+        if depth is not None:
+            depths[str(depth)] += 1
+        name = _name_from_container(container, anchor)
+        price = _price_from_container(container)
+        context = _clean(container.get_text(" ", strip=True))
+        slug = re.sub(r"[-_/]+", " ", urlsplit(url).path)
+        row = {
+            "index": index,
+            "url": url,
+            "name": name,
+            "price": price,
+            "name_score": _score(query, name),
+            "slug_score": _score(query, slug),
+            "context_score": _score(query, context),
+            "container_tag": getattr(container, "name", ""),
+            "container_depth": depth,
+            "context_sample": context[:500],
+        }
+        if url not in seen:
             seen.add(url)
-            pages.append(url)
-    return pages
+            rows.append(row)
 
-
-def _load_jsonld_rows
+    rows.sort(
+        key=lambda row: (
+            -max(row["name_score"], row["slug_score"]),
+            -row["context_score"],
+            row["index"],
+        )
+    )
+    diagnostic = {
+        "anchor_count": raw_anchor_count,
+        "html_product_like_count": html_product_like_count,
+        "rejected_product_like_count": len(rejected_product_like),
+        "rejected_product_like_sample": rejected_product_like[:30],
+        "unique_product_rows": len(rows),
+        "exact_identity_matches"
