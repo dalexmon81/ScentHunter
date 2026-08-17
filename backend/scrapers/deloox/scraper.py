@@ -831,15 +831,91 @@ def _product_urls_by_slug(html, query):
     return found[:80]
 
 
+def _product_card_context(anchor, query=""):
+    """Return the smallest useful product-card context around one product link.
+
+    Deloox often puts the product URL on the image <a>, while the product name
+    lives in a sibling elsewhere in the same product-card. We therefore climb
+    only to the nearest semantic card/item container and never use a whole grid
+    or page as context.
+    """
+    query = clean(query)
+    semantic = (
+        "product",
+        "product-card",
+        "productcard",
+        "card",
+        "item",
+        "tile",
+        "listing",
+    )
+
+    node = anchor
+    fallback = ""
+
+    for depth in range(0, 8):
+        if node is None:
+            break
+
+        parts = []
+        if getattr(node, "attrs", None):
+            for key in (
+                "aria-label",
+                "title",
+                "data-name",
+                "data-product-name",
+                "data-title",
+                "data-product-title",
+            ):
+                value = clean(node.get(key, ""))
+                if value:
+                    parts.append(value)
+
+            marker = " ".join(
+                clean(node.get(key, ""))
+                for key in (
+                    "id",
+                    "class",
+                    "data-testid",
+                    "data-component",
+                )
+                if clean(node.get(key, ""))
+            ).lower()
+        else:
+            marker = ""
+
+        text = clean(node.get_text(" ", strip=True))
+        if text:
+            parts.append(text)
+
+        context = clean(" ".join(parts))[:3000]
+        marker_hit = any(token in marker for token in semantic)
+
+        # The first semantic card/item is the matching boundary. Crucially,
+        # we stop here: a parent grid may contain many different products.
+        if marker_hit:
+            return context
+
+        # Only keep a very small unmarked fallback. It is used if the template
+        # has no semantic card classes at all.
+        if depth <= 2 and context and len(context) <= 800:
+            fallback = context
+
+        node = getattr(node, "parent", None)
+
+    return fallback
+
+
 def _candidate_product_urls(
     html,
     query=None,
 ):
-    """Extract product URLs whose local context matches the query.
+    """Extract product URLs using the product-card as the matching boundary.
 
-    This deliberately rejects arbitrary numeric /product/ URLs. The previous
-    behaviour could associate an unrelated product with a page-level query
-    merely because the query appeared elsewhere in the same large script.
+    Deloox can place the product URL on an image while the visible product name
+    is a sibling elsewhere in the same card. The old extractor inspected only
+    the <a> text/immediate parent, so a real match such as "Liquid Brun" could
+    be found by one parser and then disappear from candidate_scan.
     """
     soup = BeautifulSoup(
         html,
@@ -897,8 +973,8 @@ def _candidate_product_urls(
         if url in seen:
             return
 
-        # Local context OR the product URL slug itself must contain every
-        # query token. This is the strict gate.
+        # The URL slug alone is a valid local signal. Otherwise the product
+        # card context must contain every query token.
         if not matches(
             f"{context} {url}",
             query,
@@ -908,7 +984,9 @@ def _candidate_product_urls(
         seen.add(url)
         found.append(url)
 
-    # Normal anchors: use the anchor/card itself.
+    # ---------------------------------------------------------
+    # 1) Real HTML anchors: match against the complete product card.
+    # ---------------------------------------------------------
     for a in soup.find_all(
         "a",
         href=True,
@@ -934,17 +1012,23 @@ def _candidate_product_urls(
             ),
         ]
 
-        context = " ".join(
-            clean(x)
-            for x in context_parts
-            if clean(x)
+        context = clean(
+            " ".join(
+                clean(x)
+                for x in context_parts
+                if clean(x)
+            )
         )
 
-        # If the anchor has no useful text, only use its immediate parent.
-        if not context and a.parent:
-            context = a.parent.get_text(
-                " ",
-                strip=True,
+        # Critical surgical fix: if the URL is on the image and the anchor has
+        # no name, climb to the enclosing product-card and read its text.
+        card_context = _product_card_context(
+            a,
+            query,
+        )
+        if card_context:
+            context = clean(
+                f"{context} {card_context}"
             )
 
         add(
@@ -962,7 +1046,9 @@ def _candidate_product_urls(
         r'(?<![A-Za-z0-9])(?:/|(?:en|it|nl)/)product/[^"\'<>\s]+',
     )
 
-    # Scripts and structured blocks.
+    # ---------------------------------------------------------
+    # 2) Scripts/structured blocks: retain the existing local-object logic.
+    # ---------------------------------------------------------
     for tag in soup.find_all(
         [
             "script",
@@ -1000,7 +1086,9 @@ def _candidate_product_urls(
                     context,
                 )
 
-    # Final raw HTML pass.
+    # ---------------------------------------------------------
+    # 3) Final raw pass, still using a local object only.
+    # ---------------------------------------------------------
     for pattern in patterns:
         for match in re.finditer(
             pattern,
