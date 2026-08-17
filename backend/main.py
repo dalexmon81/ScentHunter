@@ -355,6 +355,11 @@ def run_store(
     """
     Esegue la ricerca su un singolo negozio.
     """
+    print(
+        f"STORE_SEARCH: START store={store} query={query!r}",
+        flush=True,
+    )
+
     module = load_scraper(store)
 
     attempts = build_search_attempts(
@@ -396,6 +401,11 @@ def run_store(
 
         if output:
             break
+
+    print(
+        f"STORE_SEARCH: END store={store} query={query!r} results={len(output)}",
+        flush=True,
+    )
 
     return output
 
@@ -602,16 +612,18 @@ def search_perfume(q: str):
     all_results: List[Dict[str, Any]] = []
     errors: Dict[str, str] = {}
 
-    # NON 8 insieme: su Render Free abbiamo osservato exit 137.
-    # Due worker riducono nettamente RAM e connessioni simultanee.
-    executor = ThreadPoolExecutor(max_workers=2)
+    # La ricerca normale deve avviare tutti gli store in parallelo.
+    # Con soli 2 worker, gli store in coda potevano non partire prima
+    # della scadenza della ricerca principale. Su Railway usiamo un
+    # worker per store, mantenendo comunque il timeout globale.
+    executor = ThreadPoolExecutor(max_workers=len(STORES))
     futures = {
         executor.submit(run_store, store, query): store
         for store in STORES
     }
 
     try:
-        for future in as_completed(futures, timeout=28):
+        for future in as_completed(futures, timeout=35):
             store = futures[future]
             try:
                 all_results.extend(future.result())
