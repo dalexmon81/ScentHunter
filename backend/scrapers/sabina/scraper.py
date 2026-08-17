@@ -43,12 +43,7 @@ def _looks_like_product_url(url):
     return bool(url and PRODUCT_URL_RE.match(url))
 
 def _query_matches(name, url, query):
-    """Match against both visible product name and product URL.
-
-    Sabina often puts the brand in the product URL but not in the clickable
-    product title. The old matcher checked the title only, causing valid
-    products such as 'Le Beau Narcisse' to disappear for a full-brand query.
-    """
+    """Match the query against the visible product name and product URL."""
     q_words = [w for w in re.findall(r"[a-z0-9À-ÿ]+", _clean(query).lower()) if len(w) > 1]
     if not q_words:
         return False
@@ -191,14 +186,20 @@ def _parse_html(text, query):
         cleaned = [_clean(x) for x in candidates if _clean(x)]
         if not cleaned:
             continue
-        # Prefer a concise title; the previous max-length choice could select
-        # unrelated card text and make matching fail.
-        name = min(cleaned, key=len)
-        for candidate in cleaned:
-            low = candidate.lower()
-            if "le beau" in low or "jean paul gaultier" in low:
-                name = candidate
-                break
+        # Prefer semantic product-title elements over generic short labels
+        # such as the size, concentration, CTA text, or image alt text.
+        preferred = []
+        for el in container.select(
+            'h1, h2, h3, h4, [itemprop="name"], '
+            ".name, .product-name, .product-title, .product-item-name, "
+            ".product-name-container, .product-title-container"
+        ):
+            value = _clean(el.get_text(" ", strip=True))
+            if value and value not in preferred:
+                preferred.append(value)
+        name = preferred[0] if preferred else max(cleaned, key=len)
+        if len(name) > 240:
+            name = max(cleaned, key=lambda x: len(x) if len(x) <= 240 else 0)
         if name.lower() in {"vedi", "vedi tutto", "acquista", "immagine"}:
             continue
         rows.append({"store": STORE, "name": name, "price": next((g for g in pm.groups() if g is not None), "") .replace(".", ",") + " €", "url": url})
@@ -226,10 +227,13 @@ def search(query):
                 r.close()
         except Exception:
             pass
+        q = quote_plus(query)
         urls = [
-            BASE + "/it/ricerca?search_query=" + quote_plus(query),
-            BASE + "/it/ricerca_old?s=" + quote_plus(query),
-            BASE + "/it/ricerca_old?search_query=" + quote_plus(query),
+            BASE + "/it/ricerca?controller=search&s=" + q,
+            BASE + "/it/ricerca?s=" + q,
+            BASE + "/it/ricerca?search_query=" + q,
+            BASE + "/it/ricerca_old?s=" + q,
+            BASE + "/it/ricerca_old?search_query=" + q,
         ]
         for url in urls:
             try:
@@ -284,5 +288,5 @@ def search_sabina(query):
 
 if __name__ == "__main__":
     import sys
-    q = " ".join(sys.argv[1:]).strip() or "Dior"
+    q = " ".join(sys.argv[1:]).strip()
     print(json.dumps(search(q), ensure_ascii=False, indent=2))
