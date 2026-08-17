@@ -464,266 +464,83 @@ def _verify(session, query, item):
 
 
 def search(query):
-    """
-    DIAGNOSTIC VERSION
-
-    This version does not add product-specific seeds, URLs or exceptions.
-    It tests the existing generic Sabina discovery surfaces separately so we
-    can determine exactly where a product disappears:
-      1) robots/sitemap
-      2) sitemap product URLs
-      3) category first pages
-      4) category pagination
-      5) final product verification
-
-    The returned results use the same product verification logic as before.
-    """
-    print(f"SABINA_DIAG: START query={query!r}")
-    qwords = _words(query)
-    print(f"SABINA_DIAG: TOKENS={qwords}")
+    """TEST 2: isolate Sabina discovery surfaces without changing discovery."""
+    print(f"SABINA_TEST2: START query={query!r}")
+    print(f"SABINA_TEST2: TOKENS={_words(query)}")
 
     session = requests.Session()
-    session.headers.update(
-        {
-            "User-Agent": UA,
-            "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
-            "Accept-Language": "fr-FR,fr;q=0.9,en;q=0.8",
-        }
-    )
+    session.headers.update({
+        "User-Agent": UA,
+        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+        "Accept-Language": "fr-FR,fr;q=0.9,en;q=0.8",
+    })
 
-    def token_report(label, candidates):
-        exact = []
-        partial = []
-        for u, txt in candidates:
-            hay = _norm(u + " " + txt)
-            hits = sum(w in hay for w in qwords)
-            if qwords and hits == len(qwords):
-                exact.append((u, txt))
-            elif hits > 0:
-                partial.append((u, txt, hits))
-        print(
-            f"SABINA_DIAG: {label} total={len(candidates)} "
-            f"exact={len(exact)} partial={len(partial)}"
-        )
-        for u, txt in exact[:10]:
-            print(f"SABINA_DIAG: {label}_EXACT url={u} text={txt!r}")
-        for u, txt, hits in partial[:10]:
-            print(
-                f"SABINA_DIAG: {label}_PARTIAL hits={hits}/{len(qwords)} "
-                f"url={u} text={txt!r}"
-            )
-        return exact, partial
-
-    # ------------------------------------------------------------
-    # TEST 1: robots.txt -> sitemap selection
-    # ------------------------------------------------------------
-    sitemap_index = _robots_sitemap(session)
-    print(f"SABINA_DIAG: ROBOTS_SITEMAP={sitemap_index}")
-
-    # ------------------------------------------------------------
-    # TEST 2: sitemap itself
-    # ------------------------------------------------------------
-    sitemap_urls = []
-    sitemap_error = None
+    # TEST A — exact sitemap response, before any parser is involved.
+    sitemap_url = _robots_sitemap(session)
+    print(f"SABINA_TEST2: SITEMAP_URL={sitemap_url}")
     try:
-        sitemap_urls = _expand_sitemap(session, sitemap_index)
-        sitemap_urls = list(dict.fromkeys(
-            u for u in sitemap_urls if _product_like(u)
-        ))
+        r = session.get(sitemap_url, timeout=20, allow_redirects=True)
+        print(f"SABINA_TEST2: SITEMAP_STATUS={r.status_code}")
+        print(f"SABINA_TEST2: SITEMAP_FINAL={r.url}")
+        print(f"SABINA_TEST2: SITEMAP_TYPE={r.headers.get('content-type','')!r}")
+        print(f"SABINA_TEST2: SITEMAP_BYTES={len(r.content)}")
+        raw = r.content[:1000]
+        print(f"SABINA_TEST2: SITEMAP_HEAD={raw!r}")
+        locs = _xml_locs(r.text)
+        print(f"SABINA_TEST2: SITEMAP_XML_LOCS={len(locs)}")
+        for u in locs[:15]:
+            print(f"SABINA_TEST2: SITEMAP_LOC={u}")
+        product_locs = [u for u in locs if _product_like(u)]
+        xml_locs = [u for u in locs if u.lower().endswith('.xml') or 'sitemap' in u.lower()]
+        print(f"SABINA_TEST2: SITEMAP_PRODUCT_LIKE={len(product_locs)}")
+        print(f"SABINA_TEST2: SITEMAP_CHILD_XML={len(xml_locs)}")
     except Exception as e:
-        sitemap_error = f"{type(e).__name__}: {e}"
+        print(f"SABINA_TEST2: SITEMAP_REQUEST_ERROR={type(e).__name__}: {e}")
 
-    if sitemap_error:
-        print(f"SABINA_DIAG: SITEMAP_ERROR {sitemap_error}")
-
-    print(f"SABINA_DIAG: SITEMAP_PRODUCTS={len(sitemap_urls)}")
-
-    sitemap_candidates = []
-    for u in sitemap_urls:
-        slug = _norm(u.rsplit("/", 1)[-1])
-        hits = sum(w in slug for w in qwords)
-        if qwords and hits == len(qwords):
-            sitemap_candidates.append((u, slug))
-
-    print(f"SABINA_DIAG: SITEMAP_EXACT_MATCHES={len(sitemap_candidates)}")
-    for u, slug in sitemap_candidates[:20]:
-        print(f"SABINA_DIAG: SITEMAP_EXACT url={u} slug={slug!r}")
-
-    # Also report single-token hits. This is crucial when a query such as
-    # "Liquid Brun" fails because only one word is present in the URL.
-    for word in qwords:
-        hits = [
-            u for u in sitemap_urls
-            if word in _norm(u.rsplit("/", 1)[-1])
-        ]
-        print(f"SABINA_DIAG: SITEMAP_TOKEN word={word!r} hits={len(hits)}")
-        for u in hits[:10]:
-            print(f"SABINA_DIAG: SITEMAP_TOKEN_URL word={word!r} url={u}")
-
-    # ------------------------------------------------------------
-    # TEST 3 + 4: category pages, independently.
-    # We deliberately inspect every configured category and its pagination
-    # instead of stopping at the first successful category.
-    # ------------------------------------------------------------
-    category_exact = {}
-    category_partial = {}
-
+    # TEST B — category HTML, without pagination and without product verification.
+    # This tells us whether Sabina exposes product URLs in the HTML we receive.
     for root in CATEGORY_ROOTS:
-        print(f"SABINA_DIAG: CATEGORY_START root={root}")
+        print(f"SABINA_TEST2: CATEGORY_START={root}")
+        try:
+            r = session.get(root, timeout=20, allow_redirects=True)
+            print(f"SABINA_TEST2: CATEGORY_STATUS={r.status_code} final={r.url} bytes={len(r.content)} type={r.headers.get('content-type','')!r}")
+            links = _links(r.text, r.url)
+            print(f"SABINA_TEST2: CATEGORY_PRODUCT_LINKS={len(links)}")
+            exact=[]; partial=[]
+            for u,txt in links:
+                sc=_score(query, u+' '+txt)
+                if sc >= 1.0: exact.append((u,txt))
+                elif sc > 0: partial.append((u,txt,sc))
+            print(f"SABINA_TEST2: CATEGORY_EXACT={len(exact)} partial={len(partial)}")
+            for u,txt in exact[:10]:
+                print(f"SABINA_TEST2: CATEGORY_MATCH url={u} text={txt!r}")
+            for u,txt,sc in partial[:10]:
+                print(f"SABINA_TEST2: CATEGORY_PARTIAL score={sc:.3f} url={u} text={txt!r}")
+        except Exception as e:
+            print(f"SABINA_TEST2: CATEGORY_ERROR={type(e).__name__}: {e}")
 
-        first = _collect_catalog_page(session, root, query)
-        first_links = []
+    # TEST C — Sabina's own generic search endpoint, discovered from the site
+    # rather than using a product-specific URL. We only inspect the response.
+    search_urls = [
+        BASE + "/fr/recherche?search_query=" + quote_plus(query),
+        BASE + "/fr/recherche?controller=search&s=" + quote_plus(query),
+    ]
+    seen=set()
+    for u in search_urls:
+        if u in seen: continue
+        seen.add(u)
+        print(f"SABINA_TEST2: SEARCH_ENDPOINT={u}")
+        try:
+            r=session.get(u,timeout=20,allow_redirects=True)
+            print(f"SABINA_TEST2: SEARCH_STATUS={r.status_code} final={r.url} bytes={len(r.content)} type={r.headers.get('content-type','')!r}")
+            links=_links(r.text,r.url)
+            print(f"SABINA_TEST2: SEARCH_PRODUCT_LINKS={len(links)}")
+            for pu,txt in links[:20]:
+                sc=_score(query,pu+' '+txt)
+                if sc>0:
+                    print(f"SABINA_TEST2: SEARCH_MATCH score={sc:.3f} url={pu} text={txt!r}")
+        except Exception as e:
+            print(f"SABINA_TEST2: SEARCH_ERROR={type(e).__name__}: {e}")
 
-        if first.get("ok"):
-            try:
-                rr = session.get(root, timeout=12, allow_redirects=True)
-                if rr.status_code == 200:
-                    first_links = _links(rr.text, rr.url)
-            except Exception:
-                pass
-
-        exact, partial = token_report(
-            f"CATEGORY_FIRST root={root}",
-            first_links,
-        )
-
-        if exact:
-            category_exact[root] = exact
-        if partial:
-            category_partial[root] = partial
-
-        total_pages = min(
-            first.get("pages", 1),
-            MAX_PAGES_PER_CATEGORY,
-        )
-
-        print(
-            f"SABINA_DIAG: CATEGORY_PAGES root={root} "
-            f"pages={total_pages}"
-        )
-
-        if total_pages <= 1:
-            continue
-
-        # Test all remaining pages, in bounded batches.
-        for start_page in range(2, total_pages + 1, PAGE_BATCH):
-            batch = list(
-                range(
-                    start_page,
-                    min(total_pages, start_page + PAGE_BATCH - 1) + 1
-                )
-            )
-
-            with ThreadPoolExecutor(
-                max_workers=MAX_DISCOVERY_WORKERS
-            ) as ex:
-                futures = {
-                    ex.submit(
-                        _collect_catalog_page,
-                        session,
-                        _page_url(root, p),
-                        query,
-                    ): p
-                    for p in batch
-                }
-
-                for fut in as_completed(futures):
-                    page = futures[fut]
-                    result = fut.result()
-
-                    if not result.get("ok"):
-                        print(
-                            f"SABINA_DIAG: CATEGORY_PAGE_ERROR "
-                            f"root={root} page={page} "
-                            f"error={result.get('error')}"
-                        )
-                        continue
-
-                    matches = result.get("matches", [])
-                    if matches:
-                        print(
-                            f"SABINA_DIAG: CATEGORY_PAGE_MATCH "
-                            f"root={root} page={page} "
-                            f"matches={len(matches)}"
-                        )
-                        for u, txt, sc in matches[:20]:
-                            print(
-                                f"SABINA_DIAG: CATEGORY_PAGE_CANDIDATE "
-                                f"root={root} page={page} "
-                                f"score={sc:.3f} url={u} text={txt!r}"
-                            )
-
-    # ------------------------------------------------------------
-    # TEST 5: verification only for candidates found by the generic
-    # surfaces. No product URL is introduced here.
-    # ------------------------------------------------------------
-    candidates = {}
-
-    for u, _ in sitemap_candidates:
-        candidates[u] = 1.0
-
-    for matches in category_exact.values():
-        for u, txt in matches:
-            candidates[u] = max(candidates.get(u, 0.0), 1.0)
-
-    for matches in category_partial.values():
-        for u, txt, hits in matches:
-            candidates[u] = max(
-                candidates.get(u, 0.0),
-                hits / max(len(qwords), 1) * 0.8,
-            )
-
-    ranked = sorted(
-        candidates.items(),
-        key=lambda x: (-x[1], x[0]),
-    )
-
-    print(f"SABINA_DIAG: FINAL_CANDIDATES={len(ranked)}")
-    for u, sc in ranked[:30]:
-        print(f"SABINA_DIAG: FINAL_CANDIDATE score={sc:.3f} url={u}")
-
-    verify_list = ranked[:MAX_PRODUCT_VERIFY]
-    results = []
-
-    if verify_list:
-        with ThreadPoolExecutor(
-            max_workers=min(6, len(verify_list))
-        ) as ex:
-            futures = [
-                ex.submit(_verify, session, query, item)
-                for item in verify_list
-            ]
-            for fut in as_completed(futures):
-                result = fut.result()
-                if result:
-                    results.append(result)
-                    print(
-                        f"SABINA_DIAG: VERIFIED "
-                        f"name={result['name']!r} "
-                        f"price={result['price']!r} "
-                        f"url={result['url']}"
-                    )
-
-    dedup = {}
-    for result in results:
-        dedup[result["url"]] = result
-
-    results = list(dedup.values())
-    results.sort(
-        key=lambda r: (
-            _norm(r["name"]) != _norm(query),
-            _norm(r["name"]),
-        )
-    )
-
-    print(
-        f"SABINA_DIAG: COMPLETE query={query!r} "
-        f"results={len(results)} "
-        f"sitemap_products={len(sitemap_urls)} "
-        f"sitemap_exact={len(sitemap_candidates)} "
-        f"category_exact={sum(len(v) for v in category_exact.values())} "
-        f"final_candidates={len(ranked)}"
-    )
-
-    return results
-
+    print("SABINA_TEST2: COMPLETE")
+    return []
