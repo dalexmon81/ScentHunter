@@ -2331,6 +2331,13 @@ def _discover_from_categories(
                     if len(urls) >= max_urls:
                         return urls[:max_urls]
 
+            # Se abbiamo trovato categorie pertinenti, il percorso corretto
+            # è già stato stabilito: non continuare a paginare il root generico.
+            # Altrimenti le stesse categorie vengono riscoperta a ogni pagina,
+            # causando richieste inutili (?page=2, ?page=3, ...).
+            if scored_categories:
+                break
+
             next_url = next_page_url(
                 r.text,
                 page_url,
