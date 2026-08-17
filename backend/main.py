@@ -640,6 +640,26 @@ def search_perfume(q: str):
 
 
 # ============================================================
+# API - ROUTING (compatibilità frontend)
+# ============================================================
+
+@app.get("/routing")
+def routing(q: str):
+    """
+    Endpoint usato dal frontend per la ricerca normale.
+
+    Deve usare esattamente la stessa pipeline di /search: tutti gli
+    scraper configurati in STORES vengono eseguiti e i risultati
+    vengono filtrati/ordinati dalla logica centrale.
+
+    /routing era assente nel main precedente e il frontend riceveva
+    quindi HTTP 404, interrompendo la ricerca normale prima che i
+    risultati degli store potessero essere mostrati.
+    """
+    return search_perfume(q)
+
+
+# ============================================================
 # API - TEST SINGOLO STORE (diagnostica)
 # ============================================================
 
