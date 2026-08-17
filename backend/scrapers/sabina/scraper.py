@@ -1,15 +1,12 @@
-
-# TEST DIAGNOSTICO 4
-# Questo file NON modifica la discovery di Sabina.
-# È pensato per essere caricato da ScentHunter come scraper:
-# il test usa la query ricevuta da main, non sys.argv.
+# TEST DIAGNOSTICO 5
+# Solo analisi: nessuna modifica allo scraper.
+# Riceve la query direttamente da ScentHunter.
 
 import re
-from urllib.parse import quote_plus, urljoin
+from urllib.parse import quote_plus
 import requests
 from bs4 import BeautifulSoup
 
-STORE = "Sabina"
 BASE = "https://www.sabina.com"
 TIMEOUT = 10
 
@@ -24,156 +21,97 @@ HEADERS = {
     "Referer": BASE + "/it/",
 }
 
-def _clean(v):
+def clean(v):
     return re.sub(r"\s+", " ", str(v or "")).strip()
 
 def scrape(query):
-    query = _clean(query)
-    print(f"SABINA_TEST4 query_received: {query!r}")
-
-    if not query:
-        print("SABINA_TEST4 empty_query")
-        return []
+    query = clean(query)
+    print(f"SABINA_TEST5 query_received: {query!r}")
 
     url = BASE + "/it/ricerca_old?s=" + quote_plus(query)
-    print("SABINA_TEST4 request:", url)
+    print("SABINA_TEST5 request:", url)
 
     try:
-        r = requests.get(
-            url,
-            headers=HEADERS,
-            timeout=TIMEOUT,
-            allow_redirects=True,
-        )
+        r = requests.get(url, headers=HEADERS, timeout=TIMEOUT, allow_redirects=True)
+        html = r.text
         print(
-            "SABINA_TEST4 response:",
+            "SABINA_TEST5 response:",
             f"status={r.status_code}",
             f"final_url={r.url}",
             f"bytes={len(r.content)}",
-            f"content_type={r.headers.get('content-type')}",
         )
 
-        html = r.text
-        soup = BeautifulSoup(html, "html.parser")
         low = html.lower()
 
-        print("SABINA_TEST4 query_exact_count:", low.count(query.lower()))
+        # Mostriamo il contesto di OGNI occorrenza di liquid e brun.
+        for term in ("liquid", "brun"):
+            positions = [m.start() for m in re.finditer(re.escape(term), low)]
+            print(f"SABINA_TEST5 {term}_occurrences:", len(positions))
 
-        for word in re.findall(r"[a-z0-9À-ÿ]+", query.lower()):
-            print(
-                f"SABINA_TEST4 word_{word}_count:",
-                low.count(word),
-            )
+            for i, pos in enumerate(positions[:30], 1):
+                a = max(0, pos - 700)
+                b = min(len(html), pos + 1400)
+                ctx = clean(html[a:b])
 
-        # Cerca la query nei nodi testuali.
-        text_hits = []
-        for node in soup.find_all(string=re.compile(re.escape(query), re.I)):
-            parent = node.parent
-            if parent:
-                text_hits.append(parent)
+                print(f"SABINA_TEST5 {term.upper()}_CONTEXT {i}")
+                print(ctx[:2200])
 
-        print("SABINA_TEST4 full_query_text_nodes:", len(text_hits))
+        soup = BeautifulSoup(html, "html.parser")
 
-        for i, el in enumerate(text_hits[:20], 1):
-            print(f"SABINA_TEST4 QUERY_MATCH {i}")
-            print(" tag:", el.name)
-            print(" class:", " ".join(el.get("class", [])))
-            print(" id:", el.get("id", ""))
-            print(" text:", _clean(el.get_text(" ", strip=True))[:1200])
+        # Controlliamo tutti gli script che possono contenere dati di ricerca.
+        print("SABINA_TEST5 scripts_total:", len(soup.find_all("script")))
 
-            if el.name == "a":
-                print(" href:", el.get("href", ""))
-
-        # Cerca Liquid/Brun anche quando non sono consecutivi.
-        href_hits = []
-        for a in soup.find_all("a", href=True):
-            href = urljoin(BASE, a["href"])
-            label = _clean(a.get_text(" ", strip=True))
-
-            if (
-                re.search(r"liquid|brun", href, re.I)
-                or re.search(r"liquid|brun", label, re.I)
-            ):
-                href_hits.append((href, label))
-
-        print("SABINA_TEST4 href_or_label_hits:", len(href_hits))
-
-        for i, (href, label) in enumerate(href_hits[:50], 1):
-            print(f"SABINA_TEST4 HREF_HIT {i}")
-            print(" href:", href)
-            print(" label:", label[:800])
-
-        # Cerca JSON/script contenenti la query.
-        script_hits = 0
         for i, script in enumerate(soup.find_all("script"), 1):
             txt = script.get_text(" ", strip=False)
+            lowtxt = txt.lower()
 
-            if re.search(r"liquid|brun", txt, re.I):
-                script_hits += 1
+            if any(x in lowtxt for x in ("search", "autocomplete", "suggest", "product", "ajax")):
                 print(
-                    f"SABINA_TEST4 SCRIPT_MATCH {i}: chars={len(txt)}"
+                    f"SABINA_TEST5 RELEVANT_SCRIPT {i}: "
+                    f"chars={len(txt)}"
                 )
+                print(clean(txt)[:3500])
 
-                for m in list(re.finditer(r"liquid|brun", txt, re.I))[:5]:
-                    a = max(0, m.start() - 700)
-                    b = min(len(txt), m.end() + 1500)
-                    context = _clean(txt[a:b])
-                    print(" --- SCRIPT_CONTEXT ---")
-                    print(context[:2200])
+        # Individuiamo form/input collegati alla ricerca.
+        print("SABINA_TEST5 FORMS:", len(soup.find_all("form")))
 
-        print("SABINA_TEST4 script_hits:", script_hits)
-
-        # Conta strutture che potrebbero essere card/prodotti.
-        selectors = [
-            '[class*="product"]',
-            '[class*="item"]',
-            '[class*="result"]',
-            '[id*="product"]',
-            '[id*="result"]',
-            '[data-id-product]',
-            '[data-product-id]',
-            '[data-product]',
-        ]
-
-        for selector in selectors:
-            els = soup.select(selector)
-            print(
-                f"SABINA_TEST4 selector {selector}: {len(els)}"
+        for i, form in enumerate(soup.find_all("form"), 1):
+            txt = clean(form.get_text(" ", strip=True))
+            attrs = " ".join(
+                f"{k}={v}"
+                for k, v in form.attrs.items()
+                if k in ("id", "class", "action", "method", "name")
             )
 
-            shown = 0
-            for el in els:
-                txt = _clean(el.get_text(" ", strip=True))
+            if re.search(r"search|ricerca|autocomplete|query", attrs + " " + txt, re.I):
+                print(f"SABINA_TEST5 SEARCH_FORM {i}")
+                print(" attrs:", attrs)
+                print(" text:", txt[:1500])
+                print(" html:", clean(str(form))[:5000])
 
-                if (
-                    re.search(r"liquid|brun", txt, re.I)
-                    or selector.startswith("[data-")
-                ):
-                    print(
-                        "  MATCH",
-                        "tag=", el.name,
-                        "class=", " ".join(el.get("class", [])),
-                        "id=", el.get("id", ""),
-                        "data-id-product=", el.get("data-id-product", ""),
-                        "data-product-id=", el.get("data-product-id", ""),
-                    )
-                    print("  text=", txt[:1500])
-                    shown += 1
+        # Tutti gli input/search/autocomplete.
+        for i, el in enumerate(
+            soup.select("input, select, textarea, [role='searchbox']"), 1
+        ):
+            attrs = " ".join(
+                f"{k}={v}"
+                for k, v in el.attrs.items()
+                if k in (
+                    "id", "name", "type", "value", "placeholder",
+                    "class", "data-url", "data-search-url",
+                    "data-autocomplete", "data-action"
+                )
+            )
 
-                    if shown >= 15:
-                        break
+            if re.search(r"search|ricerca|autocomplete|query|suggest", attrs, re.I):
+                print(f"SABINA_TEST5 SEARCH_INPUT {i}")
+                print(attrs)
 
-        # Questo test non deve produrre risultati falsi.
-        # Restituisce [] intenzionalmente.
-        print("SABINA_TEST4 END: diagnostic_only")
+        print("SABINA_TEST5 END_DIAGNOSTIC")
         return []
 
     except Exception as e:
-        print(
-            "SABINA_TEST4 ERROR:",
-            type(e).__name__,
-            str(e),
-        )
+        print("SABINA_TEST5 ERROR:", type(e).__name__, str(e))
         return []
 
 def search(query):
