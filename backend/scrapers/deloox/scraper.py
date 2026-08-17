@@ -903,14 +903,19 @@ def _extract_product_urls(
     query=None,
     allow_opaque=False,
 ):
-    """Extract product URLs whose local context matches the query.
+    """Extract product URLs and report exactly where candidates are rejected.
 
-    This deliberately rejects arbitrary numeric /product/ URLs. The previous
-    behaviour could associate an unrelated product with a page-level query
-    merely because the query appeared elsewhere in the same large script.
+    The debug counters are intentionally local to this extraction call. This
+    lets us distinguish:
+      - no /product/ URLs present in the category HTML,
+      - product URLs present but not carrying usable local context,
+      - URLs rejected by the strict query gate,
+      - URLs successfully accepted.
+
+    No selection logic is loosened by these diagnostics.
     """
     soup = BeautifulSoup(
-        html,
+        html or "",
         "html.parser",
     )
 
@@ -918,12 +923,45 @@ def _extract_product_urls(
     seen = set()
     q_tokens = tokens(query or "")
 
+    stats = {
+        "html_bytes": len(html or ""),
+        "query": clean(query),
+        "query_tokens": sorted(q_tokens),
+        "anchor_product_hrefs": 0,
+        "anchor_normalized_product_urls": 0,
+        "anchor_context_direct_match": 0,
+        "anchor_card_context_found": 0,
+        "anchor_context_query_match": 0,
+        "anchor_accepted": 0,
+        "structured_product_url_matches": 0,
+        "structured_accepted": 0,
+        "raw_html_product_url_matches": 0,
+        "raw_html_accepted": 0,
+        "duplicate_urls": 0,
+        "rejected_non_deloox": 0,
+        "rejected_not_product": 0,
+        "rejected_query_mismatch": 0,
+        "rejected_opaque": 0,
+        "accepted_total": 0,
+        "sample_raw_product_urls": [],
+        "sample_rejected_query": [],
+    }
+
     if not q_tokens:
+        _dbg(
+            "product_url_extraction_debug",
+            **stats,
+            reason="empty_query",
+        )
         return []
 
-    def add(raw_url, context=""):
+    def add(
+        raw_url,
+        context="",
+        source="unknown",
+    ):
         if not raw_url:
-            return
+            return False
 
         raw_url = (
             clean(raw_url)
@@ -937,7 +975,7 @@ def _extract_product_urls(
                 "#",
             )
         ):
-            return
+            return False
 
         url = (
             urljoin(
@@ -951,33 +989,56 @@ def _extract_product_urls(
         try:
             parsed = urlparse(url)
         except Exception:
-            return
+            return False
 
         if parsed.netloc.lower() not in {
             "deloox.com",
             "www.deloox.com",
         }:
-            return
+            stats["rejected_non_deloox"] += 1
+            return False
 
         if "/product/" not in parsed.path.lower():
-            return
+            stats["rejected_not_product"] += 1
+            return False
 
         if url in seen:
-            return
+            stats["duplicate_urls"] += 1
+            return False
 
-        # Local context OR the product URL slug itself must contain every
-        # query token. This is the strict gate. `allow_opaque=False` keeps
-        # category/search discovery from accepting unrelated opaque product IDs.
         if not allow_opaque and not matches(
             f"{context} {url}",
             query,
         ):
-            return
+            stats["rejected_query_mismatch"] += 1
+
+            if len(stats["sample_rejected_query"]) < 10:
+                stats["sample_rejected_query"].append(
+                    {
+                        "source": source,
+                        "url": url,
+                        "context": clean(context)[:300],
+                    }
+                )
+
+            return False
 
         seen.add(url)
         found.append(url)
 
-    # Normal anchors: use the anchor/card itself.
+        if source == "anchor":
+            stats["anchor_accepted"] += 1
+        elif source == "structured":
+            stats["structured_accepted"] += 1
+        elif source == "raw_html":
+            stats["raw_html_accepted"] += 1
+
+        stats["accepted_total"] += 1
+        return True
+
+    # ---------------------------------------------------------
+    # 1) NORMAL <a> PRODUCT LINKS
+    # ---------------------------------------------------------
     for a in soup.find_all(
         "a",
         href=True,
@@ -988,6 +1049,8 @@ def _extract_product_urls(
 
         if "/product/" not in href.lower():
             continue
+
+        stats["anchor_product_hrefs"] += 1
 
         context_parts = [
             a.get_text(
@@ -1009,27 +1072,51 @@ def _extract_product_urls(
             if clean(x)
         )
 
-        # Product images often own the <a>, while the name is elsewhere in
-        # the same product-card. Inspect only nearby card ancestors.
-        if not matches(
+        if matches(
             context,
             query,
         ):
+            stats["anchor_context_direct_match"] += 1
+            stats["anchor_context_query_match"] += 1
+        else:
             card_context = _product_card_context(
                 a,
                 query,
             )
 
             if card_context:
+                stats["anchor_card_context_found"] += 1
                 context = card_context
 
-        add(
+                if matches(
+                    context,
+                    query,
+                ):
+                    stats["anchor_context_query_match"] += 1
+
+        normalized_before = len(seen)
+
+        accepted = add(
             href,
             context,
+            source="anchor",
         )
 
-    raw = html.replace(
+        if accepted:
+            stats["anchor_normalized_product_urls"] += 1
+        elif len(seen) != normalized_before:
+            stats["anchor_normalized_product_urls"] += 1
+
+    # ---------------------------------------------------------
+    # 2) SERIALIZED / SCRIPT PRODUCT LINKS
+    # ---------------------------------------------------------
+    raw = (
+        html or ""
+    ).replace(
         "\\\\/",
+        "/",
+    ).replace(
+        "\\/",
         "/",
     )
 
@@ -1038,7 +1125,8 @@ def _extract_product_urls(
         r'(?<![A-Za-z0-9])(?:/|(?:en|it|nl)/)product/[^"\'<>\s]+',
     )
 
-    # Scripts and structured blocks.
+    structured_samples = []
+
     for tag in soup.find_all(
         [
             "script",
@@ -1065,6 +1153,15 @@ def _extract_product_urls(
                 blob,
                 re.I,
             ):
+                stats["structured_product_url_matches"] += 1
+
+                raw_url = match.group(0)
+
+                if len(structured_samples) < 10:
+                    structured_samples.append(
+                        raw_url
+                    )
+
                 context = _product_url_context(
                     blob,
                     match.start(),
@@ -1072,17 +1169,31 @@ def _extract_product_urls(
                 )
 
                 add(
-                    match.group(0),
+                    raw_url,
                     context,
+                    source="structured",
                 )
 
-    # Final raw HTML pass.
+    # ---------------------------------------------------------
+    # 3) FINAL RAW HTML PASS
+    # ---------------------------------------------------------
+    raw_samples = []
+
     for pattern in patterns:
         for match in re.finditer(
             pattern,
             raw,
             re.I,
         ):
+            stats["raw_html_product_url_matches"] += 1
+
+            raw_url = match.group(0)
+
+            if len(raw_samples) < 10:
+                raw_samples.append(
+                    raw_url
+                )
+
             context = _product_url_context(
                 raw,
                 match.start(),
@@ -1090,12 +1201,29 @@ def _extract_product_urls(
             )
 
             add(
-                match.group(0),
+                raw_url,
                 context,
+                source="raw_html",
             )
 
-    return found[:80]
+    stats["sample_raw_product_urls"] = (
+        structured_samples[:10]
+        + [
+            x
+            for x in raw_samples[:10]
+            if x not in structured_samples[:10]
+        ]
+    )[:10]
 
+    stats["final_product_urls"] = len(found)
+    stats["final_sample"] = found[:10]
+
+    _dbg(
+        "product_url_extraction_debug",
+        **stats,
+    )
+
+    return found[:80]
 
 def _absolute_category_url(raw_url):
     """Normalize one Deloox category URL, without scoring or selecting it."""
