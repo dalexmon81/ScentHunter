@@ -15,7 +15,8 @@ import json
 import os
 import re
 from collections import deque
-from urllib.parse import quote_plus, urljoin, urlparse
+from urllib.parse import quote_plus, urljoin, urlparse, unquote
+import html as html_lib
 
 import requests
 from bs4 import BeautifulSoup
@@ -426,12 +427,48 @@ def _category_score(url, label, query):
 
 
 def _extract_category_links(html, query):
-    soup = BeautifulSoup(html or "", "html.parser")
-    found, seen = [], set()
+    """Find category pages filtered by the requested brand/category.
 
-    for anchor in soup.find_all("a", href=True):
-        url = _absolute_category_url(anchor.get("href"))
+    Deloox does not always expose the filter as a normal <a href>. Depending
+    on the rendered version, the filtered URL can live in data-* attributes,
+    onclick/JSON, or other markup. Therefore we use three complementary
+    passes:
+      1) normal anchors;
+      2) URL-bearing attributes;
+      3) raw HTML category URLs containing a filters[...] query parameter,
+         matched against nearby text containing the requested query.
+
+    This is discovery only. The product page remains the final validator.
+    """
+    raw_html = html_lib.unescape(html or "")
+    soup = BeautifulSoup(raw_html, "html.parser")
+
+    wanted = tokens(query)
+    if not wanted:
+        return []
+
+    found = {}
+    seen = set()
+
+    def add(raw_url, label="", score=None):
+        url = _absolute_category_url(raw_url)
         if not url or url in seen:
+            return
+
+        if score is None:
+            score = _category_score(url, label, query)
+
+        if score <= 0:
+            return
+
+        seen.add(url)
+        found[url] = (score, url, clean(label))
+
+    # 1. Ordinary links.
+    for anchor in soup.find_all("a", href=True):
+        href = clean(anchor.get("href"))
+        url = _absolute_category_url(href)
+        if not url:
             continue
 
         label = clean(
@@ -447,13 +484,82 @@ def _extract_category_links(html, query):
                 if clean(x)
             )
         )
-        score = _category_score(url, label, query)
-        if score:
-            seen.add(url)
-            found.append((score, url, label))
+        add(url, label)
 
-    found.sort(key=lambda item: (-item[0], len(item[1])))
-    return found
+    # 2. URL-bearing data attributes / onclick / embedded JSON.
+    url_attrs = (
+        "data-href",
+        "data-url",
+        "data-link",
+        "data-filter-url",
+        "data-category-url",
+        "data-query-url",
+        "onclick",
+        "value",
+    )
+
+    for tag in soup.find_all(True):
+        attrs_blob = " ".join(
+            clean(tag.get(attr))
+            for attr in url_attrs
+            if clean(tag.get(attr))
+        )
+        if not attrs_blob:
+            continue
+
+        label = clean(
+            " ".join(
+                x
+                for x in (
+                    tag.get_text(" ", strip=True),
+                    tag.get("aria-label"),
+                    tag.get("title"),
+                    tag.get("data-name"),
+                    tag.get("data-category-name"),
+                    tag.get("data-brand"),
+                    tag.get("data-brand-name"),
+                )
+                if clean(x)
+            )
+        )
+
+        for match in re.finditer(
+            r'(?:(?:https?:)?//[^"\'\s<>]+|/[^"\'\s<>]+)'
+            r'/category/[^"\'\s<>]+',
+            attrs_blob,
+            re.I,
+        ):
+            add(match.group(0), label)
+
+    # 3. Raw HTML fallback for the current Deloox filter markup.
+    raw_candidates = re.finditer(
+        r'(?:(?:https?:)?//(?:www\.)?deloox\.com|)'
+        r'/category/[^"\'<>\s]+?\.html'
+        r'(?:\?[^"\'<>\s]+)?',
+        raw_html,
+        re.I,
+    )
+
+    for match in raw_candidates:
+        candidate = match.group(0)
+        if "filter" not in candidate.lower():
+            continue
+
+        left = max(0, match.start() - 3500)
+        right = min(len(raw_html), match.end() + 3500)
+        context = clean(re.sub(r"<[^>]+>", " ", raw_html[left:right]))
+
+        if not wanted.issubset(tokens(context)):
+            continue
+
+        # The URL itself may only contain numeric filter IDs, so force the
+        # requested query to provide the relevance score.
+        add(candidate, query, score=len(wanted))
+
+    return sorted(
+        found.values(),
+        key=lambda item: (-item[0], len(item[1])),
+    )
 
 
 def _sitemap_product_urls(session, query, max_sitemaps=64):
