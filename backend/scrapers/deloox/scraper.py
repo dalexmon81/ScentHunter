@@ -821,19 +821,73 @@ def _discover_from_page(session, url, query, source):
     candidates = _extract_product_urls(html, query)
     slug_candidates = _product_urls_by_slug(html, query)
 
+    # Preserve the discovery signals through the global merge. The previous
+    # version calculated context_match here, but then discarded it and the
+    # global ranking used only the URL slug. That is exactly what allowed
+    # unrelated products to consume the 160-candidate budget.
+    soup_context = {}
+    for anchor in soup.find_all("a", href=True):
+        href = clean(anchor.get("href"))
+        if "/product/" not in href.lower():
+            continue
+        normalized = _normalize_product_url(href)
+        if not normalized:
+            continue
+        context = _product_context(anchor)
+        if not matches(context, query):
+            context = _card_context(anchor) or context
+        if matches(context, query):
+            soup_context[normalized] = True
+
+    final_candidates = []
+    final_seen = set()
+
+    for candidate in candidates:
+        if candidate in final_seen:
+            continue
+        final_seen.add(candidate)
+        final_candidates.append(
+            {
+                "url": candidate,
+                "context_match": bool(soup_context.get(candidate)),
+                "slug_match": _product_slug_matches(candidate, query),
+            }
+        )
+
     for candidate in slug_candidates:
-        if candidate not in candidates:
-            candidates.append(candidate)
+        if candidate in final_seen:
+            continue
+        final_seen.add(candidate)
+        final_candidates.append(
+            {
+                "url": candidate,
+                "context_match": False,
+                "slug_match": True,
+            }
+        )
+
+    final_candidates.sort(
+        key=lambda item: (
+            -int(item["context_match"]),
+            -int(item["slug_match"]),
+        )
+    )
 
     _dbg(
         "discovery_page",
         source=source,
         url=url,
         status=response.status_code,
-        candidates=len(candidates),
-        sample=candidates[:20],
+        candidates=len(final_candidates),
+        context_matches=sum(
+            1 for item in final_candidates if item["context_match"]
+        ),
+        slug_matches=sum(
+            1 for item in final_candidates if item["slug_match"]
+        ),
+        sample=final_candidates[:20],
     )
-    return candidates[:MAX_CANDIDATES]
+    return final_candidates[:MAX_CANDIDATES]
 
 
 def _discover(session, query):
@@ -855,18 +909,33 @@ def _discover(session, query):
         nonlocal order
 
         added = 0
-        for raw_url in items or []:
+        for raw_item in items or []:
+            if isinstance(raw_item, dict):
+                raw_url = raw_item.get("url")
+                context_match = bool(raw_item.get("context_match"))
+                slug_match = bool(raw_item.get("slug_match"))
+            else:
+                raw_url = raw_item
+                context_match = False
+                slug_match = False
+
             url = _normalize_product_url(raw_url)
             if not url or url in candidates:
                 continue
 
             slug_tokens = tokens(urlparse(url).path)
             matched = len(wanted & slug_tokens)
+            slug_match = slug_match or matched > 0
 
-            # Generic discovery score:
-            # exact token coverage in the product URL gets priority.
-            # This is never a final accept/reject decision.
-            score = matched * 100
+            # Generic ranking only:
+            # product-card/structured context is the strongest discovery
+            # signal; URL slug agreement is secondary. Neither decides
+            # whether a product is valid -- _product() still does that.
+            score = 0
+            if context_match:
+                score += 2000
+            if matched:
+                score += matched * 100
             if matched == len(wanted):
                 score += 1000
 
@@ -874,6 +943,8 @@ def _discover(session, query):
                 "score": score,
                 "order": order,
                 "source": source,
+                "context_match": context_match,
+                "slug_match": slug_match,
             }
             order += 1
             added += 1
@@ -1013,7 +1084,15 @@ def _discover(session, query):
         count=len(urls),
         total_candidates=len(candidates),
         ranked_query_matches=sum(
-            1 for _url, meta in ordered if meta["score"] >= 100
+            1
+            for _url, meta in ordered
+            if meta.get("context_match") or meta.get("slug_match")
+        ),
+        ranked_context_matches=sum(
+            1 for _url, meta in ordered if meta.get("context_match")
+        ),
+        ranked_slug_matches=sum(
+            1 for _url, meta in ordered if meta.get("slug_match")
         ),
         urls=urls[:50],
     )
