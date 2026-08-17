@@ -81,6 +81,11 @@ def tokens(v):
     }
 
 
+def query_tokens(v):
+    """Return normalized query tokens for discovery scoring."""
+    return tokens(v)
+
+
 def matches(text, q):
     q_tokens = tokens(q)
     return bool(q_tokens) and q_tokens.issubset(tokens(text))
@@ -831,91 +836,78 @@ def _product_urls_by_slug(html, query):
     return found[:80]
 
 
-def _product_card_context(anchor, query=""):
-    """Return the smallest useful product-card context around one product link.
+def _product_card_context(anchor, query):
+    """Find query-relevant text in the nearest product-card ancestors.
 
-    Deloox often puts the product URL on the image <a>, while the product name
-    lives in a sibling elsewhere in the same product-card. We therefore climb
-    only to the nearest semantic card/item container and never use a whole grid
-    or page as context.
+    The link can sit on the product image while the product name lives in a
+    sibling element. We inspect only a small ancestor window, never the whole
+    page.
     """
-    query = clean(query)
-    semantic = (
-        "product",
-        "product-card",
-        "productcard",
-        "card",
-        "item",
-        "tile",
-        "listing",
-    )
-
     node = anchor
     fallback = ""
 
-    for depth in range(0, 8):
+    for _ in range(6):
+        node = node.parent if node is not None else None
+
         if node is None:
             break
 
-        parts = []
-        if getattr(node, "attrs", None):
-            for key in (
-                "aria-label",
-                "title",
-                "data-name",
-                "data-product-name",
-                "data-title",
-                "data-product-title",
-            ):
-                value = clean(node.get(key, ""))
-                if value:
-                    parts.append(value)
+        context = clean(
+            node.get_text(
+                " ",
+                strip=True,
+            )
+        )
 
-            marker = " ".join(
-                clean(node.get(key, ""))
-                for key in (
-                    "id",
-                    "class",
-                    "data-testid",
-                    "data-component",
-                )
-                if clean(node.get(key, ""))
-            ).lower()
-        else:
-            marker = ""
+        if not context or len(context) > 6000:
+            continue
 
-        text = clean(node.get_text(" ", strip=True))
-        if text:
-            parts.append(text)
+        attrs = " ".join(
+            clean(x)
+            for x in (
+                node.get("class", ""),
+                node.get("id", ""),
+                node.get("data-product", ""),
+                node.get("data-product-name", ""),
+                node.get("data-testid", ""),
+            )
+            if clean(x)
+        )
 
-        context = clean(" ".join(parts))[:3000]
-        marker_hit = any(token in marker for token in semantic)
+        blob = f"{attrs} {context}"
 
-        # The first semantic card/item is the matching boundary. Crucially,
-        # we stop here: a parent grid may contain many different products.
-        if marker_hit:
+        if node.name in {"body", "html"}:
+            break
+
+        is_card = (
+            "product" in attrs.lower()
+            or "card" in attrs.lower()
+            or "item" in attrs.lower()
+            or node.name in {"article", "li"}
+        )
+
+        if is_card and matches(
+            context,
+            query,
+        ):
             return context
 
-        # Only keep a very small unmarked fallback. It is used if the template
-        # has no semantic card classes at all.
-        if depth <= 2 and context and len(context) <= 800:
+        if not fallback and is_card:
             fallback = context
-
-        node = getattr(node, "parent", None)
 
     return fallback
 
 
-def _candidate_product_urls(
+def _extract_product_urls(
     html,
     query=None,
+    allow_opaque=False,
 ):
-    """Extract product URLs using the product-card as the matching boundary.
+    """Extract product URLs whose local context matches the query.
 
-    Deloox can place the product URL on an image while the visible product name
-    is a sibling elsewhere in the same card. The old extractor inspected only
-    the <a> text/immediate parent, so a real match such as "Liquid Brun" could
-    be found by one parser and then disappear from candidate_scan.
+    This deliberately rejects arbitrary numeric /product/ URLs. The previous
+    behaviour could associate an unrelated product with a page-level query
+    merely because the query appeared elsewhere in the same large script.
     """
     soup = BeautifulSoup(
         html,
@@ -973,9 +965,10 @@ def _candidate_product_urls(
         if url in seen:
             return
 
-        # The URL slug alone is a valid local signal. Otherwise the product
-        # card context must contain every query token.
-        if not matches(
+        # Local context OR the product URL slug itself must contain every
+        # query token. This is the strict gate. `allow_opaque=False` keeps
+        # category/search discovery from accepting unrelated opaque product IDs.
+        if not allow_opaque and not matches(
             f"{context} {url}",
             query,
         ):
@@ -984,9 +977,7 @@ def _candidate_product_urls(
         seen.add(url)
         found.append(url)
 
-    # ---------------------------------------------------------
-    # 1) Real HTML anchors: match against the complete product card.
-    # ---------------------------------------------------------
+    # Normal anchors: use the anchor/card itself.
     for a in soup.find_all(
         "a",
         href=True,
@@ -1012,24 +1003,25 @@ def _candidate_product_urls(
             ),
         ]
 
-        context = clean(
-            " ".join(
-                clean(x)
-                for x in context_parts
-                if clean(x)
-            )
+        context = " ".join(
+            clean(x)
+            for x in context_parts
+            if clean(x)
         )
 
-        # Critical surgical fix: if the URL is on the image and the anchor has
-        # no name, climb to the enclosing product-card and read its text.
-        card_context = _product_card_context(
-            a,
+        # Product images often own the <a>, while the name is elsewhere in
+        # the same product-card. Inspect only nearby card ancestors.
+        if not matches(
+            context,
             query,
-        )
-        if card_context:
-            context = clean(
-                f"{context} {card_context}"
+        ):
+            card_context = _product_card_context(
+                a,
+                query,
             )
+
+            if card_context:
+                context = card_context
 
         add(
             href,
@@ -1046,9 +1038,7 @@ def _candidate_product_urls(
         r'(?<![A-Za-z0-9])(?:/|(?:en|it|nl)/)product/[^"\'<>\s]+',
     )
 
-    # ---------------------------------------------------------
-    # 2) Scripts/structured blocks: retain the existing local-object logic.
-    # ---------------------------------------------------------
+    # Scripts and structured blocks.
     for tag in soup.find_all(
         [
             "script",
@@ -1086,9 +1076,7 @@ def _candidate_product_urls(
                     context,
                 )
 
-    # ---------------------------------------------------------
-    # 3) Final raw pass, still using a local object only.
-    # ---------------------------------------------------------
+    # Final raw HTML pass.
     for pattern in patterns:
         for match in re.finditer(
             pattern,
@@ -1107,6 +1095,120 @@ def _candidate_product_urls(
             )
 
     return found[:80]
+
+
+def _absolute_category_url(raw_url):
+    """Normalize one Deloox category URL, without scoring or selecting it."""
+    if not raw_url:
+        return None
+
+    raw_url = clean(raw_url).replace("\\/", "/")
+
+    if raw_url.startswith((
+        "javascript:",
+        "mailto:",
+        "#",
+    )):
+        return None
+
+    url = (
+        urljoin(
+            BASE_URL,
+            raw_url,
+        )
+        .split("#")[0]
+        .split("?")[0]
+    )
+
+    try:
+        parsed = urlparse(url)
+    except Exception:
+        return None
+
+    if parsed.netloc.lower() not in {
+        "deloox.com",
+        "www.deloox.com",
+    }:
+        return None
+
+    path = parsed.path.lower()
+
+    if "/category/" not in path or not path.endswith(".html"):
+        return None
+
+    return url
+
+
+def _extract_category_links(html: str):
+    """
+    Restituisce coppie:
+    (category_url, testo_link)
+
+    Questa funzione estrae soltanto le categorie. Non applica la query:
+    la rilevanza viene calcolata dopo, prima di seguire la categoria.
+    """
+    raw = (html or "").replace(
+        "\\\\/",
+        "/",
+    ).replace(
+        "\\/",
+        "/",
+    )
+
+    soup = BeautifulSoup(
+        raw,
+        "html.parser",
+    )
+
+    seen = set()
+    categories = []
+
+    for anchor in soup.find_all(
+        "a",
+        href=True,
+    ):
+        url = _absolute_category_url(
+            anchor.get("href")
+        )
+
+        if not url or url in seen:
+            continue
+
+        label = anchor.get_text(
+            " ",
+            strip=True,
+        )
+
+        seen.add(url)
+        categories.append(
+            (url, label)
+        )
+
+    for raw_url in re.findall(
+        r"""["']((?:/)?(?:[a-z]{2}/)?category/[^"']+\\.html)["']""",
+        raw,
+        re.I,
+    ):
+        url = _absolute_category_url(
+            raw_url
+        )
+
+        if not url or url in seen:
+            continue
+
+        seen.add(url)
+        categories.append(
+            (url, "")
+        )
+
+    return categories
+
+
+def _is_product_url(url: str) -> bool:
+    return (
+        isinstance(url, str)
+        and "/product/" in urlparse(url).path.lower()
+    )
 
 
 _CATEGORY_RE = re.compile(
@@ -1137,39 +1239,18 @@ def _category_slug(url):
     return slug
 
 
-def _category_score(url, label, query):
-    """Score a category without using product-specific knowledge."""
-    q_tokens = tokens(query)
+def _category_score(url: str, label: str, query: str) -> int:
+    """
+    Calcola la rilevanza della categoria usando sia URL sia testo del link.
+    """
+    wanted = query_tokens(query)
+    haystack = norm(f"{url} {label}")
 
-    if not q_tokens:
-        return 0
-
-    slug_tokens = tokens(
-        _category_slug(url)
+    return sum(
+        1
+        for token in wanted
+        if token in haystack
     )
-
-    label_tokens = tokens(label)
-
-    score = 0
-
-    slug_hits = len(
-        q_tokens & slug_tokens
-    )
-
-    label_hits = len(
-        q_tokens & label_tokens
-    )
-
-    score += slug_hits * 100
-    score += label_hits * 60
-
-    if q_tokens.issubset(slug_tokens):
-        score += 2000
-
-    if q_tokens.issubset(label_tokens):
-        score += 1500
-
-    return score
 
 
 def _extract_category_links_from_html(
@@ -1973,7 +2054,7 @@ def _discover_from_categories(
         html,
         source,
     ):
-        candidates = _candidate_product_urls(
+        candidates = _extract_product_urls(
             html,
             query,
         )
@@ -2313,6 +2394,15 @@ def _discover(session, q):
         )
 
         for url in items:
+            if not _is_product_url(url):
+                _dbg(
+                    "discovery_rejected_non_product_url",
+                    query=q,
+                    source=source,
+                    url=url,
+                )
+                continue
+
             if url not in seen:
                 seen.add(url)
                 urls.append(url)
@@ -2367,9 +2457,10 @@ def _discover(session, q):
                 dedicated_category,
             )
 
-            candidates = _candidate_product_urls(
+            candidates = _extract_product_urls(
                 page.text,
                 q,
+                allow_opaque=False,
             )
 
             # Some Deloox category templates render product names in a
@@ -2440,9 +2531,10 @@ def _discover(session, q):
         if page.status_code >= 400:
             continue
 
-        candidates = _candidate_product_urls(
+        candidates = _extract_product_urls(
             page.text,
             q,
+            allow_opaque=False,
         )
 
         if add_many(
@@ -2489,16 +2581,130 @@ def _discover(session, q):
         if r.status_code >= 400:
             continue
 
-        candidates = _candidate_product_urls(
+        # First: search-page product URLs.
+        candidates = _extract_product_urls(
             r.text,
             q,
+            allow_opaque=False,
         )
 
-        if add_many(
-            candidates,
-            "search",
-        ):
-            return urls[:80]
+        _dbg(
+            "search_product_candidates",
+            query=q,
+            source=endpoint,
+            count=len(candidates),
+            sample=candidates[:10],
+        )
+
+        if candidates:
+            if add_many(
+                candidates,
+                "search",
+            ):
+                return urls[:80]
+
+            # A search page already produced real product candidates. Do not
+            # replace that path with category crawling on the same page.
+            continue
+
+        # No product candidate on this search page: now extract categories,
+        # score them, follow the best ones, and only then extract product URLs.
+        category_links = _extract_category_links(
+            r.text
+        )
+
+        print(
+            "DELOOX CATEGORY LINKS:",
+            [
+                {
+                    "url": url,
+                    "label": label,
+                    "score": _category_score(
+                        url,
+                        label,
+                        q,
+                    ),
+                }
+                for url, label in category_links
+                if _category_score(
+                    url,
+                    label,
+                    q,
+                ) > 0
+            ][:10],
+            flush=True,
+        )
+
+        scored_categories = []
+
+        for category_url, label in category_links:
+            score = _category_score(
+                category_url,
+                label,
+                q,
+            )
+
+            if score <= 0:
+                continue
+
+            scored_categories.append(
+                (
+                    score,
+                    category_url,
+                    label,
+                )
+            )
+
+        scored_categories.sort(
+            key=lambda item: (
+                -item[0],
+                len(item[1]),
+            )
+        )
+
+        for score, category_url, label in scored_categories[:5]:
+            print(
+                "DELOOX: following category",
+                category_url,
+                "label=",
+                label,
+                "score=",
+                score,
+                flush=True,
+            )
+
+            try:
+                page = session.get(
+                    category_url,
+                    headers=HEADERS,
+                    timeout=TIMEOUT,
+                )
+            except requests.RequestException:
+                continue
+
+            if page.status_code >= 400:
+                continue
+
+            category_products = _extract_product_urls(
+                page.text,
+                q,
+                allow_opaque=False,
+            )
+
+            print(
+                "DELOOX: category",
+                category_url,
+                "returned",
+                len(category_products),
+                "product URLs",
+                flush=True,
+            )
+
+            if add_many(
+                category_products,
+                "search_category",
+            ):
+                return urls[:80]
 
     # =========================================================
     # 4) BROAD CATEGORIES — LAST RESORT
@@ -2540,6 +2746,13 @@ def _discover(session, q):
         count=len(urls),
         urls=urls[:20],
     )
+
+    # Final safety net: discovery must return product URLs only.
+    urls = [
+        url
+        for url in urls
+        if _is_product_url(url)
+    ]
 
     return urls[:80]
 
@@ -2682,7 +2895,7 @@ def diagnostic_discovery(query):
                 )
 
                 urls = (
-                    _candidate_product_urls(
+                    _extract_product_urls(
                         pr.text,
                         query,
                     )
