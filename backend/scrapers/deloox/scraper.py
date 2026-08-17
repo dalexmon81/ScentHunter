@@ -29,6 +29,7 @@ MAX_CANDIDATES = 160
 
 DEBUG_DISCOVERY = os.getenv("DELOOX_DEBUG", "1") != "0"
 MATCH_TRACE_LIMIT = int(os.getenv("DELOOX_MATCH_TRACE_LIMIT", "12"))
+PRODUCT_TRACE_LIMIT = int(os.getenv("DELOOX_PRODUCT_TRACE_LIMIT", "30"))
 
 HEADERS = {
     "User-Agent": (
@@ -175,6 +176,14 @@ def _get(session, url, timeout=TIMEOUT):
             allow_redirects=True,
         )
         response.raise_for_status()
+        _dbg(
+            "http_response",
+            requested_url=url,
+            final_url=response.url,
+            status=response.status_code,
+            content_type=response.headers.get("content-type", ""),
+            bytes=len(response.content or b""),
+        )
         return response
     except requests.RequestException as exc:
         _dbg("http_error", url=url, error=f"{type(exc).__name__}: {exc}")
@@ -499,6 +508,7 @@ def _sitemap_product_urls(session, query, max_sitemaps=64):
         sitemap_count=len(seen_sitemaps),
         count=len(found),
         sample=found[:20],
+        remaining_queue=len(pending),
     )
     return found[:MAX_CANDIDATES]
 
@@ -508,8 +518,29 @@ def _discover_from_page(session, url, query, source):
     if response is None:
         return []
 
-    candidates = _extract_product_urls(response.text, query)
-    slug_candidates = _product_urls_by_slug(response.text, query)
+    html = response.text or ""
+    raw_product_matches = PRODUCT_RE.findall(
+        html.replace("\\\\/", "/").replace("\\/", "/")
+    )
+    soup = BeautifulSoup(html, "html.parser")
+    anchor_product_hrefs = [
+        clean(a.get("href"))
+        for a in soup.find_all("a", href=True)
+        if "/product/" in clean(a.get("href")).lower()
+    ]
+    _dbg(
+        "page_product_census",
+        source=source,
+        url=url,
+        html_bytes=len(response.content or b""),
+        raw_product_matches=len(raw_product_matches),
+        anchor_product_hrefs=len(anchor_product_hrefs),
+        unique_anchor_product_hrefs=len(set(anchor_product_hrefs)),
+        sample_anchor_product_hrefs=anchor_product_hrefs[:20],
+    )
+
+    candidates = _extract_product_urls(html, query)
+    slug_candidates = _product_urls_by_slug(html, query)
 
     for candidate in slug_candidates:
         if candidate not in candidates:
@@ -855,8 +886,14 @@ def search(query):
 
     session = requests.Session()
     results, seen = [], set()
+    rejection_counts = {}
+    fetch_ok = 0
+    fetch_failed = 0
+    product_trace = 0
 
     try:
+        _dbg("search_start", query=query)
+
         discovered = _discover(session, query)
         _dbg(
             "search_discovered",
@@ -865,21 +902,72 @@ def search(query):
             urls=discovered[:50],
         )
 
-        for url in discovered:
+        for index, url in enumerate(discovered, 1):
             response = _get(session, url, TIMEOUT)
             if response is None:
+                fetch_failed += 1
+                rejection_counts["fetch_failed"] = (
+                    rejection_counts.get("fetch_failed", 0) + 1
+                )
                 continue
+
+            fetch_ok += 1
+
+            soup = BeautifulSoup(response.text or "", "html.parser")
+            data = _jsonld(soup)
+            h1 = soup.find("h1")
+            h1_name = clean(h1.get_text(" ", strip=True)) if h1 else ""
+            jsonld_name = clean(data.get("name"))
+            page_name = h1_name or jsonld_name
+
+            offers = data.get("offers")
+            offers = offers if isinstance(offers, list) else [offers]
+            offer = next((x for x in offers if isinstance(x, dict)), {})
+            jsonld_price = parse_price(offer.get("price"))
+            page_price = jsonld_price
+            if page_price is None:
+                page_price = parse_price(
+                    soup.get_text(" ", strip=True)
+                )
+
+            name_valid = bool(
+                page_name and product_name_is_valid(page_name, query)
+            )
+
+            if product_trace < PRODUCT_TRACE_LIMIT:
+                _dbg(
+                    "product_page_trace",
+                    index=index,
+                    query=query,
+                    url=url,
+                    final_url=response.url,
+                    html_bytes=len(response.content or b""),
+                    h1=h1_name,
+                    jsonld_product_name=jsonld_name,
+                    selected_name=page_name,
+                    name_valid=name_valid,
+                    jsonld_has_product=bool(data),
+                    jsonld_price=jsonld_price,
+                    page_price=page_price,
+                    availability=_availability(data, soup),
+                    has_ldjson=bool(
+                        soup.select('script[type="application/ld+json"]')
+                    ),
+                )
+                product_trace += 1
 
             item = _product(url, response.text, query)
             if not item:
+                reason = _product_rejection_reason(
+                    response.text,
+                    query,
+                )
+                rejection_counts[reason] = rejection_counts.get(reason, 0) + 1
                 _dbg(
                     "product_rejected",
                     query=query,
                     url=url,
-                    reason=_product_rejection_reason(
-                        response.text,
-                        query,
-                    ),
+                    reason=reason,
                 )
                 continue
 
@@ -888,6 +976,9 @@ def search(query):
             key = (url, sku_value)
 
             if key in seen:
+                rejection_counts["duplicate_result"] = (
+                    rejection_counts.get("duplicate_result", 0) + 1
+                )
                 continue
 
             seen.add(key)
@@ -902,6 +993,16 @@ def search(query):
                 price=item.get("price"),
             )
 
+        _dbg(
+            "search_diagnostic_summary",
+            query=query,
+            discovered=len(discovered),
+            fetch_ok=fetch_ok,
+            fetch_failed=fetch_failed,
+            accepted=len(results),
+            rejected=sum(rejection_counts.values()),
+            rejection_counts=rejection_counts,
+        )
         _dbg(
             "search_done",
             query=query,
