@@ -60,13 +60,15 @@ def _score(query, text):
 
 
 def _clean_url(url):
+    # FINAL DIAGNOSTIC: preserve query parameters because pagination,
+    # filters and catalog navigation may be encoded in the query string.
     parts = urlsplit(url)
     return urlunsplit(
         (
             parts.scheme.lower(),
             parts.netloc.lower(),
             parts.path,
-            "",
+            parts.query,
             "",
         )
     )
@@ -117,7 +119,7 @@ def _fetch(session, url):
         content_type = (response.headers.get("content-type") or "").lower()
 
         print(
-            f"SABINA_TEST4: FETCH status={response.status_code} "
+            f"SABINA_TEST5: FETCH status={response.status_code} "
             f"url={url} final={response.url} bytes={len(response.content)} "
             f"type={content_type!r}"
         )
@@ -130,7 +132,7 @@ def _fetch(session, url):
 
     except Exception as exc:
         print(
-            f"SABINA_TEST4: FETCH_ERROR url={url} "
+            f"SABINA_TEST5: FETCH_ERROR url={url} "
             f"error={type(exc).__name__}: {exc}"
         )
         return None, None
@@ -141,7 +143,10 @@ def _extract_links(html, base):
 
     links = []
     seen = set()
+    pagination_hits = []
 
+    # Inspect ALL anchors first. This deliberately happens before
+    # MAX_LINKS_PER_PAGE so pagination cannot be hidden behind the cap.
     for anchor in soup.find_all("a", href=True):
         href = anchor.get("href")
         if not href:
@@ -152,18 +157,45 @@ def _extract_links(html, base):
         if not _is_internal(url):
             continue
 
+        text = " ".join(anchor.stripped_strings)
+        low_text = _norm(text)
+        query_string = urlsplit(url).query.lower()
+        path = urlsplit(url).path.lower()
+
+        pagination_signal = bool(
+            re.search(r"(?:^|&)p=\d+(?:&|$)", query_string)
+            or re.search(r"(?:^|&)page=\d+(?:&|$)", query_string)
+            or "pagination" in low_text
+            or "suivant" in low_text
+            or "next" in low_text
+            or "siguiente" in low_text
+            or anchor.get("rel") and any(
+                "next" == str(x).lower() for x in anchor.get("rel")
+            )
+        )
+
+        if pagination_signal:
+            pagination_hits.append((url, text))
+
         if url in seen:
             continue
 
         seen.add(url)
-
-        text = " ".join(anchor.stripped_strings)
         links.append((url, text))
 
-        if len(links) >= MAX_LINKS_PER_PAGE:
-            break
+    print(
+        f"SABINA_TEST5: RAW_PAGINATION_LINKS={len(pagination_hits)} "
+        f"base={base}"
+    )
 
-    return links
+    for url, text in pagination_hits[:30]:
+        print(
+            f"SABINA_TEST5: PAGINATION_LINK "
+            f"url={url} text={text!r}"
+        )
+
+    # Only after pagination inspection do we apply the normal cap.
+    return links[:MAX_LINKS_PER_PAGE]
 
 
 def _classify_links(links, query):
@@ -243,11 +275,22 @@ def _discover_page(session, url, query, source):
         return [], []
 
     links = _extract_links(html, final_url)
+
+    query_links_raw = [
+        (u, t) for (u, t) in links
+        if urlsplit(u).query
+    ]
+
+    print(
+        f"SABINA_TEST5: QUERY_LINKS_IN_CAPPED_SET="
+        f"{len(query_links_raw)}"
+    )
+
     products, catalogs, query_links = _classify_links(links, query)
     pages = _pagination_urls(links, final_url)
 
     print(
-        f"SABINA_TEST4: PAGE source={source} "
+        f"SABINA_TEST5: PAGE source={source} "
         f"url={url} links={len(links)} products={len(products)} "
         f"pagination={len(pages)}"
     )
@@ -274,13 +317,13 @@ def _verify_product(session, query, url):
     # ALL query tokens must be present.
     if score < 1.0:
         print(
-            f"SABINA_TEST4: REJECT_PARTIAL score={score:.3f} "
+            f"SABINA_TEST5: REJECT_PARTIAL score={score:.3f} "
             f"title={title!r} url={final_url}"
         )
         return None
 
     print(
-        f"SABINA_TEST4: EXACT_PRODUCT score={score:.3f} "
+        f"SABINA_TEST5: EXACT_PRODUCT score={score:.3f} "
         f"title={title!r} url={final_url}"
     )
 
@@ -297,9 +340,9 @@ def search(query):
     if not query:
         return []
 
-    print(f"SABINA_TEST4: START query={query!r}")
-    print(f"SABINA_TEST4: TOKENS={_tokens(query)!r}")
-    print("SABINA_TEST4: PURPOSE=PAGINATION_AWARE_GENERIC_DISCOVERY")
+    print(f"SABINA_TEST5: START query={query!r}")
+    print(f"SABINA_TEST5: TOKENS={_tokens(query)!r}")
+    print("SABINA_TEST5: PURPOSE=PAGINATION_AWARE_GENERIC_DISCOVERY")
 
     session = requests.Session()
     session.headers.update(HEADERS)
@@ -340,7 +383,7 @@ def search(query):
             pagination_queue.extend(pages)
 
         print(
-            f"SABINA_TEST4: ROOTS_DONE "
+            f"SABINA_TEST5: ROOTS_DONE "
             f"pagination_queue={len(pagination_queue)} "
             f"candidates={len(candidate_products)}"
         )
@@ -375,14 +418,14 @@ def search(query):
 
             if len(visited_pages) % 25 == 0:
                 print(
-                    f"SABINA_TEST4: PAGINATION_PROGRESS "
+                    f"SABINA_TEST5: PAGINATION_PROGRESS "
                     f"visited={len(visited_pages)} "
                     f"queue={len(pagination_queue)} "
                     f"candidates={len(candidate_products)}"
                 )
 
         print(
-            f"SABINA_TEST4: DISCOVERY_DONE "
+            f"SABINA_TEST5: DISCOVERY_DONE "
             f"pagination_visited={len(visited_pages)} "
             f"pagination_queue={len(pagination_queue)} "
             f"candidate_products={len(candidate_products)}"
@@ -399,22 +442,22 @@ def search(query):
             if result:
                 results.append(result)
 
-        print(f"SABINA_TEST4: FINAL_EXACT_PRODUCTS={len(results)}")
+        print(f"SABINA_TEST5: FINAL_EXACT_PRODUCTS={len(results)}")
 
         for result in results:
             print(
-                f"SABINA_TEST4: RESULT "
+                f"SABINA_TEST5: RESULT "
                 f"name={result['name']!r} url={result['url']}"
             )
 
         if results:
             print(
-                "SABINA_TEST4: DIAGNOSIS="
+                "SABINA_TEST5: DIAGNOSIS="
                 "PRODUCT_FOUND_VIA_GENERIC_PAGINATION"
             )
         else:
             print(
-                "SABINA_TEST4: DIAGNOSIS="
+                "SABINA_TEST5: DIAGNOSIS="
                 "NO_EXACT_PRODUCT_FOUND_IN_GENERIC_PAGINATION_GRAPH"
             )
 
