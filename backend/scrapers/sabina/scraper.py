@@ -1,14 +1,16 @@
-# TEST DIAGNOSTICO 5
-# Solo analisi: nessuna modifica allo scraper.
-# Riceve la query direttamente da ScentHunter.
+# TEST DIAGNOSTICO 6 — SITEMAP / ROBOTS
+# Nessuna modifica allo scraper.
+# Verifica se Sabina espone una sitemap dalla quale possiamo fare
+# discovery generica dei prodotti.
 
 import re
-from urllib.parse import quote_plus
+import sys
+from urllib.parse import urljoin, quote_plus
 import requests
 from bs4 import BeautifulSoup
 
 BASE = "https://www.sabina.com"
-TIMEOUT = 10
+TIMEOUT = 12
 
 HEADERS = {
     "User-Agent": (
@@ -17,102 +19,151 @@ HEADERS = {
         "Mobile/15E148 Safari/604.1"
     ),
     "Accept-Language": "it-IT,it;q=0.9,en;q=0.7",
-    "Accept": "text/html,application/xhtml+xml,application/json;q=0.9,*/*;q=0.8",
-    "Referer": BASE + "/it/",
+    "Accept": "application/xml,text/xml,text/html;q=0.9,*/*;q=0.8",
 }
 
 def clean(v):
     return re.sub(r"\s+", " ", str(v or "")).strip()
 
-def scrape(query):
+def words(query):
+    return [
+        x for x in re.findall(r"[a-z0-9À-ÿ]+", query.lower())
+        if len(x) > 1
+    ]
+
+def run(query):
     query = clean(query)
-    print(f"SABINA_TEST5 query_received: {query!r}")
+    qwords = words(query)
 
-    url = BASE + "/it/ricerca_old?s=" + quote_plus(query)
-    print("SABINA_TEST5 request:", url)
+    print("SABINA_TEST6 query:", query)
+    print("SABINA_TEST6 qwords:", qwords)
 
-    try:
-        r = requests.get(url, headers=HEADERS, timeout=TIMEOUT, allow_redirects=True)
-        html = r.text
-        print(
-            "SABINA_TEST5 response:",
-            f"status={r.status_code}",
-            f"final_url={r.url}",
-            f"bytes={len(r.content)}",
-        )
+    s = requests.Session()
+    s.headers.update(HEADERS)
 
-        low = html.lower()
+    urls = [
+        BASE + "/robots.txt",
+        BASE + "/sitemap.xml",
+        BASE + "/sitemap_index.xml",
+        BASE + "/it/sitemap.xml",
+        BASE + "/it/sitemap_index.xml",
+    ]
 
-        # Mostriamo il contesto di OGNI occorrenza di liquid e brun.
-        for term in ("liquid", "brun"):
-            positions = [m.start() for m in re.finditer(re.escape(term), low)]
-            print(f"SABINA_TEST5 {term}_occurrences:", len(positions))
+    seen_sitemaps = set()
+    sitemap_urls = []
 
-            for i, pos in enumerate(positions[:30], 1):
-                a = max(0, pos - 700)
-                b = min(len(html), pos + 1400)
-                ctx = clean(html[a:b])
-
-                print(f"SABINA_TEST5 {term.upper()}_CONTEXT {i}")
-                print(ctx[:2200])
-
-        soup = BeautifulSoup(html, "html.parser")
-
-        # Controlliamo tutti gli script che possono contenere dati di ricerca.
-        print("SABINA_TEST5 scripts_total:", len(soup.find_all("script")))
-
-        for i, script in enumerate(soup.find_all("script"), 1):
-            txt = script.get_text(" ", strip=False)
-            lowtxt = txt.lower()
-
-            if any(x in lowtxt for x in ("search", "autocomplete", "suggest", "product", "ajax")):
-                print(
-                    f"SABINA_TEST5 RELEVANT_SCRIPT {i}: "
-                    f"chars={len(txt)}"
-                )
-                print(clean(txt)[:3500])
-
-        # Individuiamo form/input collegati alla ricerca.
-        print("SABINA_TEST5 FORMS:", len(soup.find_all("form")))
-
-        for i, form in enumerate(soup.find_all("form"), 1):
-            txt = clean(form.get_text(" ", strip=True))
-            attrs = " ".join(
-                f"{k}={v}"
-                for k, v in form.attrs.items()
-                if k in ("id", "class", "action", "method", "name")
+    for url in urls:
+        try:
+            r = s.get(url, timeout=TIMEOUT, allow_redirects=True)
+            print(
+                "SABINA_TEST6 REQUEST",
+                url,
+                "status=", r.status_code,
+                "final=", r.url,
+                "type=", r.headers.get("content-type"),
+                "bytes=", len(r.content),
             )
 
-            if re.search(r"search|ricerca|autocomplete|query", attrs + " " + txt, re.I):
-                print(f"SABINA_TEST5 SEARCH_FORM {i}")
-                print(" attrs:", attrs)
-                print(" text:", txt[:1500])
-                print(" html:", clean(str(form))[:5000])
+            if r.status_code != 200:
+                continue
 
-        # Tutti gli input/search/autocomplete.
-        for i, el in enumerate(
-            soup.select("input, select, textarea, [role='searchbox']"), 1
-        ):
-            attrs = " ".join(
-                f"{k}={v}"
-                for k, v in el.attrs.items()
-                if k in (
-                    "id", "name", "type", "value", "placeholder",
-                    "class", "data-url", "data-search-url",
-                    "data-autocomplete", "data-action"
-                )
+            text = r.text
+
+            if url.endswith("robots.txt"):
+                for line in text.splitlines():
+                    if line.lower().startswith("sitemap:"):
+                        sm = line.split(":", 1)[1].strip()
+                        if sm:
+                            sitemap_urls.append(sm)
+                            print("SABINA_TEST6 ROBOTS_SITEMAP:", sm)
+
+            # Extract sitemap references from XML/HTML.
+            for m in re.findall(
+                r"https?://[^<\s\"']+sitemap[^<\s\"']*",
+                text,
+                re.I,
+            ):
+                sitemap_urls.append(m.rstrip("]>,"))
+        except Exception as e:
+            print("SABINA_TEST6 ERROR", url, type(e).__name__, str(e))
+
+    # Add common candidates once.
+    for u in urls[1:]:
+        sitemap_urls.append(u)
+
+    queue = []
+    for u in sitemap_urls:
+        if u not in seen_sitemaps:
+            seen_sitemaps.add(u)
+            queue.append(u)
+
+    product_hits = []
+    scanned = 0
+
+    while queue and scanned < 40:
+        sm = queue.pop(0)
+        scanned += 1
+
+        try:
+            r = s.get(sm, timeout=TIMEOUT, allow_redirects=True)
+            print(
+                "SABINA_TEST6 SITEMAP",
+                sm,
+                "status=", r.status_code,
+                "final=", r.url,
+                "bytes=", len(r.content),
             )
 
-            if re.search(r"search|ricerca|autocomplete|query|suggest", attrs, re.I):
-                print(f"SABINA_TEST5 SEARCH_INPUT {i}")
-                print(attrs)
+            if r.status_code != 200:
+                continue
 
-        print("SABINA_TEST5 END_DIAGNOSTIC")
-        return []
+            text = r.text
 
-    except Exception as e:
-        print("SABINA_TEST5 ERROR:", type(e).__name__, str(e))
-        return []
+            # sitemapindex -> child sitemaps
+            child_sitemaps = re.findall(
+                r"<loc>\s*(https?://[^<]+)\s*</loc>",
+                text,
+                re.I,
+            )
+
+            for loc in child_sitemaps:
+                loc = loc.strip()
+                if "sitemap" in loc.lower() and loc not in seen_sitemaps:
+                    seen_sitemaps.add(loc)
+                    queue.append(loc)
+
+            # URL sitemap -> candidate URLs
+            for loc in child_sitemaps:
+                loc = loc.strip()
+
+                if "sitemap" in loc.lower():
+                    continue
+
+                low = loc.lower().replace("-", " ").replace("_", " ")
+
+                if qwords and all(w in low for w in qwords):
+                    product_hits.append(loc)
+
+        except Exception as e:
+            print(
+                "SABINA_TEST6 SITEMAP_ERROR",
+                sm,
+                type(e).__name__,
+                str(e),
+            )
+
+    print("SABINA_TEST6 sitemaps_scanned:", scanned)
+    print("SABINA_TEST6 sitemap_queue_remaining:", len(queue))
+    print("SABINA_TEST6 product_hits:", len(product_hits))
+
+    for i, u in enumerate(product_hits[:100], 1):
+        print(f"SABINA_TEST6 HIT {i}:", u)
+
+    s.close()
+
+def scrape(query):
+    run(query)
+    return []
 
 def search(query):
     return scrape(query)
