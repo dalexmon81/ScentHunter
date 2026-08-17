@@ -2177,67 +2177,159 @@ def _discover_from_categories(
                     page_url,
                 )
 
-            if add_products(
+            # IMPORTANT:
+            # A broad category/root page is not itself the product source.
+            # First recognize candidate category links, score them, follow the
+            # best matches, and only then scan the followed category for
+            # product URLs. This prevents candidate_scan from running against
+            # the wrong root page before the category context is established.
+            category_links = _extract_category_links(
                 r.text,
-                page_url,
-            ):
-                return urls[:max_urls]
+            )
 
-            # We no longer treat a broad page's Product Line links as the
-            # primary discovery mechanism. They are only a fallback here.
-            matching_lines = (
-                _category_product_line_links(
-                    r.text,
+            scored_categories = []
+
+            for category_url, label in category_links:
+                score = _category_score(
+                    category_url,
+                    label,
                     query,
+                )
+
+                if score <= 0:
+                    continue
+
+                scored_categories.append(
+                    (
+                        score,
+                        category_url,
+                        label,
+                    )
+                )
+
+            scored_categories.sort(
+                key=lambda item: (
+                    -item[0],
+                    len(item[1]),
                 )
             )
 
-            _dbg(
-                "matching_category_links",
-                query=query,
-                source=page_url,
-                count=len(matching_lines),
-                links=matching_lines[:20],
+            print(
+                "DELOOX CATEGORY LINKS:",
+                [
+                    {
+                        "url": url,
+                        "label": label,
+                        "score": _category_score(
+                            url,
+                            label,
+                            query,
+                        ),
+                    }
+                    for url, label in category_links
+                    if _category_score(
+                        url,
+                        label,
+                        query,
+                    ) > 0
+                ][:10],
+                flush=True,
             )
 
-            for line_url in matching_lines:
-                if line_url in visited:
+            _dbg(
+                "category_link_extraction",
+                query=query,
+                source=page_url,
+                count=len(scored_categories),
+                matches=[
+                    {
+                        "url": category_url,
+                        "label": label,
+                        "score": score,
+                    }
+                    for score, category_url, label
+                    in scored_categories[:10]
+                ],
+            )
+
+            for score, category_url, label in scored_categories[:5]:
+                if category_url in visited:
                     continue
 
-                visited.add(line_url)
+                visited.add(category_url)
+
+                print(
+                    "DELOOX: following category",
+                    category_url,
+                    "label=",
+                    label,
+                    "score=",
+                    score,
+                    flush=True,
+                )
 
                 try:
-                    page = session.get(
-                        line_url,
+                    category_page = session.get(
+                        category_url,
                         headers=HEADERS,
                         timeout=DISCOVERY_TIMEOUT,
                     )
 
                     _dbg(
-                        "category_link_fetch",
+                        "category_follow_fetch",
                         query=query,
-                        url=line_url,
-                        status=page.status_code,
-                        bytes=len(page.text or ""),
+                        url=category_url,
+                        status=category_page.status_code,
+                        bytes=len(category_page.text or ""),
                     )
 
                 except requests.RequestException as exc:
                     _dbg(
-                        "category_link_fetch_error",
+                        "category_follow_fetch_error",
                         query=query,
-                        url=line_url,
+                        url=category_url,
                         error=f"{type(exc).__name__}: {exc}",
                     )
                     continue
 
-                if page.status_code >= 400:
+                if category_page.status_code >= 400:
                     continue
 
-                if add_products(
-                    page.text,
-                    line_url,
-                ):
-                    return urls[:max_urls]
+                category_products = _extract_product_urls(
+                    category_page.text,
+                    query,
+                    allow_opaque=False,
+                )
+
+                _dbg(
+                    "category_product_extraction",
+                    query=query,
+                    url=category_url,
+                    count=len(category_products),
+                    sample=category_products[:10],
+                )
+
+                print(
+                    "DELOOX: category",
+                    category_url,
+                    "returned",
+                    len(category_products),
+                    "product URLs",
+                    flush=True,
+                )
+
+                for product_url in category_products:
+                    if not _is_product_url(product_url):
+                        continue
+
+                    if product_url in seen:
+                        continue
+
+                    seen.add(product_url)
+                    urls.append(product_url)
+
+                    if len(urls) >= max_urls:
+                        return urls[:max_urls]
 
             next_url = next_page_url(
                 r.text,
