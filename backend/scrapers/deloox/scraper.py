@@ -33,11 +33,16 @@ DEBUG_DISCOVERY = os.getenv("DELOOX_DEBUG", "1") != "0"
 
 HEADERS = {
     "User-Agent": (
-        "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) "
-        "AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 "
-        "Mobile/15E148 Safari/604.1"
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+        "AppleWebKit/537.36 (KHTML, like Gecko) "
+        "Chrome/131.0.0.0 Safari/537.36"
+    ),
+    "Accept": (
+        "text/html,application/xhtml+xml,application/xml;"
+        "q=0.9,image/avif,image/webp,*/*;q=0.8"
     ),
     "Accept-Language": "en-GB,en;q=0.9",
+    "Cache-Control": "no-cache",
 }
 
 # This is only a generic catalogue entry point. It is NOT a product seed.
@@ -721,6 +726,111 @@ def _product_url_context(blob, start, end):
     return ""
 
 
+def _product_urls_by_slug(html, query):
+    """Find Deloox product URLs whose own slug contains the full query.
+
+    This is intentionally independent of page-level text. It is a fallback for
+    Deloox templates where product names and hrefs are serialized separately.
+    """
+    q_tokens = tokens(query)
+
+    if not q_tokens:
+        return []
+
+    raw = (
+        html or ""
+    ).replace(
+        "\\\\/",
+        "/",
+    ).replace(
+        "\\/",
+        "/",
+    )
+
+    soup = BeautifulSoup(
+        raw,
+        "html.parser",
+    )
+
+    found = []
+    seen = set()
+
+    def add(raw_url):
+        if not raw_url:
+            return
+
+        raw_url = clean(raw_url)
+
+        if raw_url.startswith(
+            (
+                "javascript:",
+                "mailto:",
+                "#",
+            )
+        ):
+            return
+
+        url = (
+            urljoin(
+                BASE_URL,
+                raw_url,
+            )
+            .split("#")[0]
+            .split("?")[0]
+        )
+
+        try:
+            parsed = urlparse(url)
+        except Exception:
+            return
+
+        if parsed.netloc.lower() not in {
+            "deloox.com",
+            "www.deloox.com",
+        }:
+            return
+
+        if "/product/" not in parsed.path.lower():
+            return
+
+        if url in seen:
+            return
+
+        if not q_tokens.issubset(
+            tokens(parsed.path)
+        ):
+            return
+
+        seen.add(url)
+        found.append(url)
+
+    for a in soup.find_all(
+        "a",
+        href=True,
+    ):
+        href = clean(
+            a.get("href", "")
+        )
+
+        if "/product/" in href.lower():
+            add(href)
+
+    patterns = (
+        r'https?://(?:www\.)?deloox\.com[^"\'<>\s]*/product/[^"\'<>\s]+',
+        r'(?<![A-Za-z0-9])(?:/|(?:en|it|nl)/)product/[^"\'<>\s]+',
+    )
+
+    for pattern in patterns:
+        for match in re.finditer(
+            pattern,
+            raw,
+            re.I,
+        ):
+            add(match.group(0))
+
+    return found[:80]
+
+
 def _candidate_product_urls(
     html,
     query=None,
@@ -1211,56 +1321,129 @@ def _category_product_line_links(
 
 
 def _catalog_filter_links(session):
-    """Discover generic category/Product Line links from the live catalogue.
+    """Discover category/Product Line links from a live Deloox catalogue page.
 
-    Results are cached because the catalogue page itself is generic.
+    The important point is that Deloox exposes Product Line links in the
+    catalogue navigation. We keep the visible label together with the URL so
+    a localized label can resolve a category even when the slug differs.
     """
     global CATALOG_FILTER_LINKS
 
     if CATALOG_FILTER_LINKS is not None:
         return CATALOG_FILTER_LINKS
 
-    urls = []
-
-    # The original catalogue page is kept as the first generic entry point.
-    catalogue_pages = [
+    pages = (
         CATALOG_URL,
         BASE_URL + "/en/category/1025540/trending.html?page=1",
-    ]
+        BASE_URL + "/en/category/1025540/trending.html",
+    )
 
+    found = []
     seen = set()
 
-    for catalogue_url in catalogue_pages:
+    def add(raw_url, label=""):
+        if not raw_url:
+            return
+
+        raw_url = (
+            clean(raw_url)
+            .replace("\\/", "/")
+            .replace("\\\\/", "/")
+        )
+
+        url = (
+            urljoin(BASE_URL, raw_url)
+            .split("#")[0]
+        )
+
         try:
-            response = session.get(
-                catalogue_url,
+            parsed = urlparse(url)
+        except Exception:
+            return
+
+        if parsed.netloc.lower() not in {
+            "deloox.com",
+            "www.deloox.com",
+        }:
+            return
+
+        if "/category/" not in parsed.path.lower():
+            return
+
+        # Deloox category pages normally end in .html, but do not make that
+        # a hard requirement: the live site can expose navigation URLs with
+        # query parameters or locale variants.
+        if url in seen:
+            return
+
+        seen.add(url)
+        found.append((clean(label), url))
+
+    for page_url in pages:
+        try:
+            r = session.get(
+                page_url,
                 headers=HEADERS,
                 timeout=DISCOVERY_TIMEOUT,
             )
         except requests.RequestException as exc:
             _dbg(
                 "catalog_fetch_error",
-                url=catalogue_url,
+                url=page_url,
                 error=f"{type(exc).__name__}: {exc}",
             )
             continue
 
-        if response.status_code >= 400:
-            continue
-
-        html = response.text or ""
-
-        matches_found = _extract_category_links_from_html(
-            html,
-            # Empty query here: collect candidate category URLs. Ranking is
-            # performed later by _find_catalog_filter_url().
-            "",
-            catalogue_url,
+        _dbg(
+            "catalog_fetch",
+            url=page_url,
+            status=r.status_code,
+            bytes=len(r.text or ""),
         )
 
-        # Empty query intentionally yields no ranked matches. Therefore also
-        # collect all category URLs directly from the HTML here.
-        raw = html.replace(
+        if r.status_code >= 400:
+            continue
+
+        soup = BeautifulSoup(
+            r.text or "",
+            "html.parser",
+        )
+
+        # Normal links: this is the preferred source because label + URL stay
+        # associated with each other.
+        for a in soup.find_all(
+            "a",
+            href=True,
+        ):
+            href = clean(a.get("href", ""))
+
+            if "/category/" not in href.lower():
+                continue
+
+            label = " ".join(
+                clean(x)
+                for x in (
+                    a.get_text(
+                        " ",
+                        strip=True,
+                    ),
+                    a.get("aria-label", ""),
+                    a.get("title", ""),
+                    a.get("data-name", ""),
+                    a.get(
+                        "data-category-name",
+                        "",
+                    ),
+                )
+                if clean(x)
+            )
+
+            add(href, label)
+
+        # Serialized URLs: keep a local name/title if one exists.
+        raw = (
+            r.text or ""
+        ).replace(
             "\\\\/",
             "/",
         ).replace(
@@ -1269,56 +1452,58 @@ def _catalog_filter_links(session):
         )
 
         for match in _CATEGORY_RE.finditer(raw):
-            url = (
-                urljoin(
-                    BASE_URL,
-                    match.group(0),
-                )
-                .split("#")[0]
+            url = match.group(0)
+
+            left = max(
+                0,
+                match.start() - 3000,
+            )
+            right = min(
+                len(raw),
+                match.end() + 3000,
             )
 
-            try:
-                parsed = urlparse(url)
-            except Exception:
-                continue
+            local = raw[left:right]
+            label = ""
 
-            if parsed.netloc.lower() not in {
-                "deloox.com",
-                "www.deloox.com",
-            }:
-                continue
-
-            if (
-                "/category/" not in parsed.path.lower()
-                or not parsed.path.lower().endswith(".html")
+            for pattern in (
+                r'"(?:name|categoryName|category_name|title|label)"\s*:\s*"([^"]{1,300})"',
+                r"'(?:name|categoryName|category_name|title|label)'\s*:\s*'([^']{1,300})'",
             ):
-                continue
+                nm = re.search(
+                    pattern,
+                    local,
+                    re.I,
+                )
+                if nm:
+                    label = clean(nm.group(1))
+                    break
 
-            if url not in seen:
-                seen.add(url)
-                urls.append(url)
+            add(url, label)
 
-        _dbg(
-            "catalog_fetch",
-            url=catalogue_url,
-            status=response.status_code,
-            bytes=len(html),
-            category_urls=len(urls),
-        )
+    CATALOG_FILTER_LINKS = found
 
-    CATALOG_FILTER_LINKS = urls
+    _dbg(
+        "catalog_links_discovered",
+        count=len(found),
+        sample=found[:30],
+    )
+
     return CATALOG_FILTER_LINKS
-
 
 def _find_catalog_filter_url(
     session,
     query,
 ):
-    """Resolve the strongest dedicated Deloox category for a query.
+    """Resolve the real Deloox Product Line/category for a query.
 
-    This is the critical discovery step. Broad fragrance categories are not
-    considered here. A dedicated category must match the query in its slug
-    and/or its local label.
+    Priority:
+    1. Live catalogue navigation (the real source of Product Line links).
+    2. Deloox search-page category links.
+    3. Category sitemap.
+    4. Cached/discovered catalogue links.
+
+    No category ID is guessed. No product-specific URL is hard-coded.
     """
     q = clean(query)
     q_tokens = tokens(q)
@@ -1328,16 +1513,81 @@ def _find_catalog_filter_url(
 
     candidates = []
 
+    def add_candidate(
+        url,
+        label="",
+        source="unknown",
+        bonus=0,
+    ):
+        score = _category_score(
+            url,
+            label,
+            q,
+        )
+
+        if score <= 0:
+            return
+
+        candidates.append(
+            (
+                score + bonus,
+                url,
+                clean(label),
+                source,
+            )
+        )
+
     # ---------------------------------------------------------
-    # A) Deloox search pages can expose the dedicated category even
-    # when the generic catalogue page does not.
+    # 1) LIVE CATALOGUE — CRITICAL PATH
     # ---------------------------------------------------------
-    search_endpoints = [
+    catalogue_pages = (
+        CATALOG_URL,
+        BASE_URL + "/en/category/1025540/trending.html?page=1",
+        BASE_URL + "/en/category/1025540/trending.html",
+    )
+
+    for catalogue_url in catalogue_pages:
+        try:
+            r = session.get(
+                catalogue_url,
+                headers=HEADERS,
+                timeout=DISCOVERY_TIMEOUT,
+            )
+        except requests.RequestException as exc:
+            _dbg(
+                "catalog_query_fetch_error",
+                query=q,
+                url=catalogue_url,
+                error=f"{type(exc).__name__}: {exc}",
+            )
+            continue
+
+        if r.status_code >= 400:
+            continue
+
+        extracted = _extract_category_links_from_html(
+            r.text,
+            q,
+            catalogue_url,
+        )
+
+        for item in extracted:
+            add_candidate(
+                item["url"],
+                item["label"],
+                "live_catalogue",
+                1000,
+            )
+
+    # ---------------------------------------------------------
+    # 2) DIRECT SEARCH PAGE
+    # ---------------------------------------------------------
+    search_endpoints = (
         BASE_URL + "/en/search?q=" + quote_plus(q),
         BASE_URL + "/en/search?query=" + quote_plus(q),
         BASE_URL + "/en/search?search=" + quote_plus(q),
         BASE_URL + "/en/search?term=" + quote_plus(q),
-    ]
+    )
 
     for endpoint in search_endpoints:
         try:
@@ -1346,13 +1596,7 @@ def _find_catalog_filter_url(
                 headers=HEADERS,
                 timeout=DISCOVERY_TIMEOUT,
             )
-        except requests.RequestException as exc:
-            _dbg(
-                "category_search_error",
-                query=q,
-                url=endpoint,
-                error=f"{type(exc).__name__}: {exc}",
-            )
+        except requests.RequestException:
             continue
 
         if r.status_code >= 400:
@@ -1365,67 +1609,48 @@ def _find_catalog_filter_url(
         )
 
         for item in extracted:
-            candidates.append(
-                (
-                    item["score"] + 500,
-                    item["url"],
-                    item["label"],
-                    "search",
-                )
+            add_candidate(
+                item["url"],
+                item["label"],
+                "search",
+                500,
             )
 
     # ---------------------------------------------------------
-    # B) Sitemap category discovery.
+    # 3) CATEGORY SITEMAP
     # ---------------------------------------------------------
-    sitemap_candidates = _sitemap_category_urls(
+    for url in _sitemap_category_urls(
         session,
         q,
-        max_sitemaps=16,
-        max_urls=80,
-    )
-
-    for url in sitemap_candidates:
-        score = _category_score(
+        max_sitemaps=32,
+        max_urls=100,
+    ):
+        add_candidate(
             url,
             "",
-            q,
+            "sitemap",
+            400,
         )
 
-        if score > 0:
-            candidates.append(
-                (
-                    score + 400,
-                    url,
-                    "",
-                    "sitemap",
-                )
-            )
-
     # ---------------------------------------------------------
-    # C) Generic catalogue page.
+    # 4) DISCOVERED CATALOGUE LINKS
     # ---------------------------------------------------------
-    for url in _catalog_filter_links(session):
-        score = _category_score(
+    for label, url in _catalog_filter_links(
+        session
+    ):
+        add_candidate(
             url,
-            "",
-            q,
+            label,
+            "catalog_links",
+            200,
         )
-
-        if score > 0:
-            candidates.append(
-                (
-                    score,
-                    url,
-                    "",
-                    "catalog",
-                )
-            )
 
     if not candidates:
         _dbg(
             "catalog_match",
             query=q,
             url=None,
+            reason="no_matching_category_discovered",
         )
         return None
 
@@ -1435,7 +1660,10 @@ def _find_catalog_filter_url(
     for score, url, label, source in candidates:
         current = best.get(url)
 
-        if current is None or score > current[0]:
+        if (
+            current is None
+            or score > current[0]
+        ):
             best[url] = (
                 score,
                 url,
@@ -1471,10 +1699,12 @@ def _find_catalog_filter_url(
         "catalog_match",
         query=q,
         url=selected,
+        label=ranked[0][2],
+        source=ranked[0][3],
+        score=ranked[0][0],
     )
 
     return selected
-
 
 def _category_pages(session):
     """Generic fallback category roots only."""
@@ -2053,6 +2283,17 @@ def _discover(session, q):
                 page.text,
                 q,
             )
+
+            # Some Deloox category templates render product names in a
+            # separate JSON structure while the href itself contains the
+            # complete product slug. In that case the strict local-context
+            # extractor can legitimately return nothing. Use the product URL
+            # slug as a second, still-local signal.
+            if not candidates:
+                candidates = _product_urls_by_slug(
+                    page.text,
+                    q,
+                )
 
             _dbg(
                 "dedicated_category_candidates",
