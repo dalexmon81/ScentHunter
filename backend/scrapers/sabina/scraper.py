@@ -1,13 +1,17 @@
 import re
 import json
+import html as html_lib
 import unicodedata
-from urllib.parse import urljoin, urlsplit, urlunsplit
+from collections import deque
+from urllib.parse import urljoin, urlsplit, urlunsplit, parse_qs
 
 import requests
 from bs4 import BeautifulSoup
 
+
+STORE = "Sabina"
 BASE = "https://www.sabina.com"
-TIMEOUT = 20
+TIMEOUT = 8
 
 HEADERS = {
     "User-Agent": (
@@ -15,12 +19,13 @@ HEADERS = {
         "AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.0 "
         "Mobile/15E148 Safari/604.1"
     ),
-    "Accept-Language": "fr-FR,fr;q=0.9,en;q=0.7",
-    "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+    "Accept-Language": "fr-FR,fr;q=0.9,en;q=0.7,it;q=0.6",
+    "Accept": "text/html,application/xhtml+xml,application/json;q=0.9,*/*;q=0.8",
     "Referer": BASE + "/fr/",
 }
 
 # Generic perfume/catalog entry points only.
+# No perfume, brand, product or query-specific URL is seeded.
 ROOTS = (
     BASE + "/fr/7-parfums-pour-homme",
     BASE + "/fr/31-fragrances-pour-homme",
@@ -33,427 +38,840 @@ ROOTS = (
     BASE + "/fr/891-perfumes-nicho-unisex",
 )
 
+PRICE_RE = re.compile(
+    r"(?<!\d)(\d{1,5}(?:[.,]\d{2}))\s*(?:€|EUR)\b?",
+    re.I,
+)
+
+# Sabina product URLs observed in the site's generic catalog structure:
+# /fr/<category>/<numeric-id>-<slug>.html
+PRODUCT_PATH_RE = re.compile(
+    r"^/fr/(?!"
+    r"(?:content|search|recherche|login|mon-compte|panier|cart|contact|"
+    r"faq|magasins|ordre-final|etat-de-la-commande)"
+    r")"
+    r".*/\d+[-/][^?#]*\.html$",
+    re.I,
+)
+
+NON_PRODUCT_PATH_PARTS = (
+    "/content/",
+    "/search",
+    "/recherche",
+    "/login",
+    "/mon-compte",
+    "/panier",
+    "/cart",
+    "/contact",
+    "/faq",
+    "/magasins",
+)
+
+MAX_PAGES = 140
+MAX_CANDIDATES = 30
+
+
+def _clean(value):
+    return re.sub(
+        r"\s+",
+        " ",
+        html_lib.unescape(str(value or "")),
+    ).strip()
+
 
 def _norm(value):
-    value = unicodedata.normalize("NFKD", value or "")
+    value = unicodedata.normalize("NFKD", _clean(value))
     value = "".join(c for c in value if not unicodedata.combining(c))
     return re.sub(r"\s+", " ", value).strip().lower()
 
 
 def _tokens(query):
-    return [x for x in re.split(r"[^a-z0-9]+", _norm(query)) if len(x) > 1]
+    return [
+        token
+        for token in re.split(r"[^a-z0-9]+", _norm(query))
+        if len(token) > 1
+    ]
 
 
 def _score(query, text):
-    ts = _tokens(query)
-    hay = _norm(text)
-    return sum(t in hay for t in ts) / len(ts) if ts else 0.0
+    tokens = _tokens(query)
+    haystack = _norm(text)
+    if not tokens:
+        return 0.0
+    return sum(token in haystack for token in tokens) / len(tokens)
 
 
 def _clean_url(url):
-    p = urlsplit(url)
-    return urlunsplit((p.scheme.lower(), p.netloc.lower(), p.path, p.query, ""))
+    absolute = urljoin(BASE, str(url or ""))
+    p = urlsplit(absolute)
+    return urlunsplit(
+        (
+            p.scheme.lower(),
+            p.netloc.lower(),
+            p.path,
+            p.query,
+            "",
+        )
+    )
 
 
 def _internal(url):
     try:
-        return urlsplit(url).netloc.lower() in {"sabina.com", "www.sabina.com"}
+        return urlsplit(url).netloc.lower() in {
+            "sabina.com",
+            "www.sabina.com",
+        }
     except Exception:
         return False
 
 
-def _product_like(url):
+def _is_product_url(url):
     if not _internal(url):
         return False
-    path = urlsplit(url).path.lower()
+
+    p = urlsplit(url)
+    path = p.path.lower()
+
     if not path.startswith("/fr/"):
         return False
-    if any(x in path for x in (
-        "/content/", "/search", "/recherche", "/login",
-        "/mon-compte", "/panier", "/cart", "/contact",
-        "/faq", "/magasins"
-    )):
+
+    if any(part in path for part in NON_PRODUCT_PATH_PARTS):
         return False
 
-    # Sabina product URLs observed in the diagnostic have a numeric
-    # product id in the path and normally end in .html. Do not require
-    # one particular category or product name.
-    return bool(re.search(r"/\d+[-/]", path)) or path.endswith(".html")
+    return bool(PRODUCT_PATH_RE.match(path))
+
+
+def _price(value):
+    if value is None:
+        return None
+
+    if isinstance(value, (int, float)):
+        return f"{float(value):.2f}".replace(".", ",") + " €"
+
+    text = _clean(value)
+    match = PRICE_RE.search(text)
+
+    if not match:
+        match = re.search(
+            r"(?<!\d)(\d{1,5}(?:[.,]\d{2}))(?!\d)",
+            text,
+        )
+
+    if not match:
+        return None
+
+    return match.group(1).replace(".", ",") + " €"
+
+
+def _card_name(card):
+    candidates = []
+
+    for attr in ("title", "aria-label", "data-product-name", "data-name"):
+        value = card.get(attr)
+        if value:
+            candidates.append(value)
+
+    for selector in (
+        ".product-name",
+        ".product-title",
+        ".name",
+        ".product-meta",
+        "h1",
+        "h2",
+        "h3",
+        "h4",
+    ):
+        for element in card.select(selector):
+            text = _clean(element.get_text(" ", strip=True))
+            if text:
+                candidates.append(text)
+
+    for link in card.find_all("a", href=True):
+        text = _clean(link.get_text(" ", strip=True))
+        if text:
+            candidates.append(text)
+
+        for attr in ("title", "aria-label"):
+            value = link.get(attr)
+            if value:
+                candidates.append(value)
+
+    # Prefer the shortest meaningful candidate that is not just a price/UI label.
+    cleaned = []
+    for value in candidates:
+        value = _clean(value)
+        if not value:
+            continue
+        if PRICE_RE.fullmatch(value):
+            continue
+        if value.lower() in {
+            "ajouter au panier",
+            "acquista",
+            "acheter",
+            "voir",
+            "voir le produit",
+            "image",
+        }:
+            continue
+        cleaned.append(value)
+
+    if not cleaned:
+        return ""
+
+    # Product names are normally compact. Avoid returning the whole card text.
+    cleaned.sort(key=lambda x: (len(x), x))
+    return cleaned[0]
+
+
+def _card_price(card):
+    # First use explicit price-related attributes when available.
+    for attr in (
+        "data-price",
+        "data-product-price",
+        "data-final-price",
+        "content",
+    ):
+        value = card.get(attr)
+        price = _price(value)
+        if price:
+            return price
+
+    text = _clean(card.get_text(" ", strip=True))
+    return _price(text)
+
+
+def _extract_product_cards(soup, base_url):
+    """
+    Extract product cards generically from Sabina's HTML.
+
+    The parser does not depend on one specific CSS class. It recognizes
+    product-card/container markers and then extracts product URLs, names
+    and prices from the card itself.
+    """
+    cards = []
+    seen = set()
+
+    marker_re = re.compile(
+        r"(?:product|produit|article|item|catalog|ajax_block_product|"
+        r"go_click_product_link|product-container|product-meta)",
+        re.I,
+    )
+
+    # Prefer actual semantic/product containers, then fall back to any
+    # element carrying a product-related marker.
+    for node in soup.find_all(["article", "li", "div"]):
+        attrs = " ".join(
+            str(node.get(attr, ""))
+            for attr in (
+                "id",
+                "class",
+                "data-product-id",
+                "data-id",
+                "data-product-url",
+                "data-url",
+                "data-href",
+                "data-product-name",
+            )
+        )
+
+        if not marker_re.search(attrs):
+            continue
+
+        product_urls = []
+
+        for link in node.find_all("a", href=True):
+            url = _clean_url(urljoin(base_url, link["href"]))
+            if _is_product_url(url):
+                product_urls.append(url)
+
+        for attr in ("data-product-url", "data-url", "data-href"):
+            value = node.get(attr)
+            if value:
+                url = _clean_url(urljoin(base_url, value))
+                if _is_product_url(url):
+                    product_urls.append(url)
+
+        product_urls = list(dict.fromkeys(product_urls))
+
+        if not product_urls:
+            continue
+
+        # Keep the smallest useful product container. Very large ancestors
+        # can contain dozens of products and would produce false matches.
+        text = _clean(node.get_text(" ", strip=True))
+        if not text or len(text) > 2500:
+            continue
+
+        name = _card_name(node)
+        price = _card_price(node)
+
+        for product_url in product_urls:
+            key = (product_url, name, price)
+            if key in seen:
+                continue
+            seen.add(key)
+            cards.append(
+                {
+                    "url": product_url,
+                    "name": name,
+                    "price": price,
+                    "text": text,
+                }
+            )
+
+    return cards
+
+
+def _extract_anchor_products(soup, base_url):
+    """
+    Secondary generic extraction from normal anchors.
+
+    This catches product links when Sabina changes its card wrappers.
+    """
+    rows = []
+    seen = set()
+
+    for link in soup.find_all("a", href=True):
+        url = _clean_url(urljoin(base_url, link["href"]))
+        if not _is_product_url(url):
+            continue
+
+        # Walk up only a limited number of levels to find the price/name
+        # belonging to this product, without swallowing the whole page.
+        container = link
+        for _ in range(8):
+            parent = getattr(container, "parent", None)
+            if parent is None:
+                break
+
+            container = parent
+            text = _clean(container.get_text(" ", strip=True))
+
+            if PRICE_RE.search(text) and len(text) <= 1800:
+                break
+
+        text = _clean(container.get_text(" ", strip=True))
+        price = _price(text)
+
+        name_candidates = [
+            link.get("title"),
+            link.get("aria-label"),
+            _clean(link.get_text(" ", strip=True)),
+        ]
+
+        for selector in (
+            ".product-name",
+            ".product-title",
+            ".name",
+            "h1",
+            "h2",
+            "h3",
+            "h4",
+        ):
+            element = container.select_one(selector)
+            if element:
+                name_candidates.append(
+                    _clean(element.get_text(" ", strip=True))
+                )
+
+        names = [
+            value
+            for value in (_clean(x) for x in name_candidates)
+            if value
+        ]
+
+        name = min(names, key=len, default="")
+
+        key = (url, name, price)
+        if key in seen:
+            continue
+        seen.add(key)
+
+        rows.append(
+            {
+                "url": url,
+                "name": name,
+                "price": price,
+                "text": text,
+            }
+        )
+
+    return rows
+
+
+def _extract_pagination(soup, base_url):
+    """
+    Follow Sabina's own pagination graph.
+
+    Supports both ?p=N and ?page=N and navigation labels.
+    """
+    pages = []
+    seen = set()
+
+    for link in soup.find_all("a", href=True):
+        url = _clean_url(urljoin(base_url, link["href"]))
+
+        if not _internal(url) or url in seen:
+            continue
+
+        parsed = urlsplit(url)
+        query = parse_qs(parsed.query)
+
+        is_page = (
+            any(key in query for key in ("p", "page"))
+            and any(
+                str(value[0]).isdigit()
+                for key, value in query.items()
+                if value
+            )
+        )
+
+        text = _norm(link.get_text(" ", strip=True))
+        is_navigation = any(
+            marker in text
+            for marker in (
+                "suivant",
+                "next",
+                "siguiente",
+                "prochaine",
+                "precedent",
+                "précédent",
+            )
+        )
+
+        if is_page or is_navigation:
+            seen.add(url)
+            pages.append(url)
+
+    return pages
+
+
+def _extract_jsonld_products(soup, base_url):
+    rows = []
+
+    def walk(value):
+        if isinstance(value, dict):
+            typ = value.get("@type")
+            is_product = (
+                typ == "Product"
+                or (
+                    isinstance(typ, list)
+                    and "Product" in typ
+                )
+            )
+
+            if is_product:
+                name = _clean(value.get("name"))
+                url = value.get("url")
+                if isinstance(url, str):
+                    url = _clean_url(urljoin(base_url, url))
+
+                offers = value.get("offers")
+                price = None
+
+                if isinstance(offers, dict):
+                    price = _price(
+                        offers.get("price")
+                        or offers.get("lowPrice")
+                    )
+                elif isinstance(offers, list):
+                    for offer in offers:
+                        if isinstance(offer, dict):
+                            price = _price(
+                                offer.get("price")
+                                or offer.get("lowPrice")
+                            )
+                            if price:
+                                break
+
+                if (
+                    name
+                    and isinstance(url, str)
+                    and _is_product_url(url)
+                ):
+                    rows.append(
+                        {
+                            "url": url,
+                            "name": name,
+                            "price": price,
+                            "text": name,
+                        }
+                    )
+
+            for child in value.values():
+                walk(child)
+
+        elif isinstance(value, list):
+            for child in value:
+                walk(child)
+
+    for script in soup.find_all(
+        "script",
+        type=lambda value: value and "ld+json" in value,
+    ):
+        try:
+            data = json.loads(script.get_text())
+        except Exception:
+            continue
+        walk(data)
+
+    return rows
 
 
 def _fetch(session, url):
     try:
-        r = session.get(
+        response = session.get(
             url,
             headers=HEADERS,
             timeout=TIMEOUT,
             allow_redirects=True,
         )
-        ct = (r.headers.get("content-type") or "").lower()
-        print(
-            f"SABINA_FINAL: FETCH status={r.status_code} "
-            f"url={url} final={r.url} bytes={len(r.content)} type={ct!r}"
-        )
-        if r.status_code != 200 or "text/html" not in ct:
+
+        content_type = (
+            response.headers.get("content-type") or ""
+        ).lower()
+
+        if response.status_code in (403, 429):
+            print(
+                f"SABINA: BLOCKED status={response.status_code} "
+                f"url={url}"
+            )
+            response.close()
             return None, None
-        return r.url, r.text
-    except Exception as exc:
+
+        if response.status_code != 200:
+            response.close()
+            return None, None
+
+        if "text/html" not in content_type:
+            response.close()
+            return None, None
+
+        final_url = response.url
+        text = response.text
+        response.close()
+        return final_url, text
+
+    except requests.RequestException as exc:
         print(
-            f"SABINA_FINAL: FETCH_ERROR url={url} "
+            f"SABINA: FETCH_ERROR url={url} "
             f"error={type(exc).__name__}: {exc}"
         )
         return None, None
 
 
-def _pagination_links(soup, base):
-    out = []
-    seen = set()
-
-    for a in soup.find_all("a", href=True):
-        u = _clean_url(urljoin(base, a["href"]))
-        if not _internal(u) or u in seen:
-            continue
-
-        q = urlsplit(u).query.lower()
-        text = _norm(" ".join(a.stripped_strings))
-
-        is_page = bool(
-            re.search(r"(?:^|&)p=\d+(?:&|$)", q)
-            or re.search(r"(?:^|&)page=\d+(?:&|$)", q)
-        )
-        is_nav = any(
-            marker in text
-            for marker in ("suivant", "next", "siguiente",
-                           "précédent", "precedent")
-        )
-
-        if is_page or is_nav:
-            seen.add(u)
-            out.append(u)
-
-    return out
-
-
-def _diagnose_page(html, base, query):
-    """
-    Definitive structural test.
-
-    It does NOT stop at 180 links.
-    It checks:
-      1. normal <a href>
-      2. product-card/container attributes
-      3. JSON-LD Product objects
-      4. raw HTML product-like URLs
-      5. pagination links
-
-    This tells us exactly where Sabina exposes (or hides) products.
-    """
+def _parse_page(html, base_url, query):
     soup = BeautifulSoup(html, "html.parser")
-    raw = _norm(html)
-    ts = _tokens(query)
 
-    anchors = soup.find_all("a", href=True)
-    products = []
-    exact = []
-    seen_products = set()
+    cards = _extract_product_cards(soup, base_url)
+    anchors = _extract_anchor_products(soup, base_url)
+    jsonld = _extract_jsonld_products(soup, base_url)
+    pages = _extract_pagination(soup, base_url)
 
-    for a in anchors:
-        u = _clean_url(urljoin(base, a["href"]))
-        text = " ".join(a.stripped_strings)
-        sc = _score(query, f"{u} {text}")
+    # Merge evidence from all generic HTML structures.
+    merged = []
+    seen_urls = set()
 
-        if _internal(u) and _product_like(u) and u not in seen_products:
-            seen_products.add(u)
-            products.append((u, text, sc))
+    for row in cards + anchors + jsonld:
+        url = row.get("url")
+        if not url or url in seen_urls:
+            continue
+        seen_urls.add(url)
+        merged.append(row)
 
-        if _internal(u) and sc == 1.0:
-            exact.append((u, text))
+    matching = []
 
-    pages = _pagination_links(soup, base)
-
-    print(f"SABINA_FINAL: TOKENS={ts!r}")
-    print(f"SABINA_FINAL: QUERY_TEXT_IN_HTML={all(t in raw for t in ts)}")
-    print(
-        f"SABINA_FINAL: ANCHORS={len(anchors)} "
-        f"PRODUCT_LIKE_ANCHORS={len(products)} "
-        f"EXACT_QUERY_ANCHORS={len(exact)} "
-        f"PAGINATION={len(pages)}"
-    )
-
-    for u, text, sc in products[:40]:
-        print(
-            f"SABINA_FINAL: PRODUCT_LIKE score={sc:.3f} "
-            f"url={u} text={text!r}"
+    for row in merged:
+        haystack = " ".join(
+            [
+                row.get("name") or "",
+                row.get("text") or "",
+                row.get("url") or "",
+            ]
         )
 
-    # Product-card evidence, including data-* URLs.
-    containers = []
-    marker = re.compile(
-        r"product|produit|item|article|catalog|js-product",
-        re.I,
-    )
+        score = _score(query, haystack)
 
-    for node in soup.find_all(["article", "li", "div"]):
-        attrs = " ".join(
-            str(node.get(k, ""))
-            for k in (
-                "id", "class", "data-product-id", "data-id",
-                "data-product-url", "data-url", "data-href"
+        if score >= 1.0:
+            matching.append(
+                {
+                    **row,
+                    "score": score,
+                }
             )
-        )
 
-        if not marker.search(attrs):
+    return merged, matching, pages
+
+
+def _extract_product_title(soup):
+    for selector in (
+        "h1",
+        ".product-name",
+        ".product-title",
+        "meta[property='og:title']",
+        "title",
+    ):
+        element = soup.select_one(selector)
+        if not element:
             continue
 
-        urls = []
+        if element.name == "meta":
+            value = element.get("content")
+        else:
+            value = element.get_text(" ", strip=True)
 
-        for a in node.find_all("a", href=True):
-            u = _clean_url(urljoin(base, a["href"]))
-            if _internal(u):
-                urls.append(u)
+        value = _clean(value)
 
-        for attr in ("data-product-url", "data-url", "data-href"):
-            value = node.get(attr)
-            if value:
-                urls.append(_clean_url(urljoin(base, str(value))))
+        if value:
+            return value
 
-        urls = list(dict.fromkeys(urls))
+    return ""
 
-        if urls:
-            containers.append((
-                urls,
-                " ".join(node.stripped_strings)[:300],
-                attrs[:300],
-            ))
 
-    print(f"SABINA_FINAL: PRODUCT_MARKER_CONTAINERS={len(containers)}")
-
-    for urls, text, attrs in containers[:30]:
-        print(
-            f"SABINA_FINAL: CONTAINER urls={urls[:6]} "
-            f"text={text!r} attrs={attrs!r}"
-        )
-
-    # JSON-LD Product evidence.
-    json_products = []
-
+def _extract_product_price(soup):
+    # Prefer structured product/offer information.
     for script in soup.find_all(
         "script",
-        type=lambda x: x and "ld+json" in x,
+        type=lambda value: value and "ld+json" in value,
     ):
         try:
-            data = json.loads(script.string or script.get_text())
+            data = json.loads(script.get_text())
         except Exception:
             continue
 
         stack = data if isinstance(data, list) else [data]
 
         while stack:
-            obj = stack.pop()
+            value = stack.pop()
 
-            if isinstance(obj, list):
-                stack.extend(obj)
+            if isinstance(value, list):
+                stack.extend(value)
                 continue
 
-            if not isinstance(obj, dict):
+            if not isinstance(value, dict):
                 continue
 
-            typ = obj.get("@type")
+            typ = value.get("@type")
             if typ == "Product" or (
-                isinstance(typ, list) and "Product" in typ
+                isinstance(typ, list)
+                and "Product" in typ
             ):
-                json_products.append(obj)
+                offers = value.get("offers")
 
-            for value in obj.values():
-                if isinstance(value, (dict, list)):
-                    stack.append(value)
+                if isinstance(offers, dict):
+                    price = _price(
+                        offers.get("price")
+                        or offers.get("lowPrice")
+                    )
+                    if price:
+                        return price
 
-    print(f"SABINA_FINAL: JSONLD_PRODUCTS={len(json_products)}")
+                if isinstance(offers, list):
+                    for offer in offers:
+                        if isinstance(offer, dict):
+                            price = _price(
+                                offer.get("price")
+                                or offer.get("lowPrice")
+                            )
+                            if price:
+                                return price
 
-    for obj in json_products[:30]:
-        print(
-            f"SABINA_FINAL: JSONLD name={obj.get('name')!r} "
-            f"url={obj.get('url')!r} sku={obj.get('sku')!r}"
-        )
+            for child in value.values():
+                if isinstance(child, (dict, list)):
+                    stack.append(child)
 
-    # Raw HTML URL evidence.
-    raw_product_urls = []
+    # Generic visible-page fallback.
+    text = _clean(soup.get_text(" ", strip=True))
+    return _price(text)
 
-    for match in re.findall(
-        r"https?://[^\"'<>\\s]+",
-        html,
-    ):
-        u = _clean_url(match.rstrip(".,);"))
 
-        if _product_like(u) and u not in raw_product_urls:
-            raw_product_urls.append(u)
+def _verify_candidates(session, query, candidates):
+    results = []
+    seen = set()
 
-    print(
-        f"SABINA_FINAL: RAW_PRODUCT_LIKE_URLS="
-        f"{len(raw_product_urls)}"
+    # Verify strongest candidates first.
+    candidates = sorted(
+        candidates,
+        key=lambda row: (
+            row.get("score", 0.0),
+            bool(row.get("price")),
+        ),
+        reverse=True,
     )
 
-    for u in raw_product_urls[:40]:
-        print(f"SABINA_FINAL: RAW_PRODUCT_URL {u}")
+    for candidate in candidates[:MAX_CANDIDATES]:
+        url = candidate.get("url")
+        if not url or url in seen:
+            continue
+        seen.add(url)
 
-    return products, pages, json_products, containers
-
-
-def _verify(session, query, urls):
-    results = []
-
-    for url in urls[:50]:
-        final, html = _fetch(session, url)
+        final_url, html = _fetch(session, url)
         if not html:
             continue
 
         soup = BeautifulSoup(html, "html.parser")
-        h1 = soup.find("h1")
+        title = _extract_product_title(soup)
 
-        if h1:
-            title = " ".join(h1.stripped_strings)
-        elif soup.title:
-            title = soup.title.get_text(" ", strip=True)
-        else:
-            title = ""
+        if not title:
+            continue
 
-        sc = _score(query, title)
+        # Final validation is performed against the actual product title,
+        # not the category/card text.
+        score = _score(query, title)
 
-        print(
-            f"SABINA_FINAL: VERIFY score={sc:.3f} "
-            f"title={title!r} url={final}"
+        if score < 1.0:
+            continue
+
+        price = _extract_product_price(soup)
+        if not price:
+            price = _price(candidate.get("price"))
+
+        if not price:
+            continue
+
+        results.append(
+            {
+                "store": STORE,
+                "name": title,
+                "price": price,
+                "url": final_url,
+            }
         )
 
-        if sc == 1.0:
-            results.append({
-                "name": title,
-                "url": final,
-                "price": None,
-            })
+    return _dedupe(results, query)
 
-    return results
+
+def _dedupe(rows, query):
+    tokens = _tokens(query)
+    out = []
+    seen = set()
+
+    for row in rows:
+        name = _clean(row.get("name"))
+        url = _clean_url(row.get("url"))
+        price = _price(row.get("price"))
+
+        if not name or not url or not price:
+            continue
+
+        # Final generic name validation.
+        normalized_name = _norm(name)
+        if tokens and not all(
+            token in normalized_name
+            for token in tokens
+        ):
+            continue
+
+        key = (
+            normalized_name,
+            urlsplit(url).path.lower(),
+        )
+
+        if key in seen:
+            continue
+
+        seen.add(key)
+
+        out.append(
+            {
+                "store": STORE,
+                "name": name,
+                "price": price,
+                "url": url.split("#")[0],
+            }
+        )
+
+    return out
 
 
 def search(query):
-    query = " ".join(str(query or "").split())
+    query = _clean(query)
 
     if not query:
         return []
 
-    print(f"SABINA_FINAL: START query={query!r}")
-    print("SABINA_FINAL: PURPOSE=DEFINITIVE_STRUCTURE_TEST")
+    print(f"SABINA: START query={query!r}")
 
     session = requests.Session()
     session.headers.update(HEADERS)
 
-    queue = list(ROOTS)
+    queue = deque(ROOTS)
+    queued = set(ROOTS)
     visited = set()
-    candidate_urls = []
+    candidates = []
 
     try:
-        # We deliberately inspect roots first and then follow the site's
-        # own pagination graph. No product, brand or perfume URL is seeded.
-        while queue and len(visited) < 120:
-            url = queue.pop(0)
+        # Generic category discovery. No product-specific seed is used.
+        while queue and len(visited) < MAX_PAGES:
+            url = queue.popleft()
 
             if url in visited:
                 continue
 
             visited.add(url)
 
-            final, html = _fetch(session, url)
+            final_url, html = _fetch(session, url)
             if not html:
                 continue
 
-            products, pages, json_products, containers = _diagnose_page(
+            rows, matching, pages = _parse_page(
                 html,
-                final,
+                final_url,
                 query,
             )
 
-            for product_url, text, sc in products:
-                if sc > 0 and product_url not in candidate_urls:
-                    candidate_urls.append(product_url)
+            if rows:
+                print(
+                    f"SABINA: PAGE visited={len(visited)} "
+                    f"products={len(rows)} "
+                    f"matches={len(matching)} "
+                    f"pagination={len(pages)} "
+                    f"url={final_url}"
+                )
 
-            for obj in json_products:
-                product_url = obj.get("url")
-                name = obj.get("name", "")
+            for candidate in matching:
+                if not any(
+                    existing.get("url") == candidate.get("url")
+                    for existing in candidates
+                ):
+                    candidates.append(candidate)
 
-                if isinstance(product_url, str):
-                    product_url = _clean_url(
-                        urljoin(final, product_url)
-                    )
-
-                    if (
-                        _product_like(product_url)
-                        and _score(
-                            query,
-                            product_url + " " + str(name),
-                        ) > 0
-                        and product_url not in candidate_urls
-                    ):
-                        candidate_urls.append(product_url)
-
-            for urls, text, attrs in containers:
-                for product_url in urls:
-                    if (
-                        _product_like(product_url)
-                        and _score(
-                            query,
-                            product_url + " " + text,
-                        ) > 0
-                        and product_url not in candidate_urls
-                    ):
-                        candidate_urls.append(product_url)
-
+            # Keep following the site's own pagination graph.
             for page in pages:
-                if page not in visited and page not in queue:
+                if (
+                    page not in visited
+                    and page not in queued
+                ):
+                    queued.add(page)
                     queue.append(page)
 
-            print(
-                f"SABINA_FINAL: PAGE_DONE visited={len(visited)} "
-                f"queue={len(queue)} candidates={len(candidate_urls)}"
-            )
-
-            # If a generic path has produced a query-matching URL,
-            # verification is enough to classify the architecture.
-            if candidate_urls:
+            # Once we have matching product cards, verification is enough.
+            # We do not continue crawling unrelated pages unnecessarily.
+            if candidates:
                 break
 
         print(
-            f"SABINA_FINAL: GRAPH_DONE visited={len(visited)} "
-            f"queue={len(queue)} candidates={len(candidate_urls)}"
+            f"SABINA: DISCOVERY_DONE visited={len(visited)} "
+            f"queued={len(queue)} candidates={len(candidates)}"
         )
 
-        results = _verify(session, query, candidate_urls)
+        results = _verify_candidates(
+            session,
+            query,
+            candidates,
+        )
 
         print(
-            f"SABINA_FINAL: VERIFIED_RESULTS={len(results)}"
+            f"SABINA: VERIFIED_RESULTS={len(results)}"
         )
 
-        if results:
-            print(
-                "SABINA_FINAL: DIAGNOSIS="
-                "GENERIC_DISCOVERY_AND_VERIFICATION_WORKS"
-            )
-        elif candidate_urls:
-            print(
-                "SABINA_FINAL: DIAGNOSIS="
-                "PRODUCT_URLS_FOUND_BUT_VERIFICATION_REJECTS_QUERY"
-            )
-        else:
-            print(
-                "SABINA_FINAL: DIAGNOSIS="
-                "NO_QUERY_MATCHING_PRODUCT_PATH_IN_STATIC_STRUCTURE"
-            )
-
-        # Diagnostic only: production result contract is untouched.
-        return []
+        return results
 
     finally:
         session.close()
 
 
+# Compatibility aliases used by ScentHunter.
 def scrape(query):
     return search(query)
 
@@ -464,4 +882,13 @@ def search_sabina(query):
 
 if __name__ == "__main__":
     import sys
-    search(" ".join(sys.argv[1:]).strip())
+
+    q = " ".join(sys.argv[1:]).strip() or "Dior"
+    data = search(q)
+    print(
+        json.dumps(
+            data,
+            ensure_ascii=False,
+            indent=2,
+        )
+    )
