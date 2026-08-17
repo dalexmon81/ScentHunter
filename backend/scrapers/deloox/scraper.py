@@ -445,7 +445,23 @@ def _extract_category_links(html, query):
 
     wanted = tokens(query)
     if not wanted:
+        print(f"[DELOOX_DEBUG] {{\"stage\": \"category_diagnostic\", \"query\": {query!r}, \"reason\": \"empty_query_tokens\"}}", flush=True)
         return []
+
+    _raw_html_for_diag = html_lib.unescape(html or "")
+    _diag_lower = _raw_html_for_diag.lower()
+    print(
+        "[DELOOX_DEBUG] "
+        + json.dumps({
+            "stage": "category_diagnostic",
+            "query": query,
+            "html_bytes": len(_raw_html_for_diag),
+            "query_text_found": query.lower() in _diag_lower,
+            "filter_39618_found": "filters%5b7%5d%5b0%5d=39618" in _diag_lower,
+            "filter_plain_39618_found": "filters[7][0]=39618" in _diag_lower,
+        }, ensure_ascii=False),
+        flush=True,
+    )
 
     found = {}
     seen = set()
@@ -556,10 +572,25 @@ def _extract_category_links(html, query):
         # requested query to provide the relevance score.
         add(candidate, query, score=len(wanted))
 
-    return sorted(
+    _diag_links = sorted(
         found.values(),
         key=lambda item: (-item[0], len(item[1])),
     )
+    print(
+        "[DELOOX_DEBUG] "
+        + json.dumps({
+            "stage": "category_diagnostic_result",
+            "query": query,
+            "extracted_count": len(_diag_links),
+            "extracted_links": [
+                {"score": x[0], "url": x[1], "label": x[2]}
+                for x in _diag_links[:20]
+            ],
+        }, ensure_ascii=False),
+        flush=True,
+    )
+
+    return _diag_links
 
 
 def _sitemap_product_urls(session, query, max_sitemaps=64):
