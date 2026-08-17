@@ -252,6 +252,16 @@ def matches(product: Dict[str, Any], query: str) -> bool:
     if has_small_size(product) and not query_has_size:
         return False
 
+    # Le varianti vengono valutate sul nome/titolo reale del prodotto,
+    # non sull'URL. Gli URL possono contenere categorie come
+    # "pour-femme" anche quando il prodotto è un profumo valido della
+    # linea cercata. Usare l'URL qui può quindi eliminare erroneamente
+    # prodotti reali scoperti dallo scraper.
+    variant_text = norm(" ".join(
+        str(product.get(key) or "")
+        for key in ("name", "title", "product_name", "product_line", "variant")
+    ))
+
     # Le varianti realmente generiche restano escluse quando non sono
     # richieste esplicitamente. Non inseriamo qui "limited edition" o
     # "kobra": entrambe possono essere prodotti che l'utente vuole
@@ -260,9 +270,10 @@ def matches(product: Dict[str, Any], query: str) -> bool:
         normalized_phrase = norm(phrase)
 
         if (
-            normalized_phrase in search_text
+            normalized_phrase in variant_text
             and normalized_phrase not in query_normalized
         ):
+            return False
             return False
 
     # Hawas for Him e Hawas Kobra sono due linee diverse. Deloox e alcuni
