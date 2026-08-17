@@ -677,6 +677,18 @@ def _discover(session, query):
 
     urls = [url for url, _meta in ordered[:MAX_CANDIDATES]]
 
+    source_counts = {}
+    ranked_trace = []
+    for rank, (url, meta) in enumerate(ordered[:50], 1):
+        source = meta.get("source", "unknown")
+        source_counts[source] = source_counts.get(source, 0) + 1
+        ranked_trace.append({
+            "rank": rank,
+            "source": source,
+            "score": meta.get("score", 0),
+            "url": url,
+        })
+
     _dbg(
         "discovery_done",
         query=query,
@@ -685,6 +697,8 @@ def _discover(session, query):
         ranked_query_matches=sum(
             1 for _url, meta in ordered if meta["score"] >= 100
         ),
+        source_counts=source_counts,
+        ranked_candidates=ranked_trace,
         urls=urls[:50],
     )
     return urls
