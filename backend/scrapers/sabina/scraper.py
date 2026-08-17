@@ -1,17 +1,10 @@
-
-# TEST DIAGNOSTICO 2 — NON È UNA CORREZIONE DELLO SCRAPER
-# Serve solo a vedere cosa contiene realmente la pagina di ricerca Sabina
-# e perché i 190 link presenti non vengono trasformati in parsed_rows.
-
-import re
-import sys
+import re, sys, json
 from urllib.parse import quote_plus, urljoin
 import requests
 from bs4 import BeautifulSoup
 
 BASE = "https://www.sabina.com"
-TIMEOUT = 8
-
+TIMEOUT = 10
 HEADERS = {
     "User-Agent": (
         "Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) "
@@ -23,94 +16,113 @@ HEADERS = {
     "Referer": BASE + "/it/",
 }
 
-PRODUCT_URL_RE = re.compile(
-    r"^https?://(?:www\.)?sabina\.com/(?:it|fr|en|es|de|pt)/"
-    r"(?!content|ricerca|ricerca_old|marchi|negozi|contatto|faq|"
-    r"carrello|ordine|stato-ordine|il-mio-conto|module)",
-    re.I,
-)
-
-PRICE_RE = re.compile(
-    r"(?:€|\$|£)\s*(\d{1,4}(?:[.,]\d{2}))|"
-    r"(?<!\d)(\d{1,4}(?:[.,]\d{2}))\s*(?:€|\$|£)",
-    re.I,
-)
-
-def clean(v):
-    return re.sub(r"\s+", " ", str(v or "")).strip()
-
 q = " ".join(sys.argv[1:]).strip() or "Liquid brun"
 url = BASE + "/it/ricerca_old?s=" + quote_plus(q)
 
-print("SABINA_TEST2 query:", q)
-print("SABINA_TEST2 url:", url)
+print("SABINA_TEST3 query:", q)
+print("SABINA_TEST3 url:", url)
 
 try:
     r = requests.get(url, headers=HEADERS, timeout=TIMEOUT, allow_redirects=True)
-    print("SABINA_TEST2 response:", r.status_code, r.url, r.headers.get("content-type"), len(r.content))
     html = r.text
+    print("SABINA_TEST3 response:", r.status_code, r.url, len(html))
+
+    low = html.lower()
+    q_low = q.lower()
+
+    print("SABINA_TEST3 exact_query_count:", low.count(q_low))
+    for word in re.findall(r"[a-z0-9]+", q_low):
+        print(f"SABINA_TEST3 word_{word}_count:", low.count(word))
+
     soup = BeautifulSoup(html, "html.parser")
 
-    links = soup.find_all("a", href=True)
-    print("SABINA_TEST2 total_links:", len(links))
+    # 1. Mostra tutti gli elementi che contengono la query.
+    matches = []
+    for el in soup.find_all(string=re.compile(re.escape(q), re.I)):
+        parent = el.parent
+        if parent:
+            matches.append(parent)
 
-    candidates = []
-    product_url_count = 0
-    ancestor_price_count = 0
+    print("SABINA_TEST3 text_nodes_with_full_query:", len(matches))
+    for i, el in enumerate(matches[:20], 1):
+        print(f"SABINA_TEST3 QUERY_MATCH {i}:")
+        print(" tag:", el.name)
+        print(" class:", " ".join(el.get("class", [])))
+        print(" id:", el.get("id", ""))
+        print(" text:", re.sub(r"\s+", " ", el.get_text(" ", strip=True))[:1000])
+        if el.name == "a":
+            print(" href:", el.get("href", ""))
 
-    for a in links:
-        href = urljoin(BASE, a.get("href", ""))
-        if not PRODUCT_URL_RE.match(href):
-            continue
+    # 2. Cerca Liquid/Brun in script e attributi.
+    for script_i, script in enumerate(soup.find_all("script"), 1):
+        txt = script.get_text(" ", strip=False)
+        if re.search(r"liquid|brun", txt, re.I):
+            print(f"SABINA_TEST3 SCRIPT_MATCH {script_i}: chars={len(txt)}")
+            for m in list(re.finditer(r"liquid|brun", txt, re.I))[:10]:
+                a = max(0, m.start()-500)
+                b = min(len(txt), m.end()+1000)
+                print(" --- SCRIPT_CONTEXT ---")
+                print(re.sub(r"\s+", " ", txt[a:b])[:1800])
 
-        product_url_count += 1
-        label = clean(a.get("title") or a.get("aria-label") or a.get_text(" ", strip=True))
+    # 3. Cerca href che contengono liquid/brun.
+    href_hits = []
+    for a in soup.find_all("a", href=True):
+        href = urljoin(BASE, a["href"])
+        label = re.sub(r"\s+", " ", a.get_text(" ", strip=True))
+        if re.search(r"liquid|brun", href, re.I) or re.search(r"liquid|brun", label, re.I):
+            href_hits.append((href, label, a.get("class", [])))
 
-        container = a
-        price_found = False
-        price_container_level = None
-        container_text = ""
+    print("SABINA_TEST3 href_or_label_hits:", len(href_hits))
+    for i, (href, label, cls) in enumerate(href_hits[:50], 1):
+        print(f"SABINA_TEST3 HREF_HIT {i}:")
+        print(" href:", href)
+        print(" label:", label[:500])
+        print(" class:", " ".join(cls))
 
-        for level in range(8):
-            parent = getattr(container, "parent", None)
-            if not parent:
-                break
-            container = parent
-            container_text = clean(container.get_text(" ", strip=True))
-            if PRICE_RE.search(container_text):
-                price_found = True
-                price_container_level = level + 1
-                ancestor_price_count += 1
-                break
+    # 4. Cerca strutture che sembrano risultati di prodotto.
+    selectors = [
+        '[class*="product"]',
+        '[class*="item"]',
+        '[class*="result"]',
+        '[id*="product"]',
+        '[id*="result"]',
+        '[data-id-product]',
+        '[data-product-id]',
+        '[data-product]',
+    ]
 
-        if len(candidates) < 30:
-            candidates.append({
-                "href": href,
-                "label": label[:180],
-                "price_found": price_found,
-                "price_level": price_container_level,
-                "text": container_text[:500],
-                "class": " ".join(container.get("class", [])) if hasattr(container, "get") else "",
-                "tag": getattr(container, "name", ""),
-            })
+    seen = set()
+    for selector in selectors:
+        els = soup.select(selector)
+        print(f"SABINA_TEST3 selector {selector}: {len(els)}")
+        shown = 0
+        for el in els:
+            if id(el) in seen:
+                continue
+            seen.add(id(el))
+            txt = re.sub(r"\s+", " ", el.get_text(" ", strip=True))
+            if txt and (re.search(r"liquid|brun", txt, re.I) or selector in ("[data-id-product]", "[data-product-id]", "[data-product]")):
+                print("  MATCH tag=", el.name,
+                      "class=", " ".join(el.get("class", [])),
+                      "id=", el.get("id",""),
+                      "data-id-product=", el.get("data-id-product",""),
+                      "data-product-id=", el.get("data-product-id",""))
+                print("  text=", txt[:1200])
+                shown += 1
+                if shown >= 20:
+                    break
 
-    print("SABINA_TEST2 product_url_matches:", product_url_count)
-    print("SABINA_TEST2 product_urls_with_ancestor_price:", ancestor_price_count)
-    print("SABINA_TEST2 SAMPLE_START")
+    # 5. Estrarre URL canonici presenti in link/script.
+    urls = []
+    for a in soup.find_all("a", href=True):
+        u = urljoin(BASE, a["href"])
+        if "/it/" in u and u not in urls:
+            urls.append(u)
 
-    for i, c in enumerate(candidates, 1):
-        print(f"SABINA_TEST2 LINK {i}")
-        print("  href:", c["href"])
-        print("  label:", c["label"])
-        print("  price_found:", c["price_found"], "level:", c["price_level"])
-        print("  container_tag:", c["tag"], "class:", c["class"])
-        print("  container_text:", c["text"])
-
-    print("SABINA_TEST2 SAMPLE_END")
-
-    # Cerca anche pattern comuni nei link/classi per capire la struttura reale.
-    for term in ("product", "item", "price", "product-name", "product-title", "name"):
-        print(f"SABINA_TEST2 html_term_{term}:", html.lower().count(term))
+    print("SABINA_TEST3 unique_it_urls:", len(urls))
+    for u in urls:
+        if re.search(r"liquid|brun", u, re.I):
+            print("SABINA_TEST3 PRODUCT_LIKE_URL:", u)
 
 except Exception as e:
-    print("SABINA_TEST2 ERROR:", type(e).__name__, str(e))
+    print("SABINA_TEST3 ERROR:", type(e).__name__, str(e))
