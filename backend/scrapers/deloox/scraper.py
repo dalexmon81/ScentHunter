@@ -475,8 +475,6 @@ def _extract_category_links(html, query):
             "query": query,
             "html_bytes": len(_raw_html_for_diag),
             "query_text_found": query.lower() in _diag_lower,
-            "filter_39618_found": "filters%5b7%5d%5b0%5d=39618" in _diag_lower,
-            "filter_plain_39618_found": "filters[7][0]=39618" in _diag_lower,
         }, ensure_ascii=False),
         flush=True,
     )
@@ -873,6 +871,21 @@ def _discover_from_page(session, url, query, source):
         )
     )
 
+    # A Deloox search/category-filter page is a result set, not a site-wide
+    # product index. Keep only candidates that can be tied to the requested
+    # query by product-card/structured context or by the product URL slug.
+    # This is generic: no product, brand, URL, or filter ID is hard-coded.
+    if source in {"search", "category_filter"}:
+        matched_candidates = [
+            item
+            for item in final_candidates
+            if item["context_match"] or item["slug_match"]
+        ]
+        ignored_unmatched = len(final_candidates) - len(matched_candidates)
+        final_candidates = matched_candidates
+    else:
+        ignored_unmatched = 0
+
     _dbg(
         "discovery_page",
         source=source,
@@ -885,6 +898,7 @@ def _discover_from_page(session, url, query, source):
         slug_matches=sum(
             1 for item in final_candidates if item["slug_match"]
         ),
+        ignored_unmatched=ignored_unmatched,
         sample=final_candidates[:20],
     )
     return final_candidates[:MAX_CANDIDATES]
@@ -926,6 +940,13 @@ def _discover(session, query):
             slug_tokens = tokens(urlparse(url).path)
             matched = len(wanted & slug_tokens)
             slug_match = slug_match or matched > 0
+
+            # A candidate with neither a matching product-card/structured
+            # context nor a matching URL slug is not a query candidate.
+            # Reject it during discovery instead of letting unrelated
+            # navigation/recommendation links consume MAX_CANDIDATES.
+            if not context_match and not slug_match:
+                continue
 
             # Generic ranking only:
             # product-card/structured context is the strongest discovery
@@ -1056,11 +1077,18 @@ def _discover(session, query):
             "category",
         )
 
-    # 4. Product sitemap: independent source and important fallback.
-    # Sitemap candidates are merged into the same ranking pool, so the first
-    # unrelated sitemap products cannot consume MAX_CANDIDATES.
+    # 4. Product sitemap: independent fallback.
+    #
+    # Sitemap entries are not a search result set. Only URLs whose own slug
+    # contains the complete query are admitted here. This keeps the fallback
+    # generic while preventing unrelated sitemap entries from flooding the
+    # candidate budget.
     add_many(
-        _sitemap_product_urls(session, query),
+        [
+            url
+            for url in _sitemap_product_urls(session, query)
+            if _product_slug_matches(url, query)
+        ],
         "product_sitemap",
     )
 
