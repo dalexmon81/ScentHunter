@@ -3,7 +3,7 @@ import json
 import html as html_lib
 import unicodedata
 from collections import deque
-from urllib.parse import urljoin, urlsplit, urlunsplit, parse_qs
+from urllib.parse import urljoin, urlsplit, urlunsplit, parse_qs, urlencode
 
 import requests
 from bs4 import BeautifulSoup
@@ -38,12 +38,6 @@ ROOTS = (
     BASE + "/fr/891-perfumes-nicho-unisex",
 )
 
-SEARCH_ENDPOINTS = (
-    BASE + "/fr/recherche",
-    BASE + "/fr/ricerca_old",
-)
-MAX_SEARCH_PAGES = 12
-
 PRICE_RE = re.compile(
     r"(?<!\d)(\d{1,5}(?:[.,]\d{2}))\s*(?:€|EUR)\b",
     re.I,
@@ -75,6 +69,7 @@ NON_PRODUCT_PATH_PARTS = (
 
 MAX_PAGES = 140
 MAX_CANDIDATES = 30
+SEARCH_ENTRYPOINT_LIMIT = 4
 
 
 def _clean(value):
@@ -548,6 +543,68 @@ def _extract_jsonld_products(soup, base_url):
     return rows
 
 
+def _search_entrypoints(session, query):
+    """
+    Discover Sabina's own product-search endpoint before falling back to
+    large catalog crawling. This is deliberately generic: the query is the
+    only dynamic input and no product/brand URL is hard-coded.
+    """
+    urls = []
+
+    # Sabina is based on a PrestaShop-style search route. Keep both common
+    # parameter variants because the storefront has changed them over time.
+    encoded = urlencode({"controller": "search", "s": query})
+    urls.append(f"{BASE}/fr/recherche?{encoded}")
+    urls.append(f"{BASE}/fr/recherche?{urlencode({'s': query})}")
+
+    # Also inspect the live homepage search form, so a future route change
+    # does not require another scraper rewrite.
+    final_url, html = _fetch(session, BASE + "/fr/")
+    if html:
+        soup = BeautifulSoup(html, "html.parser")
+        for form in soup.find_all("form"):
+            inputs = form.find_all("input")
+            search_input = None
+            for inp in inputs:
+                name = _norm(inp.get("name"))
+                input_type = _norm(inp.get("type"))
+                placeholder = _norm(inp.get("placeholder"))
+                if name in {"s", "q", "search_query", "search"} or (
+                    input_type == "search"
+                ) or "rechercher" in placeholder:
+                    search_input = inp
+                    break
+            if not search_input:
+                continue
+            action = form.get("action") or final_url or BASE + "/fr/"
+            action = _clean_url(urljoin(final_url or BASE + "/fr/", action))
+            name = search_input.get("name") or "s"
+            parsed = urlsplit(action)
+            params = parse_qs(parsed.query, keep_blank_values=True)
+            params[name] = [query]
+            flat = []
+            for key, values in params.items():
+                for value in values:
+                    flat.append((key, value))
+            search_url = urlunsplit((
+                parsed.scheme, parsed.netloc, parsed.path, urlencode(flat), ""
+            ))
+            urls.insert(0, search_url)
+            break
+
+    out = []
+    seen = set()
+    for url in urls:
+        url = _clean_url(url)
+        if url in seen:
+            continue
+        seen.add(url)
+        out.append(url)
+        if len(out) >= SEARCH_ENTRYPOINT_LIMIT:
+            break
+    return out
+
+
 def _fetch(session, url):
     try:
         response = session.get(
@@ -817,64 +874,6 @@ def _dedupe(rows, query):
     return out
 
 
-def _native_search_urls(query):
-    return [
-        endpoint
-        + "?search_query="
-        + requests.utils.quote(query, safe="")
-        for endpoint in SEARCH_ENDPOINTS
-    ]
-
-
-def _native_search(session, query):
-    """Primary discovery through Sabina's own search engine."""
-    queue = deque(_native_search_urls(query))
-    queued = set(queue)
-    visited = set()
-    candidates = []
-
-    while queue and len(visited) < MAX_SEARCH_PAGES:
-        url = queue.popleft()
-        if url in visited:
-            continue
-
-        visited.add(url)
-
-        final_url, html = _fetch(session, url)
-        if not html:
-            continue
-
-        rows, matching, pages = _parse_page(
-            html,
-            final_url,
-            query,
-        )
-
-        print(
-            f"SABINA: NATIVE_SEARCH page={len(visited)} "
-            f"products={len(rows)} matches={len(matching)} "
-            f"pagination={len(pages)} url={final_url}"
-        )
-
-        for candidate in matching:
-            candidate_url = candidate.get("url")
-            if not candidate_url:
-                continue
-            if not any(
-                existing.get("url") == candidate_url
-                for existing in candidates
-            ):
-                candidates.append(candidate)
-
-        for page in pages:
-            if page in visited or page in queued:
-                continue
-            queued.add(page)
-            queue.append(page)
-
-    return candidates
-
-
 def search(query):
     query = _clean(query)
 
@@ -886,38 +885,45 @@ def search(query):
     session = requests.Session()
     session.headers.update(HEADERS)
 
+    queue = deque(ROOTS)
+    queued = set(ROOTS)
+    visited = set()
+    candidates = []
+
     try:
-        native_candidates = _native_search(
-            session,
-            query,
-        )
+        # FIRST: use Sabina's own search endpoint. This is the critical
+        # discovery path: it can jump directly to the relevant product/card
+        # instead of walking hundreds of unrelated category pages.
+        search_urls = _search_entrypoints(session, query)
+        print(f"SABINA: SEARCH_ENTRYPOINTS={search_urls}")
 
-        print(
-            f"SABINA: NATIVE_DISCOVERY_DONE "
-            f"candidates={len(native_candidates)}"
-        )
-
-        if native_candidates:
-            results = _verify_candidates(
-                session,
-                query,
-                native_candidates,
-            )
-
+        for search_url in search_urls:
+            if len(visited) >= MAX_PAGES:
+                break
+            if search_url in visited:
+                continue
+            visited.add(search_url)
+            final_url, html = _fetch(session, search_url)
+            if not html:
+                continue
+            rows, matching, pages = _parse_page(html, final_url, query)
             print(
-                f"SABINA: NATIVE_VERIFIED_RESULTS={len(results)}"
+                f"SABINA: SEARCH_PAGE products={len(rows)} "
+                f"matches={len(matching)} pagination={len(pages)} "
+                f"url={final_url}"
             )
+            for candidate in matching:
+                if not any(existing.get("url") == candidate.get("url") for existing in candidates):
+                    candidates.append(candidate)
+            # Search results may paginate; keep their pagination in the queue.
+            for page in pages:
+                if page not in visited and page not in queued:
+                    queued.add(page)
+                    queue.append(page)
 
-            if results:
-                return results
-
-        # Fallback only when Sabina's native search produced no
-        # verifiable product.
-        queue = deque(ROOTS)
-        queued = set(ROOTS)
-        visited = set()
-        candidates = []
-
+        # SECOND: fallback to generic catalog pagination only if the direct
+        # search did not produce a verified candidate. The crawl remains
+        # generic and contains no product-specific URL.
         while queue and len(visited) < MAX_PAGES:
             url = queue.popleft()
 
@@ -938,7 +944,7 @@ def search(query):
 
             if rows:
                 print(
-                    f"SABINA: FALLBACK_PAGE visited={len(visited)} "
+                    f"SABINA: PAGE visited={len(visited)} "
                     f"products={len(rows)} "
                     f"matches={len(matching)} "
                     f"pagination={len(pages)} "
@@ -946,25 +952,29 @@ def search(query):
                 )
 
             for candidate in matching:
-                candidate_url = candidate.get("url")
-                if not candidate_url:
-                    continue
-
                 if not any(
-                    existing.get("url") == candidate_url
+                    existing.get("url") == candidate.get("url")
                     for existing in candidates
                 ):
                     candidates.append(candidate)
 
+            # Keep following the site's own pagination graph.
             for page in pages:
-                if page in visited or page in queued:
-                    continue
-                queued.add(page)
-                queue.append(page)
+                if (
+                    page not in visited
+                    and page not in queued
+                ):
+                    queued.add(page)
+                    queue.append(page)
+
+            # Never stop discovery merely because an early page produced a
+            # candidate. Sabina paginates large catalogs, and an early match
+            # can be a false positive or a less relevant product. Continue
+            # through the generic pagination graph up to MAX_PAGES.
 
         print(
-            f"SABINA: FALLBACK_DISCOVERY_DONE "
-            f"visited={len(visited)} candidates={len(candidates)}"
+            f"SABINA: DISCOVERY_DONE visited={len(visited)} "
+            f"queued={len(queue)} candidates={len(candidates)}"
         )
 
         results = _verify_candidates(
