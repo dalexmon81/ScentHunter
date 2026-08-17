@@ -715,20 +715,69 @@ def _discover_from_page(session, url, query, source):
     normalized_anchor_urls = []
     normalization_failures = []
     normalization_pairs = []
-    for href in anchor_product_hrefs:
+    normalization_groups = {}
+
+    # Full 1:1 audit of every product href found in the HTML.  This is
+    # diagnostic only: discovery behavior is unchanged.  The goal is to
+    # prove exactly why N raw hrefs become M unique normalized products.
+    for index, anchor in enumerate(
+        soup.find_all("a", href=True),
+        start=1,
+    ):
+        href = clean(anchor.get("href"))
+        if "/product/" not in href.lower():
+            continue
+
         normalized = _normalize_product_url(href)
-        normalization_pairs.append(
-            {
-                "raw": href,
-                "normalized": normalized,
-            }
-        )
+        context = _product_context(anchor)
+        if not context:
+            context = _card_context(anchor)
+
+        pair = {
+            "index": index,
+            "raw": href,
+            "normalized": normalized,
+            "product_id": (
+                urlparse(normalized).path.split("/product/", 1)[1].split("/", 1)[0]
+                if normalized and "/product/" in normalized
+                else None
+            ),
+            "anchor_text": clean(anchor.get_text(" ", strip=True))[:300],
+            "aria_label": clean(anchor.get("aria-label"))[:300],
+            "title": clean(anchor.get("title"))[:300],
+            "data_product_name": clean(anchor.get("data-product-name"))[:300],
+            "context": clean(context)[:500],
+        }
+        normalization_pairs.append(pair)
+
         if normalized:
             normalized_anchor_urls.append(normalized)
+            group = normalization_groups.setdefault(
+                normalized,
+                {
+                    "normalized": normalized,
+                    "product_id": pair["product_id"],
+                    "raw_count": 0,
+                    "raw_hrefs": [],
+                    "anchor_texts": [],
+                    "contexts": [],
+                },
+            )
+            group["raw_count"] += 1
+            if href not in group["raw_hrefs"]:
+                group["raw_hrefs"].append(href)
+            if pair["anchor_text"] and pair["anchor_text"] not in group["anchor_texts"]:
+                group["anchor_texts"].append(pair["anchor_text"])
+            if pair["context"] and pair["context"] not in group["contexts"]:
+                group["contexts"].append(pair["context"])
         else:
-            normalization_failures.append(href)
+            normalization_failures.append(pair)
 
     unique_normalized_anchor_urls = set(normalized_anchor_urls)
+    normalization_groups_list = sorted(
+        normalization_groups.values(),
+        key=lambda item: (-item["raw_count"], item["normalized"]),
+    )
 
     _dbg(
         "page_product_census",
@@ -746,7 +795,8 @@ def _discover_from_page(session, url, query, source):
         ),
         normalization_failures=len(normalization_failures),
         normalization_failure_sample=normalization_failures[:20],
-        normalization_pairs=normalization_pairs[:40],
+        normalization_groups=normalization_groups_list[:160],
+        normalization_pairs=normalization_pairs[:160],
         sample_anchor_product_hrefs=anchor_product_hrefs[:20],
     )
 
