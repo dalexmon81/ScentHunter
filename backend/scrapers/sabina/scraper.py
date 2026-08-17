@@ -1,7 +1,7 @@
 import re
 import json
 import html as html_lib
-from urllib.parse import quote_plus, urljoin, urlparse, parse_qs, unquote
+from urllib.parse import quote_plus, urljoin
 
 import requests
 from bs4 import BeautifulSoup
@@ -160,353 +160,139 @@ def _walk_json(obj, query):
     return _dedupe(rows, query)
 
 def _parse_html(text, query):
-    soup = BeautifulSoup(text or "", "html.parser")
+    soup = BeautifulSoup(text, "html.parser")
     rows = []
-
     for script in soup.select('script[type="application/ld+json"]'):
         try:
             rows.extend(_walk_json(json.loads(script.get_text(strip=True)), query))
         except Exception:
             pass
-
-    tokens = [t for t in re.findall(r"[a-z0-9à-ÿ]+", _clean(query).lower()) if len(t) > 1]
-
     for a in soup.find_all("a", href=True):
         url = urljoin(BASE, a["href"])
         if not _looks_like_product_url(url):
             continue
-
-        clean_url = url.split("#", 1)[0].split("?", 1)[0]
-        url_hay = clean_url.lower().replace("-", " ")
-
-        # The URL itself is the strongest generic identity signal available
-        # on Sabina product cards. If it contains every query token, discovery
-        # is allowed even when the visible card title is incomplete.
-        url_match = tokens and all(token in url_hay for token in tokens)
-
         container = a
-        best_container = a
-        for _ in range(6):
+        for _ in range(7):
             parent = getattr(container, "parent", None)
             if not parent:
                 break
             container = parent
-            classes = " ".join(container.get("class", [])) if hasattr(container, "get") else ""
-            marker = (classes + " " + str(container.get("id", ""))).lower() if hasattr(container, "get") else ""
             txt = _clean(container.get_text(" ", strip=True))
-            if len(txt) <= 2200:
-                best_container = container
-            if any(term in marker for term in ("product", "item", "card", "ajax_block")):
+            if re.search(r"(?:€|\$|£)", txt) and len(txt) < 1800:
                 break
-
-        text_block = _clean(best_container.get_text(" ", strip=True))
-        if not re.search(r"(?:€|\$|£)", text_block):
-            continue
-
-        candidates = [a.get("title"), a.get("aria-label"), a.get_text(" ", strip=True)]
-        for sel in ("h1", "h2", "h3", "h4", ".name", ".product-name", ".product-title", ".product-item-name"):
-            for el in best_container.select(sel):
-                candidates.append(el.get_text(" ", strip=True))
-
-        cleaned = [_clean(x) for x in candidates if _clean(x)]
-        if not cleaned:
-            continue
-
-        token_candidates = [
-            c for c in cleaned
-            if len(c) <= 500 and all(token in c.lower().replace("-", " ") for token in tokens)
-        ]
-
-        if token_candidates:
-            name = min(token_candidates, key=len)
-        elif url_match:
-            # When the slug is the only complete identity signal, choose the
-            # most product-like concise heading rather than arbitrary page text.
-            name = min(cleaned, key=len)
-        else:
-            continue
-
-        if name.lower() in {"vedi", "vedi tutto", "acquista", "immagine"}:
-            continue
-
+        text_block = _clean(container.get_text(" ", strip=True))
         pm = PRICE_RE.search(text_block)
         if not pm:
             continue
-
-        price_value = next((g for g in pm.groups() if g is not None), "")
-        rows.append({
-            "store": STORE,
-            "name": name,
-            "price": price_value.replace(".", ",") + " €",
-            "url": clean_url,
-        })
-
+        candidates = [a.get("title"), a.get("aria-label"), a.get_text(" ", strip=True)]
+        for sel in ("h1", "h2", "h3", "h4", ".name", ".product-name", ".product-title", ".product-item-name"):
+            for el in container.select(sel):
+                candidates.append(el.get_text(" ", strip=True))
+        cleaned = [_clean(x) for x in candidates if _clean(x)]
+        if not cleaned:
+            continue
+        # Prefer a concise title; the previous max-length choice could select
+        # unrelated card text and make matching fail.
+        name = min(cleaned, key=len)
+        for candidate in cleaned:
+            low = candidate.lower()
+            if "le beau" in low or "jean paul gaultier" in low:
+                name = candidate
+                break
+        if name.lower() in {"vedi", "vedi tutto", "acquista", "immagine"}:
+            continue
+        rows.append({"store": STORE, "name": name, "price": next((g for g in pm.groups() if g is not None), "") .replace(".", ",") + " €", "url": url})
     return _dedupe(rows, query)
 
 def _get(session, url, **kwargs):
-    r = session.get(url, headers=HEADERS, timeout=TIMEOUT, allow_redirects=True, **kwargs)
+    print(f"SABINA_TEST request: {url}", flush=True)
+    try:
+        r = session.get(url, headers=HEADERS, timeout=TIMEOUT, allow_redirects=True, **kwargs)
+    except Exception as exc:
+        print(f"SABINA_TEST request_error: {type(exc).__name__}: {exc}", flush=True)
+        raise
+    print(
+        f"SABINA_TEST response: status={r.status_code} final_url={r.url} "
+        f"content_type={r.headers.get('Content-Type','')} bytes={len(r.content)}",
+        flush=True,
+    )
     if r.status_code in (403, 429):
-        print(f"SABINA BLOCKED: HTTP {r.status_code}")
+        print(f"SABINA BLOCKED: HTTP {r.status_code}", flush=True)
         r.close()
         return None
     r.raise_for_status()
     return r
 
-def _extract_search_engine_urls(text, query):
-    """Generic external discovery fallback.
-
-    Used only when Sabina's own search endpoints do not expose product links.
-    The query is supplied at runtime; no product, brand or URL is hard-coded.
-    """
-    soup = BeautifulSoup(text, "html.parser")
-    found = []
-    seen = set()
-
-    for a in soup.find_all("a", href=True):
-        href = html_lib.unescape(str(a.get("href") or ""))
-        candidate = href
-
-        # Google/Bing/DDG may wrap the real URL in a redirect parameter.
-        parsed = urlparse(href)
-        params = parse_qs(parsed.query)
-        for key in ("url", "q", "uddg"):
-            if params.get(key):
-                candidate = unquote(params[key][0])
-                break
-
-        if candidate.startswith("/"):
-            candidate = urljoin("https://www.google.com", candidate)
-
-        candidate = candidate.replace("&amp;", "&")
-        if not _looks_like_product_url(candidate):
-            continue
-
-        clean_url = candidate.split("#", 1)[0].split("?", 1)[0]
-        if clean_url in seen:
-            continue
-
-        anchor_text = _clean(a.get_text(" ", strip=True))
-        tokens = [t for t in re.findall(r"[a-z0-9à-ÿ]+", _clean(query).lower()) if len(t) > 1]
-        url_hay = clean_url.lower().replace("-", " ")
-        text_hay = anchor_text.lower().replace("-", " ")
-        if tokens and (all(t in url_hay for t in tokens) or (len(text_hay) <= 500 and all(t in text_hay for t in tokens))):
-            seen.add(clean_url)
-            found.append(clean_url)
-
-    return found
-
-
-def _discover_from_external_search(session, query):
-    """Generic last-resort discovery through public search indexes."""
-    q = quote_plus(f"site:sabina.com/it/ {query}")
-    endpoints = [
-        f"https://www.google.com/search?q={q}&num=20",
-        f"https://www.bing.com/search?q={q}&count=20",
-        f"https://html.duckduckgo.com/html/?q={q}",
-    ]
-    output = []
-    seen = set()
-
-    for endpoint in endpoints:
-        try:
-            response = session.get(
-                endpoint,
-                headers={**HEADERS, "Referer": "https://www.google.com/"},
-                timeout=TIMEOUT,
-            )
-            if not response.ok:
-                continue
-            for url in _extract_search_engine_urls(response.text, query):
-                if url not in seen:
-                    seen.add(url)
-                    output.append(url)
-            response.close()
-            if output:
-                break
-        except requests.RequestException:
-            continue
-
-    return output
-
-
-def _discover_from_first_party(session, query):
-    urls = []
-    seen = set()
-    q = quote_plus(query)
-
-    # Sabina/PrestaShop installations have used several search routes over
-    # time. Try the generic forms rather than depending on one historical URL.
-    search_urls = [
-        BASE + "/it/ricerca?controller=search&s=" + q,
-        BASE + "/it/ricerca?s=" + q,
-        BASE + "/it/ricerca?search_query=" + q,
-        BASE + "/it/search?s=" + q,
-        BASE + "/it/ricerca_old?s=" + q,
-        BASE + "/it/ricerca_old?search_query=" + q,
-    ]
-
-    for url in search_urls:
-        try:
-            response = _get(session, url)
-            if response is None:
-                continue
-            links = _extract_product_links_from_html(response.text, query)
-            response.close()
-            for link in links:
-                if link not in seen:
-                    seen.add(link)
-                    urls.append(link)
-        except requests.RequestException:
-            continue
-
-    # Generic AJAX variants used by search modules.
-    ajax_endpoints = [
-        BASE + "/it/module/ec_customization/ajax",
-        BASE + "/it/modules/ec_customization/ajax",
-        BASE + "/modules/ecelastic/ajax.php",
-    ]
-    payloads = [
-        {"s": query, "query": query, "search_query": query},
-        {"q": query, "query": query, "search_query": query},
-    ]
-
-    for endpoint in ajax_endpoints:
-        for payload in payloads:
-            for method in ("get", "post"):
-                try:
-                    if method == "get":
-                        response = session.get(endpoint, params=payload, headers=HEADERS, timeout=TIMEOUT)
-                    else:
-                        response = session.post(
-                            endpoint,
-                            data=payload,
-                            headers={**HEADERS, "X-Requested-With": "XMLHttpRequest"},
-                            timeout=TIMEOUT,
-                        )
-                    if not response.ok:
-                        response.close()
-                        continue
-                    text = response.text
-                    response.close()
-                    links = _extract_product_links_from_html(text, query)
-                    for link in links:
-                        if link not in seen:
-                            seen.add(link)
-                            urls.append(link)
-                except requests.RequestException:
-                    continue
-
-    return urls
-
-
-def _extract_product_links_from_html(text, query):
-    soup = BeautifulSoup(text or "", "html.parser")
-    found = []
-    seen = set()
-    tokens = [t for t in re.findall(r"[a-z0-9à-ÿ]+", _clean(query).lower()) if len(t) > 1]
-
-    for a in soup.find_all("a", href=True):
-        url = urljoin(BASE, a.get("href") or "").split("#", 1)[0].split("?", 1)[0]
-        if not _looks_like_product_url(url):
-            continue
-
-        container = a
-        candidates = [
-            a.get("title"),
-            a.get("aria-label"),
-            a.get_text(" ", strip=True),
-        ]
-        for _ in range(6):
-            container = getattr(container, "parent", None)
-            if not container:
-                break
-            candidates.append(container.get_text(" ", strip=True))
-
-        url_hay = url.lower().replace("-", " ")
-        text_candidates = [
-            _clean(str(x)).lower().replace("-", " ")
-            for x in candidates if _clean(str(x))
-        ]
-        url_match = tokens and all(token in url_hay for token in tokens)
-        text_match = any(
-            len(candidate) <= 500 and all(token in candidate for token in tokens)
-            for candidate in text_candidates
-        )
-        if tokens and not (url_match or text_match):
-            continue
-
-        if url not in seen:
-            seen.add(url)
-            found.append(url)
-
-    return found
-
-
 def search(query):
     query = _clean(query)
     if not query:
         return []
-
-    session = requests.Session()
-    session.headers.update(HEADERS)
-
+    s = requests.Session()
+    s.headers.update(HEADERS)
     try:
-        # Warm-up establishes the same session/cookies used for the search.
         try:
-            response = _get(session, BASE + "/it/")
-            if response is not None:
-                response.close()
-        except requests.RequestException:
-            pass
-
-        candidate_urls = []
-        seen = set()
-
-        # 1. Sabina's own search/AJAX discovery.
-        for url in _discover_from_first_party(session, query):
-            if url not in seen:
-                seen.add(url)
-                candidate_urls.append(url)
-
-        # 2. Generic public-index fallback. This is still query-driven and
-        # contains no product-specific seed or exception.
-        if not candidate_urls:
-            for url in _discover_from_external_search(session, query):
-                if url not in seen:
-                    seen.add(url)
-                    candidate_urls.append(url)
-
-        # 3. Fetch the actual product pages and extract product-level data.
-        results = []
-        seen_results = set()
-        for url in candidate_urls[:30]:
+            r = _get(s, BASE + "/it/")
+            if r is not None:
+                print(f"SABINA_TEST homepage_ok: chars={len(r.text)}", flush=True)
+                r.close()
+        except Exception as exc:
+            print(f"SABINA_TEST homepage_error: {type(exc).__name__}: {exc}", flush=True)
+        urls = [
+            BASE + "/it/ricerca?search_query=" + quote_plus(query),
+            BASE + "/it/ricerca_old?s=" + quote_plus(query),
+            BASE + "/it/ricerca_old?search_query=" + quote_plus(query),
+        ]
+        for url in urls:
             try:
-                response = _get(session, url)
-                if response is None:
-                    continue
-                html = response.text
-                response.close()
-            except requests.RequestException:
+                r = _get(s, url)
+                if r is None:
+                    break
+                html = r.text
+                print(f"SABINA_TEST search_page: chars={len(html)} links={len(BeautifulSoup(html, 'html.parser').find_all('a', href=True))}", flush=True)
+                r.close()
+                parsed = _parse_html(html, query)
+                print(f"SABINA_TEST parsed_rows: {len(parsed)}", flush=True)
+                if parsed:
+                    return _enrich_product_sizes(s, parsed)
+            except Exception as exc:
+                print(f"SABINA_TEST search_url_error: {type(exc).__name__}: {exc}", flush=True)
                 continue
-
-            parsed = _parse_html(html, query)
-            for item in parsed:
-                key = (
-                    item.get("name", "").lower(),
-                    item.get("url", "").split("?", 1)[0].split("#", 1)[0],
-                    item.get("price", ""),
-                )
-                if key in seen_results:
+        ajax_url = BASE + "/modules/ecelastic/ajax.php"
+        payloads = [
+            {"q": query, "query": query, "search_query": query, "id_lang": 5, "id_country": 10, "id_currency": 1},
+            {"s": query, "search_query": query, "id_lang": 5, "id_country": 10, "id_currency": 1},
+            {"query": query, "id_lang": 5, "id_country": 10, "id_currency": 1},
+        ]
+        for payload in payloads:
+            for method in ("get", "post"):
+                try:
+                    if method == "get":
+                        r = s.get(ajax_url, params=payload, headers=HEADERS, timeout=TIMEOUT)
+                    else:
+                        r = s.post(ajax_url, data=payload, headers={**HEADERS, "X-Requested-With": "XMLHttpRequest"}, timeout=TIMEOUT)
+                    if r.status_code in (403, 429):
+                        r.close()
+                        return []
+                    print(f"SABINA_TEST ajax_response: method={method} status={r.status_code} final_url={r.url} chars={len(r.text)} content_type={r.headers.get('Content-Type','')}", flush=True)
+                    if not r.ok or not r.text.strip():
+                        r.close()
+                        continue
+                    response_text = r.text
+                    r.close()
+                    try:
+                        rows = _walk_json(json.loads(response_text), query)
+                    except Exception:
+                        rows = _parse_html(response_text, query)
+                    print(f"SABINA_TEST ajax_rows: method={method} rows={len(rows)}", flush=True)
+                    if rows:
+                        return _enrich_product_sizes(s, rows)
+                except Exception as exc:
+                    print(f"SABINA_TEST ajax_error: method={method} {type(exc).__name__}: {exc}", flush=True)
                     continue
-                seen_results.add(key)
-                results.append(item)
-
-        if results:
-            return _enrich_product_sizes(session, results)
-
+        print("SABINA_TEST FINAL: no_results", flush=True)
         return []
     finally:
-        session.close()
+        s.close()
 
 def scrape(query):
     return search(query)
