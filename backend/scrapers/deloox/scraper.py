@@ -1,4 +1,18 @@
+"""Deloox scraper for ScentHunter.
+
+Discovery is generic:
+- Deloox search result pages
+- Deloox category pages
+- XML sitemaps
+
+Discovery only finds candidate product URLs. Every candidate is fetched and
+validated by the product-page parser before it can become a result.
+"""
+
+from __future__ import annotations
+
 import json
+import os
 import re
 from collections import deque
 from urllib.parse import quote_plus, urljoin, urlparse
@@ -9,9 +23,12 @@ from bs4 import BeautifulSoup
 
 STORE = "Deloox"
 BASE_URL = "https://www.deloox.com"
-HOME_URL = f"{BASE_URL}/en"
 TIMEOUT = 10
 DISCOVERY_TIMEOUT = 6
+MAX_CANDIDATES = 160
+
+DEBUG_DISCOVERY = os.getenv("DELOOX_DEBUG", "1") != "0"
+MATCH_TRACE_LIMIT = int(os.getenv("DELOOX_MATCH_TRACE_LIMIT", "12"))
 
 HEADERS = {
     "User-Agent": (
@@ -19,32 +36,12 @@ HEADERS = {
         "AppleWebKit/537.36 (KHTML, like Gecko) "
         "Chrome/131.0.0.0 Safari/537.36"
     ),
+    "Accept": (
+        "text/html,application/xhtml+xml,application/xml;"
+        "q=0.9,image/avif,image/webp,*/*;q=0.8"
+    ),
     "Accept-Language": "en-GB,en;q=0.9",
-}
-
-PRICE_RE = re.compile(
-    r"(?:€\s*)?(\d{1,4}(?:[.,]\d{2})?)(?:\s*€)?",
-    re.I,
-)
-SIZE_RE = re.compile(r"\b(\d{1,3}(?:[.,]\d+)?)\s*ml\b", re.I)
-SIZE_FULL_RE = re.compile(r"^(\d{1,3}(?:[.,]\d+)?)\s*ml$", re.I)
-
-SOLD_OUT = (
-    "sold out",
-    "out of stock",
-    "not available",
-    "currently unavailable",
-)
-
-NON_FRAGRANCE = (
-    "body mist", "body spray", "body lotion", "body cream", "body oil",
-    "body wash", "shower gel", "shower oil", "hand and body", "hand cream",
-    "deodorant", "after shave", "aftershave", "hair mist", "hair spray",
-    "soap",
-)
-NON_FRAGRANCE_TOKENS = {
-    tuple(re.sub(r"[^a-z0-9]+", " ", value.lower()).split())
-    for value in NON_FRAGRANCE
+    "Cache-Control": "no-cache",
 }
 
 CATEGORY_ROOTS = (
@@ -67,63 +64,106 @@ PRODUCT_RE = re.compile(
     r'|(?<![A-Za-z0-9])(?:/|(?:en|it|nl)/)product/[^"\'<>\s]+',
     re.I,
 )
-CATEGORY_RE = re.compile(
-    r'https?://(?:www\.)?deloox\.com(?:/(?:en|it|nl))?'
-    r'/category/\d+/[^"\'<>\s]+\.html'
-    r'|(?<![A-Za-z0-9])/(?:en|it|nl)/category/\d+/[^"\'<>\s]+\.html'
-    r'|(?<![A-Za-z0-9])/category/\d+/[^"\'<>\s]+\.html',
-    re.I,
-)
 
 
-def _clean(value):
-    return re.sub(r"\s+", " ", str(value or "")).strip()
-
-
-def _norm(value):
-    return re.sub(r"[^a-z0-9]+", " ", _clean(value).lower()).strip()
-
-
-def _tokens(value):
-    return {x for x in _norm(value).split() if len(x) > 1}
-
-
-def _matches_soft(text, query, minimum=0.55):
-    wanted = _tokens(query)
-    actual = _tokens(text)
-    if not wanted:
-        return False
-    return sum(x in actual for x in wanted) / len(wanted) >= minimum
-
-
-def _matches_exact(text, query):
-    wanted = _tokens(query)
-    return bool(wanted) and wanted.issubset(_tokens(text))
-
-
-def _match_score(text, query):
-    wanted = _tokens(query)
-    actual = _tokens(text)
-    if not wanted:
-        return -9999
-    found = len(wanted & actual)
-    if not found:
-        return -9999
-    return found * 100 - (len(wanted) - found) * 35 - abs(
-        len(actual) - len(wanted)
+def _dbg(stage, **data):
+    if not DEBUG_DISCOVERY:
+        return
+    print(
+        "[DELOOX_DEBUG] "
+        + json.dumps(
+            {"stage": stage, **data},
+            ensure_ascii=False,
+            default=str,
+        ),
+        flush=True,
     )
 
 
-def _extract_price(text):
-    match = PRICE_RE.search(_clean(text))
+def clean(value):
+    return re.sub(r"\s+", " ", str(value or "")).strip()
+
+
+def norm(value):
+    return re.sub(r"\s+", " ", re.sub(r"[^a-z0-9]+", " ", clean(value).lower())).strip()
+
+
+def tokens(value):
+    return {x for x in norm(value).split() if len(x) > 1}
+
+
+def matches(text, query):
+    wanted = tokens(query)
+    actual = tokens(text)
+    return bool(wanted) and wanted.issubset(actual)
+
+
+NON_FRAGRANCE = (
+    "body mist", "body spray", "body lotion", "body cream", "body oil",
+    "body wash", "shower gel", "shower oil", "hand cream", "deodorant",
+    "after shave", "aftershave", "hair mist", "hair spray", "soap",
+)
+
+
+def query_wants_non_fragrance(query):
+    wanted = tokens(query)
+    return any(tokens(phrase).issubset(wanted) for phrase in NON_FRAGRANCE)
+
+
+def contains_non_fragrance(text):
+    actual = norm(text)
+    return any(
+        re.search(r"\b" + re.escape(norm(phrase)).replace(r"\ ", r"\s+") + r"\b", actual)
+        for phrase in NON_FRAGRANCE
+    )
+
+
+def product_name_is_valid(name, query):
+    return (
+        matches(name, query)
+        and (
+            query_wants_non_fragrance(query)
+            or not contains_non_fragrance(name)
+        )
+    )
+
+
+def size_ml(*values):
+    match = re.search(
+        r"(?<!\d)(\d+(?:[.,]\d+)?)\s*(ml|cl)\b",
+        " ".join(clean(x) for x in values),
+        re.I,
+    )
     if not match:
         return None
-    value = match.group(1).replace(",", ".")
+    number = float(match.group(1).replace(",", "."))
+    if match.group(2).lower() == "cl":
+        number *= 10
+    return int(number) if number.is_integer() else number
+
+
+def concentration(*values):
+    text = norm(" ".join(clean(x) for x in values))
+    if re.search(r"\beau de toilette\b|\bedt\b", text):
+        return "Eau de Toilette"
+    if re.search(r"\beau de parfum\b|\bedp\b", text):
+        return "Eau de Parfum"
+    if re.search(r"\bextrait(?: de parfum)?\b", text):
+        return "Extrait de Parfum"
+    return None
+
+
+def parse_price(value):
+    match = re.search(
+        r"(?:€\s*)?(\d{1,4}(?:[.,]\d{2})?)(?:\s*€)?",
+        clean(value),
+    )
+    if not match:
+        return None
     try:
-        number = float(value)
+        return round(float(match.group(1).replace(",", ".")), 2)
     except ValueError:
         return None
-    return f"{number:.2f}".replace(".", ",") + " €"
 
 
 def _get(session, url, timeout=TIMEOUT):
@@ -136,132 +176,203 @@ def _get(session, url, timeout=TIMEOUT):
         )
         response.raise_for_status()
         return response
-    except requests.RequestException as error:
-        print(f"DELOOX ERROR: {error}")
+    except requests.RequestException as exc:
+        _dbg("http_error", url=url, error=f"{type(exc).__name__}: {exc}")
         return None
 
 
-def _query_wants_non_fragrance(query):
-    wanted = _tokens(query)
-    return any(set(phrase).issubset(wanted) for phrase in NON_FRAGRANCE_TOKENS)
-
-
-def _contains_non_fragrance_product(text):
-    actual = _norm(text)
-    for phrase in NON_FRAGRANCE:
-        normalized = _norm(phrase)
-        if re.search(r"\b" + re.escape(normalized).replace(r"\ ", r"\s+") + r"\b", actual):
-            return True
-    return False
-
-
-def _is_relevant_product(text, query):
-    if not _matches_soft(text, query):
+def _is_product_url(url):
+    try:
+        parsed = urlparse(url)
+    except Exception:
         return False
     return (
-        _query_wants_non_fragrance(query)
-        or not _contains_non_fragrance_product(text)
+        parsed.netloc.lower() in {"deloox.com", "www.deloox.com"}
+        and "/product/" in parsed.path.lower()
     )
 
 
 def _normalize_product_url(raw_url):
     if not raw_url:
         return None
-    url = urljoin(BASE_URL, _clean(raw_url).replace("\\/", "/"))
-    url = url.split("#")[0].split("?")[0]
-    parsed = urlparse(url)
-    if parsed.netloc.lower() not in {"deloox.com", "www.deloox.com"}:
+    raw_url = clean(raw_url).replace("\\/", "/")
+    if raw_url.startswith(("javascript:", "mailto:", "#")):
         return None
-    return url if "/product/" in parsed.path.lower() else None
+    url = urljoin(BASE_URL, raw_url).split("#")[0].split("?")[0]
+    return url if _is_product_url(url) else None
 
 
-def _url_matches_query(product_url, query):
-    """Discovery signal only: URL slug, never final validation."""
-    wanted = _tokens(query)
-    actual = _tokens(urlparse(product_url).path)
-    if not wanted:
-        return False
-    return wanted.issubset(actual)
+def _product_slug_matches(url, query):
+    wanted = tokens(query)
+    return bool(wanted) and wanted.issubset(tokens(urlparse(url).path))
 
 
-def _find_product_card(link):
-    node = link
-    for _ in range(8):
+def _product_context(anchor):
+    values = [
+        anchor.get_text(" ", strip=True),
+        anchor.get("aria-label"),
+        anchor.get("title"),
+        anchor.get("data-name"),
+        anchor.get("data-product-name"),
+    ]
+    return clean(" ".join(x for x in values if clean(x)))
+
+
+def _card_context(anchor):
+    node = anchor
+    fallback = ""
+    for _ in range(7):
+        node = node.parent if node is not None else None
         if node is None:
             break
-        text = _clean(node.get_text(" ", strip=True))
-        if _extract_price(text) or SIZE_RE.search(text):
-            return node
-        node = node.parent
-    return link
 
+        text = clean(node.get_text(" ", strip=True))
+        if not text or len(text) > 6000:
+            continue
 
-def _product_context(anchor, query):
-    context = " ".join(
-        _clean(x)
-        for x in (
-            anchor.get_text(" ", strip=True),
-            anchor.get("aria-label"),
-            anchor.get("title"),
-            anchor.get("data-name"),
-            anchor.get("data-product-name"),
+        attrs = clean(
+            " ".join(
+                str(node.get(key, ""))
+                for key in (
+                    "class",
+                    "id",
+                    "data-product",
+                    "data-product-name",
+                    "data-testid",
+                )
+            )
         )
-        if _clean(x)
-    )
-    if _matches_exact(context, query):
-        return context
+        is_card = (
+            node.name in {"article", "li"}
+            or any(x in attrs.lower() for x in ("product", "card", "item"))
+        )
 
-    card = _find_product_card(anchor)
-    card_text = _clean(card.get_text(" ", strip=True))
-    return card_text or context
+        if is_card and not fallback:
+            fallback = text
+        if is_card:
+            return text
+
+    return fallback
 
 
-def _extract_product_urls(html, query, allow_opaque=False):
-    """Find candidate /product/ URLs without requiring card text."""
+def _structured_context(blob, start, end):
+    left = blob.rfind("{", 0, start)
+    right = blob.find("}", end)
+    if left < 0 or right < end or right - left > 5000:
+        return ""
+
+    obj = blob[left:right + 1]
+    for pattern in (
+        r'"(?:name|productName|product_name|title|productTitle)"\s*:\s*"([^"]{1,400})"',
+        r"'(?:name|productName|product_name|title|productTitle)'\s*:\s*'([^']{1,400})'",
+    ):
+        match = re.search(pattern, obj, re.I)
+        if match:
+            return clean(match.group(1))
+    return ""
+
+
+def _extract_product_urls(html, query=None):
+    """Extract product URLs without making card text a discovery gate.
+
+    A candidate is kept when:
+    - its URL slug contains the query tokens; OR
+    - its surrounding card/structured context contains the query tokens.
+
+    This is only discovery. Final validation is done on the product page.
+    """
     soup = BeautifulSoup(html or "", "html.parser")
-    found, seen = [], set()
+    query = clean(query)
+    wanted = tokens(query)
+    if not wanted:
+        return []
 
-    def add(raw_url, context=""):
+    found, seen = [], set()
+    trace_count = 0
+
+    def add(raw_url, context="", source="unknown"):
+        nonlocal trace_count
+
         url = _normalize_product_url(raw_url)
         if not url or url in seen:
             return
-        if not allow_opaque and not (
-            _url_matches_query(url, query)
-            or _matches_exact(context, query)
-        ):
+
+        slug_match = _product_slug_matches(url, query)
+        context_match = matches(context, query)
+
+        if DEBUG_DISCOVERY and trace_count < MATCH_TRACE_LIMIT:
+            _dbg(
+                "product_url_match",
+                source=source,
+                url=url,
+                context=clean(context)[:400],
+                slug_match=slug_match,
+                context_match=context_match,
+            )
+            trace_count += 1
+
+        if not (slug_match or context_match):
+            return
+
+        seen.add(url)
+        found.append(url)
+
+    for anchor in soup.find_all("a", href=True):
+        href = clean(anchor.get("href"))
+        if "/product/" not in href.lower():
+            continue
+        context = _product_context(anchor)
+        if not matches(context, query):
+            context = _card_context(anchor) or context
+        add(href, context, "anchor")
+
+    raw = (html or "").replace("\\\\/", "/").replace("\\/", "/")
+    for tag in soup.find_all(["script", "div", "article", "li"]):
+        blob = tag.get_text() if tag.name == "script" else tag.get_text(" ", strip=True)
+        if "/product/" not in blob.lower():
+            continue
+        for match in PRODUCT_RE.finditer(blob):
+            add(
+                match.group(0),
+                _structured_context(blob, match.start(), match.end()),
+                tag.name,
+            )
+
+    for match in PRODUCT_RE.finditer(raw):
+        add(
+            match.group(0),
+            _structured_context(raw, match.start(), match.end()),
+            "raw_html",
+        )
+
+    return found[:MAX_CANDIDATES]
+
+
+def _product_urls_by_slug(html, query):
+    wanted = tokens(query)
+    if not wanted:
+        return []
+
+    soup = BeautifulSoup(html or "", "html.parser")
+    found, seen = [], set()
+
+    def add(raw_url):
+        url = _normalize_product_url(raw_url)
+        if not url or url in seen or not _product_slug_matches(url, query):
             return
         seen.add(url)
         found.append(url)
 
-    for link in soup.find_all("a", href=True):
-        href = _clean(link.get("href"))
-        if "/product/" not in href.lower():
-            continue
-        add(href, _product_context(link, query))
+    for anchor in soup.find_all("a", href=True):
+        href = clean(anchor.get("href"))
+        if "/product/" in href.lower():
+            add(href)
 
     raw = (html or "").replace("\\\\/", "/").replace("\\/", "/")
     for match in PRODUCT_RE.finditer(raw):
         add(match.group(0))
 
-    return found[:100]
-
-
-def _product_urls_by_slug(html, query):
-    """Independent URL-only discovery for pages with poor/missing card text."""
-    return _extract_product_urls(html, query, allow_opaque=False)
-
-
-def _absolute_category_url(raw_url):
-    if not raw_url:
-        return None
-    url = urljoin(BASE_URL, _clean(raw_url).replace("\\/", "/"))
-    url = url.split("#")[0].split("?")[0]
-    parsed = urlparse(url)
-    if parsed.netloc.lower() not in {"deloox.com", "www.deloox.com"}:
-        return None
-    if "/category/" not in parsed.path.lower():
-        return None
-    return url if parsed.path.lower().endswith(".html") else None
+    return found[:MAX_CANDIDATES]
 
 
 def _category_slug(url):
@@ -269,96 +380,66 @@ def _category_slug(url):
     return value[:-5] if value.lower().endswith(".html") else value
 
 
+def _absolute_category_url(raw_url):
+    if not raw_url:
+        return None
+    url = urljoin(BASE_URL, clean(raw_url).replace("\\/", "/"))
+    url = url.split("#")[0].split("?")[0]
+    parsed = urlparse(url)
+    if parsed.netloc.lower() not in {"deloox.com", "www.deloox.com"}:
+        return None
+    if "/category/" not in parsed.path.lower() or not parsed.path.lower().endswith(".html"):
+        return None
+    return url
+
+
 def _category_score(url, label, query):
-    wanted = _tokens(query)
+    wanted = tokens(query)
     if not wanted:
         return 0
-    slug = _tokens(_category_slug(url))
-    label_tokens = _tokens(label)
-    if wanted.issubset(slug) or wanted.issubset(label_tokens):
-        return 200 + len(wanted) * 10
-    return max(len(wanted & slug), len(wanted & label_tokens)) * 10
+    values = tokens(_category_slug(url)) | tokens(label)
+    return len(wanted & values)
 
 
-def _extract_category_links(html):
+def _extract_category_links(html, query):
     soup = BeautifulSoup(html or "", "html.parser")
     found, seen = [], set()
-    for link in soup.find_all("a", href=True):
-        url = _absolute_category_url(link.get("href"))
-        if url and url not in seen:
+
+    for anchor in soup.find_all("a", href=True):
+        url = _absolute_category_url(anchor.get("href"))
+        if not url or url in seen:
+            continue
+
+        label = clean(
+            " ".join(
+                x
+                for x in (
+                    anchor.get_text(" ", strip=True),
+                    anchor.get("aria-label"),
+                    anchor.get("title"),
+                    anchor.get("data-name"),
+                    anchor.get("data-category-name"),
+                )
+                if clean(x)
+            )
+        )
+        score = _category_score(url, label, query)
+        if score:
             seen.add(url)
-            found.append((url, _clean(link.get_text(" ", strip=True))))
+            found.append((score, url, label))
+
+    found.sort(key=lambda item: (-item[0], len(item[1])))
     return found
 
 
-def _extract_category_links_from_html(html, query, source_url=""):
-    raw = (html or "").replace("\\\\/", "/").replace("\\/", "/")
-    soup = BeautifulSoup(raw, "html.parser")
-    candidates = {}
+def _sitemap_product_urls(session, query, max_sitemaps=64):
+    wanted = tokens(query)
+    if not wanted:
+        return []
 
-    def add(raw_url, label=""):
-        url = _absolute_category_url(raw_url)
-        if not url:
-            return
-        score = _category_score(url, label, query)
-        if score <= 0:
-            return
-        old = candidates.get(url)
-        if old is None or score > old["score"]:
-            candidates[url] = {
-                "url": url,
-                "label": _clean(label),
-                "score": score,
-            }
-
-    for link in soup.find_all("a", href=True):
-        href = _clean(link.get("href"))
-        if "/category/" not in href.lower():
-            continue
-        label = " ".join(
-            _clean(x)
-            for x in (
-                link.get_text(" ", strip=True),
-                link.get("aria-label"),
-                link.get("title"),
-                link.get("data-name"),
-                link.get("data-category-name"),
-            )
-            if _clean(x)
-        )
-        add(href, label)
-
-    for match in CATEGORY_RE.finditer(raw):
-        add(match.group(0))
-
-    return sorted(
-        candidates.values(),
-        key=lambda item: (-item["score"], len(item["url"])),
-    )
-
-
-def _find_brand_category(session, query):
-    """Generic category discovery; no product-specific seed URLs."""
-    response = _get(session, HOME_URL, DISCOVERY_TIMEOUT)
-    if response is None:
-        return None
-
-    candidates = _extract_category_links_from_html(
-        response.text,
-        query,
-        HOME_URL,
-    )
-    if not candidates:
-        return None
-    return candidates[0]["url"]
-
-
-def _walk_sitemaps(session, query, product_only=True, max_sitemaps=64):
-    """Traverse XML sitemaps, prioritizing product sitemap children."""
     pending = deque(SITEMAP_ROOTS)
     seen_sitemaps = set()
-    product_urls, category_urls = [], []
-    seen_products, seen_categories = set(), set()
+    found, seen_products = [], set()
 
     while pending and len(seen_sitemaps) < max_sitemaps:
         sitemap_url = pending.popleft()
@@ -378,7 +459,7 @@ def _walk_sitemaps(session, query, product_only=True, max_sitemaps=64):
         children = []
 
         for loc in soup.find_all("loc"):
-            value = _clean(loc.get_text())
+            value = clean(loc.get_text())
             if not value:
                 continue
 
@@ -387,322 +468,448 @@ def _walk_sitemaps(session, query, product_only=True, max_sitemaps=64):
                 url = _normalize_product_url(value)
                 if (
                     url
-                    and _url_matches_query(url, query)
+                    and _product_slug_matches(url, query)
                     and url not in seen_products
                 ):
                     seen_products.add(url)
-                    product_urls.append(url)
-                continue
-
-            if "/category/" in low and low.endswith(".html"):
-                category = _absolute_category_url(value)
-                if (
-                    category
-                    and _tokens(query).issubset(
-                        _tokens(_category_slug(category))
-                    )
-                    and category not in seen_categories
-                ):
-                    seen_categories.add(category)
-                    category_urls.append(category)
+                    found.append(url)
                 continue
 
             if low.endswith(".xml") or "sitemap" in low:
-                children.append(value)
+                if value not in seen_sitemaps:
+                    children.append(value)
 
         children.sort(
             key=lambda value: (
-                0 if any(
+                0
+                if any(
                     word in value.lower()
                     for word in ("product", "products", "perfume", "fragrance")
-                ) else 1,
+                )
+                else 1,
                 value.lower(),
             )
         )
         pending.extendleft(reversed(children))
 
-        if product_only and product_urls:
-            return product_urls, category_urls
+        if len(found) >= MAX_CANDIDATES:
+            break
 
-    return product_urls, category_urls
-
-
-def _sitemap_product_urls(session, query, max_sitemaps=64, max_urls=80):
-    products, _ = _walk_sitemaps(
-        session,
-        query,
-        product_only=False,
-        max_sitemaps=max_sitemaps,
+    _dbg(
+        "product_sitemap_done",
+        query=query,
+        sitemap_count=len(seen_sitemaps),
+        count=len(found),
+        sample=found[:20],
     )
-    return products[:max_urls]
+    return found[:MAX_CANDIDATES]
 
 
-def _sitemap_category_urls(session, query, max_sitemaps=32, max_urls=100):
-    _, categories = _walk_sitemaps(
-        session,
-        query,
-        product_only=False,
-        max_sitemaps=max_sitemaps,
+def _discover_from_page(session, url, query, source):
+    response = _get(session, url, DISCOVERY_TIMEOUT)
+    if response is None:
+        return []
+
+    candidates = _extract_product_urls(response.text, query)
+    slug_candidates = _product_urls_by_slug(response.text, query)
+
+    for candidate in slug_candidates:
+        if candidate not in candidates:
+            candidates.append(candidate)
+
+    _dbg(
+        "discovery_page",
+        source=source,
+        url=url,
+        status=response.status_code,
+        candidates=len(candidates),
+        sample=candidates[:20],
     )
-    return categories[:max_urls]
-
-
-def _discover_from_categories(session, query, max_urls=80):
-    urls, seen = [], set()
-    for root in CATEGORY_ROOTS:
-        response = _get(session, root, DISCOVERY_TIMEOUT)
-        if response is None:
-            continue
-
-        candidates = _extract_product_urls(response.text, query)
-        for url in candidates:
-            if url not in seen:
-                seen.add(url)
-                urls.append(url)
-                if len(urls) >= max_urls:
-                    return urls
-    return urls
+    return candidates[:MAX_CANDIDATES]
 
 
 def _discover(session, query):
-    """Discovery is independent from Deloox's internal search."""
+    """Generic discovery. No product-specific seeds or exceptions."""
+    query = clean(query)
     urls, seen = [], set()
 
-    def add_many(items):
+    def add_many(items, source):
+        added = 0
         for url in items or []:
             url = _normalize_product_url(url)
             if not url or url in seen:
                 continue
             seen.add(url)
             urls.append(url)
-            if len(urls) >= 80:
-                return True
-        return False
+            added += 1
+            if len(urls) >= MAX_CANDIDATES:
+                break
+        _dbg(
+            "discovery_merge",
+            source=source,
+            added=added,
+            total=len(urls),
+        )
+        return len(urls) >= MAX_CANDIDATES
 
-    # 1. Matching Product Line/category, when Deloox exposes one.
-    dedicated = _find_brand_category(session, query)
-    if dedicated:
-        response = _get(session, dedicated, DISCOVERY_TIMEOUT)
-        if response is not None:
-            candidates = _extract_product_urls(response.text, query)
-            if add_many(candidates):
-                return urls[:80]
-
-    # 2. Product sitemap is a primary source, not a last fallback.
-    if add_many(_sitemap_product_urls(session, query)):
-        return urls[:80]
-
-    # 3. Search endpoints are optional discovery sources.
-    encoded = quote_plus(query)
+    # 1. Deloox's own search endpoints.
     for endpoint in (
-        f"{BASE_URL}/en/search?q={encoded}",
-        f"{BASE_URL}/en/search?query={encoded}",
-        f"{BASE_URL}/en/search?search={encoded}",
-        f"{BASE_URL}/en/search?term={encoded}",
+        f"{BASE_URL}/en/search?q={quote_plus(query)}",
+        f"{BASE_URL}/en/search?query={quote_plus(query)}",
+        f"{BASE_URL}/en/search?search={quote_plus(query)}",
+        f"{BASE_URL}/en/search?term={quote_plus(query)}",
     ):
-        response = _get(session, endpoint, DISCOVERY_TIMEOUT)
-        if response is None:
-            continue
+        if add_many(
+            _discover_from_page(session, endpoint, query, "search"),
+            "search",
+        ):
+            return urls[:MAX_CANDIDATES]
 
-        candidates = _extract_product_urls(response.text, query)
-        if add_many(candidates):
-            return urls[:80]
+    # 2. Product sitemap. URL slug is only a discovery signal.
+    if add_many(
+        _sitemap_product_urls(session, query),
+        "product_sitemap",
+    ):
+        return urls[:MAX_CANDIDATES]
 
-    # 4. Matching category sitemap pages.
-    for category_url in _sitemap_category_urls(session, query):
-        response = _get(session, category_url, DISCOVERY_TIMEOUT)
-        if response is None:
-            continue
-        if add_many(_extract_product_urls(response.text, query)):
-            return urls[:80]
+    # 3. Generic fragrance/category pages.
+    for category_url in CATEGORY_ROOTS:
+        if add_many(
+            _discover_from_page(
+                session,
+                category_url,
+                query,
+                "category",
+            ),
+            "category",
+        ):
+            return urls[:MAX_CANDIDATES]
 
-    # 5. Broad categories remain the generic HTML fallback.
-    add_many(_discover_from_categories(session, query))
-    return urls[:80]
-
-
-def _extract_product_variants(html, product_name, product_url):
-    soup = BeautifulSoup(html, "html.parser")
-    strings = [_clean(value) for value in soup.stripped_strings if _clean(value)]
-    results, seen_sizes = [], set()
-
-    for index, value in enumerate(strings):
-        match = SIZE_FULL_RE.fullmatch(value)
-        if not match:
-            continue
-
-        size = match.group(1).replace(",", ".")
-        size_label = f"{size} ml"
-        if size_label in seen_sizes:
-            continue
-
-        chunk, sold_out = [], False
-        for next_value in strings[index + 1:index + 31]:
-            if SIZE_FULL_RE.fullmatch(next_value):
-                break
-            chunk.append(next_value)
-            if any(word in next_value.lower() for word in SOLD_OUT):
-                sold_out = True
-                break
-
-        if sold_out:
-            continue
-
-        price = _extract_price(" ".join(chunk))
-        if not price:
-            continue
-
-        seen_sizes.add(size_label)
-        slug = re.sub(r"[^a-z0-9]+", "-", size_label.lower()).strip("-")
-        results.append({
-            "store": STORE,
-            "name": f"{product_name} {size_label}",
-            "price": price,
-            "url": f"{product_url}#{slug}",
-            "available": True,
-            "availability": "in_stock",
-            "size": size_label,
-        })
-
-    return results
+    _dbg(
+        "discovery_done",
+        query=query,
+        count=len(urls),
+        urls=urls[:30],
+    )
+    return urls[:MAX_CANDIDATES]
 
 
-def _extract_jsonld_variants(html, product_name, product_url):
-    soup = BeautifulSoup(html, "html.parser")
-    results = []
-
-    for script in soup.find_all("script", type="application/ld+json"):
+def _jsonld(soup):
+    for script in soup.select('script[type="application/ld+json"]'):
         try:
-            data = json.loads(script.string or script.get_text())
-        except (json.JSONDecodeError, TypeError):
+            data = json.loads(script.get_text(strip=True))
+        except Exception:
             continue
 
-        objects = data if isinstance(data, list) else [data]
-        for item in objects:
+        stack = data if isinstance(data, list) else [data]
+        while stack:
+            item = stack.pop(0)
+            if isinstance(item, list):
+                stack.extend(item)
+                continue
             if not isinstance(item, dict):
                 continue
 
-            item_text = f"{item.get('name', '')} {item.get('description', '')}"
-            size_match = SIZE_RE.search(item_text)
-            if not size_match:
+            item_type = item.get("@type")
+            if (
+                item_type == "Product"
+                or (
+                    isinstance(item_type, list)
+                    and "Product" in item_type
+                )
+                or "offers" in item
+            ):
+                return item
+
+            graph = item.get("@graph")
+            if isinstance(graph, list):
+                stack.extend(graph)
+
+    return {}
+
+
+def _availability(data, soup):
+    offers = data.get("offers") if isinstance(data, dict) else None
+    if isinstance(offers, dict):
+        offers = [offers]
+
+    if isinstance(offers, list):
+        for offer in offers:
+            if not isinstance(offer, dict):
                 continue
+            raw = (
+                offer.get("availability")
+                or offer.get("availabilityStatus")
+                or offer.get("stock")
+            )
+            text = norm(raw)
+            if "instock" in text or "in stock" in text or "available" in text:
+                return "in_stock"
+            if any(
+                x in text
+                for x in (
+                    "outofstock",
+                    "out of stock",
+                    "soldout",
+                    "sold out",
+                    "unavailable",
+                    "not available",
+                )
+            ):
+                return "out_of_stock"
 
-            size = size_match.group(1).replace(",", ".")
-            offers = item.get("offers", [])
-            offers = offers if isinstance(offers, list) else [offers]
+    for node in soup.select(
+        '[itemprop="availability"], '
+        'meta[property="product:availability"], '
+        'meta[name="availability"]'
+    ):
+        text = norm(node.get("content") or node.get_text(" ", strip=True))
+        if "instock" in text or "in stock" in text or "available" in text:
+            return "in_stock"
+        if any(
+            x in text
+            for x in (
+                "outofstock",
+                "out of stock",
+                "soldout",
+                "sold out",
+                "unavailable",
+                "not available",
+            )
+        ):
+            return "out_of_stock"
 
-            for offer in offers:
-                if not isinstance(offer, dict):
-                    continue
-                price = offer.get("price")
-                if price is None:
-                    continue
-                if str(offer.get("priceCurrency", "EUR")) != "EUR":
-                    continue
-                availability = str(offer.get("availability", "")).lower()
-                if "outofstock" in availability:
-                    continue
-
-                price_text = str(price).replace(".", ",")
-                if "," not in price_text:
-                    price_text += ",00"
-
-                results.append({
-                    "store": STORE,
-                    "name": f"{product_name} {size} ml",
-                    "price": f"{price_text} €",
-                    "url": product_url,
-                    "available": True,
-                    "availability": "in_stock",
-                    "size": f"{size} ml",
-                })
-
-    return results
+    return "unknown"
 
 
-def _size_number(item):
-    match = SIZE_RE.search(item.get("size", ""))
-    if not match:
-        return 9999
-    try:
-        return float(match.group(1).replace(",", "."))
-    except ValueError:
-        return 9999
+def _selected_size(soup, data, name):
+    value = size_ml(name)
+    if value is not None:
+        return value
+
+    for selector in (
+        'input[type="radio"][checked]',
+        'input[type="radio"][aria-checked="true"]',
+        'input[checked][name*="size" i]',
+        "option[selected]",
+        '[aria-selected="true"]',
+    ):
+        for node in soup.select(selector):
+            blob = " ".join(
+                clean(x)
+                for x in (
+                    node.get("value"),
+                    node.get("aria-label"),
+                    node.get("data-value"),
+                    node.get("data-size"),
+                    node.get_text(" ", strip=True),
+                    node.parent.get_text(" ", strip=True) if node.parent else "",
+                )
+                if clean(x)
+            )
+            value = size_ml(blob)
+            if value is not None:
+                return value
+
+    return size_ml(data.get("name") if isinstance(data, dict) else "")
 
 
-def _product_page_is_relevant(html, query):
-    """Final validation happens after discovery, on the real product page."""
+def _product(url, html, query):
     soup = BeautifulSoup(html, "html.parser")
+    data = _jsonld(soup)
+
     h1 = soup.find("h1")
-    h1_text = _clean(h1.get_text(" ", strip=True)) if h1 else ""
+    h1_name = clean(h1.get_text(" ", strip=True)) if h1 else ""
+    name = h1_name or clean(data.get("name"))
 
-    jsonld_names = []
-    for script in soup.find_all("script", type="application/ld+json"):
-        try:
-            data = json.loads(script.string or script.get_text())
-        except Exception:
-            continue
-        objects = data if isinstance(data, list) else [data]
-        for item in objects:
-            if isinstance(item, dict) and item.get("name"):
-                jsonld_names.append(str(item["name"]))
+    if not name or not product_name_is_valid(name, query):
+        return None
 
-    candidates = [h1_text] + jsonld_names
-    return any(
-        _matches_exact(name, query) or _matches_soft(name, query, 0.55)
-        for name in candidates
-        if _clean(name)
+    text = soup.get_text(" ", strip=True)
+
+    brand = data.get("brand")
+    if isinstance(brand, dict):
+        brand = brand.get("name")
+
+    offers = data.get("offers")
+    offers = offers if isinstance(offers, list) else [offers]
+    offer = next((x for x in offers if isinstance(x, dict)), {})
+
+    price = parse_price(offer.get("price"))
+    if price is None:
+        price = parse_price(text)
+    if price is None:
+        return None
+
+    product_line = ""
+    match = re.search(
+        r"product line\s+(.+?)(?:for whom|fragrance type|season|spray|article number)",
+        text,
+        re.I,
     )
+    if match:
+        product_line = clean(match.group(1))
+
+    gtin = clean(data.get("gtin13") or data.get("gtin") or "") or None
+    mpn = clean(data.get("mpn") or "") or None
+    sku = clean(data.get("sku") or "") or None
+
+    image = data.get("image")
+    if isinstance(image, list):
+        image = image[0] if image else None
+
+    availability = _availability(data, soup)
+    selected_size = _selected_size(soup, data, h1_name)
+    product_concentration = concentration(name)
+
+    return {
+        "store": STORE,
+        "source": {
+            "source_name": name,
+            "source_brand": clean(brand),
+            "url": url,
+            "image": urljoin(url, str(image)) if image else None,
+        },
+        "identity": {
+            "gtin": {"value": gtin, "source": "jsonld"} if gtin else None,
+            "mpn": {"value": mpn, "source": "jsonld"} if mpn else None,
+            "sku": {"value": sku, "source": "jsonld"} if sku else None,
+            "store_product_id": {
+                "value": sku,
+                "source": "deloox_sku",
+            } if sku else None,
+        },
+        "attributes": {
+            "size_ml": {
+                "value": selected_size,
+                "source": "selected_variant_or_product_name",
+            } if selected_size is not None else None,
+            "concentration": {
+                "value": product_concentration,
+                "source": "product_name",
+            } if product_concentration else None,
+            "gender": {"value": "unknown", "source": "not_explicit"},
+            "packaging_type": {"value": "product", "source": "default"},
+            "product_line": {
+                "value": product_line,
+                "source": "deloox_page",
+            } if product_line else None,
+        },
+        "offer": {
+            "price": price,
+            "currency": "EUR",
+            "availability": availability,
+        },
+        "provenance": {
+            "source_page": url,
+            "product_source": "jsonld_or_page",
+        },
+        "raw_data": {"jsonld": data},
+        "name": name,
+        "price": f"{price:.2f}".replace(".", ",") + " €",
+        "url": url,
+        "available": availability == "in_stock",
+    }
+
+
+def _product_rejection_reason(html, query):
+    soup = BeautifulSoup(html, "html.parser")
+    data = _jsonld(soup)
+    h1 = soup.find("h1")
+    name = clean(h1.get_text(" ", strip=True)) if h1 else clean(data.get("name"))
+
+    if not name:
+        return "missing_product_name"
+    if not product_name_is_valid(name, query):
+        return f"name_mismatch: {name}"
+
+    offers = data.get("offers")
+    offers = offers if isinstance(offers, list) else [offers]
+    offer = next((x for x in offers if isinstance(x, dict)), {})
+
+    price = parse_price(offer.get("price"))
+    if price is None:
+        price = parse_price(soup.get_text(" ", strip=True))
+    if price is None:
+        return "missing_price"
+
+    return None
+
+
+def diagnostic_discovery(query):
+    query = clean(query)
+    session = requests.Session()
+    try:
+        discovered = _discover(session, query)
+        return {
+            "query": query,
+            "discovered": discovered,
+            "count": len(discovered),
+        }
+    finally:
+        session.close()
 
 
 def search(query):
-    query = _clean(query)
+    query = clean(query)
     if not query:
         return []
 
     session = requests.Session()
+    results, seen = [], set()
+
     try:
         discovered = _discover(session, query)
-        if not discovered:
-            return []
+        _dbg(
+            "search_discovered",
+            query=query,
+            count=len(discovered),
+            urls=discovered[:50],
+        )
 
-        final_results = []
-        seen_variants = set()
-
-        for product_url in discovered:
-            response = _get(session, product_url)
+        for url in discovered:
+            response = _get(session, url, TIMEOUT)
             if response is None:
                 continue
 
-            # Candidate discovery is deliberately permissive; validation is here.
-            if not _product_page_is_relevant(response.text, query):
+            item = _product(url, response.text, query)
+            if not item:
+                _dbg(
+                    "product_rejected",
+                    query=query,
+                    url=url,
+                    reason=_product_rejection_reason(
+                        response.text,
+                        query,
+                    ),
+                )
                 continue
 
-            variants = _extract_product_variants(
-                response.text,
-                query,
-                product_url,
+            sku = item["identity"].get("sku")
+            sku_value = sku.get("value") if sku else None
+            key = (url, sku_value)
+
+            if key in seen:
+                continue
+
+            seen.add(key)
+            results.append(item)
+
+            _dbg(
+                "product_accepted",
+                query=query,
+                url=url,
+                name=item.get("name"),
+                sku=sku_value,
+                price=item.get("price"),
             )
-            if not variants:
-                variants = _extract_jsonld_variants(
-                    response.text,
-                    query,
-                    product_url,
-                )
 
-            for variant in variants:
-                key = (
-                    variant["url"],
-                    variant.get("size", ""),
-                    variant["price"],
-                )
-                if key in seen_variants:
-                    continue
-                seen_variants.add(key)
-                final_results.append(variant)
-
-        final_results.sort(key=_size_number)
-        return final_results[:20]
+        _dbg(
+            "search_done",
+            query=query,
+            result_count=len(results),
+        )
+        return results
     finally:
         session.close()
 
@@ -710,11 +917,18 @@ def search(query):
 def scrape(query):
     return search(query)
 
+
 if __name__ == "__main__":
     import argparse
 
     parser = argparse.ArgumentParser()
     parser.add_argument("query")
+    parser.add_argument("--diagnose", action="store_true")
     args = parser.parse_args()
 
-    print(json.dumps(search(args.query), ensure_ascii=False, indent=2))
+    payload = (
+        diagnostic_discovery(args.query)
+        if args.diagnose
+        else search(args.query)
+    )
+    print(json.dumps(payload, ensure_ascii=False, indent=2))
