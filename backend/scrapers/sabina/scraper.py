@@ -96,13 +96,100 @@ def search(query):
             if ps <= 0:
                 continue
 
+            # Robust price extraction: structured data first, then common
+            # HTML price fields, then visible currency text.
             price = None
-            for el in soup.find_all(string=re.compile(r"[€$£]|\\d+[,.]\\d{2}")):
-                t = " ".join(str(el).split())
-                m = re.search(r"(?:€|\\$|£)\\s*([0-9]+[,.][0-9]{2})|([0-9]+[,.][0-9]{2})\\s*(?:€|\\$|£)", t)
-                if m:
-                    price = (m.group(1) or m.group(2)).replace(",", ".")
-                    break
+
+            def _clean_price(value):
+                if value is None:
+                    return None
+                value = str(value).strip()
+                m = re.search(
+                    r"(?<!\d)(\d{1,4}(?:[.\s]\d{3})*(?:,\d{2})|\d+(?:[.,]\d{2}))(?!\d)",
+                    value,
+                )
+                if not m:
+                    return None
+                v = m.group(1).replace(" ", "")
+                if "," in v and "." in v:
+                    if v.rfind(",") > v.rfind("."):
+                        v = v.replace(".", "").replace(",", ".")
+                    else:
+                        v = v.replace(",", "")
+                elif "," in v:
+                    v = v.replace(",", ".")
+                return v
+
+            # 1) Schema.org Product/Offer JSON-LD.
+            for script in soup.find_all(
+                "script", attrs={"type": re.compile(r"application/ld\+json", re.I)}
+            ):
+                try:
+                    import json
+                    data = json.loads(script.string or script.get_text())
+                    stack = data if isinstance(data, list) else [data]
+
+                    while stack and not price:
+                        item = stack.pop()
+
+                        if isinstance(item, dict):
+                            offers = item.get("offers")
+
+                            if isinstance(offers, dict):
+                                p = offers.get("price")
+                                if p is not None:
+                                    price = _clean_price(p)
+
+                            elif isinstance(offers, list):
+                                for offer in offers:
+                                    if isinstance(offer, dict) and offer.get("price") is not None:
+                                        price = _clean_price(offer["price"])
+                                        if price:
+                                            break
+
+                            for value in item.values():
+                                if isinstance(value, (dict, list)):
+                                    stack.append(value)
+
+                        elif isinstance(item, list):
+                            stack.extend(item)
+
+                except Exception:
+                    continue
+
+            # 2) Common meta/HTML price fields.
+            if not price:
+                for selector in [
+                    'meta[property="product:price:amount"]',
+                    'meta[itemprop="price"]',
+                    '[itemprop="price"]',
+                    "[data-price]",
+                    '[class*="price"]',
+                ]:
+                    for el in soup.select(selector):
+                        value = (
+                            el.get("content")
+                            or el.get("data-price")
+                            or el.get_text(" ", strip=True)
+                        )
+                        price = _clean_price(value)
+                        if price:
+                            break
+                    if price:
+                        break
+
+            # 3) Visible currency text fallback.
+            if not price:
+                currency_re = re.compile(
+                    r"(?:€|\$|£)\s*\d{1,4}(?:[.\s]\d{3})*(?:[,.]\d{2})?"
+                    r"|\d{1,4}(?:[.\s]\d{3})*(?:[,.]\d{2})?\s*(?:€|\$|£)"
+                )
+                for el in soup.find_all(string=currency_re):
+                    match = currency_re.search(" ".join(str(el).split()))
+                    if match:
+                        price = _clean_price(match.group(0))
+                        if price:
+                            break
 
             results.append({"name": title, "url": r.url, "price": price})
             print(f"SABINA_DISCOVERY: FOUND name={title!r} price={price!r} url={r.url}")
