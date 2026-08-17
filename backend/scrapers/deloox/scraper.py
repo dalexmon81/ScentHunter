@@ -985,6 +985,256 @@ def _targeted_category_seed_urls(
     ]
 
 
+def _category_brand_filter_links(
+    html,
+    query,
+):
+    """Find Deloox category URLs where the Brand filter is applied.
+
+    Deloox does not always expose a brand as a standalone /brand/ URL.
+    On fragrance category pages the brand selector is encoded directly in
+    the category URL, for example:
+
+        /category/1000054/mens-fragrances.html?filters%5B7%5D%5B0%5D=39618
+
+    The numeric filter id/value is not stable enough to hard-code. We
+    therefore discover the URL from the page itself and associate it with
+    the visible brand label.
+    """
+    q_tokens = tokens(query)
+
+    if not q_tokens:
+        return []
+
+    soup = BeautifulSoup(
+        html,
+        "html.parser",
+    )
+
+    links = []
+    seen = set()
+
+    def add_candidate(raw_url, label=""):
+        raw_url = clean(
+            raw_url
+        ).replace(
+            "\\/",
+            "/",
+        )
+
+        if not raw_url:
+            return
+
+        url = (
+            urljoin(
+                BASE_URL,
+                raw_url,
+            )
+            .split("#")[0]
+        )
+
+        try:
+            parsed = urlparse(url)
+        except Exception:
+            return
+
+        if parsed.netloc.lower() not in {
+            "deloox.com",
+            "www.deloox.com",
+        }:
+            return
+
+        if "/category/" not in parsed.path.lower():
+            return
+
+        query_string = parsed.query.lower()
+
+        # A normal category URL is not enough. We specifically need a
+        # category URL carrying Deloox's filter state.
+        if (
+            "filter" not in query_string
+            and "brand" not in query_string
+        ):
+            return
+
+        if not q_tokens.issubset(
+            tokens(label)
+        ):
+            return
+
+        if url in seen:
+            return
+
+        seen.add(url)
+        links.append(url)
+
+    # First inspect real links/buttons. The brand label is normally visible
+    # on the same element or one of its nearby filter containers.
+    url_attrs = (
+        "href",
+        "data-href",
+        "data-url",
+        "data-link",
+        "value",
+        "onclick",
+    )
+
+    for node in soup.find_all(True):
+        # Keep labels local. Using the whole parent tree can accidentally
+        # associate one brand filter URL with every other filter on the
+        # page.
+        label_candidates = [
+            node.get_text(
+                " ",
+                strip=True,
+            ),
+            node.get("aria-label", ""),
+            node.get("title", ""),
+            node.get("data-label", ""),
+            node.get("name", ""),
+        ]
+
+        labels = [
+            clean(x)
+            for x in label_candidates
+            if clean(x)
+        ]
+
+        # Prefer the element's own label. Only inspect nearby containers
+        # when the element itself does not carry the brand name.
+        matching_labels = [
+            label
+            for label in labels
+            if q_tokens.issubset(
+                tokens(label)
+            )
+        ]
+
+        if not matching_labels:
+            parent = node.parent
+
+            if parent:
+                parent_labels = [
+                    clean(
+                        parent.get_text(
+                            " ",
+                            strip=True,
+                        )
+                    ),
+                    clean(
+                        parent.get(
+                            "aria-label",
+                            "",
+                        )
+                    ),
+                    clean(
+                        parent.get(
+                            "title",
+                            "",
+                        )
+                    ),
+                    clean(
+                        parent.get(
+                            "data-label",
+                            "",
+                        )
+                    ),
+                ]
+
+                parent_matches = [
+                    label
+                    for label in parent_labels
+                    if label
+                    and len(tokens(label))
+                    <= len(q_tokens)
+                    and q_tokens.issubset(
+                        tokens(label)
+                    )
+                ]
+
+                if parent_matches:
+                    matching_labels = parent_matches
+
+        if not matching_labels:
+            continue
+
+        for attr in url_attrs:
+            value = node.get(attr)
+
+            if not value:
+                continue
+
+            value = clean(value)
+
+            # The common case is a normal href/data-href containing the
+            # complete filtered category URL.
+            if (
+                "/category/" in value.lower()
+                and (
+                    "filter" in value.lower()
+                    or "brand" in value.lower()
+                )
+            ):
+                add_candidate(
+                    value,
+                    matching_labels[0],
+                )
+
+            # onclick/data attributes may contain an escaped absolute or
+            # relative category URL.
+            matches_in_attr = re.findall(
+                r'https?://(?:www\\.)?deloox\\.com/[^"\\\'<>\\s]+/category/[^"\\\'<>\\s]+',
+                value,
+                re.I,
+            )
+
+            if not matches_in_attr:
+                matches_in_attr = re.findall(
+                    r'(?:"|\\\')((?:/)?(?:en/|it/|nl/)?category/[^"\\\'<>\\s]+)',
+                    value,
+                    re.I,
+                )
+
+            for raw_url in matches_in_attr:
+                add_candidate(
+                    raw_url,
+                    matching_labels[0],
+                )
+
+    # Also inspect serialized JSON/HTML. This covers links rendered through
+    # JavaScript where BeautifulSoup does not see a normal href.
+    raw = html.replace(
+        "\\\\/",
+        "/",
+    )
+
+    serialized_urls = re.findall(
+        r'https?://(?:www\\.)?deloox\\.com/[^"\\\'<>\\s]+/category/[^"\\\'<>\\s]+',
+        raw,
+        re.I,
+    )
+
+    serialized_urls += re.findall(
+        r'(?:"|\\\')((?:/)?(?:en/|it/|nl/)?category/[^"\\\'<>\\s]+)',
+        raw,
+        re.I,
+    )
+
+    for raw_url in serialized_urls:
+        # For serialized URLs without an adjacent label, only accept them
+        # when the URL itself contains the query tokens. This is useful for
+        # brand-specific slugs while avoiding unrelated filter URLs.
+        label = raw_url
+
+        if q_tokens.issubset(tokens(label)):
+            add_candidate(
+                raw_url,
+                label,
+            )
+
+    return links
+
+
 def _discover_from_categories(
     session,
     query,
@@ -1035,6 +1285,17 @@ def _discover_from_categories(
             if r.status_code >= 400:
                 continue
 
+            # IMPORTANT: Deloox brand filters are encoded as query
+            # parameters on the category URL. They are not Product-line
+            # category links, so the old discovery path completely missed
+            # searches such as "Nautica".
+            brand_filter_links = (
+                _category_brand_filter_links(
+                    r.text,
+                    query,
+                )
+            )
+
             product_line_links = (
                 _category_product_line_links(
                     r.text,
@@ -1042,10 +1303,23 @@ def _discover_from_categories(
                 )
             )
 
-            if product_line_links:
+            filter_links = []
+            filter_seen = set()
+
+            for filter_url in (
+                brand_filter_links
+                + product_line_links
+            ):
+                if filter_url in filter_seen:
+                    continue
+
+                filter_seen.add(filter_url)
+                filter_links.append(filter_url)
+
+            if filter_links:
                 candidate_pages = [
                     (page_url, None)
-                    for page_url in product_line_links
+                    for page_url in filter_links
                 ]
             else:
                 # Reuse the category response we already downloaded.
@@ -1084,6 +1358,12 @@ def _discover_from_categories(
 
                     if len(urls) >= max_urls:
                         return urls[:max_urls]
+
+            # A brand-filtered category is already a targeted discovery
+            # source. Do not dilute its candidates with unrelated pages once
+            # we have found products through that filter.
+            if brand_filter_links and urls:
+                return urls[:max_urls]
 
     return urls[:max_urls]
 
@@ -1837,10 +2117,19 @@ def diagnose_search(
             continue
 
         filter_urls = (
-            _category_product_line_links(
+            _category_brand_filter_links(
                 r.text,
                 query,
             )
+            + _category_product_line_links(
+                r.text,
+                query,
+            )
+        )
+
+        # Keep order but remove duplicates.
+        filter_urls = list(
+            dict.fromkeys(filter_urls)
         )
 
         entry["filter_urls"] = (
