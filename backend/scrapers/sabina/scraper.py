@@ -117,7 +117,7 @@ def _fetch(session, url):
         content_type = (response.headers.get("content-type") or "").lower()
 
         print(
-            f"SABINA_TEST3: FETCH status={response.status_code} "
+            f"SABINA_TEST4: FETCH status={response.status_code} "
             f"url={url} final={response.url} bytes={len(response.content)} "
             f"type={content_type!r}"
         )
@@ -130,7 +130,7 @@ def _fetch(session, url):
 
     except Exception as exc:
         print(
-            f"SABINA_TEST3: FETCH_ERROR url={url} "
+            f"SABINA_TEST4: FETCH_ERROR url={url} "
             f"error={type(exc).__name__}: {exc}"
         )
         return None, None
@@ -188,182 +188,240 @@ def _classify_links(links, query):
     return products, catalogs, query_links
 
 
+def _pagination_urls(links, current_url):
+    out = []
+    seen = set()
+    current = urlsplit(current_url)
+
+    for url, text in links:
+        if url in seen:
+            continue
+
+        parts = urlsplit(url)
+        qs = parts.query.lower()
+        low_text = _norm(text)
+
+        is_page_param = bool(
+            re.search(r"(?:^|[?&])p=\d+(?:&|$)", qs)
+            or re.search(r"(?:^|[?&])page=\d+(?:&|$)", qs)
+        )
+
+        is_next = any(
+            marker in low_text
+            for marker in ("suivant", "next", "siguiente", "›", "»")
+        )
+
+        same_path = (
+            parts.netloc.lower() == current.netloc.lower()
+            and parts.path.lower() == current.path.lower()
+        )
+
+        if same_path and (is_page_param or is_next):
+            seen.add(url)
+            out.append(url)
+
+    return out
+
+
+def _page_number(url):
+    query = urlsplit(url).query
+    for key in ("p", "page"):
+        m = re.search(
+            r"(?:^|&)"+re.escape(key)+r"=(\d+)(?:&|$)",
+            query,
+            re.I,
+        )
+        if m:
+            return int(m.group(1))
+    return None
+
+
+def _discover_page(session, url, query, source):
+    final_url, html = _fetch(session, url)
+
+    if not html:
+        return [], []
+
+    links = _extract_links(html, final_url)
+    products, catalogs, query_links = _classify_links(links, query)
+    pages = _pagination_urls(links, final_url)
+
+    print(
+        f"SABINA_TEST4: PAGE source={source} "
+        f"url={url} links={len(links)} products={len(products)} "
+        f"pagination={len(pages)}"
+    )
+
+    return products, pages
+
+
+def _verify_product(session, query, url):
+    final_url, html = _fetch(session, url)
+
+    if not html:
+        return None
+
+    soup = BeautifulSoup(html, "html.parser")
+
+    h1 = soup.find("h1")
+    title = " ".join(h1.stripped_strings) if h1 else ""
+
+    if not title and soup.title:
+        title = " ".join(soup.title.stripped_strings)
+
+    score = _score(query, title)
+
+    # ALL query tokens must be present.
+    if score < 1.0:
+        print(
+            f"SABINA_TEST4: REJECT_PARTIAL score={score:.3f} "
+            f"title={title!r} url={final_url}"
+        )
+        return None
+
+    print(
+        f"SABINA_TEST4: EXACT_PRODUCT score={score:.3f} "
+        f"title={title!r} url={final_url}"
+    )
+
+    return {
+        "name": title,
+        "url": final_url,
+        "price": None,
+    }
+
+
 def search(query):
     query = " ".join(str(query or "").split())
 
     if not query:
         return []
 
-    print(f"SABINA_TEST3: START query={query!r}")
-    print(f"SABINA_TEST3: TOKENS={_tokens(query)!r}")
-    print("SABINA_TEST3: PURPOSE=SITE_GRAPH_DIAGNOSIS")
+    print(f"SABINA_TEST4: START query={query!r}")
+    print(f"SABINA_TEST4: TOKENS={_tokens(query)!r}")
+    print("SABINA_TEST4: PURPOSE=PAGINATION_AWARE_GENERIC_DISCOVERY")
 
     session = requests.Session()
     session.headers.update(HEADERS)
 
     try:
-        visited = set()
-        catalog_pages = {}
-        product_hits = {}
+        # Generic perfume/catalog entry points only.
+        roots = (
+            BASE + "/fr/7-parfums-pour-homme",
+            BASE + "/fr/31-fragrances-pour-homme",
+            BASE + "/fr/6-parfums-pour-femme",
+            BASE + "/fr/30-fragrances-pour-femme",
+            BASE + "/fr/864-parfums-arabes-pour-femmes",
+            BASE + "/fr/865-parfums-arabes-pour-hommes",
+            BASE + "/fr/890-parfumerie-de-niche",
+            BASE + "/fr/688-parfums-de-niche-pour-femme",
+            BASE + "/fr/891-perfumes-nicho-unisex",
+        )
 
-        # HOP 1: generic public catalog roots.
-        # Record ALL catalog links, not only links containing query text.
-        for root in ROOTS:
-            final_url, html = _fetch(session, root)
+        candidate_products = {}
+        pagination_queue = []
+        visited_pages = set()
 
-            if not html:
-                continue
-
-            links = _extract_links(html, final_url)
-            products, catalogs, query_links = _classify_links(links, query)
-
-            print(
-                f"SABINA_TEST3: ROOT_RESULT root={root} "
-                f"links={len(links)} catalogs={len(catalogs)} "
-                f"query_catalogs={len(query_links)} products={len(products)}"
+        # First pass: roots.
+        for root in roots:
+            products, pages = _discover_page(
+                session,
+                root,
+                query,
+                "ROOT",
             )
 
             for url, text, score in products:
-                product_hits[url] = max(product_hits.get(url, 0.0), score)
-                print(
-                    f"SABINA_TEST3: ROOT_PRODUCT_MATCH score={score:.3f} "
-                    f"url={url} text={text[:180]!r}"
+                candidate_products[url] = max(
+                    candidate_products.get(url, 0.0),
+                    score,
                 )
 
-            for url, text, score in catalogs:
-                catalog_pages.setdefault(
-                    url,
-                    {
-                        "score": score,
-                        "text": text,
-                        "source": root,
-                    },
+            pagination_queue.extend(pages)
+
+        print(
+            f"SABINA_TEST4: ROOTS_DONE "
+            f"pagination_queue={len(pagination_queue)} "
+            f"candidates={len(candidate_products)}"
+        )
+
+        # Follow pagination generically. No assumed page number.
+        MAX_PAGINATION_PAGES = 2500
+
+        while pagination_queue and len(visited_pages) < MAX_PAGINATION_PAGES:
+            page_url = pagination_queue.pop(0)
+
+            if page_url in visited_pages:
+                continue
+
+            visited_pages.add(page_url)
+
+            products, pages = _discover_page(
+                session,
+                page_url,
+                query,
+                f"PAGINATION_{_page_number(page_url) or '?'}",
+            )
+
+            for url, text, score in products:
+                candidate_products[url] = max(
+                    candidate_products.get(url, 0.0),
+                    score,
                 )
 
-            for url, text, score in query_links:
+            for next_page in pages:
+                if next_page not in visited_pages:
+                    pagination_queue.append(next_page)
+
+            if len(visited_pages) % 25 == 0:
                 print(
-                    f"SABINA_TEST3: ROOT_QUERY_CATALOG score={score:.3f} "
-                    f"url={url} text={text[:180]!r}"
+                    f"SABINA_TEST4: PAGINATION_PROGRESS "
+                    f"visited={len(visited_pages)} "
+                    f"queue={len(pagination_queue)} "
+                    f"candidates={len(candidate_products)}"
                 )
 
         print(
-            f"SABINA_TEST3: HOP1_CATALOGS={len(catalog_pages)} "
-            f"HOP1_PRODUCTS={len(product_hits)}"
+            f"SABINA_TEST4: DISCOVERY_DONE "
+            f"pagination_visited={len(visited_pages)} "
+            f"pagination_queue={len(pagination_queue)} "
+            f"candidate_products={len(candidate_products)}"
         )
 
-        # HOP 2: inspect generic catalog/brand/category pages.
-        # No query-token requirement on the intermediate page.
-        hop2 = list(catalog_pages.items())[:MAX_SECOND_HOP_PAGES]
+        # Verify only candidates and require ALL query tokens.
+        results = []
 
-        for index, (url, meta) in enumerate(hop2, 1):
-            if url in visited:
-                continue
+        for url, discovery_score in sorted(
+            candidate_products.items(),
+            key=lambda item: (-item[1], item[0]),
+        ):
+            result = _verify_product(session, query, url)
+            if result:
+                results.append(result)
 
-            visited.add(url)
+        print(f"SABINA_TEST4: FINAL_EXACT_PRODUCTS={len(results)}")
 
-            final_url, html = _fetch(session, url)
-
-            if not html:
-                continue
-
-            links = _extract_links(html, final_url)
-            products, catalogs, query_links = _classify_links(links, query)
-
+        for result in results:
             print(
-                f"SABINA_TEST3: HOP2_RESULT {index}/{len(hop2)} "
-                f"url={url} links={len(links)} catalogs={len(catalogs)} "
-                f"query_catalogs={len(query_links)} products={len(products)}"
+                f"SABINA_TEST4: RESULT "
+                f"name={result['name']!r} url={result['url']}"
             )
 
-            for product_url, text, score in products:
-                product_hits[product_url] = max(
-                    product_hits.get(product_url, 0.0),
-                    score,
-                )
-                print(
-                    f"SABINA_TEST3: HOP2_PRODUCT_MATCH score={score:.3f} "
-                    f"url={product_url} text={text[:180]!r}"
-                )
-
-            for child_url, text, score in catalogs:
-                if child_url not in catalog_pages:
-                    catalog_pages[child_url] = {
-                        "score": score,
-                        "text": text,
-                        "source": url,
-                    }
-
-                if score > 0:
-                    print(
-                        f"SABINA_TEST3: HOP2_QUERY_CATALOG score={score:.3f} "
-                        f"url={child_url} text={text[:180]!r}"
-                    )
-
-        print(
-            f"SABINA_TEST3: AFTER_HOP2 catalogs={len(catalog_pages)} "
-            f"products={len(product_hits)}"
-        )
-
-        # HOP 3: inspect newly discovered catalog pages.
-        remaining = [
-            (url, meta)
-            for url, meta in catalog_pages.items()
-            if url not in visited
-        ][:MAX_THIRD_HOP_PAGES]
-
-        for index, (url, meta) in enumerate(remaining, 1):
-            visited.add(url)
-
-            final_url, html = _fetch(session, url)
-
-            if not html:
-                continue
-
-            links = _extract_links(html, final_url)
-            products, catalogs, query_links = _classify_links(links, query)
-
+        if results:
             print(
-                f"SABINA_TEST3: HOP3_RESULT {index}/{len(remaining)} "
-                f"url={url} links={len(links)} "
-                f"query_catalogs={len(query_links)} products={len(products)}"
-            )
-
-            for product_url, text, score in products:
-                product_hits[product_url] = max(
-                    product_hits.get(product_url, 0.0),
-                    score,
-                )
-                print(
-                    f"SABINA_TEST3: HOP3_PRODUCT_MATCH score={score:.3f} "
-                    f"url={product_url} text={text[:180]!r}"
-                )
-
-        print(f"SABINA_TEST3: FINAL_PRODUCTS={len(product_hits)}")
-        print(f"SABINA_TEST3: FINAL_CATALOG_PAGES={len(catalog_pages)}")
-        print(f"SABINA_TEST3: VISITED_CATALOG_PAGES={len(visited)}")
-
-        if product_hits:
-            print(
-                "SABINA_TEST3: DIAGNOSIS="
-                "PRODUCT_DISCOVERABLE_THROUGH_GENERIC_SITE_GRAPH"
-            )
-        elif len(catalog_pages) > len(ROOTS):
-            print(
-                "SABINA_TEST3: DIAGNOSIS="
-                "SITE_GRAPH_REACHABLE_BUT_PRODUCT_LINK_NOT_EXPOSED_IN_TEST_DEPTH"
+                "SABINA_TEST4: DIAGNOSIS="
+                "PRODUCT_FOUND_VIA_GENERIC_PAGINATION"
             )
         else:
             print(
-                "SABINA_TEST3: DIAGNOSIS="
-                "GENERIC_ROOTS_DO_NOT_EXPOSE_ENOUGH_CATALOG_GRAPH"
+                "SABINA_TEST4: DIAGNOSIS="
+                "NO_EXACT_PRODUCT_FOUND_IN_GENERIC_PAGINATION_GRAPH"
             )
 
-        # Diagnostic only: never fabricate results.
         return []
 
     finally:
         session.close()
-
 
 def scrape(query):
     return search(query)
@@ -375,4 +433,4 @@ def search_sabina(query):
 
 if __name__ == "__main__":
     import sys
-    search(" ".join(sys.argv[1:]).strip() or "Liquid brun")
+    search(" ".join(sys.argv[1:]).strip() or "")
