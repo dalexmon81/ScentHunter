@@ -1,14 +1,14 @@
 import re
 import json
 import html as html_lib
-from urllib.parse import quote_plus, urljoin
+from urllib.parse import quote_plus, urljoin, urlparse, parse_qs, unquote
 
 import requests
 from bs4 import BeautifulSoup
 
 STORE = "Sabina"
 BASE = "https://www.sabina.com"
-TIMEOUT = 15
+TIMEOUT = 4
 HEADERS = {
     "User-Agent": (
         "Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) "
@@ -45,9 +45,9 @@ def _looks_like_product_url(url):
 def _query_matches(name, url, query):
     """Match against both visible product name and product URL.
 
-    Sabina may put searchable terms in the product URL even when the
-    clickable product title is incomplete. Matching therefore uses both
-    normalized product text and URL text.
+    Sabina often puts the brand in the product URL but not in the clickable
+    product title. The old matcher checked the title only, causing valid
+    products such as 'Le Beau Narcisse' to disappear for a full-brand query.
     """
     q_words = [w for w in re.findall(r"[a-z0-9À-ÿ]+", _clean(query).lower()) if len(w) > 1]
     if not q_words:
@@ -160,148 +160,187 @@ def _walk_json(obj, query):
     return _dedupe(rows, query)
 
 def _parse_html(text, query):
-    soup = BeautifulSoup(text, "html.parser")
+    soup = BeautifulSoup(text or "", "html.parser")
     rows = []
+
     for script in soup.select('script[type="application/ld+json"]'):
         try:
             rows.extend(_walk_json(json.loads(script.get_text(strip=True)), query))
         except Exception:
             pass
+
+    tokens = [t for t in re.findall(r"[a-z0-9à-ÿ]+", _clean(query).lower()) if len(t) > 1]
+
     for a in soup.find_all("a", href=True):
         url = urljoin(BASE, a["href"])
         if not _looks_like_product_url(url):
             continue
+
+        clean_url = url.split("#", 1)[0].split("?", 1)[0]
+        url_hay = clean_url.lower().replace("-", " ")
+
+        # The URL itself is the strongest generic identity signal available
+        # on Sabina product cards. If it contains every query token, discovery
+        # is allowed even when the visible card title is incomplete.
+        url_match = tokens and all(token in url_hay for token in tokens)
+
         container = a
-        for _ in range(7):
+        best_container = a
+        for _ in range(6):
             parent = getattr(container, "parent", None)
             if not parent:
                 break
             container = parent
+            classes = " ".join(container.get("class", [])) if hasattr(container, "get") else ""
+            marker = (classes + " " + str(container.get("id", ""))).lower() if hasattr(container, "get") else ""
             txt = _clean(container.get_text(" ", strip=True))
-            if re.search(r"(?:€|\$|£)", txt) and len(txt) < 1800:
+            if len(txt) <= 2200:
+                best_container = container
+            if any(term in marker for term in ("product", "item", "card", "ajax_block")):
                 break
-        text_block = _clean(container.get_text(" ", strip=True))
-        pm = PRICE_RE.search(text_block)
-        if not pm:
+
+        text_block = _clean(best_container.get_text(" ", strip=True))
+        if not re.search(r"(?:€|\$|£)", text_block):
             continue
+
         candidates = [a.get("title"), a.get("aria-label"), a.get_text(" ", strip=True)]
         for sel in ("h1", "h2", "h3", "h4", ".name", ".product-name", ".product-title", ".product-item-name"):
-            for el in container.select(sel):
+            for el in best_container.select(sel):
                 candidates.append(el.get_text(" ", strip=True))
+
         cleaned = [_clean(x) for x in candidates if _clean(x)]
         if not cleaned:
             continue
-        # Prefer the candidate that best represents the product title.
-        # The score is entirely generic: query-token coverage first, then
-        # semantic title attributes and reasonable title length.
-        q_tokens = [
-            token for token in re.findall(r"[a-z0-9à-ÿ]+", _clean(query).lower())
-            if len(token) > 1
+
+        token_candidates = [
+            c for c in cleaned
+            if len(c) <= 500 and all(token in c.lower().replace("-", " ") for token in tokens)
         ]
 
-        def candidate_score(candidate):
-            value = _clean(candidate)
-            normalized = value.lower().replace("-", " ").replace("_", " ")
-            token_hits = sum(1 for token in q_tokens if token in normalized)
-            ui_penalty = 100 if normalized in {
-                "vedi", "vedi tutto", "acquista", "immagine", "comprar",
-                "buy", "see all", "view all", "add to cart", "carrello"
-            } else 0
-            length_penalty = max(0, len(value) - 180)
-            return (token_hits, -ui_penalty, -length_penalty, -len(value))
+        if token_candidates:
+            name = min(token_candidates, key=len)
+        elif url_match:
+            # When the slug is the only complete identity signal, choose the
+            # most product-like concise heading rather than arbitrary page text.
+            name = min(cleaned, key=len)
+        else:
+            continue
 
-        name = max(cleaned, key=candidate_score)
         if name.lower() in {"vedi", "vedi tutto", "acquista", "immagine"}:
             continue
-        rows.append({"store": STORE, "name": name, "price": next((g for g in pm.groups() if g is not None), "") .replace(".", ",") + " €", "url": url})
+
+        pm = PRICE_RE.search(text_block)
+        if not pm:
+            continue
+
+        price_value = next((g for g in pm.groups() if g is not None), "")
+        rows.append({
+            "store": STORE,
+            "name": name,
+            "price": price_value.replace(".", ",") + " €",
+            "url": clean_url,
+        })
+
     return _dedupe(rows, query)
 
+def _get(session, url, **kwargs):
+    r = session.get(url, headers=HEADERS, timeout=TIMEOUT, allow_redirects=True, **kwargs)
+    if r.status_code in (403, 429):
+        print(f"SABINA BLOCKED: HTTP {r.status_code}")
+        r.close()
+        return None
+    r.raise_for_status()
+    return r
 
-def _query_tokens(query):
-    text = _clean(query).lower()
-    text = re.sub(r"(?<=\d)(?=[a-zà-ÿ])|(?<=[a-zà-ÿ])(?=\d)", " ", text)
-    text = re.sub(r"[^a-z0-9à-ÿ]+", " ", text)
-    return [token for token in text.split() if len(token) > 1]
+def _extract_search_engine_urls(text, query):
+    """Generic external discovery fallback.
 
-
-def _query_match_score(name, url, query):
-    wanted = _query_tokens(query)
-    if not wanted:
-        return 0
-    hay = _clean(f"{name} {url}").lower().replace("-", " ").replace("_", " ")
-    return sum(1 for token in wanted if token in hay)
-
-
-def _extract_product_links_from_html(text, query):
+    Used only when Sabina's own search endpoints do not expose product links.
+    The query is supplied at runtime; no product, brand or URL is hard-coded.
+    """
     soup = BeautifulSoup(text, "html.parser")
     found = []
     seen = set()
-    wanted_count = len(_query_tokens(query))
 
-    for anchor in soup.find_all("a", href=True):
-        url = urljoin(BASE, anchor.get("href") or "").split("#")[0]
-        if not _looks_like_product_url(url):
-            continue
+    for a in soup.find_all("a", href=True):
+        href = html_lib.unescape(str(a.get("href") or ""))
+        candidate = href
 
-        candidates = [
-            anchor.get("title"),
-            anchor.get("aria-label"),
-            anchor.get_text(" ", strip=True),
-            anchor.find("img").get("alt") if anchor.find("img") else None,
-        ]
-
-        node = anchor
-        for _ in range(7):
-            node = getattr(node, "parent", None)
-            if node is None:
-                break
-            for selector in (
-                '[itemprop="name"]',
-                ".product-name",
-                ".product-title",
-                ".product-item-name",
-                ".product-name-container",
-                ".product-title-container",
-                "h2", "h3", "h4",
-            ):
-                for element in node.select(selector):
-                    candidates.append(element.get_text(" ", strip=True))
-            block = _clean(node.get_text(" ", strip=True))
-            if block:
-                candidates.append(block)
-            if re.search(r"(?:€|\$|£)", block) and len(block) < 2200:
+        # Google/Bing/DDG may wrap the real URL in a redirect parameter.
+        parsed = urlparse(href)
+        params = parse_qs(parsed.query)
+        for key in ("url", "q", "uddg"):
+            if params.get(key):
+                candidate = unquote(params[key][0])
                 break
 
-        score = max(
-            (_query_match_score(candidate, url, query)
-             for candidate in candidates if _clean(candidate)),
-            default=_query_match_score("", url, query),
-        )
+        if candidate.startswith("/"):
+            candidate = urljoin("https://www.google.com", candidate)
 
-        if score < wanted_count:
+        candidate = candidate.replace("&amp;", "&")
+        if not _looks_like_product_url(candidate):
             continue
 
-        path = url.split("?", 1)[0]
-        if path not in seen:
-            seen.add(path)
-            found.append((score, path))
+        clean_url = candidate.split("#", 1)[0].split("?", 1)[0]
+        if clean_url in seen:
+            continue
 
-    found.sort(key=lambda item: item[0], reverse=True)
-    return [url for _, url in found]
+        anchor_text = _clean(a.get_text(" ", strip=True))
+        tokens = [t for t in re.findall(r"[a-z0-9à-ÿ]+", _clean(query).lower()) if len(t) > 1]
+        url_hay = clean_url.lower().replace("-", " ")
+        text_hay = anchor_text.lower().replace("-", " ")
+        if tokens and (all(t in url_hay for t in tokens) or (len(text_hay) <= 500 and all(t in text_hay for t in tokens))):
+            seen.add(clean_url)
+            found.append(clean_url)
+
+    return found
 
 
-def _discover_from_search_page(session, query):
+def _discover_from_external_search(session, query):
+    """Generic last-resort discovery through public search indexes."""
+    q = quote_plus(f"site:sabina.com/it/ {query}")
+    endpoints = [
+        f"https://www.google.com/search?q={q}&num=20",
+        f"https://www.bing.com/search?q={q}&count=20",
+        f"https://html.duckduckgo.com/html/?q={q}",
+    ]
+    output = []
+    seen = set()
+
+    for endpoint in endpoints:
+        try:
+            response = session.get(
+                endpoint,
+                headers={**HEADERS, "Referer": "https://www.google.com/"},
+                timeout=TIMEOUT,
+            )
+            if not response.ok:
+                continue
+            for url in _extract_search_engine_urls(response.text, query):
+                if url not in seen:
+                    seen.add(url)
+                    output.append(url)
+            response.close()
+            if output:
+                break
+        except requests.RequestException:
+            continue
+
+    return output
+
+
+def _discover_from_first_party(session, query):
     urls = []
     seen = set()
     q = quote_plus(query)
 
-    # Multiple generic forms of the site's own search endpoint. No product
-    # or brand is embedded here; the runtime query is always supplied by the
-    # caller.
+    # Sabina/PrestaShop installations have used several search routes over
+    # time. Try the generic forms rather than depending on one historical URL.
     search_urls = [
         BASE + "/it/ricerca?controller=search&s=" + q,
         BASE + "/it/ricerca?s=" + q,
         BASE + "/it/ricerca?search_query=" + q,
+        BASE + "/it/search?s=" + q,
         BASE + "/it/ricerca_old?s=" + q,
         BASE + "/it/ricerca_old?search_query=" + q,
     ]
@@ -313,157 +352,95 @@ def _discover_from_search_page(session, query):
                 continue
             links = _extract_product_links_from_html(response.text, query)
             response.close()
+            for link in links:
+                if link not in seen:
+                    seen.add(link)
+                    urls.append(link)
         except requests.RequestException:
             continue
 
-        for product_url in links:
-            if product_url not in seen:
-                seen.add(product_url)
-                urls.append(product_url)
+    # Generic AJAX variants used by search modules.
+    ajax_endpoints = [
+        BASE + "/it/module/ec_customization/ajax",
+        BASE + "/it/modules/ec_customization/ajax",
+        BASE + "/modules/ecelastic/ajax.php",
+    ]
+    payloads = [
+        {"s": query, "query": query, "search_query": query},
+        {"q": query, "query": query, "search_query": query},
+    ]
+
+    for endpoint in ajax_endpoints:
+        for payload in payloads:
+            for method in ("get", "post"):
+                try:
+                    if method == "get":
+                        response = session.get(endpoint, params=payload, headers=HEADERS, timeout=TIMEOUT)
+                    else:
+                        response = session.post(
+                            endpoint,
+                            data=payload,
+                            headers={**HEADERS, "X-Requested-With": "XMLHttpRequest"},
+                            timeout=TIMEOUT,
+                        )
+                    if not response.ok:
+                        response.close()
+                        continue
+                    text = response.text
+                    response.close()
+                    links = _extract_product_links_from_html(text, query)
+                    for link in links:
+                        if link not in seen:
+                            seen.add(link)
+                            urls.append(link)
+                except requests.RequestException:
+                    continue
 
     return urls
 
 
-def _xml_locs(text):
-    try:
-        import xml.etree.ElementTree as ET
-        root = ET.fromstring(text)
-        return [
-            element.text.strip()
-            for element in root.iter()
-            if element.tag.lower().endswith("loc")
-            and element.text and element.text.strip()
+def _extract_product_links_from_html(text, query):
+    soup = BeautifulSoup(text or "", "html.parser")
+    found = []
+    seen = set()
+    tokens = [t for t in re.findall(r"[a-z0-9à-ÿ]+", _clean(query).lower()) if len(t) > 1]
+
+    for a in soup.find_all("a", href=True):
+        url = urljoin(BASE, a.get("href") or "").split("#", 1)[0].split("?", 1)[0]
+        if not _looks_like_product_url(url):
+            continue
+
+        container = a
+        candidates = [
+            a.get("title"),
+            a.get("aria-label"),
+            a.get_text(" ", strip=True),
         ]
-    except Exception:
-        return re.findall(r"<loc>\s*(.*?)\s*</loc>", text, flags=re.I | re.S)
+        for _ in range(6):
+            container = getattr(container, "parent", None)
+            if not container:
+                break
+            candidates.append(container.get_text(" ", strip=True))
 
-
-def _discover_from_sitemap(session, query):
-    # Sitemap discovery is only a generic fallback when the site's search
-    # response does not expose usable product links.
-    candidates = [
-        BASE + "/sitemap.xml",
-        BASE + "/1_index_sitemap.xml",
-        BASE + "/it/sitemap.xml",
-        BASE + "/en/sitemap.xml",
-    ]
-
-    try:
-        response = _get(session, BASE + "/robots.txt")
-        if response is not None:
-            for line in response.text.splitlines():
-                if line.lower().startswith("sitemap:"):
-                    sitemap = line.split(":", 1)[1].strip()
-                    if sitemap and sitemap not in candidates:
-                        candidates.insert(0, sitemap)
-            response.close()
-    except requests.RequestException:
-        pass
-
-    product_urls = []
-    child_maps = []
-    seen_maps = set()
-
-    for sitemap in candidates:
-        if sitemap in seen_maps:
-            continue
-        seen_maps.add(sitemap)
-        try:
-            response = _get(session, sitemap)
-            if response is None:
-                continue
-            locations = _xml_locs(response.text)
-            response.close()
-        except requests.RequestException:
-            continue
-
-        for loc in locations:
-            if loc.lower().endswith(".xml") and "sitemap" in loc.lower():
-                child_maps.append(loc)
-            elif _looks_like_product_url(loc):
-                product_urls.append(loc)
-
-    # Follow a bounded number of child maps to avoid turning the fallback
-    # into a full-site crawl.
-    for sitemap in child_maps[:16]:
-        if sitemap in seen_maps:
-            continue
-        seen_maps.add(sitemap)
-        try:
-            response = _get(session, sitemap)
-            if response is None:
-                continue
-            locations = _xml_locs(response.text)
-            response.close()
-        except requests.RequestException:
-            continue
-        product_urls.extend(
-            loc for loc in locations if _looks_like_product_url(loc)
+        url_hay = url.lower().replace("-", " ")
+        text_candidates = [
+            _clean(str(x)).lower().replace("-", " ")
+            for x in candidates if _clean(str(x))
+        ]
+        url_match = tokens and all(token in url_hay for token in tokens)
+        text_match = any(
+            len(candidate) <= 500 and all(token in candidate for token in tokens)
+            for candidate in text_candidates
         )
-
-    wanted_count = len(_query_tokens(query))
-    output = []
-    seen = set()
-    for url in product_urls:
-        clean_url = url.split("#")[0].split("?")[0]
-        if clean_url in seen:
-            continue
-        seen.add(clean_url)
-        if _query_match_score("", clean_url, query) == wanted_count:
-            output.append(clean_url)
-
-    return output
-
-
-def _discover_from_json_endpoints(session, query):
-    urls = []
-    seen = set()
-    endpoints = [
-        (BASE + "/it/ricerca", {"s": query, "ajax": "1"}),
-        (BASE + "/it/ricerca", {"search_query": query, "ajax": "1"}),
-        (BASE + "/it/ricerca_old", {"s": query, "ajax": "1"}),
-        (BASE + "/it/ricerca_old", {"search_query": query, "ajax": "1"}),
-    ]
-
-    for endpoint, params in endpoints:
-        try:
-            response = session.get(
-                endpoint,
-                params=params,
-                headers={**HEADERS, "X-Requested-With": "XMLHttpRequest"},
-                timeout=TIMEOUT,
-            )
-            if response.status_code in (403, 429) or not response.ok:
-                response.close()
-                continue
-            text = response.text
-            response.close()
-
-            try:
-                data = json.loads(text)
-                rows = _walk_json(data, query)
-                candidates = [row["url"] for row in rows]
-            except Exception:
-                candidates = _extract_product_links_from_html(text, query)
-
-            for url in candidates:
-                clean_url = url.split("#")[0].split("?")[0]
-                if clean_url not in seen and _looks_like_product_url(clean_url):
-                    seen.add(clean_url)
-                    urls.append(clean_url)
-        except (requests.RequestException, ValueError, TypeError):
+        if tokens and not (url_match or text_match):
             continue
 
-    return urls
+        if url not in seen:
+            seen.add(url)
+            found.append(url)
 
-def _get(session, url, **kwargs):
-    r = session.get(url, headers=HEADERS, timeout=TIMEOUT, allow_redirects=True, **kwargs)
-    if r.status_code in (403, 429):
-        print(f"SABINA BLOCKED: HTTP {r.status_code}")
-        r.close()
-        return None
-    r.raise_for_status()
-    return r
+    return found
+
 
 def search(query):
     query = _clean(query)
@@ -474,8 +451,7 @@ def search(query):
     session.headers.update(HEADERS)
 
     try:
-        # Warm-up for cookies/session state. Discovery never depends on a
-        # single source, so a warm-up failure does not stop the search.
+        # Warm-up establishes the same session/cookies used for the search.
         try:
             response = _get(session, BASE + "/it/")
             if response is not None:
@@ -486,30 +462,24 @@ def search(query):
         candidate_urls = []
         seen = set()
 
-        # 1) Site search: primary discovery source.
-        for url in _discover_from_search_page(session, query):
+        # 1. Sabina's own search/AJAX discovery.
+        for url in _discover_from_first_party(session, query):
             if url not in seen:
                 seen.add(url)
                 candidate_urls.append(url)
 
-        # 2) Generic AJAX/JSON search fallback.
-        for url in _discover_from_json_endpoints(session, query):
-            if url not in seen:
-                seen.add(url)
-                candidate_urls.append(url)
-
-        # 3) Generic sitemap fallback if the search interface exposes no
-        # usable product links.
+        # 2. Generic public-index fallback. This is still query-driven and
+        # contains no product-specific seed or exception.
         if not candidate_urls:
-            for url in _discover_from_sitemap(session, query):
+            for url in _discover_from_external_search(session, query):
                 if url not in seen:
                     seen.add(url)
                     candidate_urls.append(url)
 
+        # 3. Fetch the actual product pages and extract product-level data.
         results = []
-        result_seen = set()
-
-        for url in candidate_urls[:50]:
+        seen_results = set()
+        for url in candidate_urls[:30]:
             try:
                 response = _get(session, url)
                 if response is None:
@@ -523,12 +493,12 @@ def search(query):
             for item in parsed:
                 key = (
                     item.get("name", "").lower(),
-                    item.get("url", "").split("?")[0].split("#")[0],
-                    item.get("price"),
+                    item.get("url", "").split("?", 1)[0].split("#", 1)[0],
+                    item.get("price", ""),
                 )
-                if key in result_seen:
+                if key in seen_results:
                     continue
-                result_seen.add(key)
+                seen_results.add(key)
                 results.append(item)
 
         if results:
