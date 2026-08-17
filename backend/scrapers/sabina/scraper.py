@@ -1,184 +1,113 @@
 import re
 import unicodedata
-from urllib.parse import quote_plus, urljoin
-
+from urllib.parse import urljoin
 import requests
 from bs4 import BeautifulSoup
 
 BASE = "https://www.sabina.com"
-UA = (
-    "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) "
-    "AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1"
-)
+UA = "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 Safari/605.1.15"
 
 def _norm(s):
     s = unicodedata.normalize("NFKD", s or "")
     s = "".join(c for c in s if not unicodedata.combining(c))
     return re.sub(r"\s+", " ", s).strip().lower()
 
-def _tokens(q):
+def _words(q):
     return [x for x in re.split(r"[^a-z0-9]+", _norm(q)) if x]
 
-def _is_product_url(url):
+def _score(q, text):
+    w = _words(q)
+    h = _norm(text)
+    return sum(x in h for x in w) / len(w) if w else 0.0
+
+def _product_like(url):
     u = (url or "").lower()
-    return (
-        "sabina.com/" in u
-        and not any(x in u for x in (
-            "/ricerca", "/search", "/categoria", "/categories/",
-            "/marche/", "/brands/", "/blog/", "/login", "/cart",
-            "/account", "/contact", "/es/", "/en/"
-        ))
-        and (".html" in u or "/parfums-" in u or "/parfum-" in u)
+    return "sabina.com/" in u and ".html" in u and not any(
+        x in u for x in ["/ricerca", "/search", "/login", "/cart", "/account"]
     )
 
-def _extract_links(html, source_url):
+def _links(html, base):
     soup = BeautifulSoup(html, "html.parser")
     out = []
     seen = set()
-
     for a in soup.find_all("a", href=True):
-        href = urljoin(source_url, a.get("href", "").strip())
-        text = " ".join(a.stripped_strings)
-        if not href.startswith("https://www.sabina.com"):
-            continue
-        if href in seen:
+        href = urljoin(base, a["href"].strip())
+        if not _product_like(href) or href in seen:
             continue
         seen.add(href)
-        out.append((href, text))
+        txt = " ".join(a.stripped_strings)
+        out.append((href, txt))
     return out
 
-def _score(url, text, qwords):
-    hay = _norm(url + " " + text)
-    if not qwords:
-        return 0.0
-    hits = sum(1 for w in qwords if w in hay)
-    return hits / len(qwords)
-
 def search(query):
-    print(f"SABINA_DIAG2: START query={query!r}")
-    qwords = _tokens(query)
-    print(f"SABINA_DIAG2: TOKENS={qwords}")
+    print(f"SABINA_DISCOVERY: START query={query!r}")
+    qwords = _words(query)
+    print(f"SABINA_DISCOVERY: TOKENS={qwords}")
 
     s = requests.Session()
     s.headers.update({
         "User-Agent": UA,
         "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
-        "Accept-Language": "it-IT,it;q=0.9,en;q=0.8",
-        "Referer": BASE + "/",
+        "Accept-Language": "fr-FR,fr;q=0.9,en;q=0.8",
     })
 
-    # Phase 1: robots only, to discover every sitemap reference without
-    # relying on Sabina's search endpoint.
-    robots_url = BASE + "/robots.txt"
-    try:
-        r = s.get(robots_url, timeout=20, allow_redirects=True)
-        print(
-            f"SABINA_DIAG2: ROBOTS status={r.status_code} "
-            f"final={r.url} bytes={len(r.content)}"
-        )
-        robots = r.text
-    except Exception as e:
-        print(f"SABINA_DIAG2: ROBOTS_ERROR {type(e).__name__}: {e}")
-        return []
+    # Generic category/brand discovery. No product URL is hard-coded.
+    seeds = [
+        BASE + "/fr/601_french-avenue",
+        BASE + "/fr/865-parfums-arabes-pour-homme",
+        BASE + "/fr/864-parfums-arabes-pour-femme",
+    ]
 
-    sitemaps = []
-    for line in robots.splitlines():
-        if line.lower().startswith("sitemap:"):
-            sm = line.split(":", 1)[1].strip()
-            if sm and sm not in sitemaps:
-                sitemaps.append(sm)
-
-    print(f"SABINA_DIAG2: ROBOTS_SITEMAPS={sitemaps}")
-
-    # Phase 2: fetch sitemap references and inspect URLs.
-    queue = list(sitemaps)
-    seen_sm = set()
-    product_urls = []
-
-    while queue and len(seen_sm) < 20:
-        sm = queue.pop(0)
-        if sm in seen_sm:
-            continue
-        seen_sm.add(sm)
-
+    candidates = {}
+    for seed in seeds:
         try:
-            r = s.get(sm, timeout=20, allow_redirects=True)
-            print(
-                f"SABINA_DIAG2: SITEMAP status={r.status_code} "
-                f"url={sm} final={r.url} bytes={len(r.content)}"
-            )
+            r = s.get(seed, timeout=20, allow_redirects=True)
+            print(f"SABINA_DISCOVERY: SEED status={r.status_code} url={seed} final={r.url} bytes={len(r.content)}")
             if r.status_code != 200:
                 continue
-            txt = r.text
+            for u, txt in _links(r.text, r.url):
+                sc = _score(query, u + " " + txt)
+                if sc > 0:
+                    candidates[u] = max(candidates.get(u, 0), sc)
         except Exception as e:
-            print(f"SABINA_DIAG2: SITEMAP_ERROR url={sm} {type(e).__name__}: {e}")
-            continue
+            print(f"SABINA_DISCOVERY: SEED_ERROR {seed} {type(e).__name__}: {e}")
 
-        # XML sitemap URL extraction, deliberately independent of sitemap
-        # parser assumptions.
-        locs = re.findall(r"<loc>\s*(.*?)\s*</loc>", txt, flags=re.I | re.S)
-        print(f"SABINA_DIAG2: SITEMAP_LOCS count={len(locs)} url={sm}")
+    ranked = sorted(candidates.items(), key=lambda x: (-x[1], x[0]))
+    print(f"SABINA_DISCOVERY: CANDIDATES={len(ranked)}")
+    for u, sc in ranked[:20]:
+        print(f"SABINA_DISCOVERY: CANDIDATE score={sc:.3f} url={u}")
 
-        for loc in locs:
-            loc = re.sub(r"\s+", "", loc)
-            if loc.lower().endswith(".xml") or "sitemap" in loc.lower():
-                if loc not in seen_sm and len(seen_sm) + len(queue) < 100:
-                    queue.append(loc)
-            elif _is_product_url(loc):
-                product_urls.append(loc)
-
-    # Deduplicate while preserving order.
-    product_urls = list(dict.fromkeys(product_urls))
-    print(f"SABINA_DIAG2: PRODUCT_URLS_TOTAL={len(product_urls)}")
-
-    # Phase 3: score URLs from sitemap data. This is the key test:
-    # if Liquid Brun is discoverable generically, it should surface here.
-    scored = []
-    for u in product_urls:
-        sc = _score(u, "", qwords)
-        if sc > 0:
-            scored.append((sc, u))
-
-    scored.sort(key=lambda x: (-x[0], x[1]))
-    print(f"SABINA_DIAG2: URL_MATCHES={len(scored)}")
-
-    for sc, u in scored[:20]:
-        print(f"SABINA_DIAG2: URL_CANDIDATE score={sc:.3f} url={u}")
-
-    # Phase 4: verify only the best candidates, not a hard-coded product.
     results = []
-    for sc, u in scored[:10]:
+    for u, sc in ranked[:10]:
         try:
             r = s.get(u, timeout=20, allow_redirects=True)
-            print(
-                f"SABINA_DIAG2: PRODUCT_REQUEST status={r.status_code} "
-                f"url={u} final={r.url} bytes={len(r.content)}"
-            )
+            print(f"SABINA_DISCOVERY: PRODUCT status={r.status_code} url={u} final={r.url}")
             if r.status_code != 200:
                 continue
-
             soup = BeautifulSoup(r.text, "html.parser")
-            title = ""
             h1 = soup.find("h1")
-            if h1:
-                title = " ".join(h1.stripped_strings)
+            title = " ".join(h1.stripped_strings) if h1 else ""
             if not title and soup.title:
                 title = " ".join(soup.title.stripped_strings)
 
-            page_score = _score(u, title, qwords)
-            print(
-                f"SABINA_DIAG2: PRODUCT_PAGE title={title!r} "
-                f"score={page_score:.3f}"
-            )
+            ps = _score(query, title)
+            print(f"SABINA_DISCOVERY: VERIFY title={title!r} score={ps:.3f}")
 
-            if page_score > 0:
-                results.append({
-                    "name": title,
-                    "url": r.url,
-                    "price": None,
-                })
+            if ps <= 0:
+                continue
+
+            price = None
+            for el in soup.find_all(string=re.compile(r"[€$£]|\\d+[,.]\\d{2}")):
+                t = " ".join(str(el).split())
+                m = re.search(r"(?:€|\\$|£)\\s*([0-9]+[,.][0-9]{2})|([0-9]+[,.][0-9]{2})\\s*(?:€|\\$|£)", t)
+                if m:
+                    price = (m.group(1) or m.group(2)).replace(",", ".")
+                    break
+
+            results.append({"name": title, "url": r.url, "price": price})
+            print(f"SABINA_DISCOVERY: FOUND name={title!r} price={price!r} url={r.url}")
         except Exception as e:
-            print(f"SABINA_DIAG2: PRODUCT_ERROR url={u} {type(e).__name__}: {e}")
+            print(f"SABINA_DISCOVERY: PRODUCT_ERROR {u} {type(e).__name__}: {e}")
 
-    print(f"SABINA_DIAG2: COMPLETE results={len(results)}")
+    print(f"SABINA_DISCOVERY: COMPLETE results={len(results)}")
     return results
