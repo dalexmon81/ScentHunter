@@ -103,20 +103,26 @@ def search(query):
         "Accept-Language": "fr-FR,fr;q=0.9,en;q=0.8",
     })
 
-    # Generic category/brand discovery. No product URL is hard-coded.
-    seeds = [
-        BASE + "/fr/601_french-avenue",
-        BASE + "/fr/865-parfums-arabes-pour-homme",
-        BASE + "/fr/864-parfums-arabes-pour-femme",
-    ]
-
+    # Generic discovery. No individual product URL is hard-coded.
+    # First try Sabina's own generic search endpoint. If it does not expose
+    # product links, fall back to broad category/brand surfaces and their
+    # pagination.
     candidates = {}
-    for seed in seeds:
+    visited_pages = set()
+
+    def _collect_page(page_url, label):
+        if page_url in visited_pages:
+            return []
+        visited_pages.add(page_url)
         try:
-            r = s.get(seed, timeout=20, allow_redirects=True)
-            print(f"SABINA_DISCOVERY: SEED status={r.status_code} url={seed} final={r.url} bytes={len(r.content)}")
+            r = s.get(page_url, timeout=12, allow_redirects=True)
+            print(
+                f"SABINA_DISCOVERY: {label} status={r.status_code} "
+                f"url={page_url} final={r.url} bytes={len(r.content)}"
+            )
             if r.status_code != 200:
-                continue
+                return []
+
             discovered_links = _links(r.text, r.url)
             print(f"SABINA_DISCOVERY: LINKS_FOUND={len(discovered_links)}")
             matched_here = 0
@@ -130,9 +136,81 @@ def search(query):
                             f"SABINA_DISCOVERY: MATCH score={sc:.3f} "
                             f"url={u} text={txt[:160]!r}"
                         )
-            print(f"SABINA_DISCOVERY: SEED_MATCHES={matched_here}")
+            print(f"SABINA_DISCOVERY: PAGE_MATCHES={matched_here}")
+
+            # Collect pagination links without depending on a particular
+            # page-number URL format.
+            soup = BeautifulSoup(r.text, "html.parser")
+            pagination = []
+            seen = set()
+            for a in soup.find_all("a", href=True):
+                href = urljoin(r.url, str(a.get("href") or "").strip())
+                if not href or href in seen:
+                    continue
+                href_l = href.lower()
+                txt = _norm(" ".join(a.stripped_strings))
+                rel = " ".join(a.get("rel") or []).lower()
+                cls = " ".join(a.get("class") or []).lower()
+                if (
+                    "page=" in href_l
+                    or "p=" in href_l
+                    or "pagination" in cls
+                    or "next" in rel
+                    or txt in {"2", "3", "4", "5", "suivante", "prochaine", "next"}
+                ):
+                    seen.add(href)
+                    pagination.append(href)
+            return pagination
         except Exception as e:
-            print(f"SABINA_DISCOVERY: SEED_ERROR {seed} {type(e).__name__}: {e}")
+            print(f"SABINA_DISCOVERY: PAGE_ERROR {page_url} {type(e).__name__}: {e}")
+            return []
+
+    # 1) Sabina's native search. We do not assume that one particular
+    # endpoint works forever, so the alternatives are tried only until real
+    # product links are obtained.
+    from urllib.parse import quote_plus
+    encoded_q = quote_plus(query)
+    search_pages = [
+        BASE + f"/fr/recherche?controller=search&s={encoded_q}",
+        BASE + f"/fr/recherche?s={encoded_q}",
+        BASE + f"/fr/recherche?search_query={encoded_q}",
+    ]
+
+    for search_url in search_pages:
+        _collect_page(search_url, "SEARCH")
+        if candidates:
+            break
+
+    # 2) Generic fallback surfaces. These are category/brand entry points,
+    # not individual products. Follow a few pagination pages so a product
+    # does not need to be in the first 20-30 links to be discoverable.
+    if not candidates:
+        seeds = [
+            BASE + "/fr/601_french-avenue",
+            BASE + "/fr/865-parfums-arabes-pour-homme",
+            BASE + "/fr/864-parfums-arabes-pour-femme",
+        ]
+
+        MAX_PAGES_PER_SEED = 5
+        for seed in seeds:
+            queue = [seed]
+            pages_for_seed = 0
+
+            while queue and pages_for_seed < MAX_PAGES_PER_SEED:
+                page_url = queue.pop(0)
+                before = len(candidates)
+                next_pages = _collect_page(
+                    page_url,
+                    "SEED" if pages_for_seed == 0 else "PAGE",
+                )
+                pages_for_seed += 1
+
+                if len(candidates) > before:
+                    break
+
+                for nxt in next_pages:
+                    if nxt not in visited_pages and nxt not in queue:
+                        queue.append(nxt)
 
     ranked = sorted(candidates.items(), key=lambda x: (-x[1], x[0]))
     print(f"SABINA_DISCOVERY: CANDIDATES={len(ranked)}")
