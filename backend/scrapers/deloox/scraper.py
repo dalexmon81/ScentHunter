@@ -709,6 +709,27 @@ def _discover_from_page(session, url, query, source):
         for a in soup.find_all("a", href=True)
         if "/product/" in clean(a.get("href")).lower()
     ]
+
+    # Diagnostic census: show exactly what happens to the raw product hrefs
+    # before _extract_product_urls() builds its candidate list.
+    normalized_anchor_urls = []
+    normalization_failures = []
+    normalization_pairs = []
+    for href in anchor_product_hrefs:
+        normalized = _normalize_product_url(href)
+        normalization_pairs.append(
+            {
+                "raw": href,
+                "normalized": normalized,
+            }
+        )
+        if normalized:
+            normalized_anchor_urls.append(normalized)
+        else:
+            normalization_failures.append(href)
+
+    unique_normalized_anchor_urls = set(normalized_anchor_urls)
+
     _dbg(
         "page_product_census",
         source=source,
@@ -717,6 +738,15 @@ def _discover_from_page(session, url, query, source):
         raw_product_matches=len(raw_product_matches),
         anchor_product_hrefs=len(anchor_product_hrefs),
         unique_anchor_product_hrefs=len(set(anchor_product_hrefs)),
+        normalized_anchor_hrefs=len(normalized_anchor_urls),
+        unique_normalized_anchor_hrefs=len(unique_normalized_anchor_urls),
+        duplicate_after_normalize=(
+            len(normalized_anchor_urls)
+            - len(unique_normalized_anchor_urls)
+        ),
+        normalization_failures=len(normalization_failures),
+        normalization_failure_sample=normalization_failures[:20],
+        normalization_pairs=normalization_pairs[:40],
         sample_anchor_product_hrefs=anchor_product_hrefs[:20],
     )
 
