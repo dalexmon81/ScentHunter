@@ -38,6 +38,12 @@ ROOTS = (
     BASE + "/fr/891-perfumes-nicho-unisex",
 )
 
+SEARCH_ENDPOINTS = (
+    BASE + "/fr/recherche",
+    BASE + "/fr/ricerca_old",
+)
+MAX_SEARCH_PAGES = 12
+
 PRICE_RE = re.compile(
     r"(?<!\d)(\d{1,5}(?:[.,]\d{2}))\s*(?:€|EUR)\b",
     re.I,
@@ -811,6 +817,64 @@ def _dedupe(rows, query):
     return out
 
 
+def _native_search_urls(query):
+    return [
+        endpoint
+        + "?search_query="
+        + requests.utils.quote(query, safe="")
+        for endpoint in SEARCH_ENDPOINTS
+    ]
+
+
+def _native_search(session, query):
+    """Primary discovery through Sabina's own search engine."""
+    queue = deque(_native_search_urls(query))
+    queued = set(queue)
+    visited = set()
+    candidates = []
+
+    while queue and len(visited) < MAX_SEARCH_PAGES:
+        url = queue.popleft()
+        if url in visited:
+            continue
+
+        visited.add(url)
+
+        final_url, html = _fetch(session, url)
+        if not html:
+            continue
+
+        rows, matching, pages = _parse_page(
+            html,
+            final_url,
+            query,
+        )
+
+        print(
+            f"SABINA: NATIVE_SEARCH page={len(visited)} "
+            f"products={len(rows)} matches={len(matching)} "
+            f"pagination={len(pages)} url={final_url}"
+        )
+
+        for candidate in matching:
+            candidate_url = candidate.get("url")
+            if not candidate_url:
+                continue
+            if not any(
+                existing.get("url") == candidate_url
+                for existing in candidates
+            ):
+                candidates.append(candidate)
+
+        for page in pages:
+            if page in visited or page in queued:
+                continue
+            queued.add(page)
+            queue.append(page)
+
+    return candidates
+
+
 def search(query):
     query = _clean(query)
 
@@ -822,13 +886,38 @@ def search(query):
     session = requests.Session()
     session.headers.update(HEADERS)
 
-    queue = deque(ROOTS)
-    queued = set(ROOTS)
-    visited = set()
-    candidates = []
-
     try:
-        # Generic category discovery. No product-specific seed is used.
+        native_candidates = _native_search(
+            session,
+            query,
+        )
+
+        print(
+            f"SABINA: NATIVE_DISCOVERY_DONE "
+            f"candidates={len(native_candidates)}"
+        )
+
+        if native_candidates:
+            results = _verify_candidates(
+                session,
+                query,
+                native_candidates,
+            )
+
+            print(
+                f"SABINA: NATIVE_VERIFIED_RESULTS={len(results)}"
+            )
+
+            if results:
+                return results
+
+        # Fallback only when Sabina's native search produced no
+        # verifiable product.
+        queue = deque(ROOTS)
+        queued = set(ROOTS)
+        visited = set()
+        candidates = []
+
         while queue and len(visited) < MAX_PAGES:
             url = queue.popleft()
 
@@ -849,7 +938,7 @@ def search(query):
 
             if rows:
                 print(
-                    f"SABINA: PAGE visited={len(visited)} "
+                    f"SABINA: FALLBACK_PAGE visited={len(visited)} "
                     f"products={len(rows)} "
                     f"matches={len(matching)} "
                     f"pagination={len(pages)} "
@@ -857,29 +946,25 @@ def search(query):
                 )
 
             for candidate in matching:
+                candidate_url = candidate.get("url")
+                if not candidate_url:
+                    continue
+
                 if not any(
-                    existing.get("url") == candidate.get("url")
+                    existing.get("url") == candidate_url
                     for existing in candidates
                 ):
                     candidates.append(candidate)
 
-            # Keep following the site's own pagination graph.
             for page in pages:
-                if (
-                    page not in visited
-                    and page not in queued
-                ):
-                    queued.add(page)
-                    queue.append(page)
-
-            # Never stop discovery merely because an early page produced a
-            # candidate. Sabina paginates large catalogs, and an early match
-            # can be a false positive or a less relevant product. Continue
-            # through the generic pagination graph up to MAX_PAGES.
+                if page in visited or page in queued:
+                    continue
+                queued.add(page)
+                queue.append(page)
 
         print(
-            f"SABINA: DISCOVERY_DONE visited={len(visited)} "
-            f"queued={len(queue)} candidates={len(candidates)}"
+            f"SABINA: FALLBACK_DISCOVERY_DONE "
+            f"visited={len(visited)} candidates={len(candidates)}"
         )
 
         results = _verify_candidates(
