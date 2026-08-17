@@ -441,13 +441,20 @@ def _extract_category_links(html, query):
 
 
 def _sitemap_product_urls(session, query, max_sitemaps=64):
+    """Collect product URLs from Deloox sitemaps.
+
+    Sitemap discovery is generic and does not hard-code product names.
+    URL matching is used only to rank candidates. The product page parser
+    remains the final validator.
+    """
     wanted = tokens(query)
     if not wanted:
         return []
 
     pending = deque(SITEMAP_ROOTS)
     seen_sitemaps = set()
-    found, seen_products = [], set()
+    candidates = {}
+    product_order = 0
 
     while pending and len(seen_sitemaps) < max_sitemaps:
         sitemap_url = pending.popleft()
@@ -472,14 +479,26 @@ def _sitemap_product_urls(session, query, max_sitemaps=64):
                 continue
 
             low = value.lower()
+
             if "/product/" in low:
                 url = _normalize_product_url(value)
-                if (
-                    url
-                    and url not in seen_products
-                ):
-                    seen_products.add(url)
-                    found.append(url)
+                if not url:
+                    continue
+
+                slug_tokens = tokens(urlparse(url).path)
+                matched = len(wanted & slug_tokens)
+
+                # Relevance is a ranking signal only.
+                # Do not reject sitemap candidates here.
+                score = matched * 100
+                if matched == len(wanted):
+                    score += 1000
+
+                if url not in candidates:
+                    candidates[url] = (score, product_order)
+                    product_order += 1
+                elif score > candidates[url][0]:
+                    candidates[url] = (score, candidates[url][1])
                 continue
 
             if low.endswith(".xml") or "sitemap" in low:
@@ -491,7 +510,10 @@ def _sitemap_product_urls(session, query, max_sitemaps=64):
                 0
                 if any(
                     word in value.lower()
-                    for word in ("product", "products", "perfume", "fragrance")
+                    for word in (
+                        "product", "products", "perfume", "fragrance",
+                        "category", "categories",
+                    )
                 )
                 else 1,
                 value.lower(),
@@ -499,18 +521,24 @@ def _sitemap_product_urls(session, query, max_sitemaps=64):
         )
         pending.extendleft(reversed(children))
 
-        if len(found) >= MAX_CANDIDATES:
-            break
+    ordered = sorted(
+        candidates.items(),
+        key=lambda item: (-item[1][0], item[1][1]),
+    )
+    found = [url for url, _ in ordered[:MAX_CANDIDATES]]
 
     _dbg(
         "product_sitemap_done",
         query=query,
         sitemap_count=len(seen_sitemaps),
-        count=len(found),
+        candidate_count=len(candidates),
+        ranked_count=len(found),
+        query_slug_matches=sum(
+            1 for score, _ in candidates.values() if score >= 100
+        ),
         sample=found[:20],
-        remaining_queue=len(pending),
     )
-    return found[:MAX_CANDIDATES]
+    return found
 
 
 def _discover_from_page(session, url, query, source):
@@ -558,52 +586,70 @@ def _discover_from_page(session, url, query, source):
 
 
 def _discover(session, query):
-    """Generic discovery. No product-specific seeds or exceptions."""
+    """Generic discovery.
+
+    All sources are merged before the candidate budget is applied.
+    URL/query agreement is only a ranking signal. Final validation is done
+    exclusively by _product().
+    """
     query = clean(query)
-    urls, seen = [], set()
+    wanted = tokens(query)
+    if not wanted:
+        return []
+
+    candidates = {}
+    order = 0
 
     def add_many(items, source):
+        nonlocal order
+
         added = 0
-        for url in items or []:
-            url = _normalize_product_url(url)
-            if not url or url in seen:
+        for raw_url in items or []:
+            url = _normalize_product_url(raw_url)
+            if not url or url in candidates:
                 continue
-            seen.add(url)
-            urls.append(url)
+
+            slug_tokens = tokens(urlparse(url).path)
+            matched = len(wanted & slug_tokens)
+
+            # Generic discovery score:
+            # exact token coverage in the product URL gets priority.
+            # This is never a final accept/reject decision.
+            score = matched * 100
+            if matched == len(wanted):
+                score += 1000
+
+            candidates[url] = {
+                "score": score,
+                "order": order,
+                "source": source,
+            }
+            order += 1
             added += 1
-            if len(urls) >= MAX_CANDIDATES:
-                break
+
         _dbg(
             "discovery_merge",
             source=source,
             added=added,
-            total=len(urls),
+            total=len(candidates),
         )
-        return len(urls) >= MAX_CANDIDATES
 
-    # 1. Deloox's own search endpoints.
+    # 1. Deloox search endpoints, when they expose usable product links.
+    encoded = quote_plus(query)
     for endpoint in (
-        f"{BASE_URL}/en/search?q={quote_plus(query)}",
-        f"{BASE_URL}/en/search?query={quote_plus(query)}",
-        f"{BASE_URL}/en/search?search={quote_plus(query)}",
-        f"{BASE_URL}/en/search?term={quote_plus(query)}",
+        f"{BASE_URL}/en/search?q={encoded}",
+        f"{BASE_URL}/en/search?query={encoded}",
+        f"{BASE_URL}/en/search?search={encoded}",
+        f"{BASE_URL}/en/search?term={encoded}",
     ):
-        if add_many(
+        add_many(
             _discover_from_page(session, endpoint, query, "search"),
             "search",
-        ):
-            return urls[:MAX_CANDIDATES]
+        )
 
-    # 2. Product sitemap. URL slug is only a discovery signal.
-    if add_many(
-        _sitemap_product_urls(session, query),
-        "product_sitemap",
-    ):
-        return urls[:MAX_CANDIDATES]
-
-    # 3. Generic fragrance/category pages.
+    # 2. Generic fragrance/category pages.
     for category_url in CATEGORY_ROOTS:
-        if add_many(
+        add_many(
             _discover_from_page(
                 session,
                 category_url,
@@ -611,16 +657,37 @@ def _discover(session, query):
                 "category",
             ),
             "category",
-        ):
-            return urls[:MAX_CANDIDATES]
+        )
+
+    # 3. Product sitemap: independent source and important fallback.
+    # Sitemap candidates are merged into the same ranking pool, so the first
+    # unrelated sitemap products cannot consume MAX_CANDIDATES.
+    add_many(
+        _sitemap_product_urls(session, query),
+        "product_sitemap",
+    )
+
+    ordered = sorted(
+        candidates.items(),
+        key=lambda item: (
+            -item[1]["score"],
+            item[1]["order"],
+        ),
+    )
+
+    urls = [url for url, _meta in ordered[:MAX_CANDIDATES]]
 
     _dbg(
         "discovery_done",
         query=query,
         count=len(urls),
-        urls=urls[:30],
+        total_candidates=len(candidates),
+        ranked_query_matches=sum(
+            1 for _url, meta in ordered if meta["score"] >= 100
+        ),
+        urls=urls[:50],
     )
-    return urls[:MAX_CANDIDATES]
+    return urls
 
 
 def _jsonld(soup):
