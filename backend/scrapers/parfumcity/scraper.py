@@ -41,12 +41,6 @@ def size_ml(*values):
         value *= 10
     return int(value) if value.is_integer() else value
 
-
-def valid_size(size):
-    # ScentHunter compares normal retail bottles, not tiny samples/decants.
-    # Anything below 10 ml is excluded (e.g. the unwanted 2 ml listing).
-    return size is None or size >= 10
-
 def concentration(*values):
     text = norm(" ".join(clean(x) for x in values))
     if re.search(r"\beau de toilette\b|\bedt\b", text): return "Eau de Toilette"
@@ -64,13 +58,11 @@ def product_page(session, url, query):
     soup = BeautifulSoup(r.text, "html.parser")
     h1 = soup.find("h1")
     name = clean(h1.get_text(" ", strip=True)) if h1 else ""
-    detected_size = size_ml(name)
     if not name or not matches(name, query):
-        return None
-    if not valid_size(detected_size):
         return None
 
     amount = None
+    product_data = {}
     for script in soup.select('script[type="application/ld+json"]'):
         try:
             data = json.loads(script.get_text(strip=True))
@@ -91,6 +83,7 @@ def product_page(session, url, query):
                         except (TypeError, ValueError):
                             pass
                         if amount:
+                            product_data = item
                             break
                 if amount:
                     break
@@ -102,28 +95,59 @@ def product_page(session, url, query):
     if amount is None:
         return None
 
-    image = None
-    meta = soup.select_one('meta[property="og:image"]')
-    if meta and meta.get("content"):
-        image = urljoin(url, meta["content"])
+    if not isinstance(product_data, dict):
+        product_data = {}
+    brand = product_data.get("brand")
+    if isinstance(brand, dict):
+        brand = brand.get("name")
+    brand = clean(brand) if brand else None
+
+    image = product_data.get("image")
+    if isinstance(image, list):
+        image = image[0] if image else None
+    if image:
+        image = urljoin(url, str(image))
+    else:
+        meta = soup.select_one('meta[property="og:image"]')
+        image = urljoin(url, meta["content"]) if meta and meta.get("content") else None
+
+    gtin = product_data.get("gtin13") or product_data.get("gtin") or product_data.get("gtin8")
+    mpn = product_data.get("mpn")
+    sku = product_data.get("sku")
+    product_id = product_data.get("productID") or product_data.get("productId")
+
+    offers_data = product_data.get("offers")
+    offers_data = offers_data if isinstance(offers_data, list) else [offers_data]
+    availability = "unknown"
+    for offer in offers_data:
+        if isinstance(offer, dict):
+            av = str(offer.get("availability") or "").lower()
+            if "outofstock" in av or "soldout" in av:
+                availability = "out_of_stock"
+                break
+            if "instock" in av or "preorder" in av:
+                availability = "in_stock"
+
+    def ident(value, source="jsonld"):
+        return {"value": str(value).strip(), "source": source} if value is not None and str(value).strip() else None
 
     return {
         "store": STORE,
         "source": {
             "source_name": name,
-            "source_brand": None,
+            "source_brand": brand,
             "url": url,
             "image": image,
         },
         "identity": {
-            "gtin": None,
-            "mpn": None,
-            "sku": None,
-            "store_product_id": None,
+            "gtin": ident(gtin),
+            "mpn": ident(mpn),
+            "sku": ident(sku),
+            "store_product_id": ident(product_id),
             "store_variant_id": None,
         },
         "attributes": {
-            "size_ml": {"value": detected_size, "source": "product_title"} if detected_size is not None else None,
+            "size_ml": {"value": size_ml(name), "source": "product_title"} if size_ml(name) else None,
             "concentration": {"value": concentration(name), "source": "product_title"} if concentration(name) else None,
             "gender": {"value": "unknown", "source": "not_explicit"},
             "packaging_type": {"value": "product", "source": "default"},
@@ -131,10 +155,10 @@ def product_page(session, url, query):
         "offer": {
             "price": round(amount, 2),
             "currency": "EUR",
-            "availability": "unknown",
+            "availability": availability,
         },
-        "provenance": {"source_page": url, "name_source": "h1", "price_source": "jsonld_or_page"},
-        "raw_data": {},
+        "provenance": {"source_page": url, "product_source": "jsonld_or_page"},
+        "raw_data": {"jsonld": product_data},
         "name": name,
         "price": f"{amount:.2f}".replace(".", ",") + "€",
         "url": url,
@@ -165,9 +189,7 @@ def search(query):
                 card = card.parent
             if card is None:
                 continue
-            card_text = clean(card.get_text(" ", strip=True))
-            card_size = size_ml(card_text)
-            if matches(card_text, query) and valid_size(card_size):
+            if matches(clean(card.get_text(" ", strip=True)), query):
                 seen.add(url)
                 urls.append(url)
         results = []
