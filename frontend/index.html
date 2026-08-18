@@ -146,6 +146,17 @@ body{position:relative}
 .offer-line{display:flex;justify-content:space-between;align-items:center;gap:10px}
  
  .format-icon{width:52px;height:60px;flex:0 0 52px;border:1px solid #30343a;border-radius:14px;background:#0b0d0e;display:flex;align-items:center;justify-content:center;font-size:28px}
+  .detail-summary{margin:4px 0 14px;padding:13px 10px;border:1px solid #30343a;border-radius:20px;background:linear-gradient(145deg,#111615,#090b0c);display:grid;grid-template-columns:1fr 1fr;align-items:stretch;box-shadow:inset 0 1px 0 rgba(255,255,255,.025)}
+  .summary-cell{min-width:0;display:flex;align-items:center;justify-content:center;gap:10px;padding:8px 12px;text-align:left}
+  .summary-cell+.summary-cell{border-left:1px solid #30343a}
+  .summary-icon{width:42px;height:42px;flex:0 0 42px;border-radius:50%;display:flex;align-items:center;justify-content:center;background:rgba(46,121,76,.20);color:#e7b83f}
+  .summary-icon svg{width:25px;height:25px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+  .summary-copy{min-width:0}
+  .summary-label{font-size:11px;line-height:1.15;color:#aaa;font-weight:900;letter-spacing:.35px;text-transform:uppercase;white-space:nowrap}
+  .summary-value{margin-top:5px;font-size:20px;line-height:1.05;color:#f5f5f2;font-weight:950;white-space:nowrap}
+  .summary-arrow{margin-left:auto;color:#55ce78;font-size:25px;line-height:1;transform:translateY(-1px)}
+  @media(max-width:390px){.detail-summary{padding:11px 6px}.summary-cell{gap:7px;padding:7px 6px}.summary-icon{width:38px;height:38px;flex-basis:38px}.summary-icon svg{width:22px;height:22px}.summary-label{font-size:10px}.summary-value{font-size:18px}.summary-arrow{font-size:22px}}
+
 
 </style>
 
@@ -1612,16 +1623,27 @@ function openProduct(i){
           <div class="name">${esc(displayPerfumeName(g.name,g.brand))}</div>
         </div>
       </div>
-      <div class="bestlabel">FORMATO</div>
-      <div class="product-choice format-choice single-format-static">
-        <div class="format-icon">🧴</div>
-        <div class="product-choice-main">
-          <div class="name">${esc(formatLabel(s.size)||"Formato")}</div>
-          ${s.best?`<div class="bestprice">da ${esc(shPrice(s.best))}</div>`:`<div class="bestprice">OUT OF STOCK</div>`}
-          <div class="offer-meta">${offers.length} ${offers.length===1?"negozio":"negozi"}</div>
+      <div class="detail-summary">
+        <div class="summary-cell">
+          <div class="summary-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24"><path d="M9 5h6v3H9z"/><path d="M7.5 8h9l1 2v9h-11v-9z"/><path d="M10 5V3h4v2"/></svg>
+          </div>
+          <div class="summary-copy">
+            <div class="summary-label">FORMATO</div>
+            <div class="summary-value">${esc(formatLabel(s.size)||"Formato")}</div>
+          </div>
+        </div>
+        <div class="summary-cell">
+          <div class="summary-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24"><path d="M12 3l8 5-8 5-8-5 8-5z"/><path d="M6 11l-2 1.5L12 17l8-4.5L18 11"/><path d="M6 15l-2 1.5L12 21l8-4.5L18 15"/></svg>
+          </div>
+          <div class="summary-copy">
+            <div class="summary-label">CONFRONTA I PREZZI</div>
+            <div class="summary-value">${offers.length} ${offers.length===1?"negozio":"negozi"}</div>
+          </div>
+          <div class="summary-arrow" aria-hidden="true">⌄</div>
         </div>
       </div>
-      <div class="bestlabel">CONFRONTA I PREZZI · ${offers.length} ${offers.length===1?"NEGOZIO":"NEGOZI"}</div>
       ${offers.map((o,n)=>{
         const isOut=isOfferOutOfStock(o);
         const item={
