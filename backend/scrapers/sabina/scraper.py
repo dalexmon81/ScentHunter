@@ -19,7 +19,7 @@ from bs4 import BeautifulSoup
 BASE_URL = "https://www.sabina.com"
 SEARCH_PATH = "/es/buscar_old"
 TIMEOUT = 20
-VERSION = "sabina-DIAGNOSTIC-2026-08-18-v1"
+VERSION = "sabina-DIAGNOSTIC-2026-08-18-v2"
 
 HEADERS = {
     "User-Agent": (
@@ -262,15 +262,56 @@ def search(query):
             "candidate_count": 0,
         }
 
-    # Return a single compact diagnostic object so /test-store remains small.
+    # IMPORTANT:
+    # /test-store passes scraper output through the normal result pipeline.
+    # The first diagnostic version used a custom shape that main.py discarded.
+    # Return a normal scraper-shaped record and put the complete diagnostic
+    # payload inside raw_data so the existing pipeline preserves it.
     return [
         {
+            "store": "Sabina",
+            "source": {
+                "url": BASE_URL,
+                "name": "SABINA_DIAGNOSTIC",
+                "brand": "Sabina",
+                "image": None,
+            },
+            "identity": {
+                "gtin": None,
+                "mpn": None,
+                "sku": None,
+                "store_product_id": None,
+                "store_variant_id": None,
+            },
+            "attributes": {
+                "size_ml": {"value": None, "source": "diagnostic"},
+                "concentration": {"value": None, "source": "diagnostic"},
+                "gender": {"value": "unknown", "source": "diagnostic"},
+                "packaging_type": {"value": "product", "source": "default"},
+            },
+            "offer": {
+                "price": 0.0,
+                "currency": "EUR",
+                "availability": "diagnostic",
+            },
+            "provenance": {
+                "name": "diagnostic",
+                "brand": "diagnostic",
+                "price": "diagnostic",
+                "availability": "diagnostic",
+                "image": "diagnostic",
+                "store_product_id": "diagnostic",
+                "store_variant_id": "diagnostic",
+                "sku": "diagnostic",
+                "gtin": "diagnostic",
+            },
+            "raw_data": {
+                "diagnostic": diagnostics,
+            },
             "name": "SABINA_DIAGNOSTIC",
-            "brand": "Sabina",
-            "price": "",
+            "price": 0.0,
             "url": BASE_URL,
             "available": False,
-            "diagnostic": diagnostics,
         }
     ]
 
