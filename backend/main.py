@@ -323,6 +323,18 @@ def run_store(
 
     module = load_scraper(store)
 
+    # Gli scraper del progetto possono esporre search() oppure scrape().
+    # La ricerca principale deve usare un'interfaccia compatibile senza
+    # introdurre eccezioni basate su un singolo negozio.
+    search_fn = getattr(module, "search", None)
+    if not callable(search_fn):
+        search_fn = getattr(module, "scrape", None)
+
+    if not callable(search_fn):
+        raise AttributeError(
+            f"module 'scrapers.{store}.scraper' has no callable search/scrape"
+        )
+
     attempts = build_search_attempts(
         store,
         query,
@@ -333,7 +345,7 @@ def run_store(
 
     for attempt in attempts:
 
-        results = module.search(attempt) or []
+        results = search_fn(attempt) or []
 
         for item in results:
 
@@ -619,10 +631,14 @@ def search_perfume(q: str):
 @app.get("/routing")
 def routing(q: str):
     """
-    Endpoint usato dal frontend per la ricerca normale.
-    Deve restituire esattamente la stessa struttura di /search.
+    Restituisce il routing generico degli store senza eseguire una seconda
+    ricerca completa. Il frontend usa questo endpoint solo per sapere quali
+    store sono configurati.
     """
-    return search_perfume(q)
+    return {
+        "query": str(q or "").strip(),
+        "stores": list(STORES),
+    }
 
 
 # ============================================================
