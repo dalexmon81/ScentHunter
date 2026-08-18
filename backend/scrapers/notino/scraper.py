@@ -505,35 +505,28 @@ def _discover_from_search_requests(session, query, max_urls=80):
     return _candidate_product_urls(response.text, query)[:max_urls]
 
 def _discover(session, query):
+    """Discover product URLs from Notino's search page.
+
+    HTTP and browser discovery are merged instead of treating browser
+    discovery as an all-or-nothing fallback. This is generic and independent
+    of any perfume or product name.
     """
-    Search page -> product URLs.
-
-    Notino can expose only part of the search catalogue in the initial
-    HTTP response while the remaining product cards are rendered by the
-    browser. The browser pass therefore supplements the HTTP discovery
-    instead of being used only when HTTP returns zero URLs.
-    """
-    urls = _discover_from_search_requests(session, query, 80)
-
-    if not BROWSER_ENABLED:
-        return urls[:80]
-
-    browser_urls = _discover_with_playwright(query, 80)
-
-    merged = []
+    urls = []
     seen = set()
 
-    for url in urls + browser_urls:
-        normalised = _normalise_url(url)
-        if not normalised or normalised in seen:
-            continue
-        seen.add(normalised)
-        merged.append(normalised)
+    for url in _discover_from_search_requests(session, query, 80):
+        if url not in seen:
+            seen.add(url)
+            urls.append(url)
 
-        if len(merged) >= 80:
-            break
+    if BROWSER_ENABLED:
+        for url in _discover_with_playwright(query, 80):
+            if url not in seen:
+                seen.add(url)
+                urls.append(url)
 
-    return merged
+    return urls[:80]
+
 
 def _fetch_product_with_playwright(url):
     if sync_playwright is None or not BROWSER_ENABLED:
@@ -578,34 +571,57 @@ def search(query):
     query = clean(query)
     if not query:
         return []
+
     session = requests.Session()
-    results, seen = ([], set())
+    results = []
+    seen = set()
+
+    candidates = _discover(session, query)
+
+    # Bound product-page requests. Discovery may expose many cards, but
+    # opening every card serially can exhaust the store's execution budget.
+    max_candidates = min(len(candidates), 20)
+
     try:
-        for url in _discover(session, query):
+        for url in candidates[:max_candidates]:
             html = None
+
             try:
-                response = session.get(url, headers=HEADERS, timeout=TIMEOUT, allow_redirects=True)
+                response = session.get(
+                    url,
+                    headers=HEADERS,
+                    timeout=TIMEOUT,
+                    allow_redirects=True,
+                )
                 if response.status_code < 400:
                     html = response.text
             except requests.RequestException:
                 pass
-            if not html:
+
+            if not html and BROWSER_ENABLED:
                 html = _fetch_product_with_playwright(url)
+
             if not html:
                 continue
+
             item = _product(url, html, query)
             if not item:
                 continue
+
             sku = item['identity'].get('sku')
             sku_value = sku.get('value') if sku else None
             key = (item['url'].lower(), sku_value)
+
             if key in seen:
                 continue
+
             seen.add(key)
             results.append(item)
+
         return results
     finally:
         session.close()
+
 
 def scrape(query):
     return search(query)
