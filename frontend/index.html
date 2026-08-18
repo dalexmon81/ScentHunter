@@ -141,6 +141,7 @@ body{position:relative}
 <style>
 .product-choice{margin-top:12px;padding:15px;border:1px solid #303238;border-radius:18px;background:#121416;display:flex;gap:13px;align-items:center;cursor:pointer;touch-action:pan-y;-webkit-tap-highlight-color:transparent}
 .product-choice-main{min-width:0;flex:1}.product-choice .arrow{color:#e7b83f;font-size:28px}
+.product-choice-heart{flex:0 0 auto;background:none;color:#aaa;font-size:27px;line-height:1;padding:4px 2px;cursor:pointer;user-select:none;-webkit-tap-highlight-color:transparent}.product-choice-heart.saved{color:#e7b83f}
 .detail-back{background:none;color:#e7b83f;padding:0 0 12px;font-size:14px;cursor:pointer}
 .offer-heart{background:none;color:#aaa;font-size:26px;cursor:pointer;padding:0 4px}.offer-heart.saved{color:#e7b83f}
 .offer-line{display:flex;justify-content:space-between;align-items:center;gap:10px}
@@ -344,6 +345,9 @@ let isSearching = false;
 const queryInput=document.getElementById("query"),searchButton=document.getElementById("searchButton"),statusBox=document.getElementById("status"),resultsBox=document.getElementById("results"),errorsBox=document.getElementById("errorsBox");
 
 const WISH_KEY="scenthunter_wishlist_v4";
+
+// Chiave persistente per mantenere/riprendere una ricerca anche uscendo dalla pagina.
+const SEARCH_JOB_KEY="scenthunter_search_job_v1";
 const PREV_WISH_KEY="scenthunter_wishlist_v3";
 const OLD_WISH_KEY="scenthunter_wishlist_v1";
 
@@ -360,19 +364,6 @@ function normalizePerfumeName(v){
     .replace(/\b\d+\s*ml\b/g," ")
     .replace(/[^a-z0-9]+/gi," ")
     .replace(/\s+/g," ").trim();
-}
-function displayPerfumeName(name,brand){
-  const b=normalizePerfumeName(brand||"");
-  let n=String(name||"").replace(/\s+/g," ").trim();
-  if(b!=="valentino" || !/\bborn\s+in\s+roma\b/i.test(n))return n;
-
-  let gender="";
-  n=n.replace(/\b(uomo|donna)\b/gi,m=>{
-    if(!gender)gender=m;
-    return " ";
-  }).replace(/\s+/g," ").trim();
-
-  return gender ? (n+" "+gender).trim() : n;
 }
 function perfumeKey(x){
   return normalizePerfumeName(x.name||"");
@@ -1449,30 +1440,6 @@ function getSizeGroups(g){
     map.get(size).push(o);
   });
 
-  /*
-   * REGOLA FORMATO UNICO:
-   * se tutte le offerte appartengono allo stesso formato reale e uno
-   * scraper non ha riportato il formato per una o più offerte, non creiamo
-   * un falso secondo formato "vuoto".
-   *
-   * Esempio reale:
-   *   Liquid Brun 100 ml -> 5 negozi
-   *   Orioudh -> 1 negozio OUT OF STOCK, formato non dichiarato
-   *
-   * In presenza di un solo formato numerico noto, le offerte senza formato
-   * vengono quindi accorpate a quel formato. In questo modo restano nella
-   * stessa scheda dei negozi, con il relativo stato OUT OF STOCK/link.
-   *
-   * Se esistono due o più formati numerici reali, invece, le offerte senza
-   * formato restano separate: non possiamo sapere a quale formato appartengano.
-   */
-  const knownSizes=[...map.keys()].filter(Boolean);
-  if(knownSizes.length===1 && map.has("")){
-    const onlySize=knownSizes[0];
-    map.set(onlySize,[...(map.get(onlySize)||[]),...(map.get("")||[])]);
-    map.delete("");
-  }
-
   return [...map.entries()].map(([size,offers])=>{
     offers.sort((a,b)=>{
       const ao=isOfferOutOfStock(a),bo=isOfferOutOfStock(b);
@@ -1544,21 +1511,44 @@ function showProducts(groups){
     const sizes=getSizeGroups(g);
     const img=g.image||"";
 
-    // Regola generale: la scheda principale apre sempre la scheda del prodotto.
-    // Se esiste un solo formato, la scheda del prodotto mostrerà direttamente
-    // formato + negozi, evitando un terzo passaggio. Con più formati, invece,
-    // la scheda del prodotto presenterà la scelta dei formati.
+    // Un solo formato: la prima scheda è già la scheda cliccabile
+    // che deve rimanere visibile anche tornando indietro dal confronto.
+    if(sizes.length===1){
+      const s=sizes[0];
+      const best=s.best;
+      const shopCount=s.offers.length;
+      const wishOffer=best||s.offers[0]||null;
+      const wishItem=wishOffer?{brand:g.brand||wishOffer.brand||"",name:g.name||wishOffer.name||"",price:isOfferOutOfStock(wishOffer)?"":shPrice(wishOffer),shop:wishOffer.store||"",url:wishOffer.url||"",pic:img||"🧴"}:null;
+
+      return `<article class="product-choice" onclick='openSize(${i},${JSON.stringify(s.size)},false)'>
+        <div class="result-image">${img?`<img src="${esc(img)}" alt="${esc(g.name)}" onerror="this.outerHTML='🧴'">`:"🧴"}</div>
+        <div class="product-choice-main">
+          <div class="name">${esc(g.brand ? g.brand+" - "+g.name : g.name)}</div>
+          ${s.size?`<div class="offer-meta">${esc(formatLabel(s.size))}</div>`:""}
+          ${best?`<div class="bestprice">da ${esc(shPrice(best))}</div>`:`<div class="bestprice">OUT OF STOCK</div>`}
+          <div class="offer-meta">${shopCount} ${shopCount===1?"negozio":"negozi"}</div>
+        </div>
+        ${wishItem?`<span class="wish-result product-choice-heart" data-brand="${esc(wishItem.brand)}" data-name="${esc(wishItem.name)}" data-price="${esc(wishItem.price)}" data-shop="${esc(wishItem.shop)}" data-url="${esc(wishItem.url)}" data-pic="${esc(wishItem.pic)}" onclick="event.stopPropagation();toggleWishButton(this)" aria-label="Wishlist">♡</span>`:""}
+        <div class="arrow">›</div>
+      </article>`;
+    }
+
+    // Più formati: comportamento originale, con passaggio alla scelta formato.
     const best=g.offers.find(o=>!isOfferOutOfStock(o))||null;
+    const wishOffer=best||g.offers[0]||null;
+    const wishItem=wishOffer?{brand:g.brand||wishOffer.brand||"",name:g.name||wishOffer.name||"",price:isOfferOutOfStock(wishOffer)?"":shPrice(wishOffer),shop:wishOffer.store||"",url:wishOffer.url||"",pic:img||"🧴"}:null;
 
     return `<article class="product-choice" onclick='openProduct(${i})'>
-      <div class="result-image">${img?`<img src="${esc(img)}" alt="${esc(displayPerfumeName(g.name,g.brand))}" onerror="this.outerHTML='🧴'">`:"🧴"}</div>
+      <div class="result-image">${img?`<img src="${esc(img)}" alt="${esc(g.name)}" onerror="this.outerHTML='🧴'">`:"🧴"}</div>
       <div class="product-choice-main">
-        <div class="name">${esc(g.brand ? g.brand+" - "+displayPerfumeName(g.name,g.brand) : displayPerfumeName(g.name,g.brand))}</div>
+        <div class="name">${esc(g.brand ? g.brand+" - "+g.name : g.name)}</div>
         ${best?`<div class="bestprice">da ${esc(shPrice(best))}</div>`:`<div class="bestprice">OUT OF STOCK</div>`}
       </div>
+      ${wishItem?`<span class="wish-result product-choice-heart" data-brand="${esc(wishItem.brand)}" data-name="${esc(wishItem.name)}" data-price="${esc(wishItem.price)}" data-shop="${esc(wishItem.shop)}" data-url="${esc(wishItem.url)}" data-pic="${esc(wishItem.pic)}" onclick="event.stopPropagation();toggleWishButton(this)" aria-label="Wishlist">♡</span>`:""}
       <div class="arrow">›</div>
     </article>`;
   }).join("");
+  syncHearts();
 }
 
 function toggleWishButton(el){
@@ -1578,86 +1568,15 @@ function openProduct(i){
 
   const sizes=getSizeGroups(g);
   const img=g.image||"";
-  const saved=getWishlist();
 
   statusBox.textContent="";
-
-  // REGOLA GENERALE:
-  // un solo formato = niente terza scheda.
-  // La seconda scheda contiene direttamente formato + negozi + link.
-  if(sizes.length===1){
-    const s=sizes[0];
-    const offers=s.offers;
-
-    resultsBox.innerHTML=`<article class="comparison">
-      <button class="detail-back" onclick="showProducts(currentProductGroups)">← Torna ai profumi</button>
-      <div class="comparison-head">
-        <div class="result-image">${img?`<img src="${esc(img)}" alt="${esc(displayPerfumeName(g.name,g.brand))}" onerror="this.outerHTML='🧴'">`:"🧴"}</div>
-        <div class="result-main">
-          <div class="store">${esc(g.brand||"")}</div>
-          <div class="name">${esc(displayPerfumeName(g.name,g.brand))}</div>
-        </div>
-      </div>
-      <div class="bestlabel">FORMATO</div>
-      <div class="product-choice format-choice single-format-static">
-        <div class="format-icon">🧴</div>
-        <div class="product-choice-main">
-          <div class="name">${esc(formatLabel(s.size)||"Formato")}</div>
-          ${s.best?`<div class="bestprice">da ${esc(shPrice(s.best))}</div>`:`<div class="bestprice">OUT OF STOCK</div>`}
-          <div class="offer-meta">${offers.length} ${offers.length===1?"negozio":"negozi"}</div>
-        </div>
-      </div>
-      <div class="bestlabel">CONFRONTA I PREZZI · ${offers.length} ${offers.length===1?"NEGOZIO":"NEGOZI"}</div>
-      ${offers.map((o,n)=>{
-        const isOut=isOfferOutOfStock(o);
-        const item={
-          brand:g.brand||o.brand||"",
-          name:g.name||o.name||"",
-          price:isOut?"":shPrice(o),
-          shop:o.store||"",
-          url:o.url||"",
-          pic:img||"🧴",
-          outOfStock:isOut
-        };
-        const on=saved.some(x=>sameWishOffer(x,item));
-
-        return `<div class="offer ${!isOut&&n===0?"best":""}">
-          <div class="offer-line">
-            <div>
-              <div class="offer-store">${!isOut&&n===0?"🥇 ":""}${esc(o.store||"Negozio")}</div>
-              ${!isOut&&n===0?'<div class="offer-meta">MIGLIOR PREZZO</div>':""}
-              ${isOut?'<div class="offer-outstock">OUT OF STOCK</div>':""}
-            </div>
-            <div style="display:flex;align-items:center;gap:8px">
-              ${!isOut?`<span class="offer-price">${esc(shPrice(o))}</span>`:""}
-              <button class="offer-heart ${on?"saved":""}"
-                data-brand="${esc(item.brand)}"
-                data-name="${esc(item.name)}"
-                data-price="${esc(item.price)}"
-                data-shop="${esc(item.shop)}"
-                data-url="${esc(item.url)}"
-                data-pic="${esc(item.pic)}"
-                onclick="event.stopPropagation();chooseOffer(${i},${JSON.stringify(s.size)},${n})">${on?"♥":"♡"}</button>
-            </div>
-          </div>
-          ${(!isOut&&o.url)?`<a class="offer-link" href="${esc(o.url)}" target="_blank" rel="noopener noreferrer">Vai al negozio →</a>`:""}
-        </div>`;
-      }).join("")}
-    </article>`;
-
-    document.getElementById("searchOutput").scrollIntoView({behavior:"smooth",block:"start"});
-    return;
-  }
-
-  // Più formati: seconda scheda = scelta dei formati.
-  // Il passaggio successivo mostra i negozi del formato selezionato.
   resultsBox.innerHTML=`<article class="comparison">
     <button class="detail-back" onclick="showProducts(currentProductGroups)">← Torna ai profumi</button>
     <div class="comparison-head">
-      <div class="result-image">${img?`<img src="${esc(img)}" alt="${esc(displayPerfumeName(g.name,g.brand))}" onerror="this.outerHTML='🧴'">`:"🧴"}</div>
+      <div class="result-image">${img?`<img src="${esc(img)}" alt="${esc(g.name)}" onerror="this.outerHTML='🧴'">`:"🧴"}</div>
       <div class="result-main">
         <div class="store">${esc(g.brand||"")}</div>
-        <div class="name">${esc(displayPerfumeName(g.name,g.brand))}</div>
+        <div class="name">${esc(g.name)}</div>
       </div>
     </div>
     <div class="bestlabel">SCEGLI IL FORMATO</div>
@@ -1694,10 +1613,10 @@ function openSize(gi,sizeKey,fromFormats=true){
   resultsBox.innerHTML=`<article class="comparison">
     <button class="detail-back" onclick="${fromFormats?`openProduct(${gi})`:`showProducts(currentProductGroups)`}">${fromFormats?'← Torna ai formati':'← Torna ai profumi'}</button>
     <div class="comparison-head">
-      <div class="result-image">${img?`<img src="${esc(img)}" alt="${esc(displayPerfumeName(g.name,g.brand))}" onerror="this.outerHTML='🧴'">`:"🧴"}</div>
+      <div class="result-image">${img?`<img src="${esc(img)}" alt="${esc(g.name)}" onerror="this.outerHTML='🧴'">`:"🧴"}</div>
       <div class="result-main">
         <div class="store">${esc(g.brand||"")}</div>
-        <div class="name">${esc(displayPerfumeName(g.name,g.brand))}</div>
+        <div class="name">${esc(g.name)}</div>
         ${sizeKey?`<div class="offer-meta">${esc(formatLabel(sizeKey))}</div>`:""}
       </div>
     </div>
@@ -1804,6 +1723,71 @@ function isLeBeauFamilyGroup(g){
  ].some(x=>name===normalizePerfumeName(x));
 }
 
+function mergeSearchData(base,extra){
+ return {
+  comparisons:[...(base?.comparisons||[]),...(extra?.comparisons||[])],
+  results:[...(base?.results||[]),...(extra?.results||[])],
+  errors:{...(base?.errors||{}),...(extra?.errors||{})}
+ };
+}
+
+function renderProgressiveData(data,q,final=false){
+ let groups=shGroupData(data||{});
+ if(isLeBeauFamilyQuery(q))groups=groups.filter(isLeBeauFamilyGroup);
+ showProducts(groups);
+ currentProductGroups=groups;
+ if(typeof updateBestPricesFromGroups==="function")updateBestPricesFromGroups(groups);
+ refreshWishlistFromResults(groups.flatMap(g=>g.offers.map(o=>({
+  name:g.name||"",brand:g.brand||"",price:shPrice(o),price_value:o.price_value,
+  store:o.store||"",url:o.url||""
+ }))));
+ errorsBox.innerHTML="";
+ if(final){
+  statusBox.textContent=groups.length
+   ?`Ricerca completata: ${groups.length} prodotti trovati.`
+   :"Nessun risultato trovato.";
+ }
+}
+
+async function runProgressiveRequests(requests,onResult){
+ const queue=[...requests];
+ const worker=async()=>{
+  while(queue.length){
+   const request=queue.shift();
+   if(!request)break;
+   try{
+    const data=await fetchJSONWithTimeout(request.url,request.timeout||30000);
+    await onResult(data,request);
+   }catch(error){
+    await onResult({results:[],comparisons:[],errors:{[request.label||request.url]:String(error?.message||"timeout")}},request);
+   }
+  }
+ };
+ await Promise.all([worker(),worker()]);
+}
+
+async function searchNormalProgressively(q,onPartial){
+ const stores=[
+  "bplatz","deloox","parfumcity","parfumzentrum",
+  "perfumemarket","sabina","orioudh","notino"
+ ];
+ const merged={comparisons:[],results:[],errors:{}};
+ const requests=stores.map(store=>({
+  label:store,
+  url:backend()+"/test-store?store="+encodeURIComponent(store)+"&q="+encodeURIComponent(q),
+  timeout:30000
+ }));
+
+ await runProgressiveRequests(requests,async(data,request)=>{
+  if(Array.isArray(data?.results))merged.results.push(...data.results);
+  if(Array.isArray(data?.comparisons))merged.comparisons.push(...data.comparisons);
+  if(data?.error)merged.errors[request.label]=data.error;
+  else if(data?.errors&&typeof data.errors==="object")Object.assign(merged.errors,data.errors);
+  onPartial(merged,false,request.label);
+ });
+ return merged;
+}
+
 async function searchLeBeauFamily(onPartial){
  const terms=[
   "Jean Paul Gaultier Le Beau",
@@ -1812,14 +1796,6 @@ async function searchLeBeauFamily(onPartial){
   "Jean Paul Gaultier Le Beau Narcisse",
   "Jean Paul Gaultier Le Beau Flower Edition"
  ];
- const merged={comparisons:[],results:[],errors:{}};
-
- // Una variante alla volta: il backend usa gia 2 worker e /search ha un
- // limite interno di 15s. Cosi non saturiamo Render e manteniamo la ricerca
- // progressiva che ora funziona.
- const timeoutMs=25000;
- const fallbackTimeoutMs=14500;
-
  const expectedStores={
   "Jean Paul Gaultier Le Beau":["deloox","sabina","parfumzentrum","perfumemarket","notino"],
   "Jean Paul Gaultier Le Beau Le Parfum":["deloox","sabina","perfumemarket","notino"],
@@ -1827,256 +1803,84 @@ async function searchLeBeauFamily(onPartial){
   "Jean Paul Gaultier Le Beau Narcisse":["deloox","sabina"],
   "Jean Paul Gaultier Le Beau Flower Edition":["deloox"]
  };
-
- for(let i=0;i<terms.length;i++){
-  const term=terms[i];
-  statusBox.textContent=`Cerco Le Beau… ${i+1}/8`;
-
-  let data={results:[],comparisons:[],errors:{}};
-  try{
-   data=await fetchJSONWithTimeout(
-    backend()+"/search?q="+encodeURIComponent(term),
-    timeoutMs
-   )||data;
-
-   if(Array.isArray(data.comparisons))merged.comparisons.push(...data.comparisons);
-   if(Array.isArray(data.results))merged.results.push(...data.results);
-   if(data.errors&&typeof data.errors==="object")Object.entries(data.errors).forEach(([store,error])=>{
-    if(!merged.errors[store])merged.errors[store]=error;
-   });
-  }catch(e){
-   merged.errors["ricerca "+term]=String(e?.message||"timeout");
-  }
-
-  // Mostra subito il risultato normale.
-  if(typeof onPartial==="function")onPartial(merged,false);
-
-  // Fallback mirato: per ogni variante recuperiamo solo i retailer attesi
-  // che non sono comparsi nella risposta /search. Massimo 2 insieme, in linea
-  // con i 2 worker del backend. I risultati arrivano progressivamente.
-  const returnedStores=new Set();
-  (Array.isArray(data.results)?data.results:[]).forEach(o=>{
-   const st=String(o?.store||o?.shop||"").trim().toLowerCase();
-   if(st)returnedStores.add(st);
-  });
-  (Array.isArray(data.comparisons)?data.comparisons:[]).forEach(g=>{
-   (Array.isArray(g?.offers)?g.offers:[]).forEach(o=>{
-    const st=String(o?.store||o?.shop||"").trim().toLowerCase();
-    if(st)returnedStores.add(st);
+ const merged={comparisons:[],results:[],errors:{}};
+ const requests=[];
+ terms.forEach(term=>{
+  (expectedStores[term]||[]).forEach(store=>{
+   requests.push({
+    label:store+" · "+term,
+    term,
+    store,
+    url:backend()+"/test-store?store="+encodeURIComponent(store)+"&q="+encodeURIComponent(term),
+    timeout:30000
    });
   });
+ });
 
-  const missing=(expectedStores[term]||[]).filter(store=>!returnedStores.has(store));
-  for(let j=0;j<missing.length;j+=2){
-   const pair=missing.slice(j,j+2);
-   statusBox.textContent=`Cerco Le Beau… ${i+1}/8 · recupero ${j+1}/${missing.length}`;
-
-   const fallbackResponses=await Promise.allSettled(pair.map(store=>
-    fetchJSONWithTimeout(
-     backend()+"/test-store?store="+encodeURIComponent(store)+"&q="+encodeURIComponent(term),
-     fallbackTimeoutMs
-    )
-   ));
-
-   fallbackResponses.forEach((r,k)=>{
-    const store=pair[k];
-    if(r.status!=="fulfilled"){
-     merged.errors[store]=String(r.reason?.message||"timeout");
-     return;
-    }
-    const fd=r.value||{};
-    if(Array.isArray(fd.results))merged.results.push(...fd.results);
-    if(Array.isArray(fd.comparisons))merged.comparisons.push(...fd.comparisons);
-    if(fd.error)merged.errors[store]=fd.error;
-   });
-
-   if(typeof onPartial==="function")onPartial(merged,false);
-  }
- }
-
- if(typeof onPartial==="function")onPartial(merged,true);
- return merged;
-}
-function buildCatalogFallbackQueries(query){
-  const raw=String(query||"").trim();
-  if(!raw||typeof MASTER_CATALOG==="undefined"||!Array.isArray(MASTER_CATALOG))return [];
-
-  const normalizeQuery=v=>normalizePerfumeName(v||"").toLowerCase().trim();
-  const ignored=new Set(["eau","de","parfum","perfume","edp","edt","extrait","spray","ml","for","by"]);
-  const qTokens=new Set(normalizeQuery(raw).split(" ").filter(Boolean).filter(x=>!ignored.has(x)));
-  if(!qTokens.size)return [];
-
-  const ranked=[];
-  MASTER_CATALOG.forEach(item=>{
-    const brand=String(item.brand||"").trim();
-    const name=String(item.name||"").trim();
-    const aliases=Array.isArray(item.aliases)?item.aliases:[];
-    const hay=normalizeQuery([brand,name,...aliases].join(" "));
-    const tokens=new Set(hay.split(" ").filter(Boolean));
-    const overlap=[...qTokens].filter(t=>tokens.has(t)).length;
-    if(!overlap)return;
-
-    const coverage=overlap/qTokens.size;
-    const exactName=normalizeQuery(raw)===normalizeQuery(name)?1:0;
-    const nameContains=normalizeQuery(name).includes(normalizeQuery(raw))?1:0;
-    ranked.push({item,score:[exactName,nameContains,coverage,overlap,-name.length]});
-  });
-
-  ranked.sort((a,b)=>{
-    for(let i=0;i<a.score.length;i++){
-      if(a.score[i]!==b.score[i])return b.score[i]-a.score[i];
-    }
-    return 0;
-  });
-
-  const out=[];
-  const seen=new Set();
-  const add=value=>{
-    const v=String(value||"").trim();
-    const key=normalizeQuery(v);
-    if(!key||seen.has(key)||key===normalizeQuery(raw))return;
-    seen.add(key);
-    out.push(v);
-  };
-
-  // Prima il nome canonico senza brand: molti motori degli store gestiscono
-  // meglio "Born in Roma Uomo" di "Valentino Born in Roma Uomo".
-  ranked.slice(0,6).forEach(({item})=>{
-    add(item.name);
-    const aliases=Array.isArray(item.aliases)?item.aliases:[];
-    aliases.forEach(alias=>{
-      if(out.length<4)add(alias);
-    });
-    if(out.length<4 && item.brand && item.name)add(item.brand+" "+item.name);
-  });
-
-  return out.slice(0,4);
-}
-
-const SEARCH_STORES=[
- "bplatz","deloox","parfumcity","parfumzentrum",
- "perfumemarket","sabina","orioudh","notino"
-];
-
-async function getSearchStores(term){
- try{
-  const routing=await fetchJSONWithTimeout(
-   backend()+"/routing?q="+encodeURIComponent(term),
-   8000
-  );
-  const routed=Array.isArray(routing?.stores)
-   ? routing.stores.map(v=>String(v||"").trim().toLowerCase()).filter(Boolean)
-   : [];
-  const valid=[...new Set(routed)].filter(store=>SEARCH_STORES.includes(store));
-  if(valid.length)return valid;
- }catch(e){}
- return [...SEARCH_STORES];
-}
-
-async function searchStoresProgressive(term,onPartial){
- const merged={query:term,comparisons:[],results:[],errors:{}};
-
- /*
-  * La ricerca normale passa direttamente da /search.
-  * Il backend avvia tutti gli store in parallelo e restituisce un'unica
-  * risposta completa. Evitiamo quindi di lanciare prima /routing e poi
-  * una seconda serie di /test-store, che duplicava le richieste e poteva
-  * perdere negozi lenti quando il frontend lavorava a coppie.
-  */
- const timeoutMs=65000;
-
- try{
-  const data=await fetchJSONWithTimeout(
-   backend()+"/search?q="+encodeURIComponent(term),
-   timeoutMs
-  )||{};
-
-  if(Array.isArray(data.results))merged.results.push(...data.results);
-  if(Array.isArray(data.comparisons))merged.comparisons.push(...data.comparisons);
-
-  if(data.errors&&typeof data.errors==="object"){
-   Object.entries(data.errors).forEach(([store,error])=>{
-    merged.errors[store]=error;
-   });
-  }
- }catch(e){
-  merged.errors["ricerca"]=String(e?.message||"timeout");
- }
-
- if(typeof onPartial==="function")onPartial(merged,true);
+ let completed=0;
+ await runProgressiveRequests(requests,async(data,request)=>{
+  completed++;
+  if(Array.isArray(data?.results))merged.results.push(...data.results);
+  if(Array.isArray(data?.comparisons))merged.comparisons.push(...data.comparisons);
+  if(data?.error)merged.errors[request.store]=data.error;
+  else if(data?.errors&&typeof data.errors==="object")Object.assign(merged.errors,data.errors);
+  statusBox.textContent=`Cerco Le Beau… ${completed}/${requests.length}`;
+  onPartial(merged,false);
+ });
+ onPartial(merged,true);
  return merged;
 }
 
 async function searchPerfume(){
- const q=queryInput.value.trim();if(!q){statusBox.textContent="";resultsBox.innerHTML="";errorsBox.innerHTML="";return}
- searchButton.disabled=true;searchButton.classList.add("searching");
+ const q=queryInput.value.trim();
+ if(!q){
+  statusBox.textContent="";resultsBox.innerHTML="";errorsBox.innerHTML="";
+  return;
+ }
+
+ // Ogni nuova ricerca invalida immediatamente la precedente.
+ const requestId=Date.now()+Math.random();
+ window.__shSearchRequest=requestId;
+
+ searchButton.disabled=true;
+ searchButton.classList.add("searching");
  let dots=0;
- const updateSearchButton=()=>{dots=(dots+1)%4;searchButton.innerHTML='<span class="search-fixed">CERCO</span><span class="search-dots">'+". ".trim().repeat(0)+". ".trim().repeat(dots)+'</span>'};
+ const updateSearchButton=()=>{
+  dots=(dots+1)%4;
+  searchButton.innerHTML='<span class="search-fixed">CERCO</span><span class="search-dots">'+". ".repeat(dots)+'</span>';
+ };
  updateSearchButton();
  const dotsTimer=setInterval(updateSearchButton,500);
- statusBox.textContent="";resultsBox.innerHTML="";errorsBox.innerHTML="";
+
+ statusBox.textContent="Avvio ricerca…";
+ resultsBox.innerHTML="";
+ errorsBox.innerHTML="";
+
  try{
-  let data;
-  const renderData=(partialData,final=false)=>{
-   let groups=shGroupData(partialData||{});
-
-   // La ricerca "Le Beau" deve contenere solo la famiglia Jean Paul Gaultier.
-   // Elimina quindi falsi positivi come Kenzo Le Monde Est Beau.
-   if(isLeBeauFamilyQuery(q))groups=groups.filter(isLeBeauFamilyGroup);
-
-   showProducts(groups);
-   currentProductGroups=groups;
-   updateBestPricesFromGroups(groups);
-   refreshWishlistFromResults(groups.flatMap(g=>g.offers.map(o=>({name:g.name||"",brand:g.brand||"",price:shPrice(o),price_value:o.price_value,store:o.store||"",url:o.url||""}))));
-
-   // I timeout delle singole fonti non devono comparire nella pagina e non devono
-   // trasformare una ricerca con risultati validi in una ricerca "fallita".
-   // Conserviamo gli errori internamente, ma l'utente vede solo i risultati utili.
-   errorsBox.innerHTML="";
-   if(final)statusBox.textContent=groups.length?`Ricerca completata: ${groups.length} prodotti trovati.`:"Nessun risultato trovato.";
+  const renderPartial=(data,final=false)=>{
+   if(window.__shSearchRequest!==requestId)return;
+   renderProgressiveData(data,q,final);
   };
 
   if(isLeBeauFamilyQuery(q)){
-   data=await searchLeBeauFamily(renderData);
+   await searchLeBeauFamily(renderPartial);
   }else{
-   // Regola generale: tutte le ricerche usano la stessa logica progressiva
-   // già collaudata per Le Beau. Massimo 2 negozi alla volta, così un singolo
-   // scraper lento non blocca l'intera ricerca e i risultati appaiono man mano.
-   data=await searchStoresProgressive(q,renderData);
-
-   // Regola generale di recupero: se la query esatta non produce nulla,
-   // usa automaticamente le referenze del catalogo master per provare il
-   // nome canonico/alias. I fallback vengono eseguiti uno alla volta per
-   // evitare una seconda raffica simultanea di richieste.
-   let groups=shGroupData(data||{});
-   if(!groups.length){
-    const fallbackQueries=buildCatalogFallbackQueries(q);
-    for(let i=0;i<fallbackQueries.length;i++){
-     const term=fallbackQueries[i];
-     statusBox.textContent=`Provo una ricerca alternativa… ${i+1}/${fallbackQueries.length}`;
-     try{
-      const fallbackData=await searchStoresProgressive(term,null);
-      if(Array.isArray(fallbackData?.results))data.results.push(...fallbackData.results);
-      if(Array.isArray(fallbackData?.comparisons))data.comparisons.push(...fallbackData.comparisons);
-      if(fallbackData?.errors&&typeof fallbackData.errors==="object")Object.entries(fallbackData.errors).forEach(([store,error])=>{
-       if(!data.errors[store])data.errors[store]=error;
-      });
-      groups=shGroupData(data||{});
-      renderData(data,i===fallbackQueries.length-1||groups.length>0);
-      if(groups.length)break;
-     }catch(e){
-      console.warn("Fallback ricerca",term,e);
-     }
-    }
-   }
-
-   renderData(data,true);
+   const data=await searchNormalProgressively(q,renderPartial);
+   if(window.__shSearchRequest===requestId)renderProgressiveData(data,q,true);
   }
  }catch(e){
-  console.error(e);
-  statusBox.textContent=String(e?.message||"Impossibile completare la ricerca.");
+  if(window.__shSearchRequest===requestId){
+   console.error(e);
+   statusBox.textContent=String(e?.message||"Impossibile completare la ricerca.");
+  }
+ }finally{
+  clearInterval(dotsTimer);
+  if(window.__shSearchRequest===requestId){
+   searchButton.disabled=false;
+   searchButton.classList.remove("searching");
+   searchButton.textContent="INIZIA LA RICERCA";
+  }
  }
- finally{clearInterval(dotsTimer);searchButton.disabled=false;searchButton.classList.remove("searching");searchButton.textContent="INIZIA LA RICERCA"}
 }
 
 searchButton.addEventListener("click",searchPerfume);queryInput.addEventListener("keydown",e=>{if(e.key==="Enter"){e.preventDefault();searchPerfume()}});
