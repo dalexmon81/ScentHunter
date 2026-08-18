@@ -142,8 +142,13 @@ def extract_size_ml(*texts):
 
 
 def extract_concentration(*texts):
-    value = norm(" ".join(str(x or "") for x in texts))
+    """
+    Determines the concentration from the strongest product-identity text.
 
+    The product title/name is authoritative. The rest of the page can contain
+    related products, recommendations, reviews or generic descriptions with
+    different concentrations, so it must never override the product identity.
+    """
     rules = (
         ("Extrait de Parfum", r"\bextrait de parfum\b"),
         ("Eau de Parfum", r"\beau de parfum\b"),
@@ -152,9 +157,15 @@ def extract_concentration(*texts):
         ("Parfum", r"\bparfum\b"),
     )
 
-    for label, pattern in rules:
-        if re.search(pattern, value, re.I):
-            return label
+    for text in texts:
+        value = norm(text)
+
+        if not value:
+            continue
+
+        for label, pattern in rules:
+            if re.search(pattern, value, re.I):
+                return label
 
     return None
 
@@ -474,7 +485,6 @@ def parse_product_page(response, query):
 
     concentration = extract_concentration(
         name,
-        text,
     )
 
     gender = extract_gender(
