@@ -623,7 +623,7 @@ def search_perfume(q: str):
     }
 
     try:
-        for future in as_completed(futures, timeout=90):
+        for future in as_completed(futures, timeout=55):
             store = futures[future]
             try:
                 all_results.extend(future.result())
@@ -639,7 +639,7 @@ def search_perfume(q: str):
                     errors[store] = "Non eseguito: limite tempo ricerca"
                 else:
                     errors[store] = "Timeout: negozio troppo lento"
-        executor.shutdown(wait=True, cancel_futures=True)
+        executor.shutdown(wait=False, cancel_futures=True)
 
     results = sort_by_price(unique_results(all_results))
 
