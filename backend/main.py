@@ -386,7 +386,8 @@ def matches(product: Dict[str, Any], query: str) -> bool:
 
 def build_search_attempts(store: str, query: str) -> List[str]:
     """
-    Costruisce un insieme deterministico di query generiche.
+    Costruisce una sequenza corta e deterministica di query generiche,
+    ordinate dalla più precisa alla più permissiva.
 
     Il parametro store resta nella firma per compatibilità con il codice
     esistente, ma NON modifica le strategie in base al negozio.
@@ -409,8 +410,10 @@ def build_search_attempts(store: str, query: str) -> List[str]:
             seen.add(key)
             attempts.append(value)
 
+    # 1) Query originale: è sempre la discovery più precisa.
     add(raw)
 
+    # 2) Query normalizzata senza parole puramente descrittive.
     tokens = [
         token
         for token in normalized.split()
@@ -420,23 +423,14 @@ def build_search_attempts(store: str, query: str) -> List[str]:
     if tokens:
         add(" ".join(tokens))
 
-    if len(tokens) >= 2:
-        add(" ".join(tokens[1:]))
-
-    if len(tokens) >= 2:
-        add(" ".join(tokens[-2:]))
-
+    # 3) Forma compatta per siti che indicizzano "100ml" e "100 ml"
+    #    come stringhe diverse.
     compact = re.sub(
         r"(?<=\d)\s+(?=[a-z])|(?<=[a-z])\s+(?=\d)",
         "",
         normalized,
     )
     add(compact)
-
-    # Un token alla volta come fallback generico. La validazione finale
-    # continua a richiedere tutti i token significativi della query originale.
-    for token in tokens:
-        add(token)
 
     return attempts
 
@@ -711,10 +705,11 @@ def run_store(
     query: str,
 ) -> List[Dict[str, Any]]:
     """
-    Esegue tutte le discovery generiche dello store.
+    Esegue la discovery generica dello store.
 
-    Nessuna discovery viene saltata solo perché una precedente ha già
-    prodotto risultati.
+    Le query di fallback vengono usate SOLO se il tentativo precedente
+    non ha prodotto alcun risultato valido. Questo evita di ripetere
+    inutilmente discovery costose su store che hanno già trovato il prodotto.
     """
     module = load_scraper(store)
 
@@ -751,6 +746,8 @@ def run_store(
         if not isinstance(results, list):
             continue
 
+        attempt_added = 0
+
         for item in results:
             if not isinstance(item, dict):
                 continue
@@ -760,9 +757,6 @@ def run_store(
 
             product = resolve_actual_price(product)
 
-            # La deduplica locale avviene PRIMA della validazione solo
-            # per evitare di riprocessare lo stesso candidato.
-            # L'identità finale viene comunque ricalcolata globalmente.
             key = product_identity_key(product)
 
             if key in seen:
@@ -772,6 +766,13 @@ def run_store(
 
             if matches(product, query):
                 output.append(product)
+                attempt_added += 1
+
+        # Se una discovery ha già trovato almeno un risultato valido,
+        # non eseguiamo fallback ulteriori: il prodotto è stato scoperto.
+        # Questo è importante soprattutto per scraper con sitemap o browser.
+        if attempt_added > 0:
+            break
 
     return output
 
