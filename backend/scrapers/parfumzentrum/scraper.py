@@ -3,7 +3,7 @@ import re
 import requests
 import xml.etree.ElementTree as ET
 from bs4 import BeautifulSoup
-from urllib.parse import unquote
+from urllib.parse import unquote, urljoin
 
 
 BASE_URL = "https://www.parfum-zentrum.de"
