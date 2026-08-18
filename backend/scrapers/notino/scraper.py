@@ -351,8 +351,13 @@ def _candidate_product_urls(html, query):
             return
         slug_text = urlparse(url).path.replace('-', ' ')
         combined = f'{context} {slug_text}'
+        # Search-page markup is not stable: the product title and URL are
+        # sometimes rendered in different DOM nodes. Do not discard a valid
+        # Notino product URL merely because the query text is absent from the
+        # local node context. The product page is validated later by _product.
         if not matches(combined, query) and query_norm not in norm(combined):
-            return
+            if '/p-' not in urlparse(url).path.lower():
+                return
         seen.add(url)
         found.append(url)
 
@@ -393,6 +398,19 @@ def _candidate_product_urls(html, query):
     ]
     for pattern in patterns:
         for raw in re.findall(pattern, decoded, re.I):
+            add(raw)
+
+    # Notino can render the search cards with the product title and URL in
+    # separate JSON/HTML fragments. Collect every canonical /p-<id>/ URL and
+    # let _product perform the final query validation on the actual page.
+    product_id_patterns = [
+        r'(?:https?:)?//(?:www\.)?notino\.fr/[^\"\'<>\s\\]+/p-\d+/?',
+        r'(?P<path>/[^\"\'<>\s\\]+/p-\d+/?)',
+    ]
+    for pattern in product_id_patterns:
+        for raw in re.findall(pattern, decoded, re.I):
+            if isinstance(raw, tuple):
+                raw = raw[0]
             add(raw)
 
     return found
