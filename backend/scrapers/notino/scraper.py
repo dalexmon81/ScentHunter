@@ -1,42 +1,39 @@
 """
-Notino diagnostic V3 for ScentHunter.
+Notino diagnostic V4 for ScentHunter.
 
 Purpose:
-- Do NOT scrape or validate products.
-- Do NOT contain product-specific rules, seeds, URLs or exceptions.
-- Compare the HTTP path that previously worked with the browser path used
-  by the working Notino discovery scraper.
-- The same diagnostic can be called with any query through search(query).
+- Diagnostic only. No product scraping, validation, seeds or product-specific rules.
+- First establish whether Railway can reach Notino.
+- Then establish whether a real browser is available in the Railway runtime.
+- If Playwright is available, use Chromium and report the exact browser response.
+- If Playwright is not available, inspect the runtime for browser executables and
+  report exactly what is missing instead of pretending a browser test happened.
 
-Stages:
-1. requests + Chrome 124 headers used by the working discovery scraper.
-2. requests + Chrome 126 headers used by the previous diagnostic.
-3. requests session after first visiting the homepage.
-4. Playwright browser, using the same browser configuration as the working
-   Notino discovery scraper.
-5. Playwright browser after the homepage has been opened, then search.
+This file is intentionally independent from the normal Notino scraper.
+It can be loaded by the existing /test-store endpoint.
 
-Every stage reports:
-- status
-- final URL
-- elapsed time
-- response size
-- redirect chain
-- relevant response headers
-- cookies
-- title / h1
-- Cloudflare/challenge markers
-- whether product-looking links were present
+Test groups:
+A  Direct HTTP requests to homepage and search.
+B  HTTP session: homepage first, then search.
+C  Runtime/browser availability.
+D  Real Chromium through Playwright, when available:
+   - direct search
+   - homepage then search in the same browser context
+   - fresh context search
+E  Browser response/challenge inspection.
 
-The file intentionally returns diagnostic observations, not fake products.
+No product-specific URL, name or exception is used.
 """
 
 from __future__ import annotations
 
 import json
+import os
 import re
+import shutil
+import subprocess
 import time
-from urllib.parse import urljoin
+from urllib.parse import quote
 
 import requests
 from bs4 import BeautifulSoup
@@ -44,7 +41,7 @@ from bs4 import BeautifulSoup
 try:
     from playwright.sync_api import TimeoutError as PlaywrightTimeoutError
     from playwright.sync_api import sync_playwright
-except ImportError:
+except Exception:
     PlaywrightTimeoutError = Exception
     sync_playwright = None
 
@@ -52,14 +49,13 @@ except ImportError:
 STORE = "Notino"
 BASE_URL = "https://www.notino.fr"
 SEARCH_URL = BASE_URL + "/search.asp"
-TIMEOUT = 20
+
+HTTP_TIMEOUT = 20
 BROWSER_TIMEOUT_MS = 30000
 
-SCRAPER_VERSION = "notino-DIAGNOSTIC-2026-08-18-v3"
+SCRAPER_VERSION = "notino-DIAGNOSTIC-2026-08-18-v4"
 
-# This is the exact UA/header family used by the working
-# Notino_FR_CORRETTO_DISCOVERY scraper.
-WORKING_HEADERS = {
+HEADERS = {
     "User-Agent": (
         "Mozilla/5.0 (X11; Linux x86_64) "
         "AppleWebKit/537.36 (KHTML, like Gecko) "
@@ -73,22 +69,6 @@ WORKING_HEADERS = {
     "Cache-Control": "no-cache",
     "Pragma": "no-cache",
 }
-
-# This is the header family used by the previous diagnostic versions.
-PREVIOUS_DIAGNOSTIC_HEADERS = {
-    "User-Agent": (
-        "Mozilla/5.0 (X11; Linux x86_64) "
-        "AppleWebKit/537.36 (KHTML, like Gecko) "
-        "Chrome/126.0.0.0 Safari/537.36"
-    ),
-    "Accept": (
-        "text/html,application/xhtml+xml,application/xml;"
-        "q=0.9,image/avif,image/webp,*/*;q=0.8"
-    ),
-    "Accept-Language": "fr-FR,fr;q=0.9,en;q=0.8",
-}
-
-PRODUCT_ID_RE = re.compile(r"/p-\d+(?:/|$)", re.I)
 
 CHALLENGE_MARKERS = (
     "just a moment",
@@ -119,17 +99,24 @@ def clean(value):
 
 
 def query_url(query):
-    return SEARCH_URL + "?exps=" + requests.utils.quote(str(query or ""))
+    return SEARCH_URL + "?exps=" + quote(str(query or ""))
 
 
-def detect_page(body):
-    text = clean(body)
-    soup = BeautifulSoup(body or "", "html.parser")
+def page_fingerprint(body):
+    body = body or ""
+    soup = BeautifulSoup(body, "html.parser")
 
-    title = clean(soup.title.get_text(" ", strip=True)) if soup.title else ""
+    title = ""
+    h1 = ""
+
+    if soup.title:
+        title = clean(soup.title.get_text(" ", strip=True))
+
     h1_node = soup.select_one("h1")
-    h1 = clean(h1_node.get_text(" ", strip=True)) if h1_node else ""
+    if h1_node:
+        h1 = clean(h1_node.get_text(" ", strip=True))
 
+    text = clean(body)
     lower = text.lower()
 
     markers = {
@@ -137,52 +124,28 @@ def detect_page(body):
         for marker in CHALLENGE_MARKERS
     }
 
-    challenge = any(markers.values())
-
-    product_links = []
-    seen = set()
-
-    for anchor in soup.find_all("a", href=True):
-        href = clean(anchor.get("href"))
-        if not href:
-            continue
-
-        absolute = urljoin(BASE_URL, href).split("#", 1)[0]
-
-        if not absolute.startswith(BASE_URL):
-            continue
-
-        if not PRODUCT_ID_RE.search(absolute):
-            continue
-
-        if absolute.lower() in seen:
-            continue
-
-        seen.add(absolute.lower())
-        product_links.append(absolute)
-
     return {
         "title": title,
         "h1": h1,
-        "challenge_detected": challenge,
+        "challenge_detected": any(markers.values()),
         "challenge_markers": [
-            marker for marker, present in markers.items() if present
+            marker for marker, found in markers.items() if found
         ],
         "html_bytes": len(body.encode("utf-8", errors="ignore")),
         "anchors": len(soup.find_all("a", href=True)),
-        "product_id_links": len(product_links),
-        "product_id_examples": product_links[:10],
     }
 
 
-def response_headers(response):
+def interesting_headers(response):
     result = {}
 
     for name in INTERESTING_HEADERS:
         value = response.headers.get(name)
+
         if value:
             if name.lower() == "set-cookie":
-                value = value[:800]
+                value = value[:1000]
+
             result[name] = value
 
     return result
@@ -201,10 +164,14 @@ def request_snapshot(label, response, elapsed, error=None):
 
     return {
         "label": label,
-        "ok": response.ok,
+        "ok": bool(response.ok),
         "status": response.status_code,
         "seconds": round(elapsed, 3),
-        "requested_url": response.request.url if response.request else None,
+        "requested_url": (
+            response.request.url
+            if response.request is not None
+            else None
+        ),
         "final_url": response.url,
         "history": [
             {
@@ -214,29 +181,31 @@ def request_snapshot(label, response, elapsed, error=None):
             }
             for item in response.history
         ],
-        "headers": response_headers(response),
+        "headers": interesting_headers(response),
         "cookies": {
             key: value
             for key, value in response.cookies.items()
         },
-        "page": detect_page(body),
+        "page": page_fingerprint(body),
     }
 
 
-def requests_get(session, label, url, headers, timeout=TIMEOUT):
+def http_get(session, label, url):
     started = time.perf_counter()
 
     try:
         response = session.get(
             url,
-            headers=headers,
-            timeout=timeout,
+            headers=HEADERS,
+            timeout=HTTP_TIMEOUT,
             allow_redirects=True,
         )
+
         elapsed = time.perf_counter() - started
 
         print(
-            f"NOTINO_V3_HTTP: {label} status={response.status_code} "
+            "NOTINO_V4_HTTP: "
+            f"{label} status={response.status_code} "
             f"url={response.url} bytes={len(response.content)}",
             flush=True,
         )
@@ -247,8 +216,8 @@ def requests_get(session, label, url, headers, timeout=TIMEOUT):
         elapsed = time.perf_counter() - started
 
         print(
-            f"NOTINO_V3_HTTP_ERROR: {label} "
-            f"{type(exc).__name__}: {exc}",
+            "NOTINO_V4_HTTP_ERROR: "
+            f"{label} {type(exc).__name__}: {exc}",
             flush=True,
         )
 
@@ -260,33 +229,113 @@ def requests_get(session, label, url, headers, timeout=TIMEOUT):
         )
 
 
-def playwright_context(playwright):
-    browser = playwright.chromium.launch(
-        headless=True,
-        args=[
-            "--no-sandbox",
-            "--disable-dev-shm-usage",
-            "--disable-gpu",
-        ],
-    )
+def find_browser_executables():
+    candidates = [
+        ("chromium", shutil.which("chromium")),
+        ("chromium-browser", shutil.which("chromium-browser")),
+        ("google-chrome", shutil.which("google-chrome")),
+        ("google-chrome-stable", shutil.which("google-chrome-stable")),
+        ("chrome", shutil.which("chrome")),
+        ("msedge", shutil.which("msedge")),
+        ("firefox", shutil.which("firefox")),
+    ]
 
-    context = browser.new_context(
-        user_agent=WORKING_HEADERS["User-Agent"],
-        locale="fr-FR",
-        extra_http_headers={
-            "Accept": WORKING_HEADERS["Accept"],
-            "Accept-Language": WORKING_HEADERS["Accept-Language"],
+    common_paths = [
+        "/usr/bin/chromium",
+        "/usr/bin/chromium-browser",
+        "/usr/bin/google-chrome",
+        "/usr/bin/google-chrome-stable",
+        "/usr/bin/chrome",
+        "/usr/bin/msedge",
+        "/usr/bin/firefox",
+    ]
+
+    found = []
+
+    for name, path in candidates:
+        if path:
+            found.append({
+                "name": name,
+                "path": path,
+                "source": "PATH",
+            })
+
+    for path in common_paths:
+        if os.path.isfile(path) and os.access(path, os.X_OK):
+            if not any(item["path"] == path for item in found):
+                found.append({
+                    "name": os.path.basename(path),
+                    "path": path,
+                    "source": "common_path",
+                })
+
+    return found
+
+
+def command_version(path):
+    try:
+        result = subprocess.run(
+            [path, "--version"],
+            capture_output=True,
+            text=True,
+            timeout=5,
+        )
+
+        output = clean(result.stdout or result.stderr)
+
+        return {
+            "ok": result.returncode == 0,
+            "version": output[:300],
+            "returncode": result.returncode,
+        }
+
+    except Exception as exc:
+        return {
+            "ok": False,
+            "error": f"{type(exc).__name__}: {exc}",
+        }
+
+
+def runtime_diagnostics():
+    browsers = find_browser_executables()
+
+    for item in browsers:
+        item["version"] = command_version(item["path"])
+
+    playwright_available = sync_playwright is not None
+
+    result = {
+        "python": {
+            "version": __import__("sys").version.split()[0],
         },
-        viewport={
-            "width": 1365,
-            "height": 900,
+        "playwright": {
+            "python_package_available": playwright_available,
         },
-    )
+        "browsers_found": browsers,
+        "environment": {
+            "PLAYWRIGHT_BROWSERS_PATH": os.environ.get(
+                "PLAYWRIGHT_BROWSERS_PATH"
+            ),
+            "HOME": os.environ.get("HOME"),
+        },
+    }
 
-    return browser, context
+    if playwright_available:
+        try:
+            with sync_playwright() as playwright:
+                chromium = playwright.chromium
+                result["playwright"]["chromium_type_available"] = (
+                    chromium is not None
+                )
+        except Exception as exc:
+            result["playwright"]["startup_probe_error"] = (
+                f"{type(exc).__name__}: {exc}"
+            )
+
+    return result
 
 
-def browser_page_snapshot(page, response, label, elapsed):
+def browser_snapshot(page, response, label, elapsed):
     try:
         html = page.content()
     except Exception:
@@ -307,40 +356,45 @@ def browser_page_snapshot(page, response, label, elapsed):
     except Exception:
         pass
 
-    page_info = detect_page(html)
+    page_info = page_fingerprint(html)
     page_info["title"] = title
     page_info["h1"] = h1
 
-    headers = {}
+    response_headers = {}
+
     if response is not None:
         for name in INTERESTING_HEADERS:
             value = response.headers.get(name)
+
             if value:
                 if name.lower() == "set-cookie":
-                    value = value[:800]
-                headers[name] = value
+                    value = value[:1000]
+
+                response_headers[name] = value
 
     status = response.status if response is not None else None
-    final_url = page.url
 
-    print(
-        f"NOTINO_V3_BROWSER: {label} status={status} "
-        f"url={final_url} bytes={len(html.encode('utf-8', errors='ignore'))}",
-        flush=True,
-    )
-
-    return {
+    result = {
         "label": label,
         "ok": bool(response is None or status < 400),
         "status": status,
         "seconds": round(elapsed, 3),
-        "final_url": final_url,
-        "headers": headers,
+        "final_url": page.url,
+        "headers": response_headers,
         "page": page_info,
     }
 
+    print(
+        "NOTINO_V4_BROWSER: "
+        f"{label} status={status} url={page.url} "
+        f"bytes={page_info['html_bytes']}",
+        flush=True,
+    )
 
-def playwright_goto(page, label, url):
+    return result
+
+
+def browser_goto(page, label, url):
     started = time.perf_counter()
 
     try:
@@ -353,8 +407,8 @@ def playwright_goto(page, label, url):
         elapsed = time.perf_counter() - started
 
         print(
-            f"NOTINO_V3_BROWSER_ERROR: {label} "
-            f"{type(exc).__name__}: {exc}",
+            "NOTINO_V4_BROWSER_ERROR: "
+            f"{label} {type(exc).__name__}: {exc}",
             flush=True,
         )
 
@@ -369,16 +423,16 @@ def playwright_goto(page, label, url):
     try:
         page.wait_for_load_state(
             "networkidle",
-            timeout=min(BROWSER_TIMEOUT_MS, 15000),
+            timeout=15000,
         )
     except PlaywrightTimeoutError:
         pass
 
-    page.wait_for_timeout(1200)
+    page.wait_for_timeout(1500)
 
     elapsed = time.perf_counter() - started
 
-    return browser_page_snapshot(
+    return browser_snapshot(
         page,
         response,
         label,
@@ -386,82 +440,212 @@ def playwright_goto(page, label, url):
     )
 
 
-def browser_stage(query):
+def run_browser_test(query):
     result = {
         "available": sync_playwright is not None,
         "stages": [],
     }
 
     if sync_playwright is None:
-        result["error"] = "playwright_not_installed"
+        result["error"] = "playwright_python_package_not_installed"
+
         print(
-            "NOTINO_V3_BROWSER: PLAYWRIGHT_NOT_INSTALLED",
+            "NOTINO_V4_BROWSER: PLAYWRIGHT_PYTHON_PACKAGE_NOT_INSTALLED",
             flush=True,
         )
+
         return result
 
     search = query_url(query)
 
     try:
         with sync_playwright() as playwright:
-            browser, context = playwright_context(playwright)
+            browser = playwright.chromium.launch(
+                headless=True,
+                args=[
+                    "--no-sandbox",
+                    "--disable-dev-shm-usage",
+                    "--disable-gpu",
+                ],
+            )
 
             try:
-                page = context.new_page()
-
-                # Browser request WITHOUT a homepage first.
-                result["stages"].append(
-                    playwright_goto(
-                        page,
-                        "browser_search_direct",
-                        search,
-                    )
+                # Fresh context: search directly.
+                context = browser.new_context(
+                    user_agent=HEADERS["User-Agent"],
+                    locale="fr-FR",
+                    extra_http_headers={
+                        "Accept": HEADERS["Accept"],
+                        "Accept-Language": HEADERS["Accept-Language"],
+                    },
+                    viewport={
+                        "width": 1365,
+                        "height": 900,
+                    },
                 )
 
-                # Fresh browser context: homepage first, then search.
-                page.close()
+                try:
+                    page = context.new_page()
 
-                page = context.new_page()
-
-                result["stages"].append(
-                    playwright_goto(
-                        page,
-                        "browser_homepage",
-                        BASE_URL,
+                    result["stages"].append(
+                        browser_goto(
+                            page,
+                            "browser_direct_search",
+                            search,
+                        )
                     )
+
+                    page.close()
+                finally:
+                    context.close()
+
+                # Fresh context: homepage first, then search.
+                context = browser.new_context(
+                    user_agent=HEADERS["User-Agent"],
+                    locale="fr-FR",
+                    extra_http_headers={
+                        "Accept": HEADERS["Accept"],
+                        "Accept-Language": HEADERS["Accept-Language"],
+                    },
+                    viewport={
+                        "width": 1365,
+                        "height": 900,
+                    },
                 )
 
-                result["stages"].append(
-                    playwright_goto(
-                        page,
-                        "browser_search_after_homepage",
-                        search,
+                try:
+                    page = context.new_page()
+
+                    result["stages"].append(
+                        browser_goto(
+                            page,
+                            "browser_homepage",
+                            BASE_URL,
+                        )
                     )
-                )
 
-                result["cookies_after"] = [
-                    {
-                        "name": cookie.get("name"),
-                        "domain": cookie.get("domain"),
-                        "path": cookie.get("path"),
-                        "expires": cookie.get("expires"),
-                    }
-                    for cookie in context.cookies()
-                ]
+                    result["stages"].append(
+                        browser_goto(
+                            page,
+                            "browser_search_after_homepage",
+                            search,
+                        )
+                    )
 
-                page.close()
+                    result["cookies_after"] = [
+                        {
+                            "name": cookie.get("name"),
+                            "domain": cookie.get("domain"),
+                            "path": cookie.get("path"),
+                        }
+                        for cookie in context.cookies()
+                    ]
+
+                    page.close()
+                finally:
+                    context.close()
 
             finally:
                 browser.close()
 
     except Exception as exc:
         result["error"] = f"{type(exc).__name__}: {exc}"
+
         print(
-            f"NOTINO_V3_BROWSER_FATAL: {type(exc).__name__}: {exc}",
+            "NOTINO_V4_BROWSER_FATAL: "
+            f"{type(exc).__name__}: {exc}",
             flush=True,
         )
 
     return result
+
+
+def build_conclusion(report):
+    http_tests = report["tests"]["http"]
+    runtime = report["tests"]["runtime"]
+    browser = report["tests"]["browser"]
+
+    homepage = http_tests["homepage"]
+    search = http_tests["search"]
+    search_after_homepage = http_tests["search_after_homepage"]
+
+    homepage_status = homepage.get("status")
+    search_status = search.get("status")
+    session_search_status = search_after_homepage.get("status")
+
+    browser_statuses = [
+        stage.get("status")
+        for stage in browser.get("stages", [])
+        if isinstance(stage, dict)
+    ]
+
+    observations = []
+
+    observations.append({
+        "http_homepage_status": homepage_status,
+        "http_direct_search_status": search_status,
+        "http_session_search_status": session_search_status,
+        "browser_statuses": browser_statuses,
+        "playwright_python_package_available": runtime[
+            "playwright"
+        ].get("python_package_available"),
+        "browser_executables_found": [
+            item["path"]
+            for item in runtime.get("browsers_found", [])
+        ],
+    })
+
+    if homepage_status == 403 and search_status == 403:
+        observations.append(
+            "HTTP_BLOCK_CONFIRMED: Railway requests receive 403 before "
+            "the Notino page is available to the parser."
+        )
+
+    if (
+        session_search_status is not None
+        and session_search_status != search_status
+    ):
+        observations.append(
+            "SESSION_RESULT_CHANGED: visiting the homepage first changed "
+            "the HTTP search result."
+        )
+
+    if browser_statuses and any(
+        status is not None and status < 400
+        for status in browser_statuses
+    ):
+        observations.append(
+            "REAL_BROWSER_REACHES_NOTINO: at least one Chromium navigation "
+            "returned a non-error HTTP status."
+        )
+
+    if browser_statuses and all(
+        status == 403
+        for status in browser_statuses
+        if status is not None
+    ):
+        observations.append(
+            "REAL_BROWSER_ALSO_BLOCKED: Chromium itself received 403 on "
+            "all recorded navigations."
+        )
+
+    if not runtime["playwright"].get("python_package_available"):
+        observations.append(
+            "BROWSER_TEST_NOT_EXECUTED: the Railway runtime does not have "
+            "the Playwright Python package installed."
+        )
+
+    if (
+        not runtime.get("browsers_found")
+        and runtime["playwright"].get("python_package_available")
+    ):
+        observations.append(
+            "NO_SYSTEM_BROWSER_FOUND: Playwright is installed but no "
+            "system browser executable was discovered; Chromium launch "
+            "will depend on a Playwright-managed browser being installed."
+        )
+
+    return observations
 
 
 def search(query):
@@ -494,139 +678,80 @@ def search(query):
     }
 
     # ------------------------------------------------------------
-    # TEST A: exact HTTP header family from the working discovery file.
+    # A/B: direct HTTP and HTTP session.
     # ------------------------------------------------------------
-    session_a = requests.Session()
+    session = requests.Session()
 
     try:
-        report["tests"]["A_requests_working_headers"] = requests_get(
-            session_a,
-            "A_requests_working_headers",
-            search,
-            WORKING_HEADERS,
-        )
-    finally:
-        session_a.close()
-
-    # ------------------------------------------------------------
-    # TEST B: exact HTTP header family from the previous diagnostic.
-    # ------------------------------------------------------------
-    session_b = requests.Session()
-
-    try:
-        report["tests"]["B_requests_previous_diagnostic_headers"] = (
-            requests_get(
-                session_b,
-                "B_requests_previous_diagnostic_headers",
-                search,
-                PREVIOUS_DIAGNOSTIC_HEADERS,
-            )
-        )
-    finally:
-        session_b.close()
-
-    # ------------------------------------------------------------
-    # TEST C: working headers, homepage first, then search.
-    # This checks whether a session/cookie established by the homepage
-    # changes the result.
-    # ------------------------------------------------------------
-    session_c = requests.Session()
-
-    try:
-        homepage = requests_get(
-            session_c,
-            "C1_requests_working_headers_homepage",
+        homepage = http_get(
+            session,
+            "A_http_homepage",
             BASE_URL,
-            WORKING_HEADERS,
         )
 
-        search_after_homepage = requests_get(
-            session_c,
-            "C2_requests_working_headers_search_after_homepage",
+        direct_search = http_get(
+            session,
+            "B_http_direct_search",
             search,
-            WORKING_HEADERS,
         )
 
-        report["tests"]["C_requests_homepage_then_search"] = {
+        search_after_homepage = http_get(
+            session,
+            "C_http_search_after_homepage",
+            search,
+        )
+
+        report["tests"]["http"] = {
             "homepage": homepage,
-            "search": search_after_homepage,
-            "session_cookies_after": [
+            "search": direct_search,
+            "search_after_homepage": search_after_homepage,
+            "cookies_after": [
                 {
                     "name": cookie.name,
                     "domain": cookie.domain,
                     "path": cookie.path,
                 }
-                for cookie in session_c.cookies
+                for cookie in session.cookies
             ],
         }
 
     finally:
-        session_c.close()
+        session.close()
 
     # ------------------------------------------------------------
-    # TEST D/E: real Chromium, the path used by the working scraper.
+    # D: inspect the actual Railway runtime.
     # ------------------------------------------------------------
-    report["tests"]["D_E_playwright"] = browser_stage(query)
+    report["tests"]["runtime"] = runtime_diagnostics()
 
-    # Compact conclusion generated only from observations.
-    observations = []
+    print(
+        "NOTINO_V4_RUNTIME: "
+        f"playwright="
+        f"{report['tests']['runtime']['playwright'].get('python_package_available')} "
+        f"browsers="
+        f"{len(report['tests']['runtime'].get('browsers_found', []))}",
+        flush=True,
+    )
 
-    a = report["tests"]["A_requests_working_headers"]
-    b = report["tests"]["B_requests_previous_diagnostic_headers"]
-    c = report["tests"]["C_requests_homepage_then_search"]
-    browser = report["tests"]["D_E_playwright"]
+    # ------------------------------------------------------------
+    # E: real Chromium, if the runtime can provide it.
+    # ------------------------------------------------------------
+    report["tests"]["browser"] = run_browser_test(query)
 
-    def status_of(item):
-        return item.get("status") if isinstance(item, dict) else None
-
-    a_status = status_of(a)
-    b_status = status_of(b)
-    c_status = status_of(c.get("search", {}))
+    report["observations"] = build_conclusion(report)
 
     browser_statuses = [
         stage.get("status")
-        for stage in browser.get("stages", [])
+        for stage in report["tests"]["browser"].get("stages", [])
         if isinstance(stage, dict)
     ]
 
-    observations.append({
-        "requests_working_headers_status": a_status,
-        "requests_previous_diagnostic_status": b_status,
-        "requests_homepage_then_search_status": c_status,
-        "playwright_statuses": browser_statuses,
-    })
-
-    if a_status == 200 and b_status == 403:
-        observations.append(
-            "DIFFERENCE_FOUND: the header families produce different HTTP results."
-        )
-
-    if c_status == 200 and a_status != 200:
-        observations.append(
-            "SESSION_EFFECT_FOUND: homepage-before-search changes the HTTP result."
-        )
-
-    if any(status is not None and status < 400 for status in browser_statuses):
-        observations.append(
-            "BROWSER_PATH_AVAILABLE: Chromium obtained a non-error response."
-        )
-
-    if any(status == 403 for status in browser_statuses):
-        observations.append(
-            "BROWSER_PATH_403: Chromium itself received a 403/challenge."
-        )
-
-    if not observations[1:]:
-        observations.append(
-            "NO_SINGLE_CAUSE_PROVEN: compare the stage-by-stage status, headers and challenge markers."
-        )
-
-    report["observations"] = observations
-
     print(
         "NOTINO_DIAG_END: "
-        f"A={a_status} B={b_status} C={c_status} "
-        f"PLAYWRIGHT={browser_statuses}",
+        f"HTTP_HOME={report['tests']['http']['homepage'].get('status')} "
+        f"HTTP_SEARCH={report['tests']['http']['search'].get('status')} "
+        f"HTTP_SESSION={report['tests']['http']['search_after_homepage'].get('status')} "
+        f"PLAYWRIGHT={report['tests']['runtime']['playwright'].get('python_package_available')} "
+        f"BROWSER={browser_statuses}",
         flush=True,
     )
 
