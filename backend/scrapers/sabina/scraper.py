@@ -19,7 +19,7 @@ from bs4 import BeautifulSoup
 BASE_URL = "https://www.sabina.com"
 SEARCH_PATH = "/es/buscar_old"
 TIMEOUT = 20
-VERSION = "sabina-DIAGNOSTIC-2026-08-18-v2"
+VERSION = "sabina-DIAGNOSTIC-2026-08-18-FINAL"
 
 HEADERS = {
     "User-Agent": (
@@ -272,7 +272,7 @@ def search(query):
             "store": "Sabina",
             "source": {
                 "url": BASE_URL,
-                "name": "SABINA_DIAGNOSTIC",
+                "name": f"SABINA_DIAGNOSTIC {query}",
                 "brand": "Sabina",
                 "image": None,
             },
