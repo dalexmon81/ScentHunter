@@ -301,45 +301,168 @@ def search(query):
             "homepage",
         )
 
-        # 2) Generic search probes. These are diagnostic probes only.
-        routes = [
-            ("/search", {"q": query}, "search_q"),
-            ("/search", {"query": query}, "search_query"),
-            ("/zoeken", {"q": query}, "zoeken_q"),
-            ("/zoeken", {"query": query}, "zoeken_query"),
-            ("/catalogsearch/result/", {"q": query}, "catalogsearch_q"),
-        ]
+        # 2) Execute the REAL search form discovered on Deloox.
+        # The homepage already told us the canonical action is /zoeken.html
+        # and the query field is q. We use the discovered form rather than
+        # guessing /search or /zoeken endpoints.
+        search_forms = []
+
+        if homepage is not None and homepage.status_code == 200:
+            homepage_soup = BeautifulSoup(homepage.text, "html.parser")
+
+            for form in homepage_soup.find_all("form"):
+                action = urljoin(
+                    homepage.url,
+                    clean(form.get("action")),
+                )
+                method = clean(
+                    form.get("method") or "GET"
+                ).upper()
+
+                fields = [
+                    clean(element.get("name"))
+                    for element in form.find_all(
+                        ["input", "select", "textarea"]
+                    )
+                    if clean(element.get("name"))
+                ]
+
+                if (
+                    action.rstrip("/").endswith("/zoeken.html")
+                    and "q" in fields
+                ):
+                    search_forms.append(
+                        {
+                            "action": action,
+                            "method": method,
+                            "fields": fields,
+                        }
+                    )
+
+        log(
+            f"REAL_SEARCH_FORMS count={len(search_forms)} "
+            f"forms={search_forms}"
+        )
 
         all_products = list(homepage_products)
         all_categories = list(homepage_categories)
 
-        for route in routes:
-            path = route[0]
-            params = route[1]
-            label = route[2]
+        seen_search_forms = set()
 
-            response, products, categories = inspect_search_route(
-                session,
+        for form in search_forms:
+            form_key = (
+                form["method"],
+                form["action"],
+                tuple(form["fields"]),
+            )
+
+            if form_key in seen_search_forms:
+                continue
+
+            seen_search_forms.add(form_key)
+
+            params = {
+                "q": query,
+            }
+
+            if form["method"] == "POST":
+                response = request(
+                    session,
+                    form["action"],
+                    params=None,
+                )
+            else:
+                response = request(
+                    session,
+                    form["action"],
+                    params=params,
+                )
+
+            print_json_if_any(
+                response,
+                "real_search_form",
+            )
+
+            products, categories = inspect_page(
+                response,
                 query,
-                path,
-                params,
-                label,
+                "real_search_form",
             )
 
             all_products.extend(products)
             all_categories.extend(categories)
 
-            # If a route redirected to a new page, inspect that final page
-            # only; do not recursively crawl its internal links.
-            if (
-                response is not None
-                and response.url.rstrip("/") != urljoin(BASE_URL, path).rstrip("/")
-            ):
+            if response is not None:
                 log(
-                    f"REDIRECT_ROUTE label={label} "
-                    f"final={response.url} "
-                    f"kind={kind(response.url)}"
+                    f"REAL_SEARCH_RESULT "
+                    f"url={response.url} "
+                    f"status={response.status_code} "
+                    f"products={len(products)} "
+                    f"categories={len(categories)}"
                 )
+
+        # Always probe the exact canonical search page as a fallback to the
+        # form-discovery step. This is still generic: it uses the form action
+        # and query field discovered from the site's HTML.
+        if not search_forms:
+            canonical_search = urljoin(
+                BASE_URL,
+                "/zoeken.html",
+            )
+
+            response = request(
+                session,
+                canonical_search,
+                params={"q": query},
+            )
+
+            print_json_if_any(
+                response,
+                "canonical_search",
+            )
+
+            products, categories = inspect_page(
+                response,
+                query,
+                "canonical_search",
+            )
+
+            all_products.extend(products)
+            all_categories.extend(categories)
+
+        # Inspect the inline JavaScript around the two route variables that
+        # the homepage exposed. We do not execute JS; we only print the
+        # surrounding source so the real API paths can be identified.
+        if homepage is not None:
+            source = homepage.text
+
+            for marker in (
+                "routeApiProducts",
+                "routeApiFilter",
+            ):
+                positions = [
+                    match.start()
+                    for match in re.finditer(
+                        re.escape(marker),
+                        source,
+                        re.I,
+                    )
+                ]
+
+                for position in positions[:5]:
+                    begin = max(0, position - 1200)
+                    finish = min(
+                        len(source),
+                        position + 1800,
+                    )
+
+                    snippet = source[begin:finish]
+
+                    log(
+                        f"JS_ROUTE_SOURCE marker={marker} "
+                        f"position={position}"
+                    )
+                    print(snippet, flush=True)
 
         # 3) If a category page is discovered, inspect only the first few
         # matching category URLs. This is the controlled diagnostic path.
