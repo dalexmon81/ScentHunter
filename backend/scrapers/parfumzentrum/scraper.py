@@ -342,6 +342,61 @@ def _extract_price(soup):
     return _visible_product_price(soup)
 
 
+
+def _jsonld_product(soup):
+    """Return the first JSON-LD Product object, without changing discovery."""
+    for script in soup.find_all("script", type="application/ld+json"):
+        raw = script.string or script.get_text()
+        if not raw:
+            continue
+        try:
+            data = json.loads(raw)
+        except Exception:
+            continue
+        queue = [data]
+        while queue:
+            item = queue.pop(0)
+            if isinstance(item, list):
+                queue.extend(item)
+                continue
+            if not isinstance(item, dict):
+                continue
+            typ = item.get("@type")
+            types = typ if isinstance(typ, list) else [typ]
+            if "Product" in types or "ProductGroup" in types:
+                return item
+            for value in item.values():
+                if isinstance(value, (dict, list)):
+                    queue.append(value)
+    return {}
+
+
+def _jsonld_value(data, *keys):
+    for key in keys:
+        value = data.get(key)
+        if isinstance(value, dict):
+            value = value.get("name") or value.get("value")
+        if value is not None and str(value).strip():
+            return str(value).strip()
+    return None
+
+
+def _product_availability(data, soup):
+    offers = data.get("offers") if isinstance(data, dict) else None
+    offers = offers if isinstance(offers, list) else [offers]
+    for offer in offers:
+        if not isinstance(offer, dict):
+            continue
+        value = str(offer.get("availability") or "").lower()
+        if "outofstock" in value or "soldout" in value:
+            return "out_of_stock"
+        if "instock" in value or "preorder" in value:
+            return "in_stock"
+    text = soup.get_text(" ", strip=True).lower()
+    if any(x in text for x in ("nicht lieferbar", "nicht vorrätig", "ausverkauft")):
+        return "out_of_stock"
+    return "in_stock"
+
 def _extract_product(url, query):
     try:
         response = SESSION.get(url, headers=HEADERS, timeout=10)
@@ -396,11 +451,56 @@ def _extract_product(url, query):
     if price is None:
         return None
 
+    data = _jsonld_product(soup)
+    brand = _jsonld_value(data, "brand")
+    image = data.get("image") if isinstance(data, dict) else None
+    if isinstance(image, list):
+        image = image[0] if image else None
+    image = (unquote(str(image)).strip() if image else None)
+    if image and not image.startswith(("http://", "https://")):
+        image = BASE_URL.rstrip("/") + "/" + image.lstrip("/")
+
+    gtin = _jsonld_value(data, "gtin13", "gtin", "gtin8")
+    mpn = _jsonld_value(data, "mpn")
+    sku = _jsonld_value(data, "sku")
+    product_id = _jsonld_value(data, "productID", "productId")
+    availability = _product_availability(data, soup)
+
     return {
         "store": "ParfumZentrum",
+        "source": {
+            "source_name": name,
+            "source_brand": brand,
+            "url": url,
+            "image": image,
+        },
+        "identity": {
+            "gtin": {"value": gtin, "source": "jsonld"} if gtin else None,
+            "mpn": {"value": mpn, "source": "jsonld"} if mpn else None,
+            "sku": {"value": sku, "source": "jsonld"} if sku else None,
+            "store_product_id": {"value": product_id, "source": "jsonld"} if product_id else None,
+            "store_variant_id": None,
+        },
+        "attributes": {
+            "size_ml": {"value": size_ml, "source": "product_title"} if size_ml is not None else None,
+            "concentration": {"value": concentration, "source": "product_title"} if concentration else None,
+            "gender": {"value": "unknown", "source": "not_explicit"},
+            "packaging_type": {"value": "product", "source": "default"},
+        },
+        "offer": {
+            "price": price,
+            "currency": "EUR",
+            "availability": availability,
+        },
+        "provenance": {
+            "source_page": url,
+            "product_source": "jsonld_or_page",
+        },
+        "raw_data": {"jsonld": data},
         "name": name,
         "price": f"{price:.2f}€",
         "url": url,
+        "available": availability == "in_stock",
         "size_ml": size_ml,
         "concentration": concentration,
     }
