@@ -43,34 +43,116 @@ def product(s,url,q):
  if r.status_code!=200:return None
  soup=BeautifulSoup(r.text,"html.parser");h=soup.find("h1");name=clean(h.get_text(" ",strip=True)) if h else ""
  if not name or not matches(name,q):return None
- price_value=None;brand=None;data={}
+
+ price_value=None;brand=None;data={};image=None
+ gtin=None;mpn=None;sku=None;product_id=None;variant_id=None
+ availability=None
+
+ def first_value(v):
+  if isinstance(v,dict):
+   for k in ("name","value","id"):
+    if v.get(k):return clean(v.get(k))
+   return None
+  return clean(v) if v not in (None,"") else None
+
+ def walk_json(obj):
+  nonlocal price_value,brand,data,image,gtin,mpn,sku,product_id,variant_id,availability
+  if isinstance(obj,list):
+   for item in obj: walk_json(item)
+   return
+  if not isinstance(obj,dict): return
+
+  typ=obj.get("@type")
+  types=typ if isinstance(typ,list) else [typ]
+  is_product=any(isinstance(t,str) and t.lower() in ("product","productgroup") for t in types)
+
+  if is_product or "offers" in obj:
+   if is_product and not data:data=obj
+   b=first_value(obj.get("brand"))
+   if b and not brand:brand=b
+   for key in ("gtin","gtin8","gtin12","gtin13","gtin14"):
+    if obj.get(key) and not gtin:
+     gtin=first_value(obj.get(key))
+   if obj.get("mpn") and not mpn:mpn=first_value(obj.get("mpn"))
+   if obj.get("sku") and not sku:sku=first_value(obj.get("sku"))
+   if obj.get("productID") and not product_id:product_id=first_value(obj.get("productID"))
+   if obj.get("image") and not image:
+    im=obj.get("image")
+    if isinstance(im,list):im=im[0] if im else None
+    if isinstance(im,dict):im=im.get("url")
+    if im:image=urljoin(url,clean(im))
+   offers=obj.get("offers")
+   offers=offers if isinstance(offers,list) else [offers]
+   for o in offers:
+    if not isinstance(o,dict):continue
+    if price_value is None:
+     price_value=price(o.get("price"))
+    if not availability and o.get("availability"):
+     availability=clean(o.get("availability")).rsplit("/",1)[-1].lower()
+    if not variant_id and o.get("sku") and sku and clean(o.get("sku"))!=sku:
+     variant_id=clean(o.get("sku"))
+    for key in ("url","itemOffered"):
+     item=o.get(key)
+     if isinstance(item,dict):
+      if not variant_id and item.get("sku"):variant_id=clean(item.get("sku"))
+      if not product_id and item.get("productID"):product_id=clean(item.get("productID"))
+
+  for key in ("@graph","mainEntity","mainEntityOfPage","itemOffered"):
+   if key in obj:
+    walk_json(obj[key])
+
  for sc in soup.select('script[type="application/ld+json"]'):
   try:d=json.loads(sc.get_text(strip=True))
   except Exception:continue
-  stack=d if isinstance(d,list) else [d]
-  while stack:
-   x=stack.pop(0)
-   if isinstance(x,list):stack.extend(x);continue
-   if not isinstance(x,dict):continue
-   if x.get("@type")=="Product" or "offers" in x:
-    data=x;brand=x.get("brand");brand=brand.get("name") if isinstance(brand,dict) else brand
-    offers=x.get("offers");offers=offers if isinstance(offers,list) else [offers]
-    for o in offers:
-     if isinstance(o,dict):
-      price_value=price(o.get("price"))
-      if price_value is not None:break
-   if price_value is not None:break
+  walk_json(d)
+
+ def meta_value(*selectors):
+  for selector in selectors:
+   tag=soup.select_one(selector)
+   if tag:
+    v=tag.get("content") or tag.get("value") or tag.get_text(" ",strip=True)
+    if clean(v):return clean(v)
+  return None
+
+ image=image or meta_value('meta[property="og:image"]','meta[name="twitter:image"]','meta[itemprop="image"]')
+ brand=brand or meta_value('meta[property="product:brand"]','meta[itemprop="brand"]')
+ gtin=gtin or meta_value('meta[itemprop="gtin"]','meta[itemprop="gtin13"]','meta[itemprop="gtin12"]','meta[itemprop="gtin14"]','meta[itemprop="gtin8"]')
+ mpn=mpn or meta_value('meta[itemprop="mpn"]')
+ sku=sku or meta_value('meta[itemprop="sku"]')
+ product_id=product_id or meta_value('meta[itemprop="productID"]')
+
+ if image:image=urljoin(url,image)
+
  if price_value is None:price_value=price(soup.get_text(" ",strip=True))
  if price_value is None:return None
- text=norm(soup.get_text(" ",strip=True))
- stock="out_of_stock" if any(x in text for x in ("out of stock","uitverkocht","niet beschikbaar")) else ("in_stock" if any(x in text for x in ("in stock","op voorraad","beschikbaar")) else "unknown")
- meta=soup.select_one('meta[property="og:image"]');image=urljoin(url,meta.get("content","")) if meta else None
- gtin=data.get("gtin13") or data.get("gtin") or data.get("gtin8")
- mpn=data.get("mpn")
- sku=data.get("sku")
- product_id=data.get("productID") or data.get("productId")
- def ident(v): return {"value":str(v).strip(),"source":"jsonld"} if v is not None and str(v).strip() else None
- return {"store":STORE,"source":{"source_name":name,"source_brand":clean(brand),"url":url,"image":image},"identity":{"gtin":ident(gtin),"mpn":ident(mpn),"sku":ident(sku),"store_product_id":ident(product_id),"store_variant_id":None},"attributes":{"size_ml":{"value":size_ml(name),"source":"product_title"} if size_ml(name) is not None else None,"concentration":{"value":concentration(name),"source":"product_title"} if concentration(name) else None,"gender":{"value":"unknown","source":"not_explicit"},"packaging_type":{"value":"product","source":"default"}},"offer":{"price":round(price_value,2),"currency":"EUR","availability":stock},"provenance":{"source_page":url,"product_source":"jsonld_or_page"},"raw_data":{"jsonld":data},"name":name,"price":f"{price_value:.2f}".replace(".",",")+" €","url":url,"available":stock=="in_stock"}
+
+ page_text=norm(soup.get_text(" ",strip=True))
+ if availability in ("outofstock","out_of_stock","soldout","sold_out"):
+  stock="out_of_stock"
+ elif availability in ("instock","in_stock","available"):
+  stock="in_stock"
+ elif any(x in page_text for x in ("out of stock","uitverkocht","niet beschikbaar")):
+  stock="out_of_stock"
+ elif any(x in page_text for x in ("in stock","op voorraad","beschikbaar")):
+  stock="in_stock"
+ else:
+  stock="unknown"
+
+ if not sku:
+  m=re.search(r'\b(?:sku|art(?:ikel)?(?:nummer)?|product\s*(?:code|id))\s*[:#-]?\s*([a-z0-9._/-]+)',page_text,re.I)
+  if m:sku=clean(m.group(1))
+
+ return {"store":STORE,
+  "source":{"source_name":name,"source_brand":clean(brand),"url":url,"image":image},
+  "identity":{"gtin":gtin,"mpn":mpn,"sku":sku,"store_product_id":product_id,"store_variant_id":variant_id},
+  "attributes":{"size_ml":{"value":size_ml(name),"source":"product_title"} if size_ml(name) is not None else None,
+                "concentration":{"value":concentration(name),"source":"product_title"} if concentration(name) else None,
+                "gender":{"value":"unknown","source":"not_explicit"},
+                "packaging_type":{"value":"product","source":"default"}},
+  "offer":{"price":round(price_value,2),"currency":"EUR","availability":stock},
+  "provenance":{"source_page":url,"name_source":"h1","price_source":"jsonld_or_page"},
+  "raw_data":{"jsonld":data},
+  "name":name,"price":f"{price_value:.2f}".replace(".",",")+" €","url":url,"available":stock=="in_stock"}
 def search(q):
  q=clean(q)
  if not q:return []
