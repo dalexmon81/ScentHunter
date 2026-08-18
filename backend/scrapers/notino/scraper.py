@@ -1,13 +1,3 @@
-# -*- coding: utf-8 -*-
-"""
-ScentHunter / Notino diagnostic
-Standalone: does NOT modify the repository and does NOT change the scraper.
-Run:
-    python diagnostico_notino.py
-or:
-    python diagnostico_notino.py "Liquid Brun" "Turathi Blue"
-"""
-
 from __future__ import annotations
 import json
 import logging
@@ -562,144 +552,38 @@ def _fetch_product_with_playwright(url):
         LOGGER.warning('Notino browser product retrieval failed: %s', exc)
         return None
 
-
-import sys
-import traceback
-import requests
-
-TEST_QUERIES = sys.argv[1:] or ["Liquid Brun", "Turathi Blue"]
-
-def print_header(title):
-    print("\n" + "=" * 72)
-    print(title)
-    print("=" * 72)
-
-def run_diagnostic(query):
-    print_header(f"NOTINO DIAGNOSTIC — {query}")
+def search(query):
+    query = clean(query)
+    if not query:
+        return []
     session = requests.Session()
-
+    results, seen = ([], set())
     try:
-        # 1. Search page
-        search_url = _search_pages(query)[0]
-        print(f"[1] SEARCH PAGE")
-        print(f"URL: {search_url}")
-        try:
-            r = session.get(search_url, headers=HEADERS, timeout=TIMEOUT,
-                            allow_redirects=True)
-            print(f"HTTP: {r.status_code}")
-            print(f"Final URL: {r.url}")
-            print(f"HTML bytes: {len(r.text)}")
-            print(f"Content-Type: {r.headers.get('content-type','')}")
-            http_html = r.text if r.status_code < 400 else ""
-        except Exception as exc:
-            print(f"HTTP ERROR: {type(exc).__name__}: {exc}")
-            http_html = ""
-
-        # 2. Discovery from HTTP
-        print(f"\n[2] HTTP DISCOVERY")
-        http_urls = _candidate_product_urls(http_html, query) if http_html else []
-        print(f"Candidates: {len(http_urls)}")
-        for i, url in enumerate(http_urls[:30], 1):
-            print(f"  {i:02d} {url}")
-
-        # 3. Browser discovery
-        print(f"\n[3] BROWSER DISCOVERY")
-        browser_urls = []
-        if BROWSER_ENABLED:
-            try:
-                browser_urls = _discover_with_playwright(query, 80)
-                print(f"Candidates: {len(browser_urls)}")
-                for i, url in enumerate(browser_urls[:30], 1):
-                    print(f"  {i:02d} {url}")
-            except Exception as exc:
-                print(f"BROWSER ERROR: {type(exc).__name__}: {exc}")
-        else:
-            print("Browser disabled by NOTINO_BROWSER.")
-
-        # 4. Merge exactly like the corrected discovery
-        candidates = []
-        seen = set()
-        for url in http_urls + browser_urls:
-            if url not in seen:
-                seen.add(url)
-                candidates.append(url)
-
-        print(f"\n[4] MERGED CANDIDATES")
-        print(f"Total: {len(candidates)}")
-
-        # 5. Fetch and validate every candidate, but cap diagnostic work
-        # so one pathological URL cannot hide the actual reason.
-        print(f"\n[5] PRODUCT VALIDATION")
-        found = []
-        for i, url in enumerate(candidates[:30], 1):
-            print(f"\n--- Candidate {i} ---")
-            print(f"URL: {url}")
+        for url in _discover(session, query):
             html = None
-
             try:
-                pr = session.get(url, headers=HEADERS, timeout=TIMEOUT,
-                                 allow_redirects=True)
-                print(f"HTTP: {pr.status_code}")
-                print(f"Final URL: {pr.url}")
-                print(f"HTML bytes: {len(pr.text)}")
-                if pr.status_code < 400:
-                    html = pr.text
-            except Exception as exc:
-                print(f"HTTP FETCH ERROR: {type(exc).__name__}: {exc}")
-
-            if not html and BROWSER_ENABLED:
-                print("Trying Playwright product fetch...")
-                try:
-                    html = _fetch_product_with_playwright(url)
-                    print(f"Browser HTML bytes: {len(html) if html else 0}")
-                except Exception as exc:
-                    print(f"BROWSER FETCH ERROR: {type(exc).__name__}: {exc}")
-
+                response = session.get(url, headers=HEADERS, timeout=TIMEOUT, allow_redirects=True)
+                if response.status_code < 400:
+                    html = response.text
+            except requests.RequestException:
+                pass
             if not html:
-                print("RESULT: NO HTML")
+                html = _fetch_product_with_playwright(url)
+            if not html:
                 continue
-
-            try:
-                soup = BeautifulSoup(html, "html.parser")
-                h1 = soup.find("h1")
-                h1_name = clean(h1.get_text(" ", strip=True)) if h1 else ""
-                jsonld = _parse_json_ld(soup)
-                json_names = [clean(x.get("name")) for x in jsonld if x.get("name")]
-                print(f"H1: {h1_name or '[EMPTY]'}")
-                print(f"JSON-LD Product objects: {len(jsonld)}")
-                print(f"JSON-LD names: {json_names[:5]}")
-                print(f"Query matches H1: {matches(h1_name, query)}")
-                print(f"Query matches JSON-LD: {any(matches(n, query) for n in json_names)}")
-                print(f"Detected size: {size_ml(h1_name, *json_names)}")
-                print(f"Detected prices: {_extract_prices(soup.get_text(' ', strip=True))[:10]}")
-            except Exception as exc:
-                print(f"PARSE ERROR: {type(exc).__name__}: {exc}")
-
-            try:
-                item = _product(url, html, query)
-                if item:
-                    print("VALIDATION: PASS")
-                    print(f"Name: {item.get('name')}")
-                    print(f"Price: {item.get('price')}")
-                    print(f"Size: {item.get('attributes',{}).get('size_ml')}")
-                    print(f"Availability: {item.get('offer',{}).get('availability')}")
-                    found.append(item)
-                else:
-                    print("VALIDATION: FAIL — _product() returned None")
-            except Exception as exc:
-                print(f"VALIDATION ERROR: {type(exc).__name__}: {exc}")
-                traceback.print_exc()
-
-        print_header(f"FINAL — {query}")
-        print(f"Validated products: {len(found)}")
-        if found:
-            for item in found:
-                print(f"FOUND: {item.get('name')} | {item.get('price')} | {item.get('url')}")
-        else:
-            print("NOT FOUND: the diagnostic isolated the failure above.")
-
+            item = _product(url, html, query)
+            if not item:
+                continue
+            sku = item['identity'].get('sku')
+            sku_value = sku.get('value') if sku else None
+            key = (item['url'].lower(), sku_value)
+            if key in seen:
+                continue
+            seen.add(key)
+            results.append(item)
+        return results
     finally:
         session.close()
 
-for query in TEST_QUERIES:
-    run_diagnostic(query)
+def scrape(query):
+    return search(query)
