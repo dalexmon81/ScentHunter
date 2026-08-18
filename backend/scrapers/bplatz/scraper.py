@@ -34,57 +34,6 @@ PACKAGING_RULES = (
 )
 
 
-
-# ScentHunter routing rule:
-# These three stores are Arabic-fragrance specialists. They should NOT be
-# queried for clearly identified designer / niche brands. Unknown brands are
-# intentionally NOT blocked, so a new Arabic brand is never lost.
-NON_ARABIC_BRANDS = {
-    "acqua di parma", "aerin", "amouage", "armani", "azzaro", "bdk",
-    "bdk parfums", "bentley", "biotherm", "boucheron", "burberry",
-    "bvlgari", "bulgari", "byredo", "calvin klein", "carolina herrera",
-    "cartier", "chanel", "chloe", "chloé", "clinique", "coach",
-    "comptoir sud pacifique", "creed", "david beckham", "dior",
-    "diptyque", "dolce & gabbana", "dolce gabbana", "dunhill",
-    "elizabeth arden", "elie saab", "emilio pucci", "estee lauder",
-    "estée lauder", "etat libre d'orange", "fragrance du bois",
-    "frederic malle", "frederic malle", "givenchy", "guerlain",
-    "gucci", "hugo boss", "issey miyake", "jaguar", "jean paul gaultier",
-    "jil sander", "jimmy choo", "jo malone", "jovan", "juliette has a gun",
-    "kenzo", "kilian", "la mer", "lalique", "lancome", "lancôme",
-    "lanvin", "le labo", "loewe", "lorenzo villoresi", "maison crivelli",
-    "maison francis kurkdjian", "maison margiela", "marc jacobs",
-    "mancera", "mariah carey", "memo paris", "michael kors", "miller harris",
-    "montblanc", "moschino", "mugler", "narciso rodriguez", "nars",
-    "nautica", "nishane", "paco rabanne", "parfums de marly", "philosophy",
-    "prada", "ralph lauren", "revlon", "roberto cavalli", "roger & gallet",
-    "salvatore ferragamo", "serge lutens", "shiseido", "sisley",
-    "snif", "tom ford", "tommy hilfiger", "trussardi", "valentino",
-    "van cleef & arpels", "versace", "viktor & rolf", "vilhelm parfumerie",
-    "yves saint laurent", "ysl", "zadig & voltaire", "zara",
-    "xerjoff", "ex nihilo", "initio", "ormonde jayne", "penhaligon's",
-    "penhaligons", "roja", "roja parfums", "the merchant of venice",
-    "tiziana terenzi", "nasomatto", "ortho parisi", "parle moi de parfum",
-    "atelier des ors", "bdk parfums", "bois 1920", "carner barcelona",
-    "essential parfums", "histoires de parfums", "laboratorio olfattivo",
-    "liquides imaginaires", "mancera", "montale", "parle moi de parfum",
-    "profumum roma", "room 1015", "state of mind", "une nuit nomade",
-}
-
-def _is_non_arabic_brand_query(query):
-    """Return True only for a clearly recognized designer/niche brand.
-
-    We deliberately do not guess from unknown names. The three Arabic-only
-    stores are skipped only when the query contains a known non-Arabic brand.
-    """
-    text = norm(query) if "norm" in globals() else clean(query).lower()
-    text = re.sub(r"\s+", " ", text).strip()
-    return any(
-        re.search(r"(?<![a-z0-9])" + re.escape(norm(brand)) + r"(?![a-z0-9])", text)
-        for brand in NON_ARABIC_BRANDS
-    )
-
-
 def norm(value):
     value = unicodedata.normalize("NFKD", str(value or ""))
     value = "".join(c for c in value if not unicodedata.combining(c))
@@ -290,8 +239,8 @@ def variant_record(data, variant, url):
         "store": STORE,
         "source": {
             "url": url,
-            "name": source_name,
-            "brand": vendor,
+            "source_name": source_name,
+            "source_brand": vendor,
             "image": _shopify_image(data),
         },
         "identity": {
@@ -458,9 +407,6 @@ def candidate_urls(session, query):
 def search(query):
     query = str(query or "").strip()
     if not query:
-        return []
-
-    if _is_non_arabic_brand_query(query):
         return []
 
     session = requests.Session()
