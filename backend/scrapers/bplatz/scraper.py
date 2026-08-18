@@ -54,7 +54,8 @@ def money(value):
         return None
     try:
         number = float(str(value).replace(",", "."))
-        return round(number, 2)
+        # Shopify product JSON exposes variant prices in cents.
+        return round(number / 100.0, 2)
     except (ValueError, TypeError):
         return None
 
@@ -181,7 +182,10 @@ def variant_record(data, variant, url):
     product_title = str(data.get("title") or "").strip()
     vendor = str(data.get("vendor") or "").strip() or None
     variant_title = str(variant.get("title") or "").strip()
-    source_name = " ".join(x for x in (product_title, variant_title) if x and x != "Default Title")
+    source_name = " ".join(
+        x for x in (product_title, variant_title)
+        if x and x != "Default Title"
+    )
 
     size_ml = extract_size_ml(variant_title, product_title)
     concentration, concentration_source = extract_concentration(
@@ -421,6 +425,16 @@ def search(query):
             # Query filtering is applied only to the source name.
             # Identity is deliberately left to the central Identity Engine.
             if not query_matches(item.get("name", ""), query):
+                continue
+
+            # Exclude tester variants generically.
+            packaging = item.get("attributes", {}).get("packaging_type")
+            packaging_value = (
+                packaging.get("value")
+                if isinstance(packaging, dict)
+                else packaging
+            )
+            if packaging_value == "tester":
                 continue
 
             variant_id = item["identity"].get("store_variant_id")
