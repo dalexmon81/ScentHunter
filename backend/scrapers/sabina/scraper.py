@@ -19,7 +19,7 @@ from bs4 import BeautifulSoup
 BASE_URL = "https://www.sabina.com"
 SEARCH_PATH = "/es/buscar_old"
 TIMEOUT = 20
-VERSION = "sabina-DIAGNOSTIC-2026-08-18-FINAL"
+VERSION = "sabina-DIAGNOSTIC-2026-08-18-FINAL-2"
 
 HEADERS = {
     "User-Agent": (
@@ -308,7 +308,7 @@ def search(query):
             "raw_data": {
                 "diagnostic": diagnostics,
             },
-            "name": "SABINA_DIAGNOSTIC",
+            "name": f"SABINA_DIAGNOSTIC {query}",
             "price": 0.0,
             "url": BASE_URL,
             "available": False,
