@@ -353,16 +353,6 @@ def _candidate_product_urls(html, query):
         if not url:
             return
 
-        # When the URL comes from a search-card, require the local card
-        # context to match the requested query before accepting it. This
-        # prevents a generic /p-<id>/ link from causing dozens of unrelated
-        # product pages to be fetched sequentially.
-        if context and query and not matches(
-            f"{context} {url.replace('/', ' ')}",
-            query,
-        ):
-            return
-
         if not _looks_like_product_url(url, context, query):
             return
 
@@ -448,7 +438,7 @@ def _candidate_product_urls(html, query):
 
     return found
 
-def _discover_with_playwright(query, max_urls=40):
+def _discover_with_playwright(query, max_urls=80):
     """Browser fallback for client-rendered Notino search results."""
     if sync_playwright is None:
         return []
@@ -497,7 +487,7 @@ def _discover_with_playwright(query, max_urls=40):
 
     return urls[:max_urls]
 
-def _discover_from_search_requests(session, query, max_urls=40):
+def _discover_from_search_requests(session, query, max_urls=80):
     """Discover only from Notino's own search endpoint, like Deloox."""
     try:
         response = session.get(
@@ -516,11 +506,11 @@ def _discover_from_search_requests(session, query, max_urls=40):
 
 def _discover(session, query):
     """Search page -> product URLs; no category/landing-page crawling."""
-    urls = _discover_from_search_requests(session, query, 40)
+    urls = _discover_from_search_requests(session, query, 80)
     if urls:
         return urls
     if BROWSER_ENABLED:
-        return _discover_with_playwright(query, 40)
+        return _discover_with_playwright(query, 80)
     return []
 
 def _fetch_product_with_playwright(url):
@@ -540,10 +530,21 @@ def _fetch_product_with_playwright(url):
                 browser.close()
                 return None
 
-            # V9 proved that a fresh browser + direct goto reaches the
-            # product page reliably. Do not wait for networkidle: Notino's
-            # background requests can keep it open or trigger a challenge.
-            page.wait_for_timeout(700)
+            # The product page can render its title/data after the initial
+            # DOM load. A short fixed delay is not reliable across products.
+            # Wait for a real product marker, with a bounded timeout, without
+            # waiting for networkidle (Notino background requests can remain
+            # open indefinitely or trigger a challenge).
+            try:
+                page.wait_for_selector(
+                    'h1, script[type="application/ld+json"]',
+                    timeout=min(DEFAULT_TIMEOUT_MS, 8000),
+                    state='attached',
+                )
+            except PlaywrightTimeoutError:
+                pass
+
+            page.wait_for_timeout(800)
             html = page.content()
             browser.close()
             return html
@@ -558,7 +559,7 @@ def search(query):
     session = requests.Session()
     results, seen = ([], set())
     try:
-        for url in _discover(session, query)[:40]:
+        for url in _discover(session, query):
             html = None
             try:
                 response = session.get(url, headers=HEADERS, timeout=TIMEOUT, allow_redirects=True)
