@@ -66,21 +66,43 @@ def _source_value(value, source):
     return {'value': value, 'source': source}
 
 def parse_price(value):
+    if value is None:
+        return None
+    if isinstance(value, (int, float)):
+        try:
+            number = float(value)
+            return round(number, 2) if number > 0 else None
+        except (TypeError, ValueError):
+            return None
     text = clean(value)
     if not text:
         return None
     match = PRICE_RE.search(text)
-    if not match:
-        return None
-    raw = match.group(1).replace(' ', '')
+    if match:
+        raw = match.group(1).replace(' ', '')
+    else:
+        # Structured sources sometimes expose a bare numeric price.
+        bare = re.fullmatch(r'\d+(?:[.,]\d{1,2})?', text)
+        if not bare:
+            return None
+        raw = bare.group(0)
     if raw.count('.') > 1:
         raw = raw.replace('.', '')
     elif '.' in raw and ',' not in raw:
         raw = raw.replace('.', ',')
     try:
-        return round(float(raw.replace(',', '.')), 2)
+        number = float(raw.replace(',', '.'))
+        return round(number, 2) if number > 0 else None
     except ValueError:
         return None
+
+def _extract_prices(text):
+    values = []
+    for match in PRICE_RE.finditer(clean(text)):
+        value = parse_price(match.group(0))
+        if value is not None:
+            values.append(value)
+    return values
 
 def availability_from_sources(data, soup):
     """Prefer structured availability; never classify from unrelated page text."""
