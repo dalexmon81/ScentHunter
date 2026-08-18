@@ -251,8 +251,21 @@ def _product(url, html, query):
         offer_list = [offers]
     else:
         offer_list = []
-    offer = next((x for x in offer_list if x.get('price') is not None), {})
-    price = parse_price(offer.get('price'))
+    offer = next(
+        (
+            x for x in offer_list
+            if x.get('price') is not None
+            or x.get('lowPrice') is not None
+            or x.get('highPrice') is not None
+        ),
+        {},
+    )
+    price_value = offer.get('price')
+    if price_value is None:
+        price_value = offer.get('lowPrice')
+    if price_value is None:
+        price_value = offer.get('highPrice')
+    price = parse_price(price_value)
     if price is None:
         prices = _extract_prices(text)
         if prices:
@@ -263,6 +276,10 @@ def _product(url, html, query):
     mpn = clean(data.get('mpn') or '') or None
     sku = clean(data.get('sku') or '') or None
     image = _image_from_product(data)
+    if not image:
+        meta_image = soup.select_one('meta[property="og:image"], meta[name="twitter:image"]')
+        if meta_image and meta_image.get('content'):
+            image = clean(meta_image.get('content'))
     if image:
         image = urljoin(url, image)
     availability = availability_from_sources(data, soup)
@@ -300,7 +317,41 @@ def _discover_with_playwright(query, max_urls=80):
                 except Exception:
                     pass
                 html = page.content()
-                for product_url in _candidate_product_urls(html, query):
+                candidates = _candidate_product_urls(html, query)
+
+                # Real Notino search pages expose product cards as normal
+                # anchors, but parts of the card can be rendered separately.
+                # Read the live DOM anchors as a second, independent source.
+                try:
+                    live_links = page.locator('a[href]').evaluate_all(
+                        """els => els.map(a => ({
+                            href: a.href || '',
+                            text: (a.innerText || a.textContent || '').trim()
+                        }))"""
+                    )
+                except Exception:
+                    live_links = []
+
+                query_tokens = tokens(query)
+                for item in live_links:
+                    href = item.get('href', '') if isinstance(item, dict) else ''
+                    text = item.get('text', '') if isinstance(item, dict) else ''
+                    href_norm = _normalise_url(href)
+                    if not href_norm:
+                        continue
+                    path = urlparse(href_norm).path.lower()
+                    if not _looks_like_product_url(href_norm):
+                        continue
+
+                    # Prefer anchors whose visible title matches the query.
+                    # Also accept canonical Notino product paths discovered
+                    # through the live DOM even when the card title is split
+                    # across nested elements.
+                    combined = f'{text} {path.replace("-", " ")}'
+                    if query_tokens.issubset(tokens(combined)) or '/p-' in path:
+                        candidates.append(href_norm)
+
+                for product_url in candidates:
                     if product_url in seen:
                         continue
                     seen.add(product_url)
