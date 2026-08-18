@@ -14,22 +14,15 @@ TIMEOUT = 20
 
 HEADERS = {
     "User-Agent": (
-        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+        "Mozilla/5.0 (X11; Linux x86_64) "
         "AppleWebKit/537.36 (KHTML, like Gecko) "
-        "Chrome/139.0.0.0 Safari/537.36"
+        "Chrome/126.0.0.0 Safari/537.36"
     ),
-    "Accept-Language": "fr-FR,fr;q=0.9,en-US;q=0.8,en;q=0.7",
+    "Accept-Language": "fr-FR,fr;q=0.9,en;q=0.8",
     "Accept": (
         "text/html,application/xhtml+xml,application/xml;"
-        "q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8"
+        "q=0.9,image/avif,image/webp,*/*;q=0.8"
     ),
-    "Cache-Control": "no-cache",
-    "Pragma": "no-cache",
-    "DNT": "1",
-    "Sec-Fetch-Dest": "document",
-    "Sec-Fetch-Mode": "navigate",
-    "Sec-Fetch-Site": "same-origin",
-    "Sec-Fetch-User": "?1",
 }
 
 PRODUCT_ID_RE = re.compile(r"/p-(\d+)/?(?:$|[?#])", re.I)
@@ -469,40 +462,19 @@ def extract_search_candidates(soup, page_url):
     return candidates
 
 
-def fetch(session, url, params=None, referer=None):
-    request_headers = dict(HEADERS)
-    request_headers["Referer"] = referer or BASE_URL + "/"
-
+def fetch(session, url, params=None):
     try:
         response = session.get(
             url,
             params=params,
-            headers=request_headers,
+            headers=HEADERS,
             timeout=TIMEOUT,
             allow_redirects=True,
         )
-
-        print(
-            "NOTINO_HTTP: "
-            f"status={response.status_code} "
-            f"url={response.url} "
-            f"bytes={len(response.content)}",
-            flush=True,
-        )
-
-        if not response.ok:
+        if not response.ok or not same_host(response.url):
             return None
-
-        if not same_host(response.url):
-            return None
-
         return response
-
-    except requests.RequestException as error:
-        print(
-            f"NOTINO_HTTP_ERROR: {type(error).__name__}: {error}",
-            flush=True,
-        )
+    except requests.RequestException:
         return None
 
 
@@ -591,212 +563,44 @@ def search(query):
         return []
 
     session = requests.Session()
-
     try:
-        print(
-            f"NOTINO_DIAG: START query={query!r}",
-            flush=True,
-        )
-
-        home = fetch(
-            session,
-            BASE_URL + "/",
-            referer=BASE_URL + "/",
-        )
-
-        if home is None:
-            print(
-                "NOTINO_DIAG: HOMEPAGE FAILED",
-                flush=True,
-            )
-            return []
-
-        home_soup = BeautifulSoup(home.text, "html.parser")
-        print(
-            "NOTINO_DIAG: HOMEPAGE "
-            f"status={home.status_code} "
-            f"url={home.url} "
-            f"bytes={len(home.content)} "
-            f"title={clean(home_soup.title.get_text(' ', strip=True) if home_soup.title else '')!r}",
-            flush=True,
-        )
-
         response = fetch(
             session,
             urljoin(BASE_URL, SEARCH_PATH),
             params={"exps": query},
-            referer=home.url,
         )
-
         if response is None:
-            print(
-                "NOTINO_DIAG: SEARCH FAILED",
-                flush=True,
-            )
             return []
 
         soup = BeautifulSoup(response.text, "html.parser")
-
-        anchors = soup.find_all("a", href=True)
-        all_hrefs = [
-            urljoin(response.url, clean(a.get("href")))
-            for a in anchors
-            if clean(a.get("href"))
-        ]
-        notino_hrefs = [
-            u for u in all_hrefs
-            if same_host(u)
-        ]
-
-        product_hrefs = [
-            u for u in notino_hrefs
-            if PRODUCT_ID_RE.search(urlparse(u).path + "/")
-        ]
-
-        jsonld_objects = extract_json_ld_objects(soup)
-        jsonld_types = []
-        for obj in jsonld_objects:
-            value = obj.get("@type")
-            if isinstance(value, list):
-                jsonld_types.extend(str(x) for x in value)
-            elif value:
-                jsonld_types.append(str(value))
-
-        candidates = extract_search_candidates(
-            soup,
-            response.url,
-        )
-
-        print(
-            "NOTINO_DIAG: SEARCH "
-            f"status={response.status_code} "
-            f"url={response.url} "
-            f"bytes={len(response.content)} "
-            f"title={clean(soup.title.get_text(' ', strip=True) if soup.title else '')!r}",
-            flush=True,
-        )
-
-        print(
-            "NOTINO_DIAG: STRUCTURE "
-            f"anchors={len(anchors)} "
-            f"notino_links={len(notino_hrefs)} "
-            f"p_id_links={len(product_hrefs)} "
-            f"jsonld_objects={len(jsonld_objects)} "
-            f"jsonld_types={jsonld_types[:20]} "
-            f"candidates={len(candidates)}",
-            flush=True,
-        )
-
-        for index, href in enumerate(all_hrefs[:30], 1):
-            print(
-                f"NOTINO_DIAG: HREF[{index}]={href}",
-                flush=True,
-            )
-
-        if not candidates:
-            text_preview = clean(soup.get_text(" ", strip=True))
-            print(
-                "NOTINO_DIAG: NO_CANDIDATES "
-                f"text_preview={text_preview[:1000]!r}",
-                flush=True,
-            )
-            return []
+        candidates = extract_search_candidates(soup, response.url)
 
         results = []
         seen = set()
-
-        for index, candidate in enumerate(candidates, 1):
+        for candidate in candidates:
             url = candidate["url"]
-
             if url in seen:
                 continue
             seen.add(url)
 
-            print(
-                f"NOTINO_DIAG: PRODUCT[{index}] url={url} text={candidate.get('text','')[:180]!r}",
-                flush=True,
-            )
-
-            product_response = fetch(
-                session,
-                url,
-                referer=response.url,
-            )
-
+            product_response = fetch(session, url)
             if product_response is None:
-                print(
-                    f"NOTINO_DIAG: PRODUCT[{index}] FAILED",
-                    flush=True,
-                )
                 continue
 
-            product_soup = BeautifulSoup(
-                product_response.text,
-                "html.parser",
-            )
-            product_json = extract_product_json_ld(product_soup)
-            product_name = visible_product_name(
-                product_soup,
-                product_json,
-            )
-            product_brand = visible_brand(
-                product_soup,
-                product_json,
-            )
-            product_size = extract_size_ml(
-                product_name,
-                product_soup.get_text(" ", strip=True),
-            )
-
-            print(
-                "NOTINO_DIAG: PRODUCT_DATA "
-                f"index={index} "
-                f"name={product_name!r} "
-                f"brand={product_brand!r} "
-                f"size_ml={product_size!r} "
-                f"url={product_response.url}",
-                flush=True,
-            )
-
-            product = parse_product_page(
-                product_response,
-                query,
-            )
-
+            product = parse_product_page(product_response, query)
             if product is None:
-                print(
-                    f"NOTINO_DIAG: PRODUCT[{index}] REJECTED_BY_VALIDATION",
-                    flush=True,
-                )
                 continue
 
-            key = (
-                product["url"].lower(),
-                norm(product["name"]),
-            )
-
+            key = (product["url"].lower(), norm(product["name"]))
             if key in seen:
                 continue
-
             seen.add(key)
             results.append(product)
 
-        print(
-            f"NOTINO_DIAG: END discovered={len(candidates)} validated={len(results)}",
-            flush=True,
-        )
-
         return results
-
-    except Exception as error:
-        print(
-            f"NOTINO_DIAG: EXCEPTION {type(error).__name__}: {error}",
-            flush=True,
-        )
-        raise
-
     finally:
         session.close()
+
 
 def scrape(query):
     return search(query)
