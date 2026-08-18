@@ -386,6 +386,7 @@ def search_result_urls(session, query):
     search_urls = (
         BASE_URL + SEARCH_PATH + "?s=" + quote_plus(query),
         BASE_URL + SEARCH_PATH + "?controller=search&s=" + quote_plus(query),
+        BASE_URL + "/es/buscar?s=" + quote_plus(query),
     )
 
     for search_url in search_urls:
