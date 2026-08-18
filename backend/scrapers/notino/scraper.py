@@ -311,8 +311,10 @@ def _discover_from_search_requests(session, query, max_urls=80):
     return urls[:max_urls]
 
 def _candidate_product_urls(html, query):
+    """Discover Notino FR product pages from every useful search-page representation."""
     soup = BeautifulSoup(html, 'html.parser')
     found, seen = ([], set())
+    query_norm = norm(query)
 
     def add(raw_url, context=''):
         if not raw_url:
@@ -320,20 +322,57 @@ def _candidate_product_urls(html, query):
         raw_url = clean(str(raw_url)).replace('\\/', '/').replace('\\u002F', '/')
         if raw_url.startswith('//'):
             raw_url = 'https:' + raw_url
+        elif raw_url.startswith('/'):
+            raw_url = urljoin(BASE_URL, raw_url)
         url = _normalise_url(raw_url)
         if not url or not _looks_like_product_url(url) or url in seen:
             return
-        if not matches(f'{context} {url}', query):
+        slug_text = urlparse(url).path.replace('-', ' ')
+        combined = f'{context} {slug_text}'
+        if not matches(combined, query) and query_norm not in norm(combined):
             return
         seen.add(url)
         found.append(url)
+
     attrs = ('href', 'data-href', 'data-url', 'data-product-url', 'content')
     for node in soup.find_all(True):
         context = node.get_text(' ', strip=True)
         for attr in attrs:
             add(node.get(attr), context)
-    for raw in re.findall('https?://(?:www\\.)?notino\\.fr/[^"\\\'<>\\s\\\\\\\\]+', html.replace('\\\\/', '/'), re.I):
-        add(raw)
+
+    for script in soup.select('script[type="application/ld+json"]'):
+        raw = script.string or script.get_text()
+        if not raw:
+            continue
+        try:
+            data = json.loads(raw.strip())
+        except (json.JSONDecodeError, TypeError, ValueError):
+            continue
+        for obj in _walk_json_ld(data):
+            if not isinstance(obj, dict):
+                continue
+            name = clean(obj.get('name', ''))
+            for key in ('url', '@id'):
+                value = obj.get(key)
+                if isinstance(value, str):
+                    add(value, name)
+            item = obj.get('item')
+            if isinstance(item, dict):
+                item_name = clean(item.get('name', ''))
+                for key in ('url', '@id'):
+                    value = item.get(key)
+                    if isinstance(value, str):
+                        add(value, item_name)
+
+    decoded = html.replace('\\/', '/').replace('\\u002F', '/')
+    patterns = [
+        r'(?:https?:)?//(?:www\.)?notino\.fr/[^"\'<>\s\\]+',
+        r'["\'](/[^"\'<>\s\\]*?/p-\d+/?[^"\'<>\s\\]*)["\']',
+    ]
+    for pattern in patterns:
+        for raw in re.findall(pattern, decoded, re.I):
+            add(raw)
+
     return found
 
 def _discover(session, query):
