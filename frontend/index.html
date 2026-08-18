@@ -142,7 +142,7 @@ body{position:relative}
 .product-choice{margin-top:12px;padding:15px;border:1px solid #303238;border-radius:18px;background:#121416;display:flex;gap:13px;align-items:center;cursor:pointer;touch-action:pan-y;-webkit-tap-highlight-color:transparent}
 .product-choice-main{min-width:0;flex:1}.product-choice .arrow{color:#e7b83f;font-size:28px}
 .detail-back{background:none;color:#e7b83f;padding:0 0 12px;font-size:14px;cursor:pointer}
-.offer-heart{background:none;color:#aaa;font-size:26px;cursor:pointer;padding:0 4px}.offer-heart.saved{color:#e7b83f}
+.offer-heart{background:none;color:#aaa;font-size:26px;cursor:pointer;padding:0 4px;opacity:1!important;pointer-events:auto!important;touch-action:manipulation}.offer-heart.saved{color:#e7b83f}
 .offer-line{display:flex;justify-content:space-between;align-items:center;gap:10px}
  
  .format-icon{width:52px;height:60px;flex:0 0 52px;border:1px solid #30343a;border-radius:14px;background:#0b0d0e;display:flex;align-items:center;justify-content:center;font-size:28px}
@@ -317,9 +317,9 @@ body{position:relative}
 
 <div class="sectionhead"><h3>OFFERTE DEL MOMENTO</h3><span class="see">Vedi tutte</span></div>
 <section class="deals">
-<div class="deal"><span class="discount">-23%</span><span class="heart" data-brand="Rasasi" data-name="Hawas Ice" data-price="€39,95" data-shop="ProfumoCity" data-pic="🧴" onclick="event.stopPropagation();toggleWishButton(this)">♡</span><div class="pic">🧴</div><div class="brand">Rasasi</div><div class="pname">Hawas Ice</div><div class="dprice">€39,95</div><div class="shop">ProfumoCity</div></div>
-<div class="deal"><span class="discount">-18%</span><span class="heart" data-brand="Azzaro" data-name="The Most Wanted" data-price="€59,90" data-shop="Deloox" data-pic="♟" onclick="event.stopPropagation();toggleWishButton(this)">♡</span><div class="pic">♟</div><div class="brand">Azzaro</div><div class="pname">The Most Wanted</div><div class="dprice">€59,90</div><div class="shop">Deloox</div></div>
-<div class="deal"><span class="discount">-21%</span><span class="heart" data-brand="Jean Paul Gaultier" data-name="Le Male Le Parfum" data-price="€67,45" data-shop="ParfumDreams" data-pic="🏺" onclick="event.stopPropagation();toggleWishButton(this)">♡</span><div class="pic">🏺</div><div class="brand">Jean Paul Gaultier</div><div class="pname">Le Male Le Parfum</div><div class="dprice">€67,45</div><div class="shop">ParfumDreams</div></div>
+<div class="deal"><span class="discount">-23%</span><span class="heart" data-brand="Rasasi" data-name="Hawas Ice" data-price="€39,95" data-shop="ProfumoCity" data-pic="🧴">♡</span><div class="pic">🧴</div><div class="brand">Rasasi</div><div class="pname">Hawas Ice</div><div class="dprice">€39,95</div><div class="shop">ProfumoCity</div></div>
+<div class="deal"><span class="discount">-18%</span><span class="heart" data-brand="Azzaro" data-name="The Most Wanted" data-price="€59,90" data-shop="Deloox" data-pic="♟">♡</span><div class="pic">♟</div><div class="brand">Azzaro</div><div class="pname">The Most Wanted</div><div class="dprice">€59,90</div><div class="shop">Deloox</div></div>
+<div class="deal"><span class="discount">-21%</span><span class="heart" data-brand="Jean Paul Gaultier" data-name="Le Male Le Parfum" data-price="€67,45" data-shop="ParfumDreams" data-pic="🏺">♡</span><div class="pic">🏺</div><div class="brand">Jean Paul Gaultier</div><div class="pname">Le Male Le Parfum</div><div class="dprice">€67,45</div><div class="shop">ParfumDreams</div></div>
 </section>
 
 <section class="cats"><h3>CATEGORIE</h3><div class="catrow"><div class="cat"><b>♙</b>Profumi</div><div class="cat"><b>☆</b>Bestseller</div><div class="cat"><b>♧</b>Novità</div><div class="cat"><b>%</b>Offerte</div><div class="cat"><b>◇</b>Esclusivi</div></div></section>
@@ -646,8 +646,22 @@ function syncHearts(){
   });
 }
 document.addEventListener("click",e=>{
-  const h=e.target.closest(".heart[data-name],.wish-result[data-name]");
-  if(h){toggleWish({brand:h.dataset.brand||"",name:h.dataset.name||"",price:h.dataset.price||"",shop:h.dataset.shop||"",url:h.dataset.url||"",pic:h.dataset.pic||"🧴"});return}
+  const h=e.target.closest(".heart[data-name],.wish-result[data-name],.offer-heart[data-name]");
+  if(h){
+    e.preventDefault();
+    e.stopPropagation();
+    toggleWish({
+      brand:h.dataset.brand||"",
+      name:h.dataset.name||"",
+      price:h.dataset.price||"",
+      shop:h.dataset.shop||"",
+      url:h.dataset.url||"",
+      pic:h.dataset.pic||"🧴",
+      outOfStock:h.classList.contains("offer-heart") && h.dataset.price===""
+    });
+    syncHearts();
+    return;
+  }
   const r=e.target.closest("[data-remove]");if(r){removeWish(r.dataset.remove);return}
   const nav=e.target.closest(".navitem[data-view]");
   if(nav){
@@ -1637,7 +1651,7 @@ function openProduct(i){
                 data-shop="${esc(item.shop)}"
                 data-url="${esc(item.url)}"
                 data-pic="${esc(item.pic)}"
-                onclick="event.stopPropagation();chooseOffer(${i},${JSON.stringify(s.size)},${n})">${on?"♥":"♡"}</button>
+                >${on?"♥":"♡"}</button>
             </div>
           </div>
           ${(!isOut&&o.url)?`<a class="offer-link" href="${esc(o.url)}" target="_blank" rel="noopener noreferrer">Vai al negozio →</a>`:""}
@@ -1731,7 +1745,7 @@ function openSize(gi,sizeKey,fromFormats=true){
               data-shop="${esc(item.shop)}"
               data-url="${esc(item.url)}"
               data-pic="${esc(item.pic)}"
-              onclick="event.stopPropagation();chooseOffer(${gi},${JSON.stringify(sizeKey)},${n})">${on?"♥":"♡"}</button>
+              >${on?"♥":"♡"}</button>
           </div>
         </div>
         ${(!isOut&&o.url)?`<a class="offer-link" href="${esc(o.url)}" target="_blank" rel="noopener noreferrer">Vai al negozio →</a>`:""}
