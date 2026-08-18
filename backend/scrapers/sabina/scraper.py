@@ -1,477 +1,108 @@
-import re
 import json
-import sys
+import re
 import time
-import html as html_lib
-from urllib.parse import quote_plus, urljoin
+import unicodedata
+import xml.etree.ElementTree as ET
+from urllib.parse import quote_plus, unquote, urljoin, urlparse
 
 import requests
 from bs4 import BeautifulSoup
 
 STORE = "Sabina"
 BASE = "https://www.sabina.com"
-TIMEOUT = 6
+
+# Diagnostic deliberately uses a short per-request timeout and NEVER hides
+# which request failed. The production scraper is not modified by this file.
+TIMEOUT = 10
+
 HEADERS = {
     "User-Agent": (
         "Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) "
-        "AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.0 "
-        "Mobile/15E148 Safari/604.1"
+        "AppleWebKit/605.1.15 (KHTML, like Gecko) "
+        "Version/18.0 Mobile/15E148 Safari/604.1"
     ),
-    "Accept-Language": "it-IT,it;q=0.9,en;q=0.7",
-    "Accept": "text/html,application/xhtml+xml,application/json;q=0.9,*/*;q=0.8",
-    "Referer": BASE + "/it/",
+    "Accept": "text/html,application/xhtml+xml,application/json,*/*;q=0.8",
+    "Accept-Language": "fr-FR,fr;q=0.9,it-IT,it;q=0.8,en;q=0.7",
+    "Connection": "keep-alive",
 }
-PRICE_RE = re.compile(r"(?:€|\$|£)\s*(\d{1,4}(?:[.,]\d{2}))|(?<!\d)(\d{1,4}(?:[.,]\d{2}))\s*(?:€|\$|£)", re.I)
-PRODUCT_URL_RE = re.compile(
-    r"^https?://(?:www\.)?sabina\.com/(?:it|fr|en|es|de|pt)/"
-    r"(?!content|ricerca|ricerca_old|marchi|negozi|contatto|faq|"
-    r"carrello|ordine|stato-ordine|il-mio-conto|module)", re.I
+
+STOPWORDS = {
+    "eau", "de", "du", "des", "the", "for", "and", "with",
+    "spray", "ml", "man", "men", "woman", "women",
+    "homme", "femme", "herren", "damen", "parfum",
+}
+
+PRODUCT_RE = re.compile(
+    r"^https?://(?:www\.)?sabina\.com/(?:[a-z]{2}/)?[^?#]*/\d+-[^?#]+\.html$",
+    re.I,
 )
 
-def _clean(value):
-    return re.sub(r"\s+", " ", html_lib.unescape(str(value or ""))).strip()
 
-def _price(value):
-    if value is None:
+def clean(value):
+    return re.sub(r"\s+", " ", str(value or "").replace("\xa0", " ")).strip()
+
+
+def norm(value):
+    value = unicodedata.normalize("NFKD", clean(value)).lower()
+    value = "".join(c for c in value if not unicodedata.combining(c))
+    value = re.sub(r"(?<=\d)(?=[a-z])|(?<=[a-z])(?=\d)", " ", value)
+    value = re.sub(r"[^a-z0-9]+", " ", value)
+    return re.sub(r"\s+", " ", value).strip()
+
+
+def tokens(value):
+    return [x for x in norm(value).split() if len(x) > 1 and x not in STOPWORDS]
+
+
+def matches(text, query):
+    wanted = tokens(query)
+    hay = set(tokens(text))
+    return bool(wanted) and all(t in hay for t in wanted)
+
+
+def price_value(value):
+    if value in (None, ""):
         return None
-    if isinstance(value, (int, float)):
-        return f"{float(value):.2f}".replace(".", ",") + " €"
-    text = _clean(value)
-    m = PRICE_RE.search(text) or re.search(r"(?<!\d)(\d{1,4}(?:[.,]\d{2}))(?!\d)", text)
-    value = next((g for g in m.groups() if g is not None), None) if m else None
-    return (value.replace(".", ",") + " €") if value else None
+    if isinstance(value, (int, float)) and not isinstance(value, bool):
+        return float(value)
+    text = clean(value)
+    # Handles both 29,99 and 29.99 without trying to interpret arbitrary
+    # numbers elsewhere in the page.
+    m = re.search(r"(?<!\d)(\d+(?:[.,]\d{1,2})?)\s*(?:€|EUR)", text, re.I)
+    if not m:
+        m = re.search(r"(?<!\d)(\d+[.,]\d{2})(?!\d)", text)
+    if not m:
+        return None
+    try:
+        return float(m.group(1).replace(",", "."))
+    except ValueError:
+        return None
 
-def _looks_like_product_url(url):
-    return bool(url and PRODUCT_URL_RE.match(url))
 
-def _query_matches(name, url, query):
-    """Match against both visible product name and product URL.
+def format_price(value):
+    p = price_value(value)
+    return f"{p:.2f}".replace(".", ",") + " €" if p is not None else ""
 
-    Sabina may put searchable terms in the product URL even when the
-    clickable product title is incomplete. Matching therefore uses both
-    normalized product text and URL text.
-    """
-    q_words = [w for w in re.findall(r"[a-z0-9À-ÿ]+", _clean(query).lower()) if len(w) > 1]
-    if not q_words:
+
+def product_url(url):
+    try:
+        return bool(PRODUCT_RE.match(urljoin(BASE, str(url or ""))))
+    except Exception:
         return False
-    hay = f"{_clean(name).lower()} {str(url or '').lower().replace('-', ' ')}"
-    return all(w in hay for w in q_words)
-
-def _extract_size_from_html(text):
-    if not text:
-        return ""
-    try:
-        soup = BeautifulSoup(text, "html.parser")
-        for script in soup.select('script[type="application/ld+json"]'):
-            try:
-                data = json.loads(script.get_text(strip=True))
-            except Exception:
-                continue
-            stack = [data]
-            while stack:
-                obj = stack.pop()
-                if isinstance(obj, dict):
-                    for k, v in obj.items():
-                        if str(k).lower() in {"size", "volume", "netcontent", "capacity", "contentvolume"}:
-                            m = re.search(r"(?<!\d)(\d{2,4})\s*ml\b", str(v), re.I)
-                            if m:
-                                return m.group(1)
-                        if isinstance(v, (dict, list)):
-                            stack.append(v)
-                elif isinstance(obj, list):
-                    stack.extend(obj)
-    except Exception:
-        pass
-    soup = BeautifulSoup(text, "html.parser")
-    visible = _clean(soup.get_text(" ", strip=True))
-    for pattern in (
-        r"(?:dimensione|tamaño|taille|größe|groesse|size)\s*:?\s*(\d{2,4})\s*ml\b",
-        r"(?:dimensione|tamaño|taille|größe|groesse|size)[^0-9]{0,120}(\d{2,4})\s*ml\b",
-    ):
-        m = re.search(pattern, visible, re.I)
-        if m:
-            return m.group(1)
-    return ""
-
-def _enrich_product_sizes(session, rows):
-    out, cache = [], {}
-    requests_used = 0
-    for row in rows:
-        item = dict(row)
-        m = re.search(r"\b(\d{1,4})\s*ml\b", _clean(item.get("name")), re.I)
-        if m:
-            item["size_ml"] = m.group(1)
-            out.append(item)
-            continue
-        url = str(item.get("url") or "").split("#")[0]
-        size = cache.get(url, "")
-        if url and not size and requests_used < 3:
-            requests_used += 1
-            try:
-                r = _get(session, url)
-                if r is not None:
-                    size = _extract_size_from_html(r.text)
-                    r.close()
-            except Exception:
-                size = ""
-            cache[url] = size
-        if size:
-            item["size_ml"] = size
-        out.append(item)
-    return out
-
-def _dedupe(rows, query):
-    out, seen = [], set()
-    for row in rows:
-        name = _clean(row.get("name"))
-        url = str(row.get("url") or "")
-        price = _price(row.get("price"))
-        if not name or not url or not price:
-            continue
-        if not _query_matches(name, url, query):
-            continue
-        key = (name.lower(), url.split("?")[0].split("#")[0])
-        if key in seen:
-            continue
-        seen.add(key)
-        item = {"store": STORE, "name": name, "price": price, "url": url.split("#")[0]}
-        if row.get("size_ml"):
-            item["size_ml"] = str(row["size_ml"])
-        out.append(item)
-    return out
-
-def _walk_json(obj, query):
-    rows = []
-    def walk(x):
-        if isinstance(x, dict):
-            low = {str(k).lower(): v for k, v in x.items()}
-            name = next((low[k] for k in ("name", "product_name", "productname", "title", "label") if k in low and isinstance(low[k], (str, int, float))), None)
-            url = next((low[k] for k in ("url", "link", "product_url", "producturl", "href") if k in low and isinstance(low[k], str)), None)
-            price = next((low[k] for k in ("price", "final_price", "finalprice", "sale_price", "saleprice", "price_amount", "priceamount") if k in low), None)
-            if url:
-                url = urljoin(BASE, url)
-            if name and url and _looks_like_product_url(url) and _price(price):
-                rows.append({"store": STORE, "name": str(name), "price": price, "url": url})
-            for v in x.values():
-                if isinstance(v, (dict, list)):
-                    walk(v)
-        elif isinstance(x, list):
-            for v in x:
-                walk(v)
-    walk(obj)
-    return _dedupe(rows, query)
-
-def _parse_html(text, query):
-    soup = BeautifulSoup(text, "html.parser")
-    rows = []
-    for script in soup.select('script[type="application/ld+json"]'):
-        try:
-            rows.extend(_walk_json(json.loads(script.get_text(strip=True)), query))
-        except Exception:
-            pass
-    for a in soup.find_all("a", href=True):
-        url = urljoin(BASE, a["href"])
-        if not _looks_like_product_url(url):
-            continue
-        container = a
-        for _ in range(7):
-            parent = getattr(container, "parent", None)
-            if not parent:
-                break
-            container = parent
-            txt = _clean(container.get_text(" ", strip=True))
-            if re.search(r"(?:€|\$|£)", txt) and len(txt) < 1800:
-                break
-        text_block = _clean(container.get_text(" ", strip=True))
-        pm = PRICE_RE.search(text_block)
-        if not pm:
-            continue
-        candidates = [a.get("title"), a.get("aria-label"), a.get_text(" ", strip=True)]
-        for sel in ("h1", "h2", "h3", "h4", ".name", ".product-name", ".product-title", ".product-item-name"):
-            for el in container.select(sel):
-                candidates.append(el.get_text(" ", strip=True))
-        cleaned = [_clean(x) for x in candidates if _clean(x)]
-        if not cleaned:
-            continue
-        # Prefer the candidate that best represents the product title.
-        # The score is entirely generic: query-token coverage first, then
-        # semantic title attributes and reasonable title length.
-        q_tokens = [
-            token for token in re.findall(r"[a-z0-9à-ÿ]+", _clean(query).lower())
-            if len(token) > 1
-        ]
-
-        def candidate_score(candidate):
-            value = _clean(candidate)
-            normalized = value.lower().replace("-", " ").replace("_", " ")
-            token_hits = sum(1 for token in q_tokens if token in normalized)
-            ui_penalty = 100 if normalized in {
-                "vedi", "vedi tutto", "acquista", "immagine", "comprar",
-                "buy", "see all", "view all", "add to cart", "carrello"
-            } else 0
-            length_penalty = max(0, len(value) - 180)
-            return (token_hits, -ui_penalty, -length_penalty, -len(value))
-
-        name = max(cleaned, key=candidate_score)
-        if name.lower() in {"vedi", "vedi tutto", "acquista", "immagine"}:
-            continue
-        rows.append({"store": STORE, "name": name, "price": next((g for g in pm.groups() if g is not None), "") .replace(".", ",") + " €", "url": url})
-    return _dedupe(rows, query)
 
 
-def _query_tokens(query):
-    text = _clean(query).lower()
-    text = re.sub(r"(?<=\d)(?=[a-zà-ÿ])|(?<=[a-zà-ÿ])(?=\d)", " ", text)
-    text = re.sub(r"[^a-z0-9à-ÿ]+", " ", text)
-    return [token for token in text.split() if len(token) > 1]
+def _request(session, label, url, **kwargs):
+    """
+    Diagnostic request wrapper.
 
+    IMPORTANT:
+    Every request prints START before network I/O and END/ERROR after it.
+    This prevents the previous failure mode where the log stopped at
+    SABINA_DIAG: TOKENS and gave us no idea which request was hanging.
+    """
+    started = time.monotonic()
+    print(f"SABINA_DIAG: HTTP_START label={label} url={url}", flush=True)
 
-def _query_match_score(name, url, query):
-    wanted = _query_tokens(query)
-    if not wanted:
-        return 0
-    hay = _clean(f"{name} {url}").lower().replace("-", " ").replace("_", " ")
-    return sum(1 for token in wanted if token in hay)
-
-
-def _extract_product_links_from_html(text, query):
-    soup = BeautifulSoup(text, "html.parser")
-    found = []
-    seen = set()
-    wanted_count = len(_query_tokens(query))
-
-    for anchor in soup.find_all("a", href=True):
-        url = urljoin(BASE, anchor.get("href") or "").split("#")[0]
-        if not _looks_like_product_url(url):
-            continue
-
-        candidates = [
-            anchor.get("title"),
-            anchor.get("aria-label"),
-            anchor.get_text(" ", strip=True),
-            anchor.find("img").get("alt") if anchor.find("img") else None,
-        ]
-
-        node = anchor
-        for _ in range(7):
-            node = getattr(node, "parent", None)
-            if node is None:
-                break
-            for selector in (
-                '[itemprop="name"]',
-                ".product-name",
-                ".product-title",
-                ".product-item-name",
-                ".product-name-container",
-                ".product-title-container",
-                "h2", "h3", "h4",
-            ):
-                for element in node.select(selector):
-                    candidates.append(element.get_text(" ", strip=True))
-            block = _clean(node.get_text(" ", strip=True))
-            if block:
-                candidates.append(block)
-            if re.search(r"(?:€|\$|£)", block) and len(block) < 2200:
-                break
-
-        score = max(
-            (_query_match_score(candidate, url, query)
-             for candidate in candidates if _clean(candidate)),
-            default=_query_match_score("", url, query),
-        )
-
-        if score < wanted_count:
-            continue
-
-        path = url.split("?", 1)[0]
-        if path not in seen:
-            seen.add(path)
-            found.append((score, path))
-
-    found.sort(key=lambda item: item[0], reverse=True)
-    return [url for _, url in found]
-
-
-def _discover_from_search_page(session, query):
-    urls = []
-    seen = set()
-    q = quote_plus(query)
-
-    # Multiple generic forms of the site's own search endpoint. No product
-    # or brand is embedded here; the runtime query is always supplied by the
-    # caller.
-    search_urls = [
-        BASE + "/it/ricerca?controller=search&s=" + q,
-        BASE + "/it/ricerca?s=" + q,
-        BASE + "/it/ricerca?search_query=" + q,
-        BASE + "/it/ricerca_old?s=" + q,
-        BASE + "/it/ricerca_old?search_query=" + q,
-    ]
-
-    for url in search_urls:
-        try:
-            response = _get(session, url)
-            if response is None:
-                continue
-            links = _extract_product_links_from_html(response.text, query)
-            response.close()
-        except requests.RequestException:
-            continue
-
-        for product_url in links:
-            if product_url not in seen:
-                seen.add(product_url)
-                urls.append(product_url)
-
-    return urls
-
-
-def _xml_locs(text):
-    try:
-        import xml.etree.ElementTree as ET
-        root = ET.fromstring(text)
-        return [
-            element.text.strip()
-            for element in root.iter()
-            if element.tag.lower().endswith("loc")
-            and element.text and element.text.strip()
-        ]
-    except Exception:
-        return re.findall(r"<loc>\s*(.*?)\s*</loc>", text, flags=re.I | re.S)
-
-
-def _discover_from_sitemap(session, query):
-    # Sitemap discovery is only a generic fallback when the site's search
-    # response does not expose usable product links.
-    candidates = [
-        BASE + "/sitemap.xml",
-        BASE + "/1_index_sitemap.xml",
-        BASE + "/it/sitemap.xml",
-        BASE + "/en/sitemap.xml",
-    ]
-
-    try:
-        response = _get(session, BASE + "/robots.txt")
-        if response is not None:
-            for line in response.text.splitlines():
-                if line.lower().startswith("sitemap:"):
-                    sitemap = line.split(":", 1)[1].strip()
-                    if sitemap and sitemap not in candidates:
-                        candidates.insert(0, sitemap)
-            response.close()
-    except requests.RequestException:
-        pass
-
-    product_urls = []
-    child_maps = []
-    seen_maps = set()
-
-    for sitemap in candidates:
-        if sitemap in seen_maps:
-            continue
-        seen_maps.add(sitemap)
-        try:
-            response = _get(session, sitemap)
-            if response is None:
-                continue
-            locations = _xml_locs(response.text)
-            response.close()
-        except requests.RequestException:
-            continue
-
-        for loc in locations:
-            if loc.lower().endswith(".xml") and "sitemap" in loc.lower():
-                child_maps.append(loc)
-            elif _looks_like_product_url(loc):
-                product_urls.append(loc)
-
-    # Follow a bounded number of child maps to avoid turning the fallback
-    # into a full-site crawl.
-    for sitemap in child_maps[:16]:
-        if sitemap in seen_maps:
-            continue
-        seen_maps.add(sitemap)
-        try:
-            response = _get(session, sitemap)
-            if response is None:
-                continue
-            locations = _xml_locs(response.text)
-            response.close()
-        except requests.RequestException:
-            continue
-        product_urls.extend(
-            loc for loc in locations if _looks_like_product_url(loc)
-        )
-
-    wanted_count = len(_query_tokens(query))
-    output = []
-    seen = set()
-    for url in product_urls:
-        clean_url = url.split("#")[0].split("?")[0]
-        if clean_url in seen:
-            continue
-        seen.add(clean_url)
-        if _query_match_score("", clean_url, query) == wanted_count:
-            output.append(clean_url)
-
-    return output
-
-
-def _discover_from_json_endpoints(session, query):
-    urls = []
-    seen = set()
-    endpoints = [
-        (BASE + "/it/ricerca", {"s": query, "ajax": "1"}),
-        (BASE + "/it/ricerca", {"search_query": query, "ajax": "1"}),
-        (BASE + "/it/ricerca_old", {"s": query, "ajax": "1"}),
-        (BASE + "/it/ricerca_old", {"search_query": query, "ajax": "1"}),
-    ]
-
-    for endpoint, params in endpoints:
-        try:
-            response = session.get(
-                endpoint,
-                params=params,
-                headers={**HEADERS, "X-Requested-With": "XMLHttpRequest"},
-                timeout=TIMEOUT,
-            )
-            if response.status_code in (403, 429) or not response.ok:
-                response.close()
-                continue
-            text = response.text
-            response.close()
-
-            try:
-                data = json.loads(text)
-                rows = _walk_json(data, query)
-                candidates = [row["url"] for row in rows]
-            except Exception:
-                candidates = _extract_product_links_from_html(text, query)
-
-            for url in candidates:
-                clean_url = url.split("#")[0].split("?")[0]
-                if clean_url not in seen and _looks_like_product_url(clean_url):
-                    seen.add(clean_url)
-                    urls.append(clean_url)
-        except (requests.RequestException, ValueError, TypeError):
-            continue
-
-    return urls
-
-def _get(session, url, **kwargs):
-    r = session.get(url, headers=HEADERS, timeout=TIMEOUT, allow_redirects=True, **kwargs)
-    if r.status_code in (403, 429):
-        print(f"SABINA BLOCKED: HTTP {r.status_code}")
-        r.close()
-        return None
-    r.raise_for_status()
-    return r
-
-
-LAST_DIAG = {}
-
-def _diag_get(session, url, label, report, **kwargs):
-    t0 = time.time()
     try:
         response = session.get(
             url,
@@ -480,268 +111,705 @@ def _diag_get(session, url, label, report, **kwargs):
             allow_redirects=True,
             **kwargs,
         )
-        rec = {
-            "label": label,
-            "requested_url": url,
-            "final_url": response.url,
-            "status": response.status_code,
-            "content_type": response.headers.get("content-type", ""),
-            "bytes": len(response.content),
-            "elapsed_ms": round((time.time() - t0) * 1000),
-        }
-        report["probes"].append(rec)
-        return response, rec
+        elapsed = round(time.monotonic() - started, 3)
+        content_type = response.headers.get("content-type", "")
+        print(
+            f"SABINA_DIAG: HTTP_END label={label} "
+            f"status={response.status_code} "
+            f"elapsed={elapsed}s "
+            f"final={response.url} "
+            f"bytes={len(response.content)} "
+            f"type={content_type!r} "
+            f"server={response.headers.get('server')!r} "
+            f"cf_ray={response.headers.get('cf-ray')!r}",
+            flush=True,
+        )
+        return response
+
+    except requests.RequestException as exc:
+        elapsed = round(time.monotonic() - started, 3)
+        print(
+            f"SABINA_DIAG: HTTP_ERROR label={label} "
+            f"elapsed={elapsed}s "
+            f"error={type(exc).__name__}: {exc}",
+            flush=True,
+        )
+        return None
     except Exception as exc:
-        rec = {
-            "label": label,
-            "requested_url": url,
-            "error": f"{type(exc).__name__}: {exc}",
+        elapsed = round(time.monotonic() - started, 3)
+        print(
+            f"SABINA_DIAG: HTTP_EXCEPTION label={label} "
+            f"elapsed={elapsed}s "
+            f"error={type(exc).__name__}: {exc}",
+            flush=True,
+        )
+        return None
+
+
+def _challenge_words(html):
+    low = (html or "").lower()
+    words = (
+        "captcha",
+        "cloudflare",
+        "attention required",
+        "verify you are human",
+        "cf-chl",
+        "challenge-platform",
+        "access denied",
+        "forbidden",
+    )
+    return [x for x in words if x in low]
+
+
+def _discover_from_html(html, base_url, query, stage):
+    soup = BeautifulSoup(html, "html.parser")
+    found = []
+    seen = set()
+    wanted = tokens(query)
+
+    for anchor in soup.find_all("a", href=True):
+        url = urljoin(base_url, anchor.get("href") or "").split("#")[0]
+        if not product_url(url) or url in seen:
+            continue
+
+        anchor_text = clean(
+            anchor.get("title")
+            or anchor.get("aria-label")
+            or anchor.get_text(" ", strip=True)
+        )
+
+        slug = unquote(urlparse(url).path.rsplit("/", 1)[-1])
+
+        nearby = anchor
+        nearby_text = ""
+        for _ in range(5):
+            nearby = getattr(nearby, "parent", None)
+            if nearby is None:
+                break
+            candidate = clean(nearby.get_text(" ", strip=True))
+            if len(candidate) <= 1500:
+                nearby_text = candidate
+                break
+
+        score_anchor = sum(t in norm(anchor_text) for t in wanted)
+        score_slug = sum(t in norm(slug) for t in wanted)
+        score_nearby = sum(t in norm(nearby_text) for t in wanted)
+
+        # Diagnostic records product URLs even when the query terms are not
+        # in the anchor. This is important: Sabina may render product cards
+        # whose visible text is generated elsewhere in the card.
+        if score_anchor == 0 and score_slug == 0 and score_nearby == 0:
+            continue
+
+        seen.add(url)
+        found.append({
+            "url": url,
+            "anchor_text": anchor_text,
+            "slug": slug,
+            "nearby_text": nearby_text[:500],
+            "score_anchor": score_anchor,
+            "score_slug": score_slug,
+            "score_nearby": score_nearby,
+            "stage": stage,
+        })
+
+    return found
+
+
+def _extract_all_product_urls(html, base_url):
+    soup = BeautifulSoup(html, "html.parser")
+    urls = []
+    seen = set()
+
+    for anchor in soup.find_all("a", href=True):
+        url = urljoin(base_url, anchor.get("href") or "").split("#")[0]
+        if product_url(url) and url not in seen:
+            seen.add(url)
+            urls.append(url)
+
+    return urls
+
+
+def _product_page_diagnostics(session, candidate, query, index):
+    url = candidate["url"]
+    response = _request(session, f"VERIFY_{index}", url)
+
+    if response is None:
+        return {
+            "url": url,
+            "status": "request_error",
+            "title": "",
+            "matches_title": False,
+            "price": None,
+            "challenge": [],
         }
-        report["probes"].append(rec)
-        return None, rec
 
+    final_url = response.url
+    status = response.status_code
+    html = response.text
+    challenge = _challenge_words(html)
 
-def _diagnostic_search(query):
-    query = _clean(query)
-    report = {
-        "query": query,
-        "tokens": _query_tokens(query),
-        "probes": [],
-        "stages": {},
-        "candidate_urls": [],
-        "verified": [],
+    if status != 200:
+        response.close()
+        return {
+            "url": final_url,
+            "status": status,
+            "title": "",
+            "matches_title": False,
+            "price": None,
+            "challenge": challenge,
+        }
+
+    soup = BeautifulSoup(html, "html.parser")
+
+    h1 = soup.find("h1")
+    title = clean(h1.get_text(" ", strip=True)) if h1 else ""
+
+    if not title:
+        meta = soup.select_one("meta[property='og:title']")
+        title = clean(meta.get("content")) if meta else ""
+
+    if not title:
+        title_tag = soup.find("title")
+        title = clean(title_tag.get_text(" ", strip=True)) if title_tag else ""
+
+    price = None
+
+    # JSON-LD first.
+    for script in soup.find_all("script", type=lambda x: x and "ld+json" in x):
+        try:
+            data = json.loads(script.get_text())
+        except Exception:
+            continue
+
+        stack = data if isinstance(data, list) else [data]
+
+        while stack:
+            item = stack.pop()
+
+            if isinstance(item, list):
+                stack.extend(item)
+                continue
+
+            if not isinstance(item, dict):
+                continue
+
+            typ = item.get("@type")
+            is_product = typ == "Product" or (
+                isinstance(typ, list) and "Product" in typ
+            )
+
+            if is_product:
+                offers = item.get("offers")
+                offers = offers if isinstance(offers, list) else [offers]
+
+                for offer in offers:
+                    if isinstance(offer, dict):
+                        p = price_value(
+                            offer.get("price")
+                            or offer.get("lowPrice")
+                            or offer.get("highPrice")
+                        )
+                        if p is not None:
+                            price = p
+                            break
+
+            if price is not None:
+                break
+
+            for value in item.values():
+                if isinstance(value, (dict, list)):
+                    stack.append(value)
+
+        if price is not None:
+            break
+
+    if price is None:
+        for selector in (
+            "[itemprop='price']",
+            "meta[property='product:price:amount']",
+            ".product-price",
+            ".current-price",
+            ".price",
+        ):
+            node = soup.select_one(selector)
+            if node:
+                value = node.get("content") or node.get_text(" ", strip=True)
+                price = price_value(value)
+                if price is not None:
+                    break
+
+    response.close()
+
+    return {
+        "url": final_url,
+        "status": status,
+        "title": title,
+        "matches_title": matches(title, query),
+        "price": price,
+        "challenge": challenge,
     }
 
-    print(f"SABINA_DIAG: START query={query!r}", flush=True)
-    print(f"SABINA_DIAG: TOKENS={report['tokens']}", flush=True)
+
+def _sitemap_diagnostics(session, query):
+    """
+    Diagnostic-only sitemap probe.
+
+    It does NOT crawl the whole site. It only determines whether Sabina
+    exposes product URLs through a sitemap and whether the query can reach
+    one of them.
+    """
+    sources = [
+        BASE + "/sitemap.xml",
+        BASE + "/sitemap_index_shop_1.xml",
+        BASE + "/fr/sitemap.xml",
+    ]
+
+    matching = []
+
+    for idx, url in enumerate(sources, 1):
+        response = _request(session, f"SITEMAP_{idx}", url)
+
+        if response is None:
+            continue
+
+        if response.status_code != 200:
+            response.close()
+            continue
+
+        text = response.text
+        response.close()
+
+        try:
+            root = ET.fromstring(text)
+            locs = [
+                node.text.strip()
+                for node in root.iter()
+                if node.tag.endswith("loc") and node.text
+            ]
+        except ET.ParseError:
+            locs = re.findall(
+                r"<loc>\s*(.*?)\s*</loc>",
+                text,
+                flags=re.I | re.S,
+            )
+
+        print(
+            f"SABINA_DIAG: SITEMAP_{idx}_LOCS={len(locs)}",
+            flush=True,
+        )
+
+        direct_products = [u for u in locs if product_url(u)]
+
+        if direct_products:
+            hits = [
+                u for u in direct_products
+                if matches(unquote(u), query)
+            ]
+            print(
+                f"SABINA_DIAG: SITEMAP_{idx}_DIRECT_PRODUCTS="
+                f"{len(direct_products)} "
+                f"MATCHES={len(hits)}",
+                flush=True,
+            )
+            matching.extend(hits[:10])
+            continue
+
+        children = [
+            u for u in locs
+            if u.lower().split("?", 1)[0].endswith(".xml")
+        ]
+
+        for child_index, child_url in enumerate(children[:20], 1):
+            response = _request(
+                session,
+                f"SITEMAP_{idx}_CHILD_{child_index}",
+                child_url,
+            )
+            if response is None:
+                continue
+
+            if response.status_code != 200:
+                response.close()
+                continue
+
+            child_text = response.text
+            response.close()
+
+            child_locs = re.findall(
+                r"<loc>\s*(.*?)\s*</loc>",
+                child_text,
+                flags=re.I | re.S,
+            )
+
+            hits = [
+                u for u in child_locs
+                if product_url(u) and matches(unquote(u), query)
+            ]
+
+            print(
+                f"SABINA_DIAG: SITEMAP_CHILD_RESULT "
+                f"url={child_url} "
+                f"locs={len(child_locs)} "
+                f"matches={len(hits)}",
+                flush=True,
+            )
+
+            if hits:
+                matching.extend(hits[:10])
+                break
+
+    deduped = []
+    seen = set()
+
+    for url in matching:
+        if url not in seen:
+            seen.add(url)
+            deduped.append(url)
+
+    print(
+        f"SABINA_DIAG: SITEMAP_MATCHING_PRODUCTS={len(deduped)}",
+        flush=True,
+    )
+    return deduped[:20]
+
+
+def _native_search_diagnostics(session, query):
+    """
+    Test the native search routes one by one.
+
+    The important difference from the previous diagnostic is that every
+    request is observable. We also count ALL product URLs on a successful
+    search page before applying query matching.
+    """
+    encoded = quote_plus(query)
+
+    urls = [
+        ("SEARCH_FR_1", BASE + "/fr/recherche?search_query=" + encoded),
+        ("SEARCH_FR_2", BASE + "/fr/recherche?s=" + encoded),
+        ("SEARCH_FR_3", BASE + "/fr/search?s=" + encoded),
+        ("SEARCH_FR_4", BASE + "/fr/search?q=" + encoded),
+        ("SEARCH_IT_1", BASE + "/it/ricerca?search_query=" + encoded),
+        ("SEARCH_IT_2", BASE + "/it/ricerca_old?s=" + encoded),
+        ("SEARCH_IT_3", BASE + "/it/ricerca_old?search_query=" + encoded),
+    ]
+
+    candidates = []
+
+    for label, url in urls:
+        response = _request(session, label, url)
+
+        if response is None:
+            continue
+
+        status = response.status_code
+        final_url = response.url
+        html = response.text if status == 200 else ""
+        challenge = _challenge_words(html)
+
+        if challenge:
+            print(
+                f"SABINA_DIAG: {label}_CHALLENGE={challenge}",
+                flush=True,
+            )
+
+        if status == 200:
+            all_product_urls = _extract_all_product_urls(
+                html, final_url
+            )
+            print(
+                f"SABINA_DIAG: {label}_ALL_PRODUCT_URLS="
+                f"{len(all_product_urls)}",
+                flush=True,
+            )
+
+            found = _discover_from_html(
+                html, final_url, query, label
+            )
+
+            print(
+                f"SABINA_DIAG: {label}_MATCHING_CANDIDATES="
+                f"{len(found)}",
+                flush=True,
+            )
+
+            candidates.extend(found)
+
+        response.close()
+
+    return candidates
+
+
+def search(query):
+    """
+    DEFINITIVE SABINA DIAGNOSTIC.
+
+    It is intentionally NOT a production scraper.
+    It follows the working ScentHunter architecture:
+
+        discovery -> candidate product URL -> real product page -> validation
+
+    It also probes the sitemap path separately.
+
+    The diagnostic ALWAYS exposes:
+      1. which HTTP request is running;
+      2. its status/final URL/size/content type;
+      3. whether Sabina returned a challenge;
+      4. how many product URLs existed on the page;
+      5. how many matched the query;
+      6. whether candidate product pages validate;
+      7. the final reason for success/failure.
+
+    No single perfume name is hard-coded.
+    """
+    query = clean(query)
 
     if not query:
-        report["diagnosis"] = "EMPTY_QUERY"
-        LAST_DIAG = report
+        print("SABINA_DIAG: EMPTY_QUERY", flush=True)
         return []
+
+    print("=" * 70, flush=True)
+    print(f"SABINA_DIAG: START query={query!r}", flush=True)
+    print(f"SABINA_DIAG: TOKENS={tokens(query)}", flush=True)
+    print(f"SABINA_DIAG: TIMEOUT={TIMEOUT}s", flush=True)
+    print("=" * 70, flush=True)
 
     session = requests.Session()
     session.headers.update(HEADERS)
 
-    search_candidates = []
-    json_candidates = []
+    results = []
+    native_candidates = []
     sitemap_candidates = []
-    seen = set()
 
     try:
-        # Stage 0: warm-up, exactly like the known-good scraper.
-        response, rec = _diag_get(session, BASE + "/it/", "WARMUP_IT", report)
-        if response is not None:
-            response.close()
-        report["stages"]["warmup"] = rec
+        # ------------------------------------------------------------
+        # STEP 0 — home page
+        # ------------------------------------------------------------
+        home = _request(session, "HOME_FR", BASE + "/fr/")
 
-        # Stage 1: native site-search discovery.
-        try:
-            search_candidates = _discover_from_search_page(session, query)
-        except Exception as exc:
-            report["stages"]["native_search_error"] = f"{type(exc).__name__}: {exc}"
-            search_candidates = []
-
-        for url in search_candidates:
-            if url not in seen:
-                seen.add(url)
-        report["stages"]["native_search_candidates"] = len(search_candidates)
-        print(
-            f"SABINA_DIAG: NATIVE_SEARCH candidates={len(search_candidates)}",
-            flush=True,
-        )
-        for url in search_candidates[:20]:
-            print(f"SABINA_DIAG: NATIVE_CANDIDATE {url}", flush=True)
-
-        # Stage 2: generic JSON/AJAX discovery, same code as working scraper.
-        try:
-            json_candidates = _discover_from_json_endpoints(session, query)
-        except Exception as exc:
-            report["stages"]["json_search_error"] = f"{type(exc).__name__}: {exc}"
-            json_candidates = []
-
-        report["stages"]["json_candidates"] = len(json_candidates)
-        print(
-            f"SABINA_DIAG: JSON_SEARCH candidates={len(json_candidates)}",
-            flush=True,
-        )
-        for url in json_candidates[:20]:
-            print(f"SABINA_DIAG: JSON_CANDIDATE {url}", flush=True)
-
-        candidate_urls = []
-        for url in search_candidates + json_candidates:
-            clean_url = url.split("#", 1)[0].split("?", 1)[0]
-            if clean_url not in seen:
-                seen.add(clean_url)
-                candidate_urls.append(clean_url)
-
-        # Stage 3: sitemap fallback exactly as the working scraper uses it.
-        if not candidate_urls:
-            try:
-                sitemap_candidates = _discover_from_sitemap(session, query)
-            except Exception as exc:
-                report["stages"]["sitemap_error"] = f"{type(exc).__name__}: {exc}"
-                sitemap_candidates = []
-
-            report["stages"]["sitemap_candidates"] = len(sitemap_candidates)
+        if home is None:
+            print("SABINA_DIAG: HOME_RESULT=REQUEST_ERROR", flush=True)
+        else:
+            html = home.text if home.status_code == 200 else ""
             print(
-                f"SABINA_DIAG: SITEMAP_FALLBACK candidates={len(sitemap_candidates)}",
+                f"SABINA_DIAG: HOME_RESULT status={home.status_code} "
+                f"bytes={len(home.content)} "
+                f"challenge={_challenge_words(html)}",
                 flush=True,
             )
-            for url in sitemap_candidates[:20]:
-                print(f"SABINA_DIAG: SITEMAP_CANDIDATE {url}", flush=True)
 
-            for url in sitemap_candidates:
-                clean_url = url.split("#", 1)[0].split("?", 1)[0]
-                if clean_url not in seen:
-                    seen.add(clean_url)
-                    candidate_urls.append(clean_url)
-        else:
-            report["stages"]["sitemap_fallback"] = "NOT_USED"
+            if home.status_code == 200:
+                soup = BeautifulSoup(html, "html.parser")
+                forms = []
 
-        report["candidate_urls"] = candidate_urls[:15]
-        report["stages"]["total_candidates"] = len(candidate_urls)
+                for form in soup.find_all("form"):
+                    fields = []
+                    for inp in form.find_all("input"):
+                        name = inp.get("name")
+                        if name:
+                            fields.append(
+                                (
+                                    name,
+                                    inp.get("type") or "",
+                                    inp.get("value") or "",
+                                )
+                            )
 
-        # Stage 4: verify the real product page, using the SAME parser
-        # and validation used by the working scraper.
-        results = []
-        result_seen = set()
+                    if any(
+                        name.lower() in {
+                            "s", "q", "search", "search_query"
+                        }
+                        or str(kind).lower() == "search"
+                        for name, kind, _ in fields
+                    ):
+                        forms.append({
+                            "action": urljoin(
+                                home.url,
+                                form.get("action") or "/fr/",
+                            ),
+                            "method": (
+                                form.get("method") or "get"
+                            ).lower(),
+                            "fields": fields,
+                        })
 
-        for url in candidate_urls[:15]:
-            t0 = time.time()
-            try:
-                response = session.get(
-                    url,
-                    headers=HEADERS,
-                    timeout=TIMEOUT,
-                    allow_redirects=True,
+                print(
+                    f"SABINA_DIAG: SEARCH_FORMS={len(forms)}",
+                    flush=True,
                 )
-
-                verification = {
-                    "candidate_url": url,
-                    "final_url": response.url,
-                    "status": response.status_code,
-                    "bytes": len(response.content),
-                    "elapsed_ms": round((time.time() - t0) * 1000),
-                }
-
-                if response.status_code in (403, 429):
-                    verification["reason"] = f"HTTP_{response.status_code}"
-                    report["verified"].append(verification)
+                for form in forms[:10]:
                     print(
-                        f"SABINA_DIAG: VERIFY BLOCKED status={response.status_code} url={url}",
+                        f"SABINA_DIAG: FORM={form}",
                         flush=True,
                     )
-                    response.close()
-                    continue
 
-                if not response.ok:
-                    verification["reason"] = f"HTTP_{response.status_code}"
-                    report["verified"].append(verification)
-                    response.close()
-                    continue
+            home.close()
 
-                html = response.text
-                response.close()
+        # ------------------------------------------------------------
+        # STEP A — native search discovery
+        # ------------------------------------------------------------
+        native_candidates = _native_search_diagnostics(
+            session, query
+        )
 
-                parsed = _parse_html(html, query)
-                verification["parsed_items"] = len(parsed)
+        # ------------------------------------------------------------
+        # STEP B — sitemap discovery
+        # ------------------------------------------------------------
+        sitemap_candidates = _sitemap_diagnostics(
+            session, query
+        )
 
-                if parsed:
-                    verification["parsed_names"] = [
-                        item.get("name", "") for item in parsed[:5]
-                    ]
+        # ------------------------------------------------------------
+        # STEP C — merge candidates
+        # ------------------------------------------------------------
+        candidates = []
+        seen = set()
 
-                report["verified"].append(verification)
+        for item in native_candidates:
+            url = item["url"]
+            if url not in seen:
+                seen.add(url)
+                candidates.append(item)
 
-                for item in parsed:
-                    key = (
-                        item.get("name", "").lower(),
-                        item.get("url", "").split("?")[0].split("#")[0],
-                        item.get("price"),
-                    )
-                    if key in result_seen:
-                        continue
-                    result_seen.add(key)
-                    results.append(item)
+        for url in sitemap_candidates:
+            if url not in seen:
+                seen.add(url)
+                candidates.append({
+                    "url": url,
+                    "anchor_text": "",
+                    "slug": unquote(
+                        urlparse(url).path.rsplit("/", 1)[-1]
+                    ),
+                    "nearby_text": "",
+                    "score_anchor": 0,
+                    "score_slug": len(tokens(query)),
+                    "score_nearby": 0,
+                    "stage": "SITEMAP",
+                })
 
-                print(
-                    f"SABINA_DIAG: VERIFY status={verification['status']} "
-                    f"parsed={len(parsed)} url={url}",
-                    flush=True,
-                )
+        print(
+            f"SABINA_DIAG: NATIVE_CANDIDATES={len(native_candidates)}",
+            flush=True,
+        )
+        print(
+            f"SABINA_DIAG: SITEMAP_CANDIDATES={len(sitemap_candidates)}",
+            flush=True,
+        )
+        print(
+            f"SABINA_DIAG: TOTAL_UNIQUE_CANDIDATES={len(candidates)}",
+            flush=True,
+        )
 
-            except Exception as exc:
-                verification = {
-                    "candidate_url": url,
-                    "error": f"{type(exc).__name__}: {exc}",
-                }
-                report["verified"].append(verification)
-                print(
-                    f"SABINA_DIAG: VERIFY_ERROR {url} "
-                    f"{type(exc).__name__}: {exc}",
-                    flush=True,
-                )
+        # Keep diagnostic bounded.
+        candidates = candidates[:20]
 
-        report["stages"]["verified_pages"] = len(report["verified"])
-        report["stages"]["verified_products"] = len(results)
+        # ------------------------------------------------------------
+        # STEP D — real product page verification
+        # ------------------------------------------------------------
+        for index, candidate in enumerate(candidates, 1):
+            print(
+                f"SABINA_DIAG: CANDIDATE_{index} "
+                f"stage={candidate['stage']} "
+                f"url={candidate['url']} "
+                f"anchor_score={candidate['score_anchor']} "
+                f"slug_score={candidate['score_slug']} "
+                f"nearby_score={candidate['score_nearby']}",
+                flush=True,
+            )
 
-        # Definitive diagnosis is based on the stage that actually failed.
+            verified = _product_page_diagnostics(
+                session,
+                candidate,
+                query,
+                index,
+            )
+
+            print(
+                f"SABINA_DIAG: VERIFY_{index} "
+                f"status={verified['status']} "
+                f"title={verified['title']!r} "
+                f"title_match={verified['matches_title']} "
+                f"price={verified['price']!r} "
+                f"challenge={verified['challenge']}",
+                flush=True,
+            )
+
+            if (
+                verified["status"] == 200
+                and verified["matches_title"]
+                and verified["price"] is not None
+            ):
+                results.append({
+                    "store": STORE,
+                    "name": verified["title"],
+                    "price": format_price(verified["price"]),
+                    "url": verified["url"],
+                    "available": True,
+                })
+
+        # ------------------------------------------------------------
+        # FINAL DIAGNOSIS
+        # ------------------------------------------------------------
         if results:
-            diagnosis = "PRODUCT_FOUND_AND_VERIFIED"
-        elif candidate_urls:
-            diagnosis = "CANDIDATES_FOUND_BUT_REAL_PRODUCT_PAGE_REJECTED"
-        elif search_candidates or json_candidates:
-            diagnosis = "DISCOVERY_RETURNED_NO_USABLE_PRODUCT_URLS"
-        elif report["stages"].get("sitemap_candidates", 0) == 0:
-            diagnosis = "NO_PRODUCT_URL_DISCOVERED"
+            diagnosis = "DISCOVERY_AND_VERIFICATION_OK"
+        elif candidates:
+            diagnosis = (
+                "DISCOVERY_FOUND_CANDIDATES_BUT_VERIFICATION_FAILED"
+            )
+        elif native_candidates:
+            diagnosis = "NATIVE_DISCOVERY_FOUND_BUT_NO_UNIQUE_CANDIDATE"
+        elif sitemap_candidates:
+            diagnosis = "SITEMAP_DISCOVERY_FOUND_BUT_NO_UNIQUE_CANDIDATE"
         else:
-            diagnosis = "SITEMAP_DISCOVERY_RETURNED_NO_USABLE_PRODUCT_URLS"
+            diagnosis = "NO_PRODUCT_URL_DISCOVERED"
 
-        report["diagnosis"] = diagnosis
-
-        print(f"SABINA_DIAGNOSIS: {diagnosis}", flush=True)
+        print("=" * 70, flush=True)
+        print(f"SABINA_DIAG: DIAGNOSIS={diagnosis}", flush=True)
         print(
-            "SABINA_DIAG_SUMMARY: "
-            + json.dumps(
-                {
-                    "native_search_candidates": len(search_candidates),
-                    "json_candidates": len(json_candidates),
-                    "sitemap_candidates": len(sitemap_candidates),
-                    "total_candidates": len(candidate_urls),
-                    "verified_pages": len(report["verified"]),
-                    "verified_products": len(results),
-                },
-                ensure_ascii=False,
-            ),
-            flush=True,
-        )
-        print(
-            "SABINA_DIAG_REPORT_BEGIN",
-            flush=True,
-        )
-        print(
-            json.dumps(report, ensure_ascii=False, indent=2),
-            flush=True,
-        )
-        print(
-            "SABINA_DIAG_REPORT_END",
+            f"SABINA_DIAG: FINAL_RESULTS={len(results)}",
             flush=True,
         )
 
-        LAST_DIAG = report
+        if diagnosis == "NO_PRODUCT_URL_DISCOVERED":
+            print(
+                "SABINA_DIAG: CONCLUSION=Sabina did not expose a usable "
+                "product URL through the tested discovery paths.",
+                flush=True,
+            )
+        elif diagnosis == (
+            "DISCOVERY_FOUND_CANDIDATES_BUT_VERIFICATION_FAILED"
+        ):
+            print(
+                "SABINA_DIAG: CONCLUSION=Discovery works; the failure "
+                "is in real product-page verification.",
+                flush=True,
+            )
+        else:
+            print(
+                "SABINA_DIAG: CONCLUSION=At least one discovery/verification "
+                "path works.",
+                flush=True,
+            )
+
+        print("=" * 70, flush=True)
+
         return results
+
+    except Exception as exc:
+        # The diagnostic itself must NEVER bring down ScentHunter's entire
+        # concurrent search because of an internal diagnostic exception.
+        print(
+            f"SABINA_DIAG: INTERNAL_EXCEPTION "
+            f"type={type(exc).__name__}: {exc}",
+            flush=True,
+        )
+        return []
 
     finally:
         session.close()
 
 
-def search(query):
-    # IMPORTANT: main.py requires every scraper module to expose search().
-    # This diagnostic is therefore a drop-in scraper, not a standalone script.
-    return _diagnostic_search(query)
-
-
+# Main.py compatibility.
 def scrape(query):
     return search(query)
 
@@ -751,5 +819,8 @@ def search_sabina(query):
 
 
 if __name__ == "__main__":
-    q = " ".join(sys.argv[1:]).strip() or "Liquid brun"
-    print(json.dumps(search(q), ensure_ascii=False, indent=2))
+    import sys
+
+    query = " ".join(sys.argv[1:]).strip() or "Liquid brun"
+    output = search(query)
+    print(json.dumps(output, ensure_ascii=False, indent=2))
