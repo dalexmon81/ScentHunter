@@ -500,40 +500,16 @@ def _price_from_structured_html(html: str) -> Optional[float]:
 
 def resolve_actual_price(product: Dict[str, Any]) -> Dict[str, Any]:
     """
-    Corregge solamente il caso generico in cui uno scraper esponga
-    esplicitamente un prezzo unitario per 100 ml invece del prezzo della
-    confezione.
+    Corregge il caso generico in cui il prezzo esposto dal risultato
+    sia esplicitamente un prezzo unitario per 100 ml.
+
+    Non apre la pagina prodotto se il prezzo è già un prezzo di vendita
+    normale. In questo modo la fase centrale non trasforma una discovery
+    con molti risultati in una sequenza di richieste aggiuntive.
     """
     item = dict(product)
     raw_price = str(item.get("price") or "").strip()
     size = product_size_ml(item)
-    url = str(item.get("url") or "").strip()
-
-    if url and size and abs(size - 100.0) > 0.01:
-        try:
-            request = Request(
-                url,
-                headers={
-                    "Accept": "text/html,application/xhtml+xml",
-                    "User-Agent": "Mozilla/5.0 (compatible; ScentHunter/1.0)",
-                },
-            )
-
-            with urlopen(request, timeout=4) as response:
-                html = response.read().decode(
-                    "utf-8",
-                    errors="ignore",
-                )
-
-            actual = _price_from_structured_html(html)
-
-            if actual is not None:
-                item["price"] = f"{actual:.2f} €"
-                item["price_value"] = actual
-                return item
-
-        except Exception:
-            pass
 
     unit_match = re.search(
         r"(?:/|per\s*)100\s*ml",
