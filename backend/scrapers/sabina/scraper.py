@@ -9,7 +9,7 @@ from bs4 import BeautifulSoup
 
 STORE = "Sabina"
 BASE_URL = "https://www.sabina.com"
-SEARCH_PATH = "/es/buscar"
+SEARCH_PATH = "/es/buscar_old"
 TIMEOUT = 20
 
 HEADERS = {
@@ -384,8 +384,8 @@ def search_result_urls(session, query):
     seen = set()
 
     search_urls = (
+        BASE_URL + SEARCH_PATH + "?s=" + quote_plus(query),
         BASE_URL + SEARCH_PATH + "?controller=search&s=" + quote_plus(query),
-        BASE_URL + "/es/buscar?s=" + quote_plus(query),
     )
 
     for search_url in search_urls:
@@ -458,7 +458,7 @@ def brand_page_urls(session, query):
     seen = set()
 
     search_url = (
-        BASE_URL + SEARCH_PATH + "?controller=search&s=" + quote_plus(query)
+        BASE_URL + SEARCH_PATH + "?s=" + quote_plus(query)
     )
 
     try:
