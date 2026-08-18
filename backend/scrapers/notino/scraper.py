@@ -1,427 +1,637 @@
+"""
+Notino diagnostic V3 for ScentHunter.
+
+Purpose:
+- Do NOT scrape or validate products.
+- Do NOT contain product-specific rules, seeds, URLs or exceptions.
+- Compare the HTTP path that previously worked with the browser path used
+  by the working Notino discovery scraper.
+- The same diagnostic can be called with any query through search(query).
+
+Stages:
+1. requests + Chrome 124 headers used by the working discovery scraper.
+2. requests + Chrome 126 headers used by the previous diagnostic.
+3. requests session after first visiting the homepage.
+4. Playwright browser, using the same browser configuration as the working
+   Notino discovery scraper.
+5. Playwright browser after the homepage has been opened, then search.
+
+Every stage reports:
+- status
+- final URL
+- elapsed time
+- response size
+- redirect chain
+- relevant response headers
+- cookies
+- title / h1
+- Cloudflare/challenge markers
+- whether product-looking links were present
+
+The file intentionally returns diagnostic observations, not fake products.
+"""
+
+from __future__ import annotations
+
 import json
 import re
-from urllib.parse import urljoin, urlparse
+import time
+from urllib.parse import urljoin
 
 import requests
 from bs4 import BeautifulSoup
+
+try:
+    from playwright.sync_api import TimeoutError as PlaywrightTimeoutError
+    from playwright.sync_api import sync_playwright
+except ImportError:
+    PlaywrightTimeoutError = Exception
+    sync_playwright = None
 
 
 STORE = "Notino"
 BASE_URL = "https://www.notino.fr"
 SEARCH_URL = BASE_URL + "/search.asp"
-TIMEOUT = 25
+TIMEOUT = 20
+BROWSER_TIMEOUT_MS = 30000
 
-SCRAPER_VERSION = "notino-DIAGNOSTIC-2026-08-18-v2"
+SCRAPER_VERSION = "notino-DIAGNOSTIC-2026-08-18-v3"
 
-HEADERS = {
+# This is the exact UA/header family used by the working
+# Notino_FR_CORRETTO_DISCOVERY scraper.
+WORKING_HEADERS = {
+    "User-Agent": (
+        "Mozilla/5.0 (X11; Linux x86_64) "
+        "AppleWebKit/537.36 (KHTML, like Gecko) "
+        "Chrome/124.0.0.0 Safari/537.36"
+    ),
+    "Accept": (
+        "text/html,application/xhtml+xml,application/xml;"
+        "q=0.9,image/avif,image/webp,*/*;q=0.8"
+    ),
+    "Accept-Language": "fr-FR,fr;q=0.9,en;q=0.7",
+    "Cache-Control": "no-cache",
+    "Pragma": "no-cache",
+}
+
+# This is the header family used by the previous diagnostic versions.
+PREVIOUS_DIAGNOSTIC_HEADERS = {
     "User-Agent": (
         "Mozilla/5.0 (X11; Linux x86_64) "
         "AppleWebKit/537.36 (KHTML, like Gecko) "
         "Chrome/126.0.0.0 Safari/537.36"
     ),
-    "Accept-Language": "fr-FR,fr;q=0.9,en;q=0.8",
     "Accept": (
         "text/html,application/xhtml+xml,application/xml;"
         "q=0.9,image/avif,image/webp,*/*;q=0.8"
     ),
+    "Accept-Language": "fr-FR,fr;q=0.9,en;q=0.8",
 }
 
-P_ID_RE = re.compile(r"/p-(\d+)/?(?:$|[?#])", re.I)
+PRODUCT_ID_RE = re.compile(r"/p-\d+(?:/|$)", re.I)
+
+CHALLENGE_MARKERS = (
+    "just a moment",
+    "cf-chl-",
+    "challenge-platform",
+    "checking your browser",
+    "verify you are human",
+    "performing security verification",
+    "enable javascript and cookies",
+    "attention required",
+)
+
+INTERESTING_HEADERS = (
+    "server",
+    "cf-ray",
+    "cf-cache-status",
+    "cf-mitigated",
+    "content-type",
+    "location",
+    "set-cookie",
+    "cache-control",
+    "via",
+)
 
 
 def clean(value):
     return re.sub(r"\s+", " ", str(value or "")).strip()
 
 
-def norm(value):
-    return re.sub(
-        r"\s+",
-        " ",
-        re.sub(r"[^a-z0-9]+", " ",
-                clean(value).lower())
-    ).strip()
+def query_url(query):
+    return SEARCH_URL + "?exps=" + requests.utils.quote(str(query or ""))
 
 
-def same_host(url):
-    try:
-        host = urlparse(url).netloc.lower()
-        return host == "notino.fr" or host.endswith(".notino.fr")
-    except Exception:
-        return False
+def detect_page(body):
+    text = clean(body)
+    soup = BeautifulSoup(body or "", "html.parser")
 
+    title = clean(soup.title.get_text(" ", strip=True)) if soup.title else ""
+    h1_node = soup.select_one("h1")
+    h1 = clean(h1_node.get_text(" ", strip=True)) if h1_node else ""
 
-def tokens(query):
-    ignored = {
-        "eau", "de", "parfum", "perfume", "edp", "edt",
-        "extrait", "spray", "pour", "homme", "femme",
-        "mixte", "men", "women", "for", "by",
+    lower = text.lower()
+
+    markers = {
+        marker: marker in lower
+        for marker in CHALLENGE_MARKERS
     }
-    return [
-        x for x in norm(query).split()
-        if len(x) > 1 and x not in ignored
-    ]
 
+    challenge = any(markers.values())
 
-def url_has_query_tokens(url, query):
-    value = norm(urlparse(url).path.replace("/", " "))
-    wanted = tokens(query)
-    return bool(wanted) and all(x in value for x in wanted)
+    product_links = []
+    seen = set()
 
+    for anchor in soup.find_all("a", href=True):
+        href = clean(anchor.get("href"))
+        if not href:
+            continue
 
-def href_record(anchor, page_url):
-    href = clean(anchor.get("href"))
-    if not href:
-        return None
+        absolute = urljoin(BASE_URL, href).split("#", 1)[0]
 
-    absolute = urljoin(page_url, href)
-    if not same_host(absolute):
-        return None
+        if not absolute.startswith(BASE_URL):
+            continue
 
-    text = clean(anchor.get_text(" ", strip=True))
-    aria = clean(anchor.get("aria-label"))
-    title = clean(anchor.get("title"))
+        if not PRODUCT_ID_RE.search(absolute):
+            continue
 
-    img = anchor.find("img")
-    alt = clean(img.get("alt")) if img else ""
+        if absolute.lower() in seen:
+            continue
 
-    path = urlparse(absolute).path.rstrip("/") or "/"
-    p_match = P_ID_RE.search(path + "/")
+        seen.add(absolute.lower())
+        product_links.append(absolute)
 
     return {
-        "url": absolute.split("#", 1)[0],
-        "path": path,
-        "text": text[:300],
-        "aria": aria[:200],
-        "title": title[:200],
-        "img_alt": alt[:200],
-        "has_p_id": bool(p_match),
-        "product_id": p_match.group(1) if p_match else None,
-        "url_matches_query": url_has_query_tokens(absolute, CURRENT_QUERY),
+        "title": title,
+        "h1": h1,
+        "challenge_detected": challenge,
+        "challenge_markers": [
+            marker for marker, present in markers.items() if present
+        ],
+        "html_bytes": len(body.encode("utf-8", errors="ignore")),
+        "anchors": len(soup.find_all("a", href=True)),
+        "product_id_links": len(product_links),
+        "product_id_examples": product_links[:10],
     }
 
 
-def jsonld_summary(soup):
-    result = []
+def response_headers(response):
+    result = {}
 
-    for script in soup.find_all(
-        "script",
-        attrs={"type": re.compile(r"application/ld\+json", re.I)},
-    ):
-        raw = script.string or script.get_text()
-        if not raw:
-            continue
-
-        try:
-            data = json.loads(raw)
-        except Exception:
-            continue
-
-        values = data if isinstance(data, list) else [data]
-
-        for item in values:
-            if not isinstance(item, dict):
-                continue
-
-            result.append({
-                "type": item.get("@type"),
-                "name": clean(item.get("name"))[:200],
-                "url": clean(item.get("url")),
-                "sku": clean(item.get("sku")),
-                "brand": (
-                    clean(item.get("brand", {}).get("name"))
-                    if isinstance(item.get("brand"), dict)
-                    else clean(item.get("brand"))
-                ),
-            })
+    for name in INTERESTING_HEADERS:
+        value = response.headers.get(name)
+        if value:
+            if name.lower() == "set-cookie":
+                value = value[:800]
+            result[name] = value
 
     return result
 
 
-def page_snapshot(response, query):
-    soup = BeautifulSoup(response.text, "html.parser")
+def request_snapshot(label, response, elapsed, error=None):
+    if error is not None or response is None:
+        return {
+            "label": label,
+            "ok": False,
+            "seconds": round(elapsed, 3),
+            "error": error or "no_response",
+        }
 
-    h1 = clean(
-        soup.select_one("h1").get_text(" ", strip=True)
-        if soup.select_one("h1")
-        else ""
-    )
-
-    title = clean(soup.title.get_text(" ", strip=True)) if soup.title else ""
-
-    anchors = []
-    seen = set()
-
-    for anchor in soup.find_all("a", href=True):
-        record = href_record(anchor, response.url)
-        if not record:
-            continue
-
-        key = record["url"].lower()
-
-        if key in seen:
-            continue
-
-        seen.add(key)
-        anchors.append(record)
-
-    p_links = [
-        x for x in anchors
-        if x["has_p_id"]
-    ]
-
-    query_url_links = [
-        x for x in anchors
-        if x["url_matches_query"]
-    ]
-
-    relevant = []
-    wanted = tokens(query)
-
-    for item in anchors:
-        haystack = norm(
-            " ".join([
-                item["url"],
-                item["text"],
-                item["aria"],
-                item["title"],
-                item["img_alt"],
-            ])
-        )
-
-        if wanted and all(token in haystack for token in wanted):
-            relevant.append(item)
-
-    types = []
-    for item in jsonld_summary(soup):
-        if item["type"] not in types:
-            types.append(item["type"])
+    body = response.text or ""
 
     return {
+        "label": label,
+        "ok": response.ok,
         "status": response.status_code,
+        "seconds": round(elapsed, 3),
+        "requested_url": response.request.url if response.request else None,
         "final_url": response.url,
-        "bytes": len(response.content),
-        "title": title,
-        "h1": h1,
-        "anchors_total": len(anchors),
-        "p_id_links": len(p_links),
-        "query_url_links": len(query_url_links),
-        "relevant_links": len(relevant),
-        "jsonld_types": types,
-        "jsonld": jsonld_summary(soup)[:20],
-        "p_id_links_detail": p_links[:100],
-        "query_url_links_detail": query_url_links[:100],
-        "relevant_links_detail": relevant[:100],
+        "history": [
+            {
+                "status": item.status_code,
+                "url": item.url,
+                "location": item.headers.get("Location"),
+            }
+            for item in response.history
+        ],
+        "headers": response_headers(response),
+        "cookies": {
+            key: value
+            for key, value in response.cookies.items()
+        },
+        "page": detect_page(body),
     }
 
 
-def get(session, url, params=None):
-    print(
-        f"NOTINO_DIAG_HTTP: GET {url}"
-        f"{'?' + '&'.join(f'{k}={v}' for k,v in params.items()) if params else ''}",
-        flush=True,
-    )
+def requests_get(session, label, url, headers, timeout=TIMEOUT):
+    started = time.perf_counter()
 
     try:
         response = session.get(
             url,
-            params=params,
-            headers=HEADERS,
-            timeout=TIMEOUT,
+            headers=headers,
+            timeout=timeout,
             allow_redirects=True,
         )
-    except Exception as exc:
+        elapsed = time.perf_counter() - started
+
         print(
-            f"NOTINO_DIAG_HTTP_ERROR: {type(exc).__name__}: {exc}",
+            f"NOTINO_V3_HTTP: {label} status={response.status_code} "
+            f"url={response.url} bytes={len(response.content)}",
             flush=True,
         )
-        return None
+
+        return request_snapshot(label, response, elapsed)
+
+    except Exception as exc:
+        elapsed = time.perf_counter() - started
+
+        print(
+            f"NOTINO_V3_HTTP_ERROR: {label} "
+            f"{type(exc).__name__}: {exc}",
+            flush=True,
+        )
+
+        return request_snapshot(
+            label,
+            None,
+            elapsed,
+            f"{type(exc).__name__}: {exc}",
+        )
+
+
+def playwright_context(playwright):
+    browser = playwright.chromium.launch(
+        headless=True,
+        args=[
+            "--no-sandbox",
+            "--disable-dev-shm-usage",
+            "--disable-gpu",
+        ],
+    )
+
+    context = browser.new_context(
+        user_agent=WORKING_HEADERS["User-Agent"],
+        locale="fr-FR",
+        extra_http_headers={
+            "Accept": WORKING_HEADERS["Accept"],
+            "Accept-Language": WORKING_HEADERS["Accept-Language"],
+        },
+        viewport={
+            "width": 1365,
+            "height": 900,
+        },
+    )
+
+    return browser, context
+
+
+def browser_page_snapshot(page, response, label, elapsed):
+    try:
+        html = page.content()
+    except Exception:
+        html = ""
+
+    title = ""
+    h1 = ""
+
+    try:
+        title = clean(page.title())
+    except Exception:
+        pass
+
+    try:
+        h1 = clean(
+            page.locator("h1").first.inner_text(timeout=2000)
+        )
+    except Exception:
+        pass
+
+    page_info = detect_page(html)
+    page_info["title"] = title
+    page_info["h1"] = h1
+
+    headers = {}
+    if response is not None:
+        for name in INTERESTING_HEADERS:
+            value = response.headers.get(name)
+            if value:
+                if name.lower() == "set-cookie":
+                    value = value[:800]
+                headers[name] = value
+
+    status = response.status if response is not None else None
+    final_url = page.url
 
     print(
-        f"NOTINO_DIAG_HTTP: status={response.status_code} "
-        f"url={response.url} bytes={len(response.content)}",
+        f"NOTINO_V3_BROWSER: {label} status={status} "
+        f"url={final_url} bytes={len(html.encode('utf-8', errors='ignore'))}",
         flush=True,
     )
 
-    return response
+    return {
+        "label": label,
+        "ok": bool(response is None or status < 400),
+        "status": status,
+        "seconds": round(elapsed, 3),
+        "final_url": final_url,
+        "headers": headers,
+        "page": page_info,
+    }
+
+
+def playwright_goto(page, label, url):
+    started = time.perf_counter()
+
+    try:
+        response = page.goto(
+            url,
+            wait_until="domcontentloaded",
+            timeout=BROWSER_TIMEOUT_MS,
+        )
+    except Exception as exc:
+        elapsed = time.perf_counter() - started
+
+        print(
+            f"NOTINO_V3_BROWSER_ERROR: {label} "
+            f"{type(exc).__name__}: {exc}",
+            flush=True,
+        )
+
+        return {
+            "label": label,
+            "ok": False,
+            "seconds": round(elapsed, 3),
+            "error": f"{type(exc).__name__}: {exc}",
+            "final_url": page.url,
+        }
+
+    try:
+        page.wait_for_load_state(
+            "networkidle",
+            timeout=min(BROWSER_TIMEOUT_MS, 15000),
+        )
+    except PlaywrightTimeoutError:
+        pass
+
+    page.wait_for_timeout(1200)
+
+    elapsed = time.perf_counter() - started
+
+    return browser_page_snapshot(
+        page,
+        response,
+        label,
+        elapsed,
+    )
+
+
+def browser_stage(query):
+    result = {
+        "available": sync_playwright is not None,
+        "stages": [],
+    }
+
+    if sync_playwright is None:
+        result["error"] = "playwright_not_installed"
+        print(
+            "NOTINO_V3_BROWSER: PLAYWRIGHT_NOT_INSTALLED",
+            flush=True,
+        )
+        return result
+
+    search = query_url(query)
+
+    try:
+        with sync_playwright() as playwright:
+            browser, context = playwright_context(playwright)
+
+            try:
+                page = context.new_page()
+
+                # Browser request WITHOUT a homepage first.
+                result["stages"].append(
+                    playwright_goto(
+                        page,
+                        "browser_search_direct",
+                        search,
+                    )
+                )
+
+                # Fresh browser context: homepage first, then search.
+                page.close()
+
+                page = context.new_page()
+
+                result["stages"].append(
+                    playwright_goto(
+                        page,
+                        "browser_homepage",
+                        BASE_URL,
+                    )
+                )
+
+                result["stages"].append(
+                    playwright_goto(
+                        page,
+                        "browser_search_after_homepage",
+                        search,
+                    )
+                )
+
+                result["cookies_after"] = [
+                    {
+                        "name": cookie.get("name"),
+                        "domain": cookie.get("domain"),
+                        "path": cookie.get("path"),
+                        "expires": cookie.get("expires"),
+                    }
+                    for cookie in context.cookies()
+                ]
+
+                page.close()
+
+            finally:
+                browser.close()
+
+    except Exception as exc:
+        result["error"] = f"{type(exc).__name__}: {exc}"
+        print(
+            f"NOTINO_V3_BROWSER_FATAL: {type(exc).__name__}: {exc}",
+            flush=True,
+        )
+
+    return result
 
 
 def search(query):
-    global CURRENT_QUERY
-    CURRENT_QUERY = clean(query)
+    query = clean(query)
 
     print(
         f"NOTINO_DIAG_VERSION: {SCRAPER_VERSION}",
         flush=True,
     )
     print(
-        f"NOTINO_DIAG_START: query={CURRENT_QUERY!r}",
+        f"NOTINO_DIAG_START: query={query!r}",
         flush=True,
     )
 
-    if not CURRENT_QUERY:
-        return []
-
-    session = requests.Session()
-
-    try:
-        # STEP 1: exact endpoint requested by the user.
-        search_response = get(
-            session,
-            SEARCH_URL,
-            {"exps": CURRENT_QUERY},
-        )
-
-        if search_response is None:
-            return [{
-                "diagnostic": True,
-                "stage": "search_request",
-                "error": "request_failed",
-            }]
-
-        search_data = page_snapshot(
-            search_response,
-            CURRENT_QUERY,
-        )
-
-        print(
-            "NOTINO_DIAG_SEARCH: "
-            f"title={search_data['title']!r} "
-            f"h1={search_data['h1']!r} "
-            f"anchors={search_data['anchors_total']} "
-            f"p_id={search_data['p_id_links']} "
-            f"query_url={search_data['query_url_links']} "
-            f"relevant={search_data['relevant_links']}",
-            flush=True,
-        )
-
-        # STEP 2: DO NOT decide which URL is a product.
-        # First print every structurally interesting URL from the search page.
-        interesting = []
-        seen = set()
-
-        for group in (
-            search_data["query_url_links_detail"],
-            search_data["p_id_links_detail"],
-            search_data["relevant_links_detail"],
-        ):
-            for item in group:
-                key = item["url"].lower()
-                if key in seen:
-                    continue
-                seen.add(key)
-                interesting.append(item)
-
-        print(
-            f"NOTINO_DIAG_INTERESTING_COUNT: {len(interesting)}",
-            flush=True,
-        )
-
-        for i, item in enumerate(interesting[:150], 1):
-            print(
-                f"NOTINO_DIAG_SEARCH_LINK[{i}]: "
-                f"p_id={item['product_id']} "
-                f"query_url={item['url_matches_query']} "
-                f"url={item['url']} "
-                f"text={item['text']!r} "
-                f"alt={item['img_alt']!r}",
-                flush=True,
-            )
-
-        # STEP 3: Open every query-relevant URL, regardless of whether it
-        # contains /p-ID/. This is the critical diagnostic step.
-        to_open = []
-        seen_open = set()
-
-        for item in interesting:
-            if not (
-                item["url_matches_query"]
-                or item["has_p_id"]
-            ):
-                continue
-
-            url = item["url"]
-
-            if url.lower() == search_response.url.lower():
-                continue
-
-            if url.lower() in seen_open:
-                continue
-
-            seen_open.add(url.lower())
-            to_open.append(url)
-
-        print(
-            f"NOTINO_DIAG_OPEN_COUNT: {len(to_open)}",
-            flush=True,
-        )
-
-        opened = []
-
-        for i, url in enumerate(to_open[:50], 1):
-            response = get(session, url)
-
-            if response is None:
-                print(
-                    f"NOTINO_DIAG_OPEN[{i}]: FAILED url={url}",
-                    flush=True,
-                )
-                continue
-
-            snapshot = page_snapshot(
-                response,
-                CURRENT_QUERY,
-            )
-
-            print(
-                f"NOTINO_DIAG_OPEN[{i}]: "
-                f"url={response.url} "
-                f"title={snapshot['title']!r} "
-                f"h1={snapshot['h1']!r} "
-                f"anchors={snapshot['anchors_total']} "
-                f"p_id={snapshot['p_id_links']} "
-                f"query_url={snapshot['query_url_links']} "
-                f"jsonld={snapshot['jsonld_types']}",
-                flush=True,
-            )
-
-            for j, item in enumerate(
-                snapshot["p_id_links_detail"][:50],
-                1,
-            ):
-                print(
-                    f"NOTINO_DIAG_NESTED[{i}.{j}]: "
-                    f"p_id={item['product_id']} "
-                    f"url={item['url']} "
-                    f"text={item['text']!r} "
-                    f"alt={item['img_alt']!r}",
-                    flush=True,
-                )
-
-            opened.append({
-                "url": response.url,
-                "snapshot": snapshot,
-            })
-
-        print(
-            "NOTINO_DIAG_END: "
-            f"search_p_id={search_data['p_id_links']} "
-            f"search_relevant={search_data['relevant_links']} "
-            f"opened={len(opened)}",
-            flush=True,
-        )
-
-        # /test-store expects a list. Return one diagnostic object rather
-        # than pretending these observations are real products.
+    if not query:
         return [{
             "diagnostic": True,
             "scraper_version": SCRAPER_VERSION,
-            "query": CURRENT_QUERY,
-            "search": search_data,
-            "opened_pages": opened,
+            "error": "empty_query",
         }]
 
+    search = query_url(query)
+
+    report = {
+        "diagnostic": True,
+        "scraper_version": SCRAPER_VERSION,
+        "query": query,
+        "search_url": search,
+        "tests": {},
+    }
+
+    # ------------------------------------------------------------
+    # TEST A: exact HTTP header family from the working discovery file.
+    # ------------------------------------------------------------
+    session_a = requests.Session()
+
+    try:
+        report["tests"]["A_requests_working_headers"] = requests_get(
+            session_a,
+            "A_requests_working_headers",
+            search,
+            WORKING_HEADERS,
+        )
     finally:
-        session.close()
+        session_a.close()
+
+    # ------------------------------------------------------------
+    # TEST B: exact HTTP header family from the previous diagnostic.
+    # ------------------------------------------------------------
+    session_b = requests.Session()
+
+    try:
+        report["tests"]["B_requests_previous_diagnostic_headers"] = (
+            requests_get(
+                session_b,
+                "B_requests_previous_diagnostic_headers",
+                search,
+                PREVIOUS_DIAGNOSTIC_HEADERS,
+            )
+        )
+    finally:
+        session_b.close()
+
+    # ------------------------------------------------------------
+    # TEST C: working headers, homepage first, then search.
+    # This checks whether a session/cookie established by the homepage
+    # changes the result.
+    # ------------------------------------------------------------
+    session_c = requests.Session()
+
+    try:
+        homepage = requests_get(
+            session_c,
+            "C1_requests_working_headers_homepage",
+            BASE_URL,
+            WORKING_HEADERS,
+        )
+
+        search_after_homepage = requests_get(
+            session_c,
+            "C2_requests_working_headers_search_after_homepage",
+            search,
+            WORKING_HEADERS,
+        )
+
+        report["tests"]["C_requests_homepage_then_search"] = {
+            "homepage": homepage,
+            "search": search_after_homepage,
+            "session_cookies_after": [
+                {
+                    "name": cookie.name,
+                    "domain": cookie.domain,
+                    "path": cookie.path,
+                }
+                for cookie in session_c.cookies
+            ],
+        }
+
+    finally:
+        session_c.close()
+
+    # ------------------------------------------------------------
+    # TEST D/E: real Chromium, the path used by the working scraper.
+    # ------------------------------------------------------------
+    report["tests"]["D_E_playwright"] = browser_stage(query)
+
+    # Compact conclusion generated only from observations.
+    observations = []
+
+    a = report["tests"]["A_requests_working_headers"]
+    b = report["tests"]["B_requests_previous_diagnostic_headers"]
+    c = report["tests"]["C_requests_homepage_then_search"]
+    browser = report["tests"]["D_E_playwright"]
+
+    def status_of(item):
+        return item.get("status") if isinstance(item, dict) else None
+
+    a_status = status_of(a)
+    b_status = status_of(b)
+    c_status = status_of(c.get("search", {}))
+
+    browser_statuses = [
+        stage.get("status")
+        for stage in browser.get("stages", [])
+        if isinstance(stage, dict)
+    ]
+
+    observations.append({
+        "requests_working_headers_status": a_status,
+        "requests_previous_diagnostic_status": b_status,
+        "requests_homepage_then_search_status": c_status,
+        "playwright_statuses": browser_statuses,
+    })
+
+    if a_status == 200 and b_status == 403:
+        observations.append(
+            "DIFFERENCE_FOUND: the header families produce different HTTP results."
+        )
+
+    if c_status == 200 and a_status != 200:
+        observations.append(
+            "SESSION_EFFECT_FOUND: homepage-before-search changes the HTTP result."
+        )
+
+    if any(status is not None and status < 400 for status in browser_statuses):
+        observations.append(
+            "BROWSER_PATH_AVAILABLE: Chromium obtained a non-error response."
+        )
+
+    if any(status == 403 for status in browser_statuses):
+        observations.append(
+            "BROWSER_PATH_403: Chromium itself received a 403/challenge."
+        )
+
+    if not observations[1:]:
+        observations.append(
+            "NO_SINGLE_CAUSE_PROVEN: compare the stage-by-stage status, headers and challenge markers."
+        )
+
+    report["observations"] = observations
+
+    print(
+        "NOTINO_DIAG_END: "
+        f"A={a_status} B={b_status} C={c_status} "
+        f"PLAYWRIGHT={browser_statuses}",
+        flush=True,
+    )
+
+    # /test-store expects a list.
+    return [report]
 
 
 def scrape(query):
