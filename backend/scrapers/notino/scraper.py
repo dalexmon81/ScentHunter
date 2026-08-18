@@ -353,6 +353,16 @@ def _candidate_product_urls(html, query):
         if not url:
             return
 
+        # When the URL comes from a search-card, require the local card
+        # context to match the requested query before accepting it. This
+        # prevents a generic /p-<id>/ link from causing dozens of unrelated
+        # product pages to be fetched sequentially.
+        if context and query and not matches(
+            f"{context} {url.replace('/', ' ')}",
+            query,
+        ):
+            return
+
         if not _looks_like_product_url(url, context, query):
             return
 
@@ -438,7 +448,7 @@ def _candidate_product_urls(html, query):
 
     return found
 
-def _discover_with_playwright(query, max_urls=80):
+def _discover_with_playwright(query, max_urls=40):
     """Browser fallback for client-rendered Notino search results."""
     if sync_playwright is None:
         return []
@@ -487,7 +497,7 @@ def _discover_with_playwright(query, max_urls=80):
 
     return urls[:max_urls]
 
-def _discover_from_search_requests(session, query, max_urls=80):
+def _discover_from_search_requests(session, query, max_urls=40):
     """Discover only from Notino's own search endpoint, like Deloox."""
     try:
         response = session.get(
@@ -506,11 +516,11 @@ def _discover_from_search_requests(session, query, max_urls=80):
 
 def _discover(session, query):
     """Search page -> product URLs; no category/landing-page crawling."""
-    urls = _discover_from_search_requests(session, query, 80)
+    urls = _discover_from_search_requests(session, query, 40)
     if urls:
         return urls
     if BROWSER_ENABLED:
-        return _discover_with_playwright(query, 80)
+        return _discover_with_playwright(query, 40)
     return []
 
 def _fetch_product_with_playwright(url):
@@ -548,7 +558,7 @@ def search(query):
     session = requests.Session()
     results, seen = ([], set())
     try:
-        for url in _discover(session, query):
+        for url in _discover(session, query)[:40]:
             html = None
             try:
                 response = session.get(url, headers=HEADERS, timeout=TIMEOUT, allow_redirects=True)
