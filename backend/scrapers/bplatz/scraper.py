@@ -239,8 +239,8 @@ def variant_record(data, variant, url):
         "store": STORE,
         "source": {
             "url": url,
-            "source_name": source_name,
-            "source_brand": vendor,
+            "name": source_name,
+            "brand": vendor,
             "image": _shopify_image(data),
         },
         "identity": {
