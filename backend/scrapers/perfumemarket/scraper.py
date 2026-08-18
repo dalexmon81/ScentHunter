@@ -108,15 +108,37 @@ def product(s,url,q):
   "raw_data":{"jsonld":data},
   "name":name,"price":f"{final_price:.2f}".replace(".",",")+" €" if final_price is not None else None,"url":url,"available":availability=="in_stock"
  }
+def search_page_urls(s,q):
+ try:
+  r=s.get(BASE+"/nl/search",params={"q":q},headers=HEADERS,timeout=TIMEOUT)
+ except requests.RequestException:
+  return []
+ if r.status_code!=200:return []
+ soup=BeautifulSoup(r.text,"html.parser")
+ out=[];seen=set()
+ for a in soup.select('a[href*="/products/"]'):
+  href=a.get("href")
+  if not href:continue
+  u=urljoin(BASE,href.split("?")[0].split("#")[0])
+  if u in seen:continue
+  label=clean(a.get_text(" ",strip=True))
+  if matches(label,q) or matches(u,q):
+   seen.add(u);out.append(u)
+ return out
+
 def search(q):
  q=clean(q)
  if not q:return []
  s=requests.Session()
  try:
   out=[];seen=set()
-  for u in [u for u in sitemap(s) if matches(u,q)][:30]:
+  candidates=search_page_urls(s,q)
+  if not candidates:
+   candidates=[u for u in sitemap(s) if matches(u,q)][:50]
+  for u in candidates[:50]:
    x=product(s,u,q)
-   if x and x["url"] not in seen:seen.add(x["url"]);out.append(x)
+   if x and x["url"] not in seen:
+    seen.add(x["url"]);out.append(x)
   return out
  finally:s.close()
 def scrape(q):return search(q)
