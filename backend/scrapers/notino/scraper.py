@@ -505,13 +505,35 @@ def _discover_from_search_requests(session, query, max_urls=80):
     return _candidate_product_urls(response.text, query)[:max_urls]
 
 def _discover(session, query):
-    """Search page -> product URLs; no category/landing-page crawling."""
+    """
+    Search page -> product URLs.
+
+    Notino can expose only part of the search catalogue in the initial
+    HTTP response while the remaining product cards are rendered by the
+    browser. The browser pass therefore supplements the HTTP discovery
+    instead of being used only when HTTP returns zero URLs.
+    """
     urls = _discover_from_search_requests(session, query, 80)
-    if urls:
-        return urls
-    if BROWSER_ENABLED:
-        return _discover_with_playwright(query, 80)
-    return []
+
+    if not BROWSER_ENABLED:
+        return urls[:80]
+
+    browser_urls = _discover_with_playwright(query, 80)
+
+    merged = []
+    seen = set()
+
+    for url in urls + browser_urls:
+        normalised = _normalise_url(url)
+        if not normalised or normalised in seen:
+            continue
+        seen.add(normalised)
+        merged.append(normalised)
+
+        if len(merged) >= 80:
+            break
+
+    return merged
 
 def _fetch_product_with_playwright(url):
     if sync_playwright is None or not BROWSER_ENABLED:
