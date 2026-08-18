@@ -295,7 +295,7 @@ def search(query):
         )
 
         print_json_if_any(homepage, "homepage")
-        _, homepage_products, homepage_categories = inspect_page(
+        homepage_products, homepage_categories = inspect_page(
             homepage,
             query,
             "homepage",
