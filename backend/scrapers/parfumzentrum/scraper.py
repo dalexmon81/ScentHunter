@@ -3,7 +3,7 @@ import re
 import requests
 import xml.etree.ElementTree as ET
 from bs4 import BeautifulSoup
-from urllib.parse import unquote, urljoin
+from urllib.parse import unquote
 
 
 BASE_URL = "https://www.parfum-zentrum.de"
@@ -342,68 +342,6 @@ def _extract_price(soup):
     return _visible_product_price(soup)
 
 
-def _walk_jsonld(soup):
-    for script in soup.find_all("script", type="application/ld+json"):
-        raw = script.string or script.get_text()
-        if not raw:
-            continue
-        try:
-            data = json.loads(raw)
-        except Exception:
-            continue
-        stack = [data]
-        while stack:
-            item = stack.pop(0)
-            if isinstance(item, list):
-                stack.extend(item)
-            elif isinstance(item, dict):
-                yield item
-                for value in item.values():
-                    if isinstance(value, (dict, list)):
-                        stack.append(value)
-
-
-def _product_jsonld(soup):
-    for item in _walk_jsonld(soup):
-        types = item.get("@type")
-        types = types if isinstance(types, list) else [types]
-        if "Product" in types or item.get("sku") or item.get("gtin") or "offers" in item:
-            return item
-    return {}
-
-
-def _value_from(data, *keys):
-    for key in keys:
-        value = data.get(key)
-        if isinstance(value, dict):
-            value = value.get("name") or value.get("value") or value.get("@id")
-        if value not in (None, ""):
-            return str(value).strip()
-    return None
-
-
-def _gender(name):
-    text = name.lower()
-    if re.search(r"\b(damen|dame|women|woman|femme|female)\b", text):
-        return "women"
-    if re.search(r"\b(herren|herr|men|man|homme|male)\b", text):
-        return "men"
-    if re.search(r"\bunisex\b", text):
-        return "unisex"
-    return "unknown"
-
-
-def _availability(value, page_text=""):
-    text = str(value or "").lower() + " " + str(page_text or "").lower()
-    if any(x in text for x in ("outofstock", "out of stock", "nicht vorrätig", "nicht lieferbar", "ausverkauft")):
-        return "out_of_stock"
-    if any(x in text for x in ("instock", "in stock", "auf lager", "sofort lieferbar")):
-        return "in_stock"
-    if "preorder" in text:
-        return "preorder"
-    return "unknown"
-
-
 def _extract_product(url, query):
     try:
         response = SESSION.get(url, headers=HEADERS, timeout=10)
@@ -458,73 +396,13 @@ def _extract_product(url, query):
     if price is None:
         return None
 
-    product_data = _product_jsonld(soup)
-
-    brand = product_data.get("brand")
-    brand = brand.get("name") if isinstance(brand, dict) else brand
-    brand = str(brand).strip() if brand else None
-
-    image = product_data.get("image")
-    if isinstance(image, list):
-        image = image[0] if image else None
-    if isinstance(image, dict):
-        image = image.get("url") or image.get("contentUrl")
-    if image:
-        image = urljoin(url, str(image))
-
-    offers = product_data.get("offers")
-    offers = offers if isinstance(offers, list) else [offers]
-    offer0 = next((x for x in offers if isinstance(x, dict)), {})
-    availability = _availability(offer0.get("availability"), page_text)
-
-    sku = _value_from(product_data, "sku")
-    gtin = _value_from(product_data, "gtin", "gtin13", "gtin12", "gtin14")
-    mpn = _value_from(product_data, "mpn")
-    product_id = _value_from(product_data, "productID", "productId", "product_id")
-
     return {
         "store": "ParfumZentrum",
-        "source": {
-            "source_name": name,
-            "source_brand": brand,
-            "url": url,
-            "image": image,
-        },
-        "identity": {
-            "gtin": {"value": gtin, "source": "jsonld"} if gtin else None,
-            "mpn": {"value": mpn, "source": "jsonld"} if mpn else None,
-            "sku": {"value": sku, "source": "jsonld"} if sku else None,
-            "store_product_id": {"value": product_id, "source": "jsonld"} if product_id else None,
-            "store_variant_id": None,
-        },
-        "attributes": {
-            "size_ml": {"value": size_ml, "source": "product_title"} if size_ml is not None else None,
-            "concentration": {"value": concentration, "source": "product_title"} if concentration else None,
-            "gender": {"value": _gender(name), "source": "product_title"},
-            "packaging_type": {"value": "product", "source": "default"},
-        },
-        "offer": {
-            "price": price,
-            "currency": "EUR",
-            "availability": availability,
-        },
-        "provenance": {
-            "source_page": url,
-            "name_source": "h1",
-            "brand_source": "jsonld" if brand else None,
-            "price_source": "jsonld_or_semantic_page",
-            "product_source": "jsonld" if product_data else "product_page",
-            "availability_source": "jsonld_or_page",
-        },
-        "raw_data": {
-            "jsonld": product_data,
-        },
         "name": name,
         "price": f"{price:.2f}€",
         "url": url,
         "size_ml": size_ml,
         "concentration": concentration,
-        "available": availability == "in_stock",
     }
 
 
