@@ -1,13 +1,10 @@
 """
-Notino diagnostic V6 for ScentHunter.
+Notino diagnostic V7.
 
-Diagnostic only. Discovery is generic:
-1. Open the search URL directly in Chromium.
-2. Collect candidate links from the real search-result HTML.
-3. Open candidate product pages directly, one by one.
-4. Inspect product-page data: title, H1, canonical, JSON-LD Product,
-   brand, name, offers/price, availability, images and product IDs.
-5. No product names, URLs, seeds or special cases are embedded.
+Goal: determine which browser navigation pattern is accepted by Notino
+for a product page after direct search discovery.
+
+No product-specific names, URLs, seeds or exceptions are embedded.
 """
 
 from __future__ import annotations
@@ -24,171 +21,244 @@ from playwright.sync_api import sync_playwright
 BASE_URL = "https://www.notino.fr"
 SEARCH_URL = BASE_URL + "/search.asp"
 TIMEOUT = 30000
-MAX_CANDIDATES = 12
-
-SCRAPER_VERSION = "notino-DIAGNOSTIC-2026-08-18-v6"
+SCRAPER_VERSION = "notino-DIAGNOSTIC-2026-08-18-v7"
 
 P_ID_RE = re.compile(r"/p-(\d+)(?:/|$)", re.I)
-PRICE_RE = re.compile(r"\d+(?:[,.]\d{1,2})?\s*€", re.I)
-SIZE_RE = re.compile(r"\b\d+(?:[,.]\d+)?\s*(?:ml|g|kg|l|pcs?)\b", re.I)
 
 
 def clean(value):
     return re.sub(r"\s+", " ", str(value or "")).strip()
 
 
-def absolute_url(page_url, href):
-    if not href:
-        return ""
+def abs_url(page_url, href):
     return urljoin(page_url, href).split("#", 1)[0]
 
 
-def is_internal(url):
-    try:
-        host = urlparse(url).netloc.lower()
-    except Exception:
-        return False
+def internal(url):
+    host = urlparse(url).netloc.lower()
     return host == "notino.fr" or host.endswith(".notino.fr")
 
 
-def extract_jsonld(soup):
-    objects = []
-
-    for script in soup.find_all(
-        "script",
-        attrs={"type": re.compile(r"application/ld\+json", re.I)},
-    ):
-        raw = script.string or script.get_text()
-        if not raw:
-            continue
-
-        try:
-            data = json.loads(raw)
-        except Exception:
-            continue
-
-        values = data if isinstance(data, list) else [data]
-
-        def walk(value):
-            if isinstance(value, dict):
-                objects.append(value)
-                for child in value.values():
-                    if isinstance(child, (dict, list)):
-                        walk(child)
-            elif isinstance(value, list):
-                for child in value:
-                    walk(child)
-
-        walk(values)
-
-    return objects
-
-
-def product_jsonld(objects):
-    products = []
-
-    for obj in objects:
-        kind = obj.get("@type")
-
-        kinds = kind if isinstance(kind, list) else [kind]
-
-        if any(
-            str(item).lower() == "product"
-            for item in kinds
-        ):
-            products.append(obj)
-
-    return products
-
-
-def candidate_links(page, query):
-    html = page.content()
-    soup = BeautifulSoup(html, "html.parser")
-
-    candidates = []
+def product_candidates(page):
+    soup = BeautifulSoup(page.content(), "html.parser")
+    out = []
     seen = set()
 
-    for anchor in soup.find_all("a", href=True):
-        url = absolute_url(page.url, anchor.get("href"))
-
-        if not url or not is_internal(url):
+    for a in soup.find_all("a", href=True):
+        url = abs_url(page.url, a["href"])
+        if not url or not internal(url):
             continue
 
-        parsed = urlparse(url)
-        path = parsed.path.rstrip("/") + "/"
+        path = urlparse(url).path.rstrip("/") + "/"
+        match = P_ID_RE.search(path)
 
-        if (
-            path == "/"
-            or path.startswith("/search")
-            or path.startswith("/cart")
-            or path.startswith("/wishlist")
-            or path.startswith("/mynotino")
-        ):
+        # Generic product-page signal: explicit Notino product ID.
+        if not match:
             continue
 
-        text = clean(anchor.get_text(" ", strip=True))
-        img = anchor.find("img")
-        alt = clean(img.get("alt")) if img else ""
-        aria = clean(anchor.get("aria-label"))
-        title_attr = clean(anchor.get("title"))
-
-        visible = clean(
-            " ".join([text, alt, aria, title_attr])
-        )
-
-        # Generic product signal:
-        # - explicit product ID in URL, OR
-        # - result-card text contains price/size and an image alt/text.
-        has_pid = bool(P_ID_RE.search(path))
-        has_price = bool(PRICE_RE.search(visible))
-        has_size = bool(SIZE_RE.search(visible))
-        has_product_text = len(visible) >= 12
-
-        if not has_pid and not (
-            has_price and has_product_text
-        ):
+        if url.lower() in seen:
             continue
 
-        # Skip obvious non-product taxonomy/filter links.
-        if (
-            not has_pid
-            and not has_size
-            and not has_price
-        ):
-            continue
-
-        key = url.lower()
-
-        if key in seen:
-            continue
-
-        seen.add(key)
-
-        candidates.append({
+        seen.add(url.lower())
+        out.append({
             "url": url,
-            "p_id": (
-                P_ID_RE.search(path).group(1)
-                if P_ID_RE.search(path)
-                else None
-            ),
-            "text": text[:500],
-            "alt": alt[:500],
-            "aria": aria[:200],
-            "title": title_attr[:200],
+            "p_id": match.group(1),
+            "text": clean(a.get_text(" ", strip=True))[:400],
+            "alt": clean(
+                a.find("img").get("alt")
+                if a.find("img")
+                else ""
+            )[:400],
         })
 
-        if len(candidates) >= MAX_CANDIDATES:
-            break
-
-    return candidates
+    return out
 
 
-def inspect_product_page(page, candidate, index):
+def page_probe(page, label, url, mode):
     started = time.perf_counter()
+    response = None
+    error = None
+
+    try:
+        if mode == "goto":
+            response = page.goto(
+                url,
+                wait_until="domcontentloaded",
+                timeout=TIMEOUT,
+            )
+        elif mode == "reload":
+            response = page.reload(
+                wait_until="domcontentloaded",
+                timeout=TIMEOUT,
+            )
+        else:
+            raise ValueError(mode)
+
+        try:
+            page.wait_for_load_state(
+                "networkidle",
+                timeout=8000,
+            )
+        except Exception:
+            pass
+
+        page.wait_for_timeout(800)
+
+    except Exception as exc:
+        error = f"{type(exc).__name__}: {exc}"
+
+    elapsed = round(time.perf_counter() - started, 3)
+
+    html = ""
+    try:
+        html = page.content()
+    except Exception:
+        pass
+
+    soup = BeautifulSoup(html, "html.parser")
+    title = ""
+    h1 = ""
+
+    try:
+        title = clean(page.title())
+    except Exception:
+        pass
+
+    h1_node = soup.find("h1")
+    if h1_node:
+        h1 = clean(h1_node.get_text(" ", strip=True))
+
+    result = {
+        "label": label,
+        "mode": mode,
+        "status": response.status if response else None,
+        "url": page.url,
+        "elapsed": elapsed,
+        "bytes": len(html.encode("utf-8", errors="ignore")),
+        "title": title,
+        "h1": h1,
+        "error": error,
+    }
+
+    print(
+        f"NOTINO_V7_PROBE: {label} "
+        f"status={result['status']} "
+        f"url={result['url']} "
+        f"bytes={result['bytes']} "
+        f"title={title!r}",
+        flush=True,
+    )
+
+    return result
+
+
+def click_probe(page, candidate):
+    started = time.perf_counter()
+    response = None
+    error = None
+
+    try:
+        locator = page.locator(
+            f'a[href="{candidate["url"]}"]'
+        ).first
+
+        if locator.count() == 0:
+            # Search page can normalize/encode the href.
+            locator = page.locator(
+                "a[href*='/p-"
+                + candidate["p_id"]
+                + "/']"
+            ).first
+
+        if locator.count() == 0:
+            raise RuntimeError("candidate_link_not_found")
+
+        response = locator.click(
+            timeout=10000,
+            no_wait_after=True,
+        )
+
+        page.wait_for_timeout(2500)
+
+    except Exception as exc:
+        error = f"{type(exc).__name__}: {exc}"
+
+    elapsed = round(time.perf_counter() - started, 3)
+
+    html = ""
+    try:
+        html = page.content()
+    except Exception:
+        pass
+
+    title = ""
+    try:
+        title = clean(page.title())
+    except Exception:
+        pass
+
+    result = {
+        "label": "same_page_click",
+        "mode": "click",
+        "status": (
+            response.status
+            if response is not None
+            else None
+        ),
+        "url": page.url,
+        "elapsed": elapsed,
+        "bytes": len(
+            html.encode("utf-8", errors="ignore")
+        ),
+        "title": title,
+        "error": error,
+    }
+
+    print(
+        f"NOTINO_V7_PROBE: same_page_click "
+        f"status={result['status']} "
+        f"url={result['url']} "
+        f"bytes={result['bytes']} "
+        f"title={title!r}",
+        flush=True,
+    )
+
+    return result
+
+
+def new_context(pw):
+    return pw.chromium.launch(
+        headless=True,
+        args=[
+            "--no-sandbox",
+            "--disable-dev-shm-usage",
+            "--disable-gpu",
+        ],
+    )
+
+
+def context_args():
+    return {
+        "user_agent": (
+            "Mozilla/5.0 (X11; Linux x86_64) "
+            "AppleWebKit/537.36 (KHTML, like Gecko) "
+            "Chrome/124.0.0.0 Safari/537.36"
+        ),
+        "locale": "fr-FR",
+        "viewport": {
+            "width": 1365,
+            "height": 900,
+        },
+    }
+
+
+def search_and_get_candidates(browser, search_url):
+    context = browser.new_context(**context_args())
+    page = context.new_page()
 
     try:
         response = page.goto(
-            candidate["url"],
+            search_url,
             wait_until="domcontentloaded",
             timeout=TIMEOUT,
         )
@@ -196,167 +266,109 @@ def inspect_product_page(page, candidate, index):
         try:
             page.wait_for_load_state(
                 "networkidle",
-                timeout=12000,
+                timeout=10000,
             )
         except Exception:
             pass
 
         page.wait_for_timeout(1000)
 
-    except Exception as exc:
-        return {
-            "index": index,
-            "candidate": candidate,
-            "ok": False,
-            "error": f"{type(exc).__name__}: {exc}",
-        }
-
-    html = page.content()
-    soup = BeautifulSoup(html, "html.parser")
-
-    title = clean(page.title())
-
-    h1 = ""
-    try:
-        h1 = clean(
-            page.locator("h1").first.inner_text(timeout=3000)
-        )
-    except Exception:
-        pass
-
-    canonical = ""
-    canonical_node = soup.find(
-        "link",
-        rel=lambda value: (
-            value and "canonical" in value
-            if isinstance(value, list)
-            else value == "canonical"
-        ),
-    )
-
-    if canonical_node:
-        canonical = absolute_url(
-            page.url,
-            canonical_node.get("href"),
-        )
-
-    objects = extract_jsonld(soup)
-    products = product_jsonld(objects)
-
-    product_data = []
-
-    for product in products:
-        brand = product.get("brand")
-        if isinstance(brand, dict):
-            brand = brand.get("name")
-        elif isinstance(brand, list):
-            brand = ", ".join(
-                clean(
-                    item.get("name")
-                    if isinstance(item, dict)
-                    else item
-                )
-                for item in brand
-            )
-
-        offers = product.get("offers")
-
-        if isinstance(offers, list):
-            offers_out = offers[:5]
-        elif isinstance(offers, dict):
-            offers_out = [offers]
-        else:
-            offers_out = []
-
-        product_data.append({
-            "name": clean(product.get("name")),
-            "brand": clean(brand),
-            "sku": clean(product.get("sku")),
-            "mpn": clean(product.get("mpn")),
-            "product_id": clean(
-                product.get("productID")
-            ),
-            "image": (
-                product.get("image")
-                if isinstance(
-                    product.get("image"),
-                    (str, list),
-                )
-                else None
-            ),
-            "offers": [
-                {
-                    "price": item.get("price"),
-                    "currency": item.get("priceCurrency"),
-                    "availability": item.get("availability"),
-                    "url": item.get("url"),
-                }
-                for item in offers_out
-                if isinstance(item, dict)
-            ],
-        })
-
-    text = clean(soup.get_text(" ", strip=True))
-
-    # Useful fallback observations only; no hard-coded product logic.
-    prices = PRICE_RE.findall(text)
-    sizes = SIZE_RE.findall(text)
-
-    elapsed = round(time.perf_counter() - started, 3)
-
-    status = response.status if response is not None else None
-
-    result = {
-        "index": index,
-        "candidate": candidate,
-        "ok": bool(response and response.status < 400),
-        "status": status,
-        "url": page.url,
-        "elapsed": elapsed,
-        "bytes": len(html.encode("utf-8", errors="ignore")),
-        "title": title,
-        "h1": h1,
-        "canonical": canonical,
-        "jsonld_objects": len(objects),
-        "jsonld_products": product_data,
-        "visible_price_examples": prices[:20],
-        "visible_size_examples": sizes[:20],
-    }
-
-    print(
-        f"NOTINO_V6_PRODUCT[{index}]: "
-        f"status={status} "
-        f"url={page.url} "
-        f"title={title!r} "
-        f"h1={h1!r} "
-        f"jsonld_products={len(product_data)}",
-        flush=True,
-    )
-
-    for pidx, pdata in enumerate(product_data, 1):
         print(
-            f"NOTINO_V6_PRODUCT_DATA[{index}.{pidx}]: "
-            f"name={pdata['name']!r} "
-            f"brand={pdata['brand']!r} "
-            f"sku={pdata['sku']!r} "
-            f"mpn={pdata['mpn']!r} "
-            f"product_id={pdata['product_id']!r} "
-            f"offers={pdata['offers']!r}",
+            f"NOTINO_V7_SEARCH: status="
+            f"{response.status if response else None} "
+            f"url={page.url}",
             flush=True,
         )
 
-    return result
+        return context, page, product_candidates(page)
+
+    except Exception:
+        page.close()
+        context.close()
+        raise
+
+
+def run_variant(browser, candidate, variant):
+    context = browser.new_context(**context_args())
+    page = context.new_page()
+
+    try:
+        if variant == "fresh_goto":
+            return [
+                page_probe(
+                    page,
+                    "fresh_context_direct_product",
+                    candidate["url"],
+                    "goto",
+                )
+            ]
+
+        if variant == "fresh_goto_no_slash":
+            url = candidate["url"].rstrip("/")
+            return [
+                page_probe(
+                    page,
+                    "fresh_context_product_without_trailing_slash",
+                    url,
+                    "goto",
+                )
+            ]
+
+        if variant == "search_then_goto":
+            search_url = (
+                SEARCH_URL
+                + "?exps="
+                + quote(candidate["query"])
+            )
+
+            page_probe(
+                page,
+                "same_context_search",
+                search_url,
+                "goto",
+            )
+
+            return [
+                page_probe(
+                    page,
+                    "same_context_search_then_product",
+                    candidate["url"],
+                    "goto",
+                )
+            ]
+
+        if variant == "search_then_click":
+            search_url = (
+                SEARCH_URL
+                + "?exps="
+                + quote(candidate["query"])
+            )
+
+            page_probe(
+                page,
+                "search_before_click",
+                search_url,
+                "goto",
+            )
+
+            return [click_probe(page, candidate)]
+
+        raise ValueError(variant)
+
+    finally:
+        page.close()
+        context.close()
 
 
 def search(query):
     query = clean(query)
 
     print(
-        f"NOTINO_V6_VERSION: {SCRAPER_VERSION}",
+        f"NOTINO_V7_VERSION: {SCRAPER_VERSION}",
         flush=True,
     )
     print(
-        f"NOTINO_V6_START: query={query!r}",
+        f"NOTINO_V7_START: query={query!r}",
         flush=True,
     )
 
@@ -374,161 +386,93 @@ def search(query):
         "version": SCRAPER_VERSION,
         "query": query,
         "search_url": search_url,
-        "search": None,
         "candidates": [],
-        "product_pages": [],
+        "probes": [],
     }
 
     with sync_playwright() as pw:
-        browser = pw.chromium.launch(
-            headless=True,
-            args=[
-                "--no-sandbox",
-                "--disable-dev-shm-usage",
-                "--disable-gpu",
-            ],
-        )
+        browser = new_context(pw)
 
         try:
-            context = browser.new_context(
-                user_agent=(
-                    "Mozilla/5.0 (X11; Linux x86_64) "
-                    "AppleWebKit/537.36 (KHTML, like Gecko) "
-                    "Chrome/124.0.0.0 Safari/537.36"
-                ),
-                locale="fr-FR",
-                viewport={
-                    "width": 1365,
-                    "height": 900,
-                },
+            search_context, search_page, candidates = (
+                search_and_get_candidates(
+                    browser,
+                    search_url,
+                )
             )
 
             try:
-                page = context.new_page()
+                # Use the first two generic product-ID candidates only.
+                selected = candidates[:2]
 
-                started = time.perf_counter()
+                for candidate in selected:
+                    candidate["query"] = query
 
-                response = page.goto(
-                    search_url,
-                    wait_until="domcontentloaded",
-                    timeout=TIMEOUT,
-                )
+                report["candidates"] = selected
 
-                try:
-                    page.wait_for_load_state(
-                        "networkidle",
-                        timeout=12000,
-                    )
-                except Exception:
-                    pass
-
-                page.wait_for_timeout(1000)
-
-                elapsed = round(
-                    time.perf_counter() - started,
-                    3,
-                )
-
-                status = (
-                    response.status
-                    if response is not None
-                    else None
-                )
-
-                print(
-                    f"NOTINO_V6_SEARCH: "
-                    f"status={status} "
-                    f"url={page.url} "
-                    f"elapsed={elapsed}s",
-                    flush=True,
-                )
-
-                if response is None or status >= 400:
-                    report["search"] = {
-                        "status": status,
-                        "url": page.url,
-                        "elapsed": elapsed,
-                    }
-                    return [report]
-
-                candidates = candidate_links(
-                    page,
-                    query,
-                )
-
-                report["search"] = {
-                    "status": status,
-                    "url": page.url,
-                    "elapsed": elapsed,
-                    "bytes": len(
-                        page.content().encode(
-                            "utf-8",
-                            errors="ignore",
-                        )
-                    ),
-                }
-
-                report["candidates"] = candidates
-
-                print(
-                    f"NOTINO_V6_DISCOVERY: "
-                    f"candidates={len(candidates)}",
-                    flush=True,
-                )
-
-                for index, candidate in enumerate(
-                    candidates,
+                for i, candidate in enumerate(
+                    selected,
                     1,
                 ):
                     print(
-                        f"NOTINO_V6_CANDIDATE[{index}]: "
-                        f"url={candidate['url']} "
+                        f"NOTINO_V7_CANDIDATE[{i}]: "
                         f"p_id={candidate['p_id']} "
+                        f"url={candidate['url']} "
                         f"text={candidate['text']!r}",
                         flush=True,
                     )
 
-                # Reuse the same browser context, but each product gets
-                # a fresh page. No homepage visit is performed.
-                for index, candidate in enumerate(
-                    candidates,
-                    1,
+            finally:
+                search_page.close()
+                search_context.close()
+
+            # Each variant is isolated so one anti-bot response cannot
+            # contaminate the next test.
+            for candidate in report["candidates"]:
+                for variant in (
+                    "fresh_goto",
+                    "fresh_goto_no_slash",
+                    "search_then_goto",
+                    "search_then_click",
                 ):
-                    product_page = context.new_page()
+                    print(
+                        f"NOTINO_V7_VARIANT: "
+                        f"p_id={candidate['p_id']} "
+                        f"variant={variant}",
+                        flush=True,
+                    )
 
                     try:
-                        result = inspect_product_page(
-                            product_page,
+                        probes = run_variant(
+                            browser,
                             candidate,
-                            index,
+                            variant,
                         )
-                        report["product_pages"].append(result)
-                    finally:
-                        product_page.close()
 
-            finally:
-                context.close()
+                        report["probes"].extend(
+                            {
+                                **probe,
+                                "candidate": candidate,
+                            }
+                            for probe in probes
+                        )
+
+                    except Exception as exc:
+                        print(
+                            "NOTINO_V7_VARIANT_ERROR: "
+                            f"p_id={candidate['p_id']} "
+                            f"variant={variant} "
+                            f"{type(exc).__name__}: {exc}",
+                            flush=True,
+                        )
 
         finally:
             browser.close()
 
-    valid_pages = [
-        item
-        for item in report["product_pages"]
-        if item.get("ok")
-    ]
-
-    product_jsonld_count = sum(
-        len(item.get("jsonld_products", []))
-        for item in valid_pages
-    )
-
     print(
-        f"NOTINO_V6_END: "
+        f"NOTINO_V7_END: "
         f"candidates={len(report['candidates'])} "
-        f"opened={len(report['product_pages'])} "
-        f"ok_pages={len(valid_pages)} "
-        f"jsonld_products={product_jsonld_count}",
+        f"probes={len(report['probes'])}",
         flush=True,
     )
 
