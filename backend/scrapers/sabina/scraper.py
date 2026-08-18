@@ -23,10 +23,17 @@ HEADERS = {
         "text/html,application/xhtml+xml,application/xml;"
         "q=0.9,image/avif,image/webp,*/*;q=0.8"
     ),
+    "Referer": BASE_URL + "/es/",
 }
 
+SITEMAP_INDEX_URL = BASE_URL + "/sitemap_index_shop_1.xml"
+
+# Sabina product URLs can have different category depths:
+# /es/perfumes-hombre/34982-liquid-brun.html
+# /es/perfumes-mujer/41708-liquid-brun-limited-edition-extrait-de-parfum.html
+# /es/fragrancias-femeninas-guerlain/22290-....html
 PRODUCT_PATH_RE = re.compile(
-    r"^/(?:es|it|fr|en|de|nl)/[^/]+/(\d+)-[^/]+\.html$",
+    r"^/(?:es|it|fr|en|de|nl)/.+/(\d+)-[^/]+\.html$",
     re.I,
 )
 
@@ -214,10 +221,10 @@ def extract_product_page(session, url):
     soup = BeautifulSoup(response.text, "html.parser")
     product = first_jsonld_product(soup)
 
+    h1 = soup.select_one("h1")
     title = clean(
         (product or {}).get("name")
-        or (soup.select_one("h1").get_text(" ", strip=True)
-            if soup.select_one("h1") else "")
+        or (h1.get_text(" ", strip=True) if h1 else "")
     )
 
     if not title:
@@ -225,7 +232,7 @@ def extract_product_page(session, url):
 
     brand = None
     if isinstance((product or {}).get("brand"), dict):
-        brand = clean((product["brand"].get("name")))
+        brand = clean(product["brand"].get("name"))
     elif (product or {}).get("brand"):
         brand = clean(product["brand"])
 
@@ -267,8 +274,6 @@ def extract_product_page(session, url):
     elif "preorder" in availability_raw:
         availability = "preorder"
     else:
-        # Sabina product pages can show a "Fecha de disponibilidad"
-        # field even when the product is not immediately orderable.
         page_text = norm(soup.get_text(" ", strip=True))
         if "fecha de disponibilidad" in page_text or "date de disponibilite" in page_text:
             availability = "out_of_stock"
@@ -277,13 +282,10 @@ def extract_product_page(session, url):
 
     page_text = soup.get_text(" ", strip=True)
     size_ml = extract_size_ml(title, page_text)
-    concentration, concentration_source = extract_concentration(
-        title, page_text
-    )
+    concentration, concentration_source = extract_concentration(title, page_text)
     gender, gender_source = extract_gender(title, page_text)
     packaging_type, packaging_source = extract_packaging_type(title, page_text)
 
-    # The page's visible reference is useful when JSON-LD does not expose SKU.
     if not sku:
         ref_match = re.search(
             r"(?:referencia|reference|référence|riferimento)\s*[:#]?\s*([A-Z0-9_-]+)",
@@ -310,14 +312,8 @@ def extract_product_page(session, url):
             "image": image,
         },
         "identity": {
-            "gtin": (
-                {"value": gtin, "source": "sabina_jsonld"}
-                if gtin else None
-            ),
-            "mpn": (
-                {"value": mpn, "source": "sabina_jsonld"}
-                if mpn else None
-            ),
+            "gtin": {"value": gtin, "source": "sabina_jsonld"} if gtin else None,
+            "mpn": {"value": mpn, "source": "sabina_jsonld"} if mpn else None,
             "sku": (
                 {"value": sku, "source": "sabina_jsonld_or_reference"}
                 if sku else None
@@ -366,8 +362,6 @@ def extract_product_page(session, url):
             "packaging_type": packaging_source,
         },
         "raw_data": raw_data,
-
-        # Backward-compatible fields for the current main.py.
         "name": title,
         "brand": brand,
         "price": (
@@ -379,42 +373,27 @@ def extract_product_page(session, url):
     }
 
 
-def search_result_urls(session, query):
+def collect_product_urls_from_html(html, base_url, query):
     urls = []
     seen = set()
 
-    search_urls = (
-        BASE_URL + SEARCH_PATH + "?controller=search&s=" + quote_plus(query),
-        BASE_URL + "/es/buscar?s=" + quote_plus(query),
-    )
+    soup = BeautifulSoup(html, "html.parser")
 
-    for search_url in search_urls:
-        try:
-            response = session.get(
-                search_url,
-                headers=HEADERS,
-                timeout=TIMEOUT,
-                allow_redirects=True,
-            )
-        except requests.RequestException:
-            continue
+    # Normal anchors plus common data attributes used by product cards.
+    for anchor in soup.find_all("a", href=True):
+        candidates = [
+            anchor.get("href"),
+            anchor.get("data-href"),
+            anchor.get("data-product-url"),
+        ]
 
-        if response.status_code >= 400:
-            continue
-
-        soup = BeautifulSoup(response.text, "html.parser")
-
-        for anchor in soup.find_all("a", href=True):
-            absolute = urljoin(response.url, anchor["href"]).split("#")[0]
+        for raw in candidates:
+            if not raw:
+                continue
+            absolute = urljoin(base_url, raw).split("#")[0]
             if not is_product_url(absolute):
                 continue
 
-            path = urlparse(absolute).path
-            if path in seen:
-                continue
-
-            # Search-result cards usually contain the complete product title
-            # in the anchor or one of its nearby parent nodes.
             text = clean(
                 anchor.get("title")
                 or anchor.get("aria-label")
@@ -432,34 +411,159 @@ def search_result_urls(session, query):
                         text = candidate_text
                         break
 
-            if not query_matches(text, query):
+            # URL slug is a valid generic discovery signal even when the
+            # search card text is absent from the HTML.
+            slug_text = urlparse(absolute).path
+            if not query_matches(text, query) and not query_matches(slug_text, query):
                 continue
 
-            # Avoid obvious non-perfume accessories when the query is broad.
-            normalized = norm(text)
-            if any(term in normalized for term in NON_PRODUCT_TERMS):
+            if any(term in norm(text) for term in NON_PRODUCT_TERMS):
                 continue
 
-            seen.add(path)
-            urls.append(absolute)
+            if absolute not in seen:
+                seen.add(absolute)
+                urls.append(absolute)
 
     return urls
+
+
+def search_result_urls(session, query):
+    urls = []
+    seen = set()
+
+    # Use the same public search URL used by the site's browser UI first.
+    search_urls = (
+        BASE_URL + SEARCH_PATH + "?s=" + quote_plus(query),
+        BASE_URL + SEARCH_PATH + "?controller=search&s=" + quote_plus(query),
+        BASE_URL + "/es/buscar_old?s=" + quote_plus(query),
+    )
+
+    for search_url in search_urls:
+        try:
+            response = session.get(
+                search_url,
+                headers=HEADERS,
+                timeout=TIMEOUT,
+                allow_redirects=True,
+            )
+        except requests.RequestException:
+            continue
+
+        if response.status_code >= 400:
+            continue
+
+        for absolute in collect_product_urls_from_html(
+            response.text, response.url, query
+        ):
+            if absolute not in seen:
+                seen.add(absolute)
+                urls.append(absolute)
+
+    return urls
+
+
+def sitemap_product_urls(session, query):
+    """
+    Generic fallback discovery using Sabina's public XML sitemap.
+
+    This is deliberately query-driven: no brand, product, URL, SKU or
+    exception is hard-coded. Product URLs are selected from sitemap XML
+    by matching the runtime query tokens against the product URL slug.
+    """
+    query_parts = query_tokens(query)
+    if not query_parts:
+        return []
+
+    try:
+        response = session.get(
+            SITEMAP_INDEX_URL,
+            headers=HEADERS,
+            timeout=TIMEOUT,
+            allow_redirects=True,
+        )
+    except requests.RequestException:
+        return []
+
+    if response.status_code >= 400:
+        return []
+
+    try:
+        index_soup = BeautifulSoup(response.text, "xml")
+    except Exception:
+        return []
+
+    sitemap_urls = []
+    for loc in index_soup.find_all("loc"):
+        value = clean(loc.get_text())
+        if value:
+            sitemap_urls.append(value)
+
+    # If an XML parser is unavailable, BeautifulSoup's normal parser can
+    # still extract loc tags.
+    if not sitemap_urls:
+        fallback = BeautifulSoup(response.text, "html.parser")
+        sitemap_urls = [
+            clean(loc.get_text())
+            for loc in fallback.find_all("loc")
+            if clean(loc.get_text())
+        ]
+
+    product_urls = []
+    seen = set()
+
+    for sitemap_url in sitemap_urls:
+        # Some indexes can contain category/landing sitemaps as well.
+        # We only need XML files that can expose product URLs.
+        try:
+            child = session.get(
+                sitemap_url,
+                headers=HEADERS,
+                timeout=TIMEOUT,
+                allow_redirects=True,
+            )
+        except requests.RequestException:
+            continue
+
+        if child.status_code >= 400:
+            continue
+
+        try:
+            child_soup = BeautifulSoup(child.text, "xml")
+        except Exception:
+            continue
+
+        locs = child_soup.find_all("loc")
+        if not locs:
+            fallback = BeautifulSoup(child.text, "html.parser")
+            locs = fallback.find_all("loc")
+
+        for loc in locs:
+            absolute = clean(loc.get_text())
+            if not absolute or not is_product_url(absolute):
+                continue
+
+            # The product slug itself is enough to discover a candidate.
+            if not all(part in norm(urlparse(absolute).path) for part in query_parts):
+                continue
+
+            if absolute not in seen:
+                seen.add(absolute)
+                product_urls.append(absolute)
+
+    return product_urls
 
 
 def brand_page_urls(session, query):
     """
     Secondary generic discovery path.
 
-    Sabina exposes brand pages such as /es/630_rayhaan. When normal site
-    search misses a product, discover brand/category links from the search
-    page and inspect their product links. No brand is hard-coded here.
+    Sabina exposes numeric brand/category pages. We only use pages whose
+    visible anchor text matches the runtime query, so no brand is hard-coded.
     """
     urls = []
     seen = set()
 
-    search_url = (
-        BASE_URL + SEARCH_PATH + "?controller=search&s=" + quote_plus(query)
-    )
+    search_url = BASE_URL + SEARCH_PATH + "?s=" + quote_plus(query)
 
     try:
         response = session.get(
@@ -481,7 +585,6 @@ def brand_page_urls(session, query):
         href = urljoin(response.url, anchor["href"]).split("#")[0]
         path = urlparse(href).path
 
-        # Generic brand/category pages in Sabina have numeric slugs.
         if re.search(r"/(?:es|it|fr|en|de|nl)/\d+_[^/]+/?$", path, re.I):
             text = clean(anchor.get_text(" ", strip=True))
             if text and query_matches(text, query):
@@ -501,20 +604,11 @@ def brand_page_urls(session, query):
         if page.status_code >= 400:
             continue
 
-        page_soup = BeautifulSoup(page.text, "html.parser")
-        for anchor in page_soup.find_all("a", href=True):
-            absolute = urljoin(page.url, anchor["href"]).split("#")[0]
-            path = urlparse(absolute).path
-            if not is_product_url(absolute) or path in seen:
-                continue
-
-            text = clean(
-                anchor.get("title")
-                or anchor.get("aria-label")
-                or anchor.get_text(" ", strip=True)
-            )
-            if query_matches(text, query):
-                seen.add(path)
+        for absolute in collect_product_urls_from_html(
+            page.text, page.url, query
+        ):
+            if absolute not in seen:
+                seen.add(absolute)
                 urls.append(absolute)
 
     return urls
@@ -529,13 +623,21 @@ def search(query):
     urls = []
     seen_urls = set()
 
+    # 1. Normal site search.
     for url in search_result_urls(session, query):
         if url not in seen_urls:
             seen_urls.add(url)
             urls.append(url)
 
-    # Second generic discovery path for cases where Sabina's internal search
-    # returns incomplete results.
+    # 2. Generic sitemap discovery. This is the important fallback for
+    # Sabina's current search page, which can return HTML without the actual
+    # query results to a plain requests client.
+    for url in sitemap_product_urls(session, query):
+        if url not in seen_urls:
+            seen_urls.add(url)
+            urls.append(url)
+
+    # 3. Generic brand/category discovery.
     for url in brand_page_urls(session, query):
         if url not in seen_urls:
             seen_urls.add(url)
@@ -544,9 +646,7 @@ def search(query):
     results = []
     seen_products = set()
 
-    # Limit product-page requests so a broad query cannot create an
-    # effectively unbounded scrape.
-    for url in urls[:12]:
+    for url in urls[:20]:
         product = extract_product_page(session, url)
         if not product:
             continue
