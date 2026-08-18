@@ -270,7 +270,7 @@ def _product(url, html, query):
     return {'store': STORE, 'source': {'source_name': name, 'source_brand': clean(brand), 'url': url, 'image': image}, 'identity': {'gtin': {'value': gtin, 'source': 'jsonld'} if gtin else None, 'mpn': {'value': mpn, 'source': 'jsonld'} if mpn else None, 'sku': {'value': sku, 'source': 'jsonld'} if sku else None, 'store_product_id': {'value': sku, 'source': 'notino_sku'} if sku else None}, 'attributes': {'size_ml': {'value': selected_size, 'source': 'selected_variant_or_product_name'} if selected_size is not None else None, 'concentration': {'value': concentration(name), 'source': 'product_name'} if concentration(name) else None, 'gender': {'value': 'unknown', 'source': 'not_explicit'}, 'packaging_type': {'value': 'product', 'source': 'default'}}, 'offer': {'price': price, 'currency': 'EUR', 'availability': availability}, 'provenance': {'source_page': url, 'product_source': 'jsonld_or_page'}, 'raw_data': {'jsonld': data}, 'name': name, 'price': f'{price:.2f}'.replace('.', ',') + ' €', 'url': url, 'available': availability == 'in_stock'}
 
 def _search_pages(query):
-    return (SEARCH_URL.format(query=quote_plus(query)), BASE_URL + '/search?query=' + quote_plus(query), BASE_URL + '/search?q=' + quote_plus(query))
+    return (SEARCH_URL.format(query=quote_plus(query)),)
 
 def _discover_with_playwright(query, max_urls=80):
     if sync_playwright is None:
@@ -316,6 +316,19 @@ def _discover_with_playwright(query, max_urls=80):
 def _discover_from_search_requests(session, query, max_urls=80):
     urls = []
     seen = set()
+    landing_pages = []
+    landing_seen = set()
+
+    def add(values):
+        for value in values:
+            if value in seen:
+                continue
+            seen.add(value)
+            urls.append(value)
+            if len(urls) >= max_urls:
+                return True
+        return False
+
     for search_url in _search_pages(query):
         try:
             response = session.get(search_url, headers=HEADERS, timeout=TIMEOUT, allow_redirects=True)
@@ -323,13 +336,45 @@ def _discover_from_search_requests(session, query, max_urls=80):
             continue
         if response.status_code >= 400:
             continue
-        for product_url in _candidate_product_urls(response.text, query):
-            if product_url in seen:
-                continue
-            seen.add(product_url)
-            urls.append(product_url)
-            if len(urls) >= max_urls:
-                return urls[:max_urls]
+
+        discovered = _candidate_product_urls(response.text, query)
+        if add(discovered):
+            return urls[:max_urls]
+
+        # If search results expose a query-matching collection/landing page
+        # instead of direct product cards, keep it for one controlled second
+        # stage. The product page itself will still be validated by _product().
+        soup = BeautifulSoup(response.text, 'html.parser')
+        for node in soup.find_all(True):
+            for attr in ('href', 'data-href', 'data-url', 'data-product-url'):
+                raw = node.get(attr)
+                if not raw:
+                    continue
+                raw = clean(str(raw))
+                if raw.startswith('/'):
+                    raw = urljoin(BASE_URL, raw)
+                candidate = _normalise_url(raw)
+                if not candidate or candidate in landing_seen:
+                    continue
+                if not matches(urlparse(candidate).path.replace('-', ' '), query):
+                    continue
+                landing_seen.add(candidate)
+                landing_pages.append(candidate)
+                if len(landing_pages) >= 8:
+                    break
+            if len(landing_pages) >= 8:
+                break
+
+    for landing_url in landing_pages:
+        try:
+            response = session.get(landing_url, headers=HEADERS, timeout=TIMEOUT, allow_redirects=True)
+        except requests.RequestException:
+            continue
+        if response.status_code >= 400:
+            continue
+        if add(_candidate_product_urls(response.text, query)):
+            return urls[:max_urls]
+
     return urls[:max_urls]
 
 def _candidate_product_urls(html, query):
@@ -360,6 +405,10 @@ def _candidate_product_urls(html, query):
                 return
         seen.add(url)
         found.append(url)
+
+    canonical = soup.select_one('link[rel="canonical"]')
+    if canonical and canonical.get('href'):
+        add(canonical.get('href'), query)
 
     attrs = ('href', 'data-href', 'data-url', 'data-product-url', 'content')
     for node in soup.find_all(True):
