@@ -169,3 +169,252 @@ if __name__=="__main__":
  import argparse
  p=argparse.ArgumentParser();p.add_argument("query");a=p.parse_args()
  print(json.dumps(search(a.query),ensure_ascii=False,indent=2))
+
+# ============================================================
+# PERFUMEMARKET FORENSIC DIAGNOSTIC
+# Run directly: python scraper.py --diagnostic "Liquid brun"
+# This diagnostic is bounded: it stops after the configured probes
+# and prints a final machine-readable diagnosis.
+# ============================================================
+
+DIAG_TIMEOUT = 12
+DIAG_MAX_CANDIDATES = 12
+
+def _diag_log(msg):
+    print("PERFUMEMARKET_FORENSIC: " + msg, flush=True)
+
+def _diag_tokens(q):
+    return [x for x in norm(q).split() if x]
+
+def _diag_score(name, q):
+    nt = norm(name)
+    toks = _diag_tokens(q)
+    if not toks:
+        return 0.0
+    return round(sum(1 for t in toks if t in nt) / len(toks), 3)
+
+def _diag_fetch(s, label, url):
+    started = time.time()
+    _diag_log(f"HTTP_START label={label} method=GET url={url}")
+    try:
+        r = s.get(url, headers=HEADERS, timeout=DIAG_TIMEOUT, allow_redirects=True)
+        elapsed = time.time() - started
+        ct = r.headers.get("content-type", "")
+        _diag_log(
+            f"HTTP_END label={label} status={r.status_code} "
+            f"elapsed={elapsed:.3f}s final={r.url} bytes={len(r.content)} type={ct!r}"
+        )
+        return r
+    except Exception as e:
+        elapsed = time.time() - started
+        _diag_log(f"HTTP_ERROR label={label} elapsed={elapsed:.3f}s error={type(e).__name__}: {e}")
+        return None
+
+def forensic_diagnostic(query="Liquid brun"):
+    q = clean(query)
+    _diag_log("=" * 78)
+    _diag_log(f"START query={q!r}")
+    _diag_log(f"TOKENS={_diag_tokens(q)}")
+    _diag_log(f"TIMEOUT={DIAG_TIMEOUT}s MAX_CANDIDATES={DIAG_MAX_CANDIDATES}")
+
+    s = requests.Session()
+    s.headers.update(HEADERS)
+
+    base = "https://www.perfumemarket.nl"
+    probes = [
+        ("HOME", base + "/"),
+        ("SEARCH_1", base + "/search?q=" + requests.utils.quote(q)),
+        ("SEARCH_2", base + "/search?query=" + requests.utils.quote(q)),
+        ("SEARCH_3", base + "/products.json?limit=12&query=" + requests.utils.quote(q)),
+    ]
+
+    evidence = {
+        "home_ok": False,
+        "search_http_ok": False,
+        "query_seen": False,
+        "candidates": [],
+        "jsonld_products": 0,
+        "product_candidates": 0,
+        "matching_candidates": 0,
+        "price_candidates": 0,
+        "diagnosis": []
+    }
+
+    pages = []
+    for label, url in probes:
+        r = _diag_fetch(s, label, url)
+        if not r:
+            continue
+        if label == "HOME":
+            evidence["home_ok"] = r.status_code == 200
+        if "SEARCH" in label and r.status_code == 200:
+            evidence["search_http_ok"] = True
+        if r.status_code != 200:
+            continue
+        body = r.text
+        if norm(q) in norm(body):
+            evidence["query_seen"] = True
+        pages.append((label, r.url, body))
+
+        soup = BeautifulSoup(body, "html.parser")
+
+        # Product/JSON-LD evidence.
+        for sc in soup.select('script[type="application/ld+json"]'):
+            try:
+                obj = json.loads(sc.get_text(strip=True))
+            except Exception:
+                continue
+            stack = obj if isinstance(obj, list) else [obj]
+            while stack:
+                x = stack.pop(0)
+                if isinstance(x, list):
+                    stack.extend(x)
+                elif isinstance(x, dict):
+                    typ = x.get("@type")
+                    types = typ if isinstance(typ, list) else [typ]
+                    if any(str(t).lower() == "product" for t in types):
+                        evidence["jsonld_products"] += 1
+
+        # Candidate anchors: only product-looking URLs, bounded.
+        seen = set()
+        for a in soup.find_all("a", href=True):
+            href = urljoin(r.url, a.get("href"))
+            title = clean(a.get_text(" ", strip=True))
+            if not href.startswith(base):
+                continue
+            if "/products/" not in href:
+                continue
+            key = (href, title)
+            if key in seen:
+                continue
+            seen.add(key)
+            score = _diag_score(title, q)
+            evidence["candidates"].append({
+                "url": href,
+                "name": title,
+                "score": score,
+                "probe": label
+            })
+
+    # Deduplicate and retain only the strongest finite set.
+    unique = {}
+    for c in evidence["candidates"]:
+        key = c["url"]
+        if key not in unique or c["score"] > unique[key]["score"]:
+            unique[key] = c
+    candidates = sorted(unique.values(), key=lambda x: (-x["score"], x["url"]))[:DIAG_MAX_CANDIDATES]
+    evidence["candidates"] = candidates
+    evidence["product_candidates"] = len(candidates)
+
+    for i, c in enumerate(candidates, 1):
+        if c["score"] <= 0:
+            continue
+        evidence["matching_candidates"] += 1
+        _diag_log(
+            f"CANDIDATE_{i} score={c['score']:.3f} "
+            f"url={c['url']} name={c['name']!r}"
+        )
+
+        r = _diag_fetch(s, f"PRODUCT_{i}", c["url"])
+        if not r or r.status_code != 200:
+            continue
+
+        soup = BeautifulSoup(r.text, "html.parser")
+        h1 = soup.find("h1")
+        pname = clean(h1.get_text(" ", strip=True)) if h1 else c["name"]
+        pprice = None
+        pimage = None
+        pbrand = None
+        pgtin = None
+        pmpn = None
+        psku = None
+
+        meta_img = soup.select_one('meta[property="og:image"]')
+        if meta_img and meta_img.get("content"):
+            pimage = urljoin(r.url, meta_img["content"])
+
+        for sc in soup.select('script[type="application/ld+json"]'):
+            try:
+                obj = json.loads(sc.get_text(strip=True))
+            except Exception:
+                continue
+            stack = obj if isinstance(obj, list) else [obj]
+            while stack:
+                x = stack.pop(0)
+                if isinstance(x, list):
+                    stack.extend(x)
+                    continue
+                if not isinstance(x, dict):
+                    continue
+                typ = x.get("@type")
+                types = typ if isinstance(typ, list) else [typ]
+                if any(str(t).lower() == "product" for t in types):
+                    b = x.get("brand")
+                    pbrand = pbrand or (b.get("name") if isinstance(b, dict) else clean(b))
+                    pgtin = pgtin or clean(x.get("gtin") or x.get("gtin13") or x.get("gtin12") or x.get("gtin14") or x.get("gtin8"))
+                    pmpn = pmpn or clean(x.get("mpn"))
+                    psku = psku or clean(x.get("sku"))
+                    im = x.get("image")
+                    if not pimage and im:
+                        if isinstance(im, list):
+                            im = im[0] if im else None
+                        if isinstance(im, dict):
+                            im = im.get("url")
+                        if im:
+                            pimage = urljoin(r.url, clean(im))
+                    offers = x.get("offers")
+                    offers = offers if isinstance(offers, list) else [offers]
+                    for o in offers:
+                        if isinstance(o, dict) and pprice is None:
+                            pprice = price(o.get("price"))
+
+        if pprice is None:
+            pprice = price(soup.get_text(" ", strip=True))
+
+        if pprice is not None:
+            evidence["price_candidates"] += 1
+
+        _diag_log(
+            f"PRODUCT_{i}_EVIDENCE name={pname!r} "
+            f"match={_diag_score(pname, q):.3f} price={pprice!r} "
+            f"image={'yes' if pimage else 'no'} brand={pbrand!r} "
+            f"gtin={pgtin!r} mpn={pmpn!r} sku={psku!r}"
+        )
+
+    # Final diagnosis: one conclusion, based only on observed evidence.
+    if not evidence["home_ok"]:
+        evidence["diagnosis"].append("SITE_HOME_UNREACHABLE_OR_NON_200")
+    if not evidence["search_http_ok"]:
+        evidence["diagnosis"].append("NATIVE_SEARCH_NOT_CONFIRMED")
+    if evidence["search_http_ok"] and not evidence["query_seen"]:
+        evidence["diagnosis"].append("SEARCH_RESPONSE_DOES_NOT_CONTAIN_QUERY")
+    if evidence["product_candidates"] == 0:
+        evidence["diagnosis"].append("NO_PRODUCT_CANDIDATE_DISCOVERED")
+    elif evidence["matching_candidates"] == 0:
+        evidence["diagnosis"].append("CANDIDATES_FOUND_BUT_NONE_MATCH_QUERY")
+    elif evidence["price_candidates"] == 0:
+        evidence["diagnosis"].append("MATCHING_PRODUCT_FOUND_BUT_NO_PRICE")
+    else:
+        evidence["diagnosis"].append("DISCOVERY_AND_PRODUCT_RETRIEVAL_WORK")
+
+    _diag_log("-" * 78)
+    _diag_log("FINAL_DIAGNOSIS=" + " | ".join(evidence["diagnosis"]))
+    _diag_log(
+        "SUMMARY "
+        f"home_ok={evidence['home_ok']} "
+        f"search_http_ok={evidence['search_http_ok']} "
+        f"query_seen={evidence['query_seen']} "
+        f"candidates={evidence['product_candidates']} "
+        f"matching={evidence['matching_candidates']} "
+        f"priced={evidence['price_candidates']} "
+        f"jsonld_products={evidence['jsonld_products']}"
+    )
+    _diag_log("=" * 78)
+    return evidence
+
+if __name__ == "__main__":
+    import sys
+    if "--diagnostic" in sys.argv:
+        idx = sys.argv.index("--diagnostic")
+        q = sys.argv[idx + 1] if idx + 1 < len(sys.argv) else "Liquid brun"
+        forensic_diagnostic(q)
