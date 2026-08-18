@@ -393,18 +393,42 @@ def candidate_from_url(url, text=""):
     url = url.split("#", 1)[0]
     if not same_host(url):
         return None
+
     parsed = urlparse(url)
     path = parsed.path.rstrip("/")
+
     if not path or path == "/search.asp":
         return None
 
+    segments = [segment for segment in path.split("/") if segment]
+
+    # Notino exposes product pages in two valid forms:
+    #   /brand/product-slug/
+    #   /brand/product-slug/p-123456/
+    # The p-ID is therefore optional. The search page is the discovery
+    # authority and the real product page performs the final validation.
     product_id_match = PRODUCT_ID_RE.search(path + "/")
     product_id = product_id_match.group(1) if product_id_match else None
 
-    # Product links on Notino use a product-id suffix (/p-123456/). Keep this
-    # as the primary structural discriminator instead of guessing from names.
     if product_id is None:
-        return None
+        # Canonical product URLs have at least brand + product slug.
+        # Broad category/filter roots are rejected before opening them.
+        if len(segments) < 2:
+            return None
+
+        if segments[0].lower() in {
+            "search.asp",
+            "parfums",
+            "maquillage",
+            "cheveux",
+            "visage",
+            "corps",
+            "homme",
+            "femme",
+            "marques",
+            "promotions",
+        }:
+            return None
 
     return {
         "url": url.split("?", 1)[0],
