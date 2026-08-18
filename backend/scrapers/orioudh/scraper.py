@@ -43,47 +43,9 @@ def _query_tokens(query: str) -> List[str]:
 
 
 def _matches(text: str, query: str) -> bool:
-    """
-    Matcha un prodotto alla query, ma mantiene precise le espressioni
-    di genere come "for him", "for women", "pour homme", ecc.
-
-    Questo evita falsi positivi del tipo:
-        query:    Hawas for Him
-        prodotto: Hawas Kobra for Him
-
-    La presenza di una variante extra resta invece consentita quando la
-    query non contiene una relazione di genere esplicita. Per esempio:
-        query:    Liquid Brun
-        prodotto: Liquid Brun Limited Edition
-    può continuare a essere scoperto.
-    """
     haystack = _norm(text)
-    query_n = _norm(query)
     tokens = _query_tokens(query)
-
-    if not tokens:
-        return False
-
-    # Se la query contiene una locuzione di genere, deve comparire come
-    # locuzione contigua nel nome/vendor. Non basta che le singole parole
-    # "for" e "him" siano presenti da qualche parte.
-    gender_phrases = (
-        "for him",
-        "for men",
-        "for women",
-        "for woman",
-        "for man",
-        "pour homme",
-        "pour femmes",
-        "pour femme",
-        "pour homme",
-    )
-
-    for phrase in gender_phrases:
-        if phrase in query_n and phrase not in haystack:
-            return False
-
-    return all(token in haystack for token in tokens)
+    return bool(tokens) and all(token in haystack for token in tokens)
 
 
 def _price(value) -> Optional[float]:
