@@ -172,13 +172,19 @@ def inspect_page(response, query, label):
         f"products={len(products)} categories={len(categories)}"
     )
 
-    for score, text, url in products[:25]:
+    for product_entry in products[:25]:
+        score = product_entry[0]
+        text = product_entry[1]
+        url = product_entry[2]
         log(
             f"PRODUCT_CANDIDATE label={label} score={score} "
             f"text={text[:180]!r} url={url}"
         )
 
-    for score, text, url in categories[:15]:
+    for category_entry in categories[:15]:
+        score = category_entry[0]
+        text = category_entry[1]
+        url = category_entry[2]
         log(
             f"CATEGORY_CANDIDATE label={label} score={score} "
             f"text={text[:180]!r} url={url}"
@@ -307,7 +313,11 @@ def search(query):
         all_products = list(homepage_products)
         all_categories = list(homepage_categories)
 
-        for path, params, label in routes:
+        for route in routes:
+            path = route[0]
+            params = route[1]
+            label = route[2]
+
             response, products, categories = inspect_search_route(
                 session,
                 query,
@@ -336,11 +346,14 @@ def search(query):
         category_urls = []
         seen = set()
 
-        for _, _, url in sorted(
+        ranked_categories = sorted(
             all_categories,
             reverse=True,
             key=lambda x: x[0],
-        ):
+        )
+
+        for category_entry in ranked_categories:
+            url = category_entry[2]
             if url not in seen:
                 seen.add(url)
                 category_urls.append(url)
@@ -373,13 +386,25 @@ def search(query):
                 f"products={len(products)}"
             )
 
-            for score, text, product_url in products[:20]:
+            for product_entry in products[:20]:
+                score = product_entry[0]
+                text = product_entry[1]
+                product_url = product_entry[2]
                 log(
                     f"CATEGORY_PRODUCT index={index} score={score} "
                     f"text={text[:180]!r} url={product_url}"
                 )
 
         log("END")
+        return []
+
+    except Exception as exc:
+        log(
+            f"DIAGNOSTIC_EXCEPTION type={type(exc).__name__} "
+            f"message={exc}"
+        )
+        import traceback
+        traceback.print_exc()
         return []
 
     finally:
