@@ -48,21 +48,7 @@ def concentration(*values):
     if re.search(r"\bextrait(?: de parfum)?\b", text): return "Extrait de Parfum"
     return None
 
-def product_page(session, url, query):
-    try:
-        r = session.get(url, headers=HEADERS, timeout=TIMEOUT)
-    except requests.RequestException:
-        return None
-    if r.status_code != 200:
-        return None
-    soup = BeautifulSoup(r.text, "html.parser")
-    h1 = soup.find("h1")
-    name = clean(h1.get_text(" ", strip=True)) if h1 else ""
-    if not name or not matches(name, query):
-        return None
-
-    amount = None
-    product_data = {}
+def _walk_jsonld(soup):
     for script in soup.select('script[type="application/ld+json"]'):
         try:
             data = json.loads(script.get_text(strip=True))
@@ -74,62 +60,116 @@ def product_page(session, url, query):
             if isinstance(item, list):
                 stack.extend(item)
             elif isinstance(item, dict):
-                offers = item.get("offers")
-                offers = offers if isinstance(offers, list) else [offers]
-                for offer in offers:
-                    if isinstance(offer, dict):
-                        try:
-                            amount = float(str(offer.get("price")).replace(",", "."))
-                        except (TypeError, ValueError):
-                            pass
-                        if amount:
-                            product_data = item
-                            break
-                if amount:
-                    break
+                yield item
+                for value in item.values():
+                    if isinstance(value, (dict, list)):
+                        stack.append(value)
+
+
+def _first_product_jsonld(soup):
+    for item in _walk_jsonld(soup):
+        types = item.get("@type")
+        types = types if isinstance(types, list) else [types]
+        if "Product" in types or item.get("sku") or item.get("gtin") or "offers" in item:
+            return item
+    return {}
+
+
+def _value_from(item, *keys):
+    for key in keys:
+        value = item.get(key)
+        if isinstance(value, dict):
+            value = value.get("value") or value.get("name") or value.get("@id")
+        if value not in (None, ""):
+            return clean(value)
+    return None
+
+
+def _availability(value):
+    text = clean(value).lower()
+    if "outofstock" in text or "out of stock" in text:
+        return "out_of_stock"
+    if "instock" in text or "in stock" in text:
+        return "in_stock"
+    if "preorder" in text:
+        return "preorder"
+    return "unknown"
+
+
+def _gender(name):
+    text = norm(name)
+    if re.search(r"\b(women|woman|dames|dame|femme|female)\b", text):
+        return "women"
+    if re.search(r"\b(men|man|heren|homme|male)\b", text):
+        return "men"
+    if re.search(r"\bunisex\b", text):
+        return "unisex"
+    return "unknown"
+
+
+def product_page(session, url, query):
+    try:
+        r = session.get(url, headers=HEADERS, timeout=TIMEOUT)
+    except requests.RequestException:
+        return None
+    if r.status_code != 200:
+        return None
+
+    soup = BeautifulSoup(r.text, "html.parser")
+    h1 = soup.find("h1")
+    name = clean(h1.get_text(" ", strip=True)) if h1 else ""
+    if not name or not matches(name, query):
+        return None
+
+    product_data = _first_product_jsonld(soup)
+
+    amount = None
+    offers = product_data.get("offers")
+    offers = offers if isinstance(offers, list) else [offers]
+    for offer in offers:
+        if not isinstance(offer, dict):
+            continue
+        try:
+            candidate = float(str(offer.get("price")).replace(",", "."))
+        except (TypeError, ValueError):
+            candidate = None
+        if candidate is not None and candidate > 0:
+            amount = candidate
+            break
 
     if amount is None:
-        text = soup.get_text(" ", strip=True)
-        amount = price(text)
+        amount = price(soup.get_text(" ", strip=True))
 
     if amount is None:
         return None
 
-    if not isinstance(product_data, dict):
-        product_data = {}
     brand = product_data.get("brand")
-    if isinstance(brand, dict):
-        brand = brand.get("name")
-    brand = clean(brand) if brand else None
+    brand = brand.get("name") if isinstance(brand, dict) else brand
+    brand = clean(brand) or None
 
     image = product_data.get("image")
     if isinstance(image, list):
         image = image[0] if image else None
-    if image:
-        image = urljoin(url, str(image))
-    else:
+    if isinstance(image, dict):
+        image = image.get("url") or image.get("contentUrl")
+    if not image:
         meta = soup.select_one('meta[property="og:image"]')
-        image = urljoin(url, meta["content"]) if meta and meta.get("content") else None
+        if meta and meta.get("content"):
+            image = urljoin(url, meta["content"])
+    else:
+        image = urljoin(url, str(image))
 
-    gtin = product_data.get("gtin13") or product_data.get("gtin") or product_data.get("gtin8")
-    mpn = product_data.get("mpn")
-    sku = product_data.get("sku")
-    product_id = product_data.get("productID") or product_data.get("productId")
+    offer0 = next((x for x in offers if isinstance(x, dict)), {})
+    availability = _availability(offer0.get("availability"))
 
-    offers_data = product_data.get("offers")
-    offers_data = offers_data if isinstance(offers_data, list) else [offers_data]
-    availability = "unknown"
-    for offer in offers_data:
-        if isinstance(offer, dict):
-            av = str(offer.get("availability") or "").lower()
-            if "outofstock" in av or "soldout" in av:
-                availability = "out_of_stock"
-                break
-            if "instock" in av or "preorder" in av:
-                availability = "in_stock"
+    sku = _value_from(product_data, "sku")
+    gtin = _value_from(product_data, "gtin", "gtin13", "gtin12", "gtin14")
+    mpn = _value_from(product_data, "mpn")
+    product_id = _value_from(product_data, "productID", "productId", "product_id")
 
-    def ident(value, source="jsonld"):
-        return {"value": str(value).strip(), "source": source} if value is not None and str(value).strip() else None
+    size = size_ml(name)
+    conc = concentration(name)
+    gender = _gender(name)
 
     return {
         "store": STORE,
@@ -140,16 +180,16 @@ def product_page(session, url, query):
             "image": image,
         },
         "identity": {
-            "gtin": ident(gtin),
-            "mpn": ident(mpn),
-            "sku": ident(sku),
-            "store_product_id": ident(product_id),
+            "gtin": {"value": gtin, "source": "jsonld"} if gtin else None,
+            "mpn": {"value": mpn, "source": "jsonld"} if mpn else None,
+            "sku": {"value": sku, "source": "jsonld"} if sku else None,
+            "store_product_id": {"value": product_id, "source": "jsonld"} if product_id else None,
             "store_variant_id": None,
         },
         "attributes": {
-            "size_ml": {"value": size_ml(name), "source": "product_title"} if size_ml(name) else None,
-            "concentration": {"value": concentration(name), "source": "product_title"} if concentration(name) else None,
-            "gender": {"value": "unknown", "source": "not_explicit"},
+            "size_ml": {"value": size, "source": "product_title"} if size is not None else None,
+            "concentration": {"value": conc, "source": "product_title"} if conc else None,
+            "gender": {"value": gender, "source": "product_title"},
             "packaging_type": {"value": "product", "source": "default"},
         },
         "offer": {
@@ -157,12 +197,21 @@ def product_page(session, url, query):
             "currency": "EUR",
             "availability": availability,
         },
-        "provenance": {"source_page": url, "product_source": "jsonld_or_page"},
-        "raw_data": {"jsonld": product_data},
+        "provenance": {
+            "source_page": url,
+            "name_source": "h1",
+            "brand_source": "jsonld" if brand else None,
+            "price_source": "jsonld_or_page",
+            "product_source": "jsonld",
+            "availability_source": "jsonld" if offer0.get("availability") else "default",
+        },
+        "raw_data": {
+            "jsonld": product_data,
+        },
         "name": name,
-        "price": f"{amount:.2f}".replace(".", ",") + "€",
+        "price": f"{amount:.2f}".replace(".", ",") + " €",
         "url": url,
-        "available": True,
+        "available": availability == "in_stock",
     }
 
 def search(query):
