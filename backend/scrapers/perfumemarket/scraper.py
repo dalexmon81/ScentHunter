@@ -27,14 +27,14 @@ def sitemap(s):
  try:r=s.get(SITEMAP,headers=HEADERS,timeout=TIMEOUT)
  except requests.RequestException:return []
  if r.status_code!=200:return []
- loc=[x.get_text(strip=True) for x in BeautifulSoup(r.text,"xml").find_all("loc")]
+ loc=[x.get_text(strip=True) for x in BeautifulSoup(r.text,"html.parser").find_all("loc")]
  children=[u for u in loc if "sitemap" in u.lower() and u.lower().endswith(".xml")]
  if not children:return loc
  out=[]
  for u in children:
   try:
    rr=s.get(u,headers=HEADERS,timeout=TIMEOUT)
-   if rr.status_code==200:out.extend(x.get_text(strip=True) for x in BeautifulSoup(rr.text,"xml").find_all("loc"))
+   if rr.status_code==200:out.extend(x.get_text(strip=True) for x in BeautifulSoup(rr.text,"html.parser").find_all("loc"))
   except requests.RequestException:pass
  return out
 def product(s,url,q):
