@@ -63,20 +63,7 @@ FRONTEND_INDEX = (
     / "index.html"
 )
 
-VARIANTS = {
-    "pour femme",
-    "night out",
-    "rebel",
-    "elixir",
-    "intense",
-    "extreme",
-    # Queste non sono varianti da scartare globalmente:
-    # - Liquid Brun Limited Edition deve comparire nella ricerca "Liquid Brun".
-    # - Hawas Kobra e' una linea distinta e viene gestita con la regola
-    #   contestuale piu' sotto.
-    "collector edition",
-    "collector's edition",
-}
+VARIANTS = set()
 
 NON_PERFUME = {
     "gift set",
@@ -176,13 +163,16 @@ def product_image(product: Dict[str, Any]) -> str:
 
 def product_search_text(product: Dict[str, Any]) -> str:
     """
-    Testo completo utile per i filtri: alcuni scraper possono avere
-    la variante nel titolo, nell'URL o in un campo secondario.
+    Testo completo utile alla validazione.
+    Include nome, marca e gli eventuali campi identificativi pubblicati
+    dallo scraper, senza dipendere dalla struttura di un singolo store.
     """
     values = (
         product.get("name"),
         product.get("title"),
         product.get("product_name"),
+        product.get("brand"),
+        product.get("source_brand"),
         product.get("url"),
         product.get("product_line"),
         product.get("variant"),
@@ -195,14 +185,15 @@ def product_search_text(product: Dict[str, Any]) -> str:
         product.get("pack_size"),
     )
 
-    # Alcuni scraper possono mettere la taglia dentro attributes.
     attributes = product.get("attributes")
     if isinstance(attributes, dict):
-        values += tuple(
-            value
-            for key, value in attributes.items()
-            if any(token in norm(key) for token in ("size", "volume", "format"))
-        )
+        for key, value in attributes.items():
+            if any(token in norm(key) for token in ("brand", "name", "size", "volume", "format", "variant")):
+                values += (value,)
+
+    source = product.get("source")
+    if isinstance(source, dict):
+        values += (source.get("source_name"), source.get("source_brand"))
 
     return norm(" ".join(str(value or "") for value in values))
 
@@ -230,71 +221,41 @@ def has_small_size(product: Dict[str, Any]) -> bool:
 
 def matches(product: Dict[str, Any], query: str) -> bool:
     """
-    Evita risultati palesemente diversi dalla ricerca.
-
-    Esempio:
-    se si cerca "9 PM", non devono entrare automaticamente
-    "9 PM Rebel", "9 PM Elixir", ecc.
+    Validazione generica del candidato.
     """
-    name = norm(product.get("name", ""))
     query_normalized = norm(query)
-    search_text = product_search_text(product)
-
-    if not name:
+    if not query_normalized:
         return False
 
-    # Mini-taglie/campioni (es. 2 ml) non devono entrare nelle offerte
-    # normali. Se un giorno l'utente cercherà esplicitamente "2 ml",
-    # la regola verrà resa permissiva in base alla query.
+    search_text = product_search_text(product)
+    if not search_text:
+        return False
+
     query_has_size = bool(
         re.search(r"(?<!\d)\d+(?:[.,]\d+)?\s*ml\b", query_normalized)
     )
     if has_small_size(product) and not query_has_size:
         return False
 
-    # Le varianti realmente generiche restano escluse quando non sono
-    # richieste esplicitamente. Non inseriamo qui "limited edition" o
-    # "kobra": entrambe possono essere prodotti che l'utente vuole
-    # trovare come risultato della linea cercata.
-    for phrase in VARIANTS:
-        normalized_phrase = norm(phrase)
-
-        if (
-            normalized_phrase in search_text
-            and normalized_phrase not in query_normalized
-        ):
-            return False
-
-    # Hawas for Him e Hawas Kobra sono due linee diverse. Deloox e alcuni
-    # scraper possono descrivere Kobra come "Hawas Kobra for Him"; in quel
-    # caso il semplice controllo dei token farebbe passare il prodotto.
-    # Rendiamo quindi esplicita questa distinzione, senza toccare le altre
-    # ricerche Hawas.
-    if query_normalized == "hawas for him" and "kobra" in name:
-        return False
-
+    name = norm(
+        " ".join(
+            str(product.get(key) or "")
+            for key in ("name", "title", "product_name")
+        )
+    )
     for phrase in NON_PERFUME:
         normalized_phrase = norm(phrase)
-
-        if (
-            normalized_phrase in name
-            and normalized_phrase not in query_normalized
-        ):
+        if normalized_phrase in name and normalized_phrase not in query_normalized:
             return False
 
     tokens = [
-        token
-        for token in query_normalized.split()
+        token for token in query_normalized.split()
         if token not in IGNORED_WORDS
     ]
-
     if not tokens:
         return False
 
-    return all(
-        token in name
-        for token in tokens
-    )
+    return all(token in search_text for token in tokens)
 
 
 # ============================================================
