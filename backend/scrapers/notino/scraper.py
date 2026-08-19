@@ -158,9 +158,9 @@ def _looks_like_product_url(url, context='', query=''):
     - URLs containing /p-<id>/
     - canonical slug URLs without /p-<id>/
 
-    The second form is accepted only when the surrounding search-card
-    context matches the query. The actual product page is still validated
-    by _product(), so no product-specific rule is needed here.
+    A product URL with /p-<id>/ is accepted only when the available
+    discovery context or URL path is compatible with the query.
+    The product page performs the final validation in _product().
     """
     try:
         parsed = urlparse(url)
@@ -173,7 +173,18 @@ def _looks_like_product_url(url, context='', query=''):
     if not path or 'search.asp' in lower_path:
         return False
 
+    path_context = path.replace('/', ' ').replace('-', ' ')
+
+    discovery_context = ' '.join(
+        [
+            clean(context),
+            clean(path_context),
+        ]
+    )
+
     if PRODUCT_URL_RE.search(path):
+        if query and not matches(discovery_context, query):
+            return False
         return True
 
     parts = [p for p in path.split('/') if p]
@@ -183,14 +194,9 @@ def _looks_like_product_url(url, context='', query=''):
     if parts[0].lower() in PRODUCT_PATH_EXCLUSIONS:
         return False
 
-    if query and not matches(
-        f'{clean(context)} {path.replace("/", " ")}',
-        query,
-    ):
+    if query and not matches(discovery_context, query):
         return False
 
-    # Product slugs normally contain a descriptive multi-token final
-    # segment. This deliberately stays generic.
     slug = parts[-1].replace('-', ' ')
     return len(tokens(slug)) >= 2
 
