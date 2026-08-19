@@ -806,10 +806,28 @@ def search_perfume(query: str) -> Dict[str, Any]:
                     traceback.print_exc()
 
         except TimeoutError:
-            # I risultati già completati vengono conservati.
-            # Gli store ancora in esecuzione vengono marcati come timeout.
+            # Alla scadenza globale non perdiamo i future che sono terminati
+            # proprio in prossimità del limite. Il vecchio codice controllava
+            # solo future.done() e, se un future era già terminato ma non era
+            # stato ancora consumato dall'iteratore as_completed(), lo
+            # considerava implicitamente riuscito ma ne perdeva il risultato.
+            #
+            # Ora raccogliamo esplicitamente ogni future già terminato.
+            # Solo quelli realmente ancora in esecuzione vengono marcati
+            # come timeout.
             for future, store in futures.items():
-                if not future.done():
+                if future.done():
+                    try:
+                        store_results = future.result()
+                        if isinstance(store_results, list):
+                            all_results.extend(store_results)
+
+                    except Exception as exc:
+                        errors[store] = (
+                            f"{type(exc).__name__}: {exc}"
+                        )
+                        traceback.print_exc()
+                else:
                     errors[store] = (
                         "Timeout: ricerca del negozio oltre il limite globale"
                     )
