@@ -1659,7 +1659,7 @@ function openProduct(i){
         return `<div class="offer ${!isOut&&n===0?"best":""}">
           <div class="offer-line">
             <div>
-              <div class="offer-store">${!isOut&&n===0?"🥇 ":""}${esc(String(o.store||"Negozio").trim().toLowerCase()==="parfumcity"?"ParfumCity":(o.store||"Negozio"))}</div>
+              <div class="offer-store">${!isOut&&n===0?"🥇 ":""}${esc(o.store||"Negozio")}</div>
               ${!isOut&&n===0?'<div class="offer-meta">MIGLIOR PREZZO</div>':""}
               ${isOut?'<div class="offer-outstock">OUT OF STOCK</div>':""}
             </div>
@@ -1769,7 +1769,7 @@ function openSize(gi,sizeKey,fromFormats=true){
       return `<div class="offer ${!isOut&&n===0?"best":""}">
         <div class="offer-line">
           <div>
-            <div class="offer-store">${!isOut&&n===0?"🥇 ":""}${esc(String(o.store||"Negozio").trim().toLowerCase()==="parfumcity"?"ParfumCity":(o.store||"Negozio"))}</div>
+            <div class="offer-store">${!isOut&&n===0?"🥇 ":""}${esc(o.store||"Negozio")}</div>
             ${!isOut&&n===0?'<div class="offer-meta">MIGLIOR PREZZO</div>':""}
             ${isOut?'<div class="offer-outstock">OUT OF STOCK</div>':""}
           </div>
@@ -2025,43 +2025,36 @@ async function getSearchStores(term){
 }
 
 async function searchStoresProgressive(term,onPartial){
- const merged={query:term,comparisons:[],results:[],errors:{}};
- const timeoutMs=15000;
- const concurrency=2;
- const stores=await getSearchStores(term);
- const totalStores=stores.length;
+ const timeoutMs=20000;
 
- for(let i=0;i<stores.length;i+=concurrency){
-  const pair=stores.slice(i,i+concurrency);
-  statusBox.textContent=`Cerco ${term}… ${Math.min(i+concurrency,totalStores)}/${totalStores}`;
+ // La ricerca reale passa dalla regia centrale /search.
+ // Il frontend non interroga più i negozi a coppie tramite /test-store.
+ // È il backend a coordinare tutti gli scraper.
+ try{
+  const data=await fetchJSONWithTimeout(
+   backend()+"/search?q="+encodeURIComponent(term),
+   timeoutMs
+  );
 
-  const responses=await Promise.allSettled(pair.map(store=>
-   fetchJSONWithTimeout(
-    backend()+"/test-store?store="+encodeURIComponent(store)+"&q="+encodeURIComponent(term),
-    timeoutMs
-   )
-  ));
+  const normalized={
+   query:String(data?.query||term),
+   comparisons:Array.isArray(data?.comparisons)?data.comparisons:[],
+   results:Array.isArray(data?.results)?data.results:[],
+   errors:data?.errors&&typeof data.errors==="object"?data.errors:{}
+  };
 
-  responses.forEach((r,k)=>{
-   const store=pair[k];
-   if(r.status!=="fulfilled"){
-    merged.errors[store]=String(r.reason?.message||"timeout");
-    return;
-   }
-   const data=r.value||{};
-   if(Array.isArray(data.results))merged.results.push(...data.results);
-   if(Array.isArray(data.comparisons))merged.comparisons.push(...data.comparisons);
-   if(data.errors&&typeof data.errors==="object")Object.entries(data.errors).forEach(([name,error])=>{
-    if(!merged.errors[name])merged.errors[name]=error;
-   });
-   if(data.error)merged.errors[store]=data.error;
-  });
-
-  if(typeof onPartial==="function")onPartial(merged,false);
+  if(typeof onPartial==="function")onPartial(normalized,true);
+  return normalized;
+ }catch(error){
+  const failed={
+   query:term,
+   comparisons:[],
+   results:[],
+   errors:{central:String(error?.message||"timeout")}
+  };
+  if(typeof onPartial==="function")onPartial(failed,true);
+  return failed;
  }
-
- if(typeof onPartial==="function")onPartial(merged,true);
- return merged;
 }
 
 async function searchPerfume(){
@@ -2096,9 +2089,9 @@ async function searchPerfume(){
   if(isLeBeauFamilyQuery(q)){
    data=await searchLeBeauFamily(renderData);
   }else{
-   // Regola generale: tutte le ricerche usano la stessa logica progressiva
-   // già collaudata per Le Beau. Massimo 2 negozi alla volta, così un singolo
-   // scraper lento non blocca l'intera ricerca e i risultati appaiono man mano.
+   // Regola generale: tutte le ricerche passano dalla regia centrale.
+   // Il backend coordina gli scraper; il frontend non crea più una coda
+   // artificiale di negozi a coppie.
    data=await searchStoresProgressive(q,renderData);
 
    // Regola generale di recupero: se la query esatta non produce nulla,
