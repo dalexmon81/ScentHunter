@@ -408,6 +408,40 @@ def _product(url, html, query):
     product_url = _normalise_url(url) or url
     return {'store': STORE, 'source': {'source_name': name, 'source_brand': clean(brand), 'url': product_url, 'image': image}, 'identity': {'gtin': {'value': gtin, 'source': 'jsonld'} if gtin else None, 'mpn': {'value': mpn, 'source': 'jsonld'} if mpn else None, 'sku': {'value': sku, 'source': 'jsonld'} if sku else None, 'store_product_id': {'value': sku, 'source': 'notino_sku'} if sku else None}, 'attributes': {'size_ml': {'value': selected_size, 'source': 'selected_variant_or_product_name'} if selected_size is not None else None, 'concentration': {'value': concentration(name), 'source': 'product_name'} if concentration(name) else None, 'gender': {'value': 'unknown', 'source': 'not_explicit'}, 'packaging_type': {'value': 'product', 'source': 'default'}}, 'offer': {'price': price, 'currency': 'EUR', 'availability': availability}, 'provenance': {'source_page': product_url, 'product_source': 'jsonld_or_page'}, 'raw_data': {'jsonld': data}, 'name': name, 'price': f'{price:.2f}'.replace('.', ',') + ' €' if price is not None else '', 'url': product_url, 'available': availability == 'in_stock'}
 
+def _search_query_variants(query):
+    """Return generic search formulations, most discoverable first.
+
+    Notino can interpret a multi-word gendered phrase as an exact search
+    expression and omit the canonical product from the first result set.
+    A second search using only identity-bearing tokens is still generic:
+    the original query remains authoritative during final product matching.
+    """
+    raw = clean(query)
+    normalized = norm(raw)
+    if not raw or not normalized:
+        return []
+
+    variants = []
+    seen = set()
+
+    def add(value):
+        value = clean(value)
+        key = norm(value)
+        if value and key and key not in seen:
+            seen.add(key)
+            variants.append(value)
+
+    meaningful = [
+        token for token in normalized.split()
+        if token not in GENERIC_IDENTITY_WORDS
+    ]
+
+    if meaningful:
+        add(' '.join(meaningful))
+    add(raw)
+    return variants
+
+
 def _search_pages(query):
     return (SEARCH_URL.format(query=quote_plus(query)),)
 
@@ -608,30 +642,48 @@ def _discover_from_search_requests(session, query, max_urls=80):
     return _candidate_product_urls(response.text, query)[:max_urls]
 
 def _discover(session, query):
-    """Combine HTTP and browser discovery without letting one source hide the other."""
+    """Discover candidates across generic Notino search formulations.
+
+    The simplified identity-token search is intentionally tried first when
+    it differs from the user's phrase. This avoids Notino's exact multi-word
+    search behavior hiding the canonical product. Final identity matching
+    still uses the original query, so broad discovery cannot create false
+    positives.
+    """
     found = []
     seen = set()
+    variants = _search_query_variants(query)
 
-    def merge(urls):
+    def merge(urls, limit=80):
+        added = 0
         for url in urls or []:
             normalised = _normalise_url(url)
             if not normalised or normalised in seen:
                 continue
             seen.add(normalised)
             found.append(normalised)
-            if len(found) >= 80:
-                return True
-        return False
+            added += 1
+            if added >= limit:
+                break
+        return added
 
-    # HTTP discovery is the fast first source.
-    if merge(_discover_from_search_requests(session, query, 80)):
-        return found[:80]
+    # Give each generic search formulation room to contribute. The
+    # simplified formulation is particularly useful when Notino's exact
+    # phrase search omits a canonical product.
+    per_variant = max(1, 80 // max(1, len(variants)))
 
-    # Browser discovery is also a valid generic source. It is no longer
-    # skipped merely because HTTP returned some candidates: the two sources
-    # can expose different parts of Notino's search result.
-    if BROWSER_ENABLED:
-        merge(_discover_with_playwright(query, 80))
+    for variant in variants:
+        added = merge(
+            _discover_from_search_requests(session, variant, per_variant),
+            per_variant,
+        )
+
+        # HTTP can be blocked by Cloudflare; browser discovery is independent.
+        if BROWSER_ENABLED and added < per_variant:
+            merge(
+                _discover_with_playwright(variant, per_variant - added),
+                per_variant - added,
+            )
 
     return found[:80]
 
