@@ -79,6 +79,25 @@ NON_PRODUCT_PATHS = {
     "blog",
 }
 
+# Cloudflare/anti-bot challenge routes are structural infrastructure pages,
+# never product pages. They are detected generically and surfaced in the
+# diagnostic report instead of being treated as product candidates.
+CHALLENGE_PATH_PREFIXES = {
+    "challenges.cloudflare.com",
+    "cdn-cgi",
+    "challenge",
+    "turnstile",
+}
+
+CHALLENGE_MARKERS = (
+    "just a moment",
+    "verify you are human",
+    "checking your browser",
+    "cf-chl-",
+    "turnstile",
+    "cloudflare",
+)
+
 NON_PRODUCT_TERMS = {
     "gift set",
     "set regalo",
@@ -221,6 +240,51 @@ def normalise_url(href: Any) -> Optional[str]:
     return f"{parsed.scheme}://{parsed.netloc}{path}"
 
 
+def is_cloudflare_challenge(html: str, url: str = "", title: str = "") -> bool:
+    """
+    Generic challenge detector.
+
+    A challenge page is not a product page and must stop candidate extraction.
+    This does not attempt to bypass or solve the challenge.
+    """
+    haystack = " ".join(
+        [
+            clean(url).lower(),
+            clean(title).lower(),
+            clean(html[:250000]).lower(),
+        ]
+    )
+
+    if "challenges.cloudflare.com" in haystack:
+        return True
+
+    marker_hits = sum(
+        1 for marker in CHALLENGE_MARKERS
+        if marker in haystack
+    )
+
+    return marker_hits >= 2
+
+
+def _is_structural_non_product_path(path: str) -> bool:
+    parts = [part.lower() for part in path.strip("/").split("/") if part]
+
+    if not parts:
+        return True
+
+    first = parts[0]
+    if first in NON_PRODUCT_PATHS:
+        return True
+
+    if first in CHALLENGE_PATH_PREFIXES:
+        return True
+
+    if any(part in CHALLENGE_PATH_PREFIXES for part in parts[:3]):
+        return True
+
+    return False
+
+
 def looks_product_like_url(url: str) -> bool:
     """
     Generic structural detector.
@@ -241,7 +305,7 @@ def looks_product_like_url(url: str) -> bool:
     if not parts:
         return False
 
-    if parts[0].lower() in NON_PRODUCT_PATHS:
+    if _is_structural_non_product_path(path):
         return False
 
     if re.search(r"/p-\d+$", "/" + path, re.I):
@@ -767,6 +831,10 @@ def extract_candidates_from_html(html: str, page_url: str, query: str) -> List[D
     validation.
     """
     soup = BeautifulSoup(html, "html.parser")
+
+    if is_cloudflare_challenge(html, page_url):
+        return []
+
     candidates: Dict[str, Dict[str, Any]] = {}
 
     def add(raw_url: Any, context: str = "", source: str = "dom") -> None:
@@ -976,6 +1044,8 @@ def _browser_discover_resources(
         "final_url": None,
         "html_bytes": 0,
         "candidate_count": 0,
+        "challenge_detected": False,
+        "attempts": 0,
         "error": None,
     }
 
@@ -992,44 +1062,102 @@ def _browser_discover_resources(
             return [], report, None
 
         playwright, browser, context = resources
-        page = context.new_page()
 
-        response = page.goto(
-            SEARCH_URL.format(query=quote_plus(query)),
-            wait_until="domcontentloaded",
-            timeout=BROWSER_TIMEOUT_MS,
-        )
+        search_url = SEARCH_URL.format(query=quote_plus(query))
+        candidates: List[Dict[str, Any]] = []
 
-        if response is not None:
-            report["status"] = response.status
+        # A small bounded retry is useful for transient challenge responses.
+        # It does not attempt to solve or circumvent the challenge.
+        for attempt in range(1, 3):
+            report["attempts"] = attempt
+            page = context.new_page()
 
-        report["final_url"] = page.url
-        _wait_search_page(page)
-
-        # Trigger lazy loading without depending on networkidle.
-        for _ in range(4):
             try:
-                page.evaluate(
-                    "window.scrollBy(0, Math.max(700, window.innerHeight * 0.9));"
+                response = page.goto(
+                    search_url,
+                    wait_until="domcontentloaded",
+                    timeout=BROWSER_TIMEOUT_MS,
                 )
-            except Exception:
-                break
-            page.wait_for_timeout(450)
 
-        html = page.content()
-        report["html_bytes"] = len(html.encode("utf-8"))
+                if response is not None:
+                    report["status"] = response.status
 
-        candidates = extract_candidates_from_html(
-            html,
-            page.url,
-            query,
-        )
-        report["candidate_count"] = len(candidates)
+                report["final_url"] = page.url
+                _wait_search_page(page)
 
-        try:
-            page.close()
-        except Exception:
-            pass
+                html = page.content()
+                report["html_bytes"] = len(html.encode("utf-8"))
+
+                title = ""
+                try:
+                    title = page.title()
+                except Exception:
+                    pass
+
+                challenge = is_cloudflare_challenge(
+                    html,
+                    page.url,
+                    title,
+                )
+
+                report["challenge_detected"] = challenge
+
+                if challenge:
+                    LOGGER.info(
+                        "Notino search returned a Cloudflare challenge on attempt %s",
+                        attempt,
+                    )
+                    try:
+                        page.close()
+                    except Exception:
+                        pass
+
+                    if attempt < 2:
+                        # Give a transient challenge/cookie response a bounded
+                        # opportunity to clear before the next normal request.
+                        try:
+                            context.new_page().close()
+                        except Exception:
+                            pass
+                        continue
+
+                    return [], report, resources
+
+                # Trigger lazy loading without depending on networkidle.
+                for _ in range(4):
+                    try:
+                        page.evaluate(
+                            "window.scrollBy(0, Math.max(700, window.innerHeight * 0.9));"
+                        )
+                    except Exception:
+                        break
+                    page.wait_for_timeout(450)
+
+                html = page.content()
+                report["html_bytes"] = len(html.encode("utf-8"))
+
+                candidates = extract_candidates_from_html(
+                    html,
+                    page.url,
+                    query,
+                )
+                report["candidate_count"] = len(candidates)
+
+                try:
+                    page.close()
+                except Exception:
+                    pass
+
+                return candidates, report, resources
+
+            except Exception as exc:
+                report["error"] = f"{type(exc).__name__}: {exc}"
+                try:
+                    page.close()
+                except Exception:
+                    pass
+                if attempt >= 2:
+                    raise
 
         return candidates, report, resources
 
@@ -1229,6 +1357,10 @@ def _search_internal(
         "rejected_candidates": [],
     }
 
+    if browser_report.get("challenge_detected"):
+        report["discovery_blocked_by_challenge"] = True
+        report["discovery_block_reason"] = "cloudflare_challenge"
+
     results: List[Dict[str, Any]] = []
     seen_products = set()
     browser_context = None
@@ -1332,6 +1464,14 @@ def diagnose(query: str) -> Dict[str, Any]:
     try:
         results, report = _search_internal(query, diagnostic=True)
         report["final_results"] = results
+
+        if report.get("discovery_blocked_by_challenge"):
+            report["final_status"] = "blocked_by_cloudflare_challenge"
+        elif results:
+            report["final_status"] = "products_found"
+        else:
+            report["final_status"] = "no_valid_products"
+
         return report
     except Exception as exc:
         LOGGER.exception("Notino diagnostic failed: %s", exc)
