@@ -710,213 +710,6 @@ def validate_candidates(candidates, query):
     return results
 
 
-
-def diagnostic_search(query):
-    """
-    Diagnostic-only path. It reproduces the discovery pipeline and records
-    exactly where candidates are lost, without changing normal search().
-    """
-    query = clean(query)
-    report = {
-        "query": query,
-        "search_url": SEARCH_URL.format(query=quote_plus(query)) if query else "",
-        "discovery": {
-            "search_pages": [],
-            "candidate_count": 0,
-            "candidates": [],
-            "query_term_hits": [],
-        },
-        "validation": {
-            "parse_search_candidate": [],
-            "direct_validation": [],
-        },
-        "summary": {},
-    }
-
-    if not query:
-        report["summary"] = {"status": "empty_query"}
-        return report
-
-    if sync_playwright is None:
-        report["summary"] = {
-            "status": "playwright_unavailable",
-            "candidates": 0,
-        }
-        return report
-
-    candidates = []
-    seen = set()
-
-    try:
-        with sync_playwright() as pw:
-            browser = launch_browser(pw)
-            context = browser.new_context(
-                user_agent=USER_AGENT,
-                locale="fr-FR",
-                viewport={"width": 1440, "height": 1000},
-                extra_http_headers={
-                    "Accept-Language": "fr-FR,fr;q=0.9,en;q=0.7"
-                },
-            )
-            page = context.new_page()
-
-            target = SEARCH_URL.format(query=quote_plus(query))
-            page.goto(
-                target,
-                wait_until="domcontentloaded",
-                timeout=BROWSER_TIMEOUT,
-            )
-            dismiss_consent(page)
-
-            visited = set()
-            for page_number in range(1, MAX_DISCOVERY_PAGES + 1):
-                current = page.url
-                if current in visited:
-                    break
-                visited.add(current)
-
-                try:
-                    page.wait_for_load_state("networkidle", timeout=10000)
-                except Exception:
-                    pass
-
-                page.wait_for_timeout(1200)
-                scroll_for_products(page)
-                html = page.content()
-
-                page_candidates = extract_product_candidates(
-                    html, page.url, query
-                )
-
-                page_record = {
-                    "page_number": page_number,
-                    "requested_url": target if page_number == 1 else None,
-                    "final_url": page.url,
-                    "candidate_count": len(page_candidates),
-                    "candidates_containing_query": [],
-                }
-
-                for candidate in page_candidates:
-                    url = candidate.get("url", "")
-                    text_value = clean(
-                        " ".join([
-                            str(candidate.get("text") or ""),
-                            str(candidate.get("card_text") or ""),
-                            str(url),
-                        ])
-                    )
-                    lowered = norm(text_value)
-                    wanted = query_tokens(query)
-                    hit = bool(wanted) and all(
-                        token in lowered for token in wanted
-                    )
-
-                    if hit:
-                        page_record["candidates_containing_query"].append({
-                            "url": url,
-                            "text": candidate.get("text"),
-                            "card_text": candidate.get("card_text"),
-                            "score": candidate.get("score"),
-                        })
-
-                    if url and url not in seen:
-                        seen.add(url)
-                        candidates.append(candidate)
-
-                report["discovery"]["search_pages"].append(page_record)
-
-                nxt = next_page(page)
-                if not nxt or nxt in visited:
-                    break
-                page.goto(
-                    nxt,
-                    wait_until="domcontentloaded",
-                    timeout=BROWSER_TIMEOUT,
-                )
-                dismiss_consent(page)
-
-            context.close()
-            browser.close()
-
-    except Exception as exc:
-        report["discovery"]["error"] = {
-            "type": type(exc).__name__,
-            "message": str(exc),
-        }
-
-    report["discovery"]["candidate_count"] = len(candidates)
-
-    wanted = query_tokens(query)
-    for candidate in candidates:
-        url = candidate.get("url", "")
-        text_value = clean(
-            " ".join([
-                str(candidate.get("text") or ""),
-                str(candidate.get("card_text") or ""),
-                str(url),
-            ])
-        )
-        lowered = norm(text_value)
-        term_hits = {
-            token: token in lowered
-            for token in wanted
-        }
-        if all(term_hits.values()) if term_hits else False:
-            report["discovery"]["query_term_hits"].append({
-                "url": url,
-                "text": candidate.get("text"),
-                "card_text": candidate.get("card_text"),
-                "score": candidate.get("score"),
-                "term_hits": term_hits,
-            })
-
-        try:
-            parsed = parse_search_candidate(candidate, query)
-            report["validation"]["parse_search_candidate"].append({
-                "url": url,
-                "accepted": bool(parsed),
-                "parsed_name": parsed.get("name") if parsed else None,
-                "parsed_brand": (
-                    parsed.get("raw_data", {}).get("brand")
-                    if parsed else None
-                ),
-                "parsed_size_ml": (
-                    parsed.get("raw_data", {}).get("size_ml")
-                    if parsed else None
-                ),
-                "availability": (
-                    parsed.get("offer", {}).get("availability")
-                    if parsed else None
-                ),
-            })
-        except Exception as exc:
-            report["validation"]["parse_search_candidate"].append({
-                "url": url,
-                "accepted": False,
-                "error": f"{type(exc).__name__}: {exc}",
-            })
-
-    report["summary"] = {
-        "status": "ok" if "error" not in report["discovery"] else "discovery_error",
-        "query": query,
-        "query_tokens": wanted,
-        "candidate_count": len(candidates),
-        "candidates_containing_all_query_tokens": len(
-            report["discovery"]["query_term_hits"]
-        ),
-        "accepted_by_parse_search_candidate": sum(
-            1 for x in report["validation"]["parse_search_candidate"]
-            if x.get("accepted")
-        ),
-        "rejected_by_parse_search_candidate": sum(
-            1 for x in report["validation"]["parse_search_candidate"]
-            if not x.get("accepted")
-        ),
-    }
-
-    return report
-
-
 def search(query):
     query = clean(query)
     if not query:
@@ -1008,175 +801,288 @@ def _diagnose_parse_failure(html, response_url, query):
 
 
 def diagnose(query):
-    """Generic diagnostic of Notino search discovery and direct product-page responses."""
-    query=clean(query)
+    """Generic diagnostic: raw links -> candidate filter -> query-token hits -> product page."""
+    query = clean(query)
     if not query:
-        return {"status":"error","query":"","errors":[{"stage":"input","type":"empty_query"}]}
+        return {"status": "error", "query": "", "errors": [{"stage": "input", "type": "empty_query"}]}
 
-    report={
-        "status":"started",
-        "query":query,
-        "search_url":SEARCH_URL.format(query=quote_plus(query)),
-        "discovery":{"raw_links":0,"product_candidates":0,"unique_candidates":0},
-        "product_pages":[],
-        "errors":[],
+    report = {
+        "status": "started",
+        "query": query,
+        "query_tokens": query_tokens(query),
+        "search_url": SEARCH_URL.format(query=quote_plus(query)),
+        "discovery": {
+            "raw_links": 0,
+            "raw_product_urls": 0,
+            "candidate_urls": 0,
+            "unique_candidates": 0,
+            "raw_query_token_hits": [],
+            "candidate_query_token_hits": [],
+        },
+        "product_pages": [],
+        "errors": [],
     }
 
     if sync_playwright is None:
-        report["status"]="error"
-        report["errors"].append({"stage":"startup","type":"playwright_unavailable"})
+        report["status"] = "error"
+        report["errors"].append({"stage": "startup", "type": "playwright_unavailable"})
         return report
 
-    seen=set()
-    discovered=[]
+    seen_raw = set()
+    seen_candidates = set()
 
     try:
         with sync_playwright() as pw:
-            browser=pw.chromium.launch(
-                headless=True,
-                args=["--no-sandbox","--disable-dev-shm-usage","--disable-gpu"],
-            )
-            context=browser.new_context(
+            browser = launch_browser(pw)
+            context = browser.new_context(
                 user_agent=USER_AGENT,
                 locale="fr-FR",
-                viewport={"width":1440,"height":1100},
+                viewport={"width": 1440, "height": 1100},
+                extra_http_headers={"Accept-Language": "fr-FR,fr;q=0.9,en;q=0.7"},
             )
-            page=context.new_page()
-            document_responses={}
+            page = context.new_page()
+
+            try:
+                page.goto(
+                    report["search_url"],
+                    wait_until="domcontentloaded",
+                    timeout=BROWSER_TIMEOUT,
+                )
+                page.wait_for_timeout(1200)
+                dismiss_consent(page)
+                scroll_for_products(page)
+                page.wait_for_timeout(500)
+            except Exception as exc:
+                report["status"] = "completed_with_errors"
+                report["errors"].append({
+                    "stage": "search_page",
+                    "type": type(exc).__name__,
+                    "message": str(exc),
+                })
+                return report
+
+            html = page.content()
+            soup = BeautifulSoup(html, "html.parser")
+            anchors = soup.find_all("a", href=True)
+            report["discovery"]["raw_links"] = len(anchors)
+
+            wanted = query_tokens(query)
+
+            # RAW LINK AUDIT: inspect every href before any candidate filter.
+            raw_product_urls = []
+            for anchor in anchors:
+                url = canonical_url(anchor.get("href"), page.url)
+                if not url or not product_url(url):
+                    continue
+
+                report["discovery"]["raw_product_urls"] += 1
+                if url in seen_raw:
+                    continue
+                seen_raw.add(url)
+
+                pieces = [
+                    anchor.get("title"),
+                    anchor.get("aria-label"),
+                    anchor.get_text(" ", strip=True),
+                ]
+                image = anchor.find("img")
+                if image:
+                    pieces.extend([
+                        image.get("alt"),
+                        image.get("title"),
+                    ])
+
+                raw_text = clean(" ".join(x for x in pieces if x))
+                raw_identity = norm(f"{raw_text} {url}")
+                token_hits = {token: token in raw_identity for token in wanted}
+                all_tokens = bool(wanted) and all(token_hits.values())
+
+                item = {
+                    "url": url,
+                    "anchor_text": raw_text,
+                    "token_hits": token_hits,
+                    "contains_all_query_tokens": all_tokens,
+                }
+
+                if all_tokens:
+                    report["discovery"]["raw_query_token_hits"].append(item)
+
+                raw_product_urls.append(item)
+
+            # Normal candidate extraction, kept separate so the diagnostic
+            # shows exactly what the current filter loses.
+            candidates = extract_product_candidates(html, page.url, query)
+            report["discovery"]["candidate_urls"] = len(candidates)
+
+            for candidate in candidates:
+                url = candidate.get("url")
+                if not url or url in seen_candidates:
+                    continue
+                seen_candidates.add(url)
+
+                candidate_text = clean(
+                    " ".join([
+                        str(candidate.get("text") or ""),
+                        str(candidate.get("card_text") or ""),
+                        str(url),
+                    ])
+                )
+                identity = norm(candidate_text)
+                token_hits = {token: token in identity for token in wanted}
+
+                if bool(wanted) and all(token_hits.values()):
+                    report["discovery"]["candidate_query_token_hits"].append({
+                        "url": url,
+                        "text": candidate.get("text"),
+                        "card_text": candidate.get("card_text"),
+                        "score": candidate.get("score"),
+                        "token_hits": token_hits,
+                    })
+
+            # Only inspect the URLs that the raw audit says are relevant, plus
+            # the normal candidates. This keeps the diagnostic useful without
+            # turning it into a huge 634-page crawl.
+            inspect = []
+            inspect_seen = set()
+
+            for item in report["discovery"]["raw_query_token_hits"]:
+                url = item["url"]
+                if url not in inspect_seen:
+                    inspect_seen.add(url)
+                    inspect.append({
+                        "url": url,
+                        "source": "raw_query_token_hit",
+                        "anchor_text": item["anchor_text"],
+                    })
+
+            for candidate in candidates:
+                url = candidate.get("url")
+                if url and url not in inspect_seen:
+                    inspect_seen.add(url)
+                    inspect.append({
+                        "url": url,
+                        "source": "candidate",
+                        "anchor_text": candidate.get("text", ""),
+                        "score": candidate.get("score", 0),
+                    })
+
+            # Product-page diagnostics.
+            document_responses = {}
 
             def capture(response):
                 try:
-                    if response.request.resource_type=="document":
-                        document_responses[response.url]={
-                            "status":response.status,
-                            "status_text":response.status_text,
-                            "url":response.url,
+                    if response.request.resource_type == "document":
+                        document_responses[response.url] = {
+                            "status": response.status,
+                            "status_text": response.status_text,
+                            "url": response.url,
                         }
                 except Exception:
                     pass
 
-            page.on("response",capture)
+            page.on("response", capture)
 
-            try:
+            for candidate in inspect:
+                target = candidate["url"]
+                item = dict(candidate)
+
                 try:
-                    page.goto(report["search_url"],wait_until="domcontentloaded",timeout=BROWSER_TIMEOUT)
-                    page.wait_for_timeout(1200)
-                    dismiss_consent(page)
-                    scroll_for_products(page)
-                    page.wait_for_timeout(500)
+                    page.goto(
+                        target,
+                        wait_until="domcontentloaded",
+                        timeout=BROWSER_TIMEOUT,
+                    )
+                    page.wait_for_timeout(1000)
+
+                    final_url = page.url
+                    product_html = page.content()
+                    product_soup = BeautifulSoup(product_html, "html.parser")
+                    low = product_html.lower()
+
+                    h1 = product_soup.find("h1")
+                    h1_text = h1.get_text(" ", strip=True) if h1 else None
+                    scripts = product_soup.find_all(
+                        "script", type="application/ld+json"
+                    )
+
+                    markers = [
+                        x for x in (
+                            "just a moment",
+                            "cf-chl-",
+                            "challenge-platform",
+                            "cloudflare",
+                            "verify you are human",
+                            "checking your browser",
+                        ) if x in low
+                    ]
+
+                    response_info = (
+                        document_responses.get(final_url)
+                        or document_responses.get(target)
+                    )
+
+                    item["page_diagnostic"] = {
+                        "requested_url": target,
+                        "final_url": final_url,
+                        "redirected": final_url != target,
+                        "response": response_info,
+                        "http_status": (
+                            response_info.get("status")
+                            if response_info else None
+                        ),
+                        "title": page.title(),
+                        "h1": h1_text,
+                        "html_length": len(product_html),
+                        "cloudflare": bool(markers),
+                        "challenge_markers": markers,
+                        "json_ld_script_count": len(scripts),
+                        "text_sample": product_soup.get_text(
+                            " ", strip=True
+                        )[:1200],
+                    }
                 except Exception as exc:
-                    report["status"]="completed_with_errors"
-                    report["errors"].append({"stage":"search_page","type":type(exc).__name__,"message":str(exc)})
-                    return report
+                    item["page_diagnostic"] = {
+                        "requested_url": target,
+                        "error": {
+                            "type": type(exc).__name__,
+                            "message": str(exc),
+                        },
+                    }
 
-                html=page.content()
-                soup=BeautifulSoup(html,"html.parser")
-                candidates=extract_product_candidates(html,page.url,query)
-                report["discovery"]["raw_links"]=len(soup.find_all("a",href=True))
-                report["discovery"]["product_candidates"]=len(candidates)
+                report["product_pages"].append(item)
 
-                for candidate in candidates:
-                    url=candidate["url"]
-                    if url not in seen:
-                        seen.add(url)
-                        discovered.append({
-                            "url":url,
-                            "anchor_text":candidate.get("text",""),
-                            "score":candidate.get("score",0),
-                        })
+            report["discovery"]["unique_candidates"] = len(seen_candidates)
 
-                report["discovery"]["unique_candidates"]=len(discovered)
+            # The decisive comparison.
+            raw_urls = {
+                item["url"]
+                for item in report["discovery"]["raw_query_token_hits"]
+            }
+            candidate_urls = {
+                item["url"]
+                for item in report["discovery"]["candidate_query_token_hits"]
+            }
+            report["decisive_check"] = {
+                "query_found_in_raw_product_links": bool(raw_urls),
+                "raw_matching_urls": sorted(raw_urls),
+                "query_found_in_filtered_candidates": bool(candidate_urls),
+                "candidate_matching_urls": sorted(candidate_urls),
+                "urls_lost_by_candidate_filter": sorted(raw_urls - candidate_urls),
+            }
 
-                # Inspect every discovered product URL. No fragrance parser is
-                # used here: this diagnostic only reports what Notino returns.
-                for candidate in discovered:
-                    item=dict(candidate)
-                    target=candidate["url"]
-
-                    try:
-                        page.goto(target,wait_until="domcontentloaded",timeout=BROWSER_TIMEOUT)
-                        page.wait_for_timeout(1000)
-
-                        final_url=page.url
-                        product_html=page.content()
-                        product_soup=BeautifulSoup(product_html,"html.parser")
-
-                        h1=product_soup.find("h1")
-                        h1_text=h1.get_text(" ",strip=True) if h1 else None
-                        scripts=product_soup.find_all("script",type="application/ld+json")
-
-                        json_types=[]
-                        product_names=[]
-                        for script in scripts:
-                            try:
-                                data=json.loads(script.string or script.get_text())
-                            except Exception:
-                                continue
-                            nodes=data if isinstance(data,list) else [data]
-                            for node in nodes:
-                                if isinstance(node,dict):
-                                    if "@type" in node:
-                                        json_types.append(node.get("@type"))
-                                    if node.get("@type")=="Product":
-                                        product_names.append(node.get("name"))
-
-                        low=product_html.lower()
-                        markers=[
-                            x for x in (
-                                "just a moment",
-                                "cf-chl-",
-                                "challenge-platform",
-                                "cloudflare",
-                                "verify you are human",
-                                "checking your browser",
-                            ) if x in low
-                        ]
-
-                        response_info=document_responses.get(final_url) or document_responses.get(target)
-
-                        item["page_diagnostic"]={
-                            "requested_url":target,
-                            "final_url":final_url,
-                            "redirected":final_url!=target,
-                            "response":response_info,
-                            "http_status":response_info.get("status") if response_info else None,
-                            "title":page.title(),
-                            "h1":h1_text,
-                            "html_length":len(product_html),
-                            "html_start":product_html[:500],
-                            "json_ld_script_count":len(scripts),
-                            "json_ld_types":json_types[:20],
-                            "json_ld_product_names":product_names[:20],
-                            "challenge_markers":markers,
-                            "contains_fragrance_wording":any(
-                                x in low for x in (
-                                    "eau de parfum",
-                                    "eau de toilette",
-                                    "extrait de parfum",
-                                    "parfum",
-                                )
-                            ),
-                            "text_sample":product_soup.get_text(" ",strip=True)[:1200],
-                        }
-
-                    except Exception as exc:
-                        item["page_diagnostic"]={
-                            "requested_url":target,
-                            "error":{"type":type(exc).__name__,"message":str(exc)}
-                        }
-
-                    report["product_pages"].append(item)
-
-            finally:
-                context.close()
-                browser.close()
+            context.close()
+            browser.close()
 
     except Exception as exc:
-        report["status"]="completed_with_errors"
-        report["errors"].append({"stage":"runtime","type":type(exc).__name__,"message":str(exc)})
+        report["status"] = "completed_with_errors"
+        report["errors"].append({
+            "stage": "runtime",
+            "type": type(exc).__name__,
+            "message": str(exc),
+        })
         return report
 
-    report["status"]="ok" if not report["errors"] else "completed_with_errors"
+    report["status"] = "ok" if not report["errors"] else "completed_with_errors"
     return report
 
 
