@@ -266,16 +266,13 @@ def query_matches(name, brand, query, size_ml):
 
 
 def candidate_score(text, url, query):
-    identity = norm(f"{text} {extract_name_from_product_url(url)} {extract_brand_from_product_url(url)}")
+    identity = norm(text)
     score = 0
-    wanted = query_tokens(query)
-    for token in wanted:
+    for token in query_tokens(query):
         if token in identity.split():
             score += 4
         elif token in identity:
             score += 1
-    if wanted and all(token in identity for token in wanted):
-        score += 8
     if product_url(url):
         score += 2
     return score
@@ -343,7 +340,7 @@ def extract_product_candidates(html, page_url, query=""):
             "url": url,
             "text": text,
             "card_text": card_text,
-            "score": candidate_score(f"{text} {card_text}", url, query),
+            "score": candidate_score(text, url, query),
             "image": image_url,
             "_anchor": anchor,
         })
@@ -402,30 +399,6 @@ def extract_brand_from_product_url(url):
     return clean(raw.title())
 
 
-def extract_name_from_product_url(url):
-    """Extract the product-name segment from a generic Notino product URL."""
-    parts = [p for p in urlparse(url).path.split("/") if p]
-    if not parts:
-        return ""
-    if parts[-1].lower().startswith("p-"):
-        parts = parts[:-1]
-    if len(parts) < 2:
-        return ""
-    raw = parts[-1].replace("-", " ")
-    raw = re.sub(r"\s+", " ", raw)
-    return clean(raw.replace("_", " ").title())
-
-
-def candidate_identity_text(candidate):
-    """Combine all generic identity signals available on a search card."""
-    url = canonical_url(candidate.get("url"))
-    text = clean(candidate.get("text"))
-    card_text = clean(candidate.get("card_text"))
-    brand = extract_brand_from_product_url(url) if url else ""
-    url_name = extract_name_from_product_url(url) if url else ""
-    return clean(" ".join(x for x in (brand, url_name, text, card_text) if x))
-
-
 def parse_search_candidate(candidate, query):
     """Build a product directly from Notino's search-card data.
 
@@ -439,19 +412,7 @@ def parse_search_candidate(candidate, query):
         return None
 
     brand = extract_brand_from_product_url(url)
-    url_name = extract_name_from_product_url(url)
     name = text
-
-    # Search-card anchors can contain badges, format labels or partial text.
-    # Prefer the bounded card text when it contains the requested identity;
-    # otherwise use the canonical product-name segment from the product URL.
-    identity_pool = clean(" ".join(x for x in (text, card_text, url_name, brand) if x))
-    wanted = query_tokens(query)
-    if url_name and wanted and all(token in norm(identity_pool) for token in wanted):
-        name = url_name
-    elif not name and url_name:
-        name = url_name
-
     price = extract_card_price(card_text) or extract_card_price(text)
     availability = extract_anchor_availability(candidate.get("_anchor")) if candidate.get("_anchor") is not None else extract_card_availability(text)
     if availability == "unknown":
@@ -749,6 +710,213 @@ def validate_candidates(candidates, query):
     return results
 
 
+
+def diagnostic_search(query):
+    """
+    Diagnostic-only path. It reproduces the discovery pipeline and records
+    exactly where candidates are lost, without changing normal search().
+    """
+    query = clean(query)
+    report = {
+        "query": query,
+        "search_url": SEARCH_URL.format(query=quote_plus(query)) if query else "",
+        "discovery": {
+            "search_pages": [],
+            "candidate_count": 0,
+            "candidates": [],
+            "query_term_hits": [],
+        },
+        "validation": {
+            "parse_search_candidate": [],
+            "direct_validation": [],
+        },
+        "summary": {},
+    }
+
+    if not query:
+        report["summary"] = {"status": "empty_query"}
+        return report
+
+    if sync_playwright is None:
+        report["summary"] = {
+            "status": "playwright_unavailable",
+            "candidates": 0,
+        }
+        return report
+
+    candidates = []
+    seen = set()
+
+    try:
+        with sync_playwright() as pw:
+            browser = launch_browser(pw)
+            context = browser.new_context(
+                user_agent=USER_AGENT,
+                locale="fr-FR",
+                viewport={"width": 1440, "height": 1000},
+                extra_http_headers={
+                    "Accept-Language": "fr-FR,fr;q=0.9,en;q=0.7"
+                },
+            )
+            page = context.new_page()
+
+            target = SEARCH_URL.format(query=quote_plus(query))
+            page.goto(
+                target,
+                wait_until="domcontentloaded",
+                timeout=BROWSER_TIMEOUT,
+            )
+            dismiss_consent(page)
+
+            visited = set()
+            for page_number in range(1, MAX_DISCOVERY_PAGES + 1):
+                current = page.url
+                if current in visited:
+                    break
+                visited.add(current)
+
+                try:
+                    page.wait_for_load_state("networkidle", timeout=10000)
+                except Exception:
+                    pass
+
+                page.wait_for_timeout(1200)
+                scroll_for_products(page)
+                html = page.content()
+
+                page_candidates = extract_product_candidates(
+                    html, page.url, query
+                )
+
+                page_record = {
+                    "page_number": page_number,
+                    "requested_url": target if page_number == 1 else None,
+                    "final_url": page.url,
+                    "candidate_count": len(page_candidates),
+                    "candidates_containing_query": [],
+                }
+
+                for candidate in page_candidates:
+                    url = candidate.get("url", "")
+                    text_value = clean(
+                        " ".join([
+                            str(candidate.get("text") or ""),
+                            str(candidate.get("card_text") or ""),
+                            str(url),
+                        ])
+                    )
+                    lowered = norm(text_value)
+                    wanted = query_tokens(query)
+                    hit = bool(wanted) and all(
+                        token in lowered for token in wanted
+                    )
+
+                    if hit:
+                        page_record["candidates_containing_query"].append({
+                            "url": url,
+                            "text": candidate.get("text"),
+                            "card_text": candidate.get("card_text"),
+                            "score": candidate.get("score"),
+                        })
+
+                    if url and url not in seen:
+                        seen.add(url)
+                        candidates.append(candidate)
+
+                report["discovery"]["search_pages"].append(page_record)
+
+                nxt = next_page(page)
+                if not nxt or nxt in visited:
+                    break
+                page.goto(
+                    nxt,
+                    wait_until="domcontentloaded",
+                    timeout=BROWSER_TIMEOUT,
+                )
+                dismiss_consent(page)
+
+            context.close()
+            browser.close()
+
+    except Exception as exc:
+        report["discovery"]["error"] = {
+            "type": type(exc).__name__,
+            "message": str(exc),
+        }
+
+    report["discovery"]["candidate_count"] = len(candidates)
+
+    wanted = query_tokens(query)
+    for candidate in candidates:
+        url = candidate.get("url", "")
+        text_value = clean(
+            " ".join([
+                str(candidate.get("text") or ""),
+                str(candidate.get("card_text") or ""),
+                str(url),
+            ])
+        )
+        lowered = norm(text_value)
+        term_hits = {
+            token: token in lowered
+            for token in wanted
+        }
+        if all(term_hits.values()) if term_hits else False:
+            report["discovery"]["query_term_hits"].append({
+                "url": url,
+                "text": candidate.get("text"),
+                "card_text": candidate.get("card_text"),
+                "score": candidate.get("score"),
+                "term_hits": term_hits,
+            })
+
+        try:
+            parsed = parse_search_candidate(candidate, query)
+            report["validation"]["parse_search_candidate"].append({
+                "url": url,
+                "accepted": bool(parsed),
+                "parsed_name": parsed.get("name") if parsed else None,
+                "parsed_brand": (
+                    parsed.get("raw_data", {}).get("brand")
+                    if parsed else None
+                ),
+                "parsed_size_ml": (
+                    parsed.get("raw_data", {}).get("size_ml")
+                    if parsed else None
+                ),
+                "availability": (
+                    parsed.get("offer", {}).get("availability")
+                    if parsed else None
+                ),
+            })
+        except Exception as exc:
+            report["validation"]["parse_search_candidate"].append({
+                "url": url,
+                "accepted": False,
+                "error": f"{type(exc).__name__}: {exc}",
+            })
+
+    report["summary"] = {
+        "status": "ok" if "error" not in report["discovery"] else "discovery_error",
+        "query": query,
+        "query_tokens": wanted,
+        "candidate_count": len(candidates),
+        "candidates_containing_all_query_tokens": len(
+            report["discovery"]["query_term_hits"]
+        ),
+        "accepted_by_parse_search_candidate": sum(
+            1 for x in report["validation"]["parse_search_candidate"]
+            if x.get("accepted")
+        ),
+        "rejected_by_parse_search_candidate": sum(
+            1 for x in report["validation"]["parse_search_candidate"]
+            if not x.get("accepted")
+        ),
+    }
+
+    return report
+
+
 def search(query):
     query = clean(query)
     if not query:
@@ -773,49 +941,9 @@ def search(query):
         seen.add(url)
         results.append(product)
 
-    # If Notino's search page returned candidates but the card data was too
-    # noisy/incomplete to validate them, run the same generic discovery against
-    # the perfume catalogue. This is a site-wide fallback and contains no
-    # product, brand, URL or seed-specific exception.
-    if not results:
-        generic_candidates = []
-        if sync_playwright is not None:
-            try:
-                with sync_playwright() as pw:
-                    browser = launch_browser(pw)
-                    context = browser.new_context(
-                        user_agent=USER_AGENT,
-                        locale="fr-FR",
-                        viewport={"width": 1440, "height": 1000},
-                        extra_http_headers={"Accept-Language": "fr-FR,fr;q=0.9,en;q=0.7"},
-                    )
-                    page = context.new_page()
-                    page.goto(CATEGORY_URL, wait_until="domcontentloaded", timeout=BROWSER_TIMEOUT)
-                    dismiss_consent(page)
-                    try:
-                        page.wait_for_load_state("networkidle", timeout=10000)
-                    except Exception:
-                        pass
-                    page.wait_for_timeout(800)
-                    scroll_for_products(page)
-                    generic_candidates = extract_product_candidates(page.content(), page.url, query)
-                    context.close()
-                    browser.close()
-            except Exception:
-                generic_candidates = []
-
-        for candidate in generic_candidates:
-            product = parse_search_candidate(candidate, query)
-            if not product:
-                continue
-            url = product.get("url")
-            if url in seen:
-                continue
-            seen.add(url)
-            results.append(product)
-
-    # Final generic page-validation fallback. It is only used when no
-    # search-card candidate can be validated.
+    # Keep direct validation only as a secondary enrichment path for any
+    # candidate whose search card could not be parsed completely. This remains
+    # generic and does not privilege individual products.
     if not results:
         return validate_candidates(candidates, query)
 
