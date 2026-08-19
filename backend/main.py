@@ -491,8 +491,8 @@ def run_store(store: str, query: str) -> List[Dict[str, Any]]:
             key = product_identity_key(product)
             if key in seen:
                 continue
-            seen.add(key)
             if matches(product, query):
+                seen.add(key)
                 output.append(product)
                 attempt_added += 1
 
@@ -509,7 +509,11 @@ def search_perfume(query: str) -> Dict[str, Any]:
 
     all_results: List[Dict[str, Any]] = []
     errors: Dict[str, str] = {}
-    executor = ThreadPoolExecutor(max_workers=len(STORES), thread_name_prefix="scent_store")
+    # Limita la concorrenza per evitare che gli scraper pesanti
+    # si contendano CPU/RAM/connessioni e facciano sparire
+    # risultati di altri store in modo intermittente.
+    max_workers = max(1, min(4, len(STORES)))
+    executor = ThreadPoolExecutor(max_workers=max_workers, thread_name_prefix="scent_store")
     futures = {executor.submit(run_store, store, query): store for store in STORES}
 
     try:
@@ -814,4 +818,3 @@ def product(name: str, brand: str = ""):
         "errors": data["errors"],
         "message": "" if offers else "Nessuna offerta disponibile al momento",
     }
-
