@@ -6,7 +6,7 @@ from bs4 import BeautifulSoup
 
 STORE = "ParfumCity"
 BASE_URL = "https://www.parfumcity.nl"
-TIMEOUT = 5
+TIMEOUT = 8
 HEADERS = {
     "User-Agent": "Mozilla/5.0",
     "Accept-Language": "nl-NL,nl;q=0.9,en;q=0.8",
@@ -132,39 +132,147 @@ def product_page(session, url, query):
         "available": True,
     }
 
+def _add_url(urls, seen, url):
+    url = urljoin(BASE_URL, str(url or "")).split("?")[0].rstrip("/")
+    if not url or "/products/" not in url:
+        return
+    if url in seen:
+        return
+    seen.add(url)
+    urls.append(url)
+
+
+def _discover_from_html(soup, query, urls, seen):
+    # Standard Shopify search/collection HTML.
+    for a in soup.select('a[href*="/products/"]'):
+        href = a.get("href") or ""
+        card = a
+        card_text = ""
+        for _ in range(9):
+            if card is None:
+                break
+            card_text = clean(card.get_text(" ", strip=True))
+            if matches(card_text, query):
+                break
+            card = card.parent
+        # Do not require a price in the card: Shopify may render it separately.
+        if card is not None and matches(card_text, query):
+            _add_url(urls, seen, href)
+
+
+def _discover_from_predictive_search(session, query, urls, seen):
+    # Generic Shopify predictive-search JSON fallback.
+    endpoint = (
+        BASE_URL
+        + "/search/suggest.json?q="
+        + quote_plus(query)
+        + "&resources[type]=product"
+        + "&resources[limit]=20"
+    )
+    try:
+        r = session.get(endpoint, headers=HEADERS, timeout=TIMEOUT)
+        if r.status_code != 200:
+            return
+        data = r.json()
+    except (requests.RequestException, ValueError):
+        return
+
+    def walk(value):
+        if isinstance(value, dict):
+            for key, item in value.items():
+                if key in {"url", "product_url"} and isinstance(item, str):
+                    if "/products/" in item:
+                        _add_url(urls, seen, item)
+                walk(item)
+        elif isinstance(value, list):
+            for item in value:
+                walk(item)
+
+    walk(data)
+
+
+def _discover_from_sitemap(session, query, urls, seen):
+    # Generic Shopify fallback: inspect product sitemap URLs and match
+    # query tokens against the product slug. No product is hard-coded.
+    try:
+        r = session.get(BASE_URL + "/sitemap.xml", headers=HEADERS, timeout=TIMEOUT)
+        if r.status_code != 200:
+            return
+        root = BeautifulSoup(r.text, "xml")
+        sitemap_urls = [
+            clean(x.get_text(strip=True))
+            for x in root.find_all("loc")
+            if "/sitemap_products" in clean(x.get_text(strip=True))
+        ]
+    except requests.RequestException:
+        return
+
+    q_tokens = tokens(query)
+    if not q_tokens:
+        return
+
+    for sitemap_url in sitemap_urls:
+        if len(urls) >= 30:
+            break
+        try:
+            rr = session.get(sitemap_url, headers=HEADERS, timeout=TIMEOUT)
+            if rr.status_code != 200:
+                continue
+            sm = BeautifulSoup(rr.text, "xml")
+        except requests.RequestException:
+            continue
+
+        for loc in sm.find_all("loc"):
+            product_url = clean(loc.get_text(strip=True))
+            if "/products/" not in product_url:
+                continue
+            slug = norm(product_url.rsplit("/products/", 1)[-1])
+            if all(token in slug.split() for token in q_tokens):
+                _add_url(urls, seen, product_url)
+                if len(urls) >= 30:
+                    break
+
+
 def search(query):
     query = clean(query)
     if not query:
         return []
+
     session = requests.Session()
+    urls, seen = [], set()
+
     try:
-        r = session.get(BASE_URL + "/search?q=" + quote_plus(query), headers=HEADERS, timeout=TIMEOUT)
-        r.raise_for_status()
-        soup = BeautifulSoup(r.text, "html.parser")
-        urls, seen = [], set()
-        for a in soup.select('a[href*="/products/"]'):
-            url = urljoin(BASE_URL, a.get("href") or "").split("?")[0]
-            if url in seen:
-                continue
-            card = a
-            for _ in range(7):
-                if card is None:
-                    break
-                text = clean(card.get_text(" ", strip=True))
-                if matches(text, query) and "€" in text:
-                    break
-                card = card.parent
-            if card is None:
-                continue
-            if matches(clean(card.get_text(" ", strip=True)), query):
-                seen.add(url)
-                urls.append(url)
+        # 1) Standard Shopify search pages.
+        for search_url in (
+            BASE_URL + "/search?q=" + quote_plus(query),
+            BASE_URL + "/search?options%5Bprefix%5D=last&q=" + quote_plus(query),
+        ):
+            try:
+                r = session.get(search_url, headers=HEADERS, timeout=TIMEOUT)
+                if r.status_code == 200:
+                    soup = BeautifulSoup(r.text, "html.parser")
+                    _discover_from_html(soup, query, urls, seen)
+            except requests.RequestException:
+                pass
+
+            if len(urls) >= 20:
+                break
+
+        # 2) Predictive search JSON.
+        if len(urls) < 20:
+            _discover_from_predictive_search(session, query, urls, seen)
+
+        # 3) Product sitemap fallback.
+        if len(urls) < 20:
+            _discover_from_sitemap(session, query, urls, seen)
+
         results = []
-        for url in urls[:6]:
+        for url in urls[:15]:
             item = product_page(session, url, query)
             if item:
                 results.append(item)
         return results
+
     except requests.RequestException:
         return []
     finally:
