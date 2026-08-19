@@ -21,11 +21,8 @@ CATEGORY_URL = f"{BASE_URL}/parfums/"
 
 BROWSER_TIMEOUT = int(os.getenv("NOTINO_BROWSER_TIMEOUT", "40000"))
 MAX_DISCOVERY_PAGES = int(os.getenv("NOTINO_MAX_SEARCH_PAGES", "5"))
-MAX_ALTERNATE_SEARCHES = int(os.getenv("NOTINO_MAX_ALTERNATE_SEARCHES", "3"))
-MAX_ALTERNATE_SEARCH_PAGES = int(os.getenv("NOTINO_MAX_ALTERNATE_SEARCH_PAGES", "2"))
 MAX_CANDIDATES = int(os.getenv("NOTINO_MAX_CANDIDATES", "120"))
 MAX_VALIDATIONS = int(os.getenv("NOTINO_MAX_VALIDATIONS", "50"))
-MAX_UNRESOLVED_VALIDATIONS = int(os.getenv("NOTINO_MAX_UNRESOLVED_VALIDATIONS", "12"))
 SCROLL_STEPS = int(os.getenv("NOTINO_SCROLL_STEPS", "8"))
 
 USER_AGENT = (
@@ -316,27 +313,9 @@ def extract_product_candidates(html, page_url, query=""):
     soup = BeautifulSoup(html, "html.parser")
     output = []
     seen = set()
-
-    def add_candidate(url, text="", card_text="", image_url="", anchor=None):
-        url = canonical_url(url, page_url)
-        if not url or not product_url(url) or url in seen:
-            return
-        text = clean(text)
-        card_text = clean(card_text) or text
-        seen.add(url)
-        output.append({
-            "url": url,
-            "text": text,
-            "card_text": card_text,
-            "score": candidate_score(f"{text} {card_text}", url, query),
-            "image": clean(image_url) if image_url else "",
-            "_anchor": anchor,
-        })
-
-    # Primary path: normal product-card anchors rendered by the search page.
     for anchor in soup.find_all("a", href=True):
         url = canonical_url(anchor.get("href"), page_url)
-        if not url or not product_url(url):
+        if not url or not product_url(url) or url in seen:
             continue
 
         pieces = [anchor.get("title"), anchor.get("aria-label"), anchor.get_text(" ", strip=True)]
@@ -356,60 +335,15 @@ def extract_product_candidates(html, page_url, query=""):
 
         text = clean(" ".join(x for x in pieces if x))
         card_text = extract_card_context(anchor)
-        add_candidate(url, text, card_text, image_url, anchor)
-
-    # Secondary generic path: some Notino responses keep product URLs inside
-    # JSON/state/script markup without rendering a normal <a> element.
-    raw_html = str(html).replace("\\\\/", "/").replace("\\/","/")
-    raw_patterns = (
-        r'https?://(?:www\.)?notino\.fr/[^"\'<>\s\\]+/p-\d+',
-        r'(?<![A-Za-z0-9])/[A-Za-z0-9._~%+/?=&-]+/p-\d+',
-    )
-    for pattern in raw_patterns:
-        for match in re.finditer(pattern, raw_html, re.I):
-            url = match.group(0)
-            if not canonical_url(url, page_url):
-                continue
-
-            start_context = max(0, match.start() - 1800)
-            end_context = min(len(raw_html), match.end() + 1800)
-            context_html = raw_html[start_context:end_context]
-
-            # Prefer the nearest structured product name/title when the URL is
-            # embedded in JSON. Fall back to visible surrounding markup.
-            name_matches = list(re.finditer(
-                r'"(?:name|productName|displayName|title)"\s*:\s*"([^"]{2,200})"',
-                context_html,
-                re.I,
-            ))
-            if name_matches:
-                nearest = min(
-                    name_matches,
-                    key=lambda item: abs(
-                        (start_context + item.start()) - match.start()
-                    ),
-                )
-                context_text = clean(nearest.group(1))
-
-                concentration_hint = re.search(
-                    r'(?i)\b(?:eau de parfum|eau de toilette|eau de cologne|extrait de parfum|parfum|perfume|fragrance)\b',
-                    context_html,
-                )
-                size_hint = re.search(
-                    r'(?i)\b\d+(?:[.,]\d+)?\s*(?:ml|cl)\b',
-                    context_html,
-                )
-                if concentration_hint:
-                    context_text += " " + concentration_hint.group(0)
-                if size_hint:
-                    context_text += " " + size_hint.group(0)
-            else:
-                context_text = clean(
-                    BeautifulSoup(context_html, "html.parser").get_text(" ", strip=True)
-                )
-
-            add_candidate(url, context_text, context_text)
-
+        seen.add(url)
+        output.append({
+            "url": url,
+            "text": text,
+            "card_text": card_text,
+            "score": candidate_score(text, url, query),
+            "image": image_url,
+            "_anchor": anchor,
+        })
     output.sort(key=lambda x: x["score"], reverse=True)
     return output[:MAX_CANDIDATES]
 
@@ -628,24 +562,6 @@ def launch_browser(playwright):
         kwargs["executable_path"] = executable_path
     return playwright.chromium.launch(**kwargs)
 
-def discovery_queries(query):
-    """Return a small generic set of search formulations for one user query.
-
-    The original query always runs first. For multi-word queries we also search
-    each meaningful token independently because retailer search engines can expose
-    only one variant of a product family for an exact phrase. No product or brand
-    is hard-coded here.
-    """
-    original = clean(query)
-    tokens = query_tokens(original)
-    variants = [original]
-    if len(tokens) >= 2:
-        for token in tokens[:MAX_ALTERNATE_SEARCHES]:
-            if token not in variants:
-                variants.append(token)
-    return variants
-
-
 def browser_discover(query):
     if sync_playwright is None:
         return []
@@ -654,62 +570,46 @@ def browser_discover(query):
     try:
         with sync_playwright() as pw:
             browser = launch_browser(pw)
-            context = browser.new_context(
-                user_agent=USER_AGENT,
-                locale="fr-FR",
-                viewport={"width":1440,"height":1000},
-                extra_http_headers={"Accept-Language":"fr-FR,fr;q=0.9,en;q=0.7"},
-            )
+            context = browser.new_context(user_agent=USER_AGENT, locale="fr-FR", viewport={"width":1440,"height":1000}, extra_http_headers={"Accept-Language":"fr-FR,fr;q=0.9,en;q=0.7"})
             page = context.new_page()
-
-            search_variants = discovery_queries(query)
-            for variant_index, variant in enumerate(search_variants):
-                page_url = SEARCH_URL.format(query=quote_plus(variant))
-                visited_pages = set()
-                max_pages = (
-                    MAX_DISCOVERY_PAGES
-                    if variant_index == 0
-                    else MAX_ALTERNATE_SEARCH_PAGES
-                )
-
-                page.goto(page_url, wait_until="domcontentloaded", timeout=BROWSER_TIMEOUT)
+            urls = [SEARCH_URL.format(query=quote_plus(clean(query)))]
+            visited_pages = set()
+            for start in urls:
+                page.goto(start, wait_until="domcontentloaded", timeout=BROWSER_TIMEOUT)
                 dismiss_consent(page)
-
-                for _ in range(max_pages):
+                for _ in range(MAX_DISCOVERY_PAGES):
                     if page.url in visited_pages:
                         break
                     visited_pages.add(page.url)
-
                     try:
-                        page.wait_for_load_state("networkidle", timeout=10000)
+                        page.wait_for_load_state("networkidle", timeout=5000)
                     except Exception:
                         pass
-
-                    page.wait_for_timeout(1200)
+                    page.wait_for_timeout(500)
                     scroll_for_products(page)
                     html = page.content()
-
                     for item in extract_product_candidates(html, page.url, query):
                         if item["url"] not in seen:
                             seen.add(item["url"])
                             candidates.append(item)
-
                     nxt = next_page(page)
                     if not nxt or nxt in visited_pages:
                         break
                     page.goto(nxt, wait_until="domcontentloaded", timeout=BROWSER_TIMEOUT)
                     dismiss_consent(page)
 
-            # Generic site-wide fallback: if all search formulations expose no
-            # product links, discover products from the perfume catalogue.
+            # Generic site-wide fallback: if the search endpoint rendered no product
+            # links, discover products from Notino's perfume catalogue and rank the
+            # resulting candidates against the requested query. This is not tied to
+            # any individual product or brand.
             if not candidates:
                 page.goto(CATEGORY_URL, wait_until="domcontentloaded", timeout=BROWSER_TIMEOUT)
                 dismiss_consent(page)
                 try:
-                    page.wait_for_load_state("networkidle", timeout=10000)
+                    page.wait_for_load_state("networkidle", timeout=5000)
                 except Exception:
                     pass
-                page.wait_for_timeout(1200)
+                page.wait_for_timeout(500)
                 scroll_for_products(page)
                 html = page.content()
                 for item in extract_product_candidates(html, page.url, query):
@@ -820,16 +720,13 @@ def search(query):
         return []
 
     # Notino currently protects direct product navigation with a Cloudflare
-    # challenge. The search page itself exposes product-card data, so use that
-    # data as the primary generic result path.
+    # challenge. The search page itself already exposes the product card data,
+    # so use that data as the primary generic result path.
     results = []
     seen = set()
-    unresolved = []
-
     for candidate in candidates:
         product = parse_search_candidate(candidate, query)
         if not product:
-            unresolved.append(candidate)
             continue
         url = product.get("url")
         if url in seen:
@@ -837,20 +734,11 @@ def search(query):
         seen.add(url)
         results.append(product)
 
-    # Do not let one successfully parsed search card hide another valid product
-    # that was discovered but could not be parsed from the card. Validate the
-    # unresolved candidates generically as a secondary path.
-    if unresolved:
-        unresolved.sort(key=lambda x: x.get("score", 0), reverse=True)
-        validated = validate_candidates(
-            unresolved[:MAX_UNRESOLVED_VALIDATIONS],
-            query,
-        )
-        for product in validated:
-            url = product.get("url")
-            if url and url not in seen:
-                seen.add(url)
-                results.append(product)
+    # Keep direct validation only as a secondary enrichment path for any
+    # candidate whose search card could not be parsed completely. This remains
+    # generic and does not privilege individual products.
+    if not results:
+        return validate_candidates(candidates, query)
 
     return results
 
@@ -965,7 +853,7 @@ def diagnose(query):
             try:
                 try:
                     page.goto(report["search_url"],wait_until="domcontentloaded",timeout=BROWSER_TIMEOUT)
-                    page.wait_for_timeout(1200)
+                    page.wait_for_timeout(500)
                     dismiss_consent(page)
                     scroll_for_products(page)
                     page.wait_for_timeout(500)
