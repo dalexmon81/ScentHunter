@@ -39,6 +39,29 @@ def matches(text, query):
     query_tokens = tokens(query)
     return bool(query_tokens) and query_tokens.issubset(tokens(text))
 
+
+def _discovery_tokens(value):
+    """Normalize generic linguistic variants used by store search URLs."""
+    aliases = {
+        'him': 'men',
+        'his': 'men',
+        'man': 'men',
+        'men': 'men',
+        'homme': 'men',
+        'pour': 'for',
+        'for': 'for',
+        'her': 'women',
+        'woman': 'women',
+        'women': 'women',
+        'femme': 'women',
+    }
+    return {aliases.get(token, token) for token in tokens(value)}
+
+
+def _discovery_matches(text, query):
+    query_tokens = _discovery_tokens(query)
+    return bool(query_tokens) and query_tokens.issubset(_discovery_tokens(text))
+
 def size_ml(*values):
     text = ' '.join((clean(x) for x in values))
     match = re.search('(?<!\\d)(\\d+(?:[.,]\\d+)?)\\s*(ml|cl)\\b', text, re.I)
@@ -158,9 +181,10 @@ def _looks_like_product_url(url, context='', query=''):
     - URLs containing /p-<id>/
     - canonical slug URLs without /p-<id>/
 
-    A product URL with /p-<id>/ is accepted only when the available
-    discovery context or URL path is compatible with the query.
-    The product page performs the final validation in _product().
+    Discovery uses the available card/context text and URL path. Generic
+    linguistic variants such as him/men and homme/men are normalized only
+    for discovery; the final product validation in _product() remains
+    unchanged.
     """
     try:
         parsed = urlparse(url)
@@ -183,7 +207,7 @@ def _looks_like_product_url(url, context='', query=''):
     )
 
     if PRODUCT_URL_RE.search(path):
-        if query and not matches(discovery_context, query):
+        if query and not _discovery_matches(discovery_context, query):
             return False
         return True
 
@@ -194,7 +218,7 @@ def _looks_like_product_url(url, context='', query=''):
     if parts[0].lower() in PRODUCT_PATH_EXCLUSIONS:
         return False
 
-    if query and not matches(discovery_context, query):
+    if query and not _discovery_matches(discovery_context, query):
         return False
 
     slug = parts[-1].replace('-', ' ')
