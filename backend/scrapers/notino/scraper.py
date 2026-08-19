@@ -349,12 +349,20 @@ def discovery_normalise(value: Any) -> str:
 
 
 def discovery_matches(text: Any, query: Any) -> bool:
-    query_tokens = set(discovery_normalise(query).split())
-    if not query_tokens:
-        return False
+    """
+    Compare discovery text against the semantic query terms.
+
+    Generic category words such as ``parfum``/``eau de parfum`` are not
+    identity terms: the search is for perfume products, while the useful
+    discriminator is the requested gender/category.  Specific product names
+    remain strict because their actual name tokens are preserved.
+    """
+    wanted = set(discovery_normalise(" ".join(query_tokens(query))).split())
+    if not wanted:
+        return True
 
     text_tokens = set(discovery_normalise(text).split())
-    return query_tokens.issubset(text_tokens)
+    return wanted.issubset(text_tokens)
 
 
 def query_tokens(query: str) -> List[str]:
@@ -541,66 +549,7 @@ def _is_site_level_name(value: str) -> bool:
         "www notino fr",
         "notino france",
     }
-    if normalized in site_names or normalized.startswith("www notino "):
-        return True
-
-    # Generic client-side loading placeholders. Notino can briefly expose
-    # these strings as the H1/title before the product data is hydrated.
-    placeholder_names = {
-        "un instant",
-        "loading",
-        "chargement",
-        "please wait",
-        "wait",
-    }
-    return normalized in placeholder_names
-
-
-def _name_from_product_url(url: str) -> str:
-    """Recover a generic product name from a canonical Notino product URL.
-
-    This is a last-resort identity source for client-rendered pages where the
-    visible H1/JSON-LD is still a loading placeholder. It contains no
-    product-specific rules.
-    """
-    try:
-        path = urlparse(url).path.strip("/")
-    except Exception:
-        return ""
-
-    parts = [part for part in path.split("/") if part]
-    if not parts:
-        return ""
-
-    slug = parts[-1]
-    if re.fullmatch(r"p-\d+", slug, re.I) and len(parts) >= 2:
-        slug = parts[-2]
-
-    slug = re.sub(r"^p-\d+$", "", slug, flags=re.I)
-    slug = re.sub(r"-p-\d+$", "", slug, flags=re.I)
-    if not slug:
-        return ""
-
-    words = [word for word in re.split(r"[-_]+", slug) if word]
-    if not words:
-        return ""
-
-    return clean(" ".join(words)).title()
-
-
-def _brand_from_product_url(url: str) -> str:
-    """Recover the generic brand segment from a Notino product URL."""
-    try:
-        path = urlparse(url).path.strip("/")
-    except Exception:
-        return ""
-
-    parts = [part for part in path.split("/") if part]
-    if len(parts) < 2:
-        return ""
-
-    brand = clean(parts[0].replace("-", " ").replace("_", " "))
-    return brand.title() if brand else ""
+    return normalized in site_names or normalized.startswith("www notino ")
 
 
 def extract_brand(data: Optional[dict], soup: Optional[BeautifulSoup] = None) -> str:
@@ -790,15 +739,6 @@ def parse_product_html(
     name = extract_name(soup, data)
     brand = extract_brand(data)
 
-    # If the page is still on Notino's generic loading state, recover the
-    # product identity from its canonical URL. This is generic and works for
-    # any product; it is not tied to a particular fragrance or brand.
-    if not name or _is_site_level_name(name):
-        name = _name_from_product_url(url)
-
-    if not brand:
-        brand = _brand_from_product_url(url)
-
     # If multiple Product objects exist, use the one whose identity matches.
     if products:
         for candidate in products:
@@ -852,21 +792,6 @@ def parse_product_html(
     availability = extract_availability(soup, data)
     image = extract_image(soup, data, product_url)
 
-    # A hydrated search card can contain the current offer even when the
-    # direct product document is still serving a loading shell. Use that card
-    # context only as a generic fallback; direct product data always wins.
-    if price is None and candidate_context:
-        context_prices = extract_prices(candidate_context)
-        if context_prices:
-            price = context_prices[0]
-
-    if availability == "unknown" and candidate_context:
-        context_norm = norm(candidate_context)
-        if any(term in context_norm for term in IN_STOCK_TERMS):
-            availability = "in_stock"
-        elif any(term in context_norm for term in OUT_OF_STOCK_TERMS):
-            availability = "out_of_stock"
-
     gtin = clean(
         data.get("gtin13")
         or data.get("gtin")
@@ -877,6 +802,23 @@ def parse_product_html(
     sku = clean(data.get("sku")) or None
     mpn = clean(data.get("mpn")) or None
     product_id = _extract_product_id(product_url)
+
+    # A candidate can be a perfectly valid Notino navigation/category page.
+    # Notino does not always expose Product JSON-LD, so validation cannot
+    # depend on schema markup alone.  Require at least one product-specific
+    # signal before accepting a page that otherwise looks like generic
+    # navigation: a product id, SKU/MPN/GTIN, price, or a recognised perfume
+    # concentration.  This is structural and applies to every product.
+    product_signals = (
+        bool(product_id)
+        or bool(gtin)
+        or bool(sku)
+        or bool(mpn)
+        or price is not None
+        or concentration_value is not None
+    )
+    if not product_signals:
+        return None
 
     return {
         "store": STORE,
@@ -1387,23 +1329,7 @@ def _fetch_product_browser(
         except PlaywrightTimeoutError:
             pass
 
-        # Notino can render a temporary "Un instant…" shell before the
-        # product payload arrives. Wait briefly for that shell to be replaced
-        # instead of validating the placeholder as a real product.
-        try:
-            page.wait_for_function(
-                """() => {
-                    const h1 = document.querySelector('h1');
-                    const text = (h1?.innerText || '').trim().toLowerCase();
-                    if (!text) return false;
-                    return !['un instant…', 'un instant...', 'un instant', 'loading', 'chargement', 'please wait'].includes(text);
-                }""",
-                timeout=min(PRODUCT_TIMEOUT_MS, 7000),
-            )
-        except PlaywrightTimeoutError:
-            pass
-
-        page.wait_for_timeout(1200)
+        page.wait_for_timeout(500)
         return page.content()
 
     except Exception as exc:
@@ -1505,15 +1431,13 @@ def _rank_browser_candidates(
     query: str,
 ) -> List[Dict[str, Any]]:
     """Rank discovered URLs without making discovery depend on a product name."""
-    query_n = discovery_normalise(query)
-    query_parts = set(query_n.split())
-
     ranked = []
     for candidate in candidates:
         context_n = discovery_normalise(candidate.get("context", ""))
         context_parts = set(context_n.split())
-        overlap = len(query_parts & context_parts)
-        exact = bool(query_parts) and query_parts.issubset(context_parts)
+        semantic_query = set(discovery_normalise(" ".join(query_tokens(query))).split())
+        overlap = len(semantic_query & context_parts)
+        exact = bool(semantic_query) and semantic_query.issubset(context_parts)
         source_count = len(candidate.get("sources", set()))
         url = candidate.get("url", "")
 
