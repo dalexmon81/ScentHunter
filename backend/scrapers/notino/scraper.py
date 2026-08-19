@@ -35,32 +35,81 @@ def norm(value):
 def tokens(value):
     return {x for x in norm(value).split() if len(x) > 1}
 
+def _gender_group(value):
+    value = norm(value)
+    if re.search(r'\b(him|his|man|men|male|homme|masculine|pour homme|pour men)\b', value):
+        return 'men'
+    if re.search(r'\b(her|woman|women|female|femme|feminine|pour femme|pour women)\b', value):
+        return 'women'
+    if re.search(r'\b(unisex|unisexe|mixte)\b', value):
+        return 'unisex'
+    return None
+
+
+GENERIC_IDENTITY_WORDS = {
+    'eau', 'de', 'parfum', 'perfume', 'edp', 'edt', 'extrait',
+    'spray', 'for', 'by', 'pour',
+    # Gender is validated separately by _gender_group().
+    'him', 'his', 'man', 'men', 'male', 'homme', 'masculine',
+    'her', 'woman', 'women', 'female', 'femme', 'feminine',
+    'unisex', 'unisexe', 'mixte',
+}
+
+
+def _meaningful_tokens(value):
+    return {
+        token for token in tokens(value)
+        if token not in GENERIC_IDENTITY_WORDS
+    }
+
+
 def matches(text, query):
-    query_tokens = tokens(query)
-    return bool(query_tokens) and query_tokens.issubset(tokens(text))
+    """Generic product identity matching.
+
+    Discovery/search phrases often contain linguistic glue such as
+    'for', 'him', 'pour' or 'homme'. Those words must not be required
+    literally, but an explicitly requested gender must remain compatible
+    with the product identity.
+    """
+    query_meaningful = _meaningful_tokens(query)
+    product_tokens = tokens(text)
+
+    if not query_meaningful:
+        return False
+
+    if not query_meaningful.issubset(product_tokens):
+        return False
+
+    requested_gender = _gender_group(query)
+    if requested_gender:
+        product_gender = _gender_group(text)
+        if product_gender == 'women' and requested_gender == 'men':
+            return False
+        if product_gender == 'men' and requested_gender == 'women':
+            return False
+
+    return True
 
 
 def _discovery_tokens(value):
-    """Normalize generic linguistic variants used by store search URLs."""
-    aliases = {
-        'him': 'men',
-        'his': 'men',
-        'man': 'men',
-        'men': 'men',
-        'homme': 'men',
-        'pour': 'for',
-        'for': 'for',
-        'her': 'women',
-        'woman': 'women',
-        'women': 'women',
-        'femme': 'women',
-    }
-    return {aliases.get(token, token) for token in tokens(value)}
+    return _meaningful_tokens(value)
 
 
 def _discovery_matches(text, query):
     query_tokens = _discovery_tokens(query)
-    return bool(query_tokens) and query_tokens.issubset(_discovery_tokens(text))
+    context_tokens = _discovery_tokens(text)
+    if not query_tokens or not query_tokens.issubset(context_tokens):
+        return False
+
+    requested_gender = _gender_group(query)
+    if requested_gender:
+        context_gender = _gender_group(text)
+        if context_gender == 'women' and requested_gender == 'men':
+            return False
+        if context_gender == 'men' and requested_gender == 'women':
+            return False
+
+    return True
 
 def size_ml(*values):
     text = ' '.join((clean(x) for x in values))
@@ -175,16 +224,12 @@ def _normalise_url(href):
     return f'{parsed.scheme}://{parsed.netloc}{path}'
 
 def _looks_like_product_url(url, context='', query=''):
-    """Accept genuine Notino product-looking URLs generically.
+    """Recognize genuine Notino product-looking URLs.
 
-    Notino uses two valid product URL forms:
-    - URLs containing /p-<id>/
-    - canonical slug URLs without /p-<id>/
-
-    Discovery uses the available card/context text and URL path. Generic
-    linguistic variants such as him/men and homme/men are normalized only
-    for discovery; the final product validation in _product() remains
-    unchanged.
+    Discovery deliberately does not require a complete query match. Search
+    pages can name the same product differently from its canonical URL and
+    can express gender/concentration in localized wording. The final
+    _product() validation is authoritative.
     """
     try:
         parsed = urlparse(url)
@@ -197,28 +242,15 @@ def _looks_like_product_url(url, context='', query=''):
     if not path or 'search.asp' in lower_path:
         return False
 
-    path_context = path.replace('/', ' ').replace('-', ' ')
-
-    discovery_context = ' '.join(
-        [
-            clean(context),
-            clean(path_context),
-        ]
-    )
+    parts = [p for p in path.split('/') if p]
 
     if PRODUCT_URL_RE.search(path):
-        if query and not _discovery_matches(discovery_context, query):
-            return False
         return True
 
-    parts = [p for p in path.split('/') if p]
     if len(parts) < 2:
         return False
 
     if parts[0].lower() in PRODUCT_PATH_EXCLUSIONS:
-        return False
-
-    if query and not _discovery_matches(discovery_context, query):
         return False
 
     slug = parts[-1].replace('-', ' ')
@@ -293,18 +325,43 @@ def _product(url, html, query):
     h1 = soup.find('h1')
     h1_name = clean(h1.get_text(' ', strip=True)) if h1 else ''
     name = h1_name or clean(data.get('name'))
+    product_identity_text = ' '.join(
+        value for value in (
+            name,
+            clean(data.get('brand')) if isinstance(data, dict) and not isinstance(data.get('brand'), dict) else '',
+            urlparse(url).path.replace('/', ' ').replace('-', ' '),
+        ) if value
+    )
 
-    # Final identity validation uses the same generic linguistic normalization
-    # as discovery (for example him/homme/man -> men). This is still a strict
-    # token match and never contains product-specific exceptions.
-    if not name or not _discovery_matches(name, query):
+    if not name or not matches(product_identity_text, query):
         for candidate in jsonld_products:
             candidate_name = clean(candidate.get('name'))
-            if candidate_name and _discovery_matches(candidate_name, query):
+            candidate_brand = candidate.get('brand')
+            if isinstance(candidate_brand, dict):
+                candidate_brand = candidate_brand.get('name')
+            candidate_identity = ' '.join(
+                value for value in (
+                    candidate_name,
+                    clean(candidate_brand),
+                    urlparse(url).path.replace('/', ' ').replace('-', ' '),
+                ) if value
+            )
+            if candidate_name and matches(candidate_identity, query):
                 data = candidate
                 name = candidate_name
                 break
-    if not name or not _discovery_matches(name, query):
+
+    if not name:
+        return None
+
+    final_identity = ' '.join(
+        value for value in (
+            name,
+            clean(data.get('brand')) if isinstance(data, dict) and not isinstance(data.get('brand'), dict) else '',
+            urlparse(url).path.replace('/', ' ').replace('-', ' '),
+        ) if value
+    )
+    if not matches(final_identity, query):
         return None
     text = soup.get_text(' ', strip=True)
     brand = data.get('brand')
@@ -351,61 +408,50 @@ def _product(url, html, query):
     product_url = _normalise_url(url) or url
     return {'store': STORE, 'source': {'source_name': name, 'source_brand': clean(brand), 'url': product_url, 'image': image}, 'identity': {'gtin': {'value': gtin, 'source': 'jsonld'} if gtin else None, 'mpn': {'value': mpn, 'source': 'jsonld'} if mpn else None, 'sku': {'value': sku, 'source': 'jsonld'} if sku else None, 'store_product_id': {'value': sku, 'source': 'notino_sku'} if sku else None}, 'attributes': {'size_ml': {'value': selected_size, 'source': 'selected_variant_or_product_name'} if selected_size is not None else None, 'concentration': {'value': concentration(name), 'source': 'product_name'} if concentration(name) else None, 'gender': {'value': 'unknown', 'source': 'not_explicit'}, 'packaging_type': {'value': 'product', 'source': 'default'}}, 'offer': {'price': price, 'currency': 'EUR', 'availability': availability}, 'provenance': {'source_page': product_url, 'product_source': 'jsonld_or_page'}, 'raw_data': {'jsonld': data}, 'name': name, 'price': f'{price:.2f}'.replace('.', ',') + ' €' if price is not None else '', 'url': product_url, 'available': availability == 'in_stock'}
 
-def _search_queries(query):
-    """Build generic fallback search terms without product-specific rules."""
-    raw = clean(query)
-    if not raw:
-        return []
-
-    variants = []
-    seen = set()
-
-    def add(value):
-        value = clean(value)
-        key = norm(value)
-        if value and key and key not in seen:
-            seen.add(key)
-            variants.append(value)
-
-    add(raw)
-
-    query_tokens = norm(raw).split()
-    gender_tokens = {
-        'him', 'his', 'man', 'men', 'homme',
-        'her', 'hers', 'woman', 'women', 'femme',
-        'for', 'pour',
-    }
-    base_tokens = [token for token in query_tokens if token not in gender_tokens]
-    if base_tokens:
-        add(' '.join(base_tokens))
-
-    return variants
-
 def _search_pages(query):
     return (SEARCH_URL.format(query=quote_plus(query)),)
 
 def _candidate_product_urls(html, query):
-    """
-    Discover product candidates from Notino's search page only.
+    """Discover and rank product candidates from Notino search HTML.
 
-    Discovery is generic:
-    - /p-<id>/ product URLs are accepted structurally.
-    - canonical slug product URLs without an ID are also accepted when the
-      surrounding search-card text matches the query.
-    - the product page performs the final validation.
+    Discovery is intentionally broad. It collects structurally plausible
+    product URLs first, then ranks them using the query and local card text.
+    Identity validation happens later on the actual product page.
     """
     soup = BeautifulSoup(html, 'html.parser')
-    found, seen = [], set()
+    candidates = {}
+    query_tokens = _meaningful_tokens(query)
+    requested_gender = _gender_group(query)
+
+    def score(url, context=''):
+        path_text = urlparse(url).path.replace('/', ' ').replace('-', ' ')
+        blob = norm(' '.join((context, path_text)))
+        context_tokens = tokens(blob)
+
+        overlap = len(query_tokens & context_tokens)
+        exact_meaningful = query_tokens.issubset(context_tokens)
+        gender = _gender_group(blob)
+
+        value = overlap * 10
+        if exact_meaningful:
+            value += 25
+        if requested_gender and gender == requested_gender:
+            value += 8
+        elif requested_gender and gender and gender != requested_gender and gender != 'unisex':
+            value -= 30
+
+        # Prefer canonical product URLs with an explicit numeric id only
+        # after relevance has been considered.
+        if PRODUCT_URL_RE.search(urlparse(url).path):
+            value += 2
+
+        return value
 
     def add(raw_url, context=''):
         if not raw_url:
             return
 
-        raw_url = (
-            clean(str(raw_url))
-            .replace('\\/', '/')
-            .replace('\\u002F', '/')
-        )
+        raw_url = clean(str(raw_url)).replace('\\/', '/').replace('\\u002F', '/')
 
         if raw_url.startswith('//'):
             raw_url = 'https:' + raw_url
@@ -413,20 +459,14 @@ def _candidate_product_urls(html, query):
             raw_url = urljoin(BASE_URL, raw_url)
 
         url = _normalise_url(raw_url)
-
-        if not url:
+        if not url or not _looks_like_product_url(url, context, query):
             return
 
-        if not _looks_like_product_url(url, context, query):
-            return
+        candidate_score = score(url, context)
+        previous = candidates.get(url)
+        if previous is None or candidate_score > previous[0]:
+            candidates[url] = (candidate_score, clean(context))
 
-        if url in seen:
-            return
-
-        seen.add(url)
-        found.append(url)
-
-    # Product-card links: use the complete local card context.
     for anchor in soup.find_all('a', href=True):
         href = anchor.get('href')
         card = anchor
@@ -440,28 +480,24 @@ def _candidate_product_urls(html, query):
                 break
 
         context = ' '.join(
-            [
+            value for value in (
                 clean(anchor.get_text(' ', strip=True)),
                 clean(card.get_text(' ', strip=True)),
                 clean(anchor.get('aria-label')),
                 clean(anchor.get('title')),
-            ]
+            ) if value
         )
-
         add(href, context)
 
-    # Other structural attributes can contain product URLs.
     for node in soup.find_all(True):
         context = clean(node.get_text(' ', strip=True))
         for attr in ('data-href', 'data-url', 'data-product-url'):
             add(node.get(attr), context)
 
-    # Structured data may expose product URLs independently of the visible DOM.
     for script in soup.select('script[type="application/ld+json"]'):
         raw = script.string or script.get_text()
         if not raw:
             continue
-
         try:
             data = json.loads(raw.strip())
         except (json.JSONDecodeError, TypeError, ValueError):
@@ -470,9 +506,7 @@ def _candidate_product_urls(html, query):
         for obj in _walk_json_ld(data):
             if not isinstance(obj, dict):
                 continue
-
             obj_name = clean(obj.get('name'))
-
             for key in ('url', '@id'):
                 value = obj.get(key)
                 if isinstance(value, str):
@@ -486,30 +520,26 @@ def _candidate_product_urls(html, query):
                     if isinstance(value, str):
                         add(value, item_name)
 
-    # Embedded application state: retain explicit /p-<id>/ URLs.
     decoded = html.replace('\\/', '/').replace('\\u002F', '/')
-
     patterns = (
-        # Explicit product URLs with Notino's numeric product id.
         r'(?:https?:)?//(?:www\.)?notino\.fr/[^"\'<>\s\\]+/p-\d+/?',
         r'(?P<path>/[^"\'<>\s\\]+/p-\d+/?)',
-
-        # Canonical product URLs can be embedded in application state
-        # without /p-<id>/. Keep this generic and let _looks_like_product_url()
-        # validate the path against the search query and exclusions.
         r'(?:https?:)?//(?:www\.)?notino\.fr/(?=[^"\'<>\s\\]+/[^"\'<>\s\\]+/?(?:["\'<>\s]|$))[^"\'<>\s\\]+/[^"\'<>\s\\]+/?',
         r'(?P<canonical>/[a-z0-9][^"\'<>\s\\]*/[a-z0-9][^"\'<>\s\\]+/?)',
     )
-
     for pattern in patterns:
         for raw in re.findall(pattern, decoded, re.I):
             if isinstance(raw, tuple):
                 raw = raw[0]
             add(raw)
 
-    return found
+    ranked = sorted(
+        candidates.items(),
+        key=lambda item: (-item[1][0], len(item[0]), item[0]),
+    )
+    return [url for url, _meta in ranked]
 
-def _discover_with_playwright(query, max_urls=120):
+def _discover_with_playwright(query, max_urls=80):
     """Browser fallback for client-rendered Notino search results."""
     if sync_playwright is None:
         return []
@@ -533,10 +563,6 @@ def _discover_with_playwright(query, max_urls=120):
                 wait_until='domcontentloaded',
                 timeout=DEFAULT_TIMEOUT_MS,
             )
-            # Notino/Cloudflare can report HTTP 403 while the browser still
-            # receives the real client-rendered search DOM. Do not discard
-            # the page solely because of the navigation status: inspect the
-            # actual DOM and let generic candidate validation decide.
             if response is not None and response.status >= 400:
                 LOGGER.info(
                     'Notino browser search returned HTTP %s; inspecting rendered DOM anyway',
@@ -564,7 +590,7 @@ def _discover_with_playwright(query, max_urls=120):
 
     return urls[:max_urls]
 
-def _discover_from_search_requests(session, query, max_urls=120):
+def _discover_from_search_requests(session, query, max_urls=80):
     """Discover only from Notino's own search endpoint, like Deloox."""
     try:
         response = session.get(
@@ -582,10 +608,9 @@ def _discover_from_search_requests(session, query, max_urls=120):
     return _candidate_product_urls(response.text, query)[:max_urls]
 
 def _discover(session, query):
-    """Combine generic search variants, HTTP discovery and browser discovery."""
+    """Combine HTTP and browser discovery without letting one source hide the other."""
     found = []
     seen = set()
-    max_urls = 120
 
     def merge(urls):
         for url in urls or []:
@@ -594,25 +619,21 @@ def _discover(session, query):
                 continue
             seen.add(normalised)
             found.append(normalised)
-            if len(found) >= max_urls:
+            if len(found) >= 80:
                 return True
         return False
 
-    # Do not stop after the first source or first query variant. Notino's
-    # client-side search can return different result sets for the full query
-    # and its generic base-name form, while HTTP may be blocked by Cloudflare.
-    for search_query in _search_queries(query):
-        if merge(_discover_from_search_requests(session, search_query, max_urls)):
-            if len(found) >= max_urls:
-                break
+    # HTTP discovery is the fast first source.
+    if merge(_discover_from_search_requests(session, query, 80)):
+        return found[:80]
 
-        if BROWSER_ENABLED and len(found) < max_urls:
-            merge(_discover_with_playwright(search_query, max_urls))
+    # Browser discovery is also a valid generic source. It is no longer
+    # skipped merely because HTTP returned some candidates: the two sources
+    # can expose different parts of Notino's search result.
+    if BROWSER_ENABLED:
+        merge(_discover_with_playwright(query, 80))
 
-        if len(found) >= max_urls:
-            break
-
-    return found[:max_urls]
+    return found[:80]
 
 def _fetch_product_with_playwright(url):
     if sync_playwright is None or not BROWSER_ENABLED:
@@ -627,11 +648,6 @@ def _fetch_product_with_playwright(url):
                 wait_until='domcontentloaded',
                 timeout=DEFAULT_TIMEOUT_MS,
             )
-            # A 403 from the navigation response is not by itself proof that
-            # the browser DOM is unusable. Notino can return a challenge or a
-            # rendered product document with a non-2xx navigation status.
-            # Always inspect the rendered DOM first; _product() performs the
-            # final generic identity validation.
             if response is not None and response.status >= 400:
                 LOGGER.info(
                     'Notino browser product returned HTTP %s; inspecting rendered DOM anyway',
