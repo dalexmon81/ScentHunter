@@ -754,19 +754,28 @@ def _fetch_product_with_playwright(url):
 
 
 def diagnose(query):
-    """Run the Notino pipeline in diagnostic mode without changing search()."""
+    """Bounded Notino diagnostic; never crawls dozens of product pages."""
     query = clean(query)
+    MAX_PRODUCT_CHECKS = 5
     report = {
         "query": query,
         "search_url": _search_pages(query)[0] if query else "",
         "http": {},
-        "discovery": {"candidates": [], "count": 0},
+        "discovery": {
+            "http_candidates": [],
+            "http_count": 0,
+            "playwright_candidates": [],
+            "playwright_count": 0,
+            "merged_candidates": [],
+            "merged_count": 0,
+        },
         "products": [],
         "summary": {
             "candidate_count": 0,
-            "product_pages_fetched": 0,
+            "product_pages_checked": 0,
             "validated_count": 0,
             "rejected_count": 0,
+            "diagnostic_product_limit": MAX_PRODUCT_CHECKS,
         },
     }
 
@@ -798,20 +807,36 @@ def diagnose(query):
         if response.status_code >= 400:
             return report
 
-        candidates = _candidate_product_urls(response.text, query)
-        report["discovery"]["candidates"] = candidates[:80]
-        report["discovery"]["count"] = len(candidates)
-        report["summary"]["candidate_count"] = len(candidates)
+        http_candidates = _candidate_product_urls(response.text, query)
+        report["discovery"]["http_candidates"] = http_candidates[:80]
+        report["discovery"]["http_count"] = len(http_candidates)
 
+        # Browser discovery is diagnostic only. It is deliberately bounded
+        # and is not allowed to block product-page analysis indefinitely.
         if BROWSER_ENABLED:
-            browser_candidates = _discover_with_playwright(query, 80)
-            report["discovery"]["playwright_candidates"] = browser_candidates
-            report["discovery"]["playwright_count"] = len(browser_candidates)
+            browser_candidates = _discover_with_playwright(query, 20)
         else:
-            report["discovery"]["playwright_candidates"] = []
-            report["discovery"]["playwright_count"] = 0
+            browser_candidates = []
 
-        for url in candidates[:80]:
+        report["discovery"]["playwright_candidates"] = browser_candidates
+        report["discovery"]["playwright_count"] = len(browser_candidates)
+
+        merged = []
+        seen = set()
+        for url in http_candidates + browser_candidates:
+            normalised = _normalise_url(url)
+            if not normalised or normalised in seen:
+                continue
+            seen.add(normalised)
+            merged.append(normalised)
+
+        report["discovery"]["merged_candidates"] = merged[:80]
+        report["discovery"]["merged_count"] = len(merged)
+        report["summary"]["candidate_count"] = len(merged)
+
+        # Only inspect the first few candidates. The purpose is to identify
+        # where two queries diverge, not to reproduce a full production search.
+        for url in merged[:MAX_PRODUCT_CHECKS]:
             entry = {
                 "url": url,
                 "http": {},
@@ -824,7 +849,7 @@ def diagnose(query):
                 product_response = session.get(
                     url,
                     headers=HEADERS,
-                    timeout=TIMEOUT,
+                    timeout=min(TIMEOUT, 8),
                     allow_redirects=True,
                 )
                 entry["http"] = {
@@ -840,7 +865,7 @@ def diagnose(query):
                 report["products"].append(entry)
                 continue
 
-            report["summary"]["product_pages_fetched"] += 1
+            report["summary"]["product_pages_checked"] += 1
 
             if product_response.status_code >= 400:
                 entry["reason"] = "product_http_error"
@@ -863,18 +888,18 @@ def diagnose(query):
                     ],
                 }
 
-                validation_candidates = []
+                checks = []
+                candidates = []
                 if h1_name:
-                    validation_candidates.append(
+                    candidates.append(
                         (h1_name, jsonld_products[0] if jsonld_products else {})
                     )
                 for obj in jsonld_products:
                     obj_name = clean(obj.get("name"))
                     if obj_name:
-                        validation_candidates.append((obj_name, obj))
+                        candidates.append((obj_name, obj))
 
-                checks = []
-                for candidate_name, candidate_data in validation_candidates:
+                for candidate_name, candidate_data in candidates:
                     brand = candidate_data.get("brand")
                     if isinstance(brand, dict):
                         brand = brand.get("name")
@@ -918,7 +943,6 @@ def diagnose(query):
         return report
     finally:
         session.close()
-
 
 def diagnostic_json(query):
     """Return the full diagnostic report as JSON."""
