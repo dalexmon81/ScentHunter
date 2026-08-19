@@ -35,32 +35,86 @@ def norm(value):
 def tokens(value):
     return {x for x in norm(value).split() if len(x) > 1}
 
-def matches(text, query):
-    query_tokens = tokens(query)
-    return bool(query_tokens) and query_tokens.issubset(tokens(text))
+IGNORED_QUERY_WORDS = {
+    'eau', 'de', 'parfum', 'perfume', 'edp', 'edt',
+    'extrait', 'spray', 'for', 'pour', 'by',
+}
 
+NON_PRODUCT_TERMS = {
+    'gift set', 'set regalo', 'coffret', 'bundle', 'deodorant',
+    'deo spray', 'shower gel', 'body lotion', 'after shave',
+    'aftershave', 'travel set', 'discovery set', 'kit', 'body mist',
+    'handcreme', 'hand cream',
+}
 
-def _discovery_tokens(value):
-    """Normalize generic linguistic variants used by store search URLs."""
+def _semantic_tokens(value):
     aliases = {
-        'him': 'men',
-        'his': 'men',
-        'man': 'men',
-        'men': 'men',
-        'homme': 'men',
-        'pour': 'for',
-        'for': 'for',
-        'her': 'women',
-        'woman': 'women',
-        'women': 'women',
-        'femme': 'women',
+        'him': 'men', 'his': 'men', 'man': 'men', 'men': 'men',
+        'homme': 'men', 'male': 'men', 'males': 'men',
+        'her': 'women', 'woman': 'women', 'women': 'women',
+        'femme': 'women', 'female': 'women', 'females': 'women',
+        'pour': 'for', 'for': 'for',
     }
     return {aliases.get(token, token) for token in tokens(value)}
 
+def matches(text, query):
+    query_tokens = {
+        token for token in _semantic_tokens(query)
+        if token not in IGNORED_QUERY_WORDS
+    }
+    return bool(query_tokens) and query_tokens.issubset(_semantic_tokens(text))
 
-def _discovery_matches(text, query):
-    query_tokens = _discovery_tokens(query)
-    return bool(query_tokens) and query_tokens.issubset(_discovery_tokens(text))
+def query_tokens(query):
+    return [
+        token for token in _semantic_tokens(query)
+        if token not in IGNORED_QUERY_WORDS
+    ]
+
+def explicit_size(query):
+    match = re.search(
+        r'(?<!\d)(\d+(?:[.,]\d+)?)\s*ml\b',
+        norm(query),
+        re.I,
+    )
+    if not match:
+        return None
+    try:
+        value = float(match.group(1).replace(',', '.'))
+    except ValueError:
+        return None
+    return int(value) if value.is_integer() else value
+
+def query_matches_product(name, query, brand='', size_ml=None, url=''):
+    name_n = norm(name)
+    brand_n = norm(brand)
+    query_n = norm(query)
+
+    if not name_n or not query_n:
+        return False
+
+    if not url or not _looks_like_product_url(url):
+        return False
+
+    tokens_to_match = query_tokens(query)
+    if not tokens_to_match:
+        return False
+
+    identity = _semantic_tokens(f'{name} {brand}')
+    if not all(token in identity for token in tokens_to_match):
+        return False
+
+    requested_size = explicit_size(query)
+    if requested_size is not None and size_ml is not None:
+        if float(requested_size) != float(size_ml):
+            return False
+
+    name_only = norm(name)
+    for phrase in NON_PRODUCT_TERMS:
+        phrase_normalized = norm(phrase)
+        if phrase_normalized in name_only and phrase_normalized not in query_n:
+            return False
+
+    return True
 
 def size_ml(*values):
     text = ' '.join((clean(x) for x in values))
@@ -175,17 +229,14 @@ def _normalise_url(href):
     return f'{parsed.scheme}://{parsed.netloc}{path}'
 
 def _looks_like_product_url(url, context='', query=''):
-    """Accept genuine Notino product-looking URLs generically.
+    """Recognise product-looking Notino URLs structurally only.
 
-    Notino uses two valid product URL forms:
-    - URLs containing /p-<id>/
-    - canonical slug URLs without /p-<id>/
-
-    Discovery uses the available card/context text and URL path. Generic
-    linguistic variants such as him/men and homme/men are normalized only
-    for discovery; the final product validation in _product() remains
-    unchanged.
+    Like the stronger Deloox architecture, discovery does not decide whether
+    a candidate matches the query. The real product page performs that
+    validation after name/brand/size have been extracted.
     """
+    del context, query
+
     try:
         parsed = urlparse(url)
     except Exception:
@@ -197,28 +248,14 @@ def _looks_like_product_url(url, context='', query=''):
     if not path or 'search.asp' in lower_path:
         return False
 
-    path_context = path.replace('/', ' ').replace('-', ' ')
-
-    discovery_context = ' '.join(
-        [
-            clean(context),
-            clean(path_context),
-        ]
-    )
-
     if PRODUCT_URL_RE.search(path):
-        if query and not _discovery_matches(discovery_context, query):
-            return False
         return True
 
-    parts = [p for p in path.split('/') if p]
+    parts = [part for part in path.split('/') if part]
     if len(parts) < 2:
         return False
 
     if parts[0].lower() in PRODUCT_PATH_EXCLUSIONS:
-        return False
-
-    if query and not _discovery_matches(discovery_context, query):
         return False
 
     slug = parts[-1].replace('-', ' ')
@@ -289,23 +326,57 @@ def _selected_size(soup, data, h1_name):
 def _product(url, html, query):
     soup = BeautifulSoup(html, 'html.parser')
     jsonld_products = _parse_json_ld(soup)
-    data = jsonld_products[0] if jsonld_products else {}
+
     h1 = soup.find('h1')
     h1_name = clean(h1.get_text(' ', strip=True)) if h1 else ''
-    name = h1_name or clean(data.get('name'))
-    if not name or not matches(name, query):
-        for candidate in jsonld_products:
-            candidate_name = clean(candidate.get('name'))
-            if candidate_name and matches(candidate_name, query):
-                data = candidate
-                name = candidate_name
-                break
-    if not name or not matches(name, query):
+
+    candidates = []
+    if h1_name:
+        candidates.append((h1_name, jsonld_products[0] if jsonld_products else {}))
+
+    for candidate in jsonld_products:
+        candidate_name = clean(candidate.get('name'))
+        if candidate_name:
+            candidates.append((candidate_name, candidate))
+
+    data = {}
+    name = ''
+
+    # Product identity is authoritative. Try every structured Product object
+    # instead of assuming the first JSON-LD object is the correct one.
+    for candidate_name, candidate_data in candidates:
+        candidate_brand = candidate_data.get('brand')
+        if isinstance(candidate_brand, dict):
+            candidate_brand = candidate_brand.get('name')
+        candidate_brand = clean(candidate_brand)
+
+        candidate_size = _selected_size(
+            soup,
+            candidate_data,
+            candidate_name,
+        )
+
+        if query_matches_product(
+            candidate_name,
+            query,
+            brand=candidate_brand,
+            size_ml=candidate_size,
+            url=url,
+        ):
+            name = candidate_name
+            data = candidate_data
+            break
+
+    if not name:
         return None
+
     text = soup.get_text(' ', strip=True)
+
     brand = data.get('brand')
     if isinstance(brand, dict):
         brand = brand.get('name')
+    brand = clean(brand)
+
     offers = data.get('offers')
     if isinstance(offers, list):
         offer_list = [x for x in offers if isinstance(x, dict)]
@@ -313,6 +384,7 @@ def _product(url, html, query):
         offer_list = [offers]
     else:
         offer_list = []
+
     offer = next(
         (
             x for x in offer_list
@@ -322,30 +394,105 @@ def _product(url, html, query):
         ),
         {},
     )
+
     price_value = offer.get('price')
     if price_value is None:
         price_value = offer.get('lowPrice')
     if price_value is None:
         price_value = offer.get('highPrice')
+
     price = parse_price(price_value)
+
     if price is None:
         prices = _extract_prices(text)
         if prices:
-            price = parse_price(prices[0])
+            price = min(prices)
+
     gtin = clean(data.get('gtin13') or data.get('gtin') or '') or None
     mpn = clean(data.get('mpn') or '') or None
     sku = clean(data.get('sku') or '') or None
+
     image = _image_from_product(data)
     if not image:
-        meta_image = soup.select_one('meta[property="og:image"], meta[name="twitter:image"]')
+        meta_image = soup.select_one(
+            'meta[property="og:image"], meta[name="twitter:image"]'
+        )
         if meta_image and meta_image.get('content'):
             image = clean(meta_image.get('content'))
+
     if image:
         image = urljoin(url, image)
+
     availability = availability_from_sources(data, soup)
-    selected_size = _selected_size(soup, data, h1_name)
+    selected_size = _selected_size(soup, data, name)
     product_url = _normalise_url(url) or url
-    return {'store': STORE, 'source': {'source_name': name, 'source_brand': clean(brand), 'url': product_url, 'image': image}, 'identity': {'gtin': {'value': gtin, 'source': 'jsonld'} if gtin else None, 'mpn': {'value': mpn, 'source': 'jsonld'} if mpn else None, 'sku': {'value': sku, 'source': 'jsonld'} if sku else None, 'store_product_id': {'value': sku, 'source': 'notino_sku'} if sku else None}, 'attributes': {'size_ml': {'value': selected_size, 'source': 'selected_variant_or_product_name'} if selected_size is not None else None, 'concentration': {'value': concentration(name), 'source': 'product_name'} if concentration(name) else None, 'gender': {'value': 'unknown', 'source': 'not_explicit'}, 'packaging_type': {'value': 'product', 'source': 'default'}}, 'offer': {'price': price, 'currency': 'EUR', 'availability': availability}, 'provenance': {'source_page': product_url, 'product_source': 'jsonld_or_page'}, 'raw_data': {'jsonld': data}, 'name': name, 'price': f'{price:.2f}'.replace('.', ',') + ' €' if price is not None else '', 'url': product_url, 'available': availability == 'in_stock'}
+
+    return {
+        'store': STORE,
+        'source': {
+            'source_name': name,
+            'source_brand': brand or None,
+            'url': product_url,
+            'image': image,
+        },
+        'identity': {
+            'gtin': {'value': gtin, 'source': 'jsonld'} if gtin else None,
+            'mpn': {'value': mpn, 'source': 'jsonld'} if mpn else None,
+            'sku': {'value': sku, 'source': 'jsonld'} if sku else None,
+            'store_product_id': (
+                {'value': sku, 'source': 'notino_sku'}
+                if sku else None
+            ),
+            'store_variant_id': None,
+        },
+        'attributes': {
+            'size_ml': (
+                {
+                    'value': selected_size,
+                    'source': 'selected_variant_or_product_name',
+                }
+                if selected_size is not None else None
+            ),
+            'concentration': (
+                {
+                    'value': concentration(name),
+                    'source': 'product_name',
+                }
+                if concentration(name) else None
+            ),
+            'gender': {
+                'value': 'unknown',
+                'source': 'not_explicit',
+            },
+            'packaging_type': {
+                'value': 'product',
+                'source': 'default',
+            },
+        },
+        'offer': {
+            'price': price,
+            'currency': 'EUR',
+            'availability': availability,
+        },
+        'provenance': {
+            'source_page': product_url,
+            'name_source': 'product_page',
+            'brand_source': 'product_page',
+            'price_source': 'product_page',
+            'product_source': 'product_page',
+        },
+        'raw_data': {
+            'jsonld': data,
+        },
+        'name': name,
+        'price': (
+            f'{price:.2f}'.replace('.', ',') + ' €'
+            if price is not None else ''
+        ),
+        'url': product_url,
+        'image': image,
+        'available': availability == 'in_stock',
+    }
 
 def _search_pages(query):
     return (SEARCH_URL.format(query=quote_plus(query)),)
@@ -383,7 +530,7 @@ def _candidate_product_urls(html, query):
         if not url:
             return
 
-        if not _looks_like_product_url(url, context, query):
+        if not _looks_like_product_url(url):
             return
 
         if url in seen:
@@ -542,7 +689,7 @@ def _discover_from_search_requests(session, query, max_urls=80):
     return _candidate_product_urls(response.text, query)[:max_urls]
 
 def _discover(session, query):
-    """Combine HTTP and browser discovery without letting one source hide the other."""
+    """Combine all generic Notino search discovery sources."""
     found = []
     seen = set()
 
@@ -557,14 +704,11 @@ def _discover(session, query):
                 return True
         return False
 
-    # HTTP discovery is the fast first source.
-    if merge(_discover_from_search_requests(session, query, 80)):
-        return found[:80]
+    # Both sources are useful: requests may expose server-rendered links,
+    # while Playwright may expose client-rendered search results.
+    merge(_discover_from_search_requests(session, query, 80))
 
-    # Browser discovery is also a valid generic source. It is no longer
-    # skipped merely because HTTP returned some candidates: the two sources
-    # can expose different parts of Notino's search result.
-    if BROWSER_ENABLED:
+    if BROWSER_ENABLED and len(found) < 80:
         merge(_discover_with_playwright(query, 80))
 
     return found[:80]
