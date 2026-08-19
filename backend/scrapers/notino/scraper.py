@@ -456,8 +456,15 @@ def _candidate_product_urls(html, query):
     decoded = html.replace('\\/', '/').replace('\\u002F', '/')
 
     patterns = (
+        # Explicit product URLs with Notino's numeric product id.
         r'(?:https?:)?//(?:www\.)?notino\.fr/[^"\'<>\s\\]+/p-\d+/?',
         r'(?P<path>/[^"\'<>\s\\]+/p-\d+/?)',
+
+        # Canonical product URLs can be embedded in application state
+        # without /p-<id>/. Keep this generic and let _looks_like_product_url()
+        # validate the path against the search query and exclusions.
+        r'(?:https?:)?//(?:www\.)?notino\.fr/(?=[^"\'<>\s\\]+/[^"\'<>\s\\]+/?(?:["\'<>\s]|$))[^"\'<>\s\\]+/[^"\'<>\s\\]+/?',
+        r'(?P<canonical>/[a-z0-9][^"\'<>\s\\]*/[a-z0-9][^"\'<>\s\\]+/?)',
     )
 
     for pattern in patterns:
