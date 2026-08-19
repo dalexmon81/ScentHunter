@@ -522,54 +522,53 @@ def scrape(query):
     return search(query)
 
 
-def _diagnose_parse_failure(html, response_url, query):
-    """Generic diagnostic for a discovered Notino product candidate."""
-    soup = BeautifulSoup(html, "html.parser")
-    json_ld = extract_json_ld(soup)
-    name = product_name(soup, json_ld)
-    brand = product_brand(soup, json_ld)
-    page_text = soup.get_text(" ", strip=True)
-    size_ml = extract_size_ml(name, page_text)
-    concentration = extract_concentration(name, page_text)
-    requested_size = explicit_size(query)
-    wanted = query_tokens(query)
-    identity = norm(" ".join(x for x in (brand, name) if x))
 
-    missing = [token for token in wanted if token not in identity and token not in norm(name)]
-    size_ok = (
-        True if requested_size is None
-        else size_ml is not None and abs(float(size_ml) - float(requested_size)) <= 0.01
+def _diagnose_parse_failure(html, response_url, query):
+    """Generic diagnostic aligned with the scraper's real parser functions."""
+    soup = BeautifulSoup(html, "html.parser")
+    json_products = parse_json_ld(soup)
+    json_product = json_products[0] if json_products else None
+    name, brand = product_identity(soup, json_product)
+    text = soup.get_text(" ", strip=True)
+    size_ml = extract_size_ml(name, text)
+    concentration = extract_concentration(name, text)
+    gender = extract_gender(name, text)
+    canonical = canonical_url(response_url)
+
+    fragrance_ok = bool(name and is_fragrance(name, text, concentration))
+    url_ok = bool(canonical and product_url(canonical))
+    query_ok = bool(
+        name and query_matches(name, brand, query, size_ml)
     )
 
     if not name:
         reason = "name_not_found"
-    elif not looks_like_fragrance(name, concentration):
+    elif not fragrance_ok:
         reason = "not_recognized_as_fragrance"
-    elif not same_host(response_url):
-        reason = "wrong_host"
-    elif not product_url(response_url):
-        reason = "url_not_matching_current_product_pattern"
-    elif missing:
-        reason = "query_identity_mismatch"
-    elif not size_ok:
-        reason = "requested_size_mismatch"
+    elif not url_ok:
+        reason = "product_url_rejected"
+    elif not query_ok:
+        reason = "query_identity_or_size_mismatch"
     else:
         reason = None
+
+    parsed = parse_product_page(html, response_url, query)
 
     return {
         "name": name or None,
         "brand": brand or None,
-        "json_ld_product": bool(json_ld),
+        "json_ld_product": bool(json_product),
+        "json_ld_products_found": len(json_products),
         "concentration": concentration or None,
+        "gender": gender,
         "size_ml": size_ml,
-        "requested_size_ml": requested_size,
-        "query_tokens": wanted,
-        "missing_query_tokens": missing,
-        "url": response_url,
-        "fragrance_like": bool(name and looks_like_fragrance(name, concentration)),
-        "product_url_pattern": product_url(response_url),
-        "valid": reason is None,
-        "rejection_reason": reason,
+        "url": canonical or response_url,
+        "fragrance_check": fragrance_ok,
+        "product_url_check": url_ok,
+        "query_match_check": query_ok,
+        "parser_result": bool(parsed),
+        "valid": parsed is not None,
+        "rejection_reason": None if parsed is not None else reason,
     }
 
 
