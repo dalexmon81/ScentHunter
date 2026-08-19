@@ -1291,6 +1291,35 @@ def _fetch_http(session: requests.Session, url: str) -> Optional[str]:
         return None
 
 
+def _http_discover(session: requests.Session, query: str) -> Tuple[List[Dict[str, Any]], Dict[str, Any]]:
+    """Generic fallback to Notino's own search endpoint when Playwright is unavailable."""
+    report = {"enabled": True, "status": None, "final_url": None, "html_bytes": 0, "candidate_count": 0, "challenge_detected": False, "error": None, "mode": "http_fallback"}
+    search_url = SEARCH_URL.format(query=quote_plus(query))
+    try:
+        response = session.get(search_url, headers=HEADERS, timeout=TIMEOUT, allow_redirects=True)
+        report["status"] = response.status_code
+        report["final_url"] = response.url
+        report["html_bytes"] = len(response.text.encode("utf-8"))
+        if response.status_code >= 400:
+            report["error"] = f"http_status_{response.status_code}"
+            return [], report
+        if not _same_host(response.url):
+            report["error"] = "redirected_off_notino"
+            return [], report
+        soup = BeautifulSoup(response.text, "html.parser")
+        title = clean(soup.title.get_text(" ", strip=True)) if soup.title else ""
+        if is_cloudflare_challenge(response.text, response.url, title):
+            report["challenge_detected"] = True
+            report["error"] = "cloudflare_challenge"
+            return [], report
+        candidates = extract_candidates_from_html(response.text, response.url, query)
+        report["candidate_count"] = len(candidates)
+        return candidates, report
+    except requests.RequestException as exc:
+        report["error"] = f"{type(exc).__name__}: {exc}"
+        return [], report
+
+
 def _candidate_key(url: str) -> str:
     return (normalise_url(url) or url).lower()
 
@@ -1371,20 +1400,37 @@ def _search_internal(
         _browser_discover_resources(query)
     )
 
-    candidates = _rank_browser_candidates(browser_candidates, query)
+    http_candidates: List[Dict[str, Any]] = []
+    http_report: Dict[str, Any] = {"mode": "http_fallback", "used": False}
 
+    # Never turn a missing Playwright browser executable into an empty result.
+    if not browser_candidates:
+        http_candidates, http_report = _http_discover(session, query)
+        http_report["used"] = True
+
+    merged: Dict[str, Dict[str, Any]] = {}
+    for candidate in browser_candidates + http_candidates:
+        url = normalise_url(candidate.get("url"))
+        if not url:
+            continue
+        entry = merged.setdefault(url, {"url": url, "context": "", "sources": set()})
+        entry["context"] = clean(" ".join(v for v in (entry.get("context"), candidate.get("context", "")) if v))
+        entry["sources"].update(candidate.get("sources", set()))
+
+    candidates = _rank_browser_candidates(list(merged.values()), query)
     report = {
         "query": query,
         "search_url": SEARCH_URL.format(query=quote_plus(query)),
-        "discovery_mode": "playwright_browser_first",
+        "discovery_mode": "playwright_browser_first" if browser_candidates else "playwright_then_http_fallback",
         "browser_discovery": browser_report,
+        "http_discovery": http_report,
         "merged_candidates": len(candidates),
         "validated_candidates": 0,
         "accepted_products": 0,
         "rejected_candidates": [],
     }
 
-    if browser_report.get("challenge_detected"):
+    if browser_report.get("challenge_detected") and not http_candidates:
         report["discovery_blocked_by_challenge"] = True
         report["discovery_block_reason"] = "cloudflare_challenge"
 
@@ -1496,6 +1542,8 @@ def diagnose(query: str) -> Dict[str, Any]:
             report["final_status"] = "blocked_by_cloudflare_challenge"
         elif results:
             report["final_status"] = "products_found"
+        elif report.get("browser_discovery", {}).get("error") and report.get("http_discovery", {}).get("error"):
+            report["final_status"] = "discovery_failed"
         else:
             report["final_status"] = "no_valid_products"
 
