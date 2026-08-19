@@ -673,6 +673,7 @@ def parse_product_html(
     url: str,
     html: str,
     query: str,
+    candidate_context: str = "",
 ) -> Optional[Dict[str, Any]]:
     soup = BeautifulSoup(html, "html.parser")
     objects = parse_json_ld(soup)
@@ -693,7 +694,28 @@ def parse_product_html(
                 brand = candidate_brand
                 break
 
-    if not name or not product_identity_matches(name, brand, query):
+    if not name:
+        return None
+
+    # The product page is authoritative for product identity, but search
+    # engines can express generic query intent in the result-card context
+    # rather than repeating every query token in the product H1/JSON-LD.
+    # Use the candidate context only as corroborating discovery evidence.
+    #
+    # This keeps specific product searches strict: when the result-card
+    # context does not support the query and the product identity does not
+    # support it either, the candidate is rejected.
+    page_identity_match = product_identity_matches(
+        name,
+        brand,
+        query,
+    )
+    discovery_context_match = discovery_matches(
+        candidate_context,
+        query,
+    )
+
+    if not page_identity_match and not discovery_context_match:
         return None
 
     size = parse_size(
@@ -1294,7 +1316,12 @@ def _validate_candidate(
     if not html:
         return None
 
-    return parse_product_html(url, html, query)
+    return parse_product_html(
+        url,
+        html,
+        query,
+        candidate_context=clean(candidate.get("context", "")),
+    )
 
 
 def _rank_browser_candidates(
