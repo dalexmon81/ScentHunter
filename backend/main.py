@@ -1,4 +1,4 @@
-from pathlib import Path
+ pathlib import Path
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
@@ -953,9 +953,17 @@ def update_price_history(
 
 
 def diagnose_notino_main(query: str) -> Dict[str, Any]:
-    """Diagnostic only: traces the real Notino output through Main stages."""
+    """
+    Diagnostic only. Reproduces the REAL run_store() path:
+    search attempts -> resolve_actual_price -> product_identity_key
+    -> matches -> local deduplication.
+    """
     query = str(query or "").strip()
-    report = {"store": "notino", "query": query, "stages": []}
+    report: Dict[str, Any] = {
+        "store": "notino",
+        "query": query,
+        "stages": [],
+    }
 
     if not query:
         report["error"] = "query vuota"
@@ -963,98 +971,121 @@ def diagnose_notino_main(query: str) -> Dict[str, Any]:
 
     try:
         module = load_scraper("notino")
-        report["stages"].append({"stage": "scraper_loaded", "ok": True})
+        search_fn = getattr(module, "search", None)
+        if not callable(search_fn):
+            search_fn = getattr(module, "scrape", None)
+        if not callable(search_fn):
+            report["error"] = "scraper senza search()/scrape()"
+            return report
 
-        raw = module.search(query) or []
+        attempts = build_search_attempts("notino", query)
         report["stages"].append({
-            "stage": "scraper_output",
-            "count": len(raw),
+            "stage": "search_attempts",
+            "attempts": attempts,
+        })
+
+        final_output = []
+        seen = set()
+
+        for attempt in attempts:
+            stage = {
+                "stage": "attempt",
+                "query": attempt,
+                "scraper_count": 0,
+                "items": [],
+                "passed_matches": 0,
+                "added": 0,
+            }
+
+            try:
+                raw = search_fn(attempt) or []
+            except Exception as exc:
+                stage["error"] = f"{type(exc).__name__}: {exc}"
+                report["stages"].append(stage)
+                continue
+
+            stage["scraper_count"] = len(raw) if isinstance(raw, list) else 0
+
+            if not isinstance(raw, list):
+                report["stages"].append(stage)
+                continue
+
+            for item in raw:
+                if not isinstance(item, dict):
+                    continue
+
+                product = dict(item)
+                product.setdefault("store", "notino")
+
+                # EXACT production step.
+                before_price = dict(product)
+                product = resolve_actual_price(product)
+
+                # EXACT production identity/deduplication step.
+                try:
+                    identity = product_identity_key(product)
+                    identity_repr = repr(identity)
+                except Exception as exc:
+                    identity_repr = f"ERROR {type(exc).__name__}: {exc}"
+                    identity = None
+
+                duplicate = identity in seen if identity is not None else False
+
+                try:
+                    matched = bool(matches(product, attempt))
+                except Exception as exc:
+                    matched = False
+                    match_error = f"{type(exc).__name__}: {exc}"
+                else:
+                    match_error = None
+
+                row = {
+                    "name": product.get("name"),
+                    "url": product.get("url"),
+                    "price_before": before_price.get("price"),
+                    "price_after": product.get("price"),
+                    "size_ml": product.get("size_ml"),
+                    "availability": product.get("availability"),
+                    "available": product.get("available"),
+                    "identity_key": identity_repr,
+                    "duplicate": duplicate,
+                    "matches": matched,
+                }
+
+                if match_error:
+                    row["match_error"] = match_error
+
+                stage["items"].append(row)
+
+                if identity is not None:
+                    if duplicate:
+                        continue
+                    seen.add(identity)
+
+                if matched:
+                    final_output.append(product)
+                    stage["passed_matches"] += 1
+                    stage["added"] += 1
+
+            report["stages"].append(stage)
+
+            # EXACT production behavior: stop after an attempt has found valid
+            # results.
+            if stage["added"] > 0:
+                break
+
+        report["final"] = {
+            "count": len(final_output),
             "items": [
                 {
                     "name": p.get("name"),
                     "url": p.get("url"),
                     "price": p.get("price"),
-                    "available": p.get("available"),
-                    "availability": p.get("availability"),
-                    "product_identity": p.get("product_identity"),
-                    "store_product_id": p.get("store_product_id"),
-                    "sku": p.get("sku"),
-                    "gtin": p.get("gtin"),
                 }
-                for p in raw if isinstance(p, dict)
+                for p in final_output
             ],
-        })
-
-        match_items = []
-        matched = []
-        for p in raw:
-            if not isinstance(p, dict):
-                continue
-            try:
-                ok = bool(matches(p, query))
-                row = {
-                    "name": p.get("name"),
-                    "matches": ok,
-                    "search_text": product_search_text(p),
-                }
-            except Exception as exc:
-                ok = False
-                row = {
-                    "name": p.get("name"),
-                    "matches": False,
-                    "error": f"{type(exc).__name__}: {exc}",
-                }
-            match_items.append(row)
-            if ok:
-                matched.append(p)
-
-        report["stages"].append({
-            "stage": "matches",
-            "received": len(raw),
-            "passed": len(matched),
-            "items": match_items,
-        })
-
-        canonical = _canonicalize_results(matched, query)
-        report["stages"].append({
-            "stage": "canonicalize",
-            "count": len(canonical),
-            "items": [
-                {
-                    "name": p.get("name"),
-                    "url": p.get("url"),
-                    "product_identity": p.get("product_identity"),
-                    "store_product_id": p.get("store_product_id"),
-                    "sku": p.get("sku"),
-                    "gtin": p.get("gtin"),
-                }
-                for p in canonical if isinstance(p, dict)
-            ],
-        })
-
-        unique = unique_results(canonical)
-        report["stages"].append({
-            "stage": "unique_results",
-            "count": len(unique),
-            "items": [
-                {
-                    "name": p.get("name"),
-                    "url": p.get("url"),
-                    "product_identity": p.get("product_identity"),
-                    "store_product_id": p.get("store_product_id"),
-                    "sku": p.get("sku"),
-                    "gtin": p.get("gtin"),
-                }
-                for p in unique if isinstance(p, dict)
-            ],
-        })
-
-        report["final"] = {
-            "scraper_count": len(raw),
-            "matches_count": len(matched),
-            "canonical_count": len(canonical),
-            "unique_count": len(unique),
         }
+
         return report
 
     except Exception as exc:
