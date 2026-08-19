@@ -474,7 +474,8 @@ def parse_search_candidate(candidate, query):
         "price": f"{price:.2f} €" if price is not None else "",
         "url": url,
         "image": image or "",
-        "available": availability == "in_stock",
+        **({"available": True} if availability == "in_stock" else
+           {"available": False} if availability == "out_of_stock" else {}),
     }
 
 
@@ -669,7 +670,8 @@ def parse_product_page(html, response_url, query):
         "price": f"{price:.2f} €" if price is not None else "",
         "url": url,
         "image": image,
-        "available": availability == "in_stock",
+        **({"available": True} if availability == "in_stock" else
+           {"available": False} if availability == "out_of_stock" else {}),
     }
 
 
