@@ -499,9 +499,15 @@ def _discover_with_playwright(query, max_urls=80):
                 wait_until='domcontentloaded',
                 timeout=DEFAULT_TIMEOUT_MS,
             )
+            # Notino/Cloudflare can report HTTP 403 while the browser still
+            # receives the real client-rendered search DOM. Do not discard
+            # the page solely because of the navigation status: inspect the
+            # actual DOM and let generic candidate validation decide.
             if response is not None and response.status >= 400:
-                browser.close()
-                return []
+                LOGGER.info(
+                    'Notino browser search returned HTTP %s; inspecting rendered DOM anyway',
+                    response.status,
+                )
             try:
                 page.wait_for_load_state('networkidle', timeout=min(DEFAULT_TIMEOUT_MS, 15000))
             except PlaywrightTimeoutError:
@@ -582,9 +588,16 @@ def _fetch_product_with_playwright(url):
                 wait_until='domcontentloaded',
                 timeout=DEFAULT_TIMEOUT_MS,
             )
+            # A 403 from the navigation response is not by itself proof that
+            # the browser DOM is unusable. Notino can return a challenge or a
+            # rendered product document with a non-2xx navigation status.
+            # Always inspect the rendered DOM first; _product() performs the
+            # final generic identity validation.
             if response is not None and response.status >= 400:
-                browser.close()
-                return None
+                LOGGER.info(
+                    'Notino browser product returned HTTP %s; inspecting rendered DOM anyway',
+                    response.status,
+                )
 
             # The product page can render its title/data after the initial
             # DOM load. A short fixed delay is not reliable across products.
