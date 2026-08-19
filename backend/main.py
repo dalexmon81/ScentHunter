@@ -951,6 +951,123 @@ def update_price_history(
 # API
 # ============================================================
 
+
+def diagnose_notino_main(query: str) -> Dict[str, Any]:
+    """Diagnostic only: traces the real Notino output through Main stages."""
+    query = str(query or "").strip()
+    report = {"store": "notino", "query": query, "stages": []}
+
+    if not query:
+        report["error"] = "query vuota"
+        return report
+
+    try:
+        module = load_scraper("notino")
+        report["stages"].append({"stage": "scraper_loaded", "ok": True})
+
+        raw = module.search(query) or []
+        report["stages"].append({
+            "stage": "scraper_output",
+            "count": len(raw),
+            "items": [
+                {
+                    "name": p.get("name"),
+                    "url": p.get("url"),
+                    "price": p.get("price"),
+                    "available": p.get("available"),
+                    "availability": p.get("availability"),
+                    "product_identity": p.get("product_identity"),
+                    "store_product_id": p.get("store_product_id"),
+                    "sku": p.get("sku"),
+                    "gtin": p.get("gtin"),
+                }
+                for p in raw if isinstance(p, dict)
+            ],
+        })
+
+        match_items = []
+        matched = []
+        for p in raw:
+            if not isinstance(p, dict):
+                continue
+            try:
+                ok = bool(matches(p, query))
+                row = {
+                    "name": p.get("name"),
+                    "matches": ok,
+                    "search_text": product_search_text(p),
+                }
+            except Exception as exc:
+                ok = False
+                row = {
+                    "name": p.get("name"),
+                    "matches": False,
+                    "error": f"{type(exc).__name__}: {exc}",
+                }
+            match_items.append(row)
+            if ok:
+                matched.append(p)
+
+        report["stages"].append({
+            "stage": "matches",
+            "received": len(raw),
+            "passed": len(matched),
+            "items": match_items,
+        })
+
+        canonical = _canonicalize_results(matched, query)
+        report["stages"].append({
+            "stage": "canonicalize",
+            "count": len(canonical),
+            "items": [
+                {
+                    "name": p.get("name"),
+                    "url": p.get("url"),
+                    "product_identity": p.get("product_identity"),
+                    "store_product_id": p.get("store_product_id"),
+                    "sku": p.get("sku"),
+                    "gtin": p.get("gtin"),
+                }
+                for p in canonical if isinstance(p, dict)
+            ],
+        })
+
+        unique = unique_results(canonical)
+        report["stages"].append({
+            "stage": "unique_results",
+            "count": len(unique),
+            "items": [
+                {
+                    "name": p.get("name"),
+                    "url": p.get("url"),
+                    "product_identity": p.get("product_identity"),
+                    "store_product_id": p.get("store_product_id"),
+                    "sku": p.get("sku"),
+                    "gtin": p.get("gtin"),
+                }
+                for p in unique if isinstance(p, dict)
+            ],
+        })
+
+        report["final"] = {
+            "scraper_count": len(raw),
+            "matches_count": len(matched),
+            "canonical_count": len(canonical),
+            "unique_count": len(unique),
+        }
+        return report
+
+    except Exception as exc:
+        report["error"] = f"{type(exc).__name__}: {exc}"
+        return report
+
+
+@app.get("/diagnostic-notino")
+def diagnostic_notino(q: str):
+    if not str(q or "").strip():
+        raise HTTPException(status_code=400, detail="Parametro q mancante")
+    return diagnose_notino_main(q)
+
 @app.get(
     "/",
     include_in_schema=False,
