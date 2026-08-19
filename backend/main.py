@@ -470,35 +470,30 @@ def _to_jsonable(value: Any) -> Any:
     return str(value)
 
 
-def _run_notino_diagnostic(query: str, max_product_pages: int) -> Dict[str, Any]:
+def _run_notino_diagnostic(query: str) -> Dict[str, Any]:
+    """Run the diagnostic exposed by the currently loaded Notino scraper."""
     module = load_scraper("notino")
-    diagnostic_fn = getattr(module, "diagnose_query", None)
+    diagnostic_fn = getattr(module, "diagnose", None)
+
     if not callable(diagnostic_fn):
         raise RuntimeError(
-            "Lo scraper Notino caricato non espone diagnose_query(). "
-            "Verifica che backend/scrapers/notino/scraper.py sia stato sostituito."
+            "Lo scraper Notino caricato non espone diagnose(query). "
+            "Verifica backend/scrapers/notino/scraper.py."
         )
 
-    import requests
-
-    session = requests.Session()
-    try:
-        result = diagnostic_fn(query, session=session, max_product_pages=max_product_pages)
-        return _to_jsonable(result)
-    finally:
-        session.close()
+    result = diagnostic_fn(str(query or "").strip())
+    return _to_jsonable(result)
 
 
 @app.get("/diagnose-notino")
-def diagnose_notino(q: str = "Hawas for Him", max_product_pages: int = 10):
-    """Diagnosi completa di una query Notino."""
+def diagnose_notino(q: str = "Hawas for Him"):
+    """Run the bounded Notino diagnostic for one query."""
     q = str(q or "").strip()
     if not q:
         raise HTTPException(status_code=400, detail="Parametro q mancante")
-    max_product_pages = max(1, min(int(max_product_pages), 20))
 
     try:
-        return _run_notino_diagnostic(q, max_product_pages)
+        return _run_notino_diagnostic(q)
     except Exception as error:
         traceback.print_exc()
         raise HTTPException(
@@ -508,26 +503,28 @@ def diagnose_notino(q: str = "Hawas for Him", max_product_pages: int = 10):
 
 
 @app.get("/diagnose-notino-compare")
-def diagnose_notino_compare(max_product_pages: int = 10):
-    """Confronta Turathi Blue e Hawas for Him nella stessa esecuzione."""
-    max_product_pages = max(1, min(int(max_product_pages), 20))
+def diagnose_notino_compare():
+    """Compare Turathi Blue and Hawas for Him with the same diagnostic path."""
     queries = ["Turathi Blue", "Hawas for Him"]
     reports: Dict[str, Any] = {}
 
     for query in queries:
         try:
-            reports[query] = _run_notino_diagnostic(query, max_product_pages)
+            reports[query] = _run_notino_diagnostic(query)
         except Exception as error:
             reports[query] = {
                 "query": query,
-                "error": {"type": type(error).__name__, "message": str(error)},
+                "error": {
+                    "type": type(error).__name__,
+                    "message": str(error),
+                },
             }
 
     return {
         "queries": queries,
-        "max_product_pages": max_product_pages,
         "reports": reports,
     }
+
 
 
 def fragella_search(query: str, limit: int = 10) -> List[Dict[str, Any]]:
@@ -655,4 +652,3 @@ def product(name: str, brand: str = ""):
         "errors": data["errors"],
         "message": "" if offers else "Nessuna offerta disponibile al momento",
     }
-
