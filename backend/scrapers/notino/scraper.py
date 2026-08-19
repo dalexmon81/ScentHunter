@@ -955,6 +955,11 @@ def diagnostic_json(query):
 
 
 def search(query):
+    diagnostic_prefix = "__SCENTHUNTER_DIAG__"
+    if str(query or "").startswith(diagnostic_prefix):
+        diagnostic_query = str(query)[len(diagnostic_prefix):].strip()
+        return [{"_diagnostic": diagnose(diagnostic_query)}]
+
     query = clean(query)
     if not query:
         return []
