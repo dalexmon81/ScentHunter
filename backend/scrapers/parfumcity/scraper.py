@@ -6,7 +6,7 @@ from bs4 import BeautifulSoup
 
 STORE = "ParfumCity"
 BASE_URL = "https://www.parfumcity.nl"
-TIMEOUT = 10
+TIMEOUT = 5
 HEADERS = {
     "User-Agent": "Mozilla/5.0",
     "Accept-Language": "nl-NL,nl;q=0.9,en;q=0.8",
@@ -160,7 +160,7 @@ def search(query):
                 seen.add(url)
                 urls.append(url)
         results = []
-        for url in urls[:15]:
+        for url in urls[:6]:
             item = product_page(session, url, query)
             if item:
                 results.append(item)
