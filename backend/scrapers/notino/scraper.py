@@ -542,13 +542,32 @@ def _discover_from_search_requests(session, query, max_urls=80):
     return _candidate_product_urls(response.text, query)[:max_urls]
 
 def _discover(session, query):
-    """Search page -> product URLs; no category/landing-page crawling."""
-    urls = _discover_from_search_requests(session, query, 80)
-    if urls:
-        return urls
+    """Combine HTTP and browser discovery without letting one source hide the other."""
+    found = []
+    seen = set()
+
+    def merge(urls):
+        for url in urls or []:
+            normalised = _normalise_url(url)
+            if not normalised or normalised in seen:
+                continue
+            seen.add(normalised)
+            found.append(normalised)
+            if len(found) >= 80:
+                return True
+        return False
+
+    # HTTP discovery is the fast first source.
+    if merge(_discover_from_search_requests(session, query, 80)):
+        return found[:80]
+
+    # Browser discovery is also a valid generic source. It is no longer
+    # skipped merely because HTTP returned some candidates: the two sources
+    # can expose different parts of Notino's search result.
     if BROWSER_ENABLED:
-        return _discover_with_playwright(query, 80)
-    return []
+        merge(_discover_with_playwright(query, 80))
+
+    return found[:80]
 
 def _fetch_product_with_playwright(url):
     if sync_playwright is None or not BROWSER_ENABLED:
