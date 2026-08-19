@@ -1,6 +1,8 @@
+import asyncio
 import json
 import os
 import re
+import shutil
 import unicodedata
 from urllib.parse import quote_plus, urljoin, urlparse, parse_qs
 
@@ -361,6 +363,23 @@ def next_page(page):
     return candidates[0] if candidates else None
 
 
+
+def launch_browser(playwright):
+    kwargs = {
+        "headless": True,
+        "args": ["--no-sandbox", "--disable-dev-shm-usage", "--disable-gpu"],
+    }
+    executable_path = os.getenv("PLAYWRIGHT_EXECUTABLE_PATH")
+    if not executable_path:
+        executable_path = (
+            shutil.which("chromium")
+            or shutil.which("chromium-browser")
+            or shutil.which("google-chrome")
+        )
+    if executable_path:
+        kwargs["executable_path"] = executable_path
+    return playwright.chromium.launch(**kwargs)
+
 def browser_discover(query):
     if sync_playwright is None:
         return []
@@ -368,7 +387,7 @@ def browser_discover(query):
     seen = set()
     try:
         with sync_playwright() as pw:
-            browser = pw.chromium.launch(headless=True, args=["--no-sandbox", "--disable-dev-shm-usage", "--disable-gpu"])
+            browser = launch_browser(pw)
             context = browser.new_context(user_agent=USER_AGENT, locale="fr-FR", viewport={"width":1440,"height":1000}, extra_http_headers={"Accept-Language":"fr-FR,fr;q=0.9,en;q=0.7"})
             page = context.new_page()
             urls = [SEARCH_URL.format(query=quote_plus(clean(query)))]
@@ -480,7 +499,7 @@ def validate_candidates(candidates, query):
     seen = set()
     try:
         with sync_playwright() as pw:
-            browser = pw.chromium.launch(headless=True, args=["--no-sandbox", "--disable-dev-shm-usage", "--disable-gpu"])
+            browser = launch_browser(pw)
             context = browser.new_context(user_agent=USER_AGENT, locale="fr-FR", viewport={"width":1440,"height":1000}, extra_http_headers={"Accept-Language":"fr-FR,fr;q=0.9,en;q=0.7"})
             page = context.new_page()
             for candidate in candidates[:MAX_VALIDATIONS]:
@@ -572,114 +591,146 @@ def _diagnose_parse_failure(html, response_url, query):
     }
 
 
-def diagnose(query):
-    """Browser-first generic diagnostic; no product-specific logic."""
-    query = clean(query)
-    if not query:
-        return {"query": "", "error": "empty_query"}
-    if sync_playwright is None:
-        return {"query": query, "error": "playwright_unavailable"}
 
-    report = {
-        "query": query,
-        "search_url": search_page_urls(query)[0],
-        "pages": [],
-        "totals": {
-            "raw_links": 0,
-            "accepted_product_candidates": 0,
-            "validated_products": 0,
-            "validation_failures": 0,
-        },
-        "candidates": [],
+
+def diagnose(query):
+    """Generic browser-first Notino diagnostic with structured error reporting."""
+    query=clean(query)
+    if not query:
+        return {"status":"error","query":"","errors":[{"stage":"input","type":"empty_query","message":"Empty query"}]}
+
+    report={
+        "status":"started",
+        "query":query,
+        "search_url":SEARCH_URL.format(query=quote_plus(query)),
+        "discovery":{"pages":[],"raw_links":0,"product_candidates":0,"unique_candidates":0},
+        "validation":{"attempted":0,"passed":0,"failed":0},
+        "candidates":[],
+        "errors":[],
     }
 
-    seen_urls = set()
-    visited_pages = set()
+    if sync_playwright is None:
+        report["status"]="error"
+        report["errors"].append({"stage":"startup","type":"playwright_unavailable","message":"Playwright sync API unavailable"})
+        return report
 
-    with sync_playwright() as p:
-        browser = p.chromium.launch(headless=True)
-        context = browser.new_context(
-            user_agent=USER_AGENT,
-            locale="fr-FR",
-            viewport={"width": 1440, "height": 1100},
-        )
-        page = context.new_page()
-        try:
-            page.goto(report["search_url"], wait_until="domcontentloaded", timeout=BROWSER_TIMEOUT)
+    seen=set()
+    discovered=[]
 
-            for page_number in range(1, MAX_SEARCH_PAGES + 1):
-                if page.url in visited_pages:
-                    break
-                visited_pages.add(page.url)
-                page.wait_for_timeout(1200)
+    try:
+        with sync_playwright() as pw:
+            browser=pw.chromium.launch(
+                headless=True,
+                args=["--no-sandbox","--disable-dev-shm-usage","--disable-gpu"],
+            )
+            context=browser.new_context(
+                user_agent=USER_AGENT,
+                locale="fr-FR",
+                viewport={"width":1440,"height":1100},
+            )
+            page=context.new_page()
 
-                page_url = page.url
-                html = page.content()
-                anchors = BeautifulSoup(html, "html.parser").find_all("a", href=True)
-                candidates = extract_candidates(html, page_url)
+            try:
+                try:
+                    page.goto(report["search_url"],wait_until="domcontentloaded",timeout=BROWSER_TIMEOUT)
+                except Exception as exc:
+                    report["status"]="completed_with_errors"
+                    report["errors"].append({"stage":"search_page","type":type(exc).__name__,"message":str(exc)})
+                    return report
 
-                report["totals"]["raw_links"] += len(anchors)
-                report["totals"]["accepted_product_candidates"] += len(candidates)
-                report["pages"].append({
-                    "page": page_number,
-                    "url": page_url,
-                    "raw_links": len(anchors),
-                    "accepted_product_candidates": len(candidates),
-                })
+                visited=set()
 
-                # Diagnostic explores candidates in discovery order, so we can see
-                # whether the queried product is discovered before ranking/limits.
-                for candidate in candidates:
-                    url = candidate["url"]
-                    if url in seen_urls:
-                        continue
-                    seen_urls.add(url)
-
-                    item = {
-                        "url": url,
-                        "anchor_text": candidate.get("text", ""),
-                        "score": candidate_score(candidate, query),
-                        "opened": False,
-                    }
+                for page_number in range(1,MAX_DISCOVERY_PAGES+1):
+                    current_url=page.url
+                    if current_url in visited:
+                        break
+                    visited.add(current_url)
 
                     try:
-                        page.goto(url, wait_until="domcontentloaded", timeout=BROWSER_TIMEOUT)
-                        page.wait_for_timeout(500)
-                        final_url = page.url
-                        item["opened"] = True
-                        item["final_url"] = final_url
-                        details = _diagnose_parse_failure(page.content(), final_url, query)
-                        item["validation"] = details
-                        item["valid"] = details["valid"]
-                        item["failure"] = details["rejection_reason"]
-                        if details["valid"]:
-                            report["totals"]["validated_products"] += 1
-                        else:
-                            report["totals"]["validation_failures"] += 1
+                        page.wait_for_timeout(1000)
+                        dismiss_consent(page)
+                        scroll_for_products(page)
+                        page.wait_for_timeout(400)
+                        html=page.content()
+                        soup=BeautifulSoup(html,"html.parser")
+                        raw_links=len(soup.find_all("a",href=True))
+                        candidates=extract_product_candidates(html,current_url,query)
                     except Exception as exc:
-                        item["valid"] = False
-                        item["failure"] = "page_open_error"
-                        item["error"] = type(exc).__name__
-
-                    report["candidates"].append(item)
-
-                    if len(report["candidates"]) >= MAX_CANDIDATES:
+                        report["errors"].append({"stage":"discovery_page","page":page_number,"type":type(exc).__name__,"message":str(exc)})
                         break
 
-                if len(report["candidates"]) >= MAX_CANDIDATES:
-                    break
+                    report["discovery"]["raw_links"]+=raw_links
+                    report["discovery"]["product_candidates"]+=len(candidates)
+                    report["discovery"]["pages"].append({
+                        "page":page_number,
+                        "url":current_url,
+                        "raw_links":raw_links,
+                        "product_candidates":len(candidates),
+                    })
 
-                # Return to the result page before looking for the next page.
-                page.goto(page_url, wait_until="domcontentloaded", timeout=BROWSER_TIMEOUT)
-                nxt = next_page_url(page)
-                if not nxt or nxt in visited_pages:
-                    break
-                page.goto(nxt, wait_until="domcontentloaded", timeout=BROWSER_TIMEOUT)
-        finally:
-            context.close()
-            browser.close()
+                    for candidate in candidates:
+                        url=candidate["url"]
+                        if url in seen:
+                            continue
+                        seen.add(url)
+                        discovered.append({
+                            "url":url,
+                            "anchor_text":candidate.get("text",""),
+                            "score":candidate.get("score",0),
+                        })
 
-    report["candidates"].sort(key=lambda item: item.get("score", 0), reverse=True)
+                    try:
+                        nxt=next_page(page)
+                    except Exception as exc:
+                        report["errors"].append({"stage":"pagination","page":page_number,"type":type(exc).__name__,"message":str(exc)})
+                        break
+
+                    if not nxt or nxt in visited:
+                        break
+
+                    try:
+                        page.goto(nxt,wait_until="domcontentloaded",timeout=BROWSER_TIMEOUT)
+                    except Exception as exc:
+                        report["errors"].append({"stage":"next_page","page":page_number,"type":type(exc).__name__,"message":str(exc)})
+                        break
+
+                discovered.sort(key=lambda item:item.get("score",0),reverse=True)
+                report["discovery"]["unique_candidates"]=len(discovered)
+                report["candidates"]=[dict(item,validation_status="not_attempted") for item in discovered]
+
+                limit=min(len(report["candidates"]),MAX_VALIDATIONS)
+
+                for index in range(limit):
+                    item=report["candidates"][index]
+                    report["validation"]["attempted"]+=1
+                    try:
+                        page.goto(item["url"],wait_until="domcontentloaded",timeout=BROWSER_TIMEOUT)
+                        page.wait_for_timeout(500)
+                        final_url=page.url
+                        details=_diagnose_parse_failure(page.content(),final_url,query)
+                        item["final_url"]=final_url
+                        item["validation"]=details
+                        if details["valid"]:
+                            item["validation_status"]="passed"
+                            report["validation"]["passed"]+=1
+                        else:
+                            item["validation_status"]="failed"
+                            report["validation"]["failed"]+=1
+                    except Exception as exc:
+                        item["validation_status"]="error"
+                        item["validation_error"]={"type":type(exc).__name__,"message":str(exc)}
+
+                for item in report["candidates"][limit:]:
+                    item["validation_status"]="not_attempted_due_to_limit"
+
+            finally:
+                context.close()
+                browser.close()
+
+    except Exception as exc:
+        report["errors"].append({"stage":"runtime","type":type(exc).__name__,"message":str(exc)})
+
+    report["status"]="ok" if not report["errors"] else "completed_with_errors"
     return report
 
 
@@ -688,4 +739,4 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("query")
     args = parser.parse_args()
-    print(json.dumps(search(args.query), ensure_ascii=False, indent=2))
+    print(json.dumps(diagnose(args.query), ensure_ascii=False, indent=2))
