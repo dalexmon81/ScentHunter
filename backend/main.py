@@ -80,9 +80,6 @@ FRAGRANCE_QUERY_WORDS = {
 }
 
 GLOBAL_SEARCH_TIMEOUT = float(os.getenv("GLOBAL_SEARCH_TIMEOUT", "18"))
-SEARCH_CACHE_TTL = int(os.getenv("SEARCH_CACHE_TTL", "900"))
-SEARCH_CACHE_PATH = os.path.join(BASE_DIR, "search_cache.json")
-SEARCH_REFRESH_EXECUTOR = ThreadPoolExecutor(max_workers=min(8, len(STORES)))
 
 
 def norm(value: Any) -> str:
@@ -474,17 +471,11 @@ def run_store(store: str, query: str) -> List[Dict[str, Any]]:
     output: List[Dict[str, Any]] = []
     seen = set()
 
-    # Collect every generic attempt. A first hit must not hide products
-    # discoverable by a later equivalent attempt.
     for attempt in build_search_attempts(store, query):
         try:
             results = search_fn(attempt) or []
         except Exception as exc:
-            print(
-                f"STORE_DISCOVERY_ERROR: store={store} attempt={attempt!r} "
-                f"error={type(exc).__name__}: {exc}",
-                flush=True,
-            )
+            print(f"STORE_DISCOVERY_ERROR: store={store} attempt={attempt!r} error={type(exc).__name__}: {exc}", flush=True)
             continue
 
         if not isinstance(results, list):
@@ -499,86 +490,11 @@ def run_store(store: str, query: str) -> List[Dict[str, Any]]:
             key = product_identity_key(product)
             if key in seen:
                 continue
-            seen.add(key)
             if matches(product, query):
+                seen.add(key)
                 output.append(product)
 
     return output
-
-
-def _fresh_search(query: str) -> Dict[str, Any]:
-    started = datetime.now(timezone.utc)
-    all_results: List[Dict[str, Any]] = []
-    errors: Dict[str, str] = {}
-    completed_stores: set[str] = set()
-
-    executor = ThreadPoolExecutor(
-        max_workers=len(STORES),
-        thread_name_prefix="scent_store",
-    )
-    futures = {
-        executor.submit(run_store, store, query): store
-        for store in STORES
-    }
-
-    try:
-        pending = set(futures)
-        deadline = started.timestamp() + GLOBAL_SEARCH_TIMEOUT
-
-        while pending:
-            remaining = deadline - datetime.now(timezone.utc).timestamp()
-            if remaining <= 0:
-                break
-
-            done_now = [future for future in list(pending) if future.done()]
-            if not done_now:
-                import time
-                time.sleep(min(0.05, max(0.01, remaining)))
-                continue
-
-            for future in done_now:
-                pending.discard(future)
-                store = futures[future]
-                completed_stores.add(store)
-                try:
-                    store_results = future.result()
-                    if isinstance(store_results, list):
-                        all_results.extend(store_results)
-                except Exception as exc:
-                    errors[store] = f"{type(exc).__name__}: {exc}"
-
-        for future in pending:
-            store = futures[future]
-            errors[store] = "Timeout: aggiornamento non disponibile"
-
-    finally:
-        for future in futures:
-            if not future.done():
-                future.cancel()
-        executor.shutdown(wait=False, cancel_futures=True)
-
-    fresh_results = unique_results(all_results)
-    update_search_cache(query, fresh_results, completed_stores)
-
-    # Return the fresh result set, not stale cache, for a cold/manual search.
-    return {
-        "query": query,
-        "count": len(fresh_results),
-        "results": sort_by_price(fresh_results),
-        "comparisons": [],
-        "errors": errors,
-    }
-
-
-def _background_refresh(query: str) -> None:
-    try:
-        _fresh_search(query)
-    except Exception as exc:
-        print(
-            f"BACKGROUND_SEARCH_ERROR: query={query!r} "
-            f"error={type(exc).__name__}: {exc}",
-            flush=True,
-        )
 
 
 def search_perfume(query: str) -> Dict[str, Any]:
@@ -586,126 +502,40 @@ def search_perfume(query: str) -> Dict[str, Any]:
     if not query:
         return {"query": "", "count": 0, "results": [], "comparisons": [], "errors": {}}
 
-    cached = cached_search_result(query)
-    if cached:
-        updated_at = str(cached.get("updated_at") or "")
-        cache_age = None
+    all_results: List[Dict[str, Any]] = []
+    errors: Dict[str, str] = {}
+    # Ogni store è indipendente: un risultato lento o fallito non deve
+    # impedire agli altri store di completare la propria ricerca.
+    max_workers = len(STORES)
+    executor = ThreadPoolExecutor(
+        max_workers=max_workers,
+        thread_name_prefix="scent_store",
+    )
+    futures = {executor.submit(run_store, store, query): store for store in STORES}
+
+    try:
         try:
-            cache_age = (
-                datetime.now(timezone.utc)
-                - datetime.fromisoformat(updated_at.replace("Z", "+00:00"))
-            ).total_seconds()
-        except (TypeError, ValueError):
-            pass
+            for future in as_completed(futures, timeout=GLOBAL_SEARCH_TIMEOUT):
+                store = futures[future]
+                try:
+                    store_results = future.result()
+                    if isinstance(store_results, list):
+                        all_results.extend(store_results)
+                except Exception as exc:
+                    errors[store] = f"{type(exc).__name__}: {exc}"
+                    traceback.print_exc()
+        except TimeoutError:
+            for future, store in futures.items():
+                if not future.done():
+                    errors[store] = "Timeout: ricerca del negozio oltre il limite globale"
+    finally:
+        for future in futures:
+            if not future.done():
+                future.cancel()
+        executor.shutdown(wait=False, cancel_futures=True)
 
-        # Existing results are shown immediately. A background refresh keeps
-        # them current without making the user wait for every retailer.
-        SEARCH_REFRESH_EXECUTOR.submit(_background_refresh, query)
-
-        return {
-            "query": query,
-            "count": len(cached["results"]),
-            "results": sort_by_price(unique_results(cached["results"])),
-            "comparisons": [],
-            "errors": {},
-            "cached": True,
-            "cache_age_seconds": round(cache_age, 1) if cache_age is not None else None,
-            "refresh": "background",
-        }
-
-    return _fresh_search(query)
-
-
-def load_search_cache() -> Dict[str, Any]:
-    try:
-        with open(SEARCH_CACHE_PATH, "r", encoding="utf-8") as file:
-            data = json.load(file)
-            return data if isinstance(data, dict) else {}
-    except Exception:
-        return {}
-
-
-def save_search_cache(data: Dict[str, Any]) -> None:
-    try:
-        tmp_path = SEARCH_CACHE_PATH + ".tmp"
-        with open(tmp_path, "w", encoding="utf-8") as file:
-            json.dump(data, file, ensure_ascii=False)
-        os.replace(tmp_path, SEARCH_CACHE_PATH)
-    except OSError:
-        pass
-
-
-def cache_key(query: str) -> str:
-    return norm(query)
-
-
-def cached_search_result(query: str) -> Optional[Dict[str, Any]]:
-    cache = load_search_cache()
-    entry = cache.get(cache_key(query))
-    if not isinstance(entry, dict) or not isinstance(entry.get("results"), list):
-        return None
-    return {
-        "results": [x for x in entry["results"] if isinstance(x, dict)],
-        "updated_at": entry.get("updated_at"),
-    }
-
-
-def update_search_cache(
-    query: str,
-    results: List[Dict[str, Any]],
-    completed_stores: Optional[set[str]] = None,
-) -> None:
-    if completed_stores is None:
-        completed_stores = set()
-
-    cache = load_search_cache()
-    key = cache_key(query)
-    previous = cache.get(key)
-    previous_results = previous.get("results", []) if isinstance(previous, dict) else []
-
-    # Preserve the last valid offers for stores that did not complete.
-    merged_by_store: Dict[str, List[Dict[str, Any]]] = {}
-    for item in previous_results:
-        if isinstance(item, dict):
-            store = norm(item.get("store", ""))
-            if store:
-                merged_by_store.setdefault(store, []).append(item)
-
-    fresh_by_store: Dict[str, List[Dict[str, Any]]] = {}
-    for item in results:
-        if isinstance(item, dict):
-            store = norm(item.get("store", ""))
-            if store:
-                fresh_by_store.setdefault(store, []).append(item)
-
-    for store in completed_stores:
-        # A completed scrape owns the current state for that store, including
-        # an empty result. A timeout/error does not.
-        merged_by_store[store] = fresh_by_store.get(store, [])
-
-    merged: List[Dict[str, Any]] = []
-    seen = set()
-    for store_items in merged_by_store.values():
-        for item in store_items:
-            key_item = product_identity_key(item)
-            if key_item in seen:
-                continue
-            seen.add(key_item)
-            merged.append(item)
-
-    cache[key] = {
-        "updated_at": datetime.now(timezone.utc).isoformat(),
-        "results": merged[-300:],
-    }
-
-    if len(cache) > 500:
-        cache = dict(sorted(
-            cache.items(),
-            key=lambda pair: str(pair[1].get("updated_at") or ""),
-            reverse=True,
-        )[:500])
-
-    save_search_cache(cache)
+    results = sort_by_price(unique_results(all_results))
+    return {"query": query, "count": len(results), "results": results, "comparisons": [], "errors": errors}
 
 
 def load_history() -> Dict[str, Any]:
@@ -985,4 +815,3 @@ def product(name: str, brand: str = ""):
         "errors": data["errors"],
         "message": "" if offers else "Nessuna offerta disponibile al momento",
     }
-
