@@ -1659,7 +1659,7 @@ function openProduct(i){
         return `<div class="offer ${!isOut&&n===0?"best":""}">
           <div class="offer-line">
             <div>
-              <div class="offer-store">${!isOut&&n===0?"🥇 ":""}${esc(o.store||"Negozio")}</div>
+              <div class="offer-store">${!isOut&&n===0?"🥇 ":""}${esc(String(o.store||"Negozio").trim().toLowerCase()==="parfumcity"?"ParfumCity":(o.store||"Negozio"))}</div>
               ${!isOut&&n===0?'<div class="offer-meta">MIGLIOR PREZZO</div>':""}
               ${isOut?'<div class="offer-outstock">OUT OF STOCK</div>':""}
             </div>
@@ -1769,7 +1769,7 @@ function openSize(gi,sizeKey,fromFormats=true){
       return `<div class="offer ${!isOut&&n===0?"best":""}">
         <div class="offer-line">
           <div>
-            <div class="offer-store">${!isOut&&n===0?"🥇 ":""}${esc(o.store||"Negozio")}</div>
+            <div class="offer-store">${!isOut&&n===0?"🥇 ":""}${esc(String(o.store||"Negozio").trim().toLowerCase()==="parfumcity"?"ParfumCity":(o.store||"Negozio"))}</div>
             ${!isOut&&n===0?'<div class="offer-meta">MIGLIOR PREZZO</div>':""}
             ${isOut?'<div class="offer-outstock">OUT OF STOCK</div>':""}
           </div>
@@ -2005,7 +2005,7 @@ function buildCatalogFallbackQueries(query){
 }
 
 const SEARCH_STORES=[
- "bplatz","deloox","ParfumCity","parfumzentrum",
+ "bplatz","deloox","parfumcity","parfumzentrum",
  "perfumemarket","sabina","orioudh","notino"
 ];
 
