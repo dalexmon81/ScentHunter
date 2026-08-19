@@ -278,6 +278,37 @@ def candidate_score(text, url, query):
     return score
 
 
+def extract_card_context(anchor):
+    """Return bounded text from the smallest likely product-card ancestor."""
+    anchor_text=clean(anchor.get_text(" ", strip=True))
+    if not anchor_text:
+        return anchor_text
+    best=anchor_text
+    node=anchor.parent
+    for _ in range(6):
+        if not node or not getattr(node, "get_text", None):
+            break
+        candidate=clean(node.get_text(" ", strip=True))
+        if len(candidate) <= 3000 and anchor_text in candidate:
+            classes=" ".join(node.get("class", []) or [])
+            attrs=" ".join(
+                clean(node.get(k))
+                for k in ("data-testid", "data-test", "data-product-id", "aria-label")
+                if node.get(k)
+            )
+            marker=norm(f"{classes} {attrs}")
+            has_offer=re.search(r"\d+(?:[.,]\d{1,2})?\s*€", candidate) is not None
+            has_stock=re.search(
+                r"\b(en stock|rupture de stock|en rupture de stock|disponible|indisponible|epuise|épuisé|out of stock|in stock|available)\b",
+                norm(candidate),
+            ) is not None
+            if has_offer or has_stock or any(
+                token in marker for token in ("product", "card", "item", "listing", "result")
+            ):
+                best=candidate
+        node=node.parent
+    return best
+
 def extract_product_candidates(html, page_url, query=""):
     soup = BeautifulSoup(html, "html.parser")
     output = []
@@ -303,10 +334,12 @@ def extract_product_candidates(html, page_url, query=""):
                 image_url = canonical_url(image_url, page_url) or image_url
 
         text = clean(" ".join(x for x in pieces if x))
+        card_text = extract_card_context(anchor)
         seen.add(url)
         output.append({
             "url": url,
             "text": text,
+            "card_text": card_text,
             "score": candidate_score(text, url, query),
             "image": image_url,
         })
@@ -350,16 +383,17 @@ def parse_search_candidate(candidate, query):
     """
     url = canonical_url(candidate.get("url"))
     text = clean(candidate.get("text"))
+    card_text = clean(candidate.get("card_text")) or text
     if not url or not product_url(url) or not text:
         return None
 
     brand = extract_brand_from_product_url(url)
     name = text
-    price = extract_card_price(text)
-    availability = extract_card_availability(text)
-    size_ml = extract_size_ml(text)
-    concentration = extract_concentration(text)
-    gender = extract_gender(text)
+    price = extract_card_price(card_text) or extract_card_price(text)
+    availability = extract_card_availability(card_text)
+    size_ml = extract_size_ml(text, card_text)
+    concentration = extract_concentration(text, card_text)
+    gender = extract_gender(text, card_text)
 
     if not is_fragrance(name, text, concentration):
         return None
