@@ -286,15 +286,136 @@ def extract_product_candidates(html, page_url, query=""):
         url = canonical_url(anchor.get("href"), page_url)
         if not url or not product_url(url) or url in seen:
             continue
+
         pieces = [anchor.get("title"), anchor.get("aria-label"), anchor.get_text(" ", strip=True)]
         image = anchor.find("img")
+        image_url = ""
         if image:
             pieces.extend([image.get("alt"), image.get("title")])
+            image_url = clean(
+                image.get("src")
+                or image.get("data-src")
+                or image.get("data-lazy-src")
+                or image.get("data-original")
+                or ""
+            )
+            if image_url:
+                image_url = canonical_url(image_url, page_url) or image_url
+
         text = clean(" ".join(x for x in pieces if x))
         seen.add(url)
-        output.append({"url": url, "text": text, "score": candidate_score(text, url, query)})
+        output.append({
+            "url": url,
+            "text": text,
+            "score": candidate_score(text, url, query),
+            "image": image_url,
+        })
     output.sort(key=lambda x: x["score"], reverse=True)
     return output[:MAX_CANDIDATES]
+
+
+def extract_card_price(text):
+    matches = re.findall(r"(\d+(?:[.,]\d{1,2})?)\s*€", str(text or ""))
+    for value in matches:
+        price = parse_price(value)
+        if price is not None:
+            return price
+    return None
+
+
+def extract_card_availability(text):
+    value = norm(text)
+    if re.search(r"\b(en rupture de stock|rupture de stock|indisponible|epuise|epuise)\b", value):
+        return "out_of_stock"
+    if re.search(r"\b(en stock|disponible|available|in stock)\b", value):
+        return "in_stock"
+    return "unknown"
+
+
+def extract_brand_from_product_url(url):
+    parts = [p for p in urlparse(url).path.split("/") if p]
+    if not parts or parts[-1].lower().startswith("p-"):
+        parts = parts[:-1]
+    if not parts:
+        return ""
+    raw = parts[0].replace("-", " ")
+    return clean(raw.title())
+
+
+def parse_search_candidate(candidate, query):
+    """Build a product directly from Notino's search-card data.
+
+    This is a generic fallback for Notino's product-page Cloudflare challenge.
+    It never relies on a product name, brand, URL, seed, or hard-coded product.
+    """
+    url = canonical_url(candidate.get("url"))
+    text = clean(candidate.get("text"))
+    if not url or not product_url(url) or not text:
+        return None
+
+    brand = extract_brand_from_product_url(url)
+    name = text
+    price = extract_card_price(text)
+    availability = extract_card_availability(text)
+    size_ml = extract_size_ml(text)
+    concentration = extract_concentration(text)
+    gender = extract_gender(text)
+
+    if not is_fragrance(name, text, concentration):
+        return None
+    if not query_matches(name, brand, query, size_ml):
+        return None
+
+    match = re.search(r"/p-(\d+)$", urlparse(url).path, re.I)
+    product_id = match.group(1) if match else None
+    image = clean(candidate.get("image")) or None
+
+    return {
+        "store": STORE,
+        "source": {
+            "source_name": name,
+            "source_brand": brand or None,
+            "url": url,
+            "image": image,
+        },
+        "identity": {
+            "gtin": None,
+            "mpn": None,
+            "sku": None,
+            "store_product_id": product_id,
+            "store_variant_id": None,
+        },
+        "attributes": {
+            "size_ml": {"value": size_ml, "source": "search_page"},
+            "concentration": {"value": concentration, "source": "search_page"},
+            "gender": {"value": gender, "source": "search_page"},
+            "packaging_type": {"value": "product", "source": "search_page"},
+        },
+        "offer": {
+            "price": price,
+            "currency": "EUR",
+            "availability": availability,
+        },
+        "provenance": {
+            "source_page": url,
+            "name_source": "search_page",
+            "brand_source": "product_url",
+            "price_source": "search_page",
+            "product_source": "search_page",
+        },
+        "raw_data": {
+            "name": name,
+            "brand": brand,
+            "size_ml": size_ml,
+            "concentration": concentration,
+            "gender": gender,
+        },
+        "name": name,
+        "price": f"{price:.2f} €" if price is not None else "",
+        "url": url,
+        "image": image or "",
+        "available": availability == "in_stock",
+    }
 
 
 def dismiss_consent(page):
@@ -531,10 +652,33 @@ def search(query):
     query = clean(query)
     if not query:
         return []
+
     candidates = browser_discover(query)
     if not candidates:
         return []
-    return validate_candidates(candidates, query)
+
+    # Notino currently protects direct product navigation with a Cloudflare
+    # challenge. The search page itself already exposes the product card data,
+    # so use that data as the primary generic result path.
+    results = []
+    seen = set()
+    for candidate in candidates:
+        product = parse_search_candidate(candidate, query)
+        if not product:
+            continue
+        url = product.get("url")
+        if url in seen:
+            continue
+        seen.add(url)
+        results.append(product)
+
+    # Keep direct validation only as a secondary enrichment path for any
+    # candidate whose search card could not be parsed completely. This remains
+    # generic and does not privilege individual products.
+    if not results:
+        return validate_candidates(candidates, query)
+
+    return results
 
 
 def scrape(query):
