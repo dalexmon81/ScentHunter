@@ -593,25 +593,25 @@ def _diagnose_parse_failure(html, response_url, query):
 
 
 
+
 def diagnose(query):
-    """Generic browser-first Notino diagnostic with structured error reporting."""
+    """Generic diagnostic of Notino search discovery and direct product-page responses."""
     query=clean(query)
     if not query:
-        return {"status":"error","query":"","errors":[{"stage":"input","type":"empty_query","message":"Empty query"}]}
+        return {"status":"error","query":"","errors":[{"stage":"input","type":"empty_query"}]}
 
     report={
         "status":"started",
         "query":query,
         "search_url":SEARCH_URL.format(query=quote_plus(query)),
-        "discovery":{"pages":[],"raw_links":0,"product_candidates":0,"unique_candidates":0},
-        "validation":{"attempted":0,"passed":0,"failed":0},
-        "candidates":[],
+        "discovery":{"raw_links":0,"product_candidates":0,"unique_candidates":0},
+        "product_pages":[],
         "errors":[],
     }
 
     if sync_playwright is None:
         report["status"]="error"
-        report["errors"].append({"stage":"startup","type":"playwright_unavailable","message":"Playwright sync API unavailable"})
+        report["errors"].append({"stage":"startup","type":"playwright_unavailable"})
         return report
 
     seen=set()
@@ -629,49 +629,42 @@ def diagnose(query):
                 viewport={"width":1440,"height":1100},
             )
             page=context.new_page()
+            document_responses={}
+
+            def capture(response):
+                try:
+                    if response.request.resource_type=="document":
+                        document_responses[response.url]={
+                            "status":response.status,
+                            "status_text":response.status_text,
+                            "url":response.url,
+                        }
+                except Exception:
+                    pass
+
+            page.on("response",capture)
 
             try:
                 try:
                     page.goto(report["search_url"],wait_until="domcontentloaded",timeout=BROWSER_TIMEOUT)
+                    page.wait_for_timeout(1200)
+                    dismiss_consent(page)
+                    scroll_for_products(page)
+                    page.wait_for_timeout(500)
                 except Exception as exc:
                     report["status"]="completed_with_errors"
                     report["errors"].append({"stage":"search_page","type":type(exc).__name__,"message":str(exc)})
                     return report
 
-                visited=set()
+                html=page.content()
+                soup=BeautifulSoup(html,"html.parser")
+                candidates=extract_product_candidates(html,page.url,query)
+                report["discovery"]["raw_links"]=len(soup.find_all("a",href=True))
+                report["discovery"]["product_candidates"]=len(candidates)
 
-                for page_number in range(1,MAX_DISCOVERY_PAGES+1):
-                    current_url=page.url
-                    if current_url in visited:
-                        break
-                    visited.add(current_url)
-
-                    try:
-                        page.wait_for_timeout(1000)
-                        dismiss_consent(page)
-                        scroll_for_products(page)
-                        page.wait_for_timeout(400)
-                        html=page.content()
-                        soup=BeautifulSoup(html,"html.parser")
-                        raw_links=len(soup.find_all("a",href=True))
-                        candidates=extract_product_candidates(html,current_url,query)
-                    except Exception as exc:
-                        report["errors"].append({"stage":"discovery_page","page":page_number,"type":type(exc).__name__,"message":str(exc)})
-                        break
-
-                    report["discovery"]["raw_links"]+=raw_links
-                    report["discovery"]["product_candidates"]+=len(candidates)
-                    report["discovery"]["pages"].append({
-                        "page":page_number,
-                        "url":current_url,
-                        "raw_links":raw_links,
-                        "product_candidates":len(candidates),
-                    })
-
-                    for candidate in candidates:
-                        url=candidate["url"]
-                        if url in seen:
-                            continue
+                for candidate in candidates:
+                    url=candidate["url"]
+                    if url not in seen:
                         seen.add(url)
                         discovered.append({
                             "url":url,
@@ -679,56 +672,96 @@ def diagnose(query):
                             "score":candidate.get("score",0),
                         })
 
-                    try:
-                        nxt=next_page(page)
-                    except Exception as exc:
-                        report["errors"].append({"stage":"pagination","page":page_number,"type":type(exc).__name__,"message":str(exc)})
-                        break
-
-                    if not nxt or nxt in visited:
-                        break
-
-                    try:
-                        page.goto(nxt,wait_until="domcontentloaded",timeout=BROWSER_TIMEOUT)
-                    except Exception as exc:
-                        report["errors"].append({"stage":"next_page","page":page_number,"type":type(exc).__name__,"message":str(exc)})
-                        break
-
-                discovered.sort(key=lambda item:item.get("score",0),reverse=True)
                 report["discovery"]["unique_candidates"]=len(discovered)
-                report["candidates"]=[dict(item,validation_status="not_attempted") for item in discovered]
 
-                limit=min(len(report["candidates"]),MAX_VALIDATIONS)
+                # Inspect every discovered product URL. No fragrance parser is
+                # used here: this diagnostic only reports what Notino returns.
+                for candidate in discovered:
+                    item=dict(candidate)
+                    target=candidate["url"]
 
-                for index in range(limit):
-                    item=report["candidates"][index]
-                    report["validation"]["attempted"]+=1
                     try:
-                        page.goto(item["url"],wait_until="domcontentloaded",timeout=BROWSER_TIMEOUT)
-                        page.wait_for_timeout(500)
-                        final_url=page.url
-                        details=_diagnose_parse_failure(page.content(),final_url,query)
-                        item["final_url"]=final_url
-                        item["validation"]=details
-                        if details["valid"]:
-                            item["validation_status"]="passed"
-                            report["validation"]["passed"]+=1
-                        else:
-                            item["validation_status"]="failed"
-                            report["validation"]["failed"]+=1
-                    except Exception as exc:
-                        item["validation_status"]="error"
-                        item["validation_error"]={"type":type(exc).__name__,"message":str(exc)}
+                        page.goto(target,wait_until="domcontentloaded",timeout=BROWSER_TIMEOUT)
+                        page.wait_for_timeout(1000)
 
-                for item in report["candidates"][limit:]:
-                    item["validation_status"]="not_attempted_due_to_limit"
+                        final_url=page.url
+                        product_html=page.content()
+                        product_soup=BeautifulSoup(product_html,"html.parser")
+
+                        h1=product_soup.find("h1")
+                        h1_text=h1.get_text(" ",strip=True) if h1 else None
+                        scripts=product_soup.find_all("script",type="application/ld+json")
+
+                        json_types=[]
+                        product_names=[]
+                        for script in scripts:
+                            try:
+                                data=json.loads(script.string or script.get_text())
+                            except Exception:
+                                continue
+                            nodes=data if isinstance(data,list) else [data]
+                            for node in nodes:
+                                if isinstance(node,dict):
+                                    if "@type" in node:
+                                        json_types.append(node.get("@type"))
+                                    if node.get("@type")=="Product":
+                                        product_names.append(node.get("name"))
+
+                        low=product_html.lower()
+                        markers=[
+                            x for x in (
+                                "just a moment",
+                                "cf-chl-",
+                                "challenge-platform",
+                                "cloudflare",
+                                "verify you are human",
+                                "checking your browser",
+                            ) if x in low
+                        ]
+
+                        response_info=document_responses.get(final_url) or document_responses.get(target)
+
+                        item["page_diagnostic"]={
+                            "requested_url":target,
+                            "final_url":final_url,
+                            "redirected":final_url!=target,
+                            "response":response_info,
+                            "http_status":response_info.get("status") if response_info else None,
+                            "title":page.title(),
+                            "h1":h1_text,
+                            "html_length":len(product_html),
+                            "html_start":product_html[:500],
+                            "json_ld_script_count":len(scripts),
+                            "json_ld_types":json_types[:20],
+                            "json_ld_product_names":product_names[:20],
+                            "challenge_markers":markers,
+                            "contains_fragrance_wording":any(
+                                x in low for x in (
+                                    "eau de parfum",
+                                    "eau de toilette",
+                                    "extrait de parfum",
+                                    "parfum",
+                                )
+                            ),
+                            "text_sample":product_soup.get_text(" ",strip=True)[:1200],
+                        }
+
+                    except Exception as exc:
+                        item["page_diagnostic"]={
+                            "requested_url":target,
+                            "error":{"type":type(exc).__name__,"message":str(exc)}
+                        }
+
+                    report["product_pages"].append(item)
 
             finally:
                 context.close()
                 browser.close()
 
     except Exception as exc:
+        report["status"]="completed_with_errors"
         report["errors"].append({"stage":"runtime","type":type(exc).__name__,"message":str(exc)})
+        return report
 
     report["status"]="ok" if not report["errors"] else "completed_with_errors"
     return report
