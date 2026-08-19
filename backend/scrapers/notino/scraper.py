@@ -266,13 +266,16 @@ def query_matches(name, brand, query, size_ml):
 
 
 def candidate_score(text, url, query):
-    identity = norm(text)
+    identity = norm(f"{text} {extract_name_from_product_url(url)} {extract_brand_from_product_url(url)}")
     score = 0
-    for token in query_tokens(query):
+    wanted = query_tokens(query)
+    for token in wanted:
         if token in identity.split():
             score += 4
         elif token in identity:
             score += 1
+    if wanted and all(token in identity for token in wanted):
+        score += 8
     if product_url(url):
         score += 2
     return score
@@ -340,7 +343,7 @@ def extract_product_candidates(html, page_url, query=""):
             "url": url,
             "text": text,
             "card_text": card_text,
-            "score": candidate_score(text, url, query),
+            "score": candidate_score(f"{text} {card_text}", url, query),
             "image": image_url,
             "_anchor": anchor,
         })
@@ -399,6 +402,30 @@ def extract_brand_from_product_url(url):
     return clean(raw.title())
 
 
+def extract_name_from_product_url(url):
+    """Extract the product-name segment from a generic Notino product URL."""
+    parts = [p for p in urlparse(url).path.split("/") if p]
+    if not parts:
+        return ""
+    if parts[-1].lower().startswith("p-"):
+        parts = parts[:-1]
+    if len(parts) < 2:
+        return ""
+    raw = parts[-1].replace("-", " ")
+    raw = re.sub(r"\s+", " ", raw)
+    return clean(raw.replace("_", " ").title())
+
+
+def candidate_identity_text(candidate):
+    """Combine all generic identity signals available on a search card."""
+    url = canonical_url(candidate.get("url"))
+    text = clean(candidate.get("text"))
+    card_text = clean(candidate.get("card_text"))
+    brand = extract_brand_from_product_url(url) if url else ""
+    url_name = extract_name_from_product_url(url) if url else ""
+    return clean(" ".join(x for x in (brand, url_name, text, card_text) if x))
+
+
 def parse_search_candidate(candidate, query):
     """Build a product directly from Notino's search-card data.
 
@@ -412,7 +439,19 @@ def parse_search_candidate(candidate, query):
         return None
 
     brand = extract_brand_from_product_url(url)
+    url_name = extract_name_from_product_url(url)
     name = text
+
+    # Search-card anchors can contain badges, format labels or partial text.
+    # Prefer the bounded card text when it contains the requested identity;
+    # otherwise use the canonical product-name segment from the product URL.
+    identity_pool = clean(" ".join(x for x in (text, card_text, url_name, brand) if x))
+    wanted = query_tokens(query)
+    if url_name and wanted and all(token in norm(identity_pool) for token in wanted):
+        name = url_name
+    elif not name and url_name:
+        name = url_name
+
     price = extract_card_price(card_text) or extract_card_price(text)
     availability = extract_anchor_availability(candidate.get("_anchor")) if candidate.get("_anchor") is not None else extract_card_availability(text)
     if availability == "unknown":
@@ -582,10 +621,10 @@ def browser_discover(query):
                         break
                     visited_pages.add(page.url)
                     try:
-                        page.wait_for_load_state("networkidle", timeout=5000)
+                        page.wait_for_load_state("networkidle", timeout=10000)
                     except Exception:
                         pass
-                    page.wait_for_timeout(500)
+                    page.wait_for_timeout(1200)
                     scroll_for_products(page)
                     html = page.content()
                     for item in extract_product_candidates(html, page.url, query):
@@ -606,10 +645,10 @@ def browser_discover(query):
                 page.goto(CATEGORY_URL, wait_until="domcontentloaded", timeout=BROWSER_TIMEOUT)
                 dismiss_consent(page)
                 try:
-                    page.wait_for_load_state("networkidle", timeout=5000)
+                    page.wait_for_load_state("networkidle", timeout=10000)
                 except Exception:
                     pass
-                page.wait_for_timeout(500)
+                page.wait_for_timeout(1200)
                 scroll_for_products(page)
                 html = page.content()
                 for item in extract_product_candidates(html, page.url, query):
@@ -734,9 +773,49 @@ def search(query):
         seen.add(url)
         results.append(product)
 
-    # Keep direct validation only as a secondary enrichment path for any
-    # candidate whose search card could not be parsed completely. This remains
-    # generic and does not privilege individual products.
+    # If Notino's search page returned candidates but the card data was too
+    # noisy/incomplete to validate them, run the same generic discovery against
+    # the perfume catalogue. This is a site-wide fallback and contains no
+    # product, brand, URL or seed-specific exception.
+    if not results:
+        generic_candidates = []
+        if sync_playwright is not None:
+            try:
+                with sync_playwright() as pw:
+                    browser = launch_browser(pw)
+                    context = browser.new_context(
+                        user_agent=USER_AGENT,
+                        locale="fr-FR",
+                        viewport={"width": 1440, "height": 1000},
+                        extra_http_headers={"Accept-Language": "fr-FR,fr;q=0.9,en;q=0.7"},
+                    )
+                    page = context.new_page()
+                    page.goto(CATEGORY_URL, wait_until="domcontentloaded", timeout=BROWSER_TIMEOUT)
+                    dismiss_consent(page)
+                    try:
+                        page.wait_for_load_state("networkidle", timeout=10000)
+                    except Exception:
+                        pass
+                    page.wait_for_timeout(800)
+                    scroll_for_products(page)
+                    generic_candidates = extract_product_candidates(page.content(), page.url, query)
+                    context.close()
+                    browser.close()
+            except Exception:
+                generic_candidates = []
+
+        for candidate in generic_candidates:
+            product = parse_search_candidate(candidate, query)
+            if not product:
+                continue
+            url = product.get("url")
+            if url in seen:
+                continue
+            seen.add(url)
+            results.append(product)
+
+    # Final generic page-validation fallback. It is only used when no
+    # search-card candidate can be validated.
     if not results:
         return validate_candidates(candidates, query)
 
@@ -853,7 +932,7 @@ def diagnose(query):
             try:
                 try:
                     page.goto(report["search_url"],wait_until="domcontentloaded",timeout=BROWSER_TIMEOUT)
-                    page.wait_for_timeout(500)
+                    page.wait_for_timeout(1200)
                     dismiss_consent(page)
                     scroll_for_products(page)
                     page.wait_for_timeout(500)
