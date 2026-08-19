@@ -752,6 +752,184 @@ def _fetch_product_with_playwright(url):
         LOGGER.warning('Notino browser product retrieval failed: %s', exc)
         return None
 
+
+def diagnose(query):
+    """Run the Notino pipeline in diagnostic mode without changing search()."""
+    query = clean(query)
+    report = {
+        "query": query,
+        "search_url": _search_pages(query)[0] if query else "",
+        "http": {},
+        "discovery": {"candidates": [], "count": 0},
+        "products": [],
+        "summary": {
+            "candidate_count": 0,
+            "product_pages_fetched": 0,
+            "validated_count": 0,
+            "rejected_count": 0,
+        },
+    }
+
+    if not query:
+        report["http"]["error"] = "empty_query"
+        return report
+
+    session = requests.Session()
+    try:
+        try:
+            response = session.get(
+                _search_pages(query)[0],
+                headers=HEADERS,
+                timeout=TIMEOUT,
+                allow_redirects=True,
+            )
+            report["http"] = {
+                "status": response.status_code,
+                "final_url": response.url,
+                "html_length": len(response.text or ""),
+            }
+        except requests.RequestException as exc:
+            report["http"] = {
+                "status": None,
+                "error": type(exc).__name__ + ": " + str(exc),
+            }
+            return report
+
+        if response.status_code >= 400:
+            return report
+
+        candidates = _candidate_product_urls(response.text, query)
+        report["discovery"]["candidates"] = candidates[:80]
+        report["discovery"]["count"] = len(candidates)
+        report["summary"]["candidate_count"] = len(candidates)
+
+        if BROWSER_ENABLED:
+            browser_candidates = _discover_with_playwright(query, 80)
+            report["discovery"]["playwright_candidates"] = browser_candidates
+            report["discovery"]["playwright_count"] = len(browser_candidates)
+        else:
+            report["discovery"]["playwright_candidates"] = []
+            report["discovery"]["playwright_count"] = 0
+
+        for url in candidates[:80]:
+            entry = {
+                "url": url,
+                "http": {},
+                "page": {},
+                "decision": "rejected",
+                "reason": "",
+            }
+
+            try:
+                product_response = session.get(
+                    url,
+                    headers=HEADERS,
+                    timeout=TIMEOUT,
+                    allow_redirects=True,
+                )
+                entry["http"] = {
+                    "status": product_response.status_code,
+                    "final_url": product_response.url,
+                    "html_length": len(product_response.text or ""),
+                }
+            except requests.RequestException as exc:
+                entry["reason"] = (
+                    "product_request_error: "
+                    + type(exc).__name__ + ": " + str(exc)
+                )
+                report["products"].append(entry)
+                continue
+
+            report["summary"]["product_pages_fetched"] += 1
+
+            if product_response.status_code >= 400:
+                entry["reason"] = "product_http_error"
+                report["products"].append(entry)
+                continue
+
+            try:
+                soup = BeautifulSoup(product_response.text, "html.parser")
+                jsonld_products = _parse_json_ld(soup)
+                h1 = soup.find("h1")
+                h1_name = clean(h1.get_text(" ", strip=True)) if h1 else ""
+
+                entry["page"] = {
+                    "h1": h1_name,
+                    "jsonld_product_count": len(jsonld_products),
+                    "jsonld_names": [
+                        clean(obj.get("name"))
+                        for obj in jsonld_products
+                        if clean(obj.get("name"))
+                    ],
+                }
+
+                validation_candidates = []
+                if h1_name:
+                    validation_candidates.append(
+                        (h1_name, jsonld_products[0] if jsonld_products else {})
+                    )
+                for obj in jsonld_products:
+                    obj_name = clean(obj.get("name"))
+                    if obj_name:
+                        validation_candidates.append((obj_name, obj))
+
+                checks = []
+                for candidate_name, candidate_data in validation_candidates:
+                    brand = candidate_data.get("brand")
+                    if isinstance(brand, dict):
+                        brand = brand.get("name")
+                    brand = clean(brand)
+                    selected = _selected_size(
+                        soup, candidate_data, candidate_name
+                    )
+                    query_ok = query_matches_product(
+                        candidate_name,
+                        query,
+                        brand=brand,
+                        size_ml=selected,
+                        url=product_response.url,
+                    )
+                    checks.append({
+                        "name": candidate_name,
+                        "brand": brand,
+                        "size_ml": selected,
+                        "query_match": query_ok,
+                        "query_tokens": query_tokens(query),
+                    })
+
+                entry["page"]["identity_checks"] = checks
+
+                if any(check["query_match"] for check in checks):
+                    entry["decision"] = "accepted"
+                    entry["reason"] = "product_identity_matches_query"
+                    report["summary"]["validated_count"] += 1
+                else:
+                    entry["reason"] = "no_product_identity_match"
+                    report["summary"]["rejected_count"] += 1
+
+            except Exception as exc:
+                entry["reason"] = (
+                    "product_parse_error: "
+                    + type(exc).__name__ + ": " + str(exc)
+                )
+
+            report["products"].append(entry)
+
+        return report
+    finally:
+        session.close()
+
+
+def diagnostic_json(query):
+    """Return the full diagnostic report as JSON."""
+    return json.dumps(
+        diagnose(query),
+        ensure_ascii=False,
+        indent=2,
+        default=str,
+    )
+
+
 def search(query):
     query = clean(query)
     if not query:
