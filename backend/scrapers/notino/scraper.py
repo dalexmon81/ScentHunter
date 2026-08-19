@@ -486,11 +486,14 @@ def extract_gender(*values: Any) -> str:
 
 
 def extract_name(soup: BeautifulSoup, data: Optional[dict] = None) -> str:
-    if isinstance(data, dict):
-        value = clean(data.get("name"))
-        if value:
-            return value
+    """
+    Extract the real product name from a Notino product page.
 
+    Notino can expose a malformed/site-level JSON-LD Product object whose
+    ``name`` is the domain/site name instead of the product. The visible H1
+    and product-page metadata are therefore authoritative for the name.
+    JSON-LD is used as a fallback, never as the first source.
+    """
     for selector in (
         "h1",
         'meta[property="og:title"]',
@@ -507,25 +510,70 @@ def extract_name(soup: BeautifulSoup, data: Optional[dict] = None) -> str:
         )
         value = clean(value)
 
-        if value:
+        if value and not _is_site_level_name(value):
+            return value
+
+    if isinstance(data, dict):
+        value = clean(data.get("name"))
+        if value and not _is_site_level_name(value):
             return value
 
     if soup.title:
-        return clean(soup.title.get_text(" ", strip=True))
+        value = clean(soup.title.get_text(" ", strip=True))
+        if value and not _is_site_level_name(value):
+            return value
 
     return ""
 
 
-def extract_brand(data: Optional[dict]) -> str:
-    if not isinstance(data, dict):
-        return ""
+def _is_site_level_name(value: str) -> bool:
+    """
+    Reject site-level names accidentally exposed as product names by JSON-LD.
+    This is intentionally generic and independent of any specific product.
+    """
+    normalized = norm(value)
+    if not normalized:
+        return True
 
-    brand = data.get("brand")
+    site_names = {
+        "notino",
+        "notino fr",
+        "www notino fr",
+        "notino france",
+    }
+    return normalized in site_names or normalized.startswith("www notino ")
 
-    if isinstance(brand, dict):
-        brand = brand.get("name")
 
-    return clean(brand)
+def extract_brand(data: Optional[dict], soup: Optional[BeautifulSoup] = None) -> str:
+    if isinstance(data, dict):
+        brand = data.get("brand")
+
+        if isinstance(brand, dict):
+            brand = brand.get("name")
+
+        brand = clean(brand)
+        if brand and not _is_site_level_name(brand):
+            return brand
+
+    if soup is not None:
+        for selector in (
+            'meta[itemprop="brand"]',
+            'meta[property="product:brand"]',
+            '[itemprop="brand"]',
+        ):
+            node = soup.select_one(selector)
+            if not node:
+                continue
+
+            value = clean(
+                node.get("content")
+                if node.name == "meta"
+                else node.get_text(" ", strip=True)
+            )
+            if value and not _is_site_level_name(value):
+                return value
+
+    return ""
 
 
 def extract_image(soup: BeautifulSoup, data: Optional[dict], page_url: str) -> Optional[str]:
@@ -687,7 +735,7 @@ def parse_product_html(
     if products:
         for candidate in products:
             candidate_name = clean(candidate.get("name"))
-            candidate_brand = extract_brand(candidate)
+            candidate_brand = extract_brand(candidate, soup)
             if product_identity_matches(candidate_name, candidate_brand, query):
                 data = candidate
                 name = candidate_name
