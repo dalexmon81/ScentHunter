@@ -342,6 +342,7 @@ def extract_product_candidates(html, page_url, query=""):
             "card_text": card_text,
             "score": candidate_score(text, url, query),
             "image": image_url,
+            "_anchor": anchor,
         })
     output.sort(key=lambda x: x["score"], reverse=True)
     return output[:MAX_CANDIDATES]
@@ -357,12 +358,35 @@ def extract_card_price(text):
 
 
 def extract_card_availability(text):
+    """Extract stock state only from the text belonging to one product card."""
     value = norm(text)
-    if re.search(r"\b(en rupture de stock|rupture de stock|indisponible|epuise|epuise)\b", value):
-        return "out_of_stock"
     if re.search(r"\b(en stock|disponible|available|in stock)\b", value):
         return "in_stock"
+    if re.search(r"\b(en rupture de stock|rupture de stock|indisponible|epuise|epuise)\b", value):
+        return "out_of_stock"
     return "unknown"
+
+
+def extract_anchor_availability(anchor):
+    """Prefer explicit stock markers attached to the product link itself."""
+    selectors = (
+        '[itemprop="availability"]',
+        '[data-testid*="availability" i]',
+        '[data-testid*="stock" i]',
+        '[aria-label*="stock" i]',
+    )
+    for selector in selectors:
+        try:
+            nodes = anchor.select(selector)
+        except Exception:
+            nodes = []
+        for node in nodes:
+            value = norm(node.get("content") or node.get("aria-label") or node.get_text(" ", strip=True))
+            if re.search(r"\b(en stock|disponible|available|in stock)\b", value):
+                return "in_stock"
+            if re.search(r"\b(en rupture de stock|rupture de stock|indisponible|epuise|epuise)\b", value):
+                return "out_of_stock"
+    return extract_card_availability(anchor.get_text(" ", strip=True))
 
 
 def extract_brand_from_product_url(url):
@@ -390,7 +414,9 @@ def parse_search_candidate(candidate, query):
     brand = extract_brand_from_product_url(url)
     name = text
     price = extract_card_price(card_text) or extract_card_price(text)
-    availability = extract_card_availability(card_text)
+    availability = extract_anchor_availability(candidate.get("_anchor")) if candidate.get("_anchor") is not None else extract_card_availability(text)
+    if availability == "unknown":
+        availability = extract_card_availability(card_text)
     size_ml = extract_size_ml(text, card_text)
     concentration = extract_concentration(text, card_text)
     gender = extract_gender(text, card_text)
