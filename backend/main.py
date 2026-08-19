@@ -471,7 +471,11 @@ def _to_jsonable(value: Any) -> Any:
 
 
 def _run_notino_diagnostic(query: str) -> Dict[str, Any]:
-    """Run the diagnostic exposed by the currently loaded Notino scraper."""
+    """Run the real generic Notino diagnostic: diagnose(query)."""
+    query = str(query or "").strip()
+    if not query:
+        raise ValueError("Query Notino vuota")
+
     module = load_scraper("notino")
     diagnostic_fn = getattr(module, "diagnose", None)
 
@@ -481,39 +485,56 @@ def _run_notino_diagnostic(query: str) -> Dict[str, Any]:
             "Verifica backend/scrapers/notino/scraper.py."
         )
 
-    result = diagnostic_fn(str(query or "").strip())
+    # IMPORTANT: the current Notino scraper exposes diagnose(query) only.
+    # Do not pass session/max_product_pages or any product-specific argument.
+    result = diagnostic_fn(query)
     return _to_jsonable(result)
 
 
 @app.get("/diagnose-notino")
-def diagnose_notino(q: str = "Hawas for Him"):
-    """Run the bounded Notino diagnostic for one query."""
-    q = str(q or "").strip()
-    if not q:
+def diagnose_notino(q: str):
+    """Run the complete generic Notino diagnostic for any query."""
+    query = str(q or "").strip()
+    if not query:
         raise HTTPException(status_code=400, detail="Parametro q mancante")
 
     try:
-        return _run_notino_diagnostic(q)
+        report = _run_notino_diagnostic(query)
+        return {
+            "ok": True,
+            "query": query,
+            "diagnostic": report,
+        }
     except Exception as error:
         traceback.print_exc()
-        raise HTTPException(
-            status_code=500,
-            detail={"type": type(error).__name__, "message": str(error)},
-        )
+        return {
+            "ok": False,
+            "query": query,
+            "diagnostic": None,
+            "error": {
+                "type": type(error).__name__,
+                "message": str(error),
+            },
+        }
 
 
 @app.get("/diagnose-notino-compare")
 def diagnose_notino_compare():
-    """Compare Turathi Blue and Hawas for Him with the same diagnostic path."""
+    """Run the same generic diagnostic independently for two test queries."""
     queries = ["Turathi Blue", "Hawas for Him"]
     reports: Dict[str, Any] = {}
 
     for query in queries:
         try:
-            reports[query] = _run_notino_diagnostic(query)
-        except Exception as error:
             reports[query] = {
-                "query": query,
+                "ok": True,
+                "diagnostic": _run_notino_diagnostic(query),
+            }
+        except Exception as error:
+            traceback.print_exc()
+            reports[query] = {
+                "ok": False,
+                "diagnostic": None,
                 "error": {
                     "type": type(error).__name__,
                     "message": str(error),
@@ -521,6 +542,7 @@ def diagnose_notino_compare():
             }
 
     return {
+        "ok": all(report.get("ok") is True for report in reports.values()),
         "queries": queries,
         "reports": reports,
     }
