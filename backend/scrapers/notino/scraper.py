@@ -293,14 +293,18 @@ def _product(url, html, query):
     h1 = soup.find('h1')
     h1_name = clean(h1.get_text(' ', strip=True)) if h1 else ''
     name = h1_name or clean(data.get('name'))
-    if not name or not matches(name, query):
+
+    # Final identity validation uses the same generic linguistic normalization
+    # as discovery (for example him/homme/man -> men). This is still a strict
+    # token match and never contains product-specific exceptions.
+    if not name or not _discovery_matches(name, query):
         for candidate in jsonld_products:
             candidate_name = clean(candidate.get('name'))
-            if candidate_name and matches(candidate_name, query):
+            if candidate_name and _discovery_matches(candidate_name, query):
                 data = candidate
                 name = candidate_name
                 break
-    if not name or not matches(name, query):
+    if not name or not _discovery_matches(name, query):
         return None
     text = soup.get_text(' ', strip=True)
     brand = data.get('brand')
@@ -346,6 +350,36 @@ def _product(url, html, query):
     selected_size = _selected_size(soup, data, h1_name)
     product_url = _normalise_url(url) or url
     return {'store': STORE, 'source': {'source_name': name, 'source_brand': clean(brand), 'url': product_url, 'image': image}, 'identity': {'gtin': {'value': gtin, 'source': 'jsonld'} if gtin else None, 'mpn': {'value': mpn, 'source': 'jsonld'} if mpn else None, 'sku': {'value': sku, 'source': 'jsonld'} if sku else None, 'store_product_id': {'value': sku, 'source': 'notino_sku'} if sku else None}, 'attributes': {'size_ml': {'value': selected_size, 'source': 'selected_variant_or_product_name'} if selected_size is not None else None, 'concentration': {'value': concentration(name), 'source': 'product_name'} if concentration(name) else None, 'gender': {'value': 'unknown', 'source': 'not_explicit'}, 'packaging_type': {'value': 'product', 'source': 'default'}}, 'offer': {'price': price, 'currency': 'EUR', 'availability': availability}, 'provenance': {'source_page': product_url, 'product_source': 'jsonld_or_page'}, 'raw_data': {'jsonld': data}, 'name': name, 'price': f'{price:.2f}'.replace('.', ',') + ' €' if price is not None else '', 'url': product_url, 'available': availability == 'in_stock'}
+
+def _search_queries(query):
+    """Build generic fallback search terms without product-specific rules."""
+    raw = clean(query)
+    if not raw:
+        return []
+
+    variants = []
+    seen = set()
+
+    def add(value):
+        value = clean(value)
+        key = norm(value)
+        if value and key and key not in seen:
+            seen.add(key)
+            variants.append(value)
+
+    add(raw)
+
+    query_tokens = norm(raw).split()
+    gender_tokens = {
+        'him', 'his', 'man', 'men', 'homme',
+        'her', 'hers', 'woman', 'women', 'femme',
+        'for', 'pour',
+    }
+    base_tokens = [token for token in query_tokens if token not in gender_tokens]
+    if base_tokens:
+        add(' '.join(base_tokens))
+
+    return variants
 
 def _search_pages(query):
     return (SEARCH_URL.format(query=quote_plus(query)),)
@@ -475,7 +509,7 @@ def _candidate_product_urls(html, query):
 
     return found
 
-def _discover_with_playwright(query, max_urls=80):
+def _discover_with_playwright(query, max_urls=120):
     """Browser fallback for client-rendered Notino search results."""
     if sync_playwright is None:
         return []
@@ -530,7 +564,7 @@ def _discover_with_playwright(query, max_urls=80):
 
     return urls[:max_urls]
 
-def _discover_from_search_requests(session, query, max_urls=80):
+def _discover_from_search_requests(session, query, max_urls=120):
     """Discover only from Notino's own search endpoint, like Deloox."""
     try:
         response = session.get(
@@ -548,9 +582,10 @@ def _discover_from_search_requests(session, query, max_urls=80):
     return _candidate_product_urls(response.text, query)[:max_urls]
 
 def _discover(session, query):
-    """Combine HTTP and browser discovery without letting one source hide the other."""
+    """Combine generic search variants, HTTP discovery and browser discovery."""
     found = []
     seen = set()
+    max_urls = 120
 
     def merge(urls):
         for url in urls or []:
@@ -559,21 +594,25 @@ def _discover(session, query):
                 continue
             seen.add(normalised)
             found.append(normalised)
-            if len(found) >= 80:
+            if len(found) >= max_urls:
                 return True
         return False
 
-    # HTTP discovery is the fast first source.
-    if merge(_discover_from_search_requests(session, query, 80)):
-        return found[:80]
+    # Do not stop after the first source or first query variant. Notino's
+    # client-side search can return different result sets for the full query
+    # and its generic base-name form, while HTTP may be blocked by Cloudflare.
+    for search_query in _search_queries(query):
+        if merge(_discover_from_search_requests(session, search_query, max_urls)):
+            if len(found) >= max_urls:
+                break
 
-    # Browser discovery is also a valid generic source. It is no longer
-    # skipped merely because HTTP returned some candidates: the two sources
-    # can expose different parts of Notino's search result.
-    if BROWSER_ENABLED:
-        merge(_discover_with_playwright(query, 80))
+        if BROWSER_ENABLED and len(found) < max_urls:
+            merge(_discover_with_playwright(search_query, max_urls))
 
-    return found[:80]
+        if len(found) >= max_urls:
+            break
+
+    return found[:max_urls]
 
 def _fetch_product_with_playwright(url):
     if sync_playwright is None or not BROWSER_ENABLED:
