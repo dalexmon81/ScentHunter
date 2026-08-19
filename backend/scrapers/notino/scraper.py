@@ -1169,28 +1169,59 @@ def _validate_candidate(
     return parse_product_html(url, html, query)
 
 
+def _rank_browser_candidates(
+    candidates: List[Dict[str, Any]],
+    query: str,
+) -> List[Dict[str, Any]]:
+    """Rank discovered URLs without making discovery depend on a product name."""
+    query_n = discovery_normalise(query)
+    query_parts = set(query_n.split())
+
+    ranked = []
+    for candidate in candidates:
+        context_n = discovery_normalise(candidate.get("context", ""))
+        context_parts = set(context_n.split())
+        overlap = len(query_parts & context_parts)
+        exact = bool(query_parts) and query_parts.issubset(context_parts)
+        source_count = len(candidate.get("sources", set()))
+        url = candidate.get("url", "")
+
+        ranked.append((
+            0 if exact else 1,
+            -overlap,
+            -source_count,
+            url,
+            candidate,
+        ))
+
+    ranked.sort(key=lambda item: item[:-1])
+    return [item[-1] for item in ranked[:MAX_CANDIDATES]]
+
+
 def _search_internal(
     query: str,
     diagnostic: bool = False,
 ) -> Tuple[List[Dict[str, Any]], Dict[str, Any]]:
-    session = requests.Session()
+    """
+    Browser-first Notino search.
 
-    http_candidates, http_report = _search_http_candidates(session, query)
+    Notino commonly protects direct HTTP requests with Cloudflare. Therefore
+    the search page and product pages share one Playwright browser context.
+    There is deliberately no HTTP discovery fallback here: browser discovery
+    is the authoritative path for this scraper.
+    """
+    session = requests.Session()
 
     browser_candidates, browser_report, browser_resources = (
         _browser_discover_resources(query)
     )
 
-    candidates = _merge_candidates(
-        browser_candidates,
-        http_candidates,
-    )
-    candidates = _sort_candidates(candidates, query)
+    candidates = _rank_browser_candidates(browser_candidates, query)
 
     report = {
         "query": query,
         "search_url": SEARCH_URL.format(query=quote_plus(query)),
-        "http_discovery": http_report,
+        "discovery_mode": "playwright_browser_first",
         "browser_discovery": browser_report,
         "merged_candidates": len(candidates),
         "validated_candidates": 0,
@@ -1217,10 +1248,12 @@ def _search_internal(
             )
 
             if product is None:
-                if diagnostic and len(report["rejected_candidates"]) < 30:
+                if diagnostic and len(report["rejected_candidates"]) < 50:
                     report["rejected_candidates"].append({
+                        "rank": index + 1,
                         "url": candidate["url"],
                         "context": candidate.get("context", ""),
+                        "sources": sorted(candidate.get("sources", set())),
                         "reason": "product_page_identity_mismatch_or_unavailable",
                     })
                 continue
