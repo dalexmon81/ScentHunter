@@ -453,13 +453,15 @@ def normalize_stock(
         item.pop("price_value", None)
         return item
 
-    url = str(item.get("url") or "").strip()
+    # IMPORTANTE:
+    # non scarichiamo automaticamente la pagina prodotto per ogni candidato.
+    # Gli scraper devono poter restituire subito i risultati che hanno già
+    # trovato. Se uno scraper ha già fornito _page_html, lo riutilizziamo;
+    # altrimenti lo stock resta UNKNOWN e il prodotto non viene scartato.
     page_stock = None
-    if url:
-        html = _fetch_product_page(url, page_cache)
-        if html:
-            item["_page_html"] = html
-            page_stock = _stock_from_product_html(html, _product_size_ml(item))
+    html = item.get("_page_html")
+    if html:
+        page_stock = _stock_from_product_html(html, _product_size_ml(item))
 
     if page_stock is False:
         item["available"] = False
