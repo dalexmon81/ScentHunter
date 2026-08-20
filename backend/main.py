@@ -101,6 +101,16 @@ PERFUME_SIGNALS = {
     "concentration de la composante parfumee",
 }
 
+# Marcatori generici di contenuto promozionale o markup sporco che non fanno
+# parte dell'identità di un prodotto. Se compaiono nel nome principale, il
+# record non viene considerato un prodotto catalografico valido.
+PROMOTIONAL_MARKERS = {
+    "promo", "promos", "promotion", "promozione", "promozioni",
+    "offer", "offre", "offerta", "offerte", "sale", "soldes",
+    "discount", "rabais", "rabatt", "deal", "special price",
+    "best price", "meilleur prix", "prix special",
+}
+
 SET_MARKERS = {
     "gift set", "set regalo", "coffret", "bundle", "travel set",
     "discovery set", "perfume set", "set parfums", "set de parfums",
@@ -167,6 +177,10 @@ def is_perfume_product(product: Dict[str, Any], query: str = "") -> bool:
     fields = _product_text_fields(product)
     primary = fields["primary"]
     metadata = fields["metadata"]
+    raw_primary = " ".join(
+        str(product.get(key) or "")
+        for key in ("name", "title", "product_name", "display_name")
+    )
 
     if not primary:
         return False
@@ -174,6 +188,16 @@ def is_perfume_product(product: Dict[str, Any], query: str = "") -> bool:
     # Qualsiasi indicazione esplicita di prodotto non cosmetico/profumiero
     # nel nome principale è sufficiente per scartarlo.
     if any(_contains_phrase(primary, phrase) for phrase in NON_PERFUME):
+        return False
+
+    # I risultati e-commerce possono contenere blocchi promozionali, titoli
+    # concatenati o markup residuo. Non sono identità di prodotto e non
+    # devono diventare risultati solo perché contengono casualmente la query.
+    if any(_contains_phrase(primary, marker) for marker in PROMOTIONAL_MARKERS):
+        return False
+    # Controlliamo il testo originale prima della normalizzazione, perché
+    # norm() elimina la punteggiatura e non deve nascondere markup residuo.
+    if any(symbol in raw_primary for symbol in ("[", "]", "###", "##")):
         return False
 
     # Un set è ammesso soltanto quando è chiaramente un set di profumi.
