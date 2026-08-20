@@ -49,7 +49,6 @@ VARIANTS = {
 }
 
 NON_PERFUME = {
-    # Confezioni multiple / set: ScentHunter mostra solo la bottiglia singola.
     "gift set",
     "set regalo",
     "set",
@@ -65,7 +64,6 @@ NON_PERFUME = {
     "duo",
     "trio",
     "mystery box",
-    # Prodotti che non sono una bottiglia di profumo singola.
     "tester",
     "testeur",
     "sample",
@@ -553,28 +551,7 @@ def resolve_actual_price(product: Dict[str, Any]) -> Dict[str, Any]:
     return item
 
 
-def has_non_perfume_marker(value: Any) -> bool:
-    """True when the product name identifies a non-single-perfume item."""
-    name_tokens = set(norm(value).split())
-    if not name_tokens:
-        return False
-
-    for marker in NON_PERFUME:
-        marker_tokens = set(norm(marker).split())
-        if marker_tokens and marker_tokens.issubset(name_tokens):
-            return True
-
-    return False
-
-
 def matches(product: Dict[str, Any], query: str) -> bool:
-    """
-    Match generico della fragranza + classificazione del prodotto.
-
-    Le varianti reali (Limited Edition, Rebel, Ice, Intense, Elixir,
-    Extreme, ecc.) restano valide. I prodotti che non sono una bottiglia
-    singola vengono invece esclusi sempre, indipendentemente dalla query.
-    """
     name = str(
         product.get("name")
         or product.get("title")
@@ -582,25 +559,34 @@ def matches(product: Dict[str, Any], query: str) -> bool:
         or ""
     ).strip()
 
-    name_tokens = set(norm(name).split())
-    query_all_tokens = set(norm(query).split())
-
-    if not name_tokens or not query_all_tokens:
+    if not name:
         return False
 
-    if has_non_perfume_marker(name):
+    name_normalized = norm(name)
+    name_tokens = set(name_normalized.split())
+
+    if not name_tokens:
         return False
 
-    query_tokens = {
+    for phrase in NON_PERFUME:
+        phrase_tokens = set(norm(phrase).split())
+
+        if phrase_tokens and phrase_tokens.issubset(name_tokens):
+            return False
+
+    query_tokens = [
         token
-        for token in query_all_tokens
+        for token in norm(query).split()
         if token not in IGNORED_WORDS
-    }
+    ]
 
     if not query_tokens:
-        query_tokens = query_all_tokens
+        query_tokens = norm(query).split()
 
-    return bool(query_tokens) and query_tokens.issubset(name_tokens)
+    return bool(query_tokens) and all(
+        token in name_tokens
+        for token in query_tokens
+    )
 
 
 def load_scraper(store: str):
@@ -648,16 +634,6 @@ def run_store(store: str, query: str) -> List[Dict[str, Any]]:
 
             product = dict(item)
             product.setdefault("store", store)
-
-            # Classificazione definitiva: nessun set/tester/cosmetico passa
-            # alle fasi di stock, prezzo o merge.
-            if has_non_perfume_marker(
-                product.get("name")
-                or product.get("title")
-                or product.get("product_name")
-                or ""
-            ):
-                continue
 
             # Regola generale stock: prima normalizziamo la disponibilità.
             # Se è OOS, non sprechiamo una seconda richiesta per il prezzo.
@@ -747,13 +723,7 @@ def search_perfume(query: str) -> Dict[str, Any]:
 
     executor.shutdown(wait=False, cancel_futures=True)
 
-    results = unique_results(results)
-    results = [
-        product
-        for product in results
-        if matches(product, query)
-    ]
-    results = sort_by_price(results)
+    results = sort_by_price(unique_results(results))
 
     return {
         "query": query,
@@ -1003,7 +973,7 @@ def rank_catalog_suggestions(
         if tokens and not all(token in text for token in tokens):
             continue
 
-        if has_non_perfume_marker(name):
+        if any(norm(phrase) in name_n for phrase in NON_PERFUME):
             continue
 
         key = (
@@ -1137,7 +1107,10 @@ def suggest(q: str):
                     if not all(word in haystack for word in words):
                         continue
 
-                    if has_non_perfume_marker(name):
+                    if any(
+                        norm(phrase) in normalized_name
+                        for phrase in NON_PERFUME
+                    ):
                         continue
 
                     key = (norm(brand), normalized_name)
