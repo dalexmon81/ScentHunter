@@ -774,6 +774,29 @@ function shGroupData(data){
   ];
 
   const knownBrandMap=new Map(KNOWN_BRANDS.map(b=>[norm(b),b]));
+  const brandList=KNOWN_BRANDS.map(raw=>({raw,norm:norm(raw)}));
+
+  function canonicalKnownBrand(value){
+    const n=norm(value);
+    if(!n)return "";
+    return knownBrandMap.get(n)||"";
+  }
+
+  function isLikelyBrand(value){
+    const s=cleanBrandText(value);
+    if(!s)return false;
+    const n=norm(s);
+    if(!n)return false;
+    if(canonicalKnownBrand(s))return true;
+    if(s.length>60)return false;
+    if(/\b\d+(?:[.,]\d+)?\s*(?:ml|mL|g|kg|oz|€|\$|£)\b/i.test(s))return false;
+    if(/\b(?:eau|parfum|perfume|fragrance|edp|edt|extrait)\b/i.test(s) && s.split(/\s+/).length>3)return false;
+    if(/[|,;:]/.test(s))return false;
+    const words=s.split(/\s+/).filter(Boolean);
+    if(!words.length || words.length>5)return false;
+    return words.every(w=>/[A-Za-zÀ-ÿ]/.test(w));
+  }
+
 
 
   /*
@@ -781,6 +804,14 @@ function shGroupData(data){
    * L'identità viene determinata esclusivamente dai dati restituiti dagli scraper.
    * Non esistono seed, alias, URL o eccezioni legate a singoli profumi.
    */
+
+  function cleanBrandText(v){
+    return String(v||"")
+      .replace(/\u00a0/g," ")
+      .replace(/[’‘]/g,"'")
+      .replace(/\s+/g," ")
+      .trim();
+  }
 
   function findBrand(o){
     const name=cleanBrandText(o.name);
