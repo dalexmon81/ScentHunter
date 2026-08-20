@@ -442,7 +442,8 @@ def normalize_stock(product: Dict[str, Any], cache: Optional[Dict[str, Optional[
 
     if item.get("available") is False:
         explicit_oos = True
-    # available=True is only a hint. The real product page is checked below.
+    if item.get("available") is True:
+        explicit_in = True
 
     if explicit_oos:
         item["available"] = False
@@ -452,8 +453,16 @@ def normalize_stock(product: Dict[str, Any], cache: Optional[Dict[str, Optional[
         item.pop("price_value", None)
         return item
 
-    # 2) Se esiste un URL, verifichiamo la pagina reale. Il risultato
-    #    sconosciuto NON elimina mai il prodotto.
+    # 2) Se lo scraper ha già dichiarato IN STOCK, non facciamo una seconda
+    #    richiesta alla pagina: evita timeout e perdita casuale dei negozi.
+    if explicit_in:
+        item["available"] = True
+        item["availability"] = "in_stock"
+        item["stock_status"] = "in_stock"
+        return item
+
+    # 3) Se lo stock è realmente sconosciuto, verifichiamo la pagina reale.
+    #    Il risultato sconosciuto NON elimina mai il prodotto.
     url = str(item.get("url") or "").strip()
     page_stock = None
     if url:
@@ -486,7 +495,7 @@ def normalize_stock(product: Dict[str, Any], cache: Optional[Dict[str, Optional[
         item["stock_status"] = "in_stock"
         return item
 
-    # 3) Nessuna informazione certa: UNKNOWN, mai IN STOCK per supposizione.
+    # 4) Nessuna informazione certa: UNKNOWN, mai IN STOCK per supposizione.
     item["available"] = None
     item["availability"] = "unknown"
     item["stock_status"] = "unknown"
@@ -506,7 +515,16 @@ def resolve_actual_price(product: Dict[str, Any]) -> Dict[str, Any]:
     raw_price = str(item.get("price") or "").strip()
     size = _product_size_ml(item)
 
-    # Se la pagina è disponibile, il prezzo strutturato è la fonte primaria.
+    # Se lo scraper ha già fornito un prezzo di confezione, lo manteniamo.
+    # La pagina viene riaperta solo quando manca il prezzo oppure quando il
+    # valore è esplicitamente un prezzo unitario (/100 ml).
+    is_unit_price = bool(re.search(r"(?:/|per\s*)100\s*ml", raw_price, re.I))
+    if raw_price and not is_unit_price:
+        parsed_existing = price_num(raw_price)
+        if parsed_existing is not None:
+            item["price_value"] = parsed_existing
+            return item
+
     url = str(item.get("url") or "").strip()
     if url:
         try:
@@ -730,7 +748,7 @@ def search_perfume(query: str) -> Dict[str, Any]:
         for store in STORES
     }
 
-    done, not_done = wait(future_to_store, timeout=35)
+    done, not_done = wait(future_to_store, timeout=45)
 
     for future in done:
         store = future_to_store[future]
