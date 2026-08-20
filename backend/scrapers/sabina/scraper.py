@@ -1,7 +1,6 @@
 import json
-import re
 import html as html_lib
-from concurrent.futures import ThreadPoolExecutor, as_completed
+import re
 from urllib.parse import quote_plus, urljoin
 
 import requests
@@ -9,10 +8,8 @@ from bs4 import BeautifulSoup
 
 STORE = "Sabina"
 BASE = "https://www.sabina.com"
-TIMEOUT = 6
-MAX_CATALOG_PAGES = 40
-MAX_CATALOG_CATEGORIES = 8
-MAX_SIZE_ENRICH_REQUESTS = 6
+TIMEOUT = 8
+MAX_SIZE_ENRICH_REQUESTS = 12
 
 HEADERS = {
     "User-Agent": (
@@ -32,382 +29,233 @@ PRODUCT_URL_RE = re.compile(
     r"carrello|ordine|stato-ordine|il-mio-conto|module)/)"
 )
 
+NON_PERFUME = {
+    "tester", "testeur", "sample", "mystery box", "gift set", "set regalo",
+    "coffret", "bundle", "travel set", "discovery set", "shampoo",
+    "shower gel", "body wash", "body lotion", "body cream", "deodorant",
+    "aftershave", "after shave", "body spray", "hair mist", "makeup",
+    "cosmetics", "skincare", "conditioner",
+}
+
+
 def _clean(value):
-    return re.sub(r"\s+", " ", html_lib.unescape(value or "")).strip()
+    return re.sub(r"\s+", " ", html_lib.unescape(str(value or ""))).strip()
+
+
+def _norm(value):
+    return re.sub(r"[^a-z0-9]+", " ", _clean(value).lower()).strip()
+
 
 def _price(value):
     if value is None:
         return None
-    if isinstance(value, (int, float)):
-        return f"{float(value):.2f}".replace(".", ",") + " €"
-    text = _clean(str(value))
-    m = PRICE_RE.search(text)
-    if not m:
-        m = re.search(r"(?<!\d)(\d{1,4}(?:[.,]\d{2}))(?!\d)", text)
-    if not m:
-        return None
-    return m.group(1).replace(".", ",") + " €"
+    text = _clean(value)
+    m = PRICE_RE.search(text) or re.search(
+        r"(?<!\d)(\d{1,4}(?:[.,]\d{2}))(?!\d)", text
+    )
+    return (m.group(1).replace(".", ",") + " €") if m else None
+
 
 def _looks_like_product_url(url):
     return bool(url and PRODUCT_URL_RE.match(url))
 
-def _get(session, url, **kwargs):
-    r = session.get(
-        url,
-        headers=HEADERS,
-        timeout=TIMEOUT,
-        allow_redirects=True,
-        **kwargs,
-    )
-    if r.status_code in (403, 429):
-        r.close()
-        return None
-    r.raise_for_status()
-    return r
 
-def _query_without_size(query):
-    return _clean(re.sub(r"(?<!\d)\d{2,4}\s*ml\b", " ", query, flags=re.I))
+def _query_tokens(query):
+    return [x for x in _norm(query).split() if len(x) > 1 and x != "ml"]
 
-def _query_words(query):
-    return [
-        w.lower()
-        for w in re.findall(r"[a-z0-9À-ÿ]+", _clean(query).lower())
-        if len(w) > 1 and w != "ml" and not w.isdigit()
-    ]
 
-def _extract_variants_from_html(text):
-    if not text:
-        return []
+def _matches(name, query):
+    tokens = _query_tokens(query)
+    hay = set(_norm(name).split())
+    return bool(tokens) and all(t in hay for t in tokens)
 
-    soup = BeautifulSoup(text, "html.parser")
-    variants = {}
 
-    def add(size, price):
-        if not size or price in (None, ""):
-            return
-        p = _price(price)
-        if not p:
-            return
-        number = float(re.search(r"\d+[.,]\d+", p).group(0).replace(",", "."))
-        current = variants.get(str(size))
-        if current is None or number < current[0]:
-            variants[str(size)] = (number, p)
+def _is_non_perfume(name):
+    tokens = set(_norm(name).split())
+    for marker in NON_PERFUME:
+        mt = set(_norm(marker).split())
+        if mt and mt.issubset(tokens):
+            return True
+    return False
 
-    def current_price(value):
-        value = _clean(value)
-        matches = list(re.finditer(r"(?<!\d)(\d{1,4}(?:[.,]\d{2}))\s*€", value))
-        usable = []
-        for m in matches:
-            suffix = value[m.end():m.end()+30].lower()
-            prefix = value[max(0, m.start()-50):m.start()].lower()
-            if re.match(r"\s*(?:/|par|pour)\s*\d+\s*ml\b", suffix):
-                continue
-            if re.search(r"(?:/|par|pour)\s*\d+\s*ml\s*$", prefix):
-                continue
-            usable.append(m.group(1))
-        if not usable:
-            return None
-        return min(usable, key=lambda x: float(x.replace(",", ".")))
 
-    for script in soup.select('script[type="application/ld+json"]'):
-        try:
-            data = json.loads(script.get_text(strip=True))
-        except Exception:
-            continue
-
-        def walk(obj):
-            if isinstance(obj, dict):
-                low = {str(k).lower(): v for k, v in obj.items()}
-                size = None
-                for key in ("size", "volume", "netcontent", "capacity", "contentvolume", "description", "name"):
-                    if key in low:
-                        m = re.search(r"(?<!\d)(\d{2,4})\s*ml\b", str(low[key]), re.I)
-                        if m:
-                            size = m.group(1)
-                            break
-                price = next(
-                    (low[k] for k in (
-                        "final_price", "finalprice", "sale_price", "saleprice",
-                        "price_amount", "priceamount", "price"
-                    ) if k in low and low[k] not in (None, "")),
-                    None,
-                )
-                if size and price:
-                    add(size, price)
-                for value in obj.values():
-                    walk(value)
-            elif isinstance(obj, list):
-                for value in obj:
-                    walk(value)
-
-        walk(data)
-
-    for el in soup.find_all(["option", "label", "li", "button", "span", "div"]):
-        txt = _clean(el.get_text(" ", strip=True))
-        if not txt or len(txt) > 700:
-            continue
-        sizes = re.findall(r"(?<!\d)(\d{2,4})\s*ml\b", txt, re.I)
-        if len(sizes) == 1:
-            p = current_price(txt)
-            if p:
-                add(sizes[0], p)
-
-    visible = _clean(soup.get_text(" ", strip=True))
-    for m in re.finditer(r"(?<!\d)(\d{2,4})\s*ml\b", visible, re.I):
-        size = m.group(1)
-        p = current_price(visible[max(0, m.start()-180):m.start()+220])
-        if p:
-            add(size, p)
-
-    return [
-        {"size_ml": size, "price": price}
-        for size, (_, price) in sorted(
-            variants.items(),
-            key=lambda x: int(x[0]) if x[0].isdigit() else 99999,
+def _get(session, url):
+    try:
+        response = session.get(
+            url, headers=HEADERS, timeout=TIMEOUT, allow_redirects=True
         )
-    ]
+        if response.status_code in (403, 429):
+            response.close()
+            return None
+        response.raise_for_status()
+        return response
+    except requests.RequestException:
+        return None
+
 
 def _extract_name(container, anchor):
     candidates = []
-    for sel in ("h1", "h2", "h3", "h4", ".name", ".product-name", ".product-title"):
-        el = container.select_one(sel)
-        if el:
-            candidates.append(el.get_text(" ", strip=True))
-    candidates += [
-        anchor.get("title"),
-        anchor.get("aria-label"),
-        anchor.get_text(" ", strip=True),
-    ]
+    for selector in ("h1", "h2", "h3", "h4", ".name", ".product-name", ".product-title"):
+        node = container.select_one(selector) if container else None
+        if node:
+            candidates.append(node.get_text(" ", strip=True))
+    candidates += [anchor.get("title"), anchor.get("aria-label"), anchor.get_text(" ", strip=True)]
     for value in candidates:
         value = _clean(value)
         if value and value.lower() not in {"vedi", "vedi tutto", "acquista", "immagine"}:
             return value
     return ""
 
-def _parse_html(text, query):
-    soup = BeautifulSoup(text, "html.parser")
-    rows = []
-    words = _query_words(query)
 
+def _parse_search_html(html, query):
+    soup = BeautifulSoup(html, "html.parser")
+    rows = []
     for anchor in soup.find_all("a", href=True):
-        url = urljoin(BASE, anchor["href"])
+        url = urljoin(BASE, anchor["href"]).split("#")[0]
         if not _looks_like_product_url(url):
             continue
-
-        container = anchor
+        node = anchor
         for _ in range(8):
-            parent = getattr(container, "parent", None)
+            parent = getattr(node, "parent", None)
             if not parent:
                 break
             candidate = parent
-            block = _clean(candidate.get_text(" ", strip=True))
-            if len(block) <= 1800 and ("€" in block or "ML" in block.upper()):
-                container = candidate
+            text = _clean(candidate.get_text(" ", strip=True))
+            if len(text) <= 1800 and "€" in text:
+                node = candidate
                 break
-            container = candidate
-
-        block = _clean(container.get_text(" ", strip=True))
-        name = _extract_name(container, anchor)
-        if not name:
+            node = candidate
+        card = _clean(node.get_text(" ", strip=True))
+        name = _extract_name(node, anchor)
+        if not name or not _matches(name, query) or _is_non_perfume(name):
             continue
-
-        low_name = name.lower()
-        if words and not all(word in low_name for word in words):
+        price_match = PRICE_RE.search(card)
+        if not price_match:
             continue
-
-        prices = []
-        for m in PRICE_RE.finditer(block):
-            suffix = block[m.end():m.end()+30].lower()
-            if re.match(r"\s*(?:/|par|pour)\s*\d+\s*ml\b", suffix):
-                continue
-            prices.append(m.group(1) + " €")
-        if not prices:
-            continue
-
-        size = ""
-        msize = re.search(r"(?<!\d)(\d{2,4})\s*ml\b", block, re.I)
-        if msize:
-            size = msize.group(1)
-
         rows.append({
             "store": STORE,
             "name": name,
-            "price": prices[0],
-            "url": url.split("#")[0],
-            **({"size_ml": size} if size else {}),
+            "price": price_match.group(1) + " €",
+            "url": url,
         })
-
-    out, seen = [], set()
-    for row in rows:
-        key = (
-            row["name"].lower(),
-            row["url"].split("?")[0],
-            row.get("size_ml", ""),
-        )
-        if key not in seen:
-            seen.add(key)
-            out.append(row)
-    return out
-
-def _walk_json(obj, query):
-    rows = []
-    words = _query_words(query)
-
-    def walk(value):
-        if isinstance(value, dict):
-            low = {str(k).lower(): v for k, v in value.items()}
-            name = next(
-                (low[k] for k in ("name", "product_name", "productname", "title", "label")
-                 if k in low and isinstance(low[k], (str, int, float))),
-                None,
-            )
-            url = next(
-                (low[k] for k in ("url", "link", "product_url", "producturl", "href")
-                 if k in low and isinstance(low[k], str)),
-                None,
-            )
-            price = next(
-                (low[k] for k in (
-                    "price", "final_price", "finalprice", "sale_price",
-                    "saleprice", "price_amount", "priceamount"
-                ) if k in low),
-                None,
-            )
-            if url:
-                url = urljoin(BASE, url)
-            if (
-                name and url and _looks_like_product_url(url)
-                and _price(price)
-                and (not words or all(word in str(name).lower() for word in words))
-            ):
-                rows.append({
-                    "store": STORE,
-                    "name": str(name),
-                    "price": price,
-                    "url": url,
-                })
-            for child in value.values():
-                walk(child)
-        elif isinstance(value, list):
-            for child in value:
-                walk(child)
-
-    walk(obj)
     return rows
 
-def _enrich_product_sizes(session, rows, query):
-    requested = ""
-    m = re.search(r"(?<!\d)(\d{2,4})\s*ml\b", query, re.I)
-    if m:
-        requested = m.group(1)
 
-    cache = {}
-    requests_used = 0
-    out = []
+def _walk_json(obj, query, rows):
+    if isinstance(obj, dict):
+        low = {str(k).lower(): v for k, v in obj.items()}
+        name = next(
+            (low[k] for k in ("name", "product_name", "productname", "title", "label")
+             if k in low and isinstance(low[k], (str, int, float))),
+            None,
+        )
+        url = next(
+            (low[k] for k in ("url", "link", "product_url", "producturl", "href")
+             if k in low and isinstance(low[k], str)),
+            None,
+        )
+        price = next(
+            (low[k] for k in (
+                "price", "final_price", "finalprice", "sale_price",
+                "saleprice", "price_amount", "priceamount"
+            ) if k in low),
+            None,
+        )
+        if url:
+            url = urljoin(BASE, url)
+        if (
+            name and url and _looks_like_product_url(url)
+            and _price(price) and _matches(str(name), query)
+            and not _is_non_perfume(str(name))
+        ):
+            rows.append({
+                "store": STORE, "name": str(name),
+                "price": _price(price), "url": url.split("#")[0],
+            })
+        for value in obj.values():
+            _walk_json(value, query, rows)
+    elif isinstance(obj, list):
+        for value in obj:
+            _walk_json(value, query, rows)
 
-    for row in rows:
-        item = dict(row)
-        url = item.get("url", "")
-        existing = re.search(r"\b(\d{1,4})\s*ml\b", item.get("name", ""), re.I)
 
-        if existing and not requested:
-            item["size_ml"] = existing.group(1)
-            out.append(item)
+def _parse_product_page(html, expected_name):
+    soup = BeautifulSoup(html, "html.parser")
+    expected = set(_norm(expected_name).split())
+
+    # Prefer the Product JSON-LD whose name belongs to this exact product.
+    for script in soup.select('script[type="application/ld+json"]'):
+        try:
+            data = json.loads(script.get_text(strip=True))
+        except Exception:
             continue
+        stack = data if isinstance(data, list) else [data]
+        while stack:
+            obj = stack.pop()
+            if isinstance(obj, dict):
+                typ = obj.get("@type")
+                types = typ if isinstance(typ, list) else [typ]
+                name = _clean(obj.get("name"))
+                if any(str(t).lower() == "product" for t in types) and name:
+                    if expected and not expected.issubset(set(_norm(name).split())):
+                        continue
+                    for key in ("size", "volume", "netContent", "capacity", "contentVolume"):
+                        value = obj.get(key)
+                        if value:
+                            m = re.search(r"(?<!\d)(\d{2,4})\s*ml\b", str(value), re.I)
+                            if m:
+                                return m.group(1)
+                    m = re.search(r"(?<!\d)(\d{2,4})\s*ml\b", name, re.I)
+                    if m:
+                        return m.group(1)
+                for child in obj.values():
+                    if isinstance(child, (dict, list)):
+                        stack.append(child)
+            elif isinstance(obj, list):
+                stack.extend(x for x in obj if isinstance(x, (dict, list)))
 
-        if url not in cache and requests_used < MAX_SIZE_ENRICH_REQUESTS:
-            requests_used += 1
+    # Next, use the product title / headings and their local block only.
+    for selector in ("h1", "h2", "h3", '[itemprop="name"]', 'meta[property="og:title"]'):
+        node = soup.select_one(selector)
+        if not node:
+            continue
+        text = _clean(node.get("content") if node.name == "meta" else node.get_text(" ", strip=True))
+        m = re.search(r"(?<!\d)(\d{2,4})\s*ml\b", text, re.I)
+        if m:
+            return m.group(1)
+        parent = node.parent
+        for _ in range(5):
+            if not parent:
+                break
+            block = _clean(parent.get_text(" ", strip=True))
+            if len(block) <= 700:
+                m = re.search(r"(?<!\d)(\d{2,4})\s*ml\b", block, re.I)
+                if m:
+                    return m.group(1)
+            parent = getattr(parent, "parent", None)
+
+    return ""
+
+
+def _enrich(session, rows):
+    out, seen_urls = [], set()
+    for row in rows:
+        url = row["url"].split("?")[0]
+        if url in seen_urls:
+            continue
+        seen_urls.add(url)
+        item = dict(row)
+        response = _get(session, url)
+        if response:
             try:
-                r = _get(session, url)
-                cache[url] = _extract_variants_from_html(r.text) if r else []
-                if r:
-                    r.close()
-            except Exception:
-                cache[url] = []
-
-        variants = cache.get(url, [])
-        if requested:
-            selected = next((v for v in variants if v["size_ml"] == requested), None)
-            if not selected:
-                continue
-            item["size_ml"] = selected["size_ml"]
-            item["price"] = selected["price"]
-        elif variants:
-            item["size_ml"] = variants[0]["size_ml"]
-            item["price"] = variants[0]["price"]
-
+                size = _parse_product_page(response.text, item["name"])
+            finally:
+                response.close()
+            if size:
+                item["size_ml"] = size
         out.append(item)
-
     return out
 
-def _category_page_urls(session):
-    urls = []
-    seen = set()
-    try:
-        r = _get(session, BASE + "/it/")
-        if r is None:
-            return []
-        html = r.text
-        r.close()
-    except Exception:
-        return []
-
-    soup = BeautifulSoup(html, "html.parser")
-    for a in soup.find_all("a", href=True):
-        url = urljoin(BASE, a["href"])
-        low = url.lower()
-        if "/it/" not in low:
-            continue
-        if "profum" not in low and "perfume" not in low:
-            continue
-        if _looks_like_product_url(url):
-            continue
-        path = url.split("?", 1)[0].rstrip("/")
-        if path not in seen:
-            seen.add(path)
-            urls.append(path)
-
-    return urls[:MAX_CATALOG_CATEGORIES]
-
-def _catalog_fallback(session, query):
-    categories = _category_page_urls(session)
-    if not categories:
-        return []
-
-    # Fetch category pages in small batches. We stop as soon as the requested
-    # product is found; no product-specific seed or exception is used.
-    def fetch_page(url):
-        local = requests.Session()
-        local.headers.update(HEADERS)
-        try:
-            r = _get(local, url)
-            if r is None:
-                return url, "", False
-            text = r.text
-            r.close()
-            return url, text, True
-        except Exception:
-            return url, "", False
-        finally:
-            local.close()
-
-    for category in categories:
-        for start in range(1, MAX_CATALOG_PAGES + 1, 6):
-            urls = [
-                category if page == 1 else category + ("&" if "?" in category else "?") + f"p={page}"
-                for page in range(start, min(start + 6, MAX_CATALOG_PAGES + 1))
-            ]
-            with ThreadPoolExecutor(max_workers=6) as pool:
-                futures = [pool.submit(fetch_page, u) for u in urls]
-                for future in as_completed(futures):
-                    _, html, ok = future.result()
-                    if not ok or not html:
-                        continue
-                    rows = _parse_html(html, query)
-                    if rows:
-                        return _enrich_product_sizes(session, rows, query)
-
-    return []
 
 def search(query):
     query = _clean(query)
@@ -416,63 +264,106 @@ def search(query):
 
     session = requests.Session()
     session.headers.update(HEADERS)
-
     try:
-        try:
-            r = _get(session, BASE + "/it/")
-            if r:
-                r.close()
-        except Exception:
-            pass
+        # Initialize cookies without relying on a special product.
+        home = _get(session, BASE + "/it/")
+        if home:
+            home.close()
 
-        queries = [query]
-        without_size = _query_without_size(query)
-        if without_size and without_size.casefold() != query.casefold():
-            queries.append(without_size)
+        urls = [
+            BASE + "/it/ricerca?search_query=" + quote_plus(query),
+            BASE + "/it/ricerca?s=" + quote_plus(query),
+            BASE + "/it/ricerca_old?s=" + quote_plus(query),
+            BASE + "/it/ricerca_old?search_query=" + quote_plus(query),
+        ]
 
-        urls = []
-        for q in queries:
-            encoded = quote_plus(q)
-            urls.extend([
-                BASE + "/it/ricerca?search_query=" + encoded,
-                BASE + "/it/ricerca?s=" + encoded,
-                BASE + "/it/ricerca?controller=search&s=" + encoded,
-                BASE + "/it/ricerca_old?s=" + encoded,
-                BASE + "/it/ricerca_old?search_query=" + encoded,
-                BASE + "/it/search?controller=search&s=" + encoded,
-            ])
-
+        rows = []
         for url in urls:
-            try:
-                r = _get(session, url)
-                if r is None:
-                    continue
-                text = r.text
-                r.close()
-
-                try:
-                    data = json.loads(text)
-                    rows = _walk_json(data, query)
-                except Exception:
-                    rows = _parse_html(text, query)
-
-                if rows:
-                    return _enrich_product_sizes(session, rows, query)
-            except Exception:
+            response = _get(session, url)
+            if not response:
                 continue
+            try:
+                html = response.text
+            finally:
+                response.close()
+            parsed = _parse_search_html(html, query)
+            rows.extend(parsed)
+            if parsed:
+                break
 
-        return _catalog_fallback(session, query)
+        if not rows:
+            ajax = BASE + "/modules/ecelastic/ajax.php"
+            for payload in (
+                {"q": query, "query": query, "search_query": query, "id_lang": 5, "id_country": 10, "id_currency": 1},
+                {"s": query, "search_query": query, "id_lang": 5, "id_country": 10, "id_currency": 1},
+                {"query": query, "id_lang": 5, "id_country": 10, "id_currency": 1},
+            ):
+                for method in ("get", "post"):
+                    try:
+                        response = (
+                            session.get(ajax, params=payload, headers=HEADERS, timeout=TIMEOUT)
+                            if method == "get"
+                            else session.post(
+                                ajax, data=payload,
+                                headers={**HEADERS, "X-Requested-With": "XMLHttpRequest"},
+                                timeout=TIMEOUT,
+                            )
+                        )
+                        if response.status_code in (403, 429):
+                            response.close()
+                            continue
+                        raw = response.text
+                        response.close()
+                        try:
+                            data = json.loads(raw)
+                            parsed = []
+                            _walk_json(data, query, parsed)
+                        except Exception:
+                            parsed = _parse_search_html(raw, query)
+                        rows.extend(parsed)
+                    except requests.RequestException:
+                        continue
+                if rows:
+                    break
 
+        # Generic fallback: discover perfume-category links from the site itself.
+        if not rows:
+            home = _get(session, BASE + "/it/")
+            if home:
+                soup = BeautifulSoup(home.text, "html.parser")
+                categories = []
+                for a in soup.find_all("a", href=True):
+                    href = urljoin(BASE, a["href"]).split("?")[0]
+                    text = _clean(a.get_text(" ", strip=True))
+                    if "/it/" in href and ("profum" in _norm(text) or "perfume" in _norm(text)):
+                        if href not in categories and not _looks_like_product_url(href):
+                            categories.append(href)
+                home.close()
+                for category in categories[:12]:
+                    response = _get(session, category)
+                    if not response:
+                        continue
+                    try:
+                        parsed = _parse_search_html(response.text, query)
+                    finally:
+                        response.close()
+                    if parsed:
+                        rows.extend(parsed)
+                        break
+
+        return _enrich(session, rows[:20])
     finally:
         session.close()
+
 
 def scrape(query):
     return search(query)
 
+
 def search_sabina(query):
     return search(query)
 
+
 if __name__ == "__main__":
     import sys
-    q = " ".join(sys.argv[1:]).strip() or "Dior"
-    print(json.dumps(search(q), ensure_ascii=False, indent=2))
+    print(json.dumps(search(" ".join(sys.argv[1:]) or "Dior"), ensure_ascii=False, indent=2))
