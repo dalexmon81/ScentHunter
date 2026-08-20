@@ -373,13 +373,7 @@ function normalizePerfumeName(v){
     .replace(/\s+/g," ").trim();
 }
 function displayPerfumeName(name,brand){
-  let n=String(name||"").replace(/\s+/g," ").trim();
-  const concentration=concentrationHint({name:n})||"";
-  if(concentration){
-    n=removeTrailingConcentration(n,concentration);
-    n=(n+" "+concentration).trim();
-  }
-  return n;
+  return String(name||"").replace(/\s+/g," ").trim();
 }
 function perfumeKey(x){
   return normalizePerfumeName(x.name||"");
@@ -1070,18 +1064,17 @@ function shGroupData(data){
     if(/\bextrait(?:\s+de\s+parfum)?\b/.test(raw))return "Extrait de Parfum";
     if(/\beau\s+de\s+parfum\b|\bedp\b/.test(raw))return "Eau de Parfum";
     if(/\beau\s+de\s+cologne\b|\bedc\b/.test(raw))return "Eau de Cologne";
+    // Alcuni cataloghi usano "De Parfum" come forma abbreviata di
+    // "Extrait de Parfum". La regola è generica e vale per qualsiasi prodotto.
+    if(/\bde\s+parfum\b/.test(raw))return "Extrait de Parfum";
     return "";
   }
   function concentrationLabel(value){
     const n=norm(value);
-    if(/(?:^|\\s)extrait(?:\\s+de\\s+parfum)?(?:\\s+extrait(?:\\s+de\\s+parfum)?)*$/.test(n))
-      return "Extrait de Parfum";
-    if(/(?:^|\\s)eau\\s+de\\s+parfum(?:\\s+eau\\s+de\\s+parfum)*$/.test(n))
-      return "Eau de Parfum";
-    if(/(?:^|\\s)eau\\s+de\\s+toilette(?:\\s+eau\\s+de\\s+toilette)*$/.test(n))
-      return "Eau de Toilette";
-    if(/(?:^|\\s)eau\\s+de\\s+cologne(?:\\s+eau\\s+de\\s+cologne)*$/.test(n))
-      return "Eau de Cologne";
+    if(n==="extrait de parfum")return "Extrait de Parfum";
+    if(n==="eau de parfum")return "Eau de Parfum";
+    if(n==="eau de toilette")return "Eau de Toilette";
+    if(n==="eau de cologne")return "Eau de Cologne";
     return cleanBrandText(value);
   }
 
@@ -1366,13 +1359,12 @@ function shGroupData(data){
     )?[...knownSizes][0]:"";
     const size=explicitSize||inferredSize;
 
-    const concentration=concentrationHint(o)||id.concentration||"";
-    const normalizedConcentration=concentrationLabel(concentration);
-    const baseDisplayName=normalizedConcentration
-      ? removeTrailingConcentration(id.name, normalizedConcentration)
+    const concentration=o.concentration||id.concentration||"";
+    const baseDisplayName=concentration
+      ? removeTrailingConcentration(id.name, concentration)
       : id.name;
-    const displayName=normalizedConcentration
-      ? (removeTrailingConcentration(baseDisplayName, normalizedConcentration)+" "+normalizedConcentration).trim()
+    const displayName=concentration
+      ? (baseDisplayName+" "+concentrationLabel(concentration)).trim()
       : baseDisplayName;
 
     if(!map.has(id.key)){
@@ -1382,7 +1374,7 @@ function shGroupData(data){
         canonical:norm(displayName),
         display_name:id.brand?id.brand+" - "+displayName:displayName,
         size_ml:"",
-        concentration:normalizedConcentration,
+        concentration:concentrationLabel(concentration),
         image:o.image||o.image_url||o.thumbnail||"",
         offers:[]
       });
@@ -1399,7 +1391,7 @@ function shGroupData(data){
     normalizedOffer._source_store=o._source_store||o.store||"";
     if(id.brand)normalizedOffer.brand=id.brand;
     if(id.name)normalizedOffer.name=id.name;
-    if(normalizedConcentration)normalizedOffer.concentration=normalizedConcentration;
+    if(id.concentration)normalizedOffer.concentration=concentrationLabel(id.concentration);
     if(size)normalizedOffer.size_ml=size;
 
     const store=String(o.store||"").trim().toLowerCase();
@@ -1460,17 +1452,15 @@ function shGroupData(data){
     if(g.concentration){
       const concentration=concentrationLabel(g.concentration);
       let baseName=String(g.name||"Profumo").trim();
-
-      // Il nome commerciale può contenere la concentrazione una o più volte.
-      // La rimuoviamo completamente dalla coda e la riaggiungiamo una sola volta.
-      baseName=removeTrailingConcentration(baseName,concentration);
-
-      // Protezione aggiuntiva contro varianti duplicate con maiuscole/spazi diversi.
+      const baseNorm=norm(baseName);
       const concentrationNorm=norm(concentration);
-      while(baseName && norm(baseName).endsWith(" "+concentrationNorm)){
-        baseName=removeTrailingConcentration(baseName,concentration);
+      if(baseNorm===concentrationNorm){
+        baseName="";
+      }else if(baseNorm.endsWith(" "+concentrationNorm)){
+        const words=baseName.split(/\s+/);
+        const concentrationWords=concentration.split(/\s+/).length;
+        baseName=words.slice(0,-concentrationWords).join(" ").trim();
       }
-
       g.name=(pretty(baseName)+" "+concentration).trim();
       g.concentration=concentration;
     }else{
