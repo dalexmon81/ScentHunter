@@ -48,43 +48,32 @@ VARIANTS = {
     "extreme", "limited edition", "collector edition", "collector's edition",
 }
 
-NON_PERFUME = {
-    "gift set",
-    "set regalo",
-    "set",
-    "discovery set",
-    "fragrance set",
-    "perfume set",
-    "parfum set",
-    "coffret",
-    "bundle",
-    "pack",
-    "travel set",
-    "kit",
-    "duo",
-    "trio",
-    "mystery box",
-    "tester",
-    "testeur",
-    "sample",
-    "shampoo",
-    "shower gel",
-    "body wash",
-    "body lotion",
-    "body cream",
-    "body milk",
-    "deodorant",
-    "deo spray",
-    "aftershave",
-    "after shave",
-    "body spray",
-    "hair mist",
-    "makeup",
-    "cosmetics",
-    "cosmetic",
-    "skincare",
-    "skin care",
-    "cosmetici",
+NON_PERFUME_MARKERS = {
+    "tester", "testeur", "testing", "sample", "échantillon", "echantillon",
+    "mystery box", "mysterybox",
+    "shampoo", "shampoing", "shampooing", "conditioner", "apres shampooing",
+    "hair mask", "hair care", "gel douche", "shower gel", "body wash",
+    "body lotion", "lotion corps", "body cream", "body creme", "body butter",
+    "hand cream", "hand creme", "handcreme", "face cream", "face creme",
+    "facial cream", "moisturizer", "moisturiser", "creme visage",
+    "serum", "sérum", "serum visage",
+    "deodorant", "déodorant", "deo spray", "deodorant spray",
+    "after shave", "aftershave", "baume apres rasage", "after shave balm",
+    "lipstick", "rouge a levres", "makeup", "maquillage", "foundation",
+    "concealer", "mascara", "eyeliner", "liquid blush", "blush liquide",
+    "blush makeup", "blush maquillage", "bronzer", "highlighter",
+    "nail polish", "vernis", "cosmetic", "cosmetique", "cosmetics",
+    "cosmétiques", "skincare", "skin care",
+}
+
+PERFUME_SET_MARKERS = {
+    "gift set", "set regalo", "coffret", "bundle", "travel set",
+    "discovery set", "fragrance set", "perfume set", "parfum set",
+}
+
+PERFUME_TYPE_MARKERS = {
+    "parfum", "perfume", "fragrance", "eau de parfum", "eau de toilette",
+    "eau de cologne", "extrait", "edp", "edt", "edc", "cologne",
 }
 
 IGNORED_WORDS = {
@@ -551,42 +540,76 @@ def resolve_actual_price(product: Dict[str, Any]) -> Dict[str, Any]:
     return item
 
 
+def _contains_marker(name: str, markers: set[str]) -> bool:
+    name_n = norm(name)
+    return any(
+        norm(marker) and norm(marker) in name_n
+        for marker in markers
+    )
+
+
+def _is_allowed_perfume_name(name: str) -> bool:
+    """
+    Generic category filter based only on the product identity/name.
+
+    The description, related products and page copy are deliberately ignored:
+    they can mention unrelated categories without changing what the product is.
+
+    Known perfume-set names are allowed. Explicitly non-perfume product names
+    are rejected before any query matching is applied.
+    """
+    name_n = norm(name)
+    if not name_n:
+        return False
+
+    if _contains_marker(name_n, NON_PERFUME_MARKERS):
+        return False
+
+    if _contains_marker(name_n, PERFUME_SET_MARKERS):
+        return True
+
+    # "kit" is too generic to allow blindly. If it is explicitly a
+    # fragrance/perfume kit, it is allowed; otherwise it is rejected.
+    if re.search(r"\bkit\b", name_n):
+        return _contains_marker(name_n, PERFUME_TYPE_MARKERS)
+
+    # A normal perfume does not need to contain "parfum", "EDP", etc. in
+    # its title. The exclusion list above is what defines non-perfume items.
+    return True
+
+
 def matches(product: Dict[str, Any], query: str) -> bool:
-    name = str(
-        product.get("name")
-        or product.get("title")
-        or product.get("product_name")
-        or ""
-    ).strip()
+    """
+    Match generale del prodotto.
 
-    if not name:
+    Il match viene sempre verificato contro la QUERY ORIGINALE dell'utente.
+    Le query di discovery aggiuntive di uno scraper servono solo a trovare
+    candidati: non possono trasformare una singola parola della ricerca in
+    un prodotto valido.
+
+    Le varianti restano distinte: Limited Edition, Rebel, Ice, Elixir, ecc.
+    non vengono eliminate automaticamente.
+    """
+    name = str(product.get("name") or "").strip()
+    name_tokens = set(norm(name).split())
+    query_all_tokens = set(norm(query).split())
+
+    if not name_tokens or not query_all_tokens:
         return False
 
-    name_normalized = norm(name)
-    name_tokens = set(name_normalized.split())
-
-    if not name_tokens:
+    if not _is_allowed_perfume_name(name):
         return False
 
-    for phrase in NON_PERFUME:
-        phrase_tokens = set(norm(phrase).split())
-
-        if phrase_tokens and phrase_tokens.issubset(name_tokens):
-            return False
-
-    query_tokens = [
+    query_tokens = {
         token
-        for token in norm(query).split()
+        for token in query_all_tokens
         if token not in IGNORED_WORDS
-    ]
+    }
 
     if not query_tokens:
-        query_tokens = norm(query).split()
+        query_tokens = query_all_tokens
 
-    return bool(query_tokens) and all(
-        token in name_tokens
-        for token in query_tokens
-    )
+    return bool(query_tokens) and query_tokens.issubset(name_tokens)
 
 
 def load_scraper(store: str):
@@ -973,7 +996,7 @@ def rank_catalog_suggestions(
         if tokens and not all(token in text for token in tokens):
             continue
 
-        if any(norm(phrase) in name_n for phrase in NON_PERFUME):
+        if not _is_allowed_perfume_name(name):
             continue
 
         key = (
@@ -1107,10 +1130,7 @@ def suggest(q: str):
                     if not all(word in haystack for word in words):
                         continue
 
-                    if any(
-                        norm(phrase) in normalized_name
-                        for phrase in NON_PERFUME
-                    ):
+                    if not _is_allowed_perfume_name(name):
                         continue
 
                     key = (norm(brand), normalized_name)
