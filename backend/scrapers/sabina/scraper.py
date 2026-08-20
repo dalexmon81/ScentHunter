@@ -367,76 +367,6 @@ def discover_product_urls(session, query):
     return urls[:MAX_CANDIDATES]
 
 
-
-def extract_current_price(soup):
-    """
-    Prefer the price explicitly marked as the current product price.
-    This avoids taking a crossed/regular price when a sale price is present.
-    No product-specific selectors or names are used.
-    """
-    selectors = (
-        'meta[itemprop="price"]',
-        '[itemprop="price"]',
-        '.current-price .price',
-        '.current-price-value',
-        '[data-price-current]',
-        '[data-current-price]',
-    )
-
-    for selector in selectors:
-        for node in soup.select(selector):
-            value = (
-                node.get("content")
-                or node.get("data-price")
-                or node.get_text(" ", strip=True)
-            )
-            price = money_to_float(value)
-            if price is not None:
-                return price
-
-    # Semantic price specifications are preferable to a generic page-wide
-    # number because they can distinguish the effective selling price.
-    for script in soup.select('script[type="application/ld+json"]'):
-        raw = script.string or script.get_text()
-        try:
-            data = json.loads(raw)
-        except (TypeError, ValueError, json.JSONDecodeError):
-            continue
-
-        for obj in walk_json(data):
-            if not isinstance(obj, dict):
-                continue
-            specs = obj.get("priceSpecification")
-            if isinstance(specs, dict):
-                specs = [specs]
-            if not isinstance(specs, list):
-                continue
-
-            candidates = []
-            for spec in specs:
-                if not isinstance(spec, dict):
-                    continue
-                value = money_to_float(spec.get("price"))
-                if value is None:
-                    continue
-                typ = norm(
-                    spec.get("priceType")
-                    or spec.get("name")
-                    or ""
-                )
-                priority = 0 if any(
-                    token in typ
-                    for token in ("sale", "discount", "current", "offer")
-                ) else 1
-                candidates.append((priority, value))
-
-            if candidates:
-                candidates.sort(key=lambda item: (item[0], item[1]))
-                return candidates[0][1]
-
-    return None
-
-
 def extract_product_page(session, url, query):
     try:
         response = session.get(
@@ -508,9 +438,9 @@ def extract_product_page(session, url, query):
     else:
         offer = {}
 
-    price = extract_current_price(soup)
-    if price is None:
-        price = money_to_float(offer.get("price"))
+    price = money_to_float(
+        offer.get("price")
+    )
 
     currency = clean(
         offer.get("priceCurrency")
