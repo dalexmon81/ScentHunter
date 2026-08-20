@@ -53,6 +53,7 @@ NON_PERFUME = {
     "deodorant", "deodorante", "deo spray", "deo roll on", "deodorant spray",
     "antiperspirant", "antitraspirante", "shower gel", "gel douche",
     "gel doccia", "body wash", "body lotion", "body cream", "body milk",
+    "cream", "lotion",
     "lait corps", "lotion corps", "creme corps", "cream body",
     "after shave", "aftershave", "apres rasage", "apres-rasage",
     "shampoo", "shampoing", "shampoing cheveux", "shampooing",
@@ -534,11 +535,10 @@ def _stock_from_product_html(
     if any(marker in button_text for marker in _STOCK_IN_MARKERS):
         return True
 
-    if any(marker in visible for marker in _STOCK_OOS_MARKERS):
-        return False
-    if any(marker in visible for marker in _STOCK_IN_MARKERS):
-        return True
-
+    # Non usiamo il testo dell'intera pagina per classificare lo stock:
+    # pagine e-commerce contengono spesso "non disponibile", "disponibile",
+    # ecc. riferiti a prodotti correlati, formati diversi, consegna o altri
+    # elementi. Questo genera falsi OUT OF STOCK.
     return None
 
 
@@ -573,9 +573,11 @@ def normalize_stock(
     explicit_oos = any(_stock_value_is_oos(item.get(field)) for field in fields)
     explicit_in = any(_stock_value_is_in(item.get(field)) for field in fields)
 
-    if item.get("available") is False:
-        explicit_oos = True
-
+    # `available=False` da solo NON è una prova di esaurimento.
+    # Alcuni scraper usano False anche quando il negozio non espone
+    # lo stock. L'OUT OF STOCK viene accettato solo da un campo di
+    # disponibilità esplicito oppure da una verifica strutturata della
+    # pagina prodotto.
     if explicit_oos:
         item["available"] = False
         item["availability"] = "out_of_stock"
@@ -710,8 +712,7 @@ def matches(product: Dict[str, Any], query: str) -> bool:
             continue
 
         # Query composta: la sequenza completa deve essere presente.
-        # Questo distingue, ad esempio, "Le Beau Le Parfum" da
-        # "Le Monde Est Beau".
+        # Questo evita falsi positivi creati da token separati.
         if " " in query_n:
             if query_n in text:
                 return True
