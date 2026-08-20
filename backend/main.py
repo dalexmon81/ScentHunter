@@ -63,7 +63,7 @@ FRONTEND_INDEX = (
     / "index.html"
 )
 
-CATALOG_FILENAME = "SCENTHUNTER CATALOGO CORRETTO.json"
+CATALOG_FILENAME = "product_catalog.json"
 
 VARIANT_MARKERS = {
     "pour femme", "pour homme", "femme", "homme",
@@ -676,7 +676,11 @@ def is_non_perfume(product: Dict[str, Any]) -> bool:
     )
 
 
-def matches(product: Dict[str, Any], query: str) -> bool:
+def matches(
+    product: Dict[str, Any],
+    query: str,
+    family_candidates: Optional[List[str]] = None,
+) -> bool:
     item = normalize_product(product, query)
     name = norm(item.get("name", ""))
     query_normalized = norm(query)
@@ -698,19 +702,31 @@ def matches(product: Dict[str, Any], query: str) -> bool:
     if not all(token in name for token in tokens):
         return False
 
-    # Una ricerca generica della famiglia deve restituire il prodotto base,
-    # non una variante specifica. Lo stesso controllo vale per una ricerca
-    # già specifica: in quel caso sono ammessi solo i marcatori dichiarati
-    # nella query.
     query_tokens = set(tokens)
     name_tokens = set(name.split())
+
+    # Se la ricerca è stata espansa dal catalogo master, un cofanetto/set non
+    # diventa una scheda autonoma della famiglia. Le offerte del profumo
+    # contenuto restano invece ricercabili normalmente.
+    if family_candidates and _is_set_product(item):
+        return False
 
     for marker in VARIANT_MARKERS:
         marker_tokens = set(norm(marker).split())
         if not marker_tokens:
             continue
         if marker_tokens.issubset(name_tokens) and not marker_tokens.issubset(query_tokens):
-            return False
+            # Una ricerca generica di famiglia può includere varianti che
+            # sono identità autonome nel catalogo master. Le autorizziamo
+            # solo se la loro denominazione canonica è stata realmente
+            # scoperta dal catalogo per questa famiglia.
+            allowed_variants = {
+                norm(candidate)
+                for candidate in (family_candidates or [])
+                if norm(candidate)
+            }
+            if name not in allowed_variants:
+                return False
 
     return True
 
@@ -836,7 +852,7 @@ def run_store(
             if key in seen:
                 continue
             seen.add(key)
-            if matches(product, raw_query):
+            if matches(product, raw_query, family_candidates):
                 output.append(product)
     return output
 
