@@ -80,6 +80,11 @@ VARIANT_MARKERS = {
 }
 VARIANTS = VARIANT_MARKERS
 
+GENDER_MARKERS = {
+    "pour femme", "pour homme", "femme", "homme",
+    "uomo", "donna", "men", "women", "man", "woman",
+}
+
 NON_PERFUME = {
     "gift set",
     "set regalo",
@@ -488,6 +493,65 @@ def canonical_product_brand(product: Dict[str, Any]) -> str:
     ).strip()
 
 
+def _catalog_metadata_for_product(
+    product: Dict[str, Any],
+    canonical_name: str = "",
+    brand: str = "",
+) -> Dict[str, Any]:
+    """Resolve verified catalog metadata generically from the product title."""
+    raw_name = str(
+        product.get("name")
+        or product.get("title")
+        or product.get("product_name")
+        or canonical_name
+        or ""
+    ).strip()
+    raw_tokens = set(norm(raw_name).split())
+    target_brand = norm(brand or product.get("brand") or "")
+    if not raw_tokens:
+        return {}
+
+    raw_size = product.get("size_ml") or product.get("size")
+    try:
+        raw_size_num = float(raw_size) if raw_size not in (None, "") else None
+    except (TypeError, ValueError):
+        raw_size_num = None
+
+    best = {}
+    best_score = -1
+    for item in CATALOG_PRODUCTS:
+        if not isinstance(item, dict):
+            continue
+        item_name = str(item.get("name") or "").strip()
+        item_brand = str(item.get("brand") or "").strip()
+        if not item_name:
+            continue
+        item_tokens = set(norm(item_name).split())
+        if not item_tokens.issubset(raw_tokens) and norm(canonical_name) != norm(item_name):
+            continue
+        if target_brand and item_brand and norm(item_brand) != target_brand:
+            continue
+        score = len(item_tokens) * 10
+        if target_brand and item_brand and norm(item_brand) == target_brand:
+            score += 100
+        sizes = item.get("formats_ml")
+        if isinstance(sizes, list) and raw_size_num is not None:
+            numeric_sizes = []
+            for value in sizes:
+                try:
+                    numeric_sizes.append(float(value))
+                except (TypeError, ValueError):
+                    pass
+            if raw_size_num in numeric_sizes:
+                score += 50
+            elif numeric_sizes:
+                score -= 20
+        if score > best_score:
+            best_score = score
+            best = item
+    return best
+
+
 def canonical_product_name(product: Dict[str, Any], family_query: str = "") -> str:
     raw_name = str(product.get("name") or product.get("title") or product.get("product_name") or "").strip()
     brand = canonical_product_brand(product)
@@ -514,7 +578,12 @@ def canonical_product_name(product: Dict[str, Any], family_query: str = "") -> s
 
     if brand:
         name = re.sub(rf"^\s*{re.escape(brand)}\s*[-–—:]?\s*", "", name, flags=re.I).strip()
-    name = _move_gender_after_family(name, family_query)
+
+    gender_pattern = r"\b(?:" + "|".join(
+        re.escape(marker) for marker in sorted(GENDER_MARKERS, key=len, reverse=True)
+    ) + r")\b"
+    name = re.sub(gender_pattern, " ", name, flags=re.I)
+    name = re.sub(r"\s+", " ", name).strip()
     words = name.split()
     collapsed = []
     for word in words:
@@ -531,6 +600,16 @@ def normalize_product(product: Dict[str, Any], family_query: str = "") -> Dict[s
     item["name"] = canonical_product_name(item, family_query)
     brand = str(item.get("brand") or "").strip()
     name = str(item.get("name") or "").strip()
+
+    metadata = _catalog_metadata_for_product(item, name, brand)
+    catalog_concentration = str(metadata.get("concentration") or "").strip()
+    if catalog_concentration:
+        item["concentration"] = catalog_concentration
+
+    catalog_sizes = metadata.get("formats_ml")
+    if not item.get("size_ml") and isinstance(catalog_sizes, list) and len(catalog_sizes) == 1:
+        item["size_ml"] = catalog_sizes[0]
+
     item["display_name"] = f"{brand} - {name}" if brand else name
     return item
 
@@ -556,99 +635,6 @@ def _contains_term(text: str, phrase: str) -> bool:
     return bool(re.search(r"(?<![a-z0-9])" + re.escape(phrase_n) + r"(?![a-z0-9])", text_n))
 
 
-def _set_primary_text(product: Dict[str, Any]) -> str:
-    """Raccoglie solo i campi che descrivono l'identità del set."""
-    fields = ("name", "title", "product_name")
-    return " ".join(
-        str(product.get(field) or "").strip()
-        for field in fields
-        if str(product.get(field) or "").strip()
-    )
-
-
-_SET_COMPONENT_SEPARATORS = re.compile(
-    r"\s*(?:\+|&|,|;|\|)\s*|\s+(?:and|avec|mit|und|con|et)\s+",
-    re.I,
-)
-
-_SET_GENERIC_COMPONENT_WORDS = {
-    "gift", "set", "regalo", "coffret", "bundle", "travel",
-    "discovery", "kit", "perfume", "parfum", "fragrance",
-    "eau", "de", "edp", "edt", "extrait", "spray",
-    "ml", "cl", "oz", "pack", "pcs", "piece", "pieces", "x",
-    "for", "men", "women", "man", "woman", "homme", "femme",
-    "uomo", "donna",
-}
-
-
-def _meaningful_set_component(text: str) -> List[str]:
-    """Restituisce i token che possono rappresentare un articolo distinto."""
-    text = norm(text)
-    if not text:
-        return []
-
-    tokens: List[str] = []
-    for token in text.split():
-        if token in _SET_GENERIC_COMPONENT_WORDS:
-            continue
-        if re.fullmatch(r"\d+(?:[.,]\d+)?", token):
-            continue
-        if re.fullmatch(r"\d+(?:[.,]\d+)?(?:ml|cl|oz)", token):
-            continue
-        tokens.append(token)
-    return tokens
-
-
-def _set_contains_other_product(product: Dict[str, Any], query: str) -> bool:
-    """
-    Un set è fuori identità quando il titolo mostra più articoli distinti
-    separati esplicitamente e la query identifica solo uno dei componenti.
-
-    Non conosce nomi di profumi o negozi: usa esclusivamente la struttura
-    generica del titolo del set.
-    """
-    primary = _set_primary_text(product)
-    query_tokens = [
-        token
-        for token in norm(query).split()
-        if token not in IGNORED_WORDS
-    ]
-
-    if not primary or not query_tokens:
-        return False
-
-    primary_normalized = norm(primary)
-    if not all(token in primary_normalized for token in query_tokens):
-        return False
-
-    parts = [
-        part.strip()
-        for part in _SET_COMPONENT_SEPARATORS.split(primary)
-        if part.strip()
-    ]
-
-    meaningful_parts = [
-        _meaningful_set_component(part)
-        for part in parts
-    ]
-    meaningful_parts = [tokens for tokens in meaningful_parts if tokens]
-
-    if len(meaningful_parts) < 2:
-        return False
-
-    def part_matches_query(tokens: List[str]) -> bool:
-        token_set = set(tokens)
-        return all(token in token_set for token in query_tokens)
-
-    matching_parts = [tokens for tokens in meaningful_parts if part_matches_query(tokens)]
-    if not matching_parts:
-        return False
-
-    # Se un'altra componente significativa non contiene la query, il set è
-    # un combo di più prodotti e non un'offerta dello stesso prodotto cercato.
-    return any(not part_matches_query(tokens) for tokens in meaningful_parts)
-
-
 def _is_set_product(product: Dict[str, Any]) -> bool:
     # Per riconoscere un set guardiamo il titolo/tipo del prodotto, non la
     # descrizione commerciale: una descrizione di un profumo può citare un set.
@@ -669,7 +655,11 @@ def _product_search_text(product: Dict[str, Any]) -> str:
     return norm(" ".join(str(product.get(field) or "") for field in fields))
 
 
-def is_non_perfume(product: Dict[str, Any], query: str = "") -> bool:
+def is_non_perfume(product: Dict[str, Any]) -> bool:
+    # A set is explicitly allowed: it can contain only fragrance products.
+    if _is_set_product(product):
+        return False
+
     text = _product_search_text(product)
     if not text:
         return True
@@ -678,43 +668,50 @@ def is_non_perfume(product: Dict[str, Any], query: str = "") -> bool:
     if any(_contains_term(text, phrase) for phrase in NON_RETAIL_PERFUME):
         return True
 
-    # Cosmetics, body/hair products and other non-fragrance merchandise are
-    # always rejected, including when they are packaged as a gift set.
-    if any(
+    # Cosmetics, body/hair products and other non-fragrance merchandise.
+    return any(
         _contains_term(text, phrase)
         for phrase in NON_PERFUME
         if norm(phrase)
-    ):
-        return True
-
-    # A perfume set is allowed, but a multi-product combo must not be attached
-    # to the identity of only one of its components.
-    if _is_set_product(product):
-        if _set_contains_other_product(product, query):
-            return True
-        return False
-
-    return False
+    )
 
 
 def matches(product: Dict[str, Any], query: str) -> bool:
     item = normalize_product(product, query)
     name = norm(item.get("name", ""))
     query_normalized = norm(query)
-    if not name or is_non_perfume(item, query):
+    if not name or is_non_perfume(item):
         return False
-    tokens = [token for token in query_normalized.split() if token not in IGNORED_WORDS]
+    gender_tokens = {
+        token
+        for marker in GENDER_MARKERS
+        for token in norm(marker).split()
+    }
+    tokens = [
+        token
+        for token in query_normalized.split()
+        if token not in IGNORED_WORDS and token not in gender_tokens
+    ]
     if not tokens:
         return False
     # La query deve comparire realmente nel nome.
     if not all(token in name for token in tokens):
         return False
 
-    # Le varianti sono identità distinte, non errori da eliminare.
-    # Una ricerca generica della famiglia può quindi restituire sia il
-    # prodotto base sia le sue varianti, mantenendole però con nomi separati.
-    # Una ricerca specifica continua a essere precisa perché i suoi token
-    # devono essere presenti nel nome normalizzato.
+    # Una ricerca generica della famiglia deve restituire il prodotto base,
+    # non una variante specifica. Lo stesso controllo vale per una ricerca
+    # già specifica: in quel caso sono ammessi solo i marcatori dichiarati
+    # nella query.
+    query_tokens = set(tokens)
+    name_tokens = set(name.split())
+
+    for marker in VARIANT_MARKERS:
+        marker_tokens = set(norm(marker).split())
+        if not marker_tokens:
+            continue
+        if marker_tokens.issubset(name_tokens) and not marker_tokens.issubset(query_tokens):
+            return False
+
     return True
 
 
