@@ -43,15 +43,15 @@ BASE_DIR = os.path.dirname(__file__)
 HISTORY_PATH = os.path.join(BASE_DIR, "price_history.json")
 FRONTEND_INDEX = Path(__file__).resolve().parent.parent / "frontend" / "index.html"
 
+VARIANTS = {
+    "pour femme", "night out", "rebel", "elixir", "intense",
+    "extreme", "limited edition", "collector edition", "collector's edition",
+}
 
 NON_PERFUME = {
     "gift set", "set regalo", "coffret", "bundle", "deodorant",
     "deo spray", "shower gel", "body lotion", "after shave",
     "aftershave", "travel set", "discovery set", "kit",
-    "mystery box", "gift box", "body cream", "body milk",
-    "hand cream", "hand lotion", "face cream", "face wash",
-    "shampoo", "conditioner", "soap", "savon", "sapone",
-    "gel douche", "gel doccia", "bath gel", "body wash",
 }
 
 IGNORED_WORDS = {
@@ -86,33 +86,6 @@ def product_image(product: Dict[str, Any]) -> str:
         or product.get("thumbnail")
         or ""
     )
-
-
-POLLUTED_NAME_MARKERS = (
-    "![image",
-    "[image",
-    "](http",
-    "](https",
-    "http://",
-    "https://",
-    "rch.asp?exps=",
-    "search.asp?exps=",
-)
-
-
-def _looks_like_polluted_product_name(value: Any) -> bool:
-    text = str(value or "").strip()
-    if not text:
-        return True
-    if len(text) > 220:
-        return True
-    low = text.lower()
-    if any(marker in low for marker in POLLUTED_NAME_MARKERS):
-        return True
-    # Markdown/image/URL fragments are never a clean commercial product name.
-    if re.search(r"!\[[^\]]*\]\([^)]*\)", text):
-        return True
-    return False
 
 
 def _extract_size_ml(text: Any) -> Optional[float]:
@@ -565,7 +538,8 @@ def matches(product: Dict[str, Any], query: str) -> bool:
     dalla semplice presenza di singoli token separati, senza introdurre
     regole dedicate a prodotti specifici.
 
-    Le varianti commerciali restano valide quando il nome contiene la query originale.
+    Le varianti valide (es. Limited Edition, Elixir, Rebel) restano valide
+    quando il nome contiene la query originale.
     """
     query_n = norm(query)
     if not query_n:
@@ -576,8 +550,6 @@ def matches(product: Dict[str, Any], query: str) -> bool:
         str(product.get("title") or ""),
         str(product.get("product_name") or ""),
     )
-    if any(_looks_like_polluted_product_name(value) for value in name_fields if str(value or "").strip()):
-        return False
     name_texts = [norm(value) for value in name_fields if norm(value)]
     brand_text = norm(product.get("brand") or "")
     if brand_text:
@@ -604,7 +576,8 @@ def matches(product: Dict[str, Any], query: str) -> bool:
             continue
 
         # Query composta: la sequenza completa deve essere presente.
-        # Questo evita falsi positivi tra nomi composti simili.
+        # Questo distingue, ad esempio, "Le Beau Le Parfum" da
+        # "Le Monde Est Beau".
         if " " in query_n:
             if query_n in text:
                 return True
@@ -739,21 +712,17 @@ def search_perfume(query: str) -> Dict[str, Any]:
         for store in STORES
     }
 
-    done, not_done = wait(future_to_store, timeout=35)
-
-    for future in done:
-        store = future_to_store[future]
+    # Attendiamo il completamento di ogni scraper. Il risultato di una ricerca
+    # non deve dipendere dalla velocità relativa dei negozi: un timeout globale
+    # trasformava infatti uno scraper semplicemente più lento in un negozio
+    # apparentemente assente e rendeva la stessa ricerca non deterministica.
+    for future, store in future_to_store.items():
         try:
             results.extend(future.result() or [])
         except Exception as exc:
             errors[store] = str(exc) or exc.__class__.__name__
 
-    for future in not_done:
-        store = future_to_store[future]
-        errors[store] = "timeout"
-        future.cancel()
-
-    executor.shutdown(wait=False, cancel_futures=True)
+    executor.shutdown(wait=True)
 
     results = sort_by_price(unique_results(results))
 
@@ -771,6 +740,136 @@ def search(q: str):
     return search_perfume(q)
 
 
+@app.get("/diagnose")
+def diagnose(store: str = "notino", q: str = ""):
+    """Diagnostic endpoint for a scraper that exposes diagnose(query)."""
+    store = str(store or "").strip().lower()
+    query = str(q or "").strip()
+
+    if store not in STORES:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Store non valido. Disponibili: {', '.join(STORES)}",
+        )
+    if not query:
+        raise HTTPException(status_code=400, detail="Parametro q mancante")
+
+    try:
+        module = load_scraper(store)
+        diagnose_fn = getattr(module, "diagnose", None)
+
+        if not callable(diagnose_fn):
+            raise HTTPException(
+                status_code=404,
+                detail=f"{store}: diagnostico non disponibile",
+            )
+
+        return diagnose_fn(query)
+    except HTTPException:
+        raise
+    except Exception as error:
+        traceback.print_exc()
+        return {
+            "status": "error",
+            "store": store,
+            "query": query,
+            "errors": [{
+                "stage": "diagnostic_endpoint",
+                "type": error.__class__.__name__,
+                "message": str(error),
+            }],
+        }
+
+
+@app.get("/test-store")
+def test_store(store: str, q: str):
+    """Endpoint diagnostico per testare un solo scraper."""
+    store = str(store or "").strip().lower()
+    query = str(q or "").strip()
+
+    if store not in STORES:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Store non valido. Disponibili: {', '.join(STORES)}",
+        )
+    if not query:
+        raise HTTPException(status_code=400, detail="Parametro q mancante")
+
+    try:
+        results = run_store(store, query)
+        return {
+            "store": store,
+            "query": query,
+            "count": len(results),
+            "results": results,
+        }
+    except Exception as error:
+        traceback.print_exc()
+        return {
+            "store": store,
+            "query": query,
+            "count": 0,
+            "results": [],
+            "error": f"{type(error).__name__}: {error}",
+        }
+
+
+def load_history() -> Dict[str, Any]:
+    try:
+        with open(HISTORY_PATH, "r", encoding="utf-8") as file:
+            data = json.load(file)
+        if isinstance(data, dict):
+            return data
+    except Exception:
+        pass
+    return {}
+
+
+def save_history(data: Dict[str, Any]) -> None:
+    try:
+        with open(HISTORY_PATH, "w", encoding="utf-8") as file:
+            json.dump(data, file, ensure_ascii=False, indent=2)
+    except OSError:
+        pass
+
+
+def update_price_history(
+    name: str,
+    brand: str,
+    best_offer: Optional[Dict[str, Any]],
+) -> List[Dict[str, Any]]:
+    history_data = load_history()
+    key = norm(f"{brand} {name}") or norm(name)
+    history = history_data.get(key, [])
+
+    if not isinstance(history, list):
+        history = []
+
+    if not best_offer:
+        return history
+
+    point = {
+        "date": datetime.now(timezone.utc).isoformat(),
+        "value": best_offer["price_value"],
+        "price": best_offer.get("price", ""),
+        "store": best_offer.get("store", ""),
+    }
+
+    last = history[-1] if history else None
+
+    changed = (
+        not last
+        or last.get("value") != point["value"]
+        or last.get("store") != point["store"]
+    )
+
+    if changed:
+        history.append(point)
+        history = history[-100:]
+        history_data[key] = history
+        save_history(history_data)
+
+    return history
 
 
 @app.get("/", include_in_schema=False)
