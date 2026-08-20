@@ -331,9 +331,6 @@ body{position:relative}
 
 <div class="sectionhead"><h3>OFFERTE DEL MOMENTO</h3><span class="see">Vedi tutte</span></div>
 <section class="deals">
-<div class="deal"><span class="discount">-23%</span><span class="heart" data-brand="Rasasi" data-name="Hawas Ice" data-price="€39,95" data-shop="ProfumoCity" data-pic="🧴">♡</span><div class="pic">🧴</div><div class="brand">Rasasi</div><div class="pname">Hawas Ice</div><div class="dprice">€39,95</div><div class="shop">ProfumoCity</div></div>
-<div class="deal"><span class="discount">-18%</span><span class="heart" data-brand="Azzaro" data-name="The Most Wanted" data-price="€59,90" data-shop="Deloox" data-pic="♟">♡</span><div class="pic">♟</div><div class="brand">Azzaro</div><div class="pname">The Most Wanted</div><div class="dprice">€59,90</div><div class="shop">Deloox</div></div>
-<div class="deal"><span class="discount">-21%</span><span class="heart" data-brand="Jean Paul Gaultier" data-name="Le Male Le Parfum" data-price="€67,45" data-shop="ParfumDreams" data-pic="🏺">♡</span><div class="pic">🏺</div><div class="brand">Jean Paul Gaultier</div><div class="pname">Le Male Le Parfum</div><div class="dprice">€67,45</div><div class="shop">ParfumDreams</div></div>
 </section>
 
 <section class="cats"><h3>CATEGORIE</h3><div class="catrow"><div class="cat"><b>♙</b>Profumi</div><div class="cat"><b>☆</b>Bestseller</div><div class="cat"><b>♧</b>Novità</div><div class="cat"><b>%</b>Offerte</div><div class="cat"><b>◇</b>Esclusivi</div></div></section>
@@ -376,7 +373,13 @@ function normalizePerfumeName(v){
     .replace(/\s+/g," ").trim();
 }
 function displayPerfumeName(name,brand){
-  return String(name||"").replace(/\s+/g," ").trim();
+  let n=String(name||"").replace(/\s+/g," ").trim();
+  const concentration=concentrationHint({name:n})||"";
+  if(concentration){
+    n=removeTrailingConcentration(n,concentration);
+    n=(n+" "+concentration).trim();
+  }
+  return n;
 }
 function perfumeKey(x){
   return normalizePerfumeName(x.name||"");
@@ -1071,10 +1074,14 @@ function shGroupData(data){
   }
   function concentrationLabel(value){
     const n=norm(value);
-    if(n==="extrait de parfum")return "Extrait de Parfum";
-    if(n==="eau de parfum")return "Eau de Parfum";
-    if(n==="eau de toilette")return "Eau de Toilette";
-    if(n==="eau de cologne")return "Eau de Cologne";
+    if(/(?:^|\\s)extrait(?:\\s+de\\s+parfum)?(?:\\s+extrait(?:\\s+de\\s+parfum)?)*$/.test(n))
+      return "Extrait de Parfum";
+    if(/(?:^|\\s)eau\\s+de\\s+parfum(?:\\s+eau\\s+de\\s+parfum)*$/.test(n))
+      return "Eau de Parfum";
+    if(/(?:^|\\s)eau\\s+de\\s+toilette(?:\\s+eau\\s+de\\s+toilette)*$/.test(n))
+      return "Eau de Toilette";
+    if(/(?:^|\\s)eau\\s+de\\s+cologne(?:\\s+eau\\s+de\\s+cologne)*$/.test(n))
+      return "Eau de Cologne";
     return cleanBrandText(value);
   }
 
@@ -1359,12 +1366,13 @@ function shGroupData(data){
     )?[...knownSizes][0]:"";
     const size=explicitSize||inferredSize;
 
-    const concentration=o.concentration||id.concentration||"";
-    const baseDisplayName=concentration
-      ? removeTrailingConcentration(id.name, concentration)
+    const concentration=concentrationHint(o)||id.concentration||"";
+    const normalizedConcentration=concentrationLabel(concentration);
+    const baseDisplayName=normalizedConcentration
+      ? removeTrailingConcentration(id.name, normalizedConcentration)
       : id.name;
-    const displayName=concentration
-      ? (baseDisplayName+" "+concentrationLabel(concentration)).trim()
+    const displayName=normalizedConcentration
+      ? (removeTrailingConcentration(baseDisplayName, normalizedConcentration)+" "+normalizedConcentration).trim()
       : baseDisplayName;
 
     if(!map.has(id.key)){
@@ -1374,7 +1382,7 @@ function shGroupData(data){
         canonical:norm(displayName),
         display_name:id.brand?id.brand+" - "+displayName:displayName,
         size_ml:"",
-        concentration:concentrationLabel(concentration),
+        concentration:normalizedConcentration,
         image:o.image||o.image_url||o.thumbnail||"",
         offers:[]
       });
@@ -1391,7 +1399,7 @@ function shGroupData(data){
     normalizedOffer._source_store=o._source_store||o.store||"";
     if(id.brand)normalizedOffer.brand=id.brand;
     if(id.name)normalizedOffer.name=id.name;
-    if(id.concentration)normalizedOffer.concentration=concentrationLabel(id.concentration);
+    if(normalizedConcentration)normalizedOffer.concentration=normalizedConcentration;
     if(size)normalizedOffer.size_ml=size;
 
     const store=String(o.store||"").trim().toLowerCase();
@@ -1452,15 +1460,17 @@ function shGroupData(data){
     if(g.concentration){
       const concentration=concentrationLabel(g.concentration);
       let baseName=String(g.name||"Profumo").trim();
-      const baseNorm=norm(baseName);
+
+      // Il nome commerciale può contenere la concentrazione una o più volte.
+      // La rimuoviamo completamente dalla coda e la riaggiungiamo una sola volta.
+      baseName=removeTrailingConcentration(baseName,concentration);
+
+      // Protezione aggiuntiva contro varianti duplicate con maiuscole/spazi diversi.
       const concentrationNorm=norm(concentration);
-      if(baseNorm===concentrationNorm){
-        baseName="";
-      }else if(baseNorm.endsWith(" "+concentrationNorm)){
-        const words=baseName.split(/\s+/);
-        const concentrationWords=concentration.split(/\s+/).length;
-        baseName=words.slice(0,-concentrationWords).join(" ").trim();
+      while(baseName && norm(baseName).endsWith(" "+concentrationNorm)){
+        baseName=removeTrailingConcentration(baseName,concentration);
       }
+
       g.name=(pretty(baseName)+" "+concentration).trim();
       g.concentration=concentration;
     }else{
@@ -1568,6 +1578,7 @@ function getSizeGroups(g){
    * un falso secondo formato "vuoto".
    *
    * Esempio reale:
+   *   Orioudh -> 1 negozio OUT OF STOCK, formato non dichiarato
    *
    * In presenza di un solo formato numerico noto, le offerte senza formato
    * vengono quindi accorpate a quel formato. In questo modo restano nella
