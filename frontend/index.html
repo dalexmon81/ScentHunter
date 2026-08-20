@@ -705,7 +705,7 @@ function shGroupData(data){
         brand:o.brand||g.brand||"",
         name:o.name||g.name||"Profumo",
         size_ml:o.size_ml||o.size||g.size_ml||"",
-        concentration:o.concentration||g.concentration||"",
+        concentration:concentrationHint(o)||o.concentration||g.concentration||"",
         image:o.image||o.image_url||o.thumbnail||g.image||"",
         _source_name:o.name||g.name||"",
         _source_brand:o.brand||g.brand||"",
@@ -1009,7 +1009,7 @@ function shGroupData(data){
       .replace(/^(?:women'?s|men'?s|women|men)\s+perfume\s*[-–—:]\s*/i,"")
       .replace(/^(?:eau de parfum|eau de toilette|eau de cologne|extrait de parfum|extract de parfum|extrait|edp|edt|edc|spray)\s*[-–—:]\s*/i,"")
       .replace(/\b(?:women'?s|men'?s|women|men)\s+perfume\b/gi," ")
-      .replace(/\b(?:eau de parfum|eau de toilette|eau de cologne|extract de parfum|extrait|eau de parfum intense|edp|edt|edc|spray)\b/gi," ")
+      .replace(/\b(?:eau de parfum|eau de toilette|eau de cologne|extract de parfum|extrait de parfum|extrait|de parfum|eau de parfum intense|edp|edt|edc|spray)\b/gi," ")
       .replace(/\b(?:for men|for women|for him|for her|pour homme|homme|femme|men|man|women|woman|unisex)\b/gi," ")
       .replace(/\s+/g," ")
       .trim();
@@ -1060,11 +1060,19 @@ function shGroupData(data){
 
   function concentrationHint(o){
     const raw=String(o&&((o.name||"")+" "+(o.concentration||""))||"").toLowerCase();
-    if(/\\beau\\s+de\\s+toilette\\b|\\bedt\\b/.test(raw))return "Eau de Toilette";
-    if(/\\beau\\s+de\\s+parfum\\b|\\bedp\\b/.test(raw))return "Eau de Parfum";
-    if(/\\bextrait(?:\\s+de\\s+parfum)?\\b/.test(raw))return "Extrait de Parfum";
-    if(/\\beau\\s+de\\s+cologne\\b|\\bedc\\b/.test(raw))return "Eau de Cologne";
+    if(/\beau\s+de\s+toilette\b|\bedt\b/.test(raw))return "Eau de Toilette";
+    if(/\bextrait(?:\s+de\s+parfum)?\b/.test(raw))return "Extrait de Parfum";
+    if(/\beau\s+de\s+parfum\b|\bedp\b/.test(raw))return "Eau de Parfum";
+    if(/\beau\s+de\s+cologne\b|\bedc\b/.test(raw))return "Eau de Cologne";
     return "";
+  }
+  function concentrationLabel(value){
+    const n=norm(value);
+    if(n==="extrait de parfum")return "Extrait de Parfum";
+    if(n==="eau de parfum")return "Eau de Parfum";
+    if(n==="eau de toilette")return "Eau de Toilette";
+    if(n==="eau de cologne")return "Eau de Cologne";
+    return cleanBrandText(value);
   }
 
   function isGenericNameModifier(value){
@@ -1249,6 +1257,51 @@ function shGroupData(data){
   resolveIdentitySet(raw,identities);
 
   /*
+   * CONCENTRAZIONE:
+   * la concentrazione fa parte dell'identità della variante, ma non deve
+   * essere persa quando un negozio la scrive nel titolo e un altro non la
+   * espone. Se per la stessa identità base esiste una sola concentrazione
+   * esplicita, la ereditiamo dalle altre offerte della stessa identità.
+   * Se esistono concentrazioni diverse, restano varianti separate.
+   */
+  const concentrationByBase=new Map();
+  raw.forEach((o,i)=>{
+    const id=identities[i];
+    if(!id.key)return;
+    const hint=concentrationHint(o)||String(o.concentration||"").trim();
+    if(!hint)return;
+    if(!concentrationByBase.has(id.key))concentrationByBase.set(id.key,new Set());
+    concentrationByBase.get(id.key).add(hint);
+  });
+
+  raw.forEach((o,i)=>{
+    const id=identities[i];
+    const explicit=concentrationHint(o)||String(o.concentration||"").trim();
+    const known=concentrationByBase.get(id.key);
+    const inherited=(known&&known.size===1)?[...known][0]:"";
+    const concentration=explicit||inherited;
+    if(concentration){
+      o.concentration=concentration;
+      id.concentration=concentration;
+    }else{
+      id.concentration="";
+    }
+  });
+
+  /*
+   * La concentrazione non viene più persa durante la pulizia del titolo.
+   * Il nome base resta pulito; la concentrazione viene poi aggiunta in modo
+   * canonico al nome visualizzato e alla chiave della variante.
+   */
+  raw.forEach((o,i)=>{
+    const id=identities[i];
+    if(id.concentration){
+      id.name=cleanProductName(o,id.brand);
+      id.key=(norm(id.brand)+"|"+norm(id.name)+"|"+norm(id.concentration)).replace(/\|+$/g,"");
+    }
+  });
+
+  /*
    * FORMATI:
    * se almeno un negozio comunica una misura, un'offerta dello stesso
    * prodotto che non comunica gli ml eredita quella misura quando esiste
@@ -1280,14 +1333,19 @@ function shGroupData(data){
     )?[...knownSizes][0]:"";
     const size=explicitSize||inferredSize;
 
+    const concentration=o.concentration||id.concentration||"";
+    const displayName=concentration
+      ? id.name+" "+concentrationLabel(concentration)
+      : id.name;
+
     if(!map.has(id.key)){
       map.set(id.key,{
         brand:id.brand||"",
-        name:id.name,
-        canonical:norm(id.name),
-        display_name:id.brand?id.brand+" - "+id.name:id.name,
+        name:displayName,
+        canonical:norm(displayName),
+        display_name:id.brand?id.brand+" - "+displayName:displayName,
         size_ml:"",
-        concentration:o.concentration||"",
+        concentration:concentrationLabel(concentration),
         image:o.image||o.image_url||o.thumbnail||"",
         offers:[]
       });
@@ -1304,6 +1362,7 @@ function shGroupData(data){
     normalizedOffer._source_store=o._source_store||o.store||"";
     if(id.brand)normalizedOffer.brand=id.brand;
     if(id.name)normalizedOffer.name=id.name;
+    if(id.concentration)normalizedOffer.concentration=concentrationLabel(id.concentration);
     if(size)normalizedOffer.size_ml=size;
 
     const store=String(o.store||"").trim().toLowerCase();
@@ -1360,7 +1419,24 @@ function shGroupData(data){
     });
 
     g.brand=pretty(g.brand||"");
-    g.name=pretty(g.name||"Profumo");
+
+    if(g.concentration){
+      const concentration=concentrationLabel(g.concentration);
+      let baseName=String(g.name||"Profumo").trim();
+      const baseNorm=norm(baseName);
+      const concentrationNorm=norm(concentration);
+      if(baseNorm===concentrationNorm){
+        baseName="";
+      }else if(baseNorm.endsWith(" "+concentrationNorm)){
+        const words=baseName.split(/\s+/);
+        const concentrationWords=concentration.split(/\s+/).length;
+        baseName=words.slice(0,-concentrationWords).join(" ").trim();
+      }
+      g.name=(pretty(baseName)+" "+concentration).trim();
+      g.concentration=concentration;
+    }else{
+      g.name=pretty(g.name||"Profumo");
+    }
 
     g.display_name=g.brand?g.brand+" - "+g.name:g.name;
   });
