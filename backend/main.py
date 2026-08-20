@@ -49,9 +49,62 @@ VARIANTS = {
 }
 
 NON_PERFUME = {
-    "gift set", "set regalo", "coffret", "bundle", "deodorant",
-    "deo spray", "shower gel", "body lotion", "after shave",
-    "aftershave", "travel set", "discovery set", "kit",
+    # Body / hygiene
+    "deodorant", "deodorante", "deo spray", "deo roll on", "deodorant spray",
+    "antiperspirant", "antitraspirante", "shower gel", "gel douche",
+    "gel doccia", "body wash", "body lotion", "body cream", "body milk",
+    "lait corps", "lotion corps", "creme corps", "cream body",
+    "after shave", "aftershave", "apres rasage", "apres-rasage",
+    "shampoo", "shampoing", "shampoing cheveux", "shampooing",
+    "conditioner", "apres shampooing", "hair mask", "masque cheveux",
+    "hair care", "hair oil", "huile cheveux", "hair spray", "spray cheveux",
+    "body mist", "brume corps", "brume parfumee", "fragrance mist",
+    "hair mist", "brume cheveux", "soap", "savon", "bath", "bain",
+    "bath foam", "mousse de bain", "bath oil", "huile de bain",
+    "scrub", "gommage", "body scrub", "gel nettoyant",
+
+    # Skin care
+    "face cream", "facial cream", "creme visage", "cream visage",
+    "face serum", "serum visage", "serum", "face oil", "huile visage",
+    "moisturizer", "hydratant", "hydrating cream", "anti aging",
+    "anti-age", "eye cream", "contour des yeux", "eye contour",
+    "mask", "masque visage", "peeling", "toner", "tonique",
+    "cleanser", "nettoyant visage", "micellar", "eau micellaire",
+    "sunscreen", "sun cream", "spf", "solaire", "self tan",
+    "autobronzant", "hand cream", "creme mains", "foot cream",
+    "lip balm", "baume levres", "lip care",
+
+    # Makeup
+    "makeup", "maquillage", "bronzer", "bronzer liquide", "foundation",
+    "fond de teint", "concealer", "correcteur", "blush", "rouge a levres",
+    "lipstick", "lip gloss", "gloss", "mascara", "eyeliner", "eye liner",
+    "eyeshadow", "fard a paupieres", "highlighter", "illuminateur",
+    "contour", "palette", "nail polish", "vernis a ongles", "vernis",
+    "primer", "poudre", "powder", "brow", "sourcils", "make up",
+
+    # Household / other non-fragrance products
+    "candle", "bougie", "room spray", "spray maison", "home fragrance",
+    "parfum d'ambiance", "parfum ambiance", "diffuser", "diffuseur",
+    "reed diffuser", "detergent", "lessive", "toothpaste", "dentifrice",
+    "toothbrush", "brosse a dents", "deodorizing", "desodorisant",
+    "laundry", "nettoyant", "cleaner", "cleaning",
+
+    # Boxes / products that are not themselves perfume
+    "mystery box", "mystery boxe", "surprise box",
+}
+
+PERFUME_SIGNALS = {
+    "parfum", "perfume", "eau de parfum", "eau de toilette",
+    "eau de cologne", "extrait de parfum", "parfum extrait",
+    "parfum intense", "edp", "edt", "edc", "fragrance",
+    "concentration de la composante parfumee",
+}
+
+SET_MARKERS = {
+    "gift set", "set regalo", "coffret", "bundle", "travel set",
+    "discovery set", "perfume set", "set parfums", "set de parfums",
+    "coffret parfum", "coffret parfums", "coffret de parfum",
+    "coffret de parfums", "fragrance set", "parfum set",
 }
 
 IGNORED_WORDS = {
@@ -67,6 +120,81 @@ def norm(value: Any) -> str:
     value = re.sub(r"(?<=\d)(?=[a-z])|(?<=[a-z])(?=\d)", " ", value)
     value = re.sub(r"[^a-z0-9]+", " ", value)
     return re.sub(r"\s+", " ", value).strip()
+
+
+def _product_text_fields(product: Dict[str, Any]) -> Dict[str, str]:
+    """Raccoglie genericamente nome, tipo e categoria senza dipendere dal negozio."""
+    primary_keys = (
+        "name", "title", "product_name", "display_name",
+    )
+    metadata_keys = (
+        "category", "categories", "subcategory", "sub_category",
+        "department", "departments", "product_type", "type",
+        "format", "concentration", "breadcrumb", "breadcrumbs",
+        "family", "description",
+    )
+
+    def flatten(value: Any) -> str:
+        if isinstance(value, (list, tuple, set)):
+            return " ".join(flatten(v) for v in value)
+        if isinstance(value, dict):
+            return " ".join(flatten(v) for v in value.values())
+        return str(value or "")
+
+    primary = " ".join(flatten(product.get(k)) for k in primary_keys)
+    metadata = " ".join(flatten(product.get(k)) for k in metadata_keys)
+    return {
+        "primary": norm(primary),
+        "metadata": norm(metadata),
+    }
+
+
+def _contains_phrase(text: str, phrase: str) -> bool:
+    phrase_n = norm(phrase)
+    if not phrase_n:
+        return False
+    return phrase_n in text
+
+
+def is_perfume_product(product: Dict[str, Any], query: str = "") -> bool:
+    """
+    Ammette esclusivamente profumi e set/coffret di profumi.
+
+    La classificazione è basata sui dati del prodotto e sui suoi metadati:
+    non contiene regole legate a singoli profumi, marchi o negozi.
+    """
+    fields = _product_text_fields(product)
+    primary = fields["primary"]
+    metadata = fields["metadata"]
+
+    if not primary:
+        return False
+
+    # Qualsiasi indicazione esplicita di prodotto non cosmetico/profumiero
+    # nel nome principale è sufficiente per scartarlo.
+    if any(_contains_phrase(primary, phrase) for phrase in NON_PERFUME):
+        return False
+
+    # Un set è ammesso soltanto quando è chiaramente un set di profumi.
+    is_set = any(_contains_phrase(primary, marker) for marker in SET_MARKERS)
+    if is_set:
+        combined = f"{primary} {metadata}"
+        return any(_contains_phrase(combined, signal) for signal in PERFUME_SIGNALS)
+
+    # Se il prodotto dichiara esplicitamente un tipo/categoria non profumiero
+    # nei metadati, non deve entrare nei risultati.
+    metadata_non_perfume = any(
+        _contains_phrase(metadata, phrase) for phrase in NON_PERFUME
+    )
+    if metadata_non_perfume:
+        return False
+
+    # Un prodotto normale deve avere almeno un segnale esplicito di profumo
+    # nel nome o nei metadati. Questo evita falsi positivi come makeup,
+    # deodoranti, shampoo, gel doccia e prodotti corpo che condividono
+    # semplicemente le parole della query.
+    combined = f"{primary} {metadata}"
+    return any(_contains_phrase(combined, signal) for signal in PERFUME_SIGNALS)
 
 
 def price_num(value: Any) -> Optional[float]:
@@ -545,6 +673,9 @@ def matches(product: Dict[str, Any], query: str) -> bool:
     if not query_n:
         return False
 
+    if not is_perfume_product(product, query):
+        return False
+
     name_fields = (
         str(product.get("name") or ""),
         str(product.get("title") or ""),
@@ -712,17 +843,26 @@ def search_perfume(query: str) -> Dict[str, Any]:
         for store in STORES
     }
 
-    # Attendiamo il completamento di ogni scraper. Il risultato di una ricerca
-    # non deve dipendere dalla velocità relativa dei negozi: un timeout globale
-    # trasformava infatti uno scraper semplicemente più lento in un negozio
-    # apparentemente assente e rendeva la stessa ricerca non deterministica.
-    for future, store in future_to_store.items():
+    done, not_done = wait(future_to_store)
+
+    for future in done:
+        store = future_to_store[future]
         try:
             results.extend(future.result() or [])
         except Exception as exc:
             errors[store] = str(exc) or exc.__class__.__name__
 
-    executor.shutdown(wait=True)
+    # wait() senza timeout rende la risposta deterministica: uno scraper
+    # lento non fa sparire i risultati semplicemente perché ha superato
+    # una finestra temporale globale.
+    for future in not_done:
+        store = future_to_store[future]
+        try:
+            results.extend(future.result() or [])
+        except Exception as exc:
+            errors[store] = str(exc) or exc.__class__.__name__
+
+    executor.shutdown(wait=True, cancel_futures=False)
 
     results = sort_by_price(unique_results(results))
 
