@@ -288,11 +288,8 @@ def extract_json_ld(soup):
 
 
 def visible_product_name(soup, json_ld=None):
-    if isinstance(json_ld, dict):
-        name = clean(json_ld.get("name"))
-        if name:
-            return name
-
+    # The visible product identity is authoritative. JSON-LD can contain
+    # shortened or inconsistent names, so it is used only as a final fallback.
     for selector in (
         "h1",
         'meta[property="og:title"]',
@@ -311,6 +308,11 @@ def visible_product_name(soup, json_ld=None):
 
             if value:
                 return value
+
+    if isinstance(json_ld, dict):
+        name = clean(json_ld.get("name"))
+        if name:
+            return name
 
     if soup.title:
         return clean(soup.title.get_text(" ", strip=True))
