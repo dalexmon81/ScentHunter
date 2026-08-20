@@ -150,7 +150,18 @@ def _extract_variants_from_html(text):
         if preferred:
             return preferred[0]
         if fallback:
-            return fallback[0]
+            # Quando Sabina non etichetta il prezzo promozionale nel testo
+            # estratto, la card può contenere prima il prezzo barrato e poi
+            # quello attuale. Dopo aver escluso i prezzi unitari, il prezzo
+            # effettivamente pagabile è il più basso del blocco.
+            values = []
+            for value in fallback:
+                try:
+                    values.append((float(str(value).replace(",", ".")), value))
+                except ValueError:
+                    continue
+            if values:
+                return min(values, key=lambda item: item[0])[1]
         return None
 
     def walk(obj):
