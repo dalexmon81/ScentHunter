@@ -440,6 +440,101 @@ def _get(session, url, **kwargs):
     r.raise_for_status()
     return r
 
+def _sitemap_product_urls(session, query):
+    """Generic fallback discovery using Sabina's public sitemap.
+
+    This is used only when Sabina's search endpoints do not return candidates.
+    It contains no product-, brand- or query-specific seed.
+    """
+    query_tokens = [
+        token for token in re.findall(r"[a-z0-9]+", _clean(query).lower())
+        if len(token) > 1 and token != "ml"
+    ]
+    if not query_tokens:
+        return []
+
+    sitemap_url = BASE + "/sitemap.xml"
+
+    try:
+        response = _get(session, sitemap_url)
+        if response is None:
+            return []
+        xml = response.text
+        response.close()
+    except Exception:
+        return []
+
+    def extract_locs(xml_text):
+        try:
+            soup = BeautifulSoup(xml_text, "xml")
+            return [
+                _clean(node.get_text())
+                for node in soup.find_all("loc")
+                if _clean(node.get_text())
+            ]
+        except Exception:
+            return re.findall(
+                r"<loc>\s*(.*?)\s*</loc>",
+                xml_text or "",
+                flags=re.I | re.S,
+            )
+
+    urls = extract_locs(xml)
+    child_maps = [
+        url for url in urls
+        if url.lower().endswith(".xml")
+        and "sitemap" in url.lower()
+    ]
+
+    product_urls = [
+        url for url in urls
+        if _looks_like_product_url(url)
+    ]
+
+    if child_maps:
+        def fetch_map(url):
+            try:
+                r = _get(session, url)
+                if r is None:
+                    return []
+                body = r.text
+                r.close()
+                return extract_locs(body)
+            except Exception:
+                return []
+
+        with ThreadPoolExecutor(max_workers=min(8, max(1, len(child_maps)))) as executor:
+            futures = [executor.submit(fetch_map, url) for url in child_maps]
+            for future in as_completed(futures):
+                try:
+                    product_urls.extend(future.result() or [])
+                except Exception:
+                    continue
+
+    seen = set()
+    candidates = []
+
+    for raw_url in product_urls:
+        url = _clean(raw_url)
+        if not _looks_like_product_url(url):
+            continue
+
+        normalized = url.split("#")[0].rstrip("/")
+        if normalized in seen:
+            continue
+
+        path_text = _clean(
+            re.sub(r"[-_/]+", " ", normalized.lower())
+        )
+        if not all(token in path_text.split() for token in query_tokens):
+            continue
+
+        seen.add(normalized)
+        candidates.append(normalized)
+
+    return candidates[:30]
+
+
 def search(query):
     """
     Ricerca Sabina.
@@ -579,6 +674,24 @@ def search(query):
 
                 except Exception:
                     continue
+
+        # Ultimo fallback generico: sitemap pubblico del negozio.
+        # Non usa URL, nomi o seed dedicati a un prodotto.
+        sitemap_candidates = _sitemap_product_urls(s, query)
+        for product_url in sitemap_candidates:
+            try:
+                item = _extract_product_page(s, product_url, query)
+                if item:
+                    results.append(item)
+            except Exception:
+                continue
+
+        if results:
+            return _enrich_product_sizes(
+                s,
+                _dedupe(results, query),
+                query,
+            )
 
         return []
 
