@@ -211,12 +211,45 @@ def _make_candidate(url: str, anchor: str, card: str, query: str, source: str) -
     anchor = _clean(anchor)
     card = _clean(card)
     name = _clean_name(anchor)
-    if not name or _has_non_perfume_marker(name):
+    if name and _has_non_perfume_marker(name):
         return None
+
     query_tokens = _tokens(query)
-    name_tokens = set(_product_norm(name).split())
-    if not query_tokens or not all(token in name_tokens for token in query_tokens):
+    if not query_tokens:
         return None
+
+    name_tokens = set(_product_norm(name).split()) if name else set()
+
+    # Normalmente il titolo/link basta. Se però Notino restituisce una
+    # card senza il titolo utile, il percorso prodotto può ancora identificare
+    # un candidato. Il nome reale viene poi obbligatoriamente verificato
+    # nella pagina prodotto da _product_details().
+    if not all(token in name_tokens for token in query_tokens):
+        url_tokens = set(
+            _product_norm(urlparse(url).path).split()
+        )
+        if not all(token in url_tokens for token in query_tokens):
+            return None
+        if not name:
+            name = _clean_name(
+                re.sub(
+                    r"[-_/]+",
+                    " ",
+                    urlparse(url).path,
+                )
+            )
+
+    name_tokens = set(_product_norm(name).split())
+    if not all(token in name_tokens for token in query_tokens):
+        # Discovery fallback: conserviamo il candidato se il URL contiene
+        # tutti i termini. _product_details() controllerà il titolo reale.
+        if not all(
+            token in set(_product_norm(urlparse(url).path).split())
+            for token in query_tokens
+        ):
+            return None
+
+    hits = {token: token in name_tokens for token in query_tokens}
     hits = {token: token in name_tokens for token in query_tokens}
     score = sum(hits.values()) * 5
     if all(hits.values()):
@@ -243,7 +276,18 @@ def extract_candidates_from_html(html: str, query: str) -> List[Dict[str, Any]]:
         if not _looks_like_product_url(url):
             continue
         card = _card_text(link)
-        anchor = _candidate_anchor(link, BeautifulSoup(str(link.parent), "html.parser") if link.parent else link)
+
+        container = link
+        for _ in range(10):
+            parent = getattr(container, "parent", None)
+            if parent is None:
+                break
+            container = parent
+            text = _clean(container.get_text(" ", strip=True))
+            if 40 <= len(text) <= 1400 and _extract_price(text):
+                break
+
+        anchor = _candidate_anchor(link, container)
         candidate = _make_candidate(url, anchor, card, query, "direct-search")
         if candidate and (url not in found or candidate["score"] > found[url]["score"]):
             found[url] = candidate
@@ -316,7 +360,17 @@ def _google_discovery(query: str, session: requests.Session) -> List[Dict[str, A
         if not match:
             continue
         url = match.group(0).split("?")[0].rstrip("/.,")
-        anchor = _clean(link.get_text(" ", strip=True))
+        container = link
+        for _ in range(10):
+            parent = getattr(container, "parent", None)
+            if parent is None:
+                break
+            container = parent
+            text = _clean(container.get_text(" ", strip=True))
+            if 40 <= len(text) <= 1400 and _extract_price(text):
+                break
+
+        anchor = _candidate_anchor(link, container)
         card = _card_text(link)
         candidate = _make_candidate(url, anchor, card, query, "google-site-discovery")
         if candidate:
