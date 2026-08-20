@@ -14,6 +14,15 @@ HEADERS = {
 }
 TIMEOUT = 20
 
+NON_PERFUME_MARKERS = {
+    "gift set", "set regalo", "discovery set", "fragrance set", "perfume set",
+    "parfum set", "coffret", "bundle", "pack", "travel set", "kit", "duo",
+    "trio", "mystery box", "tester", "testeur", "sample", "shampoo",
+    "shower gel", "body lotion", "body cream", "deodorant", "deo spray",
+    "aftershave", "after shave", "makeup", "skin care", "skincare", "cosmetics",
+    "cosmetici", "set",
+}
+
 
 def norm(value):
     value = unicodedata.normalize("NFKD", str(value or ""))
@@ -24,26 +33,35 @@ def norm(value):
     return re.sub(r"\s+", " ", value).strip()
 
 
+def contains_non_perfume_marker(name):
+    text = norm(name)
+    tokens = set(text.split())
+    for marker in NON_PERFUME_MARKERS:
+        marker_tokens = set(norm(marker).split())
+        if marker_tokens and marker_tokens.issubset(tokens):
+            return True
+    return False
+
+
 def query_matches(name, query):
-    ignored = {"eau","de","parfum","perfume","edp","edt","extrait","spray","ml","for","by"}
-    q = [t for t in norm(query).split() if t not in ignored]
-    n = norm(name)
-    return bool(q) and all(t in n for t in q)
+    if contains_non_perfume_marker(name):
+        return False
+    ignored = {"eau", "de", "parfum", "perfume", "edp", "edt", "extrait", "spray", "ml", "for", "by"}
+    query_tokens = [token for token in norm(query).split() if token not in ignored]
+    name_tokens = set(norm(name).split())
+    return bool(query_tokens) and all(token in name_tokens for token in query_tokens)
 
 
 def money(value):
     if value in (None, ""):
         return ""
     try:
-        # Shopify JSON endpoints return price as decimal strings.
         return f"{float(str(value).replace(',', '.')):.2f}".replace(".", ",") + " €"
     except (ValueError, TypeError):
         return ""
 
 
 def predictive_products(session, query):
-    """Get canonical Shopify products. This endpoint already returns title,
-    URL, price and availability data, avoiding fragile HTML price scraping."""
     endpoint = BASE + "/search/suggest.json"
     params = {
         "q": query,
@@ -52,25 +70,22 @@ def predictive_products(session, query):
         "resources[options][unavailable_products]": "show",
     }
     try:
-        r = session.get(endpoint, params=params, headers=HEADERS, timeout=TIMEOUT)
-        if not r.ok:
+        response = session.get(endpoint, params=params, headers=HEADERS, timeout=TIMEOUT)
+        if not response.ok:
             return []
-        data = r.json()
+        data = response.json()
         return (((data or {}).get("resources") or {}).get("results") or {}).get("products") or []
     except (requests.RequestException, ValueError, TypeError):
         return []
 
 
 def product_json(session, url):
-    """Shopify's canonical product .js endpoint is the cleanest source for
-    variants, cents prices and availability."""
     clean = url.split("?")[0].rstrip("/")
-    js_url = clean + ".js"
     try:
-        r = session.get(js_url, headers=HEADERS, timeout=TIMEOUT)
-        if not r.ok:
+        response = session.get(clean + ".js", headers=HEADERS, timeout=TIMEOUT)
+        if not response.ok:
             return None
-        return r.json()
+        return response.json()
     except (requests.RequestException, ValueError):
         return None
 
@@ -79,76 +94,54 @@ def product_from_json(data, url):
     if not isinstance(data, dict):
         return None
     title = data.get("title") or ""
+    if contains_non_perfume_marker(title):
+        return None
+
     variants = data.get("variants") or []
-
-    # Availability must describe the REAL Shopify stock state.
-    # A sold-out product must not expose a sale price as an active offer.
-    available = [v for v in variants if v.get("available") is True]
-    is_available = any(v.get("available") is True for v in variants) if variants else False
-    pool = available
-
+    available = [variant for variant in variants if variant.get("available") is True]
+    is_available = bool(available)
     prices = []
-    for v in pool:
-        p = v.get("price")
-        if p is None:
-            continue
+    for variant in available:
+        price = variant.get("price")
         try:
-            # Product .js normally returns integer cents.
-            p = float(p)
-            if p >= 100:
-                p /= 100
-            prices.append(p)
+            price = float(price)
+            if price >= 100:
+                price /= 100
+            prices.append(price)
         except (ValueError, TypeError):
-            pass
-
-    price = ""
-    if is_available and prices:
-        price = f"{min(prices):.2f}".replace(".", ",") + " €"
+            continue
 
     return {
         "store": "Bplatz",
         "name": title,
-        "price": price,
+        "price": f"{min(prices):.2f}".replace(".", ",") + " €" if is_available and prices else "",
         "url": url,
         "available": is_available,
     }
 
 
-
 def search_html_urls(session, query):
-    """Fallback to Bplatz's normal Shopify search when predictive search
-    does not expose a matching product. This is generic and is not tied to
-    any perfume name.
-    """
     url = BASE + "/search?q=" + quote_plus(query) + "&type=product"
     try:
-        r = session.get(url, headers=HEADERS, timeout=TIMEOUT)
-        if not r.ok:
+        response = session.get(url, headers=HEADERS, timeout=TIMEOUT)
+        if not response.ok:
             return []
     except requests.RequestException:
         return []
 
-    soup = BeautifulSoup(r.text, "html.parser")
+    soup = BeautifulSoup(response.text, "html.parser")
     urls = []
     seen = set()
-
-    for a in soup.select('a[href*="/products/"]'):
-        href = a.get("href") or ""
+    for anchor in soup.select('a[href*="/products/"]'):
+        href = anchor.get("href") or ""
         absolute = urljoin(BASE, href).split("?")[0]
         path = urlparse(absolute).path.rstrip("/")
         if not path or path in seen:
             continue
 
-        title = (
-            a.get("title")
-            or a.get("aria-label")
-            or a.get_text(" ", strip=True)
-            or ""
-        )
-
-        # Sometimes the title is on the surrounding product card.
+        title = anchor.get("title") or anchor.get("aria-label") or anchor.get_text(" ", strip=True) or ""
         if not query_matches(title, query):
-            card = a
+            card = anchor
             for _ in range(5):
                 if not card.parent:
                     break
@@ -157,33 +150,37 @@ def search_html_urls(session, query):
                 if query_matches(candidate, query):
                     title = candidate
                     break
-
         if not query_matches(title, query):
             continue
 
         seen.add(path)
         urls.append(absolute)
-
     return urls
 
+
 def candidate_urls(session, query):
-    # Search the complete query plus individual terms. Deduplicate by canonical path.
     searches = [query]
     compact = re.sub(r"(?<=\d)\s+(?=[a-z])|(?<=[a-z])\s+(?=\d)", "", norm(query))
     if compact and compact != norm(query):
         searches.append(compact)
+
+    # Token discovery is retained for numeric/compound product searches,
+    # but every token result is title-filtered before it can be returned.
     for token in norm(query).split():
         if len(token) >= 3 and token not in searches:
             searches.append(token)
 
     urls = []
     seen = set()
-    for q in searches:
-        for p in predictive_products(session, q):
-            u = p.get("url")
-            if not u:
+    for search_query in searches:
+        for product in predictive_products(session, search_query):
+            product_title = product.get("title") or product.get("name") or ""
+            if not query_matches(product_title, query):
                 continue
-            absolute = urljoin(BASE, u).split("?")[0]
+            product_url = product.get("url")
+            if not product_url:
+                continue
+            absolute = urljoin(BASE, product_url).split("?")[0]
             path = urlparse(absolute).path.rstrip("/")
             if "/products/" not in path or path in seen:
                 continue
@@ -200,35 +197,25 @@ def search(query):
     session = requests.Session()
     results = []
     seen = set()
-
     urls = candidate_urls(session, query)
-
-    # The predictive endpoint can omit perfectly valid products. Add the
-    # normal Shopify search as a generic fallback, without hard-coding names.
     for url in search_html_urls(session, query):
         if url not in urls:
             urls.append(url)
 
     for url in urls:
-        data = product_json(session, url)
-        item = product_from_json(data, url)
-        if not item:
+        item = product_from_json(product_json(session, url), url)
+        if not item or not query_matches(item["name"], query):
             continue
-        if not query_matches(item["name"], query):
-            continue
-
-        # One canonical Shopify product path = one result.
         key = urlparse(item["url"]).path.rstrip("/")
         if key in seen:
             continue
         seen.add(key)
         results.append(item)
-
     return results
 
 
 if __name__ == "__main__":
-    for q in ("9 PM", "Rayhaan Aquatica", "Turathi Blue"):
-        print("\\nQUERY:", q)
-        for x in search(q):
-            print(x)
+    for query in ("9 PM", "Rayhaan Aquatica", "Turathi Blue"):
+        print("\nQUERY:", query)
+        for result in search(query):
+            print(result)
