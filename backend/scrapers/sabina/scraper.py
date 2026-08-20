@@ -468,15 +468,48 @@ def extract_product_page(session, url, query):
             soup.get_text(" ", strip=True)
         )
 
-        if (
-            "fecha de disponibilidad"
-            in page_text_normalized
-            or "date de disponibilite"
-            in page_text_normalized
-        ):
-            availability = "out_of_stock"
-        else:
-            availability = "unknown"
+        page_text_normalized = norm(
+    soup.get_text(" ", strip=True)
+)
+
+explicit_out_of_stock_markers = (
+    "out of stock",
+    "sold out",
+    "unavailable",
+    "agotado",
+    "sin stock",
+    "fuera de stock",
+    "rupture de stock",
+    "en rupture de stock",
+    "indisponible",
+    "indisponible online",
+    "producto agotado",
+    "produit indisponible",
+    "ausverkauft",
+)
+
+explicit_in_stock_markers = (
+    "in stock",
+    "en stock",
+    "disponible",
+    "disponible online",
+    "ajouter au panier",
+    "añadir al carrito",
+    "add to cart",
+)
+
+if any(
+    marker in page_text_normalized
+    for marker in explicit_out_of_stock_markers
+):
+    availability = "out_of_stock"
+elif any(
+    marker in page_text_normalized
+    for marker in explicit_in_stock_markers
+):
+    availability = "in_stock"
+else:
+    availability = "unknown"
 
     image = (product or {}).get("image")
 
