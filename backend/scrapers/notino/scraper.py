@@ -33,20 +33,92 @@ CHALLENGE_MARKERS = ("just a moment", "cf-chl-", "challenge-platform", "checking
 IN_STOCK_MARKERS = ("en stock", "ajouter au panier", "add to cart")
 OUT_STOCK_MARKERS = ("en rupture de stock", "rupture de stock", "actuellement indisponible", "produit indisponible")
 
+NON_PERFUME_MARKERS = {
+    "gift set",
+    "set regalo",
+    "set",
+    "discovery set",
+    "fragrance set",
+    "perfume set",
+    "parfum set",
+    "coffret",
+    "bundle",
+    "pack",
+    "travel set",
+    "kit",
+    "duo",
+    "trio",
+    "mystery box",
+    "tester",
+    "testeur",
+    "sample",
+    "shampoo",
+    "shower gel",
+    "body wash",
+    "body lotion",
+    "body cream",
+    "body milk",
+    "deodorant",
+    "deo spray",
+    "aftershave",
+    "after shave",
+    "body spray",
+    "hair mist",
+    "makeup",
+    "cosmetics",
+    "cosmetic",
+    "skincare",
+    "skin care",
+    "cosmetici",
+}
+
 
 def _clean(value: Any) -> str:
     text = re.sub(r"\s+", " ", str(value or "")).strip()
     return re.sub(r"([a-zà-ÿ])([A-ZÀ-Ÿ])", r"\1 \2", text)
 
 
+def _norm_product_text(value: Any) -> str:
+    value = str(value or "").lower()
+    value = re.sub(
+        r"(?<=\d)(?=[a-z])|(?<=[a-z])(?=\d)",
+        " ",
+        value,
+    )
+    value = re.sub(r"[^a-z0-9]+", " ", value)
+    return re.sub(r"\s+", " ", value).strip()
+
+
+def _has_non_perfume_marker(value: Any) -> bool:
+    tokens = set(_norm_product_text(value).split())
+    if not tokens:
+        return False
+
+    for marker in NON_PERFUME_MARKERS:
+        marker_tokens = set(_norm_product_text(marker).split())
+        if marker_tokens and marker_tokens.issubset(tokens):
+            return True
+
+    return False
+
+
 def _tokens(value: Any) -> List[str]:
-    return [x for x in re.findall(r"[a-z0-9]+", _clean(value).lower()) if len(x) > 1]
+    return [
+        token
+        for token in _norm_product_text(value).split()
+        if len(token) > 1
+    ]
 
 
 def _matches(text: Any, query: Any) -> bool:
-    text = _clean(text).lower()
-    tokens = _tokens(query)
-    return bool(tokens) and all(token in text for token in tokens)
+    text_normalized = _norm_product_text(text)
+    query_tokens = _tokens(query)
+
+    if not query_tokens or _has_non_perfume_marker(text_normalized):
+        return False
+
+    text_tokens = set(text_normalized.split())
+    return all(token in text_tokens for token in query_tokens)
 
 
 def _format_price(value: Any) -> str:
@@ -127,24 +199,58 @@ def _card_text(link) -> str:
     return best
 
 
-def _make_candidate(url: str, anchor: str, card: str, query: str, source: str) -> Optional[Dict[str, Any]]:
+def _make_candidate(
+    url: str,
+    anchor: str,
+    card: str,
+    query: str,
+    source: str,
+) -> Optional[Dict[str, Any]]:
     url = _clean(url).split("?")[0]
     if not _looks_like_product_url(url):
         return None
-    evidence = _clean(f"{anchor} {card} {url}")
-    if not _matches(evidence, query):
+
+    anchor_clean = _clean(anchor)
+    card_clean = _clean(card)
+
+    # Il titolo della card è l'identità del prodotto. Non consideriamo
+    # l'evidenza combinata anchor+card+URL come prova sufficiente.
+    name = _clean_name(anchor_clean)
+
+    if not name or _has_non_perfume_marker(name):
+        name = _clean_name(card_clean)
+
+    if not name or _has_non_perfume_marker(name):
         return None
-    name = _clean_name(anchor or card)
-    if not name or not _matches(f"{name} {url}", query):
-        name = _clean_name(card)
-    if not name or not _matches(f"{name} {url}", query):
+
+    if not _matches(name, query):
         return None
+
     tokens = _tokens(query)
-    hits = {t: t in evidence.lower() for t in tokens}
-    score = sum(hits.values()) * 5 + (5 if tokens and all(hits.values()) else 0)
-    if _extract_price(anchor) or _extract_price(card):
+    name_tokens = set(_norm_product_text(name).split())
+    if not all(token in name_tokens for token in tokens):
+        return None
+
+    hits = {
+        token: token in name_tokens
+        for token in tokens
+    }
+    score = sum(hits.values()) * 5
+    if tokens and all(hits.values()):
+        score += 5
+    if _extract_price(anchor_clean) or _extract_price(card_clean):
         score += 1
-    return {"url": url, "anchor_text": anchor or name, "card_text": card or anchor, "score": score, "token_hits": hits, "contains_all_query_tokens": bool(tokens) and all(hits.values()), "source": source}
+
+    return {
+        "url": url,
+        "anchor_text": anchor_clean or name,
+        "card_text": card_clean or anchor_clean,
+        "name": name,
+        "score": score,
+        "token_hits": hits,
+        "contains_all_query_tokens": bool(tokens) and all(hits.values()),
+        "source": source,
+    }
 
 
 def extract_candidates_from_html(html: str, query: str) -> List[Dict[str, Any]]:
@@ -288,7 +394,7 @@ def _reader_product(text: str, candidate: Dict[str, Any], query: str) -> Optiona
                 break
     if not name:
         name = _clean_name(candidate.get("anchor_text") or candidate.get("card_text", ""))
-    if not name or not _matches(name, query):
+    if not name or _has_non_perfume_marker(name) or not _matches(name, query):
         return None
     price = ""
     current = re.search(r"prix\s+actuel\s+(?:de\s+)?(\d{1,4}[.,]\d{2})\s*€", content, re.I)
@@ -309,16 +415,29 @@ def _reader_product(text: str, candidate: Dict[str, Any], query: str) -> Optiona
 
 
 def _card_result(candidate: Dict[str, Any], query: str) -> Optional[Dict[str, Any]]:
-    text = _clean(candidate.get("card_text") or candidate.get("anchor_text"))
-    if not _matches(text, query):
+    anchor = _clean(candidate.get("anchor_text"))
+    card = _clean(candidate.get("card_text"))
+
+    name = _clean_name(anchor)
+    if not name or _has_non_perfume_marker(name):
+        name = _clean_name(card)
+
+    if not name or _has_non_perfume_marker(name):
         return None
-    price = _extract_price(candidate.get("anchor_text", "")) or _extract_price(text)
+
+    if not _matches(name, query):
+        return None
+
+    price = _extract_price(anchor) or _extract_price(card)
     if not price:
         return None
-    name = _clean_name(candidate.get("anchor_text") or text)
-    if not name or not _matches(name + " " + candidate["url"], query):
-        return None
-    return {"store": STORE, "name": name, "price": price, "url": candidate["url"]}
+
+    return {
+        "store": STORE,
+        "name": name,
+        "price": price,
+        "url": candidate["url"],
+    }
 
 
 def _product_details(session: requests.Session, candidate: Dict[str, Any], query: str) -> Optional[Dict[str, Any]]:
@@ -343,20 +462,26 @@ def _product_details(session: requests.Session, candidate: Dict[str, Any], query
         product_name = _clean(product.get("name"))
         brand = product.get("brand")
         brand = _clean(brand.get("name")) if isinstance(brand, dict) else _clean(brand)
-        if _matches(f"{brand} {product_name}", query):
+        if (
+            product_name
+            and not _has_non_perfume_marker(product_name)
+            and _matches(product_name, query)
+        ):
             price, _ = _offer_data(product.get("offers"))
             if product_name and price:
                 name = product_name
                 break
     if not name:
         h1 = soup.find("h1")
-        if h1 and _matches(h1.get_text(" ", strip=True), query):
-            name = _clean(h1.get_text(" ", strip=True))
+        if h1:
+            h1_name = _clean(h1.get_text(" ", strip=True))
+            if h1_name and not _has_non_perfume_marker(h1_name) and _matches(h1_name, query):
+                name = h1_name
     if not name:
         title = soup.find("title")
         if title:
             candidate_name = _clean(title.get_text(" ", strip=True)).split("|")[0]
-            if _matches(candidate_name, query):
+            if not _has_non_perfume_marker(candidate_name) and _matches(candidate_name, query):
                 name = candidate_name
     if not name:
         return _card_result(candidate, query)
@@ -373,7 +498,10 @@ def _product_details(session: requests.Session, candidate: Dict[str, Any], query
     low = page_text.lower()
     if any(x in low for x in OUT_STOCK_MARKERS) and not any(x in low for x in IN_STOCK_MARKERS):
         return None
-    return {"store": STORE, "name": name, "price": price, "url": final_url} if price else None
+    if not price or _has_non_perfume_marker(name):
+        return None
+
+    return {"store": STORE, "name": name, "price": price, "url": final_url}
 
 
 def search(query: str) -> List[Dict[str, Any]]:
@@ -389,7 +517,16 @@ def search(query: str) -> List[Dict[str, Any]]:
             result = _product_details(session, candidate, query)
             if not result:
                 continue
-            key = (result.get("url", "") + "|" + _clean(result.get("name"))).lower()
+
+            final_name = _clean(result.get("name"))
+            if (
+                not final_name
+                or _has_non_perfume_marker(final_name)
+                or not _matches(final_name, query)
+            ):
+                continue
+
+            key = (result.get("url", "") + "|" + final_name).lower()
             if key in seen:
                 continue
             seen.add(key)
