@@ -1,369 +1,778 @@
 import json
-import html as html_lib
 import re
-from urllib.parse import quote_plus, urljoin
+import unicodedata
+from urllib.parse import urljoin, urlparse
 
 import requests
 from bs4 import BeautifulSoup
 
+
 STORE = "Sabina"
-BASE = "https://www.sabina.com"
-TIMEOUT = 8
-MAX_SIZE_ENRICH_REQUESTS = 12
+BASE_URL = "https://www.sabina.com"
+SEARCH_URL = BASE_URL + "/es/buscar"
+TIMEOUT = 10
+MAX_CANDIDATES = 20
 
 HEADERS = {
     "User-Agent": (
-        "Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) "
-        "AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.0 "
-        "Mobile/15E148 Safari/604.1"
+        "Mozilla/5.0 (X11; Linux x86_64) "
+        "AppleWebKit/537.36 (KHTML, like Gecko) "
+        "Chrome/126.0.0.0 Safari/537.36"
     ),
-    "Accept-Language": "it-IT,it;q=0.9,en;q=0.7",
-    "Accept": "text/html,application/xhtml+xml,application/json;q=0.9,*/*;q=0.8",
-    "Referer": BASE + "/it/",
+    "Accept-Language": "es-ES,es;q=0.9,en;q=0.8",
+    "Accept": (
+        "text/html,application/xhtml+xml,application/xml;"
+        "q=0.9,image/avif,image/webp,*/*;q=0.8"
+    ),
+    "Referer": BASE_URL + "/es/",
 }
 
-PRICE_RE = re.compile(r"(?<!\d)(\d{1,4}(?:[.,]\d{2}))\s*€")
-PRODUCT_URL_RE = re.compile(
-    r"^https?://(?:www\.)?sabina\.com/it/(?!"
-    r"(?:content|ricerca|ricerca_old|marchi|negozi|contatto|faq|"
-    r"carrello|ordine|stato-ordine|il-mio-conto|module)/)"
+PRODUCT_PATH_RE = re.compile(
+    r"^/(?:es|it|fr|en|de|nl|pt)/[^/]+/(\d+)-[^/]+\.html$",
+    re.I,
 )
 
-NON_PERFUME = {
-    "tester", "testeur", "sample", "mystery box", "gift set", "set regalo",
-    "coffret", "bundle", "travel set", "discovery set", "shampoo",
-    "shower gel", "body wash", "body lotion", "body cream", "deodorant",
-    "aftershave", "after shave", "body spray", "hair mist", "makeup",
-    "cosmetics", "skincare", "conditioner",
+IGNORED_QUERY_WORDS = {
+    "eau", "de", "parfum", "perfume", "edp", "edt",
+    "extrait", "spray", "for", "by", "ml", "pour",
 }
 
 
-def _clean(value):
-    return re.sub(r"\s+", " ", html_lib.unescape(str(value or ""))).strip()
+def clean(value):
+    return re.sub(r"\s+", " ", str(value or "")).strip()
 
 
-def _norm(value):
-    return re.sub(r"[^a-z0-9]+", " ", _clean(value).lower()).strip()
-
-
-def _price(value):
-    if value is None:
-        return None
-    text = _clean(value)
-    m = PRICE_RE.search(text) or re.search(
-        r"(?<!\d)(\d{1,4}(?:[.,]\d{2}))(?!\d)", text
+def norm(value):
+    value = unicodedata.normalize("NFKD", str(value or ""))
+    value = "".join(
+        char for char in value
+        if not unicodedata.combining(char)
     )
-    return (m.group(1).replace(".", ",") + " €") if m else None
+    value = value.lower()
+    value = re.sub(
+        r"(?<=\d)(?=[a-z])|(?<=[a-z])(?=\d)",
+        " ",
+        value,
+    )
+    value = re.sub(r"[^a-z0-9]+", " ", value)
+    return re.sub(r"\s+", " ", value).strip()
 
 
-def _looks_like_product_url(url):
-    return bool(url and PRODUCT_URL_RE.match(url))
+def query_tokens(query):
+    return [
+        token
+        for token in norm(query).split()
+        if token not in IGNORED_QUERY_WORDS
+    ]
 
 
-def _query_tokens(query):
-    return [x for x in _norm(query).split() if len(x) > 1 and x != "ml"]
+def query_matches(text, query):
+    tokens = query_tokens(query)
+    normalized = norm(text)
+    return bool(tokens) and all(token in normalized for token in tokens)
 
 
-def _matches(name, query):
-    tokens = _query_tokens(query)
-    hay = set(_norm(name).split())
-    return bool(tokens) and all(t in hay for t in tokens)
+def normalise_url(url, base_url=BASE_URL):
+    if not url:
+        return None
+
+    url = clean(url).replace("\\/", "/")
+    url = url.replace("\\u002F", "/")
+
+    absolute = urljoin(base_url, url)
+    parsed = urlparse(absolute)
+
+    if parsed.scheme not in {"http", "https"}:
+        return None
+
+    host = parsed.netloc.lower()
+    if host not in {"sabina.com", "www.sabina.com"}:
+        return None
+
+    return (
+        f"{parsed.scheme}://{parsed.netloc}"
+        f"{parsed.path.rstrip('/')}"
+    )
 
 
-def _is_non_perfume(name):
-    tokens = set(_norm(name).split())
-    for marker in NON_PERFUME:
-        mt = set(_norm(marker).split())
-        if mt and mt.issubset(tokens):
-            return True
-    return False
+def is_product_url(url):
+    if not url:
+        return False
+    return bool(
+        PRODUCT_PATH_RE.match(
+            urlparse(url).path
+        )
+    )
 
 
-def _get(session, url):
+def product_id_from_url(url):
+    match = PRODUCT_PATH_RE.match(
+        urlparse(url).path
+    )
+    return match.group(1) if match else None
+
+
+def money_to_float(value):
+    if value in (None, ""):
+        return None
+
+    if isinstance(value, (int, float)):
+        return float(value)
+
+    text = re.sub(
+        r"[^\d,.\-]",
+        "",
+        str(value),
+    )
+
+    if "," in text and "." in text:
+        if text.rfind(",") > text.rfind("."):
+            text = text.replace(".", "")
+            text = text.replace(",", ".")
+        else:
+            text = text.replace(",", "")
+    elif "," in text:
+        text = text.replace(",", ".")
+
+    try:
+        return float(text)
+    except ValueError:
+        return None
+
+
+def extract_size_ml(*texts):
+    combined = " ".join(
+        str(text or "")
+        for text in texts
+    )
+
+    match = re.search(
+        r"(?<!\d)(\d+(?:[.,]\d+)?)\s*"
+        r"(?:ml|millilitros?|milliliters?)\b",
+        combined,
+        re.I,
+    )
+
+    if not match:
+        return None
+
+    value = float(
+        match.group(1).replace(",", ".")
+    )
+
+    return int(value) if value.is_integer() else value
+
+
+CONCENTRATION_RULES = (
+    (
+        "Extrait de Parfum",
+        (
+            r"\bextrait\s+(?:de\s+)?parfum\b",
+            r"\bextrait\b",
+        ),
+    ),
+    (
+        "Eau de Parfum",
+        (
+            r"\beau\s+de\s+parfum\b",
+            r"\bedp\b",
+        ),
+    ),
+    (
+        "Eau de Toilette",
+        (
+            r"\beau\s+de\s+toilette\b",
+            r"\bedt\b",
+        ),
+    ),
+    (
+        "Eau de Cologne",
+        (
+            r"\beau\s+de\s+cologne\b",
+            r"\bedc\b",
+        ),
+    ),
+    ("Parfum", (r"\bparfum\b",)),
+)
+
+
+def extract_concentration(*texts):
+    normalized = norm(
+        " ".join(str(text or "") for text in texts)
+    )
+
+    for label, patterns in CONCENTRATION_RULES:
+        for pattern in patterns:
+            if re.search(
+                pattern,
+                normalized,
+                re.I,
+            ):
+                return label, "product_text"
+
+    return None, None
+
+
+def extract_gender(*texts):
+    normalized = norm(
+        " ".join(str(text or "") for text in texts)
+    )
+
+    if re.search(
+        r"\b(?:hombre|hombres|man|men|masculino|male|"
+        r"pour homme|homme|uomo)\b",
+        normalized,
+    ):
+        return "men", "product_text"
+
+    if re.search(
+        r"\b(?:mujer|mujeres|woman|women|femenino|female|"
+        r"pour femme|femme|donna)\b",
+        normalized,
+    ):
+        return "women", "product_text"
+
+    if re.search(
+        r"\b(?:unisex|unisexe|unisexes)\b",
+        normalized,
+    ):
+        return "unisex", "product_text"
+
+    return "unknown", None
+
+
+def walk_json(value):
+    if isinstance(value, dict):
+        yield value
+        for child in value.values():
+            yield from walk_json(child)
+
+    elif isinstance(value, list):
+        for child in value:
+            yield from walk_json(child)
+
+
+def first_jsonld_product(soup):
+    for script in soup.select(
+        'script[type="application/ld+json"]'
+    ):
+        raw = script.string or script.get_text()
+
+        if not raw:
+            continue
+
+        try:
+            data = json.loads(raw)
+        except (TypeError, ValueError, json.JSONDecodeError):
+            continue
+
+        for item in walk_json(data):
+            if not isinstance(item, dict):
+                continue
+
+            item_type = item.get("@type")
+            types = (
+                item_type
+                if isinstance(item_type, list)
+                else [item_type]
+            )
+
+            if any(
+                str(item_type_value).lower() == "product"
+                for item_type_value in types
+            ):
+                return item
+
+    return None
+
+
+def discover_product_urls(session, query):
+    """
+    The only primary discovery path used by the real scraper.
+
+    The query is supplied at runtime. No product, brand, SKU or URL
+    is hard-coded here.
+    """
     try:
         response = session.get(
-            url, headers=HEADERS, timeout=TIMEOUT, allow_redirects=True
+            SEARCH_URL,
+            params={"search_query": query},
+            headers=HEADERS,
+            timeout=TIMEOUT,
+            allow_redirects=True,
         )
-        if response.status_code in (403, 429):
-            response.close()
-            return None
-        response.raise_for_status()
-        return response
+    except requests.RequestException:
+        return []
+
+    if response.status_code >= 400:
+        return []
+
+    soup = BeautifulSoup(
+        response.text,
+        "html.parser",
+    )
+
+    urls = []
+    seen = set()
+
+    def add(raw):
+        absolute = normalise_url(
+            raw,
+            response.url,
+        )
+
+        if not absolute:
+            return
+
+        if not is_product_url(absolute):
+            return
+
+        if absolute in seen:
+            return
+
+        seen.add(absolute)
+        urls.append(absolute)
+
+    # First source: normal product links.
+    for anchor in soup.find_all(
+        "a",
+        href=True,
+    ):
+        add(anchor.get("href"))
+
+    # Second source: product URLs embedded in the returned HTML/JSON.
+    decoded = (
+        response.text
+        .replace("\\/", "/")
+        .replace("\\u002F", "/")
+    )
+
+    for match in re.finditer(
+        r'https?://(?:www\.)?sabina\.com/'
+        r'(?:es|it|fr|en|de|nl|pt)/'
+        r'[^"\'<>\s\\]+',
+        decoded,
+        re.I,
+    ):
+        add(match.group(0))
+
+    for match in re.finditer(
+        r'/(?:es|it|fr|en|de|nl|pt)/'
+        r'[^"\'<>\s\\]+',
+        decoded,
+        re.I,
+    ):
+        add(match.group(0))
+
+    return urls[:MAX_CANDIDATES]
+
+
+def extract_product_page(session, url, query):
+    try:
+        response = session.get(
+            url,
+            headers=HEADERS,
+            timeout=TIMEOUT,
+            allow_redirects=True,
+        )
     except requests.RequestException:
         return None
 
+    if response.status_code >= 400:
+        return None
 
-def _extract_name(container, anchor):
-    candidates = []
-    for selector in ("h1", "h2", "h3", "h4", ".name", ".product-name", ".product-title"):
-        node = container.select_one(selector) if container else None
-        if node:
-            candidates.append(node.get_text(" ", strip=True))
-    candidates += [anchor.get("title"), anchor.get("aria-label"), anchor.get_text(" ", strip=True)]
-    for value in candidates:
-        value = _clean(value)
-        if value and value.lower() not in {"vedi", "vedi tutto", "acquista", "immagine"}:
-            return value
-    return ""
+    final_url = normalise_url(response.url)
 
+    if not final_url or not is_product_url(final_url):
+        return None
 
-def _parse_search_html(html, query):
-    soup = BeautifulSoup(html, "html.parser")
-    rows = []
-    for anchor in soup.find_all("a", href=True):
-        url = urljoin(BASE, anchor["href"]).split("#")[0]
-        if not _looks_like_product_url(url):
-            continue
-        node = anchor
-        for _ in range(8):
-            parent = getattr(node, "parent", None)
-            if not parent:
-                break
-            candidate = parent
-            text = _clean(candidate.get_text(" ", strip=True))
-            if len(text) <= 1800 and "€" in text:
-                node = candidate
-                break
-            node = candidate
-        card = _clean(node.get_text(" ", strip=True))
-        name = _extract_name(node, anchor)
-        if not name or not _matches(name, query) or _is_non_perfume(name):
-            continue
-        price_match = PRICE_RE.search(card)
-        if not price_match:
-            continue
-        rows.append({
-            "store": STORE,
-            "name": name,
-            "price": price_match.group(1) + " €",
-            "url": url,
-        })
-    return rows
+    soup = BeautifulSoup(
+        response.text,
+        "html.parser",
+    )
 
+    product = first_jsonld_product(soup)
 
-def _walk_json(obj, query, rows):
-    if isinstance(obj, dict):
-        low = {str(k).lower(): v for k, v in obj.items()}
-        name = next(
-            (low[k] for k in ("name", "product_name", "productname", "title", "label")
-             if k in low and isinstance(low[k], (str, int, float))),
-            None,
+    h1 = soup.select_one("h1")
+    h1_text = (
+        clean(h1.get_text(" ", strip=True))
+        if h1
+        else ""
+    )
+
+    title = clean(
+        (product or {}).get("name")
+        or h1_text
+    )
+
+    if not title:
+        return None
+
+    # Validation is deliberately generic and based on the real product
+    # identity, not on search-card text.
+    brand = None
+    raw_brand = (product or {}).get("brand")
+
+    if isinstance(raw_brand, dict):
+        brand = clean(
+            raw_brand.get("name")
+        ) or None
+
+    elif raw_brand:
+        brand = clean(raw_brand)
+
+    if not query_matches(
+        f"{title} {brand or ''}",
+        query,
+    ):
+        return None
+
+    offers = (product or {}).get("offers")
+
+    if isinstance(offers, list):
+        offer = offers[0] if offers else {}
+
+    elif isinstance(offers, dict):
+        offer = offers
+
+    else:
+        offer = {}
+
+    price = money_to_float(
+        offer.get("price")
+    )
+
+    currency = clean(
+        offer.get("priceCurrency")
+    ) or "EUR"
+
+    availability_raw = clean(
+        offer.get("availability")
+    ).lower()
+
+    if "instock" in availability_raw:
+        availability = "in_stock"
+
+    elif (
+        "outofstock" in availability_raw
+        or "soldout" in availability_raw
+        or "unavailable" in availability_raw
+    ):
+        availability = "out_of_stock"
+
+    elif "preorder" in availability_raw:
+        availability = "preorder"
+
+    else:
+        page_text_normalized = norm(
+            soup.get_text(" ", strip=True)
         )
-        url = next(
-            (low[k] for k in ("url", "link", "product_url", "producturl", "href")
-             if k in low and isinstance(low[k], str)),
-            None,
-        )
-        price = next(
-            (low[k] for k in (
-                "price", "final_price", "finalprice", "sale_price",
-                "saleprice", "price_amount", "priceamount"
-            ) if k in low),
-            None,
-        )
-        if url:
-            url = urljoin(BASE, url)
+
         if (
-            name and url and _looks_like_product_url(url)
-            and _price(price) and _matches(str(name), query)
-            and not _is_non_perfume(str(name))
+            "fecha de disponibilidad"
+            in page_text_normalized
+            or "date de disponibilite"
+            in page_text_normalized
         ):
-            rows.append({
-                "store": STORE, "name": str(name),
-                "price": _price(price), "url": url.split("#")[0],
-            })
-        for value in obj.values():
-            _walk_json(value, query, rows)
-    elif isinstance(obj, list):
-        for value in obj:
-            _walk_json(value, query, rows)
+            availability = "out_of_stock"
+        else:
+            availability = "unknown"
 
+    image = (product or {}).get("image")
 
-def _parse_product_page(html, expected_name):
-    soup = BeautifulSoup(html, "html.parser")
-    expected = set(_norm(expected_name).split())
+    if isinstance(image, list):
+        image = image[0] if image else None
 
-    # Prefer the Product JSON-LD whose name belongs to this exact product.
-    for script in soup.select('script[type="application/ld+json"]'):
-        try:
-            data = json.loads(script.get_text(strip=True))
-        except Exception:
-            continue
-        stack = data if isinstance(data, list) else [data]
-        while stack:
-            obj = stack.pop()
-            if isinstance(obj, dict):
-                typ = obj.get("@type")
-                types = typ if isinstance(typ, list) else [typ]
-                name = _clean(obj.get("name"))
-                if any(str(t).lower() == "product" for t in types) and name:
-                    if expected and not expected.issubset(set(_norm(name).split())):
-                        continue
-                    for key in ("size", "volume", "netContent", "capacity", "contentVolume"):
-                        value = obj.get(key)
-                        if value:
-                            m = re.search(r"(?<!\d)(\d{2,4})\s*ml\b", str(value), re.I)
-                            if m:
-                                return m.group(1)
-                    m = re.search(r"(?<!\d)(\d{2,4})\s*ml\b", name, re.I)
-                    if m:
-                        return m.group(1)
-                for child in obj.values():
-                    if isinstance(child, (dict, list)):
-                        stack.append(child)
-            elif isinstance(obj, list):
-                stack.extend(x for x in obj if isinstance(x, (dict, list)))
+    if isinstance(image, dict):
+        image = (
+            image.get("url")
+            or image.get("contentUrl")
+        )
 
-    # Next, use the product title / headings and their local block only.
-    for selector in ("h1", "h2", "h3", '[itemprop="name"]', 'meta[property="og:title"]'):
-        node = soup.select_one(selector)
-        if not node:
-            continue
-        text = _clean(node.get("content") if node.name == "meta" else node.get_text(" ", strip=True))
-        m = re.search(r"(?<!\d)(\d{2,4})\s*ml\b", text, re.I)
-        if m:
-            return m.group(1)
-        parent = node.parent
-        for _ in range(5):
-            if not parent:
-                break
-            block = _clean(parent.get_text(" ", strip=True))
-            if len(block) <= 700:
-                m = re.search(r"(?<!\d)(\d{2,4})\s*ml\b", block, re.I)
-                if m:
-                    return m.group(1)
-            parent = getattr(parent, "parent", None)
+    if image:
+        image = urljoin(
+            response.url,
+            image,
+        )
 
-    return ""
+    gtin = clean(
+        (product or {}).get("gtin13")
+        or (product or {}).get("gtin12")
+        or (product or {}).get("gtin14")
+        or (product or {}).get("gtin")
+    ) or None
 
+    mpn = clean(
+        (product or {}).get("mpn")
+    ) or None
 
-def _enrich(session, rows):
-    out, seen_urls = [], set()
-    for row in rows:
-        url = row["url"].split("?")[0]
-        if url in seen_urls:
-            continue
-        seen_urls.add(url)
-        item = dict(row)
-        response = _get(session, url)
-        if response:
-            try:
-                size = _parse_product_page(response.text, item["name"])
-            finally:
-                response.close()
-            if size:
-                item["size_ml"] = size
-        out.append(item)
-    return out
+    sku = clean(
+        (product or {}).get("sku")
+    ) or None
+
+    page_text = soup.get_text(
+        " ",
+        strip=True,
+    )
+
+    if not sku:
+        reference_match = re.search(
+            r"(?:referencia|reference|référence|riferimento)"
+            r"\s*[:#]?\s*([A-Z0-9_-]+)",
+            page_text,
+            re.I,
+        )
+
+        if reference_match:
+            sku = reference_match.group(1)
+
+    product_id = product_id_from_url(
+        final_url
+    )
+
+    # The product title comes from the verified Product JSON-LD / H1.
+    # Do not scan the whole page: related products can contain other sizes.
+    size_ml = extract_size_ml(
+        title,
+    )
+
+    concentration, concentration_source = (
+        extract_concentration(
+            title,
+            page_text,
+        )
+    )
+
+    gender, gender_source = extract_gender(
+        title,
+        page_text,
+    )
+
+    return {
+        "store": STORE,
+
+        "source": {
+            "url": final_url,
+            "name": title,
+            "brand": brand,
+            "image": image,
+        },
+
+        "identity": {
+            "gtin": (
+                {
+                    "value": gtin,
+                    "source": "sabina_jsonld",
+                }
+                if gtin
+                else None
+            ),
+
+            "mpn": (
+                {
+                    "value": mpn,
+                    "source": "sabina_jsonld",
+                }
+                if mpn
+                else None
+            ),
+
+            "sku": (
+                {
+                    "value": sku,
+                    "source": "sabina_jsonld_or_reference",
+                }
+                if sku
+                else None
+            ),
+
+            "store_product_id": (
+                {
+                    "value": product_id,
+                    "source": "product_url",
+                }
+                if product_id
+                else None
+            ),
+        },
+
+        "attributes": {
+            "size_ml": (
+                {
+                    "value": size_ml,
+                    "source": "product_text",
+                }
+                if size_ml is not None
+                else None
+            ),
+
+            "concentration": (
+                {
+                    "value": concentration,
+                    "source": concentration_source,
+                }
+                if concentration
+                else None
+            ),
+
+            "gender": (
+                {
+                    "value": gender,
+                    "source": gender_source,
+                }
+                if gender_source
+                else {
+                    "value": "unknown",
+                    "source": "default",
+                }
+            ),
+
+            "packaging_type": {
+                "value": "product",
+                "source": "default",
+            },
+        },
+
+        "offer": {
+            "price": price,
+            "currency": currency,
+            "availability": availability,
+        },
+
+        "provenance": {
+            "name": "sabina_jsonld_or_h1",
+            "brand": (
+                "sabina_jsonld"
+                if brand
+                else None
+            ),
+            "price": "sabina_jsonld",
+            "availability": (
+                "sabina_jsonld_or_page_text"
+            ),
+            "image": (
+                "sabina_jsonld"
+                if image
+                else None
+            ),
+            "store_product_id": (
+                "product_url"
+                if product_id
+                else None
+            ),
+            "sku": (
+                "sabina_jsonld_or_reference"
+                if sku
+                else None
+            ),
+            "gtin": (
+                "sabina_jsonld"
+                if gtin
+                else None
+            ),
+            "mpn": (
+                "sabina_jsonld"
+                if mpn
+                else None
+            ),
+            "size_ml": (
+                "product_text"
+                if size_ml is not None
+                else None
+            ),
+            "concentration": concentration_source,
+            "gender": gender_source,
+            "packaging_type": "default",
+        },
+
+        "raw_data": {
+            "product_url": final_url,
+            "status_code": response.status_code,
+            "jsonld_product": product,
+        },
+
+        # Backward-compatible fields expected by main.py.
+        "name": title,
+        "brand": brand,
+        "price": (
+            f"{price:.2f}".replace(".", ",")
+            + " €"
+            if price is not None
+            else ""
+        ),
+        "url": final_url,
+        "available": availability == "in_stock",
+    }
 
 
 def search(query):
-    query = _clean(query)
+    query = clean(query)
+
     if not query:
         return []
 
     session = requests.Session()
-    session.headers.update(HEADERS)
+
     try:
-        # Initialize cookies without relying on a special product.
-        home = _get(session, BASE + "/it/")
-        if home:
-            home.close()
+        candidate_urls = discover_product_urls(
+            session,
+            query,
+        )
 
-        urls = [
-            BASE + "/it/ricerca?search_query=" + quote_plus(query),
-            BASE + "/it/ricerca?s=" + quote_plus(query),
-            BASE + "/it/ricerca_old?s=" + quote_plus(query),
-            BASE + "/it/ricerca_old?search_query=" + quote_plus(query),
-        ]
+        results = []
+        seen = set()
 
-        rows = []
-        for url in urls:
-            response = _get(session, url)
-            if not response:
+        for url in candidate_urls:
+            product = extract_product_page(
+                session,
+                url,
+                query,
+            )
+
+            if not product:
                 continue
-            try:
-                html = response.text
-            finally:
-                response.close()
-            parsed = _parse_search_html(html, query)
-            rows.extend(parsed)
-            if parsed:
-                break
 
-        if not rows:
-            ajax = BASE + "/modules/ecelastic/ajax.php"
-            for payload in (
-                {"q": query, "query": query, "search_query": query, "id_lang": 5, "id_country": 10, "id_currency": 1},
-                {"s": query, "search_query": query, "id_lang": 5, "id_country": 10, "id_currency": 1},
-                {"query": query, "id_lang": 5, "id_country": 10, "id_currency": 1},
-            ):
-                for method in ("get", "post"):
-                    try:
-                        response = (
-                            session.get(ajax, params=payload, headers=HEADERS, timeout=TIMEOUT)
-                            if method == "get"
-                            else session.post(
-                                ajax, data=payload,
-                                headers={**HEADERS, "X-Requested-With": "XMLHttpRequest"},
-                                timeout=TIMEOUT,
-                            )
-                        )
-                        if response.status_code in (403, 429):
-                            response.close()
-                            continue
-                        raw = response.text
-                        response.close()
-                        try:
-                            data = json.loads(raw)
-                            parsed = []
-                            _walk_json(data, query, parsed)
-                        except Exception:
-                            parsed = _parse_search_html(raw, query)
-                        rows.extend(parsed)
-                    except requests.RequestException:
-                        continue
-                if rows:
-                    break
+            product_id = (
+                product.get("identity", {})
+                .get("store_product_id", {})
+                .get("value")
+            )
 
-        # Generic fallback: discover perfume-category links from the site itself.
-        if not rows:
-            home = _get(session, BASE + "/it/")
-            if home:
-                soup = BeautifulSoup(home.text, "html.parser")
-                categories = []
-                for a in soup.find_all("a", href=True):
-                    href = urljoin(BASE, a["href"]).split("?")[0]
-                    text = _clean(a.get_text(" ", strip=True))
-                    if "/it/" in href and ("profum" in _norm(text) or "perfume" in _norm(text)):
-                        if href not in categories and not _looks_like_product_url(href):
-                            categories.append(href)
-                home.close()
-                for category in categories[:12]:
-                    response = _get(session, category)
-                    if not response:
-                        continue
-                    try:
-                        parsed = _parse_search_html(response.text, query)
-                    finally:
-                        response.close()
-                    if parsed:
-                        rows.extend(parsed)
-                        break
+            key = product_id or product.get("url")
 
-        return _enrich(session, rows[:20])
+            if key in seen:
+                continue
+
+            seen.add(key)
+            results.append(product)
+
+        return results
+
     finally:
         session.close()
 
 
-def scrape(query):
-    return search(query)
-
-
-def search_sabina(query):
-    return search(query)
+# Compatibility with the generic main.py interface.
+scrape = search
 
 
 if __name__ == "__main__":
-    import sys
-    print(json.dumps(search(" ".join(sys.argv[1:]) or "Dior"), ensure_ascii=False, indent=2))
+    import argparse
+
+    parser = argparse.ArgumentParser(
+        description="Generic Sabina scraper"
+    )
+    parser.add_argument(
+        "query",
+        help="Search query supplied at runtime",
+    )
+
+    args = parser.parse_args()
+
+    print(
+        json.dumps(
+            search(args.query),
+            ensure_ascii=False,
+            indent=2,
+        )
+    )
