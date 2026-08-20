@@ -1085,9 +1085,16 @@ function shGroupData(data){
       .map(w=>w.replace(/[.*+?^${}()|[\]\\]/g,"\\$&"))
       .join("\\s+");
 
-    // Rimuove solo la concentrazione quando è già presente alla fine
-    // del nome. In questo modo l'Index non la visualizza due volte.
-    n=n.replace(new RegExp("\\s*(?:[-–—:]\\s*)?"+escaped+"\\s*$","i"),"").trim();
+    // Rimuove una o più occorrenze consecutive della concentrazione
+    // alla fine del nome. I negozi possono riportarla sia nel titolo
+    // sia nei metadati; l'Index la visualizza poi una sola volta.
+    const trailing=new RegExp(
+      "\\s*(?:[-–—:]\\s*)?"+escaped+"\\s*$",
+      "i"
+    );
+    while(trailing.test(n)){
+      n=n.replace(trailing,"").trim();
+    }
     return n;
   }
 
