@@ -710,20 +710,11 @@ def matches(product: Dict[str, Any], query: str) -> bool:
     if not all(token in name for token in tokens):
         return False
 
-    # Una ricerca generica della famiglia deve restituire il prodotto base,
-    # non una variante specifica. Lo stesso controllo vale per una ricerca
-    # già specifica: in quel caso sono ammessi solo i marcatori dichiarati
-    # nella query.
-    query_tokens = set(tokens)
-    name_tokens = set(name.split())
-
-    for marker in VARIANT_MARKERS:
-        marker_tokens = set(norm(marker).split())
-        if not marker_tokens:
-            continue
-        if marker_tokens.issubset(name_tokens) and not marker_tokens.issubset(query_tokens):
-            return False
-
+    # Le varianti sono identità distinte, non errori da eliminare.
+    # Una ricerca generica della famiglia può quindi restituire sia il
+    # prodotto base sia le sue varianti, mantenendole però con nomi separati.
+    # Una ricerca specifica continua a essere precisa perché i suoi token
+    # devono essere presenti nel nome normalizzato.
     return True
 
 
