@@ -345,22 +345,19 @@ def _structured_stock_from_html(html: str, target_size_ml: Optional[float] = Non
     return None
 
 
-def _stock_from_product_page(url: str, target_size_ml: Optional[float] = None) -> Optional[bool]:
-    """
-    Controllo generico della pagina prodotto.
-
-    Restituisce:
-      False = certamente OUT OF STOCK
-      True  = certamente disponibile
-      None  = informazione non determinabile
-
-    Importante: None NON significa out of stock e non causa mai lo scarto
-    del prodotto.
-    """
+def _fetch_product_page(
+    url: str,
+    page_cache: Optional[Dict[str, Optional[str]]] = None,
+) -> Optional[str]:
+    """Recupera una pagina prodotto una sola volta e la riutilizza nel pipeline."""
     url = str(url or "").strip()
     if not url or not re.match(r"^https?://", url, re.I):
         return None
 
+    if page_cache is not None and url in page_cache:
+        return page_cache[url]
+
+    html: Optional[str] = None
     try:
         request = Request(
             url,
@@ -372,8 +369,19 @@ def _stock_from_product_page(url: str, target_size_ml: Optional[float] = None) -
         with urlopen(request, timeout=3.5) as response:
             html = response.read().decode("utf-8", errors="ignore")
     except Exception:
-        return None
+        html = None
 
+    if page_cache is not None:
+        page_cache[url] = html
+
+    return html
+
+
+def _stock_from_product_html(
+    html: str,
+    target_size_ml: Optional[float] = None,
+) -> Optional[bool]:
+    """Determina lo stock a partire da HTML già recuperato."""
     structured = _structured_stock_from_html(html, target_size_ml)
     if structured is not None:
         return structured
@@ -384,7 +392,6 @@ def _stock_from_product_page(url: str, target_size_ml: Optional[float] = None) -
     visible = re.sub(r"<[^>]+>", " ", visible)
     visible = re.sub(r"\s+", " ", visible).lower()
 
-    # Prima i controlli di acquisto: sono più affidabili del testo generico.
     button_chunks = re.findall(
         r"<(?:button|input)[^>]*?(?:>.*?</button>|/?>)",
         page,
@@ -396,7 +403,6 @@ def _stock_from_product_page(url: str, target_size_ml: Optional[float] = None) -
     if any(marker in button_text for marker in _STOCK_IN_MARKERS):
         return True
 
-    # Poi testo visibile della pagina. Un marker OOS esplicito prevale.
     if any(marker in visible for marker in _STOCK_OOS_MARKERS):
         return False
     if any(marker in visible for marker in _STOCK_IN_MARKERS):
@@ -405,11 +411,29 @@ def _stock_from_product_page(url: str, target_size_ml: Optional[float] = None) -
     return None
 
 
-def normalize_stock(product: Dict[str, Any], cache: Optional[Dict[str, Optional[bool]]] = None) -> Dict[str, Any]:
-    """Applica la regola stock unica a un'offerta di qualunque negozio."""
+def _stock_from_product_page(
+    url: str,
+    target_size_ml: Optional[float] = None,
+    page_cache: Optional[Dict[str, Optional[str]]] = None,
+) -> Optional[bool]:
+    """
+    Controllo generico della pagina prodotto.
+
+    La pagina viene recuperata tramite il cache condiviso del singolo store,
+    così prezzo e stock non effettuano due richieste HTTP separate.
+    """
+    html = _fetch_product_page(url, page_cache)
+    if not html:
+        return None
+    return _stock_from_product_html(html, target_size_ml)
+
+def normalize_stock(
+    product: Dict[str, Any],
+    page_cache: Optional[Dict[str, Optional[str]]] = None,
+) -> Dict[str, Any]:
+    """Applica la regola stock unica usando una pagina prodotto condivisa."""
     item = dict(product)
 
-    # 1) Informazioni esplicite già fornite dallo scraper.
     fields = (
         "availability", "stock", "stock_status", "status",
         "availability_status", "availabilityStatus", "stockStatus",
@@ -420,7 +444,6 @@ def normalize_stock(product: Dict[str, Any], cache: Optional[Dict[str, Optional[
 
     if item.get("available") is False:
         explicit_oos = True
-    # available=True is only a hint. The real product page is checked below.
 
     if explicit_oos:
         item["available"] = False
@@ -430,17 +453,13 @@ def normalize_stock(product: Dict[str, Any], cache: Optional[Dict[str, Optional[
         item.pop("price_value", None)
         return item
 
-    # 2) Se esiste un URL, verifichiamo la pagina reale. Il risultato
-    #    sconosciuto NON elimina mai il prodotto.
     url = str(item.get("url") or "").strip()
     page_stock = None
     if url:
-        if cache is not None and url in cache:
-            page_stock = cache[url]
-        else:
-            page_stock = _stock_from_product_page(url, _product_size_ml(item))
-            if cache is not None:
-                cache[url] = page_stock
+        html = _fetch_product_page(url, page_cache)
+        if html:
+            item["_page_html"] = html
+            page_stock = _stock_from_product_html(html, _product_size_ml(item))
 
     if page_stock is False:
         item["available"] = False
@@ -456,57 +475,46 @@ def normalize_stock(product: Dict[str, Any], cache: Optional[Dict[str, Optional[
         item["stock_status"] = "in_stock"
         return item
 
-    # Una dichiarazione esplicita del singolo scraper vale solo se la pagina
-    # reale non ha dato una risposta contraria.
     if explicit_in:
         item["available"] = True
         item["availability"] = "in_stock"
         item["stock_status"] = "in_stock"
         return item
 
-    # 3) Nessuna informazione certa: UNKNOWN, mai IN STOCK per supposizione.
     item["available"] = None
     item["availability"] = "unknown"
     item["stock_status"] = "unknown"
     return item
 
-
-def resolve_actual_price(product: Dict[str, Any]) -> Dict[str, Any]:
+def resolve_actual_price(
+    product: Dict[str, Any],
+    page_cache: Optional[Dict[str, Optional[str]]] = None,
+) -> Dict[str, Any]:
     """
     Normalizza il prezzo mostrato da ScentHunter al prezzo realmente pagabile.
 
-    Problema risolto: alcuni scraper possono intercettare il prezzo unitario
-    (es. 26,66 €/100 ml) invece del prezzo della confezione (es. 39,99 €).
-    Prima prova la pagina prodotto; solo se non è disponibile usa il calcolo
-    da prezzo unitario quando il campo lo dichiara esplicitamente.
+    La pagina prodotto, se già recuperata durante il controllo stock, viene
+    riutilizzata. In questo modo stock e prezzo condividono una sola richiesta.
     """
     item = dict(product)
     raw_price = str(item.get("price") or "").strip()
     size = _product_size_ml(item)
 
-    # Se la pagina è disponibile, il prezzo strutturato è la fonte primaria.
+    html = item.get("_page_html")
     url = str(item.get("url") or "").strip()
-    if url:
-        try:
-            request = Request(
-                url,
-                headers={
-                    "Accept": "text/html,application/xhtml+xml",
-                    "User-Agent": "Mozilla/5.0 (compatible; ScentHunter/1.0)",
-                },
-            )
-            with urlopen(request, timeout=4) as response:
-                html = response.read().decode("utf-8", errors="ignore")
-            actual = _price_from_structured_html(html, size)
-            if actual is not None:
-                item["price"] = f"{actual:.2f} €"
-                item["price_value"] = actual
-                return item
-        except Exception:
-            pass
 
-    # Fallback sicuro: converti SOLO quando il testo dichiara esplicitamente
-    # che il valore è un prezzo unitario per 100 ml.
+    if not html and url:
+        html = _fetch_product_page(url, page_cache)
+        if html:
+            item["_page_html"] = html
+
+    if html:
+        actual = _price_from_structured_html(html, size)
+        if actual is not None:
+            item["price"] = f"{actual:.2f} €"
+            item["price_value"] = actual
+            return item
+
     unit_match = re.search(r"(?:/|per\s*)100\s*ml", raw_price, re.I)
     if unit_match and size and size > 0:
         unit = price_num(raw_price[:unit_match.start()])
@@ -516,7 +524,6 @@ def resolve_actual_price(product: Dict[str, Any]) -> Dict[str, Any]:
             item["price_value"] = actual
 
     return item
-
 
 def matches(product: Dict[str, Any], query: str) -> bool:
     """
@@ -587,7 +594,10 @@ def run_store(store: str, query: str) -> List[Dict[str, Any]]:
     attempts = build_search_attempts(store, query)
     output: List[Dict[str, Any]] = []
     seen = set()
-    stock_cache: Dict[str, Optional[bool]] = {}
+
+    # Una cache per ricerca/store: la stessa pagina prodotto non viene
+    # scaricata separatamente per stock e prezzo.
+    page_cache: Dict[str, Optional[str]] = {}
 
     for attempt in attempts:
         results = search_fn(attempt) or []
@@ -599,11 +609,13 @@ def run_store(store: str, query: str) -> List[Dict[str, Any]]:
             product = dict(item)
             product.setdefault("store", store)
 
-            # Regola generale stock: prima normalizziamo la disponibilità.
-            # Se è OOS, non sprechiamo una seconda richiesta per il prezzo.
-            product = normalize_stock(product, stock_cache)
+            product = normalize_stock(product, page_cache)
             if product.get("available") is not False:
-                product = resolve_actual_price(product)
+                product = resolve_actual_price(product, page_cache)
+
+            # L'HTML è un dettaglio interno della pipeline e non deve uscire
+            # nella risposta API.
+            product.pop("_page_html", None)
 
             key = (
                 str(product.get("url", "")).lower(),
@@ -619,7 +631,6 @@ def run_store(store: str, query: str) -> List[Dict[str, Any]]:
                 output.append(product)
 
     return output
-
 
 def unique_results(products: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
     unique: List[Dict[str, Any]] = []
