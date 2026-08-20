@@ -48,55 +48,110 @@ def _price(value):
     return m.group(1).replace(".", ",") + " €"
 
 
-def _final_price(value):
-    """Estrae il prezzo effettivamente in vendita, non il prezzo barrato."""
-    text = _clean(str(value or ""))
-
-    labeled = re.findall(
-        r"(?:prezzo|precio|price|prix)\s*:\s*(\d{1,4}(?:[.,]\d{2}))\s*€",
-        text,
-        flags=re.I,
-    )
-    if labeled:
-        return labeled[-1].replace(".", ",") + " €"
-
-    prices = PRICE_RE.findall(text)
-    if not prices:
-        return None
-
-    raw = prices[-1][0] if isinstance(prices[-1], tuple) else prices[-1]
-    return raw.replace(".", ",") + " €"
-
-
 def _looks_like_product_url(url):
     return bool(url and PRODUCT_URL_RE.match(url))
 
 
 def _extract_variants_from_html(text):
-    """Estrae tutte le varianti formato/prezzo dalla pagina prodotto Sabina.
+    """Estrae formato e PREZZO ATTUALE dalla pagina prodotto Sabina.
 
-    Sabina può mostrare più formati nella stessa scheda (es. 75 ML e
-    125 ML). La ricerca può invece restituire una sola card senza il formato.
-    Per questo leggiamo le varianti direttamente dalla pagina prodotto.
+    Sabina mostra spesso sia il prezzo barrato/originale sia il prezzo attuale
+    nella stessa area. Il parser deve scegliere il prezzo di vendita e non il
+    prezzo normale. I prezzi unitari (es. €/100 ml) non sono prezzi prodotto.
     """
     if not text:
         return []
 
     soup = BeautifulSoup(text, "html.parser")
-    variants = []
-    seen = set()
+    variants_by_size = {}
+
+    def _number(value):
+        if value is None:
+            return None
+        parsed = _price(value)
+        if not parsed:
+            return None
+        m = re.search(r"(\d{1,4}(?:[.,]\d{2}))", parsed)
+        if not m:
+            return None
+        try:
+            return float(m.group(1).replace(",", "."))
+        except ValueError:
+            return None
 
     def add_variant(size, price):
-        if not size or not price:
+        if not size or price in (None, ""):
             return
         size = str(size).strip()
-        price = _price(price)
-        if not price:
+        price_text = _price(price)
+        price_value = _number(price_text)
+        if not price_text or price_value is None:
             return
-        key = (size, price)
-        if key not in seen:
-            seen.add(key)
-            variants.append({"size_ml": size, "price": price})
+
+        current = variants_by_size.get(size)
+        # Se la stessa variante compare più volte, preferiamo il prezzo di
+        # vendita più basso. Il prezzo barrato viene così naturalmente scartato,
+        # mentre il prezzo unitario è escluso prima di arrivare qui.
+        if current is None or price_value < current[0]:
+            variants_by_size[size] = (price_value, price_text)
+
+    def extract_current_price(text_value):
+        """Trova il prezzo attuale, ignorando prezzo barrato e prezzo unitario."""
+        value = _clean(text_value)
+        if not value:
+            return None
+
+        matches = list(re.finditer(
+            r"(?<!\d)(\d{1,4}(?:[.,]\d{2}))\s*[€$£]",
+            value,
+            re.I,
+        ))
+        if not matches:
+            return None
+
+        preferred = []
+        fallback = []
+
+        for match in matches:
+            number = match.group(1)
+            prefix = value[max(0, match.start() - 55):match.start()].lower()
+            suffix = value[match.end():match.end() + 35].lower()
+
+            # Prezzi per 100 ml / unitari: non sono il prezzo della bottiglia.
+            if re.match(r"\s*(?:/|par|pour)\s*\d+\s*ml\b", suffix):
+                continue
+            if re.search(r"(?:/|par|pour)\s*\d+\s*ml\s*$", prefix):
+                continue
+
+            # Consideriamo soprattutto il testo immediatamente precedente al
+            # prezzo: una stessa riga può contenere prima il prezzo barrato e
+            # subito dopo il prezzo attuale.
+            prefix_tail = prefix[-28:]
+
+            # Prezzo barrato/originale: non usarlo come prezzo corrente.
+            if re.search(
+                r"(?:prezzo\s+(?:normale|originale|di\s+listino)|"
+                r"prix\s+(?:normal|habituel|d\s*origine)|"
+                r"normal\s+price|original\s+price|"
+                r"preis\s+(?:normal|urspr(?:ü|u)nglich)|"
+                r"precio\s+(?:normal|original))\s*:?\s*$",
+                prefix_tail,
+                re.I,
+            ):
+                fallback.append(number)
+                continue
+
+            # Prezzo attuale esplicitamente etichettato.
+            if re.search(r"(?:prezzo|prix|price|preis|precio)\s*:?\s*$", prefix_tail, re.I):
+                preferred.append(number)
+            else:
+                fallback.append(number)
+
+        if preferred:
+            return preferred[0]
+        if fallback:
+            return fallback[0]
+        return None
 
     def walk(obj):
         if isinstance(obj, dict):
@@ -108,17 +163,18 @@ def _extract_variants_from_html(text):
                 "description",
             ):
                 if key in low:
-                    m = re.search(r"(?<!\d)(\d{2,4})\s*ml\b", str(low[key]), re.I)
+                    m = re.search(r"(?<!\d)(?<!/)(?<!/\s)(?<!per\s)(?<!par\s)(?<!pour\s)(\d{2,4})\s*ml\b", str(low[key]), re.I)
                     if m:
                         size = m.group(1)
                         break
 
+            # JSON/API: final_price/sale_price hanno precedenza sul prezzo listino.
             price = None
             for key in (
-                "sale_price", "saleprice", "final_price", "finalprice",
-                "price", "price_amount", "priceamount",
+                "final_price", "finalprice", "sale_price", "saleprice",
+                "price_amount", "priceamount", "price",
             ):
-                if key in low:
+                if key in low and low[key] not in (None, ""):
                     price = low[key]
                     break
 
@@ -143,50 +199,47 @@ def _extract_variants_from_html(text):
     # 2) Elementi che rappresentano direttamente le opzioni di formato.
     for el in soup.find_all(["option", "label", "li", "button", "span", "div"]):
         txt = _clean(el.get_text(" ", strip=True))
-        if not txt or len(txt) > 500:
+        if not txt or len(txt) > 700:
             continue
 
-        sizes = re.findall(r"(?<!\d)(\d{2,4})\s*ml\b", txt, re.I)
+        sizes = re.findall(r"(?<!\d)(?<!/)(?<!/\s)(?<!per\s)(?<!par\s)(?<!pour\s)(\d{2,4})\s*ml\b", txt, re.I)
         if not sizes:
             continue
 
-        prices = re.findall(
-            r"(?<!\d)(\d{1,4}(?:[.,]\d{2}))\s*[€$£]",
-            txt,
-        )
-        if not prices:
+        current_price = extract_current_price(txt)
+        if current_price is None:
             continue
 
+        # Se c'è un solo formato nel blocco, il prezzo corrente appartiene a quello.
         if len(sizes) == 1:
-            add_variant(sizes[0], prices[0])
-        elif len(sizes) == len(prices):
-            for size, price in zip(sizes, prices):
-                add_variant(size, price)
-        else:
-            for size in sizes:
-                pos = txt.lower().find(size.lower())
-                before = txt[max(0, pos - 80):pos]
-                after = txt[pos:pos + 160]
-                nearby = re.findall(
-                    r"(?<!\d)(\d{1,4}(?:[.,]\d{2}))\s*[€$£]",
-                    before + " " + after,
-                )
-                if nearby:
-                    add_variant(size, nearby[0])
+            add_variant(sizes[0], current_price)
+            continue
+
+        # Più formati nello stesso blocco: prova ad associare il prezzo più vicino.
+        for size in sizes:
+            pos = txt.lower().find(size.lower())
+            before = txt[max(0, pos - 120):pos]
+            after = txt[pos:pos + 220]
+            nearby = extract_current_price(before + " " + after)
+            if nearby is not None:
+                add_variant(size, nearby)
 
     # 3) Fallback sul testo visibile.
     visible = _clean(soup.get_text(" ", strip=True))
-    for m in re.finditer(r"(?<!\d)(\d{2,4})\s*ml\b", visible, re.I):
+    for m in re.finditer(r"(?<!\d)(?<!/)(?<!/\s)(?<!per\s)(?<!par\s)(?<!pour\s)(\d{2,4})\s*ml\b", visible, re.I):
         size = m.group(1)
-        window = visible[m.start():m.start() + 180]
-        pm = re.search(
-            r"(?<!\d)(\d{1,4}(?:[.,]\d{2}))\s*[€$£]",
-            window,
-        )
-        if pm:
-            add_variant(size, pm.group(1))
+        window = visible[max(0, m.start() - 180):m.start() + 220]
+        current_price = extract_current_price(window)
+        if current_price is not None:
+            add_variant(size, current_price)
 
-    return variants
+    return [
+        {"size_ml": size, "price": price}
+        for size, (_, price) in sorted(
+            variants_by_size.items(),
+            key=lambda item: int(item[0]) if str(item[0]).isdigit() else 99999,
+        )
+    ]
 
 
 def _extract_size_from_html(text, preferred_size=""):
@@ -194,7 +247,7 @@ def _extract_size_from_html(text, preferred_size=""):
     variants = _extract_variants_from_html(text)
 
     preferred = re.search(
-        r"(?<!\d)(\d{2,4})\s*ml\b",
+        r"(?<!\d)(?<!/)(?<!/\s)(?<!per\s)(?<!par\s)(?<!pour\s)(\d{2,4})\s*ml\b",
         str(preferred_size or ""),
         re.I,
     )
@@ -222,7 +275,7 @@ def _enrich_product_sizes(session, rows, query=""):
     enrichment_requests = 0
 
     requested_size = ""
-    m = re.search(r"(?<!\d)(\d{2,4})\s*ml\b", _clean(query), re.I)
+    m = re.search(r"(?<!\d)(?<!/)(?<!/\s)(?<!per\s)(?<!par\s)(?<!pour\s)(\d{2,4})\s*ml\b", _clean(query), re.I)
     if m:
         requested_size = m.group(1)
 
@@ -345,8 +398,8 @@ def _walk_json(obj, query):
             )
             price = next(
                 (low[k] for k in (
-                    "sale_price", "saleprice", "final_price", "finalprice",
-                    "price", "price_amount", "priceamount"
+                    "price", "final_price", "finalprice", "sale_price",
+                    "saleprice", "price_amount", "priceamount"
                 ) if k in low),
                 None,
             )
@@ -401,8 +454,8 @@ def _parse_html(text, query):
                 break
 
         text_block = _clean(container.get_text(" ", strip=True))
-        selected_price = _final_price(text_block)
-        if not selected_price:
+        pm = PRICE_RE.search(text_block)
+        if not pm:
             continue
 
         # Preferenza: titolo strutturato della card; poi title/aria-label;
@@ -436,7 +489,7 @@ def _parse_html(text, query):
         rows.append({
             "store": STORE,
             "name": name,
-            "price": selected_price,
+            "price": pm.group(1) + " €",
             "url": url,
         })
 
@@ -459,101 +512,6 @@ def _get(session, url, **kwargs):
 
     r.raise_for_status()
     return r
-
-def _sitemap_product_urls(session, query):
-    """Generic fallback discovery using Sabina's public sitemap.
-
-    This is used only when Sabina's search endpoints do not return candidates.
-    It contains no product-, brand- or query-specific seed.
-    """
-    query_tokens = [
-        token for token in re.findall(r"[a-z0-9]+", _clean(query).lower())
-        if len(token) > 1 and token != "ml"
-    ]
-    if not query_tokens:
-        return []
-
-    sitemap_url = BASE + "/sitemap.xml"
-
-    try:
-        response = _get(session, sitemap_url)
-        if response is None:
-            return []
-        xml = response.text
-        response.close()
-    except Exception:
-        return []
-
-    def extract_locs(xml_text):
-        try:
-            soup = BeautifulSoup(xml_text, "xml")
-            return [
-                _clean(node.get_text())
-                for node in soup.find_all("loc")
-                if _clean(node.get_text())
-            ]
-        except Exception:
-            return re.findall(
-                r"<loc>\s*(.*?)\s*</loc>",
-                xml_text or "",
-                flags=re.I | re.S,
-            )
-
-    urls = extract_locs(xml)
-    child_maps = [
-        url for url in urls
-        if url.lower().endswith(".xml")
-        and "sitemap" in url.lower()
-    ]
-
-    product_urls = [
-        url for url in urls
-        if _looks_like_product_url(url)
-    ]
-
-    if child_maps:
-        def fetch_map(url):
-            try:
-                r = _get(session, url)
-                if r is None:
-                    return []
-                body = r.text
-                r.close()
-                return extract_locs(body)
-            except Exception:
-                return []
-
-        with ThreadPoolExecutor(max_workers=min(8, max(1, len(child_maps)))) as executor:
-            futures = [executor.submit(fetch_map, url) for url in child_maps]
-            for future in as_completed(futures):
-                try:
-                    product_urls.extend(future.result() or [])
-                except Exception:
-                    continue
-
-    seen = set()
-    candidates = []
-
-    for raw_url in product_urls:
-        url = _clean(raw_url)
-        if not _looks_like_product_url(url):
-            continue
-
-        normalized = url.split("#")[0].rstrip("/")
-        if normalized in seen:
-            continue
-
-        path_text = _clean(
-            re.sub(r"[-_/]+", " ", normalized.lower())
-        )
-        if not all(token in path_text.split() for token in query_tokens):
-            continue
-
-        seen.add(normalized)
-        candidates.append(normalized)
-
-    return candidates[:30]
-
 
 def search(query):
     """
@@ -694,24 +652,6 @@ def search(query):
 
                 except Exception:
                     continue
-
-        # Ultimo fallback generico: sitemap pubblico del negozio.
-        # Non usa URL, nomi o seed dedicati a un prodotto.
-        sitemap_candidates = _sitemap_product_urls(s, query)
-        for product_url in sitemap_candidates:
-            try:
-                item = _extract_product_page(s, product_url, query)
-                if item:
-                    results.append(item)
-            except Exception:
-                continue
-
-        if results:
-            return _enrich_product_sizes(
-                s,
-                _dedupe(results, query),
-                query,
-            )
 
         return []
 
