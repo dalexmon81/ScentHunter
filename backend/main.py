@@ -597,6 +597,14 @@ def normalize_stock(
     explicit_oos = any(_stock_value_is_oos(item.get(field)) for field in fields)
     explicit_in = any(_stock_value_is_in(item.get(field)) for field in fields)
 
+    # Alcuni scraper espongono lo stesso dato nel blocco standard `offer`.
+    # Il motore centrale deve leggerlo allo stesso modo dei campi piatti.
+    offer = item.get("offer")
+    if isinstance(offer, dict):
+        offer_availability = offer.get("availability")
+        explicit_oos = explicit_oos or _stock_value_is_oos(offer_availability)
+        explicit_in = explicit_in or _stock_value_is_in(offer_availability)
+
     # `available=False` da solo NON è una prova di esaurimento.
     # Alcuni scraper usano False anche quando il negozio non espone
     # lo stock. L'OUT OF STOCK viene accettato solo da un campo di
