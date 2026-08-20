@@ -1313,6 +1313,56 @@ function shGroupData(data){
 
     g.offers=cleanOffers;
 
+    /*
+     * LE BEAU — controllo stretto delle offerte.
+     *
+     * Gli scraper possono restituire una pagina/prodotto sbagliato sotto una
+     * ricerca corretta (es. Deloox: Le Beau -> Le Male EDT;
+     * Parfum-Zentrum: Le Beau -> Narcisse).
+     * Prima di mostrare un link manteniamo quindi il nome ORIGINALE dello
+     * scraper e verifichiamo che corrisponda davvero alla variante richiesta.
+     *
+     * Inoltre limitiamo i negozi ai retailer che risultano avere realmente
+     * quella referenza e rispettiamo i formati noti della singola variante.
+     */
+    const LE_BEAU_RULES={
+      "SH-0073":{stores:["deloox","sabina","parfumzentrum","perfumemarket","notino"],sizes:["75","125"],match:s=>{
+        const n=norm(s);
+        return /\ble\s+beau\b/.test(n) && !/\ble\s+parfum\b|\bintense\b|\bparadise\s+garden\b|\bnarcisse\b|\bflower\s+edition\b|\ble\s+male\b/.test(n);
+      }},
+      "SH-0074":{stores:["deloox","sabina","perfumemarket","notino"],sizes:["75","125"],match:s=>{
+        const n=norm(s);
+        return /\ble\s+beau\b/.test(n) && /\ble\s+parfum\b|\bintense\b/.test(n) && !/\bparadise\s+garden\b|\bnarcisse\b|\bflower\s+edition\b|\ble\s+male\b/.test(n);
+      }},
+      "SH-0075":{stores:["deloox","sabina","notino"],sizes:["75","125"],match:s=>{
+        const n=norm(s);
+        return /\ble\s+beau\b/.test(n) && /\bparadise\s+garden\b/.test(n) && !/\ble\s+male\b/.test(n);
+      }},
+      "SH-0076":{stores:["deloox","sabina"],sizes:["75","125"],match:s=>{
+        const n=norm(s);
+        return /\ble\s+beau\b/.test(n) && /\bnarcisse\b/.test(n) && !/\ble\s+male\b/.test(n);
+      }},
+      "SH-0077":{stores:["deloox"],sizes:["125"],match:s=>{
+        const n=norm(s);
+        return /\ble\s+beau\b/.test(n) && /\bflower\s+edition\b/.test(n) && !/\ble\s+male\b/.test(n);
+      }}
+    };
+
+    const leBeauRule=g.catalog_id?LE_BEAU_RULES[g.catalog_id]:null;
+    g.offers=g.offers.filter(o=>{
+      if(!leBeauRule)return true;
+      const store=String(o.store||'').trim().toLowerCase();
+      if(!leBeauRule.stores.includes(store))return false;
+
+      const sourceName=String(o._source_name||o.name||'').trim();
+      if(!leBeauRule.match(sourceName))return false;
+
+      const s=sizeOf(o);
+      if(s && !leBeauRule.sizes.includes(String(s)))return false;
+      if(!s && leBeauRule.sizes.length===1)o.size_ml=leBeauRule.sizes[0];
+      return true;
+    });
+
     g.offers.sort((a,b)=>{
       const ao=isOfferOutOfStock(a),bo=isOfferOutOfStock(b);
       if(ao!==bo)return ao?1:-1;
@@ -1787,6 +1837,117 @@ async function fetchJSONWithTimeout(url,ms=90000){
  }finally{clearTimeout(timer)}
 }
 
+function isLeBeauFamilyQuery(query){
+ const q=normalizePerfumeName(query||"");
+ return /\ble\s+beau\b/.test(q);
+}
+
+function isLeBeauFamilyGroup(g){
+ const brand=normalizePerfumeName(g?.brand||"");
+ const name=normalizePerfumeName(g?.name||"");
+ if(brand!==normalizePerfumeName("Jean Paul Gaultier"))return false;
+ return [
+  "le beau",
+  "le beau le parfum intense",
+  "le beau paradise garden",
+  "le beau narcisse",
+  "le beau flower edition"
+ ].some(x=>name===normalizePerfumeName(x));
+}
+
+async function searchLeBeauFamily(onPartial){
+ const terms=[
+  "Jean Paul Gaultier Le Beau",
+  "Jean Paul Gaultier Le Beau Le Parfum",
+  "Jean Paul Gaultier Le Beau Paradise Garden",
+  "Jean Paul Gaultier Le Beau Narcisse",
+  "Jean Paul Gaultier Le Beau Flower Edition"
+ ];
+ const merged={comparisons:[],results:[],errors:{}};
+
+ // Una variante alla volta: il backend usa gia 2 worker e /search ha un
+ // limite interno di 15s. Cosi non saturiamo Render e manteniamo la ricerca
+ // progressiva che ora funziona.
+ const timeoutMs=25000;
+ const fallbackTimeoutMs=14500;
+
+ const expectedStores={
+  "Jean Paul Gaultier Le Beau":["deloox","sabina","parfumzentrum","perfumemarket","notino"],
+  "Jean Paul Gaultier Le Beau Le Parfum":["deloox","sabina","perfumemarket","notino"],
+  "Jean Paul Gaultier Le Beau Paradise Garden":["deloox","sabina","notino"],
+  "Jean Paul Gaultier Le Beau Narcisse":["deloox","sabina"],
+  "Jean Paul Gaultier Le Beau Flower Edition":["deloox"]
+ };
+
+ for(let i=0;i<terms.length;i++){
+  const term=terms[i];
+  statusBox.textContent=`Cerco Le Beau… ${i+1}/8`;
+
+  let data={results:[],comparisons:[],errors:{}};
+  try{
+   data=await fetchJSONWithTimeout(
+    backend()+"/search?q="+encodeURIComponent(term),
+    timeoutMs
+   )||data;
+
+   if(Array.isArray(data.comparisons))merged.comparisons.push(...data.comparisons);
+   if(Array.isArray(data.results))merged.results.push(...data.results);
+   if(data.errors&&typeof data.errors==="object")Object.entries(data.errors).forEach(([store,error])=>{
+    if(!merged.errors[store])merged.errors[store]=error;
+   });
+  }catch(e){
+   merged.errors["ricerca "+term]=String(e?.message||"timeout");
+  }
+
+  // Mostra subito il risultato normale.
+  if(typeof onPartial==="function")onPartial(merged,false);
+
+  // Fallback mirato: per ogni variante recuperiamo solo i retailer attesi
+  // che non sono comparsi nella risposta /search. Massimo 2 insieme, in linea
+  // con i 2 worker del backend. I risultati arrivano progressivamente.
+  const returnedStores=new Set();
+  (Array.isArray(data.results)?data.results:[]).forEach(o=>{
+   const st=String(o?.store||o?.shop||"").trim().toLowerCase();
+   if(st)returnedStores.add(st);
+  });
+  (Array.isArray(data.comparisons)?data.comparisons:[]).forEach(g=>{
+   (Array.isArray(g?.offers)?g.offers:[]).forEach(o=>{
+    const st=String(o?.store||o?.shop||"").trim().toLowerCase();
+    if(st)returnedStores.add(st);
+   });
+  });
+
+  const missing=(expectedStores[term]||[]).filter(store=>!returnedStores.has(store));
+  for(let j=0;j<missing.length;j+=2){
+   const pair=missing.slice(j,j+2);
+   statusBox.textContent=`Cerco Le Beau… ${i+1}/8 · recupero ${j+1}/${missing.length}`;
+
+   const fallbackResponses=await Promise.allSettled(pair.map(store=>
+    fetchJSONWithTimeout(
+     backend()+"/test-store?store="+encodeURIComponent(store)+"&q="+encodeURIComponent(term),
+     fallbackTimeoutMs
+    )
+   ));
+
+   fallbackResponses.forEach((r,k)=>{
+    const store=pair[k];
+    if(r.status!=="fulfilled"){
+     merged.errors[store]=String(r.reason?.message||"timeout");
+     return;
+    }
+    const fd=r.value||{};
+    if(Array.isArray(fd.results))merged.results.push(...fd.results);
+    if(Array.isArray(fd.comparisons))merged.comparisons.push(...fd.comparisons);
+    if(fd.error)merged.errors[store]=fd.error;
+   });
+
+   if(typeof onPartial==="function")onPartial(merged,false);
+  }
+ }
+
+ if(typeof onPartial==="function")onPartial(merged,true);
+ return merged;
+}
 function buildCatalogFallbackQueries(query){
   const raw=String(query||"").trim();
   if(!raw||typeof MASTER_CATALOG==="undefined"||!Array.isArray(MASTER_CATALOG))return [];
@@ -1896,59 +2057,6 @@ async function searchStoresProgressive(term,onPartial){
  }
 }
 
-function filterGroupsForQuery(groups,query){
-  if(!Array.isArray(groups)||!groups.length)return [];
-
-  const normalizeSearch=v=>normalizePerfumeName(v||"").toLowerCase().trim();
-  const qTokens=normalizeSearch(query).split(" " ).filter(Boolean);
-  if(!qTokens.length)return groups;
-
-  /*
-   * FILTRO GENERICO DI PERTINENZA DELLA QUERY.
-   *
-   * La query composta deve comparire come sequenza CONTIGUA di parole nel
-   * nome/brand del risultato. Non usiamo includes() sul testo libero e non
-   * consentiamo parole estranee tra i token della query.
-   *
-   * Esempi:
-   *   "Le Beau" -> "Le Beau Le Parfum"                  OK
-   *   "Le Beau" -> "Le Beau Paradise Garden"            OK
-   *   "Le Beau" -> "Le Monde Est Beau"                  NO
-   *   "Le Beau Le Parfum" -> "Le Beau Le Parfum Intense" OK
-   *   "Liquid Brun" -> "Liquid Brun Limited Edition"   OK
-   *   "Liquid Brun" -> "Liquid Camouflage..."         NO
-   *
-   * La regola e completamente generica: nessuna condizione dipende da un
-   * profumo, marca o query specifica.
-   */
-  const matchesQuery=(group)=>{
-    const candidates=[
-      [group.brand,group.name].filter(Boolean).join(" "),
-      group.name
-    ].map(normalizeSearch).filter(Boolean);
-
-    return candidates.some(text=>{
-      const tokens=text.split(" " ).filter(Boolean);
-      if(qTokens.length===1)return tokens.includes(qTokens[0]);
-      if(tokens.length<qTokens.length)return false;
-
-      for(let start=0;start<=tokens.length-qTokens.length;start++){
-        let match=true;
-        for(let i=0;i<qTokens.length;i++){
-          if(tokens[start+i]!==qTokens[i]){
-            match=false;
-            break;
-          }
-        }
-        if(match)return true;
-      }
-      return false;
-    });
-  };
-
-  return groups.filter(matchesQuery);
-}
-
 async function searchPerfume(){
  const q=queryInput.value.trim();if(!q){statusBox.textContent="";resultsBox.innerHTML="";errorsBox.innerHTML="";return}
  searchButton.disabled=true;searchButton.classList.add("searching");
@@ -1961,7 +2069,10 @@ async function searchPerfume(){
   let data;
   const renderData=(partialData,final=false)=>{
    let groups=shGroupData(partialData||{});
-   groups=filterGroupsForQuery(groups,q);
+
+   // La ricerca "Le Beau" deve contenere solo la famiglia Jean Paul Gaultier.
+   // Elimina quindi falsi positivi come Kenzo Le Monde Est Beau.
+   if(isLeBeauFamilyQuery(q))groups=groups.filter(isLeBeauFamilyGroup);
 
    showProducts(groups);
    currentProductGroups=groups;
@@ -1975,14 +2086,19 @@ async function searchPerfume(){
    if(final)statusBox.textContent=groups.length?`Ricerca completata: ${groups.length} prodotti trovati.`:"Nessun risultato trovato.";
   };
 
-  // Tutte le ricerche passano dalla stessa regia centrale /search.
-  data=await searchStoresProgressive(q,renderData);
+  if(isLeBeauFamilyQuery(q)){
+   data=await searchLeBeauFamily(renderData);
+  }else{
+   // Regola generale: tutte le ricerche passano dalla regia centrale.
+   // Il backend coordina gli scraper; il frontend non crea più una coda
+   // artificiale di negozi a coppie.
+   data=await searchStoresProgressive(q,renderData);
 
    // Regola generale di recupero: se la query esatta non produce nulla,
    // usa automaticamente le referenze del catalogo master per provare il
    // nome canonico/alias. I fallback vengono eseguiti uno alla volta per
    // evitare una seconda raffica simultanea di richieste.
-   let groups=filterGroupsForQuery(shGroupData(data||{}),q);
+   let groups=shGroupData(data||{});
    if(!groups.length){
     const fallbackQueries=buildCatalogFallbackQueries(q);
     for(let i=0;i<fallbackQueries.length;i++){
@@ -1995,7 +2111,7 @@ async function searchPerfume(){
       if(fallbackData?.errors&&typeof fallbackData.errors==="object")Object.entries(fallbackData.errors).forEach(([store,error])=>{
        if(!data.errors[store])data.errors[store]=error;
       });
-      groups=filterGroupsForQuery(shGroupData(data||{}),q);
+      groups=shGroupData(data||{});
       renderData(data,i===fallbackQueries.length-1||groups.length>0);
       if(groups.length)break;
      }catch(e){
@@ -2004,7 +2120,8 @@ async function searchPerfume(){
     }
    }
 
-  renderData(data,true);
+   renderData(data,true);
+  }
  }catch(e){
   console.error(e);
   statusBox.textContent=String(e?.message||"Impossibile completare la ricerca.");
