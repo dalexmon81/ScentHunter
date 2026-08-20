@@ -505,7 +505,9 @@ def resolve_actual_price(
     html = item.get("_page_html")
     url = str(item.get("url") or "").strip()
 
-    if not html and url:
+    # Se lo scraper ha già fornito un prezzo reale, non scarichiamo
+    # nuovamente la pagina solo per ricalcolarlo.
+    if not raw_price and not html and url:
         html = _fetch_product_page(url, page_cache)
         if html:
             item["_page_html"] = html
@@ -529,37 +531,63 @@ def resolve_actual_price(
 
 def matches(product: Dict[str, Any], query: str) -> bool:
     """
-    Match generale del prodotto.
+    Validazione generica dell'identità del prodotto.
 
-    IMPORTANTE: non scartiamo automaticamente le varianti (Limited Edition,
-    Elixir, Rebel, ecc.). La UI deve poterle mostrare come prodotti distinti.
-    Filtriamo invece i veri non-profumi (gift set, deodoranti, kit...).
+    Per query composte richiede che la sequenza normalizzata della query
+    compaia nel nome/titolo del prodotto. Questo evita falsi positivi creati
+    dalla semplice presenza di singoli token separati, senza introdurre
+    regole dedicate a prodotti specifici.
+
+    Le varianti valide (es. Limited Edition, Elixir, Rebel) restano valide
+    quando il nome contiene la query originale.
     """
-    name_tokens = set(norm(product.get("name", "")).split())
-    query_all_tokens = set(norm(query).split())
-
-    if not name_tokens or not query_all_tokens:
+    query_n = norm(query)
+    if not query_n:
         return False
 
-    for phrase in NON_PERFUME:
-        phrase_tokens = set(norm(phrase).split())
-        if (
-            phrase_tokens
-            and phrase_tokens.issubset(name_tokens)
-            and not phrase_tokens.issubset(query_all_tokens)
-        ):
-            return False
+    name_fields = (
+        str(product.get("name") or ""),
+        str(product.get("title") or ""),
+        str(product.get("product_name") or ""),
+    )
+    name_texts = [norm(value) for value in name_fields if norm(value)]
+    brand_text = norm(product.get("brand") or "")
+    if brand_text:
+        name_texts.append(norm(f"{brand_text} {' '.join(name_fields)}"))
+    if not name_texts:
+        return False
 
-    query_tokens = {
-        token
-        for token in query_all_tokens
-        if token not in IGNORED_WORDS
-    }
+    # Escludiamo genericamente articoli/non-profumi quando non fanno parte
+    # della query stessa.
+    query_tokens = set(query_n.split())
+    for text in name_texts:
+        name_tokens = set(text.split())
+        blocked = False
+        for phrase in NON_PERFUME:
+            phrase_tokens = set(norm(phrase).split())
+            if (
+                phrase_tokens
+                and phrase_tokens.issubset(name_tokens)
+                and not phrase_tokens.issubset(query_tokens)
+            ):
+                blocked = True
+                break
+        if blocked:
+            continue
 
-    if not query_tokens:
-        query_tokens = query_all_tokens
+        # Query composta: la sequenza completa deve essere presente.
+        # Questo distingue, ad esempio, "Le Beau Le Parfum" da
+        # "Le Monde Est Beau".
+        if " " in query_n:
+            if query_n in text:
+                return True
+        else:
+            # Query singola: il token deve essere una parola reale oppure
+            # comparire come segmento testuale della denominazione.
+            if query_n in name_tokens:
+                return True
 
-    return bool(query_tokens) and query_tokens.issubset(name_tokens)
+    return False
 
 
 def load_scraper(store: str):
