@@ -329,8 +329,6 @@ def _reader_discovery(query: str, session: requests.Session) -> Tuple[List[Dict[
                 if old is None or candidate["score"] > old["score"]:
                     found[candidate["url"]] = candidate
             pages.append({"url": url, "status": response.status_code, "candidate_count": len(candidates), "reader": True})
-            if candidates:
-                break
         except requests.RequestException as exc:
             pages.append({"url": url, "status": None, "error": f"{type(exc).__name__}: {exc}", "reader": True})
     ordered = sorted(found.values(), key=lambda x: (not x["contains_all_query_tokens"], -x["score"], x["url"]))
@@ -382,6 +380,10 @@ def _google_discovery(query: str, session: requests.Session) -> List[Dict[str, A
 
 def _search_http_candidates(query: str, session: requests.Session) -> List[Dict[str, Any]]:
     candidates: Dict[str, Dict[str, Any]] = {}
+
+    # Interroga tutti gli endpoint di ricerca disponibili e unifica i candidati.
+    # Un endpoint può mostrare solo una variante mentre un altro contiene il
+    # prodotto base; fermarsi al primo risultato perde prodotti validi.
     for url in _search_urls(query):
         try:
             response = _request(session, url)
@@ -391,11 +393,14 @@ def _search_http_candidates(query: str, session: requests.Session) -> List[Dict[
             old = candidates.get(candidate["url"])
             if old is None or candidate["score"] > old["score"]:
                 candidates[candidate["url"]] = candidate
-        if candidates:
-            break
-    ordered = sorted(candidates.values(), key=lambda x: (not x["contains_all_query_tokens"], -x["score"], x["url"]))
+
+    ordered = sorted(
+        candidates.values(),
+        key=lambda x: (not x["contains_all_query_tokens"], -x["score"], x["url"]),
+    )
     if ordered:
         return ordered
+
     reader_candidates, _ = _reader_discovery(query, session)
     if reader_candidates:
         return reader_candidates
