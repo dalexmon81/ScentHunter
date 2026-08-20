@@ -596,38 +596,83 @@ def _is_allowed_perfume_name(name: str) -> bool:
     return True
 
 
+def _norm(value: Any) -> str:
+    value = str(value or "").lower().strip()
+    value = unicodedata.normalize("NFKD", value)
+    value = "".join(char for char in value if not unicodedata.combining(char))
+    value = re.sub(r"(?<=\d)(?=[a-z])|(?<=[a-z])(?=\d)", " ", value)
+    value = re.sub(r"[^a-z0-9]+", " ", value)
+    return re.sub(r"\s+", " ", value).strip()
+
+
+NON_PERFUME = {
+    "tester", "testeur", "testing", "sample", "echantillon",
+    "mystery box", "mysterybox",
+    "shampoo", "shampoing", "shampooing", "conditioner",
+    "hair mask", "hair care", "gel douche", "shower gel", "body wash",
+    "body lotion", "lotion corps", "body cream", "body creme",
+    "body butter", "hand cream", "hand creme", "handcreme",
+    "face cream", "face creme", "facial cream", "moisturizer",
+    "moisturiser", "creme visage", "serum", "serum visage",
+    "deodorant", "deo spray", "deodorant spray",
+    "after shave", "aftershave", "baume apres rasage",
+    "after shave balm", "lipstick", "rouge a levres",
+    "makeup", "maquillage", "foundation", "concealer", "mascara",
+    "eyeliner", "liquid blush", "blush liquide", "bronzer",
+    "highlighter", "nail polish", "vernis",
+    "cosmetic", "cosmetique", "cosmetics", "cosmetiques",
+    "skincare", "skin care",
+}
+
+
+def _is_allowed_perfume_name(name: str) -> bool:
+    normalized = _norm(name)
+    if not normalized:
+        return False
+
+    tokens = set(normalized.split())
+
+    for marker in NON_PERFUME:
+        marker_tokens = set(_norm(marker).split())
+        if marker_tokens and marker_tokens.issubset(tokens):
+            return False
+
+    return True
+
+
 def matches(product: Dict[str, Any], query: str) -> bool:
-    """
-    Match generale del prodotto.
+    name = str(
+        product.get("name")
+        or product.get("title")
+        or product.get("product_name")
+        or ""
+    ).strip()
 
-    Il match viene sempre verificato contro la QUERY ORIGINALE dell'utente.
-    Le query di discovery aggiuntive di uno scraper servono solo a trovare
-    candidati: non possono trasformare una singola parola della ricerca in
-    un prodotto valido.
-
-    Le varianti restano distinte: Limited Edition, Rebel, Ice, Elixir, ecc.
-    non vengono eliminate automaticamente.
-    """
-    name = str(product.get("name") or "").strip()
-    name_tokens = set(norm(name).split())
-    query_all_tokens = set(norm(query).split())
-
-    if not name_tokens or not query_all_tokens:
+    if not name:
         return False
 
     if not _is_allowed_perfume_name(name):
         return False
 
-    query_tokens = {
+    name_normalized = _norm(name)
+    name_tokens = set(name_normalized.split())
+
+    if not name_tokens:
+        return False
+
+    query_tokens = [
         token
-        for token in query_all_tokens
+        for token in _norm(query).split()
         if token not in IGNORED_WORDS
-    }
+    ]
 
     if not query_tokens:
-        query_tokens = query_all_tokens
+        query_tokens = _norm(query).split()
 
-    return bool(query_tokens) and query_tokens.issubset(name_tokens)
+    return bool(query_tokens) and all(
+        token in name_tokens
+        for token in query_tokens
+    )
 
 
 def load_scraper(store: str):
