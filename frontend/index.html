@@ -1313,56 +1313,6 @@ function shGroupData(data){
 
     g.offers=cleanOffers;
 
-    /*
-     * LE BEAU — controllo stretto delle offerte.
-     *
-     * Gli scraper possono restituire una pagina/prodotto sbagliato sotto una
-     * ricerca corretta (es. Deloox: Le Beau -> Le Male EDT;
-     * Parfum-Zentrum: Le Beau -> Narcisse).
-     * Prima di mostrare un link manteniamo quindi il nome ORIGINALE dello
-     * scraper e verifichiamo che corrisponda davvero alla variante richiesta.
-     *
-     * Inoltre limitiamo i negozi ai retailer che risultano avere realmente
-     * quella referenza e rispettiamo i formati noti della singola variante.
-     */
-    const LE_BEAU_RULES={
-      "SH-0073":{stores:["deloox","sabina","parfumzentrum","perfumemarket","notino"],sizes:["75","125"],match:s=>{
-        const n=norm(s);
-        return /\ble\s+beau\b/.test(n) && !/\ble\s+parfum\b|\bintense\b|\bparadise\s+garden\b|\bnarcisse\b|\bflower\s+edition\b|\ble\s+male\b/.test(n);
-      }},
-      "SH-0074":{stores:["deloox","sabina","perfumemarket","notino"],sizes:["75","125"],match:s=>{
-        const n=norm(s);
-        return /\ble\s+beau\b/.test(n) && /\ble\s+parfum\b|\bintense\b/.test(n) && !/\bparadise\s+garden\b|\bnarcisse\b|\bflower\s+edition\b|\ble\s+male\b/.test(n);
-      }},
-      "SH-0075":{stores:["deloox","sabina","notino"],sizes:["75","125"],match:s=>{
-        const n=norm(s);
-        return /\ble\s+beau\b/.test(n) && /\bparadise\s+garden\b/.test(n) && !/\ble\s+male\b/.test(n);
-      }},
-      "SH-0076":{stores:["deloox","sabina"],sizes:["75","125"],match:s=>{
-        const n=norm(s);
-        return /\ble\s+beau\b/.test(n) && /\bnarcisse\b/.test(n) && !/\ble\s+male\b/.test(n);
-      }},
-      "SH-0077":{stores:["deloox"],sizes:["125"],match:s=>{
-        const n=norm(s);
-        return /\ble\s+beau\b/.test(n) && /\bflower\s+edition\b/.test(n) && !/\ble\s+male\b/.test(n);
-      }}
-    };
-
-    const leBeauRule=g.catalog_id?LE_BEAU_RULES[g.catalog_id]:null;
-    g.offers=g.offers.filter(o=>{
-      if(!leBeauRule)return true;
-      const store=String(o.store||'').trim().toLowerCase();
-      if(!leBeauRule.stores.includes(store))return false;
-
-      const sourceName=String(o._source_name||o.name||'').trim();
-      if(!leBeauRule.match(sourceName))return false;
-
-      const s=sizeOf(o);
-      if(s && !leBeauRule.sizes.includes(String(s)))return false;
-      if(!s && leBeauRule.sizes.length===1)o.size_ml=leBeauRule.sizes[0];
-      return true;
-    });
-
     g.offers.sort((a,b)=>{
       const ao=isOfferOutOfStock(a),bo=isOfferOutOfStock(b);
       if(ao!==bo)return ao?1:-1;
@@ -1914,43 +1864,36 @@ async function getSearchStores(term){
 }
 
 async function searchStoresProgressive(term,onPartial){
- const merged={query:term,comparisons:[],results:[],errors:{}};
- const timeoutMs=15000;
- const concurrency=2;
- const stores=await getSearchStores(term);
- const totalStores=stores.length;
+ const timeoutMs=20000;
 
- for(let i=0;i<stores.length;i+=concurrency){
-  const pair=stores.slice(i,i+concurrency);
-  statusBox.textContent=`Cerco ${term}… ${Math.min(i+concurrency,totalStores)}/${totalStores}`;
+ // La ricerca reale passa dalla regia centrale /search.
+ // Il frontend non interroga più i negozi a coppie tramite /test-store.
+ // È il backend a coordinare tutti gli scraper.
+ try{
+  const data=await fetchJSONWithTimeout(
+   backend()+"/search?q="+encodeURIComponent(term),
+   timeoutMs
+  );
 
-  const responses=await Promise.allSettled(pair.map(store=>
-   fetchJSONWithTimeout(
-    backend()+"/test-store?store="+encodeURIComponent(store)+"&q="+encodeURIComponent(term),
-    timeoutMs
-   )
-  ));
+  const normalized={
+   query:String(data?.query||term),
+   comparisons:Array.isArray(data?.comparisons)?data.comparisons:[],
+   results:Array.isArray(data?.results)?data.results:[],
+   errors:data?.errors&&typeof data.errors==="object"?data.errors:{}
+  };
 
-  responses.forEach((r,k)=>{
-   const store=pair[k];
-   if(r.status!=="fulfilled"){
-    merged.errors[store]=String(r.reason?.message||"timeout");
-    return;
-   }
-   const data=r.value||{};
-   if(Array.isArray(data.results))merged.results.push(...data.results);
-   if(Array.isArray(data.comparisons))merged.comparisons.push(...data.comparisons);
-   if(data.errors&&typeof data.errors==="object")Object.entries(data.errors).forEach(([name,error])=>{
-    if(!merged.errors[name])merged.errors[name]=error;
-   });
-   if(data.error)merged.errors[store]=data.error;
-  });
-
-  if(typeof onPartial==="function")onPartial(merged,false);
+  if(typeof onPartial==="function")onPartial(normalized,true);
+  return normalized;
+ }catch(error){
+  const failed={
+   query:term,
+   comparisons:[],
+   results:[],
+   errors:{central:String(error?.message||"timeout")}
+  };
+  if(typeof onPartial==="function")onPartial(failed,true);
+  return failed;
  }
-
- if(typeof onPartial==="function")onPartial(merged,true);
- return merged;
 }
 
 async function searchPerfume(){
@@ -1966,7 +1909,6 @@ async function searchPerfume(){
   const renderData=(partialData,final=false)=>{
    let groups=shGroupData(partialData||{});
 
-
    showProducts(groups);
    currentProductGroups=groups;
    updateBestPricesFromGroups(groups);
@@ -1979,35 +1921,34 @@ async function searchPerfume(){
    if(final)statusBox.textContent=groups.length?`Ricerca completata: ${groups.length} prodotti trovati.`:"Nessun risultato trovato.";
   };
 
-  // Tutte le ricerche passano dalla stessa pipeline progressiva.
-  // Massimo 2 negozi alla volta, con aggiornamento dei risultati man mano.
+  // Tutte le ricerche passano dalla stessa regia centrale /search.
   data=await searchStoresProgressive(q,renderData);
 
-  // Regola generale di recupero: se la query esatta non produce nulla,
-  // usa automaticamente le referenze del catalogo master per provare il
-  // nome canonico/alias. I fallback vengono eseguiti uno alla volta per
-  // evitare una seconda raffica simultanea di richieste.
-  let groups=shGroupData(data||{});
-  if(!groups.length){
-   const fallbackQueries=buildCatalogFallbackQueries(q);
-   for(let i=0;i<fallbackQueries.length;i++){
-    const term=fallbackQueries[i];
-    statusBox.textContent=`Provo una ricerca alternativa… ${i+1}/${fallbackQueries.length}`;
-    try{
-     const fallbackData=await searchStoresProgressive(term,null);
-     if(Array.isArray(fallbackData?.results))data.results.push(...fallbackData.results);
-     if(Array.isArray(fallbackData?.comparisons))data.comparisons.push(...fallbackData.comparisons);
-     if(fallbackData?.errors&&typeof fallbackData.errors==="object")Object.entries(fallbackData.errors).forEach(([store,error])=>{
-      if(!data.errors[store])data.errors[store]=error;
-     });
-     groups=shGroupData(data||{});
-     renderData(data,i===fallbackQueries.length-1||groups.length>0);
-     if(groups.length)break;
-    }catch(e){
-     console.warn("Fallback ricerca",term,e);
+   // Regola generale di recupero: se la query esatta non produce nulla,
+   // usa automaticamente le referenze del catalogo master per provare il
+   // nome canonico/alias. I fallback vengono eseguiti uno alla volta per
+   // evitare una seconda raffica simultanea di richieste.
+   let groups=shGroupData(data||{});
+   if(!groups.length){
+    const fallbackQueries=buildCatalogFallbackQueries(q);
+    for(let i=0;i<fallbackQueries.length;i++){
+     const term=fallbackQueries[i];
+     statusBox.textContent=`Provo una ricerca alternativa… ${i+1}/${fallbackQueries.length}`;
+     try{
+      const fallbackData=await searchStoresProgressive(term,null);
+      if(Array.isArray(fallbackData?.results))data.results.push(...fallbackData.results);
+      if(Array.isArray(fallbackData?.comparisons))data.comparisons.push(...fallbackData.comparisons);
+      if(fallbackData?.errors&&typeof fallbackData.errors==="object")Object.entries(fallbackData.errors).forEach(([store,error])=>{
+       if(!data.errors[store])data.errors[store]=error;
+      });
+      groups=shGroupData(data||{});
+      renderData(data,i===fallbackQueries.length-1||groups.length>0);
+      if(groups.length)break;
+     }catch(e){
+      console.warn("Fallback ricerca",term,e);
+     }
     }
    }
-  }
 
   renderData(data,true);
  }catch(e){
