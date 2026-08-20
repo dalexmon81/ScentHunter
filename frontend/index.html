@@ -1896,6 +1896,59 @@ async function searchStoresProgressive(term,onPartial){
  }
 }
 
+function filterGroupsForQuery(groups,query){
+  if(!Array.isArray(groups)||!groups.length)return [];
+
+  const normalizeSearch=v=>normalizePerfumeName(v||"").toLowerCase().trim();
+  const qTokens=normalizeSearch(query).split(" " ).filter(Boolean);
+  if(!qTokens.length)return groups;
+
+  /*
+   * FILTRO GENERICO DI PERTINENZA DELLA QUERY.
+   *
+   * La query composta deve comparire come sequenza CONTIGUA di parole nel
+   * nome/brand del risultato. Non usiamo includes() sul testo libero e non
+   * consentiamo parole estranee tra i token della query.
+   *
+   * Esempi:
+   *   "Le Beau" -> "Le Beau Le Parfum"                  OK
+   *   "Le Beau" -> "Le Beau Paradise Garden"            OK
+   *   "Le Beau" -> "Le Monde Est Beau"                  NO
+   *   "Le Beau Le Parfum" -> "Le Beau Le Parfum Intense" OK
+   *   "Liquid Brun" -> "Liquid Brun Limited Edition"   OK
+   *   "Liquid Brun" -> "Liquid Camouflage..."         NO
+   *
+   * La regola e completamente generica: nessuna condizione dipende da un
+   * profumo, marca o query specifica.
+   */
+  const matchesQuery=(group)=>{
+    const candidates=[
+      [group.brand,group.name].filter(Boolean).join(" "),
+      group.name
+    ].map(normalizeSearch).filter(Boolean);
+
+    return candidates.some(text=>{
+      const tokens=text.split(" " ).filter(Boolean);
+      if(qTokens.length===1)return tokens.includes(qTokens[0]);
+      if(tokens.length<qTokens.length)return false;
+
+      for(let start=0;start<=tokens.length-qTokens.length;start++){
+        let match=true;
+        for(let i=0;i<qTokens.length;i++){
+          if(tokens[start+i]!==qTokens[i]){
+            match=false;
+            break;
+          }
+        }
+        if(match)return true;
+      }
+      return false;
+    });
+  };
+
+  return groups.filter(matchesQuery);
+}
+
 async function searchPerfume(){
  const q=queryInput.value.trim();if(!q){statusBox.textContent="";resultsBox.innerHTML="";errorsBox.innerHTML="";return}
  searchButton.disabled=true;searchButton.classList.add("searching");
@@ -1908,6 +1961,7 @@ async function searchPerfume(){
   let data;
   const renderData=(partialData,final=false)=>{
    let groups=shGroupData(partialData||{});
+   groups=filterGroupsForQuery(groups,q);
 
    showProducts(groups);
    currentProductGroups=groups;
@@ -1928,7 +1982,7 @@ async function searchPerfume(){
    // usa automaticamente le referenze del catalogo master per provare il
    // nome canonico/alias. I fallback vengono eseguiti uno alla volta per
    // evitare una seconda raffica simultanea di richieste.
-   let groups=shGroupData(data||{});
+   let groups=filterGroupsForQuery(shGroupData(data||{}),q);
    if(!groups.length){
     const fallbackQueries=buildCatalogFallbackQueries(q);
     for(let i=0;i<fallbackQueries.length;i++){
@@ -1941,7 +1995,7 @@ async function searchPerfume(){
       if(fallbackData?.errors&&typeof fallbackData.errors==="object")Object.entries(fallbackData.errors).forEach(([store,error])=>{
        if(!data.errors[store])data.errors[store]=error;
       });
-      groups=shGroupData(data||{});
+      groups=filterGroupsForQuery(shGroupData(data||{}),q);
       renderData(data,i===fallbackQueries.length-1||groups.length>0);
       if(groups.length)break;
      }catch(e){
