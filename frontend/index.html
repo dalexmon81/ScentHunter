@@ -1539,6 +1539,21 @@ async function fetchJSONWithTimeout(url,ms=90000){
  }finally{clearTimeout(timer)}
 }
 
+
+async function searchStoresProgressive(query, onPartial){
+  const q=String(query||"").trim();
+  if(!q) return {query:"",count:0,results:[],comparisons:[],errors:{}};
+
+  const url="/search?q="+encodeURIComponent(q);
+  const data=await fetchJSONWithTimeout(url,90000);
+
+  if(typeof onPartial==="function"){
+    onPartial(data,true);
+  }
+
+  return data||{query:q,count:0,results:[],comparisons:[],errors:{}};
+}
+
 async function searchPerfume(){
  const q=queryInput.value.trim();if(!q){statusBox.textContent="";resultsBox.innerHTML="";errorsBox.innerHTML="";return}
  searchButton.disabled=true;searchButton.classList.add("searching");
