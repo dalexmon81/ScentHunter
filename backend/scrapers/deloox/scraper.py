@@ -480,9 +480,10 @@ def parse_product_page(response, query):
         strip=True,
     )
 
+    # Size must come from the product identity. Scanning the entire page can
+    # pick up the size of a related/recommended product.
     size_ml = extract_size_ml(
         name,
-        text,
     )
 
     concentration = extract_concentration(
