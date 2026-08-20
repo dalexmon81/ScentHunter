@@ -1075,6 +1075,22 @@ function shGroupData(data){
     return cleanBrandText(value);
   }
 
+  function removeTrailingConcentration(name, concentration){
+    let n=String(name||"").trim();
+    const label=concentrationLabel(concentration);
+    if(!n||!label)return n;
+
+    const escaped=label
+      .split(/\s+/)
+      .map(w=>w.replace(/[.*+?^${}()|[\]\\]/g,"\\$&"))
+      .join("\\s+");
+
+    // Rimuove solo la concentrazione quando è già presente alla fine
+    // del nome. In questo modo l'Index non la visualizza due volte.
+    n=n.replace(new RegExp("\\s*(?:[-–—:]\\s*)?"+escaped+"\\s*$","i"),"").trim();
+    return n;
+  }
+
   function isGenericNameModifier(value){
     const n=norm(value);
     if(!n)return true;
@@ -1334,9 +1350,12 @@ function shGroupData(data){
     const size=explicitSize||inferredSize;
 
     const concentration=o.concentration||id.concentration||"";
-    const displayName=concentration
-      ? id.name+" "+concentrationLabel(concentration)
+    const baseDisplayName=concentration
+      ? removeTrailingConcentration(id.name, concentration)
       : id.name;
+    const displayName=concentration
+      ? (baseDisplayName+" "+concentrationLabel(concentration)).trim()
+      : baseDisplayName;
 
     if(!map.has(id.key)){
       map.set(id.key,{
