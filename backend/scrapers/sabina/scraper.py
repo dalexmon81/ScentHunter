@@ -48,6 +48,26 @@ def _price(value):
     return m.group(1).replace(".", ",") + " €"
 
 
+def _final_price(value):
+    """Estrae il prezzo effettivamente in vendita, non il prezzo barrato."""
+    text = _clean(str(value or ""))
+
+    labeled = re.findall(
+        r"(?:prezzo|precio|price|prix)\s*:\s*(\d{1,4}(?:[.,]\d{2}))\s*€",
+        text,
+        flags=re.I,
+    )
+    if labeled:
+        return labeled[-1].replace(".", ",") + " €"
+
+    prices = PRICE_RE.findall(text)
+    if not prices:
+        return None
+
+    raw = prices[-1][0] if isinstance(prices[-1], tuple) else prices[-1]
+    return raw.replace(".", ",") + " €"
+
+
 def _looks_like_product_url(url):
     return bool(url and PRODUCT_URL_RE.match(url))
 
@@ -95,8 +115,8 @@ def _extract_variants_from_html(text):
 
             price = None
             for key in (
-                "price", "final_price", "finalprice", "sale_price",
-                "saleprice", "price_amount", "priceamount",
+                "sale_price", "saleprice", "final_price", "finalprice",
+                "price", "price_amount", "priceamount",
             ):
                 if key in low:
                     price = low[key]
@@ -325,8 +345,8 @@ def _walk_json(obj, query):
             )
             price = next(
                 (low[k] for k in (
-                    "price", "final_price", "finalprice", "sale_price",
-                    "saleprice", "price_amount", "priceamount"
+                    "sale_price", "saleprice", "final_price", "finalprice",
+                    "price", "price_amount", "priceamount"
                 ) if k in low),
                 None,
             )
@@ -381,8 +401,8 @@ def _parse_html(text, query):
                 break
 
         text_block = _clean(container.get_text(" ", strip=True))
-        pm = PRICE_RE.search(text_block)
-        if not pm:
+        selected_price = _final_price(text_block)
+        if not selected_price:
             continue
 
         # Preferenza: titolo strutturato della card; poi title/aria-label;
@@ -416,7 +436,7 @@ def _parse_html(text, query):
         rows.append({
             "store": STORE,
             "name": name,
-            "price": pm.group(1) + " €",
+            "price": selected_price,
             "url": url,
         })
 
