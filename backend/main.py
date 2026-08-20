@@ -48,32 +48,45 @@ VARIANTS = {
     "extreme", "limited edition", "collector edition", "collector's edition",
 }
 
-NON_PERFUME_MARKERS = {
-    "tester", "testeur", "testing", "sample", "échantillon", "echantillon",
-    "mystery box", "mysterybox",
-    "shampoo", "shampoing", "shampooing", "conditioner", "apres shampooing",
-    "hair mask", "hair care", "gel douche", "shower gel", "body wash",
-    "body lotion", "lotion corps", "body cream", "body creme", "body butter",
-    "hand cream", "hand creme", "handcreme", "face cream", "face creme",
-    "facial cream", "moisturizer", "moisturiser", "creme visage",
-    "serum", "sérum", "serum visage",
-    "deodorant", "déodorant", "deo spray", "deodorant spray",
-    "after shave", "aftershave", "baume apres rasage", "after shave balm",
-    "lipstick", "rouge a levres", "makeup", "maquillage", "foundation",
-    "concealer", "mascara", "eyeliner", "liquid blush", "blush liquide",
-    "blush makeup", "blush maquillage", "bronzer", "highlighter",
-    "nail polish", "vernis", "cosmetic", "cosmetique", "cosmetics",
-    "cosmétiques", "skincare", "skin care",
-}
-
-PERFUME_SET_MARKERS = {
-    "gift set", "set regalo", "coffret", "bundle", "travel set",
-    "discovery set", "fragrance set", "perfume set", "parfum set",
-}
-
-PERFUME_TYPE_MARKERS = {
-    "parfum", "perfume", "fragrance", "eau de parfum", "eau de toilette",
-    "eau de cologne", "extrait", "edp", "edt", "edc", "cologne",
+NON_PERFUME = {
+    # Confezioni multiple / set: ScentHunter mostra solo la bottiglia singola.
+    "gift set",
+    "set regalo",
+    "set",
+    "discovery set",
+    "fragrance set",
+    "perfume set",
+    "parfum set",
+    "coffret",
+    "bundle",
+    "pack",
+    "travel set",
+    "kit",
+    "duo",
+    "trio",
+    "mystery box",
+    # Prodotti che non sono una bottiglia di profumo singola.
+    "tester",
+    "testeur",
+    "sample",
+    "shampoo",
+    "shower gel",
+    "body wash",
+    "body lotion",
+    "body cream",
+    "body milk",
+    "deodorant",
+    "deo spray",
+    "aftershave",
+    "after shave",
+    "body spray",
+    "hair mist",
+    "makeup",
+    "cosmetics",
+    "cosmetic",
+    "skincare",
+    "skin care",
+    "cosmetici",
 }
 
 IGNORED_WORDS = {
@@ -540,64 +553,42 @@ def resolve_actual_price(product: Dict[str, Any]) -> Dict[str, Any]:
     return item
 
 
-def _contains_marker(name: str, markers: set[str]) -> bool:
-    name_n = norm(name)
-    return any(
-        norm(marker) and norm(marker) in name_n
-        for marker in markers
-    )
-
-
-def _is_allowed_perfume_name(name: str) -> bool:
-    """
-    Generic category filter based only on the product identity/name.
-
-    The description, related products and page copy are deliberately ignored:
-    they can mention unrelated categories without changing what the product is.
-
-    Known perfume-set names are allowed. Explicitly non-perfume product names
-    are rejected before any query matching is applied.
-    """
-    name_n = norm(name)
-    if not name_n:
+def has_non_perfume_marker(value: Any) -> bool:
+    """True when the product name identifies a non-single-perfume item."""
+    name_tokens = set(norm(value).split())
+    if not name_tokens:
         return False
 
-    if _contains_marker(name_n, NON_PERFUME_MARKERS):
-        return False
+    for marker in NON_PERFUME:
+        marker_tokens = set(norm(marker).split())
+        if marker_tokens and marker_tokens.issubset(name_tokens):
+            return True
 
-    if _contains_marker(name_n, PERFUME_SET_MARKERS):
-        return True
-
-    # "kit" is too generic to allow blindly. If it is explicitly a
-    # fragrance/perfume kit, it is allowed; otherwise it is rejected.
-    if re.search(r"\bkit\b", name_n):
-        return _contains_marker(name_n, PERFUME_TYPE_MARKERS)
-
-    # A normal perfume does not need to contain "parfum", "EDP", etc. in
-    # its title. The exclusion list above is what defines non-perfume items.
-    return True
+    return False
 
 
 def matches(product: Dict[str, Any], query: str) -> bool:
     """
-    Match generale del prodotto.
+    Match generico della fragranza + classificazione del prodotto.
 
-    Il match viene sempre verificato contro la QUERY ORIGINALE dell'utente.
-    Le query di discovery aggiuntive di uno scraper servono solo a trovare
-    candidati: non possono trasformare una singola parola della ricerca in
-    un prodotto valido.
-
-    Le varianti restano distinte: Limited Edition, Rebel, Ice, Elixir, ecc.
-    non vengono eliminate automaticamente.
+    Le varianti reali (Limited Edition, Rebel, Ice, Intense, Elixir,
+    Extreme, ecc.) restano valide. I prodotti che non sono una bottiglia
+    singola vengono invece esclusi sempre, indipendentemente dalla query.
     """
-    name = str(product.get("name") or "").strip()
+    name = str(
+        product.get("name")
+        or product.get("title")
+        or product.get("product_name")
+        or ""
+    ).strip()
+
     name_tokens = set(norm(name).split())
     query_all_tokens = set(norm(query).split())
 
     if not name_tokens or not query_all_tokens:
         return False
 
-    if not _is_allowed_perfume_name(name):
+    if has_non_perfume_marker(name):
         return False
 
     query_tokens = {
@@ -657,6 +648,16 @@ def run_store(store: str, query: str) -> List[Dict[str, Any]]:
 
             product = dict(item)
             product.setdefault("store", store)
+
+            # Classificazione definitiva: nessun set/tester/cosmetico passa
+            # alle fasi di stock, prezzo o merge.
+            if has_non_perfume_marker(
+                product.get("name")
+                or product.get("title")
+                or product.get("product_name")
+                or ""
+            ):
+                continue
 
             # Regola generale stock: prima normalizziamo la disponibilità.
             # Se è OOS, non sprechiamo una seconda richiesta per il prezzo.
@@ -746,7 +747,13 @@ def search_perfume(query: str) -> Dict[str, Any]:
 
     executor.shutdown(wait=False, cancel_futures=True)
 
-    results = sort_by_price(unique_results(results))
+    results = unique_results(results)
+    results = [
+        product
+        for product in results
+        if matches(product, query)
+    ]
+    results = sort_by_price(results)
 
     return {
         "query": query,
@@ -996,7 +1003,7 @@ def rank_catalog_suggestions(
         if tokens and not all(token in text for token in tokens):
             continue
 
-        if not _is_allowed_perfume_name(name):
+        if has_non_perfume_marker(name):
             continue
 
         key = (
@@ -1130,7 +1137,7 @@ def suggest(q: str):
                     if not all(word in haystack for word in words):
                         continue
 
-                    if not _is_allowed_perfume_name(name):
+                    if has_non_perfume_marker(name):
                         continue
 
                     key = (norm(brand), normalized_name)
