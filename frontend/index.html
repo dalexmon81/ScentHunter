@@ -771,7 +771,7 @@ function shGroupData(data){
     "Al Qiam","Bharara","Bharara Beauty","Al Dur Al Manthoor","Lalique",
     "Bentley","Bvlgari","Calvin Klein","Miu Miu","Davidoff","Ferragamo","Kenzo",
     "Moschino","Issey Miyake","Jil Sander","Nautica","Rochas","Lacoste",
-    "Mercedes-Benz","Afnan Perfumes","Rasasi Perfumes"
+    "Mercedes-Benz","Afnan Perfumes","Rasasi Perfumes","French Avenue"
   ];
 
   const knownBrandMap=new Map(KNOWN_BRANDS.map(b=>[norm(b),b]));
@@ -873,13 +873,10 @@ function shGroupData(data){
     return n;
   }
 
-  function cleanStoreNoise(text,store){
+  function cleanStoreNoise(text,store,sourceUrl){
     let n=cleanBrandText(text);
     if(!n)return "";
 
-    // I nomi restituiti dai negozi possono contenere intestazioni, domini,
-    // frammenti Markdown o il nome del negozio stesso. Sono rumore
-    // commerciale e non fanno parte dell'identità del profumo.
     n=n
       .replace(/^title\s*:\s*/i,"")
       .replace(/!\[[^\]]*\]\([^)]*\)/g," ")
@@ -889,35 +886,78 @@ function shGroupData(data){
       .replace(/\s+/g," ")
       .trim();
 
-    const storeNorm=norm(store||"");
-    if(storeNorm.length>=3 && !/^(?:mystery\s+box|gift\s+box)\b/i.test(n)){
-      const storeWords=storeNorm.split(/\s+/).filter(Boolean)
+    // Ricaviamo il nome del negozio da tutte le fonti disponibili.
+    // Se lo scraper non compila "store", usiamo comunque l'hostname dell'URL.
+    const candidates=[];
+    const addStoreCandidate=value=>{
+      const s=cleanBrandText(value);
+      if(s)candidates.push(s);
+    };
+
+    addStoreCandidate(store);
+    addStoreCandidate(sourceUrl);
+
+    let host="";
+    try{
+      if(sourceUrl){
+        host=new URL(String(sourceUrl),window.location.origin).hostname||"";
+      }
+    }catch(_){}
+
+    if(host){
+      addStoreCandidate(host.replace(/^www\./i,""));
+      addStoreCandidate(host.split(".")[0]);
+    }
+
+    const storeNorms=[...new Set(
+      candidates
+        .map(value=>{
+          const raw=String(value||"").toLowerCase().trim();
+          const hostLike=raw.replace(/^https?:\/\//i,"").replace(/^www\./i,"").split("/")[0];
+          return hostLike
+            .replace(/\.(?:fr|be|com|it|de|es|nl|lu|co\.uk)$/i,"")
+            .replace(/[^a-z0-9à-ÿ]+/gi," ")
+            .replace(/\s+/g," ")
+            .trim();
+        })
+        .filter(value=>value.length>=3)
+    )];
+
+    const removeCandidateAtEdge=(value,merchant)=>{
+      let v=String(value||"").replace(/\s+/g," ").trim();
+      const mn=norm(merchant);
+      if(!mn)return v;
+
+      const compact=mn.replace(/\s+/g,"");
+      const merchantWords=mn.split(/\s+/).filter(Boolean)
         .map(w=>w.replace(/[.*+?^${}()|[\]\\]/g,"\\$&"))
         .join("\\s+");
-      const storeCompact=storeNorm.replace(/\s+/g,"");
-      const removeStoreEdge=(value,fromStart)=>{
-        let v=String(value||"").trim();
-        if(storeWords){
-          const re=fromStart
-            ?new RegExp("^\\s*"+storeWords+"\\s*[-–—:]?\\s*","i")
-            :new RegExp("\\s*[-–—:]?\\s*"+storeWords+"\\s*$","i");
-          const cleaned=v.replace(re,"").trim();
-          if(cleaned!==v)return cleaned;
-        }
-        // Alcuni scraper usano lo slug del negozio (es. parfumcity) ma lo
-        // scrivono nel titolo come parole separate ("Parfum City").
-        const tokens=v.split(/\s+/);
-        const maxWords=Math.min(3,tokens.length);
-        for(let count=1;count<=maxWords;count++){
-          const part=fromStart?tokens.slice(0,count).join(""):tokens.slice(-count).join("");
-          if(norm(part).replace(/\s+/g,"")===storeCompact){
-            return fromStart?tokens.slice(count).join(" ").trim():tokens.slice(0,-count).join(" ").trim();
-          }
-        }
-        return v;
-      };
-      n=removeStoreEdge(n,true);
-      n=removeStoreEdge(n,false);
+
+      const patterns=[
+        new RegExp("^\\s*"+merchantWords+"\\s*[-–—:]?\\s*","i"),
+        new RegExp("\\s*[-–—:]?\\s*"+merchantWords+"\\s*$","i")
+      ];
+
+      for(const re of patterns){
+        const cleaned=v.replace(re,"").trim();
+        if(cleaned!==v)return cleaned;
+      }
+
+      // Gestisce slug del negozio scritto come parole separate.
+      const tokens=v.split(/\s+/).filter(Boolean);
+      const maxWords=Math.min(4,tokens.length);
+      for(let count=1;count<=maxWords;count++){
+        const first=tokens.slice(0,count).join("").toLowerCase();
+        const last=tokens.slice(-count).join("").toLowerCase();
+        if(first===compact.toLowerCase())return tokens.slice(count).join(" ").trim();
+        if(last===compact.toLowerCase())return tokens.slice(0,-count).join(" ").trim();
+      }
+
+      return v;
+    };
+
+    for(const merchant of storeNorms){
+      n=removeCandidateAtEdge(n,merchant);
     }
 
     return n.replace(/\s+/g," ").trim();
@@ -926,7 +966,8 @@ function shGroupData(data){
   function cleanProductName(o,brand){
     let n=cleanStoreNoise(
       o.name||"Profumo",
-      o.store||o.shop||o.merchant||o.retailer||o.seller||o.source_store||""
+      o.store||o.shop||o.merchant||o.retailer||o.seller||o.source_store||o._source_store||"",
+      o.url||o._source_url||o.source?.url||""
     )
       .replace(/\b\d{1,4}\s*ml\b/gi," ")
       .replace(/\s+/g," ")
