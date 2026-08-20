@@ -372,8 +372,53 @@ function normalizePerfumeName(v){
     .replace(/[^a-z0-9]+/gi," ")
     .replace(/\s+/g," ").trim();
 }
-function displayPerfumeName(name,brand){
-  return String(name||"").replace(/\s+/g," ").trim();
+function displayPerfumeName(name,brand,concentration){
+  let n=String(name||"").replace(/\s+/g," ").trim();
+  if(!n)return n;
+
+  // Normalizzazione GENERICA della concentrazione visualizzata.
+  // Il nome può arrivare già con la concentrazione nel titolo e il campo
+  // concentration può ripeterla: il risultato deve mostrarla una sola volta.
+  const labels=[
+    ["eau de parfum","Eau de Parfum"],
+    ["eau de toilette","Eau de Toilette"],
+    ["eau de cologne","Eau de Cologne"],
+    ["extrait de parfum","Extrait de Parfum"],
+    ["extract de parfum","Extrait de Parfum"],
+    ["edp","Eau de Parfum"],
+    ["edt","Eau de Toilette"],
+    ["edc","Eau de Cologne"]
+  ];
+
+  let canonical=String(concentration||"").trim();
+  if(canonical){
+    const normalized=canonical.toLowerCase().replace(/\s+/g," ").trim();
+    const match=labels.find(([raw])=>raw===normalized);
+    canonical=match?match[1]:canonical;
+  }
+
+  // Se la concentrazione non è disponibile come campo, riconosciamo solo
+  // concentrazioni COMPLETE alla fine del titolo. Non tocchiamo "Le Parfum"
+  // o altri nomi commerciali che contengono semplicemente "Parfum".
+  if(!canonical){
+    for(const [raw,label] of labels){
+      const re=new RegExp("\\s*(?:[-–—:]\\s*)?"+raw.replace(/[.*+?^${}()|[\\]\\]/g,"\\$&")+"\\s*$","i");
+      if(re.test(n)){canonical=label;break;}
+    }
+  }
+
+  if(!canonical)return n;
+
+  const escaped=canonical
+    .split(/\s+/)
+    .map(w=>w.replace(/[.*+?^${}()|[\\]\\]/g,"\\$&"))
+    .join("\\s+");
+  const trailing=new RegExp("\\s*(?:[-–—:]\\s*)?"+escaped+"\\s*$","i");
+
+  // Elimina tutte le copie consecutive e poi aggiunge una sola forma
+  // canonica. La regola vale per qualsiasi profumo e qualsiasi negozio.
+  while(trailing.test(n))n=n.replace(trailing,"").trim();
+  return (n+" "+canonical).trim();
 }
 function perfumeKey(x){
   return normalizePerfumeName(x.name||"");
@@ -1064,9 +1109,6 @@ function shGroupData(data){
     if(/\bextrait(?:\s+de\s+parfum)?\b/.test(raw))return "Extrait de Parfum";
     if(/\beau\s+de\s+parfum\b|\bedp\b/.test(raw))return "Eau de Parfum";
     if(/\beau\s+de\s+cologne\b|\bedc\b/.test(raw))return "Eau de Cologne";
-    // Alcuni cataloghi usano "De Parfum" come forma abbreviata di
-    // "Extrait de Parfum". La regola è generica e vale per qualsiasi prodotto.
-    if(/\bde\s+parfum\b/.test(raw))return "Extrait de Parfum";
     return "";
   }
   function concentrationLabel(value){
@@ -1662,9 +1704,9 @@ function showProducts(groups){
     const best=g.offers.find(o=>!isOfferOutOfStock(o))||null;
 
     return `<article class="product-choice" onclick='openProduct(${i})'>
-      <div class="result-image">${img?`<img src="${esc(img)}" alt="${esc(displayPerfumeName(g.name,g.brand))}" onerror="this.outerHTML='🧴'">`:"🧴"}</div>
+      <div class="result-image">${img?`<img src="${esc(img)}" alt="${esc(displayPerfumeName(g.name,g.brand,g.concentration))}" onerror="this.outerHTML='🧴'">`:"🧴"}</div>
       <div class="product-choice-main">
-        <div class="name">${esc(g.brand ? g.brand+" - "+displayPerfumeName(g.name,g.brand) : displayPerfumeName(g.name,g.brand))}</div>
+        <div class="name">${esc(g.brand ? g.brand+" - "+displayPerfumeName(g.name,g.brand,g.concentration) : displayPerfumeName(g.name,g.brand,g.concentration))}</div>
         ${best?`<div class="bestprice">da ${esc(shPrice(best))}</div>`:`<div class="bestprice">OUT OF STOCK</div>`}
       </div>
       <div class="arrow">›</div>
@@ -1703,10 +1745,10 @@ function openProduct(i){
     resultsBox.innerHTML=`<article class="comparison">
       <button class="detail-back" onclick="showProducts(currentProductGroups)">← Torna ai profumi</button>
       <div class="comparison-head">
-        <div class="result-image">${img?`<img src="${esc(img)}" alt="${esc(displayPerfumeName(g.name,g.brand))}" onerror="this.outerHTML='🧴'">`:"🧴"}</div>
+        <div class="result-image">${img?`<img src="${esc(img)}" alt="${esc(displayPerfumeName(g.name,g.brand,g.concentration))}" onerror="this.outerHTML='🧴'">`:"🧴"}</div>
         <div class="result-main">
           <div class="store">${esc(g.brand||"")}</div>
-          <div class="name">${esc(displayPerfumeName(g.name,g.brand))}</div>
+          <div class="name">${esc(displayPerfumeName(g.name,g.brand,g.concentration))}</div>
         </div>
       </div>
 <div class="format-compare-bar">
@@ -1772,10 +1814,10 @@ function openProduct(i){
   resultsBox.innerHTML=`<article class="comparison">
     <button class="detail-back" onclick="showProducts(currentProductGroups)">← Torna ai profumi</button>
     <div class="comparison-head">
-      <div class="result-image">${img?`<img src="${esc(img)}" alt="${esc(displayPerfumeName(g.name,g.brand))}" onerror="this.outerHTML='🧴'">`:"🧴"}</div>
+      <div class="result-image">${img?`<img src="${esc(img)}" alt="${esc(displayPerfumeName(g.name,g.brand,g.concentration))}" onerror="this.outerHTML='🧴'">`:"🧴"}</div>
       <div class="result-main">
         <div class="store">${esc(g.brand||"")}</div>
-        <div class="name">${esc(displayPerfumeName(g.name,g.brand))}</div>
+        <div class="name">${esc(displayPerfumeName(g.name,g.brand,g.concentration))}</div>
       </div>
     </div>
     <div class="bestlabel">SCEGLI IL FORMATO</div>
@@ -1812,10 +1854,10 @@ function openSize(gi,sizeKey,fromFormats=true){
   resultsBox.innerHTML=`<article class="comparison">
     <button class="detail-back" onclick="${fromFormats?`openProduct(${gi})`:`showProducts(currentProductGroups)`}">${fromFormats?'← Torna ai formati':'← Torna ai profumi'}</button>
     <div class="comparison-head">
-      <div class="result-image">${img?`<img src="${esc(img)}" alt="${esc(displayPerfumeName(g.name,g.brand))}" onerror="this.outerHTML='🧴'">`:"🧴"}</div>
+      <div class="result-image">${img?`<img src="${esc(img)}" alt="${esc(displayPerfumeName(g.name,g.brand,g.concentration))}" onerror="this.outerHTML='🧴'">`:"🧴"}</div>
       <div class="result-main">
         <div class="store">${esc(g.brand||"")}</div>
-        <div class="name">${esc(displayPerfumeName(g.name,g.brand))}</div>
+        <div class="name">${esc(displayPerfumeName(g.name,g.brand,g.concentration))}</div>
         ${sizeKey?`<div class="offer-meta">${esc(formatLabel(sizeKey))}</div>`:""}
       </div>
     </div>
