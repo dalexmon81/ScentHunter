@@ -20,7 +20,7 @@ SEARCH_URL = f"{BASE_URL}/search.asp?exps={{query}}"
 CATEGORY_URL = f"{BASE_URL}/parfums/"
 
 BROWSER_TIMEOUT = int(os.getenv("NOTINO_BROWSER_TIMEOUT", "40000"))
-MAX_DISCOVERY_PAGES = int(os.getenv("NOTINO_MAX_SEARCH_PAGES", "5"))
+MAX_DISCOVERY_PAGES = int(os.getenv("NOTINO_MAX_SEARCH_PAGES", "8"))
 MAX_CANDIDATES = int(os.getenv("NOTINO_MAX_CANDIDATES", "120"))
 MAX_VALIDATIONS = int(os.getenv("NOTINO_MAX_VALIDATIONS", "50"))
 SCROLL_STEPS = int(os.getenv("NOTINO_SCROLL_STEPS", "8"))
@@ -656,24 +656,23 @@ def browser_discover(query):
                     page.goto(nxt, wait_until="domcontentloaded", timeout=BROWSER_TIMEOUT)
                     dismiss_consent(page)
 
-            # Generic site-wide fallback: if the search endpoint rendered no product
-            # links, discover products from Notino's perfume catalogue and rank the
-            # resulting candidates against the requested query. This is not tied to
-            # any individual product or brand.
-            if not candidates:
-                page.goto(CATEGORY_URL, wait_until="domcontentloaded", timeout=BROWSER_TIMEOUT)
-                dismiss_consent(page)
-                try:
-                    page.wait_for_load_state("networkidle", timeout=10000)
-                except Exception:
-                    pass
-                page.wait_for_timeout(1200)
-                scroll_for_products(page)
-                html = page.content()
-                for item in extract_product_candidates(html, page.url, query):
-                    if item["url"] not in seen:
-                        seen.add(item["url"])
-                        candidates.append(item)
+            # Generic site-wide supplement: the search endpoint can return only
+            # the highest-ranked variant(s). We therefore supplement discovery
+            # from the public perfume catalogue even when partial candidates were
+            # already found. The final query match still validates every product.
+            page.goto(CATEGORY_URL, wait_until="domcontentloaded", timeout=BROWSER_TIMEOUT)
+            dismiss_consent(page)
+            try:
+                page.wait_for_load_state("networkidle", timeout=10000)
+            except Exception:
+                pass
+            page.wait_for_timeout(1200)
+            scroll_for_products(page)
+            html = page.content()
+            for item in extract_product_candidates(html, page.url, query):
+                if item["url"] not in seen:
+                    seen.add(item["url"])
+                    candidates.append(item)
 
             context.close()
             browser.close()
