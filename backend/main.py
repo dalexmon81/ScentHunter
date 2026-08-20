@@ -838,6 +838,11 @@ def search_perfume(query: str) -> Dict[str, Any]:
     results: List[Dict[str, Any]] = []
     errors: Dict[str, str] = {}
 
+    # Limite globale: la ricerca NON può rimanere appesa indefinitamente.
+    # Ogni scraper continua eventualmente nel proprio worker, ma la richiesta
+    # HTTP viene chiusa entro il limite e restituisce subito ciò che è arrivato.
+    SEARCH_TIMEOUT = 45
+
     executor = ThreadPoolExecutor(
         max_workers=len(STORES),
         thread_name_prefix="scent-store",
@@ -847,26 +852,27 @@ def search_perfume(query: str) -> Dict[str, Any]:
         for store in STORES
     }
 
-    done, not_done = wait(future_to_store)
+    try:
+        done, not_done = wait(future_to_store, timeout=SEARCH_TIMEOUT)
 
-    for future in done:
-        store = future_to_store[future]
-        try:
-            results.extend(future.result() or [])
-        except Exception as exc:
-            errors[store] = str(exc) or exc.__class__.__name__
+        for future in done:
+            store = future_to_store[future]
+            try:
+                results.extend(future.result() or [])
+            except Exception as exc:
+                errors[store] = str(exc) or exc.__class__.__name__
 
-    # wait() senza timeout rende la risposta deterministica: uno scraper
-    # lento non fa sparire i risultati semplicemente perché ha superato
-    # una finestra temporale globale.
-    for future in not_done:
-        store = future_to_store[future]
-        try:
-            results.extend(future.result() or [])
-        except Exception as exc:
-            errors[store] = str(exc) or exc.__class__.__name__
+        # Non aspettiamo MAI i future rimasti: sono loro che in precedenza
+        # potevano trasformare la ricerca in una richiesta infinita.
+        for future in not_done:
+            store = future_to_store[future]
+            errors[store] = "Timeout ricerca"
+            future.cancel()
 
-    executor.shutdown(wait=True, cancel_futures=False)
+    finally:
+        # Cruciale: wait=False. Un worker bloccato non deve tenere aperta
+        # la risposta HTTP.
+        executor.shutdown(wait=False, cancel_futures=True)
 
     results = sort_by_price(unique_results(results))
 
