@@ -378,26 +378,6 @@ function normalizePerfumeName(v){
 function displayPerfumeName(name,brand){
   const b=normalizePerfumeName(brand||"");
   let n=String(name||"").replace(/\s+/g," ").trim();
-
-  // Normalizzazione generica della concentrazione visualizzata:
-  // "Eau De Parfum Eau de Parfum" -> "Eau de Parfum"
-  // "Extrait De Parfum Extrait de Parfum" -> "Extrait de Parfum"
-  // Non vengono toccati nomi che non contengono una concentrazione.
-  const concentrationRules=[
-    [/\beau\s+de\s+parfum\s+intense\b/gi,"Eau de Parfum Intense"],
-    [/\bextrait(?:\s+de\s+parfum)?\b/gi,"Extrait de Parfum"],
-    [/\beau\s+de\s+parfum\b/gi,"Eau de Parfum"],
-    [/\beau\s+de\s+toilette\b/gi,"Eau de Toilette"],
-    [/\beau\s+de\s+cologne\b/gi,"Eau de Cologne"]
-  ];
-  for(const [rx,label] of concentrationRules){
-    if(rx.test(n)){
-      n=n.replace(rx," ").replace(/\s+/g," ").trim();
-      n=(n+" "+label).trim();
-      break;
-    }
-  }
-
   if(b!=="valentino" || !/\bborn\s+in\s+roma\b/i.test(n))return n;
 
   let gender="";
@@ -1123,7 +1103,6 @@ function shGroupData(data){
   function concentrationHint(o){
     const raw=String(o&&((o.name||"")+" "+(o.concentration||""))||"").toLowerCase();
     if(/\bextrait(?:\s+de\s+parfum)?\b/.test(raw))return "Extrait de Parfum";
-    if(/\beau\s+de\s+parfum\s+intense\b/.test(raw))return "Eau de Parfum Intense";
     if(/\beau\s+de\s+parfum\b|\bedp\b/.test(raw))return "Eau de Parfum";
     if(/\beau\s+de\s+toilette\b|\bedt\b/.test(raw))return "Eau de Toilette";
     if(/\beau\s+de\s+cologne\b|\bedc\b/.test(raw))return "Eau de Cologne";
