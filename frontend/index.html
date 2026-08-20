@@ -1963,18 +1963,60 @@ async function fetchJSONWithTimeout(url,ms=90000){
 }
 
 
+async function runStoreRequestsProgressive(requests,onResult){
+  const queue=[...requests];
+  const worker=async()=>{
+    while(queue.length){
+      const request=queue.shift();
+      if(!request)break;
+      try{
+        const data=await fetchJSONWithTimeout(request.url,request.timeout||30000);
+        await onResult(data,request);
+      }catch(error){
+        await onResult({
+          results:[],
+          comparisons:[],
+          errors:{[request.label||request.url]:String(error?.message||"timeout")}
+        },request);
+      }
+    }
+  };
+  await Promise.all([worker(),worker()]);
+}
+
 async function searchStoresProgressive(query, onPartial){
   const q=String(query||"").trim();
   if(!q) return {query:"",count:0,results:[],comparisons:[],errors:{}};
 
-  const url="/search?q="+encodeURIComponent(q);
-  const data=await fetchJSONWithTimeout(url,90000);
+  // La ricerca frontend interroga direttamente ogni scraper tramite /test-store.
+  // In questo modo un risultato valido di un negozio non viene perso perché
+  // la regia centrale /search ha restituito un sottoinsieme dei risultati.
+  // Nessun negozio, prodotto o URL è trattato con eccezioni speciali.
+  const stores=[
+    "bplatz","deloox","parfumcity","parfumzentrum",
+    "perfumemarket","sabina","orioudh","notino"
+  ];
 
-  if(typeof onPartial==="function"){
-    onPartial(data,true);
-  }
+  const merged={query:q,count:0,results:[],comparisons:[],errors:{}};
+  const requests=stores.map(store=>({
+    label:store,
+    url:"/test-store?store="+encodeURIComponent(store)+"&q="+encodeURIComponent(q),
+    timeout:30000
+  }));
 
-  return data||{query:q,count:0,results:[],comparisons:[],errors:{}};
+  await runStoreRequestsProgressive(requests,async(data,request)=>{
+    if(Array.isArray(data?.results))merged.results.push(...data.results);
+    if(Array.isArray(data?.comparisons))merged.comparisons.push(...data.comparisons);
+    if(data?.error)merged.errors[request.label]=data.error;
+    else if(data?.errors&&typeof data.errors==="object")Object.assign(merged.errors,data.errors);
+
+    merged.count=merged.results.length;
+    if(typeof onPartial==="function")onPartial({...merged},false);
+  });
+
+  merged.count=merged.results.length;
+  if(typeof onPartial==="function")onPartial(merged,true);
+  return merged;
 }
 
 async function searchPerfume(){
