@@ -189,12 +189,15 @@ def is_perfume_product(product: Dict[str, Any], query: str = "") -> bool:
     if metadata_non_perfume:
         return False
 
-    # Un prodotto normale deve avere almeno un segnale esplicito di profumo
-    # nel nome o nei metadati. Questo evita falsi positivi come makeup,
-    # deodoranti, shampoo, gel doccia e prodotti corpo che condividono
-    # semplicemente le parole della query.
-    combined = f"{primary} {metadata}"
-    return any(_contains_phrase(combined, signal) for signal in PERFUME_SIGNALS)
+    # Non imponiamo un segnale positivo obbligatorio nel nome.
+    # Molti scraper restituiscono correttamente il profumo ma non espongono
+    # nel record la concentrazione/categoria. Richiedere obbligatoriamente
+    # "parfum/eau de parfum/..." causerebbe falsi negativi e farebbe sparire
+    # interi negozi dai risultati. La regola di sicurezza è quindi negativa:
+    # scartiamo ciò che è esplicitamente identificato come altro prodotto;
+    # lasciamo passare i prodotti non classificati per non perdere profumi
+    # validi.
+    return True
 
 
 def price_num(value: Any) -> Optional[float]:
