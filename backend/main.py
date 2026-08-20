@@ -67,7 +67,8 @@ CATALOG_FILENAME = "SCENTHUNTER CATALOGO CORRETTO.json"
 
 VARIANT_MARKERS = {
     "pour femme", "pour homme", "femme", "homme",
-    "flame", "energy", "parfum", "night", "night out",
+    "uomo", "donna", "men", "women", "man", "woman",
+    "flame", "energy", "night", "night out",
     "rebel", "elixir", "intense", "extreme",
     "limited", "limited edition", "collector",
     "collector edition", "collector's edition",
@@ -188,6 +189,16 @@ CATALOG_FAMILY_FORMS: List[str] = []
 SET_PRODUCTS = {
     "gift set", "set regalo", "coffret", "bundle", "travel set",
     "discovery set", "kit",
+}
+
+NON_RETAIL_PERFUME = {
+    "tester",
+    "testeur",
+    "sample",
+    "échantillon",
+    "echantillon",
+    "mystery box",
+    "mysterybox",
 }
 
 NON_PERFUME = {
@@ -537,20 +548,36 @@ def _is_set_product(product: Dict[str, Any]) -> bool:
 
 
 def _product_search_text(product: Dict[str, Any]) -> str:
+    # The product identity/type fields are authoritative. Descriptions often
+    # mention unrelated cosmetics (for example a gift-set description can
+    # mention shower gel), so they must not decide the product category.
     fields = (
-        "name", "title", "product_name", "description",
-        "category", "type", "product_type", "sub_category", "subcategory"
+        "name", "title", "product_name",
+        "category", "type", "product_type",
+        "sub_category", "subcategory",
     )
     return norm(" ".join(str(product.get(field) or "") for field in fields))
 
 
 def is_non_perfume(product: Dict[str, Any]) -> bool:
+    # A set is explicitly allowed: it can contain only fragrance products.
     if _is_set_product(product):
         return False
+
     text = _product_search_text(product)
     if not text:
         return True
-    return any(_contains_term(text, phrase) for phrase in NON_PERFUME if norm(phrase))
+
+    # Testers, samples and mystery-box products are not normal perfume offers.
+    if any(_contains_term(text, phrase) for phrase in NON_RETAIL_PERFUME):
+        return True
+
+    # Cosmetics, body/hair products and other non-fragrance merchandise.
+    return any(
+        _contains_term(text, phrase)
+        for phrase in NON_PERFUME
+        if norm(phrase)
+    )
 
 
 def matches(product: Dict[str, Any], query: str) -> bool:
@@ -562,17 +589,24 @@ def matches(product: Dict[str, Any], query: str) -> bool:
     tokens = [token for token in query_normalized.split() if token not in IGNORED_WORDS]
     if not tokens:
         return False
-    # La query deve comparire realmente nel nome: una famiglia non deve
-    # trasformarsi automaticamente in una variante specifica.
+    # La query deve comparire realmente nel nome.
     if not all(token in name for token in tokens):
         return False
-    if _query_has_variant_marker(query):
-        query_tokens = set(tokens)
-        name_tokens = set(name.split())
-        for marker in VARIANT_MARKERS:
-            marker_tokens = set(norm(marker).split())
-            if marker_tokens and marker_tokens.issubset(name_tokens) and not marker_tokens.issubset(query_tokens):
-                return False
+
+    # Una ricerca generica della famiglia deve restituire il prodotto base,
+    # non una variante specifica. Lo stesso controllo vale per una ricerca
+    # già specifica: in quel caso sono ammessi solo i marcatori dichiarati
+    # nella query.
+    query_tokens = set(tokens)
+    name_tokens = set(name.split())
+
+    for marker in VARIANT_MARKERS:
+        marker_tokens = set(norm(marker).split())
+        if not marker_tokens:
+            continue
+        if marker_tokens.issubset(name_tokens) and not marker_tokens.issubset(query_tokens):
+            return False
+
     return True
 
 
