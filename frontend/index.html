@@ -368,6 +368,7 @@ function normalizePerfumeName(v){
     // NON eliminare "parfum": può essere parte del nome/variante
     .replace(/\b(eau de parfum|eau de toilette|eau de cologne|extrait de parfum|extract de parfum|extrait|edp|edt|perfume|spray|men|women|for men|for women)\b/g," ")
     .replace(/\b\d+\s*ml\b/g," ")
+    .replace(/(?<=\d)(?=[a-z])|(?<=[a-z])(?=\d)/g," ")
     .replace(/[^a-z0-9]+/gi," ")
     .replace(/\s+/g," ").trim();
 }
@@ -872,8 +873,58 @@ function shGroupData(data){
     return n;
   }
 
+  function cleanStoreNoise(text,store){
+    let n=cleanBrandText(text);
+    if(!n)return "";
+
+    // I nomi restituiti dai negozi possono contenere intestazioni, domini,
+    // frammenti Markdown o il nome del negozio stesso. Sono rumore
+    // commerciale e non fanno parte dell'identità del profumo.
+    n=n
+      .replace(/^title\s*:\s*/i,"")
+      .replace(/!\[[^\]]*\]\([^)]*\)/g," ")
+      .replace(/https?:\/\/[^\s\]\)]+/gi," ")
+      .replace(/\b(?:www\.)?[a-z0-9.-]+\.(?:fr|be|com|it|de|es|nl|lu|co\.uk)\b/gi," ")
+      .replace(/\s*\|\s*[^|]*$/," ")
+      .replace(/\s+/g," ")
+      .trim();
+
+    const storeNorm=norm(store||"");
+    if(storeNorm.length>=3){
+      const storeWords=storeNorm.split(/\s+/).filter(Boolean)
+        .map(w=>w.replace(/[.*+?^${}()|[\]\\]/g,"\\$&"))
+        .join("\\s+");
+      const storeCompact=storeNorm.replace(/\s+/g,"");
+      const removeStoreEdge=(value,fromStart)=>{
+        let v=String(value||"").trim();
+        if(storeWords){
+          const re=fromStart
+            ?new RegExp("^\\s*"+storeWords+"\\s*[-–—:]?\\s*","i")
+            :new RegExp("\\s*[-–—:]?\\s*"+storeWords+"\\s*$","i");
+          const cleaned=v.replace(re,"").trim();
+          if(cleaned!==v)return cleaned;
+        }
+        // Alcuni scraper usano lo slug del negozio (es. parfumcity) ma lo
+        // scrivono nel titolo come parole separate ("Parfum City").
+        const tokens=v.split(/\s+/);
+        const maxWords=Math.min(3,tokens.length);
+        for(let count=1;count<=maxWords;count++){
+          const part=fromStart?tokens.slice(0,count).join(""):tokens.slice(-count).join("");
+          if(norm(part).replace(/\s+/g,"")===storeCompact){
+            return fromStart?tokens.slice(count).join(" ").trim():tokens.slice(0,-count).join(" ").trim();
+          }
+        }
+        return v;
+      };
+      n=removeStoreEdge(n,true);
+      n=removeStoreEdge(n,false);
+    }
+
+    return n.replace(/\s+/g," ").trim();
+  }
+
   function cleanProductName(o,brand){
-    let n=cleanBrandText(o.name||"Profumo")
+    let n=cleanStoreNoise(o.name||"Profumo",o.store||o.shop||"")
       .replace(/\b\d{1,4}\s*ml\b/gi," ")
       .replace(/\s+/g," ")
       .trim();
@@ -952,8 +1003,11 @@ function shGroupData(data){
     n=n.replace(new RegExp("\\s+by\\s+(?:"+knownBrandPatterns.join("|")+ ")\\s*$","i")," ").trim();
 
     n=n
+      .replace(/\bde\s+parfum\s+mixte\b/gi," ")
+      .replace(/\bmixte\b/gi," ")
       .replace(/\s*[-–—]\s*/g," ")
       .replace(/\s+/g," ")
+      .replace(/\s*\|\s*$/g,"")
       .trim();
 
     return pretty(n||"Profumo");
@@ -968,40 +1022,160 @@ function shGroupData(data){
     return "";
   }
 
-  function productIdentity(o){
+  function isGenericNameModifier(value){
+    const n=norm(value);
+    if(!n)return true;
+    const generic=new Set([
+      "limited", "edition", "limited edition", "exclusive", "exclusif",
+      "exclusive edition", "new", "nouveau", "nouvelle", "intense",
+      "parfum", "perfume", "fragrance", "eau de parfum",
+      "eau de toilette", "eau de cologne", "extrait", "edp", "edt", "edc",
+      "spray", "mixte", "men", "women", "homme", "femme", "unisex"
+    ]);
+    return generic.has(n);
+  }
+
+  function tokenJoin(tokens,start,end){
+    return tokens.slice(start,end).join(" ");
+  }
+
+  /*
+   * Risoluzione dell'identità in due passaggi.
+   *
+   * Prima raccogliamo le prove di brand già presenti nei dati degli scraper.
+   * Poi confrontiamo i nomi della STESSA ricerca: se un nome è uguale a un
+   * altro dopo aver tolto un prefisso/suffisso breve e quel pezzo ricorre come
+   * brand, lo trattiamo come brand condiviso. I modificatori commerciali
+   * generici (Limited Edition, Intense, ecc.) non possono diventare brand.
+   *
+   * Questo evita eccezioni legate a singoli profumi e permette di ricostruire
+   * la stessa identità anche quando un negozio mette il brand prima, dopo o
+   * non lo mette affatto.
+   */
+  function resolveIdentitySet(raw,identities){
+    const candidateScore=new Map();
+
+    const addCandidate=(candidate,weight=1)=>{
+      const c=cleanBrandText(candidate);
+      const n=norm(c);
+      if(!n || isGenericNameModifier(c))return;
+      const words=n.split(/\s+/);
+      if(words.length<1 || words.length>3)return;
+      const old=candidateScore.get(n);
+      if(old){
+        old.weight+=weight;
+        if(weight>=5)old.explicit=true;
+        else old.evidence=(old.evidence||0)+1;
+      }else{
+        candidateScore.set(n,{value:c,weight,explicit:weight>=5,evidence:weight>=5?0:1,prefixEvidence:0,suffixEvidence:0});
+      }
+    };
+
+    // Prove esplicite: campo brand / brand già riconosciuto.
+    identities.forEach(id=>{
+      if(id.brand)addCandidate(id.brand,5);
+    });
+
+    const names=identities.map(id=>norm(id.name));
+    for(let i=0;i<names.length;i++){
+      const a=names[i]?names[i].split(/\s+/):[];
+      if(!a.length)continue;
+      for(let j=i+1;j<names.length;j++){
+        const b=names[j]?names[j].split(/\s+/):[];
+        if(!b.length || a.join(" ")===b.join(" "))continue;
+
+        const shorter=a.length<=b.length?a:b;
+        const longer=a.length<=b.length?b:a;
+        if(shorter.length<1 || longer.length-shorter.length<1 || longer.length-shorter.length>3)continue;
+
+        const shortText=shorter.join(" ");
+        const prefix=longer.slice(0,shorter.length).join(" ")===shortText;
+        const suffix=longer.slice(longer.length-shorter.length).join(" ")===shortText;
+
+        if(prefix){
+          const extra=tokenJoin(longer,shorter.length,longer.length);
+          addCandidate(extra,2);
+          const key=norm(extra);
+          const record=candidateScore.get(key);
+          if(record)record.suffixEvidence=(record.suffixEvidence||0)+1;
+        }
+        if(suffix){
+          const extra=tokenJoin(longer,0,longer.length-shorter.length);
+          addCandidate(extra,2);
+          const key=norm(extra);
+          const record=candidateScore.get(key);
+          if(record)record.prefixEvidence=(record.prefixEvidence||0)+1;
+        }
+      }
+    }
+
+    // I candidati espliciti hanno priorità; tra gli altri preferiamo quelli
+    // più lunghi e più supportati.
+    const candidates=[...candidateScore.values()]
+      .filter(x=>x.explicit || (x.evidence>=2 && x.prefixEvidence>=1))
+      .sort((a,b)=>b.weight-a.weight || norm(b.value).length-norm(a.value).length);
+
+    const brandHints=candidates.map(x=>x.value);
+
+    const matchesBrandAtEdge=(name,brand)=>{
+      const nn=norm(name),bb=norm(brand);
+      if(!nn||!bb||nn===bb)return false;
+      return nn.startsWith(bb+" ") || nn.endsWith(" "+bb);
+    };
+
+    // Applichiamo i brand condivisi e ricalcoliamo il nome pulito.
+    raw.forEach((o,i)=>{
+      const id=identities[i];
+      let brand=id.brand||"";
+
+      if(!brand){
+        const candidatesForName=brandHints
+          .filter(b=>matchesBrandAtEdge(id.name,b))
+          .sort((a,b)=>norm(b).length-norm(a).length);
+        if(candidatesForName.length)brand=candidatesForName[0];
+      }
+
+      if(brand){
+        id.brand=pretty(brand);
+        id.name=cleanProductName(o,id.brand);
+      }
+
+      id.key=(norm(id.brand)+"|"+norm(id.name)).replace(/\|+$/g,"");
+    });
+
+    // Seconda passata: se un nome coincide con una famiglia già associata a
+    // un brand, ereditiamo quel brand. Non usiamo mai il nome di un prodotto
+    // specifico come eccezione.
+    const nameToBrand=new Map();
+    raw.forEach((o,i)=>{
+      const id=identities[i];
+      if(!id.brand||!id.name)return;
+      const n=norm(id.name);
+      const old=nameToBrand.get(n);
+      if(!old || norm(id.brand).length>norm(old).length)nameToBrand.set(n,id.brand);
+    });
+
+    raw.forEach((o,i)=>{
+      const id=identities[i];
+      if(!id.brand){
+        const inherited=nameToBrand.get(norm(id.name));
+        if(inherited){
+          id.brand=inherited;
+          id.name=cleanProductName(o,inherited);
+          id.key=norm(inherited)+"|"+norm(id.name);
+        }
+      }
+    });
+  }
+
+  const identities=raw.map(o=>{
     const brand=findBrand(o);
     const name=cleanProductName(o,brand);
     const key=(norm(brand)+"|"+norm(name)).replace(/\|+$/g,"");
     return {brand,name,key};
-  }
-
-  const identities=raw.map(o=>productIdentity(o));
-
-  /*
-   * Se una riga arriva senza brand, ma un'altra offerta della stessa
-   * ricerca identifica chiaramente quel nome con un brand, ereditiamo
-   * soltanto quel brand. Non inventiamo brand dal nulla.
-   */
-  const nameToBrand=new Map();
-  raw.forEach((o,i)=>{
-    const id=identities[i];
-    if(!id.brand)return;
-    const n=norm(id.name);
-    if(!n)return;
-    const old=nameToBrand.get(n);
-    if(!old || id.brand.length>old.length)nameToBrand.set(n,id.brand);
   });
 
-  raw.forEach((o,i)=>{
-    const id=identities[i];
-    if(!id.brand){
-      const inherited=nameToBrand.get(norm(id.name));
-      if(inherited){
-        id.brand=inherited;
-        id.key=norm(inherited)+"|"+norm(id.name);
-      }
-    }
-  });
+  resolveIdentitySet(raw,identities);
 
   /*
    * FORMATI:
