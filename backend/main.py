@@ -48,6 +48,10 @@ NON_PERFUME = {
     "gift set", "set regalo", "coffret", "bundle", "deodorant",
     "deo spray", "shower gel", "body lotion", "after shave",
     "aftershave", "travel set", "discovery set", "kit",
+    "mystery box", "gift box", "body cream", "body milk",
+    "hand cream", "hand lotion", "face cream", "face wash",
+    "shampoo", "conditioner", "soap", "savon", "sapone",
+    "gel douche", "gel doccia", "bath gel", "body wash",
 }
 
 IGNORED_WORDS = {
@@ -82,6 +86,33 @@ def product_image(product: Dict[str, Any]) -> str:
         or product.get("thumbnail")
         or ""
     )
+
+
+POLLUTED_NAME_MARKERS = (
+    "![image",
+    "[image",
+    "](http",
+    "](https",
+    "http://",
+    "https://",
+    "rch.asp?exps=",
+    "search.asp?exps=",
+)
+
+
+def _looks_like_polluted_product_name(value: Any) -> bool:
+    text = str(value or "").strip()
+    if not text:
+        return True
+    if len(text) > 220:
+        return True
+    low = text.lower()
+    if any(marker in low for marker in POLLUTED_NAME_MARKERS):
+        return True
+    # Markdown/image/URL fragments are never a clean commercial product name.
+    if re.search(r"!\[[^\]]*\]\([^)]*\)", text):
+        return True
+    return False
 
 
 def _extract_size_ml(text: Any) -> Optional[float]:
@@ -545,6 +576,8 @@ def matches(product: Dict[str, Any], query: str) -> bool:
         str(product.get("title") or ""),
         str(product.get("product_name") or ""),
     )
+    if any(_looks_like_polluted_product_name(value) for value in name_fields if str(value or "").strip()):
+        return False
     name_texts = [norm(value) for value in name_fields if norm(value)]
     brand_text = norm(product.get("brand") or "")
     if brand_text:
