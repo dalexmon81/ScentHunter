@@ -15,6 +15,11 @@ from urllib.parse import urlencode
 from urllib.request import Request, urlopen
 from urllib.error import HTTPError, URLError
 
+try:
+    from product_index import ProductIndex
+except Exception:
+    ProductIndex = None
+
 
 # ============================================================
 # ScentHunter API
@@ -117,6 +122,11 @@ IGNORED_WORDS = {
 }
 
 GLOBAL_SEARCH_TIMEOUT = 120
+
+# Local index is checked first. The live search remains the generic fallback
+# while the catalog is being populated.
+LOCAL_INDEX_PATH = Path(BASE_DIR) / "scenthunter_index.db"
+TEST_INDEX_PATH = Path("/tmp/scenthunter_index_test.db")
 
 
 # ============================================================
@@ -782,6 +792,173 @@ def run_store(
 
 
 # ============================================================
+# RICERCA LOCALE
+# ============================================================
+
+def _local_index_path() -> Path:
+    """
+    Resolve the active local index.
+
+    Production uses the persistent backend DB. During the temporary STEP 3
+    test, the test DB is also accepted so we can verify the new search path
+    without rebuilding the catalog.
+    """
+    configured = os.getenv("SCENTHUNTER_INDEX_DB", "").strip()
+    if configured:
+        return Path(configured)
+
+    if LOCAL_INDEX_PATH.exists():
+        return LOCAL_INDEX_PATH
+
+    if TEST_INDEX_PATH.exists():
+        return TEST_INDEX_PATH
+
+    return LOCAL_INDEX_PATH
+
+
+def local_search_perfume(query: str) -> Optional[Dict[str, Any]]:
+    """
+    Search only the local SQLite/FTS5 index.
+
+    Returns None when the local index is unavailable or has no matching
+    product. The caller can then use the existing live discovery fallback.
+    """
+    if ProductIndex is None:
+        return None
+
+    db_path = _local_index_path()
+    if not db_path.exists():
+        return None
+
+    try:
+        with ProductIndex(db_path) as index:
+            products = index.search_products(query, limit=20)
+
+            if not products:
+                return None
+
+            results: List[Dict[str, Any]] = []
+
+            for product in products:
+                product_id = str(product.get("product_id") or "").strip()
+                if not product_id:
+                    continue
+
+                offers = index.get_offers(product_id)
+
+                for offer in offers:
+                    item = dict(offer)
+
+                    canonical_brand = str(
+                        product.get("brand_name") or ""
+                    ).strip()
+                    canonical_name = str(
+                        product.get("family_name") or ""
+                    ).strip()
+
+                    # Keep the existing frontend contract: each offer is
+                    # returned as a normal search result.
+                    item["brand"] = canonical_brand
+                    item["source_brand"] = canonical_brand
+                    item["name"] = (
+                        str(item.get("name") or "").strip()
+                        or canonical_name
+                    )
+                    item["product_name"] = canonical_name
+                    item["canonical_brand"] = canonical_brand
+                    item["canonical_name"] = canonical_name
+                    item["catalog_id"] = product_id
+                    item["product_identity"] = product_id
+
+                    if item.get("size_ml") is not None:
+                        item["format_ml"] = item["size_ml"]
+
+                    if item.get("concentration"):
+                        item["canonical_concentration"] = item[
+                            "concentration"
+                        ]
+
+                    if item.get("price") is not None:
+                        item["price_value"] = float(item["price"])
+                        item["price"] = (
+                            f"{float(item['price']):.2f} €"
+                        )
+
+                    if item.get("url"):
+                        item["source_url"] = item["url"]
+
+                    results.append(item)
+
+            if not results:
+                return None
+
+            results = sort_by_price(
+                unique_results(results)
+            )
+
+            return {
+                "query": query,
+                "count": len(results),
+                "results": results,
+                "comparisons": [],
+                "errors": {},
+                "source": "local_index",
+            }
+
+    except Exception as exc:
+        print(
+            "LOCAL_INDEX_SEARCH_ERROR:",
+            f"{type(exc).__name__}: {exc}",
+            flush=True,
+        )
+        return None
+
+
+def search_with_local_first(query: str) -> Dict[str, Any]:
+    """
+    Local-first search.
+
+    Indexed products return immediately from SQLite/FTS5. If the local
+    catalog does not contain the query yet, the existing live discovery
+    remains available as a generic fallback.
+    """
+    local = local_search_perfume(query)
+
+    if local is not None:
+        return local
+
+    live = search_perfume(query)
+    live["source"] = "live_fallback"
+    return live
+
+
+def local_autocomplete(
+    query: str,
+    limit: int = 8,
+) -> List[Dict[str, Any]]:
+    if ProductIndex is None:
+        return []
+
+    db_path = _local_index_path()
+    if not db_path.exists():
+        return []
+
+    try:
+        with ProductIndex(db_path) as index:
+            return index.autocomplete(
+                query,
+                limit=max(1, min(int(limit), 12)),
+            )
+    except Exception as exc:
+        print(
+            "LOCAL_AUTOCOMPLETE_ERROR:",
+            f"{type(exc).__name__}: {exc}",
+            flush=True,
+        )
+        return []
+
+
+# ============================================================
 # SEARCH CENTRALE
 # ============================================================
 
@@ -1024,7 +1201,7 @@ def health():
 
 @app.get("/search")
 def search(q: str):
-    return search_perfume(q)
+    return search_with_local_first(q)
 
 
 @app.get("/routing")
@@ -1469,7 +1646,124 @@ def suggest(q: str):
 
 @app.get("/autocomplete")
 def autocomplete(q: str):
+    raw_query = str(q or "").strip()
+    query = norm(raw_query)
+
+    if len(query) < 2:
+        return {
+            "query": q,
+            "count": 0,
+            "suggestions": [],
+            "source": "local_index",
+        }
+
+    local = local_autocomplete(raw_query, limit=8)
+
+    if local:
+        suggestions = []
+        for item in local:
+            suggestions.append(
+                {
+                    "catalog_id": item.get("product_id"),
+                    "name": item.get("family_name") or "",
+                    "brand": item.get("brand_name") or "",
+                    "concentration": item.get("concentration") or "",
+                }
+            )
+
+        return {
+            "query": q,
+            "count": len(suggestions),
+            "suggestions": suggestions,
+            "source": "local_index",
+        }
+
     return suggest(q)
+
+
+# ============================================================
+# LOCAL INDEX TEST
+# ============================================================
+@app.get("/index-stats")
+def index_stats():
+    if ProductIndex is None:
+        return {
+            "ok": False,
+            "error": "ProductIndex non disponibile",
+        }
+
+    db_path = _local_index_path()
+
+    if not db_path.exists():
+        return {
+            "ok": True,
+            "exists": False,
+            "path": str(db_path),
+            "stats": {
+                "products": 0,
+                "offers": 0,
+                "stores": 0,
+            },
+        }
+
+    try:
+        with ProductIndex(db_path) as index:
+            return {
+                "ok": True,
+                "exists": True,
+                "path": str(db_path),
+                "stats": index.stats(),
+            }
+    except Exception as error:
+        return {
+            "ok": False,
+            "path": str(db_path),
+            "error": f"{type(error).__name__}: {error}",
+        }
+
+
+
+@app.get("/test-local-search")
+def test_local_search(q: str):
+    query = str(q or "").strip()
+
+    if not query:
+        raise HTTPException(
+            status_code=400,
+            detail="Parametro q mancante",
+        )
+
+    started = datetime.now(timezone.utc)
+
+    try:
+        result = local_search_perfume(query)
+        finished = datetime.now(timezone.utc)
+
+        return {
+            "ok": result is not None,
+            "query": query,
+            "source": (
+                "local_index"
+                if result is not None
+                else "empty_or_unavailable"
+            ),
+            "elapsed_seconds": round(
+                (finished - started).total_seconds(),
+                4,
+            ),
+            "result": result,
+            "index_path": str(_local_index_path()),
+        }
+
+    except Exception as error:
+        traceback.print_exc()
+        return {
+            "ok": False,
+            "query": query,
+            "source": "local_index",
+            "error": f"{type(error).__name__}: {error}",
+            "traceback": traceback.format_exc(),
+        }
 
 
 # ============================================================
