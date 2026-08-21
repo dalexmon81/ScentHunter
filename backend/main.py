@@ -635,6 +635,19 @@ def build_search_attempts(
             " ".join(tokens)
         )
 
+        # Progressive generic fallback for store discovery.
+        # The original query is still used by matches(), so a broader
+        # discovery query can only find candidates; it cannot relax the
+        # final validation of the user's requested product.
+        for end in range(
+            len(tokens) - 1,
+            1,
+            -1,
+        ):
+            add(
+                " ".join(tokens[:end])
+            )
+
     compact = re.sub(
         r"(?<=\d)\s+(?=[a-z])|(?<=[a-z])\s+(?=\d)",
         "",
