@@ -1515,6 +1515,71 @@ function shGroupData(data){
 
   const groups=[...map.values()];
 
+  /*
+   * RICERCA PER BRAND — regola generica.
+   *
+   * Quando l'utente cerca una marca, alcuni scraper possono restituire il
+   * brand solo per una parte delle varianti. In quel caso il risultato non
+   * deve diventare un miscuglio di "Brand - Variante" e sola "Variante".
+   *
+   * La marca della ricerca viene quindi adottata SOLO quando è dimostrato
+   * dai dati della ricerca stessa: almeno un'offerta/risultato la espone
+   * come brand oppure il nome commerciale inizia con quel termine.
+   * Non esistono brand, prodotti o eccezioni hard-coded.
+   */
+  const searchBrand=(()=>{
+    const query=cleanBrandText(data&&data.query||"");
+    const qn=norm(query);
+    if(!qn)return "";
+    const words=qn.split(/\\s+/).filter(Boolean);
+    if(!words.length||words.length>4)return "";
+
+    const candidates=[];
+    raw.forEach(o=>{
+      const values=[o.brand,o._source_brand].filter(Boolean);
+      values.forEach(v=>{
+        const clean=cleanBrandText(v);
+        const vn=norm(clean);
+        if(!vn)return;
+        if(vn===qn||vn.startsWith(qn+" ")||qn.startsWith(vn+" "))candidates.push(clean);
+      });
+
+      const name=cleanBrandText(o._source_name||o.name||"");
+      const nn=norm(name);
+      if(nn.startsWith(qn+" "))candidates.push(query);
+    });
+
+    if(!candidates.length)return "";
+    const best=candidates.sort((a,b)=>norm(a).length-norm(b).length)[0];
+    return pretty(best||query);
+  })();
+
+  if(searchBrand){
+    const searchBrandNorm=norm(searchBrand);
+    groups.forEach(g=>{
+      if(!g||!g.offers||!g.offers.length)return;
+
+      // Ricostruisce il nome della variante dalla fonte originale quando
+      // possibile, così il prefisso della marca non viene perso durante la
+      // precedente pulizia del titolo.
+      const source=g.offers.find(o=>{
+        const sourceName=norm(o._source_name||o.name||"");
+        return sourceName.startsWith(searchBrandNorm+" ");
+      });
+
+      if(source){
+        const rebuilt=cleanProductName(
+          {...source,name:source._source_name||source.name||""},
+          searchBrand
+        );
+        if(rebuilt&&norm(rebuilt)!==searchBrandNorm)g.name=rebuilt;
+      }
+
+      g.brand=searchBrand;
+      g.display_name=g.brand+" - "+g.name;
+    });
+  }
+
   groups.forEach(g=>{
     const bySize=new Map();
     g.offers.forEach(o=>{
