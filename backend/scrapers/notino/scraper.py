@@ -384,7 +384,7 @@ def _discover(query: str, session) -> Tuple[List[Dict[str, Any]], Dict[str, Any]
         except requests.RequestException as exc:
             direct_pages.append({"url": u, "error": f"{type(exc).__name__}: {exc}"})
 
-    merged = dict(candidates)
+    merged = {c["url"]: c for c in candidates}
     for c in direct.values():
         old = merged.get(c["url"])
         if old is None or c["score"] > old["score"]:
