@@ -4,6 +4,7 @@ import html as html_lib
 import json
 import re
 import difflib
+from xml.etree import ElementTree as ET
 from typing import Any, Dict, Iterable, List, Optional, Tuple
 from urllib.parse import quote_plus, unquote, urljoin, urlparse
 
@@ -17,7 +18,7 @@ SITEMAP_URL = BASE_URL + "/sitemap.xml"
 READER_BASE = "https://r.jina.ai/"
 TIMEOUT = 20
 READER_TIMEOUT = 12
-SCRAPER_VERSION = "notino-FR-generic-discovery-2026-08-21-v11-generic-sitemap-discovery"
+SCRAPER_VERSION = "notino-FR-generic-discovery-2026-08-21-v12-generic-seo-url-sitemap-discovery"
 
 HEADERS = {
     "User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
@@ -33,13 +34,14 @@ READER_HEADERS = {
 }
 
 PRODUCT_RE = re.compile(r"/p-\d+(?:/|$)", re.I)
-PRODUCT_URL_RE = re.compile(r"https?://(?:www\.)?notino\.fr/[^\s)\]>\"]+/p-\d+(?:/|\b)", re.I)
+# Notino uses both numeric-ID URLs and SEO-only product URLs.
+PRODUCT_URL_RE = re.compile(r'https?://(?:www\.)?notino\.fr/[^\s)\]>\" ]+', re.I)
 READER_ABSOLUTE_PRODUCT_RE = re.compile(
-    r"(?:https?:)?(?:\\/\\/|//)(?:www\\?\.)?notino\\?\.fr(?:\\/|/)[^\s<>)\]\\\"']*?/p-\d+(?:\\/|/|\b)",
+    r"(?:https?:)?(?:\/\/|//)(?:www\.?)*notino\.fr(?:\/|/)[^\s<>)\]\"']+",
     re.I,
 )
 READER_RELATIVE_PRODUCT_RE = re.compile(
-    r"/(?:[a-z0-9][^\s<>)\]\\\"']*/)+p-\d+(?:/|\b)", re.I
+    r"/(?:[a-z0-9][^\s<>)\]\"']*/)+[^\s<>)\]\"']+", re.I
 )
 PRICE_RE = re.compile(r"(?:€\s*(\d{1,4}[.,]\d{2})|(\d{1,4}[.,]\d{2})\s*€)", re.I)
 RATING_RE = re.compile(r"\b\d[.,]\d\s*\(\s*\d+\s*\)", re.I)
@@ -255,6 +257,28 @@ def _extract_product_price(text: Any) -> str:
     return ""
 
 
+def _is_excluded_notino_path(path: str) -> bool:
+    low = (path or "").rstrip("/").lower()
+    return any(low.startswith(prefix) for prefix in (
+        "/search", "/avis/", "/erfahrungen/", "/magazine/", "/blog/",
+        "/panier", "/cart", "/login", "/compte", "/account",
+    ))
+
+
+def _looks_like_product_url(url: str) -> bool:
+    try:
+        parsed = urlparse(url)
+    except Exception:
+        return False
+    if parsed.netloc.lower() not in {"www.notino.fr", "notino.fr"}:
+        return False
+    path = parsed.path.rstrip("/")
+    if _is_excluded_notino_path(path):
+        return False
+    segments = [x for x in path.split("/") if x]
+    return len(segments) >= 2
+
+
 def _normalise_reader_url(raw: Any) -> Optional[str]:
     value = html_lib.unescape(str(raw or "")).strip()
     value = value.replace("\\/", "/").replace("\\u002F", "/")
@@ -272,23 +296,8 @@ def _normalise_reader_url(raw: Any) -> Optional[str]:
     path = parsed.path
     while path.lower().startswith("/www.notino.fr/") or path.lower().startswith("/notino.fr/"):
         path = "/" + path.split("/", 2)[2]
-    if not PRODUCT_RE.search(path):
-        return None
-    return f"https://{parsed.netloc.lower()}{path.rstrip('/')}"
-
-
-def _looks_like_product_url(url: str) -> bool:
-    try:
-        parsed = urlparse(url)
-    except Exception:
-        return False
-    if parsed.netloc.lower() not in {"www.notino.fr", "notino.fr"} or not PRODUCT_RE.search(parsed.path):
-        return False
-    return not any(
-        x in parsed.path.lower()
-        for x in ("/search", "/panier", "/cart", "/login", "/account", "/avis/", "/magazine")
-    )
-
+    normalised = f"https://{parsed.netloc.lower()}{path.rstrip('/')}"
+    return normalised if _looks_like_product_url(normalised) else None
 
 def _search_urls(query: str) -> List[str]:
     q = quote_plus(query)
@@ -495,15 +504,13 @@ def _name_from_product_url(url: str) -> str:
 
 
 def _brand_from_product_url(url: str) -> str:
-    """Return the first product-path component as a possible brand slug."""
+    """Return first path component for both SEO and numeric-ID product URLs."""
     try:
         path = unquote(urlparse(url).path).strip("/")
     except Exception:
         return ""
     parts = [p for p in path.split("/") if p]
-    if len(parts) < 3 or not parts[-1].lower().startswith("p-"):
-        return ""
-    return _clean_name(parts[0].replace("-", " "))
+    return _clean_name(parts[0].replace("-", " ")) if len(parts) >= 2 else ""
 
 
 def _reader_candidates(text: str, query: str) -> List[Dict[str, Any]]:
@@ -642,45 +649,50 @@ def _rank_candidates_for_product_lookup(candidates: List[Dict[str, Any]], limit:
     return (exact if exact else ordered)[:limit]
 
 
-def _sitemap_product_urls(text: str) -> List[str]:
-    """Extract product URLs from a Notino sitemap or sitemap-index response."""
-    raw = html_lib.unescape(str(text or "")).replace("\\/", "/")
-    urls: List[str] = []
-    seen = set()
-    for match in re.finditer(r"<loc>\s*(.*?)\s*</loc>", raw, flags=re.I | re.S):
-        value = html_lib.unescape(match.group(1)).strip()
-        if value.lower().endswith(".xml"):
-            continue
-        url = _normalise_reader_url(value)
-        if url and url not in seen:
-            seen.add(url)
-            urls.append(url)
-    if urls:
-        return urls
+def _parse_sitemap_xml(text: str) -> Tuple[str, List[str]]:
+    try:
+        root = ET.fromstring(text or "")
+    except ET.ParseError:
+        return "", []
+    root_type = root.tag.rsplit("}", 1)[-1].lower()
+    locs = []
+    for elem in root.iter():
+        if elem.tag.rsplit("}", 1)[-1].lower() == "loc" and elem.text:
+            locs.append(html_lib.unescape(elem.text.strip()))
+    return root_type, locs
 
-    # Some readers return XML as plain text without preserving <loc> tags.
-    for pattern in (PRODUCT_URL_RE, READER_ABSOLUTE_PRODUCT_RE, READER_RELATIVE_PRODUCT_RE):
-        for match in pattern.finditer(raw):
-            url = _normalise_reader_url(match.group(0))
+
+def _sitemap_product_urls(text: str) -> List[str]:
+    """Extract internal URLs from a sitemap urlset without requiring /p-id/."""
+    root_type, locs = _parse_sitemap_xml(text)
+    urls, seen = [], set()
+    if root_type == "urlset":
+        for value in locs:
+            url = _normalise_reader_url(value)
             if url and url not in seen:
                 seen.add(url)
                 urls.append(url)
+        return urls
+    raw = html_lib.unescape(str(text or "")).replace("\\/", "/")
+    for match in re.finditer(r"<loc>\s*(.*?)\s*</loc>", raw, flags=re.I | re.S):
+        url = _normalise_reader_url(match.group(1).strip())
+        if url and url not in seen:
+            seen.add(url)
+            urls.append(url)
     return urls
-
 
 def _sitemap_child_urls(text: str) -> List[str]:
-    """Extract child sitemap URLs from a sitemap index."""
+    """Extract child sitemap URLs from an XML sitemap index."""
+    root_type, locs = _parse_sitemap_xml(text)
+    if root_type == "sitemapindex":
+        return list(dict.fromkeys(x for x in locs if x.lower().endswith(".xml")))
     raw = html_lib.unescape(str(text or "")).replace("\\/", "/")
-    urls: List[str] = []
-    seen = set()
+    out=[]
     for match in re.finditer(r"<loc>\s*(.*?)\s*</loc>", raw, flags=re.I | re.S):
-        value = html_lib.unescape(match.group(1)).strip()
-        if not value.lower().endswith(".xml"):
-            continue
-        if value not in seen:
-            seen.add(value)
-            urls.append(value)
-    return urls
+        value=match.group(1).strip()
+        if value.lower().endswith(".xml") and value not in out:
+            out.append(value)
+    return out
 
 
 def _candidate_from_sitemap_url(url: str, query: str) -> Optional[Dict[str, Any]]:
@@ -724,7 +736,7 @@ def _candidate_from_sitemap_url(url: str, query: str) -> Optional[Dict[str, Any]
 
 
 def _sitemap_discovery(
-    query: str, session: requests.Session, max_child_sitemaps: int = 40
+    query: str, session: requests.Session, max_child_sitemaps: int = 200
 ) -> Tuple[List[Dict[str, Any]], Dict[str, Any]]:
     """Generic fallback using Notino's own XML product sitemap(s)."""
     pages: List[Dict[str, Any]] = []
@@ -763,9 +775,6 @@ def _sitemap_discovery(
             })
 
         direct_products = consume(root_text, SITEMAP_URL)
-        if direct_products:
-            return sorted(candidates.values(), key=lambda x: (-x["score"], x["url"])), pages
-
         child_sitemaps = _sitemap_child_urls(root_text)
         for child_url in child_sitemaps[:max_child_sitemaps]:
             try:
@@ -791,8 +800,6 @@ def _sitemap_discovery(
                 # We only enter sitemap fallback when ordinary discovery is
                 # weak. Two strong exact hits are enough to avoid unnecessary
                 # catalogue-wide requests while preserving generic discovery.
-                if len(candidates) >= 2:
-                    break
             except requests.RequestException as exc:
                 pages.append({
                     "url": child_url,
