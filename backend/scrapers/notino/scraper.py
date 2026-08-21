@@ -15,7 +15,7 @@ SEARCH_URL = BASE_URL + "/search.asp"
 READER_BASE = "https://r.jina.ai/"
 TIMEOUT = 20
 READER_TIMEOUT = 12
-SCRAPER_VERSION = "notino-FR-deep-diagnostic-2026-08-21-v6"
+SCRAPER_VERSION = "notino-FR-deep-diagnostic-2026-08-21-v7"
 
 HEADERS = {
     "User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
@@ -148,6 +148,125 @@ def _extract_price(text: Any) -> str:
         return ""
     m = matches[-1]
     return _format_price(m.group(1) or m.group(2))
+
+
+def _price_is_unit_or_non_purchase(context: str) -> bool:
+    low = _clean(context).lower()
+    if re.search(r"(?:/|par|pro|per)\s*(?:100\s*ml|100\s*g|l|liter|litre)", low, re.I):
+        return True
+    if re.search(r"(?:€/|eur/|price\s+per|prix\s+(?:au|par))", low, re.I):
+        return True
+    if any(marker in low for marker in (
+        "livraison", "frais de livraison", "retrait personnel",
+        "shipping", "delivery", "pickup", "retrait",
+    )):
+        return True
+    if any(marker in low for marker in (
+        "ancien prix", "old price", "prix barré", "prix barre",
+        "was price", "prix précédent", "prix precedent",
+    )):
+        return True
+    return False
+
+
+def _extract_purchase_price(text: Any) -> str:
+    """
+    Extract the customer purchase price from generic product text.
+
+    Unit prices (/100 ml, par 100 ml, €/l, etc.), shipping/pickup fees and
+    clearly crossed/previous prices are never selected as the product price.
+    Active purchase context such as 'En stock', 'Prix actuel' and cart
+    markers receives priority. No product/store-specific values are used.
+    """
+    content = _clean(text)
+    matches = list(PRICE_RE.finditer(content))
+    if not matches:
+        return ""
+
+    ranked = []
+    for match in matches:
+        value = match.group(1) or match.group(2)
+        start = max(0, match.start() - 180)
+        end = min(len(content), match.end() + 180)
+        context = content[start:end]
+        low = context.lower()
+
+        # Unit-price syntax must be directly attached to this candidate.
+        # Do not inspect a broad window here: a later /100 ml price must not
+        # disqualify the real purchase price immediately before it.
+        before = content[max(0, match.start() - 18):match.start()]
+        after = content[match.end():min(len(content), match.end() + 22)]
+        if re.search(r"(?:/|par|pro|per)\s*(?:100\s*ml|100\s*g|l|liter|litre)\s*$", before, re.I):
+            continue
+        if re.match(r"^\s*(?:/|par|pro|per)\s*(?:100\s*ml|100\s*g|l|liter|litre)\b", after, re.I):
+            continue
+        if re.search(r"(?:€/|eur/|price\s+per|prix\s+(?:au|par))\s*$", before, re.I):
+            continue
+        local_start = max(0, match.start() - 45)
+        local_end = min(len(content), match.end() + 45)
+        local_context = content[local_start:local_end].lower()
+        # Shipping/pickup prices are excluded when the shipping marker is
+        # attached to the candidate. A genuine purchase price may still have
+        # a shipping label later in the same product block, so active purchase
+        # markers are allowed to override that wider context.
+        shipping_local = any(marker in local_context for marker in (
+            "livraison", "frais de livraison", "retrait personnel",
+            "shipping", "delivery", "pickup", "retrait",
+        ))
+        active_local = bool(re.search(
+            r"en\s+stock|prix\s+actuel|ajouter\s+au\s+panier|add\s+to\s+cart",
+            local_context,
+            re.I,
+        ))
+        if shipping_local and not active_local:
+            continue
+
+        score = 0
+        after_local = content[match.end():min(len(content), match.end() + 70)].lower()
+        if "plus avantageux" in after_local or "plus avantageuse" in after_local:
+            score -= 80
+        current_match = re.search(r"prix\s+actuel(?:\s+de)?", low, re.I)
+        if current_match:
+            score += max(0, 120 - abs((match.start() - start) - current_match.start()))
+
+        stock_matches = list(re.finditer(r"en\s+stock", low, re.I))
+        if stock_matches:
+            nearest = min(abs((match.start() - start) - m.start()) for m in stock_matches)
+            score += max(0, 110 - nearest)
+
+        cart_matches = list(re.finditer(r"ajouter\s+au\s+panier|add\s+to\s+cart", low, re.I))
+        if cart_matches:
+            nearest = min(abs((match.start() - start) - m.start()) for m in cart_matches)
+            score += max(0, 75 - nearest)
+
+        if "quantité" in low or "quantite" in low or "quantity" in low:
+            score += 10
+        if re.search(r"\b(?:au|dans le)\s+panier\b", low, re.I):
+            score += 8
+
+        ranked.append((score, match.start(), value))
+
+    if not ranked:
+        return ""
+
+    # Highest contextual score wins; later occurrence breaks ties, which keeps
+    # the active price ahead of an earlier crossed/list price when context is equal.
+    ranked.sort(key=lambda item: (item[0], item[1]))
+    return _format_price(ranked[-1][2])
+
+
+def _name_from_product_url(url: str) -> str:
+    """Derive a validation name from a generic Notino product URL slug."""
+    try:
+        path = urlparse(url).path.rstrip("/")
+        match = re.search(r"/([^/]+)/p-\d+/?$", path, re.I)
+        if not match:
+            return ""
+        slug = unquote(match.group(1))
+        slug = re.sub(r"[-_]+", " ", slug)
+        return _clean_name(slug)
+    except Exception:
+        return ""
 
 
 def _normalise_reader_url(raw: Any) -> Optional[str]:
@@ -359,6 +478,8 @@ def _reader_candidates(text: str, query: str) -> List[Dict[str, Any]]:
             if not name or not _matches(name, query):
                 name = _reader_name_from_context(local_context, query)
             if not name:
+                name = _name_from_product_url(url)
+            if not name:
                 continue
             candidate = _make_candidate(url, name, local_context, query, "reader-markdown")
             if candidate and (
@@ -373,6 +494,8 @@ def _reader_candidates(text: str, query: str) -> List[Dict[str, Any]]:
                 continue
             prefix = raw[max(0, match.start() - 700):match.start()]
             name = _reader_name_from_context(prefix, query)
+            if not name:
+                name = _name_from_product_url(url)
             if not name:
                 continue
             suffix = raw[match.end():min(len(raw), match.end() + 220)]
@@ -390,6 +513,8 @@ def _reader_candidates(text: str, query: str) -> List[Dict[str, Any]]:
             continue
         prefix = raw[max(0, match.start() - 700):match.start()]
         name = _reader_name_from_context(prefix, query)
+        if not name:
+            name = _name_from_product_url(url)
         if not name:
             continue
         candidate = _make_candidate(url, name, prefix[-400:], query, "reader-href")
@@ -421,8 +546,6 @@ def _reader_discovery(query: str, session: requests.Session) -> Tuple[List[Dict[
                 "candidate_count": len(candidates),
                 "reader": True,
             })
-            if candidates:
-                break
         except requests.RequestException as exc:
             pages.append({
                 "url": url,
@@ -480,8 +603,6 @@ def _search_http_candidates(
                 "cloudflare": _is_challenge(response.text),
                 "source": "direct",
             })
-            if found:
-                break
 
         ordered = sorted(
             candidates.values(),
@@ -601,15 +722,9 @@ def _reader_product(text: str, candidate: Dict[str, Any], query: str) -> Optiona
     if current:
         price = _format_price(current.group(1))
     if not price:
-        stock = re.search(
-            r"en\s+stock[^€]{0,120}?(\d{1,4}[.,]\d{2})\s*€",
-            content,
-            re.I,
-        )
-        if stock:
-            price = _format_price(stock.group(1))
+        price = _extract_purchase_price(content)
     if not price:
-        price = _extract_price(candidate.get("anchor_text", "")) or _extract_price(
+        price = _extract_purchase_price(candidate.get("anchor_text", "")) or _extract_purchase_price(
             candidate.get("card_text", "")
         )
     if not price:
@@ -638,7 +753,7 @@ def _card_result(candidate: Dict[str, Any], query: str) -> Optional[Dict[str, An
     if not _requested_size_is_valid(context, query):
         return None
 
-    price = _extract_price(anchor) or _extract_price(card)
+    price = _extract_purchase_price(anchor) or _extract_purchase_price(card)
     if not price:
         return None
     return {"store": STORE, "name": name, "price": price, "url": candidate["url"]}
@@ -703,19 +818,9 @@ def _product_details(
         return _card_result(candidate, query)
 
     if not price:
-        m = re.search(r"prix\s+actuel\s+(\d{1,4}[.,]\d{2})\s*€", page_text, re.I)
-        if m:
-            price = _format_price(m.group(1))
+        price = _extract_purchase_price(page_text)
     if not price:
-        m = re.search(
-            r"en\s+stock\s*[|:]?\s*(\d{1,4}[.,]\d{2})\s*€",
-            page_text,
-            re.I,
-        )
-        if m:
-            price = _format_price(m.group(1))
-    if not price:
-        price = _extract_price(candidate.get("anchor_text", "")) or _extract_price(
+        price = _extract_purchase_price(candidate.get("anchor_text", "")) or _extract_purchase_price(
             candidate.get("card_text", "")
         )
 
