@@ -2068,7 +2068,7 @@ function chooseOffer(gi,sizeKey,oi){
   }
 }
 
-async function fetchJSONWithTimeout(url,ms=10000){
+async function fetchJSONWithTimeout(url,ms=90000){
  const controller=new AbortController();
  const timer=setTimeout(()=>controller.abort(),ms);
  try{
@@ -2084,7 +2084,7 @@ async function searchStoresProgressive(query, onPartial){
   if(!q) return {query:"",count:0,results:[],comparisons:[],errors:{}};
 
   const url="/search?q="+encodeURIComponent(q);
-  const data=await fetchJSONWithTimeout(url,15000);
+  const data=await fetchJSONWithTimeout(url,90000);
 
   if(typeof onPartial==="function"){
     onPartial(data,true);
