@@ -1,9 +1,10 @@
 from __future__ import annotations
 
+import html as html_lib
 import json
 import re
 from typing import Any, Dict, Iterable, List, Optional, Tuple
-from urllib.parse import quote_plus, urljoin, urlparse
+from urllib.parse import quote_plus, unquote, urljoin, urlparse
 
 import requests
 from bs4 import BeautifulSoup
@@ -14,7 +15,7 @@ SEARCH_URL = BASE_URL + "/search.asp"
 READER_BASE = "https://r.jina.ai/"
 TIMEOUT = 20
 READER_TIMEOUT = 12
-SCRAPER_VERSION = "notino-FR-generic-discovery-2026-08-19-v2-reader-fallback"
+SCRAPER_VERSION = "notino-FR-generic-discovery-2026-08-19-v3-reader-robust"
 
 HEADERS = {
     "User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
@@ -27,50 +28,20 @@ READER_HEADERS = {"User-Agent": "ScentHunter/1.0", "Accept": "text/plain,text/ma
 
 PRODUCT_RE = re.compile(r"/p-\d+(?:/|$)", re.I)
 PRODUCT_URL_RE = re.compile(r"https?://(?:www\.)?notino\.fr/[^\s)\]>\"']+/p-\d+(?:/|\b)", re.I)
+READER_ABSOLUTE_PRODUCT_RE = re.compile(r"(?:https?:)?(?:\\/\\/|//)(?:www\\?\.)?notino\\?\.fr(?:\\/|/)[^\s<>)\]\\\"']*?/p-\d+(?:\\/|/|\b)", re.I)
+READER_RELATIVE_PRODUCT_RE = re.compile(r"/(?:[a-z0-9][^\s<>)\]\\\"']*/)+p-\d+(?:/|\b)", re.I)
 PRICE_RE = re.compile(r"(?:€\s*(\d{1,4}[.,]\d{2})|(\d{1,4}[.,]\d{2})\s*€)", re.I)
 RATING_RE = re.compile(r"\b\d[.,]\d\s*\(\s*\d+\s*\)", re.I)
 CHALLENGE_MARKERS = ("just a moment", "cf-chl-", "challenge-platform", "checking your browser", "verify you are human", "enable javascript and cookies", "vérification de sécurité en cours")
 IN_STOCK_MARKERS = ("en stock", "ajouter au panier", "add to cart")
 OUT_STOCK_MARKERS = ("en rupture de stock", "rupture de stock", "actuellement indisponible", "produit indisponible")
 
-
 NON_PERFUME_MARKERS = {
-    "gift set",
-    "set regalo",
-    "set",
-    "discovery set",
-    "fragrance set",
-    "perfume set",
-    "parfum set",
-    "coffret",
-    "bundle",
-    "pack",
-    "travel set",
-    "kit",
-    "duo",
-    "trio",
-    "mystery box",
-    "tester",
-    "testeur",
-    "sample",
-    "shampoo",
-    "shower gel",
-    "body wash",
-    "body lotion",
-    "body cream",
-    "body milk",
-    "deodorant",
-    "deo spray",
-    "aftershave",
-    "after shave",
-    "body spray",
-    "hair mist",
-    "makeup",
-    "cosmetics",
-    "cosmetic",
-    "skincare",
-    "skin care",
-    "cosmetici",
+    "gift set", "set regalo", "set", "discovery set", "fragrance set", "perfume set", "parfum set",
+    "coffret", "bundle", "pack", "travel set", "kit", "duo", "trio", "mystery box", "tester",
+    "testeur", "sample", "shampoo", "shower gel", "body wash", "body lotion", "body cream",
+    "body milk", "deodorant", "deo spray", "aftershave", "after shave", "body spray", "hair mist",
+    "makeup", "cosmetics", "cosmetic", "skincare", "skin care", "cosmetici",
 }
 
 
@@ -82,12 +53,8 @@ def _product_norm(value: Any) -> str:
 
 def _has_non_perfume_marker(value: Any) -> bool:
     tokens = set(_product_norm(value).split())
+    return any(set(_product_norm(marker).split()).issubset(tokens) for marker in NON_PERFUME_MARKERS if _product_norm(marker))
 
-    return any(
-        set(_product_norm(marker).split()).issubset(tokens)
-        for marker in NON_PERFUME_MARKERS
-        if _product_norm(marker)
-    )
 
 def _clean(value: Any) -> str:
     text = re.sub(r"\s+", " ", str(value or "")).strip()
@@ -121,6 +88,28 @@ def _extract_price(text: Any) -> str:
         return ""
     m = matches[-1]
     return _format_price(m.group(1) or m.group(2))
+
+
+def _normalise_reader_url(raw: Any) -> Optional[str]:
+    """Normalize URLs emitted by Jina as markdown, HTML or escaped JSON text."""
+    value = html_lib.unescape(str(raw or "")).strip()
+    value = value.replace("\\/", "/")
+    value = value.replace("\\u002F", "/")
+    value = unquote(value)
+    value = value.strip(" <>\"'()[]{}.,;")
+    if value.startswith("//"):
+        value = "https:" + value
+    elif value.startswith("/"):
+        value = urljoin(BASE_URL, value)
+    try:
+        parsed = urlparse(value)
+    except Exception:
+        return None
+    if parsed.netloc.lower() not in {"www.notino.fr", "notino.fr"}:
+        return None
+    if not PRODUCT_RE.search(parsed.path):
+        return None
+    return f"https://{parsed.netloc}{parsed.path.rstrip('/')}"
 
 
 def _looks_like_product_url(url: str) -> bool:
@@ -182,54 +171,29 @@ def _card_text(link) -> str:
     return best
 
 
-def _make_candidate(
-    url: str,
-    anchor: str,
-    card: str,
-    query: str,
-    source: str,
-) -> Optional[Dict[str, Any]]:
+def _make_candidate(url: str, anchor: str, card: str, query: str, source: str) -> Optional[Dict[str, Any]]:
     url = _clean(url).split("?")[0]
-
     if not _looks_like_product_url(url):
         return None
-
     anchor = _clean(anchor)
     card = _clean(card)
-
-    # Il nome deve provenire dal link/titolo del prodotto.
-    # Il testo della card non può essere usato come nome se contiene
-    # più prodotti o testo navigazionale.
     name = _clean_name(anchor)
-
     if not name:
+        # For reader output where the link text is omitted, recover the name
+        # from the local context instead of rejecting the URL immediately.
+        name = _clean_name(card)
+    if not name or _has_non_perfume_marker(name):
         return None
-
-    if _has_non_perfume_marker(name):
-        return None
-
     name_tokens = set(_product_norm(name).split())
     query_tokens = _tokens(query)
-
-    if not query_tokens:
+    if not query_tokens or not all(token in name_tokens for token in query_tokens):
         return None
-
-    if not all(token in name_tokens for token in query_tokens):
-        return None
-
-    hits = {
-        token: token in name_tokens
-        for token in query_tokens
-    }
-
+    hits = {token: token in name_tokens for token in query_tokens}
     score = sum(hits.values()) * 5
-
     if all(hits.values()):
         score += 5
-
     if _extract_price(anchor) or _extract_price(card):
         score += 1
-
     return {
         "url": url,
         "anchor_text": anchor or name,
@@ -258,25 +222,47 @@ def extract_candidates_from_html(html: str, query: str) -> List[Dict[str, Any]]:
 
 
 def _reader_candidates(text: str, query: str) -> List[Dict[str, Any]]:
+    """Discover product URLs from Jina output regardless of link representation."""
     found: Dict[str, Dict[str, Any]] = {}
-    lines = [x.strip() for x in (text or "").splitlines() if x.strip()]
-    markdown = re.compile(r"\[([^\]]+)\]\((https?://(?:www\.)?notino\.fr/[^)]+)\)", re.I)
+    raw = html_lib.unescape(text or "").replace("\\/", "/")
+    lines = [x.strip() for x in raw.splitlines() if x.strip()]
+
+    # Markdown links: absolute or relative Notino URLs.
+    markdown = re.compile(r"\[([^\]]+)\]\(([^)]+)\)", re.I)
     for i, line in enumerate(lines):
         for match in markdown.finditer(line):
             anchor = _clean(match.group(1))
-            url = _clean(match.group(2)).split("?")[0]
-            context = _clean(" ".join(lines[max(0, i - 1):min(len(lines), i + 2)]))
-            candidate = _make_candidate(url, anchor, context, query, "reader-search")
+            url = _normalise_reader_url(match.group(2))
+            if not url:
+                continue
+            context = _clean(" ".join(lines[max(0, i - 2):min(len(lines), i + 3)]))
+            candidate = _make_candidate(url, anchor, context, query, "reader-markdown")
             if candidate and (url not in found or candidate["score"] > found[url]["score"]):
                 found[url] = candidate
-    for match in PRODUCT_URL_RE.finditer(text or ""):
-        url = match.group(0).split("?")[0].rstrip(".,")
-        if url in found:
+
+    # Raw absolute URLs, including escaped JSON-style slashes.
+    for pattern in (PRODUCT_URL_RE, READER_ABSOLUTE_PRODUCT_RE, READER_RELATIVE_PRODUCT_RE):
+        for match in pattern.finditer(raw):
+            url = _normalise_reader_url(match.group(0))
+            if not url or url in found:
+                continue
+            start = max(0, match.start() - 420)
+            end = min(len(raw), match.end() + 420)
+            context = _clean(raw[start:end])
+            candidate = _make_candidate(url, context, context, query, "reader-url")
+            if candidate:
+                found[url] = candidate
+
+    # HTML fragments or href attributes that Jina may preserve verbatim.
+    for match in re.finditer(r"(?:href|url)\s*=\s*[\"']([^\"']+)[\"']", raw, re.I):
+        url = _normalise_reader_url(match.group(1))
+        if not url or url in found:
             continue
-        context = _clean((text or "")[max(0, match.start() - 260):match.end() + 260])
-        candidate = _make_candidate(url, "", context, query, "reader-url")
+        context = _clean(raw[max(0, match.start() - 420):min(len(raw), match.end() + 420)])
+        candidate = _make_candidate(url, context, context, query, "reader-href")
         if candidate:
             found[url] = candidate
+
     return sorted(found.values(), key=lambda x: (not x["contains_all_query_tokens"], -x["score"], x["url"]))
 
 
@@ -383,20 +369,11 @@ def _reader_product(text: str, candidate: Dict[str, Any], query: str) -> Optiona
                 break
     if not name:
         name = _clean_name(candidate.get("anchor_text") or candidate.get("card_text", ""))
-
-    if not name:
+    if not name or _has_non_perfume_marker(name):
         return None
-
-    if _has_non_perfume_marker(name):
-        return None
-
     query_tokens = _tokens(query)
     name_tokens = set(_product_norm(name).split())
-
-    if not query_tokens or not all(
-        token in name_tokens
-        for token in query_tokens
-    ):
+    if not query_tokens or not all(token in name_tokens for token in query_tokens):
         return None
     price = ""
     current = re.search(r"prix\s+actuel\s+(?:de\s+)?(\d{1,4}[.,]\d{2})\s*€", content, re.I)
@@ -416,44 +393,22 @@ def _reader_product(text: str, candidate: Dict[str, Any], query: str) -> Optiona
     return {"store": STORE, "name": name, "price": price, "url": candidate["url"]}
 
 
-def _card_result(
-    candidate: Dict[str, Any],
-    query: str,
-) -> Optional[Dict[str, Any]]:
+def _card_result(candidate: Dict[str, Any], query: str) -> Optional[Dict[str, Any]]:
     anchor = _clean(candidate.get("anchor_text") or "")
     card = _clean(candidate.get("card_text") or "")
-
     name = _clean_name(anchor)
-
     if not name:
         return None
-
     if _has_non_perfume_marker(name):
         return None
-
     query_tokens = _tokens(query)
     name_tokens = set(_product_norm(name).split())
-
-    if not query_tokens or not all(
-        token in name_tokens
-        for token in query_tokens
-    ):
+    if not query_tokens or not all(token in name_tokens for token in query_tokens):
         return None
-
-    price = (
-        _extract_price(anchor)
-        or _extract_price(card)
-    )
-
+    price = _extract_price(anchor) or _extract_price(card)
     if not price:
         return None
-
-    return {
-        "store": STORE,
-        "name": name,
-        "price": price,
-        "url": candidate["url"],
-    }
+    return {"store": STORE, "name": name, "price": price, "url": candidate["url"]}
 
 
 def _product_details(session: requests.Session, candidate: Dict[str, Any], query: str) -> Optional[Dict[str, Any]]:
