@@ -1035,6 +1035,111 @@ def routing(q: str):
     }
 
 
+@app.get("/test-indexer")
+def test_indexer(
+    limit: int = 1,
+    offset: int = 0,
+    stores: str = "",
+    workers: int = 4,
+    token: str = "",
+):
+    """
+    TEMPORARY real indexer test endpoint.
+
+    It is intentionally isolated from /search. It runs a small sample of the
+    canonical catalog through the existing real scraper pipeline and writes
+    only to a temporary SQLite database.
+
+    Remove this endpoint after the STEP 3 real-world test.
+    """
+    expected_token = os.getenv("SCENTHUNTER_INDEX_TEST_TOKEN", "").strip()
+    if expected_token and token != expected_token:
+        raise HTTPException(
+            status_code=403,
+            detail="Token test non valido",
+        )
+
+    try:
+        sample_limit = max(1, min(int(limit), 3))
+        sample_offset = max(0, int(offset))
+        worker_count = max(1, min(int(workers), 8))
+
+        selected_stores = [
+            value.strip().lower()
+            for value in str(stores or "").split(",")
+            if value.strip()
+        ]
+
+        for store in selected_stores:
+            if store not in STORES:
+                raise HTTPException(
+                    status_code=400,
+                    detail=(
+                        "Store non valido. Disponibili: "
+                        + ", ".join(STORES)
+                    ),
+                )
+
+        from pathlib import Path as _Path
+        from indexer import (
+            CATALOG_PATH as INDEXER_CATALOG_PATH,
+            DEFAULT_STORES as INDEXER_DEFAULT_STORES,
+            refresh as refresh_index,
+        )
+
+        selected_stores = (
+            selected_stores
+            if selected_stores
+            else list(INDEXER_DEFAULT_STORES)
+        )
+
+        test_db = _Path("/tmp/scenthunter_index_test.db")
+
+        started = datetime.now(timezone.utc)
+
+        stats = refresh_index(
+            catalog_path=INDEXER_CATALOG_PATH,
+            db_path=test_db,
+            stores=selected_stores,
+            workers=worker_count,
+            offset=sample_offset,
+            limit=sample_limit,
+        )
+
+        finished = datetime.now(timezone.utc)
+        elapsed = (
+            finished - started
+        ).total_seconds()
+
+        return {
+            "ok": True,
+            "test": "indexer",
+            "temporary": True,
+            "sample": {
+                "limit": sample_limit,
+                "offset": sample_offset,
+            },
+            "stores": selected_stores,
+            "workers": worker_count,
+            "elapsed_seconds": round(elapsed, 2),
+            "stats": stats,
+        }
+
+    except HTTPException:
+        raise
+
+    except Exception as error:
+        traceback.print_exc()
+
+        return {
+            "ok": False,
+            "test": "indexer",
+            "temporary": True,
+            "error": f"{type(error).__name__}: {error}",
+            "traceback": traceback.format_exc(),
+        }
+
+
 @app.get("/test-store")
 def test_store(
     store: str,
