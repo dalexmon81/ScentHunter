@@ -1085,6 +1085,31 @@ def _diagnose_product_page(
     return report
 
 
+def debug_search(query: str) -> Dict[str, Any]:
+    query = _clean(query)
+
+    session = requests.Session()
+    session.headers.update(HEADERS)
+
+    try:
+        candidates, discovery = _search_http_candidates(
+            query,
+            session=session,
+        )
+
+        return {
+            "query": query,
+            "search_urls": _search_urls(query),
+            "discovery": discovery,
+            "candidates_before_product_page": candidates,
+            "candidate_count": len(candidates),
+        }
+
+    finally:
+        session.close()
+
+
+
 def diagnose(query: str) -> Dict[str, Any]:
     """Deep diagnostic only. It does not change the normal search path."""
     query = _clean(query)
@@ -1128,12 +1153,10 @@ if __name__ == "__main__":
 
     parser = argparse.ArgumentParser()
     parser.add_argument("query")
-    parser.add_argument("--diagnose", action="store_true")
     args = parser.parse_args()
-    print(
-        json.dumps(
-            diagnose(args.query) if args.diagnose else search(args.query),
-            ensure_ascii=False,
-            indent=2,
-        )
-    )
+
+    print(json.dumps(
+        debug_search(args.query),
+        ensure_ascii=False,
+        indent=2,
+    ))
