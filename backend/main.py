@@ -1225,7 +1225,8 @@ def test_indexer(
 
     It is intentionally isolated from /search. It runs a small sample of the
     canonical catalog through the existing real scraper pipeline and writes
-    only to a temporary SQLite database.
+    to the application local SQLite index so the next local-search test can
+    read exactly the same database.
 
     Remove this endpoint after the STEP 3 real-world test.
     """
@@ -1270,7 +1271,7 @@ def test_indexer(
             else list(INDEXER_DEFAULT_STORES)
         )
 
-        test_db = _Path("/tmp/scenthunter_index_test.db")
+        test_db = _local_index_path()
 
         started = datetime.now(timezone.utc)
 
