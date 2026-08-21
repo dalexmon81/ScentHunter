@@ -49,14 +49,7 @@ DEFAULT_STORES = (
 DEFAULT_WORKERS = 8
 
 
-def _load_product_index():
-    from product_index import ProductIndex, load_canonical_catalog
-    return ProductIndex, load_canonical_catalog
-
-
-def _load_matcher():
-    from product_matcher import ProductMatcher
-    return ProductMatcher
+from product_index import ProductIndex
 
 
 def load_catalog(path: Path) -> List[Dict[str, Any]]:
@@ -229,8 +222,6 @@ def refresh(
     Work is bounded by `workers`; one slow store does not prevent other
     store/product jobs from completing and being written.
     """
-    ProductIndex, _ = _load_product_index()
-
     catalog = load_catalog(Path(catalog_path))
 
     if offset:
@@ -276,12 +267,17 @@ def refresh(
 
     started = time.perf_counter()
 
+    product_by_id = {
+        item["product_id"]: item
+        for item in catalog
+    }
+
     with ProductIndex(db_path) as index:
         # Keep the canonical catalog available even if a store is temporarily
         # unreachable. This is important for autocomplete/search.
-        index.upsert_canonical_catalog(
-            load_canonical_catalog(Path(catalog_path))
-        )
+        # The catalog has already been loaded above. Reuse those exact
+        # records instead of importing/loading it a second time.
+        index.upsert_canonical_catalog(catalog)
 
         # Bounded concurrency across the full product/store matrix.
         # We deliberately do not create one executor per product.
@@ -311,14 +307,7 @@ def refresh(
                         ] = error
 
                     if results:
-                        target = next(
-                            (
-                                item
-                                for item in catalog
-                                if item["product_id"] == product_id
-                            ),
-                            None,
-                        )
+                        target = product_by_id.get(product_id)
 
                         if target is not None:
                             enriched = attach_canonical_identity(
