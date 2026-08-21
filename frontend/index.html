@@ -2084,7 +2084,7 @@ async function searchStoresProgressive(query, onPartial){
   if(!q) return {query:"",count:0,results:[],comparisons:[],errors:{}};
 
   const url="/search?q="+encodeURIComponent(q);
-  const data=await fetchJSONWithTimeout(url,90000);
+  const data=await fetchJSONWithTimeout(url,15000);
 
   if(typeof onPartial==="function"){
     onPartial(data,true);
