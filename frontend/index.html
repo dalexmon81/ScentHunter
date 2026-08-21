@@ -741,6 +741,24 @@ function shNum(o){
   const p=parsePrice(o&&o.price);
   return p===null?Infinity:p;
 }
+function offerPriceSourcePriority(o){
+  const provenance=o&&o.provenance;
+  const source=String(
+    (provenance&&provenance.price)
+    ||o?.price_source
+    ||o?._price_source
+    ||""
+  ).toLowerCase().trim();
+
+  // Prefer the price read from the verified product page / structured
+  // product data over a search/listing-page price. This is generic and
+  // deliberately independent of any store or product name.
+  if(/jsonld|product[_ -]?page|product[_ -]?detail|detail[_ -]?page/.test(source))return 4;
+  if(/html[_ -]?price|page[_ -]?price|structured/.test(source))return 3;
+  if(/search[_ -]?page|listing|search/.test(source))return 1;
+  return source?2:0;
+}
+
 function shGroupData(data){
   const raw=[];
 
@@ -765,13 +783,15 @@ function shGroupData(data){
         _source_brand:o.brand||g.brand||"",
         _source_url:o.url||"",
         _source_store:o.store||"",
-        _source_priority:1
+        _source_priority:1,
+        _price_source_priority:offerPriceSourcePriority(o)
       });
     });
   });
   (Array.isArray(data.results)?data.results:[]).forEach(o=>raw.push({
     ...o,
-    _source_priority:2
+    _source_priority:2,
+    _price_source_priority:offerPriceSourcePriority(o)
   }));
 
   /*
@@ -1477,10 +1497,20 @@ function shGroupData(data){
 
     if(existingIndex>=0){
       const existing=g.offers[existingIndex];
-      const newPriority=Number(normalizedOffer._source_priority||0);
-      const oldPriority=Number(existing._source_priority||0);
+      const newPricePriority=Number(normalizedOffer._price_source_priority||0);
+      const oldPricePriority=Number(existing._price_source_priority||0);
+      const newSourcePriority=Number(normalizedOffer._source_priority||0);
+      const oldSourcePriority=Number(existing._source_priority||0);
 
-      if(newPriority>oldPriority){
+      // First choose the most authoritative PRICE source. Only then use the
+      // response-source priority. This prevents a cheap/stale listing-page
+      // price from replacing the verified product-page price while keeping
+      // the URL and price from the same complete offer object.
+      if(
+        newPricePriority>oldPricePriority
+        ||(newPricePriority===oldPricePriority && newSourcePriority>oldSourcePriority)
+        ||(newPricePriority===oldPricePriority && newSourcePriority===oldSourcePriority && shNum(normalizedOffer)<shNum(existing))
+      ){
         g.offers[existingIndex]={
           ...existing,
           ...normalizedOffer,
@@ -1492,8 +1522,6 @@ function shGroupData(data){
             ?normalizedOffer.price_value
             :existing.price_value
         };
-      }else if(newPriority===oldPriority && shNum(normalizedOffer)<shNum(existing)){
-        g.offers[existingIndex]=normalizedOffer;
       }
     }else{
       g.offers.push(normalizedOffer);
