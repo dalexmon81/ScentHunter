@@ -21,7 +21,7 @@ TIMEOUT = 20
 READER_TIMEOUT = 12
 
 SCRAPER_VERSION = (
-    "notino-FR-generic-discovery-2026-08-21-v14-reader-product-fallback"
+    "notino-FR-generic-discovery-2026-08-21-v15-reader-canonical-url"
 )
 
 HEADERS = {
@@ -177,13 +177,36 @@ def _has_non_perfume_marker_in_product(
     return _has_non_perfume_marker(path)
 
 
+def _fix_mojibake(value: Any) -> str:
+    """Repair common UTF-8/Windows-1252 artifacts from reader output."""
+    text = str(value or "")
+    if not text:
+        return ""
+
+    markers = (
+        "â‚¬", "Ã©", "Ã¨", "Ã´", "Ã ", "Ã¹",
+        "Ã¢", "Ãª", "Ã®", "Ã¯", "Â€", "Â·",
+    )
+    if any(marker in text for marker in markers):
+        try:
+            repaired = text.encode("cp1252").decode("utf-8")
+            if repaired != text:
+                return repaired
+        except (UnicodeEncodeError, UnicodeDecodeError):
+            pass
+
+    return text.replace("â‚¬", "€")
+
+
 def _clean(value: Any) -> str:
-    text = re.sub(r"\s+", " ", str(value or "")).strip()
+    text = _fix_mojibake(value)
+    text = re.sub(r"\s+", " ", text).strip()
     return re.sub(
         r"([a-zà-ÿ])([A-ZÀ-Ÿ])",
         r"\1 \2",
         text,
     )
+
 
 
 def _tokens(value: Any) -> List[str]:
@@ -542,6 +565,19 @@ def _looks_like_product_url(
     return len(segments) >= 2
 
 
+def _canonical_product_url(url: str) -> str:
+    """Collapse /product-slug/p-123 into the stable SEO product URL."""
+    try:
+        parsed = urlparse(str(url or ""))
+        path = parsed.path.rstrip("/")
+        parts = [part for part in path.split("/") if part]
+        if len(parts) >= 3 and re.fullmatch(r"p-\d+", parts[-1], re.I):
+            path = "/" + "/".join(parts[:-1])
+        return f"https://{parsed.netloc.lower()}{path}"
+    except Exception:
+        return str(url or "").strip()
+
+
 def _normalise_reader_url(
     raw: Any,
 ) -> Optional[str]:
@@ -600,6 +636,7 @@ def _normalise_reader_url(
         f"https://{parsed.netloc.lower()}"
         f"{path.rstrip('/')}"
     )
+    normalised = _canonical_product_url(normalised)
 
     if not _looks_like_product_url(
         normalised
@@ -2486,112 +2523,78 @@ def _extract_reader_product_name(
     candidate: Dict[str, Any],
     query: str,
 ) -> str:
+    """Extract a clean product name from Jina.
+
+    The product URL is authoritative. Jina can expose metadata such as
+    ``Title: ... | notino.fr`` before the actual product heading, so metadata
+    is explicitly ignored.
     """
-    Name extraction specifically for Jina pages.
+    raw = _fix_mojibake(text).replace("\\/", "/")
+    candidate_url = _canonical_product_url(candidate.get("url", ""))
 
-    Priority:
-    1. Markdown H1/H2/H3 matching query.
-    2. Candidate URL slug.
-    3. Candidate anchor.
-    """
-
-    raw = html_lib.unescape(
-        str(text or "")
-    ).replace(
-        "\\/",
-        "/",
-    )
-
-    lines = [
-        _clean(
-            re.sub(
-                r"^#{1,6}\s*",
-                "",
-                line,
-            )
-        )
-        for line in raw.splitlines()
-        if _clean(line)
-    ]
-
-    # First pass: short structured headings.
-    for line in lines[:180]:
-        if (
-            len(line) > 220
-            or PRICE_RE.search(line)
-        ):
-            continue
-
-        if _matches(
-            line,
-            query,
-        ):
-            cleaned = _clean_name(
-                line
-            )
-
-            if (
-                cleaned
-                and not _has_non_perfume_marker_in_product(
-                    cleaned,
-                    candidate.get(
-                        "url",
-                        "",
-                    ),
-                )
-            ):
-                return cleaned
-
-    # URL slug is much safer than arbitrary body text.
-    slug_name = _name_from_product_url(
-        candidate.get(
-            "url",
-            "",
-        )
-    )
-
-    brand = _brand_from_product_url(
-        candidate.get(
-            "url",
-            "",
-        )
-    )
+    # 1. URL slug: safest identity source.
+    slug_name = _name_from_product_url(candidate_url)
+    brand = _brand_from_product_url(candidate_url)
 
     if slug_name:
         url_name = _clean_name(
-            (
-                f"{brand} {slug_name}"
-                if brand
-                else slug_name
-            )
+            f"{brand} {slug_name}" if brand else slug_name
         )
-
-        if _fuzzy_query_match(
-            url_name,
-            query,
-        )[0]:
+        if (
+            url_name
+            and _fuzzy_query_match(url_name, query)[0]
+            and not _has_non_perfume_marker_in_product(url_name, candidate_url)
+        ):
             return url_name
 
-    # Last fallback: discovery candidate.
+    # 2. Structured headings, never Title:/Description:/Image: metadata.
+    lines = []
+    for raw_line in raw.splitlines():
+        line = _clean(re.sub(r"^#{1,6}\s*", "", raw_line))
+        if not line:
+            continue
+        if re.match(
+            r"^(title|description|image|url|canonical|meta)\s*:",
+            line,
+            re.I,
+        ):
+            continue
+        lines.append(line)
+
+    for line in lines[:180]:
+        if len(line) > 220 or PRICE_RE.search(line):
+            continue
+        cleaned = _clean_name(line)
+        if (
+            cleaned
+            and _fuzzy_query_match(cleaned, query)[0]
+            and not _has_non_perfume_marker_in_product(
+                cleaned,
+                candidate_url,
+            )
+        ):
+            return cleaned
+
+    # 3. Discovery candidate fallback.
     for value in (
         candidate.get("name"),
         candidate.get("anchor_text"),
         candidate.get("card_text"),
     ):
-        cleaned = _clean_name(
-            value or ""
-        )
-
+        cleaned = _clean_name(value or "")
         if (
             cleaned
-            and _fuzzy_query_match(
+            and not cleaned.lower().startswith("title:")
+            and _fuzzy_query_match(cleaned, query)[0]
+            and not _has_non_perfume_marker_in_product(
                 cleaned,
-                query,
-            )[0]
+                candidate_url,
+            )
         ):
             return cleaned
 
     return ""
+
 
 
 def _reader_product(
@@ -2621,9 +2624,11 @@ def _reader_product(
         return None
 
     # The URL itself is already a strong product identity signal.
-    candidate_url = candidate.get(
-        "url",
-        "",
+    candidate_url = _canonical_product_url(
+        candidate.get(
+            "url",
+            "",
+        )
     )
 
     identity_text = (
@@ -2795,10 +2800,12 @@ def _card_result(
         )
     )
 
-    url = _clean(
-        candidate.get(
-            "url",
-            "",
+    url = _canonical_product_url(
+        _clean(
+            candidate.get(
+                "url",
+                "",
+            )
         )
     )
 
@@ -2933,7 +2940,9 @@ def _product_details(
                 query,
             )
 
-    final_url = response.url.split("?")[0]
+    final_url = _canonical_product_url(
+        response.url.split("?")[0]
+    )
 
     final_slug = _name_from_product_url(
         final_url
@@ -3236,18 +3245,14 @@ def search(
             if not result:
                 continue
 
+            result["url"] = _canonical_product_url(
+                result.get("url", "")
+            )
+
             key = (
-                result.get(
-                    "url",
-                    "",
-                )
+                result.get("url", "")
                 + "|"
-                + _clean(
-                    result.get(
-                        "name",
-                        "",
-                    )
-                )
+                + _clean(result.get("name", ""))
             ).lower()
 
             if key in seen:
@@ -3493,6 +3498,13 @@ def diagnose(
                             "parsed_name": (
                                 reader_result.get(
                                     "name"
+                                )
+                                if reader_result
+                                else ""
+                            ),
+                            "parsed_url": (
+                                reader_result.get(
+                                    "url"
                                 )
                                 if reader_result
                                 else ""
