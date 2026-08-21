@@ -16,7 +16,7 @@ SEARCH_URL = BASE_URL + "/search.asp"
 READER_BASE = "https://r.jina.ai/"
 TIMEOUT = 20
 READER_TIMEOUT = 12
-SCRAPER_VERSION = "notino-FR-generic-discovery-2026-08-21-v7.1-reader-discovery-restored"
+SCRAPER_VERSION = "notino-FR-generic-discovery-2026-08-21-v8-generic-reader-name-fuzzy"
 
 HEADERS = {
     "User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
@@ -343,30 +343,62 @@ def extract_candidates_from_html(html: str, query: str) -> List[Dict[str, Any]]:
 
 
 def _reader_name_from_context(context: str, query: str) -> str:
-    """Recover a product title from the nearest Markdown headings.
+    """Recover a product name from structured Markdown headings only.
 
-    Notino/Jina commonly emits a brand as ## and the product title as ###.
-    Combine those adjacent headings; do not use distant card text as the name.
+    Notino/Jina commonly emits the brand as ``##`` and the product as ``###``.
+    The surrounding prose/card text is deliberately ignored.  This prevents
+    neighbouring products from contaminating the candidate name.
     """
-    raw = html_lib.unescape(context or "").replace("\/", "/")
-    lines = [re.sub(r"\s+", " ", x).strip() for x in str(raw).splitlines() if x.strip()]
+    raw = html_lib.unescape(context or "").replace("\\/", "/")
+    lines = [
+        re.sub(r"\s+", " ", x).strip()
+        for x in str(raw).splitlines()
+        if x.strip()
+    ]
+
     headings: List[Tuple[int, str]] = []
     for line in lines:
         match = re.match(r"^(###|##)\s*(.+)$", line)
-        if match:
-            headings.append((3 if match.group(1) == "###" else 2, _clean_name(match.group(2)).strip(" <>[]()")))
+        if not match:
+            continue
+        headings.append(
+            (
+                3 if match.group(1) == "###" else 2,
+                _clean_name(match.group(2)).strip(" <>[]()"),
+            )
+        )
+
     if not headings:
         return ""
-    level, title = headings[-1]
-    if level == 3 and title:
-        for prev_level, brand in reversed(headings[:-1]):
-            if prev_level == 2 and brand:
-                combined = _clean_name(f"{brand} {title}")
-                if _fuzzy_query_match(combined, query)[0]:
-                    return combined
-                break
-    return title if _fuzzy_query_match(title, query)[0] else ""
 
+    level, title = headings[-1]
+    if not title:
+        return ""
+
+    if level == 3:
+        # Only combine an immediately preceding ## brand.  If another ###
+        # occurs between the brand and this title, do not cross that boundary.
+        for prev_level, brand in reversed(headings[:-1]):
+            if prev_level == 3:
+                break
+            if prev_level == 2 and brand:
+                query_tokens = _query_tokens(query)
+                brand_tokens = _query_tokens(brand)
+                brand_relevant = any(
+                    bt in query_tokens
+                    or any(
+                        difflib.SequenceMatcher(None, bt, qt).ratio() >= 0.80
+                        and abs(len(bt) - len(qt)) <= 2
+                        for qt in query_tokens
+                    )
+                    for bt in brand_tokens
+                )
+                combined = _clean_name(f"{brand} {title}")
+                if brand_relevant and _fuzzy_query_match(combined, query)[0]:
+                    return combined
+                return title if _fuzzy_query_match(title, query)[0] else ""
+
+    return title if _fuzzy_query_match(title, query)[0] else ""
 
 def _name_from_product_url(url: str) -> str:
     try:
@@ -382,9 +414,21 @@ def _name_from_product_url(url: str) -> str:
     return _clean_name(slug)
 
 
+def _brand_from_product_url(url: str) -> str:
+    """Return the first product-path component as a possible brand slug."""
+    try:
+        path = unquote(urlparse(url).path).strip("/")
+    except Exception:
+        return ""
+    parts = [p for p in path.split("/") if p]
+    if len(parts) < 3 or not parts[-1].lower().startswith("p-"):
+        return ""
+    return _clean_name(parts[0].replace("-", " "))
+
+
 def _reader_candidates(text: str, query: str) -> List[Dict[str, Any]]:
     found: Dict[str, Dict[str, Any]] = {}
-    raw = html_lib.unescape(text or "").replace("\/", "/")
+    raw = html_lib.unescape(text or "").replace("\\/", "/")
     lines = [x.strip() for x in raw.splitlines() if x.strip()]
     markdown = re.compile(r"\[([^\]]+)\]\(([^)]+)\)", re.I)
 
@@ -394,36 +438,109 @@ def _reader_candidates(text: str, query: str) -> List[Dict[str, Any]]:
             url = _normalise_reader_url(match.group(2))
             if not url:
                 continue
+
+            # 1) The link text is the primary name source.
             name = _clean_name(anchor)
-            matched, _, _ = _fuzzy_query_match(name, query)
-            if not name or not matched or _has_non_perfume_marker(name):
-                slug_name = _name_from_product_url(url)
-                slug_matched, _, _ = _fuzzy_query_match(slug_name, query)
-                if slug_name and slug_matched and not _has_non_perfume_marker(slug_name):
-                    name = slug_name
-            if not name or not _fuzzy_query_match(name, query)[0] or _has_non_perfume_marker(name):
-                context_name = _reader_name_from_context("\n".join(lines[max(0, i - 2):i + 1]), query)
-                if context_name:
-                    name = context_name
+
+            # 2) If the link text is only the product heading, recover the
+            # structured ## brand + ### product pair nearby.  Only Markdown
+            # headings are inspected; arbitrary surrounding card text is not.
+            query_tokens = _query_tokens(query)
+            name_tokens = set(_query_tokens(name))
+            # Only inspect structured headings when the anchor itself is
+            # missing a query token. This keeps discovery fast while still
+            # recovering a brand heading combined with its product heading.
+            needs_heading = not query_tokens or not all(
+                token in name_tokens for token in query_tokens
+            )
+            if needs_heading:
+                heading_context = "\n".join(lines[max(0, i - 80):i + 1])
+                heading_name = _reader_name_from_context(heading_context, query)
+                if heading_name:
+                    name = heading_name
+
+            # 3) The product slug is the next source of truth.
+            slug_name = _name_from_product_url(url)
+            if slug_name and (
+                not name
+                or not _fuzzy_query_match(name, query)[0]
+                or _has_non_perfume_marker(name)
+            ):
+                name = slug_name
+
+            # 4) If the query itself contains the brand, combine the URL
+            # brand path with the slug. This is generic and fixes cases where
+            # Notino's search reader omits the ## brand from the anchor.
+            brand = _brand_from_product_url(url)
+            if brand:
+                query_tokens = _query_tokens(query)
+                brand_tokens = _query_tokens(brand)
+                brand_relevant = any(
+                    bt in query_tokens
+                    or any(
+                        difflib.SequenceMatcher(None, bt, qt).ratio() >= 0.80
+                        and abs(len(bt) - len(qt)) <= 2
+                        for qt in query_tokens
+                    )
+                    for bt in brand_tokens
+                )
+                branded_name = _clean_name(f"{brand} {slug_name or name}")
+                if brand_relevant and _fuzzy_query_match(branded_name, query)[0]:
+                    name = branded_name
+
             if not name or not _fuzzy_query_match(name, query)[0]:
                 continue
-            candidate = _make_candidate(url, name, anchor, query, "reader-markdown")
+            if _has_non_perfume_marker(name):
+                continue
+
+            candidate = _make_candidate(url, name, anchor or name, query, "reader-markdown")
             if candidate and (url not in found or candidate["score"] > found[url]["score"]):
                 found[url] = candidate
 
+    # Raw product URLs are retained as a second discovery channel.  Their
+    # names come from the URL, never from a large neighbouring text block.
     for pattern in (PRODUCT_URL_RE, READER_ABSOLUTE_PRODUCT_RE, READER_RELATIVE_PRODUCT_RE):
         for match in pattern.finditer(raw):
             url = _normalise_reader_url(match.group(0))
             if not url:
                 continue
-            name = _name_from_product_url(url)
-            if not name or _has_non_perfume_marker(name):
+
+            slug_name = _name_from_product_url(url)
+            if not slug_name:
                 continue
+
+            name = slug_name
+            brand = _brand_from_product_url(url)
+            branded_name = _clean_name(f"{brand} {slug_name}") if brand else ""
+            query_tokens = _query_tokens(query)
+            brand_tokens = _query_tokens(brand)
+            brand_relevant = bool(brand_tokens) and any(
+                bt in query_tokens
+                or any(
+                    difflib.SequenceMatcher(None, bt, qt).ratio() >= 0.80
+                    and abs(len(bt) - len(qt)) <= 2
+                    for qt in query_tokens
+                )
+                for bt in brand_tokens
+            )
+            if branded_name and brand_relevant and _fuzzy_query_match(branded_name, query)[0]:
+                name = branded_name
+
+            if _has_non_perfume_marker(name) or not _fuzzy_query_match(name, query)[0]:
+                continue
+
             candidate = _make_candidate(url, name, name, query, "reader-url")
             if candidate and (url not in found or candidate["score"] > found[url]["score"]):
                 found[url] = candidate
 
-    return sorted(found.values(), key=lambda x: (-x["score"], x["url"]))
+    return sorted(
+        found.values(),
+        key=lambda x: (
+            not bool(x.get("contains_all_query_tokens")),
+            -int(x.get("score") or 0),
+            x["url"],
+        ),
+    )
 
 
 
@@ -444,64 +561,78 @@ def _rank_candidates_for_product_lookup(candidates: List[Dict[str, Any]], limit:
 
 
 def _reader_discovery(query: str, session: requests.Session) -> Tuple[List[Dict[str, Any]], Dict[str, Any]]:
-    """Discover product URLs through Jina Reader when direct search is blocked.
-
-    Discovery is generic: it searches the original query plus token-oriented
-    variants, reads each Notino search page through Jina, extracts every
-    product URL it can find, and lets _reader_candidates perform the generic
-    name/fuzzy filtering.
-    """
+    """Generic Jina-reader discovery with query variants and brand-page expansion."""
     query = _clean(query)
     tokens = _query_tokens(query)
     variants: List[str] = []
-    for value in (query, " ".join(reversed(tokens)), *tokens):
+    for value in [query, " ".join(reversed(tokens)), *tokens]:
         value = _clean(value)
         if value and value not in variants:
             variants.append(value)
 
-    pages: List[Dict[str, Any]] = []
     candidates: Dict[str, Dict[str, Any]] = {}
+    pages: List[Dict[str, Any]] = []
 
-    for variant in variants:
-        for url in _search_urls(variant):
-            reader_url = READER_BASE + url
-            try:
-                response = session.get(
-                    reader_url,
-                    headers=READER_HEADERS,
-                    timeout=READER_TIMEOUT,
-                    allow_redirects=True,
-                )
-                response.raise_for_status()
-            except requests.RequestException as exc:
-                pages.append({
-                    "url": url,
-                    "query": variant,
-                    "reader_url": reader_url,
-                    "status": getattr(getattr(exc, "response", None), "status_code", None),
-                    "error": f"{type(exc).__name__}: {exc}",
-                })
-                continue
-
-            found = _reader_candidates(response.text or "", query)
+    def collect(url: str, variant: str, source_url: str) -> None:
+        try:
+            response = _reader_request(session, url)
+            found = _reader_candidates(response.text, query)
             for candidate in found:
                 old = candidates.get(candidate["url"])
                 if old is None or candidate["score"] > old["score"]:
                     candidates[candidate["url"]] = candidate
-
             pages.append({
-                "url": url,
+                "url": source_url,
                 "query": variant,
-                "reader_url": reader_url,
+                "reader_url": READER_BASE + source_url,
                 "status": response.status_code,
                 "html_length": len(response.text or ""),
                 "candidate_count": len(found),
                 "reader": True,
             })
+        except requests.RequestException as exc:
+            pages.append({
+                "url": source_url,
+                "query": variant,
+                "reader_url": READER_BASE + source_url,
+                "status": getattr(getattr(exc, "response", None), "status_code", None),
+                "error": f"{type(exc).__name__}: {exc}",
+            })
+
+    for variant in variants:
+        for search_url in _search_urls(variant):
+            collect(search_url, variant, search_url)
+
+    # Generic second-stage discovery: when a strong candidate reveals a brand,
+    # inspect that brand's catalogue through Jina.  No product names or
+    # product-specific URLs are hard-coded.
+    strong = sorted(
+        candidates.values(),
+        key=lambda x: (
+            not bool(x.get("contains_all_query_tokens")),
+            -int(x.get("score") or 0),
+        ),
+    )[:8]
+    brand_urls: List[str] = []
+    for candidate in strong:
+        brand = _brand_from_product_url(candidate["url"])
+        if not brand:
+            continue
+        brand_slug = re.sub(r"\s+", "-", brand.lower())
+        brand_url = f"{BASE_URL}/{brand_slug}/"
+        if brand_url not in brand_urls:
+            brand_urls.append(brand_url)
+
+    for brand_url in brand_urls:
+        collect(brand_url, f"brand:{brand_url.rsplit('/', 2)[-2]}", brand_url)
 
     ordered = sorted(
         candidates.values(),
-        key=lambda x: (not x["contains_all_query_tokens"], -x["score"], x["url"]),
+        key=lambda x: (
+            not bool(x.get("contains_all_query_tokens")),
+            -int(x.get("score") or 0),
+            x["url"],
+        ),
     )
     return ordered, {
         "query": query,
