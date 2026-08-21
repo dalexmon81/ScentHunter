@@ -1474,25 +1474,23 @@ function shGroupData(data){
     const offerName=norm(id.name);
 
     /*
-     * Deduplica per stessa offerta commerciale, NON per URL.
-     * Lo stesso prodotto/negozio può arrivare due volte con URL diversi
-     * (`comparisons` + `results`). Se usassimo l'URL nella chiave, le due
-     * copie sopravviverebbero e la fase successiva potrebbe associare il
-     * prezzo corretto all'URL sbagliato.
+     * Deduplica SOLO la stessa offerta reale: negozio + URL + formato + nome.
      *
-     * Priorità:
-     *   2 = results, cioè offerta diretta dello scraper
-     *   1 = comparisons, dato aggregato della risposta centrale
+     * È importante NON eliminare l'URL dalla chiave. Lo stesso negozio può
+     * avere URL diversi per prodotti/varianti diverse che condividono nome e
+     * formato. Accorparli farebbe sparire risultati validi.
      *
-     * Se esiste una copia diretta in `results`, usiamo quella come offerta
-     * completa. Se la copia diretta non contiene qualche campo, manteniamo
-     * il valore utile già presente nell'altra copia.
+     * Quando la stessa identica offerta arriva sia da `comparisons` sia da
+     * `results`, scegliamo prima la fonte prezzo più autorevole e poi la
+     * fonte risposta diretta (`results`). L'oggetto vincente viene mantenuto
+     * interamente, così prezzo, disponibilità e URL restano sempre coerenti.
      */
     const existingIndex=g.offers.findIndex(x=>{
       const xs=String(x.store||"").trim().toLowerCase();
+      const xu=String(x.url||"").split("?")[0].toLowerCase();
       const xsize=sizeOf(x)||"unknown";
       const xn=norm(x.name||"");
-      return xs===store&&xsize===offerSize&&xn===offerName;
+      return xs===store&&xu===url&&xsize===offerSize&&xn===offerName;
     });
 
     if(existingIndex>=0){
@@ -1502,26 +1500,12 @@ function shGroupData(data){
       const newSourcePriority=Number(normalizedOffer._source_priority||0);
       const oldSourcePriority=Number(existing._source_priority||0);
 
-      // First choose the most authoritative PRICE source. Only then use the
-      // response-source priority. This prevents a cheap/stale listing-page
-      // price from replacing the verified product-page price while keeping
-      // the URL and price from the same complete offer object.
       if(
         newPricePriority>oldPricePriority
         ||(newPricePriority===oldPricePriority && newSourcePriority>oldSourcePriority)
         ||(newPricePriority===oldPricePriority && newSourcePriority===oldSourcePriority && shNum(normalizedOffer)<shNum(existing))
       ){
-        g.offers[existingIndex]={
-          ...existing,
-          ...normalizedOffer,
-          url:normalizedOffer.url||existing.url||"",
-          price:normalizedOffer.price!=null&&String(normalizedOffer.price).trim()!==""
-            ?normalizedOffer.price
-            :existing.price,
-          price_value:normalizedOffer.price_value!=null
-            ?normalizedOffer.price_value
-            :existing.price_value
-        };
+        g.offers[existingIndex]={...normalizedOffer};
       }
     }else{
       g.offers.push(normalizedOffer);
