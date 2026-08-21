@@ -1488,9 +1488,10 @@ function shGroupData(data){
     const existingIndex=g.offers.findIndex(x=>{
       const xs=String(x.store||"").trim().toLowerCase();
       const xu=String(x.url||"").split("?")[0].toLowerCase();
+      const currentUrl=String(o.url||"").split("?")[0].toLowerCase();
       const xsize=sizeOf(x)||"unknown";
       const xn=norm(x.name||"");
-      return xs===store&&xu===url&&xsize===offerSize&&xn===offerName;
+      return xs===store&&xu===currentUrl&&xsize===offerSize&&xn===offerName;
     });
 
     if(existingIndex>=0){
