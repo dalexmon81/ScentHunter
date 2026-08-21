@@ -5,12 +5,10 @@ from fastapi.responses import FileResponse
 
 import importlib
 import json
-from html import unescape
 import os
 import re
 import traceback
-import unicodedata
-from concurrent.futures import ThreadPoolExecutor, TimeoutError, wait
+from concurrent.futures import ThreadPoolExecutor, as_completed, TimeoutError
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
 from urllib.parse import urlencode
@@ -18,7 +16,14 @@ from urllib.request import Request, urlopen
 from urllib.error import HTTPError, URLError
 
 
-app = FastAPI(title="ScentHunter API", version="1.0.0")
+# ============================================================
+# ScentHunter API
+# ============================================================
+
+app = FastAPI(
+    title="ScentHunter API",
+    version="1.0.0",
+)
 
 app.add_middleware(
     CORSMiddleware,
@@ -27,6 +32,11 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+# ============================================================
+# CONFIGURAZIONE
+# ============================================================
 
 STORES = [
     "bplatz",
@@ -41,58 +51,66 @@ STORES = [
 
 BASE_DIR = os.path.dirname(__file__)
 HISTORY_PATH = os.path.join(BASE_DIR, "price_history.json")
-FRONTEND_INDEX = Path(__file__).resolve().parent.parent / "frontend" / "index.html"
 
-VARIANTS = {
-    "pour femme", "night out", "rebel", "elixir", "intense",
-    "extreme", "limited edition", "collector edition", "collector's edition",
-}
+FRONTEND_INDEX = (
+    Path(__file__).resolve().parent.parent
+    / "frontend"
+    / "index.html"
+)
 
-NON_PERFUME_MARKERS = {
-    "tester", "testeur", "testing", "sample", "échantillon", "echantillon",
-    "mystery box", "mysterybox",
-    "shampoo", "shampoing", "shampooing", "conditioner", "apres shampooing",
-    "hair mask", "hair care", "gel douche", "shower gel", "body wash",
-    "body lotion", "lotion corps", "body cream", "body creme", "body butter",
-    "hand cream", "hand creme", "handcreme", "face cream", "face creme",
-    "facial cream", "moisturizer", "moisturiser", "creme visage",
-    "serum", "sérum", "serum visage",
-    "deodorant", "déodorant", "deo spray", "deodorant spray",
-    "after shave", "aftershave", "baume apres rasage", "after shave balm",
-    "lipstick", "rouge a levres", "makeup", "maquillage", "foundation",
-    "concealer", "mascara", "eyeliner", "liquid blush", "blush liquide",
-    "blush makeup", "blush maquillage", "bronzer", "highlighter",
-    "nail polish", "vernis", "cosmetic", "cosmetique", "cosmetics",
-    "cosmétiques", "skincare", "skin care",
-}
-
-PERFUME_SET_MARKERS = {
-    "gift set", "set regalo", "coffret", "bundle", "travel set",
-    "discovery set", "fragrance set", "perfume set", "parfum set",
-}
-
-PERFUME_TYPE_MARKERS = {
-    "parfum", "perfume", "fragrance", "eau de parfum", "eau de toilette",
-    "eau de cologne", "extrait", "edp", "edt", "edc", "cologne",
+NON_PERFUME = {
+    "gift set",
+    "set regalo",
+    "coffret",
+    "bundle",
+    "deodorant",
+    "deo spray",
+    "shower gel",
+    "body lotion",
+    "after shave",
+    "aftershave",
+    "travel set",
+    "discovery set",
+    "kit",
 }
 
 IGNORED_WORDS = {
-    "eau", "de", "parfum", "perfume", "edp", "edt",
-    "extrait", "spray", "ml", "for", "by",
+    "eau",
+    "de",
+    "parfum",
+    "perfume",
+    "edp",
+    "edt",
+    "extrait",
+    "spray",
+    "ml",
+    "for",
+    "by",
 }
 
+GLOBAL_SEARCH_TIMEOUT = 120
+
+
+# ============================================================
+# NORMALIZZAZIONE
+# ============================================================
 
 def norm(value: Any) -> str:
     value = str(value or "").lower().strip()
-    value = unicodedata.normalize("NFKD", value)
-    value = "".join(char for char in value if not unicodedata.combining(char))
-    value = re.sub(r"(?<=\d)(?=[a-z])|(?<=[a-z])(?=\d)", " ", value)
+    value = re.sub(
+        r"(?<=\d)(?=[a-z])|(?<=[a-z])(?=\d)",
+        " ",
+        value,
+    )
     value = re.sub(r"[^a-z0-9]+", " ", value)
     return re.sub(r"\s+", " ", value).strip()
 
 
 def price_num(value: Any) -> Optional[float]:
-    match = re.search(r"(\d{1,5}(?:[.,]\d{1,2})?)", str(value or ""))
+    match = re.search(
+        r"(\d{1,5}(?:[.,]\d{1,2})?)",
+        str(value or ""),
+    )
     if not match:
         return None
     try:
@@ -102,454 +120,406 @@ def price_num(value: Any) -> Optional[float]:
 
 
 def product_image(product: Dict[str, Any]) -> str:
+    source = product.get("source")
+    source_image = source.get("image") if isinstance(source, dict) else None
     return (
         product.get("image")
         or product.get("image_url")
         or product.get("thumbnail")
+        or source_image
         or ""
     )
 
 
-def _extract_size_ml(text: Any) -> Optional[float]:
-    """Estrae una misura SOLO quando è dichiarata con ml o cl."""
-    text = str(text or "")
-    match = re.search(r"\b(\d{1,4}(?:[.,]\d+)?)\s*(ml|cl)\b", text, re.I)
+def nested_value(value: Any) -> Any:
+    if isinstance(value, dict):
+        return value.get("value")
+    return value
+
+
+def product_field(product: Dict[str, Any], *keys: str) -> str:
+    for key in keys:
+        value = product.get(key)
+        if value not in (None, ""):
+            return str(nested_value(value)).strip()
+    return ""
+
+
+def identity_value(product: Dict[str, Any], *keys: str) -> str:
+    for key in keys:
+        value = product.get(key)
+        if value not in (None, ""):
+            value = nested_value(value)
+            if value not in (None, ""):
+                return str(value).strip()
+
+    identity = product.get("identity")
+    if isinstance(identity, dict):
+        for key in keys:
+            value = nested_value(identity.get(key))
+            if value not in (None, ""):
+                return str(value).strip()
+
+    return ""
+
+
+def product_size_ml(product: Dict[str, Any]) -> Optional[float]:
+    explicit = (
+        product.get("size_ml")
+        or product.get("volume_ml")
+        or product.get("format_ml")
+    )
+    explicit = nested_value(explicit)
+
+    if explicit not in (None, ""):
+        try:
+            return float(str(explicit).replace(",", "."))
+        except (TypeError, ValueError):
+            pass
+
+    attributes = product.get("attributes")
+    if isinstance(attributes, dict):
+        for key in ("size_ml", "volume_ml", "format_ml"):
+            value = nested_value(attributes.get(key))
+            if value not in (None, ""):
+                try:
+                    return float(str(value).replace(",", "."))
+                except (TypeError, ValueError):
+                    pass
+
+    source = product.get("source")
+    source_name = source.get("source_name") if isinstance(source, dict) else ""
+
+    text = " ".join(
+        str(product.get(key) or "")
+        for key in (
+            "name",
+            "title",
+            "product_name",
+            "size",
+            "format",
+            "volume",
+        )
+    )
+    text += " " + str(source_name or "")
+
+    match = re.search(
+        r"\b(\d{1,4}(?:[.,]\d+)?)\s*(ml|cl)\b",
+        text,
+        re.I,
+    )
     if not match:
         return None
+
     try:
         value = float(match.group(1).replace(",", "."))
     except ValueError:
         return None
+
     if match.group(2).lower() == "cl":
-        value *= 10.0
+        value *= 10
+
     return value
 
 
-def _product_size_ml(product: Dict[str, Any]) -> Optional[float]:
+def product_concentration(product: Dict[str, Any]) -> str:
+    value = product_field(product, "concentration")
+    if value:
+        return norm(value)
+
+    attributes = product.get("attributes")
+    if isinstance(attributes, dict):
+        value = nested_value(attributes.get("concentration"))
+        if value:
+            return norm(value)
+
     text = " ".join(
         str(product.get(key) or "")
-        for key in ("name", "title", "product_name", "size_ml", "size")
+        for key in ("name", "title", "product_name")
     )
-    return _extract_size_ml(text)
+    text = norm(text)
+
+    for label, pattern in (
+        ("extrait de parfum", r"\bextrait(?: de)? parfum\b"),
+        ("eau de parfum", r"\beau de parfum\b|\bedp\b"),
+        ("eau de toilette", r"\beau de toilette\b|\bedt\b"),
+        ("eau de cologne", r"\beau de cologne\b|\bedc\b"),
+        ("parfum", r"\bparfum\b"),
+    ):
+        if re.search(pattern, text, re.I):
+            return label
+
+    return ""
 
 
-def _price_from_structured_html(html: str, target_size_ml: Optional[float] = None) -> Optional[float]:
-    """Trova il prezzo della confezione corretta, non un prezzo aggregato o di un altro formato."""
-    html = unescape(html or "")
+def product_availability(product: Dict[str, Any]) -> str:
+    offer = product.get("offer")
+    if isinstance(offer, dict):
+        value = offer.get("availability")
+        if value:
+            return norm(value)
+
+    value = product.get("availability")
+    if value:
+        return norm(value)
+
+    if "available" in product:
+        available = product.get("available")
+        if available is True:
+            return "in stock"
+        if available is False:
+            return "out of stock"
+
+    return "unknown"
+
+
+def product_search_text(product: Dict[str, Any]) -> str:
+    values = [
+        product.get("name"),
+        product.get("title"),
+        product.get("product_name"),
+        product.get("brand"),
+        product.get("source_brand"),
+        product.get("url"),
+        product.get("product_line"),
+        product.get("variant"),
+        product.get("size"),
+        product.get("size_ml"),
+        product.get("volume"),
+        product.get("volume_ml"),
+        product.get("format"),
+        product.get("format_ml"),
+        product.get("pack_size"),
+    ]
+
+    attributes = product.get("attributes")
+    if isinstance(attributes, dict):
+        for value in attributes.values():
+            values.append(nested_value(value))
+
+    source = product.get("source")
+    if isinstance(source, dict):
+        values.extend(
+            [
+                source.get("source_name"),
+                source.get("source_brand"),
+                source.get("name"),
+                source.get("brand"),
+            ]
+        )
+
+    return norm(" ".join(str(value or "") for value in values))
+
+
+def has_small_size(product: Dict[str, Any]) -> bool:
+    size = product_size_ml(product)
+    if size is not None:
+        return size <= 10
+
+    text = product_search_text(product)
+    for match in re.finditer(
+        r"(?<!\d)(\d+(?:[.,]\d+)?)\s*ml\b",
+        text,
+    ):
+        try:
+            if float(match.group(1).replace(",", ".")) <= 10:
+                return True
+        except ValueError:
+            continue
+
+    return False
+
+
+# ============================================================
+# VALIDAZIONE
+# ============================================================
+
+def matches(product: Dict[str, Any], query: str) -> bool:
+    query_normalized = norm(query)
+    if not query_normalized:
+        return False
+
+    search_text = product_search_text(product)
+    if not search_text:
+        return False
+
+    query_has_size = bool(
+        re.search(
+            r"(?<!\d)\d+(?:[.,]\d+)?\s*(?:ml|cl)\b",
+            query_normalized,
+        )
+    )
+
+    if has_small_size(product) and not query_has_size:
+        return False
+
+    name = norm(
+        " ".join(
+            str(product.get(key) or "")
+            for key in ("name", "title", "product_name")
+        )
+    )
+
+    for phrase in NON_PERFUME:
+        phrase_normalized = norm(phrase)
+        if (
+            phrase_normalized in name
+            and phrase_normalized not in query_normalized
+        ):
+            return False
+
+    tokens = [
+        token
+        for token in query_normalized.split()
+        if token not in IGNORED_WORDS
+    ]
+
+    if not tokens:
+        return False
+
+    return all(token in search_text for token in tokens)
+
+
+# ============================================================
+# DISCOVERY GENERICA
+# ============================================================
+
+def build_search_attempts(store: str, query: str) -> List[str]:
+    """
+    Costruisce una sequenza corta e deterministica di query generiche,
+    ordinate dalla più precisa alla più permissiva.
+
+    Il parametro store resta nella firma per compatibilità con il codice
+    esistente, ma NON modifica le strategie in base al negozio.
+    """
+    del store
+
+    raw = str(query or "").strip()
+    normalized = norm(raw)
+
+    if not raw or not normalized:
+        return []
+
+    attempts: List[str] = []
+    seen = set()
+
+    def add(value: str) -> None:
+        value = str(value or "").strip()
+        key = norm(value)
+        if value and key and key not in seen:
+            seen.add(key)
+            attempts.append(value)
+
+    # 1) Query originale: è sempre la discovery più precisa.
+    add(raw)
+
+    # 2) Query normalizzata senza parole puramente descrittive.
+    tokens = [
+        token
+        for token in normalized.split()
+        if token not in IGNORED_WORDS
+    ]
+
+    if tokens:
+        add(" ".join(tokens))
+
+    # 3) Forma compatta per siti che indicizzano "100ml" e "100 ml"
+    #    come stringhe diverse.
+    compact = re.sub(
+        r"(?<=\d)\s+(?=[a-z])|(?<=[a-z])\s+(?=\d)",
+        "",
+        normalized,
+    )
+    add(compact)
+
+    return attempts
+
+
+# ============================================================
+# PREZZO
+# ============================================================
+
+def _price_from_structured_html(html: str) -> Optional[float]:
+    html = html or ""
+
     scripts = re.findall(
         r'<script[^>]+type=["\']application/ld\+json["\'][^>]*>(.*?)</script>',
         html,
         re.I | re.S,
     )
 
-    candidates = []
-
-    def offer_size(offer: Dict[str, Any], parent: Dict[str, Any]) -> Optional[float]:
-        parts = []
-        for key in ("name", "description", "sku", "url", "itemCondition"):
-            parts.append(str(offer.get(key) or ""))
-        for key in ("name", "description", "sku", "url"):
-            parts.append(str(parent.get(key) or ""))
-        return _extract_size_ml(" ".join(parts))
-
     def walk(value):
         if isinstance(value, dict):
             offers = value.get("offers")
+
             if isinstance(offers, dict):
-                offers = [offers]
-            if isinstance(offers, list):
+                for key in ("price", "lowPrice"):
+                    value_price = price_num(offers.get(key))
+                    if value_price is not None:
+                        yield value_price
+
+            elif isinstance(offers, list):
                 for offer in offers:
                     if isinstance(offer, dict):
-                        price = price_num(offer.get("price"))
-                        if price is not None:
-                            candidates.append((offer_size(offer, value), price))
+                        for key in ("price", "lowPrice"):
+                            value_price = price_num(offer.get(key))
+                            if value_price is not None:
+                                yield value_price
+
             for child in value.values():
-                if isinstance(child, (dict, list)):
-                    yield from walk(child)
+                yield from walk(child)
+
         elif isinstance(value, list):
             for child in value:
-                if isinstance(child, (dict, list)):
-                    yield from walk(child)
+                yield from walk(child)
 
     for raw in scripts:
         try:
             payload = json.loads(raw.strip())
         except Exception:
             continue
-        list(walk(payload))
 
-    if not candidates:
-        patterns = [
-            r'<meta[^>]+(?:property|name)=["\'](?:product:price:amount|og:price:amount)["\'][^>]+content=["\']([^"\']+)',
-            r'<meta[^>]+itemprop=["\']price["\'][^>]+content=["\']([^"\']+)',
-        ]
-        for pattern in patterns:
-            match = re.search(pattern, html, re.I)
-            if match:
-                return price_num(match.group(1))
-        return None
+        prices = list(walk(payload))
+        if prices:
+            return prices[0]
 
-    if target_size_ml is not None:
-        exact = [price for size, price in candidates if size is not None and abs(size-target_size_ml) < 0.01]
-        if exact:
-            return exact[0]
-        # Se la pagina espone più formati ma non riusciamo a collegare il prezzo al formato richiesto,
-        # NON prendiamo arbitrariamente il primo prezzo: sarebbe proprio il tipo di errore che vogliamo evitare.
-        known_sizes = {round(size, 2) for size, _ in candidates if size is not None}
-        if len(known_sizes) > 1:
-            return None
+    patterns = [
+        r'<meta[^>]+(?:property|name)=["\'](?:product:price:amount|og:price:amount)["\'][^>]+content=["\']([^"\']+)',
+        r'<meta[^>]+itemprop=["\']price["\'][^>]+content=["\']([^"\']+)',
+    ]
 
-    return candidates[0][1]
-
-
-# ============================================================
-# DISPONIBILITÀ GENERALE SENTEHUNTER
-# ============================================================
-# Regola unica per tutti i negozi:
-# - se uno scraper dichiara esplicitamente OUT OF STOCK, lo manteniamo;
-# - se la pagina prodotto conferma OUT OF STOCK, lo marchiamo centralmente;
-# - se la pagina conferma IN STOCK, lo marchiamo come disponibile;
-# - se non riusciamo a determinare lo stock, NON eliminiamo mai il prodotto.
-# In questo modo lo stock è normalizzato nel backend e non dipende da
-# correzioni specifiche per singolo profumo o singolo negozio.
-
-_STOCK_OOS_MARKERS = (
-    "out of stock",
-    "sold out",
-    "unavailable",
-    "not available",
-    "currently unavailable",
-    "out-of-stock",
-    "this product is no longer available",
-    "this product is no longer available for purchase",
-    "product is no longer available",
-    "no longer available",
-    "rupture de stock",
-    "en rupture",
-    "épuisé",
-    "indisponible",
-    "actuellement indisponible",
-    "produit indisponible",
-    "non disponible",
-    "non-disponible",
-    "ce produit n'est plus disponible",
-    "ce produit n’est plus disponible",
-    "ce produit n'est plus disponible à la vente",
-    "ce produit n’est plus disponible à la vente",
-    "esaurito",
-    "non disponibile",
-    "questo prodotto non è più disponibile",
-    "questo prodotto non e piu disponibile",
-    "questo prodotto non è più disponibile per l'acquisto",
-    "questo prodotto non e piu disponibile per l'acquisto",
-    "nicht auf lager",
-    "ausverkauft",
-    "nicht verfügbar",
-    "dieses produkt ist nicht mehr verfügbar",
-    "dieses produkt ist nicht mehr verfugbar",
-    "niet beschikbaar",
-    "dit product is niet meer beschikbaar",
-)
-
-_STOCK_IN_MARKERS = (
-    "in stock",
-    "en stock",
-    "disponible",
-    "disponibilità immediata",
-    "sofort lieferbar",
-    "auf lager",
-)
-
-
-def _stock_value_is_oos(value: Any) -> bool:
-    if value is False:
-        return True
-    s = norm(value).replace(" ", "_")
-    return s in {
-        "out_of_stock", "outofstock", "sold_out", "soldout",
-        "unavailable", "not_available", "notavailable",
-        "rupture_de_stock", "en_rupture", "epuise",
-        "indisponible", "non_disponible", "non_disponible_online",
-        "esaurito", "nicht_auf_lager", "ausverkauft",
-        "nicht_verfugbar",
-    }
-
-
-def _stock_value_is_in(value: Any) -> bool:
-    if value is True:
-        return True
-    s = norm(value).replace(" ", "_")
-    return s in {
-        "in_stock", "instock", "available", "in_stock_online",
-        "en_stock", "disponible", "auf_lager", "sofort_lieferbar",
-    }
-
-
-def _structured_stock_from_html(html: str, target_size_ml: Optional[float] = None) -> Optional[bool]:
-    """Legge JSON-LD e, quando possibile, verifica lo stock del formato richiesto."""
-    html = unescape(html or "")
-    scripts = re.findall(
-        r'<script[^>]+type=["\']application/ld\+json["\'][^>]*>(.*?)</script>',
-        html,
-        re.I | re.S,
-    )
-
-    candidates = []
-
-    def offer_size(offer: Dict[str, Any], parent: Dict[str, Any]) -> Optional[float]:
-        parts=[]
-        for key in ("name", "description", "sku", "url"):
-            parts.append(str(offer.get(key) or ""))
-        for key in ("name", "description", "sku", "url"):
-            parts.append(str(parent.get(key) or ""))
-        return _extract_size_ml(" ".join(parts))
-
-    def walk(value):
-        if isinstance(value, dict):
-            offers=value.get("offers")
-            if isinstance(offers, dict):
-                offers=[offers]
-            if isinstance(offers, list):
-                for offer in offers:
-                    if not isinstance(offer, dict):
-                        continue
-                    availability=str(offer.get("availability") or value.get("availability") or "").lower()
-                    if availability:
-                        candidates.append((offer_size(offer,value),availability))
-            direct=str(value.get("availability") or "").lower()
-            if direct and not offers:
-                candidates.append((_extract_size_ml(" ".join(str(value.get(k) or "") for k in ("name","description","sku","url"))),direct))
-            for child in value.values():
-                if isinstance(child,(dict,list)):
-                    yield from walk(child)
-        elif isinstance(value,list):
-            for child in value:
-                if isinstance(child,(dict,list)):
-                    yield from walk(child)
-
-    for raw in scripts:
-        try:
-            payload=json.loads(raw.strip())
-        except Exception:
-            continue
-        list(walk(payload))
-
-    if not candidates:
-        return None
-
-    def status(value):
-        s=str(value).lower()
-        if any(x in s for x in ("outofstock","out_of_stock","soldout","sold_out","unavailable","discontinued")):
-            return False
-        if any(x in s for x in ("instock","in_stock","limitedavailability","preorder","backorder")):
-            return True
-        return None
-
-    if target_size_ml is not None:
-        matching=[status(a) for size,a in candidates if size is not None and abs(size-target_size_ml)<0.01]
-        if matching:
-            if False in matching:
-                return False
-            if True in matching:
-                return True
-            return None
-        known_sizes={round(size,2) for size,_ in candidates if size is not None}
-        if len(known_sizes)>1:
-            return None
-
-    states=[status(a) for _,a in candidates]
-    if False in states and True not in states:
-        return False
-    if True in states and False not in states:
-        return True
-    if False in states and True in states:
-        return None
-    return None
-
-
-def _stock_from_product_page(url: str, target_size_ml: Optional[float] = None) -> Optional[bool]:
-    """
-    Controllo generico della pagina prodotto.
-
-    Restituisce:
-      False = certamente OUT OF STOCK
-      True  = certamente disponibile
-      None  = informazione non determinabile
-
-    Importante: None NON significa out of stock e non causa mai lo scarto
-    del prodotto.
-    """
-    url = str(url or "").strip()
-    if not url or not re.match(r"^https?://", url, re.I):
-        return None
-
-    try:
-        request = Request(
-            url,
-            headers={
-                "Accept": "text/html,application/xhtml+xml",
-                "User-Agent": "Mozilla/5.0 (compatible; ScentHunter/1.0)",
-            },
-        )
-        with urlopen(request, timeout=3.5) as response:
-            html = response.read().decode("utf-8", errors="ignore")
-    except Exception:
-        return None
-
-    structured = _structured_stock_from_html(html, target_size_ml)
-    if structured is not None:
-        return structured
-
-    page = unescape(html)
-    visible = re.sub(r"<script[^>]*>.*?</script>", " ", page, flags=re.I | re.S)
-    visible = re.sub(r"<style[^>]*>.*?</style>", " ", visible, flags=re.I | re.S)
-    visible = re.sub(r"<[^>]+>", " ", visible)
-    visible = re.sub(r"\s+", " ", visible).lower()
-
-    # Prima i controlli di acquisto: sono più affidabili del testo generico.
-    button_chunks = re.findall(
-        r"<(?:button|input)[^>]*?(?:>.*?</button>|/?>)",
-        page,
-        flags=re.I | re.S,
-    )
-    button_text = " ".join(button_chunks).lower()
-    if any(marker in button_text for marker in _STOCK_OOS_MARKERS):
-        return False
-    if any(marker in button_text for marker in _STOCK_IN_MARKERS):
-        return True
-
-    # Poi testo visibile della pagina. Un marker OOS esplicito prevale.
-    if any(marker in visible for marker in _STOCK_OOS_MARKERS):
-        return False
-    if any(marker in visible for marker in _STOCK_IN_MARKERS):
-        return True
+    for pattern in patterns:
+        match = re.search(pattern, html, re.I)
+        if match:
+            value_price = price_num(match.group(1))
+            if value_price is not None:
+                return value_price
 
     return None
-
-
-def normalize_stock(product: Dict[str, Any], cache: Optional[Dict[str, Optional[bool]]] = None) -> Dict[str, Any]:
-    """Applica la regola stock unica a un'offerta di qualunque negozio."""
-    item = dict(product)
-
-    # 1) Informazioni esplicite già fornite dallo scraper.
-    fields = (
-        "availability", "stock", "stock_status", "status",
-        "availability_status", "availabilityStatus", "stockStatus",
-        "in_stock", "inStock",
-    )
-    explicit_oos = any(_stock_value_is_oos(item.get(field)) for field in fields)
-    explicit_in = any(_stock_value_is_in(item.get(field)) for field in fields)
-
-    if item.get("available") is False:
-        explicit_oos = True
-    if item.get("available") is True:
-        explicit_in = True
-
-    if explicit_oos:
-        item["available"] = False
-        item["availability"] = "out_of_stock"
-        item["stock_status"] = "out_of_stock"
-        item["price"] = "Out of stock"
-        item.pop("price_value", None)
-        return item
-
-    # 2) Se lo scraper ha già dichiarato IN STOCK, non facciamo una seconda
-    #    richiesta alla pagina: evita timeout e perdita casuale dei negozi.
-    if explicit_in:
-        item["available"] = True
-        item["availability"] = "in_stock"
-        item["stock_status"] = "in_stock"
-        return item
-
-    # 3) Se lo stock è realmente sconosciuto, verifichiamo la pagina reale.
-    #    Il risultato sconosciuto NON elimina mai il prodotto.
-    url = str(item.get("url") or "").strip()
-    page_stock = None
-    if url:
-        if cache is not None and url in cache:
-            page_stock = cache[url]
-        else:
-            page_stock = _stock_from_product_page(url, _product_size_ml(item))
-            if cache is not None:
-                cache[url] = page_stock
-
-    if page_stock is False:
-        item["available"] = False
-        item["availability"] = "out_of_stock"
-        item["stock_status"] = "out_of_stock"
-        item["price"] = "Out of stock"
-        item.pop("price_value", None)
-        return item
-
-    if page_stock is True:
-        item["available"] = True
-        item["availability"] = "in_stock"
-        item["stock_status"] = "in_stock"
-        return item
-
-    # Una dichiarazione esplicita del singolo scraper vale solo se la pagina
-    # reale non ha dato una risposta contraria.
-    if explicit_in:
-        item["available"] = True
-        item["availability"] = "in_stock"
-        item["stock_status"] = "in_stock"
-        return item
-
-    # 4) Nessuna informazione certa: UNKNOWN, mai IN STOCK per supposizione.
-    item["available"] = None
-    item["availability"] = "unknown"
-    item["stock_status"] = "unknown"
-    return item
 
 
 def resolve_actual_price(product: Dict[str, Any]) -> Dict[str, Any]:
     """
-    Normalizza il prezzo mostrato da ScentHunter al prezzo realmente pagabile.
+    Corregge il caso generico in cui il prezzo esposto dal risultato
+    sia esplicitamente un prezzo unitario per 100 ml.
 
-    Problema risolto: alcuni scraper possono intercettare il prezzo unitario
-    (es. 26,66 €/100 ml) invece del prezzo della confezione (es. 39,99 €).
-    Prima prova la pagina prodotto; solo se non è disponibile usa il calcolo
-    da prezzo unitario quando il campo lo dichiara esplicitamente.
+    Non apre la pagina prodotto se il prezzo è già un prezzo di vendita
+    normale. In questo modo la fase centrale non trasforma una discovery
+    con molti risultati in una sequenza di richieste aggiuntive.
     """
     item = dict(product)
     raw_price = str(item.get("price") or "").strip()
-    size = _product_size_ml(item)
+    size = product_size_ml(item)
 
-    # Se lo scraper ha già fornito un prezzo di confezione, lo manteniamo.
-    # La pagina viene riaperta solo quando manca il prezzo oppure quando il
-    # valore è esplicitamente un prezzo unitario (/100 ml).
-    is_unit_price = bool(re.search(r"(?:/|per\s*)100\s*ml", raw_price, re.I))
-    if raw_price and not is_unit_price:
-        parsed_existing = price_num(raw_price)
-        if parsed_existing is not None:
-            item["price_value"] = parsed_existing
-            return item
+    unit_match = re.search(
+        r"(?:/|per\s*)100\s*ml",
+        raw_price,
+        re.I,
+    )
 
-    url = str(item.get("url") or "").strip()
-    if url:
-        try:
-            request = Request(
-                url,
-                headers={
-                    "Accept": "text/html,application/xhtml+xml",
-                    "User-Agent": "Mozilla/5.0 (compatible; ScentHunter/1.0)",
-                },
-            )
-            with urlopen(request, timeout=4) as response:
-                html = response.read().decode("utf-8", errors="ignore")
-            actual = _price_from_structured_html(html, size)
-            if actual is not None:
-                item["price"] = f"{actual:.2f} €"
-                item["price_value"] = actual
-                return item
-        except Exception:
-            pass
-
-    # Fallback sicuro: converti SOLO quando il testo dichiara esplicitamente
-    # che il valore è un prezzo unitario per 100 ml.
-    unit_match = re.search(r"(?:/|per\s*)100\s*ml", raw_price, re.I)
     if unit_match and size and size > 0:
         unit = price_num(raw_price[:unit_match.start()])
+
         if unit is not None:
             actual = round(unit * size / 100.0, 2)
             item["price"] = f"{actual:.2f} €"
@@ -558,189 +528,73 @@ def resolve_actual_price(product: Dict[str, Any]) -> Dict[str, Any]:
     return item
 
 
-def _contains_marker(name: str, markers: set[str]) -> bool:
-    name_n = norm(name)
-    return any(
-        norm(marker) and norm(marker) in name_n
-        for marker in markers
+# ============================================================
+# IDENTITA / DEDUPLICAZIONE
+# ============================================================
+
+def product_identity_key(product: Dict[str, Any]) -> tuple:
+    store = norm(product.get("store", ""))
+
+    variant_id = identity_value(
+        product,
+        "store_variant_id",
+        "variant_id",
+    )
+    product_id = identity_value(
+        product,
+        "store_product_id",
+        "product_id",
+        "catalog_id",
+    )
+    gtin = identity_value(
+        product,
+        "gtin",
+        "ean",
+        "ean13",
+        "barcode",
+        "upc",
+    )
+    sku = identity_value(
+        product,
+        "sku",
     )
 
+    if variant_id:
+        return ("variant", store, norm(variant_id))
 
-def _is_allowed_perfume_name(name: str) -> bool:
-    """
-    Generic category filter based only on the product identity/name.
+    if product_id:
+        return ("product", store, norm(product_id), norm(product.get("name", "")))
 
-    The description, related products and page copy are deliberately ignored:
-    they can mention unrelated categories without changing what the product is.
+    if gtin:
+        return ("gtin", store, norm(gtin))
 
-    Known perfume-set names are allowed. Explicitly non-perfume product names
-    are rejected before any query matching is applied.
-    """
-    name_n = norm(name)
-    if not name_n:
-        return False
+    if sku:
+        return ("sku", store, norm(sku))
 
-    if _contains_marker(name_n, NON_PERFUME_MARKERS):
-        return False
-
-    if _contains_marker(name_n, PERFUME_SET_MARKERS):
-        return True
-
-    # "kit" is too generic to allow blindly. If it is explicitly a
-    # fragrance/perfume kit, it is allowed; otherwise it is rejected.
-    if re.search(r"\bkit\b", name_n):
-        return _contains_marker(name_n, PERFUME_TYPE_MARKERS)
-
-    # A normal perfume does not need to contain "parfum", "EDP", etc. in
-    # its title. The exclusion list above is what defines non-perfume items.
-    return True
-
-
-def _norm(value: Any) -> str:
-    value = str(value or "").lower().strip()
-    value = unicodedata.normalize("NFKD", value)
-    value = "".join(char for char in value if not unicodedata.combining(char))
-    value = re.sub(r"(?<=\d)(?=[a-z])|(?<=[a-z])(?=\d)", " ", value)
-    value = re.sub(r"[^a-z0-9]+", " ", value)
-    return re.sub(r"\s+", " ", value).strip()
-
-
-NON_PERFUME = {
-    "tester", "testeur", "testing", "sample", "echantillon",
-    "mystery box", "mysterybox",
-    "shampoo", "shampoing", "shampooing", "conditioner",
-    "hair mask", "hair care", "gel douche", "shower gel", "body wash",
-    "body lotion", "lotion corps", "body cream", "body creme",
-    "body butter", "hand cream", "hand creme", "handcreme",
-    "face cream", "face creme", "facial cream", "moisturizer",
-    "moisturiser", "creme visage", "serum", "serum visage",
-    "deodorant", "deo spray", "deodorant spray",
-    "after shave", "aftershave", "baume apres rasage",
-    "after shave balm", "lipstick", "rouge a levres",
-    "makeup", "maquillage", "foundation", "concealer", "mascara",
-    "eyeliner", "liquid blush", "blush liquide", "bronzer",
-    "highlighter", "nail polish", "vernis",
-    "cosmetic", "cosmetique", "cosmetics", "cosmetiques",
-    "skincare", "skin care",
-}
-
-
-def _is_allowed_perfume_name(name: str) -> bool:
-    normalized = _norm(name)
-    if not normalized:
-        return False
-
-    tokens = set(normalized.split())
-
-    for marker in NON_PERFUME:
-        marker_tokens = set(_norm(marker).split())
-        if marker_tokens and marker_tokens.issubset(tokens):
-            return False
-
-    return True
-
-
-def matches(product: Dict[str, Any], query: str) -> bool:
-    name = str(
-        product.get("name")
-        or product.get("title")
-        or product.get("product_name")
-        or ""
-    ).strip()
-
-    if not name:
-        return False
-
-    if not _is_allowed_perfume_name(name):
-        return False
-
-    name_normalized = _norm(name)
-    name_tokens = set(name_normalized.split())
-
-    if not name_tokens:
-        return False
-
-    query_tokens = [
-        token
-        for token in _norm(query).split()
-        if token not in IGNORED_WORDS
-    ]
-
-    if not query_tokens:
-        query_tokens = _norm(query).split()
-
-    return bool(query_tokens) and all(
-        token in name_tokens
-        for token in query_tokens
-    )
-
-
-def load_scraper(store: str):
-    return importlib.import_module(f"scrapers.{store}.scraper")
-
-
-def build_search_attempts(store: str, query: str) -> List[str]:
-    attempts = [query]
-    normalized_query = norm(query)
-
-    if store == "bplatz":
-        compact = re.sub(
-            r"(?<=\d)\s+(?=[a-z])|(?<=[a-z])\s+(?=\d)",
-            "",
-            normalized_query,
+    name = norm(
+        product_field(
+            product,
+            "name",
+            "title",
+            "product_name",
         )
-        if compact and compact not in attempts:
-            attempts.append(compact)
+    )
 
-        for token in normalized_query.split():
-            if token and token not in attempts:
-                attempts.append(token)
+    source = product.get("source")
+    if isinstance(source, dict):
+        if not name:
+            name = norm(source.get("source_name", ""))
 
-    return attempts
+    size = product_size_ml(product)
+    concentration = product_concentration(product)
 
-
-def run_store(store: str, query: str) -> List[Dict[str, Any]]:
-    module = load_scraper(store)
-    search_fn = getattr(module, "search", None)
-
-    if not callable(search_fn):
-        raise RuntimeError(f"{store}: scraper senza funzione search()")
-
-    attempts = build_search_attempts(store, query)
-    output: List[Dict[str, Any]] = []
-    seen = set()
-    stock_cache: Dict[str, Optional[bool]] = {}
-
-    for attempt in attempts:
-        results = search_fn(attempt) or []
-
-        for item in results:
-            if not isinstance(item, dict):
-                continue
-
-            product = dict(item)
-            product.setdefault("store", store)
-
-            # Regola generale stock: prima normalizziamo la disponibilità.
-            # Se è OOS, non sprechiamo una seconda richiesta per il prezzo.
-            product = normalize_stock(product, stock_cache)
-            if product.get("available") is not False:
-                product = resolve_actual_price(product)
-
-            key = (
-                str(product.get("url", "")).lower(),
-                norm(product.get("name", "")),
-            )
-
-            if key in seen:
-                continue
-
-            seen.add(key)
-
-            if matches(product, query):
-                output.append(product)
-
-    return output
+    return (
+        "fallback",
+        store,
+        name,
+        size,
+        concentration,
+    )
 
 
 def unique_results(products: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
@@ -748,11 +602,7 @@ def unique_results(products: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
     seen = set()
 
     for product in products:
-        key = (
-            str(product.get("store", "")).lower(),
-            str(product.get("url", "")).lower(),
-            norm(product.get("name", "")),
-        )
+        key = product_identity_key(product)
 
         if key in seen:
             continue
@@ -763,53 +613,240 @@ def unique_results(products: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
     return unique
 
 
+def deterministic_result_key(product: Dict[str, Any]) -> tuple:
+    store = norm(product.get("store", ""))
+    price = price_num(product.get("price"))
+
+    if price is None:
+        price_key = float("inf")
+    else:
+        price_key = round(price, 4)
+
+    name = norm(
+        product_field(
+            product,
+            "name",
+            "title",
+            "product_name",
+        )
+    )
+
+    url = str(product.get("url") or "").strip().lower()
+
+    availability = product_availability(product)
+
+    availability_rank = {
+        "in stock": 0,
+        "in_stock": 0,
+        "available": 0,
+        "out of stock": 1,
+        "out_of_stock": 1,
+        "unknown": 2,
+    }.get(availability, 3)
+
+    store_rank = (
+        STORES.index(store)
+        if store in STORES
+        else len(STORES)
+    )
+
+    return (
+        price_key,
+        availability_rank,
+        store_rank,
+        name,
+        url,
+    )
+
+
 def sort_by_price(products: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
-    def key(product):
-        availability = str(product.get("availability") or "").lower()
-        is_oos = (product.get("available") is False) or _stock_value_is_oos(availability)
-        is_unknown = availability == "unknown" or product.get("available") is None
-        value = price_num(product.get("price"))
-        # IN STOCK -> UNKNOWN -> OUT OF STOCK. Il prezzo ordina solo dentro lo stesso stato.
-        state = 2 if is_oos else (1 if is_unknown else 0)
-        return (state, float("inf") if value is None else value)
+    return sorted(
+        products,
+        key=deterministic_result_key,
+    )
 
-    return sorted(products, key=key)
 
+# ============================================================
+# SCRAPER
+# ============================================================
+
+def load_scraper(store: str):
+    return importlib.import_module(
+        f"scrapers.{store}.scraper"
+    )
+
+
+def run_store(
+    store: str,
+    query: str,
+) -> List[Dict[str, Any]]:
+    """
+    Esegue la discovery generica dello store.
+
+    Le query di fallback vengono usate SOLO se il tentativo precedente
+    non ha prodotto alcun risultato valido. Questo evita di ripetere
+    inutilmente discovery costose su store che hanno già trovato il prodotto.
+    """
+    module = load_scraper(store)
+
+    search_fn = getattr(module, "search", None)
+
+    if not callable(search_fn):
+        search_fn = getattr(module, "scrape", None)
+
+    if not callable(search_fn):
+        raise RuntimeError(
+            f"{store}: scraper senza funzione search()/scrape()"
+        )
+
+    attempts = build_search_attempts(
+        store,
+        query,
+    )
+
+    output: List[Dict[str, Any]] = []
+    seen = set()
+
+    for attempt in attempts:
+        try:
+            results = search_fn(attempt) or []
+        except Exception as exc:
+            # Un singolo tentativo fallito non annulla le altre discovery.
+            print(
+                f"STORE_DISCOVERY_ERROR: store={store} "
+                f"attempt={attempt!r} error={type(exc).__name__}: {exc}",
+                flush=True,
+            )
+            continue
+
+        if not isinstance(results, list):
+            continue
+
+        attempt_added = 0
+
+        for item in results:
+            if not isinstance(item, dict):
+                continue
+
+            product = dict(item)
+            product.setdefault("store", store)
+
+            product = resolve_actual_price(product)
+
+            key = product_identity_key(product)
+
+            if key in seen:
+                continue
+
+            seen.add(key)
+
+            if matches(product, query):
+                output.append(product)
+                attempt_added += 1
+
+        # Se una discovery ha già trovato almeno un risultato valido,
+        # non eseguiamo fallback ulteriori: il prodotto è stato scoperto.
+        # Questo è importante soprattutto per scraper con sitemap o browser.
+        if attempt_added > 0:
+            break
+
+    return output
+
+
+# ============================================================
+# SEARCH CENTRALE
+# ============================================================
 
 def search_perfume(query: str) -> Dict[str, Any]:
     query = str(query or "").strip()
-    if not query:
-        return {"query": query, "count": 0, "results": [], "comparisons": [], "errors": {}}
 
-    results: List[Dict[str, Any]] = []
+    if not query:
+        return {
+            "query": "",
+            "count": 0,
+            "results": [],
+            "comparisons": [],
+            "errors": {},
+        }
+
+    all_results: List[Dict[str, Any]] = []
     errors: Dict[str, str] = {}
 
+    # Tutti gli store partono contemporaneamente.
+    # L'ordine dei future NON viene usato per determinare l'ordine finale.
     executor = ThreadPoolExecutor(
         max_workers=len(STORES),
-        thread_name_prefix="scent-store",
+        thread_name_prefix="scent_store",
     )
-    future_to_store = {
+
+    futures = {
         executor.submit(run_store, store, query): store
         for store in STORES
     }
 
-    done, not_done = wait(future_to_store, timeout=45)
-
-    for future in done:
-        store = future_to_store[future]
+    try:
         try:
-            results.extend(future.result() or [])
-        except Exception as exc:
-            errors[store] = str(exc) or exc.__class__.__name__
+            completed = as_completed(
+                futures,
+                timeout=GLOBAL_SEARCH_TIMEOUT,
+            )
 
-    for future in not_done:
-        store = future_to_store[future]
-        errors[store] = "timeout"
-        future.cancel()
+            for future in completed:
+                store = futures[future]
 
-    executor.shutdown(wait=False, cancel_futures=True)
+                try:
+                    store_results = future.result()
+                    if isinstance(store_results, list):
+                        all_results.extend(store_results)
 
-    results = sort_by_price(unique_results(results))
+                except Exception as exc:
+                    errors[store] = (
+                        f"{type(exc).__name__}: {exc}"
+                    )
+                    traceback.print_exc()
+
+        except TimeoutError:
+            # Alla scadenza globale non perdiamo i future che sono terminati
+            # proprio in prossimità del limite. Il vecchio codice controllava
+            # solo future.done() e, se un future era già terminato ma non era
+            # stato ancora consumato dall'iteratore as_completed(), lo
+            # considerava implicitamente riuscito ma ne perdeva il risultato.
+            #
+            # Ora raccogliamo esplicitamente ogni future già terminato.
+            # Solo quelli realmente ancora in esecuzione vengono marcati
+            # come timeout.
+            for future, store in futures.items():
+                if future.done():
+                    try:
+                        store_results = future.result()
+                        if isinstance(store_results, list):
+                            all_results.extend(store_results)
+
+                    except Exception as exc:
+                        errors[store] = (
+                            f"{type(exc).__name__}: {exc}"
+                        )
+                        traceback.print_exc()
+                else:
+                    errors[store] = (
+                        "Timeout: ricerca del negozio oltre il limite globale"
+                    )
+
+    finally:
+        # cancel() annulla solamente future non ancora partiti.
+        # Non fingiamo di poter interrompere thread già in esecuzione.
+        for future, store in futures.items():
+            if not future.done():
+                future.cancel()
+
+        executor.shutdown(
+            wait=False,
+            cancel_futures=True,
+        )
+
+    results = sort_by_price(
+        unique_results(all_results)
+    )
 
     return {
         "query": query,
@@ -820,100 +857,44 @@ def search_perfume(query: str) -> Dict[str, Any]:
     }
 
 
-@app.get("/search")
-def search(q: str):
-    return search_perfume(q)
-
-
-@app.get("/diagnose")
-def diagnose(store: str = "notino", q: str = ""):
-    """Diagnostic endpoint for a scraper that exposes diagnose(query)."""
-    store = str(store or "").strip().lower()
-    query = str(q or "").strip()
-
-    if store not in STORES:
-        raise HTTPException(
-            status_code=400,
-            detail=f"Store non valido. Disponibili: {', '.join(STORES)}",
-        )
-    if not query:
-        raise HTTPException(status_code=400, detail="Parametro q mancante")
-
-    try:
-        module = load_scraper(store)
-        diagnose_fn = getattr(module, "diagnose", None)
-
-        if not callable(diagnose_fn):
-            raise HTTPException(
-                status_code=404,
-                detail=f"{store}: diagnostico non disponibile",
-            )
-
-        return diagnose_fn(query)
-    except HTTPException:
-        raise
-    except Exception as error:
-        traceback.print_exc()
-        return {
-            "status": "error",
-            "store": store,
-            "query": query,
-            "errors": [{
-                "stage": "diagnostic_endpoint",
-                "type": error.__class__.__name__,
-                "message": str(error),
-            }],
-        }
-
-
-@app.get("/test-store")
-def test_store(store: str, q: str):
-    """Endpoint diagnostico per testare un solo scraper."""
-    store = str(store or "").strip().lower()
-    query = str(q or "").strip()
-
-    if store not in STORES:
-        raise HTTPException(
-            status_code=400,
-            detail=f"Store non valido. Disponibili: {', '.join(STORES)}",
-        )
-    if not query:
-        raise HTTPException(status_code=400, detail="Parametro q mancante")
-
-    try:
-        results = run_store(store, query)
-        return {
-            "store": store,
-            "query": query,
-            "count": len(results),
-            "results": results,
-        }
-    except Exception as error:
-        traceback.print_exc()
-        return {
-            "store": store,
-            "query": query,
-            "count": 0,
-            "results": [],
-            "error": f"{type(error).__name__}: {error}",
-        }
-
+# ============================================================
+# PRICE HISTORY
+# ============================================================
 
 def load_history() -> Dict[str, Any]:
     try:
-        with open(HISTORY_PATH, "r", encoding="utf-8") as file:
+        with open(
+            HISTORY_PATH,
+            "r",
+            encoding="utf-8",
+        ) as file:
             data = json.load(file)
+
         if isinstance(data, dict):
             return data
+
     except Exception:
         pass
+
     return {}
 
 
-def save_history(data: Dict[str, Any]) -> None:
+def save_history(
+    data: Dict[str, Any],
+) -> None:
     try:
-        with open(HISTORY_PATH, "w", encoding="utf-8") as file:
-            json.dump(data, file, ensure_ascii=False, indent=2)
+        with open(
+            HISTORY_PATH,
+            "w",
+            encoding="utf-8",
+        ) as file:
+            json.dump(
+                data,
+                file,
+                ensure_ascii=False,
+                indent=2,
+            )
+
     except OSError:
         pass
 
@@ -924,8 +905,16 @@ def update_price_history(
     best_offer: Optional[Dict[str, Any]],
 ) -> List[Dict[str, Any]]:
     history_data = load_history()
-    key = norm(f"{brand} {name}") or norm(name)
-    history = history_data.get(key, [])
+
+    key = (
+        norm(f"{brand} {name}")
+        or norm(name)
+    )
+
+    history = history_data.get(
+        key,
+        [],
+    )
 
     if not isinstance(history, list):
         history = []
@@ -933,14 +922,33 @@ def update_price_history(
     if not best_offer:
         return history
 
+    price_value = price_num(
+        best_offer.get("price")
+    )
+
+    if price_value is None:
+        return history
+
     point = {
-        "date": datetime.now(timezone.utc).isoformat(),
-        "value": best_offer["price_value"],
-        "price": best_offer.get("price", ""),
-        "store": best_offer.get("store", ""),
+        "date": datetime.now(
+            timezone.utc
+        ).isoformat(),
+        "value": price_value,
+        "price": best_offer.get(
+            "price",
+            "",
+        ),
+        "store": best_offer.get(
+            "store",
+            "",
+        ),
     }
 
-    last = history[-1] if history else None
+    last = (
+        history[-1]
+        if history
+        else None
+    )
 
     changed = (
         not last
@@ -957,34 +965,129 @@ def update_price_history(
     return history
 
 
-@app.get("/", include_in_schema=False)
+# ============================================================
+# API
+# ============================================================
+
+
+@app.get(
+    "/",
+    include_in_schema=False,
+)
 def root():
     if not FRONTEND_INDEX.exists():
         raise HTTPException(
             status_code=500,
             detail="frontend/index.html non trovato",
         )
-    return FileResponse(FRONTEND_INDEX)
+
+    return FileResponse(
+        FRONTEND_INDEX
+    )
 
 
 @app.get("/health")
 def health():
-    return {"status": "healthy", "stores": STORES}
+    return {
+        "status": "healthy",
+        "stores": STORES,
+    }
 
 
-def fragella_search(query: str, limit: int = 10) -> List[Dict[str, Any]]:
-    api_key = os.getenv("FRAGELLA_API_KEY", "").strip()
+@app.get("/search")
+def search(q: str):
+    return search_perfume(q)
+
+
+@app.get("/routing")
+def routing(q: str):
+    return {
+        "query": str(q or "").strip(),
+        "stores": list(STORES),
+    }
+
+
+@app.get("/test-store")
+def test_store(
+    store: str,
+    q: str,
+):
+    store = str(store or "").strip().lower()
+    query = str(q or "").strip()
+
+    if store not in STORES:
+        raise HTTPException(
+            status_code=400,
+            detail=(
+                "Store non valido. Disponibili: "
+                + ", ".join(STORES)
+            ),
+        )
+
+    if not query:
+        raise HTTPException(
+            status_code=400,
+            detail="Parametro q mancante",
+        )
+
+    try:
+        results = run_store(
+            store,
+            query,
+        )
+
+        return {
+            "store": store,
+            "query": query,
+            "count": len(results),
+            "results": sort_by_price(
+                unique_results(results)
+            ),
+        }
+
+    except Exception as error:
+        traceback.print_exc()
+
+        return {
+            "store": store,
+            "query": query,
+            "count": 0,
+            "results": [],
+            "error": (
+                f"{type(error).__name__}: {error}"
+            ),
+        }
+
+
+# ============================================================
+# SUGGEST
+# ============================================================
+
+def fragella_search(
+    query: str,
+    limit: int = 10,
+) -> List[Dict[str, Any]]:
+    api_key = os.getenv(
+        "FRAGELLA_API_KEY",
+        "",
+    ).strip()
 
     if not api_key:
         return []
 
-    params = urlencode({
-        "search": query,
-        "limit": max(1, min(int(limit), 10)),
-    })
+    params = urlencode(
+        {
+            "search": query,
+            "limit": max(
+                1,
+                min(int(limit), 10),
+            ),
+        }
+    )
 
     request = Request(
-        f"https://api.fragella.com/api/v1/fragrances?{params}",
+        "https://api.fragella.com/api/v1/fragrances?"
+        + params,
         headers={
             "x-api-key": api_key,
             "Accept": "application/json",
@@ -992,8 +1095,15 @@ def fragella_search(query: str, limit: int = 10) -> List[Dict[str, Any]]:
         },
     )
 
-    with urlopen(request, timeout=5) as response:
-        payload = json.loads(response.read().decode("utf-8"))
+    with urlopen(
+        request,
+        timeout=5,
+    ) as response:
+        payload = json.loads(
+            response.read().decode(
+                "utf-8"
+            )
+        )
 
     if isinstance(payload, dict):
         items = (
@@ -1002,8 +1112,10 @@ def fragella_search(query: str, limit: int = 10) -> List[Dict[str, Any]]:
             or payload.get("fragrances")
             or []
         )
+
     elif isinstance(payload, list):
         items = payload
+
     else:
         items = []
 
@@ -1013,8 +1125,18 @@ def fragella_search(query: str, limit: int = 10) -> List[Dict[str, Any]]:
         if not isinstance(item, dict):
             continue
 
-        name = str(item.get("Name") or item.get("name") or "").strip()
-        brand = str(item.get("Brand") or item.get("brand") or "").strip()
+        name = str(
+            item.get("Name")
+            or item.get("name")
+            or ""
+        ).strip()
+
+        brand = str(
+            item.get("Brand")
+            or item.get("brand")
+            or ""
+        ).strip()
+
         image = str(
             item.get("Image URL Transparent")
             or item.get("Image URL")
@@ -1025,13 +1147,18 @@ def fragella_search(query: str, limit: int = 10) -> List[Dict[str, Any]]:
         if not name:
             continue
 
-        output.append({
-            "name": name,
-            "brand": brand,
-            "store": brand or "ScentHunter",
-            "image": image,
-            "catalog_id": item.get("_id") or item.get("id"),
-        })
+        output.append(
+            {
+                "name": name,
+                "brand": brand,
+                "store": brand or "ScentHunter",
+                "image": image,
+                "catalog_id": (
+                    item.get("_id")
+                    or item.get("id")
+                ),
+            }
+        )
 
     return output
 
@@ -1041,29 +1168,53 @@ def rank_catalog_suggestions(
     query: str,
 ) -> List[Dict[str, Any]]:
     query_n = norm(query)
-    tokens = [token for token in query_n.split() if len(token) >= 2]
+
+    tokens = [
+        token
+        for token in query_n.split()
+        if len(token) >= 2
+    ]
+
     ranked = []
     seen = set()
 
     for item in items:
-        name = str(item.get("name") or "").strip()
-        brand = str(item.get("brand") or "").strip()
+        name = str(
+            item.get("name")
+            or ""
+        ).strip()
+
+        brand = str(
+            item.get("brand")
+            or ""
+        ).strip()
 
         if not name:
             continue
 
         name_n = norm(name)
         brand_n = norm(brand)
-        text = norm(f"{brand} {name}")
+        text = norm(
+            f"{brand} {name}"
+        )
 
-        if tokens and not all(token in text for token in tokens):
+        if tokens and not all(
+            token in text
+            for token in tokens
+        ):
             continue
 
-        if not _is_allowed_perfume_name(name):
+        if any(
+            norm(phrase) in name_n
+            for phrase in NON_PERFUME
+        ):
             continue
 
         key = (
-            str(item.get("catalog_id") or "").strip()
+            str(
+                item.get("catalog_id")
+                or ""
+            ).strip()
             or f"{brand_n}|{name_n}"
         )
 
@@ -1087,10 +1238,24 @@ def rank_catalog_suggestions(
         if position < 0:
             position = 999
 
-        ranked.append((priority, position, len(name_n), name_n, item))
+        ranked.append(
+            (
+                priority,
+                position,
+                len(name_n),
+                name_n,
+                item,
+            )
+        )
 
-    ranked.sort(key=lambda row: row[:4])
-    return [row[4] for row in ranked[:8]]
+    ranked.sort(
+        key=lambda row: row[:4]
+    )
+
+    return [
+        row[4]
+        for row in ranked[:8]
+    ]
 
 
 @app.get("/suggest")
@@ -1106,128 +1271,66 @@ def suggest(q: str):
             "source": "catalog",
         }
 
-    if len(query) >= 3:
-        try:
-            catalog_queries = [raw_query]
+    try:
+        catalog_results: List[
+            Dict[str, Any]
+        ] = []
 
-            for token in query.split():
-                if len(token) >= 3 and token not in catalog_queries:
-                    catalog_queries.append(token)
+        catalog_seen = set()
 
-            catalog_results: List[Dict[str, Any]] = []
-            catalog_seen = set()
-
-            for catalog_query in catalog_queries:
-                for item in fragella_search(catalog_query, 10):
-                    key = (
-                        str(item.get("catalog_id") or "").strip()
-                        or f"{norm(item.get('brand'))}|{norm(item.get('name'))}"
-                    )
-
-                    if key in catalog_seen:
-                        continue
-
-                    catalog_seen.add(key)
-                    catalog_results.append(item)
-
-            suggestions = rank_catalog_suggestions(
-                catalog_results,
-                raw_query,
+        for item in fragella_search(
+            raw_query,
+            10,
+        ):
+            key = (
+                str(
+                    item.get("catalog_id")
+                    or ""
+                ).strip()
+                or (
+                    f"{norm(item.get('brand'))}|"
+                    f"{norm(item.get('name'))}"
+                )
             )
 
-            if suggestions:
-                return {
-                    "query": q,
-                    "count": len(suggestions),
-                    "suggestions": suggestions,
-                    "source": "catalog",
-                }
+            if key in catalog_seen:
+                continue
 
-        except (
-            HTTPError,
-            URLError,
-            TimeoutError,
-            ValueError,
-            json.JSONDecodeError,
-        ) as error:
-            print("Catalog suggest error:", repr(error))
-        except Exception:
-            traceback.print_exc()
+            catalog_seen.add(key)
+            catalog_results.append(item)
 
-    suggestions = []
-    seen = set()
-
-    for store in STORES:
-        try:
-            module = load_scraper(store)
-            attempts = [raw_query]
-
-            if query not in attempts:
-                attempts.append(query)
-
-            for attempt in attempts:
-                if not attempt:
-                    continue
-
-                results = module.search(attempt) or []
-
-                for product in results:
-                    if not isinstance(product, dict):
-                        continue
-
-                    name = str(
-                        product.get("name")
-                        or product.get("title")
-                        or product.get("product_name")
-                        or ""
-                    ).strip()
-
-                    if not name:
-                        continue
-
-                    normalized_name = norm(name)
-                    brand = str(product.get("brand") or "").strip()
-                    haystack = norm(f"{brand} {name}")
-                    words = [word for word in query.split() if word]
-
-                    if not all(word in haystack for word in words):
-                        continue
-
-                    if not _is_allowed_perfume_name(name):
-                        continue
-
-                    key = (norm(brand), normalized_name)
-
-                    if key in seen:
-                        continue
-
-                    seen.add(key)
-
-                    suggestions.append({
-                        "name": name,
-                        "store": product.get("store", store),
-                        "brand": brand,
-                        "image": product_image(product),
-                    })
-
-        except Exception:
-            traceback.print_exc()
-
-    suggestions.sort(
-        key=lambda item: (
-            0 if norm(item.get("name", "")).startswith(query) else 1,
-            len(item.get("name", "")),
-            item.get("name", "").lower(),
+        suggestions = rank_catalog_suggestions(
+            catalog_results,
+            raw_query,
         )
-    )
 
-    suggestions = suggestions[:8]
+        return {
+            "query": q,
+            "count": len(suggestions),
+            "suggestions": suggestions[:8],
+            "source": "catalog",
+        }
+
+    except (
+        HTTPError,
+        URLError,
+        TimeoutError,
+        ValueError,
+        json.JSONDecodeError,
+    ) as error:
+        print(
+            "Catalog suggest error:",
+            repr(error),
+        )
+
+    except Exception:
+        traceback.print_exc()
 
     return {
         "query": q,
-        "count": len(suggestions),
-        "suggestions": suggestions,
-        "source": "stores-fallback",
+        "count": 0,
+        "suggestions": [],
+        "source": "catalog",
     }
 
 
@@ -1236,24 +1339,51 @@ def autocomplete(q: str):
     return suggest(q)
 
 
+# ============================================================
+# PRODUCT
+# ============================================================
+
 @app.get("/product")
-def product(name: str, brand: str = ""):
+def product(
+    name: str,
+    brand: str = "",
+):
     data = search_perfume(name)
-    offers: List[Dict[str, Any]] = []
+
+    offers: List[
+        Dict[str, Any]
+    ] = []
 
     for product_data in data["results"]:
-        value = price_num(product_data.get("price"))
+        value = price_num(
+            product_data.get("price")
+        )
 
         if value is None:
             continue
 
         offer = dict(product_data)
         offer["price_value"] = value
-        offer["image"] = product_image(offer)
+        offer["image"] = product_image(
+            offer
+        )
+
         offers.append(offer)
 
-    offers.sort(key=lambda offer: offer["price_value"])
-    best_offer = offers[0] if offers else None
+    offers.sort(
+        key=lambda offer: (
+            offer["price_value"],
+            norm(offer.get("store", "")),
+            norm(offer.get("name", "")),
+            str(offer.get("url", "")).lower(),
+        )
+    )
+
+    best_offer = (
+        offers[0]
+        if offers
+        else None
+    )
 
     history = update_price_history(
         name=name,
@@ -1262,11 +1392,19 @@ def product(name: str, brand: str = ""):
     )
 
     image = next(
-        (offer["image"] for offer in offers if offer.get("image")),
+        (
+            offer["image"]
+            for offer in offers
+            if offer.get("image")
+        ),
         "",
     )
 
-    lowest_price = best_offer.get("price") if best_offer else None
+    lowest_price = (
+        best_offer.get("price")
+        if best_offer
+        else None
+    )
 
     return {
         "name": name,
@@ -1277,5 +1415,129 @@ def product(name: str, brand: str = ""):
         "offers": offers,
         "history": history,
         "errors": data["errors"],
-        "message": "" if offers else "Nessuna offerta disponibile al momento",
+        "message": (
+            ""
+            if offers
+            else "Nessuna offerta disponibile al momento"
+        ),
     }
+
+
+# ============================================================
+# TEMPORARY NOTINO DIAGNOSTIC
+# Remove this entire section after testing.
+# ============================================================
+
+@app.get("/diagnose-notino-module")
+def diagnose_notino_module():
+    try:
+        module = importlib.import_module("scrapers.notino.scraper")
+
+        return {
+            "ok": True,
+            "store": "notino",
+            "module": module.__name__,
+            "file": getattr(module, "__file__", None),
+            "has_search": callable(getattr(module, "search", None)),
+            "has_scrape": callable(getattr(module, "scrape", None)),
+            "has_diagnose": callable(getattr(module, "diagnose", None)),
+            "has_internal_search": callable(
+                getattr(module, "_search_internal", None)
+            ),
+            "has_browser_discover": callable(
+                getattr(module, "browser_discover", None)
+            ),
+            "has_http_discovery": callable(
+                getattr(module, "_search_http_candidates", None)
+            ),
+            "has_candidate_extractor": callable(
+                getattr(module, "extract_candidates_from_html", None)
+            ),
+        }
+
+    except Exception as exc:
+        return {
+            "ok": False,
+            "store": "notino",
+            "error": f"{type(exc).__name__}: {exc}",
+            "traceback": traceback.format_exc(),
+        }
+
+
+@app.get("/diagnose-notino")
+def diagnose_notino(q: str):
+    query = str(q or "").strip()
+
+    if not query:
+        return {
+            "ok": False,
+            "store": "notino",
+            "error": "empty_query",
+        }
+
+    try:
+        module = importlib.import_module("scrapers.notino.scraper")
+        diagnose_fn = getattr(module, "diagnose", None)
+
+        if not callable(diagnose_fn):
+            return {
+                "ok": False,
+                "store": "notino",
+                "query": query,
+                "error": "Notino scraper has no diagnose() function",
+            }
+
+        return {
+            "ok": True,
+            "store": "notino",
+            "query": query,
+            "diagnostic": diagnose_fn(query),
+        }
+
+    except Exception as exc:
+        return {
+            "ok": False,
+            "store": "notino",
+            "query": query,
+            "error": f"{type(exc).__name__}: {exc}",
+            "traceback": traceback.format_exc(),
+        }
+
+
+@app.get("/diagnose-notino-search")
+def diagnose_notino_search(q: str):
+    query = str(q or "").strip()
+
+    if not query:
+        return {
+            "ok": False,
+            "store": "notino",
+            "error": "empty_query",
+        }
+
+    try:
+        module = importlib.import_module("scrapers.notino.scraper")
+        debug_fn = getattr(module, "debug_search", None)
+
+        if not callable(debug_fn):
+            return {
+                "ok": False,
+                "store": "notino",
+                "query": query,
+                "error": "Notino scraper has no debug_search() function",
+            }
+
+        return {
+            "ok": True,
+            "store": "notino",
+            **debug_fn(query),
+        }
+
+    except Exception as exc:
+        return {
+            "ok": False,
+            "store": "notino",
+            "query": query,
+            "error": f"{type(exc).__name__}: {exc}",
+            "traceback": traceback.format_exc(),
+        }
