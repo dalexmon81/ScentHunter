@@ -15,7 +15,7 @@ SEARCH_URL = BASE_URL + "/search.asp"
 READER_BASE = "https://r.jina.ai/"
 TIMEOUT = 20
 READER_TIMEOUT = 12
-SCRAPER_VERSION = "notino-FR-deep-diagnostic-2026-08-21-v8-generic-name-ranking"
+SCRAPER_VERSION = "notino-FR-generic-discovery-2026-08-21-v5-generic-size-aware"
 
 HEADERS = {
     "User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
@@ -150,125 +150,6 @@ def _extract_price(text: Any) -> str:
     return _format_price(m.group(1) or m.group(2))
 
 
-def _price_is_unit_or_non_purchase(context: str) -> bool:
-    low = _clean(context).lower()
-    if re.search(r"(?:/|par|pro|per)\s*(?:100\s*ml|100\s*g|l|liter|litre)", low, re.I):
-        return True
-    if re.search(r"(?:€/|eur/|price\s+per|prix\s+(?:au|par))", low, re.I):
-        return True
-    if any(marker in low for marker in (
-        "livraison", "frais de livraison", "retrait personnel",
-        "shipping", "delivery", "pickup", "retrait",
-    )):
-        return True
-    if any(marker in low for marker in (
-        "ancien prix", "old price", "prix barré", "prix barre",
-        "was price", "prix précédent", "prix precedent",
-    )):
-        return True
-    return False
-
-
-def _extract_purchase_price(text: Any) -> str:
-    """
-    Extract the customer purchase price from generic product text.
-
-    Unit prices (/100 ml, par 100 ml, €/l, etc.), shipping/pickup fees and
-    clearly crossed/previous prices are never selected as the product price.
-    Active purchase context such as 'En stock', 'Prix actuel' and cart
-    markers receives priority. No product/store-specific values are used.
-    """
-    content = _clean(text)
-    matches = list(PRICE_RE.finditer(content))
-    if not matches:
-        return ""
-
-    ranked = []
-    for match in matches:
-        value = match.group(1) or match.group(2)
-        start = max(0, match.start() - 180)
-        end = min(len(content), match.end() + 180)
-        context = content[start:end]
-        low = context.lower()
-
-        # Unit-price syntax must be directly attached to this candidate.
-        # Do not inspect a broad window here: a later /100 ml price must not
-        # disqualify the real purchase price immediately before it.
-        before = content[max(0, match.start() - 18):match.start()]
-        after = content[match.end():min(len(content), match.end() + 22)]
-        if re.search(r"(?:/|par|pro|per)\s*(?:100\s*ml|100\s*g|l|liter|litre)\s*$", before, re.I):
-            continue
-        if re.match(r"^\s*(?:/|par|pro|per)\s*(?:100\s*ml|100\s*g|l|liter|litre)\b", after, re.I):
-            continue
-        if re.search(r"(?:€/|eur/|price\s+per|prix\s+(?:au|par))\s*$", before, re.I):
-            continue
-        local_start = max(0, match.start() - 45)
-        local_end = min(len(content), match.end() + 45)
-        local_context = content[local_start:local_end].lower()
-        # Shipping/pickup prices are excluded when the shipping marker is
-        # attached to the candidate. A genuine purchase price may still have
-        # a shipping label later in the same product block, so active purchase
-        # markers are allowed to override that wider context.
-        shipping_local = any(marker in local_context for marker in (
-            "livraison", "frais de livraison", "retrait personnel",
-            "shipping", "delivery", "pickup", "retrait",
-        ))
-        active_local = bool(re.search(
-            r"en\s+stock|prix\s+actuel|ajouter\s+au\s+panier|add\s+to\s+cart",
-            local_context,
-            re.I,
-        ))
-        if shipping_local and not active_local:
-            continue
-
-        score = 0
-        after_local = content[match.end():min(len(content), match.end() + 70)].lower()
-        if "plus avantageux" in after_local or "plus avantageuse" in after_local:
-            score -= 80
-        current_match = re.search(r"prix\s+actuel(?:\s+de)?", low, re.I)
-        if current_match:
-            score += max(0, 120 - abs((match.start() - start) - current_match.start()))
-
-        stock_matches = list(re.finditer(r"en\s+stock", low, re.I))
-        if stock_matches:
-            nearest = min(abs((match.start() - start) - m.start()) for m in stock_matches)
-            score += max(0, 110 - nearest)
-
-        cart_matches = list(re.finditer(r"ajouter\s+au\s+panier|add\s+to\s+cart", low, re.I))
-        if cart_matches:
-            nearest = min(abs((match.start() - start) - m.start()) for m in cart_matches)
-            score += max(0, 75 - nearest)
-
-        if "quantité" in low or "quantite" in low or "quantity" in low:
-            score += 10
-        if re.search(r"\b(?:au|dans le)\s+panier\b", low, re.I):
-            score += 8
-
-        ranked.append((score, match.start(), value))
-
-    if not ranked:
-        return ""
-
-    # Highest contextual score wins; later occurrence breaks ties, which keeps
-    # the active price ahead of an earlier crossed/list price when context is equal.
-    ranked.sort(key=lambda item: (item[0], item[1]))
-    return _format_price(ranked[-1][2])
-
-
-def _name_from_product_url(url: str) -> str:
-    """Derive a validation name from a generic Notino product URL slug."""
-    try:
-        path = urlparse(url).path.rstrip("/")
-        match = re.search(r"/([^/]+)/p-\d+/?$", path, re.I)
-        if not match:
-            return ""
-        slug = unquote(match.group(1))
-        slug = re.sub(r"[-_]+", " ", slug)
-        return _clean_name(slug)
-    except Exception:
-        return ""
-
-
 def _normalise_reader_url(raw: Any) -> Optional[str]:
     value = html_lib.unescape(str(raw or "")).strip()
     value = value.replace("\\/", "/").replace("\\u002F", "/")
@@ -363,69 +244,13 @@ def _card_text(link) -> str:
     return best
 
 
-
-
-def _discovery_queries(query: str) -> List[str]:
-    """Build generic fallback queries used only to widen Notino discovery.
-
-    The original user query is always preserved for final product validation.
-    This allows recovery when Notino returns an incomplete result set for the
-    exact query, without introducing product-specific seeds or exceptions.
-    """
-    tokens = _query_tokens(query)
-    queries: List[str] = []
-    seen = set()
-
-    def add(value: str) -> None:
-        value = _clean(value)
-        key = _product_norm(value)
-        if not key or key in seen:
-            return
-        seen.add(key)
-        queries.append(value)
-
-    add(query)
-    if len(tokens) > 1:
-        add(" ".join(reversed(tokens)))
-        for token in tokens:
-            if len(token) >= 3:
-                add(token)
-    return queries[:6]
-
-
-def _rank_candidate_for_original_query(candidate: Dict[str, Any], query: str) -> Dict[str, Any]:
-    """Add generic ranking evidence for the original user query."""
-    name = _clean_name(candidate.get("name") or candidate.get("anchor_text") or "")
-    query_norm = _product_norm(query)
-    name_norm = _product_norm(name)
-    query_tokens = set(_query_tokens(query))
-    name_tokens = set(_query_tokens(name))
-    candidate = dict(candidate)
-    candidate["original_query"] = query
-    candidate["original_query_matches"] = bool(query_tokens) and query_tokens.issubset(name_tokens)
-    candidate["original_query_exact_phrase"] = bool(query_norm and query_norm in name_norm)
-    candidate["original_query_extra_tokens"] = max(0, len(name_tokens - query_tokens))
-    if candidate["original_query_matches"]:
-        score = int(candidate.get("score") or 0) + 100
-        if candidate["original_query_exact_phrase"]:
-            score += 50
-        score += max(0, 20 - candidate["original_query_extra_tokens"])
-        candidate["score"] = score
-    return candidate
 def _make_candidate(url: str, anchor: str, card: str, query: str, source: str) -> Optional[Dict[str, Any]]:
     url = _clean(url).split("?")[0]
     if not _looks_like_product_url(url):
         return None
     anchor = _clean(anchor)
     card = _clean(card)
-
-    # Prefer the product name encoded in the product URL when it itself
-    # matches the query. Search-card context can contain nearby sponsored
-    # products or another product title, which can otherwise cause a valid
-    # URL to inherit the wrong name. This is deliberately generic.
-    url_name = _name_from_product_url(url)
-    context_name = _clean_name(anchor) or _clean_name(card)
-    name = url_name if url_name and _matches(url_name, query) else context_name
+    name = _clean_name(anchor) or _clean_name(card)
     if not name or _has_non_perfume_marker(name):
         return None
 
@@ -438,18 +263,6 @@ def _make_candidate(url: str, anchor: str, card: str, query: str, source: str) -
     score = sum(hits.values()) * 5
     if all(hits.values()):
         score += 5
-
-    # Prefer the most direct product-name match when several valid products
-    # contain all query tokens. Exact query phrases rank above variant names
-    # and longer extensions, without naming any store/product-specific
-    # exception. A query that explicitly contains the variant terms still
-    # wins because those terms are part of query_tokens.
-    query_phrase = _product_norm(query)
-    name_norm = _product_norm(name)
-    if query_phrase and query_phrase in name_norm:
-        score += 20
-    extra_tokens = max(0, len(set(_query_tokens(name))) - len(set(query_tokens)))
-    score += max(0, 10 - extra_tokens)
 
     search_context = f"{anchor} {card}"
     requested_sizes = _requested_sizes(query)
@@ -546,8 +359,6 @@ def _reader_candidates(text: str, query: str) -> List[Dict[str, Any]]:
             if not name or not _matches(name, query):
                 name = _reader_name_from_context(local_context, query)
             if not name:
-                name = _name_from_product_url(url)
-            if not name:
                 continue
             candidate = _make_candidate(url, name, local_context, query, "reader-markdown")
             if candidate and (
@@ -562,8 +373,6 @@ def _reader_candidates(text: str, query: str) -> List[Dict[str, Any]]:
                 continue
             prefix = raw[max(0, match.start() - 700):match.start()]
             name = _reader_name_from_context(prefix, query)
-            if not name:
-                name = _name_from_product_url(url)
             if not name:
                 continue
             suffix = raw[match.end():min(len(raw), match.end() + 220)]
@@ -582,8 +391,6 @@ def _reader_candidates(text: str, query: str) -> List[Dict[str, Any]]:
         prefix = raw[max(0, match.start() - 700):match.start()]
         name = _reader_name_from_context(prefix, query)
         if not name:
-            name = _name_from_product_url(url)
-        if not name:
             continue
         candidate = _make_candidate(url, name, prefix[-400:], query, "reader-href")
         if candidate and (url not in found or candidate["score"] > found[url]["score"]):
@@ -598,55 +405,45 @@ def _reader_candidates(text: str, query: str) -> List[Dict[str, Any]]:
 def _reader_discovery(query: str, session: requests.Session) -> Tuple[List[Dict[str, Any]], Dict[str, Any]]:
     found: Dict[str, Dict[str, Any]] = {}
     pages = []
-    discovery_queries = _discovery_queries(query)
-    for discovery_query in discovery_queries:
-        for url in _search_urls(discovery_query):
-            try:
-                response = _reader_request(session, url)
-                candidates = _reader_candidates(response.text, discovery_query)
-                for candidate in candidates:
-                    candidate = _rank_candidate_for_original_query(candidate, query)
-                    old = found.get(candidate["url"])
-                    if old is None or candidate["score"] > old["score"]:
-                        found[candidate["url"]] = candidate
-                pages.append({
-                    "url": url,
-                    "query": discovery_query,
-                    "reader_url": READER_BASE + url,
-                    "status": response.status_code,
-                    "html_length": len(response.text or ""),
-                    "candidate_count": len(candidates),
-                    "reader": True,
-                })
-            except requests.RequestException as exc:
-                pages.append({
-                    "url": url,
-                    "query": discovery_query,
-                    "reader_url": READER_BASE + url,
-                    "status": None,
-                    "error": f"{type(exc).__name__}: {exc}",
-                    "reader": True,
-                })
+    for url in _search_urls(query):
+        try:
+            response = _reader_request(session, url)
+            candidates = _reader_candidates(response.text, query)
+            for candidate in candidates:
+                old = found.get(candidate["url"])
+                if old is None or candidate["score"] > old["score"]:
+                    found[candidate["url"]] = candidate
+            pages.append({
+                "url": url,
+                "reader_url": READER_BASE + url,
+                "status": response.status_code,
+                "html_length": len(response.text or ""),
+                "candidate_count": len(candidates),
+                "reader": True,
+            })
+            if candidates:
+                break
+        except requests.RequestException as exc:
+            pages.append({
+                "url": url,
+                "reader_url": READER_BASE + url,
+                "status": None,
+                "error": f"{type(exc).__name__}: {exc}",
+                "reader": True,
+            })
     ordered = sorted(
         found.values(),
-        key=lambda x: (
-            not x.get("original_query_matches", False),
-            not x.get("original_query_exact_phrase", False),
-            -x["score"],
-            x["url"],
-        ),
+        key=lambda x: (not x["contains_all_query_tokens"], -x["score"], x["url"]),
     )
     return ordered, {
         "query": query,
-        "discovery_queries": discovery_queries,
         "search_urls": _search_urls(query),
         "pages": pages,
         "raw_product_urls": len(ordered),
         "candidate_urls": len(ordered),
-        "raw_query_token_hits": [x for x in ordered if x.get("original_query_matches", False)],
+        "raw_query_token_hits": [x for x in ordered if x["contains_all_query_tokens"]],
         "fallback": "jina-reader",
     }
-
 
 
 def _search_http_candidates(
@@ -658,55 +455,46 @@ def _search_http_candidates(
         session.headers.update(HEADERS)
     candidates: Dict[str, Dict[str, Any]] = {}
     pages = []
-    discovery_queries = _discovery_queries(query)
     try:
-        for discovery_query in discovery_queries:
-            for url in _search_urls(discovery_query):
-                try:
-                    response = _request(session, url)
-                except requests.RequestException as exc:
-                    pages.append({
-                        "url": url,
-                        "query": discovery_query,
-                        "status": getattr(getattr(exc, "response", None), "status_code", None),
-                        "error": f"{type(exc).__name__}: {exc}",
-                    })
-                    continue
-                found = extract_candidates_from_html(response.text, discovery_query)
-                for candidate in found:
-                    candidate = _rank_candidate_for_original_query(candidate, query)
-                    old = candidates.get(candidate["url"])
-                    if old is None or candidate["score"] > old["score"]:
-                        candidates[candidate["url"]] = candidate
+        for url in _search_urls(query):
+            try:
+                response = _request(session, url)
+            except requests.RequestException as exc:
                 pages.append({
                     "url": url,
-                    "query": discovery_query,
-                    "final_url": response.url,
-                    "status": response.status_code,
-                    "html_length": len(response.text or ""),
-                    "candidate_count": len(found),
-                    "cloudflare": _is_challenge(response.text),
-                    "source": "direct",
+                    "status": getattr(getattr(exc, "response", None), "status_code", None),
+                    "error": f"{type(exc).__name__}: {exc}",
                 })
+                continue
+            found = extract_candidates_from_html(response.text, query)
+            for candidate in found:
+                old = candidates.get(candidate["url"])
+                if old is None or candidate["score"] > old["score"]:
+                    candidates[candidate["url"]] = candidate
+            pages.append({
+                "url": url,
+                "final_url": response.url,
+                "status": response.status_code,
+                "html_length": len(response.text or ""),
+                "candidate_count": len(found),
+                "cloudflare": _is_challenge(response.text),
+                "source": "direct",
+            })
+            if found:
+                break
 
         ordered = sorted(
             candidates.values(),
-            key=lambda x: (
-                not x.get("original_query_matches", False),
-                not x.get("original_query_exact_phrase", False),
-                -x["score"],
-                x["url"],
-            ),
+            key=lambda x: (not x["contains_all_query_tokens"], -x["score"], x["url"]),
         )
         if ordered:
             return ordered, {
                 "query": query,
-                "discovery_queries": discovery_queries,
                 "search_urls": _search_urls(query),
                 "pages": pages,
                 "raw_product_urls": len(ordered),
                 "candidate_urls": len(ordered),
-                "raw_query_token_hits": [x for x in ordered if x.get("original_query_matches", False)],
+                "raw_query_token_hits": [x for x in ordered if x["contains_all_query_tokens"]],
                 "fallback": None,
             }
 
@@ -716,7 +504,6 @@ def _search_http_candidates(
     finally:
         if own:
             session.close()
-
 
 
 def _json_ld_products(soup: BeautifulSoup) -> Iterable[Dict[str, Any]]:
@@ -814,9 +601,15 @@ def _reader_product(text: str, candidate: Dict[str, Any], query: str) -> Optiona
     if current:
         price = _format_price(current.group(1))
     if not price:
-        price = _extract_purchase_price(content)
+        stock = re.search(
+            r"en\s+stock[^€]{0,120}?(\d{1,4}[.,]\d{2})\s*€",
+            content,
+            re.I,
+        )
+        if stock:
+            price = _format_price(stock.group(1))
     if not price:
-        price = _extract_purchase_price(candidate.get("anchor_text", "")) or _extract_purchase_price(
+        price = _extract_price(candidate.get("anchor_text", "")) or _extract_price(
             candidate.get("card_text", "")
         )
     if not price:
@@ -845,7 +638,7 @@ def _card_result(candidate: Dict[str, Any], query: str) -> Optional[Dict[str, An
     if not _requested_size_is_valid(context, query):
         return None
 
-    price = _extract_purchase_price(anchor) or _extract_purchase_price(card)
+    price = _extract_price(anchor) or _extract_price(card)
     if not price:
         return None
     return {"store": STORE, "name": name, "price": price, "url": candidate["url"]}
@@ -910,9 +703,19 @@ def _product_details(
         return _card_result(candidate, query)
 
     if not price:
-        price = _extract_purchase_price(page_text)
+        m = re.search(r"prix\s+actuel\s+(\d{1,4}[.,]\d{2})\s*€", page_text, re.I)
+        if m:
+            price = _format_price(m.group(1))
     if not price:
-        price = _extract_purchase_price(candidate.get("anchor_text", "")) or _extract_purchase_price(
+        m = re.search(
+            r"en\s+stock\s*[|:]?\s*(\d{1,4}[.,]\d{2})\s*€",
+            page_text,
+            re.I,
+        )
+        if m:
+            price = _format_price(m.group(1))
+    if not price:
+        price = _extract_price(candidate.get("anchor_text", "")) or _extract_price(
             candidate.get("card_text", "")
         )
 
@@ -955,168 +758,11 @@ def scrape(query: str) -> List[Dict[str, Any]]:
     return search(query)
 
 
-def _price_evidence(text: str) -> Dict[str, Any]:
-    content = _clean(text or "")
-    matches = []
-    for m in PRICE_RE.finditer(content):
-        start = max(0, m.start() - 100)
-        end = min(len(content), m.end() + 100)
-        matches.append({
-            "value": _format_price(m.group(1) or m.group(2)),
-            "raw": m.group(0),
-            "context": content[start:end],
-            "has_per_100": bool(re.search(r"(?:/|par)\s*100\s*(?:ml|ml\b)", content[start:end], re.I)),
-        })
-    current = re.findall(r"prix\s+actuel\s+(?:de\s+)?(\d{1,4}[.,]\d{2})\s*€", content, re.I)
-    stock = re.findall(r"en\s+stock[^€]{0,120}?(\d{1,4}[.,]\d{2})\s*€", content, re.I)
-    return {
-        "all_prices": matches,
-        "current_price_matches": [_format_price(x) for x in current],
-        "in_stock_price_matches": [_format_price(x) for x in stock],
-        "price_count": len(matches),
-    }
-
-
-def _diagnose_candidate(candidate: Dict[str, Any], query: str) -> Dict[str, Any]:
-    name = _clean_name(candidate.get("anchor_text") or candidate.get("card_text") or "")
-    query_tokens = _query_tokens(query)
-    name_tokens = set(_product_norm(name).split())
-    return {
-        "url": candidate.get("url"),
-        "anchor_text": candidate.get("anchor_text"),
-        "card_text": candidate.get("card_text"),
-        "name_used_for_validation": name,
-        "query_tokens": query_tokens,
-        "name_tokens": sorted(name_tokens),
-        "token_hits": {token: token in name_tokens for token in query_tokens},
-        "matches_query": bool(query_tokens) and all(token in name_tokens for token in query_tokens),
-        "non_perfume": _has_non_perfume_marker(name),
-        "requested_sizes": _requested_sizes(query),
-        "size_match_in_card": _contains_requested_size(
-            f"{candidate.get('anchor_text','')} {candidate.get('card_text','')}", query
-        ),
-        "price_evidence": _price_evidence(
-            f"{candidate.get('anchor_text','')} {candidate.get('card_text','')}"
-        ),
-        "score": candidate.get("score"),
-        "source": candidate.get("source"),
-    }
-
-
-def _diagnose_product_page(
-    session: requests.Session, candidate: Dict[str, Any], query: str
-) -> Dict[str, Any]:
-    url = candidate["url"]
-    report: Dict[str, Any] = {
-        "url": url,
-        "requested_sizes": _requested_sizes(query),
-        "direct": {},
-        "reader": {},
-        "validation": {},
-        "json_ld": [],
-        "price_evidence": {},
-        "final_search_result": None,
-    }
-
-    texts = []
-    try:
-        response = _request(session, url)
-        report["direct"] = {
-            "status": response.status_code,
-            "final_url": response.url,
-            "html_length": len(response.text or ""),
-            "cloudflare": _is_challenge(response.text),
-            "looks_like_product_url": _looks_like_product_url(response.url),
-        }
-        texts.append(("direct", response.text or ""))
-    except requests.RequestException as exc:
-        report["direct"] = {
-            "status": getattr(getattr(exc, "response", None), "status_code", None),
-            "error": f"{type(exc).__name__}: {exc}",
-        }
-
-    try:
-        reader = _reader_request(session, url)
-        report["reader"] = {
-            "status": reader.status_code,
-            "html_length": len(reader.text or ""),
-            "cloudflare": _is_challenge(reader.text),
-        }
-        texts.append(("reader", reader.text or ""))
-    except requests.RequestException as exc:
-        report["reader"] = {
-            "status": getattr(getattr(exc, "response", None), "status_code", None),
-            "error": f"{type(exc).__name__}: {exc}",
-        }
-
-    for source, text in texts:
-        content = _clean(text)
-        page_info = {
-            "source": source,
-            "matches_query": _matches(content + " " + url, query),
-            "requested_size_valid": _requested_size_is_valid(content + " " + candidate.get("card_text", ""), query),
-            "has_in_stock_marker": any(x in content.lower() for x in IN_STOCK_MARKERS),
-            "has_out_of_stock_marker": any(x in content.lower() for x in OUT_STOCK_MARKERS),
-            "price_evidence": _price_evidence(content),
-        }
-        report["validation"][source] = page_info
-
-        if source == "direct":
-            soup = BeautifulSoup(text, "html.parser")
-            for product in _json_ld_products(soup):
-                product_name = _clean(product.get("name"))
-                brand = product.get("brand")
-                brand = _clean(brand.get("name")) if isinstance(brand, dict) else _clean(brand)
-                price, availability = _offer_data(product.get("offers"))
-                report["json_ld"].append({
-                    "name": product_name,
-                    "brand": brand,
-                    "matches_query": _matches(f"{brand} {product_name}", query),
-                    "price": price,
-                    "availability": availability,
-                    "offers_raw_type": type(product.get("offers")).__name__,
-                })
-
-    try:
-        report["final_search_result"] = _product_details(session, candidate, query)
-    except Exception as exc:
-        report["final_search_result_error"] = f"{type(exc).__name__}: {exc}"
-
-    return report
-
-
-def debug_search(query: str) -> Dict[str, Any]:
-    query = _clean(query)
-
-    session = requests.Session()
-    session.headers.update(HEADERS)
-
-    try:
-        candidates, discovery = _search_http_candidates(
-            query,
-            session=session,
-        )
-
-        return {
-            "query": query,
-            "search_urls": _search_urls(query),
-            "discovery": discovery,
-            "candidates_before_product_page": candidates,
-            "candidate_count": len(candidates),
-        }
-
-    finally:
-        session.close()
-
-
-
 def diagnose(query: str) -> Dict[str, Any]:
-    """Deep diagnostic only. It does not change the normal search path."""
     query = _clean(query)
     if not query:
         return {
             "diagnostic": True,
-            "diagnostic_level": "deep",
             "scraper_version": SCRAPER_VERSION,
             "query": query,
             "error": "empty_query",
@@ -1126,22 +772,50 @@ def diagnose(query: str) -> Dict[str, Any]:
     session.headers.update(HEADERS)
     try:
         candidates, discovery = _search_http_candidates(query, session=session)
-
-        candidate_audit = [_diagnose_candidate(c, query) for c in candidates[:50]]
-        product_pages = [
-            _diagnose_product_page(session, candidate, query)
-            for candidate in candidates[:25]
-        ]
+        product_pages = []
+        for candidate in candidates[:25]:
+            try:
+                response = _request(session, candidate["url"])
+                product_pages.append({
+                    "url": candidate["url"],
+                    "status": response.status_code,
+                    "final_url": response.url,
+                    "html_length": len(response.text or ""),
+                    "cloudflare": _is_challenge(response.text),
+                    "reader_fallback": False,
+                    "requested_size": _requested_sizes(query),
+                    "size_match": _requested_size_is_valid(response.text, query),
+                })
+            except requests.RequestException as exc:
+                try:
+                    reader = _reader_request(session, candidate["url"])
+                    product_pages.append({
+                        "url": candidate["url"],
+                        "status": getattr(getattr(exc, "response", None), "status_code", None),
+                        "error": f"{type(exc).__name__}: {exc}",
+                        "reader_status": reader.status_code,
+                        "reader_html_length": len(reader.text or ""),
+                        "reader_fallback": True,
+                        "requested_size": _requested_sizes(query),
+                        "size_match": _requested_size_is_valid(reader.text, query),
+                    })
+                except requests.RequestException as reader_exc:
+                    product_pages.append({
+                        "url": candidate["url"],
+                        "status": None,
+                        "error": f"{type(exc).__name__}: {exc}",
+                        "reader_error": f"{type(reader_exc).__name__}: {reader_exc}",
+                        "reader_fallback": True,
+                    })
 
         return {
             "diagnostic": True,
-            "diagnostic_level": "deep",
             "scraper_version": SCRAPER_VERSION,
             "query": query,
-            "search_urls": _search_urls(query),
+            "search_url": _search_urls(query)[0],
             "discovery": discovery,
             "candidate_count": len(candidates),
-            "candidates": candidate_audit,
+            "candidates": candidates[:25],
             "product_pages": product_pages,
         }
     finally:
@@ -1153,10 +827,12 @@ if __name__ == "__main__":
 
     parser = argparse.ArgumentParser()
     parser.add_argument("query")
+    parser.add_argument("--diagnose", action="store_true")
     args = parser.parse_args()
-
-    print(json.dumps(
-        debug_search(args.query),
-        ensure_ascii=False,
-        indent=2,
-    ))
+    print(
+        json.dumps(
+            diagnose(args.query) if args.diagnose else search(args.query),
+            ensure_ascii=False,
+            indent=2,
+        )
+    )
