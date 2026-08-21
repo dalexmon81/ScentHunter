@@ -413,6 +413,21 @@ def extract_price_from_html(soup):
             if value is not None:
                 return value, "sabina_html_price"
 
+        # Strong generic fallback: Sabina exposes the live product price as
+        # "Precio: XX €". This must be preferred over "Precio habitual".
+        current_price = re.search(
+            r"\\b(?:precio|price|prix|preis)\\s*[:\\-]\\s*"
+            r"(?:(?:€|eur|\\$|usd|£|gbp)\\s*)?"
+            r"([0-9][0-9\\s.,]*)\\s*"
+            r"(?:€|eur|\\$|usd|£|gbp)?",
+            text_value,
+            re.I,
+        )
+        if current_price:
+            value = money_to_float(current_price.group(1))
+            if value is not None:
+                return value, "sabina_html_price"
+
         # Otherwise inspect every currency amount and reject amounts that are
         # explicitly described as regular/old/original/reference prices.
         amount_re = re.compile(
@@ -527,6 +542,23 @@ def extract_size_ml_from_product_page(soup, title=""):
             value = extract_size_ml(raw)
             if value is not None:
                 return value, "product_page"
+
+    # Generic labelled product-size fallback. Sabina can expose the selected
+    # variant as plain product-page text (e.g. "Tamaño: 150 ML") without
+    # itemprop/data attributes. Use the first labelled size in the document;
+    # this occurs in the product block before related-product cards.
+    page_text = clean(soup.get_text(" ", strip=True))
+    labelled_size = re.search(
+        r"\\b(?:tama(?:ñ|n)o|size|taille|formato|volume)\\s*"
+        r"[:\\-]?\\s*(\\d+(?:[.,]\\d+)?)\\s*"
+        r"(?:ml|millilitros?|milliliters?)\\b",
+        page_text,
+        re.I,
+    )
+    if labelled_size:
+        value = extract_size_ml(labelled_size.group(0))
+        if value is not None:
+            return value, "product_page"
 
     # Some product pages put the selected size directly in the title.
     value = extract_size_ml(title)
