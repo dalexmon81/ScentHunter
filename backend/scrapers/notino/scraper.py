@@ -363,6 +363,55 @@ def _card_text(link) -> str:
     return best
 
 
+
+
+def _discovery_queries(query: str) -> List[str]:
+    """Build generic fallback queries used only to widen Notino discovery.
+
+    The original user query is always preserved for final product validation.
+    This allows recovery when Notino returns an incomplete result set for the
+    exact query, without introducing product-specific seeds or exceptions.
+    """
+    tokens = _query_tokens(query)
+    queries: List[str] = []
+    seen = set()
+
+    def add(value: str) -> None:
+        value = _clean(value)
+        key = _product_norm(value)
+        if not key or key in seen:
+            return
+        seen.add(key)
+        queries.append(value)
+
+    add(query)
+    if len(tokens) > 1:
+        add(" ".join(reversed(tokens)))
+        for token in tokens:
+            if len(token) >= 3:
+                add(token)
+    return queries[:6]
+
+
+def _rank_candidate_for_original_query(candidate: Dict[str, Any], query: str) -> Dict[str, Any]:
+    """Add generic ranking evidence for the original user query."""
+    name = _clean_name(candidate.get("name") or candidate.get("anchor_text") or "")
+    query_norm = _product_norm(query)
+    name_norm = _product_norm(name)
+    query_tokens = set(_query_tokens(query))
+    name_tokens = set(_query_tokens(name))
+    candidate = dict(candidate)
+    candidate["original_query"] = query
+    candidate["original_query_matches"] = bool(query_tokens) and query_tokens.issubset(name_tokens)
+    candidate["original_query_exact_phrase"] = bool(query_norm and query_norm in name_norm)
+    candidate["original_query_extra_tokens"] = max(0, len(name_tokens - query_tokens))
+    if candidate["original_query_matches"]:
+        score = int(candidate.get("score") or 0) + 100
+        if candidate["original_query_exact_phrase"]:
+            score += 50
+        score += max(0, 20 - candidate["original_query_extra_tokens"])
+        candidate["score"] = score
+    return candidate
 def _make_candidate(url: str, anchor: str, card: str, query: str, source: str) -> Optional[Dict[str, Any]]:
     url = _clean(url).split("?")[0]
     if not _looks_like_product_url(url):
@@ -549,43 +598,55 @@ def _reader_candidates(text: str, query: str) -> List[Dict[str, Any]]:
 def _reader_discovery(query: str, session: requests.Session) -> Tuple[List[Dict[str, Any]], Dict[str, Any]]:
     found: Dict[str, Dict[str, Any]] = {}
     pages = []
-    for url in _search_urls(query):
-        try:
-            response = _reader_request(session, url)
-            candidates = _reader_candidates(response.text, query)
-            for candidate in candidates:
-                old = found.get(candidate["url"])
-                if old is None or candidate["score"] > old["score"]:
-                    found[candidate["url"]] = candidate
-            pages.append({
-                "url": url,
-                "reader_url": READER_BASE + url,
-                "status": response.status_code,
-                "html_length": len(response.text or ""),
-                "candidate_count": len(candidates),
-                "reader": True,
-            })
-        except requests.RequestException as exc:
-            pages.append({
-                "url": url,
-                "reader_url": READER_BASE + url,
-                "status": None,
-                "error": f"{type(exc).__name__}: {exc}",
-                "reader": True,
-            })
+    discovery_queries = _discovery_queries(query)
+    for discovery_query in discovery_queries:
+        for url in _search_urls(discovery_query):
+            try:
+                response = _reader_request(session, url)
+                candidates = _reader_candidates(response.text, discovery_query)
+                for candidate in candidates:
+                    candidate = _rank_candidate_for_original_query(candidate, query)
+                    old = found.get(candidate["url"])
+                    if old is None or candidate["score"] > old["score"]:
+                        found[candidate["url"]] = candidate
+                pages.append({
+                    "url": url,
+                    "query": discovery_query,
+                    "reader_url": READER_BASE + url,
+                    "status": response.status_code,
+                    "html_length": len(response.text or ""),
+                    "candidate_count": len(candidates),
+                    "reader": True,
+                })
+            except requests.RequestException as exc:
+                pages.append({
+                    "url": url,
+                    "query": discovery_query,
+                    "reader_url": READER_BASE + url,
+                    "status": None,
+                    "error": f"{type(exc).__name__}: {exc}",
+                    "reader": True,
+                })
     ordered = sorted(
         found.values(),
-        key=lambda x: (not x["contains_all_query_tokens"], -x["score"], x["url"]),
+        key=lambda x: (
+            not x.get("original_query_matches", False),
+            not x.get("original_query_exact_phrase", False),
+            -x["score"],
+            x["url"],
+        ),
     )
     return ordered, {
         "query": query,
+        "discovery_queries": discovery_queries,
         "search_urls": _search_urls(query),
         "pages": pages,
         "raw_product_urls": len(ordered),
         "candidate_urls": len(ordered),
-        "raw_query_token_hits": [x for x in ordered if x["contains_all_query_tokens"]],
+        "raw_query_token_hits": [x for x in ordered if x.get("original_query_matches", False)],
         "fallback": "jina-reader",
     }
+
 
 
 def _search_http_candidates(
@@ -597,44 +658,55 @@ def _search_http_candidates(
         session.headers.update(HEADERS)
     candidates: Dict[str, Dict[str, Any]] = {}
     pages = []
+    discovery_queries = _discovery_queries(query)
     try:
-        for url in _search_urls(query):
-            try:
-                response = _request(session, url)
-            except requests.RequestException as exc:
+        for discovery_query in discovery_queries:
+            for url in _search_urls(discovery_query):
+                try:
+                    response = _request(session, url)
+                except requests.RequestException as exc:
+                    pages.append({
+                        "url": url,
+                        "query": discovery_query,
+                        "status": getattr(getattr(exc, "response", None), "status_code", None),
+                        "error": f"{type(exc).__name__}: {exc}",
+                    })
+                    continue
+                found = extract_candidates_from_html(response.text, discovery_query)
+                for candidate in found:
+                    candidate = _rank_candidate_for_original_query(candidate, query)
+                    old = candidates.get(candidate["url"])
+                    if old is None or candidate["score"] > old["score"]:
+                        candidates[candidate["url"]] = candidate
                 pages.append({
                     "url": url,
-                    "status": getattr(getattr(exc, "response", None), "status_code", None),
-                    "error": f"{type(exc).__name__}: {exc}",
+                    "query": discovery_query,
+                    "final_url": response.url,
+                    "status": response.status_code,
+                    "html_length": len(response.text or ""),
+                    "candidate_count": len(found),
+                    "cloudflare": _is_challenge(response.text),
+                    "source": "direct",
                 })
-                continue
-            found = extract_candidates_from_html(response.text, query)
-            for candidate in found:
-                old = candidates.get(candidate["url"])
-                if old is None or candidate["score"] > old["score"]:
-                    candidates[candidate["url"]] = candidate
-            pages.append({
-                "url": url,
-                "final_url": response.url,
-                "status": response.status_code,
-                "html_length": len(response.text or ""),
-                "candidate_count": len(found),
-                "cloudflare": _is_challenge(response.text),
-                "source": "direct",
-            })
 
         ordered = sorted(
             candidates.values(),
-            key=lambda x: (not x["contains_all_query_tokens"], -x["score"], x["url"]),
+            key=lambda x: (
+                not x.get("original_query_matches", False),
+                not x.get("original_query_exact_phrase", False),
+                -x["score"],
+                x["url"],
+            ),
         )
         if ordered:
             return ordered, {
                 "query": query,
+                "discovery_queries": discovery_queries,
                 "search_urls": _search_urls(query),
                 "pages": pages,
                 "raw_product_urls": len(ordered),
                 "candidate_urls": len(ordered),
-                "raw_query_token_hits": [x for x in ordered if x["contains_all_query_tokens"]],
+                "raw_query_token_hits": [x for x in ordered if x.get("original_query_matches", False)],
                 "fallback": None,
             }
 
@@ -644,6 +716,7 @@ def _search_http_candidates(
     finally:
         if own:
             session.close()
+
 
 
 def _json_ld_products(soup: BeautifulSoup) -> Iterable[Dict[str, Any]]:
