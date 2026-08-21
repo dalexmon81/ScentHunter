@@ -183,7 +183,6 @@ def catalog_identity(item: Dict[str, Any]) -> str:
         item,
         "catalog_id",
         "product_identity",
-        "product_id",
         "master_id",
         "item_group_id",
     )
@@ -426,6 +425,8 @@ CREATE VIRTUAL TABLE IF NOT EXISTS products_fts USING fts5(
     family_name,
     aliases,
     concentration,
+    content='products',
+    content_rowid='rowid',
     tokenize='unicode61 remove_diacritics 2'
 );
 """
@@ -461,76 +462,15 @@ class ProductIndex:
         self.close()
 
     def _ensure_fts(self) -> None:
-        """
-        Ensure the FTS table matches the current schema.
-
-        Older prototypes used an external-content FTS table pointing at
-        ``products``. That schema is incompatible because the canonical
-        table stores ``aliases_json`` rather than an ``aliases`` column.
-        If such a legacy table already exists, recreate it automatically.
-        """
-        row = self.connection.execute(
-            "SELECT sql FROM sqlite_master "
-            "WHERE type = 'table' AND name = 'products_fts'"
-        ).fetchone()
-
-        sql = str(row[0] or "") if row else ""
-
-        if "content='products'" in sql or 'content="products"' in sql:
-            self.connection.execute("DROP TABLE IF EXISTS products_fts")
-            self.connection.executescript(
-                """
-                CREATE VIRTUAL TABLE products_fts USING fts5(
-                    product_id UNINDEXED,
-                    brand_name,
-                    family_name,
-                    aliases,
-                    concentration,
-                    tokenize='unicode61 remove_diacritics 2'
-                );
-                """
-            )
-            self.connection.commit()
-
+        # Rebuild only when the FTS table is empty. The normal upsert path
+        # updates the corresponding FTS row explicitly.
         count = self.connection.execute(
             "SELECT COUNT(*) FROM products_fts"
         ).fetchone()[0]
-
         if count == 0:
-            rows = self.connection.execute(
-                """
-                SELECT
-                    product_id,
-                    brand_name,
-                    family_name,
-                    aliases_json,
-                    concentration
-                FROM products
-                """
-            ).fetchall()
-
-            for row in rows:
-                aliases = json.loads(row["aliases_json"] or "[]")
-                self.connection.execute(
-                    """
-                    INSERT INTO products_fts(
-                        product_id,
-                        brand_name,
-                        family_name,
-                        aliases,
-                        concentration
-                    )
-                    VALUES (?, ?, ?, ?, ?)
-                    """,
-                    (
-                        row["product_id"],
-                        row["brand_name"],
-                        row["family_name"],
-                        " ".join(aliases),
-                        row["concentration"] or "",
-                    ),
-                )
-
+            self.connection.execute(
+                "INSERT INTO products_fts(products_fts) VALUES('rebuild')"
+            )
             self.connection.commit()
 
     def _upsert_product(
