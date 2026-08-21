@@ -567,8 +567,10 @@ def _reader_candidates(text: str, query: str) -> List[Dict[str, Any]]:
                 if brand_relevant and _fuzzy_query_match(branded_name, query)[0]:
                     name = branded_name
 
-            if not name or not _fuzzy_query_match(name, query)[0]:
-                continue
+            # Keep URLs discovered from structured brand/catalog pages even
+            # when the short card text does not satisfy the query fuzzy match.
+            # The product page is still validated later by the generic product
+            # type/name/format filters.
             if _has_non_perfume_marker_in_product(name, url, anchor):
                 continue
 
