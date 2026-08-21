@@ -1724,6 +1724,75 @@ def index_stats():
 
 
 
+@app.get("/index-products")
+def index_products(limit: int = 20):
+    """
+    Diagnostic endpoint for the persistent local index.
+
+    Returns canonical products currently stored in the same SQLite database
+    used by the local-first search. No live scraper is called.
+    """
+    if ProductIndex is None:
+        return {
+            "ok": False,
+            "error": "ProductIndex non disponibile",
+        }
+
+    db_path = _local_index_path()
+
+    if not db_path.exists():
+        return {
+            "ok": True,
+            "exists": False,
+            "path": str(db_path),
+            "products": [],
+        }
+
+    try:
+        with ProductIndex(db_path) as index:
+            rows = index.connection.execute(
+                """
+                SELECT
+                    product_id,
+                    brand_name,
+                    family_name,
+                    concentration,
+                    gender,
+                    aliases_json,
+                    updated_at
+                FROM products
+                ORDER BY brand_name, family_name
+                LIMIT ?
+                """,
+                (max(1, min(int(limit), 100)),),
+            ).fetchall()
+
+            products = []
+            for row in rows:
+                item = dict(row)
+                item["aliases"] = json.loads(
+                    item.pop("aliases_json") or "[]"
+                )
+                products.append(item)
+
+            return {
+                "ok": True,
+                "exists": True,
+                "path": str(db_path),
+                "stats": index.stats(),
+                "products": products,
+            }
+
+    except Exception as error:
+        traceback.print_exc()
+        return {
+            "ok": False,
+            "path": str(db_path),
+            "error": f"{type(error).__name__}: {error}",
+            "traceback": traceback.format_exc(),
+        }
+
+
 @app.get("/test-local-search")
 def test_local_search(q: str):
     query = str(q or "").strip()
