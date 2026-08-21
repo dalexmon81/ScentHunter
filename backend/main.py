@@ -121,7 +121,7 @@ IGNORED_WORDS = {
     "by",
 }
 
-GLOBAL_SEARCH_TIMEOUT = 8
+GLOBAL_SEARCH_TIMEOUT = 12
 DATABASE_URL = os.getenv("DATABASE_URL", "").strip()
 
 # Local index is checked first. The live search remains the generic fallback
