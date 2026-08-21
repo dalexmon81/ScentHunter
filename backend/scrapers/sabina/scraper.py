@@ -286,407 +286,6 @@ def first_jsonld_product(soup):
     return None
 
 
-def meta_content(soup, *selectors):
-    for selector in selectors:
-        node = soup.select_one(selector)
-        if not node:
-            continue
-
-        value = (
-            node.get("content")
-            or node.get("value")
-            or node.get_text(" ", strip=True)
-        )
-
-        value = clean(value)
-        if value:
-            return value
-
-    return None
-
-
-def extract_price_from_html(soup):
-    """
-    Generic fallback for pages where Sabina does not expose Product JSON-LD.
-
-    Priority:
-    1. Product price metadata / itemprop.
-    2. Current-price DOM elements.
-    3. Visible product-price text.
-
-    Deliberately avoids "regular/old/original price" labels so a struck-through
-    reference price is never selected as the live offer price.
-    """
-    direct = meta_content(
-        soup,
-        'meta[itemprop="price"]',
-        'meta[property="product:price:amount"]',
-        'meta[name="product:price:amount"]',
-    )
-
-    if direct:
-        value = money_to_float(direct)
-        if value is not None:
-            return value, "sabina_html_price"
-
-    for selector in (
-        '[itemprop="price"]',
-        '.current-price',
-        '.product-price',
-        '.current_product_price',
-        '.product-current-price',
-        '[class*="current-price"]',
-        '[class*="product-price"]',
-        '[class*="sale-price"]',
-    ):
-        for node in soup.select(selector):
-            classes = " ".join(node.get("class", []))
-            marker_text = norm(
-                f"{classes} {node.get_text(' ', strip=True)}"
-            )
-
-            if any(
-                bad in marker_text
-                for bad in (
-                    "regular price",
-                    "old price",
-                    "original price",
-                    "precio habitual",
-                    "precio anterior",
-                    "prix habituel",
-                    "prix avant",
-                    "normalpreis",
-                    "streichpreis",
-                    "uvp",
-                )
-            ):
-                continue
-
-            raw = (
-                node.get("content")
-                or node.get("value")
-                or node.get_text(" ", strip=True)
-            )
-
-            value = money_to_float(raw)
-            if value is not None:
-                return value, "sabina_html_price"
-
-    # Last fallback: inspect only the main product area, not related products.
-    containers = soup.select(
-        "main, #main, .product-container, .product-information, "
-        ".product-detail, .product-page"
-    )
-
-    seen = set()
-    for container in containers:
-        key = id(container)
-        if key in seen:
-            continue
-        seen.add(key)
-
-        text_value = clean(
-            container.get_text(" ", strip=True)
-        )
-
-        # A labelled current price is safest when it has a separator.
-        labelled = re.search(
-            r"(?:precio|price|prix|preis)\s*[:\-]\s*"
-            r"((?:€|eur|\$|usd|£|gbp)\s*)?"
-            r"([0-9][0-9\s.,]*)\s*"
-            r"(?:€|eur|\$|usd|£|gbp)?",
-            text_value,
-            re.I,
-        )
-
-        if labelled:
-            raw = " ".join(
-                part
-                for part in (
-                    labelled.group(1),
-                    labelled.group(2),
-                )
-                if part
-            )
-            value = money_to_float(raw)
-            if value is not None:
-                return value, "sabina_html_price"
-
-        # Otherwise inspect every currency amount and reject amounts that are
-        # explicitly described as regular/old/original/reference prices.
-        amount_re = re.compile(
-            r"(?:(€|eur|\$|usd|£|gbp)\s*)?"
-            r"([0-9][0-9\s.,]*)\s*"
-            r"(€|eur|\$|usd|£|gbp)?",
-            re.I,
-        )
-
-        for match in amount_re.finditer(text_value):
-            context = norm(
-                text_value[
-                    max(0, match.start() - 60):match.start()
-                ]
-            )
-
-            if any(
-                marker in context
-                for marker in (
-                    "precio habitual",
-                    "precio anterior",
-                    "precio original",
-                    "regular price",
-                    "old price",
-                    "original price",
-                    "prix habituel",
-                    "prix avant",
-                    "normalpreis",
-                    "streichpreis",
-                    "uvp",
-                )
-            ):
-                continue
-
-            raw = " ".join(
-                part
-                for part in (
-                    match.group(1),
-                    match.group(2),
-                    match.group(3),
-                )
-                if part
-            )
-            value = money_to_float(raw)
-            if value is not None:
-                return value, "sabina_html_price"
-
-    return None, None
-
-
-def extract_size_ml_from_product_page(soup, title=""):
-    """
-    Read the selected product size from product-specific fields.
-
-    The whole page is never used as the primary source because related-product
-    cards can contain different bottle sizes.
-    """
-    # Strong structured sources first.
-    for selector in (
-        '[itemprop="size"]',
-        '[itemprop="volume"]',
-        '[data-product-size]',
-        '[data-size]',
-        'input[name*="size" i][checked]',
-        'input[name*="size" i][selected]',
-        'option[selected]',
-    ):
-        for node in soup.select(selector):
-            raw = (
-                node.get("content")
-                or node.get("value")
-                or node.get("data-product-size")
-                or node.get("data-size")
-                or node.get_text(" ", strip=True)
-            )
-            value = extract_size_ml(raw)
-            if value is not None:
-                return value, "product_page"
-
-    # Product variant / information areas.
-    selectors = (
-        ".product-variants",
-        ".product-attributes",
-        ".product-information",
-        ".product-detail",
-        ".product-actions",
-        ".product-combination",
-        "[class*='product-variant']",
-        "[class*='product-attribute']",
-        "[class*='product-size']",
-        "[class*='product-volume']",
-        "main",
-    )
-
-    labels = (
-        "tamaño", "tamano", "size", "taille", "grösse", "grosse",
-        "größe", "volume", "formato", "ml",
-    )
-
-    for selector in selectors:
-        for node in soup.select(selector):
-            raw = clean(
-                node.get_text(" ", strip=True)
-            )
-            if not raw:
-                continue
-
-            normalized = norm(raw)
-            if not any(label in normalized for label in labels):
-                continue
-
-            value = extract_size_ml(raw)
-            if value is not None:
-                return value, "product_page"
-
-    # Some product pages put the selected size directly in the title.
-    value = extract_size_ml(title)
-    if value is not None:
-        return value, "product_text"
-
-    return None, None
-
-
-def availability_from_product_page(soup, jsonld_offer=None):
-    """
-    Determine availability without treating a generic "availability date"
-    label as proof of stock.
-
-    Explicit stock data wins. Otherwise, purchase controls are considered.
-    A notification/availability-date block is treated as out of stock only
-    when no purchase control is available.
-    """
-    if isinstance(jsonld_offer, dict):
-        raw = clean(
-            jsonld_offer.get("availability")
-        ).lower()
-
-        if "instock" in raw:
-            return "in_stock", "sabina_jsonld"
-
-        if any(
-            token in raw
-            for token in (
-                "outofstock",
-                "soldout",
-                "unavailable",
-            )
-        ):
-            return "out_of_stock", "sabina_jsonld"
-
-        if "preorder" in raw:
-            return "preorder", "sabina_jsonld"
-
-    # Structured DOM availability.
-    for selector in (
-        '[itemprop="availability"]',
-        '[data-availability]',
-        '[data-stock-status]',
-        '[data-product-availability]',
-    ):
-        for node in soup.select(selector):
-            raw = " ".join(
-                str(node.get(attr, ""))
-                for attr in (
-                    "content",
-                    "href",
-                    "data-availability",
-                    "data-stock-status",
-                    "data-product-availability",
-                )
-            )
-            raw = clean(
-                f"{raw} {node.get_text(' ', strip=True)}"
-            ).lower()
-
-            if "instock" in raw or "in stock" in raw:
-                return "in_stock", "sabina_html_availability"
-
-            if any(
-                token in raw
-                for token in (
-                    "outofstock",
-                    "out of stock",
-                    "soldout",
-                    "sold out",
-                    "unavailable",
-                )
-            ):
-                return "out_of_stock", "sabina_html_availability"
-
-    page_text = norm(
-        soup.get_text(" ", strip=True)
-    )
-
-    # Purchase controls are stronger evidence than generic labels.
-    purchase_nodes = soup.select(
-        'button, input[type="submit"], input[type="button"], a'
-    )
-
-    has_purchase = False
-    has_disabled_purchase = False
-
-    purchase_words = (
-        "añadir al carrito", "agregar al carrito", "comprar",
-        "add to cart", "add-to-cart", "buy now",
-        "ajouter au panier", "acheter",
-        "in den warenkorb", "jetzt kaufen",
-        "acquista", "aggiungi al carrello",
-    )
-
-    for node in purchase_nodes:
-        raw = norm(
-            " ".join(
-                [
-                    node.get_text(" ", strip=True),
-                    node.get("value", ""),
-                    node.get("aria-label", ""),
-                    node.get("title", ""),
-                    " ".join(node.get("class", [])),
-                ]
-            )
-        )
-
-        if not any(word in raw for word in purchase_words):
-            continue
-
-        disabled = (
-            node.has_attr("disabled")
-            or str(node.get("aria-disabled", "")).lower() == "true"
-            or "disabled" in node.get("class", [])
-        )
-
-        if disabled:
-            has_disabled_purchase = True
-        else:
-            has_purchase = True
-
-    if has_purchase:
-        return "in_stock", "sabina_purchase_control"
-
-    if has_disabled_purchase:
-        return "out_of_stock", "sabina_purchase_control"
-
-    # Notification/availability-date is only a fallback when no purchase
-    # control exists. This avoids false out-of-stock results from a generic
-    # label that can be rendered on otherwise purchasable pages.
-    notify_markers = tuple(
-        norm(marker)
-        for marker in (
-            "avísame", "avísame cuando esté disponible",
-            "notificarme", "notify me", "let me know",
-            "prévenez-moi", "me prévenir",
-            "benachrichtigen", "sag mir bescheid",
-        )
-    )
-
-    date_markers = tuple(
-        norm(marker)
-        for marker in (
-            "fecha de disponibilidad",
-            "availability date",
-            "date de disponibilité",
-            "verfügbarkeitsdatum",
-        )
-    )
-
-    if (
-        any(marker in page_text for marker in notify_markers)
-        and any(marker in page_text for marker in date_markers)
-    ):
-        return "out_of_stock", "sabina_notification_block"
-
-    return "unknown", "sabina_html_availability"
-
-
 def discover_product_urls(session, query):
     """
     The only primary discovery path used by the real scraper.
@@ -768,6 +367,73 @@ def discover_product_urls(session, query):
     return urls[:MAX_CANDIDATES]
 
 
+def _offer_list(product):
+    offers = product.get("offers") if isinstance(product, dict) else None
+    if isinstance(offers, dict):
+        return [offers]
+    if isinstance(offers, list):
+        return [offer for offer in offers if isinstance(offer, dict)]
+    return []
+
+
+def _offer_size(offer, product):
+    parts = []
+    for value in (
+        offer.get("name"),
+        offer.get("description"),
+        offer.get("sku"),
+        offer.get("url"),
+        product.get("name"),
+        product.get("description"),
+        product.get("sku"),
+    ):
+        if value:
+            parts.append(str(value))
+    return extract_size_ml(" ".join(parts))
+
+
+def _select_product_offer(product, final_url, title, size_ml):
+    offers = _offer_list(product)
+
+    if not offers:
+        return None
+
+    # Prefer the offer whose URL/name identifies the same product page.
+    same_product = []
+    for offer in offers:
+        offer_url = normalise_url(offer.get("url"))
+        offer_name = clean(offer.get("name"))
+        if offer_url == final_url:
+            same_product.append(offer)
+        elif offer_name and query_matches(
+            f"{offer_name} {title}", title
+        ):
+            same_product.append(offer)
+
+    candidates = same_product or offers
+
+    # If the offer itself declares a bottle size, it must match the
+    # selected product size. Never take an unrelated variant's price.
+    if size_ml is not None:
+        sized = [
+            offer for offer in candidates
+            if _offer_size(offer, product) is not None
+            and abs(_offer_size(offer, product) - size_ml) < 0.01
+        ]
+        if sized:
+            candidates = sized
+        elif any(_offer_size(offer, product) is not None for offer in candidates):
+            return None
+
+    # Prefer an offer with a real price and otherwise keep the first
+    # product-bound offer.
+    priced = [
+        offer for offer in candidates
+        if money_to_float(offer.get("price")) is not None
+    ]
+    return priced[0] if priced else candidates[0]
+
+
 def extract_product_page(session, url, query):
     try:
         response = session.get(
@@ -809,16 +475,11 @@ def extract_product_page(session, url, query):
     if not title:
         return None
 
-    # Validation is deliberately generic and based on the real product
-    # identity, not on search-card text.
     brand = None
     raw_brand = (product or {}).get("brand")
 
     if isinstance(raw_brand, dict):
-        brand = clean(
-            raw_brand.get("name")
-        ) or None
-
+        brand = clean(raw_brand.get("name")) or None
     elif raw_brand:
         brand = clean(raw_brand)
 
@@ -828,46 +489,41 @@ def extract_product_page(session, url, query):
     ):
         return None
 
-    offers = (product or {}).get("offers")
-
-    if isinstance(offers, list):
-        offer = offers[0] if offers else {}
-
-    elif isinstance(offers, dict):
-        offer = offers
-
-    else:
-        offer = {}
-
-    price = money_to_float(
-        offer.get("price")
+    # Determine the product size from product-specific areas first.
+    size_ml, size_source = extract_size_ml_from_product_page(
+        soup,
+        title,
     )
 
-    price_source = (
-        "sabina_jsonld"
-        if price is not None
+    # Select price from the offer belonging to this exact product/format.
+    offer = _select_product_offer(
+        product or {},
+        final_url,
+        title,
+        size_ml,
+    )
+
+    price = (
+        money_to_float(offer.get("price"))
+        if isinstance(offer, dict)
         else None
     )
+    price_source = "sabina_jsonld"
 
+    # If JSON-LD has no usable price, use the product-page HTML fallback.
+    # This fallback deliberately ignores struck-through/reference prices.
     if price is None:
-        price, price_source = extract_price_from_html(
-            soup
-        )
+        price, price_source = extract_price_from_html(soup)
 
-    currency = clean(
-        offer.get("priceCurrency")
-    ) or meta_content(
-        soup,
-        'meta[itemprop="priceCurrency"]',
-        'meta[property="product:price:currency"]',
-        'meta[name="currency"]',
+    currency = (
+        clean(offer.get("priceCurrency"))
+        if isinstance(offer, dict)
+        else ""
     ) or "EUR"
 
-    availability, availability_source = (
-        availability_from_product_page(
-            soup,
-            offer,
-        )
+    availability, availability_source = availability_from_product_page(
+        soup,
+        offer,
     )
 
     image = (product or {}).get("image")
@@ -920,15 +576,6 @@ def extract_product_page(session, url, query):
 
     product_id = product_id_from_url(
         final_url
-    )
-
-    # The product title comes from the verified Product JSON-LD / H1.
-    # Do not scan the whole page: related products can contain other sizes.
-    size_ml, size_source = (
-        extract_size_ml_from_product_page(
-            soup,
-            title,
-        )
     )
 
     concentration, concentration_source = (
@@ -1068,11 +715,7 @@ def extract_product_page(session, url, query):
                 if mpn
                 else None
             ),
-            "size_ml": (
-                size_source
-                if size_ml is not None
-                else None
-            ),
+            "size_ml": size_source,
             "concentration": concentration_source,
             "gender": gender_source,
             "packaging_type": "default",
@@ -1084,7 +727,6 @@ def extract_product_page(session, url, query):
             "jsonld_product": product,
         },
 
-        # Backward-compatible fields expected by main.py.
         "name": title,
         "brand": brand,
         "price": (
@@ -1094,15 +736,14 @@ def extract_product_page(session, url, query):
             else ""
         ),
         "url": final_url,
-        # Tri-state availability: unknown must NOT become False/OOS.
-        # False is reserved for an explicit out_of_stock result.
+        # Unknown is intentionally not converted to false.
+        # The main backend must not interpret missing evidence as OOS.
         "available": (
             True if availability == "in_stock"
             else False if availability == "out_of_stock"
             else None
         ),
     }
-
 
 def search(query):
     query = clean(query)
