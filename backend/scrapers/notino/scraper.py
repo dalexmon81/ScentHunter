@@ -16,7 +16,7 @@ SEARCH_URL = BASE_URL + "/search.asp"
 READER_BASE = "https://r.jina.ai/"
 TIMEOUT = 20
 READER_TIMEOUT = 12
-SCRAPER_VERSION = "notino-FR-generic-discovery-2026-08-21-v7-ranked-candidate-limit"
+SCRAPER_VERSION = "notino-FR-generic-discovery-2026-08-21-v7.1-reader-discovery-restored"
 
 HEADERS = {
     "User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
@@ -441,6 +441,78 @@ def _rank_candidates_for_product_lookup(candidates: List[Dict[str, Any]], limit:
     )
     exact = [x for x in ordered if x.get("contains_all_query_tokens")]
     return (exact if exact else ordered)[:limit]
+
+
+def _reader_discovery(query: str, session: requests.Session) -> Tuple[List[Dict[str, Any]], Dict[str, Any]]:
+    """Discover product URLs through Jina Reader when direct search is blocked.
+
+    Discovery is generic: it searches the original query plus token-oriented
+    variants, reads each Notino search page through Jina, extracts every
+    product URL it can find, and lets _reader_candidates perform the generic
+    name/fuzzy filtering.
+    """
+    query = _clean(query)
+    tokens = _query_tokens(query)
+    variants: List[str] = []
+    for value in (query, " ".join(reversed(tokens)), *tokens):
+        value = _clean(value)
+        if value and value not in variants:
+            variants.append(value)
+
+    pages: List[Dict[str, Any]] = []
+    candidates: Dict[str, Dict[str, Any]] = {}
+
+    for variant in variants:
+        for url in _search_urls(variant):
+            reader_url = READER_BASE + url
+            try:
+                response = session.get(
+                    reader_url,
+                    headers=READER_HEADERS,
+                    timeout=READER_TIMEOUT,
+                    allow_redirects=True,
+                )
+                response.raise_for_status()
+            except requests.RequestException as exc:
+                pages.append({
+                    "url": url,
+                    "query": variant,
+                    "reader_url": reader_url,
+                    "status": getattr(getattr(exc, "response", None), "status_code", None),
+                    "error": f"{type(exc).__name__}: {exc}",
+                })
+                continue
+
+            found = _reader_candidates(response.text or "", query)
+            for candidate in found:
+                old = candidates.get(candidate["url"])
+                if old is None or candidate["score"] > old["score"]:
+                    candidates[candidate["url"]] = candidate
+
+            pages.append({
+                "url": url,
+                "query": variant,
+                "reader_url": reader_url,
+                "status": response.status_code,
+                "html_length": len(response.text or ""),
+                "candidate_count": len(found),
+                "reader": True,
+            })
+
+    ordered = sorted(
+        candidates.values(),
+        key=lambda x: (not x["contains_all_query_tokens"], -x["score"], x["url"]),
+    )
+    return ordered, {
+        "query": query,
+        "discovery_queries": variants,
+        "search_urls": _search_urls(query),
+        "pages": pages,
+        "raw_product_urls": len(ordered),
+        "candidate_urls": len(ordered),
+        "raw_query_token_hits": [x for x in ordered if x["contains_all_query_tokens"]],
+        "fallback": "jina-reader",
+    }
 
 
 def _search_http_candidates(
