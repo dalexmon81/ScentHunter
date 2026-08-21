@@ -308,16 +308,33 @@ def meta_content(soup, *selectors):
 
 def extract_price_from_html(soup):
     """
-    Generic fallback for pages where Sabina does not expose Product JSON-LD.
+    Generic Sabina product-price extraction.
 
     Priority:
-    1. Product price metadata / itemprop.
-    2. Current-price DOM elements.
-    3. Visible product-price text.
+    1. Explicit live product price labelled "Precio:" (or equivalent).
+    2. Product price metadata.
+    3. Current-price DOM elements.
+    4. Product-area currency fallback.
 
-    Deliberately avoids "regular/old/original price" labels so a struck-through
-    reference price is never selected as the live offer price.
+    The explicit live-price label is evaluated before generic price classes
+    because Sabina can expose stale/hidden variant prices in those elements.
     """
+    # First: explicit live price in the product page text.
+    # The first occurrence belongs to the product block, before related items.
+    page_text = clean(soup.get_text(" ", strip=True))
+    live_price = re.search(
+        r"\b(?:precio|price|prix|preis)\s*[:\-]\s*"
+        r"(?:(?:€|eur|\$|usd|£|gbp)\s*)?"
+        r"([0-9][0-9\s.,]*)\s*"
+        r"(?:€|eur|\$|usd|£|gbp)?",
+        page_text,
+        re.I,
+    )
+    if live_price:
+        value = money_to_float(live_price.group(1))
+        if value is not None:
+            return value, "sabina_html_price"
+
     direct = meta_content(
         soup,
         'meta[itemprop="price"]',
@@ -373,7 +390,6 @@ def extract_price_from_html(soup):
             if value is not None:
                 return value, "sabina_html_price"
 
-    # Last fallback: inspect only the main product area, not related products.
     containers = soup.select(
         "main, #main, .product-container, .product-information, "
         ".product-detail, .product-page"
@@ -390,46 +406,6 @@ def extract_price_from_html(soup):
             container.get_text(" ", strip=True)
         )
 
-        # A labelled current price is safest when it has a separator.
-        labelled = re.search(
-            r"(?:precio|price|prix|preis)\s*[:\-]\s*"
-            r"((?:€|eur|\$|usd|£|gbp)\s*)?"
-            r"([0-9][0-9\s.,]*)\s*"
-            r"(?:€|eur|\$|usd|£|gbp)?",
-            text_value,
-            re.I,
-        )
-
-        if labelled:
-            raw = " ".join(
-                part
-                for part in (
-                    labelled.group(1),
-                    labelled.group(2),
-                )
-                if part
-            )
-            value = money_to_float(raw)
-            if value is not None:
-                return value, "sabina_html_price"
-
-        # Strong generic fallback: Sabina exposes the live product price as
-        # "Precio: XX €". This must be preferred over "Precio habitual".
-        current_price = re.search(
-            r"\\b(?:precio|price|prix|preis)\\s*[:\\-]\\s*"
-            r"(?:(?:€|eur|\\$|usd|£|gbp)\\s*)?"
-            r"([0-9][0-9\\s.,]*)\\s*"
-            r"(?:€|eur|\\$|usd|£|gbp)?",
-            text_value,
-            re.I,
-        )
-        if current_price:
-            value = money_to_float(current_price.group(1))
-            if value is not None:
-                return value, "sabina_html_price"
-
-        # Otherwise inspect every currency amount and reject amounts that are
-        # explicitly described as regular/old/original/reference prices.
         amount_re = re.compile(
             r"(?:(€|eur|\$|usd|£|gbp)\s*)?"
             r"([0-9][0-9\s.,]*)\s*"
@@ -477,15 +453,31 @@ def extract_price_from_html(soup):
 
     return None, None
 
-
 def extract_size_ml_from_product_page(soup, title=""):
     """
-    Read the selected product size from product-specific fields.
+    Read the selected product size from product-specific content.
 
-    The whole page is never used as the primary source because related-product
-    cards can contain different bottle sizes.
+    Sabina exposes the selected variant as plain text such as
+    "Tamaño: 150 ML". This labelled product value is preferred before
+    broader DOM selectors so related-product cards cannot supply the size.
     """
-    # Strong structured sources first.
+    page_text = clean(soup.get_text(" ", strip=True))
+
+    # The first labelled product size occurs in the product block, before
+    # related-product cards. No product-specific names or IDs are used.
+    labelled_size = re.search(
+        r"\b(?:tama(?:ñ|n)o|size|taille|formato|volume)\s*"
+        r"[:\-]?\s*(\d+(?:[.,]\d+)?)\s*"
+        r"(?:ml|millilitros?|milliliters?)\b",
+        page_text,
+        re.I,
+    )
+
+    if labelled_size:
+        value = extract_size_ml(labelled_size.group(0))
+        if value is not None:
+            return value, "product_page"
+
     for selector in (
         '[itemprop="size"]',
         '[itemprop="volume"]',
@@ -507,7 +499,6 @@ def extract_size_ml_from_product_page(soup, title=""):
             if value is not None:
                 return value, "product_page"
 
-    # Product variant / information areas.
     selectors = (
         ".product-variants",
         ".product-attributes",
@@ -522,11 +513,6 @@ def extract_size_ml_from_product_page(soup, title=""):
         "main",
     )
 
-    labels = (
-        "tamaño", "tamano", "size", "taille", "grösse", "grosse",
-        "größe", "volume", "formato", "ml",
-    )
-
     for selector in selectors:
         for node in soup.select(selector):
             raw = clean(
@@ -535,38 +521,15 @@ def extract_size_ml_from_product_page(soup, title=""):
             if not raw:
                 continue
 
-            normalized = norm(raw)
-            if not any(label in normalized for label in labels):
-                continue
-
             value = extract_size_ml(raw)
             if value is not None:
                 return value, "product_page"
 
-    # Generic labelled product-size fallback. Sabina can expose the selected
-    # variant as plain product-page text (e.g. "Tamaño: 150 ML") without
-    # itemprop/data attributes. Use the first labelled size in the document;
-    # this occurs in the product block before related-product cards.
-    page_text = clean(soup.get_text(" ", strip=True))
-    labelled_size = re.search(
-        r"\\b(?:tama(?:ñ|n)o|size|taille|formato|volume)\\s*"
-        r"[:\\-]?\\s*(\\d+(?:[.,]\\d+)?)\\s*"
-        r"(?:ml|millilitros?|milliliters?)\\b",
-        page_text,
-        re.I,
-    )
-    if labelled_size:
-        value = extract_size_ml(labelled_size.group(0))
-        if value is not None:
-            return value, "product_page"
-
-    # Some product pages put the selected size directly in the title.
     value = extract_size_ml(title)
     if value is not None:
         return value, "product_text"
 
     return None, None
-
 
 def availability_from_product_page(soup, jsonld_offer=None):
     """
