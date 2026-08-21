@@ -1798,8 +1798,7 @@ function openProduct(i){
       <div class="comparison-head">
         <div class="result-image">${img?`<img src="${esc(img)}" alt="${esc(displayPerfumeName(g.name,g.brand,g.concentration))}" onerror="this.outerHTML='🧴'">`:"🧴"}</div>
         <div class="result-main">
-          <div class="store">${esc(g.brand||"")}</div>
-          <div class="name">${esc(displayPerfumeName(g.name,g.brand,g.concentration))}</div>
+          <div class="name">${esc(g.brand ? g.brand+" - "+displayPerfumeName(g.name,g.brand,g.concentration) : displayPerfumeName(g.name,g.brand,g.concentration))}</div>
         </div>
       </div>
 <div class="format-compare-bar">
@@ -1867,8 +1866,7 @@ function openProduct(i){
     <div class="comparison-head">
       <div class="result-image">${img?`<img src="${esc(img)}" alt="${esc(displayPerfumeName(g.name,g.brand,g.concentration))}" onerror="this.outerHTML='🧴'">`:"🧴"}</div>
       <div class="result-main">
-        <div class="store">${esc(g.brand||"")}</div>
-        <div class="name">${esc(displayPerfumeName(g.name,g.brand,g.concentration))}</div>
+        <div class="name">${esc(g.brand ? g.brand+" - "+displayPerfumeName(g.name,g.brand,g.concentration) : displayPerfumeName(g.name,g.brand,g.concentration))}</div>
       </div>
     </div>
     <div class="bestlabel">SCEGLI IL FORMATO</div>
@@ -1907,8 +1905,7 @@ function openSize(gi,sizeKey,fromFormats=true){
     <div class="comparison-head">
       <div class="result-image">${img?`<img src="${esc(img)}" alt="${esc(displayPerfumeName(g.name,g.brand,g.concentration))}" onerror="this.outerHTML='🧴'">`:"🧴"}</div>
       <div class="result-main">
-        <div class="store">${esc(g.brand||"")}</div>
-        <div class="name">${esc(displayPerfumeName(g.name,g.brand,g.concentration))}</div>
+        <div class="name">${esc(g.brand ? g.brand+" - "+displayPerfumeName(g.name,g.brand,g.concentration) : displayPerfumeName(g.name,g.brand,g.concentration))}</div>
         ${sizeKey?`<div class="offer-meta">${esc(formatLabel(sizeKey))}</div>`:""}
       </div>
     </div>
