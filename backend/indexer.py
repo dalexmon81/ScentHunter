@@ -33,7 +33,15 @@ from typing import Any, Dict, Iterable, List, Optional, Sequence, Tuple
 
 BASE_DIR = Path(__file__).resolve().parent
 CATALOG_PATH = BASE_DIR / "product_catalog.json"
-DEFAULT_DB_PATH = BASE_DIR / "scenthunter_index.db"
+_VOLUME_MOUNT = os.getenv("RAILWAY_VOLUME_MOUNT_PATH", "").strip()
+_CONFIGURED_INDEX_DB = os.getenv("SCENTHUNTER_INDEX_DB", "").strip()
+
+if _CONFIGURED_INDEX_DB:
+    DEFAULT_DB_PATH = Path(_CONFIGURED_INDEX_DB)
+elif _VOLUME_MOUNT:
+    DEFAULT_DB_PATH = Path(_VOLUME_MOUNT) / "scenthunter_index.db"
+else:
+    DEFAULT_DB_PATH = BASE_DIR / "scenthunter_index.db"
 
 DEFAULT_STORES = (
     "bplatz",
