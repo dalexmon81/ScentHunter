@@ -15,7 +15,7 @@ SEARCH_URL = BASE_URL + "/search.asp"
 READER_BASE = "https://r.jina.ai/"
 TIMEOUT = 20
 READER_TIMEOUT = 12
-SCRAPER_VERSION = "notino-FR-deep-diagnostic-2026-08-21-v7"
+SCRAPER_VERSION = "notino-FR-deep-diagnostic-2026-08-21-v8-generic-name-ranking"
 
 HEADERS = {
     "User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
@@ -369,7 +369,14 @@ def _make_candidate(url: str, anchor: str, card: str, query: str, source: str) -
         return None
     anchor = _clean(anchor)
     card = _clean(card)
-    name = _clean_name(anchor) or _clean_name(card)
+
+    # Prefer the product name encoded in the product URL when it itself
+    # matches the query. Search-card context can contain nearby sponsored
+    # products or another product title, which can otherwise cause a valid
+    # URL to inherit the wrong name. This is deliberately generic.
+    url_name = _name_from_product_url(url)
+    context_name = _clean_name(anchor) or _clean_name(card)
+    name = url_name if url_name and _matches(url_name, query) else context_name
     if not name or _has_non_perfume_marker(name):
         return None
 
@@ -382,6 +389,18 @@ def _make_candidate(url: str, anchor: str, card: str, query: str, source: str) -
     score = sum(hits.values()) * 5
     if all(hits.values()):
         score += 5
+
+    # Prefer the most direct product-name match when several valid products
+    # contain all query tokens. Exact query phrases rank above variant names
+    # and longer extensions, without naming any store/product-specific
+    # exception. A query that explicitly contains the variant terms still
+    # wins because those terms are part of query_tokens.
+    query_phrase = _product_norm(query)
+    name_norm = _product_norm(name)
+    if query_phrase and query_phrase in name_norm:
+        score += 20
+    extra_tokens = max(0, len(set(_query_tokens(name))) - len(set(query_tokens)))
+    score += max(0, 10 - extra_tokens)
 
     search_context = f"{anchor} {card}"
     requested_sizes = _requested_sizes(query)
