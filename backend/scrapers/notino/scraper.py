@@ -973,25 +973,14 @@ def _search_http_candidates(
             candidates.values(),
             key=lambda x: (not x["contains_all_query_tokens"], -x["score"], x["url"]),
         )
-        # Return direct discovery immediately only when it produced at least
-        # one candidate containing every meaningful query token. If direct
-        # search returned only partial matches, continue to the existing
-        # Jina/sitemap fallback instead of accepting an incomplete result set.
-        # This keeps the fast path unchanged for good direct searches while
-        # allowing stricter variant queries to reach the generic fallback.
-        exact_candidates = [
-            x for x in ordered
-            if x.get("contains_all_query_tokens")
-        ]
-
-        if exact_candidates:
+        if ordered:
             return ordered, {
                 "query": query,
                 "search_urls": _search_urls(query),
                 "pages": pages,
                 "raw_product_urls": len(ordered),
                 "candidate_urls": len(ordered),
-                "raw_query_token_hits": exact_candidates,
+                "raw_query_token_hits": [x for x in ordered if x["contains_all_query_tokens"]],
                 "fallback": None,
             }
 
