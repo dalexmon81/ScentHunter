@@ -16,7 +16,7 @@ SEARCH_URL = BASE_URL + "/search.asp"
 READER_BASE = "https://r.jina.ai/"
 TIMEOUT = 20
 READER_TIMEOUT = 12
-SCRAPER_VERSION = "notino-FR-generic-discovery-2026-08-21-v8-generic-reader-name-fuzzy"
+SCRAPER_VERSION = "notino-FR-generic-discovery-2026-08-21-v9-generic-product-type-filter"
 
 HEADERS = {
     "User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
@@ -85,6 +85,32 @@ def _has_non_perfume_marker(value: Any) -> bool:
     )
 
 
+def _has_non_perfume_marker_in_product(
+    name: Any,
+    url: Any = "",
+    title: Any = "",
+) -> bool:
+    """Reject generic non-single-product formats without inspecting prose.
+
+    Notino can expose a set/coffret with a short visible name such as the
+    fragrance name alone. The product URL/title often carries the actual
+    format (for example ``coffret-cadeau`` or ``duo``), so those structured
+    product identifiers are checked together. We deliberately do not inspect
+    the full product-page body because descriptions can mention gift sets
+    without the product itself being a set.
+    """
+    for value in (name, title):
+        if _has_non_perfume_marker(value):
+            return True
+
+    try:
+        path = unquote(urlparse(str(url or "")).path)
+    except Exception:
+        path = str(url or "")
+
+    return _has_non_perfume_marker(path)
+
+
 def _clean(value: Any) -> str:
     text = re.sub(r"\s+", " ", str(value or "")).strip()
     return re.sub(r"([a-zà-ÿ])([A-ZÀ-Ÿ])", r"\1 \2", text)
@@ -106,7 +132,7 @@ def _fuzzy_query_match(name: Any, query: Any) -> Tuple[bool, Dict[str, bool], in
 
     Exact tokens are preferred. A fuzzy token is accepted only when the
     normalized similarity is high enough, which allows minor spelling
-    variants such as Linked/Lynked without creating product-specific rules.
+    minor spelling variants without creating product-specific rules.
     """
     name_tokens = set(_query_tokens(name))
     query_tokens = _query_tokens(query)
@@ -276,7 +302,7 @@ def _make_candidate(url: str, anchor: str, card: str, query: str, source: str) -
     anchor = _clean(anchor)
     card = _clean(card)
     name = _clean_name(anchor) or _clean_name(card)
-    if not name or _has_non_perfume_marker(name):
+    if not name or _has_non_perfume_marker_in_product(name, url, anchor):
         return None
 
     matched, hits, fuzzy_hits = _fuzzy_query_match(name, query)
@@ -490,7 +516,7 @@ def _reader_candidates(text: str, query: str) -> List[Dict[str, Any]]:
 
             if not name or not _fuzzy_query_match(name, query)[0]:
                 continue
-            if _has_non_perfume_marker(name):
+            if _has_non_perfume_marker_in_product(name, url, anchor):
                 continue
 
             candidate = _make_candidate(url, name, anchor or name, query, "reader-markdown")
@@ -526,7 +552,9 @@ def _reader_candidates(text: str, query: str) -> List[Dict[str, Any]]:
             if branded_name and brand_relevant and _fuzzy_query_match(branded_name, query)[0]:
                 name = branded_name
 
-            if _has_non_perfume_marker(name) or not _fuzzy_query_match(name, query)[0]:
+            if _has_non_perfume_marker_in_product(name, url):
+                continue
+            if not _fuzzy_query_match(name, query)[0]:
                 continue
 
             candidate = _make_candidate(url, name, name, query, "reader-url")
@@ -784,7 +812,7 @@ def _reader_product(text: str, candidate: Dict[str, Any], query: str) -> Optiona
 
     if not name:
         name = _clean_name(candidate.get("anchor_text") or candidate.get("card_text", ""))
-    if not name or _has_non_perfume_marker(name):
+    if not name or _has_non_perfume_marker_in_product(name, candidate.get("url", "")):
         return None
 
     matched, _, _ = _fuzzy_query_match(name, query)
@@ -826,7 +854,9 @@ def _card_result(candidate: Dict[str, Any], query: str) -> Optional[Dict[str, An
     anchor = _clean(candidate.get("anchor_text") or "")
     card = _clean(candidate.get("card_text") or "")
     name = _clean_name(anchor)
-    if not name or _has_non_perfume_marker(name):
+    if not name or _has_non_perfume_marker_in_product(
+        name, candidate.get("url", ""), anchor
+    ):
         return None
     matched, _, _ = _fuzzy_query_match(name, query)
     if not matched:
@@ -858,6 +888,10 @@ def _product_details(
             return _card_result(candidate, query)
 
     final_url = response.url.split("?")[0]
+    if _has_non_perfume_marker_in_product(
+        candidate.get("name", ""), final_url
+    ):
+        return None
     if _is_challenge(response.text) or not _looks_like_product_url(final_url):
         try:
             return (
@@ -899,6 +933,10 @@ def _product_details(
                 name = candidate_name
     if not name:
         return _card_result(candidate, query)
+
+    page_title = _clean(title.get_text(" ", strip=True)) if title else ""
+    if _has_non_perfume_marker_in_product(name, final_url, page_title):
+        return None
 
     if not price:
         m = re.search(r"prix\s+actuel\s+(\d{1,4}[.,]\d{2})\s*€", page_text, re.I)
