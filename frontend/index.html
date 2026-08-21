@@ -744,6 +744,15 @@ function shNum(o){
 function shGroupData(data){
   const raw=[];
 
+  /*
+   * La risposta centrale può contenere lo stesso prodotto sia in
+   * `comparisons` sia in `results`. `results` contiene l'offerta diretta
+   * restituita dallo scraper e va quindi preferita quando le due fonti
+   * descrivono la stessa offerta. In particolare, non dobbiamo conservare
+   * prezzo da una fonte e URL dall'altra.
+   *
+   * Questo è volutamente generico: vale per qualsiasi negozio/prodotto.
+   */
   (Array.isArray(data.comparisons)?data.comparisons:[]).forEach(g=>{
     (Array.isArray(g.offers)?g.offers:[]).forEach(o=>{
       raw.push({...o,
@@ -755,11 +764,15 @@ function shGroupData(data){
         _source_name:o.name||g.name||"",
         _source_brand:o.brand||g.brand||"",
         _source_url:o.url||"",
-        _source_store:o.store||""
+        _source_store:o.store||"",
+        _source_priority:1
       });
     });
   });
-  (Array.isArray(data.results)?data.results:[]).forEach(o=>raw.push({...o}));
+  (Array.isArray(data.results)?data.results:[]).forEach(o=>raw.push({
+    ...o,
+    _source_priority:2
+  }));
 
   /*
    * La classificazione profumo/non-profumo viene fatta una sola volta
@@ -1437,20 +1450,51 @@ function shGroupData(data){
     if(size)normalizedOffer.size_ml=size;
 
     const store=String(o.store||"").trim().toLowerCase();
-    const url=String(o.url||"").split("?")[0].toLowerCase();
     const offerSize=size||"unknown";
     const offerName=norm(id.name);
 
+    /*
+     * Deduplica per stessa offerta commerciale, NON per URL.
+     * Lo stesso prodotto/negozio può arrivare due volte con URL diversi
+     * (`comparisons` + `results`). Se usassimo l'URL nella chiave, le due
+     * copie sopravviverebbero e la fase successiva potrebbe associare il
+     * prezzo corretto all'URL sbagliato.
+     *
+     * Priorità:
+     *   2 = results, cioè offerta diretta dello scraper
+     *   1 = comparisons, dato aggregato della risposta centrale
+     *
+     * Se esiste una copia diretta in `results`, usiamo quella come offerta
+     * completa. Se la copia diretta non contiene qualche campo, manteniamo
+     * il valore utile già presente nell'altra copia.
+     */
     const existingIndex=g.offers.findIndex(x=>{
       const xs=String(x.store||"").trim().toLowerCase();
-      const xu=String(x.url||"").split("?")[0].toLowerCase();
       const xsize=sizeOf(x)||"unknown";
       const xn=norm(x.name||"");
-      return xs===store&&xu===url&&xsize===offerSize&&xn===offerName;
+      return xs===store&&xsize===offerSize&&xn===offerName;
     });
 
     if(existingIndex>=0){
-      if(shNum(normalizedOffer)<shNum(g.offers[existingIndex]))g.offers[existingIndex]=normalizedOffer;
+      const existing=g.offers[existingIndex];
+      const newPriority=Number(normalizedOffer._source_priority||0);
+      const oldPriority=Number(existing._source_priority||0);
+
+      if(newPriority>oldPriority){
+        g.offers[existingIndex]={
+          ...existing,
+          ...normalizedOffer,
+          url:normalizedOffer.url||existing.url||"",
+          price:normalizedOffer.price!=null&&String(normalizedOffer.price).trim()!==""
+            ?normalizedOffer.price
+            :existing.price,
+          price_value:normalizedOffer.price_value!=null
+            ?normalizedOffer.price_value
+            :existing.price_value
+        };
+      }else if(newPriority===oldPriority && shNum(normalizedOffer)<shNum(existing)){
+        g.offers[existingIndex]=normalizedOffer;
+      }
     }else{
       g.offers.push(normalizedOffer);
     }
