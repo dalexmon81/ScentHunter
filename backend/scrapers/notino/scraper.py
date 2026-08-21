@@ -16,7 +16,7 @@ SEARCH_URL = BASE_URL + "/search.asp"
 READER_BASE = "https://r.jina.ai/"
 TIMEOUT = 20
 READER_TIMEOUT = 12
-SCRAPER_VERSION = "notino-FR-generic-discovery-2026-08-21-v9-generic-product-type-filter"
+SCRAPER_VERSION = "notino-FR-generic-discovery-2026-08-21-v10-generic-discovery-price-filter"
 
 HEADERS = {
     "User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
@@ -199,6 +199,59 @@ def _extract_price(text: Any) -> str:
         return ""
     m = matches[-1]
     return _format_price(m.group(1) or m.group(2))
+
+
+def _extract_product_price(text: Any) -> str:
+    """Extract the product selling price, never the unit price.
+
+    Notino product pages commonly expose both values, for example:
+    ``150 ml 40,00 €`` followed by ``26,67 € / 100 ml``.
+    The price immediately associated with the product size is the actual
+    selling price; a value followed by ``/ 100 ml`` is a unit price and is
+    deliberately ignored.
+    """
+    content = _clean(text)
+    if not content:
+        return ""
+
+    current_matches = list(re.finditer(
+        r"prix\s+actuel\s+(?:de\s+)?(\d{1,4}[.,]\d{2})\s*€",
+        content,
+        flags=re.I,
+    ))
+    for current in reversed(current_matches):
+        after = content[current.end():current.end() + 30].lower()
+        if not re.match(r"\s*/\s*100\s*(?:ml|g)", after):
+            return _format_price(current.group(1))
+
+    sized_prices = re.findall(
+        r"\b\d{1,4}(?:[.,]\d{1,2})?\s*(?:ml|cl|dl|l|oz|fl\s*oz|g|kg)\s+"
+        r"(?:de\s+)?(\d{1,4}[.,]\d{2})\s*€",
+        content,
+        flags=re.I,
+    )
+    if sized_prices:
+        return _format_price(sized_prices[-1])
+
+    price_before_size = re.findall(
+        r"(?:€\s*)?(\d{1,4}[.,]\d{2})\s*€?\s+"
+        r"\d{1,4}(?:[.,]\d{1,2})?\s*(?:ml|cl|dl|l|oz|fl\s*oz|g|kg)\b",
+        content,
+        flags=re.I,
+    )
+    if price_before_size:
+        return _format_price(price_before_size[-1])
+
+    # Prefer prices that are not immediately presented as a unit price.
+    valid = []
+    for match in PRICE_RE.finditer(content):
+        end = content[match.end():match.end() + 30].lower()
+        if re.match(r"\s*/\s*100\s*(?:ml|g)", end):
+            continue
+        valid.append(match.group(1) or match.group(2))
+    if valid:
+        return _format_price(valid[-1])
+    return ""
 
 
 def _normalise_reader_url(raw: Any) -> Optional[str]:
@@ -654,6 +707,20 @@ def _reader_discovery(query: str, session: requests.Session) -> Tuple[List[Dict[
     for brand_url in brand_urls:
         collect(brand_url, f"brand:{brand_url.rsplit('/', 2)[-2]}", brand_url)
 
+    # Generic third-stage discovery: once a brand is known, retry the
+    # original search with the brand explicitly included. Some Notino
+    # search/reader variants expose only one result unless the brand is
+    # present in the query. This remains fully generic and contains no
+    # product-specific names or URLs.
+    for candidate in strong:
+        brand = _brand_from_product_url(candidate["url"])
+        if not brand:
+            continue
+        branded_queries = [f"{brand} {query}", f"{query} {brand}"]
+        for branded_query in branded_queries:
+            for search_url in _search_urls(branded_query):
+                collect(search_url, branded_query, search_url)
+
     ordered = sorted(
         candidates.values(),
         key=lambda x: (
@@ -828,6 +895,8 @@ def _reader_product(text: str, candidate: Dict[str, Any], query: str) -> Optiona
     if current:
         price = _format_price(current.group(1))
     if not price:
+        price = _extract_product_price(content)
+    if not price:
         stock = re.search(
             r"en\s+stock[^€]{0,120}?(\d{1,4}[.,]\d{2})\s*€",
             content,
@@ -836,7 +905,7 @@ def _reader_product(text: str, candidate: Dict[str, Any], query: str) -> Optiona
         if stock:
             price = _format_price(stock.group(1))
     if not price:
-        price = _extract_price(candidate.get("anchor_text", "")) or _extract_price(
+        price = _extract_product_price(candidate.get("anchor_text", "")) or _extract_product_price(
             candidate.get("card_text", "")
         )
     if not price:
@@ -951,7 +1020,9 @@ def _product_details(
         if m:
             price = _format_price(m.group(1))
     if not price:
-        price = _extract_price(candidate.get("anchor_text", "")) or _extract_price(
+        price = _extract_product_price(page_text)
+    if not price:
+        price = _extract_product_price(candidate.get("anchor_text", "")) or _extract_product_price(
             candidate.get("card_text", "")
         )
 
