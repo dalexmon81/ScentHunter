@@ -122,19 +122,18 @@ IGNORED_WORDS = {
 }
 
 GLOBAL_SEARCH_TIMEOUT = 120
+DATABASE_URL = os.getenv("DATABASE_URL", "").strip()
 
 # Local index is checked first. The live search remains the generic fallback
 # while the catalog is being populated.
-# Railway Volume: when attached, Railway exposes RAILWAY_VOLUME_MOUNT_PATH
-# automatically. The local index must live there so it survives redeploys.
-# SCENTHUNTER_INDEX_DB remains an explicit override for other environments.
-_VOLUME_MOUNT = os.getenv("RAILWAY_VOLUME_MOUNT_PATH", "").strip()
+# DATABASE_URL is the persistent PostgreSQL connection supplied by Railway.
+# SCENTHUNTER_INDEX_DB remains an explicit SQLite override for local development.
 _CONFIGURED_INDEX_DB = os.getenv("SCENTHUNTER_INDEX_DB", "").strip()
 
-if _CONFIGURED_INDEX_DB:
+if DATABASE_URL:
+    LOCAL_INDEX_PATH = DATABASE_URL
+elif _CONFIGURED_INDEX_DB:
     LOCAL_INDEX_PATH = Path(_CONFIGURED_INDEX_DB)
-elif _VOLUME_MOUNT:
-    LOCAL_INDEX_PATH = Path(_VOLUME_MOUNT) / "scenthunter_index.db"
 else:
     LOCAL_INDEX_PATH = Path(BASE_DIR) / "scenthunter_index.db"
 
@@ -807,21 +806,18 @@ def run_store(
 # RICERCA LOCALE
 # ============================================================
 
-def _local_index_path() -> Path:
-    """Return the single active SQLite index path used by the app.
+def _local_index_path() -> str:
+    """Return the active persistent database target.
 
-    On Railway, an attached Volume is preferred automatically through
-    RAILWAY_VOLUME_MOUNT_PATH. SCENTHUNTER_INDEX_DB can override it.
-    The temporary /tmp database is intentionally no longer a fallback: using
-    it would make the index disappear on redeploy and could split the index
-    writer from the search reader.
+    Railway uses DATABASE_URL for PostgreSQL. A local SQLite path remains
+    available for development when DATABASE_URL is not configured.
     """
-    return LOCAL_INDEX_PATH
+    return str(LOCAL_INDEX_PATH)
 
 
 def local_search_perfume(query: str) -> Optional[Dict[str, Any]]:
     """
-    Search only the local SQLite/FTS5 index.
+    Search only the local PostgreSQL full-text search (with SQLite fallback) index.
 
     Returns None when the local index is unavailable or has no matching
     product. The caller can then use the existing live discovery fallback.
@@ -830,8 +826,6 @@ def local_search_perfume(query: str) -> Optional[Dict[str, Any]]:
         return None
 
     db_path = _local_index_path()
-    if not db_path.exists():
-        return None
 
     try:
         with ProductIndex(db_path) as index:
@@ -921,7 +915,7 @@ def search_with_local_first(query: str) -> Dict[str, Any]:
     """
     Local-first search.
 
-    Indexed products return immediately from SQLite/FTS5. If the local
+    Indexed products return immediately from PostgreSQL full-text search (with SQLite fallback). If the local
     catalog does not contain the query yet, the existing live discovery
     remains available as a generic fallback.
     """
@@ -943,8 +937,6 @@ def local_autocomplete(
         return []
 
     db_path = _local_index_path()
-    if not db_path.exists():
-        return []
 
     try:
         with ProductIndex(db_path) as index:
@@ -1228,8 +1220,7 @@ def test_indexer(
 
     It is intentionally isolated from /search. It runs a small sample of the
     canonical catalog through the existing real scraper pipeline and writes
-    to the single active SQLite index used by the local-first search. On
-    Railway this path must be backed by the attached Volume.
+    to the same persistent database used by the local-first search.
 
     Remove this endpoint after the STEP 3 real-world test.
     """
@@ -1274,7 +1265,7 @@ def test_indexer(
             else list(INDEXER_DEFAULT_STORES)
         )
 
-        test_db = _local_index_path()
+        test_db = Path("/tmp/scenthunter_index_test.db")
 
         started = datetime.now(timezone.utc)
 
@@ -1699,30 +1690,18 @@ def index_stats():
 
     db_path = _local_index_path()
 
-    if not db_path.exists():
-        return {
-            "ok": True,
-            "exists": False,
-            "path": str(db_path),
-            "stats": {
-                "products": 0,
-                "offers": 0,
-                "stores": 0,
-            },
-        }
-
     try:
         with ProductIndex(db_path) as index:
             return {
                 "ok": True,
                 "exists": True,
-                "path": str(db_path),
+                "path": "postgresql" if DATABASE_URL else str(db_path),
                 "stats": index.stats(),
             }
     except Exception as error:
         return {
             "ok": False,
-            "path": str(db_path),
+            "path": "postgresql" if DATABASE_URL else str(db_path),
             "error": f"{type(error).__name__}: {error}",
         }
 
@@ -1733,7 +1712,7 @@ def index_products(limit: int = 20):
     """
     Diagnostic endpoint for the persistent local index.
 
-    Returns canonical products currently stored in the same SQLite database
+    Returns canonical products currently stored in the same persistent database
     used by the local-first search. No live scraper is called.
     """
     if ProductIndex is None:
@@ -1743,14 +1722,6 @@ def index_products(limit: int = 20):
         }
 
     db_path = _local_index_path()
-
-    if not db_path.exists():
-        return {
-            "ok": True,
-            "exists": False,
-            "path": str(db_path),
-            "products": [],
-        }
 
     try:
         with ProductIndex(db_path) as index:
@@ -1766,7 +1737,7 @@ def index_products(limit: int = 20):
                     updated_at
                 FROM products
                 ORDER BY brand_name, family_name
-                LIMIT ?
+                LIMIT %s
                 """,
                 (max(1, min(int(limit), 100)),),
             ).fetchall()
@@ -1782,7 +1753,7 @@ def index_products(limit: int = 20):
             return {
                 "ok": True,
                 "exists": True,
-                "path": str(db_path),
+                "path": "postgresql" if DATABASE_URL else str(db_path),
                 "stats": index.stats(),
                 "products": products,
             }
@@ -1791,7 +1762,7 @@ def index_products(limit: int = 20):
         traceback.print_exc()
         return {
             "ok": False,
-            "path": str(db_path),
+            "path": "postgresql" if DATABASE_URL else str(db_path),
             "error": f"{type(error).__name__}: {error}",
             "traceback": traceback.format_exc(),
         }
@@ -1826,7 +1797,7 @@ def test_local_search(q: str):
                 4,
             ),
             "result": result,
-            "index_path": str(_local_index_path()),
+            "index_path": "postgresql" if DATABASE_URL else str(_local_index_path()),
         }
 
     except Exception as error:
