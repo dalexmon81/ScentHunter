@@ -1094,7 +1094,13 @@ def extract_product_page(session, url, query):
             else ""
         ),
         "url": final_url,
-        "available": availability == "in_stock",
+        # Tri-state availability: unknown must NOT become False/OOS.
+        # False is reserved for an explicit out_of_stock result.
+        "available": (
+            True if availability == "in_stock"
+            else False if availability == "out_of_stock"
+            else None
+        ),
     }
 
 
