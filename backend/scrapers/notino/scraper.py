@@ -3,6 +3,7 @@ from __future__ import annotations
 import html as html_lib
 import json
 import re
+import difflib
 from typing import Any, Dict, Iterable, List, Optional, Tuple
 from urllib.parse import quote_plus, unquote, urljoin, urlparse
 
@@ -15,7 +16,7 @@ SEARCH_URL = BASE_URL + "/search.asp"
 READER_BASE = "https://r.jina.ai/"
 TIMEOUT = 20
 READER_TIMEOUT = 12
-SCRAPER_VERSION = "notino-FR-generic-discovery-2026-08-21-v5-generic-size-aware"
+SCRAPER_VERSION = "notino-FR-generic-discovery-2026-08-21-v6-reader-name-fuzzy"
 
 HEADERS = {
     "User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
@@ -98,6 +99,30 @@ def _query_tokens(value: Any) -> List[str]:
     text = _clean(value)
     text = SIZE_RE.sub(" ", text)
     return _tokens(text)
+
+
+def _fuzzy_query_match(name: Any, query: Any) -> Tuple[bool, Dict[str, bool], int]:
+    """Generic token matching with a conservative fuzzy fallback.
+
+    Exact tokens are preferred. A fuzzy token is accepted only when the
+    normalized similarity is high enough, which allows minor spelling
+    variants such as Linked/Lynked without creating product-specific rules.
+    """
+    name_tokens = set(_query_tokens(name))
+    query_tokens = _query_tokens(query)
+    if not query_tokens or not name_tokens:
+        return False, {}, 0
+    hits: Dict[str, bool] = {}
+    fuzzy_hits = 0
+    for token in query_tokens:
+        if token in name_tokens:
+            hits[token] = True
+            continue
+        best = max((difflib.SequenceMatcher(None, token, candidate).ratio() for candidate in name_tokens), default=0.0)
+        hit = best >= 0.80 and abs(len(token) - max((len(x) for x in name_tokens), default=0)) <= 2
+        hits[token] = hit
+        fuzzy_hits += int(hit)
+    return all(hits.values()), hits, fuzzy_hits
 
 
 def _requested_sizes(value: Any) -> List[Tuple[str, str]]:
@@ -254,14 +279,12 @@ def _make_candidate(url: str, anchor: str, card: str, query: str, source: str) -
     if not name or _has_non_perfume_marker(name):
         return None
 
+    matched, hits, fuzzy_hits = _fuzzy_query_match(name, query)
     query_tokens = _query_tokens(query)
-    name_tokens = set(_product_norm(name).split())
-    if not query_tokens or not all(token in name_tokens for token in query_tokens):
+    if not query_tokens:
         return None
-
-    hits = {token: token in name_tokens for token in query_tokens}
-    score = sum(hits.values()) * 5
-    if all(hits.values()):
+    score = sum(hits.values()) * 5 + fuzzy_hits * 2
+    if matched:
         score += 5
 
     search_context = f"{anchor} {card}"
@@ -284,7 +307,7 @@ def _make_candidate(url: str, anchor: str, card: str, query: str, source: str) -
         "name": name,
         "score": score,
         "token_hits": hits,
-        "contains_all_query_tokens": all(hits.values()),
+        "contains_all_query_tokens": matched,
         "requested_size": bool(requested_sizes),
         "size_match_in_search_context": (
             any(_size_matches(search_context, size) for size in requested_sizes)
@@ -320,31 +343,48 @@ def extract_candidates_from_html(html: str, query: str) -> List[Dict[str, Any]]:
 
 
 def _reader_name_from_context(context: str, query: str) -> str:
-    raw = html_lib.unescape(context or "").replace("\\/", "/")
-    raw = _clean(raw)
-    headings = re.findall(r"(?<!\S)(?:###|##)\s*([^#\n]+)", raw)
-    if headings:
-        heading = re.sub(r"https?://\S+", " ", headings[-1])
-        name = _clean_name(heading).strip(" <>[]()")
-        if name and _matches(name, query):
-            return name
-        return ""
+    """Recover a product title from the nearest Markdown headings.
 
-    pieces = re.split(r"\n|(?<=\])\s*(?=\[)", raw)
-    for piece in reversed(pieces):
-        piece = re.sub(r"!\[[^\]]*\]\([^)]*\)", " ", piece)
-        piece = re.sub(r"\[[^\]]*\]\([^)]*\)", " ", piece)
-        piece = re.sub(r"https?://\S+", " ", piece)
-        name = _clean_name(piece).strip(" <>[]()")
-        name = re.sub(r"^#+\s*", "", name)
-        if name and _matches(name, query) and len(name) <= 220:
-            return name
-    return ""
+    Notino/Jina commonly emits a brand as ## and the product title as ###.
+    Combine those adjacent headings; do not use distant card text as the name.
+    """
+    raw = html_lib.unescape(context or "").replace("\/", "/")
+    lines = [re.sub(r"\s+", " ", x).strip() for x in str(raw).splitlines() if x.strip()]
+    headings: List[Tuple[int, str]] = []
+    for line in lines:
+        match = re.match(r"^(###|##)\s*(.+)$", line)
+        if match:
+            headings.append((3 if match.group(1) == "###" else 2, _clean_name(match.group(2)).strip(" <>[]()")))
+    if not headings:
+        return ""
+    level, title = headings[-1]
+    if level == 3 and title:
+        for prev_level, brand in reversed(headings[:-1]):
+            if prev_level == 2 and brand:
+                combined = _clean_name(f"{brand} {title}")
+                if _fuzzy_query_match(combined, query)[0]:
+                    return combined
+                break
+    return title if _fuzzy_query_match(title, query)[0] else ""
+
+
+def _name_from_product_url(url: str) -> str:
+    try:
+        path = unquote(urlparse(url).path).strip("/")
+    except Exception:
+        return ""
+    parts = [p for p in path.split("/") if p]
+    if len(parts) < 2:
+        return ""
+    slug = parts[-2] if parts[-1].startswith("p-") else parts[-1]
+    slug = re.sub(r"-\d{5,}$", "", slug)
+    slug = re.sub(r"[-_]+", " ", slug)
+    return _clean_name(slug)
 
 
 def _reader_candidates(text: str, query: str) -> List[Dict[str, Any]]:
     found: Dict[str, Dict[str, Any]] = {}
-    raw = html_lib.unescape(text or "").replace("\\/", "/")
+    raw = html_lib.unescape(text or "").replace("\/", "/")
     lines = [x.strip() for x in raw.splitlines() if x.strip()]
     markdown = re.compile(r"\[([^\]]+)\]\(([^)]+)\)", re.I)
 
@@ -354,16 +394,21 @@ def _reader_candidates(text: str, query: str) -> List[Dict[str, Any]]:
             url = _normalise_reader_url(match.group(2))
             if not url:
                 continue
-            local_context = _clean(" ".join(lines[max(0, i - 2):i + 1]))
             name = _clean_name(anchor)
-            if not name or not _matches(name, query):
-                name = _reader_name_from_context(local_context, query)
-            if not name:
+            matched, _, _ = _fuzzy_query_match(name, query)
+            if not name or not matched or _has_non_perfume_marker(name):
+                slug_name = _name_from_product_url(url)
+                slug_matched, _, _ = _fuzzy_query_match(slug_name, query)
+                if slug_name and slug_matched and not _has_non_perfume_marker(slug_name):
+                    name = slug_name
+            if not name or not _fuzzy_query_match(name, query)[0] or _has_non_perfume_marker(name):
+                context_name = _reader_name_from_context("\n".join(lines[max(0, i - 2):i + 1]), query)
+                if context_name:
+                    name = context_name
+            if not name or not _fuzzy_query_match(name, query)[0]:
                 continue
-            candidate = _make_candidate(url, name, local_context, query, "reader-markdown")
-            if candidate and (
-                url not in found or candidate["score"] > found[url]["score"]
-            ):
+            candidate = _make_candidate(url, name, anchor, query, "reader-markdown")
+            if candidate and (url not in found or candidate["score"] > found[url]["score"]):
                 found[url] = candidate
 
     for pattern in (PRODUCT_URL_RE, READER_ABSOLUTE_PRODUCT_RE, READER_RELATIVE_PRODUCT_RE):
@@ -371,79 +416,14 @@ def _reader_candidates(text: str, query: str) -> List[Dict[str, Any]]:
             url = _normalise_reader_url(match.group(0))
             if not url:
                 continue
-            prefix = raw[max(0, match.start() - 700):match.start()]
-            name = _reader_name_from_context(prefix, query)
-            if not name:
+            name = _name_from_product_url(url)
+            if not name or _has_non_perfume_marker(name):
                 continue
-            suffix = raw[match.end():min(len(raw), match.end() + 220)]
-            candidate = _make_candidate(
-                url, name, _clean(prefix[-260:] + " " + suffix), query, "reader-url"
-            )
-            if candidate and (
-                url not in found or candidate["score"] > found[url]["score"]
-            ):
+            candidate = _make_candidate(url, name, name, query, "reader-url")
+            if candidate and (url not in found or candidate["score"] > found[url]["score"]):
                 found[url] = candidate
 
-    for match in re.finditer(r"(?:href|url)\s*=\s*[\"']([^\"']+)[\"']", raw, re.I):
-        url = _normalise_reader_url(match.group(1))
-        if not url:
-            continue
-        prefix = raw[max(0, match.start() - 700):match.start()]
-        name = _reader_name_from_context(prefix, query)
-        if not name:
-            continue
-        candidate = _make_candidate(url, name, prefix[-400:], query, "reader-href")
-        if candidate and (url not in found or candidate["score"] > found[url]["score"]):
-            found[url] = candidate
-
-    return sorted(
-        found.values(),
-        key=lambda x: (not x["contains_all_query_tokens"], -x["score"], x["url"]),
-    )
-
-
-def _reader_discovery(query: str, session: requests.Session) -> Tuple[List[Dict[str, Any]], Dict[str, Any]]:
-    found: Dict[str, Dict[str, Any]] = {}
-    pages = []
-    for url in _search_urls(query):
-        try:
-            response = _reader_request(session, url)
-            candidates = _reader_candidates(response.text, query)
-            for candidate in candidates:
-                old = found.get(candidate["url"])
-                if old is None or candidate["score"] > old["score"]:
-                    found[candidate["url"]] = candidate
-            pages.append({
-                "url": url,
-                "reader_url": READER_BASE + url,
-                "status": response.status_code,
-                "html_length": len(response.text or ""),
-                "candidate_count": len(candidates),
-                "reader": True,
-            })
-            if candidates:
-                break
-        except requests.RequestException as exc:
-            pages.append({
-                "url": url,
-                "reader_url": READER_BASE + url,
-                "status": None,
-                "error": f"{type(exc).__name__}: {exc}",
-                "reader": True,
-            })
-    ordered = sorted(
-        found.values(),
-        key=lambda x: (not x["contains_all_query_tokens"], -x["score"], x["url"]),
-    )
-    return ordered, {
-        "query": query,
-        "search_urls": _search_urls(query),
-        "pages": pages,
-        "raw_product_urls": len(ordered),
-        "candidate_urls": len(ordered),
-        "raw_query_token_hits": [x for x in ordered if x["contains_all_query_tokens"]],
-        "fallback": "jina-reader",
-    }
+    return sorted(found.values(), key=lambda x: (-x["score"], x["url"]))
 
 
 def _search_http_candidates(
@@ -558,7 +538,7 @@ def _requested_size_is_valid(text: str, query: str) -> bool:
 
 def _reader_product(text: str, candidate: Dict[str, Any], query: str) -> Optional[Dict[str, Any]]:
     content = _clean(text)
-    if not _matches(content + " " + candidate["url"], query):
+    if not _fuzzy_query_match(content + " " + candidate["url"], query)[0]:
         return None
     if not _requested_size_is_valid(content + " " + candidate.get("card_text", ""), query):
         return None
@@ -587,9 +567,8 @@ def _reader_product(text: str, candidate: Dict[str, Any], query: str) -> Optiona
     if not name or _has_non_perfume_marker(name):
         return None
 
-    query_tokens = _query_tokens(query)
-    name_tokens = set(_product_norm(name).split())
-    if not query_tokens or not all(token in name_tokens for token in query_tokens):
+    matched, _, _ = _fuzzy_query_match(name, query)
+    if not matched:
         return None
 
     price = ""
@@ -629,9 +608,8 @@ def _card_result(candidate: Dict[str, Any], query: str) -> Optional[Dict[str, An
     name = _clean_name(anchor)
     if not name or _has_non_perfume_marker(name):
         return None
-    query_tokens = _query_tokens(query)
-    name_tokens = set(_product_norm(name).split())
-    if not query_tokens or not all(token in name_tokens for token in query_tokens):
+    matched, _, _ = _fuzzy_query_match(name, query)
+    if not matched:
         return None
 
     context = f"{anchor} {card}"
