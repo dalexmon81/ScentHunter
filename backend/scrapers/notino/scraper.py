@@ -15,7 +15,7 @@ SEARCH_URL = BASE_URL + "/search.asp"
 READER_BASE = "https://r.jina.ai/"
 TIMEOUT = 20
 READER_TIMEOUT = 12
-SCRAPER_VERSION = "notino-FR-generic-discovery-2026-08-21-v5-generic-size-aware"
+SCRAPER_VERSION = "notino-FR-deep-diagnostic-2026-08-21-v6"
 
 HEADERS = {
     "User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
@@ -758,11 +758,143 @@ def scrape(query: str) -> List[Dict[str, Any]]:
     return search(query)
 
 
+def _price_evidence(text: str) -> Dict[str, Any]:
+    content = _clean(text or "")
+    matches = []
+    for m in PRICE_RE.finditer(content):
+        start = max(0, m.start() - 100)
+        end = min(len(content), m.end() + 100)
+        matches.append({
+            "value": _format_price(m.group(1) or m.group(2)),
+            "raw": m.group(0),
+            "context": content[start:end],
+            "has_per_100": bool(re.search(r"(?:/|par)\s*100\s*(?:ml|ml\b)", content[start:end], re.I)),
+        })
+    current = re.findall(r"prix\s+actuel\s+(?:de\s+)?(\d{1,4}[.,]\d{2})\s*€", content, re.I)
+    stock = re.findall(r"en\s+stock[^€]{0,120}?(\d{1,4}[.,]\d{2})\s*€", content, re.I)
+    return {
+        "all_prices": matches,
+        "current_price_matches": [_format_price(x) for x in current],
+        "in_stock_price_matches": [_format_price(x) for x in stock],
+        "price_count": len(matches),
+    }
+
+
+def _diagnose_candidate(candidate: Dict[str, Any], query: str) -> Dict[str, Any]:
+    name = _clean_name(candidate.get("anchor_text") or candidate.get("card_text") or "")
+    query_tokens = _query_tokens(query)
+    name_tokens = set(_product_norm(name).split())
+    return {
+        "url": candidate.get("url"),
+        "anchor_text": candidate.get("anchor_text"),
+        "card_text": candidate.get("card_text"),
+        "name_used_for_validation": name,
+        "query_tokens": query_tokens,
+        "name_tokens": sorted(name_tokens),
+        "token_hits": {token: token in name_tokens for token in query_tokens},
+        "matches_query": bool(query_tokens) and all(token in name_tokens for token in query_tokens),
+        "non_perfume": _has_non_perfume_marker(name),
+        "requested_sizes": _requested_sizes(query),
+        "size_match_in_card": _contains_requested_size(
+            f"{candidate.get('anchor_text','')} {candidate.get('card_text','')}", query
+        ),
+        "price_evidence": _price_evidence(
+            f"{candidate.get('anchor_text','')} {candidate.get('card_text','')}"
+        ),
+        "score": candidate.get("score"),
+        "source": candidate.get("source"),
+    }
+
+
+def _diagnose_product_page(
+    session: requests.Session, candidate: Dict[str, Any], query: str
+) -> Dict[str, Any]:
+    url = candidate["url"]
+    report: Dict[str, Any] = {
+        "url": url,
+        "requested_sizes": _requested_sizes(query),
+        "direct": {},
+        "reader": {},
+        "validation": {},
+        "json_ld": [],
+        "price_evidence": {},
+        "final_search_result": None,
+    }
+
+    texts = []
+    try:
+        response = _request(session, url)
+        report["direct"] = {
+            "status": response.status_code,
+            "final_url": response.url,
+            "html_length": len(response.text or ""),
+            "cloudflare": _is_challenge(response.text),
+            "looks_like_product_url": _looks_like_product_url(response.url),
+        }
+        texts.append(("direct", response.text or ""))
+    except requests.RequestException as exc:
+        report["direct"] = {
+            "status": getattr(getattr(exc, "response", None), "status_code", None),
+            "error": f"{type(exc).__name__}: {exc}",
+        }
+
+    try:
+        reader = _reader_request(session, url)
+        report["reader"] = {
+            "status": reader.status_code,
+            "html_length": len(reader.text or ""),
+            "cloudflare": _is_challenge(reader.text),
+        }
+        texts.append(("reader", reader.text or ""))
+    except requests.RequestException as exc:
+        report["reader"] = {
+            "status": getattr(getattr(exc, "response", None), "status_code", None),
+            "error": f"{type(exc).__name__}: {exc}",
+        }
+
+    for source, text in texts:
+        content = _clean(text)
+        page_info = {
+            "source": source,
+            "matches_query": _matches(content + " " + url, query),
+            "requested_size_valid": _requested_size_is_valid(content + " " + candidate.get("card_text", ""), query),
+            "has_in_stock_marker": any(x in content.lower() for x in IN_STOCK_MARKERS),
+            "has_out_of_stock_marker": any(x in content.lower() for x in OUT_STOCK_MARKERS),
+            "price_evidence": _price_evidence(content),
+        }
+        report["validation"][source] = page_info
+
+        if source == "direct":
+            soup = BeautifulSoup(text, "html.parser")
+            for product in _json_ld_products(soup):
+                product_name = _clean(product.get("name"))
+                brand = product.get("brand")
+                brand = _clean(brand.get("name")) if isinstance(brand, dict) else _clean(brand)
+                price, availability = _offer_data(product.get("offers"))
+                report["json_ld"].append({
+                    "name": product_name,
+                    "brand": brand,
+                    "matches_query": _matches(f"{brand} {product_name}", query),
+                    "price": price,
+                    "availability": availability,
+                    "offers_raw_type": type(product.get("offers")).__name__,
+                })
+
+    try:
+        report["final_search_result"] = _product_details(session, candidate, query)
+    except Exception as exc:
+        report["final_search_result_error"] = f"{type(exc).__name__}: {exc}"
+
+    return report
+
+
 def diagnose(query: str) -> Dict[str, Any]:
+    """Deep diagnostic only. It does not change the normal search path."""
     query = _clean(query)
     if not query:
         return {
             "diagnostic": True,
+            "diagnostic_level": "deep",
             "scraper_version": SCRAPER_VERSION,
             "query": query,
             "error": "empty_query",
@@ -772,50 +904,22 @@ def diagnose(query: str) -> Dict[str, Any]:
     session.headers.update(HEADERS)
     try:
         candidates, discovery = _search_http_candidates(query, session=session)
-        product_pages = []
-        for candidate in candidates[:25]:
-            try:
-                response = _request(session, candidate["url"])
-                product_pages.append({
-                    "url": candidate["url"],
-                    "status": response.status_code,
-                    "final_url": response.url,
-                    "html_length": len(response.text or ""),
-                    "cloudflare": _is_challenge(response.text),
-                    "reader_fallback": False,
-                    "requested_size": _requested_sizes(query),
-                    "size_match": _requested_size_is_valid(response.text, query),
-                })
-            except requests.RequestException as exc:
-                try:
-                    reader = _reader_request(session, candidate["url"])
-                    product_pages.append({
-                        "url": candidate["url"],
-                        "status": getattr(getattr(exc, "response", None), "status_code", None),
-                        "error": f"{type(exc).__name__}: {exc}",
-                        "reader_status": reader.status_code,
-                        "reader_html_length": len(reader.text or ""),
-                        "reader_fallback": True,
-                        "requested_size": _requested_sizes(query),
-                        "size_match": _requested_size_is_valid(reader.text, query),
-                    })
-                except requests.RequestException as reader_exc:
-                    product_pages.append({
-                        "url": candidate["url"],
-                        "status": None,
-                        "error": f"{type(exc).__name__}: {exc}",
-                        "reader_error": f"{type(reader_exc).__name__}: {reader_exc}",
-                        "reader_fallback": True,
-                    })
+
+        candidate_audit = [_diagnose_candidate(c, query) for c in candidates[:50]]
+        product_pages = [
+            _diagnose_product_page(session, candidate, query)
+            for candidate in candidates[:25]
+        ]
 
         return {
             "diagnostic": True,
+            "diagnostic_level": "deep",
             "scraper_version": SCRAPER_VERSION,
             "query": query,
-            "search_url": _search_urls(query)[0],
+            "search_urls": _search_urls(query),
             "discovery": discovery,
             "candidate_count": len(candidates),
-            "candidates": candidates[:25],
+            "candidates": candidate_audit,
             "product_pages": product_pages,
         }
     finally:
