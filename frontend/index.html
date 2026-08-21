@@ -1569,22 +1569,19 @@ function shGroupData(data){
     g.display_name=g.brand?g.brand+" - "+g.name:g.name;
   });
 
-  // Ordine dei risultati visualizzati:
-  // 1) prima i veri profumi, ordinati per brand + nome canonico
-  // 2) alla fine i prodotti che NON sono profumi (deodoranti, shower gel,
-  //    body lotion, mystery box, ecc.).
-  // I set/cofanetti che contengono chiaramente un profumo restano tra i profumi.
-  groups.sort((a,b)=>{
-    const aNonPerfume=isNonPerfumeProduct(a);
-    const bNonPerfume=isNonPerfumeProduct(b);
-    if(aNonPerfume!==bNonPerfume)return aNonPerfume?1:-1;
+  // Mostriamo esclusivamente vere referenze di profumo.
+  // Set/cofanetti, Mystery/Gift Box e altri prodotti non-profumo vengono
+  // esclusi completamente dai risultati, anche quando contengono il nome
+  // di un profumo al loro interno.
+  const perfumeGroups=groups.filter(g=>g.offers.length && !isNonPerfumeProduct(g));
 
+  perfumeGroups.sort((a,b)=>{
     const brandCmp=String(a.brand||"").localeCompare(String(b.brand||""),"it",{sensitivity:"base"});
     if(brandCmp!==0)return brandCmp;
     return String(a.name||"").localeCompare(String(b.name||""),"it",{sensitivity:"base",numeric:true});
   });
 
-  return groups.filter(g=>g.offers.length);
+  return perfumeGroups;
 }
 
 function isNonPerfumeProduct(g){
@@ -1618,13 +1615,10 @@ function isNonPerfumeProduct(g){
   // Prodotti chiaramente diversi dal profumo.
   const nonPerfume=/(?:\bdeodorant(?:e|s)?\b|\bdeostick\b|\bdeo\s*stick\b|\bdeo\b|\bantiperspirant\b|\banti[- ]?transpirant\b|\bshower\s*(?:gel|cream|foam|oil)\b|\bgel\s+(?:douche|doccia|bain)\b|\bgel\s+doccia\b|\bdoccia\s+gel\b|\bbagno\s+(?:doccia|schiuma)\b|\bbagnoschiuma\b|\bduschgel\b|\bdusch[- ]?(?:gel|schaum|creme|lotion)\b|\bbad[- ]?(?:gel|schaum|foam)\b|\bbody\s+(?:wash|gel|cleanser|cleaning)\b|\bshampoo\b|\bconditioner\b|\bhaarmaske\b|\bhaarshampoo\b|\bbody\s+(?:lotion|cream|creme|milk|butter|moisturizer)\b|\blotion\s+corps\b|\bcreme?\s+corps\b|\bhand\s+(?:cream|creme|lotion)\b|\bface\s+(?:cream|creme|lotion|wash)\b|\bhandcreme\b|\bkorperlotion\b|\bkoerperlotion\b|\bsoap\b|\bsavon\b|\bsapone\b|\bshaving\b|\bafter\s*shave\b|\baftershave\b|\brazor\b|\bdemaquillant\b|\bmake[- ]?up\b|\blipstick\b|\bmascara\b|\btoothpaste\b|\btoothbrush\b)/.test(text);
 
-  // Un set/cofanetto resta tra i risultati principali se contiene un profumo.
-  // Se è invece chiaramente un set di soli prodotti corpo/igiene, va in fondo.
-  if(isSet){
-    const explicitPerfume=/(?:\beau\s+de\s+parfum\b|\beau\s+de\s+toilette\b|\beau\s+de\s+cologne\b|\beau\s+fraiche\b|\bextrait\s+de\s+parfum\b|\bparfum\b|\bperfume\b|\bfragrance\b)/.test(text);
-    if(explicitPerfume)return false;
-    return nonPerfume;
-  }
+  // Set/cofanetti e box non sono la singola referenza profumo.
+  // Vanno quindi esclusi sempre, anche quando il testo contiene il nome
+  // di un profumo presente nella confezione.
+  if(isSet)return true;
 
   return nonPerfume;
 }
