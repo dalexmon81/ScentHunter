@@ -17,17 +17,18 @@ BASE_URL = "https://www.notino.fr"
 SEARCH_URL = BASE_URL + "/search.asp"
 SITEMAP_URL = BASE_URL + "/sitemap.xml"
 READER_BASE = "https://r.jina.ai/"
-TIMEOUT = 20
-READER_TIMEOUT = 12
+TIMEOUT = 8
+READER_TIMEOUT = 6
 
 SCRAPER_VERSION = (
-    "notino-FR-generic-discovery-2026-08-21-v15-reader-canonical-url"
+    "notino-FR-generic-discovery-2026-08-21-v16-fast-reader"
 )
 
 HEADERS = {
     "User-Agent": (
         "Mozilla/5.0 (X11; Linux x86_64) "
-        "AppleWebKit/537.36 (KHTML, like Gecko) "
+        "AppleWebKit/537.36 "
+        "(KHTML, like Gecko) "
         "Chrome/124.0.0.0 Safari/537.36"
     ),
     "Accept": (
@@ -41,11 +42,16 @@ HEADERS = {
 
 READER_HEADERS = {
     "User-Agent": "ScentHunter/1.0",
-    "Accept": "text/plain,text/markdown,text/html;q=0.9,*/*;q=0.8",
+    "Accept": (
+        "text/plain,text/markdown,text/html;q=0.9,*/*;q=0.8"
+    ),
     "Accept-Language": "fr-FR,fr;q=0.9,en;q=0.7",
 }
 
-PRODUCT_RE = re.compile(r"/p-\d+(?:/|$)", re.I)
+PRODUCT_RE = re.compile(
+    r"/p-\d+(?:/|$)",
+    re.I,
+)
 
 PRODUCT_URL_RE = re.compile(
     r'https?://(?:www\.)?notino\.fr/[^\s)\]>\" ]+',
@@ -71,7 +77,10 @@ PRICE_RE = re.compile(
     re.I,
 )
 
-RATING_RE = re.compile(r"\b\d[.,]\d\s*\(\s*\d+\s*\)", re.I)
+RATING_RE = re.compile(
+    r"\b\d[.,]\d\s*\(\s*\d+\s*\)",
+    re.I,
+)
 
 CHALLENGE_MARKERS = (
     "just a moment",
@@ -145,16 +154,32 @@ SIZE_RE = re.compile(
 
 def _product_norm(value: Any) -> str:
     value = str(value or "").lower()
-    value = re.sub(r"[^a-z0-9]+", " ", value)
-    return re.sub(r"\s+", " ", value).strip()
+    value = re.sub(
+        r"[^a-z0-9]+",
+        " ",
+        value,
+    )
+    return re.sub(
+        r"\s+",
+        " ",
+        value,
+    ).strip()
 
 
 def _has_non_perfume_marker(value: Any) -> bool:
-    tokens = set(_product_norm(value).split())
+    tokens = set(
+        _product_norm(value).split()
+    )
 
     for marker in NON_PERFUME_MARKERS:
-        marker_tokens = set(_product_norm(marker).split())
-        if marker_tokens and marker_tokens.issubset(tokens):
+        marker_tokens = set(
+            _product_norm(marker).split()
+        )
+
+        if (
+            marker_tokens
+            and marker_tokens.issubset(tokens)
+        ):
             return True
 
     return False
@@ -170,7 +195,11 @@ def _has_non_perfume_marker_in_product(
             return True
 
     try:
-        path = unquote(urlparse(str(url or "")).path)
+        path = unquote(
+            urlparse(
+                str(url or "")
+            ).path
+        )
     except Exception:
         path = str(url or "")
 
@@ -178,29 +207,66 @@ def _has_non_perfume_marker_in_product(
 
 
 def _fix_mojibake(value: Any) -> str:
-    """Repair common UTF-8/Windows-1252 artifacts from reader output."""
+    """
+    Repair common UTF-8/Windows-1252 artifacts
+    from reader output.
+    """
+
     text = str(value or "")
+
     if not text:
         return ""
 
     markers = (
-        "â‚¬", "Ã©", "Ã¨", "Ã´", "Ã ", "Ã¹",
-        "Ã¢", "Ãª", "Ã®", "Ã¯", "Â€", "Â·",
+        "â‚¬",
+        "Ã©",
+        "Ã¨",
+        "Ã´",
+        "Ã ",
+        "Ã¹",
+        "Ã¢",
+        "Ãª",
+        "Ã®",
+        "Ã¯",
+        "Â€",
+        "Â·",
     )
-    if any(marker in text for marker in markers):
+
+    if any(
+        marker in text
+        for marker in markers
+    ):
         try:
-            repaired = text.encode("cp1252").decode("utf-8")
+            repaired = (
+                text
+                .encode("cp1252")
+                .decode("utf-8")
+            )
+
             if repaired != text:
                 return repaired
-        except (UnicodeEncodeError, UnicodeDecodeError):
+
+        except (
+            UnicodeEncodeError,
+            UnicodeDecodeError,
+        ):
             pass
 
-    return text.replace("â‚¬", "€")
+    return text.replace(
+        "â‚¬",
+        "€",
+    )
 
 
 def _clean(value: Any) -> str:
     text = _fix_mojibake(value)
-    text = re.sub(r"\s+", " ", text).strip()
+
+    text = re.sub(
+        r"\s+",
+        " ",
+        text,
+    ).strip()
+
     return re.sub(
         r"([a-zà-ÿ])([A-ZÀ-Ÿ])",
         r"\1 \2",
@@ -208,29 +274,55 @@ def _clean(value: Any) -> str:
     )
 
 
-
 def _tokens(value: Any) -> List[str]:
     return [
         x
-        for x in re.findall(r"[a-z0-9]+", _clean(value).lower())
+        for x in re.findall(
+            r"[a-z0-9]+",
+            _clean(value).lower(),
+        )
         if len(x) > 1
     ]
 
 
 def _query_tokens(value: Any) -> List[str]:
     text = _clean(value)
-    text = SIZE_RE.sub(" ", text)
+
+    text = SIZE_RE.sub(
+        " ",
+        text,
+    )
+
     return _tokens(text)
 
 
 def _fuzzy_query_match(
     name: Any,
     query: Any,
-) -> Tuple[bool, Dict[str, bool], int]:
-    name_tokens = set(_query_tokens(name))
+) -> Tuple[
+    bool,
+    Dict[str, bool],
+    int,
+]:
+    """
+    Fuzzy matching between query tokens and product name tokens.
+
+    Fixed version:
+    the length comparison is now made against the
+    ACTUAL closest candidate token instead of the
+    longest token in the product name.
+    """
+
+    name_tokens = set(
+        _query_tokens(name)
+    )
+
     query_tokens = _query_tokens(query)
 
-    if not query_tokens or not name_tokens:
+    if (
+        not query_tokens
+        or not name_tokens
+    ):
         return False, {}, 0
 
     hits: Dict[str, bool] = {}
@@ -241,45 +333,66 @@ def _fuzzy_query_match(
             hits[token] = True
             continue
 
-        best = max(
-            (
-                difflib.SequenceMatcher(
-                    None,
-                    token,
-                    candidate,
-                ).ratio()
-                for candidate in name_tokens
-            ),
-            default=0.0,
-        )
+        best_ratio = 0.0
+        best_length = 0
 
-        closest_length = max(
-            (len(x) for x in name_tokens),
-            default=0,
-        )
+        for candidate in name_tokens:
+            ratio = difflib.SequenceMatcher(
+                None,
+                token,
+                candidate,
+            ).ratio()
+
+            if ratio > best_ratio:
+                best_ratio = ratio
+                best_length = len(candidate)
 
         hit = (
-            best >= 0.80
-            and abs(len(token) - closest_length) <= 2
+            best_ratio >= 0.80
+            and abs(
+                len(token) - best_length
+            ) <= 2
         )
 
         hits[token] = hit
         fuzzy_hits += int(hit)
 
-    return all(hits.values()), hits, fuzzy_hits
+    return (
+        all(hits.values()),
+        hits,
+        fuzzy_hits,
+    )
 
 
-def _requested_sizes(value: Any) -> List[Tuple[str, str]]:
-    sizes: List[Tuple[str, str]] = []
+def _requested_sizes(
+    value: Any,
+) -> List[Tuple[str, str]]:
+    sizes: List[
+        Tuple[str, str]
+    ] = []
 
-    for match in SIZE_RE.finditer(_clean(value)):
-        number = match.group(1).replace(",", ".")
+    for match in SIZE_RE.finditer(
+        _clean(value)
+    ):
+        number = match.group(
+            1
+        ).replace(
+            ",",
+            ".",
+        )
+
         unit = re.sub(
             r"\s+",
             "",
             match.group(2).lower(),
         )
-        sizes.append((number, unit))
+
+        sizes.append(
+            (
+                number,
+                unit,
+            )
+        )
 
     return sizes
 
@@ -290,35 +403,49 @@ def _size_matches(
 ) -> bool:
     number, unit = size
 
-    number_pattern = re.escape(number).replace(
+    number_pattern = re.escape(
+        number
+    ).replace(
         r"\.",
         r"[.,]",
     )
 
-    unit_pattern = re.escape(unit).replace(
+    unit_pattern = re.escape(
+        unit
+    ).replace(
         "floz",
         r"fl\s*oz",
     )
 
     pattern = re.compile(
-        rf"\b{number_pattern}\s*{unit_pattern}\b",
+        rf"\b{number_pattern}\s*"
+        rf"{unit_pattern}\b",
         re.I,
     )
 
-    return bool(pattern.search(_clean(text)))
+    return bool(
+        pattern.search(
+            _clean(text)
+        )
+    )
 
 
 def _contains_requested_size(
     text: Any,
     query: Any,
 ) -> bool:
-    requested = _requested_sizes(query)
+    requested = _requested_sizes(
+        query
+    )
 
     if not requested:
         return True
 
     return any(
-        _size_matches(text, size)
+        _size_matches(
+            text,
+            size,
+        )
         for size in requested
     )
 
@@ -328,15 +455,23 @@ def _matches(
     query: Any,
 ) -> bool:
     text = _clean(text).lower()
-    tokens = _query_tokens(query)
 
-    return bool(tokens) and all(
-        token in text
-        for token in tokens
+    tokens = _query_tokens(
+        query
+    )
+
+    return (
+        bool(tokens)
+        and all(
+            token in text
+            for token in tokens
+        )
     )
 
 
-def _format_price(value: Any) -> str:
+def _format_price(
+    value: Any,
+) -> str:
     match = re.search(
         r"(\d{1,4}(?:[.,]\d{1,2})?)",
         _clean(value),
@@ -347,18 +482,30 @@ def _format_price(value: Any) -> str:
 
     try:
         number = float(
-            match.group(1).replace(",", ".")
+            match.group(1).replace(
+                ",",
+                ".",
+            )
         )
+
     except ValueError:
         return ""
 
     if number <= 0:
         return ""
 
-    return f"{number:.2f}".replace(".", ",") + "€"
+    return (
+        f"{number:.2f}".replace(
+            ".",
+            ",",
+        )
+        + "€"
+    )
 
 
-def _extract_price(text: Any) -> str:
+def _extract_price(
+    text: Any,
+) -> str:
     matches = list(
         PRICE_RE.finditer(
             _clean(text)
@@ -371,13 +518,18 @@ def _extract_price(text: Any) -> str:
     match = matches[-1]
 
     return _format_price(
-        match.group(1) or match.group(2)
+        match.group(1)
+        or match.group(2)
     )
 
 
-def _extract_product_price(text: Any) -> str:
+def _extract_product_price(
+    text: Any,
+) -> str:
     """
-    Extract selling price while avoiding unit prices such as:
+    Extract selling price while avoiding
+    unit prices such as:
+
     26,67 € / 100 ml
     """
 
@@ -396,7 +548,9 @@ def _extract_product_price(text: Any) -> str:
         )
     )
 
-    for current in reversed(current_matches):
+    for current in reversed(
+        current_matches
+    ):
         after = content[
             current.end():
             current.end() + 40
@@ -440,7 +594,9 @@ def _extract_product_price(text: Any) -> str:
 
     valid = []
 
-    for match in PRICE_RE.finditer(content):
+    for match in PRICE_RE.finditer(
+        content
+    ):
         after = content[
             match.end():
             match.end() + 40
@@ -453,11 +609,14 @@ def _extract_product_price(text: Any) -> str:
             continue
 
         valid.append(
-            match.group(1) or match.group(2)
+            match.group(1)
+            or match.group(2)
         )
 
     if valid:
-        return _format_price(valid[-1])
+        return _format_price(
+            valid[-1]
+        )
 
     return ""
 
@@ -467,9 +626,6 @@ def _extract_price_from_lines(
 ) -> str:
     """
     Extra price fallback for Jina/Markdown pages.
-
-    Looks at individual lines first, which avoids accidentally selecting
-    an unrelated price from another product further down the page.
     """
 
     raw = html_lib.unescape(
@@ -505,11 +661,15 @@ def _extract_price_from_lines(
             continue
 
         for pattern in priority_patterns:
-            match = pattern.search(line)
+            match = pattern.search(
+                line
+            )
+
             if match:
                 price = _format_price(
                     match.group(1)
                 )
+
                 if price:
                     return price
 
@@ -519,7 +679,9 @@ def _extract_price_from_lines(
 def _is_excluded_notino_path(
     path: str,
 ) -> bool:
-    low = (path or "").rstrip("/").lower()
+    low = (
+        path or ""
+    ).rstrip("/").lower()
 
     return any(
         low.startswith(prefix)
@@ -542,7 +704,10 @@ def _looks_like_product_url(
     url: str,
 ) -> bool:
     try:
-        parsed = urlparse(url)
+        parsed = urlparse(
+            url
+        )
+
     except Exception:
         return False
 
@@ -554,28 +719,70 @@ def _looks_like_product_url(
 
     path = parsed.path.rstrip("/")
 
-    if _is_excluded_notino_path(path):
+    if _is_excluded_notino_path(
+        path
+    ):
         return False
 
     segments = [
-        x for x in path.split("/")
+        x
+        for x in path.split("/")
         if x
     ]
 
     return len(segments) >= 2
 
 
-def _canonical_product_url(url: str) -> str:
-    """Collapse /product-slug/p-123 into the stable SEO product URL."""
+def _canonical_product_url(
+    url: str,
+) -> str:
+    """
+    Collapse:
+
+    /product-slug/p-123
+
+    into:
+
+    /product-slug
+    """
+
     try:
-        parsed = urlparse(str(url or ""))
+        parsed = urlparse(
+            str(url or "")
+        )
+
         path = parsed.path.rstrip("/")
-        parts = [part for part in path.split("/") if part]
-        if len(parts) >= 3 and re.fullmatch(r"p-\d+", parts[-1], re.I):
-            path = "/" + "/".join(parts[:-1])
-        return f"https://{parsed.netloc.lower()}{path}"
+
+        parts = [
+            part
+            for part in path.split("/")
+            if part
+        ]
+
+        if (
+            len(parts) >= 3
+            and re.fullmatch(
+                r"p-\d+",
+                parts[-1],
+                re.I,
+            )
+        ):
+            path = (
+                "/"
+                + "/".join(
+                    parts[:-1]
+                )
+            )
+
+        return (
+            f"https://{parsed.netloc.lower()}"
+            f"{path}"
+        )
+
     except Exception:
-        return str(url or "").strip()
+        return str(
+            url or ""
+        ).strip()
 
 
 def _normalise_reader_url(
@@ -587,8 +794,14 @@ def _normalise_reader_url(
 
     value = (
         value
-        .replace("\\/", "/")
-        .replace("\\u002F", "/")
+        .replace(
+            "\\/",
+            "/",
+        )
+        .replace(
+            "\\u002F",
+            "/",
+        )
     )
 
     value = unquote(
@@ -597,17 +810,27 @@ def _normalise_reader_url(
         " <>\"'()[]{}.,;"
     )
 
-    if value.startswith("//"):
-        value = "https:" + value
+    if value.startswith(
+        "//"
+    ):
+        value = (
+            "https:"
+            + value
+        )
 
-    elif value.startswith("/"):
+    elif value.startswith(
+        "/"
+    ):
         value = urljoin(
             BASE_URL,
             value,
         )
 
     try:
-        parsed = urlparse(value)
+        parsed = urlparse(
+            value
+        )
+
     except Exception:
         return None
 
@@ -627,16 +850,24 @@ def _normalise_reader_url(
             "/notino.fr/"
         )
     ):
-        path = "/" + path.split(
-            "/",
-            2,
-        )[2]
+        path = (
+            "/"
+            + path.split(
+                "/",
+                2,
+            )[2]
+        )
 
     normalised = (
         f"https://{parsed.netloc.lower()}"
         f"{path.rstrip('/')}"
     )
-    normalised = _canonical_product_url(normalised)
+
+    normalised = (
+        _canonical_product_url(
+            normalised
+        )
+    )
 
     if not _looks_like_product_url(
         normalised
@@ -649,7 +880,9 @@ def _normalise_reader_url(
 def _search_urls(
     query: str,
 ) -> List[str]:
-    q = quote_plus(query)
+    q = quote_plus(
+        query
+    )
 
     return [
         f"{SEARCH_URL}?exps={q}",
@@ -691,7 +924,9 @@ def _reader_request(
 def _is_challenge(
     text: str,
 ) -> bool:
-    low = _clean(text).lower()
+    low = _clean(
+        text
+    ).lower()
 
     return any(
         marker in low
@@ -722,18 +957,28 @@ def _clean_name(
 
     words = value.split()
 
-    if len(words) >= 4 and len(words) % 2 == 0:
+    if (
+        len(words) >= 4
+        and len(words) % 2 == 0
+    ):
         half = len(words) // 2
 
-        if words[:half] == words[half:]:
+        if (
+            words[:half]
+            == words[half:]
+        ):
             value = " ".join(
                 words[:half]
             )
 
-    return _clean(value)
+    return _clean(
+        value
+    )
 
 
-def _card_text(link) -> str:
+def _card_text(
+    link,
+) -> str:
     node = link
 
     best = _clean(
@@ -778,17 +1023,38 @@ def _make_candidate(
     card: str,
     query: str,
     source: str,
-) -> Optional[Dict[str, Any]]:
-    url = _clean(url).split("?")[0]
+) -> Optional[
+    Dict[str, Any]
+]:
+    url = (
+        _clean(url)
+        .split("?")[0]
+    )
 
-    if not _looks_like_product_url(url):
+    if not _looks_like_product_url(
+        url
+    ):
         return None
 
-    anchor = _clean(anchor)
-    card = _clean(card)
+    anchor = _clean(
+        anchor
+    )
 
-    slug_name = _name_from_product_url(url)
-    url_brand = _brand_from_product_url(url)
+    card = _clean(
+        card
+    )
+
+    slug_name = (
+        _name_from_product_url(
+            url
+        )
+    )
+
+    url_brand = (
+        _brand_from_product_url(
+            url
+        )
+    )
 
     branded_slug = (
         _clean_name(
@@ -798,7 +1064,10 @@ def _make_candidate(
         else slug_name
     )
 
-    anchor_name = _clean_name(anchor)
+    anchor_name = _clean_name(
+        anchor
+    )
+
     name = anchor_name
 
     polluted_anchor = (
@@ -809,7 +1078,10 @@ def _make_candidate(
         or anchor_name.count("sponsoris") >= 2
     )
 
-    if polluted_anchor and slug_name:
+    if (
+        polluted_anchor
+        and slug_name
+    ):
         name = slug_name
 
     if slug_name:
@@ -838,7 +1110,9 @@ def _make_candidate(
             )
 
     if not name:
-        name = _clean_name(card)
+        name = _clean_name(
+            card
+        )
 
     if (
         not name
@@ -857,9 +1131,14 @@ def _make_candidate(
         )
     )
 
-    query_tokens = _query_tokens(query)
+    query_tokens = _query_tokens(
+        query
+    )
 
-    if not query_tokens or not matched:
+    if (
+        not query_tokens
+        or not matched
+    ):
         return None
 
     score = (
@@ -872,8 +1151,10 @@ def _make_candidate(
         f"{anchor} {card}"
     )
 
-    requested_sizes = _requested_sizes(
-        query
+    requested_sizes = (
+        _requested_sizes(
+            query
+        )
     )
 
     if requested_sizes:
@@ -896,8 +1177,12 @@ def _make_candidate(
 
     return {
         "url": url,
-        "anchor_text": anchor or name,
-        "card_text": card or anchor,
+        "anchor_text": (
+            anchor or name
+        ),
+        "card_text": (
+            card or anchor
+        ),
         "name": name,
         "score": score,
         "token_hits": hits,
@@ -923,7 +1208,9 @@ def _make_candidate(
 def extract_candidates_from_html(
     html: str,
     query: str,
-) -> List[Dict[str, Any]]:
+) -> List[
+    Dict[str, Any]
+]:
     soup = BeautifulSoup(
         html or "",
         "html.parser",
@@ -941,11 +1228,15 @@ def extract_candidates_from_html(
         url = urljoin(
             BASE_URL,
             _clean(
-                link.get("href")
+                link.get(
+                    "href"
+                )
             ),
         ).split("?")[0]
 
-        if not _looks_like_product_url(url):
+        if not _looks_like_product_url(
+            url
+        ):
             continue
 
         candidate = _make_candidate(
@@ -961,12 +1252,16 @@ def extract_candidates_from_html(
             "direct-search",
         )
 
-        if candidate and (
-            candidate["url"] not in found
-            or candidate["score"]
-            > found[
+        if (
+            candidate
+            and (
                 candidate["url"]
-            ]["score"]
+                not in found
+                or candidate["score"]
+                > found[
+                    candidate["url"]
+                ]["score"]
+            )
         ):
             found[
                 candidate["url"]
@@ -992,7 +1287,10 @@ def _reader_name_from_context(
         html_lib.unescape(
             context or ""
         )
-        .replace("\\/", "/")
+        .replace(
+            "\\/",
+            "/",
+        )
     )
 
     lines = [
@@ -1001,7 +1299,9 @@ def _reader_name_from_context(
             " ",
             x,
         ).strip()
-        for x in str(raw).splitlines()
+        for x in str(
+            raw
+        ).splitlines()
         if x.strip()
     ]
 
@@ -1043,7 +1343,10 @@ def _reader_name_from_context(
         return ""
 
     if level == 3:
-        for prev_level, brand in reversed(
+        for (
+            prev_level,
+            brand,
+        ) in reversed(
             headings[:-1]
         ):
             if prev_level == 3:
@@ -1053,11 +1356,16 @@ def _reader_name_from_context(
                 prev_level == 2
                 and brand
             ):
-                query_tokens = _query_tokens(
-                    query
+                query_tokens = (
+                    _query_tokens(
+                        query
+                    )
                 )
-                brand_tokens = _query_tokens(
-                    brand
+
+                brand_tokens = (
+                    _query_tokens(
+                        brand
+                    )
                 )
 
                 brand_relevant = any(
@@ -1072,8 +1380,7 @@ def _reader_name_from_context(
                         and abs(
                             len(bt)
                             - len(qt)
-                        )
-                        <= 2
+                        ) <= 2
                         for qt in query_tokens
                     )
                     for bt in brand_tokens
@@ -1118,11 +1425,13 @@ def _name_from_product_url(
         path = unquote(
             urlparse(url).path
         ).strip("/")
+
     except Exception:
         return ""
 
     parts = [
-        x for x in path.split("/")
+        x
+        for x in path.split("/")
         if x
     ]
 
@@ -1147,7 +1456,9 @@ def _name_from_product_url(
         slug,
     )
 
-    return _clean_name(slug)
+    return _clean_name(
+        slug
+    )
 
 
 def _brand_from_product_url(
@@ -1157,17 +1468,22 @@ def _brand_from_product_url(
         path = unquote(
             urlparse(url).path
         ).strip("/")
+
     except Exception:
         return ""
 
     parts = [
-        x for x in path.split("/")
+        x
+        for x in path.split("/")
         if x
     ]
 
     return (
         _clean_name(
-            parts[0].replace("-", " ")
+            parts[0].replace(
+                "-",
+                " ",
+            )
         )
         if len(parts) >= 2
         else ""
@@ -1177,7 +1493,9 @@ def _brand_from_product_url(
 def _reader_candidates(
     text: str,
     query: str,
-) -> List[Dict[str, Any]]:
+) -> List[
+    Dict[str, Any]
+]:
     found: Dict[
         str,
         Dict[str, Any],
@@ -1187,7 +1505,10 @@ def _reader_candidates(
         html_lib.unescape(
             text or ""
         )
-        .replace("\\/", "/")
+        .replace(
+            "\\/",
+            "/",
+        )
     )
 
     lines = [
@@ -1201,8 +1522,12 @@ def _reader_candidates(
         re.I,
     )
 
-    for i, line in enumerate(lines):
-        for match in markdown.finditer(line):
+    for i, line in enumerate(
+        lines
+    ):
+        for match in markdown.finditer(
+            line
+        ):
             anchor = _clean(
                 match.group(1)
             )
@@ -1218,12 +1543,16 @@ def _reader_candidates(
                 anchor
             )
 
-            query_tokens = _query_tokens(
-                query
+            query_tokens = (
+                _query_tokens(
+                    query
+                )
             )
 
             name_tokens = set(
-                _query_tokens(name)
+                _query_tokens(
+                    name
+                )
             )
 
             needs_heading = (
@@ -1235,11 +1564,16 @@ def _reader_candidates(
             )
 
             if needs_heading:
-                heading_context = "\n".join(
-                    lines[
-                        max(0, i - 80):
-                        i + 1
-                    ]
+                heading_context = (
+                    "\n".join(
+                        lines[
+                            max(
+                                0,
+                                i - 80,
+                            ):
+                            i + 1
+                        ]
+                    )
                 )
 
                 heading_name = (
@@ -1252,8 +1586,10 @@ def _reader_candidates(
                 if heading_name:
                     name = heading_name
 
-            slug_name = _name_from_product_url(
-                url
+            slug_name = (
+                _name_from_product_url(
+                    url
+                )
             )
 
             if slug_name and (
@@ -1268,16 +1604,23 @@ def _reader_candidates(
             ):
                 name = slug_name
 
-            brand = _brand_from_product_url(
-                url
+            brand = (
+                _brand_from_product_url(
+                    url
+                )
             )
 
             if brand:
-                query_tokens = _query_tokens(
-                    query
+                query_tokens = (
+                    _query_tokens(
+                        query
+                    )
                 )
-                brand_tokens = _query_tokens(
-                    brand
+
+                brand_tokens = (
+                    _query_tokens(
+                        brand
+                    )
                 )
 
                 brand_relevant = any(
@@ -1292,16 +1635,17 @@ def _reader_candidates(
                         and abs(
                             len(bt)
                             - len(qt)
-                        )
-                        <= 2
+                        ) <= 2
                         for qt in query_tokens
                     )
                     for bt in brand_tokens
                 )
 
-                branded_name = _clean_name(
-                    f"{brand} "
-                    f"{slug_name or name}"
+                branded_name = (
+                    _clean_name(
+                        f"{brand} "
+                        f"{slug_name or name}"
+                    )
                 )
 
                 if (
@@ -1337,10 +1681,13 @@ def _reader_candidates(
                 "reader-markdown",
             )
 
-            if candidate and (
-                url not in found
-                or candidate["score"]
-                > found[url]["score"]
+            if (
+                candidate
+                and (
+                    url not in found
+                    or candidate["score"]
+                    > found[url]["score"]
+                )
             ):
                 found[url] = candidate
 
@@ -1349,7 +1696,9 @@ def _reader_candidates(
         READER_ABSOLUTE_PRODUCT_RE,
         READER_RELATIVE_PRODUCT_RE,
     ):
-        for match in pattern.finditer(raw):
+        for match in pattern.finditer(
+            raw
+        ):
             url = _normalise_reader_url(
                 match.group(0)
             )
@@ -1357,8 +1706,10 @@ def _reader_candidates(
             if not url:
                 continue
 
-            slug_name = _name_from_product_url(
-                url
+            slug_name = (
+                _name_from_product_url(
+                    url
+                )
             )
 
             if not slug_name:
@@ -1366,8 +1717,10 @@ def _reader_candidates(
 
             name = slug_name
 
-            brand = _brand_from_product_url(
-                url
+            brand = (
+                _brand_from_product_url(
+                    url
+                )
             )
 
             branded_name = (
@@ -1378,12 +1731,16 @@ def _reader_candidates(
                 else ""
             )
 
-            query_tokens = _query_tokens(
-                query
+            query_tokens = (
+                _query_tokens(
+                    query
+                )
             )
 
-            brand_tokens = _query_tokens(
-                brand
+            brand_tokens = (
+                _query_tokens(
+                    brand
+                )
             )
 
             brand_relevant = (
@@ -1400,8 +1757,7 @@ def _reader_candidates(
                         and abs(
                             len(bt)
                             - len(qt)
-                        )
-                        <= 2
+                        ) <= 2
                         for qt in query_tokens
                     )
                     for bt in brand_tokens
@@ -1438,10 +1794,13 @@ def _reader_candidates(
                 "reader-url",
             )
 
-            if candidate and (
-                url not in found
-                or candidate["score"]
-                > found[url]["score"]
+            if (
+                candidate
+                and (
+                    url not in found
+                    or candidate["score"]
+                    > found[url]["score"]
+                )
             ):
                 found[url] = candidate
 
@@ -1462,9 +1821,13 @@ def _reader_candidates(
 
 
 def _rank_candidates_for_product_lookup(
-    candidates: List[Dict[str, Any]],
-    limit: int = 8,
-) -> List[Dict[str, Any]]:
+    candidates: List[
+        Dict[str, Any]
+    ],
+    limit: int = 3,
+) -> List[
+    Dict[str, Any]
+]:
     if not candidates:
         return []
 
@@ -1479,7 +1842,10 @@ def _rank_candidates_for_product_lookup(
             -int(
                 x.get("score") or 0
             ),
-            x.get("url", ""),
+            x.get(
+                "url",
+                "",
+            ),
         ),
     )
 
@@ -1492,17 +1858,23 @@ def _rank_candidates_for_product_lookup(
     ]
 
     return (
-        exact if exact else ordered
+        exact
+        if exact
+        else ordered
     )[:limit]
 
 
 def _parse_sitemap_xml(
     text: str,
-) -> Tuple[str, List[str]]:
+) -> Tuple[
+    str,
+    List[str],
+]:
     try:
         root = ET.fromstring(
             text or ""
         )
+
     except ET.ParseError:
         return "", []
 
@@ -1528,14 +1900,19 @@ def _parse_sitemap_xml(
                 )
             )
 
-    return root_type, locs
+    return (
+        root_type,
+        locs,
+    )
 
 
 def _sitemap_product_urls(
     text: str,
 ) -> List[str]:
-    root_type, locs = _parse_sitemap_xml(
-        text
+    root_type, locs = (
+        _parse_sitemap_xml(
+            text
+        )
     )
 
     urls = []
@@ -1543,11 +1920,16 @@ def _sitemap_product_urls(
 
     if root_type == "urlset":
         for value in locs:
-            url = _normalise_reader_url(
-                value
+            url = (
+                _normalise_reader_url(
+                    value
+                )
             )
 
-            if url and url not in seen:
+            if (
+                url
+                and url not in seen
+            ):
                 seen.add(url)
                 urls.append(url)
 
@@ -1557,7 +1939,10 @@ def _sitemap_product_urls(
         html_lib.unescape(
             str(text or "")
         )
-        .replace("\\/", "/")
+        .replace(
+            "\\/",
+            "/",
+        )
     )
 
     for match in re.finditer(
@@ -1565,11 +1950,16 @@ def _sitemap_product_urls(
         raw,
         flags=re.I | re.S,
     ):
-        url = _normalise_reader_url(
-            match.group(1).strip()
+        url = (
+            _normalise_reader_url(
+                match.group(1).strip()
+            )
         )
 
-        if url and url not in seen:
+        if (
+            url
+            and url not in seen
+        ):
             seen.add(url)
             urls.append(url)
 
@@ -1579,8 +1969,10 @@ def _sitemap_product_urls(
 def _sitemap_child_urls(
     text: str,
 ) -> List[str]:
-    root_type, locs = _parse_sitemap_xml(
-        text
+    root_type, locs = (
+        _parse_sitemap_xml(
+            text
+        )
     )
 
     if root_type == "sitemapindex":
@@ -1598,7 +1990,10 @@ def _sitemap_child_urls(
         html_lib.unescape(
             str(text or "")
         )
-        .replace("\\/", "/")
+        .replace(
+            "\\/",
+            "/",
+        )
     )
 
     out = []
@@ -1608,10 +2003,14 @@ def _sitemap_child_urls(
         raw,
         flags=re.I | re.S,
     ):
-        value = match.group(1).strip()
+        value = match.group(
+            1
+        ).strip()
 
         if (
-            value.lower().endswith(".xml")
+            value.lower().endswith(
+                ".xml"
+            )
             and value not in out
         ):
             out.append(value)
@@ -1622,16 +2021,22 @@ def _sitemap_child_urls(
 def _candidate_from_sitemap_url(
     url: str,
     query: str,
-) -> Optional[Dict[str, Any]]:
-    slug_name = _name_from_product_url(
-        url
+) -> Optional[
+    Dict[str, Any]
+]:
+    slug_name = (
+        _name_from_product_url(
+            url
+        )
     )
 
     if not slug_name:
         return None
 
-    brand = _brand_from_product_url(
-        url
+    brand = (
+        _brand_from_product_url(
+            url
+        )
     )
 
     name = slug_name
@@ -1644,12 +2049,16 @@ def _candidate_from_sitemap_url(
         else ""
     )
 
-    query_tokens = _query_tokens(
-        query
+    query_tokens = (
+        _query_tokens(
+            query
+        )
     )
 
-    brand_tokens = _query_tokens(
-        brand
+    brand_tokens = (
+        _query_tokens(
+            brand
+        )
     )
 
     brand_relevant = (
@@ -1666,15 +2075,17 @@ def _candidate_from_sitemap_url(
                 and abs(
                     len(bt)
                     - len(qt)
-                )
-                <= 2
+                ) <= 2
                 for qt in query_tokens
             )
             for bt in brand_tokens
         )
     )
 
-    if branded_name and brand_relevant:
+    if (
+        branded_name
+        and brand_relevant
+    ):
         name = branded_name
 
     if _has_non_perfume_marker_in_product(
@@ -1708,7 +2119,9 @@ def _candidate_from_sitemap_url(
         "token_hits": hits,
         "contains_all_query_tokens": True,
         "requested_size": bool(
-            _requested_sizes(query)
+            _requested_sizes(
+                query
+            )
         ),
         "size_match_in_search_context": (
             _contains_requested_size(
@@ -1741,8 +2154,10 @@ def _sitemap_discovery(
         text: str,
         source_url: str,
     ) -> List[str]:
-        found_urls = _sitemap_product_urls(
-            text
+        found_urls = (
+            _sitemap_product_urls(
+                text
+            )
         )
 
         for url in found_urls:
@@ -1763,7 +2178,9 @@ def _sitemap_discovery(
                     or candidate["score"]
                     > old["score"]
                 ):
-                    candidates[url] = candidate
+                    candidates[
+                        url
+                    ] = candidate
 
         return found_urls
 
@@ -1815,11 +2232,15 @@ def _sitemap_discovery(
                         f"{type(exc).__name__}: "
                         f"{exc}"
                     ),
-                    "reader_status": reader.status_code,
+                    "reader_status": (
+                        reader.status_code
+                    ),
                     "reader_html_length": len(
                         root_text
                     ),
-                    "source": "sitemap-reader",
+                    "source": (
+                        "sitemap-reader"
+                    ),
                 }
             )
 
@@ -1852,7 +2273,9 @@ def _sitemap_discovery(
                         child.status_code
                     )
 
-                    child_source = "sitemap"
+                    child_source = (
+                        "sitemap"
+                    )
 
                 except requests.RequestException:
                     child = _reader_request(
@@ -1892,7 +2315,9 @@ def _sitemap_discovery(
                             len(candidates)
                             - before
                         ),
-                        "source": child_source,
+                        "source": (
+                            child_source
+                        ),
                     }
                 )
 
@@ -1913,7 +2338,9 @@ def _sitemap_discovery(
                             f"{type(exc).__name__}: "
                             f"{exc}"
                         ),
-                        "source": "sitemap",
+                        "source": (
+                            "sitemap"
+                        ),
                     }
                 )
 
@@ -1934,7 +2361,9 @@ def _sitemap_discovery(
                     f"{type(exc).__name__}: "
                     f"{exc}"
                 ),
-                "source": "sitemap",
+                "source": (
+                    "sitemap"
+                ),
             }
         )
 
@@ -1957,23 +2386,38 @@ def _reader_discovery(
     List[Dict[str, Any]],
     Dict[str, Any],
 ]:
-    query = _clean(query)
-    tokens = _query_tokens(query)
+    """
+    FAST JINA DISCOVERY
 
-    variants: List[str] = []
+    Previous behaviour could generate many sequential
+    Jina requests:
 
-    for value in [
-        query,
-        " ".join(reversed(tokens)),
-        *tokens,
-    ]:
-        value = _clean(value)
+        Liquid Brun
+        Brun Liquid
+        Liquid
+        Brun
+        brand pages
+        branded queries
+        sitemap
+        ...
 
-        if (
-            value
-            and value not in variants
-        ):
-            variants.append(value)
+    This version deliberately limits discovery to:
+
+        1. original query
+        2. reversed query
+
+    It stops as soon as 3 exact candidates are found.
+
+    Sitemap is used only when no exact candidate was found.
+    """
+
+    query = _clean(
+        query
+    )
+
+    tokens = _query_tokens(
+        query
+    )
 
     candidates: Dict[
         str,
@@ -1983,6 +2427,30 @@ def _reader_discovery(
     pages: List[
         Dict[str, Any]
     ] = []
+
+    # ---------------------------------------------------------
+    # ONLY TWO QUERY VARIANTS
+    # ---------------------------------------------------------
+
+    variants: List[str] = []
+
+    for value in (
+        query,
+        " ".join(
+            reversed(tokens)
+        ),
+    ):
+        value = _clean(
+            value
+        )
+
+        if (
+            value
+            and value not in variants
+        ):
+            variants.append(
+                value
+            )
 
     def collect(
         url: str,
@@ -2022,9 +2490,12 @@ def _reader_discovery(
                         READER_BASE
                         + source_url
                     ),
-                    "status": response.status_code,
+                    "status": (
+                        response.status_code
+                    ),
                     "html_length": len(
-                        response.text or ""
+                        response.text
+                        or ""
                     ),
                     "candidate_count": len(
                         found
@@ -2058,17 +2529,40 @@ def _reader_discovery(
                 }
             )
 
-    for variant in variants:
-        for search_url in _search_urls(
-            variant
-        ):
-            collect(
-                search_url,
-                variant,
-                search_url,
-            )
+    # ---------------------------------------------------------
+    # FAST PATH
+    # ---------------------------------------------------------
 
-    strong = sorted(
+    for variant in variants:
+        search_url = (
+            f"{BASE_URL}/search"
+            f"?query={quote_plus(variant)}"
+        )
+
+        collect(
+            search_url,
+            variant,
+            search_url,
+        )
+
+        exact_count = sum(
+            1
+            for candidate
+            in candidates.values()
+            if candidate.get(
+                "contains_all_query_tokens"
+            )
+        )
+
+        # Three good candidates are enough.
+        if exact_count >= 3:
+            break
+
+    # ---------------------------------------------------------
+    # RANKING
+    # ---------------------------------------------------------
+
+    ordered = sorted(
         candidates.values(),
         key=lambda x: (
             not bool(
@@ -2077,90 +2571,41 @@ def _reader_discovery(
                 )
             ),
             -int(
-                x.get("score") or 0
+                x.get(
+                    "score"
+                )
+                or 0
+            ),
+            x.get(
+                "url",
+                "",
             ),
         ),
-    )[:8]
-
-    brand_urls: List[str] = []
-
-    for candidate in strong:
-        brand = _brand_from_product_url(
-            candidate["url"]
-        )
-
-        if not brand:
-            continue
-
-        brand_slug = re.sub(
-            r"\s+",
-            "-",
-            brand.lower(),
-        )
-
-        brand_url = (
-            f"{BASE_URL}/{brand_slug}/"
-        )
-
-        if brand_url not in brand_urls:
-            brand_urls.append(
-                brand_url
-            )
-
-    for brand_url in brand_urls:
-        collect(
-            brand_url,
-            (
-                "brand:"
-                + brand_url.rsplit(
-                    "/",
-                    2,
-                )[-2]
-            ),
-            brand_url,
-        )
-
-    for candidate in strong:
-        brand = _brand_from_product_url(
-            candidate["url"]
-        )
-
-        if not brand:
-            continue
-
-        branded_queries = [
-            f"{brand} {query}",
-            f"{query} {brand}",
-        ]
-
-        for branded_query in branded_queries:
-            for search_url in _search_urls(
-                branded_query
-            ):
-                collect(
-                    search_url,
-                    branded_query,
-                    search_url,
-                )
-
-    exact_count = sum(
-        1
-        for x in candidates.values()
-        if x.get(
-            "contains_all_query_tokens"
-        )
     )
+
+    # ---------------------------------------------------------
+    # SITEMAP ONLY IF NOTHING EXACT WAS FOUND
+    # ---------------------------------------------------------
 
     sitemap_pages: List[
         Dict[str, Any]
     ] = []
 
-    if exact_count < 2:
-        sitemap_candidates, sitemap_pages = (
-            _sitemap_discovery(
-                query,
-                session,
-            )
+    exact_count = sum(
+        1
+        for candidate in ordered
+        if candidate.get(
+            "contains_all_query_tokens"
+        )
+    )
+
+    if exact_count == 0:
+        (
+            sitemap_candidates,
+            sitemap_pages,
+        ) = _sitemap_discovery(
+            query,
+            session,
         )
 
         for candidate in sitemap_candidates:
@@ -2177,23 +2622,29 @@ def _reader_discovery(
                     candidate["url"]
                 ] = candidate
 
+        ordered = sorted(
+            candidates.values(),
+            key=lambda x: (
+                not bool(
+                    x.get(
+                        "contains_all_query_tokens"
+                    )
+                ),
+                -int(
+                    x.get(
+                        "score"
+                    )
+                    or 0
+                ),
+                x.get(
+                    "url",
+                    "",
+                ),
+            ),
+        )
+
     pages.extend(
         sitemap_pages
-    )
-
-    ordered = sorted(
-        candidates.values(),
-        key=lambda x: (
-            not bool(
-                x.get(
-                    "contains_all_query_tokens"
-                )
-            ),
-            -int(
-                x.get("score") or 0
-            ),
-            x["url"],
-        ),
     )
 
     return (
@@ -2201,9 +2652,11 @@ def _reader_discovery(
         {
             "query": query,
             "discovery_queries": variants,
-            "search_urls": _search_urls(
-                query
-            ),
+            "search_urls": [
+                f"{BASE_URL}/search"
+                f"?query={quote_plus(x)}"
+                for x in variants
+            ],
             "pages": pages,
             "raw_product_urls": len(
                 ordered
@@ -2214,9 +2667,9 @@ def _reader_discovery(
             "raw_query_token_hits": [
                 x
                 for x in ordered
-                if x[
+                if x.get(
                     "contains_all_query_tokens"
-                ]
+                )
             ],
             "fallback": (
                 "jina-reader+sitemap"
@@ -2234,7 +2687,9 @@ def _search_http_candidates(
     List[Dict[str, Any]],
     Dict[str, Any],
 ]:
-    own = session is None
+    own = (
+        session is None
+    )
 
     if own:
         session = requests.Session()
@@ -2305,9 +2760,12 @@ def _search_http_candidates(
                 {
                     "url": url,
                     "final_url": response.url,
-                    "status": response.status_code,
+                    "status": (
+                        response.status_code
+                    ),
                     "html_length": len(
-                        response.text or ""
+                        response.text
+                        or ""
                     ),
                     "candidate_count": len(
                         found
@@ -2366,7 +2824,9 @@ def _search_http_candidates(
             )
         )
 
-        report["direct_pages"] = pages
+        report[
+            "direct_pages"
+        ] = pages
 
         return (
             reader_candidates,
@@ -2380,7 +2840,9 @@ def _search_http_candidates(
 
 def _json_ld_products(
     soup: BeautifulSoup,
-) -> Iterable[Dict[str, Any]]:
+) -> Iterable[
+    Dict[str, Any]
+]:
     for script in soup.find_all(
         "script",
         type="application/ld+json",
@@ -2390,6 +2852,7 @@ def _json_ld_products(
                 script.string
                 or script.get_text()
             )
+
         except (
             TypeError,
             ValueError,
@@ -2398,19 +2861,32 @@ def _json_ld_products(
 
         stack = (
             data
-            if isinstance(data, list)
+            if isinstance(
+                data,
+                list,
+            )
             else [data]
         )
 
         while stack:
             item = stack.pop()
 
-            if isinstance(item, list):
-                stack.extend(item)
+            if isinstance(
+                item,
+                list,
+            ):
+                stack.extend(
+                    item
+                )
 
-            elif isinstance(item, dict):
+            elif isinstance(
+                item,
+                dict,
+            ):
                 if isinstance(
-                    item.get("@graph"),
+                    item.get(
+                        "@graph"
+                    ),
                     list,
                 ):
                     stack.extend(
@@ -2437,12 +2913,17 @@ def _json_ld_products(
 
 def _offer_data(
     offers: Any,
-) -> Tuple[str, str]:
+) -> Tuple[
+    str,
+    str,
+]:
     if isinstance(
         offers,
         dict,
     ):
-        offers = [offers]
+        offers = [
+            offers
+        ]
 
     if not isinstance(
         offers,
@@ -2475,10 +2956,14 @@ def _offer_data(
 
         price = (
             _format_price(
-                offer.get("price")
+                offer.get(
+                    "price"
+                )
             )
             or _format_price(
-                offer.get("lowPrice")
+                offer.get(
+                    "lowPrice"
+                )
             )
         )
 
@@ -2495,15 +2980,19 @@ def _requested_size_is_valid(
     text: str,
     query: str,
 ) -> bool:
-    requested = _requested_sizes(
-        query
+    requested = (
+        _requested_sizes(
+            query
+        )
     )
 
     if not requested:
         return True
 
-    explicit_sizes = SIZE_RE.findall(
-        _clean(text)
+    explicit_sizes = (
+        SIZE_RE.findall(
+            _clean(text)
+        )
     )
 
     if not explicit_sizes:
@@ -2523,51 +3012,111 @@ def _extract_reader_product_name(
     candidate: Dict[str, Any],
     query: str,
 ) -> str:
-    """Extract a clean product name from Jina.
-
-    The product URL is authoritative. Jina can expose metadata such as
-    ``Title: ... | notino.fr`` before the actual product heading, so metadata
-    is explicitly ignored.
     """
-    raw = _fix_mojibake(text).replace("\\/", "/")
-    candidate_url = _canonical_product_url(candidate.get("url", ""))
+    Extract a clean product name from Jina.
 
-    # 1. URL slug: safest identity source.
-    slug_name = _name_from_product_url(candidate_url)
-    brand = _brand_from_product_url(candidate_url)
+    Product URL is authoritative.
+    """
+
+    raw = (
+        _fix_mojibake(
+            text
+        )
+        .replace(
+            "\\/",
+            "/",
+        )
+    )
+
+    candidate_url = (
+        _canonical_product_url(
+            candidate.get(
+                "url",
+                "",
+            )
+        )
+    )
+
+    # 1. URL slug.
+    slug_name = (
+        _name_from_product_url(
+            candidate_url
+        )
+    )
+
+    brand = (
+        _brand_from_product_url(
+            candidate_url
+        )
+    )
 
     if slug_name:
         url_name = _clean_name(
-            f"{brand} {slug_name}" if brand else slug_name
+            (
+                f"{brand} {slug_name}"
+                if brand
+                else slug_name
+            )
         )
+
         if (
             url_name
-            and _fuzzy_query_match(url_name, query)[0]
-            and not _has_non_perfume_marker_in_product(url_name, candidate_url)
+            and _fuzzy_query_match(
+                url_name,
+                query,
+            )[0]
+            and not _has_non_perfume_marker_in_product(
+                url_name,
+                candidate_url,
+            )
         ):
             return url_name
 
-    # 2. Structured headings, never Title:/Description:/Image: metadata.
+    # 2. Structured headings.
     lines = []
+
     for raw_line in raw.splitlines():
-        line = _clean(re.sub(r"^#{1,6}\s*", "", raw_line))
+        line = _clean(
+            re.sub(
+                r"^#{1,6}\s*",
+                "",
+                raw_line,
+            )
+        )
+
         if not line:
             continue
+
         if re.match(
             r"^(title|description|image|url|canonical|meta)\s*:",
             line,
             re.I,
         ):
             continue
-        lines.append(line)
+
+        lines.append(
+            line
+        )
 
     for line in lines[:180]:
-        if len(line) > 220 or PRICE_RE.search(line):
+        if (
+            len(line) > 220
+            or PRICE_RE.search(
+                line
+            )
+        ):
             continue
-        cleaned = _clean_name(line)
+
+        cleaned = _clean_name(
+            line
+        )
+
         if (
             cleaned
-            and _fuzzy_query_match(cleaned, query)[0]
+            and _fuzzy_query_match(
+                cleaned,
+                query,
+            )[0]
             and not _has_non_perfume_marker_in_product(
                 cleaned,
                 candidate_url,
@@ -2575,17 +3124,31 @@ def _extract_reader_product_name(
         ):
             return cleaned
 
-    # 3. Discovery candidate fallback.
+    # 3. Discovery fallback.
     for value in (
-        candidate.get("name"),
-        candidate.get("anchor_text"),
-        candidate.get("card_text"),
+        candidate.get(
+            "name"
+        ),
+        candidate.get(
+            "anchor_text"
+        ),
+        candidate.get(
+            "card_text"
+        ),
     ):
-        cleaned = _clean_name(value or "")
+        cleaned = _clean_name(
+            value or ""
+        )
+
         if (
             cleaned
-            and not cleaned.lower().startswith("title:")
-            and _fuzzy_query_match(cleaned, query)[0]
+            and not cleaned.lower().startswith(
+                "title:"
+            )
+            and _fuzzy_query_match(
+                cleaned,
+                query,
+            )[0]
             and not _has_non_perfume_marker_in_product(
                 cleaned,
                 candidate_url,
@@ -2596,38 +3159,40 @@ def _extract_reader_product_name(
     return ""
 
 
-
 def _reader_product(
     text: str,
     candidate: Dict[str, Any],
     query: str,
-) -> Optional[Dict[str, Any]]:
+) -> Optional[
+    Dict[str, Any]
+]:
     """
     Parse a Notino product page returned by Jina.
-
-    Important:
-    Jina is often the only readable version because Notino returns 403
-    directly. Therefore this parser must not depend on one exact phrase or
-    one exact Markdown layout.
     """
 
-    raw = html_lib.unescape(
-        str(text or "")
-    ).replace(
-        "\\/",
-        "/",
+    raw = (
+        html_lib.unescape(
+            str(text or "")
+        )
+        .replace(
+            "\\/",
+            "/",
+        )
     )
 
-    content = _clean(raw)
+    content = _clean(
+        raw
+    )
 
     if not content:
         return None
 
-    # The URL itself is already a strong product identity signal.
-    candidate_url = _canonical_product_url(
-        candidate.get(
-            "url",
-            "",
+    candidate_url = (
+        _canonical_product_url(
+            candidate.get(
+                "url",
+                "",
+            )
         )
     )
 
@@ -2659,10 +3224,12 @@ def _reader_product(
     ):
         return None
 
-    name = _extract_reader_product_name(
-        raw,
-        candidate,
-        query,
+    name = (
+        _extract_reader_product_name(
+            raw,
+            candidate,
+            query,
+        )
     )
 
     if not name:
@@ -2680,9 +3247,13 @@ def _reader_product(
     )[0]:
         return None
 
-    # 1. JSON-LD embedded in reader output.
+    # ---------------------------------------------------------
+    # PRICE
+    # ---------------------------------------------------------
+
     price = ""
 
+    # 1. JSON-LD.
     for price_match in re.finditer(
         r'"(?:price|lowPrice)"\s*:\s*'
         r'"?(\d{1,4}[.,]\d{2})',
@@ -2697,7 +3268,7 @@ def _reader_product(
             price = possible
             break
 
-    # 2. Explicit "prix actuel".
+    # 2. prix actuel.
     if not price:
         current_matches = re.findall(
             r"prix\s+actuel\s+"
@@ -2718,13 +3289,13 @@ def _reader_product(
             content
         )
 
-    # 4. Line-based fallback.
+    # 4. Line fallback.
     if not price:
         price = _extract_price_from_lines(
             raw
         )
 
-    # 5. Search-card fallback.
+    # 5. Search card fallback.
     if not price:
         price = (
             _extract_product_price(
@@ -2756,9 +3327,10 @@ def _reader_product(
     if not price:
         return None
 
-    # Availability:
-    # Only reject when the page clearly says the product is unavailable
-    # and does NOT contain any positive availability signal.
+    # ---------------------------------------------------------
+    # AVAILABILITY
+    # ---------------------------------------------------------
+
     low = content.lower()
 
     out_marked = any(
@@ -2771,7 +3343,10 @@ def _reader_product(
         for marker in IN_STOCK_MARKERS
     )
 
-    if out_marked and not in_marked:
+    if (
+        out_marked
+        and not in_marked
+    ):
         return None
 
     return {
@@ -2785,7 +3360,9 @@ def _reader_product(
 def _card_result(
     candidate: Dict[str, Any],
     query: str,
-) -> Optional[Dict[str, Any]]:
+) -> Optional[
+    Dict[str, Any]
+]:
     anchor = _clean(
         candidate.get(
             "anchor_text",
@@ -2800,21 +3377,27 @@ def _card_result(
         )
     )
 
-    url = _canonical_product_url(
-        _clean(
-            candidate.get(
-                "url",
-                "",
+    url = (
+        _canonical_product_url(
+            _clean(
+                candidate.get(
+                    "url",
+                    "",
+                )
             )
         )
     )
 
-    slug_name = _name_from_product_url(
-        url
+    slug_name = (
+        _name_from_product_url(
+            url
+        )
     )
 
-    brand = _brand_from_product_url(
-        url
+    brand = (
+        _brand_from_product_url(
+            url
+        )
     )
 
     if slug_name:
@@ -2851,6 +3434,7 @@ def _card_result(
                     else slug_name
                 )
             )
+
         else:
             return None
 
@@ -2864,9 +3448,11 @@ def _card_result(
     ):
         return None
 
-    matched, _, _ = _fuzzy_query_match(
-        name,
-        query,
+    matched, _, _ = (
+        _fuzzy_query_match(
+            name,
+            query,
+        )
     )
 
     if not matched:
@@ -2885,8 +3471,12 @@ def _card_result(
     price = (
         _extract_price(anchor)
         or _extract_price(card)
-        or _extract_product_price(anchor)
-        or _extract_product_price(card)
+        or _extract_product_price(
+            anchor
+        )
+        or _extract_product_price(
+            card
+        )
     )
 
     if not price:
@@ -2904,8 +3494,12 @@ def _product_details(
     session: requests.Session,
     candidate: Dict[str, Any],
     query: str,
-) -> Optional[Dict[str, Any]]:
-    url = candidate["url"]
+) -> Optional[
+    Dict[str, Any]
+]:
+    url = candidate[
+        "url"
+    ]
 
     try:
         response = _request(
@@ -2920,10 +3514,12 @@ def _product_details(
                 url,
             )
 
-            reader_result = _reader_product(
-                reader.text,
-                candidate,
-                query,
+            reader_result = (
+                _reader_product(
+                    reader.text,
+                    candidate,
+                    query,
+                )
             )
 
             if reader_result:
@@ -2940,22 +3536,31 @@ def _product_details(
                 query,
             )
 
-    final_url = _canonical_product_url(
-        response.url.split("?")[0]
+    final_url = (
+        _canonical_product_url(
+            response.url.split(
+                "?"
+            )[0]
+        )
     )
 
-    final_slug = _name_from_product_url(
-        final_url
+    final_slug = (
+        _name_from_product_url(
+            final_url
+        )
     )
 
-    final_brand = _brand_from_product_url(
-        final_url
+    final_brand = (
+        _brand_from_product_url(
+            final_url
+        )
     )
 
     if final_slug:
         final_name = _clean_name(
             (
-                f"{final_brand} {final_slug}"
+                f"{final_brand} "
+                f"{final_slug}"
                 if final_brand
                 else final_slug
             )
@@ -2990,10 +3595,12 @@ def _product_details(
                 url,
             )
 
-            reader_result = _reader_product(
-                reader.text,
-                candidate,
-                query,
+            reader_result = (
+                _reader_product(
+                    reader.text,
+                    candidate,
+                    query,
+                )
             )
 
             if reader_result:
@@ -3031,11 +3638,17 @@ def _product_details(
     name = ""
     price = ""
 
+    # ---------------------------------------------------------
+    # JSON-LD
+    # ---------------------------------------------------------
+
     for product in _json_ld_products(
         soup
     ):
         product_name = _clean(
-            product.get("name")
+            product.get(
+                "name"
+            )
         )
 
         brand_value = product.get(
@@ -3058,7 +3671,8 @@ def _product_details(
         )
 
         if _matches(
-            f"{brand_value} {product_name}",
+            f"{brand_value} "
+            f"{product_name}",
             query,
         ):
             price, _ = _offer_data(
@@ -3074,8 +3688,14 @@ def _product_details(
                 name = product_name
                 break
 
+    # ---------------------------------------------------------
+    # H1
+    # ---------------------------------------------------------
+
     if not name:
-        h1 = soup.find("h1")
+        h1 = soup.find(
+            "h1"
+        )
 
         if h1 and _matches(
             h1.get_text(
@@ -3091,15 +3711,24 @@ def _product_details(
                 )
             )
 
-    title = soup.find("title")
+    # ---------------------------------------------------------
+    # TITLE
+    # ---------------------------------------------------------
+
+    title = soup.find(
+        "title"
+    )
 
     if not name and title:
-        candidate_name = _clean(
-            title.get_text(
-                " ",
-                strip=True,
+        candidate_name = (
+            _clean(
+                title.get_text(
+                    " ",
+                    strip=True,
+                )
             )
-        ).split("|")[0]
+            .split("|")[0]
+        )
 
         if _matches(
             candidate_name,
@@ -3130,6 +3759,10 @@ def _product_details(
         page_title,
     ):
         return None
+
+    # ---------------------------------------------------------
+    # PRICE FALLBACKS
+    # ---------------------------------------------------------
 
     if not price:
         m = re.search(
@@ -3179,6 +3812,10 @@ def _product_details(
             )
         )
 
+    # ---------------------------------------------------------
+    # STOCK
+    # ---------------------------------------------------------
+
     low = page_text.lower()
 
     if (
@@ -3206,13 +3843,18 @@ def _product_details(
 
 def search(
     query: str,
-) -> List[Dict[str, Any]]:
-    query = _clean(query)
+) -> List[
+    Dict[str, Any]
+]:
+    query = _clean(
+        query
+    )
 
     if not query:
         return []
 
     session = requests.Session()
+
     session.headers.update(
         HEADERS
     )
@@ -3225,10 +3867,12 @@ def search(
             )
         )
 
+        # IMPORTANT:
+        # max 3 product pages instead of 8.
         candidates = (
             _rank_candidates_for_product_lookup(
                 candidates,
-                limit=8,
+                limit=3,
             )
         )
 
@@ -3245,21 +3889,39 @@ def search(
             if not result:
                 continue
 
-            result["url"] = _canonical_product_url(
-                result.get("url", "")
+            result["url"] = (
+                _canonical_product_url(
+                    result.get(
+                        "url",
+                        "",
+                    )
+                )
             )
 
             key = (
-                result.get("url", "")
+                result.get(
+                    "url",
+                    "",
+                )
                 + "|"
-                + _clean(result.get("name", ""))
+                + _clean(
+                    result.get(
+                        "name",
+                        "",
+                    )
+                )
             ).lower()
 
             if key in seen:
                 continue
 
-            seen.add(key)
-            results.append(result)
+            seen.add(
+                key
+            )
+
+            results.append(
+                result
+            )
 
             if len(results) >= 10:
                 break
@@ -3272,21 +3934,25 @@ def search(
 
 def scrape(
     query: str,
-) -> List[Dict[str, Any]]:
-    return search(query)
+) -> List[
+    Dict[str, Any]
+]:
+    return search(
+        query
+    )
 
 
 def debug_search(
     query: str,
 ) -> Dict[str, Any]:
     """
-    Diagnostic helper used by the ScentHunter test endpoint.
-
-    It exposes every important stage without changing the normal search
-    contract.
+    Diagnostic helper used by the ScentHunter
+    test endpoint.
     """
 
-    query = _clean(query)
+    query = _clean(
+        query
+    )
 
     if not query:
         return {
@@ -3297,6 +3963,7 @@ def debug_search(
         }
 
     session = requests.Session()
+
     session.headers.update(
         HEADERS
     )
@@ -3309,10 +3976,12 @@ def debug_search(
             )
         )
 
+        # IMPORTANT:
+        # same 3-candidate limit as normal search.
         ranked = (
             _rank_candidates_for_product_lookup(
                 candidates,
-                limit=8,
+                limit=3,
             )
         )
 
@@ -3333,13 +4002,16 @@ def debug_search(
                         query,
                     )
                 )
+
             except Exception as exc:
                 entry["error"] = (
                     f"{type(exc).__name__}: "
                     f"{exc}"
                 )
 
-            products.append(entry)
+            products.append(
+                entry
+            )
 
         valid_results = [
             x["result"]
@@ -3348,10 +4020,14 @@ def debug_search(
         ]
 
         return {
-            "ok": bool(valid_results),
+            "ok": bool(
+                valid_results
+            ),
             "store": STORE.lower(),
             "query": query,
-            "scraper_version": SCRAPER_VERSION,
+            "scraper_version": (
+                SCRAPER_VERSION
+            ),
             "candidate_count": len(
                 candidates
             ),
@@ -3373,17 +4049,22 @@ def debug_search(
 def diagnose(
     query: str,
 ) -> Dict[str, Any]:
-    query = _clean(query)
+    query = _clean(
+        query
+    )
 
     if not query:
         return {
             "diagnostic": True,
-            "scraper_version": SCRAPER_VERSION,
+            "scraper_version": (
+                SCRAPER_VERSION
+            ),
             "query": query,
             "error": "empty_query",
         }
 
     session = requests.Session()
+
     session.headers.update(
         HEADERS
     )
@@ -3396,24 +4077,29 @@ def diagnose(
             )
         )
 
+        # Keep diagnostics aligned with normal search.
         candidates_for_product_pages = (
             _rank_candidates_for_product_lookup(
                 candidates,
-                limit=8,
+                limit=3,
             )
         )
 
         discovery[
             "product_page_candidate_limit"
-        ] = 8
+        ] = 3
 
         discovery[
             "candidate_urls_before_product_page_limit"
-        ] = len(candidates)
+        ] = len(
+            candidates
+        )
 
         product_pages = []
 
-        for candidate in candidates_for_product_pages:
+        for candidate in (
+            candidates_for_product_pages
+        ):
             try:
                 response = _request(
                     session,
@@ -3423,21 +4109,32 @@ def diagnose(
                 product_pages.append(
                     {
                         "url": candidate["url"],
-                        "status": response.status_code,
-                        "final_url": response.url,
-                        "html_length": len(
-                            response.text or ""
+                        "status": (
+                            response.status_code
                         ),
-                        "cloudflare": _is_challenge(
+                        "final_url": (
+                            response.url
+                        ),
+                        "html_length": len(
                             response.text
+                            or ""
+                        ),
+                        "cloudflare": (
+                            _is_challenge(
+                                response.text
+                            )
                         ),
                         "reader_fallback": False,
-                        "requested_size": _requested_sizes(
-                            query
+                        "requested_size": (
+                            _requested_sizes(
+                                query
+                            )
                         ),
-                        "size_match": _requested_size_is_valid(
-                            response.text,
-                            query,
+                        "size_match": (
+                            _requested_size_is_valid(
+                                response.text,
+                                query,
+                            )
                         ),
                     }
                 )
@@ -3449,10 +4146,12 @@ def diagnose(
                         candidate["url"],
                     )
 
-                    reader_result = _reader_product(
-                        reader.text,
-                        candidate,
-                        query,
+                    reader_result = (
+                        _reader_product(
+                            reader.text,
+                            candidate,
+                            query,
+                        )
                     )
 
                     product_pages.append(
@@ -3475,15 +4174,20 @@ def diagnose(
                                 reader.status_code
                             ),
                             "reader_html_length": len(
-                                reader.text or ""
+                                reader.text
+                                or ""
                             ),
                             "reader_fallback": True,
-                            "requested_size": _requested_sizes(
-                                query
+                            "requested_size": (
+                                _requested_sizes(
+                                    query
+                                )
                             ),
-                            "size_match": _requested_size_is_valid(
-                                reader.text,
-                                query,
+                            "size_match": (
+                                _requested_size_is_valid(
+                                    reader.text,
+                                    query,
+                                )
                             ),
                             "parsed_result": bool(
                                 reader_result
@@ -3515,23 +4219,27 @@ def diagnose(
                 except requests.RequestException as reader_exc:
                     product_pages.append(
                         {
-                            "url": candidate["url"],
+                            "url": candidate[
+                                "url"
+                            ],
                             "status": None,
                             "error": (
                                 f"{type(exc).__name__}: "
                                 f"{exc}"
                             ),
+                            "reader_fallback": True,
                             "reader_error": (
                                 f"{type(reader_exc).__name__}: "
                                 f"{reader_exc}"
                             ),
-                            "reader_fallback": True,
                         }
                     )
 
         return {
             "diagnostic": True,
-            "scraper_version": SCRAPER_VERSION,
+            "scraper_version": (
+                SCRAPER_VERSION
+            ),
             "query": query,
             "search_url": _search_urls(
                 query
@@ -3573,10 +4281,12 @@ if __name__ == "__main__":
         output = debug_search(
             args.query
         )
+
     elif args.diagnose:
         output = diagnose(
             args.query
         )
+
     else:
         output = search(
             args.query
