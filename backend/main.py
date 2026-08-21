@@ -125,7 +125,19 @@ GLOBAL_SEARCH_TIMEOUT = 120
 
 # Local index is checked first. The live search remains the generic fallback
 # while the catalog is being populated.
-LOCAL_INDEX_PATH = Path(BASE_DIR) / "scenthunter_index.db"
+# Railway Volume: when attached, Railway exposes RAILWAY_VOLUME_MOUNT_PATH
+# automatically. The local index must live there so it survives redeploys.
+# SCENTHUNTER_INDEX_DB remains an explicit override for other environments.
+_VOLUME_MOUNT = os.getenv("RAILWAY_VOLUME_MOUNT_PATH", "").strip()
+_CONFIGURED_INDEX_DB = os.getenv("SCENTHUNTER_INDEX_DB", "").strip()
+
+if _CONFIGURED_INDEX_DB:
+    LOCAL_INDEX_PATH = Path(_CONFIGURED_INDEX_DB)
+elif _VOLUME_MOUNT:
+    LOCAL_INDEX_PATH = Path(_VOLUME_MOUNT) / "scenthunter_index.db"
+else:
+    LOCAL_INDEX_PATH = Path(BASE_DIR) / "scenthunter_index.db"
+
 TEST_INDEX_PATH = Path("/tmp/scenthunter_index_test.db")
 
 
@@ -796,23 +808,14 @@ def run_store(
 # ============================================================
 
 def _local_index_path() -> Path:
+    """Return the single active SQLite index path used by the app.
+
+    On Railway, an attached Volume is preferred automatically through
+    RAILWAY_VOLUME_MOUNT_PATH. SCENTHUNTER_INDEX_DB can override it.
+    The temporary /tmp database is intentionally no longer a fallback: using
+    it would make the index disappear on redeploy and could split the index
+    writer from the search reader.
     """
-    Resolve the active local index.
-
-    Production uses the persistent backend DB. During the temporary STEP 3
-    test, the test DB is also accepted so we can verify the new search path
-    without rebuilding the catalog.
-    """
-    configured = os.getenv("SCENTHUNTER_INDEX_DB", "").strip()
-    if configured:
-        return Path(configured)
-
-    if LOCAL_INDEX_PATH.exists():
-        return LOCAL_INDEX_PATH
-
-    if TEST_INDEX_PATH.exists():
-        return TEST_INDEX_PATH
-
     return LOCAL_INDEX_PATH
 
 
@@ -1225,8 +1228,8 @@ def test_indexer(
 
     It is intentionally isolated from /search. It runs a small sample of the
     canonical catalog through the existing real scraper pipeline and writes
-    to the application local SQLite index so the next local-search test can
-    read exactly the same database.
+    to the single active SQLite index used by the local-first search. On
+    Railway this path must be backed by the attached Volume.
 
     Remove this endpoint after the STEP 3 real-world test.
     """
@@ -1300,6 +1303,7 @@ def test_indexer(
             "stores": selected_stores,
             "workers": worker_count,
             "elapsed_seconds": round(elapsed, 2),
+            "index_path": str(test_db),
             "stats": stats,
         }
 
