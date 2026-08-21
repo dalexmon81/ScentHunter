@@ -121,7 +121,7 @@ IGNORED_WORDS = {
     "by",
 }
 
-GLOBAL_SEARCH_TIMEOUT = 120
+GLOBAL_SEARCH_TIMEOUT = 8
 DATABASE_URL = os.getenv("DATABASE_URL", "").strip()
 
 # Local index is checked first. The live search remains the generic fallback
@@ -130,9 +130,10 @@ DATABASE_URL = os.getenv("DATABASE_URL", "").strip()
 # SCENTHUNTER_INDEX_DB remains an explicit SQLite override for local development.
 _CONFIGURED_INDEX_DB = os.getenv("SCENTHUNTER_INDEX_DB", "").strip()
 
-if DATABASE_URL:
-    LOCAL_INDEX_PATH = DATABASE_URL
-elif _CONFIGURED_INDEX_DB:
+# ProductIndex in this deployed build is SQLite-based. Do not pass a
+# PostgreSQL URL to sqlite3.connect(); that only creates a bogus local path
+# and makes every search fall back to the slow live pipeline.
+if _CONFIGURED_INDEX_DB:
     LOCAL_INDEX_PATH = Path(_CONFIGURED_INDEX_DB)
 else:
     LOCAL_INDEX_PATH = Path(BASE_DIR) / "scenthunter_index.db"
