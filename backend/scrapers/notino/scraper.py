@@ -13,10 +13,11 @@ from bs4 import BeautifulSoup
 STORE = "Notino"
 BASE_URL = "https://www.notino.fr"
 SEARCH_URL = BASE_URL + "/search.asp"
+SITEMAP_URL = BASE_URL + "/sitemap.xml"
 READER_BASE = "https://r.jina.ai/"
 TIMEOUT = 20
 READER_TIMEOUT = 12
-SCRAPER_VERSION = "notino-FR-generic-discovery-2026-08-21-v10-generic-discovery-price-filter"
+SCRAPER_VERSION = "notino-FR-generic-discovery-2026-08-21-v11-generic-sitemap-discovery"
 
 HEADERS = {
     "User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
@@ -567,10 +568,8 @@ def _reader_candidates(text: str, query: str) -> List[Dict[str, Any]]:
                 if brand_relevant and _fuzzy_query_match(branded_name, query)[0]:
                     name = branded_name
 
-            # Keep URLs discovered from structured brand/catalog pages even
-            # when the short card text does not satisfy the query fuzzy match.
-            # The product page is still validated later by the generic product
-            # type/name/format filters.
+            if not name or not _fuzzy_query_match(name, query)[0]:
+                continue
             if _has_non_perfume_marker_in_product(name, url, anchor):
                 continue
 
@@ -641,6 +640,175 @@ def _rank_candidates_for_product_lookup(candidates: List[Dict[str, Any]], limit:
     )
     exact = [x for x in ordered if x.get("contains_all_query_tokens")]
     return (exact if exact else ordered)[:limit]
+
+
+def _sitemap_product_urls(text: str) -> List[str]:
+    """Extract product URLs from a Notino sitemap or sitemap-index response."""
+    raw = html_lib.unescape(str(text or "")).replace("\\/", "/")
+    urls: List[str] = []
+    seen = set()
+    for match in re.finditer(r"<loc>\s*(.*?)\s*</loc>", raw, flags=re.I | re.S):
+        value = html_lib.unescape(match.group(1)).strip()
+        if value.lower().endswith(".xml"):
+            continue
+        url = _normalise_reader_url(value)
+        if url and url not in seen:
+            seen.add(url)
+            urls.append(url)
+    if urls:
+        return urls
+
+    # Some readers return XML as plain text without preserving <loc> tags.
+    for pattern in (PRODUCT_URL_RE, READER_ABSOLUTE_PRODUCT_RE, READER_RELATIVE_PRODUCT_RE):
+        for match in pattern.finditer(raw):
+            url = _normalise_reader_url(match.group(0))
+            if url and url not in seen:
+                seen.add(url)
+                urls.append(url)
+    return urls
+
+
+def _sitemap_child_urls(text: str) -> List[str]:
+    """Extract child sitemap URLs from a sitemap index."""
+    raw = html_lib.unescape(str(text or "")).replace("\\/", "/")
+    urls: List[str] = []
+    seen = set()
+    for match in re.finditer(r"<loc>\s*(.*?)\s*</loc>", raw, flags=re.I | re.S):
+        value = html_lib.unescape(match.group(1)).strip()
+        if not value.lower().endswith(".xml"):
+            continue
+        if value not in seen:
+            seen.add(value)
+            urls.append(value)
+    return urls
+
+
+def _candidate_from_sitemap_url(url: str, query: str) -> Optional[Dict[str, Any]]:
+    slug_name = _name_from_product_url(url)
+    if not slug_name:
+        return None
+    brand = _brand_from_product_url(url)
+    name = slug_name
+    branded_name = _clean_name(f"{brand} {slug_name}") if brand else ""
+    query_tokens = _query_tokens(query)
+    brand_tokens = _query_tokens(brand)
+    brand_relevant = bool(brand_tokens) and any(
+        bt in query_tokens
+        or any(
+            difflib.SequenceMatcher(None, bt, qt).ratio() >= 0.80
+            and abs(len(bt) - len(qt)) <= 2
+            for qt in query_tokens
+        )
+        for bt in brand_tokens
+    )
+    if branded_name and brand_relevant:
+        name = branded_name
+    if _has_non_perfume_marker_in_product(name, url):
+        return None
+    matched, hits, fuzzy_hits = _fuzzy_query_match(name, query)
+    if not matched:
+        return None
+    score = sum(hits.values()) * 5 + fuzzy_hits * 2 + 5
+    return {
+        "url": url,
+        "anchor_text": name,
+        "card_text": name,
+        "name": name,
+        "score": score,
+        "token_hits": hits,
+        "contains_all_query_tokens": True,
+        "requested_size": bool(_requested_sizes(query)),
+        "size_match_in_search_context": _contains_requested_size(name, query),
+        "source": "sitemap",
+    }
+
+
+def _sitemap_discovery(
+    query: str, session: requests.Session, max_child_sitemaps: int = 40
+) -> Tuple[List[Dict[str, Any]], Dict[str, Any]]:
+    """Generic fallback using Notino's own XML product sitemap(s)."""
+    pages: List[Dict[str, Any]] = []
+    candidates: Dict[str, Dict[str, Any]] = {}
+
+    def consume(text: str, source_url: str) -> List[str]:
+        found_urls = _sitemap_product_urls(text)
+        for url in found_urls:
+            candidate = _candidate_from_sitemap_url(url, query)
+            if candidate:
+                old = candidates.get(url)
+                if old is None or candidate["score"] > old["score"]:
+                    candidates[url] = candidate
+        return found_urls
+
+    try:
+        try:
+            response = _request(session, SITEMAP_URL)
+            root_text = response.text or ""
+            pages.append({
+                "url": SITEMAP_URL,
+                "status": response.status_code,
+                "html_length": len(root_text),
+                "source": "sitemap",
+            })
+        except requests.RequestException as exc:
+            reader = _reader_request(session, SITEMAP_URL)
+            root_text = reader.text or ""
+            pages.append({
+                "url": SITEMAP_URL,
+                "status": getattr(getattr(exc, "response", None), "status_code", None),
+                "error": f"{type(exc).__name__}: {exc}",
+                "reader_status": reader.status_code,
+                "reader_html_length": len(root_text),
+                "source": "sitemap-reader",
+            })
+
+        direct_products = consume(root_text, SITEMAP_URL)
+        if direct_products:
+            return sorted(candidates.values(), key=lambda x: (-x["score"], x["url"])), pages
+
+        child_sitemaps = _sitemap_child_urls(root_text)
+        for child_url in child_sitemaps[:max_child_sitemaps]:
+            try:
+                try:
+                    child = _request(session, child_url)
+                    child_text = child.text or ""
+                    child_status = child.status_code
+                    child_source = "sitemap"
+                except requests.RequestException:
+                    child = _reader_request(session, child_url)
+                    child_text = child.text or ""
+                    child_status = child.status_code
+                    child_source = "sitemap-reader"
+                before = len(candidates)
+                consume(child_text, child_url)
+                pages.append({
+                    "url": child_url,
+                    "status": child_status,
+                    "html_length": len(child_text),
+                    "candidate_count": len(candidates) - before,
+                    "source": child_source,
+                })
+                # We only enter sitemap fallback when ordinary discovery is
+                # weak. Two strong exact hits are enough to avoid unnecessary
+                # catalogue-wide requests while preserving generic discovery.
+                if len(candidates) >= 2:
+                    break
+            except requests.RequestException as exc:
+                pages.append({
+                    "url": child_url,
+                    "status": getattr(getattr(exc, "response", None), "status_code", None),
+                    "error": f"{type(exc).__name__}: {exc}",
+                    "source": "sitemap",
+                })
+    except requests.RequestException as exc:
+        pages.append({
+            "url": SITEMAP_URL,
+            "status": getattr(getattr(exc, "response", None), "status_code", None),
+            "error": f"{type(exc).__name__}: {exc}",
+            "source": "sitemap",
+        })
+
+    return sorted(candidates.values(), key=lambda x: (-x["score"], x["url"])), pages
 
 
 def _reader_discovery(query: str, session: requests.Session) -> Tuple[List[Dict[str, Any]], Dict[str, Any]]:
@@ -723,6 +891,20 @@ def _reader_discovery(query: str, session: requests.Session) -> Tuple[List[Dict[
             for search_url in _search_urls(branded_query):
                 collect(search_url, branded_query, search_url)
 
+    # Generic fourth-stage discovery: if the storefront search/brand catalogue
+    # still exposes fewer than two exact products, consult Notino's own XML
+    # product sitemap. This is catalogue-wide and contains no product names,
+    # seeds, or hard-coded product URLs.
+    exact_count = sum(1 for x in candidates.values() if x.get("contains_all_query_tokens"))
+    sitemap_pages: List[Dict[str, Any]] = []
+    if exact_count < 2:
+        sitemap_candidates, sitemap_pages = _sitemap_discovery(query, session)
+        for candidate in sitemap_candidates:
+            old = candidates.get(candidate["url"])
+            if old is None or candidate["score"] > old["score"]:
+                candidates[candidate["url"]] = candidate
+    pages.extend(sitemap_pages)
+
     ordered = sorted(
         candidates.values(),
         key=lambda x: (
@@ -739,7 +921,7 @@ def _reader_discovery(query: str, session: requests.Session) -> Tuple[List[Dict[
         "raw_product_urls": len(ordered),
         "candidate_urls": len(ordered),
         "raw_query_token_hits": [x for x in ordered if x["contains_all_query_tokens"]],
-        "fallback": "jina-reader",
+        "fallback": "jina-reader+sitemap",
     }
 
 
