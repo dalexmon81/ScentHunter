@@ -538,15 +538,17 @@ def extract_size_ml_from_product_page(soup, title=""):
 
 def availability_from_product_page(soup, jsonld_offer=None):
     """
-    Determine availability using product-specific purchase evidence first.
+    Determine availability from product-page purchase evidence.
 
     Priority:
-      1. Active product purchase control -> in_stock.
-      2. Explicit structured out-of-stock signal -> out_of_stock.
-      3. Explicit notification/availability-date block -> out_of_stock.
-      4. No reliable evidence -> unknown.
+      1. Active product-specific purchase control -> in_stock.
+      2. Disabled product-specific purchase control -> out_of_stock.
+      3. Explicit positive stock data -> in_stock.
+      4. Explicit negative stock data -> out_of_stock only when no
+         purchase control exists.
+      5. Otherwise -> unknown.
 
-    Generic page text never overrides an active purchase control.
+    Generic notification/date text is never proof of out_of_stock.
     """
     explicit_in_stock = False
     explicit_out_of_stock = False
@@ -554,12 +556,21 @@ def availability_from_product_page(soup, jsonld_offer=None):
 
     if isinstance(jsonld_offer, dict):
         raw = clean(jsonld_offer.get("availability")).lower()
-        if "instock" in raw:
+
+        if "instock" in raw or "in stock" in raw:
             explicit_in_stock = True
-        elif any(token in raw for token in ("outofstock", "soldout", "unavailable")):
-            explicit_out_of_stock = True
         elif "preorder" in raw:
             explicit_preorder = True
+        elif any(
+            token in raw
+            for token in (
+                "outofstock",
+                "out of stock",
+                "soldout",
+                "sold out",
+            )
+        ):
+            explicit_out_of_stock = True
 
     for selector in (
         '[itemprop="availability"]',
@@ -571,16 +582,30 @@ def availability_from_product_page(soup, jsonld_offer=None):
             raw = " ".join(
                 str(node.get(attr, ""))
                 for attr in (
-                    "content", "href", "data-availability",
-                    "data-stock-status", "data-product-availability",
+                    "content",
+                    "href",
+                    "data-availability",
+                    "data-stock-status",
+                    "data-product-availability",
                 )
             )
-            raw = clean(f"{raw} {node.get_text(' ', strip=True)}").lower()
+            raw = clean(
+                f"{raw} {node.get_text(' ', strip=True)}"
+            ).lower()
+
             if "instock" in raw or "in stock" in raw:
                 explicit_in_stock = True
-            if any(token in raw for token in (
-                "outofstock", "out of stock", "soldout", "sold out", "unavailable"
-            )):
+
+            if any(
+                token in raw
+                for token in (
+                    "outofstock",
+                    "out of stock",
+                    "soldout",
+                    "sold out",
+                    "unavailable",
+                )
+            ):
                 explicit_out_of_stock = True
 
     purchase_roots = soup.select(
@@ -590,14 +615,32 @@ def availability_from_product_page(soup, jsonld_offer=None):
     ) or [soup]
 
     purchase_words = (
-        "añadir al carrito", "agregar al carrito", "comprar",
-        "add to cart", "add-to-cart", "buy now",
-        "ajouter au panier", "acheter", "in den warenkorb", "jetzt kaufen",
-        "acquista", "aggiungi al carrello",
+        "añadir al carrito",
+        "agregar al carrito",
+        "comprar",
+        "add to cart",
+        "add-to-cart",
+        "buy now",
+        "ajouter au panier",
+        "acheter",
+        "in den warenkorb",
+        "jetzt kaufen",
+        "acquista",
+        "aggiungi al carrello",
     )
+
     purchase_markers = (
-        "add-to-cart", "add_to_cart", "addtocart", "add-cart",
-        "product-add-to-cart", "buy-now", "buy_now", "purchase",
+        "add-to-cart",
+        "add_to_cart",
+        "addtocart",
+        "add-cart",
+        "product-add-to-cart",
+        "product_add_to_cart",
+        "buy-now",
+        "buy_now",
+        "purchase",
+        "cart-add",
+        "cart_add",
     )
 
     has_purchase = False
@@ -614,15 +657,21 @@ def availability_from_product_page(soup, jsonld_offer=None):
                 continue
             seen_nodes.add(node_id)
 
-            raw = norm(" ".join([
-                node.get_text(" ", strip=True),
-                node.get("value", ""),
-                node.get("aria-label", ""),
-                node.get("title", ""),
-                " ".join(node.get("class", [])),
-                node.get("data-button-action", ""),
-                node.get("data-action", ""),
-            ]))
+            raw = norm(
+                " ".join(
+                    [
+                        node.get_text(" ", strip=True),
+                        node.get("value", ""),
+                        node.get("aria-label", ""),
+                        node.get("title", ""),
+                        " ".join(node.get("class", [])),
+                        node.get("data-button-action", ""),
+                        node.get("data-action", ""),
+                        node.get("name", ""),
+                        node.get("id", ""),
+                    ]
+                )
+            )
 
             if not any(word in raw for word in purchase_words) and not any(
                 marker in raw for marker in purchase_markers
@@ -634,52 +683,76 @@ def availability_from_product_page(soup, jsonld_offer=None):
                 or str(node.get("aria-disabled", "")).lower() == "true"
                 or "disabled" in node.get("class", [])
             )
-            style = norm(node.get("style", ""))
-            hidden = (
-                node.has_attr("hidden")
-                or str(node.get("type", "")).lower() == "hidden"
-                or "display none" in style
-                or "visibility hidden" in style
-            )
 
-            if disabled or hidden:
+            if disabled:
                 has_disabled_purchase = True
             else:
                 has_purchase = True
 
+    # Fallback for ecommerce forms whose purchase button has no recognizable
+    # text/class: a quantity field plus an enabled submit control in the
+    # product area is a real purchase path.
+    for form in soup.select(
+        "main form, #main form, .product-container form, "
+        ".product-information form, .product-detail form, "
+        ".product-page form, .product-actions form"
+    ):
+        quantity = form.select_one(
+            'input[name*="qty" i], '
+            'input[name*="quantity" i], '
+            'input[name*="cantidad" i], '
+            'input[id*="qty" i], '
+            'input[id*="quantity" i], '
+            'input[id*="cantidad" i]'
+        )
+
+        if not quantity:
+            continue
+
+        quantity_disabled = (
+            quantity.has_attr("disabled")
+            or str(quantity.get("aria-disabled", "")).lower() == "true"
+        )
+
+        enabled_control = False
+        disabled_control = False
+
+        for control in form.select(
+            'button, input[type="submit"], input[type="button"]'
+        ):
+            disabled = (
+                control.has_attr("disabled")
+                or str(control.get("aria-disabled", "")).lower() == "true"
+                or "disabled" in control.get("class", [])
+            )
+
+            if disabled:
+                disabled_control = True
+            else:
+                enabled_control = True
+
+        if enabled_control and not quantity_disabled:
+            has_purchase = True
+        elif disabled_control or quantity_disabled:
+            has_disabled_purchase = True
+
+    # Active purchase evidence ALWAYS wins over contradictory/stale metadata.
     if has_purchase:
         return "in_stock", "sabina_purchase_control"
 
     if explicit_in_stock:
         return "in_stock", "sabina_html_availability"
 
-    if has_disabled_purchase or explicit_out_of_stock:
-        return "out_of_stock", (
-            "sabina_purchase_control" if has_disabled_purchase
-            else "sabina_html_availability"
-        )
+    if has_disabled_purchase:
+        return "out_of_stock", "sabina_purchase_control"
+
+    if explicit_out_of_stock:
+        return "out_of_stock", "sabina_html_availability"
 
     if explicit_preorder:
         return "preorder", "sabina_jsonld"
 
-    page_text = norm(soup.get_text(" ", strip=True))
-    notify_markers = tuple(norm(marker) for marker in (
-        "avísame", "avísame cuando esté disponible", "notificarme",
-        "notify me", "let me know", "prévenez-moi", "me prévenir",
-        "benachrichtigen", "sag mir bescheid",
-    ))
-    date_markers = tuple(norm(marker) for marker in (
-        "fecha de disponibilidad", "availability date",
-        "date de disponibilité", "verfügbarkeitsdatum",
-    ))
-
-    if any(marker in page_text for marker in notify_markers) and any(
-        marker in page_text for marker in date_markers
-    ):
-        return "out_of_stock", "sabina_notification_block"
-
     return "unknown", "sabina_html_availability"
-
 def discover_product_urls(session, query):
     """
     The only primary discovery path used by the real scraper.
