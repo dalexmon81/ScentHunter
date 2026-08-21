@@ -1,778 +1,573 @@
+from __future__ import annotations
+
 import json
 import re
-import unicodedata
-from urllib.parse import urljoin, urlparse
+from typing import Any, Dict, Iterable, List, Optional, Tuple
+from urllib.parse import quote_plus, urljoin, urlparse
 
 import requests
 from bs4 import BeautifulSoup
 
-
-STORE = "Sabina"
-BASE_URL = "https://www.sabina.com"
-SEARCH_URL = BASE_URL + "/es/buscar"
-TIMEOUT = 10
-MAX_CANDIDATES = 20
+STORE = "Notino"
+BASE_URL = "https://www.notino.fr"
+SEARCH_URL = BASE_URL + "/search.asp"
+READER_BASE = "https://r.jina.ai/"
+TIMEOUT = 20
+READER_TIMEOUT = 12
+SCRAPER_VERSION = "notino-FR-generic-discovery-2026-08-19-v2-reader-fallback"
 
 HEADERS = {
-    "User-Agent": (
-        "Mozilla/5.0 (X11; Linux x86_64) "
-        "AppleWebKit/537.36 (KHTML, like Gecko) "
-        "Chrome/126.0.0.0 Safari/537.36"
-    ),
-    "Accept-Language": "es-ES,es;q=0.9,en;q=0.8",
-    "Accept": (
-        "text/html,application/xhtml+xml,application/xml;"
-        "q=0.9,image/avif,image/webp,*/*;q=0.8"
-    ),
-    "Referer": BASE_URL + "/es/",
+    "User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+    "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
+    "Accept-Language": "fr-FR,fr;q=0.9,en;q=0.7",
+    "Cache-Control": "no-cache",
+    "Pragma": "no-cache",
+}
+READER_HEADERS = {"User-Agent": "ScentHunter/1.0", "Accept": "text/plain,text/markdown,text/html;q=0.9,*/*;q=0.8", "Accept-Language": "fr-FR,fr;q=0.9,en;q=0.7"}
+
+PRODUCT_RE = re.compile(r"/p-\d+(?:/|$)", re.I)
+PRODUCT_URL_RE = re.compile(r"https?://(?:www\.)?notino\.fr/[^\s)\]>\"']+/p-\d+(?:/|\b)", re.I)
+PRICE_RE = re.compile(r"(?:€\s*(\d{1,4}[.,]\d{2})|(\d{1,4}[.,]\d{2})\s*€)", re.I)
+RATING_RE = re.compile(r"\b\d[.,]\d\s*\(\s*\d+\s*\)", re.I)
+CHALLENGE_MARKERS = ("just a moment", "cf-chl-", "challenge-platform", "checking your browser", "verify you are human", "enable javascript and cookies", "vérification de sécurité en cours")
+IN_STOCK_MARKERS = ("en stock", "ajouter au panier", "add to cart")
+OUT_STOCK_MARKERS = ("en rupture de stock", "rupture de stock", "actuellement indisponible", "produit indisponible")
+
+
+NON_PERFUME_MARKERS = {
+    "gift set",
+    "set regalo",
+    "set",
+    "discovery set",
+    "fragrance set",
+    "perfume set",
+    "parfum set",
+    "coffret",
+    "bundle",
+    "pack",
+    "travel set",
+    "kit",
+    "duo",
+    "trio",
+    "mystery box",
+    "tester",
+    "testeur",
+    "sample",
+    "shampoo",
+    "shower gel",
+    "body wash",
+    "body lotion",
+    "body cream",
+    "body milk",
+    "deodorant",
+    "deo spray",
+    "aftershave",
+    "after shave",
+    "body spray",
+    "hair mist",
+    "makeup",
+    "cosmetics",
+    "cosmetic",
+    "skincare",
+    "skin care",
+    "cosmetici",
 }
 
-PRODUCT_PATH_RE = re.compile(
-    r"^/(?:es|it|fr|en|de|nl|pt)/[^/]+/(\d+)-[^/]+\.html$",
-    re.I,
-)
 
-IGNORED_QUERY_WORDS = {
-    "eau", "de", "parfum", "perfume", "edp", "edt",
-    "extrait", "spray", "for", "by", "ml", "pour",
-}
-
-
-def clean(value):
-    return re.sub(r"\s+", " ", str(value or "")).strip()
-
-
-def norm(value):
-    value = unicodedata.normalize("NFKD", str(value or ""))
-    value = "".join(
-        char for char in value
-        if not unicodedata.combining(char)
-    )
-    value = value.lower()
-    value = re.sub(
-        r"(?<=\d)(?=[a-z])|(?<=[a-z])(?=\d)",
-        " ",
-        value,
-    )
+def _product_norm(value: Any) -> str:
+    value = str(value or "").lower()
     value = re.sub(r"[^a-z0-9]+", " ", value)
     return re.sub(r"\s+", " ", value).strip()
 
 
-def query_tokens(query):
-    return [
-        token
-        for token in norm(query).split()
-        if token not in IGNORED_QUERY_WORDS
-    ]
+def _has_non_perfume_marker(value: Any) -> bool:
+    tokens = set(_product_norm(value).split())
 
-
-def query_matches(text, query):
-    tokens = query_tokens(query)
-    normalized = norm(text)
-    return bool(tokens) and all(token in normalized for token in tokens)
-
-
-def normalise_url(url, base_url=BASE_URL):
-    if not url:
-        return None
-
-    url = clean(url).replace("\\/", "/")
-    url = url.replace("\\u002F", "/")
-
-    absolute = urljoin(base_url, url)
-    parsed = urlparse(absolute)
-
-    if parsed.scheme not in {"http", "https"}:
-        return None
-
-    host = parsed.netloc.lower()
-    if host not in {"sabina.com", "www.sabina.com"}:
-        return None
-
-    return (
-        f"{parsed.scheme}://{parsed.netloc}"
-        f"{parsed.path.rstrip('/')}"
+    return any(
+        set(_product_norm(marker).split()).issubset(tokens)
+        for marker in NON_PERFUME_MARKERS
+        if _product_norm(marker)
     )
 
-
-def is_product_url(url):
-    if not url:
-        return False
-    return bool(
-        PRODUCT_PATH_RE.match(
-            urlparse(url).path
-        )
-    )
+def _clean(value: Any) -> str:
+    text = re.sub(r"\s+", " ", str(value or "")).strip()
+    return re.sub(r"([a-zà-ÿ])([A-ZÀ-Ÿ])", r"\1 \2", text)
 
 
-def product_id_from_url(url):
-    match = PRODUCT_PATH_RE.match(
-        urlparse(url).path
-    )
-    return match.group(1) if match else None
+def _tokens(value: Any) -> List[str]:
+    return [x for x in re.findall(r"[a-z0-9]+", _clean(value).lower()) if len(x) > 1]
 
 
-def money_to_float(value):
-    if value in (None, ""):
-        return None
-
-    if isinstance(value, (int, float)):
-        return float(value)
-
-    text = re.sub(
-        r"[^\d,.\-]",
-        "",
-        str(value),
-    )
-
-    if "," in text and "." in text:
-        if text.rfind(",") > text.rfind("."):
-            text = text.replace(".", "")
-            text = text.replace(",", ".")
-        else:
-            text = text.replace(",", "")
-    elif "," in text:
-        text = text.replace(",", ".")
-
-    try:
-        return float(text)
-    except ValueError:
-        return None
+def _matches(text: Any, query: Any) -> bool:
+    text = _clean(text).lower()
+    tokens = _tokens(query)
+    return bool(tokens) and all(token in text for token in tokens)
 
 
-def extract_size_ml(*texts):
-    combined = " ".join(
-        str(text or "")
-        for text in texts
-    )
-
-    match = re.search(
-        r"(?<!\d)(\d+(?:[.,]\d+)?)\s*"
-        r"(?:ml|millilitros?|milliliters?)\b",
-        combined,
-        re.I,
-    )
-
+def _format_price(value: Any) -> str:
+    match = re.search(r"(\d{1,4}(?:[.,]\d{1,2})?)", _clean(value))
     if not match:
-        return None
-
-    value = float(
-        match.group(1).replace(",", ".")
-    )
-
-    return int(value) if value.is_integer() else value
-
-
-CONCENTRATION_RULES = (
-    (
-        "Extrait de Parfum",
-        (
-            r"\bextrait\s+(?:de\s+)?parfum\b",
-            r"\bextrait\b",
-        ),
-    ),
-    (
-        "Eau de Parfum",
-        (
-            r"\beau\s+de\s+parfum\b",
-            r"\bedp\b",
-        ),
-    ),
-    (
-        "Eau de Toilette",
-        (
-            r"\beau\s+de\s+toilette\b",
-            r"\bedt\b",
-        ),
-    ),
-    (
-        "Eau de Cologne",
-        (
-            r"\beau\s+de\s+cologne\b",
-            r"\bedc\b",
-        ),
-    ),
-    ("Parfum", (r"\bparfum\b",)),
-)
-
-
-def extract_concentration(*texts):
-    normalized = norm(
-        " ".join(str(text or "") for text in texts)
-    )
-
-    for label, patterns in CONCENTRATION_RULES:
-        for pattern in patterns:
-            if re.search(
-                pattern,
-                normalized,
-                re.I,
-            ):
-                return label, "product_text"
-
-    return None, None
-
-
-def extract_gender(*texts):
-    normalized = norm(
-        " ".join(str(text or "") for text in texts)
-    )
-
-    if re.search(
-        r"\b(?:hombre|hombres|man|men|masculino|male|"
-        r"pour homme|homme|uomo)\b",
-        normalized,
-    ):
-        return "men", "product_text"
-
-    if re.search(
-        r"\b(?:mujer|mujeres|woman|women|femenino|female|"
-        r"pour femme|femme|donna)\b",
-        normalized,
-    ):
-        return "women", "product_text"
-
-    if re.search(
-        r"\b(?:unisex|unisexe|unisexes)\b",
-        normalized,
-    ):
-        return "unisex", "product_text"
-
-    return "unknown", None
-
-
-def walk_json(value):
-    if isinstance(value, dict):
-        yield value
-        for child in value.values():
-            yield from walk_json(child)
-
-    elif isinstance(value, list):
-        for child in value:
-            yield from walk_json(child)
-
-
-def first_jsonld_product(soup):
-    for script in soup.select(
-        'script[type="application/ld+json"]'
-    ):
-        raw = script.string or script.get_text()
-
-        if not raw:
-            continue
-
-        try:
-            data = json.loads(raw)
-        except (TypeError, ValueError, json.JSONDecodeError):
-            continue
-
-        for item in walk_json(data):
-            if not isinstance(item, dict):
-                continue
-
-            item_type = item.get("@type")
-            types = (
-                item_type
-                if isinstance(item_type, list)
-                else [item_type]
-            )
-
-            if any(
-                str(item_type_value).lower() == "product"
-                for item_type_value in types
-            ):
-                return item
-
-    return None
-
-
-def discover_product_urls(session, query):
-    """
-    The only primary discovery path used by the real scraper.
-
-    The query is supplied at runtime. No product, brand, SKU or URL
-    is hard-coded here.
-    """
+        return ""
     try:
-        response = session.get(
-            SEARCH_URL,
-            params={"search_query": query},
-            headers=HEADERS,
-            timeout=TIMEOUT,
-            allow_redirects=True,
-        )
-    except requests.RequestException:
-        return []
-
-    if response.status_code >= 400:
-        return []
-
-    soup = BeautifulSoup(
-        response.text,
-        "html.parser",
-    )
-
-    urls = []
-    seen = set()
-
-    def add(raw):
-        absolute = normalise_url(
-            raw,
-            response.url,
-        )
-
-        if not absolute:
-            return
-
-        if not is_product_url(absolute):
-            return
-
-        if absolute in seen:
-            return
-
-        seen.add(absolute)
-        urls.append(absolute)
-
-    # First source: normal product links.
-    for anchor in soup.find_all(
-        "a",
-        href=True,
-    ):
-        add(anchor.get("href"))
-
-    # Second source: product URLs embedded in the returned HTML/JSON.
-    decoded = (
-        response.text
-        .replace("\\/", "/")
-        .replace("\\u002F", "/")
-    )
-
-    for match in re.finditer(
-        r'https?://(?:www\.)?sabina\.com/'
-        r'(?:es|it|fr|en|de|nl|pt)/'
-        r'[^"\'<>\s\\]+',
-        decoded,
-        re.I,
-    ):
-        add(match.group(0))
-
-    for match in re.finditer(
-        r'/(?:es|it|fr|en|de|nl|pt)/'
-        r'[^"\'<>\s\\]+',
-        decoded,
-        re.I,
-    ):
-        add(match.group(0))
-
-    return urls[:MAX_CANDIDATES]
+        number = float(match.group(1).replace(",", "."))
+    except ValueError:
+        return ""
+    return f"{number:.2f}".replace(".", ",") + "€" if number > 0 else ""
 
 
-def extract_product_page(session, url, query):
+def _extract_price(text: Any) -> str:
+    matches = list(PRICE_RE.finditer(_clean(text)))
+    if not matches:
+        return ""
+    m = matches[-1]
+    return _format_price(m.group(1) or m.group(2))
+
+
+def _looks_like_product_url(url: str) -> bool:
     try:
-        response = session.get(
-            url,
-            headers=HEADERS,
-            timeout=TIMEOUT,
-            allow_redirects=True,
-        )
-    except requests.RequestException:
+        parsed = urlparse(url)
+    except Exception:
+        return False
+    if parsed.netloc.lower() not in {"www.notino.fr", "notino.fr"} or not PRODUCT_RE.search(parsed.path):
+        return False
+    return not any(x in parsed.path.lower() for x in ("/search", "/panier", "/cart", "/login", "/account", "/avis/", "/magazine"))
+
+
+def _search_urls(query: str) -> List[str]:
+    q = quote_plus(query)
+    return [f"{SEARCH_URL}?exps={q}", f"{BASE_URL}/search?query={q}"]
+
+
+def _request(session: requests.Session, url: str) -> requests.Response:
+    response = session.get(url, timeout=TIMEOUT, allow_redirects=True)
+    response.raise_for_status()
+    return response
+
+
+def _reader_request(session: requests.Session, url: str) -> requests.Response:
+    response = session.get(READER_BASE + url, headers=READER_HEADERS, timeout=READER_TIMEOUT, allow_redirects=True)
+    response.raise_for_status()
+    return response
+
+
+def _is_challenge(text: str) -> bool:
+    low = _clean(text).lower()
+    return any(x in low for x in CHALLENGE_MARKERS)
+
+
+def _clean_name(text: str) -> str:
+    value = RATING_RE.sub(" ", _clean(text))
+    value = PRICE_RE.sub(" ", value)
+    value = re.sub(r"^(?:promo|nouveau|discount|cadeaux? offerts|livraison offerte)\s+", "", value, flags=re.I)
+    words = value.split()
+    if len(words) >= 4 and len(words) % 2 == 0:
+        half = len(words) // 2
+        if words[:half] == words[half:]:
+            value = " ".join(words[:half])
+    return _clean(value)
+
+
+def _card_text(link) -> str:
+    node = link
+    best = _clean(link.get_text(" ", strip=True))
+    for _ in range(10):
+        node = getattr(node, "parent", None)
+        if node is None:
+            break
+        text = _clean(node.get_text(" ", strip=True))
+        if len(text) > len(best):
+            best = text
+        if 40 <= len(text) <= 1200 and _extract_price(text):
+            return text
+    return best
+
+
+def _make_candidate(
+    url: str,
+    anchor: str,
+    card: str,
+    query: str,
+    source: str,
+) -> Optional[Dict[str, Any]]:
+    url = _clean(url).split("?")[0]
+
+    if not _looks_like_product_url(url):
         return None
 
-    if response.status_code >= 400:
+    anchor = _clean(anchor)
+    card = _clean(card)
+
+    # Il nome deve provenire dal link/titolo del prodotto.
+    # Il testo della card non può essere usato come nome se contiene
+    # più prodotti o testo navigazionale.
+    name = _clean_name(anchor)
+
+    if not name:
         return None
 
-    final_url = normalise_url(response.url)
-
-    if not final_url or not is_product_url(final_url):
+    if _has_non_perfume_marker(name):
         return None
 
-    soup = BeautifulSoup(
-        response.text,
-        "html.parser",
-    )
+    name_tokens = set(_product_norm(name).split())
+    query_tokens = _tokens(query)
 
-    product = first_jsonld_product(soup)
-
-    h1 = soup.select_one("h1")
-    h1_text = (
-        clean(h1.get_text(" ", strip=True))
-        if h1
-        else ""
-    )
-
-    title = clean(
-        (product or {}).get("name")
-        or h1_text
-    )
-
-    if not title:
+    if not query_tokens:
         return None
 
-    # Validation is deliberately generic and based on the real product
-    # identity, not on search-card text.
-    brand = None
-    raw_brand = (product or {}).get("brand")
-
-    if isinstance(raw_brand, dict):
-        brand = clean(
-            raw_brand.get("name")
-        ) or None
-
-    elif raw_brand:
-        brand = clean(raw_brand)
-
-    if not query_matches(
-        f"{title} {brand or ''}",
-        query,
-    ):
+    if not all(token in name_tokens for token in query_tokens):
         return None
 
-    offers = (product or {}).get("offers")
+    hits = {
+        token: token in name_tokens
+        for token in query_tokens
+    }
 
-    if isinstance(offers, list):
-        offer = offers[0] if offers else {}
+    score = sum(hits.values()) * 5
 
-    elif isinstance(offers, dict):
-        offer = offers
+    if all(hits.values()):
+        score += 5
 
-    else:
-        offer = {}
-
-    price = money_to_float(
-        offer.get("price")
-    )
-
-    currency = clean(
-        offer.get("priceCurrency")
-    ) or "EUR"
-
-    availability_raw = clean(
-        offer.get("availability")
-    ).lower()
-
-    if "instock" in availability_raw:
-        availability = "in_stock"
-
-    elif (
-        "outofstock" in availability_raw
-        or "soldout" in availability_raw
-        or "unavailable" in availability_raw
-    ):
-        availability = "out_of_stock"
-
-    elif "preorder" in availability_raw:
-        availability = "preorder"
-
-    else:
-        page_text_normalized = norm(
-            soup.get_text(" ", strip=True)
-        )
-
-        if (
-            "fecha de disponibilidad"
-            in page_text_normalized
-            or "date de disponibilite"
-            in page_text_normalized
-        ):
-            availability = "out_of_stock"
-        else:
-            availability = "unknown"
-
-    image = (product or {}).get("image")
-
-    if isinstance(image, list):
-        image = image[0] if image else None
-
-    if isinstance(image, dict):
-        image = (
-            image.get("url")
-            or image.get("contentUrl")
-        )
-
-    if image:
-        image = urljoin(
-            response.url,
-            image,
-        )
-
-    gtin = clean(
-        (product or {}).get("gtin13")
-        or (product or {}).get("gtin12")
-        or (product or {}).get("gtin14")
-        or (product or {}).get("gtin")
-    ) or None
-
-    mpn = clean(
-        (product or {}).get("mpn")
-    ) or None
-
-    sku = clean(
-        (product or {}).get("sku")
-    ) or None
-
-    page_text = soup.get_text(
-        " ",
-        strip=True,
-    )
-
-    if not sku:
-        reference_match = re.search(
-            r"(?:referencia|reference|référence|riferimento)"
-            r"\s*[:#]?\s*([A-Z0-9_-]+)",
-            page_text,
-            re.I,
-        )
-
-        if reference_match:
-            sku = reference_match.group(1)
-
-    product_id = product_id_from_url(
-        final_url
-    )
-
-    # The product title comes from the verified Product JSON-LD / H1.
-    # Do not scan the whole page: related products can contain other sizes.
-    size_ml = extract_size_ml(
-        title,
-    )
-
-    concentration, concentration_source = (
-        extract_concentration(
-            title,
-            page_text,
-        )
-    )
-
-    gender, gender_source = extract_gender(
-        title,
-        page_text,
-    )
+    if _extract_price(anchor) or _extract_price(card):
+        score += 1
 
     return {
-        "store": STORE,
-
-        "source": {
-            "url": final_url,
-            "name": title,
-            "brand": brand,
-            "image": image,
-        },
-
-        "identity": {
-            "gtin": (
-                {
-                    "value": gtin,
-                    "source": "sabina_jsonld",
-                }
-                if gtin
-                else None
-            ),
-
-            "mpn": (
-                {
-                    "value": mpn,
-                    "source": "sabina_jsonld",
-                }
-                if mpn
-                else None
-            ),
-
-            "sku": (
-                {
-                    "value": sku,
-                    "source": "sabina_jsonld_or_reference",
-                }
-                if sku
-                else None
-            ),
-
-            "store_product_id": (
-                {
-                    "value": product_id,
-                    "source": "product_url",
-                }
-                if product_id
-                else None
-            ),
-        },
-
-        "attributes": {
-            "size_ml": (
-                {
-                    "value": size_ml,
-                    "source": "product_text",
-                }
-                if size_ml is not None
-                else None
-            ),
-
-            "concentration": (
-                {
-                    "value": concentration,
-                    "source": concentration_source,
-                }
-                if concentration
-                else None
-            ),
-
-            "gender": (
-                {
-                    "value": gender,
-                    "source": gender_source,
-                }
-                if gender_source
-                else {
-                    "value": "unknown",
-                    "source": "default",
-                }
-            ),
-
-            "packaging_type": {
-                "value": "product",
-                "source": "default",
-            },
-        },
-
-        "offer": {
-            "price": price,
-            "currency": currency,
-            "availability": availability,
-        },
-
-        "provenance": {
-            "name": "sabina_jsonld_or_h1",
-            "brand": (
-                "sabina_jsonld"
-                if brand
-                else None
-            ),
-            "price": "sabina_jsonld",
-            "availability": (
-                "sabina_jsonld_or_page_text"
-            ),
-            "image": (
-                "sabina_jsonld"
-                if image
-                else None
-            ),
-            "store_product_id": (
-                "product_url"
-                if product_id
-                else None
-            ),
-            "sku": (
-                "sabina_jsonld_or_reference"
-                if sku
-                else None
-            ),
-            "gtin": (
-                "sabina_jsonld"
-                if gtin
-                else None
-            ),
-            "mpn": (
-                "sabina_jsonld"
-                if mpn
-                else None
-            ),
-            "size_ml": (
-                "product_text"
-                if size_ml is not None
-                else None
-            ),
-            "concentration": concentration_source,
-            "gender": gender_source,
-            "packaging_type": "default",
-        },
-
-        "raw_data": {
-            "product_url": final_url,
-            "status_code": response.status_code,
-            "jsonld_product": product,
-        },
-
-        # Backward-compatible fields expected by main.py.
-        "name": title,
-        "brand": brand,
-        "price": (
-            f"{price:.2f}".replace(".", ",")
-            + " €"
-            if price is not None
-            else ""
-        ),
-        "url": final_url,
-        "available": availability == "in_stock",
+        "url": url,
+        "anchor_text": anchor or name,
+        "card_text": card or anchor,
+        "name": name,
+        "score": score,
+        "token_hits": hits,
+        "contains_all_query_tokens": all(hits.values()),
+        "source": source,
     }
 
 
-def search(query):
-    query = clean(query)
+def extract_candidates_from_html(html: str, query: str) -> List[Dict[str, Any]]:
+    soup = BeautifulSoup(html or "", "html.parser")
+    found: Dict[str, Dict[str, Any]] = {}
+    for link in soup.find_all("a", href=True):
+        url = urljoin(BASE_URL, _clean(link.get("href"))).split("?")[0]
+        if not _looks_like_product_url(url):
+            continue
+        anchor = _clean(link.get_text(" ", strip=True))
+        card = _card_text(link)
+        candidate = _make_candidate(url, anchor, card, query, "direct-search")
+        if candidate and (candidate["url"] not in found or candidate["score"] > found[candidate["url"]]["score"]):
+            found[candidate["url"]] = candidate
+    return sorted(found.values(), key=lambda x: (not x["contains_all_query_tokens"], -x["score"], x["url"]))
 
+
+def _reader_candidates(text: str, query: str) -> List[Dict[str, Any]]:
+    found: Dict[str, Dict[str, Any]] = {}
+    lines = [x.strip() for x in (text or "").splitlines() if x.strip()]
+    markdown = re.compile(r"\[([^\]]+)\]\((https?://(?:www\.)?notino\.fr/[^)]+)\)", re.I)
+    for i, line in enumerate(lines):
+        for match in markdown.finditer(line):
+            anchor = _clean(match.group(1))
+            url = _clean(match.group(2)).split("?")[0]
+            context = _clean(" ".join(lines[max(0, i - 1):min(len(lines), i + 2)]))
+            candidate = _make_candidate(url, anchor, context, query, "reader-search")
+            if candidate and (url not in found or candidate["score"] > found[url]["score"]):
+                found[url] = candidate
+    for match in PRODUCT_URL_RE.finditer(text or ""):
+        url = match.group(0).split("?")[0].rstrip(".,")
+        if url in found:
+            continue
+        context = _clean((text or "")[max(0, match.start() - 260):match.end() + 260])
+        candidate = _make_candidate(url, "", context, query, "reader-url")
+        if candidate:
+            found[url] = candidate
+    return sorted(found.values(), key=lambda x: (not x["contains_all_query_tokens"], -x["score"], x["url"]))
+
+
+def _reader_discovery(query: str, session: requests.Session) -> Tuple[List[Dict[str, Any]], Dict[str, Any]]:
+    found: Dict[str, Dict[str, Any]] = {}
+    pages = []
+    for url in _search_urls(query):
+        try:
+            response = _reader_request(session, url)
+            candidates = _reader_candidates(response.text, query)
+            for candidate in candidates:
+                old = found.get(candidate["url"])
+                if old is None or candidate["score"] > old["score"]:
+                    found[candidate["url"]] = candidate
+            pages.append({"url": url, "reader_url": READER_BASE + url, "status": response.status_code, "html_length": len(response.text or ""), "candidate_count": len(candidates), "reader": True})
+            if candidates:
+                break
+        except requests.RequestException as exc:
+            pages.append({"url": url, "reader_url": READER_BASE + url, "status": None, "error": f"{type(exc).__name__}: {exc}", "reader": True})
+    ordered = sorted(found.values(), key=lambda x: (not x["contains_all_query_tokens"], -x["score"], x["url"]))
+    return ordered, {"query": query, "search_urls": _search_urls(query), "pages": pages, "raw_product_urls": len(ordered), "candidate_urls": len(ordered), "raw_query_token_hits": [x for x in ordered if x["contains_all_query_tokens"]], "fallback": "jina-reader"}
+
+
+def _search_http_candidates(query: str, session: Optional[requests.Session] = None) -> Tuple[List[Dict[str, Any]], Dict[str, Any]]:
+    own = session is None
+    if own:
+        session = requests.Session()
+        session.headers.update(HEADERS)
+    candidates: Dict[str, Dict[str, Any]] = {}
+    pages = []
+    try:
+        for url in _search_urls(query):
+            try:
+                response = _request(session, url)
+            except requests.RequestException as exc:
+                pages.append({"url": url, "status": getattr(getattr(exc, "response", None), "status_code", None), "error": f"{type(exc).__name__}: {exc}"})
+                continue
+            found = extract_candidates_from_html(response.text, query)
+            for candidate in found:
+                old = candidates.get(candidate["url"])
+                if old is None or candidate["score"] > old["score"]:
+                    candidates[candidate["url"]] = candidate
+            pages.append({"url": url, "final_url": response.url, "status": response.status_code, "html_length": len(response.text or ""), "candidate_count": len(found), "cloudflare": _is_challenge(response.text), "source": "direct"})
+            if found:
+                break
+        ordered = sorted(candidates.values(), key=lambda x: (not x["contains_all_query_tokens"], -x["score"], x["url"]))
+        if ordered:
+            return ordered, {"query": query, "search_urls": _search_urls(query), "pages": pages, "raw_product_urls": len(ordered), "candidate_urls": len(ordered), "raw_query_token_hits": [x for x in ordered if x["contains_all_query_tokens"]], "fallback": None}
+        reader_candidates, report = _reader_discovery(query, session)
+        report["direct_pages"] = pages
+        return reader_candidates, report
+    finally:
+        if own:
+            session.close()
+
+
+def _json_ld_products(soup: BeautifulSoup) -> Iterable[Dict[str, Any]]:
+    for script in soup.find_all("script", type="application/ld+json"):
+        try:
+            data = json.loads(script.string or script.get_text())
+        except (TypeError, ValueError):
+            continue
+        stack = data if isinstance(data, list) else [data]
+        while stack:
+            item = stack.pop()
+            if isinstance(item, list):
+                stack.extend(item)
+            elif isinstance(item, dict):
+                if isinstance(item.get("@graph"), list):
+                    stack.extend(item["@graph"])
+                types = item.get("@type", [])
+                types = types if isinstance(types, list) else [types]
+                if "Product" in types:
+                    yield item
+
+
+def _offer_data(offers: Any) -> Tuple[str, str]:
+    if isinstance(offers, dict):
+        offers = [offers]
+    if not isinstance(offers, list):
+        return "", ""
+    for offer in offers:
+        if not isinstance(offer, dict):
+            continue
+        availability = _clean(offer.get("availability")).lower()
+        if any(x in availability for x in ("outofstock", "soldout", "discontinued")):
+            continue
+        price = _format_price(offer.get("price")) or _format_price(offer.get("lowPrice"))
+        if price:
+            return price, availability
+    return "", ""
+
+
+def _reader_product(text: str, candidate: Dict[str, Any], query: str) -> Optional[Dict[str, Any]]:
+    content = _clean(text)
+    if not _matches(content + " " + candidate["url"], query):
+        return None
+    name = ""
+    for line in [re.sub(r"^#+\s*", "", x).strip() for x in (text or "").splitlines() if x.strip()][:100]:
+        line = _clean(line)
+        if _matches(line, query) and len(line) <= 220 and not PRICE_RE.search(line) and not line.lower().startswith(("image", "description", "composition", "avis", "prix actuel")):
+            name = _clean_name(line)
+            if name:
+                break
+    if not name:
+        name = _clean_name(candidate.get("anchor_text") or candidate.get("card_text", ""))
+
+    if not name:
+        return None
+
+    if _has_non_perfume_marker(name):
+        return None
+
+    query_tokens = _tokens(query)
+    name_tokens = set(_product_norm(name).split())
+
+    if not query_tokens or not all(
+        token in name_tokens
+        for token in query_tokens
+    ):
+        return None
+    price = ""
+    current = re.search(r"prix\s+actuel\s+(?:de\s+)?(\d{1,4}[.,]\d{2})\s*€", content, re.I)
+    if current:
+        price = _format_price(current.group(1))
+    if not price:
+        stock = re.search(r"en\s+stock[^€]{0,120}?(\d{1,4}[.,]\d{2})\s*€", content, re.I)
+        if stock:
+            price = _format_price(stock.group(1))
+    if not price:
+        price = _extract_price(candidate.get("anchor_text", "")) or _extract_price(candidate.get("card_text", ""))
+    if not price:
+        return None
+    low = content.lower()
+    if any(x in low for x in OUT_STOCK_MARKERS) and not any(x in low for x in IN_STOCK_MARKERS):
+        return None
+    return {"store": STORE, "name": name, "price": price, "url": candidate["url"]}
+
+
+def _card_result(
+    candidate: Dict[str, Any],
+    query: str,
+) -> Optional[Dict[str, Any]]:
+    anchor = _clean(candidate.get("anchor_text") or "")
+    card = _clean(candidate.get("card_text") or "")
+
+    name = _clean_name(anchor)
+
+    if not name:
+        return None
+
+    if _has_non_perfume_marker(name):
+        return None
+
+    query_tokens = _tokens(query)
+    name_tokens = set(_product_norm(name).split())
+
+    if not query_tokens or not all(
+        token in name_tokens
+        for token in query_tokens
+    ):
+        return None
+
+    price = (
+        _extract_price(anchor)
+        or _extract_price(card)
+    )
+
+    if not price:
+        return None
+
+    return {
+        "store": STORE,
+        "name": name,
+        "price": price,
+        "url": candidate["url"],
+    }
+
+
+def _product_details(session: requests.Session, candidate: Dict[str, Any], query: str) -> Optional[Dict[str, Any]]:
+    url = candidate["url"]
+    try:
+        response = _request(session, url)
+    except requests.RequestException:
+        try:
+            return _reader_product(_reader_request(session, url).text, candidate, query) or _card_result(candidate, query)
+        except requests.RequestException:
+            return _card_result(candidate, query)
+    final_url = response.url.split("?")[0]
+    if _is_challenge(response.text) or not _looks_like_product_url(final_url):
+        try:
+            return _reader_product(_reader_request(session, url).text, candidate, query) or _card_result(candidate, query)
+        except requests.RequestException:
+            return _card_result(candidate, query)
+    soup = BeautifulSoup(response.text, "html.parser")
+    page_text = _clean(soup.get_text(" ", strip=True))
+    name = price = ""
+    for product in _json_ld_products(soup):
+        product_name = _clean(product.get("name"))
+        brand = product.get("brand")
+        brand = _clean(brand.get("name")) if isinstance(brand, dict) else _clean(brand)
+        if _matches(f"{brand} {product_name}", query):
+            price, _ = _offer_data(product.get("offers"))
+            if product_name and price:
+                name = product_name
+                break
+    if not name:
+        h1 = soup.find("h1")
+        if h1 and _matches(h1.get_text(" ", strip=True), query):
+            name = _clean(h1.get_text(" ", strip=True))
+    if not name:
+        title = soup.find("title")
+        if title:
+            candidate_name = _clean(title.get_text(" ", strip=True)).split("|")[0]
+            if _matches(candidate_name, query):
+                name = candidate_name
+    if not name:
+        return _card_result(candidate, query)
+    if not price:
+        m = re.search(r"prix\s+actuel\s+(\d{1,4}[.,]\d{2})\s*€", page_text, re.I)
+        if m:
+            price = _format_price(m.group(1))
+    if not price:
+        m = re.search(r"en\s+stock\s*[|:]?\s*(\d{1,4}[.,]\d{2})\s*€", page_text, re.I)
+        if m:
+            price = _format_price(m.group(1))
+    if not price:
+        price = _extract_price(candidate.get("anchor_text", "")) or _extract_price(candidate.get("card_text", ""))
+    low = page_text.lower()
+    if any(x in low for x in OUT_STOCK_MARKERS) and not any(x in low for x in IN_STOCK_MARKERS):
+        return None
+    return {"store": STORE, "name": name, "price": price, "url": final_url} if price else None
+
+
+def search(query: str) -> List[Dict[str, Any]]:
+    query = _clean(query)
     if not query:
         return []
-
     session = requests.Session()
-
+    session.headers.update(HEADERS)
     try:
-        candidate_urls = discover_product_urls(
-            session,
-            query,
-        )
-
-        results = []
-        seen = set()
-
-        for url in candidate_urls:
-            product = extract_product_page(
-                session,
-                url,
-                query,
-            )
-
-            if not product:
+        candidates, _ = _search_http_candidates(query, session=session)
+        results, seen = [], set()
+        for candidate in candidates:
+            result = _product_details(session, candidate, query)
+            if not result:
                 continue
-
-            product_id = (
-                product.get("identity", {})
-                .get("store_product_id", {})
-                .get("value")
-            )
-
-            key = product_id or product.get("url")
-
+            key = (result.get("url", "") + "|" + _clean(result.get("name"))).lower()
             if key in seen:
                 continue
-
             seen.add(key)
-            results.append(product)
-
+            results.append(result)
+            if len(results) >= 10:
+                break
         return results
-
     finally:
         session.close()
 
 
-# Compatibility with the generic main.py interface.
-scrape = search
+def scrape(query: str) -> List[Dict[str, Any]]:
+    return search(query)
+
+
+def diagnose(query: str) -> Dict[str, Any]:
+    query = _clean(query)
+    if not query:
+        return {"diagnostic": True, "scraper_version": SCRAPER_VERSION, "query": query, "error": "empty_query"}
+    session = requests.Session()
+    session.headers.update(HEADERS)
+    try:
+        candidates, discovery = _search_http_candidates(query, session=session)
+        product_pages = []
+        for candidate in candidates[:25]:
+            try:
+                response = _request(session, candidate["url"])
+                product_pages.append({"url": candidate["url"], "status": response.status_code, "final_url": response.url, "html_length": len(response.text or ""), "cloudflare": _is_challenge(response.text), "reader_fallback": False})
+            except requests.RequestException as exc:
+                try:
+                    reader = _reader_request(session, candidate["url"])
+                    product_pages.append({"url": candidate["url"], "status": getattr(getattr(exc, "response", None), "status_code", None), "error": f"{type(exc).__name__}: {exc}", "reader_status": reader.status_code, "reader_html_length": len(reader.text or ""), "reader_fallback": True})
+                except requests.RequestException as reader_exc:
+                    product_pages.append({"url": candidate["url"], "status": None, "error": f"{type(exc).__name__}: {exc}", "reader_error": f"{type(reader_exc).__name__}: {reader_exc}", "reader_fallback": True})
+        return {"diagnostic": True, "scraper_version": SCRAPER_VERSION, "query": query, "search_url": _search_urls(query)[0], "discovery": discovery, "candidate_count": len(candidates), "candidates": candidates[:25], "product_pages": product_pages}
+    finally:
+        session.close()
 
 
 if __name__ == "__main__":
     import argparse
-
-    parser = argparse.ArgumentParser(
-        description="Generic Sabina scraper"
-    )
-    parser.add_argument(
-        "query",
-        help="Search query supplied at runtime",
-    )
-
+    parser = argparse.ArgumentParser()
+    parser.add_argument("query")
+    parser.add_argument("--diagnose", action="store_true")
     args = parser.parse_args()
-
-    print(
-        json.dumps(
-            search(args.query),
-            ensure_ascii=False,
-            indent=2,
-        )
-    )
+    print(json.dumps(diagnose(args.query) if args.diagnose else search(args.query), ensure_ascii=False, indent=2))
