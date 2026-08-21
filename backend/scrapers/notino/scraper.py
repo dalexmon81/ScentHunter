@@ -15,7 +15,7 @@ SEARCH_URL = BASE_URL + "/search.asp"
 READER_BASE = "https://r.jina.ai/"
 TIMEOUT = 20
 READER_TIMEOUT = 12
-SCRAPER_VERSION = "notino-FR-generic-discovery-2026-08-19-v3-reader-robust"
+SCRAPER_VERSION = "notino-FR-generic-discovery-2026-08-19-v4-reader-title-isolation"
 
 HEADERS = {
     "User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
@@ -105,11 +105,19 @@ def _normalise_reader_url(raw: Any) -> Optional[str]:
         parsed = urlparse(value)
     except Exception:
         return None
-    if parsed.netloc.lower() not in {"www.notino.fr", "notino.fr"}:
+
+    host = parsed.netloc.lower()
+    if host not in {"www.notino.fr", "notino.fr"}:
         return None
-    if not PRODUCT_RE.search(parsed.path):
+
+    path = parsed.path
+    while path.lower().startswith("/www.notino.fr/") or path.lower().startswith("/notino.fr/"):
+        path = "/" + path.split("/", 2)[2]
+
+    if not PRODUCT_RE.search(path):
         return None
-    return f"https://{parsed.netloc}{parsed.path.rstrip('/')}"
+
+    return f"https://{host}{path.rstrip('/')}"
 
 
 def _looks_like_product_url(url: str) -> bool:
@@ -221,13 +229,37 @@ def extract_candidates_from_html(html: str, query: str) -> List[Dict[str, Any]]:
     return sorted(found.values(), key=lambda x: (not x["contains_all_query_tokens"], -x["score"], x["url"]))
 
 
+def _reader_name_from_context(context: str, query: str) -> str:
+    """Recover the product title from the closest Jina heading before a product URL."""
+    raw = html_lib.unescape(context or "").replace("\\/", "/")
+    raw = _clean(raw)
+
+    headings = re.findall(r"(?<!\S)(?:###|##)\s*([^#\n]+)", raw)
+    if headings:
+        heading = re.sub(r"https?://\S+", " ", headings[-1])
+        name = _clean_name(heading).strip(" <>[]()")
+        if name and _matches(name, query):
+            return name
+        return ""
+
+    pieces = re.split(r"\\n|(?<=\])\s*(?=\[)", raw)
+    for piece in reversed(pieces):
+        piece = re.sub(r"!\[[^\]]*\]\([^)]*\)", " ", piece)
+        piece = re.sub(r"\[[^\]]*\]\([^)]*\)", " ", piece)
+        piece = re.sub(r"https?://\S+", " ", piece)
+        name = _clean_name(piece).strip(" <>[]()")
+        name = re.sub(r"^#+\s*", "", name)
+        if name and _matches(name, query) and len(name) <= 220:
+            return name
+
+    return ""
+
 def _reader_candidates(text: str, query: str) -> List[Dict[str, Any]]:
-    """Discover product URLs from Jina output regardless of link representation."""
+    """Discover product URLs from Jina output without using distant context as a title."""
     found: Dict[str, Dict[str, Any]] = {}
     raw = html_lib.unescape(text or "").replace("\\/", "/")
     lines = [x.strip() for x in raw.splitlines() if x.strip()]
 
-    # Markdown links: absolute or relative Notino URLs.
     markdown = re.compile(r"\[([^\]]+)\]\(([^)]+)\)", re.I)
     for i, line in enumerate(lines):
         for match in markdown.finditer(line):
@@ -235,32 +267,41 @@ def _reader_candidates(text: str, query: str) -> List[Dict[str, Any]]:
             url = _normalise_reader_url(match.group(2))
             if not url:
                 continue
-            context = _clean(" ".join(lines[max(0, i - 2):min(len(lines), i + 3)]))
-            candidate = _make_candidate(url, anchor, context, query, "reader-markdown")
+            local_context = _clean(" ".join(lines[max(0, i - 2):i + 1]))
+            name = _clean_name(anchor)
+            if not name or not _matches(name, query):
+                name = _reader_name_from_context(local_context, query)
+            if not name:
+                continue
+            candidate = _make_candidate(url, name, local_context, query, "reader-markdown")
             if candidate and (url not in found or candidate["score"] > found[url]["score"]):
                 found[url] = candidate
 
-    # Raw absolute URLs, including escaped JSON-style slashes.
     for pattern in (PRODUCT_URL_RE, READER_ABSOLUTE_PRODUCT_RE, READER_RELATIVE_PRODUCT_RE):
         for match in pattern.finditer(raw):
             url = _normalise_reader_url(match.group(0))
-            if not url or url in found:
+            if not url:
                 continue
-            start = max(0, match.start() - 420)
-            end = min(len(raw), match.end() + 420)
-            context = _clean(raw[start:end])
-            candidate = _make_candidate(url, context, context, query, "reader-url")
-            if candidate:
+            prefix = raw[max(0, match.start() - 700):match.start()]
+            name = _reader_name_from_context(prefix, query)
+            if not name:
+                continue
+            suffix = raw[match.end():min(len(raw), match.end() + 220)]
+            card = _clean(prefix[-260:] + " " + suffix)
+            candidate = _make_candidate(url, name, card, query, "reader-url")
+            if candidate and (url not in found or candidate["score"] > found[url]["score"]):
                 found[url] = candidate
 
-    # HTML fragments or href attributes that Jina may preserve verbatim.
     for match in re.finditer(r"(?:href|url)\s*=\s*[\"']([^\"']+)[\"']", raw, re.I):
         url = _normalise_reader_url(match.group(1))
-        if not url or url in found:
+        if not url:
             continue
-        context = _clean(raw[max(0, match.start() - 420):min(len(raw), match.end() + 420)])
-        candidate = _make_candidate(url, context, context, query, "reader-href")
-        if candidate:
+        prefix = raw[max(0, match.start() - 700):match.start()]
+        name = _reader_name_from_context(prefix, query)
+        if not name:
+            continue
+        candidate = _make_candidate(url, name, prefix[-400:], query, "reader-href")
+        if candidate and (url not in found or candidate["score"] > found[url]["score"]):
             found[url] = candidate
 
     return sorted(found.values(), key=lambda x: (not x["contains_all_query_tokens"], -x["score"], x["url"]))
