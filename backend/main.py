@@ -503,7 +503,10 @@ def matches(product: Dict[str, Any], query: str) -> bool:
     if not family_phrase or not name_phrase:
         return False
 
-    return name_phrase.startswith(family_phrase)
+    padded_name = f" {name_phrase} "
+    padded_family = f" {family_phrase} "
+
+    return padded_family in padded_name
 
 
 # ============================================================
