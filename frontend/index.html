@@ -2093,7 +2093,7 @@ async function searchStoresProgressive(query, onPartial) {
   }
 
   const startResponse = await fetch(
-    "/search-start?q=" + encodeURIComponent(q),
+    "/search?q=" + encodeURIComponent(q),
     {
       headers: {
         Accept: "application/json"
