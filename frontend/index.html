@@ -729,7 +729,6 @@ function backend(){
   return origin;
 }
 let currentProductGroups=[];
-let openedProductKey=null;
 
 function shPrice(o){
   if(o&&o.price)return String(o.price);
@@ -1846,11 +1845,6 @@ function openProduct(i){
   const g=currentProductGroups[i];
   if(!g)return;
 
-  openedProductKey =
-    String(g.brand || "") + "|" +
-    String(g.name || "") + "|" +
-    String(g.concentration || "");
-
   const sizes=getSizeGroups(g);
   const img=g.image||"";
   const saved=getWishlist();
@@ -2084,6 +2078,7 @@ async function fetchJSONWithTimeout(url,ms=90000){
  }finally{clearTimeout(timer)}
 }
 
+
 async function searchStoresProgressive(query, onPartial) {
   const q = String(query || "").trim();
 
@@ -2098,7 +2093,7 @@ async function searchStoresProgressive(query, onPartial) {
   }
 
   const startResponse = await fetch(
-    `/search-start?q=${encodeURIComponent(q)}`,
+    "/search-start?q=" + encodeURIComponent(q),
     {
       headers: {
         Accept: "application/json"
@@ -2107,7 +2102,7 @@ async function searchStoresProgressive(query, onPartial) {
   );
 
   if (!startResponse.ok) {
-    throw new Error(`HTTP ${startResponse.status}`);
+    throw new Error("HTTP " + startResponse.status);
   }
 
   const started = await startResponse.json();
@@ -2121,51 +2116,94 @@ async function searchStoresProgressive(query, onPartial) {
   const maxPollingTime = 150000;
   const startedAt = Date.now();
 
-  while (true) {
-    const response = await fetch(
-      `/search-status?job_id=${jobId}`,
-      {
-        headers: {
-          Accept: "application/json"
+  let finished = false;
+  let polling = false;
+
+  async function poll() {
+    if (finished || polling) {
+      return;
+    }
+
+    polling = true;
+
+    try {
+      const response = await fetch(
+        "/search-status/" + jobId,
+        {
+          headers: {
+            Accept: "application/json"
+          }
         }
+      );
+
+      if (!response.ok) {
+        throw new Error("HTTP " + response.status);
       }
-    );
 
-    if (!response.ok) {
-      throw new Error(`HTTP ${response.status}`);
+      const data = await response.json();
+
+      if (typeof onPartial === "function") {
+        onPartial(data, Boolean(data.completed || data.status === "completed"));
+      }
+
+      if (data.completed || data.status === "completed") {
+        finished = true;
+        return data;
+      }
+
+      if (Date.now() - startedAt >= maxPollingTime) {
+        throw new Error("Tempo massimo di ricerca superato");
+      }
+
+      return null;
+    } finally {
+      polling = false;
     }
-
-    const data = await response.json();
-    const completed =
-      data &&
-      (
-        data.status === "completed" ||
-        data.completed === true
-      );
-
-    if (typeof onPartial === "function") {
-      onPartial(data, completed);
-    }
-
-    if (completed) {
-      return data;
-    }
-
-    if (data && data.status === "failed") {
-      throw new Error(
-        String(data.error || "Errore durante la ricerca")
-      );
-    }
-
-    if (Date.now() - startedAt >= maxPollingTime) {
-      throw new Error("Tempo massimo di ricerca superato");
-    }
-
-    await new Promise(resolve => {
-      setTimeout(resolve, pollInterval);
-    });
   }
+
+  window.resumeSearchPolling = async function() {
+    if (finished) {
+      return;
+    }
+
+    while (!finished) {
+      if (!document.hidden) {
+        await poll();
+      }
+
+      if (finished) {
+        break;
+      }
+
+      await new Promise(function(resolve) {
+        setTimeout(resolve, pollInterval);
+      });
+    }
+  };
+
+  const result = await poll();
+
+  if (result && (result.completed || result.status === "completed")) {
+    return result;
+  }
+
+  await window.resumeSearchPolling();
+
+  return {
+    query: q,
+    count: 0,
+    results: [],
+    comparisons: [],
+    errors: {}
+  };
 }
+
+ 
+document.addEventListener("visibilitychange", function() {
+  if (!document.hidden && typeof window.resumeSearchPolling === "function") {
+    window.resumeSearchPolling();
+  }
+});
 
 async function searchPerfume(){
  const q=queryInput.value.trim();if(!q){statusBox.textContent="";resultsBox.innerHTML="";errorsBox.innerHTML="";return}
@@ -2177,64 +2215,46 @@ async function searchPerfume(){
  statusBox.textContent="";resultsBox.innerHTML="";errorsBox.innerHTML="";
  try{
   let data;
-  openedProductKey = null;
   const renderData = (partialData, final = false) => {
-    const payload =
-      partialData &&
-      partialData.result &&
-      typeof partialData.result === "object"
-        ? partialData.result
-        : partialData;
+  let groups = shGroupData(partialData || {});
 
-    let groups = shGroupData(payload || {});
+  const productDetailOpen =
+    resultsBox.querySelector(".comparison") !== null;
 
-    const productDetailOpen =
-      resultsBox.querySelector(".comparison") !== null;
+  if (!productDetailOpen && groups.length > 0) {
+  showProducts(groups);
+}
 
-    if (!productDetailOpen && groups.length > 0) {
-      showProducts(groups);
-    }
+currentProductGroups = groups;
+updateBestPricesFromGroups(groups);
 
-    currentProductGroups = groups;
-    updateBestPricesFromGroups(groups);
+if (productDetailOpen) {
+  const currentComparison = resultsBox.querySelector(".comparison");
 
-    refreshWishlistFromResults(
-      groups.flatMap(function(g) {
-        return g.offers.map(function(o) {
-          return {
-            name: g.name,
-            brand: g.brand,
-            price: shPrice(o),
-            price_value: o.price_value,
-            store: o.store,
-            url: o.url,
-            image: g.image,
-            pic: g.image
-          };
+  if (currentComparison) {
+    const backButton = currentComparison.querySelector(".detail-back");
+
+    if (backButton) {
+      const selectedProductIndex =
+        currentProductGroups.findIndex(function(group) {
+          return currentProductGroups.indexOf(group) ===
+            currentProductGroups.indexOf(groups[0]);
         });
-      })
-    );
 
-    if (productDetailOpen && openedProductKey) {
-      const updatedIndex = currentProductGroups.findIndex(function(group) {
-        const key =
-          String(group.brand || "") + "|" +
-          String(group.name || "") + "|" +
-          String(group.concentration || "");
-
-        return key === openedProductKey;
-      });
-
-      if (updatedIndex >= 0) {
-        openProduct(updatedIndex);
+      if (selectedProductIndex >= 0) {
+        openProduct(selectedProductIndex);
       }
     }
+  }
+}
 
-    // I timeout delle singole fonti non devono comparire nella pagina e non devono
-    // trasformare una ricerca con risultati validi in una ricerca "fallita".
-    // Conserviamo gli errori internamente, ma l'utente vede solo i risultati utili.
-    errorsBox.innerHTML="";
-    if(final)statusBox.textContent=groups.length?`Ricerca completata: ${groups.length} prodotti trovati.`:"Nessun risultato trovato.";
+   refreshWishlistFromResults(groups.flatMap(g=>g.offers.map(o=>({name:g.name||"",brand:g.brand||"",price:shPrice(o),price_value:o.price_value,store:o.store||"",url:o.url||""}))));
+
+   // I timeout delle singole fonti non devono comparire nella pagina e non devono
+   // trasformare una ricerca con risultati validi in una ricerca "fallita".
+   // Conserviamo gli errori internamente, ma l'utente vede solo i risultati utili.
+   errorsBox.innerHTML="";
+   if(final)statusBox.textContent=groups.length?`Ricerca completata: ${groups.length} prodotti trovati.`:"Nessun risultato trovato.";
   };
 
   // Regola generale: tutte le ricerche passano dalla regia centrale.
