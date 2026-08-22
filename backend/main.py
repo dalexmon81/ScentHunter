@@ -859,6 +859,13 @@ def run_store(
 
             product = resolve_actual_price(product)
 
+            # Normalizza l'immagine nel campo principale usato dal frontend.
+            # Gli scraper possono restituirla come image, image_url,
+            # thumbnail oppure dentro source.image.
+            image_url = product_image(product)
+            if image_url:
+                product["image"] = image_url
+
             key = product_identity_key(product)
 
             if key in seen:
@@ -870,11 +877,9 @@ def run_store(
                 output.append(product)
                 attempt_added += 1
 
-        # Se una discovery ha già trovato almeno un risultato valido,
-        # non eseguiamo fallback ulteriori: il prodotto è stato scoperto.
-        # Questo è importante soprattutto per scraper con sitemap o browser.
-        if attempt_added > 0:
-            break
+        # Continuiamo con tutti i tentativi di discovery.
+        # Un tentativo che trova un risultato non significa che abbia
+        # restituito tutti i prodotti disponibili per la query.
 
     return output
 
