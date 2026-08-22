@@ -365,10 +365,82 @@ def has_small_size(product: Dict[str, Any]) -> bool:
 # ============================================================
 
 def matches(product: Dict[str, Any], query: str) -> bool:
+    """
+    Valida un candidato contro la query.
+
+    Questa versione mantiene invariata la logica di matching ma registra
+    il motivo preciso di ogni esclusione, così la fase diagnostica può
+    mostrare quale condizione sta eliminando i candidati.
+    """
     query_normalized = norm(query)
 
-    if not query_normalized:
+    def diagnostic_reject(reason: str, **details: Any) -> bool:
+        payload = {
+            "store": str(product.get("store") or ""),
+            "name": str(
+                product_field(
+                    product,
+                    "name",
+                    "title",
+                    "product_name",
+                )
+                or ""
+            ),
+            "brand": str(
+                product_field(
+                    product,
+                    "brand",
+                    "source_brand",
+                )
+                or ""
+            ),
+            "query": str(query or ""),
+            "query_normalized": query_normalized,
+            "reason": reason,
+            **details,
+        }
+        print(
+            "MATCH_DIAGNOSTIC_REJECT: "
+            + json.dumps(payload, ensure_ascii=False, default=str),
+            flush=True,
+        )
         return False
+
+    def diagnostic_accept(**details: Any) -> bool:
+        payload = {
+            "store": str(product.get("store") or ""),
+            "name": str(
+                product_field(
+                    product,
+                    "name",
+                    "title",
+                    "product_name",
+                )
+                or ""
+            ),
+            "brand": str(
+                product_field(
+                    product,
+                    "brand",
+                    "source_brand",
+                )
+                or ""
+            ),
+            "query": str(query or ""),
+            "query_normalized": query_normalized,
+            **details,
+        }
+        print(
+            "MATCH_DIAGNOSTIC_ACCEPT: "
+            + json.dumps(payload, ensure_ascii=False, default=str),
+            flush=True,
+        )
+        return True
+
+    if not query_normalized:
+        return diagnostic_reject(
+            "empty_query",
+        )
 
     name = product_field(
         product,
@@ -403,7 +475,9 @@ def matches(product: Dict[str, Any], query: str) -> bool:
     name_normalized = norm(name)
 
     if not name_normalized:
-        return False
+        return diagnostic_reject(
+            "empty_product_name",
+        )
 
     query_has_size = bool(
         re.search(
@@ -412,8 +486,14 @@ def matches(product: Dict[str, Any], query: str) -> bool:
         )
     )
 
+    product_size = product_size_ml(product)
+
     if has_small_size(product) and not query_has_size:
-        return False
+        return diagnostic_reject(
+            "small_size_without_query_size",
+            product_size_ml=product_size,
+            query_has_size=query_has_size,
+        )
 
     for phrase in NON_PERFUME:
         phrase_normalized = norm(phrase)
@@ -422,7 +502,12 @@ def matches(product: Dict[str, Any], query: str) -> bool:
             phrase_normalized in name_normalized
             and phrase_normalized not in query_normalized
         ):
-            return False
+            return diagnostic_reject(
+                "non_perfume_phrase",
+                phrase=phrase,
+                phrase_normalized=phrase_normalized,
+                name_normalized=name_normalized,
+            )
 
     name_for_matching = name_normalized
 
@@ -489,7 +574,10 @@ def matches(product: Dict[str, Any], query: str) -> bool:
         family_tokens = query_tokens
 
     if not family_tokens:
-        return False
+        return diagnostic_reject(
+            "empty_family_tokens",
+            query_tokens=query_tokens,
+        )
 
     name_tokens = name_for_matching.split()
 
@@ -501,12 +589,41 @@ def matches(product: Dict[str, Any], query: str) -> bool:
     )
 
     if not family_phrase or not name_phrase:
-        return False
+        return diagnostic_reject(
+            "empty_matching_phrase",
+            query_tokens=query_tokens,
+            family_tokens=family_tokens,
+            name_tokens=name_tokens,
+            family_phrase=family_phrase,
+            name_phrase=name_phrase,
+        )
 
     padded_name = f" {name_phrase} "
     padded_family = f" {family_phrase} "
 
-    return padded_family in padded_name
+    matched = padded_family in padded_name
+
+    if not matched:
+        return diagnostic_reject(
+            "family_phrase_not_in_name_phrase",
+            query_tokens=query_tokens,
+            family_tokens=family_tokens,
+            name_tokens=name_tokens,
+            family_phrase=family_phrase,
+            name_phrase=name_phrase,
+            padded_family=padded_family,
+            padded_name=padded_name,
+            brand=brand,
+        )
+
+    return diagnostic_accept(
+        query_tokens=query_tokens,
+        family_tokens=family_tokens,
+        name_tokens=name_tokens,
+        family_phrase=family_phrase,
+        name_phrase=name_phrase,
+        brand=brand,
+    )
 
 
 # ============================================================
@@ -563,6 +680,164 @@ def build_search_attempts(store: str, query: str) -> List[str]:
 
     return attempts
 
+
+# ============================================================
+# TEMPORARY DIAGNOSTIC ENDPOINT
+# ============================================================
+
+@app.get("/debug/search")
+def debug_search(q: str):
+    """
+    DIAGNOSTICA TEMPORANEA.
+    NON modifica la pipeline normale di ricerca.
+    Mostra dove una query viene persa:
+    query -> attempts -> raw scraper results -> matches().
+    """
+    query = str(q or "").strip()
+
+    if not query:
+        raise HTTPException(
+            status_code=400,
+            detail="Parametro q mancante",
+        )
+
+    diagnostic = {
+        "query": query,
+        "attempts_by_store": {},
+        "stores": {},
+    }
+
+    for store in STORES:
+        try:
+            attempts = build_search_attempts(store, query)
+            diagnostic["attempts_by_store"][store] = attempts
+        except Exception as exc:
+            diagnostic["attempts_by_store"][store] = {
+                "error": f"{type(exc).__name__}: {exc}"
+            }
+            continue
+
+        store_data = {
+            "attempts": attempts,
+            "raw_total": 0,
+            "raw_by_attempt": [],
+            "unique_total": 0,
+            "matched_total": 0,
+            "matched_products": [],
+            "non_matched_products": [],
+            "errors": [],
+        }
+
+        try:
+            module = load_scraper(store)
+            search_fn = getattr(module, "search", None)
+
+            if not callable(search_fn):
+                search_fn = getattr(module, "scrape", None)
+
+            if not callable(search_fn):
+                raise RuntimeError(
+                    f"{store}: scraper senza funzione search()/scrape()"
+                )
+
+            seen = set()
+            candidates = []
+
+            for attempt in attempts:
+                try:
+                    results = search_fn(attempt) or []
+                except Exception as exc:
+                    store_data["errors"].append({
+                        "attempt": attempt,
+                        "error": f"{type(exc).__name__}: {exc}",
+                    })
+                    store_data["raw_by_attempt"].append({
+                        "attempt": attempt,
+                        "count": 0,
+                        "error": f"{type(exc).__name__}: {exc}",
+                    })
+                    continue
+
+                if not isinstance(results, list):
+                    store_data["raw_by_attempt"].append({
+                        "attempt": attempt,
+                        "count": 0,
+                        "invalid_response": type(results).__name__,
+                    })
+                    continue
+
+                store_data["raw_total"] += len(results)
+                store_data["raw_by_attempt"].append({
+                    "attempt": attempt,
+                    "count": len(results),
+                })
+
+                for item in results:
+                    if not isinstance(item, dict):
+                        continue
+
+                    product = dict(item)
+                    product.setdefault("store", store)
+
+                    try:
+                        product = resolve_actual_price(product)
+                    except Exception:
+                        pass
+
+                    try:
+                        image = product_image(product)
+                        if image:
+                            product["image"] = image
+                    except Exception:
+                        pass
+
+                    key = product_identity_key(product)
+
+                    if key in seen:
+                        continue
+
+                    seen.add(key)
+                    candidates.append(product)
+
+            store_data["unique_total"] = len(candidates)
+
+            for product in candidates:
+                matched = False
+                try:
+                    matched = bool(matches(product, query))
+                except Exception as exc:
+                    store_data["errors"].append({
+                        "stage": "matches",
+                        "error": f"{type(exc).__name__}: {exc}",
+                    })
+
+                product_debug = {
+                    "matched": matched,
+                    "name": product.get("name"),
+                    "title": product.get("title"),
+                    "product_name": product.get("product_name"),
+                    "brand": product.get("brand"),
+                    "source_brand": product.get("source_brand"),
+                    "variant": product.get("variant"),
+                    "url": product.get("url"),
+                    "image": product.get("image"),
+                }
+
+                if matched:
+                    store_data["matched_total"] += 1
+                    store_data["matched_products"].append(product_debug)
+                else:
+                    store_data["non_matched_products"].append(product_debug)
+
+        except Exception as exc:
+            store_data["errors"].append({
+                "stage": "store",
+                "error": f"{type(exc).__name__}: {exc}",
+            })
+
+        diagnostic["stores"][store] = store_data
+
+    return diagnostic
 
 # ============================================================
 # PREZZO
@@ -1038,9 +1313,14 @@ def _orchestrate_results(
         unique_results(validated)
     )
 
+
 # ============================================================
 # SEARCH CENTRALE
-# ==================================================
+# ============================================================
+
+# ============================================================
+# SEARCH CENTRALE
+# ============================================================
 
 def search_perfume(query: str) -> Dict[str, Any]:
     query = str(query or "").strip()
@@ -1057,6 +1337,8 @@ def search_perfume(query: str) -> Dict[str, Any]:
     all_results: List[Dict[str, Any]] = []
     errors: Dict[str, str] = {}
 
+    # Tutti gli store partono contemporaneamente.
+    # L'ordine dei future NON viene usato per determinare l'ordine finale.
     executor = ThreadPoolExecutor(
         max_workers=len(STORES),
         thread_name_prefix="scent_store",
@@ -1089,6 +1371,15 @@ def search_perfume(query: str) -> Dict[str, Any]:
                     traceback.print_exc()
 
         except TimeoutError:
+            # Alla scadenza globale non perdiamo i future che sono terminati
+            # proprio in prossimità del limite. Il vecchio codice controllava
+            # solo future.done() e, se un future era già terminato ma non era
+            # stato ancora consumato dall'iteratore as_completed(), lo
+            # considerava implicitamente riuscito ma ne perdeva il risultato.
+            #
+            # Ora raccogliamo esplicitamente ogni future già terminato.
+            # Solo quelli realmente ancora in esecuzione vengono marcati
+            # come timeout.
             for future, store in futures.items():
                 if future.done():
                     try:
@@ -1107,6 +1398,8 @@ def search_perfume(query: str) -> Dict[str, Any]:
                     )
 
     finally:
+        # cancel() annulla solamente future non ancora partiti.
+        # Non fingiamo di poter interrompere thread già in esecuzione.
         for future, store in futures.items():
             if not future.done():
                 future.cancel()
@@ -1116,10 +1409,8 @@ def search_perfume(query: str) -> Dict[str, Any]:
             cancel_futures=True,
         )
 
-    # ← FIX: usa _orchestrate_results() per applicare matches()
-    results = _orchestrate_results(
-        all_results,
-        query,
+    results = sort_by_price(
+        unique_results(all_results)
     )
 
     return {
@@ -1129,7 +1420,8 @@ def search_perfume(query: str) -> Dict[str, Any]:
         "comparisons": [],
         "errors": errors,
     }
-    
+
+
 # ============================================================
 # PRICE HISTORY
 # ============================================================
