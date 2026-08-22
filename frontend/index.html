@@ -729,6 +729,7 @@ function backend(){
   return origin;
 }
 let currentProductGroups=[];
+let openedProductKey=null;
 
 function shPrice(o){
   if(o&&o.price)return String(o.price);
@@ -1804,16 +1805,19 @@ document.addEventListener("click",e=>{
 },{capture:true});
 
 function showProducts(groups){
-  const safeGroups=Array.isArray(groups)?groups:[];
-
-  statusBox.textContent=safeGroups.length
-    ?safeGroups.length+(safeGroups.length===1?" profumo trovato.":" profumi trovati.")
+  currentProductGroups=groups;
+  statusBox.textContent=groups.length
+    ?groups.length+(groups.length===1?" profumo trovato.":" profumi trovati.")
     :"Nessun profumo trovato.";
 
-  resultsBox.innerHTML=safeGroups.map((g,i)=>{
+  resultsBox.innerHTML=groups.map((g,i)=>{
     const sizes=getSizeGroups(g);
-    const imageOffer=(Array.isArray(g.offers)?g.offers:[]).find(o=>o.image||o.image_url||o.thumbnail);
-    const img=g.image||imageOffer?.image||imageOffer?.image_url||imageOffer?.thumbnail||"";
+    const img=g.image||"";
+
+    // Regola generale: la scheda principale apre sempre la scheda del prodotto.
+    // Se esiste un solo formato, la scheda del prodotto mostrerà direttamente
+    // formato + negozi, evitando un terzo passaggio. Con più formati, invece,
+    // la scheda del prodotto presenterà la scelta dei formati.
     const best=g.offers.find(o=>!isOfferOutOfStock(o))||null;
 
     return `<article class="product-choice" onclick='openProduct(${i})'>
@@ -1842,8 +1846,13 @@ function openProduct(i){
   const g=currentProductGroups[i];
   if(!g)return;
 
+  openedProductKey =
+    String(g.brand || "") + "|" +
+    String(g.name || "") + "|" +
+    String(g.concentration || "");
+
   const sizes=getSizeGroups(g);
-  const img=g.image||((Array.isArray(g.offers)?g.offers:[]).find(o=>o.image||o.image_url||o.thumbnail)?.image||((Array.isArray(g.offers)?g.offers:[]).find(o=>o.image||o.image_url||o.thumbnail)?.image_url)||((Array.isArray(g.offers)?g.offers:[]).find(o=>o.image||o.image_url||o.thumbnail)?.thumbnail)||"");
+  const img=g.image||"";
   const saved=getWishlist();
 
   statusBox.textContent="";
@@ -1961,7 +1970,7 @@ function openSize(gi,sizeKey,fromFormats=true){
 
   const offers=selected.offers;
   const saved=getWishlist();
-  const img=g.image||((Array.isArray(g.offers)?g.offers:[]).find(o=>o.image||o.image_url||o.thumbnail)?.image||((Array.isArray(g.offers)?g.offers:[]).find(o=>o.image||o.image_url||o.thumbnail)?.image_url)||((Array.isArray(g.offers)?g.offers:[]).find(o=>o.image||o.image_url||o.thumbnail)?.thumbnail)||"");
+  const img=g.image||"";
 
   statusBox.textContent="";
   resultsBox.innerHTML=`<article class="comparison">
@@ -2156,101 +2165,62 @@ async function searchPerfume(){
  statusBox.textContent="";resultsBox.innerHTML="";errorsBox.innerHTML="";
  try{
   let data;
-  let progressiveData={query:q,results:[],comparisons:[],errors:{},completed:false};
-
-  const mergeProgressiveArray=(target, incoming)=>{
-    if(!Array.isArray(incoming))return;
-    target.push(...incoming);
-  };
-
-  const mergeProgressiveData=(partialData)=>{
-    const d=partialData||{};
-    if(d.query)progressiveData.query=d.query;
-    mergeProgressiveArray(progressiveData.results,d.results);
-    mergeProgressiveArray(progressiveData.comparisons,d.comparisons);
-    if(d.errors&&typeof d.errors==="object")progressiveData.errors={...progressiveData.errors,...d.errors};
-    progressiveData.completed=Boolean(d.completed);
-  };
-
-  const offerIdentity=(o)=>[
-    String(o?.store||"").trim().toLowerCase(),
-    String(o?.url||"").split("?")[0].trim().toLowerCase(),
-    String(o?.name||"").trim().toLowerCase(),
-    String(o?.size_ml||o?.size||"").trim().toLowerCase()
-  ].join("|");
-
-  const mergeGroups=(base,incoming)=>{
-    const merged=base.map(g=>({...g,offers:Array.isArray(g.offers)?g.offers.map(o=>({...o})):[]}));
-    const groupKey=(g)=>[
-      String(g?.brand||"").trim().toLowerCase(),
-      normalizePerfumeName(g?.name||"").trim().toLowerCase(),
-      String(g?.concentration||"").trim().toLowerCase()
-    ].join("|");
-
-    incoming.forEach(g=>{
-      if(!g)return;
-      const key=groupKey(g);
-      let dest=merged.find(x=>groupKey(x)===key);
-      if(!dest){
-        dest={...g,offers:[]};
-        merged.push(dest);
-      }
-
-      if(!dest.image){
-        dest.image=g.image||g.image_url||g.thumbnail||"";
-      }
-
-      const existing=new Map(dest.offers.map(o=>[offerIdentity(o),o]));
-      (Array.isArray(g.offers)?g.offers:[]).forEach(o=>{
-        const id=offerIdentity(o);
-        if(!id||id==="|||"||!existing.has(id)){
-          dest.offers.push({...o});
-          if(!dest.image)dest.image=o.image||o.image_url||o.thumbnail||"";
-        }
-      });
-    });
-
-    // Le immagini possono essere presenti solo su una singola offerta.
-    // Recuperiamole sempre prima del rendering della scheda.
-    merged.forEach(g=>{
-      if(g.image)return;
-      const withImage=(Array.isArray(g.offers)?g.offers:[]).find(o=>o.image||o.image_url||o.thumbnail);
-      if(withImage)g.image=withImage.image||withImage.image_url||withImage.thumbnail||"";
-    });
-
-    return merged;
-  };
-
+  openedProductKey = null;
   const renderData = (partialData, final = false) => {
-    mergeProgressiveData(partialData);
-    let groups=shGroupData(progressiveData);
+    let groups = shGroupData(partialData || {});
 
-    // Mantiene tutti i risultati arrivati dai vari scraper durante il polling.
-    // Il backend può inviare risultati parziali a ogni interrogazione: non
-    // dobbiamo sostituire i risultati precedenti con l'ultimo blocco ricevuto.
-    if(Array.isArray(currentProductGroups)&&currentProductGroups.length){
-      groups=mergeGroups(currentProductGroups,groups);
-    }
+    const productDetailOpen =
+      resultsBox.querySelector(".comparison") !== null;
 
-    const productDetailOpen=resultsBox.querySelector(".comparison")!==null;
-
-    currentProductGroups=groups;
-    updateBestPricesFromGroups(groups);
-
-    if(!productDetailOpen){
+    if (!productDetailOpen && groups.length > 0) {
       showProducts(groups);
     }
 
-    refreshWishlistFromResults(groups.flatMap(g=>g.offers.map(o=>({name:g.name||"",brand:g.brand||"",price:shPrice(o),price_value:o.price_value,store:o.store||"",url:o.url||""}))));
+    currentProductGroups = groups;
+    updateBestPricesFromGroups(groups);
+
+    refreshWishlistFromResults(
+      groups.flatMap(function(g) {
+        return g.offers.map(function(o) {
+          return {
+            name: g.name,
+            brand: g.brand,
+            price: shPrice(o),
+            price_value: o.price_value,
+            store: o.store,
+            url: o.url,
+            image: g.image,
+            pic: g.image
+          };
+        });
+      })
+    );
+
+    if (productDetailOpen && openedProductKey) {
+      const updatedIndex = currentProductGroups.findIndex(function(group) {
+        const key =
+          String(group.brand || "") + "|" +
+          String(group.name || "") + "|" +
+          String(group.concentration || "");
+
+        return key === openedProductKey;
+      });
+
+      if (updatedIndex >= 0) {
+        openProduct(updatedIndex);
+      }
+    }
+
+    // I timeout delle singole fonti non devono comparire nella pagina e non devono
+    // trasformare una ricerca con risultati validi in una ricerca "fallita".
+    // Conserviamo gli errori internamente, ma l'utente vede solo i risultati utili.
     errorsBox.innerHTML="";
     if(final)statusBox.textContent=groups.length?`Ricerca completata: ${groups.length} prodotti trovati.`:"Nessun risultato trovato.";
   };
 
+  // Regola generale: tutte le ricerche passano dalla regia centrale.
+  // Il frontend non contiene seed o percorsi speciali per singoli prodotti.
   data=await searchStoresProgressive(q,renderData);
-
-  // Una passata finale sui dati completi garantisce che l'ultima risposta
-  // del backend venga integrata senza perdere i risultati già visualizzati.
-  renderData(data,true);
 
  }catch(e){
   console.error(e);
