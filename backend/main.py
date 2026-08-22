@@ -515,16 +515,11 @@ def matches(product: Dict[str, Any], query: str) -> bool:
 
 def build_search_attempts(store: str, query: str) -> List[str]:
     """
-    Costruisce una discovery generica in due livelli:
+    Costruisce una sequenza corta e deterministica di query generiche,
+    ordinate dalla più precisa alla più permissiva.
 
-    1) query originale, precisa;
-    2) fallback senza marcatori generici di variante.
-
-    Il fallback serve esclusivamente a DISCOVERY: la validazione centrale
-    continua a usare matches() sulla query originale.
-
-    Il parametro store resta nella firma per compatibilità, ma NON modifica
-    la strategia in base al negozio.
+    Il parametro store resta nella firma per compatibilità con il codice
+    esistente, ma NON modifica le strategie in base al negozio.
     """
     del store
 
@@ -544,53 +539,27 @@ def build_search_attempts(store: str, query: str) -> List[str]:
             seen.add(key)
             attempts.append(value)
 
-    # 1) Query originale: sempre la prima e unica discovery per le
-    #    ricerche normali.
+    # 1) Query originale: è sempre la discovery più precisa.
     add(raw)
 
-    tokens = normalized.split()
-
-    # Marcatori generici di variante. Non identificano alcun prodotto
-    # specifico: servono solo per costruire una query di discovery più ampia
-    # quando uno store non indicizza bene la variante completa.
-    variant_tokens = {
-        "limited",
-        "edition",
-        "ice",
-        "rebel",
-        "collector",
-        "collectors",
-        "special",
-        "exclusive",
-        "exclusif",
-        "exclusivo",
-    }
-
-    variant_indexes = [
-        index
-        for index, token in enumerate(tokens)
-        if token in variant_tokens
+    # 2) Query normalizzata senza parole puramente descrittive.
+    tokens = [
+        token
+        for token in normalized.split()
+        if token not in IGNORED_WORDS
     ]
 
-    if variant_indexes:
-        first_variant = min(variant_indexes)
+    if tokens:
+        add(" ".join(tokens))
 
-        # Manteniamo l'identità prima del marcatore di variante.
-        family_tokens = tokens[:first_variant]
-
-        if family_tokens:
-            add(" ".join(family_tokens))
-
-    # 2) Forma compatta solo quando contiene numeri e quindi può realmente
-    #    differire dalla query originale.
+    # 3) Forma compatta per siti che indicizzano "100ml" e "100 ml"
+    #    come stringhe diverse.
     compact = re.sub(
         r"(?<=\d)\s+(?=[a-z])|(?<=[a-z])\s+(?=\d)",
         "",
         normalized,
     )
-
-    if compact != normalized:
-        add(compact)
+    add(compact)
 
     return attempts
 
@@ -1177,110 +1146,6 @@ def search_perfume(query: str) -> Dict[str, Any]:
     }
 
 
-
-
-# ============================================================
-# SEARCH CENTRALE
-# ============================================================
-
-def search_perfume(query: str) -> Dict[str, Any]:
-    query = str(query or "").strip()
-
-    if not query:
-        return {
-            "query": "",
-            "count": 0,
-            "results": [],
-            "comparisons": [],
-            "errors": {},
-        }
-
-    all_results: List[Dict[str, Any]] = []
-    errors: Dict[str, str] = {}
-
-    # Tutti gli store partono contemporaneamente.
-    # L'ordine dei future NON viene usato per determinare l'ordine finale.
-    executor = ThreadPoolExecutor(
-        max_workers=len(STORES),
-        thread_name_prefix="scent_store",
-    )
-
-    futures = {
-        executor.submit(run_store, store, query): store
-        for store in STORES
-    }
-
-    try:
-        try:
-            completed = as_completed(
-                futures,
-                timeout=GLOBAL_SEARCH_TIMEOUT,
-            )
-
-            for future in completed:
-                store = futures[future]
-
-                try:
-                    store_results = future.result()
-                    if isinstance(store_results, list):
-                        all_results.extend(store_results)
-
-                except Exception as exc:
-                    errors[store] = (
-                        f"{type(exc).__name__}: {exc}"
-                    )
-                    traceback.print_exc()
-
-        except TimeoutError:
-            # Alla scadenza globale non perdiamo i future che sono terminati
-            # proprio in prossimità del limite. Il vecchio codice controllava
-            # solo future.done() e, se un future era già terminato ma non era
-            # stato ancora consumato dall'iteratore as_completed(), lo
-            # considerava implicitamente riuscito ma ne perdeva il risultato.
-            #
-            # Ora raccogliamo esplicitamente ogni future già terminato.
-            # Solo quelli realmente ancora in esecuzione vengono marcati
-            # come timeout.
-            for future, store in futures.items():
-                if future.done():
-                    try:
-                        store_results = future.result()
-                        if isinstance(store_results, list):
-                            all_results.extend(store_results)
-
-                    except Exception as exc:
-                        errors[store] = (
-                            f"{type(exc).__name__}: {exc}"
-                        )
-                        traceback.print_exc()
-                else:
-                    errors[store] = (
-                        "Timeout: ricerca del negozio oltre il limite globale"
-                    )
-
-    finally:
-        # cancel() annulla solamente future non ancora partiti.
-        # Non fingiamo di poter interrompere thread già in esecuzione.
-        for future, store in futures.items():
-            if not future.done():
-                future.cancel()
-
-        executor.shutdown(
-            wait=False,
-            cancel_futures=True,
-        )
-
-    results = sort_by_price(
-        unique_results(all_results)
-    )
-
-    return {
-        "query": query,
-        "count": len(results),
-        "results": results,
-        "comparisons": [],
-        "errors": errors,
-    }
 
 
 # ============================================================
