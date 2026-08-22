@@ -2160,13 +2160,18 @@ async function searchPerfume(){
  statusBox.textContent="";resultsBox.innerHTML="";errorsBox.innerHTML="";
  try{
   let data;
-  const renderData=(partialData,final=false)=>{
-   let groups=shGroupData(partialData||{});
+  const renderData = (partialData, final = false) => {
+  let groups = shGroupData(partialData || {});
 
+  const productDetailOpen =
+    resultsBox.querySelector(".comparison") !== null;
 
-   showProducts(groups);
-   currentProductGroups=groups;
-   updateBestPricesFromGroups(groups);
+  if (!productDetailOpen) {
+    showProducts(groups);
+  }
+
+  currentProductGroups = groups;
+  updateBestPricesFromGroups(groups);
    refreshWishlistFromResults(groups.flatMap(g=>g.offers.map(o=>({name:g.name||"",brand:g.brand||"",price:shPrice(o),price_value:o.price_value,store:o.store||"",url:o.url||""}))));
 
    // I timeout delle singole fonti non devono comparire nella pagina e non devono
