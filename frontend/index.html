@@ -1545,11 +1545,6 @@ function shGroupData(data){
         if(vn===qn||vn.startsWith(qn+" ")||qn.startsWith(vn+" "))candidates.push(clean);
       });
 
-      const name=cleanBrandText(o._source_name||o.name||"");
-      const nn=norm(name);
-      if(nn.startsWith(qn+" "))candidates.push(query);
-    });
-
     if(!candidates.length)return "";
     const best=candidates.sort((a,b)=>norm(a).length-norm(b).length)[0];
     return pretty(best||query);
