@@ -2123,7 +2123,7 @@ async function searchStoresProgressive(query, onPartial) {
 
   while (true) {
     const response = await fetch(
-      `/search-status?job_id=${jobId}`,
+      `/search-status/${jobId}`,
       {
         headers: {
           Accept: "application/json"
@@ -2136,13 +2136,25 @@ async function searchStoresProgressive(query, onPartial) {
     }
 
     const data = await response.json();
+    const completed =
+      data &&
+      (
+        data.status === "completed" ||
+        data.completed === true
+      );
 
     if (typeof onPartial === "function") {
-      onPartial(data, Boolean(data.completed));
+      onPartial(data, completed);
     }
 
-    if (data.completed) {
+    if (completed) {
       return data;
+    }
+
+    if (data && data.status === "failed") {
+      throw new Error(
+        String(data.error || "Errore durante la ricerca")
+      );
     }
 
     if (Date.now() - startedAt >= maxPollingTime) {
