@@ -2167,7 +2167,14 @@ async function searchPerfume(){
   let data;
   openedProductKey = null;
   const renderData = (partialData, final = false) => {
-    let groups = shGroupData(partialData || {});
+    const payload =
+      partialData &&
+      partialData.result &&
+      typeof partialData.result === "object"
+        ? partialData.result
+        : partialData;
+
+    let groups = shGroupData(payload || {});
 
     const productDetailOpen =
       resultsBox.querySelector(".comparison") !== null;
