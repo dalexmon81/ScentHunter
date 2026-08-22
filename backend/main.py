@@ -582,7 +582,41 @@ def is_non_perfume(product: Dict[str, Any]) -> bool:
     )
 
 
-def matches(product: Dict[str, Any], query: str) -> bool:
+def _catalog_family_match(
+    name: str,
+    family_candidates: Optional[List[str]],
+    required_variant_tokens: Optional[set] = None,
+) -> bool:
+    """
+    True quando il prodotto appartiene realmente a una denominazione della
+    famiglia trovata dal catalogo. Se il prodotto contiene una variante non
+    presente nella query, la variante deve essere presente anche nella
+    denominazione catalogata: il solo nome base non basta.
+    """
+    if not family_candidates:
+        return False
+
+    name_tokens = set(norm(name).split())
+    required_variant_tokens = required_variant_tokens or set()
+
+    for candidate in family_candidates:
+        candidate_tokens = {
+            token for token in norm(candidate).split()
+            if token not in IGNORED_WORDS
+        }
+        if not candidate_tokens or not candidate_tokens.issubset(name_tokens):
+            continue
+        if required_variant_tokens and not required_variant_tokens.issubset(candidate_tokens):
+            continue
+        return True
+    return False
+
+
+def matches(
+    product: Dict[str, Any],
+    query: str,
+    family_candidates: Optional[List[str]] = None,
+) -> bool:
     item = normalize_product(product, query)
     name = norm(item.get("name", ""))
     query_normalized = norm(query)
@@ -595,10 +629,6 @@ def matches(product: Dict[str, Any], query: str) -> bool:
     if not all(token in name for token in tokens):
         return False
 
-    # Una ricerca generica della famiglia deve restituire il prodotto base,
-    # non una variante specifica. Lo stesso controllo vale per una ricerca
-    # già specifica: in quel caso sono ammessi solo i marcatori dichiarati
-    # nella query.
     query_tokens = set(tokens)
     name_tokens = set(name.split())
 
@@ -607,6 +637,16 @@ def matches(product: Dict[str, Any], query: str) -> bool:
         if not marker_tokens:
             continue
         if marker_tokens.issubset(name_tokens) and not marker_tokens.issubset(query_tokens):
+            # Se la query è una famiglia e il catalogo ha esplicitamente
+            # trovato questa variante, la variante è valida.
+            # Esempio generico: una ricerca di una famiglia può includere
+            # anche una Limited Edition presente nel catalogo.
+            if _catalog_family_match(
+                name,
+                family_candidates,
+                marker_tokens,
+            ):
+                continue
             return False
 
     return True
@@ -733,7 +773,7 @@ def run_store(
             if key in seen:
                 continue
             seen.add(key)
-            if matches(product, raw_query):
+            if matches(product, raw_query, family_candidates):
                 output.append(product)
     return output
 
@@ -921,7 +961,7 @@ def health():
 
 
 # ============================================================
-# BACKGROUND SEARCH JOBS
+# SEARCH ENGINE
 # ============================================================
 
 _SEARCH_JOBS: Dict[str, Dict[str, Any]] = {}
@@ -941,74 +981,8 @@ def _cleanup_search_jobs_locked(now: Optional[float] = None) -> None:
             _SEARCH_JOBS.pop(job_id, None)
 
 
-def _run_search_job(job_id: str, query: str) -> None:
-    try:
-        result = search_perfume(query)
-        with _SEARCH_JOBS_LOCK:
-            job = _SEARCH_JOBS.get(job_id)
-            if job:
-                job["status"] = "completed"
-                job["result"] = result
-                job["updated_at"] = datetime.now(timezone.utc).timestamp()
-    except Exception as exc:
-        traceback.print_exc()
-        with _SEARCH_JOBS_LOCK:
-            job = _SEARCH_JOBS.get(job_id)
-            if job:
-                job["status"] = "failed"
-                job["error"] = f"{type(exc).__name__}: {exc}"
-                job["updated_at"] = datetime.now(timezone.utc).timestamp()
-
-
-@app.get("/search-start")
-def search_start(q: str):
-    query = str(q or "").strip()
-    if not query:
-        raise HTTPException(status_code=400, detail="Parametro q mancante")
-
-    job_id = uuid.uuid4().hex
-    now = datetime.now(timezone.utc).timestamp()
-    with _SEARCH_JOBS_LOCK:
-        _cleanup_search_jobs_locked(now)
-        _SEARCH_JOBS[job_id] = {
-            "job_id": job_id,
-            "query": query,
-            "status": "running",
-            "created_at": now,
-            "updated_at": now,
-        }
-
-    _SEARCH_EXECUTOR.submit(_run_search_job, job_id, query)
-    return {"job_id": job_id, "query": query, "status": "running"}
-
-
-@app.get("/search-status/{job_id}")
-def search_status(job_id: str):
-    with _SEARCH_JOBS_LOCK:
-        _cleanup_search_jobs_locked()
-        job = _SEARCH_JOBS.get(str(job_id or "").strip())
-        if not job:
-            raise HTTPException(status_code=404, detail="Ricerca non trovata o scaduta")
-
-        response = {
-            "job_id": job["job_id"],
-            "query": job["query"],
-            "status": job["status"],
-        }
-        if job["status"] == "completed":
-            response.update(job.get("result") or {})
-        elif job["status"] == "failed":
-            response["error"] = job.get("error", "Ricerca fallita")
-        return response
-
-
-# ============================================================
-# API - SEARCH
-# ============================================================
-
-@app.get("/search")
-def search_perfume(q: str):
-    query = str(q or "").strip()
+def _perform_search(query: str) -> Dict[str, Any]:
+    query = str(query or "").strip()
 
     if not query:
         return {"query": "", "count": 0, "results": [], "errors": {}}
@@ -1036,7 +1010,7 @@ def search_perfume(q: str):
     }
 
     try:
-        for future in as_completed(futures, timeout=28):
+        for future in as_completed(futures, timeout=75):
             store = futures[future]
             try:
                 all_results.extend(future.result())
@@ -1066,6 +1040,83 @@ def search_perfume(q: str):
         "results": results,
         "errors": errors,
     }
+
+
+
+def _run_search_job(job_id: str, query: str) -> None:
+    try:
+        result = _perform_search(query)
+        with _SEARCH_JOBS_LOCK:
+            job = _SEARCH_JOBS.get(job_id)
+            if job:
+                job["status"] = "completed"
+                job["result"] = result
+                job["updated_at"] = datetime.now(timezone.utc).timestamp()
+    except Exception as error:
+        traceback.print_exc()
+        with _SEARCH_JOBS_LOCK:
+            job = _SEARCH_JOBS.get(job_id)
+            if job:
+                job["status"] = "failed"
+                job["error"] = f"{type(error).__name__}: {error}"
+                job["updated_at"] = datetime.now(timezone.utc).timestamp()
+
+
+# ============================================================
+# API - SEARCH
+# ============================================================
+
+def _start_search_job(query: str) -> Dict[str, Any]:
+    query = str(query or "").strip()
+    if not query:
+        return {"query": "", "count": 0, "results": [], "errors": {}}
+
+    job_id = uuid.uuid4().hex
+    now = datetime.now(timezone.utc).timestamp()
+    with _SEARCH_JOBS_LOCK:
+        _cleanup_search_jobs_locked(now)
+        _SEARCH_JOBS[job_id] = {
+            "job_id": job_id,
+            "query": query,
+            "status": "running",
+            "created_at": now,
+            "updated_at": now,
+        }
+
+    _SEARCH_EXECUTOR.submit(_run_search_job, job_id, query)
+    return {"job_id": job_id, "query": query, "status": "running"}
+
+
+@app.get("/search")
+def search(q: str):
+    return _start_search_job(q)
+
+
+@app.get("/search-start")
+def search_start(q: str):
+    # Compatibilità con il frontend ScentHunter attuale, che avvia la ricerca
+    # tramite /search-start e poi interroga /search-status/{job_id}.
+    return _start_search_job(q)
+
+
+@app.get("/search-status/{job_id}")
+def search_status(job_id: str):
+    with _SEARCH_JOBS_LOCK:
+        _cleanup_search_jobs_locked()
+        job = _SEARCH_JOBS.get(str(job_id or "").strip())
+        if not job:
+            raise HTTPException(status_code=404, detail="Ricerca non trovata o scaduta")
+
+        response = {
+            "job_id": job["job_id"],
+            "query": job["query"],
+            "status": job["status"],
+        }
+        if job["status"] == "completed":
+            response.update(job.get("result") or {})
+        elif job["status"] == "failed":
+            response["error"] = job.get("error", "Ricerca fallita")
+        return response
 
 
 # ============================================================
