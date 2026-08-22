@@ -2167,11 +2167,32 @@ async function searchPerfume(){
     resultsBox.querySelector(".comparison") !== null;
 
   if (!productDetailOpen) {
-    showProducts(groups);
-  }
+  showProducts(groups);
+}
 
-  currentProductGroups = groups;
-  updateBestPricesFromGroups(groups);
+currentProductGroups = groups;
+updateBestPricesFromGroups(groups);
+
+if (productDetailOpen) {
+  const currentComparison = resultsBox.querySelector(".comparison");
+
+  if (currentComparison) {
+    const backButton = currentComparison.querySelector(".detail-back");
+
+    if (backButton) {
+      const selectedProductIndex =
+        currentProductGroups.findIndex(function(group) {
+          return currentProductGroups.indexOf(group) ===
+            currentProductGroups.indexOf(groups[0]);
+        });
+
+      if (selectedProductIndex >= 0) {
+        openProduct(selectedProductIndex);
+      }
+    }
+  }
+}
+
    refreshWishlistFromResults(groups.flatMap(g=>g.offers.map(o=>({name:g.name||"",brand:g.brand||"",price:shPrice(o),price_value:o.price_value,store:o.store||"",url:o.url||""}))));
 
    // I timeout delle singole fonti non devono comparire nella pagina e non devono
