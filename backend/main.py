@@ -364,11 +364,43 @@ def has_small_size(product: Dict[str, Any]) -> bool:
 
 def matches(product: Dict[str, Any], query: str) -> bool:
     query_normalized = norm(query)
+
     if not query_normalized:
         return False
 
-    search_text = product_search_text(product)
-    if not search_text:
+    name = product_field(
+        product,
+        "name",
+        "title",
+        "product_name",
+    )
+
+    brand = product_field(
+        product,
+        "brand",
+        "source_brand",
+    )
+
+    source = product.get("source")
+
+    if isinstance(source, dict):
+        if not brand:
+            brand = str(
+                source.get("brand")
+                or source.get("source_brand")
+                or ""
+            ).strip()
+
+        if not name:
+            name = str(
+                source.get("name")
+                or source.get("title")
+                or ""
+            ).strip()
+
+    name_normalized = norm(name)
+
+    if not name_normalized:
         return False
 
     query_has_size = bool(
@@ -381,31 +413,95 @@ def matches(product: Dict[str, Any], query: str) -> bool:
     if has_small_size(product) and not query_has_size:
         return False
 
-    name = norm(
-        " ".join(
-            str(product.get(key) or "")
-            for key in ("name", "title", "product_name")
-        )
-    )
-
     for phrase in NON_PERFUME:
         phrase_normalized = norm(phrase)
+
         if (
-            phrase_normalized in name
+            phrase_normalized in name_normalized
             and phrase_normalized not in query_normalized
         ):
             return False
 
-    tokens = [
+    name_for_matching = name_normalized
+
+    name_for_matching = re.sub(
+        r"\b\d+(?:[.,]\d+)?\s*(?:ml|cl)\b",
+        " ",
+        name_for_matching,
+        flags=re.I,
+    )
+
+    name_for_matching = re.sub(
+        r"\b(?:eau\s+de\s+parfum|eau\s+de\s+toilette|"
+        r"eau\s+de\s+cologne|extrait\s+de\s+parfum|"
+        r"edp|edt|edc)\b",
+        " ",
+        name_for_matching,
+        flags=re.I,
+    )
+
+    name_for_matching = re.sub(
+        r"\s+",
+        " ",
+        name_for_matching,
+    ).strip()
+
+    query_tokens = [
         token
         for token in query_normalized.split()
         if token not in IGNORED_WORDS
+        and not re.fullmatch(
+            r"\d+(?:[.,]\d+)?",
+            token,
+        )
     ]
 
-    if not tokens:
+    generic_tokens = {
+        "eau",
+        "de",
+        "parfum",
+        "perfume",
+        "edp",
+        "edt",
+        "edc",
+        "extrait",
+        "spray",
+        "intense",
+        "limited",
+        "edition",
+        "for",
+        "men",
+        "women",
+        "homme",
+        "femme",
+        "unisex",
+    }
+
+    family_tokens = [
+        token
+        for token in query_tokens
+        if token not in generic_tokens
+    ]
+
+    if not family_tokens:
+        family_tokens = query_tokens
+
+    if not family_tokens:
         return False
 
-    return all(token in search_text for token in tokens)
+    name_tokens = name_for_matching.split()
+
+    family_phrase = " ".join(family_tokens)
+    name_phrase = " ".join(
+        token
+        for token in name_tokens
+        if token not in generic_tokens
+    )
+
+    if not family_phrase or not name_phrase:
+        return False
+
+    return name_phrase.startswith(family_phrase)
 
 
 # ============================================================
