@@ -492,6 +492,11 @@ def parse_search_candidate(candidate, query):
 
     return {
         "store": STORE,
+        "brand": brand,
+        "size_ml": size_ml,
+        "concentration": concentration,
+        "gender": gender,
+        "packaging_type": "product",
         "source": {
             "source_name": name,
             "source_brand": brand or None,
