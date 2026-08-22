@@ -1528,33 +1528,7 @@ function shGroupData(data){
    * come brand oppure il nome commerciale inizia con quel termine.
    * Non esistono brand, prodotti o eccezioni hard-coded.
    */
-  const searchBrand=(()=>{
-    const query=cleanBrandText(data&&data.query||"");
-    const qn=norm(query);
-    if(!qn)return "";
-    const words=qn.split(/\\s+/).filter(Boolean);
-    if(!words.length||words.length>4)return "";
-
-    const candidates=[];
-    raw.forEach(o=>{
-      const values=[o.brand,o._source_brand].filter(Boolean);
-      values.forEach(v=>{
-        const clean=cleanBrandText(v);
-        const vn=norm(clean);
-        if(!vn)return;
-        if(vn===qn||vn.startsWith(qn+" ")||qn.startsWith(vn+" "))candidates.push(clean);
-      });
-
-      const name=cleanBrandText(o._source_name||o.name||"");
-      const nn=norm(name);
-      if(nn.startsWith(qn+" "))candidates.push(query);
-    });
-
-    if(!candidates.length)return "";
-    const best=candidates.sort((a,b)=>norm(a).length-norm(b).length)[0];
-    return pretty(best||query);
-  })();
-
+  const searchBrand="";
   if(searchBrand){
     const searchBrandNorm=norm(searchBrand);
     groups.forEach(g=>{
