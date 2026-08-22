@@ -1073,7 +1073,7 @@ def search_start(q: str):
         raise HTTPException(status_code=400, detail="Parametro q mancante")
     return {"job_id":create_search_job(query),"status":"running","query":query}
 
-@app.get("/search-status/{job_id}")
+@app.get("/search-status")
 def search_status(job_id: str):
     job=get_search_job(job_id)
     if job is None:
