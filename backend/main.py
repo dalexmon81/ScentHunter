@@ -518,12 +518,6 @@ def build_search_attempts(store: str, query: str) -> List[str]:
     Costruisce una sequenza corta e deterministica di query generiche,
     ordinate dalla più precisa alla più permissiva.
 
-    La discovery è accent-insensitive: oltre alla query originale viene
-    sempre provata, quando diversa, una variante senza diacritici.
-    Questo evita che caratteri accentati presenti nella query dell'utente
-    impediscano a uno scraper o a un motore di ricerca esterno di trovare
-    un prodotto che esiste con la grafia non accentata.
-
     Il parametro store resta nella firma per compatibilità con il codice
     esistente, ma NON modifica le strategie in base al negozio.
     """
@@ -540,13 +534,7 @@ def build_search_attempts(store: str, query: str) -> List[str]:
 
     def add(value: str) -> None:
         value = str(value or "").strip()
-
-        # La chiave di deduplicazione NON usa norm(), perché norm()
-        # rimuove già gli accenti e quindi considererebbe identiche:
-        # "édition" e "edition". In discovery devono invece poter
-        # diventare due tentativi distinti.
-        key = re.sub(r"\s+", " ", value.casefold()).strip()
-
+        key = norm(value)
         if value and key and key not in seen:
             seen.add(key)
             attempts.append(value)
@@ -554,13 +542,7 @@ def build_search_attempts(store: str, query: str) -> List[str]:
     # 1) Query originale: è sempre la discovery più precisa.
     add(raw)
 
-    # 2) Variante generica senza accenti/diacritici.
-    #    norm() è già la funzione centrale di normalizzazione del progetto:
-    #    qui la usiamo come variante di discovery, non solo per il matching.
-    if normalized != raw.casefold().strip():
-        add(normalized)
-
-    # 3) Query senza parole puramente descrittive.
+    # 2) Query normalizzata senza parole puramente descrittive.
     tokens = [
         token
         for token in normalized.split()
@@ -570,7 +552,7 @@ def build_search_attempts(store: str, query: str) -> List[str]:
     if tokens:
         add(" ".join(tokens))
 
-    # 4) Forma compatta per siti che indicizzano "100ml" e "100 ml"
+    # 3) Forma compatta per siti che indicizzano "100ml" e "100 ml"
     #    come stringhe diverse.
     compact = re.sub(
         r"(?<=\d)\s+(?=[a-z])|(?<=[a-z])\s+(?=\d)",
