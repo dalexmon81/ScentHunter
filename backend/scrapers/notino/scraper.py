@@ -568,7 +568,15 @@ def parse_search_candidate(candidate, query):
     concentration = extract_concentration(text, card_text)
     gender = extract_gender(text, card_text)
 
-    if not is_fragrance(name, text, concentration):
+    # Search cards can omit the concentration/category even when the linked
+    # product is a fragrance. Do not reject a candidate at discovery time
+    # solely because that metadata is missing. Discovery and validation are
+    # intentionally separated: strong non-fragrance markers still reject the
+    # candidate, while an otherwise clean product-card candidate is retained
+    # for the main pipeline to validate.
+    fragrance_verified = is_fragrance(name, text, concentration)
+    non_fragrance = _has_non_perfume_marker(name) or _has_non_perfume_marker(card_text)
+    if not fragrance_verified and non_fragrance:
         return None
     if not query_matches(name, brand, query, size_ml):
         return None
