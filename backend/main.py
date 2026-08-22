@@ -377,6 +377,34 @@ def matches(product: Dict[str, Any], query: str) -> bool:
         "product_name",
     )
 
+    brand = product_field(
+        product,
+        "brand",
+        "source_brand",
+    )
+
+    source = product.get("source")
+
+    if isinstance(source, dict):
+        if not brand:
+            brand = str(
+                source.get("brand")
+                or source.get("source_brand")
+                or ""
+            ).strip()
+
+        if not name:
+            name = str(
+                source.get("name")
+                or source.get("title")
+                or ""
+            ).strip()
+
+    name_normalized = norm(name)
+
+    if not name_normalized:
+        return False
+
     query_has_size = bool(
         re.search(
             r"(?<!\d)\d+(?:[.,]\d+)?\s*(?:ml|cl)\b",
@@ -387,8 +415,6 @@ def matches(product: Dict[str, Any], query: str) -> bool:
     if has_small_size(product) and not query_has_size:
         return False
 
-    name_normalized = norm(name)
-
     for phrase in NON_PERFUME:
         phrase_normalized = norm(phrase)
 
@@ -398,34 +424,28 @@ def matches(product: Dict[str, Any], query: str) -> bool:
         ):
             return False
 
-    # La validazione deve usare TUTTE le informazioni testuali del
-    # candidato, non soltanto il campo name. Alcuni scraper separano
-    # correttamente brand, nome e variante in campi distinti.
-    searchable_text = product_search_text(product)
+    name_for_matching = name_normalized
 
-    if not searchable_text:
-        return False
-
-    searchable_text = re.sub(
+    name_for_matching = re.sub(
         r"\b\d+(?:[.,]\d+)?\s*(?:ml|cl)\b",
         " ",
-        searchable_text,
+        name_for_matching,
         flags=re.I,
     )
 
-    searchable_text = re.sub(
+    name_for_matching = re.sub(
         r"\b(?:eau\s+de\s+parfum|eau\s+de\s+toilette|"
         r"eau\s+de\s+cologne|extrait\s+de\s+parfum|"
         r"edp|edt|edc)\b",
         " ",
-        searchable_text,
+        name_for_matching,
         flags=re.I,
     )
 
-    searchable_text = re.sub(
+    name_for_matching = re.sub(
         r"\s+",
         " ",
-        searchable_text,
+        name_for_matching,
     ).strip()
 
     query_tokens = [
@@ -438,20 +458,55 @@ def matches(product: Dict[str, Any], query: str) -> bool:
         )
     ]
 
-    if not query_tokens:
+    generic_tokens = {
+        "eau",
+        "de",
+        "parfum",
+        "perfume",
+        "edp",
+        "edt",
+        "edc",
+        "extrait",
+        "spray",
+        "intense",
+        "limited",
+        "edition",
+        "for",
+        "men",
+        "women",
+        "homme",
+        "femme",
+        "unisex",
+    }
+
+    family_tokens = [
+        token
+        for token in query_tokens
+        if token not in generic_tokens
+    ]
+
+    if not family_tokens:
+        family_tokens = query_tokens
+
+    if not family_tokens:
         return False
 
-    # I termini di variante NON vengono più eliminati.
-    # Se l'utente cerca esplicitamente una variante (es.
-    # "limited edition"), quei termini devono essere presenti
-    # nel candidato, indipendentemente dal campo in cui lo scraper
-    # li ha restituiti.
-    searchable_tokens = set(searchable_text.split())
+    name_tokens = name_for_matching.split()
 
-    return all(
-        token in searchable_tokens
-        for token in query_tokens
+    family_phrase = " ".join(family_tokens)
+    name_phrase = " ".join(
+        token
+        for token in name_tokens
+        if token not in generic_tokens
     )
+
+    if not family_phrase or not name_phrase:
+        return False
+
+    padded_name = f" {name_phrase} "
+    padded_family = f" {family_phrase} "
+
+    return padded_family in padded_name
 
 
 # ============================================================
@@ -460,11 +515,11 @@ def matches(product: Dict[str, Any], query: str) -> bool:
 
 def build_search_attempts(store: str, query: str) -> List[str]:
     """
-    Costruisce una sequenza corta e deterministica di query generiche.
+    Costruisce una sequenza corta e deterministica di query generiche,
+    ordinate dalla più precisa alla più permissiva.
 
-    La query originale resta sempre il primo tentativo. I fallback
-    possono normalizzare solo termini descrittivi già presenti in
-    IGNORED_WORDS; i termini di variante non vengono mai rimossi.
+    Il parametro store resta nella firma per compatibilità con il codice
+    esistente, ma NON modifica le strategie in base al negozio.
     """
     del store
 
@@ -484,12 +539,10 @@ def build_search_attempts(store: str, query: str) -> List[str]:
             seen.add(key)
             attempts.append(value)
 
-    # 1) Query completa: mantiene integralmente identità e variante.
+    # 1) Query originale: è sempre la discovery più precisa.
     add(raw)
 
-    # 2) Normalizzazione: rimuove esclusivamente le parole già definite
-    #    come descrittive da IGNORED_WORDS. Termini come "limited",
-    #    "edition", "ice", "rebel", ecc. restano intatti.
+    # 2) Query normalizzata senza parole puramente descrittive.
     tokens = [
         token
         for token in normalized.split()
@@ -499,8 +552,8 @@ def build_search_attempts(store: str, query: str) -> List[str]:
     if tokens:
         add(" ".join(tokens))
 
-    # 3) Forma compatta per differenze di indicizzazione tra "100 ml"
-    #    e "100ml". Anche qui nessun termine di variante viene rimosso.
+    # 3) Forma compatta per siti che indicizzano "100ml" e "100 ml"
+    #    come stringhe diverse.
     compact = re.sub(
         r"(?<=\d)\s+(?=[a-z])|(?<=[a-z])\s+(?=\d)",
         "",
@@ -510,6 +563,164 @@ def build_search_attempts(store: str, query: str) -> List[str]:
 
     return attempts
 
+
+# ============================================================
+# TEMPORARY DIAGNOSTIC ENDPOINT
+# ============================================================
+
+@app.get("/debug/search")
+def debug_search(q: str):
+    """
+    DIAGNOSTICA TEMPORANEA.
+    NON modifica la pipeline normale di ricerca.
+    Mostra dove una query viene persa:
+    query -> attempts -> raw scraper results -> matches().
+    """
+    query = str(q or "").strip()
+
+    if not query:
+        raise HTTPException(
+            status_code=400,
+            detail="Parametro q mancante",
+        )
+
+    diagnostic = {
+        "query": query,
+        "attempts_by_store": {},
+        "stores": {},
+    }
+
+    for store in STORES:
+        try:
+            attempts = build_search_attempts(store, query)
+            diagnostic["attempts_by_store"][store] = attempts
+        except Exception as exc:
+            diagnostic["attempts_by_store"][store] = {
+                "error": f"{type(exc).__name__}: {exc}"
+            }
+            continue
+
+        store_data = {
+            "attempts": attempts,
+            "raw_total": 0,
+            "raw_by_attempt": [],
+            "unique_total": 0,
+            "matched_total": 0,
+            "matched_products": [],
+            "non_matched_products": [],
+            "errors": [],
+        }
+
+        try:
+            module = load_scraper(store)
+            search_fn = getattr(module, "search", None)
+
+            if not callable(search_fn):
+                search_fn = getattr(module, "scrape", None)
+
+            if not callable(search_fn):
+                raise RuntimeError(
+                    f"{store}: scraper senza funzione search()/scrape()"
+                )
+
+            seen = set()
+            candidates = []
+
+            for attempt in attempts:
+                try:
+                    results = search_fn(attempt) or []
+                except Exception as exc:
+                    store_data["errors"].append({
+                        "attempt": attempt,
+                        "error": f"{type(exc).__name__}: {exc}",
+                    })
+                    store_data["raw_by_attempt"].append({
+                        "attempt": attempt,
+                        "count": 0,
+                        "error": f"{type(exc).__name__}: {exc}",
+                    })
+                    continue
+
+                if not isinstance(results, list):
+                    store_data["raw_by_attempt"].append({
+                        "attempt": attempt,
+                        "count": 0,
+                        "invalid_response": type(results).__name__,
+                    })
+                    continue
+
+                store_data["raw_total"] += len(results)
+                store_data["raw_by_attempt"].append({
+                    "attempt": attempt,
+                    "count": len(results),
+                })
+
+                for item in results:
+                    if not isinstance(item, dict):
+                        continue
+
+                    product = dict(item)
+                    product.setdefault("store", store)
+
+                    try:
+                        product = resolve_actual_price(product)
+                    except Exception:
+                        pass
+
+                    try:
+                        image = product_image(product)
+                        if image:
+                            product["image"] = image
+                    except Exception:
+                        pass
+
+                    key = product_identity_key(product)
+
+                    if key in seen:
+                        continue
+
+                    seen.add(key)
+                    candidates.append(product)
+
+            store_data["unique_total"] = len(candidates)
+
+            for product in candidates:
+                matched = False
+                try:
+                    matched = bool(matches(product, query))
+                except Exception as exc:
+                    store_data["errors"].append({
+                        "stage": "matches",
+                        "error": f"{type(exc).__name__}: {exc}",
+                    })
+
+                product_debug = {
+                    "matched": matched,
+                    "name": product.get("name"),
+                    "title": product.get("title"),
+                    "product_name": product.get("product_name"),
+                    "brand": product.get("brand"),
+                    "source_brand": product.get("source_brand"),
+                    "variant": product.get("variant"),
+                    "url": product.get("url"),
+                    "image": product.get("image"),
+                }
+
+                if matched:
+                    store_data["matched_total"] += 1
+                    store_data["matched_products"].append(product_debug)
+                else:
+                    store_data["non_matched_products"].append(product_debug)
+
+        except Exception as exc:
+            store_data["errors"].append({
+                "stage": "store",
+                "error": f"{type(exc).__name__}: {exc}",
+            })
+
+        diagnostic["stores"][store] = store_data
+
+    return diagnostic
 
 # ============================================================
 # PREZZO
@@ -1093,6 +1304,110 @@ def search_perfume(query: str) -> Dict[str, Any]:
     }
 
 
+
+
+# ============================================================
+# SEARCH CENTRALE
+# ============================================================
+
+def search_perfume(query: str) -> Dict[str, Any]:
+    query = str(query or "").strip()
+
+    if not query:
+        return {
+            "query": "",
+            "count": 0,
+            "results": [],
+            "comparisons": [],
+            "errors": {},
+        }
+
+    all_results: List[Dict[str, Any]] = []
+    errors: Dict[str, str] = {}
+
+    # Tutti gli store partono contemporaneamente.
+    # L'ordine dei future NON viene usato per determinare l'ordine finale.
+    executor = ThreadPoolExecutor(
+        max_workers=len(STORES),
+        thread_name_prefix="scent_store",
+    )
+
+    futures = {
+        executor.submit(run_store, store, query): store
+        for store in STORES
+    }
+
+    try:
+        try:
+            completed = as_completed(
+                futures,
+                timeout=GLOBAL_SEARCH_TIMEOUT,
+            )
+
+            for future in completed:
+                store = futures[future]
+
+                try:
+                    store_results = future.result()
+                    if isinstance(store_results, list):
+                        all_results.extend(store_results)
+
+                except Exception as exc:
+                    errors[store] = (
+                        f"{type(exc).__name__}: {exc}"
+                    )
+                    traceback.print_exc()
+
+        except TimeoutError:
+            # Alla scadenza globale non perdiamo i future che sono terminati
+            # proprio in prossimità del limite. Il vecchio codice controllava
+            # solo future.done() e, se un future era già terminato ma non era
+            # stato ancora consumato dall'iteratore as_completed(), lo
+            # considerava implicitamente riuscito ma ne perdeva il risultato.
+            #
+            # Ora raccogliamo esplicitamente ogni future già terminato.
+            # Solo quelli realmente ancora in esecuzione vengono marcati
+            # come timeout.
+            for future, store in futures.items():
+                if future.done():
+                    try:
+                        store_results = future.result()
+                        if isinstance(store_results, list):
+                            all_results.extend(store_results)
+
+                    except Exception as exc:
+                        errors[store] = (
+                            f"{type(exc).__name__}: {exc}"
+                        )
+                        traceback.print_exc()
+                else:
+                    errors[store] = (
+                        "Timeout: ricerca del negozio oltre il limite globale"
+                    )
+
+    finally:
+        # cancel() annulla solamente future non ancora partiti.
+        # Non fingiamo di poter interrompere thread già in esecuzione.
+        for future, store in futures.items():
+            if not future.done():
+                future.cancel()
+
+        executor.shutdown(
+            wait=False,
+            cancel_futures=True,
+        )
+
+    results = sort_by_price(
+        unique_results(all_results)
+    )
+
+    return {
+        "query": query,
+        "count": len(results),
+        "results": results,
+        "comparisons": [],
+        "errors": errors,
+    }
 
 
 # ============================================================
