@@ -1804,19 +1804,16 @@ document.addEventListener("click",e=>{
 },{capture:true});
 
 function showProducts(groups){
-  if(!Array.isArray(groups)) groups=[];
+  const safeGroups=Array.isArray(groups)?groups:[];
 
-  currentProductGroups=groups;
-  updateBestPricesFromGroups(currentProductGroups);
-
-  statusBox.textContent=groups.length
-    ?groups.length+(groups.length===1?" profumo trovato.":" profumi trovati.")
+  statusBox.textContent=safeGroups.length
+    ?safeGroups.length+(safeGroups.length===1?" profumo trovato.":" profumi trovati.")
     :"Nessun profumo trovato.";
 
-  resultsBox.innerHTML=groups.map((g,i)=>{
+  resultsBox.innerHTML=safeGroups.map((g,i)=>{
     const sizes=getSizeGroups(g);
-    const img=g.image||"";
-
+    const imageOffer=(Array.isArray(g.offers)?g.offers:[]).find(o=>o.image||o.image_url||o.thumbnail);
+    const img=g.image||imageOffer?.image||imageOffer?.image_url||imageOffer?.thumbnail||"";
     const best=g.offers.find(o=>!isOfferOutOfStock(o))||null;
 
     return `<article class="product-choice" onclick='openProduct(${i})'>
@@ -1846,7 +1843,7 @@ function openProduct(i){
   if(!g)return;
 
   const sizes=getSizeGroups(g);
-  const img=g.image||"";
+  const img=g.image||((Array.isArray(g.offers)?g.offers:[]).find(o=>o.image||o.image_url||o.thumbnail)?.image||((Array.isArray(g.offers)?g.offers:[]).find(o=>o.image||o.image_url||o.thumbnail)?.image_url)||((Array.isArray(g.offers)?g.offers:[]).find(o=>o.image||o.image_url||o.thumbnail)?.thumbnail)||"");
   const saved=getWishlist();
 
   statusBox.textContent="";
@@ -1964,7 +1961,7 @@ function openSize(gi,sizeKey,fromFormats=true){
 
   const offers=selected.offers;
   const saved=getWishlist();
-  const img=g.image||"";
+  const img=g.image||((Array.isArray(g.offers)?g.offers:[]).find(o=>o.image||o.image_url||o.thumbnail)?.image||((Array.isArray(g.offers)?g.offers:[]).find(o=>o.image||o.image_url||o.thumbnail)?.image_url)||((Array.isArray(g.offers)?g.offers:[]).find(o=>o.image||o.image_url||o.thumbnail)?.thumbnail)||"");
 
   statusBox.textContent="";
   resultsBox.innerHTML=`<article class="comparison">
@@ -2159,74 +2156,101 @@ async function searchPerfume(){
  statusBox.textContent="";resultsBox.innerHTML="";errorsBox.innerHTML="";
  try{
   let data;
-  let openedProductKey = null;
-  const renderData = (partialData, final = false) => {
-  let groups = shGroupData(partialData || {});
+  let progressiveData={query:q,results:[],comparisons:[],errors:{},completed:false};
 
-  const productDetailOpen =
-    resultsBox.querySelector(".comparison") !== null;
-
-  if (!productDetailOpen) {
-  showProducts(groups);
-}
-
-currentProductGroups = groups;
-updateBestPricesFromGroups(groups);
-
-if (productDetailOpen) {
-  const currentComparison = resultsBox.querySelector(".comparison");
-
-  if (currentComparison) {
-    const backButton = currentComparison.querySelector(".detail-back");
-
-    if (backButton) {
-      const selectedProductIndex =
-        currentProductGroups.findIndex(function(group) {
-          return currentProductGroups.indexOf(group) ===
-            currentProductGroups.indexOf(groups[0]);
-        });
-
-      if (selectedProductIndex >= 0) {
-        openProduct(selectedProductIndex);
-      }
-    }
-  }
-}
-
-
-
-if (productDetailOpen) {
-  const currentComparison = resultsBox.querySelector(".comparison");
-
-  if (currentComparison) {
-    const backButton = currentComparison.querySelector(".detail-back");
-
-    if (backButton) {
-      const selectedProductIndex =
-        currentProductGroups.findIndex(function(group) {
-          return currentProductGroups.indexOf(group) ===
-            currentProductGroups.indexOf(groups[0]);
-        });
-
-      if (selectedProductIndex >= 0) {
-        openProduct(selectedProductIndex);
-      }
-    }
-  }
-}
-
-   refreshWishlistFromResults(groups.flatMap(g=>g.offers.map(o=>({name:g.name||"",brand:g.brand||"",price:shPrice(o),price_value:o.price_value,store:o.store||"",url:o.url||""}))));
-
-   // I timeout delle singole fonti non devono comparire nella pagina e non devono
-   // trasformare una ricerca con risultati validi in una ricerca "fallita".
-   // Conserviamo gli errori internamente, ma l'utente vede solo i risultati utili.
-   errorsBox.innerHTML="";
-   if(final)statusBox.textContent=groups.length?`Ricerca completata: ${groups.length} prodotti trovati.`:"Nessun risultato trovato.";
+  const mergeProgressiveArray=(target, incoming)=>{
+    if(!Array.isArray(incoming))return;
+    target.push(...incoming);
   };
 
-  // Regola generale: tutte le ricerche passano dalla regia centrale.
-  // Il frontend non contiene seed o percorsi speciali per singoli prodotti.
+  const mergeProgressiveData=(partialData)=>{
+    const d=partialData||{};
+    if(d.query)progressiveData.query=d.query;
+    mergeProgressiveArray(progressiveData.results,d.results);
+    mergeProgressiveArray(progressiveData.comparisons,d.comparisons);
+    if(d.errors&&typeof d.errors==="object")progressiveData.errors={...progressiveData.errors,...d.errors};
+    progressiveData.completed=Boolean(d.completed);
+  };
+
+  const offerIdentity=(o)=>[
+    String(o?.store||"").trim().toLowerCase(),
+    String(o?.url||"").split("?")[0].trim().toLowerCase(),
+    String(o?.name||"").trim().toLowerCase(),
+    String(o?.size_ml||o?.size||"").trim().toLowerCase()
+  ].join("|");
+
+  const mergeGroups=(base,incoming)=>{
+    const merged=base.map(g=>({...g,offers:Array.isArray(g.offers)?g.offers.map(o=>({...o})):[]}));
+    const groupKey=(g)=>[
+      String(g?.brand||"").trim().toLowerCase(),
+      normalizePerfumeName(g?.name||"").trim().toLowerCase(),
+      String(g?.concentration||"").trim().toLowerCase()
+    ].join("|");
+
+    incoming.forEach(g=>{
+      if(!g)return;
+      const key=groupKey(g);
+      let dest=merged.find(x=>groupKey(x)===key);
+      if(!dest){
+        dest={...g,offers:[]};
+        merged.push(dest);
+      }
+
+      if(!dest.image){
+        dest.image=g.image||g.image_url||g.thumbnail||"";
+      }
+
+      const existing=new Map(dest.offers.map(o=>[offerIdentity(o),o]));
+      (Array.isArray(g.offers)?g.offers:[]).forEach(o=>{
+        const id=offerIdentity(o);
+        if(!id||id==="|||"||!existing.has(id)){
+          dest.offers.push({...o});
+          if(!dest.image)dest.image=o.image||o.image_url||o.thumbnail||"";
+        }
+      });
+    });
+
+    // Le immagini possono essere presenti solo su una singola offerta.
+    // Recuperiamole sempre prima del rendering della scheda.
+    merged.forEach(g=>{
+      if(g.image)return;
+      const withImage=(Array.isArray(g.offers)?g.offers:[]).find(o=>o.image||o.image_url||o.thumbnail);
+      if(withImage)g.image=withImage.image||withImage.image_url||withImage.thumbnail||"";
+    });
+
+    return merged;
+  };
+
+  const renderData = (partialData, final = false) => {
+    mergeProgressiveData(partialData);
+    let groups=shGroupData(progressiveData);
+
+    // Mantiene tutti i risultati arrivati dai vari scraper durante il polling.
+    // Il backend può inviare risultati parziali a ogni interrogazione: non
+    // dobbiamo sostituire i risultati precedenti con l'ultimo blocco ricevuto.
+    if(Array.isArray(currentProductGroups)&&currentProductGroups.length){
+      groups=mergeGroups(currentProductGroups,groups);
+    }
+
+    const productDetailOpen=resultsBox.querySelector(".comparison")!==null;
+
+    currentProductGroups=groups;
+    updateBestPricesFromGroups(groups);
+
+    if(!productDetailOpen){
+      showProducts(groups);
+    }
+
+    refreshWishlistFromResults(groups.flatMap(g=>g.offers.map(o=>({name:g.name||"",brand:g.brand||"",price:shPrice(o),price_value:o.price_value,store:o.store||"",url:o.url||""}))));
+    errorsBox.innerHTML="";
+    if(final)statusBox.textContent=groups.length?`Ricerca completata: ${groups.length} prodotti trovati.`:"Nessun risultato trovato.";
+  };
+
   data=await searchStoresProgressive(q,renderData);
+
+  // Una passata finale sui dati completi garantisce che l'ultima risposta
+  // del backend venga integrata senza perdere i risultati già visualizzati.
+  renderData(data,true);
 
  }catch(e){
   console.error(e);
