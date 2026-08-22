@@ -7,7 +7,9 @@ import importlib
 import json
 import os
 import re
+import threading
 import traceback
+import uuid
 from concurrent.futures import ThreadPoolExecutor, as_completed, TimeoutError
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
@@ -1024,8 +1026,6 @@ def health():
 # ASYNC SEARCH JOBS
 # ============================================================
 
-import threading
-import uuid
 
 SEARCH_JOBS = {}
 SEARCH_JOBS_LOCK = threading.Lock()
