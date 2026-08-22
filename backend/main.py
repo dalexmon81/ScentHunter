@@ -723,6 +723,151 @@ def debug_search(q: str):
     return diagnostic
 
 # ============================================================
+# TEMPORARY ORCHESTRATOR DIAGNOSTIC ENDPOINT
+# ============================================================
+
+@app.get("/debug/orchestrate")
+def debug_orchestrate(q: str):
+    """
+    DIAGNOSTICA TEMPORANEA.
+    Esegue la stessa fase centrale candidate_pool -> orchestrator
+    senza passare dal frontend e senza modificare la ricerca normale.
+    """
+    query = str(q or "").strip()
+
+    if not query:
+        raise HTTPException(
+            status_code=400,
+            detail="Parametro q mancante",
+        )
+
+    candidate_pool = []
+    discovery = {}
+
+    for store in STORES:
+        store_data = {
+            "attempts": [],
+            "raw_total": 0,
+            "unique_total": 0,
+            "candidates": [],
+            "errors": [],
+        }
+
+        try:
+            attempts = build_search_attempts(store, query)
+            store_data["attempts"] = attempts
+
+            module = load_scraper(store)
+            search_fn = getattr(module, "search", None)
+
+            if not callable(search_fn):
+                search_fn = getattr(module, "scrape", None)
+
+            if not callable(search_fn):
+                raise RuntimeError(
+                    f"{store}: scraper senza funzione search()/scrape()"
+                )
+
+            seen = set()
+
+            for attempt in attempts:
+                try:
+                    results = search_fn(attempt) or []
+                except Exception as exc:
+                    store_data["errors"].append({
+                        "attempt": attempt,
+                        "error": f"{type(exc).__name__}: {exc}",
+                    })
+                    continue
+
+                if not isinstance(results, list):
+                    continue
+
+                store_data["raw_total"] += len(results)
+
+                for item in results:
+                    if not isinstance(item, dict):
+                        continue
+
+                    product = dict(item)
+                    product.setdefault("store", store)
+
+                    try:
+                        product = resolve_actual_price(product)
+                    except Exception:
+                        pass
+
+                    try:
+                        image = product_image(product)
+                        if image:
+                            product["image"] = image
+                    except Exception:
+                        pass
+
+                    key = product_identity_key(product)
+
+                    if key in seen:
+                        continue
+
+                    seen.add(key)
+                    store_data["candidates"].append(product)
+                    candidate_pool.append(product)
+
+            store_data["unique_total"] = len(store_data["candidates"])
+
+        except Exception as exc:
+            store_data["errors"].append({
+                "stage": "discovery",
+                "error": f"{type(exc).__name__}: {exc}",
+            })
+
+        discovery[store] = store_data
+
+    before = []
+    for product in candidate_pool:
+        before.append({
+            "store": product.get("store"),
+            "name": product.get("name"),
+            "brand": product.get("brand"),
+            "variant": product.get("variant"),
+            "url": product.get("url"),
+        })
+
+    try:
+        orchestrated = _orchestrate_results(
+            candidate_pool,
+            query,
+        )
+    except Exception as exc:
+        raise HTTPException(
+            status_code=500,
+            detail={
+                "stage": "orchestrate",
+                "error": f"{type(exc).__name__}: {exc}",
+            },
+        )
+
+    after = []
+    for product in orchestrated:
+        after.append({
+            "store": product.get("store"),
+            "name": product.get("name"),
+            "brand": product.get("brand"),
+            "variant": product.get("variant"),
+            "url": product.get("url"),
+            "image": product.get("image"),
+        })
+
+    return {
+        "query": query,
+        "candidate_pool_count": len(candidate_pool),
+        "candidate_pool": before,
+        "orchestrated_count": len(orchestrated),
+        "orchestrated_results": after,
+        "discovery": discovery,
+    }
+
+# ============================================================
 # PREZZO
 # ============================================================
 
