@@ -1803,27 +1803,12 @@ document.addEventListener("click",e=>{
   cardPointerMoved=false;
 },{capture:true});
 
-function if (
-  !final &&
-  Array.isArray(currentProductGroups) &&
-  currentProductGroups.length > 0
-) {
-  return;
-}
+function showProducts(groups){
+  currentProductGroups=groups;
 
-showProducts(groups);
-{
-  if (
-  final ||
-  !Array.isArray(currentProductGroups) ||
-  currentProductGroups.length === 0
-) {
-  currentProductGroups = groups;
-}
-
-updateBestPricesFromGroups(
-  currentProductGroups
-);
+  updateBestPricesFromGroups(
+    currentProductGroups
+  );
 
   statusBox.textContent=groups.length
     ?groups.length+(groups.length===1?" profumo trovato.":" profumi trovati.")
