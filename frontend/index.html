@@ -311,6 +311,16 @@ body{position:relative}
  .home-search-button{left:6.0%;width:48.6%;top:86.35%;height:6.55%;border-radius:14px;font-size:11px}
 }
 </style>
+
+<style id="SCENTHUNTER-INDEX-DIAGNOSTIC">
+#indexDiagnostic{display:none;margin:16px 0;padding:14px;border:1px solid #7a5b18;border-radius:16px;background:#0d100f;color:#ddd;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:11px;line-height:1.45;white-space:pre-wrap;overflow-wrap:anywhere}
+#indexDiagnostic.active{display:block}
+#indexDiagnostic .diag-title{color:#e7b83f;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;font-size:15px;font-weight:900;margin-bottom:10px}
+#indexDiagnostic .diag-ok{color:#55ce78;font-weight:900}
+#indexDiagnostic .diag-warn{color:#e7b83f;font-weight:900}
+#indexDiagnostic .diag-bad{color:#ff6b6b;font-weight:900}
+#indexDiagnostic button{margin-top:10px;padding:8px 12px;border:1px solid #6d5620;border-radius:12px;background:#19150b;color:#e7b83f;font-weight:800}
+</style>
 </head>
 <body>
 <main class="app">
@@ -353,6 +363,136 @@ body{position:relative}
 <script>
 let isSearching = false;
 const queryInput=document.getElementById("query"),searchButton=document.getElementById("searchButton"),statusBox=document.getElementById("status"),resultsBox=document.getElementById("results"),errorsBox=document.getElementById("errorsBox");
+const INDEX_DIAGNOSTIC_MODE = new URLSearchParams(window.location.search).get("indexdebug") === "1";
+let indexDiagnosticBox = null;
+let indexDiagnosticLast = null;
+
+function ensureIndexDiagnosticBox(){
+  if(!INDEX_DIAGNOSTIC_MODE)return null;
+  if(indexDiagnosticBox)return indexDiagnosticBox;
+  indexDiagnosticBox=document.createElement("section");
+  indexDiagnosticBox.id="indexDiagnostic";
+  indexDiagnosticBox.className="active";
+  indexDiagnosticBox.innerHTML='<div class="diag-title">DIAGNOSTICA INDEX — SOLO TEST</div><div id="indexDiagnosticBody">In attesa della ricerca...</div><button type="button" id="copyIndexDiagnostic">COPIA DIAGNOSTICA</button>';
+  const output=document.getElementById("searchOutput");
+  if(output)output.parentNode.insertBefore(indexDiagnosticBox,output);
+  const copy=document.getElementById("copyIndexDiagnostic");
+  if(copy)copy.addEventListener("click",async()=>{
+    try{
+      await navigator.clipboard.writeText(indexDiagnosticLast||"");
+      copy.textContent="COPIATA";
+      setTimeout(()=>copy.textContent="COPIA DIAGNOSTICA",1200);
+    }catch(_){
+      copy.textContent="COPIA NON DISPONIBILE";
+      setTimeout(()=>copy.textContent="COPIA DIAGNOSTICA",1500);
+    }
+  });
+  return indexDiagnosticBox;
+}
+
+function indexDiagnosticSnapshot(data,groups,final){
+  if(!INDEX_DIAGNOSTIC_MODE)return;
+
+  const rawResults=Array.isArray(data?.results)?data.results:[];
+  const comparisons=Array.isArray(data?.comparisons)?data.comparisons:[];
+  const rawStores=[...new Set(rawResults.map(o=>String(o?.store||"").trim()).filter(Boolean))];
+  const finalOffers=Array.isArray(groups)?groups.flatMap(g=>Array.isArray(g?.offers)?g.offers:[]):[];
+  const finalStores=[...new Set(finalOffers.map(o=>String(o?.store||"").trim()).filter(Boolean))];
+
+  const rawOfferKey=o=>[
+    String(o?.store||"").trim().toLowerCase(),
+    String(o?.url||"").split("?")[0].trim().toLowerCase(),
+    String(o?.name||o?.title||o?.product_name||"").trim().toLowerCase()
+  ].join("|");
+
+  const finalKeys=new Set(finalOffers.map(rawOfferKey));
+  const rawNotRepresented=rawResults.filter(o=>!finalKeys.has(rawOfferKey(o)));
+
+  const rawByStore={};
+  rawResults.forEach(o=>{
+    const store=String(o?.store||"").trim()||"(store vuoto)";
+    (rawByStore[store] ||= []).push(o);
+  });
+
+  const finalByStore={};
+  finalOffers.forEach(o=>{
+    const store=String(o?.store||"").trim()||"(store vuoto)";
+    (finalByStore[store] ||= []).push(o);
+  });
+
+  const missingStores=rawStores.filter(store=>!finalStores.includes(store));
+  const extraFinalStores=finalStores.filter(store=>!rawStores.includes(store));
+
+  let verdict="";
+  if(final && rawResults.length===0){
+    verdict="NESSUN RISULTATO CONSEGNATO DAL BACKEND: l'Index non ha ricevuto offerte da visualizzare.";
+  }else if(final && rawResults.length>finalOffers.length){
+    verdict=`L'INDEX HA RIDOTTO LE OFFERTE: backend ${rawResults.length} → Index ${finalOffers.length}.`;
+  }else if(final && rawResults.length===finalOffers.length){
+    verdict="NESSUNA OFFERTA PERSA NELLA TRASFORMAZIONE INDEX.";
+  }else{
+    verdict="RICERCA IN CORSO: il confronto definitivo avverrà a fine job.";
+  }
+
+  const lines=[];
+  lines.push(`VERDETTO: ${verdict}`);
+  lines.push("");
+  lines.push(`QUERY: ${String(data?.query||"")}`);
+  lines.push(`STATUS BACKEND: ${String(data?.status||"")}`);
+  lines.push(`COMPLETED: ${String(Boolean(data?.completed))}`);
+  lines.push(`BACKEND results: ${rawResults.length}`);
+  lines.push(`BACKEND comparisons: ${comparisons.length}`);
+  lines.push(`BACKEND stores unici: ${rawStores.length}${rawStores.length?` → ${rawStores.join(", ")}`:""}`);
+  lines.push(`INDEX gruppi prodotto: ${Array.isArray(groups)?groups.length:0}`);
+  lines.push(`INDEX offerte finali: ${finalOffers.length}`);
+  lines.push(`INDEX stores finali: ${finalStores.length}${finalStores.length?` → ${finalStores.join(", ")}`:""}`);
+  lines.push(`STORE presenti nel backend ma assenti nell'Index: ${missingStores.length}${missingStores.length?` → ${missingStores.join(", ")}`:""}`);
+  lines.push(`STORE presenti solo nell'Index: ${extraFinalStores.length}${extraFinalStores.length?` → ${extraFinalStores.join(", ")}`:""}`);
+  lines.push(`OFFERTE raw non rappresentate nell'Index: ${rawNotRepresented.length}`);
+  lines.push("");
+
+  lines.push("=== BACKEND RAW ===");
+  rawResults.forEach((o,i)=>{
+    lines.push(`${i+1}. ${o?.store||"(store vuoto)"} | ${o?.name||o?.title||o?.product_name||"(nome vuoto)"} | ${o?.price||o?.price_value||""} | ${o?.availability||o?.stock||o?.status||""}`);
+    if(o?.url)lines.push(`   URL: ${o.url}`);
+  });
+
+  lines.push("");
+  lines.push("=== INDEX FINAL ===");
+  (Array.isArray(groups)?groups:[]).forEach((g,i)=>{
+    const stores=(g.offers||[]).map(o=>String(o?.store||"").trim()).filter(Boolean);
+    lines.push(`${i+1}. ${g.display_name||g.name||"(nome vuoto)"} | offerte=${(g.offers||[]).length} | store=${[...new Set(stores)].join(", ")}`);
+    (g.offers||[]).forEach(o=>{
+      lines.push(`   - ${o?.store||"(store vuoto)"} | ${o?.price||o?.price_value||""} | ${o?.name||""}`);
+    });
+  });
+
+  if(rawNotRepresented.length){
+    lines.push("");
+    lines.push("=== PERSI DURANTE LA TRASFORMAZIONE INDEX ===");
+    rawNotRepresented.forEach((o,i)=>{
+      lines.push(`${i+1}. ${o?.store||"(store vuoto)"} | ${o?.name||o?.title||o?.product_name||"(nome vuoto)"} | ${o?.price||o?.price_value||""}`);
+      if(o?.url)lines.push(`   URL: ${o.url}`);
+    });
+  }
+
+  if(data?.errors && Object.keys(data.errors).length){
+    lines.push("");
+    lines.push("=== ERRORI BACKEND ===");
+    Object.entries(data.errors).forEach(([store,error])=>lines.push(`${store}: ${error}`));
+  }
+
+  indexDiagnosticLast=lines.join("\n");
+  const box=ensureIndexDiagnosticBox();
+  const body=box?.querySelector("#indexDiagnosticBody");
+  if(body){
+    const cls=final && rawResults.length>finalOffers.length?"diag-warn":(final?"diag-ok":"");
+    body.innerHTML=`<div class="${cls}">${esc(indexDiagnosticLast)}</div>`;
+  }
+}
+
+ensureIndexDiagnosticBox();
+
 
 const WISH_KEY="scenthunter_wishlist_v4";
 const PREV_WISH_KEY="scenthunter_wishlist_v3";
@@ -729,7 +869,6 @@ function backend(){
   return origin;
 }
 let currentProductGroups=[];
-let openedProductKey=null;
 
 function shPrice(o){
   if(o&&o.price)return String(o.price);
@@ -1806,6 +1945,11 @@ document.addEventListener("click",e=>{
 
 function showProducts(groups){
   currentProductGroups=groups;
+
+  updateBestPricesFromGroups(
+    currentProductGroups
+  );
+
   statusBox.textContent=groups.length
     ?groups.length+(groups.length===1?" profumo trovato.":" profumi trovati.")
     :"Nessun profumo trovato.";
@@ -1845,11 +1989,6 @@ function toggleWishButton(el){
 function openProduct(i){
   const g=currentProductGroups[i];
   if(!g)return;
-
-  openedProductKey =
-    String(g.brand || "") + "|" +
-    String(g.name || "") + "|" +
-    String(g.concentration || "");
 
   const sizes=getSizeGroups(g);
   const img=g.image||"";
@@ -2165,57 +2304,70 @@ async function searchPerfume(){
  statusBox.textContent="";resultsBox.innerHTML="";errorsBox.innerHTML="";
  try{
   let data;
-  openedProductKey = null;
+  let openedProductKey = null;
   const renderData = (partialData, final = false) => {
-    let groups = shGroupData(partialData || {});
+  let groups = shGroupData(partialData || {});
+  indexDiagnosticSnapshot(partialData || {},groups,final);
 
-    const productDetailOpen =
-      resultsBox.querySelector(".comparison") !== null;
+  const productDetailOpen =
+    resultsBox.querySelector(".comparison") !== null;
 
-    if (!productDetailOpen && groups.length > 0) {
-      showProducts(groups);
-    }
+  if (!productDetailOpen && groups.length > 0) {
+  showProducts(groups);
+}
 
-    currentProductGroups = groups;
-    updateBestPricesFromGroups(groups);
+currentProductGroups = groups;
+updateBestPricesFromGroups(groups);
 
-    refreshWishlistFromResults(
-      groups.flatMap(function(g) {
-        return g.offers.map(function(o) {
-          return {
-            name: g.name,
-            brand: g.brand,
-            price: shPrice(o),
-            price_value: o.price_value,
-            store: o.store,
-            url: o.url,
-            image: g.image,
-            pic: g.image
-          };
+if (productDetailOpen) {
+  const currentComparison = resultsBox.querySelector(".comparison");
+
+  if (currentComparison) {
+    const backButton = currentComparison.querySelector(".detail-back");
+
+    if (backButton) {
+      const selectedProductIndex =
+        currentProductGroups.findIndex(function(group) {
+          return currentProductGroups.indexOf(group) ===
+            currentProductGroups.indexOf(groups[0]);
         });
-      })
-    );
 
-    if (productDetailOpen && openedProductKey) {
-      const updatedIndex = currentProductGroups.findIndex(function(group) {
-        const key =
-          String(group.brand || "") + "|" +
-          String(group.name || "") + "|" +
-          String(group.concentration || "");
-
-        return key === openedProductKey;
-      });
-
-      if (updatedIndex >= 0) {
-        openProduct(updatedIndex);
+      if (selectedProductIndex >= 0) {
+        openProduct(selectedProductIndex);
       }
     }
+  }
+}
 
-    // I timeout delle singole fonti non devono comparire nella pagina e non devono
-    // trasformare una ricerca con risultati validi in una ricerca "fallita".
-    // Conserviamo gli errori internamente, ma l'utente vede solo i risultati utili.
-    errorsBox.innerHTML="";
-    if(final)statusBox.textContent=groups.length?`Ricerca completata: ${groups.length} prodotti trovati.`:"Nessun risultato trovato.";
+
+
+if (productDetailOpen) {
+  const currentComparison = resultsBox.querySelector(".comparison");
+
+  if (currentComparison) {
+    const backButton = currentComparison.querySelector(".detail-back");
+
+    if (backButton) {
+      const selectedProductIndex =
+        currentProductGroups.findIndex(function(group) {
+          return currentProductGroups.indexOf(group) ===
+            currentProductGroups.indexOf(groups[0]);
+        });
+
+      if (selectedProductIndex >= 0) {
+        openProduct(selectedProductIndex);
+      }
+    }
+  }
+}
+
+   refreshWishlistFromResults(groups.flatMap(g=>g.offers.map(o=>({name:g.name||"",brand:g.brand||"",price:shPrice(o),price_value:o.price_value,store:o.store||"",url:o.url||""}))));
+
+   // I timeout delle singole fonti non devono comparire nella pagina e non devono
+   // trasformare una ricerca con risultati validi in una ricerca "fallita".
+   // Conserviamo gli errori internamente, ma l'utente vede solo i risultati utili.
+   errorsBox.innerHTML="";
+   if(final)statusBox.textContent=groups.length?`Ricerca completata: ${groups.length} prodotti trovati.`:"Nessun risultato trovato.";
   };
 
   // Regola generale: tutte le ricerche passano dalla regia centrale.
