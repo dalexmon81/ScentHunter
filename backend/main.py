@@ -1038,119 +1038,9 @@ def _orchestrate_results(
         unique_results(validated)
     )
 
-
 # ============================================================
 # SEARCH CENTRALE
-# ============================================================
-
-def search_perfume(query: str) -> Dict[str, Any]:
-    query = str(query or "").strip()
-
-    if not query:
-        return {
-            "query": "",
-            "count": 0,
-            "results": [],
-            "comparisons": [],
-            "errors": {},
-        }
-
-    candidate_pool: List[Dict[str, Any]] = []
-    errors: Dict[str, str] = {}
-
-    # FASE 1: discovery parallela.
-    executor = ThreadPoolExecutor(
-        max_workers=len(STORES),
-        thread_name_prefix="scent_store",
-    )
-
-    futures = {
-        executor.submit(run_store, store, query): store
-        for store in STORES
-    }
-
-    try:
-        try:
-            completed = as_completed(
-                futures,
-                timeout=GLOBAL_SEARCH_TIMEOUT,
-            )
-
-            for future in completed:
-                store = futures[future]
-
-                try:
-                    store_candidates = future.result()
-
-                    if isinstance(
-                        store_candidates,
-                        list,
-                    ):
-                        candidate_pool.extend(
-                            store_candidates
-                        )
-
-                except Exception as exc:
-                    errors[store] = (
-                        f"{type(exc).__name__}: {exc}"
-                    )
-                    traceback.print_exc()
-
-        except TimeoutError:
-            for future, store in futures.items():
-                if future.done():
-                    try:
-                        store_candidates = future.result()
-
-                        if isinstance(
-                            store_candidates,
-                            list,
-                        ):
-                            candidate_pool.extend(
-                                store_candidates
-                            )
-
-                    except Exception as exc:
-                        errors[store] = (
-                            f"{type(exc).__name__}: {exc}"
-                        )
-                        traceback.print_exc()
-                else:
-                    errors[store] = (
-                        "Timeout: ricerca del negozio oltre il limite globale"
-                    )
-
-    finally:
-        for future in futures:
-            if not future.done():
-                future.cancel()
-
-        executor.shutdown(
-            wait=False,
-            cancel_futures=True,
-        )
-
-    # FASE 2-5: candidate pool -> deduplica -> pre-ranking
-    # -> validazione centrale parallela -> ranking finale.
-    results = _orchestrate_results(
-        candidate_pool,
-        query,
-    )
-
-    return {
-        "query": query,
-        "count": len(results),
-        "results": results,
-        "comparisons": [],
-        "errors": errors,
-    }
-
-
-
-
-# ============================================================
-# SEARCH CENTRALE
-# ============================================================
+# ==================================================
 
 def search_perfume(query: str) -> Dict[str, Any]:
     query = str(query or "").strip()
@@ -1167,8 +1057,6 @@ def search_perfume(query: str) -> Dict[str, Any]:
     all_results: List[Dict[str, Any]] = []
     errors: Dict[str, str] = {}
 
-    # Tutti gli store partono contemporaneamente.
-    # L'ordine dei future NON viene usato per determinare l'ordine finale.
     executor = ThreadPoolExecutor(
         max_workers=len(STORES),
         thread_name_prefix="scent_store",
@@ -1201,15 +1089,6 @@ def search_perfume(query: str) -> Dict[str, Any]:
                     traceback.print_exc()
 
         except TimeoutError:
-            # Alla scadenza globale non perdiamo i future che sono terminati
-            # proprio in prossimità del limite. Il vecchio codice controllava
-            # solo future.done() e, se un future era già terminato ma non era
-            # stato ancora consumato dall'iteratore as_completed(), lo
-            # considerava implicitamente riuscito ma ne perdeva il risultato.
-            #
-            # Ora raccogliamo esplicitamente ogni future già terminato.
-            # Solo quelli realmente ancora in esecuzione vengono marcati
-            # come timeout.
             for future, store in futures.items():
                 if future.done():
                     try:
@@ -1228,8 +1107,6 @@ def search_perfume(query: str) -> Dict[str, Any]:
                     )
 
     finally:
-        # cancel() annulla solamente future non ancora partiti.
-        # Non fingiamo di poter interrompere thread già in esecuzione.
         for future, store in futures.items():
             if not future.done():
                 future.cancel()
@@ -1239,8 +1116,10 @@ def search_perfume(query: str) -> Dict[str, Any]:
             cancel_futures=True,
         )
 
-    results = sort_by_price(
-        unique_results(all_results)
+    # ← FIX: usa _orchestrate_results() per applicare matches()
+    results = _orchestrate_results(
+        all_results,
+        query,
     )
 
     return {
@@ -1250,8 +1129,7 @@ def search_perfume(query: str) -> Dict[str, Any]:
         "comparisons": [],
         "errors": errors,
     }
-
-
+    
 # ============================================================
 # PRICE HISTORY
 # ============================================================
