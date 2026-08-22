@@ -2123,7 +2123,7 @@ async function searchStoresProgressive(query, onPartial) {
 
   while (true) {
     const response = await fetch(
-      `/search-status/${jobId}`,
+      `/search-status?job_id=${jobId}`,
       {
         headers: {
           Accept: "application/json"
