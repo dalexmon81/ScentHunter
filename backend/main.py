@@ -3,6 +3,7 @@ from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 
+import base64
 import importlib
 import json
 import os
@@ -1574,15 +1575,74 @@ SEARCH_JOBS = {}
 SEARCH_JOBS_LOCK = threading.Lock()
 
 
+def _encode_search_job_query(query: str) -> str:
+    return base64.urlsafe_b64encode(
+        str(query or "").encode("utf-8")
+    ).decode("ascii").rstrip("=")
+
+
+def _decode_search_job_query(job_id: str) -> Optional[str]:
+    try:
+        encoded = str(job_id or "").rsplit(".", 1)[1]
+        if not encoded:
+            return None
+        padding = "=" * (-len(encoded) % 4)
+        return base64.urlsafe_b64decode(
+            encoded + padding
+        ).decode("utf-8")
+    except Exception:
+        return None
+
+
+def _create_recovered_search_job(
+    job_id: str,
+    query: str,
+) -> Dict[str, Any]:
+    with SEARCH_JOBS_LOCK:
+        existing = SEARCH_JOBS.get(job_id)
+        if existing is not None:
+            return existing
+
+        job = {
+            "query": query,
+            "candidates": [],
+            "results": [],
+            "errors": {},
+            "completed": False,
+            "recovered": True,
+        }
+        SEARCH_JOBS[job_id] = job
+
+    thread = threading.Thread(
+        target=_run_search_job,
+        args=(job_id, query),
+        daemon=True,
+    )
+    thread.start()
+    return job
+
+
 def _search_job_snapshot(job_id: str) -> Dict[str, Any]:
     with SEARCH_JOBS_LOCK:
         job = SEARCH_JOBS.get(job_id)
 
-        if job is None:
-            raise HTTPException(
-                status_code=404,
-                detail="Job di ricerca non trovato",
+    if job is None:
+        recovered_query = _decode_search_job_query(job_id)
+        if recovered_query:
+            _create_recovered_search_job(
+                job_id,
+                recovered_query,
             )
+            with SEARCH_JOBS_LOCK:
+                job = SEARCH_JOBS.get(job_id)
+
+    if job is None:
+        raise HTTPException(
+            status_code=404,
+            detail="Job di ricerca non trovato",
+        )
+
+    with SEARCH_JOBS_LOCK:
 
         results = sort_by_price(
             unique_results(
@@ -1746,7 +1806,11 @@ def search_start(q: str):
             detail="Parametro q mancante",
         )
 
-    job_id = uuid.uuid4().hex
+    job_id = (
+        uuid.uuid4().hex
+        + "."
+        + _encode_search_job_query(query)
+    )
 
     with SEARCH_JOBS_LOCK:
         SEARCH_JOBS[job_id] = {
@@ -1779,6 +1843,11 @@ def search_start(q: str):
 
 @app.get("/search-status")
 def search_status(job_id: str):
+    return _search_job_snapshot(job_id)
+
+
+@app.get("/search-status/{job_id}")
+def search_status_path(job_id: str):
     return _search_job_snapshot(job_id)
 
 
