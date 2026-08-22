@@ -1559,60 +1559,6 @@ def _run_search_job(
                 job["completed"] = True
 
 
-
-@app.get("/debug/async-job")
-def debug_async_job(q: str):
-    query = str(q or "").strip()
-
-    if not query:
-        raise HTTPException(
-            status_code=400,
-            detail="Parametro q mancante",
-        )
-
-    job_id = uuid.uuid4().hex
-
-    with SEARCH_JOBS_LOCK:
-        SEARCH_JOBS[job_id] = {
-            "query": query,
-            "candidates": [],
-            "results": [],
-            "errors": {},
-            "completed": False,
-        }
-
-    # Esegue ESATTAMENTE la stessa funzione usata dal job asincrono.
-    _run_search_job(job_id, query)
-
-    with SEARCH_JOBS_LOCK:
-        job = SEARCH_JOBS.get(job_id)
-
-        if job is None:
-            raise HTTPException(
-                status_code=500,
-                detail="Job diagnostico non trovato",
-            )
-
-        candidate_count = len(job.get("candidates", []))
-        job_result_count = len(job.get("results", []))
-
-    snapshot = _search_job_snapshot(job_id)
-    snapshot_result_count = len(snapshot.get("results", []))
-
-    return {
-        "query": query,
-        "job_id": job_id,
-        "candidate_count": candidate_count,
-        "job_result_count": job_result_count,
-        "snapshot_result_count": snapshot_result_count,
-        "completed": snapshot.get("completed"),
-        "status": snapshot.get("status"),
-        "errors": snapshot.get("errors", {}),
-        "job_results": job.get("results", []),
-        "snapshot_results": snapshot.get("results", []),
-    }
-
-
 @app.get("/search-start")
 def search_start(q: str):
     query = str(q or "").strip()
