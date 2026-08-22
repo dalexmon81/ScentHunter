@@ -1804,11 +1804,10 @@ document.addEventListener("click",e=>{
 },{capture:true});
 
 function showProducts(groups){
-  currentProductGroups=groups;
+  if(!Array.isArray(groups)) groups=[];
 
-  updateBestPricesFromGroups(
-    currentProductGroups
-  );
+  currentProductGroups=groups;
+  updateBestPricesFromGroups(currentProductGroups);
 
   statusBox.textContent=groups.length
     ?groups.length+(groups.length===1?" profumo trovato.":" profumi trovati.")
@@ -1818,10 +1817,6 @@ function showProducts(groups){
     const sizes=getSizeGroups(g);
     const img=g.image||"";
 
-    // Regola generale: la scheda principale apre sempre la scheda del prodotto.
-    // Se esiste un solo formato, la scheda del prodotto mostrerà direttamente
-    // formato + negozi, evitando un terzo passaggio. Con più formati, invece,
-    // la scheda del prodotto presenterà la scelta dei formati.
     const best=g.offers.find(o=>!isOfferOutOfStock(o))||null;
 
     return `<article class="product-choice" onclick='openProduct(${i})'>
@@ -2171,7 +2166,7 @@ async function searchPerfume(){
   const productDetailOpen =
     resultsBox.querySelector(".comparison") !== null;
 
-  if (!productDetailOpen && groups.length > 0) {
+  if (!productDetailOpen) {
   showProducts(groups);
 }
 
