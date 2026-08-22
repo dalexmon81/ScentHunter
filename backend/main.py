@@ -1671,12 +1671,15 @@ def _run_search_job(
     query: str,
 ) -> None:
     """
-    Esegue la discovery in parallelo e alimenta progressivamente
-    il candidate pool centrale.
+    Esegue la discovery in parallelo e raccoglie tutti i candidate pool.
 
-    Ogni volta che uno store termina:
-        discovery -> candidate pool -> deduplica -> pre-ranking
-        -> validazione centrale parallela -> risultati parziali.
+    La validazione centrale viene eseguita UNA SOLA VOLTA, dopo che tutti
+    gli store terminati entro il limite globale hanno contribuito.
+
+    Questo evita di rieseguire l'intera pipeline di matching dopo ogni
+    store completato, che poteva lasciare il job nello stato "searching"
+    per molto tempo mentre gli stessi candidati venivano validati
+    ripetutamente.
     """
     executor = ThreadPoolExecutor(
         max_workers=len(STORES),
@@ -1692,38 +1695,6 @@ def _run_search_job(
         for store in STORES
     }
 
-    def process_store_candidates(
-        store: str,
-        store_candidates: Any,
-    ) -> None:
-        if not isinstance(store_candidates, list):
-            return
-
-        with SEARCH_JOBS_LOCK:
-            job = SEARCH_JOBS.get(job_id)
-
-            if job is None:
-                return
-
-            job["candidates"].extend(
-                store_candidates
-            )
-
-            candidate_pool = list(
-                job["candidates"]
-            )
-
-        results = _orchestrate_results(
-            candidate_pool,
-            query,
-        )
-
-        with SEARCH_JOBS_LOCK:
-            job = SEARCH_JOBS.get(job_id)
-
-            if job is not None:
-                job["results"] = results
-
     try:
         try:
             for future in as_completed(
@@ -1735,10 +1706,16 @@ def _run_search_job(
                 try:
                     store_candidates = future.result()
 
-                    process_store_candidates(
-                        store,
-                        store_candidates,
-                    )
+                    if not isinstance(store_candidates, list):
+                        continue
+
+                    with SEARCH_JOBS_LOCK:
+                        job = SEARCH_JOBS.get(job_id)
+
+                        if job is not None:
+                            job["candidates"].extend(
+                                store_candidates
+                            )
 
                 except Exception as exc:
                     with SEARCH_JOBS_LOCK:
@@ -1750,15 +1727,24 @@ def _run_search_job(
                             )
 
         except TimeoutError:
+            # Recupera tutti i future già terminati e non ripete la
+            # validazione per ciascuno. I future ancora in esecuzione
+            # vengono esclusi e registrati come timeout.
             for future, store in futures.items():
                 if future.done():
                     try:
                         store_candidates = future.result()
 
-                        process_store_candidates(
-                            store,
-                            store_candidates,
-                        )
+                        if not isinstance(store_candidates, list):
+                            continue
+
+                        with SEARCH_JOBS_LOCK:
+                            job = SEARCH_JOBS.get(job_id)
+
+                            if job is not None:
+                                job["candidates"].extend(
+                                    store_candidates
+                                )
 
                     except Exception as exc:
                         with SEARCH_JOBS_LOCK:
@@ -1778,6 +1764,37 @@ def _run_search_job(
                                 "Timeout: ricerca del negozio "
                                 "oltre il limite globale"
                             )
+
+        # La pipeline centrale viene eseguita una sola volta.
+        with SEARCH_JOBS_LOCK:
+            job = SEARCH_JOBS.get(job_id)
+            candidate_pool = (
+                list(job["candidates"])
+                if job is not None
+                else []
+            )
+
+        results = _orchestrate_results(
+            candidate_pool,
+            query,
+        )
+
+        with SEARCH_JOBS_LOCK:
+            job = SEARCH_JOBS.get(job_id)
+
+            if job is not None:
+                job["results"] = results
+
+    except Exception as exc:
+        # Anche un errore inatteso nell'orchestrazione non deve lasciare
+        # il client bloccato per sempre nello stato "searching".
+        with SEARCH_JOBS_LOCK:
+            job = SEARCH_JOBS.get(job_id)
+
+            if job is not None:
+                job["errors"]["orchestrator"] = (
+                    f"{type(exc).__name__}: {exc}"
+                )
 
     finally:
         for future in futures:
