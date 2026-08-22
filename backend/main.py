@@ -7,7 +7,9 @@ import importlib
 import json
 import os
 import re
+import threading
 import traceback
+import uuid
 from concurrent.futures import ThreadPoolExecutor, as_completed, TimeoutError
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
@@ -364,11 +366,43 @@ def has_small_size(product: Dict[str, Any]) -> bool:
 
 def matches(product: Dict[str, Any], query: str) -> bool:
     query_normalized = norm(query)
+
     if not query_normalized:
         return False
 
-    search_text = product_search_text(product)
-    if not search_text:
+    name = product_field(
+        product,
+        "name",
+        "title",
+        "product_name",
+    )
+
+    brand = product_field(
+        product,
+        "brand",
+        "source_brand",
+    )
+
+    source = product.get("source")
+
+    if isinstance(source, dict):
+        if not brand:
+            brand = str(
+                source.get("brand")
+                or source.get("source_brand")
+                or ""
+            ).strip()
+
+        if not name:
+            name = str(
+                source.get("name")
+                or source.get("title")
+                or ""
+            ).strip()
+
+    name_normalized = norm(name)
+
+    if not name_normalized:
         return False
 
     query_has_size = bool(
@@ -381,31 +415,98 @@ def matches(product: Dict[str, Any], query: str) -> bool:
     if has_small_size(product) and not query_has_size:
         return False
 
-    name = norm(
-        " ".join(
-            str(product.get(key) or "")
-            for key in ("name", "title", "product_name")
-        )
-    )
-
     for phrase in NON_PERFUME:
         phrase_normalized = norm(phrase)
+
         if (
-            phrase_normalized in name
+            phrase_normalized in name_normalized
             and phrase_normalized not in query_normalized
         ):
             return False
 
-    tokens = [
+    name_for_matching = name_normalized
+
+    name_for_matching = re.sub(
+        r"\b\d+(?:[.,]\d+)?\s*(?:ml|cl)\b",
+        " ",
+        name_for_matching,
+        flags=re.I,
+    )
+
+    name_for_matching = re.sub(
+        r"\b(?:eau\s+de\s+parfum|eau\s+de\s+toilette|"
+        r"eau\s+de\s+cologne|extrait\s+de\s+parfum|"
+        r"edp|edt|edc)\b",
+        " ",
+        name_for_matching,
+        flags=re.I,
+    )
+
+    name_for_matching = re.sub(
+        r"\s+",
+        " ",
+        name_for_matching,
+    ).strip()
+
+    query_tokens = [
         token
         for token in query_normalized.split()
         if token not in IGNORED_WORDS
+        and not re.fullmatch(
+            r"\d+(?:[.,]\d+)?",
+            token,
+        )
     ]
 
-    if not tokens:
+    generic_tokens = {
+        "eau",
+        "de",
+        "parfum",
+        "perfume",
+        "edp",
+        "edt",
+        "edc",
+        "extrait",
+        "spray",
+        "intense",
+        "limited",
+        "edition",
+        "for",
+        "men",
+        "women",
+        "homme",
+        "femme",
+        "unisex",
+    }
+
+    family_tokens = [
+        token
+        for token in query_tokens
+        if token not in generic_tokens
+    ]
+
+    if not family_tokens:
+        family_tokens = query_tokens
+
+    if not family_tokens:
         return False
 
-    return all(token in search_text for token in tokens)
+    name_tokens = name_for_matching.split()
+
+    family_phrase = " ".join(family_tokens)
+    name_phrase = " ".join(
+        token
+        for token in name_tokens
+        if token not in generic_tokens
+    )
+
+    if not family_phrase or not name_phrase:
+        return False
+
+    padded_name = f" {name_phrase} "
+    padded_family = f" {family_phrase} "
+
+    return padded_family in padded_name
 
 
 # ============================================================
@@ -414,11 +515,16 @@ def matches(product: Dict[str, Any], query: str) -> bool:
 
 def build_search_attempts(store: str, query: str) -> List[str]:
     """
-    Costruisce una sequenza corta e deterministica di query generiche,
-    ordinate dalla più precisa alla più permissiva.
+    Costruisce una discovery generica in due livelli:
 
-    Il parametro store resta nella firma per compatibilità con il codice
-    esistente, ma NON modifica le strategie in base al negozio.
+    1) query originale, precisa;
+    2) fallback senza marcatori generici di variante.
+
+    Il fallback serve esclusivamente a DISCOVERY: la validazione centrale
+    continua a usare matches() sulla query originale.
+
+    Il parametro store resta nella firma per compatibilità, ma NON modifica
+    la strategia in base al negozio.
     """
     del store
 
@@ -438,38 +544,53 @@ def build_search_attempts(store: str, query: str) -> List[str]:
             seen.add(key)
             attempts.append(value)
 
-    # 1) Query originale: è sempre la discovery più precisa.
+    # 1) Query originale: sempre la prima e unica discovery per le
+    #    ricerche normali.
     add(raw)
 
-    # 2) Query normalizzata senza parole puramente descrittive.
-    tokens = [
-        token
-        for token in normalized.split()
-        if token not in IGNORED_WORDS
+    tokens = normalized.split()
+
+    # Marcatori generici di variante. Non identificano alcun prodotto
+    # specifico: servono solo per costruire una query di discovery più ampia
+    # quando uno store non indicizza bene la variante completa.
+    variant_tokens = {
+        "limited",
+        "edition",
+        "ice",
+        "rebel",
+        "collector",
+        "collectors",
+        "special",
+        "exclusive",
+        "exclusif",
+        "exclusivo",
+    }
+
+    variant_indexes = [
+        index
+        for index, token in enumerate(tokens)
+        if token in variant_tokens
     ]
 
-    if tokens:
-        add(" ".join(tokens))
+    if variant_indexes:
+        first_variant = min(variant_indexes)
 
-    # 3) Fallback di discovery progressiva per query composte.
-    #    Se la query precisa non viene indicizzata dallo store, proviamo
-    #    anche una forma più corta mantenendo comunque il matching finale
-    #    invariato. Questo serve solo a trovare candidati: non allenta
-    #    i criteri con cui un candidato viene poi accettato.
-    if len(tokens) >= 3:
-        add(" ".join(tokens[:-1]))
+        # Manteniamo l'identità prima del marcatore di variante.
+        family_tokens = tokens[:first_variant]
 
-    if len(tokens) >= 4:
-        add(" ".join(tokens[:-2]))
+        if family_tokens:
+            add(" ".join(family_tokens))
 
-    # 4) Forma compatta per siti che indicizzano "100ml" e "100 ml"
-    #    come stringhe diverse.
+    # 2) Forma compatta solo quando contiene numeri e quindi può realmente
+    #    differire dalla query originale.
     compact = re.sub(
         r"(?<=\d)\s+(?=[a-z])|(?<=[a-z])\s+(?=\d)",
         "",
         normalized,
     )
-    add(compact)
+
+    if compact != normalized:
+        add(compact)
 
     return attempts
 
@@ -720,11 +841,13 @@ def run_store(
     query: str,
 ) -> List[Dict[str, Any]]:
     """
-    Esegue la discovery generica dello store.
+    Esegue SOLO la discovery generica dello store.
 
-    Le query di fallback vengono usate SOLO se il tentativo precedente
-    non ha prodotto alcun risultato valido. Questo evita di ripetere
-    inutilmente discovery costose su store che hanno già trovato il prodotto.
+    Il risultato di questa funzione è un candidate pool grezzo:
+    la validazione centrale viene eseguita dall'orchestratore dopo
+    che tutti gli store hanno avuto la possibilità di contribuire.
+
+    Nessuna regola di matching viene applicata qui.
     """
     module = load_scraper(store)
 
@@ -750,7 +873,6 @@ def run_store(
         try:
             results = search_fn(attempt) or []
         except Exception as exc:
-            # Un singolo tentativo fallito non annulla le altre discovery.
             print(
                 f"STORE_DISCOVERY_ERROR: store={store} "
                 f"attempt={attempt!r} error={type(exc).__name__}: {exc}",
@@ -761,8 +883,6 @@ def run_store(
         if not isinstance(results, list):
             continue
 
-        attempt_added = 0
-
         for item in results:
             if not isinstance(item, dict):
                 continue
@@ -772,24 +892,291 @@ def run_store(
 
             product = resolve_actual_price(product)
 
+            image = product_image(product)
+            if image:
+                product["image"] = image
+
             key = product_identity_key(product)
 
             if key in seen:
                 continue
 
             seen.add(key)
-
-            if matches(product, query):
-                output.append(product)
-                attempt_added += 1
-
-        # Se una discovery ha già trovato almeno un risultato valido,
-        # non eseguiamo fallback ulteriori: il prodotto è stato scoperto.
-        # Questo è importante soprattutto per scraper con sitemap o browser.
-        if attempt_added > 0:
-            break
+            output.append(product)
 
     return output
+
+
+# ============================================================
+# CENTRAL ORCHESTRATOR
+# ============================================================
+
+def _candidate_relevance_score(
+    product: Dict[str, Any],
+    query: str,
+) -> tuple:
+    """
+    Ranking preliminare NON distruttivo.
+
+    Serve solo a stabilire l'ordine con cui i candidati vengono validati.
+    Non elimina candidati: la validazione centrale decide esclusivamente
+    tramite matches().
+    """
+    query_tokens = [
+        token
+        for token in norm(query).split()
+        if token not in IGNORED_WORDS
+        and not re.fullmatch(r"\d+(?:[.,]\d+)?", token)
+    ]
+
+    name = norm(
+        product_field(
+            product,
+            "name",
+            "title",
+            "product_name",
+        )
+    )
+
+    brand = norm(
+        product_field(
+            product,
+            "brand",
+            "source_brand",
+        )
+    )
+
+    name_tokens = set(name.split())
+    brand_tokens = set(brand.split())
+
+    matched_name = sum(
+        1 for token in query_tokens
+        if token in name_tokens
+    )
+
+    matched_text = sum(
+        1 for token in query_tokens
+        if token in name
+    )
+
+    matched_brand = sum(
+        1 for token in query_tokens
+        if token in brand_tokens
+    )
+
+    return (
+        -matched_name,
+        -matched_text,
+        -matched_brand,
+        deterministic_result_key(product),
+    )
+
+
+def _pre_rank_candidates(
+    candidates: List[Dict[str, Any]],
+    query: str,
+) -> List[Dict[str, Any]]:
+    return sorted(
+        candidates,
+        key=lambda product: _candidate_relevance_score(
+            product,
+            query,
+        ),
+    )
+
+
+def _validate_candidate(
+    product: Dict[str, Any],
+    query: str,
+) -> Optional[Dict[str, Any]]:
+    if not matches(product, query):
+        return None
+
+    return product
+
+
+def _validate_candidates_parallel(
+    candidates: List[Dict[str, Any]],
+    query: str,
+) -> List[Dict[str, Any]]:
+    if not candidates:
+        return []
+
+    max_workers = min(
+        32,
+        max(1, len(candidates)),
+    )
+
+    with ThreadPoolExecutor(
+        max_workers=max_workers,
+        thread_name_prefix="scent_validate",
+    ) as executor:
+        futures = [
+            executor.submit(
+                _validate_candidate,
+                product,
+                query,
+            )
+            for product in candidates
+        ]
+
+        validated: List[Dict[str, Any]] = []
+
+        for future in futures:
+            try:
+                product = future.result()
+            except Exception as exc:
+                print(
+                    "CENTRAL_VALIDATION_ERROR: "
+                    f"{type(exc).__name__}: {exc}",
+                    flush=True,
+                )
+                continue
+
+            if isinstance(product, dict):
+                validated.append(product)
+
+    return validated
+
+
+def _orchestrate_results(
+    candidates: List[Dict[str, Any]],
+    query: str,
+) -> List[Dict[str, Any]]:
+    """
+    Pipeline centrale:
+
+        candidate pool
+        -> deduplica
+        -> pre-ranking
+        -> validazione parallela
+        -> deduplica finale
+        -> ranking finale
+    """
+    candidate_pool = unique_results(candidates)
+
+    ranked_candidates = _pre_rank_candidates(
+        candidate_pool,
+        query,
+    )
+
+    validated = _validate_candidates_parallel(
+        ranked_candidates,
+        query,
+    )
+
+    return sort_by_price(
+        unique_results(validated)
+    )
+
+
+# ============================================================
+# SEARCH CENTRALE
+# ============================================================
+
+def search_perfume(query: str) -> Dict[str, Any]:
+    query = str(query or "").strip()
+
+    if not query:
+        return {
+            "query": "",
+            "count": 0,
+            "results": [],
+            "comparisons": [],
+            "errors": {},
+        }
+
+    candidate_pool: List[Dict[str, Any]] = []
+    errors: Dict[str, str] = {}
+
+    # FASE 1: discovery parallela.
+    executor = ThreadPoolExecutor(
+        max_workers=len(STORES),
+        thread_name_prefix="scent_store",
+    )
+
+    futures = {
+        executor.submit(run_store, store, query): store
+        for store in STORES
+    }
+
+    try:
+        try:
+            completed = as_completed(
+                futures,
+                timeout=GLOBAL_SEARCH_TIMEOUT,
+            )
+
+            for future in completed:
+                store = futures[future]
+
+                try:
+                    store_candidates = future.result()
+
+                    if isinstance(
+                        store_candidates,
+                        list,
+                    ):
+                        candidate_pool.extend(
+                            store_candidates
+                        )
+
+                except Exception as exc:
+                    errors[store] = (
+                        f"{type(exc).__name__}: {exc}"
+                    )
+                    traceback.print_exc()
+
+        except TimeoutError:
+            for future, store in futures.items():
+                if future.done():
+                    try:
+                        store_candidates = future.result()
+
+                        if isinstance(
+                            store_candidates,
+                            list,
+                        ):
+                            candidate_pool.extend(
+                                store_candidates
+                            )
+
+                    except Exception as exc:
+                        errors[store] = (
+                            f"{type(exc).__name__}: {exc}"
+                        )
+                        traceback.print_exc()
+                else:
+                    errors[store] = (
+                        "Timeout: ricerca del negozio oltre il limite globale"
+                    )
+
+    finally:
+        for future in futures:
+            if not future.done():
+                future.cancel()
+
+        executor.shutdown(
+            wait=False,
+            cancel_futures=True,
+        )
+
+    # FASE 2-5: candidate pool -> deduplica -> pre-ranking
+    # -> validazione centrale parallela -> ranking finale.
+    results = _orchestrate_results(
+        candidate_pool,
+        query,
+    )
+
+    return {
+        "query": query,
+        "count": len(results),
+        "results": results,
+        "comparisons": [],
+        "errors": errors,
+    }
+
+
 
 
 # ============================================================
@@ -812,11 +1199,7 @@ def search_perfume(query: str) -> Dict[str, Any]:
     errors: Dict[str, str] = {}
 
     # Tutti gli store partono contemporaneamente.
-    # La ricerca rimane parallela; qui interveniamo solo sulla durata massima
-    # di una singola fonte, senza cambiare la struttura dei risultati.
-    STORE_TIMEOUT = 45
-    import time as _search_time
-    from concurrent.futures import wait as _search_wait, FIRST_COMPLETED as _FIRST_COMPLETED
+    # L'ordine dei future NON viene usato per determinare l'ordine finale.
     executor = ThreadPoolExecutor(
         max_workers=len(STORES),
         thread_name_prefix="scent_store",
@@ -828,54 +1211,64 @@ def search_perfume(query: str) -> Dict[str, Any]:
     }
 
     try:
-        pending = set(futures)
-        deadline = _search_time.monotonic() + GLOBAL_SEARCH_TIMEOUT
-
-        while pending:
-            remaining = max(0.0, deadline - _search_time.monotonic())
-            if remaining <= 0:
-                break
-
-            done, pending = _search_wait(
-                pending,
-                timeout=min(STORE_TIMEOUT, remaining),
-                return_when=_FIRST_COMPLETED,
+        try:
+            completed = as_completed(
+                futures,
+                timeout=GLOBAL_SEARCH_TIMEOUT,
             )
 
-            if not done:
-                # Nessun negozio ha risposto entro la finestra corrente.
-                # Lasciamo il loop continuare fino al limite globale.
-                continue
-
-            for future in done:
+            for future in completed:
                 store = futures[future]
+
                 try:
                     store_results = future.result()
                     if isinstance(store_results, list):
                         all_results.extend(store_results)
+
                 except Exception as exc:
-                    errors[store] = f"{type(exc).__name__}: {exc}"
+                    errors[store] = (
+                        f"{type(exc).__name__}: {exc}"
+                    )
                     traceback.print_exc()
 
-        for future in pending:
-            store = futures[future]
-            if not future.done():
-                errors[store] = "Timeout: negozio oltre il limite di ricerca"
-            else:
-                try:
-                    store_results = future.result()
-                    if isinstance(store_results, list):
-                        all_results.extend(store_results)
-                except Exception as exc:
-                    errors[store] = f"{type(exc).__name__}: {exc}"
-                    traceback.print_exc()
+        except TimeoutError:
+            # Alla scadenza globale non perdiamo i future che sono terminati
+            # proprio in prossimità del limite. Il vecchio codice controllava
+            # solo future.done() e, se un future era già terminato ma non era
+            # stato ancora consumato dall'iteratore as_completed(), lo
+            # considerava implicitamente riuscito ma ne perdeva il risultato.
+            #
+            # Ora raccogliamo esplicitamente ogni future già terminato.
+            # Solo quelli realmente ancora in esecuzione vengono marcati
+            # come timeout.
+            for future, store in futures.items():
+                if future.done():
+                    try:
+                        store_results = future.result()
+                        if isinstance(store_results, list):
+                            all_results.extend(store_results)
+
+                    except Exception as exc:
+                        errors[store] = (
+                            f"{type(exc).__name__}: {exc}"
+                        )
+                        traceback.print_exc()
+                else:
+                    errors[store] = (
+                        "Timeout: ricerca del negozio oltre il limite globale"
+                    )
 
     finally:
-        for future in futures:
+        # cancel() annulla solamente future non ancora partiti.
+        # Non fingiamo di poter interrompere thread già in esecuzione.
+        for future, store in futures.items():
             if not future.done():
                 future.cancel()
 
-        executor.shutdown(wait=False, cancel_futures=True)
+        executor.shutdown(
+            wait=False,
+            cancel_futures=True,
+        )
 
     results = sort_by_price(
         unique_results(all_results)
@@ -999,45 +1392,6 @@ def update_price_history(
 
 
 # ============================================================
-# SEARCH JOBS
-# ============================================================
-
-SEARCH_JOB_EXECUTOR = ThreadPoolExecutor(max_workers=2, thread_name_prefix="scent_search_job")
-SEARCH_JOBS: Dict[str, Dict[str, Any]] = {}
-SEARCH_JOBS_LOCK = __import__("threading").Lock()
-SEARCH_JOB_TTL = 600
-
-def create_search_job(query: str) -> str:
-    import uuid, time
-    job_id = uuid.uuid4().hex
-    with SEARCH_JOBS_LOCK:
-        SEARCH_JOBS[job_id] = {"status":"running","query":query,"result":None,"error":None,"created_at":time.time()}
-    def worker():
-        try:
-            result = search_perfume(query)
-            with SEARCH_JOBS_LOCK:
-                if job_id in SEARCH_JOBS:
-                    SEARCH_JOBS[job_id]["status"]="completed"
-                    SEARCH_JOBS[job_id]["result"]=result
-        except Exception as exc:
-            with SEARCH_JOBS_LOCK:
-                if job_id in SEARCH_JOBS:
-                    SEARCH_JOBS[job_id]["status"]="failed"
-                    SEARCH_JOBS[job_id]["error"]=f"{type(exc).__name__}: {exc}"
-    SEARCH_JOB_EXECUTOR.submit(worker)
-    return job_id
-
-def get_search_job(job_id: str) -> Optional[Dict[str, Any]]:
-    import time
-    now=time.time()
-    with SEARCH_JOBS_LOCK:
-        for key in list(SEARCH_JOBS):
-            if now-float(SEARCH_JOBS[key].get("created_at",now))>SEARCH_JOB_TTL:
-                del SEARCH_JOBS[key]
-        job=SEARCH_JOBS.get(job_id)
-        return dict(job) if job is not None else None
-
-# ============================================================
 # API
 # ============================================================
 
@@ -1064,24 +1418,223 @@ def health():
         "status": "healthy",
         "stores": STORES,
     }
+    
+# ============================================================
+# ASYNC SEARCH JOBS
+# ============================================================
+
+
+SEARCH_JOBS = {}
+SEARCH_JOBS_LOCK = threading.Lock()
+
+
+def _search_job_snapshot(job_id: str) -> Dict[str, Any]:
+    with SEARCH_JOBS_LOCK:
+        job = SEARCH_JOBS.get(job_id)
+
+        if job is None:
+            raise HTTPException(
+                status_code=404,
+                detail="Job di ricerca non trovato",
+            )
+
+        results = sort_by_price(
+            unique_results(
+                list(job["results"])
+            )
+        )
+
+        return {
+            "job_id": job_id,
+            "query": job["query"],
+            "count": len(results),
+            "results": results,
+            "comparisons": [],
+            "errors": dict(job["errors"]),
+            "completed": job["completed"],
+            "status": (
+                "completed"
+                if job["completed"]
+                else "searching"
+            ),
+        }
+
+
+def _run_search_job(
+    job_id: str,
+    query: str,
+) -> None:
+    """
+    Esegue la discovery in parallelo e alimenta progressivamente
+    il candidate pool centrale.
+
+    Ogni volta che uno store termina:
+        discovery -> candidate pool -> deduplica -> pre-ranking
+        -> validazione centrale parallela -> risultati parziali.
+    """
+    executor = ThreadPoolExecutor(
+        max_workers=len(STORES),
+        thread_name_prefix="scent_async_store",
+    )
+
+    futures = {
+        executor.submit(
+            run_store,
+            store,
+            query,
+        ): store
+        for store in STORES
+    }
+
+    def process_store_candidates(
+        store: str,
+        store_candidates: Any,
+    ) -> None:
+        if not isinstance(store_candidates, list):
+            return
+
+        with SEARCH_JOBS_LOCK:
+            job = SEARCH_JOBS.get(job_id)
+
+            if job is None:
+                return
+
+            job["candidates"].extend(
+                store_candidates
+            )
+
+            candidate_pool = list(
+                job["candidates"]
+            )
+
+        results = _orchestrate_results(
+            candidate_pool,
+            query,
+        )
+
+        with SEARCH_JOBS_LOCK:
+            job = SEARCH_JOBS.get(job_id)
+
+            if job is not None:
+                job["results"] = results
+
+    try:
+        try:
+            for future in as_completed(
+                futures,
+                timeout=GLOBAL_SEARCH_TIMEOUT,
+            ):
+                store = futures[future]
+
+                try:
+                    store_candidates = future.result()
+
+                    process_store_candidates(
+                        store,
+                        store_candidates,
+                    )
+
+                except Exception as exc:
+                    with SEARCH_JOBS_LOCK:
+                        job = SEARCH_JOBS.get(job_id)
+
+                        if job is not None:
+                            job["errors"][store] = (
+                                f"{type(exc).__name__}: {exc}"
+                            )
+
+        except TimeoutError:
+            for future, store in futures.items():
+                if future.done():
+                    try:
+                        store_candidates = future.result()
+
+                        process_store_candidates(
+                            store,
+                            store_candidates,
+                        )
+
+                    except Exception as exc:
+                        with SEARCH_JOBS_LOCK:
+                            job = SEARCH_JOBS.get(job_id)
+
+                            if job is not None:
+                                job["errors"][store] = (
+                                    f"{type(exc).__name__}: {exc}"
+                                )
+
+                else:
+                    with SEARCH_JOBS_LOCK:
+                        job = SEARCH_JOBS.get(job_id)
+
+                        if job is not None:
+                            job["errors"][store] = (
+                                "Timeout: ricerca del negozio "
+                                "oltre il limite globale"
+                            )
+
+    finally:
+        for future in futures:
+            if not future.done():
+                future.cancel()
+
+        executor.shutdown(
+            wait=False,
+            cancel_futures=True,
+        )
+
+        with SEARCH_JOBS_LOCK:
+            job = SEARCH_JOBS.get(job_id)
+
+            if job is not None:
+                job["completed"] = True
 
 
 @app.get("/search-start")
 def search_start(q: str):
-    query=str(q or "").strip()
+    query = str(q or "").strip()
+
     if not query:
-        raise HTTPException(status_code=400, detail="Parametro q mancante")
-    return {"job_id":create_search_job(query),"status":"running","query":query}
+        raise HTTPException(
+            status_code=400,
+            detail="Parametro q mancante",
+        )
+
+    job_id = uuid.uuid4().hex
+
+    with SEARCH_JOBS_LOCK:
+        SEARCH_JOBS[job_id] = {
+            "query": query,
+            "candidates": [],
+            "results": [],
+            "errors": {},
+            "completed": False,
+        }
+
+    thread = threading.Thread(
+        target=_run_search_job,
+        args=(job_id, query),
+        daemon=True,
+    )
+
+    thread.start()
+
+    return {
+        "job_id": job_id,
+        "query": query,
+        "count": 0,
+        "results": [],
+        "comparisons": [],
+        "errors": {},
+        "completed": False,
+        "status": "searching",
+    }
+
 
 @app.get("/search-status")
 def search_status(job_id: str):
-    job=get_search_job(job_id)
-    if job is None:
-        raise HTTPException(status_code=404, detail="Ricerca non trovata o scaduta")
-    response={"job_id":job_id,"status":job["status"],"query":job["query"]}
-    if job["status"]=="completed": response["result"]=job["result"]
-    elif job["status"]=="failed": response["error"]=job["error"] or "Errore durante la ricerca"
-    return response
+    return _search_job_snapshot(job_id)
+
 
 @app.get("/search")
 def search(q: str):
