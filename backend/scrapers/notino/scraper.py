@@ -966,8 +966,9 @@ def _search_http_candidates(
                 "cloudflare": _is_challenge(response.text),
                 "source": "direct",
             })
-            if found:
-                break
+            # Continua a provare tutte le URL di ricerca generiche.
+            # Una pagina può restituire risultati parziali: fermarsi al primo
+            # hit rende la discovery intermittente e può nascondere il prodotto.
 
         ordered = sorted(
             candidates.values(),
