@@ -4,6 +4,7 @@ import os
 import re
 import shutil
 import unicodedata
+import requests
 from urllib.parse import quote_plus, urljoin, urlparse, parse_qs
 
 from bs4 import BeautifulSoup
@@ -737,77 +738,183 @@ def launch_browser(playwright):
         kwargs["executable_path"] = executable_path
     return playwright.chromium.launch(**kwargs)
 
+def http_discover(query):
+    """Low-cost discovery channel independent from the browser.
+
+    HTTP discovery is deliberately used only to collect candidate product
+    URLs. Product validation remains in the existing pipeline.
+    """
+    candidates = []
+    seen = set()
+    raw_query = clean(query)
+    if not raw_query:
+        return []
+
+    normalized_tokens = [t for t in query_tokens(raw_query) if len(t) >= 2]
+    variants = [raw_query]
+    if normalized_tokens:
+        variants.append(" ".join(normalized_tokens))
+    compact = re.sub(
+        r"(?<=\d)\s+(?=[a-z])|(?<=[a-z])\s+(?=\d)",
+        "",
+        norm(raw_query),
+    )
+    if compact and compact not in variants:
+        variants.append(compact)
+
+    headers = {
+        "User-Agent": USER_AGENT,
+        "Accept-Language": "fr-FR,fr;q=0.9,en;q=0.7",
+        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+    }
+
+    try:
+        session = requests.Session()
+        session.headers.update(headers)
+    except Exception:
+        return []
+
+    try:
+        for variant in variants[:3]:
+            url = SEARCH_URL.format(query=quote_plus(variant))
+            try:
+                response = session.get(
+                    url,
+                    timeout=min(15, max(5, BROWSER_TIMEOUT // 1000)),
+                    allow_redirects=True,
+                )
+                if response.status_code >= 400 or not response.text:
+                    continue
+                for item in extract_product_candidates(
+                    response.text,
+                    response.url,
+                    query,
+                ):
+                    key = product_key(item.get("url"))
+                    if key and key not in seen:
+                        seen.add(key)
+                        candidates.append(item)
+            except requests.RequestException:
+                continue
+            except Exception:
+                continue
+    finally:
+        try:
+            session.close()
+        except Exception:
+            pass
+
+    candidates.sort(key=lambda x: x.get("score", 0), reverse=True)
+    return candidates[:MAX_CANDIDATES]
+
+
 def browser_discover(query):
     if sync_playwright is None:
         return []
+
     candidates = []
     seen = set()
+    raw_query = clean(query)
+    if not raw_query:
+        return []
+
+    normalized_tokens = [t for t in query_tokens(raw_query) if len(t) >= 2]
+    query_variants = [raw_query]
+    if normalized_tokens:
+        query_variants.append(" ".join(normalized_tokens))
+    compact = re.sub(
+        r"(?<=\d)\s+(?=[a-z])|(?<=[a-z])\s+(?=\d)",
+        "",
+        norm(raw_query),
+    )
+    if compact and compact not in query_variants:
+        query_variants.append(compact)
+
     try:
         with sync_playwright() as pw:
             browser = launch_browser(pw)
-            context = browser.new_context(user_agent=USER_AGENT, locale="fr-FR", viewport={"width":1440,"height":1000}, extra_http_headers={"Accept-Language":"fr-FR,fr;q=0.9,en;q=0.7"})
+            context = browser.new_context(
+                user_agent=USER_AGENT,
+                locale="fr-FR",
+                viewport={"width": 1440, "height": 1000},
+                extra_http_headers={
+                    "Accept-Language": "fr-FR,fr;q=0.9,en;q=0.7"
+                },
+            )
             page = context.new_page()
-            raw_query = clean(query)
-            normalized_tokens = [t for t in query_tokens(raw_query) if len(t) >= 2]
-            query_variants = [raw_query]
-            for token in normalized_tokens:
-                if token not in query_variants:
-                    query_variants.append(token)
-            compact = re.sub(r"(?<=\d)\s+(?=[a-z])|(?<=[a-z])\s+(?=\d)", "", norm(raw_query))
-            if compact and compact not in query_variants:
-                query_variants.append(compact)
-            urls = [
-                SEARCH_URL.format(query=quote_plus(item))
-                for item in query_variants[:4]
-            ]
             visited_pages = set()
-            for start in urls:
-                page.goto(start, wait_until="domcontentloaded", timeout=BROWSER_TIMEOUT)
-                dismiss_consent(page)
+
+            for variant in query_variants[:3]:
+                start_url = SEARCH_URL.format(query=quote_plus(variant))
+                try:
+                    page.goto(
+                        start_url,
+                        wait_until="domcontentloaded",
+                        timeout=BROWSER_TIMEOUT,
+                    )
+                    dismiss_consent(page)
+                except Exception:
+                    # A failed variant must never cancel the remaining
+                    # discovery channels or query variants.
+                    continue
+
                 for _ in range(MAX_DISCOVERY_PAGES):
                     if page.url in visited_pages:
                         break
                     visited_pages.add(page.url)
+
                     try:
-                        page.wait_for_load_state("networkidle", timeout=10000)
+                        page.wait_for_load_state(
+                            "networkidle",
+                            timeout=10000,
+                        )
                     except Exception:
                         pass
-                    page.wait_for_timeout(1200)
-                    scroll_for_products(page)
-                    html = page.content()
-                    for item in extract_product_candidates(html, page.url, query):
-                        if item["url"] not in seen:
-                            seen.add(item["url"])
+
+                    try:
+                        page.wait_for_timeout(1200)
+                        scroll_for_products(page)
+                        html = page.content()
+                    except Exception:
+                        break
+
+                    try:
+                        items = extract_product_candidates(
+                            html,
+                            page.url,
+                            query,
+                        )
+                    except Exception:
+                        items = []
+
+                    for item in items:
+                        key = product_key(item.get("url"))
+                        if key and key not in seen:
+                            seen.add(key)
                             candidates.append(item)
-                    nxt = next_page(page)
+
+                    try:
+                        nxt = next_page(page)
+                    except Exception:
+                        nxt = None
                     if not nxt or nxt in visited_pages:
                         break
-                    page.goto(nxt, wait_until="domcontentloaded", timeout=BROWSER_TIMEOUT)
-                    dismiss_consent(page)
 
-            # Generic site-wide fallback: if the search endpoint rendered no product
-            # links, discover products from Notino's perfume catalogue and rank the
-            # resulting candidates against the requested query. This is not tied to
-            # any individual product or brand.
-            if not candidates:
-                page.goto(CATEGORY_URL, wait_until="domcontentloaded", timeout=BROWSER_TIMEOUT)
-                dismiss_consent(page)
-                try:
-                    page.wait_for_load_state("networkidle", timeout=10000)
-                except Exception:
-                    pass
-                page.wait_for_timeout(1200)
-                scroll_for_products(page)
-                html = page.content()
-                for item in extract_product_candidates(html, page.url, query):
-                    if item["url"] not in seen:
-                        seen.add(item["url"])
-                        candidates.append(item)
+                    try:
+                        page.goto(
+                            nxt,
+                            wait_until="domcontentloaded",
+                            timeout=BROWSER_TIMEOUT,
+                        )
+                        dismiss_consent(page)
+                    except Exception:
+                        break
 
             context.close()
             browser.close()
     except Exception:
-        return []
+        return candidates[:MAX_CANDIDATES]
+
     candidates.sort(key=lambda x: x.get("score", 0), reverse=True)
     return candidates[:MAX_CANDIDATES]
 
@@ -901,9 +1008,24 @@ def search(query):
     if not query:
         return []
 
-    candidates = browser_discover(query)
+    # Discovery uses two independent channels and merges them before
+    # validation. A browser failure or HTTP failure therefore cannot erase
+    # candidates discovered by the other channel.
+    candidates = []
+    seen_candidates = set()
+
+    for discovered in (http_discover(query), browser_discover(query)):
+        for candidate in discovered:
+            key = product_key(candidate.get("url"))
+            if not key or key in seen_candidates:
+                continue
+            seen_candidates.add(key)
+            candidates.append(candidate)
+
     if not candidates:
         return []
+
+    candidates.sort(key=lambda x: x.get("score", 0), reverse=True)
 
     # Notino currently protects direct product navigation with a Cloudflare
     # challenge. The search page itself already exposes the product card data,
