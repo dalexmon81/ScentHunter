@@ -468,20 +468,58 @@ def matches(product: Dict[str, Any], query: str) -> bool:
     if not meaningful_query_tokens:
         meaningful_query_tokens = query_tokens
 
-    name_tokens = set(name_normalized.split())
-    brand_tokens = set(brand_normalized.split())
+        name_for_matching = name_normalized
+
+    name_for_matching = re.sub(
+        r"\b\d+(?:[.,]\d+)?\s*(?:ml|cl)\b",
+        " ",
+        name_for_matching,
+        flags=re.I,
+    )
+
+    name_for_matching = re.sub(
+        r"\b(?:eau\s+de\s+parfum|eau\s+de\s+toilette|"
+        r"eau\s+de\s+cologne|extrait\s+de\s+parfum|"
+        r"edp|edt|edc)\b",
+        " ",
+        name_for_matching,
+        flags=re.I,
+    )
+
+    name_for_matching = re.sub(
+        r"\s+",
+        " ",
+        name_for_matching,
+    ).strip()
+
+    name_tokens = name_for_matching.split()
+
+    query_family = " ".join(
+        meaningful_query_tokens
+    ).strip()
+
+    name_family = " ".join(
+        token
+        for token in name_tokens
+        if token not in generic_tokens
+    ).strip()
+
+    if not query_family or not name_family:
+        return False
 
     if brand_normalized:
-        if all(
-            token in name_tokens or token in brand_tokens
+        brand_in_query = all(
+            token in brand_tokens
             for token in meaningful_query_tokens
-        ):
-            return True
+        )
 
-        if all(
-            token in name_tokens
-            for token in meaningful_query_tokens
-        ):
+        if brand_in_query:
+            return name_family.startswith(
+                query_family
+            )
+
+    return name_family.startswith(query_family):
+    
             return True
 
         return False
