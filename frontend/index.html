@@ -2179,18 +2179,41 @@ async function searchPerfume(){
  statusBox.textContent="";resultsBox.innerHTML="";errorsBox.innerHTML="";
  try{
   let data;
+  let openedProductKey = null;
   const renderData = (partialData, final = false) => {
   let groups = shGroupData(partialData || {});
 
   const productDetailOpen =
     resultsBox.querySelector(".comparison") !== null;
 
-  if (!productDetailOpen && groups.length > 0) {
+  if (!productDetailOpen) {
   showProducts(groups);
 }
 
 currentProductGroups = groups;
 updateBestPricesFromGroups(groups);
+
+if (productDetailOpen) {
+  const currentComparison = resultsBox.querySelector(".comparison");
+
+  if (currentComparison) {
+    const backButton = currentComparison.querySelector(".detail-back");
+
+    if (backButton) {
+      const selectedProductIndex =
+        currentProductGroups.findIndex(function(group) {
+          return currentProductGroups.indexOf(group) ===
+            currentProductGroups.indexOf(groups[0]);
+        });
+
+      if (selectedProductIndex >= 0) {
+        openProduct(selectedProductIndex);
+      }
+    }
+  }
+}
+
+
 
 if (productDetailOpen) {
   const currentComparison = resultsBox.querySelector(".comparison");
