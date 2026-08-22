@@ -2093,7 +2093,7 @@ async function searchStoresProgressive(query, onPartial) {
   }
 
   const startResponse = await fetch(
-    `/search-start?q=${encodeURIComponent(q)}`,
+    "/search-start?q=" + encodeURIComponent(q),
     {
       headers: {
         Accept: "application/json"
@@ -2102,7 +2102,7 @@ async function searchStoresProgressive(query, onPartial) {
   );
 
   if (!startResponse.ok) {
-    throw new Error(`HTTP ${startResponse.status}`);
+    throw new Error("HTTP " + startResponse.status);
   }
 
   const started = await startResponse.json();
@@ -2116,39 +2116,94 @@ async function searchStoresProgressive(query, onPartial) {
   const maxPollingTime = 150000;
   const startedAt = Date.now();
 
-  while (true) {
-    const response = await fetch(
-      `/search-status?job_id=${jobId}`,
-      {
-        headers: {
-          Accept: "application/json"
+  let finished = false;
+  let polling = false;
+
+  async function poll() {
+    if (finished || polling) {
+      return;
+    }
+
+    polling = true;
+
+    try {
+      const response = await fetch(
+        "/search-status?job_id=" + jobId,
+        {
+          headers: {
+            Accept: "application/json"
+          }
         }
+      );
+
+      if (!response.ok) {
+        throw new Error("HTTP " + response.status);
       }
-    );
 
-    if (!response.ok) {
-      throw new Error(`HTTP ${response.status}`);
+      const data = await response.json();
+
+      if (typeof onPartial === "function") {
+        onPartial(data, Boolean(data.completed));
+      }
+
+      if (data.completed) {
+        finished = true;
+        return data;
+      }
+
+      if (Date.now() - startedAt >= maxPollingTime) {
+        throw new Error("Tempo massimo di ricerca superato");
+      }
+
+      return null;
+    } finally {
+      polling = false;
     }
-
-    const data = await response.json();
-
-    if (typeof onPartial === "function") {
-      onPartial(data, Boolean(data.completed));
-    }
-
-    if (data.completed) {
-      return data;
-    }
-
-    if (Date.now() - startedAt >= maxPollingTime) {
-      throw new Error("Tempo massimo di ricerca superato");
-    }
-
-    await new Promise(resolve => {
-      setTimeout(resolve, pollInterval);
-    });
   }
+
+  window.resumeSearchPolling = async function() {
+    if (finished) {
+      return;
+    }
+
+    while (!finished) {
+      if (!document.hidden) {
+        await poll();
+      }
+
+      if (finished) {
+        break;
+      }
+
+      await new Promise(function(resolve) {
+        setTimeout(resolve, pollInterval);
+      });
+    }
+  };
+
+  const result = await poll();
+
+  if (result && result.completed) {
+    return result;
+  }
+
+  await window.resumeSearchPolling();
+
+  return {
+    query: q,
+    count: 0,
+    results: [],
+    comparisons: [],
+    errors: {}
+  };
 }
+
+ 
+document.addEventListener("visibilitychange", function() {
+  if (!document.hidden && typeof window.resumeSearchPolling === "function") {
+    window.resumeSearchPolling();
+  }
+});
 
 async function searchPerfume(){
  const q=queryInput.value.trim();if(!q){statusBox.textContent="";resultsBox.innerHTML="";errorsBox.innerHTML="";return}
