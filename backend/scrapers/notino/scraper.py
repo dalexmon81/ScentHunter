@@ -4,7 +4,6 @@ import os
 import re
 import shutil
 import unicodedata
-import requests
 from urllib.parse import quote_plus, urljoin, urlparse, parse_qs
 
 from bs4 import BeautifulSoup
@@ -26,6 +25,9 @@ MAX_CANDIDATES = int(os.getenv("NOTINO_MAX_CANDIDATES", "120"))
 MAX_VALIDATIONS = int(os.getenv("NOTINO_MAX_VALIDATIONS", "50"))
 SCROLL_STEPS = int(os.getenv("NOTINO_SCROLL_STEPS", "8"))
 
+DIAGNOSTIC_MAX_PAGES = int(os.getenv("NOTINO_DIAGNOSTIC_MAX_PAGES", "8"))
+DIAGNOSTIC_TEXT_SAMPLE = int(os.getenv("NOTINO_DIAGNOSTIC_TEXT_SAMPLE", "300"))
+
 USER_AGENT = (
     "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 "
     "(KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36"
@@ -44,68 +46,6 @@ NON_FRAGRANCE_TERMS = {
     "shampoing", "conditioner", "après-shampoing", "hair", "cheveux", "makeup",
     "maquillage", "skincare", "soin du visage", "savon", "after shave", "après-rasage",
 }
-
-
-NON_PERFUME_MARKERS = {
-    "gift set", "set regalo", "set", "discovery set", "fragrance set",
-    "perfume set", "parfum set", "coffret", "bundle", "pack",
-    "travel set", "kit", "duo", "trio", "mystery box", "tester",
-    "testeur", "sample", "shampoo", "shower gel", "body wash",
-    "body lotion", "body cream", "body milk", "deodorant", "deo spray",
-    "aftershave", "after shave", "body spray", "hair mist", "makeup",
-    "cosmetics", "cosmetic", "skincare", "skin care", "cosmetici",
-}
-
-
-def _product_norm(value):
-    value = str(value or "").lower()
-    value = re.sub(r"[^a-z0-9]+", " ", value)
-    return re.sub(r"\s+", " ", value).strip()
-
-
-def _has_non_perfume_marker(value):
-    tokens = set(_product_norm(value).split())
-    return any(
-        marker_tokens and marker_tokens.issubset(tokens)
-        for marker_tokens in (
-            set(_product_norm(marker).split())
-            for marker in NON_PERFUME_MARKERS
-        )
-    )
-
-
-def _clean_product_name(value):
-    text = clean(value)
-    if not text:
-        return ""
-
-    # Search-card attributes can contain UI metadata such as
-    # "Title: ... | notino.fr". Never expose that metadata as product name.
-    text = re.sub(
-        r"^\s*(?:title|product\s+title|name|product\s+name)\s*:\s*",
-        "",
-        text,
-        flags=re.I,
-    )
-    text = re.sub(r"\s*\|\s*(?:notino\.fr|notino)\s*$", "", text, flags=re.I)
-    text = re.sub(r"^\s*promo\s+", "", text, flags=re.I)
-
-    text = re.sub(r"\b\d{1,4}(?:[.,]\d{1,2})?\s*€", " ", text, flags=re.I)
-    text = re.sub(r"\b\d{1,4}(?:[.,]\d{1,2})?\s*(?:ml|cl)\b", " ", text, flags=re.I)
-    text = re.sub(
-        r"\s+(?:pour\s+(?:homme|femme)|for\s+(?:men|women)|(?:homme|femme|mixte|unisexe|unisex|men|women))\s*$",
-        "",
-        text,
-        flags=re.I,
-    )
-    text = re.sub(
-        r"\s+(?:eau\s+de\s+parfum|eau\s+de\s+toilette|eau\s+de\s+cologne|extrait\s+de\s+parfum|parfum|perfume|fragrance)\s*$",
-        "",
-        text,
-        flags=re.I,
-    )
-    text = re.sub(r"\b(?:jusqu['’]?à|save|économie|reduction|réduction)\s*\d{1,3}%?\b", " ", text, flags=re.I)
-    return clean(text)
 
 
 def clean(value):
@@ -138,53 +78,9 @@ def canonical_url(url, base=BASE_URL):
     return parsed._replace(query="", fragment="").geturl().rstrip("/")
 
 
-NON_PRODUCT_PATHS = {
-    "search", "avis", "magazine", "panier", "cart", "login", "account",
-    "parfums", "maquillage", "cheveux", "corps", "visage", "solaires",
-    "parapharmacie", "sante", "bebe", "maison", "homme", "femme",
-}
-
-
 def product_url(url):
-    """Recognise both Notino product URL shapes.
-
-    Notino can expose the same product as a clean SEO URL and as a URL
-    carrying the numeric /p-ID suffix. Both are valid product references.
-    """
-    try:
-        parsed = urlparse(url)
-        if parsed.netloc.lower() not in {"notino.fr", "www.notino.fr"}:
-            return False
-        segments = [part for part in parsed.path.split("/") if part]
-        if len(segments) < 2:
-            return False
-        lowered = [part.lower() for part in segments]
-        if any(part in NON_PRODUCT_PATHS for part in lowered):
-            return False
-        last = lowered[-1]
-        if re.fullmatch(r"p-\d+", last):
-            return True
-        # Clean SEO product URLs use /brand/product-slug/.
-        return len(segments) == 2 and len(segments[1]) >= 4
-    except Exception:
-        return False
-
-
-def product_key(url):
-    """Stable generic key for clean SEO and /p-ID Notino URLs."""
-    try:
-        parsed = urlparse(url)
-        parts = [part for part in parsed.path.split("/") if part]
-        if parts and re.fullmatch(r"p-\d+", parts[-1], re.I):
-            parts = parts[:-1]
-        if len(parts) < 2:
-            return ""
-        brand = norm(parts[0])
-        slug = _clean_product_name(re.sub(r"[-_]+", " ", parts[-1]))
-        slug = norm(slug)
-        return f"{brand}/{slug}" if brand and slug else ""
-    except Exception:
-        return ""
+    path = urlparse(url).path.rstrip("/")
+    return bool(re.search(r"(?:^|/)p-\d+$", path, re.I))
 
 
 def query_tokens(query):
@@ -359,17 +255,12 @@ def is_fragrance(name, page_text, concentration):
 
 
 def query_matches(name, brand, query, size_ml):
-    clean_name = _clean_product_name(name)
-    if not clean_name or _has_non_perfume_marker(clean_name):
-        return False
-
-    identity = _product_norm(f"{brand} {clean_name}")
+    identity = norm(f"{brand} {name}")
     wanted = query_tokens(query)
     if not wanted:
         return True
-    if not all(token in identity.split() for token in wanted):
+    if not all(token in identity for token in wanted):
         return False
-
     requested = explicit_size(query)
     if requested is not None:
         if size_ml is None or abs(float(size_ml) - float(requested)) > 0.01:
@@ -427,8 +318,7 @@ def extract_product_candidates(html, page_url, query=""):
     seen = set()
     for anchor in soup.find_all("a", href=True):
         url = canonical_url(anchor.get("href"), page_url)
-        key = product_key(url)
-        if not url or not product_url(url) or not key or key in seen:
+        if not url or not product_url(url) or url in seen:
             continue
 
         pieces = [anchor.get("title"), anchor.get("aria-label"), anchor.get_text(" ", strip=True)]
@@ -448,70 +338,58 @@ def extract_product_candidates(html, page_url, query=""):
 
         text = clean(" ".join(x for x in pieces if x))
         card_text = extract_card_context(anchor)
-        seen.add(key)
+        seen.add(url)
         output.append({
             "url": url,
             "text": text,
-            "anchor_text": clean(anchor.get_text(" ", strip=True)),
-            "title": clean(anchor.get("title")),
-            "aria_label": clean(anchor.get("aria-label")),
             "card_text": card_text,
             "score": candidate_score(text, url, query),
             "image": image_url,
+            "_anchor": anchor,
         })
-
-    # Generic fallback for dynamically rendered/search data embedded in scripts
-    # or data attributes. Notino can expose product URLs without an <a> element.
-    # Recover the URL first; the product name is derived later from the URL.
-    url_pattern = re.compile(r"https?://(?:www\.)?notino\.fr/[^\"'\s<>]+|/(?:[a-z0-9-]+)/[a-z0-9-]+(?:/p-\d+)?", re.I)
-    for raw_url in url_pattern.findall(html):
-        url = canonical_url(raw_url, page_url)
-        key = product_key(url)
-        if not url or not product_url(url) or not key or key in seen:
-            continue
-        name = name_from_product_url(url)
-        if not name or not query_matches(name, extract_brand_from_product_url(url), query, None):
-            continue
-        seen.add(key)
-        output.append({
-            "url": url,
-            "text": name,
-            "anchor_text": name,
-            "title": "",
-            "aria_label": "",
-            "card_text": name,
-            "score": candidate_score(name, url, query),
-            "image": "",
-        })
-
     output.sort(key=lambda x: x["score"], reverse=True)
     return output[:MAX_CANDIDATES]
 
 
 def extract_card_price(text):
-    text = clean(text)
-    if not text:
-        return None
-
-    # Non usare il prezzo unitario (es. 26,67 € / 100 ml) come prezzo del prodotto.
-    matches = list(re.finditer(r"(\d+(?:[.,]\d{1,2})?)\s*€", text))
-    for match in matches:
-        tail = text[match.end():match.end() + 24].lower()
-        if re.match(r"\s*(?:/|par|pour)\s*\d+\s*ml\b", tail):
-            continue
-        value = parse_price(match.group(1))
-        if value is not None:
-            return value
+    matches = re.findall(r"(\d+(?:[.,]\d{1,2})?)\s*€", str(text or ""))
+    for value in matches:
+        price = parse_price(value)
+        if price is not None:
+            return price
     return None
 
 
 def extract_card_availability(text):
+    """Extract stock state only from the text belonging to one product card."""
     value = norm(text)
-    if re.search(r"\b(en rupture de stock|rupture de stock|indisponible|epuise|epuise)\b", value):
-        return "out_of_stock"
     if re.search(r"\b(en stock|disponible|available|in stock)\b", value):
         return "in_stock"
+    if re.search(r"\b(en rupture de stock|rupture de stock|indisponible|epuise|epuise)\b", value):
+        return "out_of_stock"
     return "unknown"
+
+
+def extract_anchor_availability(anchor):
+    """Prefer explicit stock markers attached to the product link itself."""
+    selectors = (
+        '[itemprop="availability"]',
+        '[data-testid*="availability" i]',
+        '[data-testid*="stock" i]',
+        '[aria-label*="stock" i]',
+    )
+    for selector in selectors:
+        try:
+            nodes = anchor.select(selector)
+        except Exception:
+            nodes = []
+        for node in nodes:
+            value = norm(node.get("content") or node.get("aria-label") or node.get_text(" ", strip=True))
+            if re.search(r"\b(en stock|disponible|available|in stock)\b", value):
+                return "in_stock"
+            if re.search(r"\b(en rupture de stock|rupture de stock|indisponible|epuise|epuise)\b", value):
+                return "out_of_stock"
+    return extract_card_availability(anchor.get_text(" ", strip=True))
 
 
 def extract_brand_from_product_url(url):
@@ -524,22 +402,6 @@ def extract_brand_from_product_url(url):
     return clean(raw.title())
 
 
-def name_from_product_url(url):
-    """Derive a generic product-name candidate from a Notino product URL."""
-    try:
-        parts = [part for part in urlparse(url).path.split("/") if part]
-        if not parts:
-            return ""
-        if re.fullmatch(r"p-\d+", parts[-1], re.I):
-            parts = parts[:-1]
-        if len(parts) < 2:
-            return ""
-        slug = re.sub(r"[-_]+", " ", parts[-1])
-        return _clean_product_name(slug)
-    except Exception:
-        return ""
-
-
 def parse_search_candidate(candidate, query):
     """Build a product directly from Notino's search-card data.
 
@@ -549,56 +411,20 @@ def parse_search_candidate(candidate, query):
     url = canonical_url(candidate.get("url"))
     text = clean(candidate.get("text"))
     card_text = clean(candidate.get("card_text")) or text
-    if not url or not product_url(url):
+    if not url or not product_url(url) or not text:
         return None
 
     brand = extract_brand_from_product_url(url)
-
-    name_candidates = [
-        candidate.get("anchor_text"),
-        candidate.get("aria_label"),
-        candidate.get("title"),
-        name_from_product_url(url),
-        text,
-    ]
-    name = ""
-    valid_names = []
-    for candidate_name in name_candidates:
-        candidate_name = _clean_product_name(candidate_name)
-        if not candidate_name:
-            continue
-        if not query_matches(
-            candidate_name,
-            brand,
-            query,
-            extract_size_ml(candidate_name, card_text),
-        ):
-            continue
-        if _has_non_perfume_marker(candidate_name):
-            continue
-        valid_names.append(candidate_name)
-
-    if valid_names:
-        # Prefer the cleanest/shortest identity over a card string containing
-        # price, rating or other surrounding UI text.
-        name = min(valid_names, key=lambda value: (len(norm(value)), len(value)))
-    if not name:
-        return None
-
-    if _has_non_perfume_marker(name):
-        return None
-
+    name = text
     price = extract_card_price(card_text) or extract_card_price(text)
-    availability = extract_card_availability(card_text)
+    availability = extract_anchor_availability(candidate.get("_anchor")) if candidate.get("_anchor") is not None else extract_card_availability(text)
+    if availability == "unknown":
+        availability = extract_card_availability(card_text)
     size_ml = extract_size_ml(text, card_text)
     concentration = extract_concentration(text, card_text)
     gender = extract_gender(text, card_text)
 
-    # Discovery must not require fragrance classification from the search card.
-    # Some Notino cards omit concentration/category metadata. Strong generic
-    # non-fragrance markers are still rejected; otherwise the main pipeline can
-    # validate the candidate later.
-    if _has_non_perfume_marker(name) or _has_non_perfume_marker(card_text):
+    if not is_fragrance(name, text, concentration):
         return None
     if not query_matches(name, brand, query, size_ml):
         return None
@@ -651,7 +477,8 @@ def parse_search_candidate(candidate, query):
         "price": f"{price:.2f} €" if price is not None else "",
         "url": url,
         "image": image or "",
-        "available": availability == "in_stock",
+        **({"available": True} if availability == "in_stock" else
+           {"available": False} if availability == "out_of_stock" else {}),
     }
 
 
@@ -738,183 +565,65 @@ def launch_browser(playwright):
         kwargs["executable_path"] = executable_path
     return playwright.chromium.launch(**kwargs)
 
-def http_discover(query):
-    """Low-cost discovery channel independent from the browser.
-
-    HTTP discovery is deliberately used only to collect candidate product
-    URLs. Product validation remains in the existing pipeline.
-    """
-    candidates = []
-    seen = set()
-    raw_query = clean(query)
-    if not raw_query:
-        return []
-
-    normalized_tokens = [t for t in query_tokens(raw_query) if len(t) >= 2]
-    variants = [raw_query]
-    if normalized_tokens:
-        variants.append(" ".join(normalized_tokens))
-    compact = re.sub(
-        r"(?<=\d)\s+(?=[a-z])|(?<=[a-z])\s+(?=\d)",
-        "",
-        norm(raw_query),
-    )
-    if compact and compact not in variants:
-        variants.append(compact)
-
-    headers = {
-        "User-Agent": USER_AGENT,
-        "Accept-Language": "fr-FR,fr;q=0.9,en;q=0.7",
-        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
-    }
-
-    try:
-        session = requests.Session()
-        session.headers.update(headers)
-    except Exception:
-        return []
-
-    try:
-        for variant in variants[:3]:
-            url = SEARCH_URL.format(query=quote_plus(variant))
-            try:
-                response = session.get(
-                    url,
-                    timeout=min(15, max(5, BROWSER_TIMEOUT // 1000)),
-                    allow_redirects=True,
-                )
-                if response.status_code >= 400 or not response.text:
-                    continue
-                for item in extract_product_candidates(
-                    response.text,
-                    response.url,
-                    query,
-                ):
-                    key = product_key(item.get("url"))
-                    if key and key not in seen:
-                        seen.add(key)
-                        candidates.append(item)
-            except requests.RequestException:
-                continue
-            except Exception:
-                continue
-    finally:
-        try:
-            session.close()
-        except Exception:
-            pass
-
-    candidates.sort(key=lambda x: x.get("score", 0), reverse=True)
-    return candidates[:MAX_CANDIDATES]
-
-
 def browser_discover(query):
     if sync_playwright is None:
         return []
-
     candidates = []
     seen = set()
-    raw_query = clean(query)
-    if not raw_query:
-        return []
-
-    normalized_tokens = [t for t in query_tokens(raw_query) if len(t) >= 2]
-    query_variants = [raw_query]
-    if normalized_tokens:
-        query_variants.append(" ".join(normalized_tokens))
-    compact = re.sub(
-        r"(?<=\d)\s+(?=[a-z])|(?<=[a-z])\s+(?=\d)",
-        "",
-        norm(raw_query),
-    )
-    if compact and compact not in query_variants:
-        query_variants.append(compact)
-
     try:
         with sync_playwright() as pw:
             browser = launch_browser(pw)
-            context = browser.new_context(
-                user_agent=USER_AGENT,
-                locale="fr-FR",
-                viewport={"width": 1440, "height": 1000},
-                extra_http_headers={
-                    "Accept-Language": "fr-FR,fr;q=0.9,en;q=0.7"
-                },
-            )
+            context = browser.new_context(user_agent=USER_AGENT, locale="fr-FR", viewport={"width":1440,"height":1000}, extra_http_headers={"Accept-Language":"fr-FR,fr;q=0.9,en;q=0.7"})
             page = context.new_page()
+            urls = [SEARCH_URL.format(query=quote_plus(clean(query)))]
             visited_pages = set()
-
-            for variant in query_variants[:3]:
-                start_url = SEARCH_URL.format(query=quote_plus(variant))
-                try:
-                    page.goto(
-                        start_url,
-                        wait_until="domcontentloaded",
-                        timeout=BROWSER_TIMEOUT,
-                    )
-                    dismiss_consent(page)
-                except Exception:
-                    # A failed variant must never cancel the remaining
-                    # discovery channels or query variants.
-                    continue
-
+            for start in urls:
+                page.goto(start, wait_until="domcontentloaded", timeout=BROWSER_TIMEOUT)
+                dismiss_consent(page)
                 for _ in range(MAX_DISCOVERY_PAGES):
                     if page.url in visited_pages:
                         break
                     visited_pages.add(page.url)
-
                     try:
-                        page.wait_for_load_state(
-                            "networkidle",
-                            timeout=10000,
-                        )
+                        page.wait_for_load_state("networkidle", timeout=10000)
                     except Exception:
                         pass
-
-                    try:
-                        page.wait_for_timeout(1200)
-                        scroll_for_products(page)
-                        html = page.content()
-                    except Exception:
-                        break
-
-                    try:
-                        items = extract_product_candidates(
-                            html,
-                            page.url,
-                            query,
-                        )
-                    except Exception:
-                        items = []
-
-                    for item in items:
-                        key = product_key(item.get("url"))
-                        if key and key not in seen:
-                            seen.add(key)
+                    page.wait_for_timeout(1200)
+                    scroll_for_products(page)
+                    html = page.content()
+                    for item in extract_product_candidates(html, page.url, query):
+                        if item["url"] not in seen:
+                            seen.add(item["url"])
                             candidates.append(item)
-
-                    try:
-                        nxt = next_page(page)
-                    except Exception:
-                        nxt = None
+                    nxt = next_page(page)
                     if not nxt or nxt in visited_pages:
                         break
+                    page.goto(nxt, wait_until="domcontentloaded", timeout=BROWSER_TIMEOUT)
+                    dismiss_consent(page)
 
-                    try:
-                        page.goto(
-                            nxt,
-                            wait_until="domcontentloaded",
-                            timeout=BROWSER_TIMEOUT,
-                        )
-                        dismiss_consent(page)
-                    except Exception:
-                        break
+            # Generic site-wide fallback: if the search endpoint rendered no product
+            # links, discover products from Notino's perfume catalogue and rank the
+            # resulting candidates against the requested query. This is not tied to
+            # any individual product or brand.
+            if not candidates:
+                page.goto(CATEGORY_URL, wait_until="domcontentloaded", timeout=BROWSER_TIMEOUT)
+                dismiss_consent(page)
+                try:
+                    page.wait_for_load_state("networkidle", timeout=10000)
+                except Exception:
+                    pass
+                page.wait_for_timeout(1200)
+                scroll_for_products(page)
+                html = page.content()
+                for item in extract_product_candidates(html, page.url, query):
+                    if item["url"] not in seen:
+                        seen.add(item["url"])
+                        candidates.append(item)
 
             context.close()
             browser.close()
     except Exception:
-        return candidates[:MAX_CANDIDATES]
-
+        return []
     candidates.sort(key=lambda x: x.get("score", 0), reverse=True)
     return candidates[:MAX_CANDIDATES]
 
@@ -964,7 +673,8 @@ def parse_product_page(html, response_url, query):
         "price": f"{price:.2f} €" if price is not None else "",
         "url": url,
         "image": image,
-        "available": availability == "in_stock",
+        **({"available": True} if availability == "in_stock" else
+           {"available": False} if availability == "out_of_stock" else {}),
     }
 
 
@@ -1008,24 +718,9 @@ def search(query):
     if not query:
         return []
 
-    # Discovery uses two independent channels and merges them before
-    # validation. A browser failure or HTTP failure therefore cannot erase
-    # candidates discovered by the other channel.
-    candidates = []
-    seen_candidates = set()
-
-    for discovered in (http_discover(query), browser_discover(query)):
-        for candidate in discovered:
-            key = product_key(candidate.get("url"))
-            if not key or key in seen_candidates:
-                continue
-            seen_candidates.add(key)
-            candidates.append(candidate)
-
+    candidates = browser_discover(query)
     if not candidates:
         return []
-
-    candidates.sort(key=lambda x: x.get("score", 0), reverse=True)
 
     # Notino currently protects direct product navigation with a Cloudflare
     # challenge. The search page itself already exposes the product card data,
@@ -1037,10 +732,9 @@ def search(query):
         if not product:
             continue
         url = product.get("url")
-        key = product_key(url)
-        if not key or key in seen:
+        if url in seen:
             continue
-        seen.add(key)
+        seen.add(url)
         results.append(product)
 
     # Keep direct validation only as a secondary enrichment path for any
@@ -1189,15 +883,21 @@ def diagnose(query):
 
                 report["discovery"]["unique_candidates"]=len(discovered)
 
-                # Inspect every discovered product URL. No fragrance parser is
-                # used here: this diagnostic only reports what Notino returns.
-                for candidate in discovered:
+                # Diagnostic inspection is deliberately bounded. Discovery still
+                # reports the full candidate count, but we never open every candidate
+                # just to dump large Cloudflare pages into the HTTP response.
+                report["diagnostic_inspection_limit"] = max(0, DIAGNOSTIC_MAX_PAGES)
+                report["diagnostic_inspected_candidates"] = 0
+                report["diagnostic_challenge_detected"] = False
+
+                for candidate in discovered[:max(0, DIAGNOSTIC_MAX_PAGES)]:
                     item=dict(candidate)
                     target=candidate["url"]
+                    report["diagnostic_inspected_candidates"] += 1
 
                     try:
                         page.goto(target,wait_until="domcontentloaded",timeout=BROWSER_TIMEOUT)
-                        page.wait_for_timeout(1000)
+                        page.wait_for_timeout(700)
 
                         final_url=page.url
                         product_html=page.content()
@@ -1234,21 +934,21 @@ def diagnose(query):
                             ) if x in low
                         ]
 
-                        response_info=document_responses.get(final_url) or document_responses.get(target)
+                        if markers:
+                            report["diagnostic_challenge_detected"] = True
 
+                        response_info=document_responses.get(final_url) or document_responses.get(target)
                         item["page_diagnostic"]={
                             "requested_url":target,
                             "final_url":final_url,
                             "redirected":final_url!=target,
-                            "response":response_info,
                             "http_status":response_info.get("status") if response_info else None,
                             "title":page.title(),
                             "h1":h1_text,
                             "html_length":len(product_html),
-                            "html_start":product_html[:500],
                             "json_ld_script_count":len(scripts),
-                            "json_ld_types":json_types[:20],
-                            "json_ld_product_names":product_names[:20],
+                            "json_ld_types":json_types[:10],
+                            "json_ld_product_names":product_names[:5],
                             "challenge_markers":markers,
                             "contains_fragrance_wording":any(
                                 x in low for x in (
@@ -1258,7 +958,7 @@ def diagnose(query):
                                     "parfum",
                                 )
                             ),
-                            "text_sample":product_soup.get_text(" ",strip=True)[:1200],
+                            "text_sample":product_soup.get_text(" ",strip=True)[:DIAGNOSTIC_TEXT_SAMPLE],
                         }
 
                     except Exception as exc:
@@ -1268,6 +968,17 @@ def diagnose(query):
                         }
 
                     report["product_pages"].append(item)
+
+                if len(discovered) > max(0, DIAGNOSTIC_MAX_PAGES):
+                    report["diagnostic_remaining_candidates"] = (
+                        len(discovered) - max(0, DIAGNOSTIC_MAX_PAGES)
+                    )
+
+                if report["diagnostic_challenge_detected"]:
+                    report["diagnostic_note"] = (
+                        "Cloudflare/anti-bot response detected; "
+                        "remaining product URLs were not opened."
+                    )
 
             finally:
                 context.close()
