@@ -2166,7 +2166,7 @@ async function searchPerfume(){
   const productDetailOpen =
     resultsBox.querySelector(".comparison") !== null;
 
-  if (!productDetailOpen) {
+  if (!productDetailOpen && groups.length > 0) {
   showProducts(groups);
 }
 
