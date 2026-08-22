@@ -7,7 +7,9 @@ import importlib
 import json
 import os
 import re
+import threading
 import traceback
+import uuid
 from concurrent.futures import ThreadPoolExecutor, as_completed, TimeoutError
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
@@ -1116,6 +1118,195 @@ def health():
         "status": "healthy",
         "stores": STORES,
     }
+    
+# ============================================================
+# ASYNC SEARCH JOBS
+# ============================================================
+
+
+SEARCH_JOBS = {}
+SEARCH_JOBS_LOCK = threading.Lock()
+
+
+def _search_job_snapshot(job_id: str) -> Dict[str, Any]:
+    with SEARCH_JOBS_LOCK:
+        job = SEARCH_JOBS.get(job_id)
+
+        if job is None:
+            raise HTTPException(
+                status_code=404,
+                detail="Job di ricerca non trovato",
+            )
+
+        results = sort_by_price(
+            unique_results(
+                list(job["results"])
+            )
+        )
+
+        return {
+            "job_id": job_id,
+            "query": job["query"],
+            "count": len(results),
+            "results": results,
+            "comparisons": [],
+            "errors": dict(job["errors"]),
+            "completed": job["completed"],
+            "status": (
+                "completed"
+                if job["completed"]
+                else "searching"
+            ),
+        }
+
+
+def _run_search_job(
+    job_id: str,
+    query: str,
+) -> None:
+    executor = ThreadPoolExecutor(
+        max_workers=len(STORES),
+        thread_name_prefix="scent_async_store",
+    )
+
+    futures = {
+        executor.submit(
+            run_store,
+            store,
+            query,
+        ): store
+        for store in STORES
+    }
+
+    try:
+        try:
+            for future in as_completed(
+                futures,
+                timeout=GLOBAL_SEARCH_TIMEOUT,
+            ):
+                store = futures[future]
+
+                try:
+                    store_results = future.result()
+
+                    if isinstance(
+                        store_results,
+                        list,
+                    ):
+                        with SEARCH_JOBS_LOCK:
+                            job = SEARCH_JOBS.get(job_id)
+
+                            if job is not None:
+                                job["results"].extend(
+                                    store_results
+                                )
+
+                except Exception as exc:
+                    with SEARCH_JOBS_LOCK:
+                        job = SEARCH_JOBS.get(job_id)
+
+                        if job is not None:
+                            job["errors"][store] = (
+                                f"{type(exc).__name__}: {exc}"
+                            )
+
+        except TimeoutError:
+            for future, store in futures.items():
+                if future.done():
+                    try:
+                        store_results = future.result()
+
+                        if isinstance(
+                            store_results,
+                            list,
+                        ):
+                            with SEARCH_JOBS_LOCK:
+                                job = SEARCH_JOBS.get(job_id)
+
+                                if job is not None:
+                                    job["results"].extend(
+                                        store_results
+                                    )
+
+                    except Exception as exc:
+                        with SEARCH_JOBS_LOCK:
+                            job = SEARCH_JOBS.get(job_id)
+
+                            if job is not None:
+                                job["errors"][store] = (
+                                    f"{type(exc).__name__}: {exc}"
+                                )
+
+                else:
+                    with SEARCH_JOBS_LOCK:
+                        job = SEARCH_JOBS.get(job_id)
+
+                        if job is not None:
+                            job["errors"][store] = (
+                                "Timeout: ricerca del negozio "
+                                "oltre il limite globale"
+                            )
+
+    finally:
+        for future in futures:
+            if not future.done():
+                future.cancel()
+
+        executor.shutdown(
+            wait=False,
+            cancel_futures=True,
+        )
+
+        with SEARCH_JOBS_LOCK:
+            job = SEARCH_JOBS.get(job_id)
+
+            if job is not None:
+                job["completed"] = True
+
+
+@app.get("/search-start")
+def search_start(q: str):
+    query = str(q or "").strip()
+
+    if not query:
+        raise HTTPException(
+            status_code=400,
+            detail="Parametro q mancante",
+        )
+
+    job_id = uuid.uuid4().hex
+
+    with SEARCH_JOBS_LOCK:
+        SEARCH_JOBS[job_id] = {
+            "query": query,
+            "results": [],
+            "errors": {},
+            "completed": False,
+        }
+
+    thread = threading.Thread(
+        target=_run_search_job,
+        args=(job_id, query),
+        daemon=True,
+    )
+
+    thread.start()
+
+    return {
+        "job_id": job_id,
+        "query": query,
+        "count": 0,
+        "results": [],
+        "comparisons": [],
+        "errors": {},
+        "completed": False,
+        "status": "searching",
+    }
+
+
+@app.get("/search-status")
+def search_status(job_id: str):
+    return _search_job_snapshot(job_id)
 
 
 @app.get("/search")
