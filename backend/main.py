@@ -9,6 +9,7 @@ import os
 import re
 import threading
 import traceback
+import unicodedata
 import uuid
 from concurrent.futures import ThreadPoolExecutor, as_completed, TimeoutError
 from datetime import datetime, timezone
@@ -127,6 +128,12 @@ GLOBAL_SEARCH_TIMEOUT = 120
 
 def norm(value: Any) -> str:
     value = str(value or "").lower().strip()
+    value = unicodedata.normalize("NFKD", value)
+    value = "".join(
+        char
+        for char in value
+        if not unicodedata.combining(char)
+    )
     value = re.sub(
         r"(?<=\d)(?=[a-z])|(?<=[a-z])(?=\d)",
         " ",
