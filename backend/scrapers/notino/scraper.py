@@ -293,6 +293,20 @@ def extract_card_context(anchor):
             break
         candidate=clean(node.get_text(" ", strip=True))
         if len(candidate) <= 3000 and anchor_text in candidate:
+            product_links=set()
+            try:
+                for child in node.find_all("a", href=True):
+                    child_url=canonical_url(child.get("href"))
+                    if child_url and product_url(child_url):
+                        product_links.add(child_url)
+            except Exception:
+                product_links=set()
+            # A card context must not swallow the text of neighbouring
+            # products. Allow repeated links to the same product, but not
+            # multiple distinct product URLs.
+            if len(product_links) > 1:
+                node=node.parent
+                continue
             classes=" ".join(node.get("class", []) or [])
             attrs=" ".join(
                 clean(node.get(k))
@@ -312,41 +326,80 @@ def extract_card_context(anchor):
         node=node.parent
     return best
 
+def _url_name_fallback(url):
+    """Build a generic product name from a Notino product URL when the anchor text is missing."""
+    path_parts = [p for p in urlparse(url).path.split("/") if p]
+    slug = ""
+    for part in reversed(path_parts):
+        if not re.fullmatch(r"p-\d+", part, re.I):
+            slug = part
+            break
+    if not slug:
+        return ""
+    return clean(re.sub(r"[-_]+", " ", slug))
+
+
 def extract_product_candidates(html, page_url, query=""):
+    """Discover Notino product URLs from both anchors and raw HTML.
+
+    Notino can render some product links without a normal visible anchor in the
+    final DOM. The raw-HTML pass prevents those valid product URLs from being
+    silently lost. No product, brand, URL or seed is hard-coded.
+    """
     soup = BeautifulSoup(html, "html.parser")
     output = []
-    seen = set()
-    for anchor in soup.find_all("a", href=True):
-        url = canonical_url(anchor.get("href"), page_url)
-        if not url or not product_url(url) or url in seen:
-            continue
+    by_url = {}
 
-        pieces = [anchor.get("title"), anchor.get("aria-label"), anchor.get_text(" ", strip=True)]
-        image = anchor.find("img")
+    def add_candidate(url, anchor=None):
+        url = canonical_url(url, page_url)
+        if not url or not product_url(url):
+            return
+
+        pieces = []
         image_url = ""
-        if image:
-            pieces.extend([image.get("alt"), image.get("title")])
-            image_url = clean(
-                image.get("src")
-                or image.get("data-src")
-                or image.get("data-lazy-src")
-                or image.get("data-original")
-                or ""
-            )
-            if image_url:
-                image_url = canonical_url(image_url, page_url) or image_url
+        card_text = ""
+        if anchor is not None:
+            pieces = [anchor.get("title"), anchor.get("aria-label"), anchor.get_text(" ", strip=True)]
+            image = anchor.find("img")
+            if image:
+                pieces.extend([image.get("alt"), image.get("title")])
+                image_url = clean(
+                    image.get("src")
+                    or image.get("data-src")
+                    or image.get("data-lazy-src")
+                    or image.get("data-original")
+                    or ""
+                )
+                if image_url:
+                    image_url = canonical_url(image_url, page_url) or image_url
+            card_text = extract_card_context(anchor)
 
         text = clean(" ".join(x for x in pieces if x))
-        card_text = extract_card_context(anchor)
-        seen.add(url)
-        output.append({
+        if not text:
+            text = _url_name_fallback(url)
+
+        candidate = {
             "url": url,
             "text": text,
-            "card_text": card_text,
+            "card_text": card_text or text,
             "score": candidate_score(text, url, query),
             "image": image_url,
             "_anchor": anchor,
-        })
+        }
+
+        existing = by_url.get(url)
+        if existing is None or len(candidate.get("card_text", "")) > len(existing.get("card_text", "")):
+            by_url[url] = candidate
+
+    for anchor in soup.find_all("a", href=True):
+        add_candidate(anchor.get("href"), anchor)
+
+    # Second pass: capture valid /p-<id> product URLs that exist in the raw
+    # response even when Notino did not expose them as standard anchors.
+    for raw_url in re.findall(r"(?:href|data-href|data-url)=[\"']([^\"']*/p-\d+(?:[^\"']*)?)", html, re.I):
+        add_candidate(raw_url)
+
+    output.extend(by_url.values())
     output.sort(key=lambda x: x["score"], reverse=True)
     return output[:MAX_CANDIDATES]
 
@@ -361,12 +414,16 @@ def extract_card_price(text):
 
 
 def extract_card_availability(text):
-    """Extract stock state only from the text belonging to one product card."""
+    """Extract stock state from one product card without treating missing text as out-of-stock."""
     value = norm(text)
+    if re.search(r"\b(en rupture de stock|rupture de stock|indisponible|epuise|epuise|out of stock)\b", value):
+        return "out_of_stock"
     if re.search(r"\b(en stock|disponible|available|in stock)\b", value):
         return "in_stock"
-    if re.search(r"\b(en rupture de stock|rupture de stock|indisponible|epuise|epuise)\b", value):
-        return "out_of_stock"
+    # A live Notino product card with a concrete price is an offer, not an
+    # out-of-stock signal. Keep this generic; explicit stock markers always win.
+    if extract_card_price(text) is not None:
+        return "in_stock"
     return "unknown"
 
 
