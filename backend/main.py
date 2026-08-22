@@ -859,12 +859,9 @@ def run_store(
 
             product = resolve_actual_price(product)
 
-            # Normalizza l'immagine nel campo principale usato dal frontend.
-            # Gli scraper possono restituirla come image, image_url,
-            # thumbnail oppure dentro source.image.
-            image_url = product_image(product)
-            if image_url:
-                product["image"] = image_url
+            image = product_image(product)
+            if image:
+                product["image"] = image
 
             key = product_identity_key(product)
 
@@ -877,9 +874,10 @@ def run_store(
                 output.append(product)
                 attempt_added += 1
 
-        # Continuiamo con tutti i tentativi di discovery.
-        # Un tentativo che trova un risultato non significa che abbia
-        # restituito tutti i prodotti disponibili per la query.
+        # Continuiamo con tutti i tentativi generici anche dopo aver trovato
+        # risultati. Uno stesso store può restituire risultati parziali dalla
+        # prima discovery; interrompere qui impedisce di recuperare gli altri
+        # prodotti/varianti trovabili con le forme successive della query.
 
     return output
 
