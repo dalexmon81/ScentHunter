@@ -458,6 +458,31 @@ def extract_product_candidates(html, page_url, query=""):
             "score": candidate_score(text, url, query),
             "image": image_url,
         })
+
+    # Generic fallback for dynamically rendered/search data embedded in scripts
+    # or data attributes. Notino can expose product URLs without an <a> element.
+    # Recover the URL first; the product name is derived later from the URL.
+    url_pattern = re.compile(r"https?://(?:www\.)?notino\.fr/[^\"'\s<>]+|/(?:[a-z0-9-]+)/[a-z0-9-]+(?:/p-\d+)?", re.I)
+    for raw_url in url_pattern.findall(html):
+        url = canonical_url(raw_url, page_url)
+        key = product_key(url)
+        if not url or not product_url(url) or not key or key in seen:
+            continue
+        name = name_from_product_url(url)
+        if not name or not query_matches(name, extract_brand_from_product_url(url), query, None):
+            continue
+        seen.add(key)
+        output.append({
+            "url": url,
+            "text": name,
+            "anchor_text": name,
+            "title": "",
+            "aria_label": "",
+            "card_text": name,
+            "score": candidate_score(name, url, query),
+            "image": "",
+        })
+
     output.sort(key=lambda x: x["score"], reverse=True)
     return output[:MAX_CANDIDATES]
 
@@ -523,7 +548,7 @@ def parse_search_candidate(candidate, query):
     url = canonical_url(candidate.get("url"))
     text = clean(candidate.get("text"))
     card_text = clean(candidate.get("card_text")) or text
-    if not url or not product_url(url) or not text:
+    if not url or not product_url(url):
         return None
 
     brand = extract_brand_from_product_url(url)
@@ -568,15 +593,11 @@ def parse_search_candidate(candidate, query):
     concentration = extract_concentration(text, card_text)
     gender = extract_gender(text, card_text)
 
-    # Search cards can omit the concentration/category even when the linked
-    # product is a fragrance. Do not reject a candidate at discovery time
-    # solely because that metadata is missing. Discovery and validation are
-    # intentionally separated: strong non-fragrance markers still reject the
-    # candidate, while an otherwise clean product-card candidate is retained
-    # for the main pipeline to validate.
-    fragrance_verified = is_fragrance(name, text, concentration)
-    non_fragrance = _has_non_perfume_marker(name) or _has_non_perfume_marker(card_text)
-    if not fragrance_verified and non_fragrance:
+    # Discovery must not require fragrance classification from the search card.
+    # Some Notino cards omit concentration/category metadata. Strong generic
+    # non-fragrance markers are still rejected; otherwise the main pipeline can
+    # validate the candidate later.
+    if _has_non_perfume_marker(name) or _has_non_perfume_marker(card_text):
         return None
     if not query_matches(name, brand, query, size_ml):
         return None
