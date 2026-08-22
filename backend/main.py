@@ -362,71 +362,13 @@ def has_small_size(product: Dict[str, Any]) -> bool:
 # VALIDAZIONE
 # ============================================================
 
-_FAMILY_DESCRIPTORS = (
-    "extrait de parfum",
-    "eau de parfum",
-    "eau de toilette",
-    "eau de cologne",
-    "parfum",
-    "perfume",
-    "edp",
-    "edt",
-    "edc",
-    "extrait",
-    "spray",
-)
-
-_FAMILY_TRAILING_ARTICLES = {
-    "le", "la", "les", "un", "une", "de", "du", "des"
-}
-
-
-def family_query_phrase(query: str) -> str:
-    """
-    Ricava l'ancora della famiglia dalla query senza riferimenti
-    a profumi o prodotti specifici.
-    """
-    value = norm(query)
-
-    if not value:
-        return ""
-
-    value = re.sub(
-        r"\b\d+(?:[.,]\d+)?\s*(?:ml|cl)\b",
-        " ",
-        value,
-    )
-
-    for descriptor in sorted(
-        _FAMILY_DESCRIPTORS,
-        key=len,
-        reverse=True,
-    ):
-        value = re.sub(
-            rf"(?<![a-z0-9]){re.escape(norm(descriptor))}(?![a-z0-9])",
-            " ",
-            value,
-        )
-
-    tokens = re.sub(r"\s+", " ", value).strip().split()
-
-    # "Le beau le parfum" -> "le beau":
-    # l'articolo residuo appartiene al descrittore della concentrazione.
-    while (
-        len(tokens) > 2
-        and tokens[-1] in _FAMILY_TRAILING_ARTICLES
-    ):
-        tokens.pop()
-
-    return " ".join(tokens)
-
-
 def matches(product: Dict[str, Any], query: str) -> bool:
     query_normalized = norm(query)
     if not query_normalized:
         return False
 
-    if not product_search_text(product):
+    search_text = product_search_text(product)
+    if not search_text:
         return False
 
     query_has_size = bool(
@@ -446,9 +388,6 @@ def matches(product: Dict[str, Any], query: str) -> bool:
         )
     )
 
-    if not name:
-        return False
-
     for phrase in NON_PERFUME:
         phrase_normalized = norm(phrase)
         if (
@@ -457,24 +396,17 @@ def matches(product: Dict[str, Any], query: str) -> bool:
         ):
             return False
 
-    family_phrase = family_query_phrase(query)
+    tokens = [
+        token
+        for token in query_normalized.split()
+        if token not in IGNORED_WORDS
+    ]
 
-    if not family_phrase:
+    if not tokens:
         return False
 
-    # La famiglia deve essere una sequenza di token CONTIGUI nel nome.
-    # Questo evita che una semplice parola comune della query produca
-    # risultati di altri profumi.
-    family_pattern = (
-        r"(?<![a-z0-9])"
-        + r"\s+".join(
-            re.escape(token)
-            for token in family_phrase.split()
-        )
-        + r"(?![a-z0-9])"
-    )
+    return all(token in search_text for token in tokens)
 
-    return bool(re.search(family_pattern, name))
 
 # ============================================================
 # DISCOVERY GENERICA
