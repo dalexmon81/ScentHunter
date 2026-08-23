@@ -1,207 +1,407 @@
 {
-  "version": 1,
+  "schema_version": "1.0",
+  "description": "Verified fragrance-family knowledge used by ScentHunter to reject retailer naming errors. This file contains knowledge/data only; matching logic remains generic.",
   "families": [
     {
       "family_id": "rasasi_hawas",
       "brand": "Rasasi",
-      "canonical_family_name": "Hawas",
-      "search_name": "Hawas",
-      "allowed_variants": [
+      "query_aliases": [
+        "Hawas",
+        "Rasasi Hawas"
+      ],
+      "products": [
         {
           "canonical_name": "Hawas Atlantis",
           "aliases": [
-            "Hawas Atlantis",
-            "Atlantis"
+            "Hawas Atlantis"
           ]
         },
         {
           "canonical_name": "Hawas Black",
           "aliases": [
-            "Hawas Black",
-            "Black"
+            "Hawas Black"
           ]
         },
         {
           "canonical_name": "Hawas Chrome",
           "aliases": [
-            "Hawas Chrome",
-            "Chrome"
+            "Hawas Chrome"
           ]
         },
         {
           "canonical_name": "Hawas Diva",
           "aliases": [
-            "Hawas Diva",
-            "Diva"
+            "Hawas Diva"
           ]
         },
         {
           "canonical_name": "Hawas Eclat",
           "aliases": [
-            "Hawas Eclat"
+            "Hawas Eclat",
+            "Eclat",
+            "Éclat",
+            "E'clat",
+            "E’clat",
+            "Hawas For Her Eclat",
+            "Hawas For Her Éclat"
           ]
         },
         {
-          "canonical_name": "Hawas Élixir",
+          "canonical_name": "Hawas Elixir",
           "aliases": [
+            "Hawas Elixir",
             "Hawas Élixir"
           ]
         },
         {
           "canonical_name": "Hawas Fire",
           "aliases": [
-            "Hawas Fire",
-            "Fire"
+            "Hawas Fire"
           ]
         },
         {
           "canonical_name": "Hawas For Her",
           "aliases": [
-            "Hawas For Her",
-            "For Her"
+            "Hawas For Her"
           ]
         },
         {
           "canonical_name": "Hawas For Him",
           "aliases": [
             "Hawas For Him",
-            "For Him"
+            "Hawas Men"
           ]
         },
         {
           "canonical_name": "Hawas Gold Digger",
           "aliases": [
-            "Hawas Gold Digger",
-            "Gold Digger"
+            "Hawas Gold Digger"
           ]
         },
         {
           "canonical_name": "Hawas Highness",
           "aliases": [
-            "Hawas Highness",
-            "Highness"
+            "Hawas Highness"
           ]
         },
         {
           "canonical_name": "Hawas Ice",
           "aliases": [
-            "Hawas Ice",
-            "Ice"
+            "Hawas Ice"
           ]
         },
         {
           "canonical_name": "Hawas Kobra",
           "aliases": [
             "Hawas Kobra",
-            "Kobra"
+            "Hawas Cobra"
           ]
         },
         {
           "canonical_name": "Hawas Lava Gold",
           "aliases": [
-            "Hawas Lava Gold",
-            "Lava Gold"
+            "Hawas Lava Gold"
           ]
         },
         {
           "canonical_name": "Hawas London",
           "aliases": [
-            "Hawas London",
-            "London"
+            "Hawas London"
           ]
         },
         {
           "canonical_name": "Hawas Majestic",
           "aliases": [
-            "Hawas Majestic",
-            "Majestic"
+            "Hawas Majestic"
           ]
         },
         {
           "canonical_name": "Hawas Malibu",
           "aliases": [
             "Hawas Malibu",
-            "Malibu"
+            "Malibu",
+            "Malibu Voor Mannen",
+            "Hawas Malibu Voor Mannen"
           ]
         },
         {
           "canonical_name": "Hawas Nautilus",
           "aliases": [
-            "Hawas Nautilus",
-            "Nautilus"
+            "Hawas Nautilus"
           ]
         },
         {
           "canonical_name": "Hawas Overdose",
           "aliases": [
-            "Hawas Overdose",
-            "Overdose"
+            "Hawas Overdose"
           ]
         },
         {
           "canonical_name": "Hawas Pink",
           "aliases": [
-            "Hawas Pink",
-            "Pink"
+            "Hawas Pink"
           ]
         },
         {
           "canonical_name": "Hawas Reina",
           "aliases": [
-            "Hawas Reina",
-            "Reina"
+            "Hawas Reina"
           ]
         },
         {
           "canonical_name": "Hawas Rouge",
           "aliases": [
-            "Hawas Rouge",
-            "Rouge"
+            "Hawas Rouge"
           ]
         },
         {
           "canonical_name": "Hawas Sapphire",
           "aliases": [
-            "Hawas Sapphire",
-            "Sapphire"
+            "Hawas Sapphire"
           ]
         },
         {
           "canonical_name": "Hawas Tropical",
           "aliases": [
             "Hawas Tropical",
-            "Tropical"
+            "Hawas For Him Tropical"
           ]
         },
         {
           "canonical_name": "Hawas Venom",
           "aliases": [
-            "Hawas Venom",
-            "Venom"
+            "Hawas Venom"
           ]
         },
         {
           "canonical_name": "Hawas Verde",
           "aliases": [
-            "Hawas Verde",
-            "Verde"
+            "Hawas Verde"
           ]
         },
         {
           "canonical_name": "Hawas Viper",
           "aliases": [
-            "Hawas Viper",
-            "Viper"
+            "Hawas Viper"
+          ]
+        }
+      ],
+      "excluded_products": [
+        "Hawas Al Wisam",
+        "Al Wisam",
+        "Daarej",
+        "Daarej Passion",
+        "Hawas Daarej",
+        "Hawas Daarej Passione",
+        "Hawas Daarej Pour Homme Extrait",
+        "Hawas Al Wisam Absolute"
+      ],
+      "excluded_aliases": [
+        "Hawas Al Wisam",
+        "Hawas Al Wisam Absolute",
+        "Hawas Al Wisam Day",
+        "Daarej",
+        "Daarej Passion",
+        "Rasasi Daarej",
+        "Hawas Daarej",
+        "Hawas Daarej Passione",
+        "Hawas Daarej Pour Homme Extrait"
+      ]
+    },
+    {
+      "family_id": "valentino_born_in_roma",
+      "brand": "Valentino",
+      "query_aliases": [
+        "Born in Roma",
+        "Valentino Born in Roma"
+      ],
+      "products": [
+        {
+          "canonical_name": "Born in Roma Coral Fantasy Donna",
+          "aliases": [
+            "Born in Roma Coral Fantasy Donna",
+            "Born In Roma Coral Fantasy For Her"
+          ]
+        },
+        {
+          "canonical_name": "Born in Roma edp Donna",
+          "aliases": [
+            "Born in Roma edp Donna",
+            "Born in Roma EDP Donna",
+            "Born In Roma For Her"
+          ]
+        },
+        {
+          "canonical_name": "Born in Roma Extradose Donna",
+          "aliases": [
+            "Born in Roma Extradose Donna",
+            "Born In Roma Extradose For Her"
+          ]
+        },
+        {
+          "canonical_name": "Born in Roma Green Stravaganza Donna",
+          "aliases": [
+            "Born in Roma Green Stravaganza Donna"
+          ]
+        },
+        {
+          "canonical_name": "Born in Roma Intense Donna",
+          "aliases": [
+            "Born in Roma Intense Donna",
+            "Born in Roma Donna Intense",
+            "Born in Roma Donna Eau de Parfum Intense"
+          ]
+        },
+        {
+          "canonical_name": "Born in Roma Ivory Donna",
+          "aliases": [
+            "Born in Roma Ivory Donna"
+          ]
+        },
+        {
+          "canonical_name": "Born in Roma Purple Melancholia Donna",
+          "aliases": [
+            "Born in Roma Purple Melancholia Donna"
+          ]
+        },
+        {
+          "canonical_name": "Born in Roma The Gold Donna",
+          "aliases": [
+            "Born in Roma The Gold Donna"
+          ]
+        },
+        {
+          "canonical_name": "Born in Roma Yellow Dream Donna",
+          "aliases": [
+            "Born in Roma Yellow Dream Donna",
+            "Born In Roma Yellow Dream For Her"
+          ]
+        },
+        {
+          "canonical_name": "Born in Roma Coral Fantasy Uomo",
+          "aliases": [
+            "Born in Roma Coral Fantasy Uomo",
+            "Born In Roma Coral Fantasy For Him"
+          ]
+        },
+        {
+          "canonical_name": "Born in Roma edt Uomo",
+          "aliases": [
+            "Born in Roma edt Uomo",
+            "Born in Roma EDT Uomo"
+          ]
+        },
+        {
+          "canonical_name": "Born in Roma Extradose Uomo",
+          "aliases": [
+            "Born in Roma Extradose Uomo",
+            "Born In Roma Extradose"
+          ]
+        },
+        {
+          "canonical_name": "Born in Roma Green Stravaganza Uomo",
+          "aliases": [
+            "Born in Roma Green Stravaganza Uomo"
+          ]
+        },
+        {
+          "canonical_name": "Born in Roma Intense Uomo",
+          "aliases": [
+            "Born in Roma Intense Uomo",
+            "Born in Roma Uomo Intense",
+            "Born in Roma Uomo Eau de Parfum Intense"
+          ]
+        },
+        {
+          "canonical_name": "Born in Roma Ivory Uomo",
+          "aliases": [
+            "Born in Roma Ivory Uomo"
+          ]
+        },
+        {
+          "canonical_name": "Born in Roma Purple Melancholia Uomo",
+          "aliases": [
+            "Born in Roma Purple Melancholia Uomo"
+          ]
+        },
+        {
+          "canonical_name": "Born in Roma The Gold Uomo",
+          "aliases": [
+            "Born in Roma The Gold Uomo"
+          ]
+        },
+        {
+          "canonical_name": "Born in Roma Yellow Dream Uomo",
+          "aliases": [
+            "Born in Roma Yellow Dream Uomo",
+            "Born In Roma Yellow Dream For Him"
+          ]
+        }
+      ]
+    },
+    {
+      "family_id": "versace_eros",
+      "brand": "Versace",
+      "query_aliases": [
+        "Eros",
+        "Versace Eros"
+      ],
+      "products": [
+        {
+          "canonical_name": "Eros",
+          "aliases": [
+            "Eros",
+            "Versace Eros",
+            "Eros Pour Homme",
+            "Eros Eau de Toilette",
+            "Eros EDT"
+          ]
+        },
+        {
+          "canonical_name": "Eros Eau de Parfum",
+          "aliases": [
+            "Eros Eau de Parfum",
+            "Eros EDP"
+          ]
+        },
+        {
+          "canonical_name": "Eros Parfum",
+          "aliases": [
+            "Eros Parfum"
+          ]
+        },
+        {
+          "canonical_name": "Eros Flame",
+          "aliases": [
+            "Eros Flame",
+            "Eros Flame EDP",
+            "Eros Flame Eau de Parfum"
+          ]
+        },
+        {
+          "canonical_name": "Eros Energy",
+          "aliases": [
+            "Eros Energy",
+            "Eros Energy EDP"
+          ]
+        },
+        {
+          "canonical_name": "Eros pour Femme Eau de Toilette",
+          "aliases": [
+            "Eros pour Femme Eau de Toilette",
+            "Eros pour Femme EDT",
+            "Eros Pour Femme EDT"
+          ]
+        },
+        {
+          "canonical_name": "Eros pour Femme Eau de Parfum",
+          "aliases": [
+            "Eros pour Femme Eau de Parfum",
+            "Eros pour Femme EDP",
+            "Eros Pour Femme EDP"
           ]
         }
       ]
     }
-  ],
-  "rules": {
-    "catalog_is_authoritative_for_catalogued_families": true,
-    "unlisted_variants_are_rejected": true,
-    "canonical_names_are_used_for_results": true,
-    "generic_gender_aliases_are_not_used": true,
-    "accented_names_remain_distinct": true
-  }
+  ]
 }
