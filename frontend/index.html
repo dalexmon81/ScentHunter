@@ -1724,6 +1724,139 @@ function shGroupData(data){
     });
   }
 
+  /*
+   * EQUIVALENZE GENERICHE TRA TITOLI COMMERCIALI
+   *
+   * Alcuni negozi pubblicano la stessa referenza con un titolo incompleto
+   * oppure con un descrittore commerciale aggiunto al nome. Non dobbiamo
+   * creare una nuova categoria solo perché il titolo di un negozio è scritto
+   * in modo diverso.
+   *
+   * Le equivalenze qui sotto sono volutamente basate sulla struttura del
+   * nome, non su brand/profumi/negozi specifici:
+   *   - "... Pour" + "... Pour Femme" -> stessa referenza, preferiamo il
+   *     nome completo con "Pour Femme";
+   *   - "..." + "... Parfum Intense" -> stessa referenza quando il titolo
+   *     più corto è già una categoria con concentrazione riconosciuta e il
+   *     titolo più lungo aggiunge solo il descrittore commerciale.
+   *
+   * In entrambi i casi gli OFFER restano tutti: uniamo soltanto le categorie.
+   */
+  const mergeEquivalentVariantGroups=groups=>{
+    const list=Array.isArray(groups)?groups.slice():[];
+
+    const sameBrand=(a,b)=>{
+      const ab=norm(a?.brand||"");
+      const bb=norm(b?.brand||"");
+      return !ab || !bb || ab===bb;
+    };
+
+    const comparableName=g=>norm(g?.name||"");
+
+    const mergeOffers=(target,source)=>{
+      if(!target||!source)return;
+      const seen=new Set((target.offers||[]).map(o=>[
+        String(o?.store||"").trim().toLowerCase(),
+        String(o?.url||"").split("?")[0].toLowerCase(),
+        String(o?.size_ml||o?.size||"").trim(),
+        norm(o?.name||"")
+      ].join("|")));
+
+      (source.offers||[]).forEach(o=>{
+        const key=[
+          String(o?.store||"").trim().toLowerCase(),
+          String(o?.url||"").split("?")[0].toLowerCase(),
+          String(o?.size_ml||o?.size||"").trim(),
+          norm(o?.name||"")
+        ].join("|");
+        if(!seen.has(key)){
+          target.offers.push(o);
+          seen.add(key);
+        }
+      });
+    };
+
+    const absorb=(targetIndex,sourceIndex)=>{
+      const target=list[targetIndex];
+      const source=list[sourceIndex];
+      if(!target||!source||targetIndex===sourceIndex)return;
+      mergeOffers(target,source);
+      if(!target.image&&source.image)target.image=source.image;
+      list.splice(sourceIndex,1);
+      return targetIndex<sourceIndex?targetIndex:targetIndex-1;
+    };
+
+    let changed=true;
+    while(changed){
+      changed=false;
+
+      outer:
+      for(let i=0;i<list.length;i++){
+        const a=list[i];
+        const an=comparableName(a);
+        if(!an)continue;
+
+        for(let j=i+1;j<list.length;j++){
+          const b=list[j];
+          if(!sameBrand(a,b))continue;
+
+          const bn=comparableName(b);
+          if(!bn||an===bn)continue;
+
+          const aTokens=an.split(/\s+/).filter(Boolean);
+          const bTokens=bn.split(/\s+/).filter(Boolean);
+
+          // Caso 1: titolo incompleto "... Pour" rispetto a "... Pour Femme".
+          const shorter=aTokens.length<=bTokens.length?aTokens:bTokens;
+          const longer=aTokens.length<=bTokens.length?bTokens:aTokens;
+          const shorterGroup=aTokens.length<=bTokens.length?a:b;
+          const longerGroup=aTokens.length<=bTokens.length?b:a;
+
+          if(
+            longer.length===shorter.length+1
+            && shorter[shorter.length-1]==="pour"
+            && longer.slice(0,shorter.length).join(" ")===shorter.join(" ")
+            && longer[longer.length-1]==="femme"
+          ){
+            const targetIndex=list.indexOf(longerGroup);
+            const sourceIndex=list.indexOf(shorterGroup);
+            absorb(targetIndex,sourceIndex);
+            changed=true;
+            break outer;
+          }
+
+          // Caso 2: un titolo aggiunge soltanto "Parfum Intense".
+          // Per evitare di fondere varianti realmente diverse, il gruppo
+          // corto deve avere una concentrazione già riconosciuta e quello
+          // lungo non deve averne una propria.
+          const extra="parfum intense";
+          if(
+            longer.length===shorter.length+2
+            && longer.slice(0,shorter.length).join(" ")===shorter.join(" ")
+            && longer.slice(shorter.length).join(" ")===extra
+          ){
+            const shortGroup=shorterGroup;
+            const longGroup=longerGroup;
+            if(shortGroup.concentration && !longGroup.concentration){
+              const targetIndex=list.indexOf(shortGroup);
+              const sourceIndex=list.indexOf(longGroup);
+              absorb(targetIndex,sourceIndex);
+              changed=true;
+              break outer;
+            }
+          }
+        }
+      }
+    }
+
+    return list;
+  };
+
+  const mergedGroups=mergeEquivalentVariantGroups(groups);
+  groups.length=0;
+  mergedGroups.forEach(g=>groups.push(g));
+
+
   groups.forEach(g=>{
     const bySize=new Map();
     g.offers.forEach(o=>{
