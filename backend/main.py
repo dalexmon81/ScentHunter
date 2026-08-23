@@ -593,11 +593,9 @@ def _load_family_registry() -> List[Dict[str, Any]]:
                 if not alias:
                     continue
 
-                if _catalog_alias_is_valid(
-                    canonical_name,
-                    alias,
-                ):
-                    valid_aliases.append(alias)
+                # Gli alias dichiarati dal Registry sono equivalenze
+                # esplicite e autorevoli: non vanno filtrati dal main.
+                valid_aliases.append(alias)
 
             normalized_variants.append(
                 {
@@ -609,9 +607,17 @@ def _load_family_registry() -> List[Dict[str, Any]]:
         if not normalized_variants:
             continue
 
-        query_aliases = family.get("query_aliases") or []
+        query_aliases = (
+            family.get("query_aliases")
+            or family.get("search_aliases")
+            or family.get("search_name")
+            or family.get("canonical_family_name")
+            or []
+        )
+
         if isinstance(query_aliases, str):
             query_aliases = [query_aliases]
+
         if not isinstance(query_aliases, list):
             query_aliases = []
 
@@ -954,18 +960,15 @@ def matches(product: Dict[str, Any], query: str) -> bool:
     # --------------------------------------------------------
     # CATALOGO AUTORITATIVO
     # --------------------------------------------------------
-    catalog_match = _catalog_match(
-        product,
-        query,
-    )
+    # Per una famiglia presente nel Registry il catalogo è obbligatorio:
+    # nessun candidato può ricadere nel vecchio matching generico.
+    catalog_family = _catalog_family_for_query(query)
 
-    if catalog_match is not None:
-        return True
-
-    # Se la query appartiene a una famiglia catalogata, ma il candidato
-    # non corrisponde a una variante autorizzata, deve essere escluso.
-    if _catalog_family_for_query(query) is not None:
-        return False
+    if catalog_family is not None:
+        return _catalog_match(
+            product,
+            query,
+        ) is not None
 
     # --------------------------------------------------------
     # MATCHING GENERICO PER FAMIGLIE NON CATALOGATE
