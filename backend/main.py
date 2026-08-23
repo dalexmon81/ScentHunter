@@ -430,41 +430,136 @@ def _product_explicit_gender(product: Dict[str, Any]) -> str:
     return ""
 
 
-def _family_products_for_gender(
-    products: List[Any],
-    gender: str,
-) -> List[str]:
-    """Return registry products whose aliases explicitly carry this gender."""
-    matches = []
-
-    if not gender:
-        return matches
-
-    gender_aliases = {
-        "men": {"men"},
-        "women": {"women"},
-        "unisex": {"unisex"},
-    }.get(gender, set())
-
-    for item in products:
-        if not isinstance(item, dict):
-            continue
-
-        canonical = str(item.get("canonical_name") or "").strip()
-        if not canonical:
-            continue
-
-        aliases = list(item.get("aliases") or [])
+def _family_product_profile(
+    item: Dict[str, Any],
+    family_brand: str,
+    family_aliases: List[Any],
+) -> Dict[str, Any]:
+    """Return generic family/variant metadata for one registry product."""
+    canonical = str(item.get("canonical_name") or "").strip()
+    aliases = list(item.get("aliases") or [])
+    if canonical:
         aliases.append(canonical)
 
+    explicit_gender = str(
+        item.get("gender")
+        or item.get("audience")
+        or item.get("sex")
+        or ""
+    ).strip().lower()
+
+    if explicit_gender not in {"men", "women", "unisex"}:
+        explicit_gender = ""
+
+    if not explicit_gender:
         for alias in aliases:
-            signature = _family_variant_signature(alias)
-            signature_tokens = set(signature.split())
-            if signature_tokens & gender_aliases:
-                matches.append(canonical)
+            explicit_gender = _family_explicit_gender(alias)
+            if explicit_gender:
                 break
 
-    return matches
+    alias_profiles = []
+    for alias in aliases:
+        alias_text = str(alias or "").strip()
+        if not alias_text:
+            continue
+
+        alias_gender = _family_explicit_gender(alias_text) or explicit_gender
+        alias_base = _family_base_signature(alias_text, family_brand)
+        alias_concentration = _family_concentration(alias_text)
+
+        if alias_base:
+            alias_profiles.append(
+                {
+                    "alias": alias_text,
+                    "base": alias_base,
+                    "gender": alias_gender,
+                    "concentration": alias_concentration,
+                }
+            )
+
+    family_bases = {
+        _family_base_signature(alias, family_brand)
+        for alias in family_aliases
+        if _family_base_signature(alias, family_brand)
+    }
+
+    return {
+        "canonical": canonical,
+        "gender": explicit_gender,
+        "aliases": alias_profiles,
+        "family_bases": family_bases,
+    }
+
+
+def _family_base_signature(value: Any, brand: str = "") -> str:
+    """Normalize the product identity while removing only audience markers."""
+    text = norm(value)
+    if not text:
+        return ""
+
+    brand_normalized = norm(brand)
+    if brand_normalized:
+        text = re.sub(
+            rf"\b{re.escape(brand_normalized)}\b",
+            " ",
+            text,
+        )
+
+    text = re.sub(
+        r"\b\d+(?:[.,]\d+)?\s*(?:ml|cl)\b",
+        " ",
+        text,
+        flags=re.I,
+    )
+
+    gender_patterns = sorted(
+        FAMILY_GENDER_ALIASES,
+        key=lambda value: (-len(value.split()), -len(value)),
+    )
+
+    for phrase in gender_patterns:
+        text = re.sub(
+            rf"\b{re.escape(phrase)}\b",
+            " ",
+            text,
+            flags=re.I,
+        )
+
+    generic_words = {
+        "eau",
+        "de",
+        "parfum",
+        "perfume",
+        "edp",
+        "edt",
+        "edc",
+        "extrait",
+        "spray",
+        "toilette",
+        "cologne",
+        "by",
+        "for",
+        "pour",
+        "ml",
+        "cl",
+    }
+
+    tokens = [
+        token
+        for token in text.split()
+        if token not in generic_words
+        and not re.fullmatch(r"\d+(?:[.,]\d+)?", token)
+    ]
+
+    deduped = []
+    seen = set()
+    for token in tokens:
+        if token in seen:
+            continue
+        seen.add(token)
+        deduped.append(token)
+
+    return " ".join(deduped).strip()
 
 
 def _family_concentration(value: Any) -> str:
@@ -482,55 +577,123 @@ def _family_concentration(value: Any) -> str:
     return ""
 
 
+def _family_query_profile(
+    query: str,
+    family_brand: str,
+) -> Dict[str, Any]:
+    return {
+        "base": _family_base_signature(query, family_brand),
+        "gender": _family_explicit_gender(query),
+        "concentration": _family_concentration(query),
+    }
+
+
+def _family_products_for_gender(
+    products: List[Any],
+    gender: str,
+) -> List[str]:
+    """Return registry products whose declared/derived audience matches."""
+    if not gender:
+        return []
+
+    matches = []
+
+    for item in products:
+        if not isinstance(item, dict):
+            continue
+
+        canonical = str(item.get("canonical_name") or "").strip()
+        if not canonical:
+            continue
+
+        item_gender = str(
+            item.get("gender")
+            or item.get("audience")
+            or item.get("sex")
+            or ""
+        ).strip().lower()
+
+        if item_gender not in {"men", "women", "unisex"}:
+            aliases = list(item.get("aliases") or [])
+            aliases.append(canonical)
+            for alias in aliases:
+                item_gender = _family_explicit_gender(alias)
+                if item_gender:
+                    break
+
+        if item_gender == gender:
+            matches.append(canonical)
+
+    return matches
+
+
 def _family_alias_matches(
     query: str,
     alias: str,
     brand: str,
 ) -> bool:
-    query_signature = _family_variant_signature(query, brand)
-    alias_signature = _family_variant_signature(alias, brand)
+    query_profile = _family_query_profile(query, brand)
+    alias_profile = _family_query_profile(alias, brand)
 
-    if not query_signature or query_signature != alias_signature:
+    if not query_profile["base"] or not alias_profile["base"]:
         return False
 
-    query_concentration = _family_concentration(query)
-    if not query_concentration:
-        return True
+    if query_profile["base"] != alias_profile["base"]:
+        return False
 
-    alias_concentration = _family_concentration(alias)
-    return alias_concentration == query_concentration
+    if query_profile["gender"]:
+        if alias_profile["gender"] != query_profile["gender"]:
+            return False
+
+    if query_profile["concentration"]:
+        return alias_profile["concentration"] == query_profile["concentration"]
+
+    return True
 
 
 def _family_registry_candidates(
     query: str,
     product_brand: str,
 ) -> Optional[set]:
-    query_signature = _family_variant_signature(
-        query,
-        product_brand,
-    )
-
-    if not query_signature:
-        return None
-
     registry_families = FAMILY_REGISTRY.get("families", [])
 
     for family in registry_families:
         if not isinstance(family, dict):
             continue
 
-        family_brand = str(
-            family.get("brand") or ""
-        ).strip()
+        family_brand = str(family.get("brand") or "").strip()
 
         if product_brand and norm(product_brand) != norm(family_brand):
             continue
 
         family_aliases = family.get("query_aliases") or []
         products = family.get("products") or []
+        query_profile = _family_query_profile(query, family_brand)
 
-        # Exact product aliases take precedence over the generic family name.
+        if not query_profile["base"]:
+            continue
+
+        family_bases = {
+            _family_base_signature(alias, family_brand)
+            for alias in family_aliases
+            if _family_base_signature(alias, family_brand)
+        }
+
+        # A bare family query means the whole verified family.
+        if (
+            query_profile["base"] in family_bases
+            and not query_profile["gender"]
+            and not query_profile["concentration"]
+        ):
+            return {
+                str(item.get("canonical_name") or "").strip()
+                for item in products
+                if isinstance(item, dict)
+                and str(item.get("canonical_name") or "").strip()
+            }
+
         matched_products = set()
+
         for item in products:
             if not isinstance(item, dict):
                 continue
@@ -539,51 +702,31 @@ def _family_registry_candidates(
             if not canonical:
                 continue
 
-            aliases = list(item.get("aliases") or [])
-            aliases.append(canonical)
+            profile = _family_product_profile(
+                item,
+                family_brand,
+                family_aliases,
+            )
 
-            if any(
-                _family_alias_matches(query, alias, family_brand)
-                for alias in aliases
-            ):
+            for alias_profile in profile["aliases"]:
+                if alias_profile["base"] != query_profile["base"]:
+                    continue
+
+                if query_profile["gender"]:
+                    if alias_profile["gender"] != query_profile["gender"]:
+                        continue
+
+                if query_profile["concentration"]:
+                    if alias_profile["concentration"] != query_profile["concentration"]:
+                        continue
+
                 matched_products.add(canonical)
+                break
 
         if matched_products:
             return matched_products
 
-        # A bare family query returns the whole verified family. If generic
-        # concentration words are appended (e.g. "Hawas Eau de Parfum"), use
-        # the family's explicit default product instead of mixing variants.
-        family_match = any(
-            query_signature == _family_variant_signature(alias, family_brand)
-            for alias in family_aliases
-        )
-
-        if family_match:
-            query_concentration = _family_concentration(query)
-            if not query_concentration:
-                return {
-                    str(item.get("canonical_name") or "").strip()
-                    for item in products
-                    if isinstance(item, dict)
-                    and str(item.get("canonical_name") or "").strip()
-                }
-
-            default_product = str(
-                family.get("default_product") or ""
-            ).strip()
-            if default_product:
-                return {default_product}
-
-            return {
-                str(item.get("canonical_name") or "").strip()
-                for item in products
-                if isinstance(item, dict)
-                and str(item.get("canonical_name") or "").strip()
-            }
-
     return None
-
 
 
 def _family_registry_excluded(text, family):
@@ -599,7 +742,7 @@ def _family_registry_identity(
     product: Dict[str, Any],
     query: str = "",
 ) -> Optional[Dict[str, str]]:
-    """Resolve a discovered product to one canonical registry identity."""
+    """Resolve a discovered product to a canonical family identity."""
     product_brand = product_field(
         product,
         "brand",
@@ -614,10 +757,6 @@ def _family_registry_identity(
             or ""
         ).strip()
 
-    # Identity is derived only from product naming/variant metadata.
-    # URLs are deliberately excluded: retailer URLs often contain slugs,
-    # tracking tokens or unrelated path words and must never change the
-    # canonical family identity.
     identity_values = [
         product.get("name"),
         product.get("title"),
@@ -655,10 +794,6 @@ def _family_registry_identity(
         for value in identity_values
     )
 
-    # Some scrapers do not populate a dedicated brand field. Infer the brand
-    # only when an exact registered brand is explicitly present in the
-    # product identity text. This keeps the registry generic while allowing
-    # valid retailer titles such as "Rasasi - Hawas Eau de Parfum".
     if not product_brand:
         family_text_normalized = norm(family_text)
         for registered_family in FAMILY_REGISTRY.get("families", []):
@@ -678,12 +813,14 @@ def _family_registry_identity(
                 product_brand = registered_brand
                 break
 
-    product_signature = _family_variant_signature(
-        family_text,
-        product_brand,
-    )
+    if not family_text.strip():
+        return None
 
-    if not product_signature:
+    product_gender = _product_explicit_gender(product)
+    product_base = _family_base_signature(family_text, product_brand)
+    product_concentration = _family_concentration(family_text)
+
+    if not product_base:
         return None
 
     for family in FAMILY_REGISTRY.get("families", []):
@@ -694,140 +831,78 @@ def _family_registry_identity(
         if product_brand and norm(product_brand) != norm(family_brand):
             continue
 
-        product_text = " ".join(
-            str(product.get(k) or "")
-            for k in ("name", "title", "product_name", "brand", "source_brand")
-        )
-        if _family_registry_excluded(product_text, family):
-            continue
-
-        products = family.get("products") or []
-
-        # A bare family name is ambiguous whenever the registry contains
-        # gendered products. Never silently force it to a default product:
-        # first use an explicit gender supplied by the retailer.
         family_aliases = family.get("query_aliases") or []
-        generic_family_signatures = {
-            _family_variant_signature(alias, family_brand)
+        products = family.get("products") or []
+        family_bases = {
+            _family_base_signature(alias, family_brand)
             for alias in family_aliases
-            if _family_variant_signature(alias, family_brand)
+            if _family_base_signature(alias, family_brand)
         }
 
-        if product_signature in generic_family_signatures:
-            explicit_gender = _product_explicit_gender(product)
-            gender_products = _family_products_for_gender(
-                products,
-                explicit_gender,
-            )
-
-            if len(gender_products) == 1:
-                return {
-                    "family_id": str(family.get("family_id") or "").strip(),
-                    "brand": family_brand,
-                    "canonical_name": gender_products[0],
-                }
-
-            # If the retailer did not provide enough identity information,
-            # reject the candidate instead of inventing an association.
-            # This is essential for families such as Hawas where "Hawas"
-            # can refer to both a men's and a women's product.
-            if not explicit_gender or len(gender_products) != 1:
-                # Some retailers expose the gender on the product page but
-                # return only the generic product name in the scraper payload
-                # (for example, a page titled simply "Hawas"). When the user
-                # query explicitly identifies exactly one registered gendered
-                # product, use that query as a tie-breaker for an otherwise
-                # ambiguous generic candidate. A bare/ambiguous query never
-                # gets this fallback.
-                query_targets = (
-                    _family_registry_candidates(query, family_brand)
-                    if query
-                    else None
-                )
-
-                if query_targets and len(query_targets) == 1:
-                    query_target = next(iter(query_targets))
-                    target_item = next(
-                        (
-                            item
-                            for item in products
-                            if isinstance(item, dict)
-                            and str(item.get("canonical_name") or "").strip()
-                            == query_target
-                        ),
-                        None,
-                    )
-
-                    if isinstance(target_item, dict):
-                        target_aliases = list(
-                            target_item.get("aliases") or []
-                        )
-                        target_aliases.append(query_target)
-
-                        if any(
-                            _family_explicit_gender(alias)
-                            for alias in target_aliases
-                        ):
-                            return {
-                                "family_id": str(
-                                    family.get("family_id") or ""
-                                ).strip(),
-                                "brand": family_brand,
-                                "canonical_name": query_target,
-                            }
-
-                return None
-
-        matches = []
-        product_concentration = _family_concentration(family_text)
-
+        # First resolve an exact registered variant. This keeps Ice, Black,
+        # Extradose, etc. distinct from the bare family.
+        exact_matches = []
         for item in products:
             if not isinstance(item, dict):
                 continue
-
             canonical = str(item.get("canonical_name") or "").strip()
             if not canonical:
                 continue
 
-            aliases = list(item.get("aliases") or [])
-            aliases.append(canonical)
+            profile = _family_product_profile(
+                item,
+                family_brand,
+                family_aliases,
+            )
 
-            signature_matches = [
-                alias
-                for alias in aliases
-                if product_signature == _family_variant_signature(
-                    alias,
-                    family_brand,
-                )
-            ]
-
-            if not signature_matches:
-                continue
-
-            if product_concentration:
-                concentration_matches = [
-                    alias
-                    for alias in signature_matches
-                    if _family_concentration(alias) == product_concentration
-                ]
-                if concentration_matches:
-                    matches.append(canonical)
+            for alias_profile in profile["aliases"]:
+                if alias_profile["base"] != product_base:
                     continue
-
-                # A canonical base product without an explicit concentration
-                # remains eligible only when no concentration-specific alias
-                # exists for the same identity.
-                if any(_family_concentration(alias) for alias in signature_matches):
+                if product_gender and alias_profile["gender"] != product_gender:
                     continue
+                if product_concentration and alias_profile["concentration"] != product_concentration:
+                    continue
+                exact_matches.append(canonical)
+                break
 
-            matches.append(canonical)
-
-        if len(matches) == 1:
+        if len(set(exact_matches)) == 1:
             return {
                 "family_id": str(family.get("family_id") or "").strip(),
                 "brand": family_brand,
-                "canonical_name": matches[0],
+                "canonical_name": exact_matches[0],
             }
+
+        # A generic retailer title such as "Hawas" is a family-level product
+        # when the query itself is the bare family. Do not force it into Him or
+        # Her. The query can still resolve it to the requested gender later.
+        if product_base in family_bases and not product_gender:
+            query_profile = _family_query_profile(query, family_brand)
+
+            if (
+                query_profile["base"] in family_bases
+                and not query_profile["gender"]
+                and not query_profile["concentration"]
+            ):
+                return {
+                    "family_id": str(family.get("family_id") or "").strip(),
+                    "brand": family_brand,
+                    "canonical_name": "__family__",
+                    "family_level": "true",
+                }
+
+            query_targets = _family_registry_candidates(
+                query,
+                family_brand,
+            ) if query else None
+
+            if query_targets and len(query_targets) == 1:
+                return {
+                    "family_id": str(family.get("family_id") or "").strip(),
+                    "brand": family_brand,
+                    "canonical_name": next(iter(query_targets)),
+                }
+
+        return None
 
     return None
 
@@ -866,7 +941,10 @@ def _family_registry_accepts(
         query,
     )
     if identity is None:
-        return None
+        return False
+
+    if identity.get("family_level") == "true":
+        return True
 
     return identity["canonical_name"] in registry_target
 
@@ -1255,7 +1333,6 @@ def matches(product: Dict[str, Any], query: str) -> bool:
     padded_name = f" {name_phrase} "
     padded_family = f" {family_phrase} "
 
-
     return padded_family in padded_name
 
 
@@ -1310,6 +1387,19 @@ def build_search_attempts(store: str, query: str) -> List[str]:
         normalized,
     )
     add(compact)
+
+    # 4) Alcuni motori interni dei negozi sono sensibili all'ordine dei
+    #    termini. Per query brevi e multi-termine proviamo anche l'ordine
+    #    inverso, senza creare ricerche per singole parole che introdurrebbero
+    #    rumore e risultati non pertinenti.
+    if len(tokens) >= 2:
+        add(" ".join(reversed(tokens)))
+
+    # 5) Se la query contiene termini puramente descrittivi rimossi al punto
+    #    2, manteniamo comunque una forma pulita e stabile per la discovery.
+    cleaned = " ".join(tokens)
+    if cleaned:
+        add(cleaned)
 
     return attempts
 
