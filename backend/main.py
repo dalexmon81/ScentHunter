@@ -66,6 +66,15 @@ FAMILY_REGISTRY_PATH = os.path.join(
     "family_registry.json",
 )
 
+# The registry is project knowledge, not store-specific logic.
+# Accept the normal backend location and the project-root location so a
+# deployment cannot silently disable family validation because the JSON was
+# placed one directory above main.py.
+FAMILY_REGISTRY_CANDIDATE_PATHS = (
+    FAMILY_REGISTRY_PATH,
+    os.path.join(os.path.dirname(BASE_DIR), "family_registry.json"),
+)
+
 NON_PERFUME = {
     # Confezioni / prodotti multipli: non sono una singola referenza profumo.
     "gift set",
@@ -222,24 +231,39 @@ def _family_core(value: Any, brand: str = "") -> str:
 
 
 def _load_family_registry() -> Dict[str, Any]:
-    try:
-        with open(
-            FAMILY_REGISTRY_PATH,
-            "r",
-            encoding="utf-8",
-        ) as file:
-            data = json.load(file)
+    errors = []
 
-        if isinstance(data, dict) and isinstance(data.get("families"), list):
-            return data
+    for registry_path in FAMILY_REGISTRY_CANDIDATE_PATHS:
+        try:
+            with open(
+                registry_path,
+                "r",
+                encoding="utf-8",
+            ) as file:
+                data = json.load(file)
 
-    except Exception as exc:
-        print(
-            "FAMILY_REGISTRY_LOAD_ERROR: "
-            f"{type(exc).__name__}: {exc}",
-            flush=True,
-        )
+            if isinstance(data, dict) and isinstance(data.get("families"), list):
+                global FAMILY_REGISTRY_PATH
+                FAMILY_REGISTRY_PATH = registry_path
+                print(
+                    f"FAMILY_REGISTRY_LOADED: {registry_path}",
+                    flush=True,
+                )
+                return data
 
+            errors.append(
+                f"{registry_path}: invalid registry structure"
+            )
+
+        except Exception as exc:
+            errors.append(
+                f"{registry_path}: {type(exc).__name__}: {exc}"
+            )
+
+    print(
+        "FAMILY_REGISTRY_LOAD_ERROR: " + " | ".join(errors),
+        flush=True,
+    )
     return {"families": []}
 
 
@@ -330,11 +354,117 @@ def _family_variant_signature(value: Any, brand: str = "") -> str:
             "by",
             "ml",
             "cl",
+            "unknown",
+            "not",
+            "explicit",
+            "default",
         }
         and not re.fullmatch(r"\d+(?:[.,]\d+)?", token)
     ]
 
-    return " ".join(tokens).strip()
+    # Identity metadata is assembled from several independent fields. Remove
+    # repeated tokens so a generic name plus a more specific source name does
+    # not become an artificial identity such as "hawas hawas women".
+    deduped = []
+    seen = set()
+    for token in tokens:
+        if token in seen:
+            continue
+        seen.add(token)
+        deduped.append(token)
+
+    return " ".join(deduped).strip()
+
+
+def _family_explicit_gender(value: Any) -> str:
+    """Return an explicit audience marker found in structured product data."""
+    text = norm(value)
+    if not text:
+        return ""
+
+    # Longer phrases first so "for her" / "for him" are treated as one
+    # audience marker rather than as generic words.
+    if re.search(r"\b(?:for\s+her|for\s+women|pour\s+femme|pour\s+femmes|"
+                 r"femme|femmes|woman|women|female|donna|dames)\b", text):
+        return "women"
+
+    if re.search(r"\b(?:for\s+him|for\s+men|pour\s+homme|pour\s+hommes|"
+                 r"homme|hommes|man|men|male|uomo|mannen|mennen|voor\s+mannen)\b", text):
+        return "men"
+
+    if re.search(r"\b(?:unisex|unisexe|mixte)\b", text):
+        return "unisex"
+
+    return ""
+
+
+def _product_explicit_gender(product: Dict[str, Any]) -> str:
+    """Read explicit gender only from structured identity fields."""
+    attributes = product.get("attributes")
+    if isinstance(attributes, dict):
+        for key in ("gender", "audience", "sex", "target_gender"):
+            value = attributes.get(key)
+            if isinstance(value, dict):
+                value = value.get("value")
+            gender = _family_explicit_gender(value)
+            if gender:
+                return gender
+
+    for key in ("gender", "audience", "sex", "target_gender"):
+        gender = _family_explicit_gender(product.get(key))
+        if gender:
+            return gender
+
+    source = product.get("source")
+    if isinstance(source, dict):
+        for key in ("source_name", "name", "title", "variant"):
+            gender = _family_explicit_gender(source.get(key))
+            if gender:
+                return gender
+
+    for key in ("name", "title", "product_name", "product_line", "variant"):
+        gender = _family_explicit_gender(product.get(key))
+        if gender:
+            return gender
+
+    return ""
+
+
+def _family_products_for_gender(
+    products: List[Any],
+    gender: str,
+) -> List[str]:
+    """Return registry products whose aliases explicitly carry this gender."""
+    matches = []
+
+    if not gender:
+        return matches
+
+    gender_aliases = {
+        "men": {"men"},
+        "women": {"women"},
+        "unisex": {"unisex"},
+    }.get(gender, set())
+
+    for item in products:
+        if not isinstance(item, dict):
+            continue
+
+        canonical = str(item.get("canonical_name") or "").strip()
+        if not canonical:
+            continue
+
+        aliases = list(item.get("aliases") or [])
+        aliases.append(canonical)
+
+        for alias in aliases:
+            signature = _family_variant_signature(alias)
+            signature_tokens = set(signature.split())
+            if signature_tokens & gender_aliases:
+                matches.append(canonical)
+                break
+
+    return matches
 
 
 def _family_concentration(value: Any) -> str:
@@ -500,6 +630,7 @@ def _family_registry_identity(
     source = product.get("source")
     if isinstance(source, dict):
         identity_values.extend([
+            source.get("source_name"),
             source.get("name"),
             source.get("title"),
             source.get("product_line"),
@@ -554,33 +685,36 @@ def _family_registry_identity(
 
         products = family.get("products") or []
 
-        # If a retailer gives only the exact generic family name (for example
-        # "Hawas Eau de Parfum") and omits the variant/gender, resolve it to
-        # the family's declared default product. The match remains strict:
-        # extra words outside the verified family name do not qualify.
+        # A bare family name is ambiguous whenever the registry contains
+        # gendered products. Never silently force it to a default product:
+        # first use an explicit gender supplied by the retailer.
         family_aliases = family.get("query_aliases") or []
         generic_family_signatures = {
             _family_variant_signature(alias, family_brand)
             for alias in family_aliases
             if _family_variant_signature(alias, family_brand)
         }
-        default_product = str(
-            family.get("default_product") or ""
-        ).strip()
-        if (
-            default_product
-            and product_signature in generic_family_signatures
-            and any(
-                isinstance(item, dict)
-                and str(item.get("canonical_name") or "").strip() == default_product
-                for item in products
+
+        if product_signature in generic_family_signatures:
+            explicit_gender = _product_explicit_gender(product)
+            gender_products = _family_products_for_gender(
+                products,
+                explicit_gender,
             )
-        ):
-            return {
-                "family_id": str(family.get("family_id") or "").strip(),
-                "brand": family_brand,
-                "canonical_name": default_product,
-            }
+
+            if len(gender_products) == 1:
+                return {
+                    "family_id": str(family.get("family_id") or "").strip(),
+                    "brand": family_brand,
+                    "canonical_name": gender_products[0],
+                }
+
+            # If the retailer did not provide enough identity information,
+            # reject the candidate instead of inventing an association.
+            # This is essential for families such as Hawas where "Hawas"
+            # can refer to both a men's and a women's product.
+            if not explicit_gender or len(gender_products) != 1:
+                return None
 
         matches = []
         product_concentration = _family_concentration(family_text)
