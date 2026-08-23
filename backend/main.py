@@ -332,6 +332,41 @@ def product_availability(product: Dict[str, Any]) -> str:
     return "unknown"
 
 
+def normalize_offer_metadata(product: Dict[str, Any]) -> Dict[str, Any]:
+    """Normalizza centralmente i metadati già presenti nel RAW.
+
+    Non inventa identità o disponibilità: copia soltanto valori realmente
+    presenti nei campi principali/annidati e rende disponibile uno stato
+    centrale coerente per il diagnostico e per il frontend.
+    """
+    item = dict(product)
+    availability = product_availability(item)
+    if availability != "unknown":
+        item["availability"] = availability
+
+    # Campi diagnostici non distruttivi: servono a capire quale identità
+    # il RAW sta realmente fornendo al matching centrale.
+    item["_sh_identity"] = {
+        "brand": product_field(item, "brand", "source_brand"),
+        "family": product_field(item, "family", "family_name", "product_line"),
+        "variant": product_field(item, "variant", "variant_name"),
+        "product_id": identity_value(
+            item, "store_product_id", "product_id", "catalog_id"
+        ),
+        "variant_id": identity_value(
+            item, "store_variant_id", "variant_id"
+        ),
+        "gtin": identity_value(
+            item, "gtin", "ean", "ean13", "barcode", "upc"
+        ),
+        "mpn": identity_value(item, "mpn", "manufacturer_part_number"),
+        "size_ml": product_size_ml(item),
+        "concentration": product_concentration(item),
+        "availability": availability,
+    }
+    return item
+
+
 def product_search_text(product: Dict[str, Any]) -> str:
     values = [
         product.get("name"),
@@ -395,14 +430,38 @@ def has_small_size(product: Dict[str, Any]) -> bool:
 
 def _identity_tokens(value: str) -> List[str]:
     """
-    Estrae i token utili per l'identità nominale.
+    Estrae token di identità con normalizzazione linguistica generale.
 
-    La funzione rimuove solo elementi che descrivono il formato tecnico
-    della fragranza o la misura. Non rimuove modificatori commerciali
-    o di variante: questi devono rimanere disponibili per distinguere
-    identità diverse.
+    Le forme linguistiche equivalenti per il genere vengono ricondotte a
+    un token comune. Questo non identifica alcun prodotto specifico e non
+    elimina i modificatori di variante.
     """
     text = norm(value or "")
+
+    gender_aliases = (
+        ("for him", "gender_male"),
+        ("for men", "gender_male"),
+        ("for man", "gender_male"),
+        ("for male", "gender_male"),
+        ("homme", "gender_male"),
+        ("mannen", "gender_male"),
+        ("mannen", "gender_male"),
+        ("male", "gender_male"),
+        ("for her", "gender_female"),
+        ("for women", "gender_female"),
+        ("for woman", "gender_female"),
+        ("for female", "gender_female"),
+        ("femme", "gender_female"),
+        ("vrouwen", "gender_female"),
+        ("female", "gender_female"),
+    )
+    for alias, canonical in gender_aliases:
+        text = re.sub(
+            rf"\b{re.escape(alias)}\b",
+            canonical,
+            text,
+        )
+    text = re.sub(r"\b(?:voor|pour)\s+(?=gender_(?:male|female)\b)", "", text)
 
     text = re.sub(
         r"\b\d+(?:[.,]\d+)?\s*(?:ml|cl)\b",
@@ -983,6 +1042,7 @@ def run_store(
             product.setdefault("store", store)
 
             product = resolve_actual_price(product)
+            product = normalize_offer_metadata(product)
 
             image = product_image(product)
             if image:
@@ -1220,6 +1280,8 @@ def search_perfume(query: str) -> Dict[str, Any]:
                             job["store_status"][store] = {
                                 "status": "timeout",
                                 "raw_count": 0,
+                                "final_count": 0,
+                                "lost_count": 0,
                             }
                 if future.done():
                     try:
@@ -1430,6 +1492,7 @@ def _search_job_snapshot(job_id: str) -> Dict[str, Any]:
             "comparisons": [],
             "errors": dict(job["errors"]),
             "store_status": dict(job.get("store_status", {})),
+            "store_diagnostics": dict(job.get("store_diagnostics", {})),
             "completed": job["completed"],
             "status": (
                 "completed"
@@ -1496,11 +1559,60 @@ def _run_search_job(
             query,
         )
 
+        # Diagnostica per-store: distingue discovery RAW da risultati finali.
+        # Non modifica il candidate pool e non filtra alcuna offerta.
+        store_final = [
+            item for item in results
+            if norm(item.get("store", "")) == norm(store)
+        ]
+        raw_store = [
+            item for item in store_candidates
+            if isinstance(item, dict)
+        ]
+
+        def _diagnostic_identity(item: Dict[str, Any]) -> Dict[str, Any]:
+            identity = item.get("_sh_identity")
+            if not isinstance(identity, dict):
+                identity = {}
+            return {
+                "name": product_field(item, "name", "title", "product_name"),
+                "url": str(item.get("url") or ""),
+                "brand": identity.get("brand", ""),
+                "family": identity.get("family", ""),
+                "variant": identity.get("variant", ""),
+                "product_id": identity.get("product_id", ""),
+                "variant_id": identity.get("variant_id", ""),
+                "gtin": identity.get("gtin", ""),
+                "mpn": identity.get("mpn", ""),
+                "size_ml": identity.get("size_ml"),
+                "concentration": identity.get("concentration", ""),
+                "availability": identity.get("availability", "unknown"),
+                "price": str(item.get("price") or ""),
+            }
+
+        diagnostic = {
+            "status": "completed",
+            "raw_count": len(raw_store),
+            "final_count": len(store_final),
+            "lost_count": max(0, len(raw_store) - len(store_final)),
+            "raw_offers": [
+                _diagnostic_identity(item) for item in raw_store[:50]
+            ],
+            "final_offers": [
+                _diagnostic_identity(item) for item in store_final[:50]
+            ],
+        }
+
         with SEARCH_JOBS_LOCK:
             job = SEARCH_JOBS.get(job_id)
 
             if job is not None:
                 job["results"] = results
+                job["store_diagnostics"][store] = diagnostic
+                job["store_status"][store].update({
+                    "final_count": len(store_final),
+                    "lost_count": max(0, len(raw_store) - len(store_final)),
+                })
 
     try:
         try:
@@ -1529,6 +1641,8 @@ def _run_search_job(
                             job["store_status"][store] = {
                                 "status": "error",
                                 "raw_count": 0,
+                                "final_count": 0,
+                                "lost_count": 0,
                             }
 
         except TimeoutError:
@@ -1578,6 +1692,26 @@ def _run_search_job(
                 job["completed"] = True
 
 
+@app.get("/search-diagnostic")
+def search_diagnostic(job_id: str):
+    """Restituisce esclusivamente la fotografia diagnostica di un job."""
+    with SEARCH_JOBS_LOCK:
+        job = SEARCH_JOBS.get(job_id)
+        if job is None:
+            raise HTTPException(
+                status_code=404,
+                detail="Job di ricerca non trovato",
+            )
+        return {
+            "job_id": job_id,
+            "query": job["query"],
+            "completed": job["completed"],
+            "store_status": dict(job.get("store_status", {})),
+            "store_diagnostics": dict(job.get("store_diagnostics", {})),
+            "errors": dict(job.get("errors", {})),
+        }
+
+
 @app.get("/search-start")
 def search_start(q: str):
     query = str(q or "").strip()
@@ -1597,9 +1731,15 @@ def search_start(q: str):
             "results": [],
             "errors": {},
             "store_status": {
-                store: {"status": "pending", "raw_count": 0}
+                store: {
+                    "status": "pending",
+                    "raw_count": 0,
+                    "final_count": 0,
+                    "lost_count": 0,
+                }
                 for store in STORES
             },
+            "store_diagnostics": {},
             "completed": False,
         }
 
