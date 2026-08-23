@@ -587,6 +587,7 @@ def _family_registry_candidates(
 
 def _family_registry_identity(
     product: Dict[str, Any],
+    query: str = "",
 ) -> Optional[Dict[str, str]]:
     """Resolve a discovered product to one canonical registry identity."""
     product_brand = product_field(
@@ -714,6 +715,50 @@ def _family_registry_identity(
             # This is essential for families such as Hawas where "Hawas"
             # can refer to both a men's and a women's product.
             if not explicit_gender or len(gender_products) != 1:
+                # Some retailers expose the gender on the product page but
+                # return only the generic product name in the scraper payload
+                # (for example, a page titled simply "Hawas"). When the user
+                # query explicitly identifies exactly one registered gendered
+                # product, use that query as a tie-breaker for an otherwise
+                # ambiguous generic candidate. A bare/ambiguous query never
+                # gets this fallback.
+                query_targets = (
+                    _family_registry_candidates(query, family_brand)
+                    if query
+                    else None
+                )
+
+                if query_targets and len(query_targets) == 1:
+                    query_target = next(iter(query_targets))
+                    target_item = next(
+                        (
+                            item
+                            for item in products
+                            if isinstance(item, dict)
+                            and str(item.get("canonical_name") or "").strip()
+                            == query_target
+                        ),
+                        None,
+                    )
+
+                    if isinstance(target_item, dict):
+                        target_aliases = list(
+                            target_item.get("aliases") or []
+                        )
+                        target_aliases.append(query_target)
+
+                        if any(
+                            _family_explicit_gender(alias)
+                            for alias in target_aliases
+                        ):
+                            return {
+                                "family_id": str(
+                                    family.get("family_id") or ""
+                                ).strip(),
+                                "brand": family_brand,
+                                "canonical_name": query_target,
+                            }
+
                 return None
 
         matches = []
@@ -799,7 +844,10 @@ def _family_registry_accepts(
     if registry_target is None:
         return None
 
-    identity = _family_registry_identity(product)
+    identity = _family_registry_identity(
+        product,
+        query,
+    )
     if identity is None:
         return False
 
@@ -1100,6 +1148,13 @@ def matches(product: Dict[str, Any], query: str) -> bool:
 
     if family_registry_decision is False:
         return False
+
+    # The family registry is authoritative when it can resolve the candidate
+    # to the exact product requested. This is important when a retailer's
+    # scraped title is generic (e.g. "Hawas") while the search query carries
+    # the decisive variant such as "for him" or "for her".
+    if family_registry_decision is True:
+        return True
 
     name_for_matching = name_normalized
 
@@ -1640,7 +1695,10 @@ def _validate_candidate(
     if not matches(product, query):
         return None
 
-    identity = _family_registry_identity(product)
+    identity = _family_registry_identity(
+        product,
+        query,
+    )
     if identity is not None:
         normalized_product = dict(product)
         original_name = product_field(
