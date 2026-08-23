@@ -585,6 +585,16 @@ def _family_registry_candidates(
     return None
 
 
+
+def _family_registry_excluded(text, family):
+    """Generic registry exclusion check; no store or URL-specific rules."""
+    value = _norm_text(text)
+    if not value or not isinstance(family, dict):
+        return False
+    excluded = list(family.get("excluded_products") or []) + list(family.get("excluded_aliases") or [])
+    return any(_norm_text(item) and _norm_text(item) in value for item in excluded)
+
+
 def _family_registry_identity(
     product: Dict[str, Any],
     query: str = "",
@@ -848,9 +858,6 @@ def _family_registry_accepts(
         product,
         query,
     )
-
-    # If the registry cannot canonically identify a retailer candidate,
-    # do not discard it here. Let the normal matcher decide.
     if identity is None:
         return None
 
@@ -1241,6 +1248,13 @@ def matches(product: Dict[str, Any], query: str) -> bool:
     padded_name = f" {name_phrase} "
     padded_family = f" {family_phrase} "
 
+
+    product_text = " ".join(
+        str(product.get(k) or "")
+        for k in ("name", "title", "product_name", "brand", "source_brand")
+    )
+    if _family_registry_excluded(product_text, family):
+        return None
     return padded_family in padded_name
 
 
@@ -1444,8 +1458,6 @@ def product_identity_key(product: Dict[str, Any]) -> tuple:
         )
     )
 
-    canonical_name = norm(product.get("canonical_name", ""))
-
     source = product.get("source")
     if isinstance(source, dict):
         if not name:
@@ -1457,7 +1469,7 @@ def product_identity_key(product: Dict[str, Any]) -> tuple:
     return (
         "fallback",
         store,
-        canonical_name or name,
+        name,
         size,
         concentration,
     )
@@ -1722,8 +1734,7 @@ def _validate_candidate(
         normalized_product["family_id"] = identity["family_id"]
         normalized_product["canonical_name"] = identity["canonical_name"]
         normalized_product["brand"] = identity["brand"]
-        # Keep the original retailer name in `name`. Canonical identity stays
-        # in `canonical_name` so offers are not collapsed too early.
+        normalized_product["name"] = identity["canonical_name"]
         return normalized_product
 
     return product
@@ -2001,70 +2012,6 @@ def update_price_history(
         save_history(history_data)
 
     return history
-
-
-# ============================================================
-# CENTRAL DIAGNOSTIC
-# ============================================================
-
-@app.get("/diagnose-central")
-def diagnose_central(q: str):
-    query = str(q or "").strip()
-    if not query:
-        raise HTTPException(status_code=400, detail="Parametro q mancante")
-
-    output = {
-        "query": query,
-        "stores": {},
-        "raw_total": 0,
-        "validated_total": 0,
-    }
-
-    for store in STORES:
-        store_data = {
-            "raw": 0,
-            "validated": 0,
-            "errors": [],
-            "raw_products": [],
-            "validated_products": [],
-        }
-
-        try:
-            candidates = run_store(store, query)
-            store_data["raw"] = len(candidates)
-
-            for product in candidates:
-                store_data["raw_products"].append({
-                    "name": product_field(product, "name", "title", "product_name"),
-                    "brand": product_field(product, "brand", "source_brand"),
-                    "url": product.get("url"),
-                })
-
-                try:
-                    validated = _validate_candidate(product, query)
-                except Exception as exc:
-                    store_data["errors"].append(f"{type(exc).__name__}: {exc}")
-                    continue
-
-                if isinstance(validated, dict):
-                    store_data["validated"] += 1
-                    store_data["validated_products"].append({
-                        "name": validated.get("name"),
-                        "canonical_name": validated.get("canonical_name"),
-                        "brand": validated.get("brand"),
-                        "store": validated.get("store"),
-                        "url": validated.get("url"),
-                    })
-
-            output["raw_total"] += store_data["raw"]
-            output["validated_total"] += store_data["validated"]
-
-        except Exception as exc:
-            store_data["errors"].append(f"{type(exc).__name__}: {exc}")
-
-        output["stores"][store] = store_data
-
-    return output
 
 
 # ============================================================
