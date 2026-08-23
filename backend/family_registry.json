@@ -1,0 +1,207 @@
+{
+  "version": 1,
+  "families": [
+    {
+      "family_id": "rasasi_hawas",
+      "brand": "Rasasi",
+      "canonical_family_name": "Hawas",
+      "search_name": "Hawas",
+      "allowed_variants": [
+        {
+          "canonical_name": "Hawas Atlantis",
+          "aliases": [
+            "Hawas Atlantis",
+            "Atlantis"
+          ]
+        },
+        {
+          "canonical_name": "Hawas Black",
+          "aliases": [
+            "Hawas Black",
+            "Black"
+          ]
+        },
+        {
+          "canonical_name": "Hawas Chrome",
+          "aliases": [
+            "Hawas Chrome",
+            "Chrome"
+          ]
+        },
+        {
+          "canonical_name": "Hawas Diva",
+          "aliases": [
+            "Hawas Diva",
+            "Diva"
+          ]
+        },
+        {
+          "canonical_name": "Hawas Eclat",
+          "aliases": [
+            "Hawas Eclat"
+          ]
+        },
+        {
+          "canonical_name": "Hawas Élixir",
+          "aliases": [
+            "Hawas Élixir"
+          ]
+        },
+        {
+          "canonical_name": "Hawas Fire",
+          "aliases": [
+            "Hawas Fire",
+            "Fire"
+          ]
+        },
+        {
+          "canonical_name": "Hawas For Her",
+          "aliases": [
+            "Hawas For Her",
+            "For Her"
+          ]
+        },
+        {
+          "canonical_name": "Hawas For Him",
+          "aliases": [
+            "Hawas For Him",
+            "For Him"
+          ]
+        },
+        {
+          "canonical_name": "Hawas Gold Digger",
+          "aliases": [
+            "Hawas Gold Digger",
+            "Gold Digger"
+          ]
+        },
+        {
+          "canonical_name": "Hawas Highness",
+          "aliases": [
+            "Hawas Highness",
+            "Highness"
+          ]
+        },
+        {
+          "canonical_name": "Hawas Ice",
+          "aliases": [
+            "Hawas Ice",
+            "Ice"
+          ]
+        },
+        {
+          "canonical_name": "Hawas Kobra",
+          "aliases": [
+            "Hawas Kobra",
+            "Kobra"
+          ]
+        },
+        {
+          "canonical_name": "Hawas Lava Gold",
+          "aliases": [
+            "Hawas Lava Gold",
+            "Lava Gold"
+          ]
+        },
+        {
+          "canonical_name": "Hawas London",
+          "aliases": [
+            "Hawas London",
+            "London"
+          ]
+        },
+        {
+          "canonical_name": "Hawas Majestic",
+          "aliases": [
+            "Hawas Majestic",
+            "Majestic"
+          ]
+        },
+        {
+          "canonical_name": "Hawas Malibu",
+          "aliases": [
+            "Hawas Malibu",
+            "Malibu"
+          ]
+        },
+        {
+          "canonical_name": "Hawas Nautilus",
+          "aliases": [
+            "Hawas Nautilus",
+            "Nautilus"
+          ]
+        },
+        {
+          "canonical_name": "Hawas Overdose",
+          "aliases": [
+            "Hawas Overdose",
+            "Overdose"
+          ]
+        },
+        {
+          "canonical_name": "Hawas Pink",
+          "aliases": [
+            "Hawas Pink",
+            "Pink"
+          ]
+        },
+        {
+          "canonical_name": "Hawas Reina",
+          "aliases": [
+            "Hawas Reina",
+            "Reina"
+          ]
+        },
+        {
+          "canonical_name": "Hawas Rouge",
+          "aliases": [
+            "Hawas Rouge",
+            "Rouge"
+          ]
+        },
+        {
+          "canonical_name": "Hawas Sapphire",
+          "aliases": [
+            "Hawas Sapphire",
+            "Sapphire"
+          ]
+        },
+        {
+          "canonical_name": "Hawas Tropical",
+          "aliases": [
+            "Hawas Tropical",
+            "Tropical"
+          ]
+        },
+        {
+          "canonical_name": "Hawas Venom",
+          "aliases": [
+            "Hawas Venom",
+            "Venom"
+          ]
+        },
+        {
+          "canonical_name": "Hawas Verde",
+          "aliases": [
+            "Hawas Verde",
+            "Verde"
+          ]
+        },
+        {
+          "canonical_name": "Hawas Viper",
+          "aliases": [
+            "Hawas Viper",
+            "Viper"
+          ]
+        }
+      ]
+    }
+  ],
+  "rules": {
+    "catalog_is_authoritative_for_catalogued_families": true,
+    "unlisted_variants_are_rejected": true,
+    "canonical_names_are_used_for_results": true,
+    "generic_gender_aliases_are_not_used": true,
+    "accented_names_remain_distinct": true
+  }
+}
