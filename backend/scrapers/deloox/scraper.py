@@ -171,24 +171,36 @@ def extract_concentration(*texts):
 
 
 def extract_gender(*texts):
-    value = norm(" ".join(str(x or "") for x in texts))
+    """
+    Determines gender in priority order.
 
-    if re.search(
-        r"\b(men|male|heren|homme|pour homme)\b",
-        value,
-        re.I,
-    ):
-        return "men"
+    The first text is the strongest identity source (normally the product
+    name/title). Later texts are only fallbacks. This prevents unrelated
+    gender words elsewhere on a product page, such as recommendations,
+    navigation or related products, from overriding the actual product.
+    """
+    for text in texts:
+        value = norm(text)
 
-    if re.search(
-        r"\b(women|female|dames|femme|pour femme)\b",
-        value,
-        re.I,
-    ):
-        return "women"
+        if not value:
+            continue
 
-    if "unisex" in value or "unisexe" in value:
-        return "unisex"
+        if "unisex" in value or "unisexe" in value:
+            return "unisex"
+
+        if re.search(
+            r"\b(men|male|him|heren|homme|pour homme)\b",
+            value,
+            re.I,
+        ):
+            return "men"
+
+        if re.search(
+            r"\b(women|female|her|dames|femme|pour femme)\b",
+            value,
+            re.I,
+        ):
+            return "women"
 
     return "unknown"
 
@@ -490,6 +502,8 @@ def parse_product_page(response, query):
         name,
     )
 
+    # The product name is authoritative for gender. Page-wide text is only a
+    # fallback and can never override an explicit gender in the product name.
     gender = extract_gender(
         name,
         text,
