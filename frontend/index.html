@@ -750,7 +750,7 @@ function getBestKnownOfferForWishlist(item){
       if(isOfferOutOfStock(o))return;
       candidates.push({
         brand:g.brand||o.brand||"",
-        name:g.name||o.name||"",
+        name:displayCatalogName(g)||o.name||"",
         price:shPrice(o),
         price_value:o.price_value,
         shop:o.store||"",
@@ -916,6 +916,8 @@ function shGroupData(data){
       raw.push({...o,
         brand:o.brand||g.brand||"",
         name:o.name||g.name||"Profumo",
+        canonical_name:o.canonical_name||o.catalog_variant||g.canonical_name||g.catalog_variant||"",
+        family_id:o.family_id||g.family_id||"",
         size_ml:o.size_ml||o.size||g.size_ml||"",
         concentration:concentrationHint(o)||o.concentration||g.concentration||"",
         image:o.image||o.image_url||o.thumbnail||g.image||"",
@@ -930,6 +932,8 @@ function shGroupData(data){
   });
   (Array.isArray(data.results)?data.results:[]).forEach(o=>raw.push({
     ...o,
+    canonical_name:o.canonical_name||o.catalog_variant||"",
+    family_id:o.family_id||"",
     _source_priority:2,
     _price_source_priority:offerPriceSourcePriority(o)
   }));
@@ -1276,6 +1280,24 @@ function shGroupData(data){
     return pretty(n||"Profumo");
   }
 
+  /*
+   * CATALOGO: se il backend ha già risolto una variante del Family Registry,
+   * canonical_name è il nome del prodotto, non il nome della famiglia.
+   * Deve quindi avere precedenza sulla pulizia commerciale generica, che può
+   * eliminare marcatori di variante come For Him / For Her.
+   * Regola generica, senza riferimenti a singoli profumi o prodotti.
+   */
+  function catalogCanonicalName(o,brand){
+    const canonical=cleanBrandText(
+      o?.canonical_name||o?.catalog_variant||o?.canonicalName||""
+    );
+    if(canonical){
+      const concentration=concentrationHint(o)||o?.concentration||"";
+      return pretty(removeTrailingConcentration(canonical,concentration)||canonical);
+    }
+    return cleanProductName(o,brand);
+  }
+
   function concentrationHint(o){
     const raw=String(o&&((o.name||"")+" "+(o.concentration||""))||"").toLowerCase();
     if(/\beau\s+de\s+toilette\b|\bedt\b/.test(raw))return "Eau de Toilette";
@@ -1457,7 +1479,7 @@ function shGroupData(data){
 
       if(brand){
         id.brand=pretty(brand);
-        id.name=cleanProductName(o,id.brand);
+        id.name=catalogCanonicalName(o,id.brand);
       }
 
       id.key=(norm(id.brand)+"|"+norm(id.name)).replace(/\|+$/g,"");
@@ -1485,7 +1507,7 @@ function shGroupData(data){
         const inherited=nameToBrand.get(norm(id.name));
         if(inherited){
           id.brand=inherited;
-          id.name=cleanProductName(o,inherited);
+          id.name=catalogCanonicalName(o,inherited);
           id.key=norm(inherited)+"|"+norm(id.name);
         }
       }
@@ -1494,7 +1516,7 @@ function shGroupData(data){
 
   const identities=raw.map(o=>{
     const brand=findBrand(o);
-    const name=cleanProductName(o,brand);
+    const name=catalogCanonicalName(o,brand);
     const key=(norm(brand)+"|"+norm(name)).replace(/\|+$/g,"");
     return {brand,name,key};
   });
@@ -1541,7 +1563,7 @@ function shGroupData(data){
   raw.forEach((o,i)=>{
     const id=identities[i];
     if(id.concentration){
-      id.name=cleanProductName(o,id.brand);
+      id.name=catalogCanonicalName(o,id.brand);
       id.key=(norm(id.brand)+"|"+norm(id.name)+"|"+norm(id.concentration)).replace(/\|+$/g,"");
     }
   });
@@ -1590,6 +1612,8 @@ function shGroupData(data){
       map.set(id.key,{
         brand:id.brand||"",
         name:displayName,
+        canonical_name:id.name,
+        family_id:o.family_id||"",
         canonical:norm(displayName),
         display_name:id.brand?id.brand+" - "+displayName:displayName,
         size_ml:"",
@@ -1720,7 +1744,7 @@ function shGroupData(data){
       }
 
       g.brand=searchBrand;
-      g.display_name=g.brand+" - "+g.name;
+      g.display_name=g.brand+" - "+displayCatalogName(g);
     });
   }
 
@@ -1908,7 +1932,9 @@ function shGroupData(data){
       g.name=pretty(g.name||"Profumo");
     }
 
-    g.display_name=g.brand?g.brand+" - "+g.name:g.name;
+    g.canonical_name=g.canonical_name||g.name;
+    g.name=g.canonical_name;
+    g.display_name=g.brand?g.brand+" - "+g.canonical_name:g.canonical_name;
   });
 
   // Mostriamo esclusivamente vere referenze di profumo.
@@ -2080,6 +2106,11 @@ document.addEventListener("click",e=>{
   cardPointerMoved=false;
 },{capture:true});
 
+function displayCatalogName(g){
+  const canonical=String(g?.canonical_name||g?.catalog_variant||g?.name||"").trim();
+  return canonical||"Profumo";
+}
+
 function showProducts(groups){
   currentProductGroups=groups;
 
@@ -2102,9 +2133,9 @@ function showProducts(groups){
     const best=g.offers.find(o=>!isOfferOutOfStock(o))||null;
 
     return `<article class="product-choice" onclick='openProduct(${i})'>
-      <div class="result-image">${img?`<img src="${esc(img)}" alt="${esc(displayPerfumeName(g.name,g.brand,g.concentration))}" onerror="this.outerHTML='🧴'">`:"🧴"}</div>
+      <div class="result-image">${img?`<img src="${esc(img)}" alt="${esc(displayPerfumeName(displayCatalogName(g),g.brand,g.concentration))}" onerror="this.outerHTML='🧴'">`:"🧴"}</div>
       <div class="product-choice-main">
-        <div class="name">${esc(g.brand ? g.brand+" - "+displayPerfumeName(g.name,g.brand,g.concentration) : displayPerfumeName(g.name,g.brand,g.concentration))}</div>
+        <div class="name">${esc(g.brand ? g.brand+" - "+displayPerfumeName(displayCatalogName(g),g.brand,g.concentration) : displayPerfumeName(displayCatalogName(g),g.brand,g.concentration))}</div>
         ${best?`<div class="bestprice">da ${esc(shPrice(best))}</div>`:`<div class="bestprice">OUT OF STOCK</div>`}
       </div>
       <div class="arrow">›</div>
@@ -2143,10 +2174,10 @@ function openProduct(i){
     resultsBox.innerHTML=`<article class="comparison">
       <button class="detail-back" onclick="showProducts(currentProductGroups)">← Torna ai profumi</button>
       <div class="comparison-head">
-        <div class="result-image">${img?`<img src="${esc(img)}" alt="${esc(displayPerfumeName(g.name,g.brand,g.concentration))}" onerror="this.outerHTML='🧴'">`:"🧴"}</div>
+        <div class="result-image">${img?`<img src="${esc(img)}" alt="${esc(displayPerfumeName(displayCatalogName(g),g.brand,g.concentration))}" onerror="this.outerHTML='🧴'">`:"🧴"}</div>
         <div class="result-main">
           <div class="store">${esc(g.brand||"")}</div>
-          <div class="name">${esc(displayPerfumeName(g.name,g.brand,g.concentration))}</div>
+          <div class="name">${esc(displayPerfumeName(displayCatalogName(g),g.brand,g.concentration))}</div>
         </div>
       </div>
 <div class="format-compare-bar">
@@ -2170,7 +2201,7 @@ function openProduct(i){
         const isOut=isOfferOutOfStock(o);
         const item={
           brand:g.brand||o.brand||"",
-          name:g.name||o.name||"",
+          name:displayCatalogName(g)||o.name||"",
           price:isOut?"":shPrice(o),
           shop:o.store||"",
           url:o.url||"",
@@ -2212,10 +2243,10 @@ function openProduct(i){
   resultsBox.innerHTML=`<article class="comparison">
     <button class="detail-back" onclick="showProducts(currentProductGroups)">← Torna ai profumi</button>
     <div class="comparison-head">
-      <div class="result-image">${img?`<img src="${esc(img)}" alt="${esc(displayPerfumeName(g.name,g.brand,g.concentration))}" onerror="this.outerHTML='🧴'">`:"🧴"}</div>
+      <div class="result-image">${img?`<img src="${esc(img)}" alt="${esc(displayPerfumeName(displayCatalogName(g),g.brand,g.concentration))}" onerror="this.outerHTML='🧴'">`:"🧴"}</div>
       <div class="result-main">
         <div class="store">${esc(g.brand||"")}</div>
-        <div class="name">${esc(displayPerfumeName(g.name,g.brand,g.concentration))}</div>
+        <div class="name">${esc(displayPerfumeName(displayCatalogName(g),g.brand,g.concentration))}</div>
       </div>
     </div>
     <div class="bestlabel">SCEGLI IL FORMATO</div>
@@ -2252,10 +2283,10 @@ function openSize(gi,sizeKey,fromFormats=true){
   resultsBox.innerHTML=`<article class="comparison">
     <button class="detail-back" onclick="${fromFormats?`openProduct(${gi})`:`showProducts(currentProductGroups)`}">${fromFormats?'← Torna ai formati':'← Torna ai profumi'}</button>
     <div class="comparison-head">
-      <div class="result-image">${img?`<img src="${esc(img)}" alt="${esc(displayPerfumeName(g.name,g.brand,g.concentration))}" onerror="this.outerHTML='🧴'">`:"🧴"}</div>
+      <div class="result-image">${img?`<img src="${esc(img)}" alt="${esc(displayPerfumeName(displayCatalogName(g),g.brand,g.concentration))}" onerror="this.outerHTML='🧴'">`:"🧴"}</div>
       <div class="result-main">
         <div class="store">${esc(g.brand||"")}</div>
-        <div class="name">${esc(displayPerfumeName(g.name,g.brand,g.concentration))}</div>
+        <div class="name">${esc(displayPerfumeName(displayCatalogName(g),g.brand,g.concentration))}</div>
         ${sizeKey?`<div class="offer-meta">${esc(formatLabel(sizeKey))}</div>`:""}
       </div>
     </div>
@@ -2280,7 +2311,7 @@ function openSize(gi,sizeKey,fromFormats=true){
       const isOut=isOfferOutOfStock(o);
       const item={
         brand:g.brand||o.brand||"",
-        name:g.name||o.name||"",
+        name:displayCatalogName(g)||o.name||"",
         price:isOut?"":shPrice(o),
         shop:o.store||"",
         url:o.url||"",
@@ -2329,7 +2360,7 @@ function chooseOffer(gi,sizeKey,oi){
   const isOut=isOfferOutOfStock(o);
   const item={
     brand:g.brand||o.brand||"",
-    name:g.name||o.name||"",
+    name:displayCatalogName(g)||o.name||"",
     price:isOut?"":shPrice(o),
     shop:o.store||"",
     url:o.url||"",
