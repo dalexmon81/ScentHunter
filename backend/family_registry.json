@@ -1,4 +1,4 @@
-
+{
   "schema_version": "1.0",
   "description": "Verified fragrance-family knowledge used by ScentHunter to reject retailer naming errors. This file contains knowledge/data only; matching logic remains generic.",
   "families": [
@@ -11,35 +11,35 @@
       ],
       "products": [
         {
-          "canonical_name": "Hawas Atlantis",
+          "canonical_name": "Rasasi Hawas Atlantis",
           "aliases": [
             "Hawas Atlantis",
             "Rasasi Hawas Atlantis"
           ]
         },
         {
-          "canonical_name": "Hawas Black",
+          "canonical_name": "Rasasi Hawas Black",
           "aliases": [
             "Hawas Black",
             "Rasasi Hawas Black"
           ]
         },
         {
-          "canonical_name": "Hawas Chrome",
+          "canonical_name": "Rasasi Hawas Chrome",
           "aliases": [
             "Hawas Chrome",
             "Rasasi Hawas Chrome"
           ]
         },
         {
-          "canonical_name": "Hawas Diva",
+          "canonical_name": "Rasasi Hawas Diva",
           "aliases": [
             "Hawas Diva",
             "Rasasi Hawas Diva"
           ]
         },
         {
-          "canonical_name": "Hawas Eclat",
+          "canonical_name": "Rasasi Hawas Eclat",
           "aliases": [
             "Hawas Eclat",
             "Eclat",
@@ -56,14 +56,11 @@
             "Rasasi Hawas For Her Eclat",
             "Rasasi Hawas For Her Éclat",
             "Hawas Éclat",
-            "Hawas E’Clat",
-            "Hawas E'Clat",
-            "E’Clat",
-            "E'Clat"
+            "Rasasi Hawas Éclat"
           ]
         },
         {
-          "canonical_name": "Hawas Elixir",
+          "canonical_name": "Rasasi Hawas Elixir",
           "aliases": [
             "Hawas Elixir",
             "Hawas Élixir",
@@ -72,7 +69,7 @@
           ]
         },
         {
-          "canonical_name": "Hawas Fire",
+          "canonical_name": "Rasasi Hawas Fire",
           "aliases": [
             "Hawas Fire",
             "Rasasi Hawas Fire"
@@ -82,7 +79,6 @@
           "canonical_name": "Hawas For Her",
           "aliases": [
             "Hawas For Her",
-            "Rasasi Hawas For Her",
             "For Her"
           ]
         },
@@ -90,65 +86,62 @@
           "canonical_name": "Hawas For Him",
           "aliases": [
             "Hawas For Him",
-            "Hawas Men",
             "For Him"
           ]
         },
         {
-          "canonical_name": "Hawas Gold Digger",
+          "canonical_name": "Rasasi Hawas Gold Digger",
           "aliases": [
             "Hawas Gold Digger",
             "Rasasi Hawas Gold Digger"
           ]
         },
         {
-          "canonical_name": "Hawas Highness",
+          "canonical_name": "Rasasi Hawas Highness",
           "aliases": [
             "Hawas Highness",
             "Rasasi Hawas Highness"
           ]
         },
         {
-          "canonical_name": "Hawas Ice",
+          "canonical_name": "Rasasi Hawas Ice",
           "aliases": [
             "Hawas Ice",
             "Rasasi Hawas Ice"
           ]
         },
         {
-          "canonical_name": "Hawas Kobra",
+          "canonical_name": "Rasasi Hawas Kobra",
           "aliases": [
             "Hawas Kobra",
             "Hawas Cobra",
             "Rasasi Hawas Kobra",
-            "Rasasi Hawas Cobra",
-            "Kobra",
-            "Cobra"
+            "Rasasi Hawas Cobra"
           ]
         },
         {
-          "canonical_name": "Hawas Lava Gold",
+          "canonical_name": "Rasasi Hawas Lava Gold",
           "aliases": [
             "Hawas Lava Gold",
             "Rasasi Hawas Lava Gold"
           ]
         },
         {
-          "canonical_name": "Hawas London",
+          "canonical_name": "Rasasi Hawas London",
           "aliases": [
             "Hawas London",
             "Rasasi Hawas London"
           ]
         },
         {
-          "canonical_name": "Hawas Majestic",
+          "canonical_name": "Rasasi Hawas Majestic",
           "aliases": [
             "Hawas Majestic",
             "Rasasi Hawas Majestic"
           ]
         },
         {
-          "canonical_name": "Hawas Malibu",
+          "canonical_name": "Rasasi Hawas Malibu",
           "aliases": [
             "Hawas Malibu",
             "Malibu",
@@ -157,57 +150,53 @@
             "Rasasi Hawas Malibu",
             "Rasasi Malibu",
             "Rasasi Malibu Voor Mannen",
-            "Rasasi Hawas Malibu Voor Mannen",
-            "Malibu Voor Mennen",
-            "Malibu Voor Men",
-            "Malibu For Men",
-            "Hawas Malibu Voor Mennen"
+            "Rasasi Hawas Malibu Voor Mannen"
           ]
         },
         {
-          "canonical_name": "Hawas Nautilus",
+          "canonical_name": "Rasasi Hawas Nautilus",
           "aliases": [
             "Hawas Nautilus",
             "Rasasi Hawas Nautilus"
           ]
         },
         {
-          "canonical_name": "Hawas Overdose",
+          "canonical_name": "Rasasi Hawas Overdose",
           "aliases": [
             "Hawas Overdose",
             "Rasasi Hawas Overdose"
           ]
         },
         {
-          "canonical_name": "Hawas Pink",
+          "canonical_name": "Rasasi Hawas Pink",
           "aliases": [
             "Hawas Pink",
             "Rasasi Hawas Pink"
           ]
         },
         {
-          "canonical_name": "Hawas Reina",
+          "canonical_name": "Rasasi Hawas Reina",
           "aliases": [
             "Hawas Reina",
             "Rasasi Hawas Reina"
           ]
         },
         {
-          "canonical_name": "Hawas Rouge",
+          "canonical_name": "Rasasi Hawas Rouge",
           "aliases": [
             "Hawas Rouge",
             "Rasasi Hawas Rouge"
           ]
         },
         {
-          "canonical_name": "Hawas Sapphire",
+          "canonical_name": "Rasasi Hawas Sapphire",
           "aliases": [
             "Hawas Sapphire",
             "Rasasi Hawas Sapphire"
           ]
         },
         {
-          "canonical_name": "Hawas Tropical",
+          "canonical_name": "Rasasi Hawas Tropical",
           "aliases": [
             "Hawas Tropical",
             "Hawas For Him Tropical",
@@ -216,21 +205,21 @@
           ]
         },
         {
-          "canonical_name": "Hawas Venom",
+          "canonical_name": "Rasasi Hawas Venom",
           "aliases": [
             "Hawas Venom",
             "Rasasi Hawas Venom"
           ]
         },
         {
-          "canonical_name": "Hawas Verde",
+          "canonical_name": "Rasasi Hawas Verde",
           "aliases": [
             "Hawas Verde",
             "Rasasi Hawas Verde"
           ]
         },
         {
-          "canonical_name": "Hawas Viper",
+          "canonical_name": "Rasasi Hawas Viper",
           "aliases": [
             "Hawas Viper",
             "Rasasi Hawas Viper"
