@@ -511,6 +511,29 @@ def _family_registry_identity(
         for value in identity_values
     )
 
+    # Some scrapers do not populate a dedicated brand field. Infer the brand
+    # only when an exact registered brand is explicitly present in the
+    # product identity text. This keeps the registry generic while allowing
+    # valid retailer titles such as "Rasasi - Hawas Eau de Parfum".
+    if not product_brand:
+        family_text_normalized = norm(family_text)
+        for registered_family in FAMILY_REGISTRY.get("families", []):
+            if not isinstance(registered_family, dict):
+                continue
+            registered_brand = str(
+                registered_family.get("brand") or ""
+            ).strip()
+            registered_brand_normalized = norm(registered_brand)
+            if (
+                registered_brand_normalized
+                and re.search(
+                    rf"\b{re.escape(registered_brand_normalized)}\b",
+                    family_text_normalized,
+                )
+            ):
+                product_brand = registered_brand
+                break
+
     product_signature = _family_variant_signature(
         family_text,
         product_brand,
@@ -528,6 +551,35 @@ def _family_registry_identity(
             continue
 
         products = family.get("products") or []
+
+        # If a retailer gives only the exact generic family name (for example
+        # "Hawas Eau de Parfum") and omits the variant/gender, resolve it to
+        # the family's declared default product. The match remains strict:
+        # extra words outside the verified family name do not qualify.
+        family_aliases = family.get("query_aliases") or []
+        generic_family_signatures = {
+            _family_variant_signature(alias, family_brand)
+            for alias in family_aliases
+            if _family_variant_signature(alias, family_brand)
+        }
+        default_product = str(
+            family.get("default_product") or ""
+        ).strip()
+        if (
+            default_product
+            and product_signature in generic_family_signatures
+            and any(
+                isinstance(item, dict)
+                and str(item.get("canonical_name") or "").strip() == default_product
+                for item in products
+            )
+        ):
+            return {
+                "family_id": str(family.get("family_id") or "").strip(),
+                "brand": family_brand,
+                "canonical_name": default_product,
+            }
+
         matches = []
         product_concentration = _family_concentration(family_text)
 
