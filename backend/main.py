@@ -376,39 +376,10 @@ def has_small_size(product: Dict[str, Any]) -> bool:
 # FAMILY REGISTRY / CATALOGO AUTORITATIVO
 # ============================================================
 
-def _resolve_family_registry_path() -> str:
-    """
-    Risolve il registro famiglie in modo generico.
-
-    Priorita:
-      1) SCENTHUNTER_FAMILY_REGISTRY, se configurato;
-      2) family_registry.json nella directory del backend;
-      3) se il nome standard non esiste, un unico file
-         family_registry*.json presente nella directory del backend.
-
-    Non contiene nomi di prodotti o famiglie specifiche.
-    """
-    configured = os.getenv("SCENTHUNTER_FAMILY_REGISTRY", "").strip()
-    if configured:
-        return configured
-
-    standard = os.path.join(BASE_DIR, "family_registry.json")
-    if os.path.isfile(standard):
-        return standard
-
-    candidates = sorted(
-        str(path)
-        for path in Path(BASE_DIR).glob("family_registry*.json")
-        if path.is_file()
-    )
-
-    if len(candidates) == 1:
-        return candidates[0]
-
-    return standard
-
-
-FAMILY_REGISTRY_PATH = _resolve_family_registry_path()
+FAMILY_REGISTRY_PATH = os.path.join(
+    BASE_DIR,
+    "family_registry.json",
+)
 
 
 def catalog_norm(value: Any) -> str:
@@ -421,14 +392,9 @@ def catalog_norm(value: Any) -> str:
     le forme con apostrofo restano confrontabili con la forma ASCII equivalente.
     """
     text = str(value or "").strip().lower()
-    text = unicodedata.normalize("NFKD", text)
-    text = "".join(
-        char
-        for char in text
-        if not unicodedata.combining(char)
-    )
+    text = unicodedata.normalize("NFC", text)
     text = text.replace("’", "").replace("'", "")
-    text = re.sub(r"[^0-9a-z]+", " ", text)
+    text = re.sub(r"[^0-9a-zà-öø-ÿĀ-ž]+", " ", text)
     return re.sub(r"\s+", " ", text).strip()
 
 
@@ -523,17 +489,38 @@ def _catalog_alias_is_valid(
     alias: str,
 ) -> bool:
     """
-    Valida un alias dichiarato esplicitamente dal catalogo.
+    Applica due protezioni generiche al dato del catalogo:
 
-    Il catalogo è la fonte di verità: se un alias è scritto nel registro,
-    viene accettato. Non vengono create equivalenze automatiche tra forme
-    maschili/femminili o tra varianti diverse. Differenze di accento e
-    apostrofo sono già normalizzate da _catalog_clean_text().
+    1) un alias che differisce dal canonical_name solo per gli accenti
+       NON viene considerato equivalente;
+    2) un alias che aggiunge/cambia il genere rispetto al canonical_name
+       NON viene considerato equivalente.
+
+    Le vere equivalenze lessicali restano invece possibili quando sono
+    esplicitamente dichiarate dal catalogo.
     """
     canonical_clean = _catalog_clean_text(canonical_name)
     alias_clean = _catalog_clean_text(alias)
 
-    return bool(canonical_clean and alias_clean)
+    if not canonical_clean or not alias_clean:
+        return False
+
+    canonical_folded = norm(canonical_clean)
+    alias_folded = norm(alias_clean)
+
+    if (
+        canonical_clean != alias_clean
+        and canonical_folded == alias_folded
+    ):
+        return False
+
+    canonical_gender = _catalog_gender_class(canonical_name)
+    alias_gender = _catalog_gender_class(alias)
+
+    if canonical_gender != alias_gender:
+        return False
+
+    return True
 
 
 def _load_family_registry() -> List[Dict[str, Any]]:
@@ -553,7 +540,6 @@ def _load_family_registry() -> List[Dict[str, Any]]:
     except Exception as exc:
         print(
             "FAMILY_REGISTRY_LOAD_ERROR:",
-            f"path={FAMILY_REGISTRY_PATH} ",
             f"{type(exc).__name__}: {exc}",
             flush=True,
         )
@@ -623,16 +609,7 @@ def _load_family_registry() -> List[Dict[str, Any]]:
         if not normalized_variants:
             continue
 
-        # Supporta i nomi di campo usati dal registry reale.
-        # search_name/canonical_family_name sono equivalenti a una query
-        # di famiglia quando il registro non espone query_aliases.
-        query_aliases = (
-            family.get("query_aliases")
-            or family.get("search_aliases")
-            or family.get("search_name")
-            or family.get("canonical_family_name")
-            or []
-        )
+        query_aliases = family.get("query_aliases") or []
         if isinstance(query_aliases, str):
             query_aliases = [query_aliases]
         if not isinstance(query_aliases, list):
@@ -695,24 +672,6 @@ def _catalog_brand_matches(
     )
 
 
-def _catalog_strip_family_brand(
-    value: Any,
-    family: Dict[str, Any],
-) -> str:
-    """Normalizza una forma di catalogo rimuovendo solo il brand della famiglia."""
-    text = _catalog_clean_text(value)
-    brand = _catalog_clean_text(family.get("brand"))
-    if brand:
-        text = re.sub(
-            rf"\b{re.escape(brand)}\b",
-            " ",
-            text,
-            flags=re.I,
-        )
-        text = re.sub(r"\s+", " ", text).strip()
-    return text
-
-
 def _catalog_product_text(product: Dict[str, Any]) -> str:
     values = [
         product_field(
@@ -754,22 +713,35 @@ def _catalog_variant_for_product(
     if not _catalog_brand_matches(product, family):
         return None
 
-    candidate_text = _catalog_strip_family_brand(
-        _catalog_product_text(product),
-        family,
+    candidate_text = _catalog_clean_text(
+        _catalog_product_text(product)
     )
 
     if not candidate_text:
         return None
 
+    # Rimuove soltanto il brand della famiglia dal titolo candidato.
+    brand = _catalog_clean_text(
+        family.get("brand")
+    )
+    if brand:
+        candidate_text = re.sub(
+            rf"\b{re.escape(brand)}\b",
+            " ",
+            candidate_text,
+            flags=re.I,
+        )
+        candidate_text = re.sub(
+            r"\s+",
+            " ",
+            candidate_text,
+        ).strip()
+
     for variant in family.get("variants", []):
         canonical_name = variant.get("canonical_name", "")
 
         for alias in variant.get("aliases", []):
-            alias_clean = _catalog_strip_family_brand(
-                alias,
-                family,
-            )
+            alias_clean = _catalog_clean_text(alias)
 
             if not alias_clean:
                 continue
@@ -789,7 +761,6 @@ def _catalog_family_for_query(
         return None
 
     for family in FAMILY_REGISTRY:
-        # 1) Nome della famiglia: es. "Hawas" o "Rasasi Hawas".
         for alias in family.get("query_aliases", []):
             alias_clean = _catalog_clean_text(alias)
 
@@ -811,21 +782,6 @@ def _catalog_family_for_query(
             ):
                 return family
 
-        # 2) Alias di una variante: permette di cercare direttamente una
-        #    variante anche quando il nome commerciale non contiene il
-        #    nome della famiglia, per esempio "Malibu Voor Mannen".
-        for variant in family.get("variants", []):
-            for alias in variant.get("aliases", []):
-                alias_clean = _catalog_strip_family_brand(
-                    alias,
-                    family,
-                )
-                if alias_clean and _catalog_phrase_equal(
-                    query_clean,
-                    alias_clean,
-                ):
-                    return family
-
     return None
 
 
@@ -833,20 +789,29 @@ def _catalog_requested_variant(
     query: str,
     family: Dict[str, Any],
 ) -> Optional[Dict[str, Any]]:
-    query_clean = _catalog_strip_family_brand(
-        query,
-        family,
+    query_clean = _catalog_clean_text(query)
+
+    brand = _catalog_clean_text(
+        family.get("brand")
     )
+    if brand:
+        query_clean = re.sub(
+            rf"\b{re.escape(brand)}\b",
+            " ",
+            query_clean,
+            flags=re.I,
+        )
+        query_clean = re.sub(
+            r"\s+",
+            " ",
+            query_clean,
+        ).strip()
 
     for variant in family.get("variants", []):
         for alias in variant.get("aliases", []):
-            alias_clean = _catalog_strip_family_brand(
-                alias,
-                family,
-            )
             if _catalog_phrase_equal(
                 query_clean,
-                alias_clean,
+                alias,
             ):
                 return variant
 
@@ -989,12 +954,18 @@ def matches(product: Dict[str, Any], query: str) -> bool:
     # --------------------------------------------------------
     # CATALOGO AUTORITATIVO
     # --------------------------------------------------------
-    # Se la query appartiene a una famiglia presente nel registry, il
-    # catalogo diventa l'unica fonte di verita: nessun fallback generico
-    # puo far passare una variante non autorizzata.
-    catalog_family = _catalog_family_for_query(query)
-    if catalog_family is not None:
-        return _catalog_match(product, query) is not None
+    catalog_match = _catalog_match(
+        product,
+        query,
+    )
+
+    if catalog_match is not None:
+        return True
+
+    # Se la query appartiene a una famiglia catalogata, ma il candidato
+    # non corrisponde a una variante autorizzata, deve essere escluso.
+    if _catalog_family_for_query(query) is not None:
+        return False
 
     # --------------------------------------------------------
     # MATCHING GENERICO PER FAMIGLIE NON CATALOGATE
