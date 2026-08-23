@@ -6,7 +6,6 @@ import re
 import difflib
 from xml.etree import ElementTree as ET
 from typing import Any, Dict, Iterable, List, Optional, Tuple
-from concurrent.futures import ThreadPoolExecutor, as_completed
 from urllib.parse import quote_plus, unquote, urljoin, urlparse
 
 import requests
@@ -19,7 +18,7 @@ SITEMAP_URL = BASE_URL + "/sitemap.xml"
 READER_BASE = "https://r.jina.ai/"
 TIMEOUT = 20
 READER_TIMEOUT = 12
-SCRAPER_VERSION = "notino-FR-generic-discovery-2026-08-23-v13-bounded-reader-discovery"
+SCRAPER_VERSION = "notino-FR-generic-discovery-2026-08-21-v13-generic-brand-display-normalization"
 
 HEADERS = {
     "User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
@@ -377,6 +376,17 @@ def _make_candidate(url: str, anchor: str, card: str, query: str, source: str) -
     if matched:
         score += 5
 
+    # The reader can expose a search-page heading as the anchor text for
+    # several different product URLs. Never let that shared search context
+    # outrank the actual product identity carried by the URL slug. The URL
+    # is therefore used as a generic secondary name signal for ranking.
+    url_name = _name_from_product_url(url)
+    url_matched, _, url_fuzzy_hits = _fuzzy_query_match(url_name, query)
+    if url_matched:
+        score += 12
+    elif url_name:
+        score += url_fuzzy_hits * 2
+
     search_context = f"{anchor} {card}"
     requested_sizes = _requested_sizes(query)
     if requested_sizes:
@@ -514,6 +524,45 @@ def _brand_from_product_url(url: str) -> str:
     return _clean_name(parts[0].replace("-", " ")) if len(parts) >= 2 else ""
 
 
+def _display_product_name(name: Any, url: str = "", brand_hint: str = "") -> str:
+    """Return one consistent catalog display name: ``Brand - Variant``.
+
+    This is presentation-only. Discovery/matching continues to use the raw
+    product name, so adding the brand separator cannot change which products
+    are found. The brand is taken from structured product data when available,
+    otherwise from the first Notino product-URL path segment. If the raw name
+    already starts with the brand, that prefix is removed before formatting.
+    The rule is intentionally generic and applies to every brand/product.
+    """
+    raw_name = _clean_name(str(name or ""))
+    if not raw_name:
+        return ""
+
+    brand = _clean_name(brand_hint)
+    if not brand:
+        brand = _brand_from_product_url(url)
+        brand = brand.title() if brand else ""
+    if not brand:
+        return raw_name
+
+    brand = re.sub(r"\s*[-–—:]\s*$", "", brand).strip()
+    if not brand:
+        return raw_name
+
+    # Normalize an already formatted name first.
+    raw_name = re.sub(r"^\s*([^:]+?)\s*[-–—:]\s*", r"\1 - ", raw_name)
+
+    # Remove a leading brand from the product name, case-insensitively.
+    prefix = re.compile(r"^" + re.escape(brand) + r"(?:\s*[-–—:]\s*|\s+)", re.I)
+    variant = prefix.sub("", raw_name, count=1).strip()
+
+    # If the name is only the brand, do not manufacture an empty variant.
+    if not variant or variant.casefold() == brand.casefold():
+        return brand
+
+    return f"{brand} - {variant}"
+
+
 def _reader_candidates(text: str, query: str) -> List[Dict[str, Any]]:
     found: Dict[str, Dict[str, Any]] = {}
     raw = html_lib.unescape(text or "").replace("\\/", "/")
@@ -634,20 +683,35 @@ def _reader_candidates(text: str, query: str) -> List[Dict[str, Any]]:
 
 
 
-def _rank_candidates_for_product_lookup(candidates: List[Dict[str, Any]], limit: int = 8) -> List[Dict[str, Any]]:
+def _candidate_lookup_rank(candidate: Dict[str, Any], query: str) -> Tuple[int, int, int, str]:
+    """Rank candidates by real product identity before applying the lookup limit.
+
+    Notino/Jina may attach identical search-result text to many product links.
+    ``contains_all_query_tokens`` alone is therefore not sufficient: it can be
+    true because the shared search heading contains the query. The product URL
+    slug is an independent, generic signal and must win over that shared text.
+    """
+    url_name = _name_from_product_url(candidate.get("url", ""))
+    url_matched, _, url_fuzzy_hits = _fuzzy_query_match(url_name, query)
+    return (
+        1 if url_matched else 0,
+        1 if bool(candidate.get("contains_all_query_tokens")) else 0,
+        int(candidate.get("score") or 0) + (url_fuzzy_hits * 2),
+        candidate.get("url", ""),
+    )
+
+
+def _rank_candidates_for_product_lookup(candidates: List[Dict[str, Any]], limit: int = 8, query: str = "") -> List[Dict[str, Any]]:
     """Keep the strongest generic discovery candidates for product-page lookup."""
     if not candidates:
         return []
+
     ordered = sorted(
         candidates,
-        key=lambda x: (
-            not bool(x.get("contains_all_query_tokens")),
-            -int(x.get("score") or 0),
-            x.get("url", ""),
-        ),
+        key=lambda x: _candidate_lookup_rank(x, query),
+        reverse=True,
     )
-    exact = [x for x in ordered if x.get("contains_all_query_tokens")]
-    return (exact if exact else ordered)[:limit]
+    return ordered[:limit]
 
 
 def _parse_sitemap_xml(text: str) -> Tuple[str, List[str]]:
@@ -798,10 +862,9 @@ def _sitemap_discovery(
                     "candidate_count": len(candidates) - before,
                     "source": child_source,
                 })
-                # Two exact candidates are enough for the sitemap fallback;
-                # do not continue through the remaining catalogue shards.
-                if len(candidates) >= 2:
-                    break
+                # We only enter sitemap fallback when ordinary discovery is
+                # weak. Two strong exact hits are enough to avoid unnecessary
+                # catalogue-wide requests while preserving generic discovery.
             except requests.RequestException as exc:
                 pages.append({
                     "url": child_url,
@@ -821,26 +884,11 @@ def _sitemap_discovery(
 
 
 def _reader_discovery(query: str, session: requests.Session) -> Tuple[List[Dict[str, Any]], Dict[str, Any]]:
-    """Generic Jina-reader discovery with a bounded request budget.
-
-    Discovery must remain generic, but the previous implementation could
-    issue dozens of serial reader requests: multiple query-token variants,
-    several brand pages, and two branded-search permutations for every strong
-    candidate. A single slow Jina request could therefore make one diagnostic
-    run take several minutes.
-
-    We keep the same discovery layers but make them bounded and concurrent:
-    - two search variants (original + reversed tokens),
-    - at most three distinct brand catalogue pages,
-    - at most one branded search per distinct discovered brand,
-    - sitemap fallback only after these bounded stages.
-
-    No product names, URLs, or product-specific exceptions are used.
-    """
+    """Generic Jina-reader discovery with query variants and brand-page expansion."""
     query = _clean(query)
     tokens = _query_tokens(query)
     variants: List[str] = []
-    for value in (query, " ".join(reversed(tokens))):
+    for value in [query, " ".join(reversed(tokens)), *tokens]:
         value = _clean(value)
         if value and value not in variants:
             variants.append(value)
@@ -848,135 +896,78 @@ def _reader_discovery(query: str, session: requests.Session) -> Tuple[List[Dict[
     candidates: Dict[str, Dict[str, Any]] = {}
     pages: List[Dict[str, Any]] = []
 
-    def collect_result(result: Tuple[str, str, str, Optional[str], Optional[Exception]]) -> None:
-        source_url, variant, reader_url, text, error = result
-        if error is not None:
+    def collect(url: str, variant: str, source_url: str) -> None:
+        try:
+            response = _reader_request(session, url)
+            found = _reader_candidates(response.text, query)
+            for candidate in found:
+                old = candidates.get(candidate["url"])
+                if old is None or candidate["score"] > old["score"]:
+                    candidates[candidate["url"]] = candidate
             pages.append({
                 "url": source_url,
                 "query": variant,
-                "reader_url": reader_url,
-                "status": getattr(getattr(error, "response", None), "status_code", None),
-                "error": f"{type(error).__name__}: {error}",
+                "reader_url": READER_BASE + source_url,
+                "status": response.status_code,
+                "html_length": len(response.text or ""),
+                "candidate_count": len(found),
+                "reader": True,
             })
-            return
-
-        found = _reader_candidates(text or "", query)
-        for candidate in found:
-            old = candidates.get(candidate["url"])
-            if old is None or candidate["score"] > old["score"]:
-                candidates[candidate["url"]] = candidate
-        pages.append({
-            "url": source_url,
-            "query": variant,
-            "reader_url": reader_url,
-            "status": 200,
-            "html_length": len(text or ""),
-            "candidate_count": len(found),
-            "reader": True,
-        })
-
-    def fetch_reader(url: str, variant: str) -> Tuple[str, str, str, Optional[str], Optional[Exception]]:
-        # Jina requests do not need the storefront session/cookies. Using a
-        # short-lived session per worker avoids sharing requests.Session across
-        # threads while allowing the slow reader calls to run concurrently.
-        reader_url = READER_BASE + url
-        worker = requests.Session()
-        worker.headers.update(READER_HEADERS)
-        try:
-            response = worker.get(
-                reader_url,
-                timeout=READER_TIMEOUT,
-                allow_redirects=True,
-            )
-            response.raise_for_status()
-            return url, variant, reader_url, response.text or "", None
         except requests.RequestException as exc:
-            return url, variant, reader_url, None, exc
-        finally:
-            worker.close()
+            pages.append({
+                "url": source_url,
+                "query": variant,
+                "reader_url": READER_BASE + source_url,
+                "status": getattr(getattr(exc, "response", None), "status_code", None),
+                "error": f"{type(exc).__name__}: {exc}",
+            })
 
-    def run_reader_batch(requests_to_make: List[Tuple[str, str]]) -> None:
-        if not requests_to_make:
-            return
-        max_workers = min(4, len(requests_to_make))
-        with ThreadPoolExecutor(max_workers=max_workers) as executor:
-            futures = [
-                executor.submit(fetch_reader, url, variant)
-                for url, variant in requests_to_make
-            ]
-            for future in as_completed(futures):
-                collect_result(future.result())
+    for variant in variants:
+        for search_url in _search_urls(variant):
+            collect(search_url, variant, search_url)
 
-    # Stage 1: storefront search variants. Bounded to two variants and
-    # executed concurrently so one slow reader response does not block the
-    # remaining discovery paths.
-    initial_requests = [
-        (search_url, variant)
-        for variant in variants
-        for search_url in _search_urls(variant)
-    ]
-    run_reader_batch(initial_requests)
-
-    # Generic second-stage discovery: when strong candidates reveal brands,
-    # inspect at most three distinct brand catalogues through Jina.
+    # Generic second-stage discovery: when a strong candidate reveals a brand,
+    # inspect that brand's catalogue through Jina.  No product names or
+    # product-specific URLs are hard-coded.
     strong = sorted(
         candidates.values(),
         key=lambda x: (
             not bool(x.get("contains_all_query_tokens")),
             -int(x.get("score") or 0),
-            x.get("url", ""),
         ),
     )[:8]
-
-    query_token_set = set(tokens)
-    brand_urls: List[Tuple[str, str]] = []
-    seen_brands = set()
+    brand_urls: List[str] = []
     for candidate in strong:
-        brand = _clean(_brand_from_product_url(candidate["url"]))
-        brand_key = _product_norm(brand)
-        if not brand_key or brand_key in seen_brands:
-            continue
-        seen_brands.add(brand_key)
-        # If the user already supplied the brand, the ordinary search stage
-        # already covers that dimension; do not repeat it through the brand
-        # catalogue.
-        if set(_query_tokens(brand)).issubset(query_token_set):
+        brand = _brand_from_product_url(candidate["url"])
+        if not brand:
             continue
         brand_slug = re.sub(r"\s+", "-", brand.lower())
         brand_url = f"{BASE_URL}/{brand_slug}/"
-        brand_urls.append((brand_url, f"brand:{brand_url.rsplit('/', 2)[-2]}"))
-        if len(brand_urls) >= 3:
-            break
+        if brand_url not in brand_urls:
+            brand_urls.append(brand_url)
 
-    run_reader_batch(brand_urls)
+    for brand_url in brand_urls:
+        collect(brand_url, f"brand:{brand_url.rsplit('/', 2)[-2]}", brand_url)
 
-    # Generic third-stage discovery: one branded search per distinct brand.
-    # The previous two-order permutations are unnecessary because the reader
-    # search is token-based and query matching is order-independent.
-    branded_requests: List[Tuple[str, str]] = []
-    seen_branded_queries = set()
+    # Generic third-stage discovery: once a brand is known, retry the
+    # original search with the brand explicitly included. Some Notino
+    # search/reader variants expose only one result unless the brand is
+    # present in the query. This remains fully generic and contains no
+    # product-specific names or URLs.
     for candidate in strong:
-        brand = _clean(_brand_from_product_url(candidate["url"]))
+        brand = _brand_from_product_url(candidate["url"])
         if not brand:
             continue
-        branded_query = _clean(f"{brand} {query}")
-        key = _product_norm(branded_query)
-        if not branded_query or key in seen_branded_queries:
-            continue
-        seen_branded_queries.add(key)
-        for search_url in _search_urls(branded_query):
-            branded_requests.append((search_url, branded_query))
-        if len(seen_branded_queries) >= 3:
-            break
+        branded_queries = [f"{brand} {query}", f"{query} {brand}"]
+        for branded_query in branded_queries:
+            for search_url in _search_urls(branded_query):
+                collect(search_url, branded_query, search_url)
 
-    run_reader_batch(branded_requests)
-
-    # Generic fourth-stage discovery: if the storefront search/brand
-    # catalogue still exposes fewer than two exact products, consult Notino's
-    # own XML product sitemap. This remains catalogue-wide and product-neutral.
-    exact_count = sum(
-        1 for x in candidates.values() if x.get("contains_all_query_tokens")
-    )
+    # Generic fourth-stage discovery: if the storefront search/brand catalogue
+    # still exposes fewer than two exact products, consult Notino's own XML
+    # product sitemap. This is catalogue-wide and contains no product names,
+    # seeds, or hard-coded product URLs.
+    exact_count = sum(1 for x in candidates.values() if x.get("contains_all_query_tokens"))
     sitemap_pages: List[Dict[str, Any]] = []
     if exact_count < 2:
         sitemap_candidates, sitemap_pages = _sitemap_discovery(query, session)
@@ -1181,44 +1172,7 @@ def _reader_product(text: str, candidate: Dict[str, Any], query: str) -> Optiona
         x in low for x in IN_STOCK_MARKERS
     ):
         return None
-    return {"store": STORE, "name": name, "price": price, "url": candidate["url"]}
-
-
-def _card_availability(candidate: Dict[str, Any]) -> str:
-    """Read stock state only from the candidate's own search-card context.
-
-    This is used only when a product page is unavailable because of an anti-bot
-    challenge. It prevents an out-of-stock card from being promoted to a real
-    store offer while preserving valid in-stock cards from the same search page.
-    """
-    anchor = _clean(candidate.get("anchor_text") or "")
-    card = _clean(candidate.get("card_text") or "")
-    context = _clean(f"{anchor} {card}")
-    low = context.lower()
-
-    # Include the short French stock labels too.  They are checked before
-    # in-stock markers because ``disponible`` is contained in ``indisponible``.
-    out_markers = tuple(dict.fromkeys(
-        _clean(x).lower()
-        for x in (*OUT_STOCK_MARKERS,
-                  "indisponible", "épuisé", "epuise",
-                  "out of stock", "sold out", "unavailable")
-        if _clean(x)
-    ))
-    in_markers = tuple(dict.fromkeys(
-        _clean(x).lower()
-        for x in (*IN_STOCK_MARKERS, "disponible", "available", "in stock")
-        if _clean(x)
-    ))
-
-    has_out = any(marker in low for marker in out_markers if marker)
-    has_in = any(marker in low for marker in in_markers if marker)
-
-    if has_out:
-        return "out_of_stock"
-    if has_in:
-        return "in_stock"
-    return "unknown"
+    return {"store": STORE, "name": _display_product_name(name, candidate.get("url", "")), "price": price, "url": candidate["url"]}
 
 
 def _card_result(candidate: Dict[str, Any], query: str) -> Optional[Dict[str, Any]]:
@@ -1237,16 +1191,10 @@ def _card_result(candidate: Dict[str, Any], query: str) -> Optional[Dict[str, An
     if not _requested_size_is_valid(context, query):
         return None
 
-    # A search-card fallback is allowed only when the card is not explicitly
-    # marked out of stock. Direct product pages are authoritative when they are
-    # accessible; this branch exists for Notino's Cloudflare-protected pages.
-    if _card_availability(candidate) == "out_of_stock":
-        return None
-
     price = _extract_price(anchor) or _extract_price(card)
     if not price:
         return None
-    return {"store": STORE, "name": name, "price": price, "url": candidate["url"]}
+    return {"store": STORE, "name": _display_product_name(name, candidate.get("url", "")), "price": price, "url": candidate["url"]}
 
 
 def _product_details(
@@ -1311,7 +1259,7 @@ def _product_details(
     if not name:
         return _card_result(candidate, query)
 
-    page_title = _clean(title.get_text(" ", strip=True)) if title else ""
+    page_title = _clean(soup.title.get_text(" ", strip=True)) if soup.title else ""
     if _has_non_perfume_marker_in_product(name, final_url, page_title):
         return None
 
@@ -1339,7 +1287,7 @@ def _product_details(
         x in low for x in IN_STOCK_MARKERS
     ):
         return None
-    return {"store": STORE, "name": name, "price": price, "url": final_url} if price else None
+    return {"store": STORE, "name": _display_product_name(name, final_url, brand), "price": price, "url": final_url} if price else None
 
 
 def search(query: str) -> List[Dict[str, Any]]:
@@ -1350,7 +1298,7 @@ def search(query: str) -> List[Dict[str, Any]]:
     session.headers.update(HEADERS)
     try:
         candidates, _ = _search_http_candidates(query, session=session)
-        candidates = _rank_candidates_for_product_lookup(candidates, limit=8)
+        candidates = _rank_candidates_for_product_lookup(candidates, limit=8, query=query)
         results, seen = [], set()
         for candidate in candidates:
             result = _product_details(session, candidate, query)
@@ -1388,7 +1336,7 @@ def diagnose(query: str) -> Dict[str, Any]:
     session.headers.update(HEADERS)
     try:
         candidates, discovery = _search_http_candidates(query, session=session)
-        candidates_for_product_pages = _rank_candidates_for_product_lookup(candidates, limit=8)
+        candidates_for_product_pages = _rank_candidates_for_product_lookup(candidates, limit=8, query=query)
         discovery["product_page_candidate_limit"] = 8
         discovery["candidate_urls_before_product_page_limit"] = len(candidates)
         product_pages = []
