@@ -1,4 +1,4 @@
-
+"""
 ScentHunter - Product Index
 STEP 2: local product/offers index.
 
