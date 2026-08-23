@@ -375,7 +375,121 @@ def has_small_size(product: Dict[str, Any]) -> bool:
 # VALIDAZIONE
 # ============================================================
 
+def _identity_tokens(value: str) -> List[str]:
+    """
+    Estrae i token utili per l'identità nominale.
+
+    La funzione rimuove solo elementi che descrivono il formato tecnico
+    della fragranza o la misura. Non rimuove modificatori commerciali
+    o di variante: questi devono rimanere disponibili per distinguere
+    identità diverse.
+    """
+    text = norm(value or "")
+
+    text = re.sub(
+        r"\b\d+(?:[.,]\d+)?\s*(?:ml|cl)\b",
+        " ",
+        text,
+        flags=re.I,
+    )
+
+    text = re.sub(
+        r"\b(?:eau\s+de\s+parfum|eau\s+de\s+toilette|"
+        r"eau\s+de\s+cologne|eau\s+fraiche|"
+        r"extrait\s+de\s+parfum|"
+        r"edp|edt|edc)\b",
+        " ",
+        text,
+        flags=re.I,
+    )
+
+    text = re.sub(r"\b\d+(?:[.,]\d+)?\b", " ", text)
+    text = re.sub(r"[^a-z0-9]+", " ", text, flags=re.I)
+    text = re.sub(r"\s+", " ", text).strip()
+
+    technical_words = {
+        "eau",
+        "de",
+        "parfum",
+        "perfume",
+        "edp",
+        "edt",
+        "edc",
+        "extrait",
+        "spray",
+        "ml",
+        "cl",
+        "by",
+    }
+
+    return [
+        token
+        for token in text.split()
+        if token not in technical_words
+    ]
+
+
+def _identity_token_set(product: Dict[str, Any]) -> set:
+    values = [
+        product_field(
+            product,
+            "name",
+            "title",
+            "product_name",
+        ),
+        product_field(product, "brand", "source_brand"),
+        product_field(product, "product_line"),
+        product_field(product, "variant"),
+    ]
+
+    attributes = product.get("attributes")
+    if isinstance(attributes, dict):
+        for key, value in attributes.items():
+            if key in {
+                "variant",
+                "product_line",
+                "family",
+                "family_name",
+                "gender",
+                "concentration",
+                "name",
+                "title",
+            }:
+                values.append(nested_value(value))
+
+    source = product.get("source")
+    if isinstance(source, dict):
+        values.extend(
+            [
+                source.get("name"),
+                source.get("title"),
+                source.get("brand"),
+                source.get("source_brand"),
+                source.get("variant"),
+                source.get("product_line"),
+            ]
+        )
+
+    tokens = set()
+    for value in values:
+        tokens.update(_identity_tokens(str(value or "")))
+
+    return tokens
+
+
 def matches(product: Dict[str, Any], query: str) -> bool:
+    """
+    Validazione centrale non distruttiva.
+
+    La query identifica almeno il nucleo nominale richiesto. I modificatori
+    presenti nella query restano parte dell'identità e devono quindi essere
+    presenti nell'offerta; non esistono liste specifiche per singoli profumi
+    o varianti.
+
+    Una query generica come "nome prodotto" continua a poter includere
+    varianti dello stesso prodotto. Una query più specifica come
+    "nome prodotto variante" richiede anche il modificatore della variante.
+    """
     query_normalized = norm(query)
 
     if not query_normalized:
@@ -435,94 +549,23 @@ def matches(product: Dict[str, Any], query: str) -> bool:
         ):
             return False
 
-    name_for_matching = name_normalized
+    query_tokens = _identity_tokens(query_normalized)
 
-    name_for_matching = re.sub(
-        r"\b\d+(?:[.,]\d+)?\s*(?:ml|cl)\b",
-        " ",
-        name_for_matching,
-        flags=re.I,
-    )
-
-    name_for_matching = re.sub(
-        r"\b(?:eau\s+de\s+parfum|eau\s+de\s+toilette|"
-        r"eau\s+de\s+cologne|extrait\s+de\s+parfum|"
-        r"edp|edt|edc)\b",
-        " ",
-        name_for_matching,
-        flags=re.I,
-    )
-
-    name_for_matching = re.sub(
-        r"\s+",
-        " ",
-        name_for_matching,
-    ).strip()
-
-    query_tokens = [
-        token
-        for token in query_normalized.split()
-        if token not in IGNORED_WORDS
-        and not re.fullmatch(
-            r"\d+(?:[.,]\d+)?",
-            token,
-        )
-    ]
-
-    generic_tokens = {
-        "eau",
-        "de",
-        "parfum",
-        "perfume",
-        "edp",
-        "edt",
-        "edc",
-        "extrait",
-        "spray",
-        "intense",
-        "limited",
-        "edition",
-        "for",
-        "men",
-        "women",
-        "homme",
-        "femme",
-        "unisex",
-    }
-
-    family_tokens = [
-        token
-        for token in query_tokens
-        if token not in generic_tokens
-    ]
-
-    if not family_tokens:
-        family_tokens = query_tokens
-
-    if not family_tokens:
+    if not query_tokens:
         return False
 
-    name_tokens = name_for_matching.split()
+    candidate_tokens = _identity_token_set(product)
 
-    family_phrase = " ".join(family_tokens)
-    name_phrase = " ".join(
-        token
-        for token in name_tokens
-        if token not in generic_tokens
-    )
-
-    if not family_phrase or not name_phrase:
+    if not candidate_tokens:
         return False
 
-    padded_name = f" {name_phrase} "
-    padded_family = f" {family_phrase} "
-
-    return padded_family in padded_name
-
-
-# ============================================================
-# DISCOVERY GENERICA
-# ============================================================
+    # Tutti i token significativi esplicitamente richiesti dalla query
+    # devono essere rappresentati nell'identità dell'offerta.
+    #
+    # Non viene richiesto il contrario: un'offerta può avere token
+    # aggiuntivi perché può rappresentare una variante di una ricerca
+    # generica. Questo preserva la discovery delle varianti.
+    return set(query_tokens).issubset(candidate_tokens)
 
 def build_search_attempts(store: str, query: str) -> List[str]:
     """
