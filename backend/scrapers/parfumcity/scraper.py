@@ -170,6 +170,60 @@ def search(query):
     finally:
         session.close()
 
+
+def diagnose(query):
+    query=clean(query)
+    if not query:return {"diagnostic":True,"query":query,"error":"empty_query"}
+    session=requests.Session()
+    try:
+        search_url=BASE_URL+"/search?q="+quote_plus(query)
+        d={"diagnostic":True,"query":query,"search_url":search_url,"search":{},"candidate_count":0,"candidates":[],"product_pages":[]}
+        try:
+            r=session.get(search_url,headers=HEADERS,timeout=TIMEOUT)
+            d["search"].update({"status":r.status_code,"final_url":r.url,"html_length":len(r.text or "")})
+            soup=BeautifulSoup(r.text,"html.parser") if r.status_code==200 else BeautifulSoup("","html.parser")
+            anchors=soup.find_all("a",href=True); links=[]; matching=[]; rejected=[]; seen=set()
+            for a in soup.select('a[href*="/products/"]'):
+                u=urljoin(BASE_URL,a.get("href") or "").split("?")[0]
+                if u in seen:continue
+                seen.add(u); label=clean(a.get_text(" ",strip=True)); card=a; matched=False; card_text=""
+                for _ in range(7):
+                    if card is None:break
+                    card_text=clean(card.get_text(" ",strip=True))
+                    if matches(card_text,query) and "€" in card_text:matched=True;break
+                    card=card.parent
+                links.append(u)
+                (matching if matched else rejected).append({"url":u,"anchor_text":label,"card_text":card_text[:500]})
+            d["search"].update({"anchor_count":len(anchors),"product_link_count":len(links),"matching_card_count":len(matching),"matching_cards":matching[:25],"rejected_product_links":rejected[:25]})
+        except requests.RequestException as exc:d["search"]["error"]=f"{type(exc).__name__}: {exc}"
+        urls=[]
+        try:
+            r=session.get(search_url,headers=HEADERS,timeout=TIMEOUT); r.raise_for_status(); soup=BeautifulSoup(r.text,"html.parser"); seen=set()
+            for a in soup.select('a[href*="/products/"]'):
+                url=urljoin(BASE_URL,a.get("href") or "").split("?")[0]
+                if url in seen:continue
+                card=a
+                for _ in range(7):
+                    if card is None:break
+                    text=clean(card.get_text(" ",strip=True))
+                    if matches(text,query) and "€" in text:break
+                    card=card.parent
+                if card is not None and matches(clean(card.get_text(" ",strip=True)),query):
+                    seen.add(url);urls.append(url)
+        except requests.RequestException as exc:d["discovery_error"]=f"{type(exc).__name__}: {exc}"
+        d["candidate_count"]=len(urls); d["candidates"]=urls[:50]
+        for u in urls[:15]:
+            item={"url":u,"status":None,"final_url":None,"html_length":None,"product_name":None,"name_matches_query":False,"price_found":False,"accepted":False,"error":None}
+            try:
+                r=session.get(u,headers=HEADERS,timeout=TIMEOUT); item.update({"status":r.status_code,"final_url":r.url,"html_length":len(r.text or "")})
+                if r.status_code==200:
+                    soup=BeautifulSoup(r.text,"html.parser"); h=soup.find("h1"); name=clean(h.get_text(" ",strip=True)) if h else ""
+                    item["product_name"]=name; item["name_matches_query"]=matches(name,query); item["price_found"]=price(soup.get_text(" ",strip=True)) is not None; item["accepted"]=bool(item["name_matches_query"] and item["price_found"])
+            except requests.RequestException as exc:item["error"]=f"{type(exc).__name__}: {exc}"
+            d["product_pages"].append(item)
+        return d
+    finally:session.close()
+
 def scrape(query):
     return search(query)
 
@@ -177,5 +231,6 @@ if __name__ == "__main__":
     import argparse
     parser = argparse.ArgumentParser(description="Generic ParfumCity store adapter")
     parser.add_argument("query")
+    parser.add_argument("--diagnose", action="store_true")
     args = parser.parse_args()
-    print(json.dumps(search(args.query), ensure_ascii=False, indent=2))
+    print(json.dumps(diagnose(args.query) if args.diagnose else search(args.query), ensure_ascii=False, indent=2))
