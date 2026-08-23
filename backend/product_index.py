@@ -207,11 +207,13 @@ def identity_for_product(item: Dict[str, Any]) -> Tuple[str, ...]:
             item,
             "canonical_name",
             "catalog_variant",
-            "family_name",
         )
         or ""
     )
 
+    # Catalog products are identified by the catalog family and the
+    # canonical variant name. family_name is metadata and must never
+    # collapse distinct variants into the same identity.
     if family_id and canonical_name:
         return (
             "catalog",
@@ -360,7 +362,9 @@ class CanonicalProduct:
     product_id: str
     brand_id: str
     brand_name: str
+    family_id: str
     family_name: str
+    canonical_name: str
     concentration: Optional[str]
     gender: Optional[str]
     aliases: Tuple[str, ...]
@@ -379,13 +383,16 @@ def load_canonical_catalog(path: Path | str) -> List[CanonicalProduct]:
         product_id = clean_text(item.get("product_id"))
         brand_id = clean_text(item.get("brand_id"))
         brand_name = clean_text(item.get("brand_name"))
-        family_name = clean_text(
+        family_id = clean_text(item.get("family_id"))
+        family_name = clean_text(item.get("family_name"))
+        canonical_name = clean_text(
             item.get("canonical_name")
             or item.get("catalog_variant")
-            or item.get("family_name")
+            or item.get("name")
+            or family_name
         )
 
-        if not product_id or not family_name:
+        if not product_id or not canonical_name:
             continue
 
         aliases = tuple(
@@ -399,7 +406,9 @@ def load_canonical_catalog(path: Path | str) -> List[CanonicalProduct]:
                 product_id=product_id,
                 brand_id=brand_id,
                 brand_name=brand_name,
+                family_id=family_id,
                 family_name=family_name,
+                canonical_name=canonical_name,
                 concentration=clean_text(item.get("concentration")) or None,
                 gender=clean_text(item.get("gender")) or None,
                 aliases=aliases,
@@ -420,7 +429,9 @@ CREATE TABLE IF NOT EXISTS products (
     product_id TEXT PRIMARY KEY,
     brand_id TEXT,
     brand_name TEXT NOT NULL,
+    family_id TEXT,
     family_name TEXT NOT NULL,
+    canonical_name TEXT NOT NULL,
     concentration TEXT,
     gender TEXT,
     aliases_json TEXT NOT NULL DEFAULT '[]',
@@ -475,10 +486,9 @@ CREATE VIRTUAL TABLE IF NOT EXISTS products_fts USING fts5(
     product_id UNINDEXED,
     brand_name,
     family_name,
+    canonical_name,
     aliases,
     concentration,
-    content='products',
-    content_rowid='rowid',
     tokenize='unicode61 remove_diacritics 2'
 );
 """
@@ -502,6 +512,7 @@ class ProductIndex:
         self.connection.row_factory = sqlite3.Row
         self.connection.execute("PRAGMA foreign_keys=ON")
         self.connection.executescript(SCHEMA)
+        self._migrate_product_columns()
         self._ensure_fts()
 
     def close(self) -> None:
@@ -513,16 +524,109 @@ class ProductIndex:
     def __exit__(self, exc_type, exc, tb) -> None:
         self.close()
 
+    def _migrate_product_columns(self) -> None:
+        """Add catalog identity columns to indexes created by older versions."""
+        columns = {
+            row[1]
+            for row in self.connection.execute(
+                "PRAGMA table_info(products)"
+            ).fetchall()
+        }
+
+        if "family_id" not in columns:
+            self.connection.execute(
+                "ALTER TABLE products ADD COLUMN family_id TEXT"
+            )
+
+        if "canonical_name" not in columns:
+            self.connection.execute(
+                "ALTER TABLE products ADD COLUMN canonical_name TEXT"
+            )
+            self.connection.execute(
+                "UPDATE products SET canonical_name = family_name "
+                "WHERE canonical_name IS NULL OR canonical_name = ''"
+            )
+
+        self.connection.commit()
+
     def _ensure_fts(self) -> None:
-        # Rebuild only when the FTS table is empty. The normal upsert path
-        # updates the corresponding FTS row explicitly.
+        # FTS is maintained explicitly by the upsert path. Recreate legacy
+        # external-content indexes when encountered so old schemas cannot
+        # collapse or misread family/canonical fields.
+        columns = [
+            row[1]
+            for row in self.connection.execute(
+                "PRAGMA table_info(products_fts)"
+            ).fetchall()
+        ]
+
+        required = {
+            "product_id",
+            "brand_name",
+            "family_name",
+            "canonical_name",
+            "aliases",
+            "concentration",
+        }
+
+        if not required.issubset(columns):
+            self.connection.execute("DROP TABLE IF EXISTS products_fts")
+            self.connection.execute(
+                """
+                CREATE VIRTUAL TABLE products_fts USING fts5(
+                    product_id UNINDEXED,
+                    brand_name,
+                    family_name,
+                    canonical_name,
+                    aliases,
+                    concentration,
+                    tokenize='unicode61 remove_diacritics 2'
+                )
+                """
+            )
+
         count = self.connection.execute(
             "SELECT COUNT(*) FROM products_fts"
         ).fetchone()[0]
+
         if count == 0:
-            self.connection.execute(
-                "INSERT INTO products_fts(products_fts) VALUES('rebuild')"
-            )
+            rows = self.connection.execute(
+                """
+                SELECT
+                    product_id,
+                    brand_name,
+                    family_name,
+                    canonical_name,
+                    aliases_json,
+                    concentration
+                FROM products
+                """
+            ).fetchall()
+
+            for row in rows:
+                aliases = json.loads(row[4] or "[]")
+                self.connection.execute(
+                    """
+                    INSERT INTO products_fts (
+                        product_id,
+                        brand_name,
+                        family_name,
+                        canonical_name,
+                        aliases,
+                        concentration
+                    )
+                    VALUES (?, ?, ?, ?, ?, ?)
+                    """,
+                    (
+                        row[0],
+                        row[1],
+                        row[2],
+                        row[3],
+                        " ".join(aliases),
+                        row[5] or "",
+                    ),
+                )
+
             self.connection.commit()
 
     def _upsert_product(
@@ -530,7 +634,9 @@ class ProductIndex:
         product_id: str,
         brand_id: str,
         brand_name: str,
+        family_id: str,
         family_name: str,
+        canonical_name: str,
         concentration: Optional[str],
         gender: Optional[str],
         aliases: Sequence[str],
@@ -544,7 +650,7 @@ class ProductIndex:
 
         text = searchable_text(
             brand_name,
-            family_name,
+            canonical_name,
             aliases,
             concentration,
             None,
@@ -556,18 +662,22 @@ class ProductIndex:
                 product_id,
                 brand_id,
                 brand_name,
+                family_id,
                 family_name,
+                canonical_name,
                 concentration,
                 gender,
                 aliases_json,
                 searchable_text,
                 updated_at
             )
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             ON CONFLICT(product_id) DO UPDATE SET
                 brand_id=excluded.brand_id,
                 brand_name=excluded.brand_name,
+                family_id=excluded.family_id,
                 family_name=excluded.family_name,
+                canonical_name=excluded.canonical_name,
                 concentration=excluded.concentration,
                 gender=excluded.gender,
                 aliases_json=excluded.aliases_json,
@@ -578,7 +688,9 @@ class ProductIndex:
                 product_id,
                 brand_id,
                 brand_name,
+                family_id,
                 family_name,
+                canonical_name,
                 concentration,
                 gender,
                 alias_json,
@@ -598,15 +710,17 @@ class ProductIndex:
                 product_id,
                 brand_name,
                 family_name,
+                canonical_name,
                 aliases,
                 concentration
             )
-            VALUES (?, ?, ?, ?, ?)
+            VALUES (?, ?, ?, ?, ?, ?)
             """,
             (
                 product_id,
                 brand_name,
                 family_name,
+                canonical_name,
                 " ".join(aliases),
                 concentration or "",
             ),
@@ -628,11 +742,13 @@ class ProductIndex:
                     ),
                     brand_id=clean_text(item.get("brand_id")),
                     brand_name=clean_text(item.get("brand_name") or item.get("brand")),
-                    family_name=clean_text(
+                    family_id=clean_text(item.get("family_id")),
+                    family_name=clean_text(item.get("family_name")),
+                    canonical_name=clean_text(
                         item.get("canonical_name")
                         or item.get("catalog_variant")
-                        or item.get("family_name")
                         or item.get("name")
+                        or item.get("family_name")
                     ),
                     concentration=clean_text(item.get("concentration")) or None,
                     gender=clean_text(item.get("gender")) or None,
@@ -643,14 +759,16 @@ class ProductIndex:
                     ),
                 )
 
-            if not product.product_id or not product.family_name:
+            if not product.product_id or not product.canonical_name:
                 continue
 
             self._upsert_product(
                 product.product_id,
                 product.brand_id,
                 product.brand_name,
-                product.family_name,
+                product.family_id,
+                product.family_name or product.canonical_name,
+                product.canonical_name,
                 product.concentration,
                 product.gender,
                 product.aliases,
@@ -696,11 +814,20 @@ class ProductIndex:
             if value and normalize(value) != normalize(name)
         )
 
+        family_id = clean_text(first_value(item, "family_id"))
+        family_name = clean_text(first_value(item, "family_name"))
+        canonical_name = clean_text(
+            first_value(item, "canonical_name", "catalog_variant", "name")
+            or name
+        )
+
         self._upsert_product(
             product_id=product_id,
             brand_id="",
             brand_name=brand or "Unknown",
-            family_name=name or "Unknown",
+            family_id=family_id,
+            family_name=family_name or canonical_name or "Unknown",
+            canonical_name=canonical_name or "Unknown",
             concentration=concentration,
             gender=None,
             aliases=aliases,
@@ -887,7 +1014,9 @@ class ProductIndex:
                 p.product_id,
                 p.brand_id,
                 p.brand_name,
+                p.family_id,
                 p.family_name,
+                p.canonical_name,
                 p.concentration,
                 p.gender,
                 p.aliases_json,
@@ -896,7 +1025,7 @@ class ProductIndex:
             JOIN products p
               ON p.product_id = products_fts.product_id
             WHERE products_fts MATCH ?
-            ORDER BY rank, p.brand_name, p.family_name
+            ORDER BY rank, p.brand_name, p.canonical_name
             LIMIT ?
             """,
             (match_expression, max(1, int(limit))),
@@ -973,7 +1102,9 @@ class ProductIndex:
                 product_id,
                 brand_id,
                 brand_name,
+                family_id,
                 family_name,
+                canonical_name,
                 concentration,
                 gender,
                 aliases_json,
