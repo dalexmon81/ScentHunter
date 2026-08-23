@@ -143,7 +143,8 @@
       "source_notes": "Verificato tramite fonte esterna; mantenere questa referenza come nome canonico del catalogo.",
       "verification_sources": [
         "https://fr.afnan.com/en/products/9-pm"
-      ]
+      ],
+      "canonical_name": "9 PM"
     },
     {
       "product_id": "SH-0024",
@@ -165,7 +166,8 @@
       "source_notes": "Verificato tramite fonte esterna; mantenere questa referenza come nome canonico del catalogo.",
       "verification_sources": [
         "https://fr.afnan.com/products/9-pm-elixir"
-      ]
+      ],
+      "canonical_name": "9 PM Elixir"
     },
     {
       "product_id": "SH-0025",
@@ -184,7 +186,8 @@
       "source_notes": "Verificato tramite fonte esterna; mantenere questa referenza come nome canonico del catalogo.",
       "verification_sources": [
         "https://sk.afnan.com/products/9pm-night-out"
-      ]
+      ],
+      "canonical_name": "9 PM Night Out"
     },
     {
       "product_id": "SH-0023",
@@ -203,7 +206,8 @@
       "source_notes": "Verificato tramite fonte esterna; mantenere questa referenza come nome canonico del catalogo.",
       "verification_sources": [
         "https://be.afnan.com/products/9-pm-rebel"
-      ]
+      ],
+      "canonical_name": "9 PM Rebel"
     },
     {
       "product_id": "SH-0067",
@@ -224,7 +228,8 @@
       "source_notes": "Verificato tramite fonte ufficiale Afnan; nome canonico, formato e alias aggiornati.",
       "verification_sources": [
         "https://fr.afnan.com/en/products/9-pm-pour-femme"
-      ]
+      ],
+      "canonical_name": "9 PM - Pour Femme"
     },
     {
       "product_id": "SH-0068",
@@ -242,7 +247,8 @@
       "source_notes": "Verificato tramite fonte ufficiale Afnan; nome canonico, formato e alias aggiornati.",
       "verification_sources": [
         "https://fr.afnan.com/en/products/9-am"
-      ]
+      ],
+      "canonical_name": "9 AM"
     },
     {
       "product_id": "SH-0069",
@@ -260,7 +266,8 @@
       "source_notes": "Verificato tramite fonte ufficiale Afnan; nome canonico, formato e alias aggiornati.",
       "verification_sources": [
         "https://fr.afnan.com/en/products/9-am-dive"
-      ]
+      ],
+      "canonical_name": "9 AM Dive"
     },
     {
       "product_id": "SH-0070",
@@ -279,7 +286,8 @@
       "source_notes": "Verificato tramite fonte ufficiale Afnan; nome canonico, formato e alias aggiornati.",
       "verification_sources": [
         "https://fr.afnan.com/en/products/9-am-pour-femme"
-      ]
+      ],
+      "canonical_name": "9 AM - Pour Femme"
     },
     {
       "product_id": "SH-0026",
@@ -296,7 +304,8 @@
       "source_notes": "Verificato tramite fonte esterna; mantenere questa referenza come nome canonico del catalogo.",
       "verification_sources": [
         "https://it.afnan.com/en/products/supremacy-collectors-edition"
-      ]
+      ],
+      "canonical_name": "Supremacy Collector's Edition"
     },
     {
       "product_id": "SH-0027",
@@ -313,7 +322,8 @@
       "source_notes": "Verificato tramite fonte esterna; mantenere questa referenza come nome canonico del catalogo.",
       "verification_sources": [
         "https://fr.afnan.com/products/supremacy-in-heaven"
-      ]
+      ],
+      "canonical_name": "Supremacy in Heaven"
     },
     {
       "product_id": "SH-0035",
@@ -332,7 +342,8 @@
       "source_notes": "Verificato con fonte prodotto/brand; nome canonico, concentrazione, formato e alias aggiornati.",
       "verification_sources": [
         "https://fr.afnan.com/products/turathi-blue-homme"
-      ]
+      ],
+      "canonical_name": "Turathi Blue"
     },
     {
       "product_id": "SH-0060",
@@ -351,7 +362,8 @@
       "source_notes": "Verificato con fonte prodotto/brand; nome canonico, concentrazione, formato e alias aggiornati.",
       "verification_sources": [
         "https://egypt.afnan.com/products/turathi-brown-homme"
-      ]
+      ],
+      "canonical_name": "Turathi Brown"
     },
     {
       "product_id": "SH-0061",
@@ -369,7 +381,8 @@
       "source_notes": "Verificato con fonte prodotto/brand; nome canonico, concentrazione, formato e alias aggiornati.",
       "verification_sources": [
         "https://fr.afnan.com/products/turathi-electric"
-      ]
+      ],
+      "canonical_name": "Turathi Electric"
     },
     {
       "product_id": "SH-0059",
@@ -388,7 +401,8 @@
       "source_notes": "Verificato con fonte prodotto/brand; nome canonico, concentrazione, formato e alias aggiornati.",
       "verification_sources": [
         "https://afnan.com/products/turathi-red-femme"
-      ]
+      ],
+      "canonical_name": "Turathi Red"
     },
     {
       "product_id": "SH-0033",
@@ -406,7 +420,8 @@
       "source_notes": "Verificato con fonte prodotto/brand; nome canonico, formati e alias aggiornati.",
       "verification_sources": [
         "https://ae.ahmedalmaghribi.com/en/shop/perfumes/occidental-fragrance/kaaf"
-      ]
+      ],
+      "canonical_name": "Kaaf"
     },
     {
       "product_id": "SH-0017",
@@ -422,7 +437,8 @@
       ],
       "source_status": "verificato",
       "source_notes": "Nome già incontrato nello storico ScentHunter; formato/alias da verificare prima dell'integrazione.",
-      "verification_sources": []
+      "verification_sources": [],
+      "canonical_name": "Club de Nuit Intense Man"
     },
     {
       "product_id": "SH-0018",
@@ -438,7 +454,8 @@
       ],
       "source_status": "verificato",
       "source_notes": "Verificato con fonte ufficiale o rivenditore autorizzato/affidabile.",
-      "verification_sources": []
+      "verification_sources": [],
+      "canonical_name": "Club de Nuit Precieux"
     },
     {
       "product_id": "SH-0021",
@@ -456,7 +473,8 @@
       "source_notes": "Verificato con fonte prodotto/brand; nome canonico, formati e alias aggiornati.",
       "verification_sources": [
         "https://armafperfume.us/products/odyssey-artisto"
-      ]
+      ],
+      "canonical_name": "Odyssey Artisto Red"
     },
     {
       "product_id": "SH-0019",
@@ -473,7 +491,8 @@
       "source_notes": "Verificato tramite fonte esterna; mantenere questa referenza come nome canonico del catalogo.",
       "verification_sources": [
         "https://www.douglas.be/fr/p/5011971086"
-      ]
+      ],
+      "canonical_name": "Odyssey Mandarin Sky"
     },
     {
       "product_id": "SH-0020",
@@ -489,7 +508,8 @@
       ],
       "source_status": "verificato",
       "source_notes": "Nome già incontrato nello storico ScentHunter; formato/alias da verificare prima dell'integrazione.",
-      "verification_sources": []
+      "verification_sources": [],
+      "canonical_name": "Odyssey Spectra"
     },
     {
       "product_id": "SH-0014",
@@ -503,7 +523,8 @@
       "source_notes": "Verificato tramite fonte esterna; mantenere questa referenza come nome canonico del catalogo.",
       "verification_sources": [
         "https://www.iciparisxl.lu/azzaro/forever-wanted-elixir/parfum-bois-pour-homme/p/BP_1370389"
-      ]
+      ],
+      "canonical_name": "Forever Wanted Elixir"
     },
     {
       "product_id": "SH-0011",
@@ -519,7 +540,8 @@
       ],
       "source_status": "verificato",
       "source_notes": "Verificato con fonte ufficiale o rivenditore autorizzato/affidabile.",
-      "verification_sources": []
+      "verification_sources": [],
+      "canonical_name": "The Most Wanted"
     },
     {
       "product_id": "SH-0012",
@@ -535,7 +557,8 @@
       ],
       "source_status": "verificato",
       "source_notes": "Verificato con fonte ufficiale o rivenditore autorizzato/affidabile.",
-      "verification_sources": []
+      "verification_sources": [],
+      "canonical_name": "The Most Wanted Parfum"
     },
     {
       "product_id": "SH-0013",
@@ -551,7 +574,8 @@
       ],
       "source_status": "verificato",
       "source_notes": "Verificato con fonte ufficiale o rivenditore autorizzato/affidabile.",
-      "verification_sources": []
+      "verification_sources": [],
+      "canonical_name": "Wanted by Night"
     },
     {
       "product_id": "SH-0041",
@@ -567,7 +591,8 @@
       ],
       "source_status": "verificato",
       "source_notes": "Nome già incontrato nello storico ScentHunter; formato/alias da verificare prima dell'integrazione.",
-      "verification_sources": []
+      "verification_sources": [],
+      "canonical_name": "Bleu de Chanel"
     },
     {
       "product_id": "SH-0037",
@@ -582,7 +607,8 @@
       ],
       "source_status": "verificato",
       "source_notes": "Nome già incontrato nello storico ScentHunter; formato/alias da verificare prima dell'integrazione.",
-      "verification_sources": []
+      "verification_sources": [],
+      "canonical_name": "Aventus"
     },
     {
       "product_id": "SH-0038",
@@ -597,7 +623,8 @@
       ],
       "source_status": "verificato",
       "source_notes": "Nome già incontrato nello storico ScentHunter; formato/alias da verificare prima dell'integrazione.",
-      "verification_sources": []
+      "verification_sources": [],
+      "canonical_name": "Green Irish Tweed"
     },
     {
       "product_id": "SH-0039",
@@ -613,7 +640,8 @@
       ],
       "source_status": "verificato",
       "source_notes": "Verificato con fonte ufficiale o rivenditore autorizzato/affidabile.",
-      "verification_sources": []
+      "verification_sources": [],
+      "canonical_name": "Sauvage"
     },
     {
       "product_id": "SH-0040",
@@ -629,7 +657,8 @@
       ],
       "source_status": "verificato",
       "source_notes": "Verificato con fonte ufficiale o rivenditore autorizzato/affidabile.",
-      "verification_sources": []
+      "verification_sources": [],
+      "canonical_name": "Sauvage Elixir"
     },
     {
       "product_id": "SH-0032",
@@ -647,7 +676,8 @@
       "source_notes": "Verificato sul sito ufficiale Dumont; formato 100 ml. La fonte non indica una concentrazione specifica.",
       "verification_sources": [
         "https://www.dumontparis.com/product/nitro-red/"
-      ]
+      ],
+      "canonical_name": "Nitro Red"
     },
     {
       "product_id": "SH-0030",
@@ -666,7 +696,8 @@
       "source_notes": "Verificato sul sito ufficiale French Avenue; Eau de Parfum, 100 ml.",
       "verification_sources": [
         "https://www.french-avenue-parfum.com/produit/eau-de-parfum-liquid-brun/"
-      ]
+      ],
+      "canonical_name": "Liquid Brun"
     },
     {
       "product_id": "SH-0031",
@@ -684,7 +715,8 @@
       "source_notes": "Verificato con fonte prodotto/brand; nome canonico, concentrazione, formato e alias aggiornati.",
       "verification_sources": [
         "https://www.french-avenue-parfum.com/produit/liquid-brun-limited-edition-french-avenue/"
-      ]
+      ],
+      "canonical_name": "Liquid Brun Limited Edition"
     },
     {
       "product_id": "SH-0043",
@@ -701,7 +733,8 @@
       ],
       "source_status": "verificato",
       "source_notes": "Verificato con fonte prodotto/brand; formati e grafia canonica aggiornati.",
-      "verification_sources": []
+      "verification_sources": [],
+      "canonical_name": "Acqua di Gio Profondo"
     },
     {
       "product_id": "SH-0044",
@@ -718,7 +751,8 @@
       ],
       "source_status": "verificato",
       "source_notes": "Verificato con fonte prodotto/brand; formati e grafia canonica aggiornati.",
-      "verification_sources": []
+      "verification_sources": [],
+      "canonical_name": "Stronger With You Intensely"
     },
     {
       "product_id": "SH-0051",
@@ -736,7 +770,8 @@
       "source_notes": "Verificato con fonte prodotto/brand; nome canonico, formati e alias aggiornati.",
       "verification_sources": [
         "https://www.givenchybeauty.com/int/en/p/gentleman-reserve-privee-F10100159.html"
-      ]
+      ],
+      "canonical_name": "Gentleman Reserve Privee"
     },
     {
       "product_id": "SH-0050",
@@ -752,7 +787,8 @@
       ],
       "source_status": "verificato",
       "source_notes": "Nome già incontrato nello storico ScentHunter; formato/alias da verificare prima dell'integrazione.",
-      "verification_sources": []
+      "verification_sources": [],
+      "canonical_name": "Gentleman Society"
     },
     {
       "product_id": "SH-0016",
@@ -766,7 +802,8 @@
       "source_notes": "Verificato tramite fonte esterna; mantenere questa referenza come nome canonico del catalogo.",
       "verification_sources": [
         "https://www.jeanpaulgaultier.com/eu/fr/p/gamme-le-male/le-male-elixir-parfum-000000000065189083"
-      ]
+      ],
+      "canonical_name": "Le Male Elixir"
     },
     {
       "product_id": "SH-0015",
@@ -782,7 +819,8 @@
       ],
       "source_status": "verificato",
       "source_notes": "Verificato con fonte ufficiale o rivenditore autorizzato/affidabile.",
-      "verification_sources": []
+      "verification_sources": [],
+      "canonical_name": "Le Male Le Parfum"
     },
     {
       "product_id": "SH-0054",
@@ -802,7 +840,8 @@
       "source_notes": "Verificato con fonte prodotto/brand; nome canonico, concentrazione, formato e alias aggiornati.",
       "verification_sources": [
         "https://khadlaj-perfumes.com/collections/top-selling/products/island-100-ml-extrait-de-parfum-spray-for-men-and-women"
-      ]
+      ],
+      "canonical_name": "Island"
     },
     {
       "product_id": "SH-0055",
@@ -821,7 +860,8 @@
       "source_notes": "Verificato con fonte prodotto/brand; nome canonico, concentrazione, formato e alias aggiornati.",
       "verification_sources": [
         "https://www.notino.be/khadlaj/island-dreams-extrait-de-parfum-mixte/"
-      ]
+      ],
+      "canonical_name": "Island Dreams"
     },
     {
       "product_id": "SH-0056",
@@ -840,7 +880,8 @@
       "source_notes": "Verificato con fonte prodotto/brand; nome canonico, concentrazione, formato e alias aggiornati.",
       "verification_sources": [
         "https://khadlaj-perfumes.com/products/khadlaj-island-vanilla-dunes-100-ml-extrait-de-parfum-spray-for-men"
-      ]
+      ],
+      "canonical_name": "Island Vanilla Dunes"
     },
     {
       "product_id": "SH-0053",
@@ -857,7 +898,8 @@
       ],
       "source_status": "verificato",
       "source_notes": "Verificato con fonte prodotto/brand; formati e grafia canonica aggiornati.",
-      "verification_sources": []
+      "verification_sources": [],
+      "canonical_name": "Idôle"
     },
     {
       "product_id": "SH-0052",
@@ -874,7 +916,8 @@
       ],
       "source_status": "verificato",
       "source_notes": "Verificato con fonte prodotto/brand; formati e grafia canonica aggiornati.",
-      "verification_sources": []
+      "verification_sources": [],
+      "canonical_name": "La Vie Est Belle"
     },
     {
       "product_id": "SH-0065",
@@ -893,7 +936,8 @@
       "source_notes": "Verificato con fonte prodotto/brand; nome canonico, concentrazione, formato e alias aggiornati.",
       "verification_sources": [
         "https://www.shop-apotheke.com/beauty/upmCLHFTK/art-of-universe-eau-de-parfum.htm"
-      ]
+      ],
+      "canonical_name": "Art of Universe"
     },
     {
       "product_id": "SH-0028",
@@ -910,7 +954,8 @@
       "source_notes": "Verificato tramite fonte esterna; mantenere questa referenza come nome canonico del catalogo.",
       "verification_sources": [
         "https://www.elpais.com/escaparate/belleza/perfumes-arabes-hombre.html"
-      ]
+      ],
+      "canonical_name": "Asad Bourbon"
     },
     {
       "product_id": "SH-0029",
@@ -926,7 +971,8 @@
       ],
       "source_status": "verificato",
       "source_notes": "Verificato con fonte prodotto/brand; formati e grafia canonica aggiornati.",
-      "verification_sources": []
+      "verification_sources": [],
+      "canonical_name": "Nebras"
     },
     {
       "product_id": "SH-0036",
@@ -945,7 +991,8 @@
       "source_notes": "Verificato con fonte prodotto/brand; nome canonico, formati e alias aggiornati.",
       "verification_sources": [
         "https://maisonvalentry.com/collections/maison-alhambra/products/immortel"
-      ]
+      ],
+      "canonical_name": "Jean Lowe Immortal"
     },
     {
       "product_id": "SH-0058",
@@ -962,7 +1009,8 @@
       ],
       "source_status": "verificato",
       "source_notes": "Verificato con fonte prodotto/brand; formati e grafia canonica aggiornati.",
-      "verification_sources": []
+      "verification_sources": [],
+      "canonical_name": "L'Eau Rosée"
     },
     {
       "product_id": "SH-0057",
@@ -978,7 +1026,8 @@
       ],
       "source_status": "verificato",
       "source_notes": "Verificato con fonte prodotto/brand; formati e grafia canonica aggiornati.",
-      "verification_sources": []
+      "verification_sources": [],
+      "canonical_name": "Miutine"
     },
     {
       "product_id": "SH-0048",
@@ -994,7 +1043,8 @@
       ],
       "source_status": "verificato",
       "source_notes": "Nome già incontrato nello storico ScentHunter; formato/alias da verificare prima dell'integrazione.",
-      "verification_sources": []
+      "verification_sources": [],
+      "canonical_name": "Luna Rossa Carbon"
     },
     {
       "product_id": "SH-0049",
@@ -1010,13 +1060,14 @@
       ],
       "source_status": "verificato",
       "source_notes": "Nome già incontrato nello storico ScentHunter; formato/alias da verificare prima dell'integrazione.",
-      "verification_sources": []
+      "verification_sources": [],
+      "canonical_name": "Luna Rossa Ocean"
     },
     {
       "product_id": "SH-0005",
       "brand_id": "BR-1be6e01b7664",
       "brand_name": "Rasasi",
-      "family_name": "Hawas Black",
+      "family_name": "Hawas",
       "concentration": "Eau de Parfum",
       "gender": null,
       "aliases": [
@@ -1029,13 +1080,15 @@
       "source_notes": "Verificato tramite fonte esterna; mantenere questa referenza come nome canonico del catalogo.",
       "verification_sources": [
         "https://www.notino.be/rasasi/hawas-black-eau-de-parfum-pour-homme/"
-      ]
+      ],
+      "family_id": "rasasi_hawas",
+      "canonical_name": "Hawas Black"
     },
     {
       "product_id": "SH-0004",
       "brand_id": "BR-1be6e01b7664",
       "brand_name": "Rasasi",
-      "family_name": "Hawas Fire",
+      "family_name": "Hawas",
       "concentration": "Eau de Parfum",
       "gender": null,
       "aliases": [
@@ -1046,13 +1099,15 @@
       ],
       "source_status": "verificato",
       "source_notes": "Nome già incontrato nello storico ScentHunter; formato/alias da verificare prima dell'integrazione.",
-      "verification_sources": []
+      "verification_sources": [],
+      "family_id": "rasasi_hawas",
+      "canonical_name": "Hawas Fire"
     },
     {
       "product_id": "SH-0001",
       "brand_id": "BR-1be6e01b7664",
       "brand_name": "Rasasi",
-      "family_name": "Hawas for Him",
+      "family_name": "Hawas",
       "concentration": "Eau de Parfum",
       "gender": null,
       "aliases": [
@@ -1066,13 +1121,15 @@
       "verification_sources": [
         "https://imrasasi.com/products/hawas-men-100-ml",
         "https://www.notino.be/rasasi/hawas-for-men-eau-de-parfum-pour-homme/"
-      ]
+      ],
+      "family_id": "rasasi_hawas",
+      "canonical_name": "Hawas For Him"
     },
     {
       "product_id": "SH-0002",
       "brand_id": "BR-1be6e01b7664",
       "brand_name": "Rasasi",
-      "family_name": "Hawas Ice",
+      "family_name": "Hawas",
       "concentration": "Eau de Parfum",
       "gender": null,
       "aliases": [
@@ -1083,13 +1140,15 @@
       ],
       "source_status": "verificato",
       "source_notes": "Nome già incontrato nello storico ScentHunter; formato/alias da verificare prima dell'integrazione.",
-      "verification_sources": []
+      "verification_sources": [],
+      "family_id": "rasasi_hawas",
+      "canonical_name": "Hawas Ice"
     },
     {
       "product_id": "SH-0003",
       "brand_id": "BR-1be6e01b7664",
       "brand_name": "Rasasi",
-      "family_name": "Hawas Kobra",
+      "family_name": "Hawas",
       "concentration": "Eau de Parfum",
       "gender": null,
       "aliases": [
@@ -1100,7 +1159,9 @@
       ],
       "source_status": "verificato",
       "source_notes": "Nome già incontrato nello storico ScentHunter; formato/alias da verificare prima dell'integrazione.",
-      "verification_sources": []
+      "verification_sources": [],
+      "family_id": "rasasi_hawas",
+      "canonical_name": "Hawas Kobra"
     },
     {
       "product_id": "SH-0066",
@@ -1119,7 +1180,8 @@
       "source_notes": "Verificato con fonte prodotto/brand; nome canonico, concentrazione, formato e alias aggiornati.",
       "verification_sources": [
         "https://rayhaanperfumes.com/products/rayhaan-aquatica?variant=44716035440687"
-      ]
+      ],
+      "canonical_name": "Aquatica"
     },
     {
       "product_id": "SH-0064",
@@ -1138,7 +1200,8 @@
       "source_notes": "Verificato con fonte prodotto/brand; nome canonico, concentrazione, formato e alias aggiornati.",
       "verification_sources": [
         "https://www.bol.com/nl/nl/p/rayhaan-valhalla-eau-de-parfum-100ml/9300000237610063/"
-      ]
+      ],
+      "canonical_name": "Valhalla"
     },
     {
       "product_id": "SH-0063",
@@ -1157,7 +1220,8 @@
       "source_notes": "Verificato con fonte prodotto/brand; nome canonico, concentrazione, formato e alias aggiornati.",
       "verification_sources": [
         "https://www.bol.com/be/nl/p/rayhaan-wolf-eau-de-parfum-100ml/9300000286370662"
-      ]
+      ],
+      "canonical_name": "Wolf"
     },
     {
       "product_id": "SH-0062",
@@ -1175,7 +1239,8 @@
       "source_notes": "Verificato con fonte prodotto/brand; nome canonico, formati e alias aggiornati.",
       "verification_sources": [
         "https://maisonvalentry.com/products/royal-blend-sequoia"
-      ]
+      ],
+      "canonical_name": "Sequoia"
     },
     {
       "product_id": "SH-0034",
@@ -1193,7 +1258,8 @@
       "source_notes": "Verificato con fonte prodotto/brand; nome canonico, formati e alias aggiornati.",
       "verification_sources": [
         "https://www.notino.be/afnan/theoreme-homme-eau-de-parfum-pour-homme/"
-      ]
+      ],
+      "canonical_name": "Theoreme Homme"
     },
     {
       "product_id": "SH-0006",
@@ -1211,13 +1277,14 @@
       ],
       "source_status": "verificato",
       "source_notes": "Nome già incontrato nello storico ScentHunter; formato/alias da verificare prima dell'integrazione.",
-      "verification_sources": []
+      "verification_sources": [],
+      "canonical_name": "Born in Roma Uomo"
     },
     {
       "product_id": "SH-0008",
       "brand_id": "BR-2399d281a15d",
       "brand_name": "Valentino",
-      "family_name": "Born in Roma Uomo Extradose",
+      "family_name": "Born in Roma",
       "concentration": "Eau de Parfum",
       "gender": null,
       "aliases": [
@@ -1231,13 +1298,15 @@
       "source_notes": "Verificato tramite fonte esterna; mantenere questa referenza come nome canonico del catalogo.",
       "verification_sources": [
         "https://www.iciparisxl.lu/valentino/born-in-roma-uomo-extradose-/parfum-pour-homme/p/BP_1351615"
-      ]
+      ],
+      "family_id": "valentino_born_in_roma",
+      "canonical_name": "Born in Roma Extradose Uomo"
     },
     {
       "product_id": "SH-0007",
       "brand_id": "BR-2399d281a15d",
       "brand_name": "Valentino",
-      "family_name": "Born in Roma Uomo Intense",
+      "family_name": "Born in Roma",
       "concentration": "Eau de Parfum",
       "gender": null,
       "aliases": [
@@ -1251,13 +1320,15 @@
       "source_notes": "Verificato tramite fonte esterna; mantenere questa referenza come nome canonico del catalogo.",
       "verification_sources": [
         "https://www.valentino-beauty.com/it_IT/profumi/fragranze-maschili/born-in-roma-uomo/born-in-roma-uomo-eau-de-parfum-intense/MPL01907.html"
-      ]
+      ],
+      "family_id": "valentino_born_in_roma",
+      "canonical_name": "Born in Roma Intense Uomo"
     },
     {
       "product_id": "SH-0009",
       "brand_id": "BR-2399d281a15d",
       "brand_name": "Valentino",
-      "family_name": "Born in Roma Yellow Dream Uomo",
+      "family_name": "Born in Roma",
       "concentration": "Eau de Toilette",
       "gender": null,
       "aliases": [
@@ -1268,13 +1339,15 @@
       ],
       "source_status": "verificato",
       "source_notes": "Nome già incontrato nello storico ScentHunter; formato/alias da verificare prima dell'integrazione.",
-      "verification_sources": []
+      "verification_sources": [],
+      "family_id": "valentino_born_in_roma",
+      "canonical_name": "Born in Roma Yellow Dream Uomo"
     },
     {
       "product_id": "SH-0010",
       "brand_id": "BR-2399d281a15d",
       "brand_name": "Valentino",
-      "family_name": "Uomo Born in Roma Coral Fantasy",
+      "family_name": "Born in Roma",
       "concentration": "Eau de Toilette",
       "gender": null,
       "aliases": [
@@ -1289,7 +1362,9 @@
       "source_notes": "Verificato tramite fonte esterna; mantenere questa referenza come nome canonico del catalogo.",
       "verification_sources": [
         "https://www.valentino-beauty.de/en_GB/fragrances/men-s-fragrance/born-in-roma-uomo-coral-fantasy/MPL01750.html"
-      ]
+      ],
+      "family_id": "valentino_born_in_roma",
+      "canonical_name": "Born in Roma Coral Fantasy Uomo"
     },
     {
       "product_id": "SH-0047",
@@ -1307,7 +1382,8 @@
       "source_notes": "Verificato con fonte prodotto/brand; nome canonico, formati e alias aggiornati.",
       "verification_sources": [
         "https://www.versace.com/dk/en/men/accessories/fragrances-body-care/dylan-blue-pour-homme/"
-      ]
+      ],
+      "canonical_name": "Dylan Blue"
     },
     {
       "product_id": "SH-0045",
@@ -1326,13 +1402,15 @@
       "source_notes": "Verificato sul sito ufficiale Versace; Eau de Toilette, 50/100/200 ml.",
       "verification_sources": [
         "https://www.versace.com/fr/fr/homme/accessoires/parfums-et-soins-du-corps/eros/eau-de-toilette-eros-50%C2%A0ml/R740008-R050MLS_RTU_TU_RNUL__.html"
-      ]
+      ],
+      "family_id": "versace_eros",
+      "canonical_name": "Eros"
     },
     {
       "product_id": "SH-0071",
       "brand_id": "BR-5aa86e0581a0",
       "brand_name": "Versace",
-      "family_name": "Eros pour Femme Eau de Toilette",
+      "family_name": "Eros",
       "concentration": "Eau de Toilette",
       "gender": null,
       "aliases": [
@@ -1346,13 +1424,15 @@
       "verification_sources": [
         "https://www.parfum-zentrum.de/versace-eros-pour-femme-eau-de-toilette-100-ml-woman_z695946/",
         "https://www.versace.com/us/en/women/accessories/fragrances-body-care/eros-pour-femme/eros-pour-femme-edt-100-ml-gold/R750132-R100MLS_RNUL.html"
-      ]
+      ],
+      "family_id": "versace_eros",
+      "canonical_name": "Eros pour Femme Eau de Toilette"
     },
     {
       "product_id": "SH-0072",
       "brand_id": "BR-5aa86e0581a0",
       "brand_name": "Versace",
-      "family_name": "Eros pour Femme Eau de Parfum",
+      "family_name": "Eros",
       "concentration": "Eau de Parfum",
       "gender": null,
       "aliases": [
@@ -1365,13 +1445,15 @@
       "source_notes": "Referenza distinta dalla Eau de Toilette; mantenuta separata per evitare l'unione di prezzi e formati.",
       "verification_sources": [
         "https://www.parfum-zentrum.de/versace_v208/"
-      ]
+      ],
+      "family_id": "versace_eros",
+      "canonical_name": "Eros pour Femme Eau de Parfum"
     },
     {
       "product_id": "SH-0046",
       "brand_id": "BR-5aa86e0581a0",
       "brand_name": "Versace",
-      "family_name": "Eros Flame",
+      "family_name": "Eros",
       "concentration": "Eau de Parfum",
       "gender": null,
       "aliases": [
@@ -1383,7 +1465,9 @@
       "source_notes": "Verificato sul sito ufficiale Versace; Eau de Parfum, 50/100/200 ml.",
       "verification_sources": [
         "https://www.versace.com/de/de/herren/accessoires/dufte/eros-flame/"
-      ]
+      ],
+      "family_id": "versace_eros",
+      "canonical_name": "Eros Flame"
     },
     {
       "product_id": "SH-0042",
@@ -1402,7 +1486,8 @@
       "source_notes": "Verificato con fonte prodotto/brand; nome canonico, concentrazione, formato e alias aggiornati.",
       "verification_sources": [
         "https://www.yslbeauty.com/int/fragrance/fragrance-for-him/y/y--eau-de-parfum/3614272050341.html"
-      ]
+      ],
+      "canonical_name": "Y Eau de Parfum"
     },
     {
       "product_id": "AUTO-99930ac1f284e75e",
@@ -1417,7 +1502,8 @@
       ],
       "source_status": "verificato",
       "source_notes": "Famiglia Le Beau; referenza canonica per separare le varianti nel matcher ScentHunter.",
-      "verification_sources": []
+      "verification_sources": [],
+      "canonical_name": "Le Beau"
     },
     {
       "product_id": "AUTO-80d529d2fb4486be",
@@ -1432,7 +1518,8 @@
       ],
       "source_status": "verificato",
       "source_notes": "Famiglia Le Beau; referenza canonica per separare le varianti nel matcher ScentHunter.",
-      "verification_sources": []
+      "verification_sources": [],
+      "canonical_name": "Le Beau"
     },
     {
       "product_id": "AUTO-ed99b73ace7869ac",
@@ -1447,7 +1534,8 @@
       ],
       "source_status": "verificato",
       "source_notes": "Famiglia Le Beau; referenza canonica per separare le varianti nel matcher ScentHunter.",
-      "verification_sources": []
+      "verification_sources": [],
+      "canonical_name": "Le Beau"
     },
     {
       "product_id": "AUTO-51a78cb5157774e5",
@@ -1462,7 +1550,8 @@
       ],
       "source_status": "verificato",
       "source_notes": "Famiglia Le Beau; referenza canonica per separare le varianti nel matcher ScentHunter.",
-      "verification_sources": []
+      "verification_sources": [],
+      "canonical_name": "Le Beau"
     },
     {
       "product_id": "AUTO-cbbce985c43e6ee2",
@@ -1477,7 +1566,8 @@
       ],
       "source_status": "verificato",
       "source_notes": "Famiglia Le Beau; referenza canonica per separare le varianti nel matcher ScentHunter.",
-      "verification_sources": []
+      "verification_sources": [],
+      "canonical_name": "Le Beau"
     }
   ],
   "variants": [
