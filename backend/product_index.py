@@ -1,4 +1,4 @@
-"""
+
 ScentHunter - Product Index
 STEP 2: local product/offers index.
 
@@ -24,7 +24,7 @@ import json
 import re
 import sqlite3
 import unicodedata
-from dataclasses import dataclass
+from dataclasses import dataclass, asdict
 from pathlib import Path
 from typing import Any, Dict, Iterable, List, Optional, Sequence, Tuple
 
@@ -47,6 +47,19 @@ def normalize(value: Any) -> str:
 
 def compact_normalize(value: Any) -> str:
     return normalize(value).replace(" ", "")
+
+
+def catalog_variant_key(value: str) -> str:
+    text = str(value or "").lower()
+    text = unicodedata.normalize("NFKD", text)
+    text = "".join(
+        char for char in text
+        if not unicodedata.combining(char)
+    )
+
+    text = text.replace("’", "'")
+    text = re.sub(r"[^a-z0-9']+", " ", text)
+    return re.sub(r"\s+", " ", text).strip()
 
 
 def stable_id(*parts: Any, prefix: str = "SH") -> str:
@@ -117,12 +130,13 @@ def parse_price(value: Any) -> Optional[float]:
 
     text = clean_text(value).replace("€", " ")
     matches = re.findall(r"\d+(?:[.,]\d{1,2})?", text)
-
     if not matches:
         return None
 
+    # Store scraper output normally contains one price. If a string contains
+    # several numbers, the first decimal-looking value is the safest generic
+    # interpretation; callers can supply a numeric offer.price directly.
     raw = matches[0]
-
     try:
         return round(float(raw.replace(",", ".")), 2)
     except ValueError:
@@ -131,58 +145,27 @@ def parse_price(value: Any) -> Optional[float]:
 
 def parse_concentration(*values: Any) -> Optional[str]:
     text = normalize(" ".join(clean_text(v) for v in values))
-
     rules = (
-        (
-            "Extrait de Parfum",
-            r"\bextrait(?: de)? parfum\b|\bextrait\b",
-        ),
-        (
-            "Eau de Parfum",
-            r"\beau de parfum\b|\bedp\b",
-        ),
-        (
-            "Eau de Toilette",
-            r"\beau de toilette\b|\bedt\b",
-        ),
-        (
-            "Eau de Cologne",
-            r"\beau de cologne\b|\bedc\b",
-        ),
-        (
-            "Parfum",
-            r"\bparfum\b",
-        ),
+        ("Extrait de Parfum", r"\bextrait(?: de)? parfum\b|\bextrait\b"),
+        ("Eau de Parfum", r"\beau de parfum\b|\bedp\b"),
+        ("Eau de Toilette", r"\beau de toilette\b|\bedt\b"),
+        ("Eau de Cologne", r"\beau de cologne\b|\bedc\b"),
+        ("Parfum", r"\bparfum\b"),
     )
-
     for label, pattern in rules:
         if re.search(pattern, text, re.I):
             return label
-
     return None
 
 
 def product_name(item: Dict[str, Any]) -> str:
-    value = first_value(
-        item,
-        "canonical_name",
-        "name",
-        "title",
-        "product_name",
-    )
-
+    value = first_value(item, "canonical_name", "name", "title", "product_name")
     if value:
         return clean_text(value)
 
     source = nested_block(item, "source")
-
     return clean_text(
-        first_value(
-            source,
-            "source_name",
-            "name",
-            "title",
-        ) or ""
+        first_value(source, "source_name", "name", "title") or ""
     )
 
 
@@ -194,12 +177,10 @@ def product_brand(item: Dict[str, Any]) -> str:
         "manufacturer",
         "maker",
     )
-
     if value:
         return clean_text(value)
 
     source = nested_block(item, "source")
-
     return clean_text(
         first_value(
             source,
@@ -210,7 +191,42 @@ def product_brand(item: Dict[str, Any]) -> str:
     )
 
 
+def generic_product_identity(item: Dict[str, Any]) -> Tuple[str, str, str, str]:
+    return (
+        "generic",
+        clean_text(product_brand(item)),
+        clean_text(product_name(item)),
+        clean_text(offer_concentration(item)),
+    )
+
+
+def identity_for_product(item: Dict[str, Any]) -> Tuple[str, ...]:
+    family_id = clean_text(first_value(item, "family_id"))
+    canonical_name = clean_text(
+        first_value(
+            item,
+            "canonical_name",
+            "catalog_variant",
+            "family_name",
+        )
+        or ""
+    )
+
+    if family_id and canonical_name:
+        return (
+            "catalog",
+            clean_text(family_id),
+            catalog_variant_key(canonical_name),
+        )
+
+    return generic_product_identity(item)
+
+
 def catalog_identity(item: Dict[str, Any]) -> str:
+    identity = identity_for_product(item)
+    if identity[0] == "catalog":
+        return stable_id(*identity, prefix="CATALOG")
+
     value = first_value(
         item,
         "catalog_id",
@@ -218,7 +234,6 @@ def catalog_identity(item: Dict[str, Any]) -> str:
         "master_id",
         "item_group_id",
     )
-
     if value:
         return clean_text(value)
 
@@ -227,67 +242,37 @@ def catalog_identity(item: Dict[str, Any]) -> str:
 
 def identifier_value(item: Dict[str, Any], *keys: str) -> str:
     value = first_value(item, *keys)
-
     if value:
         return clean_text(value)
 
     identity = nested_block(item, "identity")
     value = first_value(identity, *keys)
-
     return clean_text(value or "")
 
 
 def source_url(item: Dict[str, Any]) -> str:
     source = nested_block(item, "source")
-
     return clean_text(
-        first_value(
-            item,
-            "url",
-            "source_url",
-        )
-        or first_value(
-            source,
-            "url",
-            "source_page",
-        )
+        first_value(item, "url", "source_url")
+        or first_value(source, "url", "source_page")
         or ""
     )
 
 
 def source_image(item: Dict[str, Any]) -> str:
     source = nested_block(item, "source")
-
     return clean_text(
-        first_value(
-            item,
-            "image",
-            "image_url",
-            "thumbnail",
-        )
-        or first_value(
-            source,
-            "image",
-        )
+        first_value(item, "image", "image_url", "thumbnail")
+        or first_value(source, "image")
         or ""
     )
 
 
 def store_name(item: Dict[str, Any]) -> str:
     source = nested_block(item, "source")
-
     return clean_text(
-        first_value(
-            item,
-            "store",
-            "shop",
-            "merchant",
-        )
-        or first_value(
-            source,
-            "store",
-            "source_name",
-        )
+        first_value(item, "store", "shop", "merchant")
+        or first_value(source, "store", "source_name")
         or ""
     )
 
@@ -299,7 +284,6 @@ def offer_size(item: Dict[str, Any]) -> Optional[float]:
         "volume_ml",
         "format_ml",
     )
-
     if explicit not in (None, ""):
         try:
             return float(str(explicit).replace(",", "."))
@@ -307,14 +291,7 @@ def offer_size(item: Dict[str, Any]) -> Optional[float]:
             pass
 
     attributes = nested_block(item, "attributes")
-
-    explicit = first_value(
-        attributes,
-        "size_ml",
-        "volume_ml",
-        "format_ml",
-    )
-
+    explicit = first_value(attributes, "size_ml", "volume_ml", "format_ml")
     if explicit not in (None, ""):
         try:
             return float(str(explicit).replace(",", "."))
@@ -323,34 +300,18 @@ def offer_size(item: Dict[str, Any]) -> Optional[float]:
 
     return parse_size_ml(
         product_name(item),
-        first_value(
-            item,
-            "size",
-            "format",
-            "volume",
-        ),
-        first_value(
-            attributes,
-            "size",
-            "format",
-            "volume",
-        ),
+        first_value(item, "size", "format", "volume"),
+        first_value(attributes, "size", "format", "volume"),
     )
 
 
 def offer_concentration(item: Dict[str, Any]) -> Optional[str]:
     explicit = first_value(item, "concentration")
-
     if explicit:
         return clean_text(explicit)
 
     attributes = nested_block(item, "attributes")
-
-    explicit = first_value(
-        attributes,
-        "concentration",
-    )
-
+    explicit = first_value(attributes, "concentration")
     if explicit:
         return clean_text(explicit)
 
@@ -359,32 +320,17 @@ def offer_concentration(item: Dict[str, Any]) -> Optional[str]:
 
 def offer_price(item: Dict[str, Any]) -> Optional[float]:
     offer = nested_block(item, "offer")
-
     value = first_value(item, "price")
-
     if value in (None, ""):
-        value = first_value(
-            offer,
-            "price",
-        )
-
+        value = first_value(offer, "price")
     return parse_price(value)
 
 
 def offer_availability(item: Dict[str, Any]) -> str:
     offer = nested_block(item, "offer")
-
-    value = first_value(
-        item,
-        "availability",
-        "available",
-    )
-
+    value = first_value(item, "availability", "available")
     if value in (None, ""):
-        value = first_value(
-            offer,
-            "availability",
-        )
+        value = first_value(offer, "availability")
 
     if isinstance(value, bool):
         return "in_stock" if value else "out_of_stock"
@@ -399,16 +345,9 @@ def searchable_text(
     concentration: Optional[str],
     size_ml: Optional[float],
 ) -> str:
-    parts = [
-        brand,
-        name,
-        *aliases,
-        concentration or "",
-    ]
-
+    parts = [brand, name, *aliases, concentration or ""]
     if size_ml is not None:
         parts.append(f"{size_ml:g} ml")
-
     return normalize(" ".join(parts))
 
 
@@ -427,15 +366,8 @@ class CanonicalProduct:
     aliases: Tuple[str, ...]
 
 
-def load_canonical_catalog(
-    path: Path | str,
-) -> List[CanonicalProduct]:
-
-    data = json.loads(
-        Path(path).read_text(
-            encoding="utf-8"
-        )
-    )
+def load_canonical_catalog(path: Path | str) -> List[CanonicalProduct]:
+    data = json.loads(Path(path).read_text(encoding="utf-8"))
 
     products = data.get("products", [])
     output: List[CanonicalProduct] = []
@@ -444,20 +376,13 @@ def load_canonical_catalog(
         if not isinstance(item, dict):
             continue
 
-        product_id = clean_text(
-            item.get("product_id")
-        )
-
-        brand_id = clean_text(
-            item.get("brand_id")
-        )
-
-        brand_name = clean_text(
-            item.get("brand_name")
-        )
-
+        product_id = clean_text(item.get("product_id"))
+        brand_id = clean_text(item.get("brand_id"))
+        brand_name = clean_text(item.get("brand_name"))
         family_name = clean_text(
-            item.get("family_name")
+            item.get("canonical_name")
+            or item.get("catalog_variant")
+            or item.get("family_name")
         )
 
         if not product_id or not family_name:
@@ -465,9 +390,7 @@ def load_canonical_catalog(
 
         aliases = tuple(
             clean_text(value)
-            for value in (
-                item.get("aliases") or []
-            )
+            for value in (item.get("aliases") or [])
             if clean_text(value)
         )
 
@@ -477,18 +400,8 @@ def load_canonical_catalog(
                 brand_id=brand_id,
                 brand_name=brand_name,
                 family_name=family_name,
-                concentration=(
-                    clean_text(
-                        item.get("concentration")
-                    )
-                    or None
-                ),
-                gender=(
-                    clean_text(
-                        item.get("gender")
-                    )
-                    or None
-                ),
+                concentration=clean_text(item.get("concentration")) or None,
+                gender=clean_text(item.get("gender")) or None,
                 aliases=aliases,
             )
         )
@@ -511,7 +424,6 @@ CREATE TABLE IF NOT EXISTS products (
     concentration TEXT,
     gender TEXT,
     aliases_json TEXT NOT NULL DEFAULT '[]',
-    aliases TEXT NOT NULL DEFAULT '',
     searchable_text TEXT NOT NULL,
     updated_at TEXT NOT NULL
 );
@@ -580,30 +492,16 @@ class ProductIndex:
     Scrapers only provide dictionaries; this layer normalizes and stores them.
     """
 
-    def __init__(
-        self,
-        db_path: Path | str = DEFAULT_DB_PATH,
-    ):
+    def __init__(self, db_path: Path | str = DEFAULT_DB_PATH):
         self.db_path = Path(db_path)
-
-        self.db_path.parent.mkdir(
-            parents=True,
-            exist_ok=True,
-        )
-
+        self.db_path.parent.mkdir(parents=True, exist_ok=True)
         self.connection = sqlite3.connect(
             self.db_path,
             check_same_thread=False,
         )
-
         self.connection.row_factory = sqlite3.Row
-
-        self.connection.execute(
-            "PRAGMA foreign_keys=ON"
-        )
-
+        self.connection.execute("PRAGMA foreign_keys=ON")
         self.connection.executescript(SCHEMA)
-
         self._ensure_fts()
 
     def close(self) -> None:
@@ -612,97 +510,20 @@ class ProductIndex:
     def __enter__(self) -> "ProductIndex":
         return self
 
-    def __exit__(
-        self,
-        exc_type,
-        exc,
-        tb,
-    ) -> None:
+    def __exit__(self, exc_type, exc, tb) -> None:
         self.close()
 
     def _ensure_fts(self) -> None:
-        """
-        Ensure the FTS table is compatible with the current products table.
-
-        Older versions of the index did not have products.aliases.
-        If such a database is encountered, recreate the FTS table.
-        """
-
-        columns = {
-            row["name"]
-            for row in self.connection.execute(
-                "PRAGMA table_info(products)"
-            ).fetchall()
-        }
-
-        if "aliases" not in columns:
-            self.connection.execute(
-                """
-                ALTER TABLE products
-                ADD COLUMN aliases TEXT NOT NULL DEFAULT ''
-                """
-            )
-
-            self.connection.execute(
-                """
-                UPDATE products
-                SET aliases = searchable_text
-                WHERE aliases IS NULL OR aliases = ''
-                """
-            )
-
-        fts_columns = {
-            row["name"]
-            for row in self.connection.execute(
-                "PRAGMA table_info(products_fts)"
-            ).fetchall()
-            if row["name"] not in (
-                "products_fts",
-                "rank",
-            )
-        }
-
-        expected = {
-            "product_id",
-            "brand_name",
-            "family_name",
-            "aliases",
-            "concentration",
-        }
-
-        if fts_columns != expected:
-            self.connection.execute(
-                "DROP TABLE IF EXISTS products_fts"
-            )
-
-            self.connection.execute(
-                """
-                CREATE VIRTUAL TABLE products_fts USING fts5(
-                    product_id UNINDEXED,
-                    brand_name,
-                    family_name,
-                    aliases,
-                    concentration,
-                    content='products',
-                    content_rowid='rowid',
-                    tokenize='unicode61 remove_diacritics 2'
-                )
-                """
-            )
-
+        # Rebuild only when the FTS table is empty. The normal upsert path
+        # updates the corresponding FTS row explicitly.
         count = self.connection.execute(
             "SELECT COUNT(*) FROM products_fts"
         ).fetchone()[0]
-
         if count == 0:
             self.connection.execute(
-                """
-                INSERT INTO products_fts(products_fts)
-                VALUES('rebuild')
-                """
+                "INSERT INTO products_fts(products_fts) VALUES('rebuild')"
             )
-
-        self.connection.commit()
+            self.connection.commit()
 
     def _upsert_product(
         self,
@@ -714,20 +535,11 @@ class ProductIndex:
         gender: Optional[str],
         aliases: Sequence[str],
     ) -> None:
-
         now = datetime_utc()
 
-        alias_list = list(
-            dict.fromkeys(aliases)
-        )
-
         alias_json = json.dumps(
-            alias_list,
+            list(dict.fromkeys(aliases)),
             ensure_ascii=False,
-        )
-
-        alias_text = " ".join(
-            alias_list
         )
 
         text = searchable_text(
@@ -748,11 +560,10 @@ class ProductIndex:
                 concentration,
                 gender,
                 aliases_json,
-                aliases,
                 searchable_text,
                 updated_at
             )
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
             ON CONFLICT(product_id) DO UPDATE SET
                 brand_id=excluded.brand_id,
                 brand_name=excluded.brand_name,
@@ -760,7 +571,6 @@ class ProductIndex:
                 concentration=excluded.concentration,
                 gender=excluded.gender,
                 aliases_json=excluded.aliases_json,
-                aliases=excluded.aliases,
                 searchable_text=excluded.searchable_text,
                 updated_at=excluded.updated_at
             """,
@@ -772,7 +582,6 @@ class ProductIndex:
                 concentration,
                 gender,
                 alias_json,
-                alias_text,
                 text,
                 now,
             ),
@@ -798,71 +607,43 @@ class ProductIndex:
                 product_id,
                 brand_name,
                 family_name,
-                alias_text,
+                " ".join(aliases),
                 concentration or "",
             ),
         )
 
     def upsert_canonical_catalog(
         self,
-        catalog: Iterable[
-            CanonicalProduct | Dict[str, Any]
-        ],
+        catalog: Iterable[CanonicalProduct | Dict[str, Any]],
     ) -> int:
-
         count = 0
 
         for item in catalog:
-
-            if isinstance(
-                item,
-                CanonicalProduct,
-            ):
+            if isinstance(item, CanonicalProduct):
                 product = item
-
             else:
                 product = CanonicalProduct(
                     product_id=clean_text(
-                        item.get("product_id")
-                        or item.get("id")
+                        item.get("product_id") or item.get("id")
                     ),
-                    brand_id=clean_text(
-                        item.get("brand_id")
-                    ),
-                    brand_name=clean_text(
-                        item.get("brand_name")
-                        or item.get("brand")
-                    ),
+                    brand_id=clean_text(item.get("brand_id")),
+                    brand_name=clean_text(item.get("brand_name") or item.get("brand")),
                     family_name=clean_text(
-                        item.get("family_name")
+                        item.get("canonical_name")
+                        or item.get("catalog_variant")
+                        or item.get("family_name")
                         or item.get("name")
                     ),
-                    concentration=(
-                        clean_text(
-                            item.get("concentration")
-                        )
-                        or None
-                    ),
-                    gender=(
-                        clean_text(
-                            item.get("gender")
-                        )
-                        or None
-                    ),
+                    concentration=clean_text(item.get("concentration")) or None,
+                    gender=clean_text(item.get("gender")) or None,
                     aliases=tuple(
                         clean_text(x)
-                        for x in (
-                            item.get("aliases")
-                            or []
-                        )
+                        for x in (item.get("aliases") or [])
                         if clean_text(x)
                     ),
                 )
 
-            if (
-                not product.product_id
-                or not product.family_name
-            ):
+            if not product.product_id or not product.family_name:
                 continue
 
             self._upsert_product(
@@ -874,47 +655,26 @@ class ProductIndex:
                 product.gender,
                 product.aliases,
             )
-
             count += 1
 
         self.connection.commit()
-
         return count
 
-    def _resolve_product_id(
-        self,
-        item: Dict[str, Any],
-    ) -> str:
-
+    def _resolve_product_id(self, item: Dict[str, Any]) -> str:
         explicit = catalog_identity(item)
-
         if explicit:
             return explicit
 
-        brand = product_brand(item)
-        name = product_name(item)
+        # Generic deterministic fallback. It is intentionally based only on
+        # normalized brand + product name and never on a specific product.
+        identity = identity_for_product(item)
+        return stable_id(*identity, prefix="SH-AUTO")
 
-        return stable_id(
-            brand,
-            name,
-            prefix="SH-AUTO",
-        )
-
-    def _ensure_product_for_offer(
-        self,
-        item: Dict[str, Any],
-    ) -> str:
-
-        product_id = self._resolve_product_id(
-            item
-        )
+    def _ensure_product_for_offer(self, item: Dict[str, Any]) -> str:
+        product_id = self._resolve_product_id(item)
 
         existing = self.connection.execute(
-            """
-            SELECT product_id
-            FROM products
-            WHERE product_id = ?
-            """,
+            "SELECT product_id FROM products WHERE product_id = ?",
             (product_id,),
         ).fetchone()
 
@@ -924,32 +684,16 @@ class ProductIndex:
         brand = product_brand(item)
         name = product_name(item)
         concentration = offer_concentration(item)
-
         aliases = tuple(
             value
             for value in (
+                clean_text(first_value(item, "canonical_name")),
+                clean_text(first_value(item, "name")),
                 clean_text(
-                    first_value(
-                        item,
-                        "canonical_name",
-                    )
-                ),
-                clean_text(
-                    first_value(
-                        item,
-                        "name",
-                    )
-                ),
-                clean_text(
-                    block_value(
-                        item,
-                        "source",
-                        "source_name",
-                    )
+                    block_value(item, "source", "source_name")
                 ),
             )
-            if value
-            and normalize(value) != normalize(name)
+            if value and normalize(value) != normalize(name)
         )
 
         self._upsert_product(
@@ -964,11 +708,7 @@ class ProductIndex:
 
         return product_id
 
-    def upsert_offer(
-        self,
-        item: Dict[str, Any],
-    ) -> Optional[str]:
-
+    def upsert_offer(self, item: Dict[str, Any]) -> Optional[str]:
         if not isinstance(item, dict):
             return None
 
@@ -978,9 +718,7 @@ class ProductIndex:
         if not store or not name:
             return None
 
-        product_id = self._ensure_product_for_offer(
-            item
-        )
+        product_id = self._ensure_product_for_offer(item)
 
         size_ml = offer_size(item)
         concentration = offer_concentration(item)
@@ -993,13 +731,11 @@ class ProductIndex:
             "product_id",
             "store_id",
         )
-
         store_variant_id = identifier_value(
             item,
             "store_variant_id",
             "variant_id",
         )
-
         gtin = identifier_value(
             item,
             "gtin",
@@ -1008,32 +744,21 @@ class ProductIndex:
             "barcode",
             "upc",
         )
-
         mpn = identifier_value(
             item,
             "mpn",
             "manufacturer_part_number",
             "manufacturerNumber",
         )
-
-        sku = identifier_value(
-            item,
-            "sku",
-        )
-
+        sku = identifier_value(item, "sku")
         url = source_url(item)
         image = source_image(item)
-
         currency = clean_text(
             first_value(
                 item,
                 "currency",
             )
-            or block_value(
-                item,
-                "offer",
-                "currency",
-            )
+            or block_value(item, "offer", "currency")
             or "EUR"
         )
 
@@ -1121,11 +846,7 @@ class ProductIndex:
 
         return offer_id
 
-    def upsert_offers(
-        self,
-        offers: Iterable[Dict[str, Any]],
-    ) -> int:
-
+    def upsert_offers(self, offers: Iterable[Dict[str, Any]]) -> int:
         count = 0
 
         for item in offers:
@@ -1133,7 +854,6 @@ class ProductIndex:
                 count += 1
 
         self.connection.commit()
-
         return count
 
     def search_products(
@@ -1141,7 +861,12 @@ class ProductIndex:
         query: str,
         limit: int = 20,
     ) -> List[Dict[str, Any]]:
+        """
+        Fast local product search.
 
+        FTS5 handles the first-pass lookup. Results are then returned in
+        canonical form and can be joined to offers without contacting stores.
+        """
         tokens = [
             token
             for token in normalize(query).split()
@@ -1151,9 +876,9 @@ class ProductIndex:
         if not tokens:
             return []
 
+        # Prefix matching makes autocomplete useful while remaining generic.
         match_expression = " ".join(
-            f"{token}*"
-            for token in tokens
+            f"{token}*" for token in tokens
         )
 
         rows = self.connection.execute(
@@ -1174,23 +899,15 @@ class ProductIndex:
             ORDER BY rank, p.brand_name, p.family_name
             LIMIT ?
             """,
-            (
-                match_expression,
-                max(1, int(limit)),
-            ),
+            (match_expression, max(1, int(limit))),
         ).fetchall()
 
         output = []
 
         for row in rows:
             item = dict(row)
-
-            item["aliases"] = json.loads(
-                item.pop("aliases_json") or "[]"
-            )
-
+            item["aliases"] = json.loads(item.pop("aliases_json") or "[]")
             item.pop("rank", None)
-
             output.append(item)
 
         return output
@@ -1200,18 +917,13 @@ class ProductIndex:
         query: str,
         limit: int = 8,
     ) -> List[Dict[str, Any]]:
-
-        return self.search_products(
-            query,
-            limit=limit,
-        )
+        return self.search_products(query, limit=limit)
 
     def get_offers(
         self,
         product_id: str,
         size_ml: Optional[float] = None,
     ) -> List[Dict[str, Any]]:
-
         sql = """
             SELECT
                 offer_id,
@@ -1234,10 +946,7 @@ class ProductIndex:
             FROM offers
             WHERE product_id = ?
         """
-
-        params: List[Any] = [
-            product_id
-        ]
+        params: List[Any] = [product_id]
 
         if size_ml is not None:
             sql += " AND size_ml = ?"
@@ -1250,22 +959,14 @@ class ProductIndex:
                 store ASC
         """
 
-        rows = self.connection.execute(
-            sql,
-            params,
-        ).fetchall()
-
-        return [
-            dict(row)
-            for row in rows
-        ]
+        rows = self.connection.execute(sql, params).fetchall()
+        return [dict(row) for row in rows]
 
     def get_product_with_offers(
         self,
         product_id: str,
         size_ml: Optional[float] = None,
     ) -> Optional[Dict[str, Any]]:
-
         row = self.connection.execute(
             """
             SELECT
@@ -1287,20 +988,16 @@ class ProductIndex:
             return None
 
         product = dict(row)
-
         product["aliases"] = json.loads(
             product.pop("aliases_json") or "[]"
         )
-
         product["offers"] = self.get_offers(
             product_id,
             size_ml=size_ml,
         )
-
         return product
 
     def stats(self) -> Dict[str, int]:
-
         products = self.connection.execute(
             "SELECT COUNT(*) FROM products"
         ).fetchone()[0]
@@ -1321,21 +1018,14 @@ class ProductIndex:
 
     def rebuild_fts(self) -> None:
         self.connection.execute(
-            """
-            INSERT INTO products_fts(products_fts)
-            VALUES('rebuild')
-            """
+            "INSERT INTO products_fts(products_fts) VALUES('rebuild')"
         )
-
         self.connection.commit()
 
 
 def datetime_utc() -> str:
     from datetime import datetime, timezone
-
-    return datetime.now(
-        timezone.utc
-    ).isoformat()
+    return datetime.now(timezone.utc).isoformat()
 
 
 # ---------------------------------------------------------------------------
@@ -1347,21 +1037,16 @@ def build_index(
     offers: Iterable[Dict[str, Any]],
     db_path: Path | str = DEFAULT_DB_PATH,
 ) -> Dict[str, int]:
+    """
+    Build/update the local index from the existing canonical catalog and
+    already-collected scraper offers.
 
+    This function does not call the internet.
+    """
     with ProductIndex(db_path) as index:
-
-        catalog = load_canonical_catalog(
-            catalog_path
-        )
-
-        index.upsert_canonical_catalog(
-            catalog
-        )
-
-        index.upsert_offers(
-            offers
-        )
-
+        catalog = load_canonical_catalog(catalog_path)
+        index.upsert_canonical_catalog(catalog)
+        index.upsert_offers(offers)
         return index.stats()
 
 
@@ -1371,28 +1056,21 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(
         description="ScentHunter local product index"
     )
-
     parser.add_argument(
         "--db",
         default=str(DEFAULT_DB_PATH),
         help="SQLite database path",
     )
-
     parser.add_argument(
         "--catalog",
-        default=str(
-            Path(__file__).resolve().parent
-            / "product_catalog.json"
-        ),
+        default=str(Path(__file__).resolve().parent / "product_catalog.json"),
         help="Canonical product catalog JSON",
     )
-
     parser.add_argument(
         "--query",
         default="",
         help="Run a local product search",
     )
-
     parser.add_argument(
         "--limit",
         type=int,
@@ -1403,28 +1081,18 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     with ProductIndex(args.db) as index:
-
         if Path(args.catalog).exists():
-            catalog = load_canonical_catalog(
-                args.catalog
-            )
-
-            index.upsert_canonical_catalog(
-                catalog
-            )
+            catalog = load_canonical_catalog(args.catalog)
+            index.upsert_canonical_catalog(catalog)
 
         if args.query:
             print(
                 json.dumps(
-                    index.search_products(
-                        args.query,
-                        args.limit,
-                    ),
+                    index.search_products(args.query, args.limit),
                     ensure_ascii=False,
                     indent=2,
                 )
             )
-
         else:
             print(
                 json.dumps(
