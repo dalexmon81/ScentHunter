@@ -662,25 +662,80 @@ def matches(product: Dict[str, Any], query: str) -> bool:
     structured_tokens = _structured_identity_tokens(product)
     name_tokens = _name_identity_tokens(product)
 
-    # Se esiste una vera identità strutturale, deve essere compatibile con
-    # la query. Il titolo non può da solo sovrascrivere una struttura RAW
-    # che identifica chiaramente un'altra famiglia.
-    if structured_tokens:
-        if query_tokens.issubset(structured_tokens):
+    # Quando il RAW espone una family esplicita, la family è il confine
+    # dell'identità di prodotto. Una query generica può quindi rappresentare
+    # una family esatta, mentre una variante può aggiungere i propri token
+    # attraverso il campo variant.
+    #
+    # La regola è generale: non contiene nomi, eccezioni o riferimenti a
+    # prodotti specifici.
+    family_values: List[Any] = []
+    for key in ("family", "family_name", "product_line"):
+        value = product.get(key)
+        if value not in (None, ""):
+            family_values.append(value)
+
+    attributes = product.get("attributes")
+    if isinstance(attributes, dict):
+        for key in ("family", "family_name", "product_line"):
+            value = nested_value(attributes.get(key))
+            if value not in (None, ""):
+                family_values.append(value)
+
+    source = product.get("source")
+    if isinstance(source, dict):
+        for key in ("family", "family_name", "product_line"):
+            value = source.get(key)
+            if value not in (None, ""):
+                family_values.append(value)
+
+    family_tokens = _identity_tokens_from_values(family_values)
+
+    variant_values: List[Any] = []
+    for key in ("variant", "variant_name"):
+        value = product.get(key)
+        if value not in (None, ""):
+            variant_values.append(value)
+
+    if isinstance(attributes, dict):
+        for key in ("variant", "variant_name"):
+            value = nested_value(attributes.get(key))
+            if value not in (None, ""):
+                variant_values.append(value)
+
+    if isinstance(source, dict):
+        for key in ("variant", "variant_name"):
+            value = source.get(key)
+            if value not in (None, ""):
+                variant_values.append(value)
+
+    variant_tokens = _identity_tokens_from_values(variant_values)
+
+    if family_tokens:
+        # Query che identifica esattamente la family: valido.
+        if query_tokens == family_tokens:
             return True
 
-        # Una parte dell'identità può essere espressa nel campo strutturale
-        # e una parte nel titolo (es. family + variant). Accettiamo il match
-        # solo quando l'unione è completa e almeno un token richiesto è
-        # supportato strutturalmente.
+        # Query che identifica family + variante: valido solo se la family
+        # coincide esattamente e i token aggiuntivi sono presenti nella
+        # variante. In questo modo la variante non cambia la family.
+        if (
+            query_tokens.issuperset(family_tokens)
+            and query_tokens.issubset(family_tokens | variant_tokens)
+        ):
+            return True
+
+        # Se la family è esplicita ma non coincide con la query, il titolo
+        # commerciale non può sovrascrivere quell'identità strutturale.
+        return False
+
+    # Se non esiste una family esplicita, manteniamo il fallback strutturale
+    # già disponibile: variant/product metadata + titolo.
+    if structured_tokens:
         combined = structured_tokens | name_tokens
         structural_overlap = query_tokens & structured_tokens
         if query_tokens.issubset(combined) and structural_overlap:
             return True
-
-        # Se la struttura esiste ma non supporta alcun token della query,
-        # il titolo isolato non è sufficiente: evita falsi positivi derivati
-        # da descrizioni commerciali incoerenti.
         return False
 
     # Fallback per scraper che non espongono metadati strutturali.
