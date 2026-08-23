@@ -61,6 +61,11 @@ FRONTEND_INDEX = (
     / "index.html"
 )
 
+FAMILY_REGISTRY_PATH = os.path.join(
+    BASE_DIR,
+    "family_registry.json",
+)
+
 NON_PERFUME = {
     # Confezioni / prodotti multipli: non sono una singola referenza profumo.
     "gift set",
@@ -145,6 +150,243 @@ def norm(value: Any) -> str:
     )
     value = re.sub(r"[^a-z0-9]+", " ", value)
     return re.sub(r"\s+", " ", value).strip()
+
+
+# ============================================================
+# CONOSCENZA DELLE FAMIGLIE
+# ============================================================
+
+FAMILY_GENERIC_WORDS = {
+    "eau",
+    "de",
+    "parfum",
+    "perfume",
+    "edp",
+    "edt",
+    "edc",
+    "extrait",
+    "spray",
+    "toilette",
+    "cologne",
+    "for",
+    "by",
+    "men",
+    "women",
+    "man",
+    "woman",
+    "homme",
+    "femme",
+    "uomo",
+    "donna",
+    "unisex",
+    "voor",
+    "mannen",
+    "dames",
+    "pour",
+    "lui",
+    "lei",
+    "ml",
+    "cl",
+}
+
+
+def _family_core(value: Any, brand: str = "") -> str:
+    text = norm(value)
+
+    if not text:
+        return ""
+
+    brand_normalized = norm(brand)
+    if brand_normalized:
+        text = re.sub(
+            rf"\b{re.escape(brand_normalized)}\b",
+            " ",
+            text,
+        )
+
+    text = re.sub(
+        r"\b\d+(?:[.,]\d+)?\s*(?:ml|cl)\b",
+        " ",
+        text,
+        flags=re.I,
+    )
+
+    tokens = [
+        token
+        for token in text.split()
+        if token not in FAMILY_GENERIC_WORDS
+        and not re.fullmatch(r"\d+(?:[.,]\d+)?", token)
+    ]
+
+    return " ".join(tokens).strip()
+
+
+def _load_family_registry() -> Dict[str, Any]:
+    try:
+        with open(
+            FAMILY_REGISTRY_PATH,
+            "r",
+            encoding="utf-8",
+        ) as file:
+            data = json.load(file)
+
+        if isinstance(data, dict) and isinstance(data.get("families"), list):
+            return data
+
+    except Exception as exc:
+        print(
+            "FAMILY_REGISTRY_LOAD_ERROR: "
+            f"{type(exc).__name__}: {exc}",
+            flush=True,
+        )
+
+    return {"families": []}
+
+
+FAMILY_REGISTRY = _load_family_registry()
+
+
+def _family_registry_candidates(
+    query: str,
+    product_brand: str,
+) -> Optional[set]:
+    query_core = _family_core(query, product_brand)
+
+    if not query_core:
+        return None
+
+    registry_families = FAMILY_REGISTRY.get("families", [])
+
+    for family in registry_families:
+        if not isinstance(family, dict):
+            continue
+
+        family_brand = str(
+            family.get("brand") or ""
+        ).strip()
+
+        if product_brand and norm(product_brand) != norm(family_brand):
+            continue
+
+        family_aliases = family.get("query_aliases") or []
+        family_cores = {
+            _family_core(alias, family_brand)
+            for alias in family_aliases
+            if _family_core(alias, family_brand)
+        }
+
+        products = family.get("products") or []
+        product_cores = {}
+
+        for item in products:
+            if not isinstance(item, dict):
+                continue
+
+            canonical = str(
+                item.get("canonical_name") or ""
+            ).strip()
+
+            aliases = list(item.get("aliases") or [])
+            if canonical:
+                aliases.append(canonical)
+
+            cores = {
+                _family_core(alias, family_brand)
+                for alias in aliases
+                if _family_core(alias, family_brand)
+            }
+
+            if cores:
+                product_cores[canonical] = cores
+
+        if query_core in family_cores:
+            return set(product_cores.keys())
+
+        for canonical, cores in product_cores.items():
+            if query_core in cores:
+                return {canonical}
+
+    return None
+
+
+def _family_registry_accepts(
+    product: Dict[str, Any],
+    query: str,
+) -> Optional[bool]:
+    product_brand = product_field(
+        product,
+        "brand",
+        "source_brand",
+    )
+
+    source = product.get("source")
+    if isinstance(source, dict) and not product_brand:
+        product_brand = str(
+            source.get("brand")
+            or source.get("source_brand")
+            or ""
+        ).strip()
+
+    # When the retailer did not provide a brand, keep the registry usable
+    # from the product name alone. When a different explicit brand is present,
+    # the registry for another brand must not interfere with that result.
+    registry_target = _family_registry_candidates(
+        query,
+        product_brand,
+    )
+
+    if registry_target is None and not product_brand:
+        registry_target = _family_registry_candidates(query, "")
+
+    if registry_target is None:
+        return None
+
+    family_text = " ".join(
+        str(product.get(key) or "")
+        for key in (
+            "name",
+            "title",
+            "product_name",
+            "product_line",
+            "variant",
+        )
+    )
+
+    product_core = _family_core(
+        family_text,
+        product_brand,
+    )
+
+    if not product_core:
+        return False
+
+    for family in FAMILY_REGISTRY.get("families", []):
+        if not isinstance(family, dict):
+            continue
+
+        family_brand = str(family.get("brand") or "").strip()
+        if product_brand and norm(product_brand) != norm(family_brand):
+            continue
+
+        products = family.get("products") or []
+        for item in products:
+            if not isinstance(item, dict):
+                continue
+
+            canonical = str(item.get("canonical_name") or "").strip()
+            if canonical not in registry_target:
+                continue
+
+            aliases = list(item.get("aliases") or [])
+            if canonical:
+                aliases.append(canonical)
+
+            for alias in aliases:
+                alias_core = _family_core(alias, family_brand)
+                if alias_core and product_core == alias_core:
+                    return True
+
+    return False
 
 
 def price_num(value: Any) -> Optional[float]:
@@ -434,6 +676,14 @@ def matches(product: Dict[str, Any], query: str) -> bool:
             and phrase_normalized not in query_normalized
         ):
             return False
+
+    family_registry_decision = _family_registry_accepts(
+        product,
+        query,
+    )
+
+    if family_registry_decision is False:
+        return False
 
     name_for_matching = name_normalized
 
