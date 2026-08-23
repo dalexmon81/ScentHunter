@@ -359,12 +359,20 @@ def _card_text(link) -> str:
 
 
 def _make_candidate(url: str, anchor: str, card: str, query: str, source: str) -> Optional[Dict[str, Any]]:
-    url = _clean(url).split("?")[0]
+    url = _clean(url).split("?")[0].rstrip("/")
     if not _looks_like_product_url(url):
         return None
 
     anchor = _clean(anchor)
     card = _clean(card)
+
+    # The visible product label is authoritative for format exclusions.
+    # Even when the URL slug is clean, an anchor such as "Sample", "Tester"
+    # or "Gift Set" must not be converted into a perfume candidate through
+    # URL-slug fallback.
+    if anchor and _has_non_perfume_marker_in_product(anchor, url):
+        return None
+
     query_tokens = _query_tokens(query)
     if not query_tokens:
         return None
@@ -477,6 +485,13 @@ def _make_candidate(url: str, anchor: str, card: str, query: str, source: str) -
 def extract_candidates_from_html(html: str, query: str) -> List[Dict[str, Any]]:
     soup = BeautifulSoup(html or "", "html.parser")
     found: Dict[str, Dict[str, Any]] = {}
+    anchor_urls = set()
+
+    for link in soup.find_all("a", href=True):
+        anchor_url = urljoin(BASE_URL, _clean(link.get("href"))).split("?")[0].rstrip("/")
+        if anchor_url:
+            anchor_urls.add(anchor_url)
+
     for link in soup.find_all("a", href=True):
         url = urljoin(BASE_URL, _clean(link.get("href"))).split("?")[0]
         if not _looks_like_product_url(url):
@@ -493,6 +508,45 @@ def extract_candidates_from_html(html: str, query: str) -> List[Dict[str, Any]]:
             or candidate["score"] > found[candidate["url"]]["score"]
         ):
             found[candidate["url"]] = candidate
+    # Some storefront responses expose the product URL only inside
+    # embedded JSON/JavaScript and not as a normal <a href> element.
+    # Treat those URLs as a second generic discovery channel. The URL is
+    # still validated through _make_candidate(), so no product-specific
+    # seed or hard-coded URL is introduced.
+    raw_html = html_lib.unescape(html or "").replace("\\/","/")
+    for pattern in (
+        PRODUCT_URL_RE,
+        READER_ABSOLUTE_PRODUCT_RE,
+        READER_RELATIVE_PRODUCT_RE,
+    ):
+        for match in pattern.finditer(raw_html):
+            raw_url = _normalise_reader_url(match.group(0))
+            if not raw_url:
+                continue
+
+            # If the URL already exists as a normal anchor, its anchor was
+            # already evaluated above. Do not bypass a deliberate rejection
+            # (for example a tester/sample card) through the raw-URL fallback.
+            if raw_url in anchor_urls:
+                continue
+
+            slug_name = _name_from_product_url(raw_url)
+            if not slug_name:
+                continue
+
+            candidate = _make_candidate(
+                raw_url,
+                slug_name,
+                slug_name,
+                query,
+                "direct-search-url",
+            )
+            if candidate and (
+                candidate["url"] not in found
+                or candidate["score"] > found[candidate["url"]]["score"]
+            ):
+                found[candidate["url"]] = candidate
+
     return sorted(
         found.values(),
         key=lambda x: (not x["contains_all_query_tokens"], -x["score"], x["url"]),
