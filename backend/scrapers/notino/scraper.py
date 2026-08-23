@@ -359,96 +359,22 @@ def _card_text(link) -> str:
 
 
 def _make_candidate(url: str, anchor: str, card: str, query: str, source: str) -> Optional[Dict[str, Any]]:
-    url = _clean(url).split("?")[0].rstrip("/")
+    url = _clean(url).split("?")[0]
     if not _looks_like_product_url(url):
         return None
-
     anchor = _clean(anchor)
     card = _clean(card)
-
-    # The visible product label is authoritative for format exclusions.
-    # Even when the URL slug is clean, an anchor such as "Sample", "Tester"
-    # or "Gift Set" must not be converted into a perfume candidate through
-    # URL-slug fallback.
-    if anchor and _has_non_perfume_marker_in_product(anchor, url):
+    name = _clean_name(anchor) or _clean_name(card)
+    if not name or _has_non_perfume_marker_in_product(name, url, anchor):
         return None
 
+    matched, hits, fuzzy_hits = _fuzzy_query_match(name, query)
     query_tokens = _query_tokens(query)
     if not query_tokens:
         return None
-
-    # The visible anchor on a search card is not always the complete product
-    # title. Some storefronts use a short anchor (for example only the
-    # fragrance family) while the product URL contains the full variant name.
-    # Discovery must therefore evaluate generic product-name sources before
-    # rejecting the URL. No product-specific names or rules are used here.
-    name_candidates: List[Tuple[str, str]] = []
-    anchor_name = _clean_name(anchor)
-    if anchor_name:
-        name_candidates.append(("anchor", anchor_name))
-
-    slug_name = _name_from_product_url(url)
-    if slug_name:
-        name_candidates.append(("url-slug", slug_name))
-
-        brand = _brand_from_product_url(url)
-        if brand:
-            branded_name = _clean_name(f"{brand} {slug_name}")
-            if branded_name and branded_name != slug_name:
-                name_candidates.append(("url-brand-slug", branded_name))
-
-    card_name = _clean_name(card)
-    if card_name and card_name not in {value for _, value in name_candidates}:
-        name_candidates.append(("card", card_name))
-
-    best_name = ""
-    best_source = ""
-    best_match = False
-    best_hits: Dict[str, bool] = {}
-    best_fuzzy_hits = 0
-    best_rank = (-1, -1, -1)
-
-    for candidate_source, candidate_name in name_candidates:
-        if not candidate_name or _has_non_perfume_marker_in_product(
-            candidate_name, url, anchor
-        ):
-            continue
-
-        matched, hits, fuzzy_hits = _fuzzy_query_match(candidate_name, query)
-        exact_hits = sum(1 for token in query_tokens if hits.get(token))
-        rank = (
-            int(matched),
-            exact_hits,
-            fuzzy_hits,
-        )
-
-        if rank > best_rank:
-            best_rank = rank
-            best_name = candidate_name
-            best_source = candidate_source
-            best_match = matched
-            best_hits = hits
-            best_fuzzy_hits = fuzzy_hits
-
-    if not best_name or not best_match:
-        return None
-
-    name = best_name
-    matched = best_match
-    hits = best_hits
-    fuzzy_hits = best_fuzzy_hits
-
     score = sum(hits.values()) * 5 + fuzzy_hits * 2
     if matched:
         score += 5
-
-    # Prefer the original visible anchor when it already contains the full
-    # query. If the anchor is abbreviated, keep it as display/context data but
-    # use the validated product-name source for matching and candidate name.
-    if best_source == "url-slug":
-        score += 1
-    elif best_source == "url-brand-slug":
-        score += 1
 
     search_context = f"{anchor} {card}"
     requested_sizes = _requested_sizes(query)
@@ -477,21 +403,12 @@ def _make_candidate(url: str, anchor: str, card: str, query: str, source: str) -
             if requested_sizes else True
         ),
         "source": source,
-        "name_source": best_source,
     }
-
 
 
 def extract_candidates_from_html(html: str, query: str) -> List[Dict[str, Any]]:
     soup = BeautifulSoup(html or "", "html.parser")
     found: Dict[str, Dict[str, Any]] = {}
-    anchor_urls = set()
-
-    for link in soup.find_all("a", href=True):
-        anchor_url = urljoin(BASE_URL, _clean(link.get("href"))).split("?")[0].rstrip("/")
-        if anchor_url:
-            anchor_urls.add(anchor_url)
-
     for link in soup.find_all("a", href=True):
         url = urljoin(BASE_URL, _clean(link.get("href"))).split("?")[0]
         if not _looks_like_product_url(url):
@@ -508,45 +425,6 @@ def extract_candidates_from_html(html: str, query: str) -> List[Dict[str, Any]]:
             or candidate["score"] > found[candidate["url"]]["score"]
         ):
             found[candidate["url"]] = candidate
-    # Some storefront responses expose the product URL only inside
-    # embedded JSON/JavaScript and not as a normal <a href> element.
-    # Treat those URLs as a second generic discovery channel. The URL is
-    # still validated through _make_candidate(), so no product-specific
-    # seed or hard-coded URL is introduced.
-    raw_html = html_lib.unescape(html or "").replace("\\/","/")
-    for pattern in (
-        PRODUCT_URL_RE,
-        READER_ABSOLUTE_PRODUCT_RE,
-        READER_RELATIVE_PRODUCT_RE,
-    ):
-        for match in pattern.finditer(raw_html):
-            raw_url = _normalise_reader_url(match.group(0))
-            if not raw_url:
-                continue
-
-            # If the URL already exists as a normal anchor, its anchor was
-            # already evaluated above. Do not bypass a deliberate rejection
-            # (for example a tester/sample card) through the raw-URL fallback.
-            if raw_url in anchor_urls:
-                continue
-
-            slug_name = _name_from_product_url(raw_url)
-            if not slug_name:
-                continue
-
-            candidate = _make_candidate(
-                raw_url,
-                slug_name,
-                slug_name,
-                query,
-                "direct-search-url",
-            )
-            if candidate and (
-                candidate["url"] not in found
-                or candidate["score"] > found[candidate["url"]]["score"]
-            ):
-                found[candidate["url"]] = candidate
-
     return sorted(
         found.values(),
         key=lambda x: (not x["contains_all_query_tokens"], -x["score"], x["url"]),
@@ -1011,14 +889,28 @@ def _reader_discovery(query: str, session: requests.Session) -> Tuple[List[Dict[
     # search/reader variants expose only one result unless the brand is
     # present in the query. This remains fully generic and contains no
     # product-specific names or URLs.
+    # Retry the original search with each distinct brand only once.  The
+    # previous implementation iterated over every strong candidate, which could
+    # issue the exact same branded searches repeatedly when several candidates
+    # belonged to the same brand.  That made the generic fallback unnecessarily
+    # expensive and could cause the overall scraper timeout before discovery
+    # reached the remaining stores.
+    branded_queries: List[str] = []
+    seen_branded_queries = set()
     for candidate in strong:
         brand = _brand_from_product_url(candidate["url"])
         if not brand:
             continue
-        branded_queries = [f"{brand} {query}", f"{query} {brand}"]
-        for branded_query in branded_queries:
-            for search_url in _search_urls(branded_query):
-                collect(search_url, branded_query, search_url)
+        for branded_query in (f"{brand} {query}", f"{query} {brand}"):
+            branded_query = _clean(branded_query)
+            key = branded_query.casefold()
+            if branded_query and key not in seen_branded_queries:
+                seen_branded_queries.add(key)
+                branded_queries.append(branded_query)
+
+    for branded_query in branded_queries:
+        for search_url in _search_urls(branded_query):
+            collect(search_url, branded_query, search_url)
 
     # Generic fourth-stage discovery: if the storefront search/brand catalogue
     # still exposes fewer than two exact products, consult Notino's own XML
