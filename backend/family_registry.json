@@ -11,218 +11,182 @@
       ],
       "products": [
         {
-          "canonical_name": "Rasasi Hawas Atlantis",
-          "aliases": [
-            "Hawas Atlantis",
-            "Rasasi Hawas Atlantis"
-          ]
-        },
-        {
-          "canonical_name": "Rasasi Hawas Black",
-          "aliases": [
-            "Hawas Black",
-            "Rasasi Hawas Black"
-          ]
-        },
-        {
-          "canonical_name": "Rasasi Hawas Chrome",
-          "aliases": [
-            "Hawas Chrome",
-            "Rasasi Hawas Chrome"
-          ]
-        },
-        {
-          "canonical_name": "Rasasi Hawas Diva",
-          "aliases": [
-            "Hawas Diva",
-            "Rasasi Hawas Diva"
-          ]
-        },
-        {
-          "canonical_name": "Rasasi Hawas Eclat",
-          "aliases": [
-            "Hawas Eclat",
-            "Eclat",
-            "Éclat",
-            "E'clat",
-            "E’clat",
-            "Hawas For Her Eclat",
-            "Hawas For Her Éclat",
-            "Rasasi Hawas Eclat",
-            "Rasasi Eclat",
-            "Rasasi Éclat",
-            "Rasasi E'clat",
-            "Rasasi E’clat",
-            "Rasasi Hawas For Her Eclat",
-            "Rasasi Hawas For Her Éclat",
-            "Hawas Éclat",
-            "Rasasi Hawas Éclat"
-          ]
-        },
-        {
-          "canonical_name": "Rasasi Hawas Elixir",
-          "aliases": [
-            "Hawas Elixir",
-            "Hawas Élixir",
-            "Rasasi Hawas Elixir",
-            "Rasasi Hawas Élixir"
-          ]
-        },
-        {
-          "canonical_name": "Rasasi Hawas Fire",
-          "aliases": [
-            "Hawas Fire",
-            "Rasasi Hawas Fire"
-          ]
-        },
-        {
-          "canonical_name": "Hawas For Her",
-          "aliases": [
-            "Hawas For Her",
-            "For Her"
-          ]
-        },
-        {
           "canonical_name": "Hawas For Him",
           "aliases": [
+            "Hawas for Him",
+            "Hawas Men",
             "Hawas For Him",
             "For Him"
           ]
         },
         {
-          "canonical_name": "Rasasi Hawas Gold Digger",
+          "canonical_name": "Hawas For Her",
           "aliases": [
-            "Hawas Gold Digger",
-            "Rasasi Hawas Gold Digger"
+            "Hawas for Her",
+            "Hawas For Her",
+            "For Her"
           ]
         },
         {
-          "canonical_name": "Rasasi Hawas Highness",
+          "canonical_name": "Hawas Ice",
           "aliases": [
-            "Hawas Highness",
-            "Rasasi Hawas Highness"
+            "Hawas Ice"
           ]
         },
         {
-          "canonical_name": "Rasasi Hawas Ice",
+          "canonical_name": "Hawas Black",
           "aliases": [
-            "Hawas Ice",
-            "Rasasi Hawas Ice"
+            "Hawas Black"
           ]
         },
         {
-          "canonical_name": "Rasasi Hawas Kobra",
+          "canonical_name": "Hawas Kobra",
           "aliases": [
             "Hawas Kobra",
             "Hawas Cobra",
-            "Rasasi Hawas Kobra",
-            "Rasasi Hawas Cobra"
+            "Cobra"
           ]
         },
         {
-          "canonical_name": "Rasasi Hawas Lava Gold",
+          "canonical_name": "Hawas Fire",
           "aliases": [
-            "Hawas Lava Gold",
-            "Rasasi Hawas Lava Gold"
+            "Hawas Fire"
           ]
         },
         {
-          "canonical_name": "Rasasi Hawas London",
+          "canonical_name": "Hawas Viper",
           "aliases": [
-            "Hawas London",
-            "Rasasi Hawas London"
+            "Hawas Viper"
           ]
         },
         {
-          "canonical_name": "Rasasi Hawas Majestic",
+          "canonical_name": "Hawas Atlantis",
           "aliases": [
-            "Hawas Majestic",
-            "Rasasi Hawas Majestic"
+            "Hawas Atlantis"
           ]
         },
         {
-          "canonical_name": "Rasasi Hawas Malibu",
-          "aliases": [
-            "Hawas Malibu",
-            "Malibu",
-            "Malibu Voor Mannen",
-            "Hawas Malibu Voor Mannen",
-            "Rasasi Hawas Malibu",
-            "Rasasi Malibu",
-            "Rasasi Malibu Voor Mannen",
-            "Rasasi Hawas Malibu Voor Mannen"
-          ]
-        },
-        {
-          "canonical_name": "Rasasi Hawas Nautilus",
-          "aliases": [
-            "Hawas Nautilus",
-            "Rasasi Hawas Nautilus"
-          ]
-        },
-        {
-          "canonical_name": "Rasasi Hawas Overdose",
-          "aliases": [
-            "Hawas Overdose",
-            "Rasasi Hawas Overdose"
-          ]
-        },
-        {
-          "canonical_name": "Rasasi Hawas Pink",
+          "canonical_name": "Hawas Pink",
           "aliases": [
             "Hawas Pink",
-            "Rasasi Hawas Pink"
+            "Hawas Pink for Her"
           ]
         },
         {
-          "canonical_name": "Rasasi Hawas Reina",
+          "canonical_name": "Hawas Sapphire",
           "aliases": [
-            "Hawas Reina",
-            "Rasasi Hawas Reina"
+            "Hawas Sapphire"
           ]
         },
         {
-          "canonical_name": "Rasasi Hawas Rouge",
+          "canonical_name": "Hawas Elixir",
           "aliases": [
-            "Hawas Rouge",
-            "Rasasi Hawas Rouge"
+            "Hawas Elixir"
           ]
         },
         {
-          "canonical_name": "Rasasi Hawas Sapphire",
+          "canonical_name": "Hawas Malibu",
           "aliases": [
-            "Hawas Sapphire",
-            "Rasasi Hawas Sapphire"
+            "Hawas Malibu",
+            "Malibu Voor Mannen",
+            "Hawas Malibu Voor Mannen"
           ]
         },
         {
-          "canonical_name": "Rasasi Hawas Tropical",
+          "canonical_name": "Hawas Tropical",
           "aliases": [
             "Hawas Tropical",
-            "Hawas For Him Tropical",
-            "Rasasi Hawas Tropical",
-            "Rasasi Hawas For Him Tropical"
+            "Hawas for Him Tropical"
           ]
         },
         {
-          "canonical_name": "Rasasi Hawas Venom",
+          "canonical_name": "Hawas Verde",
           "aliases": [
-            "Hawas Venom",
-            "Rasasi Hawas Venom"
+            "Hawas Verde"
           ]
         },
         {
-          "canonical_name": "Rasasi Hawas Verde",
+          "canonical_name": "Hawas Diva",
           "aliases": [
-            "Hawas Verde",
-            "Rasasi Hawas Verde"
+            "Hawas Diva",
+            "Hawas Diva for Her"
           ]
         },
         {
-          "canonical_name": "Rasasi Hawas Viper",
+          "canonical_name": "Hawas London",
           "aliases": [
-            "Hawas Viper",
-            "Rasasi Hawas Viper"
+            "Hawas London"
+          ]
+        },
+        {
+          "canonical_name": "Hawas Highness",
+          "aliases": [
+            "Hawas Highness"
+          ]
+        },
+        {
+          "canonical_name": "Hawas Reina",
+          "aliases": [
+            "Hawas Reina"
+          ]
+        },
+        {
+          "canonical_name": "Hawas Chrome",
+          "aliases": [
+            "Hawas Chrome"
+          ]
+        },
+        {
+          "canonical_name": "Hawas Gold Digger",
+          "aliases": [
+            "Hawas Gold Digger"
+          ]
+        },
+        {
+          "canonical_name": "Hawas Thunder",
+          "aliases": [
+            "Hawas Thunder"
+          ]
+        },
+        {
+          "canonical_name": "Hawas Lava Gold",
+          "aliases": [
+            "Hawas Lava Gold"
+          ]
+        },
+        {
+          "canonical_name": "Hawas Eclat",
+          "aliases": [
+            "Hawas For Her Éclat",
+            "Hawas Eclat",
+            "Hawas Éclat",
+            "Hawas E'clat",
+            "Hawas For Her Eclat",
+            "Hawas E’Clat",
+            "Hawas E'Clat",
+            "Eclat",
+            "Éclat",
+            "E’Clat",
+            "E'Clat"
+          ]
+        },
+        {
+          "canonical_name": "Hawas Nautilus",
+          "aliases": [
+            "Hawas Nautilus"
+          ]
+        },
+        {
+          "canonical_name": "Hawas Rouge",
+          "aliases": [
+            "Hawas Rouge",
+            "Hawas Rouge For Her"
+          ]
+        },
+        {
+          "canonical_name": "Hawas Majestic",
+          "aliases": [
+            "Hawas Majestic"
           ]
         }
       ],
@@ -230,11 +194,7 @@
         "Hawas Al Wisam",
         "Al Wisam",
         "Daarej",
-        "Daarej Passion",
-        "Hawas Daarej",
-        "Hawas Daarej Passione",
-        "Hawas Daarej Pour Homme Extrait",
-        "Hawas Al Wisam Absolute"
+        "Daarej Passion"
       ],
       "excluded_aliases": [
         "Hawas Al Wisam",
@@ -242,10 +202,7 @@
         "Hawas Al Wisam Day",
         "Daarej",
         "Daarej Passion",
-        "Rasasi Daarej",
-        "Hawas Daarej",
-        "Hawas Daarej Passione",
-        "Hawas Daarej Pour Homme Extrait"
+        "Rasasi Daarej"
       ]
     },
     {
@@ -257,124 +214,97 @@
       ],
       "products": [
         {
-          "canonical_name": "Born in Roma Coral Fantasy Donna",
+          "canonical_name": "Born in Roma Uomo",
           "aliases": [
-            "Born in Roma Coral Fantasy Donna",
-            "Born In Roma Coral Fantasy For Her"
+            "Born in Roma Uomo",
+            "Born In Roma For Him"
           ]
         },
         {
-          "canonical_name": "Born in Roma edp Donna",
+          "canonical_name": "Born in Roma Uomo Intense",
           "aliases": [
-            "Born in Roma edp Donna",
-            "Born in Roma EDP Donna",
-            "Born In Roma For Her"
-          ]
-        },
-        {
-          "canonical_name": "Born in Roma Extradose Donna",
-          "aliases": [
-            "Born in Roma Extradose Donna",
-            "Born In Roma Extradose For Her"
-          ]
-        },
-        {
-          "canonical_name": "Born in Roma Green Stravaganza Donna",
-          "aliases": [
-            "Born in Roma Green Stravaganza Donna"
-          ]
-        },
-        {
-          "canonical_name": "Born in Roma Intense Donna",
-          "aliases": [
-            "Born in Roma Intense Donna",
-            "Born in Roma Donna Intense",
-            "Born in Roma Donna Eau de Parfum Intense"
-          ]
-        },
-        {
-          "canonical_name": "Born in Roma Ivory Donna",
-          "aliases": [
-            "Born in Roma Ivory Donna"
-          ]
-        },
-        {
-          "canonical_name": "Born in Roma Purple Melancholia Donna",
-          "aliases": [
-            "Born in Roma Purple Melancholia Donna"
-          ]
-        },
-        {
-          "canonical_name": "Born in Roma The Gold Donna",
-          "aliases": [
-            "Born in Roma The Gold Donna"
-          ]
-        },
-        {
-          "canonical_name": "Born in Roma Yellow Dream Donna",
-          "aliases": [
-            "Born in Roma Yellow Dream Donna",
-            "Born In Roma Yellow Dream For Her"
-          ]
-        },
-        {
-          "canonical_name": "Born in Roma Coral Fantasy Uomo",
-          "aliases": [
-            "Born in Roma Coral Fantasy Uomo",
-            "Born In Roma Coral Fantasy For Him"
-          ]
-        },
-        {
-          "canonical_name": "Born in Roma edt Uomo",
-          "aliases": [
-            "Born in Roma edt Uomo",
-            "Born in Roma EDT Uomo"
-          ]
-        },
-        {
-          "canonical_name": "Born in Roma Extradose Uomo",
-          "aliases": [
-            "Born in Roma Extradose Uomo",
-            "Born In Roma Extradose"
-          ]
-        },
-        {
-          "canonical_name": "Born in Roma Green Stravaganza Uomo",
-          "aliases": [
-            "Born in Roma Green Stravaganza Uomo"
-          ]
-        },
-        {
-          "canonical_name": "Born in Roma Intense Uomo",
-          "aliases": [
-            "Born in Roma Intense Uomo",
             "Born in Roma Uomo Intense",
             "Born in Roma Uomo Eau de Parfum Intense"
           ]
         },
         {
-          "canonical_name": "Born in Roma Ivory Uomo",
+          "canonical_name": "Born in Roma Uomo Extradose",
           "aliases": [
-            "Born in Roma Ivory Uomo"
+            "Born in Roma Uomo Extradose",
+            "Born In Roma Extradose"
           ]
         },
         {
-          "canonical_name": "Born in Roma Purple Melancholia Uomo",
+          "canonical_name": "Born in Roma Uomo Green Stravaganza",
           "aliases": [
-            "Born in Roma Purple Melancholia Uomo"
+            "Born in Roma Uomo Green Stravaganza"
           ]
         },
         {
-          "canonical_name": "Born in Roma The Gold Uomo",
+          "canonical_name": "Born in Roma Uomo Coral Fantasy",
           "aliases": [
-            "Born in Roma The Gold Uomo"
+            "Born in Roma Uomo Coral Fantasy",
+            "Born In Roma Coral Fantasy For Him"
           ]
         },
         {
-          "canonical_name": "Born in Roma Yellow Dream Uomo",
+          "canonical_name": "Born in Roma Uomo Yellow Dream",
           "aliases": [
-            "Born in Roma Yellow Dream Uomo",
+            "Born in Roma Uomo Yellow Dream",
             "Born In Roma Yellow Dream For Him"
+          ]
+        },
+        {
+          "canonical_name": "Born in Roma Uomo Purple Melancholia",
+          "aliases": [
+            "Born in Roma Uomo Purple Melancholia"
+          ]
+        },
+        {
+          "canonical_name": "Born in Roma Donna",
+          "aliases": [
+            "Born in Roma Donna",
+            "Born In Roma For Her"
+          ]
+        },
+        {
+          "canonical_name": "Born in Roma Donna Intense",
+          "aliases": [
+            "Born in Roma Donna Intense",
+            "Born in Roma Donna Eau de Parfum Intense"
+          ]
+        },
+        {
+          "canonical_name": "Born in Roma Donna Extradose",
+          "aliases": [
+            "Born in Roma Donna Extradose",
+            "Born In Roma Extradose For Her"
+          ]
+        },
+        {
+          "canonical_name": "Born in Roma Donna Green Stravaganza",
+          "aliases": [
+            "Born in Roma Donna Green Stravaganza"
+          ]
+        },
+        {
+          "canonical_name": "Born in Roma Donna Coral Fantasy",
+          "aliases": [
+            "Born in Roma Donna Coral Fantasy",
+            "Born In Roma Coral Fantasy For Her"
+          ]
+        },
+        {
+          "canonical_name": "Born in Roma Donna Yellow Dream",
+          "aliases": [
+            "Born in Roma Donna Yellow Dream",
+            "Born In Roma Yellow Dream For Her"
+          ]
+        },
+        {
+          "canonical_name": "Born in Roma Donna Purple Melancholia",
+          "aliases": [
+            "Born in Roma Donna Purple Melancholia"
           ]
         }
       ]
