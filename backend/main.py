@@ -376,10 +376,39 @@ def has_small_size(product: Dict[str, Any]) -> bool:
 # FAMILY REGISTRY / CATALOGO AUTORITATIVO
 # ============================================================
 
-FAMILY_REGISTRY_PATH = os.path.join(
-    BASE_DIR,
-    "family_registry.json",
-)
+def _resolve_family_registry_path() -> str:
+    """
+    Risolve il registro famiglie in modo generico.
+
+    Priorita:
+      1) SCENTHUNTER_FAMILY_REGISTRY, se configurato;
+      2) family_registry.json nella directory del backend;
+      3) se il nome standard non esiste, un unico file
+         family_registry*.json presente nella directory del backend.
+
+    Non contiene nomi di prodotti o famiglie specifiche.
+    """
+    configured = os.getenv("SCENTHUNTER_FAMILY_REGISTRY", "").strip()
+    if configured:
+        return configured
+
+    standard = os.path.join(BASE_DIR, "family_registry.json")
+    if os.path.isfile(standard):
+        return standard
+
+    candidates = sorted(
+        str(path)
+        for path in Path(BASE_DIR).glob("family_registry*.json")
+        if path.is_file()
+    )
+
+    if len(candidates) == 1:
+        return candidates[0]
+
+    return standard
+
+
+FAMILY_REGISTRY_PATH = _resolve_family_registry_path()
 
 
 def catalog_norm(value: Any) -> str:
@@ -392,9 +421,14 @@ def catalog_norm(value: Any) -> str:
     le forme con apostrofo restano confrontabili con la forma ASCII equivalente.
     """
     text = str(value or "").strip().lower()
-    text = unicodedata.normalize("NFC", text)
+    text = unicodedata.normalize("NFKD", text)
+    text = "".join(
+        char
+        for char in text
+        if not unicodedata.combining(char)
+    )
     text = text.replace("’", "").replace("'", "")
-    text = re.sub(r"[^0-9a-zà-öø-ÿĀ-ž]+", " ", text)
+    text = re.sub(r"[^0-9a-z]+", " ", text)
     return re.sub(r"\s+", " ", text).strip()
 
 
@@ -489,38 +523,17 @@ def _catalog_alias_is_valid(
     alias: str,
 ) -> bool:
     """
-    Applica due protezioni generiche al dato del catalogo:
+    Valida un alias dichiarato esplicitamente dal catalogo.
 
-    1) un alias che differisce dal canonical_name solo per gli accenti
-       NON viene considerato equivalente;
-    2) un alias che aggiunge/cambia il genere rispetto al canonical_name
-       NON viene considerato equivalente.
-
-    Le vere equivalenze lessicali restano invece possibili quando sono
-    esplicitamente dichiarate dal catalogo.
+    Il catalogo è la fonte di verità: se un alias è scritto nel registro,
+    viene accettato. Non vengono create equivalenze automatiche tra forme
+    maschili/femminili o tra varianti diverse. Differenze di accento e
+    apostrofo sono già normalizzate da _catalog_clean_text().
     """
     canonical_clean = _catalog_clean_text(canonical_name)
     alias_clean = _catalog_clean_text(alias)
 
-    if not canonical_clean or not alias_clean:
-        return False
-
-    canonical_folded = norm(canonical_clean)
-    alias_folded = norm(alias_clean)
-
-    if (
-        canonical_clean != alias_clean
-        and canonical_folded == alias_folded
-    ):
-        return False
-
-    canonical_gender = _catalog_gender_class(canonical_name)
-    alias_gender = _catalog_gender_class(alias)
-
-    if canonical_gender != alias_gender:
-        return False
-
-    return True
+    return bool(canonical_clean and alias_clean)
 
 
 def _load_family_registry() -> List[Dict[str, Any]]:
@@ -540,6 +553,7 @@ def _load_family_registry() -> List[Dict[str, Any]]:
     except Exception as exc:
         print(
             "FAMILY_REGISTRY_LOAD_ERROR:",
+            f"path={FAMILY_REGISTRY_PATH} ",
             f"{type(exc).__name__}: {exc}",
             flush=True,
         )
