@@ -2637,20 +2637,21 @@ def diagnose_notino_search(q: str):
 
     try:
         module = importlib.import_module("scrapers.notino.scraper")
-        debug_fn = getattr(module, "debug_search", None)
+        diagnose_fn = getattr(module, "diagnose", None)
 
-        if not callable(debug_fn):
+        if not callable(diagnose_fn):
             return {
                 "ok": False,
                 "store": "notino",
                 "query": query,
-                "error": "Notino scraper has no debug_search() function",
+                "error": "Notino scraper has no diagnose() function",
             }
 
         return {
             "ok": True,
             "store": "notino",
-            **debug_fn(query),
+            "query": query,
+            "diagnostic": diagnose_fn(query),
         }
 
     except Exception as exc:
