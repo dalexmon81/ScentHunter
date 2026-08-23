@@ -54,7 +54,9 @@
             "Rasasi E'clat",
             "Rasasi E’clat",
             "Rasasi Hawas For Her Eclat",
-            "Rasasi Hawas For Her Éclat"
+            "Rasasi Hawas For Her Éclat",
+            "Hawas Éclat",
+            "Rasasi Hawas Éclat"
           ]
         },
         {
@@ -74,19 +76,17 @@
           ]
         },
         {
-          "canonical_name": "Rasasi Hawas For Her",
+          "canonical_name": "Hawas For Her",
           "aliases": [
             "Hawas For Her",
-            "Rasasi Hawas For Her"
+            "For Her"
           ]
         },
         {
-          "canonical_name": "Hawas",
+          "canonical_name": "Hawas For Him",
           "aliases": [
-            "Hawas",
             "Hawas For Him",
-            "Hawas Men",
-            "Rasasi Hawas"
+            "For Him"
           ]
         },
         {
