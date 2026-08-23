@@ -24,7 +24,8 @@
           "aliases": [
             "Hawas for Her",
             "Hawas For Her",
-            "For Her"
+            "For Her",
+            "Hawas Pink For Her"
           ]
         },
         {
@@ -68,8 +69,7 @@
         {
           "canonical_name": "Hawas Pink",
           "aliases": [
-            "Hawas Pink",
-            "Hawas Pink for Her"
+            "Hawas Pink"
           ]
         },
         {
@@ -372,6 +372,3 @@
           ]
         }
       ]
-    }
-  ]
-}
