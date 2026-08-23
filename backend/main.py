@@ -1293,6 +1293,19 @@ def build_search_attempts(store: str, query: str) -> List[str]:
     )
     add(compact)
 
+    # 4) Alcuni motori interni dei negozi sono sensibili all'ordine dei
+    #    termini. Per query brevi e multi-termine proviamo anche l'ordine
+    #    inverso, senza creare ricerche per singole parole che introdurrebbero
+    #    rumore e risultati non pertinenti.
+    if len(tokens) >= 2:
+        add(" ".join(reversed(tokens)))
+
+    # 5) Se la query contiene termini puramente descrittivi rimossi al punto
+    #    2, manteniamo comunque una forma pulita e stabile per la discovery.
+    cleaned = " ".join(tokens)
+    if cleaned:
+        add(cleaned)
+
     return attempts
 
 
