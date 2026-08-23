@@ -141,8 +141,46 @@ def search(q):
     seen.add(x["url"]);out.append(x)
   return out
  finally:s.close()
+
+def diagnose(q):
+ q=clean(q)
+ if not q:return {"diagnostic":True,"query":q,"error":"empty_query"}
+ sess=requests.Session()
+ try:
+  d={"diagnostic":True,"query":q,"search_url":BASE+"/nl/search?q="+q.replace(" ","+"),"search":{},"sitemap":{},"candidate_count":0,"candidates":[],"product_pages":[]}
+  try:
+   r=sess.get(BASE+"/nl/search",params={"q":q},headers=HEADERS,timeout=TIMEOUT)
+   d["search"].update({"status":r.status_code,"final_url":r.url,"html_length":len(r.text or "")})
+   soup=BeautifulSoup(r.text,"html.parser") if r.status_code==200 else BeautifulSoup("","html.parser")
+   anchors=soup.find_all("a",href=True); links=[]; matching=[]
+   for a in soup.select('a[href*="/products/"]'):
+    href=a.get("href") or ""; u=urljoin(BASE,href.split("?")[0].split("#")[0]); label=clean(a.get_text(" ",strip=True))
+    links.append({"url":u,"label":label})
+    if matches(label,q) or matches(u,q): matching.append({"url":u,"label":label})
+   d["search"].update({"anchor_count":len(anchors),"product_link_count":len(links),"matching_product_links":len(matching),"matching_samples":matching[:25]})
+  except requests.RequestException as exc:d["search"]["error"]=f"{type(exc).__name__}: {exc}"
+  try:
+   sm=sitemap(sess); matched=[u for u in sm if matches(u,q)]
+   d["sitemap"]={"total_urls":len(sm),"matching_urls":len(matched),"matching_samples":matched[:25]}
+  except Exception as exc:d["sitemap"]["error"]=f"{type(exc).__name__}: {exc}"
+  candidates=search_page_urls(sess,q); source="search"
+  if not candidates:
+   candidates=[u for u in sitemap(sess) if matches(u,q)][:50]; source="sitemap_fallback"
+  d["discovery_source"]=source; d["candidate_count"]=len(candidates); d["candidates"]=candidates[:50]
+  for u in candidates[:50]:
+   item={"url":u,"status":None,"final_url":None,"html_length":None,"product_name":None,"name_matches_query":False,"price_found":False,"accepted":False,"error":None}
+   try:
+    r=sess.get(u,headers=HEADERS,timeout=TIMEOUT); item.update({"status":r.status_code,"final_url":r.url,"html_length":len(r.text or "")})
+    if r.status_code==200:
+     soup=BeautifulSoup(r.text,"html.parser"); h=soup.find("h1"); name=clean(h.get_text(" ",strip=True)) if h else ""
+     item["product_name"]=name; item["name_matches_query"]=matches(name,q); item["price_found"]=price(soup.get_text(" ",strip=True)) is not None; item["accepted"]=bool(item["name_matches_query"] and item["price_found"])
+   except requests.RequestException as exc:item["error"]=f"{type(exc).__name__}: {exc}"
+   d["product_pages"].append(item)
+  return d
+ finally:sess.close()
+
 def scrape(q):return search(q)
 if __name__=="__main__":
  import argparse
- p=argparse.ArgumentParser();p.add_argument("query");a=p.parse_args()
- print(json.dumps(search(a.query),ensure_ascii=False,indent=2))
+ p=argparse.ArgumentParser();p.add_argument("query");p.add_argument("--diagnose",action="store_true");a=p.parse_args()
+ print(json.dumps(diagnose(a.query) if a.diagnose else search(a.query),ensure_ascii=False,indent=2))
