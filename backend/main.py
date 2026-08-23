@@ -623,7 +623,16 @@ def _load_family_registry() -> List[Dict[str, Any]]:
         if not normalized_variants:
             continue
 
-        query_aliases = family.get("query_aliases") or []
+        # Supporta i nomi di campo usati dal registry reale.
+        # search_name/canonical_family_name sono equivalenti a una query
+        # di famiglia quando il registro non espone query_aliases.
+        query_aliases = (
+            family.get("query_aliases")
+            or family.get("search_aliases")
+            or family.get("search_name")
+            or family.get("canonical_family_name")
+            or []
+        )
         if isinstance(query_aliases, str):
             query_aliases = [query_aliases]
         if not isinstance(query_aliases, list):
@@ -686,6 +695,24 @@ def _catalog_brand_matches(
     )
 
 
+def _catalog_strip_family_brand(
+    value: Any,
+    family: Dict[str, Any],
+) -> str:
+    """Normalizza una forma di catalogo rimuovendo solo il brand della famiglia."""
+    text = _catalog_clean_text(value)
+    brand = _catalog_clean_text(family.get("brand"))
+    if brand:
+        text = re.sub(
+            rf"\b{re.escape(brand)}\b",
+            " ",
+            text,
+            flags=re.I,
+        )
+        text = re.sub(r"\s+", " ", text).strip()
+    return text
+
+
 def _catalog_product_text(product: Dict[str, Any]) -> str:
     values = [
         product_field(
@@ -727,35 +754,22 @@ def _catalog_variant_for_product(
     if not _catalog_brand_matches(product, family):
         return None
 
-    candidate_text = _catalog_clean_text(
-        _catalog_product_text(product)
+    candidate_text = _catalog_strip_family_brand(
+        _catalog_product_text(product),
+        family,
     )
 
     if not candidate_text:
         return None
 
-    # Rimuove soltanto il brand della famiglia dal titolo candidato.
-    brand = _catalog_clean_text(
-        family.get("brand")
-    )
-    if brand:
-        candidate_text = re.sub(
-            rf"\b{re.escape(brand)}\b",
-            " ",
-            candidate_text,
-            flags=re.I,
-        )
-        candidate_text = re.sub(
-            r"\s+",
-            " ",
-            candidate_text,
-        ).strip()
-
     for variant in family.get("variants", []):
         canonical_name = variant.get("canonical_name", "")
 
         for alias in variant.get("aliases", []):
-            alias_clean = _catalog_clean_text(alias)
+            alias_clean = _catalog_strip_family_brand(
+                alias,
+                family,
+            )
 
             if not alias_clean:
                 continue
@@ -775,6 +789,7 @@ def _catalog_family_for_query(
         return None
 
     for family in FAMILY_REGISTRY:
+        # 1) Nome della famiglia: es. "Hawas" o "Rasasi Hawas".
         for alias in family.get("query_aliases", []):
             alias_clean = _catalog_clean_text(alias)
 
@@ -796,6 +811,21 @@ def _catalog_family_for_query(
             ):
                 return family
 
+        # 2) Alias di una variante: permette di cercare direttamente una
+        #    variante anche quando il nome commerciale non contiene il
+        #    nome della famiglia, per esempio "Malibu Voor Mannen".
+        for variant in family.get("variants", []):
+            for alias in variant.get("aliases", []):
+                alias_clean = _catalog_strip_family_brand(
+                    alias,
+                    family,
+                )
+                if alias_clean and _catalog_phrase_equal(
+                    query_clean,
+                    alias_clean,
+                ):
+                    return family
+
     return None
 
 
@@ -803,29 +833,20 @@ def _catalog_requested_variant(
     query: str,
     family: Dict[str, Any],
 ) -> Optional[Dict[str, Any]]:
-    query_clean = _catalog_clean_text(query)
-
-    brand = _catalog_clean_text(
-        family.get("brand")
+    query_clean = _catalog_strip_family_brand(
+        query,
+        family,
     )
-    if brand:
-        query_clean = re.sub(
-            rf"\b{re.escape(brand)}\b",
-            " ",
-            query_clean,
-            flags=re.I,
-        )
-        query_clean = re.sub(
-            r"\s+",
-            " ",
-            query_clean,
-        ).strip()
 
     for variant in family.get("variants", []):
         for alias in variant.get("aliases", []):
+            alias_clean = _catalog_strip_family_brand(
+                alias,
+                family,
+            )
             if _catalog_phrase_equal(
                 query_clean,
-                alias,
+                alias_clean,
             ):
                 return variant
 
@@ -968,18 +989,12 @@ def matches(product: Dict[str, Any], query: str) -> bool:
     # --------------------------------------------------------
     # CATALOGO AUTORITATIVO
     # --------------------------------------------------------
-    catalog_match = _catalog_match(
-        product,
-        query,
-    )
-
-    if catalog_match is not None:
-        return True
-
-    # Se la query appartiene a una famiglia catalogata, ma il candidato
-    # non corrisponde a una variante autorizzata, deve essere escluso.
-    if _catalog_family_for_query(query) is not None:
-        return False
+    # Se la query appartiene a una famiglia presente nel registry, il
+    # catalogo diventa l'unica fonte di verita: nessun fallback generico
+    # puo far passare una variante non autorizzata.
+    catalog_family = _catalog_family_for_query(query)
+    if catalog_family is not None:
+        return _catalog_match(product, query) is not None
 
     # --------------------------------------------------------
     # MATCHING GENERICO PER FAMIGLIE NON CATALOGATE
