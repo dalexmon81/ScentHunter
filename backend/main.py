@@ -375,200 +375,116 @@ def has_small_size(product: Dict[str, Any]) -> bool:
 # VALIDAZIONE
 # ============================================================
 
-def _identity_text_parts(product: Dict[str, Any]) -> List[str]:
+def _matching_text(product: Dict[str, Any]) -> str:
     """
-    Costruisce il testo usato per il matching dell'identità.
+    Costruisce il testo usato dal matching centrale a partire dalle
+    informazioni realmente presenti nel candidato.
 
-    Usa esclusivamente dati descrittivi del prodotto già presenti nel
-    candidate restituito dallo scraper. Non contiene cataloghi, whitelist,
-    eccezioni per prodotti specifici o regole legate a singoli negozi.
+    Il matching non dipende più solo dal titolo: se uno scraper espone
+    variante, genere, edizione o product line in campi separati, quelle
+    informazioni fanno parte della stessa prova di identità.
     """
-    parts: List[str] = []
+    values = [
+        product_field(product, "name", "title", "product_name"),
+        product_field(product, "brand", "source_brand"),
+        product_field(product, "product_line", "line", "collection", "family"),
+        product_field(product, "variant", "edition", "version", "flanker"),
+        product_field(product, "gender", "target_gender", "audience"),
+        product_field(product, "concentration"),
+    ]
 
-    direct_keys = (
-        "name",
-        "title",
-        "product_name",
-        "product_line",
-        "line",
-        "family",
-        "collection",
-        "variant",
-        "variant_name",
-        "version",
-        "edition",
-        "concentration",
-        "gender",
-        "target",
-        "audience",
-        "for_gender",
-        "product_type",
-    )
+    source = product.get("source")
+    if isinstance(source, dict):
+        values.extend([
+            source.get("name"),
+            source.get("title"),
+            source.get("brand"),
+            source.get("source_brand"),
+            source.get("product_line"),
+            source.get("variant"),
+            source.get("gender"),
+            source.get("edition"),
+        ])
 
-    for key in direct_keys:
-        value = product.get(key)
-        if value not in (None, ""):
-            value = nested_value(value)
-            if value not in (None, ""):
-                parts.append(str(value))
+    return norm(" ".join(str(value or "") for value in values))
 
-    identity = product.get("identity")
-    if isinstance(identity, dict):
-        for key in direct_keys:
-            value = nested_value(identity.get(key))
-            if value not in (None, ""):
-                parts.append(str(value))
 
-    attributes = product.get("attributes")
-    if isinstance(attributes, dict):
-        attribute_keys = {
-            "product_line",
-            "line",
-            "family",
-            "collection",
-            "variant",
-            "variant_name",
-            "version",
-            "edition",
-            "concentration",
-            "gender",
-            "target",
-            "audience",
-            "for_gender",
-            "product_type",
-        }
-
-        for key, value in attributes.items():
-            key_normalized = norm(key).replace(" ", "_")
-            if key_normalized not in attribute_keys:
+def _query_match_tokens(query: str) -> List[str]:
+    """Token identitari della query, con equivalenze generiche di genere."""
+    tokens = norm(query).split()
+    output: List[str] = []
+    technical = {
+        "eau", "de", "parfum", "perfume", "edp", "edt", "edc",
+        "extrait", "spray", "ml", "cl",
+    }
+    gender_pairs = {
+        ("for", "him"): "gender_male",
+        ("for", "men"): "gender_male",
+        ("pour", "homme"): "gender_male",
+        ("for", "her"): "gender_female",
+        ("for", "women"): "gender_female",
+        ("pour", "femme"): "gender_female",
+        ("male",): "gender_male",
+        ("female",): "gender_female",
+        ("man",): "gender_male",
+        ("woman",): "gender_female",
+        ("homme",): "gender_male",
+        ("femme",): "gender_female",
+        ("uomo",): "gender_male",
+        ("donna",): "gender_female",
+        ("men",): "gender_male",
+        ("women",): "gender_female",
+        ("unisex",): "gender_unisex",
+    }
+    index = 0
+    while index < len(tokens):
+        pair = tuple(tokens[index:index + 2])
+        if pair in gender_pairs:
+            output.append(gender_pairs[pair])
+            index += 2
+            continue
+        single = (tokens[index],)
+        if single in gender_pairs:
+            output.append(gender_pairs[single])
+            index += 1
+            continue
+        token = tokens[index]
+        if token in technical:
+            index += 1
+            continue
+        if re.fullmatch(r"\d+(?:[.,]\d+)?", token):
+            next_token = tokens[index + 1] if index + 1 < len(tokens) else ""
+            if next_token in {"ml", "cl"}:
+                index += 1
                 continue
-
-            value = nested_value(value)
-            if value not in (None, ""):
-                parts.append(str(value))
-
-    return parts
+        output.append(token)
+        index += 1
+    return output
 
 
-def _identity_tokens(value: Any) -> List[str]:
+def matches(product: Dict[str, Any], query: str, strict_variant: bool = False) -> bool:
     """
-    Restituisce i token significativi per l'identità del prodotto.
+    Validazione centrale NON distruttiva.
 
-    Le parole di presentazione/formulazione vengono ignorate, mentre le
-    parole che descrivono una variante restano vincolanti quando sono
-    presenti nella query. In particolare, "for" è un connettore, ma il
-    termine che lo segue (es. him/her/men/women) resta parte dell'identità.
+    Regola generale:
+      - la query di famiglia richiede la famiglia;
+      - ogni parola aggiuntiva realmente identitaria della query resta
+        obbligatoria per il candidato;
+      - le varianti aggiunte dal negozio non vengono richieste quando
+        l'utente ha cercato soltanto la famiglia.
+
+    In particolare, termini come For Him / For Her, Ice, Black, Elixir,
+    Limited Edition ecc. NON vengono trattati come rumore: quando compaiono
+    nella query sono parte del vincolo di identità.
     """
-    normalized = norm(value)
-
-    if not normalized:
-        return []
-
-    normalized = re.sub(
-        r"\b\d+(?:[.,]\d+)?\s*(?:ml|cl|oz)\b",
-        " ",
-        normalized,
-        flags=re.I,
-    )
-
-    tokens = [
-        token
-        for token in norm(normalized).split()
-        if token
-        and not re.fullmatch(
-            r"\d+(?:[.,]\d+)?",
-            token,
-        )
-    ]
-
-    presentation_words = {
-        "eau",
-        "de",
-        "parfum",
-        "perfume",
-        "edp",
-        "edt",
-        "edc",
-        "extrait",
-        "spray",
-        "ml",
-        "cl",
-        "oz",
-    }
-
-    connector_words = {
-        "for",
-        "by",
-        "in",
-        "of",
-        "the",
-        "a",
-        "an",
-        "da",
-        "di",
-        "du",
-        "des",
-        "la",
-        "le",
-        "les",
-    }
-
-    return [
-        token
-        for token in tokens
-        if token not in presentation_words
-        and token not in connector_words
-    ]
-
-
-def _normalized_identity_token(token: str) -> str:
-    """
-    Normalizza equivalenze linguistiche generiche per il genere.
-
-    Sono equivalenze strutturali e non riferite a un prodotto specifico:
-    permettono, ad esempio, di trattare him/men/male/homme come la stessa
-    indicazione e her/women/female/femme come la stessa indicazione.
-    """
-    gender_aliases = {
-        "him": "male",
-        "man": "male",
-        "men": "male",
-        "male": "male",
-        "homme": "male",
-        "her": "female",
-        "woman": "female",
-        "women": "female",
-        "female": "female",
-        "femme": "female",
-    }
-
-    return gender_aliases.get(
-        token,
-        token,
-    )
-
-
-def matches(product: Dict[str, Any], query: str) -> bool:
     query_normalized = norm(query)
-
     if not query_normalized:
         return False
 
-    name = product_field(
-        product,
-        "name",
-        "title",
-        "product_name",
-    )
-
-    brand = product_field(
-        product,
-        "brand",
-        "source_brand",
-    )
+    name = product_field(product, "name", "title", "product_name")
+    brand = product_field(product, "brand", "source_brand")
 
     source = product.get("source")
-
     if isinstance(source, dict):
         if not brand:
             brand = str(
@@ -576,7 +492,6 @@ def matches(product: Dict[str, Any], query: str) -> bool:
                 or source.get("source_brand")
                 or ""
             ).strip()
-
         if not name:
             name = str(
                 source.get("name")
@@ -585,7 +500,6 @@ def matches(product: Dict[str, Any], query: str) -> bool:
             ).strip()
 
     name_normalized = norm(name)
-
     if not name_normalized:
         return False
 
@@ -595,68 +509,102 @@ def matches(product: Dict[str, Any], query: str) -> bool:
             query_normalized,
         )
     )
-
     if has_small_size(product) and not query_has_size:
         return False
 
     for phrase in NON_PERFUME:
         phrase_normalized = norm(phrase)
-
-        if (
-            phrase_normalized in name_normalized
-            and phrase_normalized not in query_normalized
-        ):
+        if phrase_normalized in name_normalized and phrase_normalized not in query_normalized:
             return False
 
-    # ------------------------------------------------------------
-    # IDENTITÀ CENTRALE
-    #
-    # La query definisce i token che devono essere presenti nel
-    # candidate. I token aggiuntivi del candidate sono consentiti:
-    # questo permette una ricerca di famiglia senza perdere varianti.
-    #
-    # Al contrario, quando la query contiene una variante esplicita,
-    # i suoi token restano vincolanti. Non esistono liste di varianti
-    # e non esistono eccezioni per singoli prodotti.
-    # ------------------------------------------------------------
-
-    query_tokens = [
-        _normalized_identity_token(token)
-        for token in _identity_tokens(query_normalized)
-    ]
-
-    if not query_tokens:
+    tokens = _query_match_tokens(query)
+    if not tokens:
         return False
 
-    identity_parts = _identity_text_parts(product)
-
-    # Il nome/titolo è sempre la base dell'identità. Gli altri campi
-    # strutturali permettono di recuperare una variante anche quando
-    # lo scraper l'ha esposta in un campo separato.
-    if name:
-        identity_parts.insert(
-            0,
-            name,
-        )
-
-    candidate_tokens: List[str] = []
-
-    for part in identity_parts:
-        candidate_tokens.extend(
-            _normalized_identity_token(token)
-            for token in _identity_tokens(part)
-        )
-
-    if not candidate_tokens:
+    matching_text = _matching_text(product)
+    if not matching_text:
         return False
 
-    # Deduplica dei token senza perdere l'ordine.
-    candidate_token_set = set(candidate_tokens)
+    # Ogni token identitario della query deve essere realmente presente
+    # nei dati del candidato. Questo è il punto che mantiene separate
+    # varianti come For Him e For Her senza usare alcuna lista di profumi.
+    matching_tokens = set(_query_match_tokens(matching_text))
+    if not all(token in matching_tokens for token in tokens):
+        return False
 
-    return all(
-        token in candidate_token_set
-        for token in query_tokens
-    )
+    # La famiglia cercata deve essere il nucleo del titolo del prodotto, non
+    # una semplice sottostringa apparsa alla fine di un nome differente.
+    # Rimuoviamo solo il brand e i descrittori tecnici/commerciali iniziali.
+    candidate_name_tokens = _query_match_tokens(" ".join(_identity_name_tokens(product)))
+    leading_noise = {
+        "eau", "de", "parfum", "perfume", "edp", "edt", "edc",
+        "extrait", "spray", "men", "women", "man", "woman",
+        "uomo", "donna", "homme", "femme", "unisex",
+    }
+    while candidate_name_tokens and candidate_name_tokens[0] in leading_noise:
+        candidate_name_tokens.pop(0)
+
+    query_tokens = list(tokens)
+    if len(candidate_name_tokens) >= len(query_tokens):
+        if candidate_name_tokens[:len(query_tokens)] != query_tokens:
+            return False
+
+    if strict_variant:
+        # In una ricerca esplicita di variante non basta contenere la query:
+        # il candidato non può aggiungere un'altra variante identitaria.
+        candidate_signature = _canonical_variant_signature(product, query)
+        query_variant_tokens = set(
+            token for token in tokens
+            if token not in {"for", "pour"}
+        )
+        candidate_name_tokens = _query_match_tokens(" ".join(_identity_name_tokens(product)))
+        candidate_residual = set(
+            _remove_query_phrase(candidate_name_tokens, tokens)
+        )
+        candidate_residual -= {
+            "eau", "de", "parfum", "perfume", "edp", "edt", "edc",
+            "extrait", "spray", "ml", "cl", "for", "pour",
+        }
+        candidate_residual = {
+            token for token in candidate_residual
+            if not re.fullmatch(r"\d+(?:[.,]\d+)?", token)
+        }
+        # La presenza di una variante aggiuntiva nel titolo rende il
+        # candidato incompatibile con una query già specifica.
+        if candidate_residual and not candidate_residual.issubset(query_variant_tokens):
+            return False
+
+    # Se la query contiene più parole, richiediamo anche una corrispondenza
+    # nell'ordine del nome quando il nome contiene la query. Questo evita
+    # fusioni casuali dovute a token sparsi in campi indipendenti, ma lascia
+    # passare i casi in cui il negozio ha messo la variante in un campo
+    # strutturato invece che nel titolo.
+    name_tokens = name_normalized.split()
+    query_tokens = tokens
+    if all(token in name_tokens for token in query_tokens):
+        pos = 0
+        ordered = True
+        for token in query_tokens:
+            try:
+                pos = name_tokens.index(token, pos) + 1
+            except ValueError:
+                ordered = False
+                break
+        if not ordered and len(query_tokens) > 1:
+            structured_text = norm(
+                " ".join(
+                    str(product_field(product, key) or "")
+                    for key in (
+                        "product_line", "line", "collection", "family",
+                        "variant", "edition", "version", "flanker",
+                        "gender", "target_gender", "audience",
+                    )
+                )
+            )
+            if not all(token in structured_text.split() for token in query_tokens):
+                return False
+
+    return True
 
 
 # ============================================================
@@ -892,6 +840,190 @@ def unique_results(products: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
     return unique
 
 
+def _canonical_gender(value: Any) -> str:
+    token = norm(value)
+    if not token:
+        return ""
+    if token in {"m", "male", "man", "men", "uomo", "homme", "pour homme", "for him"}:
+        return "male"
+    if token in {"f", "female", "woman", "women", "donna", "femme", "pour femme", "for her"}:
+        return "female"
+    if token in {"unisex", "unisexo", "mixte", "mixed"}:
+        return "unisex"
+    return token
+
+
+def _identity_name(product: Dict[str, Any]) -> str:
+    name = product_field(product, "name", "title", "product_name")
+    if name:
+        return norm(name)
+    source = product.get("source")
+    if isinstance(source, dict):
+        return norm(source.get("name") or source.get("title") or "")
+    return ""
+
+
+def _identity_name_tokens(product: Dict[str, Any]) -> List[str]:
+    tokens = _identity_name(product).split()
+    brand_tokens = set(
+        norm(product_field(product, "brand", "source_brand")).split()
+    )
+    if brand_tokens and len(tokens) > len(brand_tokens):
+        remaining = list(tokens)
+        for token in brand_tokens:
+            if token in remaining:
+                remaining.remove(token)
+        return remaining
+    return tokens
+
+
+def _remove_query_phrase(tokens: List[str], query_tokens: List[str]) -> List[str]:
+    if not query_tokens:
+        return tokens
+    n = len(query_tokens)
+    for i in range(0, len(tokens) - n + 1):
+        if tokens[i:i + n] == query_tokens:
+            return tokens[:i] + tokens[i + n:]
+    # Fallback per titoli con parole commerciali inserite in mezzo.
+    remaining = list(tokens)
+    for token in query_tokens:
+        if token in remaining:
+            remaining.remove(token)
+    return remaining
+
+
+def _canonical_variant_signature(product: Dict[str, Any], query: str) -> tuple:
+    """
+    Costruisce una firma di variante esclusivamente dai dati del candidato.
+
+    Non esiste alcun catalogo di famiglie o elenco di varianti. La query
+    definisce il perimetro della ricerca; tutto ciò che resta nel candidato
+    dopo aver tolto famiglia, formato e descrittori di confezione costituisce
+    la sua identità di variante.
+    """
+    query_tokens = _query_match_tokens(query)
+    name_tokens = _identity_name(product).split()
+    residual = _remove_query_phrase(name_tokens, query_tokens)
+
+    generic = {
+        "eau", "de", "parfum", "perfume", "edp", "edt", "edc",
+        "extrait", "spray", "ml", "cl", "fragrance", "cologne",
+        "for", "pour", "him", "her", "men", "women", "man", "woman",
+        "uomo", "donna", "homme", "femme", "unisex",
+    }
+    brand_tokens = set(
+        norm(product_field(product, "brand", "source_brand")).split()
+    )
+    residual = [token for token in residual if token not in brand_tokens]
+    residual = [token for token in residual if token not in generic]
+    residual = [
+        token for token in residual
+        if not re.fullmatch(r"\d+(?:[.,]\d+)?", token)
+    ]
+
+    structural = []
+    for key in (
+        "product_line", "line", "collection", "family",
+        "variant", "edition", "version", "flanker",
+    ):
+        value = product_field(product, key)
+        value_n = norm(value)
+        if value_n and value_n not in {" ".join(query_tokens), norm(query)}:
+            structural.append(value_n)
+
+    gender = _canonical_gender(
+        product_field(product, "gender", "target_gender", "audience")
+    )
+
+    # Anche quando il campo gender manca, la dicitura nel titolo è una prova
+    # strutturale valida e viene mantenuta nella firma.
+    for token_pair, canonical in (
+        (("for", "him"), "male"),
+        (("for", "her"), "female"),
+        (("pour", "homme"), "male"),
+        (("pour", "femme"), "female"),
+        (("for", "men"), "male"),
+        (("for", "women"), "female"),
+    ):
+        for i in range(len(name_tokens) - 1):
+            if tuple(name_tokens[i:i + 2]) == token_pair:
+                gender = gender or canonical
+                break
+
+    variant_tokens = []
+    for value in structural:
+        for token in value.split():
+            if token not in generic and token not in variant_tokens:
+                variant_tokens.append(token)
+    for token in residual:
+        if token not in {"for", "pour"} and token not in variant_tokens:
+            variant_tokens.append(token)
+
+    return (
+        tuple(sorted(variant_tokens)),
+        gender,
+    )
+
+
+def _canonicalize_result_identities(
+    products: List[Dict[str, Any]],
+    query: str,
+) -> List[Dict[str, Any]]:
+    """
+    Canonicalizza le identità DOPO la validazione.
+
+    Le offerte restano tutte presenti. Cambia soltanto il nome centrale usato
+    per rappresentare la stessa identità di variante tra negozi diversi.
+    """
+    if not products:
+        return []
+
+    groups: Dict[tuple, List[Dict[str, Any]]] = {}
+    for product in products:
+        key = (
+            norm(product_field(product, "brand", "source_brand")),
+            _canonical_variant_signature(product, query),
+        )
+        groups.setdefault(key, []).append(product)
+
+    output: List[Dict[str, Any]] = []
+    for group_products in groups.values():
+        names: Dict[str, int] = {}
+        original_by_norm: Dict[str, str] = {}
+        for product in group_products:
+            name = product_field(product, "name", "title", "product_name")
+            name_n = norm(name)
+            if not name_n:
+                continue
+            names[name_n] = names.get(name_n, 0) + 1
+            original_by_norm.setdefault(name_n, name.strip())
+
+        if names:
+            canonical_norm = sorted(
+                names,
+                key=lambda value: (-names[value], len(value), value),
+            )[0]
+            canonical_name = original_by_norm[canonical_norm]
+        else:
+            canonical_name = ""
+
+        variant_key = "|".join(
+            str(part) for part in _canonical_variant_signature(
+                group_products[0], query
+            )
+        )
+
+        for product in group_products:
+            item = dict(product)
+            if canonical_name:
+                item["name"] = canonical_name
+                item["canonical_name"] = canonical_name
+            item["variant_key"] = variant_key
+            output.append(item)
+
+    return output
+
+
 def deterministic_result_key(product: Dict[str, Any]) -> tuple:
     store = norm(product.get("store", ""))
     price = price_num(product.get("price"))
@@ -1106,11 +1238,59 @@ def _pre_rank_candidates(
     )
 
 
+def _query_is_explicit_variant(
+    candidates: List[Dict[str, Any]],
+    query: str,
+) -> bool:
+    """
+    Determina in modo dinamico se la query aggiunge una variante rispetto
+    alla famiglia emersa dallo stesso candidate pool. Nessun elenco di
+    profumi o varianti viene mantenuto nel codice.
+    """
+    tokens = _query_match_tokens(query)
+    if len(tokens) < 2:
+        return False
+
+    query_n = norm(query)
+    query_set = set(tokens)
+
+    exact_family = False
+    for product in candidates:
+        name_tokens = _query_match_tokens(" ".join(_identity_name_tokens(product)))
+        if set(name_tokens) == query_set or " ".join(name_tokens) == query_n:
+            exact_family = True
+            break
+
+    if not exact_family:
+        return False
+
+    # Una query che espone esplicitamente il genere è già una richiesta di
+    # variante, anche se nel pool manca la forma base.
+    if any(token in {"gender_male", "gender_female", "gender_unisex"} for token in tokens):
+        return True
+
+    # Se togliendo un segmento finale dalla query esiste una denominazione
+    # completa più corta realmente presente nel pool, la query è una variante.
+    query_list = list(tokens)
+    for cut in range(len(query_list) - 1, 0, -1):
+        prefix = query_list[:cut]
+        prefix_set = set(prefix)
+        if not prefix_set:
+            continue
+        for product in candidates:
+            name_tokens = _query_match_tokens(" ".join(_identity_name_tokens(product)))
+            if set(name_tokens) == prefix_set:
+                return True
+
+    return False
+
+
 def _validate_candidate(
     product: Dict[str, Any],
     query: str,
+    strict_variant: bool = False,
 ) -> Optional[Dict[str, Any]]:
-    if not matches(product, query):
+    if not matches(product, query, strict_variant=strict_variant):
         return None
 
     return product
@@ -1119,6 +1299,7 @@ def _validate_candidate(
 def _validate_candidates_parallel(
     candidates: List[Dict[str, Any]],
     query: str,
+    strict_variant: bool = False,
 ) -> List[Dict[str, Any]]:
     if not candidates:
         return []
@@ -1137,6 +1318,7 @@ def _validate_candidates_parallel(
                 _validate_candidate,
                 product,
                 query,
+                strict_variant,
             )
             for product in candidates
         ]
@@ -1181,13 +1363,26 @@ def _orchestrate_results(
         query,
     )
 
+    strict_variant = _query_is_explicit_variant(
+        candidate_pool,
+        query,
+    )
+
     validated = _validate_candidates_parallel(
         ranked_candidates,
+        query,
+        strict_variant=strict_variant,
+    )
+
+    # La canonicalizzazione avviene solo dopo che il candidate pool è stato
+    # completamente raccolto e validato. Non elimina offerte.
+    canonicalized = _canonicalize_result_identities(
+        validated,
         query,
     )
 
     return sort_by_price(
-        unique_results(validated)
+        unique_results(canonicalized)
     )
 
 # ============================================================
