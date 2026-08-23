@@ -28,7 +28,12 @@
         {
           "canonical_name": "Hawas Ice",
           "aliases": [
-            "Hawas Ice"
+            "Hawas Ice",
+            "Hawas ICE",
+            "Rasasi Hawas Ice",
+            "Hawas Ice Eau de Parfum",
+            "Hawas Ice EDP",
+            "Hawas Ice Pour Homme"
           ]
         },
         {
@@ -178,20 +183,6 @@
             "Hawas Majestic"
           ]
         }
-      ],
-      "excluded_products": [
-        "Hawas Al Wisam",
-        "Al Wisam",
-        "Daarej",
-        "Daarej Passion"
-      ],
-      "excluded_aliases": [
-        "Hawas Al Wisam",
-        "Hawas Al Wisam Absolute",
-        "Hawas Al Wisam Day",
-        "Daarej",
-        "Daarej Passion",
-        "Rasasi Daarej"
       ]
     },
     {
