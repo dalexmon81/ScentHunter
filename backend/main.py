@@ -9,6 +9,7 @@ import os
 import re
 import threading
 import traceback
+import time
 import unicodedata
 import uuid
 from concurrent.futures import ThreadPoolExecutor, as_completed, TimeoutError
@@ -1693,23 +1694,95 @@ def _run_search_job(
 
 
 @app.get("/search-diagnostic")
-def search_diagnostic(job_id: str):
-    """Restituisce esclusivamente la fotografia diagnostica di un job."""
+def search_diagnostic(
+    job_id: Optional[str] = None,
+    q: Optional[str] = None,
+):
+    """
+    Restituisce la fotografia diagnostica di un job.
+
+    Modalita supportate:
+      /search-diagnostic?job_id=...
+          legge un job gia esistente senza avviare una nuova ricerca.
+
+      /search-diagnostic?q=Hawas
+          avvia una nuova ricerca diagnostica e attende che tutti gli store
+          terminino, quindi restituisce direttamente il JSON diagnostico.
+
+    La seconda modalita serve per poter usare l'endpoint direttamente da
+    browser/mobile senza dover recuperare manualmente il job_id.
+    """
+
+    if job_id and q:
+        raise HTTPException(
+            status_code=400,
+            detail="Usare job_id oppure q, non entrambi",
+        )
+
+    if job_id:
+        with SEARCH_JOBS_LOCK:
+            job = SEARCH_JOBS.get(job_id)
+            if job is None:
+                raise HTTPException(
+                    status_code=404,
+                    detail="Job di ricerca non trovato",
+                )
+            return {
+                "job_id": job_id,
+                "query": job["query"],
+                "completed": job["completed"],
+                "store_status": dict(job.get("store_status", {})),
+                "store_diagnostics": dict(job.get("store_diagnostics", {})),
+                "errors": dict(job.get("errors", {})),
+            }
+
+    query = str(q or "").strip()
+    if not query:
+        raise HTTPException(
+            status_code=400,
+            detail="Specificare job_id oppure q",
+        )
+
+    started = search_start(query)
+    diagnostic_job_id = started["job_id"]
+
+    # La diagnostica diretta attende il completamento dell'intera discovery.
+    # Il timeout e volutamente superiore al budget normale dei singoli store,
+    # cosi uno store lento non viene scambiato per un problema di matching.
+    deadline = time.monotonic() + 150.0
+    while time.monotonic() < deadline:
+        with SEARCH_JOBS_LOCK:
+            job = SEARCH_JOBS.get(diagnostic_job_id)
+            if job is None:
+                raise HTTPException(
+                    status_code=404,
+                    detail="Job diagnostico non trovato",
+                )
+            completed = bool(job.get("completed"))
+
+        if completed:
+            break
+        time.sleep(0.25)
+
     with SEARCH_JOBS_LOCK:
-        job = SEARCH_JOBS.get(job_id)
+        job = SEARCH_JOBS.get(diagnostic_job_id)
         if job is None:
             raise HTTPException(
                 status_code=404,
-                detail="Job di ricerca non trovato",
+                detail="Job diagnostico non trovato",
             )
-        return {
-            "job_id": job_id,
+
+        response = {
+            "job_id": diagnostic_job_id,
             "query": job["query"],
-            "completed": job["completed"],
+            "completed": bool(job["completed"]),
+            "timed_out": not bool(job["completed"]),
             "store_status": dict(job.get("store_status", {})),
             "store_diagnostics": dict(job.get("store_diagnostics", {})),
             "errors": dict(job.get("errors", {})),
         }
+
+    return response
 
 
 @app.get("/search-start")
