@@ -362,19 +362,85 @@ def _make_candidate(url: str, anchor: str, card: str, query: str, source: str) -
     url = _clean(url).split("?")[0]
     if not _looks_like_product_url(url):
         return None
+
     anchor = _clean(anchor)
     card = _clean(card)
-    name = _clean_name(anchor) or _clean_name(card)
-    if not name or _has_non_perfume_marker_in_product(name, url, anchor):
-        return None
-
-    matched, hits, fuzzy_hits = _fuzzy_query_match(name, query)
     query_tokens = _query_tokens(query)
     if not query_tokens:
         return None
+
+    # The visible anchor on a search card is not always the complete product
+    # title. Some storefronts use a short anchor (for example only the
+    # fragrance family) while the product URL contains the full variant name.
+    # Discovery must therefore evaluate generic product-name sources before
+    # rejecting the URL. No product-specific names or rules are used here.
+    name_candidates: List[Tuple[str, str]] = []
+    anchor_name = _clean_name(anchor)
+    if anchor_name:
+        name_candidates.append(("anchor", anchor_name))
+
+    slug_name = _name_from_product_url(url)
+    if slug_name:
+        name_candidates.append(("url-slug", slug_name))
+
+        brand = _brand_from_product_url(url)
+        if brand:
+            branded_name = _clean_name(f"{brand} {slug_name}")
+            if branded_name and branded_name != slug_name:
+                name_candidates.append(("url-brand-slug", branded_name))
+
+    card_name = _clean_name(card)
+    if card_name and card_name not in {value for _, value in name_candidates}:
+        name_candidates.append(("card", card_name))
+
+    best_name = ""
+    best_source = ""
+    best_match = False
+    best_hits: Dict[str, bool] = {}
+    best_fuzzy_hits = 0
+    best_rank = (-1, -1, -1)
+
+    for candidate_source, candidate_name in name_candidates:
+        if not candidate_name or _has_non_perfume_marker_in_product(
+            candidate_name, url, anchor
+        ):
+            continue
+
+        matched, hits, fuzzy_hits = _fuzzy_query_match(candidate_name, query)
+        exact_hits = sum(1 for token in query_tokens if hits.get(token))
+        rank = (
+            int(matched),
+            exact_hits,
+            fuzzy_hits,
+        )
+
+        if rank > best_rank:
+            best_rank = rank
+            best_name = candidate_name
+            best_source = candidate_source
+            best_match = matched
+            best_hits = hits
+            best_fuzzy_hits = fuzzy_hits
+
+    if not best_name or not best_match:
+        return None
+
+    name = best_name
+    matched = best_match
+    hits = best_hits
+    fuzzy_hits = best_fuzzy_hits
+
     score = sum(hits.values()) * 5 + fuzzy_hits * 2
     if matched:
         score += 5
+
+    # Prefer the original visible anchor when it already contains the full
+    # query. If the anchor is abbreviated, keep it as display/context data but
+    # use the validated product-name source for matching and candidate name.
+    if best_source == "url-slug":
+        score += 1
+    elif best_source == "url-brand-slug":
+        score += 1
 
     search_context = f"{anchor} {card}"
     requested_sizes = _requested_sizes(query)
@@ -403,7 +469,9 @@ def _make_candidate(url: str, anchor: str, card: str, query: str, source: str) -
             if requested_sizes else True
         ),
         "source": source,
+        "name_source": best_source,
     }
+
 
 
 def extract_candidates_from_html(html: str, query: str) -> List[Dict[str, Any]]:
