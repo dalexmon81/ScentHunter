@@ -143,6 +143,24 @@ def norm(value: Any) -> str:
         " ",
         value,
     )
+    # Espressioni di genere comuni in più lingue vengono ricondotte a
+    # token semantici stabili. La normalizzazione è generale e non dipende
+    # da alcun prodotto o negozio.
+    gender_phrases = (
+        (r"\bvoor\s+mannen\b", " for men "),
+        (r"\bvoor\s+heren\b", " for men "),
+        (r"\bvoor\s+vrouwen\b", " for women "),
+        (r"\bvoor\s+dames\b", " for women "),
+        (r"\bpour\s+homme[s]?\b", " for men "),
+        (r"\bpour\s+femme[s]?\b", " for women "),
+        (r"\bfur\s+herren\b", " for men "),
+        (r"\bfur\s+damen\b", " for women "),
+        (r"\bper\s+uomo\b", " for men "),
+        (r"\bper\s+donne\b", " for women "),
+    )
+    for pattern, replacement in gender_phrases:
+        value = re.sub(pattern, replacement, value)
+
     value = re.sub(r"[^a-z0-9]+", " ", value)
     return re.sub(r"\s+", " ", value).strip()
 
@@ -429,33 +447,70 @@ def _identity_tokens(value: str) -> List[str]:
     ]
 
 
-def _identity_token_set(product: Dict[str, Any]) -> set:
+def _identity_tokens_from_values(values: List[Any]) -> set:
+    tokens = set()
+    for value in values:
+        if value is None:
+            continue
+        tokens.update(_identity_tokens(str(value)))
+    return tokens
+
+
+def _structured_identity_tokens(product: Dict[str, Any]) -> set:
+    """
+    Estrae l'identità strutturale disponibile nell'offerta.
+
+    Quando il RAW contiene family/product_line/variant, questi campi hanno
+    priorità perché descrivono l'identità del prodotto più direttamente del
+    solo titolo commerciale. Il nome resta comunque una prova di supporto.
+    Nessuna famiglia o variante specifica è codificata qui.
+    """
+    values: List[Any] = []
+
+    for key in (
+        "family",
+        "family_name",
+        "product_line",
+        "variant",
+    ):
+        value = product.get(key)
+        if value:
+            values.append(value)
+
+    attributes = product.get("attributes")
+    if isinstance(attributes, dict):
+        for key in (
+            "family",
+            "family_name",
+            "product_line",
+            "variant",
+        ):
+            if key in attributes:
+                values.append(nested_value(attributes.get(key)))
+
+    source = product.get("source")
+    if isinstance(source, dict):
+        for key in (
+            "family",
+            "family_name",
+            "product_line",
+            "variant",
+        ):
+            if source.get(key):
+                values.append(source.get(key))
+
+    return _identity_tokens_from_values(values)
+
+
+def _name_identity_tokens(product: Dict[str, Any]) -> set:
     values = [
         product_field(
             product,
             "name",
             "title",
             "product_name",
-        ),
-        product_field(product, "brand", "source_brand"),
-        product_field(product, "product_line"),
-        product_field(product, "variant"),
+        )
     ]
-
-    attributes = product.get("attributes")
-    if isinstance(attributes, dict):
-        for key, value in attributes.items():
-            if key in {
-                "variant",
-                "product_line",
-                "family",
-                "family_name",
-                "gender",
-                "concentration",
-                "name",
-                "title",
-            }:
-                values.append(nested_value(value))
 
     source = product.get("source")
     if isinstance(source, dict):
@@ -463,109 +518,114 @@ def _identity_token_set(product: Dict[str, Any]) -> set:
             [
                 source.get("name"),
                 source.get("title"),
-                source.get("brand"),
-                source.get("source_brand"),
-                source.get("variant"),
-                source.get("product_line"),
             ]
         )
 
-    tokens = set()
-    for value in values:
-        tokens.update(_identity_tokens(str(value or "")))
+    return _identity_tokens_from_values(values)
 
-    return tokens
+
+def _brand_identity_tokens(product: Dict[str, Any]) -> set:
+    values = [
+        product_field(product, "brand", "source_brand")
+    ]
+    source = product.get("source")
+    if isinstance(source, dict):
+        values.extend(
+            [source.get("brand"), source.get("source_brand")]
+        )
+    return _identity_tokens_from_values(values)
+
+
+def _query_identity_tokens(query: str) -> set:
+    return set(_identity_tokens(query))
+
+
+def _has_structured_identity(product: Dict[str, Any]) -> bool:
+    return bool(_structured_identity_tokens(product))
+
+
+def _identity_token_set(product: Dict[str, Any]) -> set:
+    """Compatibility helper returning the complete available identity."""
+    return (
+        _name_identity_tokens(product)
+        | _structured_identity_tokens(product)
+        | _brand_identity_tokens(product)
+    )
 
 
 def matches(product: Dict[str, Any], query: str) -> bool:
     """
-    Validazione centrale non distruttiva.
+    Validazione centrale in due livelli:
 
-    La query identifica almeno il nucleo nominale richiesto. I modificatori
-    presenti nella query restano parte dell'identità e devono quindi essere
-    presenti nell'offerta; non esistono liste specifiche per singoli profumi
-    o varianti.
+    1) verifica della famiglia/prodotto usando l'identità strutturale quando
+       il RAW la fornisce;
+    2) fallback sul titolo quando i dati strutturali non esistono.
 
-    Una query generica come "nome prodotto" continua a poter includere
-    varianti dello stesso prodotto. Una query più specifica come
-    "nome prodotto variante" richiede anche il modificatore della variante.
+    I modificatori esplicitamente presenti nella query restano significativi.
+    Informazioni aggiuntive dell'offerta non causano uno scarto automatico:
+    una ricerca generica può quindi continuare a recuperare varianti.
+
+    La funzione non contiene riferimenti a prodotti, negozi o famiglie
+    specifiche.
     """
     query_normalized = norm(query)
-
     if not query_normalized:
         return False
 
-    name = product_field(
-        product,
-        "name",
-        "title",
-        "product_name",
-    )
-
-    brand = product_field(
-        product,
-        "brand",
-        "source_brand",
-    )
-
+    name = product_field(product, "name", "title", "product_name")
+    brand = product_field(product, "brand", "source_brand")
     source = product.get("source")
 
     if isinstance(source, dict):
         if not brand:
-            brand = str(
-                source.get("brand")
-                or source.get("source_brand")
-                or ""
-            ).strip()
-
+            brand = str(source.get("brand") or source.get("source_brand") or "").strip()
         if not name:
-            name = str(
-                source.get("name")
-                or source.get("title")
-                or ""
-            ).strip()
+            name = str(source.get("name") or source.get("title") or "").strip()
 
     name_normalized = norm(name)
-
     if not name_normalized:
         return False
 
-    query_has_size = bool(
-        re.search(
-            r"(?<!\d)\d+(?:[.,]\d+)?\s*(?:ml|cl)\b",
-            query_normalized,
-        )
-    )
-
+    query_has_size = bool(re.search(r"(?<!\d)\d+(?:[.,]\d+)?\s*(?:ml|cl)\b", query_normalized))
     if has_small_size(product) and not query_has_size:
         return False
 
     for phrase in NON_PERFUME:
         phrase_normalized = norm(phrase)
-
-        if (
-            phrase_normalized in name_normalized
-            and phrase_normalized not in query_normalized
-        ):
+        if phrase_normalized in name_normalized and phrase_normalized not in query_normalized:
             return False
 
-    query_tokens = _identity_tokens(query_normalized)
-
+    query_tokens = _query_identity_tokens(query_normalized)
     if not query_tokens:
         return False
 
-    candidate_tokens = _identity_token_set(product)
+    structured_tokens = _structured_identity_tokens(product)
+    name_tokens = _name_identity_tokens(product)
 
-    if not candidate_tokens:
+    # Se esiste una vera identità strutturale, deve essere compatibile con
+    # la query. Il titolo non può da solo sovrascrivere una struttura RAW
+    # che identifica chiaramente un'altra famiglia.
+    if structured_tokens:
+        if query_tokens.issubset(structured_tokens):
+            return True
+
+        # Una parte dell'identità può essere espressa nel campo strutturale
+        # e una parte nel titolo (es. family + variant). Accettiamo il match
+        # solo quando l'unione è completa e almeno un token richiesto è
+        # supportato strutturalmente.
+        combined = structured_tokens | name_tokens
+        structural_overlap = query_tokens & structured_tokens
+        if query_tokens.issubset(combined) and structural_overlap:
+            return True
+
+        # Se la struttura esiste ma non supporta alcun token della query,
+        # il titolo isolato non è sufficiente: evita falsi positivi derivati
+        # da descrizioni commerciali incoerenti.
         return False
 
-    # Tutti i token significativi esplicitamente richiesti dalla query
-    # devono essere rappresentati nell'identità dell'offerta.
-    #
-    # Non viene richiesto il contrario: un'offerta può avere token
-    # aggiuntivi perché può rappresentare una variante di una ricerca
-    # generica. Questo preserva la discovery delle varianti.
-    return set(query_tokens).issubset(candidate_tokens)
+    # Fallback per scraper che non espongono metadati strutturali.
+    return query_tokens.issubset(name_tokens | _brand_identity_tokens(product))
+
 
 def build_search_attempts(store: str, query: str) -> List[str]:
     """
@@ -746,7 +806,14 @@ def product_identity_key(product: Dict[str, Any]) -> tuple:
         return ("variant", store, norm(variant_id))
 
     if product_id:
-        return ("product", store, norm(product_id), norm(product.get("name", "")))
+        return (
+            "product",
+            store,
+            norm(product_id),
+            norm(product_field(product, "variant", "variant_name")),
+            product_size_ml(product),
+            product_concentration(product),
+        )
 
     if gtin:
         return ("gtin", store, norm(gtin))
@@ -1146,6 +1213,14 @@ def search_perfume(query: str) -> Dict[str, Any]:
 
         except TimeoutError:
             for future, store in futures.items():
+                if not future.done():
+                    with SEARCH_JOBS_LOCK:
+                        job = SEARCH_JOBS.get(job_id)
+                        if job is not None:
+                            job["store_status"][store] = {
+                                "status": "timeout",
+                                "raw_count": 0,
+                            }
                 if future.done():
                     try:
                         store_results = future.result()
@@ -1354,6 +1429,7 @@ def _search_job_snapshot(job_id: str) -> Dict[str, Any]:
             "results": results,
             "comparisons": [],
             "errors": dict(job["errors"]),
+            "store_status": dict(job.get("store_status", {})),
             "completed": job["completed"],
             "status": (
                 "completed"
@@ -1402,6 +1478,11 @@ def _run_search_job(
             if job is None:
                 return
 
+            job["store_status"][store] = {
+                "status": "completed",
+                "raw_count": len(store_candidates),
+            }
+
             job["candidates"].extend(
                 store_candidates
             )
@@ -1445,6 +1526,10 @@ def _run_search_job(
                             job["errors"][store] = (
                                 f"{type(exc).__name__}: {exc}"
                             )
+                            job["store_status"][store] = {
+                                "status": "error",
+                                "raw_count": 0,
+                            }
 
         except TimeoutError:
             for future, store in futures.items():
@@ -1511,6 +1596,10 @@ def search_start(q: str):
             "candidates": [],
             "results": [],
             "errors": {},
+            "store_status": {
+                store: {"status": "pending", "raw_count": 0}
+                for store in STORES
+            },
             "completed": False,
         }
 
@@ -1529,6 +1618,10 @@ def search_start(q: str):
         "results": [],
         "comparisons": [],
         "errors": {},
+        "store_status": {
+            store: {"status": "pending", "raw_count": 0}
+            for store in STORES
+        },
         "completed": False,
         "status": "searching",
     }
