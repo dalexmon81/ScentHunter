@@ -1425,10 +1425,14 @@ function shGroupData(data){
       }
     }
 
-    // I candidati espliciti hanno priorità; tra gli altri preferiamo quelli
-    // più lunghi e più supportati.
+    // Un candidato ricavato soltanto dal confronto fra nomi di prodotto
+    // NON può diventare un brand: può essere infatti una variante reale
+    // (es. Elixir, Rebel, Pour Femme, Limited Edition, ecc.).
+    // I brand condivisi devono essere già confermati da una prova esplicita
+    // presente nei dati della ricerca. Questo mantiene l'inferenza generica
+    // senza trasformare una variante in una nuova categoria.
     const candidates=[...candidateScore.values()]
-      .filter(x=>x.explicit || (x.evidence>=1 && (x.prefixEvidence>=1 || x.suffixEvidence>=1)))
+      .filter(x=>x.explicit)
       .sort((a,b)=>b.weight-a.weight || norm(b.value).length-norm(a.value).length);
 
     const brandHints=candidates.map(x=>x.value);
