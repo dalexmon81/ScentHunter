@@ -694,6 +694,13 @@ def _family_registry_identity(
         if product_brand and norm(product_brand) != norm(family_brand):
             continue
 
+        product_text = " ".join(
+            str(product.get(k) or "")
+            for k in ("name", "title", "product_name", "brand", "source_brand")
+        )
+        if _family_registry_excluded(product_text, family):
+            continue
+
         products = family.get("products") or []
 
         # A bare family name is ambiguous whenever the registry contains
@@ -1249,12 +1256,6 @@ def matches(product: Dict[str, Any], query: str) -> bool:
     padded_family = f" {family_phrase} "
 
 
-    product_text = " ".join(
-        str(product.get(k) or "")
-        for k in ("name", "title", "product_name", "brand", "source_brand")
-    )
-    if _family_registry_excluded(product_text, family):
-        return None
     return padded_family in padded_name
 
 
