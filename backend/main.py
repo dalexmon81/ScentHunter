@@ -371,11 +371,268 @@ def has_small_size(product: Dict[str, Any]) -> bool:
     return False
 
 
+
+# ============================================================
+# EVIDENZA GENERALE DELLA VARIANTE
+# ============================================================
+
+_VARIANT_FIELD_KEYS = (
+    "variant",
+    "edition",
+    "version",
+    "flanker",
+    "product_line",
+    "line",
+    "collection",
+    "family",
+    "gender",
+    "target_gender",
+    "audience",
+)
+
+_VARIANT_NOISE_WORDS = {
+    "title", "name", "product", "item", "article", "reference",
+    "original", "official", "new", "nouveau", "nouvelle",
+    "eau", "de", "parfum", "perfume", "fragrance", "edp", "edt",
+    "edc", "extrait", "spray", "ml", "cl", "oz",
+    "for", "by", "the", "and", "avec", "with",
+}
+
+
+def _store_tokens(product: Dict[str, Any]) -> set:
+    values = [
+        product.get("store"),
+        product.get("shop"),
+        product.get("merchant"),
+        product.get("retailer"),
+        product.get("seller"),
+        product.get("source_store"),
+        product.get("_source_store"),
+    ]
+    source = product.get("source")
+    if isinstance(source, dict):
+        values.extend([
+            source.get("source_name"),
+            source.get("name"),
+            source.get("store"),
+            source.get("shop"),
+        ])
+    tokens = set()
+    for value in values:
+        tokens.update(norm(value).split())
+    return {token for token in tokens if token}
+
+
+def _brand_tokens(product: Dict[str, Any], known_brands: Optional[List[str]] = None) -> set:
+    values = [
+        product.get("brand"),
+        product.get("source_brand"),
+        product.get("_source_brand"),
+    ]
+    source = product.get("source")
+    if isinstance(source, dict):
+        values.extend([source.get("brand"), source.get("source_brand")])
+    if known_brands:
+        values.extend(known_brands)
+    tokens = set()
+    for value in values:
+        tokens.update(norm(value).split())
+    return {token for token in tokens if token}
+
+
+def _query_identity_tokens(query: str) -> List[str]:
+    q = norm(query)
+    raw = q.split()
+    has_size = bool(re.search(r"(?<!\d)\d+(?:[.,]\d+)?\s*(?:ml|cl|oz)\b", q))
+    tokens: List[str] = []
+    for index, token in enumerate(raw):
+        if token in IGNORED_WORDS:
+            continue
+        if re.fullmatch(r"\d+(?:[.,]\d+)?", token):
+            nxt = raw[index + 1] if index + 1 < len(raw) else ""
+            if has_size and nxt in {"ml", "cl", "oz"}:
+                continue
+        tokens.append(token)
+    return tokens
+
+
+def _variant_field_text(product: Dict[str, Any]) -> str:
+    values = []
+    for key in _VARIANT_FIELD_KEYS:
+        value = product.get(key)
+        if value not in (None, ""):
+            values.append(nested_value(value))
+    attributes = product.get("attributes")
+    if isinstance(attributes, dict):
+        for key in _VARIANT_FIELD_KEYS:
+            value = nested_value(attributes.get(key))
+            if value not in (None, ""):
+                values.append(value)
+    return norm(" ".join(str(value or "") for value in values))
+
+
+def _candidate_variant_signature(
+    product: Dict[str, Any],
+    query: str,
+    known_brands: Optional[List[str]] = None,
+) -> str:
+    """Estrae solo la parte aggiuntiva del titolo che può identificare una variante.
+
+    Non usa nomi di profumi, negozi o una lista di varianti specifiche.
+    La firma viene usata esclusivamente come evidenza per la validazione.
+    """
+    name = product_field(product, "name", "title", "product_name")
+    text = norm(name)
+    if not text:
+        return ""
+
+    text = re.sub(
+        r"\b\d+(?:[.,]\d+)?\s*(?:ml|cl|oz)\b",
+        " ",
+        text,
+    )
+    text = re.sub(
+        r"\b(?:eau\s+de\s+parfum|eau\s+de\s+toilette|eau\s+de\s+cologne|"
+        r"extrait\s+de\s+parfum|extrait|edp|edt|edc|spray)\b",
+        " ",
+        text,
+    )
+
+    removable = set(IGNORED_WORDS) | set(_VARIANT_NOISE_WORDS)
+    store_tokens = _store_tokens(product)
+    removable |= store_tokens
+    removable |= _brand_tokens(product, known_brands)
+
+    query_tokens = [
+        token for token in _query_identity_tokens(query)
+        if token not in removable
+    ]
+
+    tokens = text.split()
+    for token in query_tokens:
+        if token in tokens:
+            tokens.remove(token)
+
+    # Alcuni titoli aggiungono al nome dello store un suffisso-paese di due
+    # lettere (es. uno store + codice mercato). È metadato commerciale, non
+    # identità del profumo. Lo rimuoviamo solo quando è adiacente allo store.
+    if store_tokens and len(tokens) >= 2:
+        cleaned_store_tokens = set(store_tokens)
+        filtered = []
+        i = 0
+        while i < len(tokens):
+            token = tokens[i]
+            if token in cleaned_store_tokens:
+                i += 1
+                if i < len(tokens) and re.fullmatch(r"[a-z]{2}", tokens[i]):
+                    i += 1
+                continue
+            filtered.append(token)
+            i += 1
+        tokens = filtered
+
+    # Rimuoviamo anche i token strutturali di brand/negozio: possono comparire
+    # nel titolo commerciale ma non fanno parte della variante.
+    tokens = [
+        token for token in tokens
+        if token not in removable
+    ]
+
+    # Se il campo strutturato contiene una variante, usiamola come evidenza
+    # aggiuntiva senza renderla obbligatoria.
+    structural = [
+        token for token in _variant_field_text(product).split()
+        if token not in removable
+        and token not in query_tokens
+        and not re.fullmatch(r"\d+(?:[.,]\d+)?", token)
+    ]
+    tokens.extend(token for token in structural if token not in tokens)
+
+    cleaned = []
+    for token in tokens:
+        if token in _VARIANT_NOISE_WORDS:
+            continue
+        if token not in cleaned:
+            cleaned.append(token)
+
+    # Una coda molto lunga è normalmente testo commerciale/sporco, non una
+    # variante. Non la usiamo come prova identitaria.
+    if len(cleaned) > 4:
+        return ""
+
+    return " ".join(cleaned).strip()
+
+
+def _build_variant_evidence(
+    products: List[Dict[str, Any]],
+    query: str,
+) -> Dict[str, Dict[str, Any]]:
+    """Costruisce evidenza della variante dal pool trovato dagli scraper.
+
+    Una firma è forte quando compare in almeno due offerte di negozi distinti
+    oppure quando è esplicitamente presente in un campo strutturato del
+    prodotto. Questo evita di trasformare parole sporche di un singolo titolo
+    in nuove categorie.
+    """
+    brand_counts: Dict[str, set] = {}
+    brand_values: Dict[str, str] = {}
+    for product in products:
+        store = norm(product.get("store") or product.get("shop") or "")
+        for value in (
+            product.get("brand"),
+            product.get("source_brand"),
+            product.get("_source_brand"),
+        ):
+            value = str(value or "").strip()
+            key = norm(value)
+            if not key:
+                continue
+            brand_values[key] = value
+            brand_counts.setdefault(key, set()).add(store or "__unknown__")
+
+    known_brands = [
+        brand_values[key]
+        for key, stores in brand_counts.items()
+        if len(stores) >= 2
+    ]
+
+    evidence: Dict[str, Dict[str, Any]] = {}
+    for product in products:
+        signature = _candidate_variant_signature(product, query, known_brands)
+        if not signature:
+            continue
+        key = norm(signature)
+        record = evidence.setdefault(
+            key,
+            {"stores": set(), "structured": False, "count": 0},
+        )
+        store = norm(product.get("store") or product.get("shop") or "")
+        record["stores"].add(store or "__unknown__")
+        record["count"] += 1
+        if _variant_field_text(product):
+            record["structured"] = True
+
+    return evidence
+
+
+def _known_variant_signatures(
+    evidence: Dict[str, Dict[str, Any]],
+) -> set:
+    known = set()
+    for key, record in evidence.items():
+        if record.get("structured") or len(record.get("stores") or set()) >= 2:
+            known.add(key)
+    return known
+
 # ============================================================
 # VALIDAZIONE
 # ============================================================
 
-def matches(product: Dict[str, Any], query: str) -> bool:
+def matches(
+    product: Dict[str, Any],
+    query: str,
+    variant_evidence: Optional[Dict[str, Dict[str, Any]]] = None,
+) -> bool:
     query_normalized = norm(query)
 
     if not query_normalized:
@@ -388,37 +645,21 @@ def matches(product: Dict[str, Any], query: str) -> bool:
         "product_name",
     )
 
-    brand = product_field(
-        product,
-        "brand",
-        "source_brand",
-    )
-
     source = product.get("source")
-
-    if isinstance(source, dict):
-        if not brand:
-            brand = str(
-                source.get("brand")
-                or source.get("source_brand")
-                or ""
-            ).strip()
-
-        if not name:
-            name = str(
-                source.get("name")
-                or source.get("title")
-                or ""
-            ).strip()
+    if isinstance(source, dict) and not name:
+        name = str(
+            source.get("name")
+            or source.get("title")
+            or ""
+        ).strip()
 
     name_normalized = norm(name)
-
     if not name_normalized:
         return False
 
     query_has_size = bool(
         re.search(
-            r"(?<!\d)\d+(?:[.,]\d+)?\s*(?:ml|cl)\b",
+            r"(?<!\d)\d+(?:[.,]\d+)?\s*(?:ml|cl|oz)\b",
             query_normalized,
         )
     )
@@ -428,244 +669,74 @@ def matches(product: Dict[str, Any], query: str) -> bool:
 
     for phrase in NON_PERFUME:
         phrase_normalized = norm(phrase)
-
         if (
             phrase_normalized in name_normalized
             and phrase_normalized not in query_normalized
         ):
             return False
 
-    name_for_matching = name_normalized
-
     name_for_matching = re.sub(
-        r"\b\d+(?:[.,]\d+)?\s*(?:ml|cl)\b",
+        r"\b\d+(?:[.,]\d+)?\s*(?:ml|cl|oz)\b",
         " ",
-        name_for_matching,
-        flags=re.I,
+        name_normalized,
     )
-
     name_for_matching = re.sub(
         r"\b(?:eau\s+de\s+parfum|eau\s+de\s+toilette|"
         r"eau\s+de\s+cologne|extrait\s+de\s+parfum|"
         r"edp|edt|edc)\b",
         " ",
         name_for_matching,
-        flags=re.I,
     )
+    name_for_matching = re.sub(r"\s+", " ", name_for_matching).strip()
 
-    name_for_matching = re.sub(
-        r"\s+",
-        " ",
-        name_for_matching,
-    ).strip()
-
-    query_tokens = [
-        token
-        for token in query_normalized.split()
-        if token not in IGNORED_WORDS
-        and not re.fullmatch(
-            r"\d+(?:[.,]\d+)?",
-            token,
-        )
-    ]
-
-    generic_tokens = {
-        "eau",
-        "de",
-        "parfum",
-        "perfume",
-        "edp",
-        "edt",
-        "edc",
-        "extrait",
-        "spray",
-        "intense",
-        "limited",
-        "edition",
-        "for",
-        "men",
-        "women",
-        "homme",
-        "femme",
-        "unisex",
-    }
-
-    family_tokens = [
-        token
-        for token in query_tokens
-        if token not in generic_tokens
-    ]
-
-    if not family_tokens:
-        family_tokens = query_tokens
-
-    if not family_tokens:
+    query_tokens = _query_identity_tokens(query_normalized)
+    if not query_tokens:
         return False
 
+    # Il cuore della ricerca deve essere sempre presente.
     name_tokens = name_for_matching.split()
+    name_token_set = set(name_tokens)
+    query_token_set = set(query_tokens)
+    if not query_token_set.issubset(name_token_set):
+        return False
 
-    family_phrase = " ".join(family_tokens)
-    name_phrase = " ".join(
+    # Rimuoviamo dal titolo ciò che sappiamo essere metadato strutturale:
+    # brand, negozio, concentrazione e parole tecniche. Non viene eliminata
+    # nessuna variante reale in base a un nome di profumo specifico.
+    removable = set(IGNORED_WORDS) | set(_VARIANT_NOISE_WORDS)
+    removable |= _store_tokens(product)
+    removable |= _brand_tokens(product)
+
+    residual = [
         token
         for token in name_tokens
-        if token not in generic_tokens
-    )
-
-    if not family_phrase or not name_phrase:
-        return False
-
-    padded_name = f" {name_phrase} "
-    padded_family = f" {family_phrase} "
-
-    return padded_family in padded_name
-
-
-# ============================================================
-# DISCOVERY GENERICA
-# ============================================================
-
-def build_search_attempts(store: str, query: str) -> List[str]:
-    """
-    Costruisce una sequenza corta e deterministica di query generiche,
-    ordinate dalla più precisa alla più permissiva.
-
-    Il parametro store resta nella firma per compatibilità con il codice
-    esistente, ma NON modifica le strategie in base al negozio.
-    """
-    del store
-
-    raw = str(query or "").strip()
-    normalized = norm(raw)
-
-    if not raw or not normalized:
-        return []
-
-    attempts: List[str] = []
-    seen = set()
-
-    def add(value: str) -> None:
-        value = str(value or "").strip()
-        key = norm(value)
-        if value and key and key not in seen:
-            seen.add(key)
-            attempts.append(value)
-
-    # 1) Query originale: è sempre la discovery più precisa.
-    add(raw)
-
-    # 2) Query normalizzata senza parole puramente descrittive.
-    tokens = [
-        token
-        for token in normalized.split()
-        if token not in IGNORED_WORDS
+        if token not in query_token_set
+        and token not in removable
+        and not re.fullmatch(r"\d+(?:[.,]\d+)?", token)
     ]
 
-    if tokens:
-        add(" ".join(tokens))
+    # Una query di famiglia può comprendere varianti soltanto quando esiste
+    # evidenza indipendente nel candidate pool: almeno due negozi la
+    # pubblicano oppure un campo strutturato la dichiara.
+    if residual:
+        signature = " ".join(dict.fromkeys(residual))
+        known = _known_variant_signatures(variant_evidence or {})
 
-    # 3) Forma compatta per siti che indicizzano "100ml" e "100 ml"
-    #    come stringhe diverse.
-    compact = re.sub(
-        r"(?<=\d)\s+(?=[a-z])|(?<=[a-z])\s+(?=\d)",
-        "",
-        normalized,
-    )
-    add(compact)
+        if norm(signature) not in known:
+            return False
 
-    return attempts
+        # Se la query contiene già una firma variante conosciuta, è una ricerca
+        # esplicita di quella variante: non può assorbire una seconda variante.
+        query_set = set(query_tokens)
+        explicit_variant = any(
+            set(norm(sig).split()).issubset(query_set)
+            for sig in known
+            if sig
+        )
+        if explicit_variant:
+            return False
 
-
-# ============================================================
-# PREZZO
-# ============================================================
-
-def _price_from_structured_html(html: str) -> Optional[float]:
-    html = html or ""
-
-    scripts = re.findall(
-        r'<script[^>]+type=["\']application/ld\+json["\'][^>]*>(.*?)</script>',
-        html,
-        re.I | re.S,
-    )
-
-    def walk(value):
-        if isinstance(value, dict):
-            offers = value.get("offers")
-
-            if isinstance(offers, dict):
-                for key in ("price", "lowPrice"):
-                    value_price = price_num(offers.get(key))
-                    if value_price is not None:
-                        yield value_price
-
-            elif isinstance(offers, list):
-                for offer in offers:
-                    if isinstance(offer, dict):
-                        for key in ("price", "lowPrice"):
-                            value_price = price_num(offer.get(key))
-                            if value_price is not None:
-                                yield value_price
-
-            for child in value.values():
-                yield from walk(child)
-
-        elif isinstance(value, list):
-            for child in value:
-                yield from walk(child)
-
-    for raw in scripts:
-        try:
-            payload = json.loads(raw.strip())
-        except Exception:
-            continue
-
-        prices = list(walk(payload))
-        if prices:
-            return prices[0]
-
-    patterns = [
-        r'<meta[^>]+(?:property|name)=["\'](?:product:price:amount|og:price:amount)["\'][^>]+content=["\']([^"\']+)',
-        r'<meta[^>]+itemprop=["\']price["\'][^>]+content=["\']([^"\']+)',
-    ]
-
-    for pattern in patterns:
-        match = re.search(pattern, html, re.I)
-        if match:
-            value_price = price_num(match.group(1))
-            if value_price is not None:
-                return value_price
-
-    return None
-
-
-def resolve_actual_price(product: Dict[str, Any]) -> Dict[str, Any]:
-    """
-    Corregge il caso generico in cui il prezzo esposto dal risultato
-    sia esplicitamente un prezzo unitario per 100 ml.
-
-    Non apre la pagina prodotto se il prezzo è già un prezzo di vendita
-    normale. In questo modo la fase centrale non trasforma una discovery
-    con molti risultati in una sequenza di richieste aggiuntive.
-    """
-    item = dict(product)
-    raw_price = str(item.get("price") or "").strip()
-    size = product_size_ml(item)
-
-    unit_match = re.search(
-        r"(?:/|per\s*)100\s*ml",
-        raw_price,
-        re.I,
-    )
-
-    if unit_match and size and size > 0:
-        unit = price_num(raw_price[:unit_match.start()])
-
-        if unit is not None:
-            actual = round(unit * size / 100.0, 2)
-            item["price"] = f"{actual:.2f} €"
-            item["price_value"] = actual
-
-    return item
+    return True
 
 
 # ============================================================
@@ -970,8 +1041,9 @@ def _pre_rank_candidates(
 def _validate_candidate(
     product: Dict[str, Any],
     query: str,
+    variant_evidence: Optional[Dict[str, Dict[str, Any]]] = None,
 ) -> Optional[Dict[str, Any]]:
-    if not matches(product, query):
+    if not matches(product, query, variant_evidence):
         return None
 
     return product
@@ -980,6 +1052,7 @@ def _validate_candidate(
 def _validate_candidates_parallel(
     candidates: List[Dict[str, Any]],
     query: str,
+    variant_evidence: Optional[Dict[str, Dict[str, Any]]] = None,
 ) -> List[Dict[str, Any]]:
     if not candidates:
         return []
@@ -998,6 +1071,7 @@ def _validate_candidates_parallel(
                 _validate_candidate,
                 product,
                 query,
+                variant_evidence,
             )
             for product in candidates
         ]
@@ -1021,206 +1095,6 @@ def _validate_candidates_parallel(
     return validated
 
 
-
-def _canonical_variant_name(product: Dict[str, Any], query: str) -> str:
-    """Build a stable, generic variant name after validation.
-
-    This function never decides whether an offer is valid.  It only rewrites
-    the already validated product name so the frontend can see the same
-    variant under one canonical label when stores use different commercial
-    wording.
-    """
-    raw_name = product_field(product, "name", "title", "product_name")
-    if not raw_name:
-        return ""
-
-    # Work from the original commercial title.  The query is the only family
-    # anchor; no product-specific registry or hard-coded perfume name is used.
-    name_n = norm(raw_name)
-    query_n = norm(query)
-    if not name_n or not query_n:
-        return raw_name.strip()
-
-    # Generic product-type/packaging words.  Variant words such as Ice,
-    # Black, Elixir, Limited, Intense, etc. are deliberately NOT here.
-    neutral = {
-        "eau", "de", "parfum", "perfume", "fragrance", "edp", "edt",
-        "edc", "extrait", "spray", "cologne", "ml", "cl", "oz",
-    }
-
-    # Remove size expressions before token comparison.
-    work = re.sub(
-        r"\b\d+(?:[.,]\d+)?\s*(?:ml|cl|oz)\b",
-        " ",
-        name_n,
-        flags=re.I,
-    )
-    work = re.sub(r"\s+", " ", work).strip()
-
-    # Remove an explicitly supplied brand from either edge.  If the scraper
-    # has no brand field we leave unknown leading words untouched: they may be
-    # part of the product identity and must not be guessed away.
-    brand = norm(product_field(product, "brand", "source_brand"))
-    if brand:
-        brand_tokens = brand.split()
-        tokens = work.split()
-        if tokens[:len(brand_tokens)] == brand_tokens:
-            tokens = tokens[len(brand_tokens):]
-        if tokens[-len(brand_tokens):] == brand_tokens:
-            tokens = tokens[:-len(brand_tokens)]
-        work = " ".join(tokens).strip()
-
-    # Remove technical concentration phrases, but keep semantic modifiers.
-    work = re.sub(
-        r"\b(?:eau\s+de\s+parfum|eau\s+de\s+toilette|"
-        r"eau\s+de\s+cologne|extrait\s+de\s+parfum|"
-        r"parfum|perfume|fragrance|edp|edt|edc|extrait|spray|cologne)\b",
-        " ",
-        work,
-        flags=re.I,
-    )
-    work = re.sub(r"\s+", " ", work).strip()
-
-    tokens = work.split()
-    q_raw_tokens = query_n.split()
-    q_tokens: List[str] = []
-    for idx, token in enumerate(q_raw_tokens):
-        if token in neutral:
-            continue
-        # A number is part of the identity when it is a real name token
-        # (for example, "9 PM"), but not when it is a package size.
-        if re.fullmatch(r"\d+(?:[.,]\d+)?", token):
-            nxt = q_raw_tokens[idx + 1] if idx + 1 < len(q_raw_tokens) else ""
-            if nxt in {"ml", "cl", "oz"}:
-                continue
-        q_tokens.append(token)
-
-    # Remove query tokens from the candidate title, preserving all remaining
-    # semantic tokens.  This is deliberately multiset-based rather than a
-    # substring whitelist so a store may place family words in any order.
-    residual = list(tokens)
-    for token in q_tokens:
-        if token in residual:
-            residual.remove(token)
-
-    # If the query contains a known brand plus the family, remove the brand
-    # tokens from the query anchor too when they are not present in the title.
-    # This is only structural: it does not identify any specific brand.
-    residual = [t for t in residual if t not in neutral]
-
-    # Normalize generic gender spellings into two structural identities.
-    # Gender is retained as identity; only linguistic equivalents collapse.
-    gender_words_male = {"men", "man", "male", "homme", "uomo"}
-    gender_words_female = {"women", "woman", "female", "femme", "donna"}
-
-    normalized_residual: List[str] = []
-    i = 0
-    while i < len(residual):
-        token = residual[i]
-        if token == "for" and i + 1 < len(residual):
-            nxt = residual[i + 1]
-            if nxt in {"him", "men", "man", "male", "homme", "uomo"}:
-                normalized_residual.append("for him")
-                i += 2
-                continue
-            if nxt in {"her", "women", "woman", "female", "femme", "donna"}:
-                normalized_residual.append("for her")
-                i += 2
-                continue
-        if token == "pour" and i + 1 < len(residual):
-            nxt = residual[i + 1]
-            if nxt in {"homme", "men", "man", "male", "uomo"}:
-                normalized_residual.append("for him")
-                i += 2
-                continue
-            if nxt in {"femme", "women", "woman", "female", "donna"}:
-                normalized_residual.append("for her")
-                i += 2
-                continue
-        if token in gender_words_male:
-            normalized_residual.append("for him")
-        elif token in gender_words_female:
-            normalized_residual.append("for her")
-        elif token in {"him"}:
-            normalized_residual.append("for him")
-        elif token in {"her"}:
-            normalized_residual.append("for her")
-        else:
-            normalized_residual.append(token)
-        i += 1
-
-    # Structured variant fields are supporting evidence.  They can recover a
-    # variant that is absent from the commercial title, but family/brand words
-    # already present in the query are ignored so they cannot duplicate the
-    # base identity.
-    structural_keys = (
-        "variant", "edition", "version", "flanker",
-        "product_line", "line", "collection", "family",
-        "gender", "target_gender", "audience",
-    )
-    structural_tokens: List[str] = []
-    q_set = set(q_tokens)
-    for key in structural_keys:
-        value = product_field(product, key)
-        if not value:
-            continue
-        value_n = norm(value)
-        for token in value_n.split():
-            if token in neutral or token in q_set:
-                continue
-            structural_tokens.append(token)
-
-    for token in structural_tokens:
-        if token in gender_words_male:
-            token = "for him"
-        elif token in gender_words_female:
-            token = "for her"
-        if token not in normalized_residual:
-            normalized_residual.append(token)
-
-    # Remove duplicate residual tokens while preserving their order.
-    final_residual: List[str] = []
-    for token in normalized_residual:
-        if token and token not in final_residual:
-            final_residual.append(token)
-
-    # The query itself is the canonical family anchor.  This prevents one
-    # store's spelling/order from becoming the group name.
-    anchor_tokens = [t for t in q_tokens if t not in neutral]
-    if brand:
-        brand_set = set(brand.split())
-        anchor_tokens = [t for t in anchor_tokens if t not in brand_set]
-    anchor = " ".join(anchor_tokens).strip()
-    if not anchor:
-        anchor = work
-
-    result = " ".join([anchor] + final_residual).strip()
-    return result or raw_name.strip()
-
-
-def _canonicalize_validated_variants(
-    products: List[Dict[str, Any]],
-    query: str,
-) -> List[Dict[str, Any]]:
-    """Canonicalize names only; never discard a validated offer."""
-    output: List[Dict[str, Any]] = []
-
-    for product in products:
-        item = dict(product)
-        canonical = _canonical_variant_name(item, query)
-        if canonical:
-            # Keep the original title for diagnostics, but expose the
-            # canonical title to the Index so equivalent store wording lands
-            # in the same product group.
-            original = product_field(item, "name", "title", "product_name")
-            if original and "_original_name" not in item:
-                item["_original_name"] = original
-            item["name"] = canonical
-            item["_canonical_name"] = canonical
-        output.append(item)
-
-    return output
-
 def _orchestrate_results(
     candidates: List[Dict[str, Any]],
     query: str,
@@ -1242,21 +1116,20 @@ def _orchestrate_results(
         query,
     )
 
+    variant_evidence = _build_variant_evidence(
+        candidate_pool,
+        query,
+    )
+
     validated = _validate_candidates_parallel(
         ranked_candidates,
         query,
+        variant_evidence,
     )
 
-    canonicalized = _canonicalize_validated_variants(
-        validated,
-        query,
+    return sort_by_price(
+        unique_results(validated)
     )
-
-    # `validated` is already deduplicated before validation.  Do NOT run a
-    # second identity-based deduplication after canonicalization: two valid
-    # offers must never disappear merely because their display names now
-    # share the same canonical variant.
-    return sort_by_price(canonicalized)
 
 # ============================================================
 # SEARCH CENTRALE
