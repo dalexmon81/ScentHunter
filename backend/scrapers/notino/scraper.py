@@ -18,7 +18,7 @@ SITEMAP_URL = BASE_URL + "/sitemap.xml"
 READER_BASE = "https://r.jina.ai/"
 TIMEOUT = 20
 READER_TIMEOUT = 12
-SCRAPER_VERSION = "notino-FR-generic-discovery-2026-08-24-v19-product-identity-dedup"
+SCRAPER_VERSION = "notino-FR-generic-discovery-2026-08-24-v20-full-result-set"
 
 HEADERS = {
     "User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
@@ -1677,7 +1677,7 @@ def search(query: str) -> List[Dict[str, Any]]:
         # that were ranked below unavailable/non-product variants.
         batch_size = min(8, len(ranked))
         processed = 0
-        while processed < len(ranked) and len(results) < 10:
+        while processed < len(ranked) and len(results) < 20:
             batch_end = min(processed + batch_size, len(ranked))
             for candidate in ranked[processed:batch_end]:
                 result = _product_details(session, candidate, query)
@@ -1690,7 +1690,7 @@ def search(query: str) -> List[Dict[str, Any]]:
                     continue
                 seen.add(key)
                 results.append(result)
-                if len(results) >= 10:
+                if len(results) >= 20:
                     break
             processed = batch_end
             batch_size = min(6, len(ranked) - processed)
@@ -1723,7 +1723,7 @@ def debug_search(query: str) -> Dict[str, Any]:
             query, session=session
         )
         ranked = _rank_candidates_for_product_lookup(
-            candidates, limit=8, query=query
+            candidates, limit=20, query=query
         )
         products = []
         for candidate in ranked:
