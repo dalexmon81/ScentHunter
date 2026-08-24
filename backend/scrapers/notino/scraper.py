@@ -1232,7 +1232,7 @@ def _reader_discovery(query: str, session: requests.Session) -> Tuple[List[Dict[
     # seeds, or hard-coded product URLs.
     exact_count = sum(1 for x in candidates.values() if x.get("contains_all_query_tokens"))
     sitemap_pages: List[Dict[str, Any]] = []
-    if exact_count < 2:
+    if exact_count < 5:
         sitemap_candidates, sitemap_pages = _sitemap_discovery(query, session)
         for candidate in sitemap_candidates:
             old = candidates.get(candidate["url"])
@@ -1297,24 +1297,28 @@ def _search_http_candidates(
             if found:
                 break
 
+        # Direct search is only one discovery channel. It may return a valid
+        # partial set and still omit products that are discoverable through
+        # Notino's reader/brand/sitemap channels. Always merge the generic
+        # secondary discovery instead of treating "some results" as "complete".
+        reader_candidates, report = _reader_discovery(query, session)
+        for candidate in reader_candidates:
+            old = candidates.get(candidate["url"])
+            if old is None or candidate["score"] > old["score"]:
+                candidates[candidate["url"]] = candidate
+
         ordered = sorted(
             candidates.values(),
             key=lambda x: (not x["contains_all_query_tokens"], -x["score"], x["url"]),
         )
-        if ordered:
-            return ordered, {
-                "query": query,
-                "search_urls": _search_urls(query),
-                "pages": pages,
-                "raw_product_urls": len(ordered),
-                "candidate_urls": len(ordered),
-                "raw_query_token_hits": [x for x in ordered if x["contains_all_query_tokens"]],
-                "fallback": None,
-            }
 
-        reader_candidates, report = _reader_discovery(query, session)
         report["direct_pages"] = pages
-        return reader_candidates, report
+        report["direct_candidate_count"] = len(
+            [x for x in ordered if x.get("source") == "direct-search"]
+        )
+        report["merged_candidate_count"] = len(ordered)
+        report["fallback"] = "jina-reader+sitemap-merged"
+        return ordered, report
     finally:
         if own:
             session.close()
