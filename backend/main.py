@@ -383,18 +383,17 @@ FAMILY_REGISTRY_PATH = os.path.join(
 
 
 def catalog_norm(value: Any) -> str:
-    """
-    Normalizzazione usata ESCLUSIVAMENTE dal catalogo famiglie.
-
-    A differenza di norm(), mantiene i caratteri accentati:
-    nel catalogo le forme accentate possono quindi restare distinte.
-    L'apostrofo tipografico viene trattato come separatore, così
-    le forme con apostrofo restano confrontabili con la forma ASCII equivalente.
-    """
+    """Normalize catalog text deterministically, without fuzzy matching."""
     text = str(value or "").strip().lower()
-    text = unicodedata.normalize("NFC", text)
+    text = unicodedata.normalize("NFKD", text)
+    text = "".join(
+        char
+        for char in text
+        if not unicodedata.combining(char)
+    )
+    # ASCII and typographic apostrophes are explicit equivalents.
     text = text.replace("’", "").replace("'", "")
-    text = re.sub(r"[^0-9a-zà-öø-ÿĀ-ž]+", " ", text)
+    text = re.sub(r"[^a-z0-9]+", " ", text)
     return re.sub(r"\s+", " ", text).strip()
 
 
@@ -428,17 +427,8 @@ def _catalog_clean_text(value: Any) -> str:
     return re.sub(r"\s+", " ", text).strip()
 
 
-def catalog_variant_key(value: str) -> str:
-    text = str(value or "").lower()
-    text = unicodedata.normalize("NFKD", text)
-    text = "".join(
-        char for char in text
-        if not unicodedata.combining(char)
-    )
-
-    text = text.replace("’", "'")
-    text = re.sub(r"[^a-z0-9']+", " ", text)
-    return re.sub(r"\s+", " ", text).strip()
+def catalog_variant_key(value: Any) -> str:
+    return _catalog_clean_text(value)
 
 
 def _catalog_tokens(value: Any) -> List[str]:
@@ -495,45 +485,6 @@ def _catalog_gender_class(value: Any) -> str:
         return "mixed"
 
     return "none"
-
-
-def _catalog_alias_is_valid(
-    canonical_name: str,
-    alias: str,
-) -> bool:
-    """
-    Applica due protezioni generiche al dato del catalogo:
-
-    1) un alias che differisce dal canonical_name solo per gli accenti
-       NON viene considerato equivalente;
-    2) un alias che aggiunge/cambia il genere rispetto al canonical_name
-       NON viene considerato equivalente.
-
-    Le vere equivalenze lessicali restano invece possibili quando sono
-    esplicitamente dichiarate dal catalogo.
-    """
-    canonical_clean = _catalog_clean_text(canonical_name)
-    alias_clean = _catalog_clean_text(alias)
-
-    if not canonical_clean or not alias_clean:
-        return False
-
-    canonical_folded = norm(canonical_clean)
-    alias_folded = norm(alias_clean)
-
-    if (
-        canonical_clean != alias_clean
-        and canonical_folded == alias_folded
-    ):
-        return False
-
-    canonical_gender = _catalog_gender_class(canonical_name)
-    alias_gender = _catalog_gender_class(alias)
-
-    if canonical_gender != alias_gender:
-        return False
-
-    return True
 
 
 def _load_family_registry() -> List[Dict[str, Any]]:
@@ -610,10 +561,16 @@ def _load_family_registry() -> List[Dict[str, Any]]:
                 # esplicite e autorevoli: non vanno filtrati dal main.
                 valid_aliases.append(alias)
 
+            valid_aliases = list(dict.fromkeys(valid_aliases))
             normalized_variants.append(
                 {
                     "canonical_name": canonical_name,
-                    "aliases": list(dict.fromkeys(valid_aliases)),
+                    "aliases": valid_aliases,
+                    "normalized_aliases": tuple(
+                        catalog_variant_key(alias)
+                        for alias in valid_aliases
+                        if catalog_variant_key(alias)
+                    ),
                 }
             )
 
@@ -648,6 +605,11 @@ def _load_family_registry() -> List[Dict[str, Any]]:
                     if str(value or "").strip()
                 ],
                 "variants": normalized_variants,
+                "normalized_query_aliases": tuple(
+                    catalog_variant_key(value)
+                    for value in query_aliases
+                    if catalog_variant_key(value)
+                ),
             }
         )
 
@@ -655,6 +617,21 @@ def _load_family_registry() -> List[Dict[str, Any]]:
 
 
 FAMILY_REGISTRY = _load_family_registry()
+
+
+def _build_family_registry_index(
+    families: List[Dict[str, Any]],
+) -> Dict[str, Dict[str, Any]]:
+    """Build the normalized family-query index once at startup."""
+    index: Dict[str, Dict[str, Any]] = {}
+    for family in families:
+        for alias_key in family.get("normalized_query_aliases", ()):
+            if alias_key:
+                index.setdefault(alias_key, family)
+    return index
+
+
+FAMILY_REGISTRY_INDEX = _build_family_registry_index(FAMILY_REGISTRY)
 
 
 def _catalog_brand_matches(
@@ -759,70 +736,9 @@ def _catalog_variant_for_product(
     for variant in family.get("variants", []):
         canonical_name = variant.get("canonical_name", "")
 
-        for alias in variant.get("aliases", []):
-            alias_clean = _catalog_clean_text(alias)
-
-            if not alias_clean:
-                continue
-
-            candidate_key = catalog_variant_key(candidate_text)
-            alias_key = catalog_variant_key(alias_clean)
-
-            if candidate_key == alias_key:
-                return variant
-
-            # Retailers frequently append a redundant audience marker to an
-            # otherwise exact product identity, for example
-            # "... For Her (woman)".  The audience is already part of the
-            # authorized alias, so that trailing descriptive marker must not
-            # make an otherwise valid catalog variant fail.  This is generic:
-            # it applies to any catalog variant whose explicit gender agrees
-            # with the appended retailer marker.
-            alias_gender = _catalog_gender_class(alias_clean)
-            candidate_gender = _catalog_gender_class(candidate_text)
-
-            if alias_gender != "none" and candidate_gender == alias_gender:
-                gender_tokens = {
-                    "male": {
-                        "him", "men", "man", "homme", "heren",
-                        "mannen", "male",
-                    },
-                    "female": {
-                        "her", "women", "woman", "femme", "dames",
-                        "vrouwen", "female",
-                    },
-                    "mixed": set(),
-                    "none": set(),
-                }[alias_gender]
-
-                candidate_tokens = candidate_key.split()
-                alias_tokens = alias_key.split()
-
-                # Only remove standalone audience words from the candidate.
-                # "for him" / "for her" remains intact because the
-                # pre-existing variant identity is represented by the alias.
-                reduced_candidate = " ".join(
-                    token
-                    for token in candidate_tokens
-                    if token not in gender_tokens
-                )
-                reduced_alias = " ".join(alias_tokens)
-
-                # The remaining product identity must still match exactly;
-                # this prevents one gendered variant from matching another.
-                alias_identity_tokens = [
-                    token
-                    for token in reduced_alias.split()
-                    if token not in {"him", "her"}
-                ]
-                candidate_identity_tokens = [
-                    token
-                    for token in reduced_candidate.split()
-                    if token not in {"him", "her"}
-                ]
-
-                if candidate_identity_tokens == alias_identity_tokens:
-                    return variant
+        candidate_key = catalog_variant_key(candidate_text)
+        if candidate_key in variant.get("normalized_aliases", ()):
+            return variant
 
     return None
 
@@ -830,32 +746,22 @@ def _catalog_variant_for_product(
 def _catalog_family_for_query(
     query: str,
 ) -> Optional[Dict[str, Any]]:
-    query_clean = _catalog_clean_text(query)
+    query_clean = catalog_variant_key(query)
 
     if not query_clean:
         return None
 
-    for family in FAMILY_REGISTRY:
-        for alias in family.get("query_aliases", []):
-            alias_clean = _catalog_clean_text(alias)
+    family = FAMILY_REGISTRY_INDEX.get(query_clean)
+    if family is not None:
+        return family
 
-            if not alias_clean:
-                continue
-
-            if _catalog_phrase_equal(
-                query_clean,
-                alias_clean,
-            ):
-                return family
-
-            # Una query che contiene una famiglia catalogata ma aggiunge
-            # una variante non presente nel registro resta sotto il
-            # controllo del catalogo e NON torna al matching generico.
-            if _catalog_phrase_in_text(
-                alias_clean,
-                query_clean,
-            ):
-                return family
+    # If a cataloged family is present in a longer query, keep the query
+    # under catalog control. An unauthorized appended variant is therefore
+    # rejected instead of falling back to generic matching.
+    padded_query = f" {query_clean} "
+    for alias_key, candidate_family in FAMILY_REGISTRY_INDEX.items():
+        if f" {alias_key} " in padded_query:
+            return candidate_family
 
     return None
 
@@ -882,13 +788,10 @@ def _catalog_requested_variant(
             query_clean,
         ).strip()
 
+    query_key = catalog_variant_key(query_clean)
     for variant in family.get("variants", []):
-        for alias in variant.get("aliases", []):
-            if (
-                catalog_variant_key(query_clean)
-                == catalog_variant_key(alias)
-            ):
-                return variant
+        if query_key in variant.get("normalized_aliases", ()):
+            return variant
 
     return None
 
@@ -925,12 +828,9 @@ def _catalog_match(
         # query della famiglia ma non una query-famiglia: deve passare dalla
         # variante richiesta e,
         # se non esiste nel catalogo, essere respinta.
-        query_is_family = any(
-            _catalog_phrase_equal(
-                query_clean,
-                alias,
-            )
-            for alias in family.get("query_aliases", [])
+        query_is_family = (
+            catalog_variant_key(query_clean)
+            in family.get("normalized_query_aliases", ())
         )
 
         if query_is_family:
