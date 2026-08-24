@@ -740,35 +740,53 @@ def run_store(
                 catalog_result = None
 
             if isinstance(catalog_result, dict):
-                enriched = dict(product)
-                enriched.update(
+                resolved_identity = {
+                    "family_id": text(
+                        catalog_result.get("family_id")
+                    ),
+                    "family_name": text(
+                        catalog_result.get("family_name")
+                    ),
+                    "canonical_name": text(
+                        catalog_result.get("canonical_name")
+                    ),
+                    "catalog_variant": text(
+                        catalog_result.get("catalog_variant")
+                    ),
+                    "match_method": text(
+                        catalog_result.get("match_method")
+                    ) or "family_registry_alias",
+                }
+
+                # Applica realmente l'identità risolta al candidato che
+                # alimenta matched_candidates: non lasciarla annidata in
+                # un campo diagnostico separato.
+                product.update(resolved_identity)
+                product["match_method"] = (
+                    product.get("match_method")
+                    or "family_registry_alias"
+                )
+                product["name"] = product["canonical_name"]
+
+                # matched_candidates mantiene i metadati diagnostici già
+                # presenti nell'entry, ma i campi identitari devono essere
+                # flat e direttamente leggibili dal candidato.
+                entry.update(
                     {
-                        "family_id": text(
-                            catalog_result.get("family_id")
+                        "name": product["name"],
+                        "family_id": product["family_id"],
+                        "family_name": product["family_name"],
+                        "canonical_name": product["canonical_name"],
+                        "catalog_variant": product["catalog_variant"],
+                        "match_method": product["match_method"],
+                        "current_identity_key": current_identity_key(
+                            product
                         ),
-                        "family_name": text(
-                            catalog_result.get("family_name")
-                        ),
-                        "canonical_name": text(
-                            catalog_result.get("canonical_name")
-                        ),
-                        "catalog_variant": text(
-                            catalog_result.get("catalog_variant")
+                        "proposed_variant_key": proposed_variant_key(
+                            product
                         ),
                     }
                 )
-                entry["resolved_identity"] = {
-                    "family_id": enriched["family_id"],
-                    "family_name": enriched["family_name"],
-                    "canonical_name": enriched["canonical_name"],
-                    "catalog_variant": enriched["catalog_variant"],
-                    "current_identity_key": current_identity_key(
-                        enriched
-                    ),
-                    "proposed_variant_key": proposed_variant_key(
-                        enriched
-                    ),
-                }
 
             report["matched_candidates"].append(entry)
 
@@ -801,6 +819,101 @@ def run_store(
     }
 
     return report
+
+
+def build_variant_summary(
+    report: Dict[str, Any],
+    query: str,
+) -> Dict[str, Any]:
+    """
+    Costruisce un riepilogo generico per ogni variante autorizzata
+    della famiglia presente nella query.
+
+    Il conteggio raw deriva dai candidati di discovery; resolved/matched
+    deriva dai candidati finali che hanno ricevuto un'identità piatta.
+    Nessuna regola è specifica per un prodotto o per uno store.
+    """
+    try:
+        family = scent_main._catalog_family_for_query(query)
+    except Exception:
+        family = None
+
+    if not isinstance(family, dict):
+        return {}
+
+    variants = family.get("variants", [])
+    if not isinstance(variants, list):
+        return {}
+
+    summary: Dict[str, Dict[str, Any]] = {}
+
+    for variant in variants:
+        if not isinstance(variant, dict):
+            continue
+
+        canonical = text(variant.get("canonical_name"))
+        if not canonical:
+            continue
+
+        summary[canonical] = {
+            "raw": 0,
+            "resolved": 0,
+            "matched": 0,
+            "stores": [],
+        }
+
+    for store, store_report in report.get("stores", {}).items():
+        for candidate in store_report.get(
+            "all_raw_candidates",
+            [],
+        ):
+            product = {
+                "name": candidate.get("name"),
+                "brand": candidate.get("brand"),
+                "size_ml": candidate.get("size_ml"),
+                "concentration": candidate.get("concentration"),
+                "store": store,
+            }
+
+            try:
+                resolved = scent_main._catalog_match(
+                    product,
+                    query,
+                )
+            except Exception:
+                resolved = None
+
+            if not isinstance(resolved, dict):
+                continue
+
+            canonical = text(
+                resolved.get("canonical_name")
+            )
+            bucket = summary.get(canonical)
+            if bucket is None:
+                continue
+
+            bucket["raw"] += 1
+            if store not in bucket["stores"]:
+                bucket["stores"].append(store)
+
+        for candidate in store_report.get(
+            "matched_candidates",
+            [],
+        ):
+            canonical = text(
+                candidate.get("canonical_name")
+            )
+            bucket = summary.get(canonical)
+            if bucket is None:
+                continue
+
+            bucket["resolved"] += 1
+            bucket["matched"] += 1
+            if store not in bucket["stores"]:
+                bucket["stores"].append(store)
+
+    return summary
 
 
 def run_query(
@@ -893,6 +1006,11 @@ def run_query(
             )
         ),
     }
+
+    report["variant_summary"] = build_variant_summary(
+        report,
+        query,
+    )
 
     return report
 
@@ -1023,22 +1141,35 @@ def print_report(
                 "matched_candidates",
                 [],
             )
-            if candidate.get(
-                "resolved_identity"
-            )
+            if candidate.get("canonical_name")
         ]
 
         if resolved:
             print("  RESOLVED IDENTITIES:")
             for candidate in resolved[:20]:
-                identity = candidate[
-                    "resolved_identity"
-                ]
                 print(
                     f"    - {candidate.get('name') or '-'} "
-                    f"=> {identity.get('canonical_name') or '-'} "
-                    f"| family_id={identity.get('family_id') or '-'}"
+                    f"| canonical={candidate.get('canonical_name') or '-'} "
+                    f"| family_id={candidate.get('family_id') or '-'} "
+                    f"| match_method={candidate.get('match_method') or '-'}"
                 )
+
+    variant_summary = report.get(
+        "variant_summary",
+        {},
+    )
+
+    if variant_summary:
+        print()
+        print("VARIANT SUMMARY")
+        for variant, values in variant_summary.items():
+            print(
+                f"  - {variant}: "
+                f"raw={values.get('raw', 0)} "
+                f"resolved={values.get('resolved', 0)} "
+                f"matched={values.get('matched', 0)} "
+                f"stores={values.get('stores', [])}"
+            )
 
 
 def parse_args() -> argparse.Namespace:
