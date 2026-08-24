@@ -18,7 +18,7 @@ SITEMAP_URL = BASE_URL + "/sitemap.xml"
 READER_BASE = "https://r.jina.ai/"
 TIMEOUT = 20
 READER_TIMEOUT = 12
-SCRAPER_VERSION = "notino-FR-generic-discovery-2026-08-24-v16-adaptive-product-validation"
+SCRAPER_VERSION = "notino-FR-generic-discovery-2026-08-24-v17-stock-scope-fix"
 
 HEADERS = {
     "User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
@@ -259,27 +259,131 @@ def _extract_product_price(text: Any) -> str:
 
 
 
-def _stock_status(text: str, product_name: str = "") -> Optional[bool]:
-    """Return True for out-of-stock, False for in-stock, None when unknown.
+def _structured_offer_stock_status(text: str, product_name: str = "", product_url: str = "") -> Optional[bool]:
+    """Read availability only from the JSON-LD Product that belongs to this URL/name.
 
-    Product pages can contain availability text for other products in
-    recommendations. Structured Offer availability is authoritative; textual
-    markers are accepted only when they are close to the current product name
-    or are clearly presented as the product's own status.
+    Notino/Jina pages can contain several Offer/availability objects because
+    recommendations and related products are embedded in the same response.
+    The old implementation treated the first availability value as belonging
+    to the current product, which could incorrectly reject valid products.
     """
     raw = html_lib.unescape(str(text or ""))
     if not raw.strip():
         return None
 
-    availability_values = re.findall(
-        r'"availability"\s*:\s*"([^"]+)"', raw, flags=re.I
+    target_name = _product_norm(product_name)
+    target_url = str(product_url or "").lower().rstrip("/")
+    target_slug = _product_norm(_name_from_product_url(product_url)) if product_url else ""
+
+    # First try complete JSON-LD blocks. Jina can preserve these as plain text.
+    blocks = re.findall(
+        r'<script[^>]+type=["\']application/ld\+json["\'][^>]*>(.*?)</script>',
+        raw,
+        flags=re.I | re.S,
     )
-    for value in availability_values:
-        low = value.lower()
+    if not blocks:
+        # Also support a raw JSON object/array when the reader strips script tags.
+        blocks = re.findall(
+            r'(\{\s*["\']@type["\']\s*:\s*["\'](?:Product|ItemList)["\'].*?\})',
+            raw,
+            flags=re.I | re.S,
+        )
+
+    def availability_value(value: Any) -> Optional[bool]:
+        low = str(value or "").lower()
         if any(marker in low for marker in ("outofstock", "soldout", "discontinued")):
             return True
         if any(marker in low for marker in ("instock", "limitedavailability", "preorder")):
             return False
+        return None
+
+    def inspect_product(item: Any) -> Optional[bool]:
+        if not isinstance(item, dict):
+            return None
+        item_type = item.get("@type", "")
+        types = item_type if isinstance(item_type, list) else [item_type]
+        if not any(str(value).lower() == "product" for value in types):
+            graph = item.get("@graph")
+            if isinstance(graph, list):
+                for child in graph:
+                    result = inspect_product(child)
+                    if result is not None:
+                        return result
+            return None
+
+        item_name = _product_norm(item.get("name"))
+        item_url = str(item.get("url") or item.get("@id") or "").lower().rstrip("/")
+        item_slug = _product_norm(_name_from_product_url(item_url)) if item_url else ""
+
+        identity_match = False
+        if target_url and item_url:
+            identity_match = item_url == target_url or item_url.rstrip("/") == target_url
+        if not identity_match and target_name and item_name:
+            identity_match = (
+                item_name == target_name
+                or target_name in item_name
+                or item_name in target_name
+            )
+        if not identity_match and target_slug and item_slug:
+            identity_match = (
+                item_slug == target_slug
+                or target_slug in item_slug
+                or item_slug in target_slug
+            )
+
+        if not identity_match:
+            return None
+
+        offers = item.get("offers")
+        if isinstance(offers, dict):
+            offers = [offers]
+        if isinstance(offers, list):
+            statuses = [availability_value(offer.get("availability"))
+                        for offer in offers if isinstance(offer, dict)]
+            statuses = [value for value in statuses if value is not None]
+            if statuses:
+                # Any in-stock offer means the product is purchasable.
+                if any(value is False for value in statuses):
+                    return False
+                return True
+        return None
+
+    for block in blocks:
+        try:
+            data = json.loads(block)
+        except (TypeError, ValueError):
+            continue
+        stack = data if isinstance(data, list) else [data]
+        while stack:
+            item = stack.pop()
+            if isinstance(item, list):
+                stack.extend(item)
+                continue
+            if isinstance(item, dict):
+                result = inspect_product(item)
+                if result is not None:
+                    return result
+                graph = item.get("@graph")
+                if isinstance(graph, list):
+                    stack.extend(graph)
+
+    return None
+
+
+def _stock_status(text: str, product_name: str = "", product_url: str = "") -> Optional[bool]:
+    """Return True for out-of-stock, False for in-stock, None when unknown.
+
+    Availability is scoped to the current product. Never use an arbitrary
+    Offer from a recommendation or related-product block as the status of the
+    current item.
+    """
+    raw = html_lib.unescape(str(text or ""))
+    if not raw.strip():
+        return None
+
+    structured = _structured_offer_stock_status(raw, product_name, product_url)
+    if structured is not None:
+        return structured
 
     lines = [_clean(x) for x in raw.splitlines() if _clean(x)]
     name_tokens = set(_query_tokens(product_name))
@@ -294,23 +398,28 @@ def _stock_status(text: str, product_name: str = "") -> Optional[bool]:
         if not (is_out or is_in):
             continue
 
-        window = " ".join(lines[max(0, i - 3):min(len(lines), i + 4)])
+        window = " ".join(lines[max(0, i - 4):min(len(lines), i + 5)])
         window_tokens = set(_query_tokens(window))
         relevance = 0
         if name_tokens:
             matched_name_tokens = sum(1 for token in name_tokens if token in window_tokens)
             if matched_name_tokens >= min(3, len(name_tokens)):
-                relevance = 3
+                relevance = 4
             elif matched_name_tokens >= min(2, len(name_tokens)):
+                relevance = 3
+            elif matched_name_tokens >= 1 and len(name_tokens) <= 2:
                 relevance = 2
-        # A very short status line immediately following a price/current-price
-        # line is also a strong product-level signal.
+
+        # A status immediately after the current product price is a useful
+        # fallback when Jina removes the surrounding HTML structure.
         nearby = " ".join(lines[max(0, i - 2):i + 1]).lower()
         if re.search(r"(?:prix actuel|\b\d{1,4}[.,]\d{2}\s*€)", nearby, re.I):
-            relevance = max(relevance, 2)
+            relevance = max(relevance, 2 if name_tokens else 1)
 
+        # Do not accept a bare status marker on a large page without product
+        # identity or immediate price context: it may belong to a recommendation.
         if relevance:
-            status_hits.append((relevance, -abs(i), is_out))
+            status_hits.append((relevance, -i, is_out))
 
     if status_hits:
         status_hits.sort(reverse=True)
@@ -1348,7 +1457,7 @@ def _reader_product(
     if not price:
         return None
 
-    stock = _stock_status(raw, name)
+    stock = _stock_status(raw, name, candidate_url)
     if stock is True:
         return None
 
@@ -1467,7 +1576,7 @@ def _product_details(
             candidate.get("card_text", "")
         )
 
-    stock = _stock_status(response.text, name)
+    stock = _stock_status(response.text, name, final_url)
     if stock is True:
         return None
     return {"store": STORE, "name": _display_product_name(name, final_url, brand), "price": price, "url": final_url} if price else None
