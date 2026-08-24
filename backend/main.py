@@ -5,6 +5,8 @@ from fastapi.responses import FileResponse
 
 import importlib
 import json
+
+from product_matcher import match_product
 import os
 import re
 import threading
@@ -1481,16 +1483,20 @@ def _validate_candidate(
     if not matches(product, query):
         return None
 
-    # Quando una famiglia è catalogata, restituisce anche la versione
-    # canonicalizzata del candidato. Per le famiglie non catalogate il
-    # prodotto originale resta invariato.
-    catalog_product = _catalog_match(
+    # Il main usa il matcher centrale anche per la propagazione finale
+    # dell'identità risolta. Per le famiglie presenti nel Registry il
+    # matcher restituisce il candidato canonicalizzato con tutti i campi
+    # di identità; per le altre famiglie il matching generico già esistente
+    # del main resta invariato.
+    matched_product = match_product(
         product,
         query,
+        catalog=[],
+        family_registry=FAMILY_REGISTRY,
     )
 
-    if catalog_product is not None:
-        return catalog_product
+    if matched_product is not None:
+        return matched_product
 
     return product
 
