@@ -334,12 +334,16 @@ def classify_rejection(
     }
 
 
-def audit_contract() -> Dict[str, Any]:
+def audit_contract(
+    matched_candidates: Optional[List[Dict[str, Any]]] = None,
+) -> Dict[str, Any]:
     result: Dict[str, Any] = {
         "phase": 1,
         "status": "unknown",
         "checks": [],
     }
+
+    matched_candidates = matched_candidates or []
 
     try:
         source = inspect.getsource(scent_main)
@@ -358,44 +362,56 @@ def audit_contract() -> Dict[str, Any]:
         }
     )
 
-    registry_fields = {
-        "family_id": False,
-        "family_name": False,
-        "canonical_name": False,
-        "catalog_variant": False,
-        "match_method": False,
-    }
+    identity_field_names = (
+        "family_id",
+        "family_name",
+        "canonical_name",
+        "catalog_variant",
+        "match_method",
+    )
 
-    try:
-        families = getattr(
-            scent_main,
-            "FAMILY_REGISTRY",
-            [],
+    candidate_identity_fields: List[Dict[str, bool]] = []
+    for candidate in matched_candidates:
+        candidate_identity_fields.append(
+            {
+                field: bool(candidate.get(field))
+                for field in identity_field_names
+            }
         )
-        for family in families:
-            for variant in family.get("variants", []):
-                if variant.get("canonical_name"):
-                    registry_fields["canonical_name"] = True
-                    registry_fields["catalog_variant"] = True
-                    break
-            if family.get("family_id"):
-                registry_fields["family_id"] = True
-            if family.get("query_aliases"):
-                registry_fields["family_name"] = True
-    except Exception:
-        pass
+
+    if candidate_identity_fields:
+        registry_fields = {
+            field: all(
+                identity[field]
+                for identity in candidate_identity_fields
+            )
+            for field in identity_field_names
+        }
+        identity_check_status = "checked"
+    else:
+        registry_fields = {
+            field: None
+            for field in identity_field_names
+        }
+        identity_check_status = "not_checked_no_matched_candidates"
 
     result["checks"].append(
         {
             "check": "registry_identity_fields",
             "value": registry_fields,
-            "expected": {
-                "family_id": True,
-                "family_name": True,
-                "canonical_name": True,
-                "catalog_variant": True,
-                "match_method": True,
-            },
+            "expected": (
+                {
+                    "family_id": True,
+                    "family_name": True,
+                    "canonical_name": True,
+                    "catalog_variant": True,
+                    "match_method": True,
+                }
+                if matched_candidates
+                else None
+            ),
+            "matched_candidate_count": len(matched_candidates),
+            "status": identity_check_status,
         }
     )
 
@@ -467,6 +483,16 @@ def audit_contract() -> Dict[str, Any]:
         if (
             expected is True
             and value is not True
+        ):
+            failed.append(check["check"])
+        elif (
+            isinstance(expected, dict)
+            and isinstance(value, dict)
+            and any(
+                expected_value is True
+                and value.get(field) is not True
+                for field, expected_value in expected.items()
+            )
         ):
             failed.append(check["check"])
 
@@ -928,7 +954,7 @@ def run_query(
 
     report: Dict[str, Any] = {
         "query": query,
-        "contract_audit": audit_contract(),
+        "contract_audit": {},
         "stores": {},
         "global_summary": {},
     }
@@ -938,6 +964,19 @@ def run_query(
             store,
             query,
         )
+
+    matched_candidates: List[Dict[str, Any]] = []
+    for store_report in report["stores"].values():
+        matched_candidates.extend(
+            store_report.get(
+                "matched_candidates",
+                [],
+            )
+        )
+
+    report["contract_audit"] = audit_contract(
+        matched_candidates
+    )
 
     counters = {
         "raw_total": 0,
