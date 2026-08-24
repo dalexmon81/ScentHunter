@@ -6,7 +6,7 @@ from fastapi.responses import FileResponse
 import importlib
 import json
 
-from product_matcher import match_product
+from product_matcher import ProductMatcher
 import os
 import re
 import threading
@@ -56,6 +56,111 @@ STORES = [
 
 BASE_DIR = os.path.dirname(__file__)
 HISTORY_PATH = os.path.join(BASE_DIR, "price_history.json")
+PRODUCT_CATALOG_PATH = os.path.join(BASE_DIR, "product_catalog.json")
+
+
+def _load_product_matcher_catalog() -> List[Dict[str, Any]]:
+    """
+    Adatta il catalogo autorevole ScentHunter v2 allo schema input
+    del ProductMatcher centrale, senza duplicare regole di matching.
+    """
+    try:
+        with open(PRODUCT_CATALOG_PATH, "r", encoding="utf-8") as file:
+            payload = json.load(file)
+    except Exception as exc:
+        print(
+            "PRODUCT_MATCHER_CATALOG_LOAD_ERROR:",
+            f"{type(exc).__name__}: {exc}",
+            flush=True,
+        )
+        return []
+
+    products = payload.get("products", []) if isinstance(payload, dict) else []
+    variants = payload.get("variants", []) if isinstance(payload, dict) else []
+
+    if not isinstance(products, list):
+        return []
+    if not isinstance(variants, list):
+        variants = []
+
+    by_product_id: Dict[str, Dict[str, Any]] = {}
+
+    for variant in variants:
+        if not isinstance(variant, dict):
+            continue
+        product_id = str(variant.get("product_id") or "").strip()
+        if not product_id:
+            continue
+        target = by_product_id.setdefault(
+            product_id,
+            {"formats_ml": [], "gtins": [], "mpns": [], "aliases": []},
+        )
+
+        size = variant.get("size_ml")
+        if size not in (None, ""):
+            try:
+                value = float(size)
+                if value not in target["formats_ml"]:
+                    target["formats_ml"].append(value)
+            except (TypeError, ValueError):
+                pass
+
+        for source_key, target_key in (("gtins", "gtins"), ("mpns", "mpns")):
+            values = variant.get(source_key) or []
+            if isinstance(values, str):
+                values = [values]
+            if isinstance(values, list):
+                for value in values:
+                    value = str(value or "").strip()
+                    if value and value not in target[target_key]:
+                        target[target_key].append(value)
+
+        aliases = variant.get("aliases") or []
+        if isinstance(aliases, str):
+            aliases = [aliases]
+        if isinstance(aliases, list):
+            for alias in aliases:
+                alias = str(alias or "").strip()
+                if alias and alias not in target["aliases"]:
+                    target["aliases"].append(alias)
+
+    catalog: List[Dict[str, Any]] = []
+
+    for product in products:
+        if not isinstance(product, dict):
+            continue
+
+        product_id = str(product.get("product_id") or "").strip()
+        brand = str(product.get("brand_name") or "").strip()
+        name = str(product.get("canonical_name") or "").strip()
+
+        if not product_id or not name:
+            continue
+
+        data = by_product_id.get(
+            product_id,
+            {"formats_ml": [], "gtins": [], "mpns": [], "aliases": []},
+        )
+
+        aliases = list(product.get("aliases") or []) if isinstance(product.get("aliases"), list) else []
+        aliases.extend(data["aliases"])
+        aliases = list(dict.fromkeys(str(x).strip() for x in aliases if str(x).strip()))
+
+        catalog.append({
+            "id": product_id,
+            "brand": brand,
+            "name": name,
+            "aliases": aliases,
+            "formats_ml": data["formats_ml"],
+            "gtins": data["gtins"],
+            "mpns": data["mpns"],
+        })
+
+    return catalog
+
+
+_PRODUCT_MATCHER_CATALOG = _load_product_matcher_catalog()
+_PRODUCT_MATCHER = ProductMatcher(_PRODUCT_MATCHER_CATALOG)
 
 FRONTEND_INDEX = (
     Path(__file__).resolve().parent.parent
@@ -1483,17 +1588,19 @@ def _validate_candidate(
     if not matches(product, query):
         return None
 
-    # Il main usa il matcher centrale anche per la propagazione finale
-    # dell'identità risolta. Per le famiglie presenti nel Registry il
-    # matcher restituisce il candidato canonicalizzato con tutti i campi
-    # di identità; per le altre famiglie il matching generico già esistente
-    # del main resta invariato.
-    matched_product = match_product(
-        product,
-        query,
-        catalog=[],
-        family_registry=FAMILY_REGISTRY,
-    )
+    # Il main usa il matcher centrale per la risoluzione dell'identità.
+    # Il query matching/family validation resta quello già esistente sopra;
+    # il matcher riceve il candidato RAW e restituisce la sua identità
+    # canonica dal catalogo autorevole.
+    try:
+        matched_product = _PRODUCT_MATCHER.match(product)
+    except Exception as exc:
+        print(
+            "PRODUCT_MATCHER_RUNTIME_ERROR:",
+            f"{type(exc).__name__}: {exc}",
+            flush=True,
+        )
+        matched_product = None
 
     if matched_product is not None:
         return matched_product
