@@ -132,10 +132,16 @@ def search(q):
  s=requests.Session()
  try:
   out=[];seen=set()
+  # Store search is only one discovery channel. Always merge sitemap
+  # candidates so a partial internal-search response cannot hide valid
+  # products that are present in the catalogue.
   candidates=search_page_urls(s,q)
-  if not candidates:
-   candidates=[u for u in sitemap(s) if matches(u,q)][:50]
-  for u in candidates[:50]:
+  sitemap_candidates=[u for u in sitemap(s) if matches(u,q)]
+  merged=[];candidate_seen=set()
+  for u in candidates+sitemap_candidates:
+   if u in candidate_seen:continue
+   candidate_seen.add(u);merged.append(u)
+  for u in merged[:80]:
    x=product(s,u,q)
    if x and x["url"] not in seen:
     seen.add(x["url"]);out.append(x)
