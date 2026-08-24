@@ -1602,10 +1602,45 @@ def _validate_candidate(
         )
         matched_product = None
 
-    if matched_product is not None:
-        return matched_product
+    if matched_product is None:
+        matched_product = dict(product)
 
-    return product
+    # Per le famiglie governate dal Family Registry, _catalog_match()
+    # contiene l'identità risolta dalla regola autorevole. Questa identità
+    # deve essere propagata nel candidato finale: non può restare confinata
+    # al risultato intermedio del matcher/diagnostica.
+    try:
+        resolved_identity = _catalog_match(
+            product,
+            query,
+        )
+    except Exception as exc:
+        print(
+            "FAMILY_REGISTRY_RUNTIME_ERROR:",
+            f"{type(exc).__name__}: {exc}",
+            flush=True,
+        )
+        resolved_identity = None
+
+    if isinstance(resolved_identity, dict):
+        matched_product.update(
+            {
+                key: resolved_identity[key]
+                for key in (
+                    "family_id",
+                    "family_name",
+                    "canonical_name",
+                    "catalog_variant",
+                )
+                if resolved_identity.get(key) not in (None, "")
+            }
+        )
+
+        if matched_product.get("canonical_name"):
+            matched_product["match_method"] = "family_registry_alias"
+            matched_product["name"] = matched_product["canonical_name"]
+
+    return matched_product
 
 
 def _validate_candidates_parallel(
