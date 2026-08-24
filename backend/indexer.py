@@ -173,6 +173,32 @@ def load_catalog(
             item.get(
                 "family_name"
             )
+            or item.get(
+                "family"
+            )
+            or item.get(
+                "name"
+            )
+            or ""
+        ).strip()
+
+        canonical_name = str(
+            item.get(
+                "canonical_name"
+            )
+            or item.get(
+                "catalog_variant"
+            )
+            or item.get(
+                "name"
+            )
+            or family
+        ).strip()
+
+        family_id = str(
+            item.get(
+                "family_id"
+            )
             or ""
         ).strip()
 
@@ -180,6 +206,9 @@ def load_catalog(
             continue
 
         if not family:
+            continue
+
+        if not canonical_name:
             continue
 
         aliases = item.get(
@@ -210,8 +239,11 @@ def load_catalog(
                 ).strip(),
                 "brand": brand,
                 "brand_name": brand,
-                "name": family,
+                "name": canonical_name,
+                "family_id": family_id,
                 "family_name": family,
+                "canonical_name": canonical_name,
+                "catalog_variant": canonical_name,
                 "concentration": str(
                     item.get(
                         "concentration"
@@ -244,17 +276,26 @@ def canonical_query(
         or ""
     ).strip()
 
-    family = str(
+    canonical_name = str(
         product.get(
+            "canonical_name"
+        )
+        or product.get(
+            "catalog_variant"
+        )
+        or product.get(
             "name"
+        )
+        or product.get(
+            "family_name"
         )
         or ""
     ).strip()
 
-    if brand and family:
-        return f"{brand} {family}"
+    if brand and canonical_name:
+        return f"{brand} {canonical_name}"
 
-    return family or brand
+    return canonical_name or brand
 
 
 # ============================================================
@@ -485,6 +526,16 @@ def canonical_offer_matches(
         )
     )
 
+    # The central matcher is authoritative for a catalogued variant.
+    # Once it returns family_id + catalog_variant, the indexer must preserve
+    # that decision instead of re-matching the retailer title against the
+    # broader family name. This is what keeps aliases such as "Malibu Voor
+    # Mannen" or "Hawas Cobra" attached to their resolved variant.
+    authoritative_variant = bool(
+        str(offer.get("family_id") or "").strip()
+        and str(offer.get("catalog_variant") or "").strip()
+    )
+
     if brand:
         brand_tokens = [
             token
@@ -498,6 +549,18 @@ def canonical_offer_matches(
         ):
             return False
 
+    if authoritative_variant:
+        return True
+
+    family = family or _norm_text(
+        product.get(
+            "canonical_name"
+        )
+        or product.get(
+            "catalog_variant"
+        )
+    )
+
     if family:
         family_tokens = [
             token
@@ -505,11 +568,31 @@ def canonical_offer_matches(
             if len(token) >= 2
         ]
 
-        if family_tokens and not all(
+        aliases = product.get("aliases") or []
+        alias_matches = []
+        for alias in aliases:
+            alias_n = _norm_text(alias)
+            alias_tokens = [
+                token
+                for token in alias_n.split()
+                if len(token) >= 2
+            ]
+            if alias_tokens and all(
+                token in search_text
+                for token in alias_tokens
+            ):
+                alias_matches.append(alias_tokens)
+
+        if family_tokens and all(
             token in search_text
             for token in family_tokens
         ):
-            return False
+            return True
+
+        if alias_matches:
+            return True
+
+        return False
 
     return True
 
@@ -567,6 +650,28 @@ def attach_canonical_identity(
             or ""
         ).strip()
 
+        # The matcher owns variant resolution. Do not overwrite its canonical
+        # name with the family name. For Family Registry results, catalog_variant
+        # is the authoritative variant identity.
+        if (
+            str(item.get("family_id") or "").strip()
+            and str(item.get("catalog_variant") or "").strip()
+        ):
+            canonical_name = str(
+                item.get("catalog_variant")
+            ).strip()
+        else:
+            canonical_name = str(
+                item.get("canonical_name")
+                or item.get("catalog_variant")
+                or item.get("product_line")
+                or product.get("canonical_name")
+                or product.get("catalog_variant")
+                or product.get("name")
+                or product.get("family_name")
+                or ""
+            ).strip()
+
         enriched[
             "catalog_id"
         ] = product_id
@@ -581,7 +686,16 @@ def attach_canonical_identity(
 
         enriched[
             "canonical_name"
-        ] = family_name
+        ] = canonical_name
+
+        # Preserve the matcher-resolved family/variant metadata verbatim.
+        for key in (
+            "family_id",
+            "family_name",
+            "catalog_variant",
+        ):
+            if item.get(key) not in (None, ""):
+                enriched[key] = item[key]
 
         concentration = str(
             product.get(
