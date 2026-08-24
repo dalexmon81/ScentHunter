@@ -634,6 +634,125 @@ def parse_product_page(response, query):
     }
 
 
+def _xml_locs(text):
+    """Return sitemap <loc> values without depending on XML namespaces."""
+    if not text:
+        return []
+    try:
+        soup = BeautifulSoup(text, "xml")
+        values = [clean(node.get_text(strip=True)) for node in soup.find_all("loc")]
+        return [value for value in values if value]
+    except Exception:
+        return [
+            clean(value)
+            for value in re.findall(
+                r"<loc[^>]*>\s*(.*?)\s*</loc>",
+                text,
+                re.I | re.S,
+            )
+            if clean(value)
+        ]
+
+
+def _sitemap_urls(session, query, max_sitemaps=24, max_urls=80):
+    """Generic catalogue discovery from Deloox XML sitemaps.
+
+    Sitemap discovery supplements the storefront search instead of replacing
+    it. URL/query overlap is only a discovery filter; parse_product_page()
+    remains the final authority for product identity, price and stock.
+    """
+    wanted = set(query_tokens(query))
+    if not wanted:
+        return []
+
+    roots = [
+        BASE_URL + "/robots.txt",
+        BASE_URL + "/sitemap.xml",
+        BASE_URL + "/sitemap_index.xml",
+        BASE_URL + "/sitemap-index.xml",
+        BASE_URL + "/en/sitemap.xml",
+    ]
+
+    sitemap_queue = []
+    seen_sitemaps = set()
+    seen_products = set()
+
+    def add_sitemap(url):
+        url = clean(url)
+        if not url or url in seen_sitemaps or url in sitemap_queue:
+            return
+        sitemap_queue.append(url)
+
+    for root in roots[1:]:
+        add_sitemap(root)
+
+    # robots.txt is authoritative when the site publishes different sitemap
+    # locations. It is read only as a discovery index, never as a product seed.
+    try:
+        response = session.get(
+            roots[0],
+            headers=HEADERS,
+            timeout=TIMEOUT,
+            allow_redirects=True,
+        )
+        if response.ok:
+            for line in response.text.splitlines():
+                if line.lower().startswith("sitemap:"):
+                    add_sitemap(line.split(":", 1)[1].strip())
+    except requests.RequestException:
+        pass
+
+    product_urls = []
+    processed_maps = 0
+
+    while sitemap_queue and processed_maps < max_sitemaps and len(product_urls) < max_urls:
+        sitemap_url = sitemap_queue.pop(0)
+        if sitemap_url in seen_sitemaps:
+            continue
+        seen_sitemaps.add(sitemap_url)
+        processed_maps += 1
+
+        try:
+            response = session.get(
+                sitemap_url,
+                headers=HEADERS,
+                timeout=TIMEOUT,
+                allow_redirects=True,
+            )
+        except requests.RequestException:
+            continue
+
+        if not response.ok:
+            continue
+
+        for value in _xml_locs(response.text):
+            low = value.lower()
+            if low.endswith(".xml") or "sitemap" in low:
+                add_sitemap(value)
+                continue
+
+            if "/product/" not in low:
+                continue
+
+            url = value.split("#", 1)[0].split("?", 1)[0]
+            if not same_host(url) or url in seen_products:
+                continue
+
+            # Discovery is intentionally permissive: every meaningful query
+            # token must occur somewhere in the product URL. The product page
+            # validator still checks the complete original query.
+            url_tokens = set(query_tokens(url))
+            if not wanted.issubset(url_tokens):
+                continue
+
+            seen_products.add(url)
+            product_urls.append(url)
+            if len(product_urls) >= max_urls:
+                break
+
+    return product_urls
+
+
 def search(query):
     query = clean(query)
 
@@ -664,14 +783,25 @@ def search(query):
             response.url,
         )
 
+        # The live search is only one discovery channel. Always supplement it
+        # with the product sitemap so a partial search result set cannot hide
+        # valid products that are present in the catalogue.
+        search_urls = [candidate["url"] for candidate in candidates[:40]]
+        sitemap_urls = _sitemap_urls(session, query, max_sitemaps=24, max_urls=40)
+
+        merged_urls = []
+        seen_urls = set()
+        for url in search_urls + sitemap_urls:
+            if url in seen_urls:
+                continue
+            seen_urls.add(url)
+            merged_urls.append(url)
+
         results = []
         seen = set()
 
-        # The search page is the only discovery source.
-        # Each discovered product is validated on its own product page.
-        for candidate in candidates:
-            url = candidate["url"]
-
+        # Every discovered product is validated on its own product page.
+        for url in merged_urls:
             if url in seen:
                 continue
 
