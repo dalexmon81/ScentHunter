@@ -634,18 +634,6 @@ def _load_family_registry() -> List[Dict[str, Any]]:
         if not isinstance(query_aliases, list):
             query_aliases = []
 
-        excluded_values = []
-        for key in ("excluded_products", "excluded_variants", "excluded_aliases"):
-            values = family.get(key) or []
-            if isinstance(values, str):
-                values = [values]
-            if isinstance(values, list):
-                excluded_values.extend(
-                    str(value).strip()
-                    for value in values
-                    if str(value or "").strip()
-                )
-
         output.append(
             {
                 "family_id": str(
@@ -660,7 +648,6 @@ def _load_family_registry() -> List[Dict[str, Any]]:
                     if str(value or "").strip()
                 ],
                 "variants": normalized_variants,
-                "excluded": list(dict.fromkeys(excluded_values)),
             }
         )
 
@@ -729,29 +716,6 @@ def _catalog_product_text(product: Dict[str, Any]) -> str:
     ).strip()
 
 
-def _catalog_product_is_excluded(
-    product: Dict[str, Any],
-    family: Dict[str, Any],
-) -> bool:
-    """Return True when a cataloged family explicitly excludes the product."""
-    excluded = family.get("excluded") or []
-    if not excluded:
-        return False
-
-    candidate_text = _catalog_clean_text(
-        _catalog_product_text(product)
-    )
-    if not candidate_text:
-        return False
-
-    candidate_key = catalog_variant_key(candidate_text)
-    return any(
-        candidate_key == catalog_variant_key(_catalog_clean_text(value))
-        for value in excluded
-        if _catalog_clean_text(value)
-    )
-
-
 def _catalog_variant_for_product(
     product: Dict[str, Any],
     family: Dict[str, Any],
@@ -766,9 +730,6 @@ def _catalog_variant_for_product(
      famiglia senza una variante autorizzata.
     """
     if not _catalog_brand_matches(product, family):
-        return None
-
-    if _catalog_product_is_excluded(product, family):
         return None
 
     candidate_text = _catalog_clean_text(
@@ -804,11 +765,64 @@ def _catalog_variant_for_product(
             if not alias_clean:
                 continue
 
-            if (
-                catalog_variant_key(candidate_text)
-                == catalog_variant_key(alias_clean)
-            ):
+            candidate_key = catalog_variant_key(candidate_text)
+            alias_key = catalog_variant_key(alias_clean)
+
+            if candidate_key == alias_key:
                 return variant
+
+            # Retailers frequently append a redundant audience marker to an
+            # otherwise exact product identity, for example
+            # "... For Her (woman)".  The audience is already part of the
+            # authorized alias, so that trailing descriptive marker must not
+            # make an otherwise valid catalog variant fail.  This is generic:
+            # it applies to any catalog variant whose explicit gender agrees
+            # with the appended retailer marker.
+            alias_gender = _catalog_gender_class(alias_clean)
+            candidate_gender = _catalog_gender_class(candidate_text)
+
+            if alias_gender != "none" and candidate_gender == alias_gender:
+                gender_tokens = {
+                    "male": {
+                        "him", "men", "man", "homme", "heren",
+                        "mannen", "male",
+                    },
+                    "female": {
+                        "her", "women", "woman", "femme", "dames",
+                        "vrouwen", "female",
+                    },
+                    "mixed": set(),
+                    "none": set(),
+                }[alias_gender]
+
+                candidate_tokens = candidate_key.split()
+                alias_tokens = alias_key.split()
+
+                # Only remove standalone audience words from the candidate.
+                # "for him" / "for her" remains intact because the
+                # pre-existing variant identity is represented by the alias.
+                reduced_candidate = " ".join(
+                    token
+                    for token in candidate_tokens
+                    if token not in gender_tokens
+                )
+                reduced_alias = " ".join(alias_tokens)
+
+                # The remaining product identity must still match exactly;
+                # this prevents one gendered variant from matching another.
+                alias_identity_tokens = [
+                    token
+                    for token in reduced_alias.split()
+                    if token not in {"him", "her"}
+                ]
+                candidate_identity_tokens = [
+                    token
+                    for token in reduced_candidate.split()
+                    if token not in {"him", "her"}
+                ]
+
+                if candidate_identity_tokens == alias_identity_tokens:
+                    return variant
 
     return None
 
@@ -2583,20 +2597,21 @@ def diagnose_notino(q: str):
 
     try:
         module = importlib.import_module("scrapers.notino.scraper")
-        debug_fn = getattr(module, "debug_search", None)
+        diagnose_fn = getattr(module, "diagnose", None)
 
-        if not callable(debug_fn):
+        if not callable(diagnose_fn):
             return {
                 "ok": False,
                 "store": "notino",
                 "query": query,
-                "error": "Notino scraper has no debug_search() function",
+                "error": "Notino scraper has no diagnose() function",
             }
 
         return {
             "ok": True,
             "store": "notino",
-            **debug_fn(query),
+            "query": query,
+            "diagnostic": diagnose_fn(query),
         }
 
     except Exception as exc:
