@@ -1,36 +1,44 @@
 """
-ScentHunter - Point 1 - Generic discovery diagnostic
+ScentHunter - 5 phase pipeline diagnostic
 
-Questo file NON modifica gli scraper, main.py o l'index.
+This file is diagnostic only. It does NOT modify main.py, scrapers,
+product_index.py, product_matcher.py or the SQLite index.
 
-Serve a isolare il punto esatto in cui un candidato viene perso:
+It follows the five diagnostic phases discussed for the matcher/indexer
+contract:
 
-query
- -> build_search_attempts()
- -> scraper.search()/scrape()
- -> risultati grezzi restituiti dallo scraper
- -> deduplicazione per store
- -> matches() centrale
- -> risultati finali
+1. contract audit;
+2. discovery/extraction separated from validation;
+3. canonical_name / catalog_variant preservation;
+4. variant-aware identity/grouping audit;
+5. rejection diagnostics for every candidate.
 
-La diagnostica è generica e NON contiene eccezioni per singoli profumi.
+Usage from backend/:
 
-Uso:
-    python diagnostic_search.py "Liquid Brun Limited Edition"
+    python diagnostic_search.py "YOUR QUERY"
 
-Il report viene salvato in:
-    diagnostic_search_report.json
+Optional:
+
+    python diagnostic_search.py "YOUR QUERY" --stores bplatz deloox
+    python diagnostic_search.py "YOUR QUERY" --json-only
+    python diagnostic_search.py "YOUR QUERY" --output diagnostic_search_report.json
+
+The diagnostic uses the real scraper modules and the current main.py.
+It is deliberately generic: no product/store-specific rules are embedded.
 """
 
 from __future__ import annotations
 
 import argparse
 import importlib
+import inspect
 import json
 import os
+import re
 import sys
 import traceback
-from typing import Any, Dict, List, Tuple
+from typing import Any, Dict, List, Optional, Tuple
+
 
 CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
 PROJECT_ROOT = os.path.dirname(CURRENT_DIR)
@@ -43,15 +51,22 @@ if PROJECT_ROOT not in sys.path:
 import main as scent_main
 
 
-STORES = list(scent_main.STORES)
+DEFAULT_OUTPUT = os.path.join(
+    CURRENT_DIR,
+    "diagnostic_search_report.json",
+)
 
 
-def short(value: Any) -> str:
+def text(value: Any) -> str:
     return str(value or "").strip()
 
 
-def safe_product_name(item: Dict[str, Any]) -> str:
-    return short(
+def normalized(value: Any) -> str:
+    return scent_main.norm(value)
+
+
+def safe_name(item: Dict[str, Any]) -> str:
+    return text(
         scent_main.product_field(
             item,
             "name",
@@ -62,7 +77,7 @@ def safe_product_name(item: Dict[str, Any]) -> str:
 
 
 def safe_brand(item: Dict[str, Any]) -> str:
-    return short(
+    return text(
         scent_main.product_field(
             item,
             "brand",
@@ -71,74 +86,81 @@ def safe_brand(item: Dict[str, Any]) -> str:
     )
 
 
-def candidate_summary(
+def identity_value(item: Dict[str, Any], *keys: str) -> str:
+    return text(
+        scent_main.identity_value(
+            item,
+            *keys,
+        )
+    )
+
+
+def base_candidate_summary(
     item: Dict[str, Any],
     store: str,
     attempt: str,
     raw_index: int,
 ) -> Dict[str, Any]:
-    name = safe_product_name(item)
-    brand = safe_brand(item)
-
     return {
         "store": store,
         "attempt": attempt,
         "raw_index": raw_index,
-        "name": name,
-        "brand": brand,
-        "url": short(item.get("url")),
-        "price": short(item.get("price")),
+        "name": safe_name(item),
+        "brand": safe_brand(item),
+        "url": text(item.get("url")),
+        "price": text(item.get("price")),
         "available": item.get("available"),
-        "availability": short(
+        "availability": text(
             scent_main.product_availability(item)
         ),
         "size_ml": scent_main.product_size_ml(item),
-        "concentration": scent_main.product_concentration(item),
-        "store_product_id": short(
-            scent_main.identity_value(
-                item,
-                "store_product_id",
-                "product_id",
-                "catalog_id",
-            )
+        "concentration": text(
+            scent_main.product_concentration(item)
         ),
-        "store_variant_id": short(
-            scent_main.identity_value(
-                item,
-                "store_variant_id",
-                "variant_id",
-            )
+        "store_product_id": identity_value(
+            item,
+            "store_product_id",
+            "product_id",
+            "catalog_id",
         ),
-        "gtin": short(
-            scent_main.identity_value(
-                item,
-                "gtin",
-                "ean",
-                "ean13",
-                "barcode",
-                "upc",
-            )
+        "store_variant_id": identity_value(
+            item,
+            "store_variant_id",
+            "variant_id",
         ),
-        "sku": short(
-            scent_main.identity_value(item, "sku")
+        "gtin": identity_value(
+            item,
+            "gtin",
+            "ean",
+            "ean13",
+            "barcode",
+            "upc",
         ),
+        "mpn": identity_value(
+            item,
+            "mpn",
+            "manufacturer_part_number",
+            "manufacturerNumber",
+        ),
+        "sku": identity_value(
+            item,
+            "sku",
+        ),
+        "family_id": text(item.get("family_id")),
+        "family_name": text(item.get("family_name")),
+        "canonical_name": text(item.get("canonical_name")),
+        "catalog_variant": text(item.get("catalog_variant")),
+        "match_method": text(item.get("match_method")),
     }
 
 
-def generic_target_overlap(
+def target_overlap(
     item: Dict[str, Any],
     query: str,
 ) -> Dict[str, Any]:
-    """
-    Diagnostica puramente informativa.
-
-    NON decide se un candidato è corretto.
-    Serve solo a evidenziare risultati grezzi che condividono
-    token con la query, così sono facili da controllare.
-    """
     query_tokens = [
         token
-        for token in scent_main.norm(query).split()
+        for token in normalized(query).split()
         if token not in scent_main.IGNORED_WORDS
         and token
     ]
@@ -164,22 +186,297 @@ def generic_target_overlap(
     }
 
 
-def load_search_function(store: str):
-    module = importlib.import_module(
-        f"scrapers.{store}.scraper"
+def current_identity_key(item: Dict[str, Any]) -> List[Any]:
+    return list(
+        scent_main.product_identity_key(item)
     )
 
-    search_fn = getattr(module, "search", None)
 
-    if not callable(search_fn):
-        search_fn = getattr(module, "scrape", None)
+def proposed_variant_key(item: Dict[str, Any]) -> List[str]:
+    family_id = text(item.get("family_id"))
+    canonical = text(
+        item.get("canonical_name")
+        or item.get("catalog_variant")
+    )
 
-    if not callable(search_fn):
-        raise RuntimeError(
-            f"{store}: scraper senza funzione search()/scrape()"
+    if family_id and canonical:
+        variant = normalized(canonical)
+        return [
+            family_id,
+            variant,
+        ]
+
+    return [
+        normalized(
+            item.get("brand")
+            or item.get("source_brand")
+        ),
+        normalized(
+            item.get("name")
+            or item.get("title")
+            or item.get("product_name")
+        ),
+    ]
+
+
+def classify_rejection(
+    item: Dict[str, Any],
+    query: str,
+) -> Dict[str, Any]:
+    """
+    Diagnostic classification only.
+
+    It never decides acceptance. The authoritative decision remains
+    scent_main.matches().
+    """
+    name = safe_name(item)
+    query_normalized = normalized(query)
+    name_normalized = normalized(name)
+
+    reasons: List[str] = []
+
+    if not name_normalized:
+        reasons.append("missing_product_name")
+
+    if scent_main.has_small_size(item) and not re.search(
+        r"(?<!\d)\d+(?:[.,]\d+)?\s*(?:ml|cl)\b",
+        query_normalized,
+    ):
+        reasons.append("small_size_without_requested_size")
+
+    for phrase in scent_main.NON_PERFUME:
+        phrase_normalized = normalized(phrase)
+        if (
+            phrase_normalized
+            and phrase_normalized in name_normalized
+            and phrase_normalized not in query_normalized
+        ):
+            reasons.append("non_perfume_product")
+
+    catalog_family = None
+    catalog_match = None
+
+    try:
+        catalog_family = scent_main._catalog_family_for_query(
+            query
+        )
+    except Exception:
+        pass
+
+    if catalog_family is not None:
+        try:
+            catalog_match = scent_main._catalog_match(
+                item,
+                query,
+            )
+        except Exception as exc:
+            reasons.append(
+                "catalog_validation_error"
+            )
+            return {
+                "reasons": reasons,
+                "catalog_family": text(
+                    catalog_family.get("family_id")
+                ),
+                "catalog_match_error": (
+                    f"{type(exc).__name__}: {exc}"
+                ),
+            }
+
+        if catalog_match is None:
+            reasons.append(
+                "catalog_variant_not_resolved"
+            )
+    else:
+        try:
+            generic_match = scent_main.matches(
+                item,
+                query,
+            )
+        except Exception:
+            generic_match = None
+
+        if generic_match is False:
+            reasons.append(
+                "generic_match_rejected"
+            )
+
+    if not reasons:
+        reasons.append(
+            "rejected_without_specific_diagnostic_reason"
         )
 
-    return module, search_fn
+    return {
+        "reasons": list(dict.fromkeys(reasons)),
+        "catalog_family": (
+            text(catalog_family.get("family_id"))
+            if isinstance(catalog_family, dict)
+            else ""
+        ),
+        "catalog_match": (
+            {
+                "family_id": text(
+                    catalog_match.get("family_id")
+                ),
+                "family_name": text(
+                    catalog_match.get("family_name")
+                ),
+                "canonical_name": text(
+                    catalog_match.get("canonical_name")
+                ),
+                "catalog_variant": text(
+                    catalog_match.get("catalog_variant")
+                ),
+            }
+            if isinstance(catalog_match, dict)
+            else None
+        ),
+    }
+
+
+def audit_contract() -> Dict[str, Any]:
+    result: Dict[str, Any] = {
+        "phase": 1,
+        "status": "unknown",
+        "checks": [],
+    }
+
+    try:
+        source = inspect.getsource(scent_main)
+        uses_product_matcher = (
+            "ProductMatcher" in source
+            or "product_matcher" in source
+        )
+    except Exception:
+        uses_product_matcher = None
+
+    result["checks"].append(
+        {
+            "check": "central_product_matcher_used_by_main",
+            "value": uses_product_matcher,
+            "expected": True,
+        }
+    )
+
+    registry_fields = {
+        "family_id": False,
+        "family_name": False,
+        "canonical_name": False,
+        "catalog_variant": False,
+        "match_method": False,
+    }
+
+    try:
+        families = getattr(
+            scent_main,
+            "FAMILY_REGISTRY",
+            [],
+        )
+        for family in families:
+            for variant in family.get("variants", []):
+                if variant.get("canonical_name"):
+                    registry_fields["canonical_name"] = True
+                    registry_fields["catalog_variant"] = True
+                    break
+            if family.get("family_id"):
+                registry_fields["family_id"] = True
+            if family.get("query_aliases"):
+                registry_fields["family_name"] = True
+    except Exception:
+        pass
+
+    result["checks"].append(
+        {
+            "check": "registry_identity_fields",
+            "value": registry_fields,
+            "expected": {
+                "family_id": True,
+                "family_name": True,
+                "canonical_name": True,
+                "catalog_variant": True,
+                "match_method": True,
+            },
+        }
+    )
+
+    try:
+        import product_matcher
+
+        result["checks"].append(
+            {
+                "check": "product_matcher_importable",
+                "value": True,
+            }
+        )
+
+        catalog_path = os.path.join(
+            CURRENT_DIR,
+            "product_catalog.json",
+        )
+
+        if os.path.exists(catalog_path):
+            with open(
+                catalog_path,
+                "r",
+                encoding="utf-8",
+            ) as file:
+                payload = json.load(file)
+
+            products = payload.get("products", [])
+            if products:
+                sample = products[0]
+                parsed = (
+                    product_matcher.CatalogProduct.from_dict(
+                        sample
+                    )
+                )
+
+                result["checks"].append(
+                    {
+                        "check": "product_matcher_catalog_schema_compatibility",
+                        "value": {
+                            "catalog_product_id": text(
+                                sample.get("product_id")
+                            ),
+                            "matcher_catalog_id": parsed.catalog_id,
+                            "catalog_canonical_name": text(
+                                sample.get("canonical_name")
+                            ),
+                            "matcher_name": parsed.name,
+                            "catalog_brand": text(
+                                sample.get("brand_name")
+                            ),
+                            "matcher_brand": parsed.brand,
+                        },
+                        "expected": "catalog and matcher fields populated",
+                    }
+                )
+    except Exception as exc:
+        result["checks"].append(
+            {
+                "check": "product_matcher_audit_error",
+                "error": f"{type(exc).__name__}: {exc}",
+            }
+        )
+
+    failed = []
+    for check in result["checks"]:
+        expected = check.get("expected")
+        value = check.get("value")
+
+        if (
+            expected is True
+            and value is not True
+        ):
+            failed.append(check["check"])
+
+    result["status"] = (
+        "FAIL"
+        if failed
+        else "PASS"
+    )
+    result["failed_checks"] = failed
+    return result
 
 
 def run_store(
@@ -206,51 +503,84 @@ def run_store(
     }
 
     try:
-        module, search_fn = load_search_function(store)
+        module = importlib.import_module(
+            f"scrapers.{store}.scraper"
+        )
+        search_fn = getattr(module, "search", None)
+        if not callable(search_fn):
+            search_fn = getattr(module, "scrape", None)
+
+        if not callable(search_fn):
+            raise RuntimeError(
+                f"{store}: scraper senza funzione search()/scrape()"
+            )
+
         report["scraper_module"] = module.__name__
+
     except Exception as exc:
         report["status"] = "error"
-        report["errors"].append({
-            "stage": "load_scraper",
-            "error": f"{type(exc).__name__}: {exc}",
-            "traceback": traceback.format_exc(),
-        })
+        report["errors"].append(
+            {
+                "stage": "load_scraper",
+                "error": f"{type(exc).__name__}: {exc}",
+                "traceback": traceback.format_exc(),
+            }
+        )
+        report["summary"] = {
+            "attempt_count": len(attempts),
+            "raw_total": 0,
+            "unique_after_dedup": 0,
+            "duplicates_removed": 0,
+            "matched_total": 0,
+            "non_matched_total": 0,
+            "error_total": len(report["errors"]),
+        }
         return report
 
-    raw_candidates: List[Tuple[str, int, Dict[str, Any]]] = []
+    raw_candidates: List[
+        Tuple[str, int, Dict[str, Any]]
+    ] = []
 
     for attempt in attempts:
         try:
             results = search_fn(attempt) or []
         except Exception as exc:
-            report["errors"].append({
-                "stage": "scraper_search",
-                "attempt": attempt,
-                "error": f"{type(exc).__name__}: {exc}",
-                "traceback": traceback.format_exc(),
-            })
-            report["raw_by_attempt"].append({
-                "attempt": attempt,
-                "count": 0,
-                "status": "error",
-            })
+            report["errors"].append(
+                {
+                    "stage": "scraper_search",
+                    "attempt": attempt,
+                    "error": f"{type(exc).__name__}: {exc}",
+                    "traceback": traceback.format_exc(),
+                }
+            )
+            report["raw_by_attempt"].append(
+                {
+                    "attempt": attempt,
+                    "count": 0,
+                    "status": "error",
+                }
+            )
             continue
 
         if not isinstance(results, list):
-            report["errors"].append({
-                "stage": "scraper_search",
-                "attempt": attempt,
-                "error": (
-                    "Risposta non-list: "
-                    f"{type(results).__name__}"
-                ),
-            })
-            report["raw_by_attempt"].append({
-                "attempt": attempt,
-                "count": 0,
-                "status": "invalid_response",
-                "response_type": type(results).__name__,
-            })
+            report["errors"].append(
+                {
+                    "stage": "scraper_search",
+                    "attempt": attempt,
+                    "error": (
+                        "Risposta non-list: "
+                        f"{type(results).__name__}"
+                    ),
+                }
+            )
+            report["raw_by_attempt"].append(
+                {
+                    "attempt": attempt,
+                    "count": 0,
+                    "status": "invalid_response",
+                    "response_type": type(results).__name__,
+                }
+            )
             continue
 
         report["raw_total"] += len(results)
@@ -259,86 +589,111 @@ def run_store(
 
         for raw_index, item in enumerate(results):
             if not isinstance(item, dict):
-                attempt_items.append({
-                    "raw_index": raw_index,
-                    "invalid_item_type": type(item).__name__,
-                })
+                attempt_items.append(
+                    {
+                        "raw_index": raw_index,
+                        "invalid_item_type": type(item).__name__,
+                    }
+                )
                 continue
 
             product = dict(item)
             product.setdefault("store", store)
 
-            summary = candidate_summary(
+            summary = base_candidate_summary(
                 product,
                 store,
                 attempt,
                 raw_index,
             )
-            summary["target_overlap"] = generic_target_overlap(
+            summary["target_overlap"] = target_overlap(
                 product,
                 query,
+            )
+            summary["current_identity_key"] = (
+                current_identity_key(product)
+            )
+            summary["proposed_variant_key"] = (
+                proposed_variant_key(product)
             )
 
             attempt_items.append(summary)
             raw_candidates.append(
-                (attempt, raw_index, product)
+                (
+                    attempt,
+                    raw_index,
+                    product,
+                )
             )
 
-        report["raw_by_attempt"].append({
-            "attempt": attempt,
-            "count": len(results),
-            "status": "ok",
-            "candidates": attempt_items,
-        })
+        report["raw_by_attempt"].append(
+            {
+                "attempt": attempt,
+                "count": len(results),
+                "status": "ok",
+                "candidates": attempt_items,
+            }
+        )
 
-    # Tutti i risultati grezzi vengono conservati, compresi i duplicati.
     report["all_raw_candidates"] = [
         {
-            **candidate_summary(
+            **base_candidate_summary(
                 product,
                 store,
                 attempt,
                 raw_index,
             ),
-            "target_overlap": generic_target_overlap(
+            "target_overlap": target_overlap(
                 product,
                 query,
             ),
+            "current_identity_key": current_identity_key(
+                product
+            ),
+            "proposed_variant_key": proposed_variant_key(
+                product
+            ),
         }
-        for attempt, raw_index, product in raw_candidates
+        for attempt, raw_index, product
+        in raw_candidates
     ]
 
-    # Deduplicazione esattamente con la stessa identity key del main.
     seen = {}
 
     for attempt, raw_index, product in raw_candidates:
-        key = scent_main.product_identity_key(product)
+        key = current_identity_key(product)
 
         entry = {
-            **candidate_summary(
+            **base_candidate_summary(
                 product,
                 store,
                 attempt,
                 raw_index,
             ),
             "dedupe_key": list(key),
-            "target_overlap": generic_target_overlap(
+            "target_overlap": target_overlap(
                 product,
                 query,
             ),
+            "proposed_variant_key": proposed_variant_key(
+                product
+            ),
         }
 
-        if key in seen:
-            report["duplicates"].append({
-                "duplicate": entry,
-                "kept_candidate": seen[key],
-            })
+        if tuple(key) in seen:
+            report["duplicates"].append(
+                {
+                    "duplicate": entry,
+                    "kept_candidate": seen[
+                        tuple(key)
+                    ],
+                }
+            )
             continue
 
-        seen[key] = entry
+        seen[tuple(key)] = entry
         report["deduplicated_candidates"].append(entry)
 
-    # La fase successiva viene testata solo dopo la deduplicazione.
     for entry in report["deduplicated_candidates"]:
         product = {
             "store": store,
@@ -352,6 +707,7 @@ def run_store(
             "store_product_id": entry.get("store_product_id"),
             "store_variant_id": entry.get("store_variant_id"),
             "gtin": entry.get("gtin"),
+            "mpn": entry.get("mpn"),
             "sku": entry.get("sku"),
         }
 
@@ -363,17 +719,65 @@ def run_store(
                 )
             )
         except Exception as exc:
-            report["errors"].append({
-                "stage": "matches",
-                "candidate": entry,
-                "error": f"{type(exc).__name__}: {exc}",
-                "traceback": traceback.format_exc(),
-            })
+            report["errors"].append(
+                {
+                    "stage": "matches",
+                    "candidate": entry,
+                    "error": f"{type(exc).__name__}: {exc}",
+                    "traceback": traceback.format_exc(),
+                }
+            )
             continue
 
         if matched:
+            catalog_result = None
+            try:
+                catalog_result = scent_main._catalog_match(
+                    product,
+                    query,
+                )
+            except Exception:
+                catalog_result = None
+
+            if isinstance(catalog_result, dict):
+                enriched = dict(product)
+                enriched.update(
+                    {
+                        "family_id": text(
+                            catalog_result.get("family_id")
+                        ),
+                        "family_name": text(
+                            catalog_result.get("family_name")
+                        ),
+                        "canonical_name": text(
+                            catalog_result.get("canonical_name")
+                        ),
+                        "catalog_variant": text(
+                            catalog_result.get("catalog_variant")
+                        ),
+                    }
+                )
+                entry["resolved_identity"] = {
+                    "family_id": enriched["family_id"],
+                    "family_name": enriched["family_name"],
+                    "canonical_name": enriched["canonical_name"],
+                    "catalog_variant": enriched["catalog_variant"],
+                    "current_identity_key": current_identity_key(
+                        enriched
+                    ),
+                    "proposed_variant_key": proposed_variant_key(
+                        enriched
+                    ),
+                }
+
             report["matched_candidates"].append(entry)
+
         else:
+            diagnostic = classify_rejection(
+                product,
+                query,
+            )
+            entry["rejection_diagnostic"] = diagnostic
             report["non_matched_candidates"].append(entry)
 
     report["summary"] = {
@@ -391,250 +795,294 @@ def run_store(
         "non_matched_total": len(
             report["non_matched_candidates"]
         ),
-        "error_total": len(report["errors"]),
+        "error_total": len(
+            report["errors"]
+        ),
     }
 
     return report
 
 
-def run_query(query: str) -> Dict[str, Any]:
+def run_query(
+    query: str,
+    stores: Optional[List[str]] = None,
+) -> Dict[str, Any]:
+    selected_stores = (
+        stores
+        if stores is not None
+        else list(scent_main.STORES)
+    )
+
     report: Dict[str, Any] = {
         "query": query,
+        "contract_audit": audit_contract(),
         "stores": {},
         "global_summary": {},
     }
 
-    for store in STORES:
+    for store in selected_stores:
         report["stores"][store] = run_store(
             store,
             query,
         )
 
-    total_raw = 0
-    total_unique = 0
-    total_duplicates = 0
-    total_matched = 0
-    total_non_matched = 0
-    stores_with_zero_raw = []
-    stores_with_matches = []
-    stores_with_errors = []
+    counters = {
+        "raw_total": 0,
+        "unique_after_dedup": 0,
+        "duplicates_removed": 0,
+        "matched_total": 0,
+        "non_matched_total": 0,
+        "errors": 0,
+    }
+
+    rejection_reasons: Dict[str, int] = {}
+    stores_with_zero_raw: List[str] = []
+    stores_with_matches: List[str] = []
+    stores_with_errors: List[str] = []
 
     for store, store_report in report["stores"].items():
         summary = store_report.get("summary", {})
 
-        raw_total = int(
-            summary.get("raw_total", 0)
-        )
-        unique_total = int(
-            summary.get("unique_after_dedup", 0)
-        )
-        duplicate_total = int(
-            summary.get("duplicates_removed", 0)
-        )
-        matched_total = int(
-            summary.get("matched_total", 0)
-        )
-        non_matched_total = int(
-            summary.get("non_matched_total", 0)
-        )
+        for key in counters:
+            counters[key] += int(
+                summary.get(key, 0)
+            )
 
-        total_raw += raw_total
-        total_unique += unique_total
-        total_duplicates += duplicate_total
-        total_matched += matched_total
-        total_non_matched += non_matched_total
-
-        if raw_total == 0:
+        if int(summary.get("raw_total", 0)) == 0:
             stores_with_zero_raw.append(store)
 
-        if matched_total > 0:
+        if int(summary.get("matched_total", 0)) > 0:
             stores_with_matches.append(store)
 
         if store_report.get("errors"):
             stores_with_errors.append(store)
 
+        for candidate in store_report.get(
+            "non_matched_candidates",
+            [],
+        ):
+            diagnostic = candidate.get(
+                "rejection_diagnostic",
+                {},
+            )
+
+            for reason in diagnostic.get(
+                "reasons",
+                [],
+            ):
+                rejection_reasons[reason] = (
+                    rejection_reasons.get(reason, 0)
+                    + 1
+                )
+
     report["global_summary"] = {
-        "stores_total": len(STORES),
+        "stores_total": len(
+            report["stores"]
+        ),
         "stores_with_zero_raw": stores_with_zero_raw,
         "stores_with_matches": stores_with_matches,
         "stores_with_errors": stores_with_errors,
-        "raw_total": total_raw,
-        "unique_after_dedup": total_unique,
-        "duplicates_removed": total_duplicates,
-        "matched_total": total_matched,
-        "non_matched_total": total_non_matched,
+        **counters,
+        "rejection_reasons": dict(
+            sorted(
+                rejection_reasons.items(),
+                key=lambda item: (
+                    -item[1],
+                    item[0],
+                ),
+            )
+        ),
     }
 
     return report
 
 
-def print_report(report: Dict[str, Any]) -> None:
+def print_report(
+    report: Dict[str, Any],
+) -> None:
     print()
-    print("=" * 78)
-    print("SCENTHUNTER - POINT 1 DISCOVERY DIAGNOSTIC")
+    print("=" * 80)
+    print("SCENTHUNTER - 5 PHASE PIPELINE DIAGNOSTIC")
+    print("=" * 80)
     print(f"QUERY: {report['query']}")
-    print("=" * 78)
     print()
 
-    global_summary = report["global_summary"]
+    audit = report.get(
+        "contract_audit",
+        {},
+    )
 
-    print("GLOBAL SUMMARY")
     print(
-        f"  Raw restituiti dagli scraper : "
-        f"{global_summary['raw_total']}"
+        f"PHASE 1 - CONTRACT AUDIT: "
+        f"{audit.get('status', 'UNKNOWN')}"
     )
-    print(
-        f"  Unici dopo dedup             : "
-        f"{global_summary['unique_after_dedup']}"
-    )
-    print(
-        f"  Duplicati rimossi            : "
-        f"{global_summary['duplicates_removed']}"
-    )
-    print(
-        f"  Accettati da matches()       : "
-        f"{global_summary['matched_total']}"
-    )
-    print(
-        f"  Rifiutati da matches()       : "
-        f"{global_summary['non_matched_total']}"
-    )
+
+    for check in audit.get(
+        "checks",
+        [],
+    ):
+        print(
+            f"  - {check.get('check')}: "
+            f"{check.get('value')}"
+        )
+
+    summary = report["global_summary"]
+
     print()
+    print("PIPELINE TOTALS")
+    print(
+        f"  Raw                         : "
+        f"{summary['raw_total']}"
+    )
+    print(
+        f"  Unici dopo dedup            : "
+        f"{summary['unique_after_dedup']}"
+    )
+    print(
+        f"  Duplicati rimossi           : "
+        f"{summary['duplicates_removed']}"
+    )
+    print(
+        f"  Accettati da matches()      : "
+        f"{summary['matched_total']}"
+    )
+    print(
+        f"  Rifiutati da matches()      : "
+        f"{summary['non_matched_total']}"
+    )
+    print(
+        f"  Errori                      : "
+        f"{summary['errors']}"
+    )
 
-    for store, store_report in report["stores"].items():
-        summary = store_report.get("summary", {})
+    print()
+    print("PHASE 5 - REJECTION DIAGNOSTICS")
+    reasons = summary.get(
+        "rejection_reasons",
+        {},
+    )
 
-        print("-" * 78)
-        print(f"STORE: {store}")
-        print(
-            f"  Attempts       : "
-            f"{summary.get('attempt_count', 0)}"
-        )
-        print(
-            f"  Raw            : "
-            f"{summary.get('raw_total', 0)}"
-        )
-        print(
-            f"  Unici          : "
-            f"{summary.get('unique_after_dedup', 0)}"
-        )
-        print(
-            f"  Duplicati      : "
-            f"{summary.get('duplicates_removed', 0)}"
-        )
-        print(
-            f"  matches() TRUE : "
-            f"{summary.get('matched_total', 0)}"
-        )
-        print(
-            f"  matches() FALSE: "
-            f"{summary.get('non_matched_total', 0)}"
-        )
-        print(
-            f"  Errori         : "
-            f"{summary.get('error_total', 0)}"
-        )
-
-        print("  DISCOVERY PER QUERY:")
-        for attempt_data in store_report.get(
-            "raw_by_attempt",
-            [],
-        ):
+    if not reasons:
+        print("  Nessun rifiuto diagnosticato.")
+    else:
+        for reason, count in reasons.items():
             print(
-                f"    - {attempt_data.get('attempt')!r}: "
-                f"{attempt_data.get('count', 0)} raw"
+                f"  - {reason}: {count}"
             )
 
-        if store_report.get("all_raw_candidates"):
-            print("  RAW CANDIDATES:")
-            for candidate in store_report[
-                "all_raw_candidates"
+    for store, store_report in report["stores"].items():
+        store_summary = store_report.get(
+            "summary",
+            {},
+        )
+
+        print()
+        print("-" * 80)
+        print(f"STORE: {store}")
+        print(
+            f"  Raw={store_summary.get('raw_total', 0)} "
+            f"Unique={store_summary.get('unique_after_dedup', 0)} "
+            f"Duplicates={store_summary.get('duplicates_removed', 0)} "
+            f"Matched={store_summary.get('matched_total', 0)} "
+            f"Rejected={store_summary.get('non_matched_total', 0)} "
+            f"Errors={store_summary.get('error_total', 0)}"
+        )
+
+        if store_report.get(
+            "raw_by_attempt"
+        ):
+            print("  DISCOVERY:")
+            for attempt in store_report[
+                "raw_by_attempt"
             ]:
-                overlap = candidate.get(
-                    "target_overlap",
+                print(
+                    f"    {attempt.get('attempt')!r}: "
+                    f"{attempt.get('count', 0)} raw"
+                )
+
+        rejected = store_report.get(
+            "non_matched_candidates",
+            [],
+        )
+
+        if rejected:
+            print("  REJECTED CANDIDATES:")
+            for candidate in rejected[:20]:
+                diagnostic = candidate.get(
+                    "rejection_diagnostic",
                     {},
                 )
                 print(
-                    f"    [{candidate.get('attempt')!r}] "
-                    f"{candidate.get('name') or '-'}"
-                    f" | {candidate.get('brand') or '-'}"
-                    f" | {candidate.get('url') or '-'}"
-                    f" | overlap="
-                    f"{overlap.get('matched_tokens', [])}"
+                    f"    - {candidate.get('name') or '-'} "
+                    f"| reasons={diagnostic.get('reasons', [])}"
                 )
 
-        if store_report.get("duplicates"):
-            print("  DUPLICATI:")
-            for duplicate in store_report[
-                "duplicates"
-            ]:
-                dup = duplicate["duplicate"]
-                kept = duplicate["kept_candidate"]
+        resolved = [
+            candidate
+            for candidate in store_report.get(
+                "matched_candidates",
+                [],
+            )
+            if candidate.get(
+                "resolved_identity"
+            )
+        ]
+
+        if resolved:
+            print("  RESOLVED IDENTITIES:")
+            for candidate in resolved[:20]:
+                identity = candidate[
+                    "resolved_identity"
+                ]
                 print(
-                    f"    - {dup.get('name') or '-'}"
-                    f" -> duplicate di "
-                    f"{kept.get('name') or '-'}"
+                    f"    - {candidate.get('name') or '-'} "
+                    f"=> {identity.get('canonical_name') or '-'} "
+                    f"| family_id={identity.get('family_id') or '-'}"
                 )
 
-        if store_report.get("non_matched_candidates"):
-            print("  RIFIUTATI DA matches():")
-            for candidate in store_report[
-                "non_matched_candidates"
-            ]:
-                print(
-                    f"    - {candidate.get('name') or '-'}"
-                    f" | {candidate.get('url') or '-'}"
-                )
 
-        if store_report.get("errors"):
-            print("  ERRORI:")
-            for error in store_report["errors"]:
-                print(
-                    f"    - {error.get('stage')}: "
-                    f"{error.get('error')}"
-                )
+def parse_args() -> argparse.Namespace:
+    parser = argparse.ArgumentParser(
+        description=(
+            "Diagnostica generica delle cinque fasi "
+            "matcher/indexer ScentHunter."
+        )
+    )
 
-    print()
-    print("=" * 78)
-    print("INTERPRETAZIONE")
-    print("=" * 78)
-    print(
-        "1. Raw = 0: il candidato non è arrivato "
-        "all'orchestratore dallo scraper."
+    parser.add_argument(
+        "query",
+        help="Query reale da diagnosticare",
     )
-    print(
-        "2. Raw > 0 ma il prodotto non è tra i candidati: "
-        "controllare i risultati grezzi restituiti dallo scraper."
-    )
-    print(
-        "3. Il candidato è raw ma sparisce tra gli unici: "
-        "controllare la product_identity_key/deduplicazione."
-    )
-    print(
-        "4. Il candidato è unico ma matches() è FALSE: "
-        "solo in questo caso passare alla fase matching."
-    )
-    print()
 
+    parser.add_argument(
+        "--stores",
+        nargs="+",
+        default=None,
+        help="Limita il test agli store indicati",
+    )
 
-def main() -> None:
-    parser = argparse.ArgumentParser()
-    parser.add_argument("query")
     parser.add_argument(
         "--output",
-        default=os.path.join(
-            CURRENT_DIR,
-            "diagnostic_search_report.json",
-        ),
+        default=DEFAULT_OUTPUT,
+        help="File JSON del report",
     )
-    args = parser.parse_args()
 
-    query = short(args.query)
+    parser.add_argument(
+        "--json-only",
+        action="store_true",
+        help="Non stampa il report testuale",
+    )
 
-    if not query:
-        raise SystemExit("Query vuota.")
+    return parser.parse_args()
 
-    report = run_query(query)
+
+def main() -> int:
+    args = parse_args()
+
+    report = run_query(
+        args.query,
+        stores=args.stores,
+    )
 
     output_path = os.path.abspath(
         args.output
@@ -644,18 +1092,23 @@ def main() -> None:
         output_path,
         "w",
         encoding="utf-8",
-    ) as handle:
+    ) as file:
         json.dump(
             report,
-            handle,
+            file,
             ensure_ascii=False,
             indent=2,
         )
 
-    print_report(report)
-    print()
-    print(f"REPORT JSON: {output_path}")
+    if not args.json_only:
+        print_report(report)
+
+    print(
+        f"\nReport JSON: {output_path}"
+    )
+
+    return 0
 
 
 if __name__ == "__main__":
-    main()
+    raise SystemExit(main())
