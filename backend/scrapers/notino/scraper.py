@@ -18,7 +18,7 @@ SITEMAP_URL = BASE_URL + "/sitemap.xml"
 READER_BASE = "https://r.jina.ai/"
 TIMEOUT = 20
 READER_TIMEOUT = 12
-SCRAPER_VERSION = "notino-FR-generic-discovery-2026-08-24-v15-reader-product-identity-price-fix"
+SCRAPER_VERSION = "notino-FR-generic-discovery-2026-08-24-v16-adaptive-product-validation"
 
 HEADERS = {
     "User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
@@ -256,6 +256,67 @@ def _extract_product_price(text: Any) -> str:
         return _format_price(valid[-1])
     return ""
 
+
+
+
+def _stock_status(text: str, product_name: str = "") -> Optional[bool]:
+    """Return True for out-of-stock, False for in-stock, None when unknown.
+
+    Product pages can contain availability text for other products in
+    recommendations. Structured Offer availability is authoritative; textual
+    markers are accepted only when they are close to the current product name
+    or are clearly presented as the product's own status.
+    """
+    raw = html_lib.unescape(str(text or ""))
+    if not raw.strip():
+        return None
+
+    availability_values = re.findall(
+        r'"availability"\s*:\s*"([^"]+)"', raw, flags=re.I
+    )
+    for value in availability_values:
+        low = value.lower()
+        if any(marker in low for marker in ("outofstock", "soldout", "discontinued")):
+            return True
+        if any(marker in low for marker in ("instock", "limitedavailability", "preorder")):
+            return False
+
+    lines = [_clean(x) for x in raw.splitlines() if _clean(x)]
+    name_tokens = set(_query_tokens(product_name))
+    status_hits: List[Tuple[int, int, bool]] = []
+
+    for i, line in enumerate(lines):
+        if len(line) > 320:
+            continue
+        low = line.lower()
+        is_out = any(marker in low for marker in OUT_STOCK_MARKERS)
+        is_in = any(marker in low for marker in IN_STOCK_MARKERS)
+        if not (is_out or is_in):
+            continue
+
+        window = " ".join(lines[max(0, i - 3):min(len(lines), i + 4)])
+        window_tokens = set(_query_tokens(window))
+        relevance = 0
+        if name_tokens:
+            matched_name_tokens = sum(1 for token in name_tokens if token in window_tokens)
+            if matched_name_tokens >= min(3, len(name_tokens)):
+                relevance = 3
+            elif matched_name_tokens >= min(2, len(name_tokens)):
+                relevance = 2
+        # A very short status line immediately following a price/current-price
+        # line is also a strong product-level signal.
+        nearby = " ".join(lines[max(0, i - 2):i + 1]).lower()
+        if re.search(r"(?:prix actuel|\b\d{1,4}[.,]\d{2}\s*€)", nearby, re.I):
+            relevance = max(relevance, 2)
+
+        if relevance:
+            status_hits.append((relevance, -abs(i), is_out))
+
+    if status_hits:
+        status_hits.sort(reverse=True)
+        return status_hits[0][2]
+
+    return None
 
 def _is_excluded_notino_path(path: str) -> bool:
     low = (path or "").rstrip("/").lower()
@@ -1287,10 +1348,8 @@ def _reader_product(
     if not price:
         return None
 
-    low = content.lower()
-    out_marked = any(marker in low for marker in OUT_STOCK_MARKERS)
-    in_marked = any(marker in low for marker in IN_STOCK_MARKERS)
-    if out_marked and not in_marked:
+    stock = _stock_status(raw, name)
+    if stock is True:
         return None
 
     return {
@@ -1408,10 +1467,8 @@ def _product_details(
             candidate.get("card_text", "")
         )
 
-    low = page_text.lower()
-    if any(x in low for x in OUT_STOCK_MARKERS) and not any(
-        x in low for x in IN_STOCK_MARKERS
-    ):
+    stock = _stock_status(response.text, name)
+    if stock is True:
         return None
     return {"store": STORE, "name": _display_product_name(name, final_url, brand), "price": price, "url": final_url} if price else None
 
@@ -1423,21 +1480,34 @@ def search(query: str) -> List[Dict[str, Any]]:
     session = requests.Session()
     session.headers.update(HEADERS)
     try:
-        candidates, _ = _search_http_candidates(query, session=session)
-        candidates = _rank_candidates_for_product_lookup(candidates, limit=8, query=query)
+        all_candidates, _ = _search_http_candidates(query, session=session)
+        ranked = _rank_candidates_for_product_lookup(all_candidates, limit=20, query=query)
         results, seen = [], set()
-        for candidate in candidates:
-            result = _product_details(session, candidate, query)
-            if not result:
-                continue
-            key = (
-                result.get("url", "") + "|" + _clean(result.get("name"))
-            ).lower()
-            if key in seen:
-                continue
-            seen.add(key)
-            results.append(result)
-            if len(results) >= 10:
+
+        # Validate a bounded first batch, then expand only when necessary.
+        # This avoids wasting product-page requests when the first candidates
+        # already produce enough valid results, while still recovering products
+        # that were ranked below unavailable/non-product variants.
+        batch_size = min(8, len(ranked))
+        processed = 0
+        while processed < len(ranked) and len(results) < 10:
+            batch_end = min(processed + batch_size, len(ranked))
+            for candidate in ranked[processed:batch_end]:
+                result = _product_details(session, candidate, query)
+                if not result:
+                    continue
+                key = (
+                    result.get("url", "") + "|" + _clean(result.get("name"))
+                ).lower()
+                if key in seen:
+                    continue
+                seen.add(key)
+                results.append(result)
+                if len(results) >= 10:
+                    break
+            processed = batch_end
+            batch_size = min(6, len(ranked) - processed)
+            if batch_size <= 0:
                 break
         return results
     finally:
@@ -1515,8 +1585,8 @@ def diagnose(query: str) -> Dict[str, Any]:
     session.headers.update(HEADERS)
     try:
         candidates, discovery = _search_http_candidates(query, session=session)
-        candidates_for_product_pages = _rank_candidates_for_product_lookup(candidates, limit=8, query=query)
-        discovery["product_page_candidate_limit"] = 8
+        candidates_for_product_pages = _rank_candidates_for_product_lookup(candidates, limit=20, query=query)
+        discovery["product_page_candidate_limit"] = 20
         discovery["candidate_urls_before_product_page_limit"] = len(candidates)
         product_pages = []
         for candidate in candidates_for_product_pages:
