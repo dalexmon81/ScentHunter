@@ -634,6 +634,18 @@ def _load_family_registry() -> List[Dict[str, Any]]:
         if not isinstance(query_aliases, list):
             query_aliases = []
 
+        excluded_values = []
+        for key in ("excluded_products", "excluded_variants", "excluded_aliases"):
+            values = family.get(key) or []
+            if isinstance(values, str):
+                values = [values]
+            if isinstance(values, list):
+                excluded_values.extend(
+                    str(value).strip()
+                    for value in values
+                    if str(value or "").strip()
+                )
+
         output.append(
             {
                 "family_id": str(
@@ -648,6 +660,7 @@ def _load_family_registry() -> List[Dict[str, Any]]:
                     if str(value or "").strip()
                 ],
                 "variants": normalized_variants,
+                "excluded": list(dict.fromkeys(excluded_values)),
             }
         )
 
@@ -716,6 +729,29 @@ def _catalog_product_text(product: Dict[str, Any]) -> str:
     ).strip()
 
 
+def _catalog_product_is_excluded(
+    product: Dict[str, Any],
+    family: Dict[str, Any],
+) -> bool:
+    """Return True when a cataloged family explicitly excludes the product."""
+    excluded = family.get("excluded") or []
+    if not excluded:
+        return False
+
+    candidate_text = _catalog_clean_text(
+        _catalog_product_text(product)
+    )
+    if not candidate_text:
+        return False
+
+    candidate_key = catalog_variant_key(candidate_text)
+    return any(
+        candidate_key == catalog_variant_key(_catalog_clean_text(value))
+        for value in excluded
+        if _catalog_clean_text(value)
+    )
+
+
 def _catalog_variant_for_product(
     product: Dict[str, Any],
     family: Dict[str, Any],
@@ -730,6 +766,9 @@ def _catalog_variant_for_product(
      famiglia senza una variante autorizzata.
     """
     if not _catalog_brand_matches(product, family):
+        return None
+
+    if _catalog_product_is_excluded(product, family):
         return None
 
     candidate_text = _catalog_clean_text(
@@ -2544,21 +2583,20 @@ def diagnose_notino(q: str):
 
     try:
         module = importlib.import_module("scrapers.notino.scraper")
-        diagnose_fn = getattr(module, "diagnose", None)
+        debug_fn = getattr(module, "debug_search", None)
 
-        if not callable(diagnose_fn):
+        if not callable(debug_fn):
             return {
                 "ok": False,
                 "store": "notino",
                 "query": query,
-                "error": "Notino scraper has no diagnose() function",
+                "error": "Notino scraper has no debug_search() function",
             }
 
         return {
             "ok": True,
             "store": "notino",
-            "query": query,
-            "diagnostic": diagnose_fn(query),
+            **debug_fn(query),
         }
 
     except Exception as exc:
@@ -2584,20 +2622,21 @@ def diagnose_notino_search(q: str):
 
     try:
         module = importlib.import_module("scrapers.notino.scraper")
-        debug_fn = getattr(module, "debug_search", None)
+        diagnose_fn = getattr(module, "diagnose", None)
 
-        if not callable(debug_fn):
+        if not callable(diagnose_fn):
             return {
                 "ok": False,
                 "store": "notino",
                 "query": query,
-                "error": "Notino scraper has no debug_search() function",
+                "error": "Notino scraper has no diagnose() function",
             }
 
         return {
             "ok": True,
             "store": "notino",
-            **debug_fn(query),
+            "query": query,
+            "diagnostic": diagnose_fn(query),
         }
 
     except Exception as exc:
