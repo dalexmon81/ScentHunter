@@ -202,6 +202,15 @@ def extract_gender(*texts):
         ):
             return "women"
 
+        # Dutch/German/other storefront gender labels that may appear in
+        # product titles or identity metadata.
+        if re.search(
+            r"\b(vrouwen|dames|frau|frauen)\b",
+            value,
+            re.I,
+        ):
+            return "women"
+
     return "unknown"
 
 
@@ -233,7 +242,6 @@ def extract_price(soup, json_ld=None):
 
     text = soup.get_text(" ", strip=True)
 
-    # Generic fallback for the site's visible euro price.
     for match in re.finditer(
         r"(?:€\s*)?(\d{1,4}[.,]\d{2})(?:\s*€)?",
         text,
@@ -300,8 +308,6 @@ def extract_json_ld(soup):
 
 
 def visible_product_name(soup, json_ld=None):
-    # The visible product identity is authoritative. JSON-LD can contain
-    # shortened or inconsistent names, so it is used only as a final fallback.
     for selector in (
         "h1",
         'meta[property="og:title"]',
@@ -361,11 +367,9 @@ def query_matches_product(
     if not name_n or not query_n:
         return False
 
-    # A product URL must be a real Deloox product URL.
     if not product_url(url):
         return False
 
-    # Every meaningful query token must be present in the product identity.
     tokens = query_tokens(query)
 
     if not tokens:
@@ -376,14 +380,12 @@ def query_matches_product(
     if not all(token in identity for token in tokens):
         return False
 
-    # Explicit size requests must match the product size when available.
     requested_size = explicit_size(query)
 
     if requested_size is not None and size_ml is not None:
         if float(requested_size) != float(size_ml):
             return False
 
-    # Generic packaging/product-type protection.
     name_only = norm(name)
 
     for phrase in NON_PRODUCT_TERMS:
@@ -421,8 +423,6 @@ def extract_search_candidates(soup, page_url):
             or anchor.get_text(" ", strip=True)
         )
 
-        # Search result cards sometimes keep the product name in an
-        # image alt/title even when the anchor text is mostly price.
         image = anchor.find("img")
         if image:
             text = clean(
@@ -492,8 +492,6 @@ def parse_product_page(response, query):
         strip=True,
     )
 
-    # Size must come from the product identity. Scanning the entire page can
-    # pick up the size of a related/recommended product.
     size_ml = extract_size_ml(
         name,
     )
@@ -502,8 +500,6 @@ def parse_product_page(response, query):
         name,
     )
 
-    # The product name is authoritative for gender. Page-wide text is only a
-    # fallback and can never override an explicit gender in the product name.
     gender = extract_gender(
         name,
         text,
@@ -620,8 +616,6 @@ def parse_product_page(response, query):
             "concentration": concentration,
             "gender": gender,
         },
-
-        # Backward-compatible fields used by the current backend/frontend.
         "name": name,
         "price": (
             f"{price:.2f}".replace(".", ",") + " €"
@@ -654,12 +648,13 @@ def _xml_locs(text):
         ]
 
 
-def _sitemap_urls(session, query, max_sitemaps=24, max_urls=80):
+def _sitemap_urls(session, query, max_sitemaps=48, max_urls=120):
     """Generic catalogue discovery from Deloox XML sitemaps.
 
-    Sitemap discovery supplements the storefront search instead of replacing
-    it. URL/query overlap is only a discovery filter; parse_product_page()
-    remains the final authority for product identity, price and stock.
+    The sitemap walk is deliberately broader than the storefront search.
+    It follows sitemap indexes recursively and applies only a lightweight
+    discovery filter to product URLs. Product-page validation remains the
+    final authority.
     """
     wanted = set(query_tokens(query))
     if not wanted:
@@ -681,13 +676,13 @@ def _sitemap_urls(session, query, max_sitemaps=24, max_urls=80):
         url = clean(url)
         if not url or url in seen_sitemaps or url in sitemap_queue:
             return
+        if not same_host(url):
+            return
         sitemap_queue.append(url)
 
     for root in roots[1:]:
         add_sitemap(root)
 
-    # robots.txt is authoritative when the site publishes different sitemap
-    # locations. It is read only as a discovery index, never as a product seed.
     try:
         response = session.get(
             roots[0],
@@ -707,8 +702,10 @@ def _sitemap_urls(session, query, max_sitemaps=24, max_urls=80):
 
     while sitemap_queue and processed_maps < max_sitemaps and len(product_urls) < max_urls:
         sitemap_url = sitemap_queue.pop(0)
+
         if sitemap_url in seen_sitemaps:
             continue
+
         seen_sitemaps.add(sitemap_url)
         processed_maps += 1
 
@@ -722,11 +719,14 @@ def _sitemap_urls(session, query, max_sitemaps=24, max_urls=80):
         except requests.RequestException:
             continue
 
-        if not response.ok:
+        if not response.ok or not same_host(response.url):
             continue
 
-        for value in _xml_locs(response.text):
+        locations = _xml_locs(response.text)
+
+        for value in locations:
             low = value.lower()
+
             if low.endswith(".xml") or "sitemap" in low:
                 add_sitemap(value)
                 continue
@@ -735,18 +735,25 @@ def _sitemap_urls(session, query, max_sitemaps=24, max_urls=80):
                 continue
 
             url = value.split("#", 1)[0].split("?", 1)[0]
+
             if not same_host(url) or url in seen_products:
                 continue
 
-            # Discovery is intentionally permissive: every meaningful query
-            # token must occur somewhere in the product URL. The product page
-            # validator still checks the complete original query.
+            # IMPORTANT:
+            # Do not require every query token to be present in the URL.
+            # Deloox product slugs/URLs are not guaranteed to expose the full
+            # visible product name. The product page itself is authoritative.
+            # We therefore retain a product URL whenever it contains at least
+            # one meaningful query token; zero-token URLs are handled by the
+            # storefront search channel.
             url_tokens = set(query_tokens(url))
-            if not wanted.issubset(url_tokens):
+
+            if not (wanted & url_tokens):
                 continue
 
             seen_products.add(url)
             product_urls.append(url)
+
             if len(product_urls) >= max_urls:
                 break
 
@@ -762,8 +769,6 @@ def search(query):
     session = requests.Session()
 
     try:
-        # The site's own search form is /zoeken.html?q=...
-        # We deliberately do not crawl categories or generic internal links.
         response = fetch(
             session,
             urljoin(BASE_URL, SEARCH_PATH),
@@ -783,14 +788,20 @@ def search(query):
             response.url,
         )
 
-        # The live search is only one discovery channel. Always supplement it
-        # with the product sitemap so a partial search result set cannot hide
-        # valid products that are present in the catalogue.
-        search_urls = [candidate["url"] for candidate in candidates[:40]]
-        sitemap_urls = _sitemap_urls(session, query, max_sitemaps=24, max_urls=40)
+        # Keep the storefront discovery and catalogue discovery independent.
+        # The catalogue channel is intentionally broad so partial storefront
+        # result pages cannot hide valid products.
+        search_urls = [candidate["url"] for candidate in candidates[:80]]
+        sitemap_urls = _sitemap_urls(
+            session,
+            query,
+            max_sitemaps=48,
+            max_urls=120,
+        )
 
         merged_urls = []
         seen_urls = set()
+
         for url in search_urls + sitemap_urls:
             if url in seen_urls:
                 continue
@@ -798,15 +809,9 @@ def search(query):
             merged_urls.append(url)
 
         results = []
-        seen = set()
+        seen_results = set()
 
-        # Every discovered product is validated on its own product page.
         for url in merged_urls:
-            if url in seen:
-                continue
-
-            seen.add(url)
-
             product_response = fetch(
                 session,
                 url,
@@ -828,10 +833,10 @@ def search(query):
                 norm(product["name"]),
             )
 
-            if key in seen:
+            if key in seen_results:
                 continue
 
-            seen.add(key)
+            seen_results.add(key)
             results.append(product)
 
         return results
