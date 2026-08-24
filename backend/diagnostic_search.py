@@ -440,52 +440,80 @@ def audit_contract(
 
             products = payload.get("products", [])
             if products:
-                sample = products[0]
-                parsed = (
-                    product_matcher.CatalogProduct.from_dict(
-                        sample
+                catalog_product = products[0]
+
+                catalog_id = (
+                    text(catalog_product.get("catalog_id"))
+                    or text(catalog_product.get("product_id"))
+                    or text(catalog_product.get("id"))
+                )
+                catalog_name = (
+                    text(catalog_product.get("name"))
+                    or text(catalog_product.get("canonical_name"))
+                    or text(catalog_product.get("family_name"))
+                )
+                catalog_brand = (
+                    text(catalog_product.get("brand"))
+                    or text(catalog_product.get("brand_name"))
+                )
+
+                # Costruisce il record matcher attraverso ESATTAMENTE
+                # l'adattatore usato da main.py. Il diagnostic deve verificare
+                # il contratto reale product_catalog -> ProductMatcher,
+                # senza inventare una seconda conversione del catalogo.
+                adapted_catalog = scent_main._load_product_matcher_catalog()
+                adapted = next(
+                    (
+                        item
+                        for item in adapted_catalog
+                        if text(item.get("id")) == catalog_id
+                    ),
+                    None,
+                )
+
+                if adapted is None:
+                    result["checks"].append(
+                        {
+                            "check": "product_matcher_catalog_schema_compatibility",
+                            "value": False,
+                            "details": {
+                                "catalog_product_id": catalog_id,
+                                "reason": "product_not_present_in_main_adapter_output",
+                            },
+                            "expected": True,
+                        }
                     )
-                )
+                else:
+                    matcher_product = (
+                        product_matcher.CatalogProduct.from_dict(
+                            adapted
+                        )
+                    )
 
-                expected_id = text(
-                    sample.get("product_id")
-                    or sample.get("catalog_id")
-                    or sample.get("id")
-                )
-                expected_name = text(
-                    sample.get("canonical_name")
-                    or sample.get("name")
-                    or sample.get("family_name")
-                )
-                expected_brand = text(
-                    sample.get("brand_name")
-                    or sample.get("brand")
-                )
+                    schema_ok = (
+                        bool(catalog_id)
+                        and bool(catalog_name)
+                        and bool(catalog_brand)
+                        and matcher_product.catalog_id == catalog_id
+                        and matcher_product.name == catalog_name
+                        and matcher_product.brand == catalog_brand
+                    )
 
-                compatible = (
-                    bool(expected_id)
-                    and bool(expected_name)
-                    and bool(expected_brand)
-                    and parsed.catalog_id == expected_id
-                    and parsed.name == expected_name
-                    and parsed.brand == expected_brand
-                )
-
-                result["checks"].append(
-                    {
-                        "check": "product_matcher_catalog_schema_compatibility",
-                        "value": compatible,
-                        "details": {
-                            "catalog_product_id": expected_id,
-                            "matcher_catalog_id": parsed.catalog_id,
-                            "catalog_canonical_name": expected_name,
-                            "matcher_name": parsed.name,
-                            "catalog_brand": expected_brand,
-                            "matcher_brand": parsed.brand,
-                        },
-                        "expected": True,
-                    }
-                )
+                    result["checks"].append(
+                        {
+                            "check": "product_matcher_catalog_schema_compatibility",
+                            "value": schema_ok,
+                            "details": {
+                                "catalog_product_id": catalog_id,
+                                "matcher_catalog_id": matcher_product.catalog_id,
+                                "catalog_canonical_name": catalog_name,
+                                "matcher_name": matcher_product.name,
+                                "catalog_brand": catalog_brand,
+                                "matcher_brand": matcher_product.brand,
+                            },
+                            "expected": True,
+                        }
+                    )
     except Exception as exc:
         result["checks"].append(
             {
