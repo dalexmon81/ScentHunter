@@ -441,77 +441,51 @@ def audit_contract(
             products = payload.get("products", [])
             if products:
                 sample = products[0]
-                sample_product_id = text(
+                parsed = (
+                    product_matcher.CatalogProduct.from_dict(
+                        sample
+                    )
+                )
+
+                expected_id = text(
                     sample.get("product_id")
                     or sample.get("catalog_id")
                     or sample.get("id")
                 )
-
-                # Usa ESATTAMENTE l'adattatore del main.py.
-                # Il diagnostic non deve duplicare una seconda logica di
-                # conversione del catalogo: deve verificare che il contratto
-                # reale product_catalog -> ProductMatcher sia coerente.
-                adapted_catalog = scent_main._load_product_matcher_catalog()
-                adapted = next(
-                    (
-                        item
-                        for item in adapted_catalog
-                        if text(item.get("id")) == sample_product_id
-                    ),
-                    None,
+                expected_name = text(
+                    sample.get("canonical_name")
+                    or sample.get("name")
+                    or sample.get("family_name")
+                )
+                expected_brand = text(
+                    sample.get("brand_name")
+                    or sample.get("brand")
                 )
 
-                if adapted is None:
-                    result["checks"].append(
-                        {
-                            "check": "product_matcher_catalog_schema_compatibility",
-                            "value": False,
-                            "details": {
-                                "catalog_product_id": sample_product_id,
-                                "reason": "product_not_present_in_main_adapter_output",
-                            },
-                            "expected": True,
-                        }
-                    )
-                else:
-                    parsed = (
-                        product_matcher.CatalogProduct.from_dict(
-                            adapted
-                        )
-                    )
+                compatible = (
+                    bool(expected_id)
+                    and bool(expected_name)
+                    and bool(expected_brand)
+                    and parsed.catalog_id == expected_id
+                    and parsed.name == expected_name
+                    and parsed.brand == expected_brand
+                )
 
-                    expected_id = sample_product_id
-                    expected_name = text(
-                        sample.get("canonical_name")
-                        or sample.get("name")
-                        or sample.get("family_name")
-                    )
-                    expected_brand = text(
-                        sample.get("brand_name")
-                        or sample.get("brand")
-                    )
-
-                    compatible = (
-                        parsed.catalog_id == expected_id
-                        and parsed.name == expected_name
-                        and parsed.brand == expected_brand
-                    )
-
-                    result["checks"].append(
-                        {
-                            "check": "product_matcher_catalog_schema_compatibility",
-                            "value": compatible,
-                            "details": {
-                                "catalog_product_id": expected_id,
-                                "matcher_catalog_id": parsed.catalog_id,
-                                "catalog_canonical_name": expected_name,
-                                "matcher_name": parsed.name,
-                                "catalog_brand": expected_brand,
-                                "matcher_brand": parsed.brand,
-                            },
-                            "expected": True,
-                        }
-                    )
+                result["checks"].append(
+                    {
+                        "check": "product_matcher_catalog_schema_compatibility",
+                        "value": compatible,
+                        "details": {
+                            "catalog_product_id": expected_id,
+                            "matcher_catalog_id": parsed.catalog_id,
+                            "catalog_canonical_name": expected_name,
+                            "matcher_name": parsed.name,
+                            "catalog_brand": expected_brand,
+                            "matcher_brand": parsed.brand,
+                        },
+                        "expected": True,
+                    }
+                )
     except Exception as exc:
         result["checks"].append(
             {
@@ -892,17 +866,61 @@ def run_store(
     return report
 
 
+def _catalog_variant_for_raw_candidate(
+    candidate: Dict[str, Any],
+    query: str,
+) -> Optional[str]:
+    """
+    Identifica la variante catalogata presente nel titolo raw, senza usare
+    la decisione finale di matches().
+
+    Questo è intenzionalmente un controllo di discovery: se il titolo raw
+    non corrisponde a un alias effettivamente caricato nel Registry, il
+    candidato non viene attribuito a una variante. Nessuna regola è
+    specifica per un prodotto o per uno store.
+    """
+    try:
+        family = scent_main._catalog_family_for_query(query)
+    except Exception:
+        family = None
+
+    if not isinstance(family, dict):
+        return None
+
+    try:
+        variant = scent_main._catalog_variant_for_product(
+            {
+                "name": candidate.get("name"),
+                "brand": candidate.get("brand"),
+                "size_ml": candidate.get("size_ml"),
+                "concentration": candidate.get("concentration"),
+            },
+            family,
+        )
+    except Exception:
+        return None
+
+    if not isinstance(variant, dict):
+        return None
+
+    return text(variant.get("canonical_name")) or None
+
+
 def build_variant_summary(
     report: Dict[str, Any],
     query: str,
 ) -> Dict[str, Any]:
     """
-    Costruisce un riepilogo generico per ogni variante autorizzata
-    della famiglia presente nella query.
+    Costruisce un riepilogo esplicito per variante e per store.
 
-    Il conteggio raw deriva dai candidati di discovery; resolved/matched
-    deriva dai candidati finali che hanno ricevuto un'identità piatta.
-    Nessuna regola è specifica per un prodotto o per uno store.
+    raw_count misura ciò che la discovery ha realmente restituito prima
+    del matching finale. matched_count misura ciò che ha superato
+    matches(). Le due grandezze restano quindi separate e permettono di
+    distinguere discovery, alias/matching e presenza finale in UI.
+
+    La classificazione raw usa esclusivamente le varianti e gli alias
+    effettivamente presenti nel Registry del backend. Nessuna regola è
+    specifica per un prodotto o per uno store.
     """
     try:
         family = scent_main._catalog_family_for_query(query)
@@ -927,46 +945,35 @@ def build_variant_summary(
             continue
 
         summary[canonical] = {
-            "raw": 0,
-            "resolved": 0,
-            "matched": 0,
+            "raw_count": 0,
+            "matched_count": 0,
             "stores": [],
+            "by_store": {},
         }
 
     for store, store_report in report.get("stores", {}).items():
+        store_bucket_names = set()
+
         for candidate in store_report.get(
             "all_raw_candidates",
             [],
         ):
-            product = {
-                "name": candidate.get("name"),
-                "brand": candidate.get("brand"),
-                "size_ml": candidate.get("size_ml"),
-                "concentration": candidate.get("concentration"),
-                "store": store,
-            }
-
-            try:
-                resolved = scent_main._catalog_match(
-                    product,
-                    query,
-                )
-            except Exception:
-                resolved = None
-
-            if not isinstance(resolved, dict):
-                continue
-
-            canonical = text(
-                resolved.get("canonical_name")
+            canonical = _catalog_variant_for_raw_candidate(
+                candidate,
+                query,
             )
-            bucket = summary.get(canonical)
-            if bucket is None:
+            if not canonical or canonical not in summary:
                 continue
 
-            bucket["raw"] += 1
-            if store not in bucket["stores"]:
-                bucket["stores"].append(store)
+            bucket = summary[canonical]
+            bucket["raw_count"] += 1
+            store_bucket_names.add(canonical)
+
+            by_store = bucket["by_store"].setdefault(
+                store,
+                {"raw_count": 0, "matched_count": 0},
+            )
+            by_store["raw_count"] += 1
 
         for candidate in store_report.get(
             "matched_candidates",
@@ -975,14 +982,23 @@ def build_variant_summary(
             canonical = text(
                 candidate.get("canonical_name")
             )
-            bucket = summary.get(canonical)
-            if bucket is None:
+            if not canonical or canonical not in summary:
                 continue
 
-            bucket["resolved"] += 1
-            bucket["matched"] += 1
-            if store not in bucket["stores"]:
-                bucket["stores"].append(store)
+            bucket = summary[canonical]
+            bucket["matched_count"] += 1
+            store_bucket_names.add(canonical)
+
+            by_store = bucket["by_store"].setdefault(
+                store,
+                {"raw_count": 0, "matched_count": 0},
+            )
+            by_store["matched_count"] += 1
+
+        for canonical in store_bucket_names:
+            stores = summary[canonical]["stores"]
+            if store not in stores:
+                stores.append(store)
 
     return summary
 
@@ -1249,11 +1265,17 @@ def print_report(
         for variant, values in variant_summary.items():
             print(
                 f"  - {variant}: "
-                f"raw={values.get('raw', 0)} "
-                f"resolved={values.get('resolved', 0)} "
-                f"matched={values.get('matched', 0)} "
+                f"raw_count={values.get('raw_count', 0)} "
+                f"matched_count={values.get('matched_count', 0)} "
                 f"stores={values.get('stores', [])}"
             )
+            by_store = values.get("by_store", {})
+            for store, store_values in by_store.items():
+                print(
+                    f"      {store}: "
+                    f"raw_count={store_values.get('raw_count', 0)} "
+                    f"matched_count={store_values.get('matched_count', 0)}"
+                )
 
 
 def parse_args() -> argparse.Namespace:
