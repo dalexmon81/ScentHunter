@@ -1,3 +1,4 @@
+import gzip
 import re
 import requests
 import xml.etree.ElementTree as ET
@@ -19,6 +20,11 @@ HEADERS = {
 }
 
 
+# ---------------------------------------------------------------------------
+# Generic text / matching helpers
+# ---------------------------------------------------------------------------
+
+
 def _tokens(text):
     return [
         x.lower()
@@ -37,6 +43,7 @@ def _all_tokens_match(text, query):
 
 
 def _xml_urls(xml_text):
+    """Extract every <loc> from XML, including sitemap namespaces."""
     root = ET.fromstring(xml_text)
     return [
         el.text.strip()
@@ -45,62 +52,140 @@ def _xml_urls(xml_text):
     ]
 
 
-def _get_sitemap_urls():
-    response = SESSION.get(
-        SITEMAP_URL,
-        headers=HEADERS,
-        timeout=15,
+def _decode_sitemap_content(response):
+    """Return decoded sitemap XML, including .gz / gzip HTTP responses."""
+    raw = response.content
+
+    content_encoding = (response.headers.get("Content-Encoding") or "").lower()
+    content_type = (response.headers.get("Content-Type") or "").lower()
+    url = response.url.lower()
+
+    is_gzip = (
+        url.endswith(".gz")
+        or "gzip" in content_encoding
+        or "gzip" in content_type
+        or raw[:2] == b"\x1f\x8b"
     )
-    response.raise_for_status()
 
-    urls = _xml_urls(response.text)
-    response.close()
-
-    child_maps = [
-        url for url in urls
-        if "sitemap" in url.lower()
-        and url.lower().endswith((".xml", ".xml.gz"))
-    ]
-
-    if not child_maps:
-        return urls
-
-    def fetch_child(url):
+    if is_gzip:
         try:
-            child = SESSION.get(
-                url,
-                headers=HEADERS,
-                timeout=15,
-            )
-            if child.status_code != 200:
-                child.close()
-                return []
+            raw = gzip.decompress(raw)
+        except (OSError, EOFError):
+            # Some servers already transparently decode the body even though
+            # the URL/content headers still advertise gzip.
+            pass
 
-            data = _xml_urls(child.text)
-            child.close()
-            return data
-        except Exception:
+    return raw.decode(
+        response.encoding or "utf-8",
+        errors="replace",
+    )
+
+
+# ---------------------------------------------------------------------------
+# Sitemap discovery
+# ---------------------------------------------------------------------------
+
+
+def _fetch_sitemap(url):
+    try:
+        response = SESSION.get(
+            url,
+            headers=HEADERS,
+            timeout=15,
+        )
+
+        if response.status_code != 200:
+            response.close()
             return []
 
+        text = _decode_sitemap_content(response)
+        response.close()
+
+        return _xml_urls(text)
+
+    except Exception:
+        return []
+
+
+def _get_sitemap_urls():
+    """Recursively walk sitemap indexes until actual URLs are reached.
+
+    The previous implementation only handled one sitemap-index level and
+    silently discarded compressed child maps. That can make an otherwise
+    valid product disappear from discovery. This version follows sitemap
+    indexes recursively and understands both .xml and .xml.gz maps.
+    """
+    first_level = _fetch_sitemap(SITEMAP_URL)
+
+    if not first_level:
+        return []
+
+    pending = []
+    seen_maps = set()
     output = []
 
-    # Parallelizza i child sitemap: la discovery non deve consumare
-    # il timeout globale solo perché i sitemap sono numerosi.
-    with ThreadPoolExecutor(
-        max_workers=min(8, max(1, len(child_maps)))
-    ) as executor:
-        futures = [
-            executor.submit(fetch_child, sitemap)
-            for sitemap in child_maps
-        ]
+    def enqueue(url):
+        url = str(url or "").strip()
+        if not url:
+            return
+        low = url.lower()
+        if low.endswith((".xml", ".xml.gz")) or "sitemap" in low:
+            if url not in seen_maps and url not in pending:
+                pending.append(url)
 
-        for future in as_completed(futures):
-            try:
-                output.extend(future.result() or [])
-            except Exception:
+    for url in first_level:
+        enqueue(url)
+
+    # If /sitemap.xml is itself a URL set rather than an index, preserve those
+    # URLs instead of trying to classify them as child maps.
+    if not pending:
+        return first_level
+
+    while pending:
+        # Process a bounded batch in parallel. Failed maps are simply skipped;
+        # successful maps remain available for the next recursive level.
+        batch = []
+        while pending and len(batch) < 12:
+            url = pending.pop(0)
+            if url in seen_maps:
                 continue
+            seen_maps.add(url)
+            batch.append(url)
 
-    return output
+        if not batch:
+            continue
+
+        with ThreadPoolExecutor(
+            max_workers=min(8, len(batch))
+        ) as executor:
+            futures = {
+                executor.submit(_fetch_sitemap, url): url
+                for url in batch
+            }
+
+            for future in as_completed(futures):
+                try:
+                    values = future.result() or []
+                except Exception:
+                    values = []
+
+                for value in values:
+                    value = str(value or "").strip()
+                    if not value:
+                        continue
+
+                    low = value.lower()
+                    if low.endswith((".xml", ".xml.gz")) or "sitemap" in low:
+                        enqueue(value)
+                    else:
+                        output.append(value)
+
+    return list(dict.fromkeys(output))
+
+
+# ---------------------------------------------------------------------------
+# Product extraction
+# ---------------------------------------------------------------------------
 
 
 def _extract_product(url, query):
@@ -205,6 +290,11 @@ def _extract_product(url, query):
     }
 
 
+# ---------------------------------------------------------------------------
+# Search
+# ---------------------------------------------------------------------------
+
+
 def search(query):
     query = str(query or "").strip()
 
@@ -235,8 +325,8 @@ def search(query):
         ):
             candidates.append(normalized)
 
-    # Non limitiamo arbitrariamente la discovery a 6 URL:
-    # prima vengono ordinati i candidati più pertinenti.
+    # Manteniamo tutti i candidati trovati. Il vecchio [:24] poteva troncare
+    # proprio le varianti che servono a ScentHunter.
     query_tokens = set(_tokens(query))
 
     def candidate_score(url):
@@ -255,29 +345,50 @@ def search(query):
     results = []
     seen = set()
 
-    for url in candidates[:24]:
+    # Fetch concorrente dei candidati: discovery completa senza trasformare
+    # l'aumento della copertura in un timeout seriale enorme.
+    def fetch_one(url):
         try:
-            item = _extract_product(
-                url,
-                query,
-            )
+            return _extract_product(url, query)
         except Exception:
-            item = None
+            return None
 
-        if not item:
-            continue
+    with ThreadPoolExecutor(
+        max_workers=min(8, max(1, len(candidates)))
+    ) as executor:
+        futures = [
+            executor.submit(fetch_one, url)
+            for url in candidates
+        ]
 
-        key = (
+        for future in as_completed(futures):
+            try:
+                item = future.result()
+            except Exception:
+                item = None
+
+            if not item:
+                continue
+
+            key = (
+                item["name"].lower(),
+                item["price"],
+                item["url"].lower(),
+            )
+
+            if key in seen:
+                continue
+
+            seen.add(key)
+            results.append(item)
+
+    # Restituiamo un ordine stabile, indipendente dal completamento dei thread.
+    results.sort(
+        key=lambda item: (
             item["name"].lower(),
-            item["price"],
             item["url"].lower(),
         )
-
-        if key in seen:
-            continue
-
-        seen.add(key)
-        results.append(item)
+    )
 
     return results
 
