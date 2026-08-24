@@ -800,60 +800,28 @@ def _catalog_product_text(product: Dict[str, Any]) -> str:
     ).strip()
 
 
-def _catalog_gender_base(value: Any) -> str:
+def _catalog_gender_neutral_key(value: Any) -> str:
     """
-    Return the variant identity with retailer audience labels removed.
+    Restituisce la forma identitaria senza marcatori di genere espliciti.
 
-    Retailers frequently append audience metadata to an otherwise identical
-    fragrance name (for example ``For Men``, ``Pour Homme`` or ``Women``).
-    Those labels are meaningful only for gender compatibility; they are not
-    part of the variant name when the registry alias itself is ungendered.
+    La rimozione è usata solo come seconda possibilità di confronto:
+    il genere dichiarato dal candidato resta sempre una informazione
+    vincolante quando il catalogo contiene varianti con lo stesso nucleo.
     """
-    tokens = _catalog_tokens(value)
-    gender_tokens = {
-        "for", "pour", "voor", "him", "her",
-        "men", "man", "male",
-        "women", "woman", "female",
-        "homme", "heren", "mannen",
-        "femme", "dames", "vrouwen",
-        "uomo",
-        "unisex",
-    }
-    return " ".join(
-        token
-        for token in tokens
-        if token not in gender_tokens
-    ).strip()
+    text = _catalog_clean_text(value)
 
+    text = re.sub(
+        r"\b(?:for\s+(?:him|her|men|women)|"
+        r"pour\s+(?:homme|femme|hommes|femmes)|"
+        r"voor\s+(?:mannen|dames|vrouwen)|"
+        r"(?:men|women|mannen|dames|vrouwen|"
+        r"homme|femme|uomo|donna|male|female))\b",
+        " ",
+        text,
+        flags=re.I,
+    )
 
-def _catalog_variant_compatible(
-    candidate_key: str,
-    alias_key: str,
-) -> bool:
-    """
-    Match a retailer title to an authorised alias while ignoring only
-    generic audience metadata. Variant-bearing words remain significant.
-
-    If the authorised alias explicitly carries a gender, the candidate must
-    carry the same gender. If the alias is ungendered, a retailer may append
-    an audience label without changing the canonical variant.
-    """
-    if not candidate_key or not alias_key:
-        return False
-
-    if candidate_key == alias_key:
-        return True
-
-    candidate_gender = _catalog_gender_class(candidate_key)
-    alias_gender = _catalog_gender_class(alias_key)
-
-    if alias_gender != "none" and candidate_gender != alias_gender:
-        return False
-
-    if alias_gender == "none" and candidate_gender == "mixed":
-        return False
-
-    return _catalog_gender_base(candidate_key) == _catalog_gender_base(alias_key)
+    return re.sub(r"\s+", " ", text).strip()
 
 
 def _catalog_variant_for_product(
@@ -863,12 +831,21 @@ def _catalog_variant_for_product(
     """
     Identifica una sola variante autorizzata del catalogo.
 
-    Il candidato deve corrispondere a una forma autorizzata dopo la
-    rimozione dei soli elementi commerciali. Sono inoltre tollerati i soli
-    suffissi di audience aggiunti dal retailer (men/women/homme/femme, ecc.),
-    con controllo di compatibilità del genere quando l'alias autorizzato lo
-    specifica. Termini identitari come ``Intense`` o ``Limited Edition``
-    restano invece vincolanti.
+    Prima usa le forme autorizzate in modo esatto. Se il retailer
+    aggiunge una dicitura commerciale di genere (per esempio
+    "Voor Mannen" o "For Women"), usa una seconda forma di confronto
+    che rimuove solo quella dicitura, mantenendo il genere come
+    vincolo di disambiguazione.
+
+    In questo modo:
+      - un titolo con il formato/concentrazione aggiunti resta sulla
+        variante canonica;
+      - una dicitura equivalente "For Women" può essere ricondotta
+        alla variante femminile autorizzata;
+      - una dicitura equivalente "Voor Mannen" può essere ricondotta
+        alla variante autorizzata corrispondente;
+      - un titolo senza genere non viene promosso arbitrariamente a
+        una variante genderizzata.
     """
     if not _catalog_brand_matches(product, family):
         return None
@@ -880,7 +857,6 @@ def _catalog_variant_for_product(
     if not candidate_text:
         return None
 
-    # Rimuove soltanto il brand della famiglia dal titolo candidato.
     brand = _catalog_clean_text(
         family.get("brand")
     )
@@ -898,43 +874,63 @@ def _catalog_variant_for_product(
         ).strip()
 
     candidate_key = catalog_variant_key(candidate_text)
-    if not candidate_key:
-        return None
+    candidate_gender = _catalog_gender_class(candidate_text)
+    candidate_neutral_key = _catalog_gender_neutral_key(candidate_text)
 
-    # Pass 1: equivalenza esatta.
+    # 1) Forma autorizzata esatta: è sempre prioritaria.
     for variant in family.get("variants", []):
         if candidate_key in variant.get("normalized_aliases", ()):
             return variant
 
-    # Pass 2: tolleranza esclusivamente per metadata di audience aggiunti
-    # dal retailer. Non usiamo substring/fuzzy matching generico.
-    compatible = []
+    # 2) Forma semanticamente equivalente, ma solo per differenze
+    #    commerciali di genere esplicitate dal retailer.
+    best_variant: Optional[Dict[str, Any]] = None
+    best_rank = -1
+
     for variant in family.get("variants", []):
-        for alias_key in variant.get("normalized_aliases", ()):
-            if _catalog_variant_compatible(candidate_key, alias_key):
-                compatible.append(variant)
-                break
+        variant_aliases = variant.get("aliases", ())
+        variant_gender = _catalog_gender_class(
+            " ".join(
+                [str(variant.get("canonical_name") or "")]
+                + [str(alias or "") for alias in variant_aliases]
+            )
+        )
 
-    if len(compatible) == 1:
-        return compatible[0]
+        variant_neutral_keys = {
+            _catalog_gender_neutral_key(alias)
+            for alias in variant_aliases
+            if _catalog_gender_neutral_key(alias)
+        }
 
-    # Se più alias condividono la stessa base ma uno solo dichiara il genere,
-    # privilegiamo la variante con genere compatibile invece di introdurre
-    # un'associazione arbitraria.
-    if compatible:
-        candidate_gender = _catalog_gender_class(candidate_key)
-        if candidate_gender != "none":
-            gendered = []
-            for variant in compatible:
-                if any(
-                    _catalog_gender_class(alias_key) == candidate_gender
-                    for alias_key in variant.get("normalized_aliases", ())
-                ):
-                    gendered.append(variant)
-            if len(gendered) == 1:
-                return gendered[0]
+        canonical_neutral_key = _catalog_gender_neutral_key(
+            variant.get("canonical_name", "")
+        )
+        if canonical_neutral_key:
+            variant_neutral_keys.add(canonical_neutral_key)
 
-    return None
+        if not candidate_neutral_key or candidate_neutral_key not in variant_neutral_keys:
+            continue
+
+        if candidate_gender == "none":
+            # Un titolo senza genere può ricadere solo su una variante
+            # realmente neutra, mai su For Him/For Her.
+            if variant_gender != "none":
+                continue
+            rank = 2
+        else:
+            # Se esiste una variante con lo stesso genere, preferirla.
+            if variant_gender == candidate_gender:
+                rank = 3
+            elif variant_gender == "none":
+                rank = 1
+            else:
+                continue
+
+        if rank > best_rank:
+            best_rank = rank
+            best_variant = variant
+
+    return best_variant
 
 
 def _catalog_family_for_query(
@@ -1038,6 +1034,7 @@ def _catalog_match(
                 else ""
             )
             result["catalog_variant"] = variant["canonical_name"]
+            result["match_method"] = "family_registry_alias"
             return result
 
         # Query variante: solo quella specifica.
@@ -1057,6 +1054,7 @@ def _catalog_match(
                 else ""
             )
             result["catalog_variant"] = variant["canonical_name"]
+            result["match_method"] = "family_registry_alias"
             return result
 
     return None
@@ -1680,7 +1678,7 @@ def _validate_candidate(
     # il matcher riceve il candidato RAW e restituisce la sua identità
     # canonica dal catalogo autorevole.
     try:
-        matched_product = _PRODUCT_MATCHER.match(product)
+        matched_product = _PRODUCT_MATCHER.match(product, query)
     except Exception as exc:
         print(
             "PRODUCT_MATCHER_RUNTIME_ERROR:",
@@ -1689,10 +1687,42 @@ def _validate_candidate(
         )
         matched_product = None
 
-    if matched_product is not None:
-        return matched_product
+    if matched_product is None:
+        matched_product = dict(product)
 
-    return product
+    # Per le famiglie governate dal Family Registry, _catalog_match()
+    # contiene l'identità risolta dalla regola autorevole. Questa identità
+    # deve essere propagata nel candidato finale: non può restare confinata
+    # al risultato intermedio del matcher/diagnostica.
+    try:
+        resolved_identity = _catalog_match(
+            product,
+            query,
+        )
+    except Exception as exc:
+        print(
+            "FAMILY_REGISTRY_RUNTIME_ERROR:",
+            f"{type(exc).__name__}: {exc}",
+            flush=True,
+        )
+        resolved_identity = None
+
+    if isinstance(resolved_identity, dict):
+        # L'identità del Family Registry deve essere applicata all'oggetto
+        # candidato che prosegue nel percorso verso matched_candidates.
+        # Non deve restare confinata a un risultato diagnostico o al matcher.
+        product = dict(product)
+        product.update(resolved_identity)
+
+        product["match_method"] = (
+            product.get("match_method")
+            or "family_registry_alias"
+        )
+        product["name"] = product["canonical_name"]
+
+        return product
+
+    return matched_product
 
 
 def _validate_candidates_parallel(
