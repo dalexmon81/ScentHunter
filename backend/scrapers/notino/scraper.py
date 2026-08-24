@@ -18,7 +18,7 @@ SITEMAP_URL = BASE_URL + "/sitemap.xml"
 READER_BASE = "https://r.jina.ai/"
 TIMEOUT = 20
 READER_TIMEOUT = 12
-SCRAPER_VERSION = "notino-FR-generic-discovery-2026-08-21-v13-generic-brand-display-normalization"
+SCRAPER_VERSION = "notino-FR-generic-discovery-2026-08-24-v15-reader-product-identity-price-fix"
 
 HEADERS = {
     "User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
@@ -683,21 +683,36 @@ def _reader_candidates(text: str, query: str) -> List[Dict[str, Any]]:
 
 
 
-def _candidate_lookup_rank(candidate: Dict[str, Any], query: str) -> Tuple[int, int, int, str]:
-    """Rank candidates by real product identity before applying the lookup limit.
+def _candidate_lookup_rank(candidate: Dict[str, Any], query: str) -> Tuple[int, int, int, int, str]:
+    """Rank candidates by the product identity encoded in their URL.
 
-    Notino/Jina may attach identical search-result text to many product links.
-    ``contains_all_query_tokens`` alone is therefore not sufficient: it can be
-    true because the shared search heading contains the query. The product URL
-    slug is an independent, generic signal and must win over that shared text.
+    Shared search-page text can make unrelated URLs look identical. The URL
+    slug is therefore the primary identity signal. An exact slug match wins,
+    then a normal variant beginning with the query, then other valid matches.
+    No product-specific names or URLs are used.
     """
-    url_name = _name_from_product_url(candidate.get("url", ""))
+    url = candidate.get("url", "")
+    url_name = _name_from_product_url(url)
+    query_name = _clean(query)
+    url_norm = _product_norm(url_name)
+    query_norm = _product_norm(query_name)
     url_matched, _, url_fuzzy_hits = _fuzzy_query_match(url_name, query)
+
+    if url_norm == query_norm and query_norm:
+        identity_rank = 3
+    elif query_norm and url_norm.startswith(query_norm + " "):
+        identity_rank = 2
+    elif url_matched:
+        identity_rank = 1
+    else:
+        identity_rank = 0
+
     return (
-        1 if url_matched else 0,
+        identity_rank,
         1 if bool(candidate.get("contains_all_query_tokens")) else 0,
         int(candidate.get("score") or 0) + (url_fuzzy_hits * 2),
-        candidate.get("url", ""),
+        1 if url_norm else 0,
+        url,
     )
 
 
@@ -1107,72 +1122,183 @@ def _requested_size_is_valid(text: str, query: str) -> bool:
     return any(_size_matches(text, size) for size in requested)
 
 
-def _reader_product(text: str, candidate: Dict[str, Any], query: str) -> Optional[Dict[str, Any]]:
-    content = _clean(text)
-    if not _fuzzy_query_match(content + " " + candidate["url"], query)[0]:
-        return None
-    if not _requested_size_is_valid(content + " " + candidate.get("card_text", ""), query):
-        return None
+def _extract_reader_product_name(
+    text: str,
+    candidate: Dict[str, Any],
+    query: str,
+) -> str:
+    """Extract a product name from Jina using URL identity first.
 
-    name = ""
-    for line in [
-        re.sub(r"^#+\s*", "", x).strip()
-        for x in (text or "").splitlines()
-        if x.strip()
-    ][:100]:
-        line = _clean(line)
+    The product URL is the most reliable identity signal when Notino/Jina
+    exposes metadata or neighbouring search text before the real heading.
+    Structured page lines and the discovery candidate are generic fallbacks.
+    """
+    raw = html_lib.unescape(str(text or "")).replace("\\/", "/")
+    candidate_url = candidate.get("url", "")
+
+    slug_name = _name_from_product_url(candidate_url)
+    brand = _brand_from_product_url(candidate_url)
+    if slug_name:
+        url_name = _clean_name(
+            f"{brand} {slug_name}" if brand else slug_name
+        )
         if (
-            _matches(line, query)
-            and len(line) <= 220
-            and not PRICE_RE.search(line)
-            and not line.lower().startswith(
-                ("image", "description", "composition", "avis", "prix actuel")
-            )
+            url_name
+            and _fuzzy_query_match(url_name, query)[0]
+            and not _has_non_perfume_marker_in_product(url_name, candidate_url)
         ):
-            name = _clean_name(line)
-            if name:
-                break
+            return url_name
 
-    if not name:
-        name = _clean_name(candidate.get("anchor_text") or candidate.get("card_text", ""))
-    if not name or _has_non_perfume_marker_in_product(name, candidate.get("url", "")):
+    lines = []
+    for raw_line in raw.splitlines():
+        line = _clean(re.sub(r"^#{1,6}\s*", "", raw_line))
+        if not line:
+            continue
+        if re.match(r"^(title|description|image|url|canonical|meta)\s*:", line, re.I):
+            continue
+        lines.append(line)
+
+    for line in lines[:180]:
+        if len(line) > 220 or PRICE_RE.search(line):
+            continue
+        cleaned = _clean_name(line)
+        if (
+            cleaned
+            and _fuzzy_query_match(cleaned, query)[0]
+            and not _has_non_perfume_marker_in_product(cleaned, candidate_url)
+        ):
+            return cleaned
+
+    for value in (
+        candidate.get("name"),
+        candidate.get("anchor_text"),
+        candidate.get("card_text"),
+    ):
+        cleaned = _clean_name(value or "")
+        if (
+            cleaned
+            and not cleaned.lower().startswith("title:")
+            and _fuzzy_query_match(cleaned, query)[0]
+            and not _has_non_perfume_marker_in_product(cleaned, candidate_url)
+        ):
+            return cleaned
+
+    return ""
+
+
+def _reader_product(
+    text: str,
+    candidate: Dict[str, Any],
+    query: str,
+) -> Optional[Dict[str, Any]]:
+    """Parse a Notino product page returned by Jina robustly.
+
+    Direct Notino requests can return 403, so the reader path must not depend
+    on one exact page layout or one exact price phrase.
+    """
+    raw = html_lib.unescape(str(text or "")).replace("\\/", "/")
+    content = _clean(raw)
+    if not content:
         return None
 
-    matched, _, _ = _fuzzy_query_match(name, query)
-    if not matched:
+    candidate_url = candidate.get("url", "")
+    identity_text = (
+        content
+        + " "
+        + candidate_url
+        + " "
+        + str(candidate.get("name") or "")
+    )
+    if not _fuzzy_query_match(identity_text, query)[0]:
+        return None
+
+    if not _requested_size_is_valid(
+        content + " " + str(candidate.get("card_text") or ""),
+        query,
+    ):
+        return None
+
+    name = _extract_reader_product_name(raw, candidate, query)
+    if not name:
+        return None
+
+    if _has_non_perfume_marker_in_product(name, candidate_url):
+        return None
+
+    if not _fuzzy_query_match(name, query)[0]:
         return None
 
     price = ""
-    current = re.search(
-        r"prix\s+actuel\s+(?:de\s+)?(\d{1,4}[.,]\d{2})\s*€",
-        content,
-        re.I,
-    )
-    if current:
-        price = _format_price(current.group(1))
+
+    # JSON-LD / structured price.
+    for price_match in re.finditer(
+        r'"(?:price|lowPrice)"\s*:\s*"?(\d{1,4}[.,]\d{2})',
+        raw,
+        flags=re.I,
+    ):
+        possible = _format_price(price_match.group(1))
+        if possible:
+            price = possible
+            break
+
+    # Explicit current price.
+    if not price:
+        current_matches = re.findall(
+            r"prix\s+actuel\s+(?:de\s+)?(\d{1,4}[.,]\d{2})\s*€",
+            content,
+            flags=re.I,
+        )
+        if current_matches:
+            price = _format_price(current_matches[-1])
+
+    # Price associated with the bottle size, excluding unit prices.
     if not price:
         price = _extract_product_price(content)
+
+    # Line-based fallback for Jina/Markdown layouts.
     if not price:
-        stock = re.search(
-            r"en\s+stock[^€]{0,120}?(\d{1,4}[.,]\d{2})\s*€",
-            content,
-            re.I,
-        )
-        if stock:
-            price = _format_price(stock.group(1))
+        for line in [
+            _clean(x) for x in raw.splitlines() if _clean(x)
+        ]:
+            if len(line) > 500:
+                continue
+            for pattern in (
+                re.compile(r"prix\s+actuel.*?(\d{1,4}[.,]\d{2})\s*€", re.I),
+                re.compile(r"(\d{1,4}[.,]\d{2})\s*€(?!\s*/\s*100)", re.I),
+                re.compile(r"€\s*(\d{1,4}[.,]\d{2})(?!\s*/\s*100)", re.I),
+            ):
+                match = pattern.search(line)
+                if match:
+                    price = _format_price(match.group(1))
+                    if price:
+                        break
+            if price:
+                break
+
+    # Search-card fallback.
     if not price:
-        price = _extract_product_price(candidate.get("anchor_text", "")) or _extract_product_price(
-            candidate.get("card_text", "")
+        price = (
+            _extract_product_price(candidate.get("anchor_text", ""))
+            or _extract_product_price(candidate.get("card_text", ""))
+            or _extract_price(candidate.get("anchor_text", ""))
+            or _extract_price(candidate.get("card_text", ""))
         )
+
     if not price:
         return None
 
     low = content.lower()
-    if any(x in low for x in OUT_STOCK_MARKERS) and not any(
-        x in low for x in IN_STOCK_MARKERS
-    ):
+    out_marked = any(marker in low for marker in OUT_STOCK_MARKERS)
+    in_marked = any(marker in low for marker in IN_STOCK_MARKERS)
+    if out_marked and not in_marked:
         return None
-    return {"store": STORE, "name": _display_product_name(name, candidate.get("url", "")), "price": price, "url": candidate["url"]}
+
+    return {
+        "store": STORE,
+        "name": _display_product_name(name, candidate_url),
+        "price": price,
+        "url": candidate_url,
+    }
 
 
 def _card_result(candidate: Dict[str, Any], query: str) -> Optional[Dict[str, Any]]:
@@ -1320,6 +1446,59 @@ def search(query: str) -> List[Dict[str, Any]]:
 
 def scrape(query: str) -> List[Dict[str, Any]]:
     return search(query)
+
+
+def debug_search(query: str) -> Dict[str, Any]:
+    """Expose discovery, ranking and product parsing for diagnostics."""
+    query = _clean(query)
+    if not query:
+        return {
+            "ok": False,
+            "store": STORE.lower(),
+            "query": "",
+            "error": "empty_query",
+        }
+
+    session = requests.Session()
+    session.headers.update(HEADERS)
+    try:
+        candidates, discovery = _search_http_candidates(
+            query, session=session
+        )
+        ranked = _rank_candidates_for_product_lookup(
+            candidates, limit=8, query=query
+        )
+        products = []
+        for candidate in ranked:
+            try:
+                result = _product_details(session, candidate, query)
+                products.append({
+                    "candidate": candidate,
+                    "result": result,
+                    "error": None,
+                })
+            except Exception as exc:
+                products.append({
+                    "candidate": candidate,
+                    "result": None,
+                    "error": f"{type(exc).__name__}: {exc}",
+                })
+
+        valid = [item["result"] for item in products if item.get("result")]
+        return {
+            "ok": bool(valid),
+            "store": STORE.lower(),
+            "query": query,
+            "scraper_version": SCRAPER_VERSION,
+            "candidate_count": len(candidates),
+            "ranked_candidate_count": len(ranked),
+            "result_count": len(valid),
+            "candidates": candidates[:50],
+            "products": products,
+            "discovery": discovery,
+        }
+    finally:
+        session.close()
 
 
 def diagnose(query: str) -> Dict[str, Any]:
