@@ -18,7 +18,7 @@ SITEMAP_URL = BASE_URL + "/sitemap.xml"
 READER_BASE = "https://r.jina.ai/"
 TIMEOUT = 20
 READER_TIMEOUT = 12
-SCRAPER_VERSION = "notino-FR-generic-discovery-2026-08-24-v18-reader-context-price-fallback"
+SCRAPER_VERSION = "notino-FR-generic-discovery-2026-08-24-v19-product-identity-dedup"
 
 HEADERS = {
     "User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
@@ -928,13 +928,49 @@ def _candidate_lookup_rank(candidate: Dict[str, Any], query: str) -> Tuple[int, 
     )
 
 
+def _candidate_product_identity(candidate: Dict[str, Any]) -> str:
+    """Return a generic identity key shared by SEO and numeric-ID URLs.
+
+    Notino can expose the same product through both an SEO-only URL and a
+    numeric ``/p-...`` URL. Treating those URLs as separate lookup candidates
+    wastes the bounded product-page lookup budget and can hide other valid
+    products behind duplicate URL variants. The identity is derived only from
+    the product URL path, with the brand included to avoid cross-brand slug
+    collisions.
+    """
+    url = str(candidate.get("url") or "")
+    brand = _product_norm(_brand_from_product_url(url))
+    product = _product_norm(_name_from_product_url(url))
+    if brand or product:
+        return f"{brand}|{product}"
+    return _product_norm(url)
+
+
 def _rank_candidates_for_product_lookup(candidates: List[Dict[str, Any]], limit: int = 8, query: str = "") -> List[Dict[str, Any]]:
-    """Keep the strongest generic discovery candidates for product-page lookup."""
+    """Keep the strongest unique product candidates for product-page lookup.
+
+    Discovery can return multiple URL representations of the same Notino
+    product. Collapse those representations before applying the bounded
+    lookup limit so duplicate URLs cannot consume slots that belong to other
+    products. The rule is entirely URL/identity based and contains no
+    product-specific exceptions.
+    """
     if not candidates:
         return []
 
+    best_by_identity: Dict[str, Dict[str, Any]] = {}
+    best_rank: Dict[str, Tuple[int, int, int, int, str]] = {}
+
+    for candidate in candidates:
+        identity = _candidate_product_identity(candidate)
+        rank = _candidate_lookup_rank(candidate, query)
+        previous_rank = best_rank.get(identity)
+        if previous_rank is None or rank > previous_rank:
+            best_by_identity[identity] = candidate
+            best_rank[identity] = rank
+
     ordered = sorted(
-        candidates,
+        best_by_identity.values(),
         key=lambda x: _candidate_lookup_rank(x, query),
         reverse=True,
     )
