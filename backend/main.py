@@ -1623,22 +1623,21 @@ def _validate_candidate(
         resolved_identity = None
 
     if isinstance(resolved_identity, dict):
-        matched_product.update(
-            {
-                key: resolved_identity[key]
-                for key in (
-                    "family_id",
-                    "family_name",
-                    "canonical_name",
-                    "catalog_variant",
-                )
-                if resolved_identity.get(key) not in (None, "")
-            }
-        )
+        # La stessa identità risolta deve essere applicata all'oggetto RAW che
+        # prosegue nel percorso che alimenta matched_candidates. In questo
+        # punto non basta aggiornare solo il risultato restituito dal matcher.
+        product.update(resolved_identity)
+
+        # Manteniamo inoltre l'oggetto restituito dal matcher coerente con la
+        # stessa identità, così il candidato finale non perde i campi risolti.
+        matched_product.update(resolved_identity)
 
         if matched_product.get("canonical_name"):
             matched_product["match_method"] = "family_registry_alias"
             matched_product["name"] = matched_product["canonical_name"]
+
+        product["match_method"] = "family_registry_alias"
+        product["name"] = product["canonical_name"]
 
     return matched_product
 
