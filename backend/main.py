@@ -951,6 +951,7 @@ def _catalog_match(
                 else ""
             )
             result["catalog_variant"] = variant["canonical_name"]
+            result["match_method"] = "family_registry_alias"
             return result
 
         # Query variante: solo quella specifica.
@@ -970,6 +971,7 @@ def _catalog_match(
                 else ""
             )
             result["catalog_variant"] = variant["canonical_name"]
+            result["match_method"] = "family_registry_alias"
             return result
 
     return None
@@ -1593,7 +1595,7 @@ def _validate_candidate(
     # il matcher riceve il candidato RAW e restituisce la sua identità
     # canonica dal catalogo autorevole.
     try:
-        matched_product = _PRODUCT_MATCHER.match(product)
+        matched_product = _PRODUCT_MATCHER.match(product, query)
     except Exception as exc:
         print(
             "PRODUCT_MATCHER_RUNTIME_ERROR:",
@@ -1623,21 +1625,19 @@ def _validate_candidate(
         resolved_identity = None
 
     if isinstance(resolved_identity, dict):
-        # La stessa identità risolta deve essere applicata all'oggetto RAW che
-        # prosegue nel percorso che alimenta matched_candidates. In questo
-        # punto non basta aggiornare solo il risultato restituito dal matcher.
+        # L'identità del Family Registry deve essere applicata all'oggetto
+        # candidato che prosegue nel percorso verso matched_candidates.
+        # Non deve restare confinata a un risultato diagnostico o al matcher.
+        product = dict(product)
         product.update(resolved_identity)
 
-        # Manteniamo inoltre l'oggetto restituito dal matcher coerente con la
-        # stessa identità, così il candidato finale non perde i campi risolti.
-        matched_product.update(resolved_identity)
-
-        if matched_product.get("canonical_name"):
-            matched_product["match_method"] = "family_registry_alias"
-            matched_product["name"] = matched_product["canonical_name"]
-
-        product["match_method"] = "family_registry_alias"
+        product["match_method"] = (
+            product.get("match_method")
+            or "family_registry_alias"
+        )
         product["name"] = product["canonical_name"]
+
+        return product
 
     return matched_product
 
