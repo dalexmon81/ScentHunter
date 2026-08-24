@@ -18,7 +18,7 @@ SITEMAP_URL = BASE_URL + "/sitemap.xml"
 READER_BASE = "https://r.jina.ai/"
 TIMEOUT = 20
 READER_TIMEOUT = 12
-SCRAPER_VERSION = "notino-FR-generic-discovery-2026-08-24-v17-stock-scope-fix"
+SCRAPER_VERSION = "notino-FR-generic-discovery-2026-08-24-v18-reader-context-price-fallback"
 
 HEADERS = {
     "User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
@@ -275,14 +275,12 @@ def _structured_offer_stock_status(text: str, product_name: str = "", product_ur
     target_url = str(product_url or "").lower().rstrip("/")
     target_slug = _product_norm(_name_from_product_url(product_url)) if product_url else ""
 
-    # First try complete JSON-LD blocks. Jina can preserve these as plain text.
     blocks = re.findall(
         r'<script[^>]+type=["\']application/ld\+json["\'][^>]*>(.*?)</script>',
         raw,
         flags=re.I | re.S,
     )
     if not blocks:
-        # Also support a raw JSON object/array when the reader strips script tags.
         blocks = re.findall(
             r'(\{\s*["\']@type["\']\s*:\s*["\'](?:Product|ItemList)["\'].*?\})',
             raw,
@@ -342,7 +340,6 @@ def _structured_offer_stock_status(text: str, product_name: str = "", product_ur
                         for offer in offers if isinstance(offer, dict)]
             statuses = [value for value in statuses if value is not None]
             if statuses:
-                # Any in-stock offer means the product is purchasable.
                 if any(value is False for value in statuses):
                     return False
                 return True
@@ -371,12 +368,7 @@ def _structured_offer_stock_status(text: str, product_name: str = "", product_ur
 
 
 def _stock_status(text: str, product_name: str = "", product_url: str = "") -> Optional[bool]:
-    """Return True for out-of-stock, False for in-stock, None when unknown.
-
-    Availability is scoped to the current product. Never use an arbitrary
-    Offer from a recommendation or related-product block as the status of the
-    current item.
-    """
+    """Return True for out-of-stock, False for in-stock, None when unknown."""
     raw = html_lib.unescape(str(text or ""))
     if not raw.strip():
         return None
@@ -410,14 +402,10 @@ def _stock_status(text: str, product_name: str = "", product_url: str = "") -> O
             elif matched_name_tokens >= 1 and len(name_tokens) <= 2:
                 relevance = 2
 
-        # A status immediately after the current product price is a useful
-        # fallback when Jina removes the surrounding HTML structure.
         nearby = " ".join(lines[max(0, i - 2):i + 1]).lower()
         if re.search(r"(?:prix actuel|\b\d{1,4}[.,]\d{2}\s*€)", nearby, re.I):
             relevance = max(relevance, 2 if name_tokens else 1)
 
-        # Do not accept a bare status marker on a large page without product
-        # identity or immediate price context: it may belong to a recommendation.
         if relevance:
             status_hits.append((relevance, -i, is_out))
 
@@ -804,8 +792,44 @@ def _reader_candidates(text: str, query: str) -> List[Dict[str, Any]]:
             if candidate and (url not in found or candidate["score"] > found[url]["score"]):
                 found[url] = candidate
 
-    # Raw product URLs are retained as a second discovery channel.  Their
-    # names come from the URL, never from a large neighbouring text block.
+    def _nearby_price_context(lines: List[str], line_index: int, url: str, query: str) -> str:
+        """Recover the product-card line associated with a raw URL.
+
+        Jina can expose Notino search results as plain product URLs instead of
+        Markdown links. In that form the URL contains the product identity but
+        the price lives in a nearby line. We only borrow a bounded line whose
+        own text supports the product/query identity, so a neighbouring card's
+        price cannot be attached to the wrong URL.
+        """
+        slug_tokens = set(_query_tokens(_name_from_product_url(url)))
+        query_tokens = set(_query_tokens(query))
+        best: Optional[Tuple[int, int, str]] = None
+
+        start = max(0, line_index - 5)
+        end = min(len(lines), line_index + 6)
+        for index in range(start, end):
+            line = _clean(lines[index])
+            if not line or not _extract_price(line):
+                continue
+
+            tokens = set(_query_tokens(line))
+            slug_hits = sum(1 for token in slug_tokens if token in tokens)
+            query_hits = sum(1 for token in query_tokens if token in tokens)
+            if slug_hits == 0 and query_hits == 0:
+                continue
+
+            distance = abs(index - line_index)
+            score = slug_hits * 10 + query_hits * 5 - distance
+            candidate = (score, -distance, line)
+            if best is None or candidate[:2] > best[:2]:
+                best = candidate
+
+        return best[2] if best else ""
+
+
+    # Raw product URLs are retained as a second discovery channel. Their
+    # identity always comes from the URL; when Jina separates the URL from
+    # the search-card text, a bounded price context is recovered generically.
     for pattern in (PRODUCT_URL_RE, READER_ABSOLUTE_PRODUCT_RE, READER_RELATIVE_PRODUCT_RE):
         for match in pattern.finditer(raw):
             url = _normalise_reader_url(match.group(0))
@@ -838,7 +862,25 @@ def _reader_candidates(text: str, query: str) -> List[Dict[str, Any]]:
             if not _fuzzy_query_match(name, query)[0]:
                 continue
 
-            candidate = _make_candidate(url, name, name, query, "reader-url")
+            line_index = 0
+            for idx, line in enumerate(lines):
+                if match.group(0) in line:
+                    line_index = idx
+                    break
+
+            card_context = _nearby_price_context(
+                lines,
+                line_index,
+                url,
+                query,
+            )
+            candidate = _make_candidate(
+                url,
+                name,
+                card_context or name,
+                query,
+                "reader-url",
+            )
             if candidate and (url not in found or candidate["score"] > found[url]["score"]):
                 found[url] = candidate
 
