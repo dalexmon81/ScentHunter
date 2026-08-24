@@ -441,32 +441,77 @@ def audit_contract(
             products = payload.get("products", [])
             if products:
                 sample = products[0]
-                parsed = (
-                    product_matcher.CatalogProduct.from_dict(
-                        sample
-                    )
+                sample_product_id = text(
+                    sample.get("product_id")
+                    or sample.get("catalog_id")
+                    or sample.get("id")
                 )
 
-                result["checks"].append(
-                    {
-                        "check": "product_matcher_catalog_schema_compatibility",
-                        "value": {
-                            "catalog_product_id": text(
-                                sample.get("product_id")
-                            ),
-                            "matcher_catalog_id": parsed.catalog_id,
-                            "catalog_canonical_name": text(
-                                sample.get("canonical_name")
-                            ),
-                            "matcher_name": parsed.name,
-                            "catalog_brand": text(
-                                sample.get("brand_name")
-                            ),
-                            "matcher_brand": parsed.brand,
-                        },
-                        "expected": "catalog and matcher fields populated",
-                    }
+                # Usa ESATTAMENTE l'adattatore del main.py.
+                # Il diagnostic non deve duplicare una seconda logica di
+                # conversione del catalogo: deve verificare che il contratto
+                # reale product_catalog -> ProductMatcher sia coerente.
+                adapted_catalog = scent_main._load_product_matcher_catalog()
+                adapted = next(
+                    (
+                        item
+                        for item in adapted_catalog
+                        if text(item.get("id")) == sample_product_id
+                    ),
+                    None,
                 )
+
+                if adapted is None:
+                    result["checks"].append(
+                        {
+                            "check": "product_matcher_catalog_schema_compatibility",
+                            "value": False,
+                            "details": {
+                                "catalog_product_id": sample_product_id,
+                                "reason": "product_not_present_in_main_adapter_output",
+                            },
+                            "expected": True,
+                        }
+                    )
+                else:
+                    parsed = (
+                        product_matcher.CatalogProduct.from_dict(
+                            adapted
+                        )
+                    )
+
+                    expected_id = sample_product_id
+                    expected_name = text(
+                        sample.get("canonical_name")
+                        or sample.get("name")
+                        or sample.get("family_name")
+                    )
+                    expected_brand = text(
+                        sample.get("brand_name")
+                        or sample.get("brand")
+                    )
+
+                    compatible = (
+                        parsed.catalog_id == expected_id
+                        and parsed.name == expected_name
+                        and parsed.brand == expected_brand
+                    )
+
+                    result["checks"].append(
+                        {
+                            "check": "product_matcher_catalog_schema_compatibility",
+                            "value": compatible,
+                            "details": {
+                                "catalog_product_id": expected_id,
+                                "matcher_catalog_id": parsed.catalog_id,
+                                "catalog_canonical_name": expected_name,
+                                "matcher_name": parsed.name,
+                                "catalog_brand": expected_brand,
+                                "matcher_brand": parsed.brand,
+                            },
+                            "expected": True,
+                        }
+                    )
     except Exception as exc:
         result["checks"].append(
             {
