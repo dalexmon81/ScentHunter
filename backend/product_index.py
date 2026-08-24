@@ -817,9 +817,16 @@ class ProductIndex:
         family_id = clean_text(first_value(item, "family_id"))
         family_name = clean_text(first_value(item, "family_name"))
         canonical_name = clean_text(
-            first_value(item, "canonical_name", "catalog_variant", "name")
-            or name
+            first_value(item, "canonical_name", "catalog_variant")
         )
+
+        # A catalog-family product must carry its canonical variant explicitly.
+        # Never promote family_name (or the raw offer name) into canonical_name.
+        if family_id and not canonical_name:
+            return ""
+
+        if not canonical_name:
+            canonical_name = name
 
         self._upsert_product(
             product_id=product_id,
@@ -846,6 +853,8 @@ class ProductIndex:
             return None
 
         product_id = self._ensure_product_for_offer(item)
+        if not product_id:
+            return None
 
         size_ml = offer_size(item)
         concentration = offer_concentration(item)
