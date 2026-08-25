@@ -1984,6 +1984,78 @@ def _pre_rank_candidates(
     )
 
 
+def _catalog_identity_matches_query(
+    matched_product: Dict[str, Any],
+    query: str,
+) -> bool:
+    """
+    Verifica che l'identita catalogata risolta dal matcher sia compatibile
+    con la query richiesta.
+
+    Il matcher centrale puo riconoscere correttamente un prodotto dal testo
+    del retailer, ma questo non significa che quel prodotto sia la referenza
+    richiesta dall'utente. La query deve quindi essere rappresentata da una
+    forma canonica o da un alias autorevole dello stesso prodotto.
+    """
+    catalog_id = str(
+        matched_product.get("catalog_id")
+        or matched_product.get("product_identity")
+        or ""
+    ).strip()
+
+    if not catalog_id:
+        return True
+
+    query_clean = norm(query)
+    if not query_clean:
+        return False
+
+    catalog_product = next(
+        (
+            item
+            for item in getattr(_PRODUCT_MATCHER, "catalog", [])
+            if norm(getattr(item, "catalog_id", "")) == norm(catalog_id)
+        ),
+        None,
+    )
+
+    # Se l'identita non e presente nel catalogo locale, non blocchiamo il
+    # matching generico delle referenze non ancora catalogate.
+    if catalog_product is None:
+        return True
+
+    query_tokens = {
+        token
+        for token in query_clean.split()
+        if token not in IGNORED_WORDS
+        and not re.fullmatch(r"\d+(?:[.,]\d+)?", token)
+    }
+
+    if not query_tokens:
+        return True
+
+    accepted_forms = [
+        getattr(catalog_product, "name", ""),
+        *getattr(catalog_product, "aliases", ()),
+    ]
+
+    for form in accepted_forms:
+        form_tokens = {
+            token
+            for token in norm(form).split()
+            if token not in IGNORED_WORDS
+            and not re.fullmatch(r"\d+(?:[.,]\d+)?", token)
+        }
+
+        if query_tokens.issubset(form_tokens):
+            return True
+
+        if norm(form) == query_clean:
+            return True
+
+    return False
+
+
 def _validate_candidate(
     product: Dict[str, Any],
     query: str,
@@ -2007,6 +2079,11 @@ def _validate_candidate(
 
     if matched_product is None:
         matched_product = dict(product)
+    elif not _catalog_identity_matches_query(
+        matched_product,
+        query,
+    ):
+        return None
 
     # Per le famiglie governate dal Family Registry, _catalog_match()
     # contiene l'identità risolta dalla regola autorevole. Questa identità
