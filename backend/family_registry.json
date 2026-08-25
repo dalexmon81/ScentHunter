@@ -364,6 +364,56 @@
           ]
         }
       ]
+    },
+    {
+      "family_id": "lattafa_asad",
+      "brand": "Lattafa",
+      "query_aliases": [
+        "Asad",
+        "Lattafa Asad"
+      ],
+      "products": [
+        {
+          "canonical_name": "Asad",
+          "aliases": [
+            "Asad",
+            "Lattafa Asad"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "Asad Zanzibar",
+          "aliases": [
+            "Asad Zanzibar",
+            "Lattafa Asad Zanzibar"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "Asad Bourbon",
+          "aliases": [
+            "Asad Bourbon",
+            "Lattafa Asad Bourbon"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "Asad Elixir",
+          "aliases": [
+            "Asad Elixir",
+            "Lattafa Asad Elixir"
+          ],
+          "formats_ml": [
+            100
+          ]
+        }
+      ]
     }
   ]
 }
