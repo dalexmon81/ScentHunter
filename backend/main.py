@@ -941,11 +941,17 @@ def _catalog_variant_for_product(
             if not alias_key:
                 continue
 
+            # La variante catalogata deve corrispondere all'intera chiave
+            # commerciale del prodotto. Il vecchio controllo `alias_key in
+            # candidate_key` permetteva falsi positivi come:
+            #   Asad + Air Freshener -> Asad
+            #   Asad + Qarar        -> Asad
+            #   Asad Zanzibar + Air Freshener -> Asad Zanzibar
+            # perché un alias corto era semplicemente contenuto nel titolo.
+            # Il registry deve autorizzare solo la variante realmente
+            # identificata; formato/concentrazione/genere sono già rimossi
+            # da _catalog_candidate_variant_key.
             if alias_key == candidate_key:
-                variant_matches.append((len(alias_key), variant))
-                continue
-
-            if alias_key in candidate_key:
                 variant_matches.append((len(alias_key), variant))
 
     if variant_matches:
