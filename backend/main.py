@@ -1074,6 +1074,105 @@ def _catalog_requested_variant(
     return None
 
 
+
+def _catalog_offer_url_conflicts_with_variant(
+    product: Dict[str, Any],
+    family: Dict[str, Any],
+    variant: Dict[str, Any],
+) -> bool:
+    """
+    Scarta genericamente un'offerta quando il suo URL identifica
+    esplicitamente una variante sorella diversa da quella catalogata.
+
+    Esempio generale:
+        variante canonica: "Asad Zanzibar"
+        URL: ".../asad-eau-de-parfum-100-ml..."
+    L'URL identifica esplicitamente "Asad", che è una variante
+    più corta della stessa famiglia, ma non contiene "Zanzibar".
+    L'offerta non deve quindi essere assegnata a Zanzibar.
+
+    La regola è puramente basata sui dati del Family Registry:
+    nessun prodotto/store specifico è codificato nel main.
+    """
+    url_values = [
+        product.get("url"),
+        product.get("source_url"),
+        product.get("product_url"),
+        product.get("source_page"),
+    ]
+
+    source = product.get("source")
+    if isinstance(source, dict):
+        url_values.extend(
+            [
+                source.get("url"),
+                source.get("source_url"),
+                source.get("product_url"),
+            ]
+        )
+
+    provenance = product.get("provenance")
+    if isinstance(provenance, dict):
+        url_values.extend(
+            [
+                provenance.get("source_page"),
+                provenance.get("url"),
+            ]
+        )
+
+    url_text = " ".join(
+        str(value or "").strip()
+        for value in url_values
+        if value not in (None, "")
+    )
+    if not url_text:
+        return False
+
+    url_key = catalog_norm(url_text)
+    canonical_key = catalog_variant_key(
+        variant.get("canonical_name", "")
+    )
+    if not canonical_key:
+        return False
+
+    # If the URL explicitly contains the requested canonical variant,
+    # there is no sibling-variant conflict.
+    if _catalog_phrase_in_text(canonical_key, url_key):
+        return False
+
+    canonical_tokens = set(canonical_key.split())
+    if len(canonical_tokens) <= 1:
+        return False
+
+    for sibling in family.get("variants", []):
+        if sibling is variant:
+            continue
+
+        sibling_key = catalog_variant_key(
+            sibling.get("canonical_name", "")
+        )
+        if not sibling_key or sibling_key == canonical_key:
+            continue
+
+        sibling_tokens = sibling_key.split()
+        canonical_tokens_list = canonical_key.split()
+
+        # Only treat a sibling as an explicit conflict when its complete
+        # identity is a strict, shorter phrase inside the requested
+        # variant. This avoids rejecting unrelated sibling names that
+        # merely share a common token such as a brand/family name.
+        if len(sibling_tokens) >= len(canonical_tokens_list):
+            continue
+
+        if not _catalog_phrase_in_text(sibling_key, url_key):
+            continue
+
+        # The requested canonical variant is absent from the URL while
+        # the shorter sibling is explicitly present.
+        return True
+
+    return False
+
 def _catalog_match(
     product: Dict[str, Any],
     query: str,
@@ -1799,6 +1898,51 @@ def _validate_candidate(
         # L'identità del Family Registry deve essere applicata all'oggetto
         # candidato che prosegue nel percorso verso matched_candidates.
         # Non deve restare confinata a un risultato diagnostico o al matcher.
+        family_id = str(
+            resolved_identity.get("family_id") or ""
+        ).strip()
+        catalog_variant = str(
+            resolved_identity.get("catalog_variant")
+            or resolved_identity.get("canonical_name")
+            or ""
+        ).strip()
+
+        family = next(
+            (
+                item
+                for item in FAMILY_REGISTRY
+                if str(item.get("family_id") or "").strip() == family_id
+            ),
+            None,
+        )
+
+        if isinstance(family, dict):
+            variant = next(
+                (
+                    item
+                    for item in family.get("variants", [])
+                    if catalog_variant_key(
+                        item.get("canonical_name", "")
+                    )
+                    == catalog_variant_key(catalog_variant)
+                ),
+                None,
+            )
+
+            if isinstance(variant, dict) and _catalog_offer_url_conflicts_with_variant(
+                product,
+                family,
+                variant,
+            ):
+                print(
+                    "FAMILY_REGISTRY_URL_CONFLICT: "
+                    f"family={family_id!r} "
+                    f"variant={catalog_variant!r} "
+                    f"url={product.get('url') or ''!r}",
+                    flush=True,
+                )
+                return None
+
         product = dict(product)
         product.update(resolved_identity)
 
