@@ -469,6 +469,9 @@ class ProductMatcher:
         result = dict(offer)
 
         product, method, score = self._best_match(offer)
+        if product is None:
+        return None
+
 
         if product is not None:
             canonical_brand = product.brand
@@ -476,9 +479,8 @@ class ProductMatcher:
             result["catalog_id"] = product.catalog_id
             result["canonical_brand"] = canonical_brand
             result["canonical_name"] = canonical_name
-            result["match_method"] = method
-            result["match_score"] = round(score, 4)
-            result["product_identity"] = product.catalog_id
+            return None
+
 
             if product.concentration and not result.get("concentration"):
                 result["concentration"] = product.concentration
@@ -511,7 +513,12 @@ class ProductMatcher:
             result["canonical_name"] = canonical_name
             result["match_method"] = "raw_identity"
             result["match_score"] = 0.0
-            result["product_identity"] = result["catalog_id"]
+            result["product_identity"] = (
+                getattr(product, "family_id", None)
+                or getattr(product, "catalog_variant", None)
+                or product.catalog_id
+)
+
 
         resolved_size = size_ml(offer)
         if resolved_size is not None:
