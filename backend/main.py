@@ -1225,6 +1225,13 @@ def _catalog_match(
         )
 
         if query_is_family:
+            if _catalog_offer_url_conflicts_with_variant(
+                product,
+                family,
+                variant,
+            ):
+                continue
+
             result = dict(product)
             result["name"] = variant["canonical_name"]
             result["canonical_name"] = variant["canonical_name"]
@@ -1245,6 +1252,13 @@ def _catalog_match(
         )
 
         if requested is variant:
+            if _catalog_offer_url_conflicts_with_variant(
+                product,
+                family,
+                variant,
+            ):
+                continue
+
             result = dict(product)
             result["name"] = variant["canonical_name"]
             result["canonical_name"] = variant["canonical_name"]
