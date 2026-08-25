@@ -378,6 +378,9 @@
           "aliases": [
             "Asad",
             "Lattafa Asad"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -385,6 +388,9 @@
           "aliases": [
             "Asad Zanzibar",
             "Lattafa Asad Zanzibar"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -392,6 +398,9 @@
           "aliases": [
             "Asad Bourbon",
             "Lattafa Asad Bourbon"
+          ],
+          "formats_ml": [
+            100
           ]
         },
         {
@@ -399,6 +408,9 @@
           "aliases": [
             "Asad Elixir",
             "Lattafa Asad Elixir"
+          ],
+          "formats_ml": [
+            100
           ]
         }
       ]
