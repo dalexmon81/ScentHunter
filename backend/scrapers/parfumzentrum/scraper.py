@@ -404,14 +404,29 @@ def _image_candidates(soup):
 
     def add(value, context=""):
         value = unquote(str(value or "")).strip()
-        if not value or value in seen:
+        if not value:
             return
         if value.startswith("//"):
             value = "https:" + value
         elif not value.startswith(("http://", "https://")):
             value = BASE_URL.rstrip("/") + "/" + value.lstrip("/")
+
+        context = str(context or "").lower().strip()
+        if value in seen:
+            # The same image URL can be exposed by a <source> and an <img>.
+            # Keep the strongest metadata instead of letting the first, empty
+            # context hide an exact product/size match from the later <img>.
+            for index, (existing_url, existing_context) in enumerate(candidates):
+                if existing_url == value:
+                    merged = " ".join(
+                        part for part in (existing_context, context) if part
+                    ).strip()
+                    candidates[index] = (existing_url, merged)
+                    break
+            return
+
         seen.add(value)
-        candidates.append((value, str(context or "").lower()))
+        candidates.append((value, context))
 
     # Structured data first, but keep every image instead of blindly taking [0].
     for script in soup.find_all("script", type="application/ld+json"):
@@ -443,13 +458,33 @@ def _image_candidates(soup):
     for node in soup.select('meta[property="og:image"], meta[name="twitter:image"]'):
         add(node.get("content"), "og-image")
 
-    for node in soup.find_all("img"):
-        value = node.get("src") or node.get("data-src") or node.get("data-original")
+    # Standard and lazy-loaded image attributes.
+    # Some product pages keep the real product image only in srcset/data-srcset
+    # while src is a miniature/placeholder. Collect every useful source so the
+    # scorer can choose the image belonging to the actual product variant.
+    for node in soup.find_all(["img", "source"]):
         context = " ".join(
             str(node.get(attr) or "")
-            for attr in ("alt", "title", "data-size", "data-variant")
+            for attr in (
+                "alt", "title", "data-size", "data-variant",
+                "data-product", "data-image", "data-image-id",
+            )
         )
-        add(value, context)
+
+        for attr in (
+            "src", "data-src", "data-original", "data-lazy-src",
+            "data-image", "data-full", "data-zoom-image",
+        ):
+            add(node.get(attr), context)
+
+        for attr in ("srcset", "data-srcset", "data-original-srcset"):
+            raw = str(node.get(attr) or "").strip()
+            if not raw:
+                continue
+            for part in raw.split(","):
+                candidate = part.strip().split(" ")[0]
+                if candidate:
+                    add(candidate, context)
 
     return candidates
 
