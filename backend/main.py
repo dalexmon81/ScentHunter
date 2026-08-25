@@ -538,6 +538,46 @@ def catalog_variant_key(value: Any) -> str:
     return _catalog_clean_text(value)
 
 
+def _catalog_candidate_variant_key(product: Dict[str, Any]) -> str:
+    """
+    Restituisce una chiave commerciale del candidato adatta al match
+    con le varianti del catalogo.
+
+    Rimuove attributi non identitari: formato, concentrazione e
+    marcatori di genere. Non rimuove parole che identificano una
+    variante commerciale, ad esempio "for her", "for him", "pink",
+    "black", "ice", "chrome", "malibu" o "atlantis".
+    """
+    raw_name = (
+        product.get("canonical_name")
+        or product.get("name")
+        or product.get("title")
+        or product.get("product_name")
+        or ""
+    )
+
+    key = catalog_variant_key(raw_name)
+
+    key = re.sub(
+        r"\b\d+(?:[.,]\d+)?\s*(?:ml|cl|l|g|kg|oz)\b",
+        " ",
+        key,
+    )
+    key = re.sub(
+        r"\b(?:eau de parfum|eau de toilette|eau de cologne|"
+        r"extrait de parfum|parfum|edp|edt|edc)\b",
+        " ",
+        key,
+    )
+    key = re.sub(
+        r"\b(?:man|woman|men|women|male|female)\b",
+        " ",
+        key,
+    )
+
+    return re.sub(r"\s+", " ", key).strip()
+
+
 def _catalog_tokens(value: Any) -> List[str]:
     return _catalog_clean_text(value).split()
 
@@ -873,14 +913,62 @@ def _catalog_variant_for_product(
             candidate_text,
         ).strip()
 
-    candidate_key = catalog_variant_key(candidate_text)
+    candidate_key = _catalog_candidate_variant_key(product)
     candidate_gender = _catalog_gender_class(candidate_text)
     candidate_neutral_key = _catalog_gender_neutral_key(candidate_text)
 
-    # 1) Forma autorizzata esatta: è sempre prioritaria.
+    # 1) Chiave commerciale normalizzata: rimuove soltanto formato,
+    # concentrazione e marcatori di genere non identitari, mantenendo
+    # le parole che distinguono realmente la variante commerciale.
+    #
+    # Il confronto usa sia l'uguaglianza sia l'inclusione, ma sceglie
+    # sempre l'alias più specifico. Questo evita che un alias corto
+    # (per esempio "Hawas For Her") vinca su una variante più specifica
+    # (per esempio "Hawas For Her Eclat").
+    variant_matches = []
+
     for variant in family.get("variants", []):
-        if candidate_key in variant.get("normalized_aliases", ()):
-            return variant
+        canonical_name = variant.get("canonical_name", "")
+        alias_keys = {
+            catalog_variant_key(canonical_name),
+            *(
+                catalog_variant_key(alias)
+                for alias in variant.get("aliases", [])
+            ),
+        }
+
+        for alias_key in alias_keys:
+            if not alias_key:
+                continue
+
+            if alias_key == candidate_key:
+                variant_matches.append((len(alias_key), variant))
+                continue
+
+            if alias_key in candidate_key:
+                variant_matches.append((len(alias_key), variant))
+
+    if variant_matches:
+        variant_matches.sort(
+            key=lambda item: item[0],
+            reverse=True,
+        )
+
+        best_length, best_variant = variant_matches[0]
+
+        same_specificity = [
+            variant
+            for length, variant in variant_matches
+            if length == best_length
+        ]
+
+        canonical_names = {
+            item.get("canonical_name", "")
+            for item in same_specificity
+        }
+
+        if len(canonical_names) == 1:
+            return best_variant
 
     # 2) Forma semanticamente equivalente, ma solo per differenze
     #    commerciali di genere esplicitate dal retailer.
