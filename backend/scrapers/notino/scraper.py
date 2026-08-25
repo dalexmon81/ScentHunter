@@ -504,13 +504,30 @@ def _stock_status(
     if not raw.strip():
         return None
 
-    # Prima della disponibilità strutturata, controlliamo il testo visibile
-    # della pagina. Su Notino la pagina può contenere dati JSON-LD
-    # incoerenti con lo stato reale mostrato all'utente: in quel caso la
-    # dicitura visibile "Actuellement en rupture de stock" deve prevalere.
+    # Notino può restituire nel JSON-LD un'offerta ancora marcata come
+    # disponibile anche quando la pagina mostra all'utente "Actuellement en
+    # rupture de stock". Il JSON-LD NON deve quindi avere priorità sullo
+    # stato visibile della pagina. Inoltre l'HTML può essere minificato su
+    # una sola riga, quindi raw.splitlines() da solo non è sufficiente.
+    try:
+        visible_text = BeautifulSoup(
+            raw,
+            "html.parser",
+        ).get_text("\n", strip=True)
+    except Exception:
+        visible_text = raw
+
+    visible_low = visible_text.lower()
+
+    if any(
+        marker in visible_low
+        for marker in OUT_STOCK_MARKERS
+    ):
+        return True
+
     lines = [
         _clean(line)
-        for line in raw.splitlines()
+        for line in visible_text.splitlines()
         if _clean(line)
     ]
 
@@ -572,8 +589,8 @@ def _stock_status(
         status_hits.sort(reverse=True)
         return status_hits[0][2]
 
-    # Solo se il testo visibile non contiene uno stato rilevante, usiamo
-    # JSON-LD / structured data come fallback.
+    # JSON-LD solo come fallback: può essere stale rispetto allo stato reale
+    # mostrato nella pagina.
     structured = _structured_offer_stock_status(
         raw,
         product_name,
