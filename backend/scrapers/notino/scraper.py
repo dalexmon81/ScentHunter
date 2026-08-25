@@ -494,72 +494,6 @@ def _structured_offer_stock_status(
     return None
 
 
-
-def _dom_stock_status(
-    raw: str,
-    product_name: str = "",
-) -> Optional[bool]:
-    """Read explicit stock state from the product DOM when JSON-LD is silent.
-
-    The check is deliberately local to the product area (H1 ancestors and
-    explicit availability/stock elements), so an unrelated recommendation
-    cannot decide the availability of the requested product.
-    """
-    soup = BeautifulSoup(raw or "", "html.parser")
-
-    def classify(value: str) -> Optional[bool]:
-        low = _clean(value).lower()
-        has_out = any(marker in low for marker in OUT_STOCK_MARKERS)
-        has_in = any(marker in low for marker in IN_STOCK_MARKERS)
-        if has_in and not has_out:
-            return False
-        if has_out and not has_in:
-            return True
-        return None
-
-    selectors = (
-        '[itemprop="availability"]',
-        'meta[property="product:availability"]',
-        'meta[name="availability"]',
-        '[class*="availability" i]',
-        '[class*="stock" i]',
-        '[data-testid*="availability" i]',
-        '[data-testid*="stock" i]',
-    )
-
-    for node in soup.select(", ".join(selectors)):
-        value = node.get("content") or node.get_text(" ", strip=True)
-        result = classify(value)
-        if result is not None:
-            return result
-
-    h1 = soup.find("h1")
-    if h1 is not None:
-        node = h1
-        for _ in range(10):
-            node = getattr(node, "parent", None)
-            if node is None:
-                break
-            text = _clean(node.get_text(" ", strip=True))
-            if not text or len(text) > 20000:
-                continue
-            result = classify(text)
-            if result is not None:
-                return result
-
-    visible = _clean(soup.get_text(" ", strip=True))
-    if visible and product_name:
-        product_clean = _clean(product_name)
-        pos = visible.lower().find(product_clean.lower())
-        if pos >= 0:
-            window = visible[max(0, pos - 1000):pos + 7000]
-            result = classify(window)
-            if result is not None:
-                return result
-
-    return None
-
-
 def _stock_status(
     text: str,
     product_name: str = "",
@@ -569,19 +503,6 @@ def _stock_status(
 
     if not raw.strip():
         return None
-
-    structured = _structured_offer_stock_status(
-        raw,
-        product_name,
-        product_url,
-    )
-
-    if structured is not None:
-        return structured
-
-    dom_status = _dom_stock_status(raw, product_name)
-    if dom_status is not None:
-        return dom_status
 
     lines = [
         _clean(line)
@@ -643,9 +564,37 @@ def _stock_status(
                 (relevance, -index, is_out)
             )
 
+    # The visible product-page stock message is authoritative when it is
+    # clearly associated with the requested product. This is important on
+    # pages where structured data can still expose a stale/old offer price
+    # or an InStock availability value after the product has sold out.
     if status_hits:
         status_hits.sort(reverse=True)
-        return status_hits[0][2]
+
+        relevant_out = [
+            hit for hit in status_hits
+            if hit[2] and hit[0] >= 2
+        ]
+
+        if relevant_out:
+            return True
+
+        relevant_in = [
+            hit for hit in status_hits
+            if not hit[2] and hit[0] >= 2
+        ]
+
+        if relevant_in:
+            return False
+
+    structured = _structured_offer_stock_status(
+        raw,
+        product_name,
+        product_url,
+    )
+
+    if structured is not None:
+        return structured
 
     return None
 
@@ -1579,34 +1528,6 @@ def _candidate_lookup_rank(
         ) + (url_fuzzy_hits * 2),
         1 if url_norm else 0,
         url,
-    )
-
-
-def _url_matches_query_identity(
-    url: str,
-    query: str,
-) -> bool:
-    """Require the product URL itself to identify the requested product."""
-    url_name = _name_from_product_url(url)
-    if not url_name:
-        return False
-
-    matched, _, fuzzy_hits = _fuzzy_query_match(
-        url_name,
-        query,
-    )
-    if not matched:
-        return False
-
-    url_norm = _product_norm(url_name)
-    query_norm = _product_norm(query)
-    if not query_norm:
-        return bool(url_norm)
-
-    return (
-        url_norm == query_norm
-        or url_norm.startswith(query_norm + " ")
-        or fuzzy_hits >= max(1, len(_query_tokens(query)) - 1)
     )
 
 
@@ -2968,9 +2889,6 @@ def _reader_product(
         "",
     )
 
-    if not _url_matches_query_identity(candidate_url, query):
-        return None
-
     identity_text = (
         content
         + " "
@@ -3155,11 +3073,6 @@ def _card_result(
     candidate: Dict[str, Any],
     query: str,
 ) -> Optional[Dict[str, Any]]:
-    candidate_url = candidate.get("url", "")
-
-    if not _url_matches_query_identity(candidate_url, query):
-        return None
-
     anchor = _clean(
         candidate.get(
             "anchor_text"
@@ -3233,9 +3146,6 @@ def _product_details(
 ) -> Optional[Dict[str, Any]]:
     url = candidate["url"]
 
-    if not _url_matches_query_identity(url, query):
-        return None
-
     try:
         response = _request(
             session,
@@ -3266,9 +3176,6 @@ def _product_details(
             )
 
     final_url = response.url.split("?")[0]
-
-    if not _url_matches_query_identity(final_url, query):
-        return None
 
     if _has_non_perfume_marker_in_product(
         candidate.get(
