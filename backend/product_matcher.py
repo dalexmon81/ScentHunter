@@ -1,200 +1,149 @@
 """ScentHunter central product identity matcher.
 
-The matcher is the single identity layer between RAW scraper output and the
-frontend. Scrapers may expose their source data both at top level and inside
-the RAW ``source`` / ``identity`` / ``attributes`` blocks; this module accepts
-both forms without adding store- or-product-specific exceptions.
+Generic identity layer between scraper RAW offers and the API/frontend.
+
+Design rules:
+- retailer titles remain raw source data;
+- catalog matching is exact/alias based, never fuzzy across variants;
+- unresolved products may keep a generic raw identity;
+- non-fragrance / non-single-product listings are rejected before identity;
+- variant identity never depends on bottle size;
+- concentration remains a separate identity component;
+- no product/store-specific rules are present here.
 """
 from __future__ import annotations
 
 import hashlib
 import re
-import time
 import unicodedata
 from dataclasses import dataclass
 from typing import Any, Dict, Iterable, List, Optional, Sequence, Tuple
 
 
 def normalize(value: Any) -> str:
-    value = str(value or "").strip().lower()
-    value = unicodedata.normalize("NFKD", value)
-    value = "".join(ch for ch in value if not unicodedata.combining(ch))
-    value = re.sub(r"(?<=\d)(?=[a-z])|(?<=[a-z])(?=\d)", " ", value)
-    value = re.sub(r"[^a-z0-9]+", " ", value)
-    return re.sub(r"\s+", " ", value).strip()
+    text = str(value or "").strip().lower()
+    text = unicodedata.normalize("NFKD", text)
+    text = "".join(ch for ch in text if not unicodedata.combining(ch))
+    text = re.sub(r"(?<=\d)(?=[a-z])|(?<=[a-z])(?=\d)", " ", text)
+    text = re.sub(r"[^a-z0-9]+", " ", text)
+    return re.sub(r"\s+", " ", text).strip()
 
 
-def stable_auto_id(brand: Any, name: Any) -> str:
-    key = f"{normalize(brand)}::{normalize(name)}"
-    return "SH-AUTO-" + hashlib.sha1(key.encode("utf-8")).hexdigest()[:12]
+def stable_auto_id(brand: Any, name: Any, concentration: Any = "") -> str:
+    key = "::".join(
+        (
+            normalize(brand),
+            normalize(name),
+            normalize(concentration),
+        )
+    )
+    return "SH-AUTO-" + hashlib.sha1(key.encode("utf-8")).hexdigest()[:16]
 
 
 def extract_size_ml(text: str) -> Optional[int]:
     if not text:
         return None
-
-    text = normalize(text)
-
     match = re.search(
-        r"(\d+(?:\.\d+)?)\s*(ml|millilitri|litri|l|oz|fl\.?\s*oz)",
-        text,
+        r"(\d+(?:[.,]\d+)?)\s*(ml|millilitri|cl|litri|l|oz|fl\s*oz)\b",
+        str(text),
         re.I,
     )
-
     if not match:
         return None
-
-    value = float(match.group(1))
-    unit = match.group(2).lower()
-
-    if unit in ("l", "litri"):
+    value = float(match.group(1).replace(",", "."))
+    unit = match.group(2).lower().replace(" ", "")
+    if unit in {"l", "litri"}:
         return int(value * 1000)
-
-    if unit in ("oz", "fl. oz", "fl oz"):
-        return int(value * 29.5735)
-
+    if unit == "cl":
+        return int(value * 10)
+    if unit in {"oz", "floz"}:
+        return int(round(value * 29.5735))
     return int(value)
 
 
-def first_value(
-    item: Dict[str, Any],
-    keys: Sequence[str],
-) -> str:
+def first_value(item: Dict[str, Any], keys: Sequence[str]) -> str:
     for key in keys:
         value = item.get(key)
-
         if value is not None and str(value).strip():
             return str(value).strip()
-
     return ""
 
 
-def _nested_source(
-    item: Dict[str, Any],
-) -> Dict[str, Any]:
-    value = item.get("source")
-
-    return (
-        value
-        if isinstance(value, dict)
-        else {}
-    )
+def _nested_dict(item: Dict[str, Any], key: str) -> Dict[str, Any]:
+    value = item.get(key)
+    return value if isinstance(value, dict) else {}
 
 
-def _nested_identity(
-    item: Dict[str, Any],
-) -> Dict[str, Any]:
-    value = item.get("identity")
-
-    return (
-        value
-        if isinstance(value, dict)
-        else {}
-    )
-
-
-def _nested_attributes(
-    item: Dict[str, Any],
-) -> Dict[str, Any]:
-    value = item.get("attributes")
-
-    return (
-        value
-        if isinstance(value, dict)
-        else {}
-    )
-
-
-def _nested_attribute_value(
-    item: Dict[str, Any],
-    key: str,
-) -> Any:
-    value = _nested_attributes(item).get(key)
-
+def _nested_attribute_value(item: Dict[str, Any], key: str) -> Any:
+    value = _nested_dict(item, "attributes").get(key)
     if isinstance(value, dict):
         return value.get("value")
-
     return value
 
 
-def identifier(
-    item: Dict[str, Any],
-    keys: Sequence[str],
-) -> str:
+def identifier(item: Dict[str, Any], keys: Sequence[str]) -> str:
     value = first_value(item, keys)
-
     if not value:
-        identity = _nested_identity(item)
-        value = first_value(identity, keys)
-
-    return (
-        normalize(value).replace(" ", "")
-        if value
-        else ""
-    )
+        value = first_value(_nested_dict(item, "identity"), keys)
+    return normalize(value).replace(" ", "") if value else ""
 
 
-def size_ml(
-    item: Dict[str, Any],
-) -> Optional[float]:
-
-    explicit = item.get("size_ml")
-
-    if explicit in (None, ""):
-        explicit = _nested_attribute_value(
-            item,
-            "size_ml",
-        )
-
-    if explicit not in (None, ""):
-        try:
-            return float(
-                str(explicit).replace(",", ".")
-            )
-        except (
-            TypeError,
-            ValueError,
-        ):
-            pass
-
-    text = " ".join(
-        str(item.get(k) or "")
-        for k in (
-            "name",
-            "title",
-            "product_name",
-            "size",
-            "format",
-        )
-    )
-
-    source = _nested_source(item)
-
-    text += " " + " ".join(
-        str(source.get(k) or "")
-        for k in (
-            "source_name",
-            "name",
-        )
-    )
-
+def _extract_size_from_text(text: str) -> Optional[float]:
+    if not text:
+        return None
     match = re.search(
-        r"\b(\d{1,4}(?:[.,]\d+)?)\s*(ml|cl)\b",
+        r"\b(\d{1,4}(?:[.,]\d+)?)\s*(ml|cl|l|oz|fl\.?\s*oz)\b",
         text,
         re.I,
     )
-
     if not match:
         return None
-
-    value = float(
-        match.group(1).replace(",", ".")
-    )
-
-    if match.group(2).lower() == "cl":
+    value = float(match.group(1).replace(",", "."))
+    unit = match.group(2).lower().replace(" ", "")
+    if unit == "cl":
         value *= 10
-
+    elif unit == "l":
+        value *= 1000
+    elif unit in {"oz", "floz"}:
+        value *= 29.5735
     return value
+
+
+def size_ml(item: Dict[str, Any]) -> Optional[float]:
+    explicit = item.get("size_ml")
+    if explicit in (None, ""):
+        explicit = _nested_attribute_value(item, "size_ml")
+    if explicit not in (None, ""):
+        try:
+            return float(str(explicit).replace(",", "."))
+        except (TypeError, ValueError):
+            pass
+
+    parts = [
+        str(item.get(key) or "")
+        for key in ("name", "title", "product_name", "size", "format", "volume")
+    ]
+    source = _nested_dict(item, "source")
+    parts.extend(
+        str(source.get(key) or "")
+        for key in ("source_name", "name", "title")
+    )
+    return _extract_size_from_text(" ".join(parts))
+
+
+def extract_concentration(text: Any) -> str:
+    value = normalize(text)
+    rules = (
+        ("Extrait de Parfum", r"\bextrait(?: de)? parfum\b|\bextrait\b"),
+        ("Eau de Parfum", r"\beau de parfum\b|\bedp\b"),
+        ("Eau de Toilette", r"\beau de toilette\b|\bedt\b"),
+        ("Eau de Cologne", r"\beau de cologne\b|\bedc\b"),
+        ("Parfum", r"\bparfum\b"),
+    )
+    for label, pattern in rules:
+        if re.search(pattern, value, re.I):
+            return label
+    return ""
 
 
 @dataclass(frozen=True)
@@ -202,854 +151,517 @@ class CatalogProduct:
     catalog_id: str
     brand: str
     name: str
+    concentration: str = ""
+    gender: str = ""
     aliases: Tuple[str, ...] = ()
     formats_ml: Tuple[float, ...] = ()
     gtins: Tuple[str, ...] = ()
     mpns: Tuple[str, ...] = ()
+    family_id: str = ""
+    family_name: str = ""
+    catalog_variant: str = ""
 
     @classmethod
-    def from_dict(
-        cls,
-        data: Dict[str, Any],
-    ):
+    def from_dict(cls, data: Dict[str, Any]) -> "CatalogProduct":
+        formats: List[float] = []
+        for value in data.get("formats_ml") or []:
+            try:
+                formats.append(float(value))
+            except (TypeError, ValueError):
+                continue
+
+        def _ids(*keys: str) -> Tuple[str, ...]:
+            values: List[str] = []
+            for key in keys:
+                raw = data.get(key) or []
+                if isinstance(raw, str):
+                    raw = [raw]
+                if isinstance(raw, list):
+                    for value in raw:
+                        cleaned = identifier({"v": value}, ("v",))
+                        if cleaned and cleaned not in values:
+                            values.append(cleaned)
+            return tuple(values)
+
+        aliases = data.get("aliases") or []
+        if isinstance(aliases, str):
+            aliases = [aliases]
+
+        name = str(
+            data.get("name")
+            or data.get("canonical_name")
+            or data.get("catalog_variant")
+            or data.get("family_name")
+            or ""
+        ).strip()
+
         return cls(
-            str(
-                data.get("id")
-                or data.get("catalog_id")
-                or ""
+            catalog_id=str(data.get("id") or data.get("catalog_id") or "").strip(),
+            brand=str(data.get("brand") or data.get("brand_name") or "").strip(),
+            name=name,
+            concentration=str(data.get("concentration") or "").strip(),
+            gender=str(data.get("gender") or "").strip(),
+            aliases=tuple(str(x).strip() for x in aliases if str(x).strip()),
+            formats_ml=tuple(formats),
+            gtins=_ids("gtins", "ean"),
+            mpns=_ids("mpns", "mpn"),
+            family_id=str(data.get("family_id") or "").strip(),
+            family_name=str(data.get("family_name") or "").strip(),
+            catalog_variant=str(
+                data.get("catalog_variant")
+                or data.get("canonical_name")
+                or name
             ).strip(),
-
-            str(
-                data.get("brand")
-                or ""
-            ).strip(),
-
-            str(
-                data.get("name")
-                or ""
-            ).strip(),
-
-            tuple(
-                str(x).strip()
-                for x in (
-                    data.get("aliases")
-                    or []
-                )
-                if str(x).strip()
-            ),
-
-            tuple(
-                float(x)
-                for x in (
-                    data.get("formats_ml")
-                    or []
-                )
-                if str(x).strip()
-            ),
-
-            tuple(
-                identifier(
-                    {"v": x},
-                    ("v",),
-                )
-                for x in (
-                    data.get("gtins")
-                    or data.get("ean")
-                    or []
-                )
-                if str(x).strip()
-            ),
-
-            tuple(
-                identifier(
-                    {"v": x},
-                    ("v",),
-                )
-                for x in (
-                    data.get("mpns")
-                    or data.get("mpn")
-                    or []
-                )
-                if str(x).strip()
-            ),
         )
 
     @property
-    def normalized_brand(self):
+    def normalized_brand(self) -> str:
         return normalize(self.brand)
 
     @property
-    def normalized_name(self):
+    def normalized_name(self) -> str:
         return normalize(self.name)
 
     @property
-    def normalized_aliases(self):
-        return tuple(
-            normalize(x)
-            for x in self.aliases
-        )
+    def normalized_aliases(self) -> Tuple[str, ...]:
+        return tuple(normalize(x) for x in self.aliases)
 
 
 class ProductMatcher:
+    GTIN_KEYS = ("gtin", "ean", "ean13", "ean_code", "barcode", "upc")
+    MPN_KEYS = ("mpn", "manufacturer_part_number", "manufacturerNumber")
+    CATALOG_KEYS = ("catalog_id", "master_id", "item_group_id", "product_id")
+    BRAND_KEYS = ("brand", "manufacturer", "maker")
+    NAME_KEYS = ("name", "title", "product_name")
 
-    GTIN_KEYS = (
-        "gtin",
-        "ean",
-        "ean13",
-        "ean_code",
-        "barcode",
-        "upc",
+    _NON_IDENTITY_PHRASES = (
+        "gift set",
+        "set regalo",
+        "discovery set",
+        "fragrance set",
+        "perfume set",
+        "parfum set",
+        "coffret",
+        "coffret cadeau",
+        "cofanetto",
+        "bundle",
+        "travel set",
+        "mystery box",
+        "gift box",
+        "tester",
+        "testeur",
+        "sample",
+        "shampoo",
+        "shower gel",
+        "body wash",
+        "body lotion",
+        "body cream",
+        "body milk",
+        "deodorant",
+        "deo spray",
+        "aftershave",
+        "after shave",
+        "body spray",
+        "hair mist",
+        "makeup",
+        "cosmetics",
+        "cosmetic",
+        "skincare",
+        "skin care",
+        "cosmetici",
+        "air freshener",
+        "ambientador",
+        "désodorisant",
+        "desodorisant",
+        "estuche",
+        "etui",
+        "case",
+        "pochette",
+        "miniatur",
+        "miniature",
+        "minispray",
     )
 
-    MPN_KEYS = (
-        "mpn",
-        "manufacturer_part_number",
-        "manufacturerNumber",
+    _STATUS_PHRASES = (
+        "limited edition",
+        "special edition",
+        "anniversary edition",
+        "out of stock",
+        "non disponibile",
+        "indisponibile",
+        "agotado",
+        "rupture de stock",
+        "disponibile",
+        "available",
     )
 
-    CATALOG_KEYS = (
-        "catalog_id",
-        "master_id",
-        "item_group_id",
-        "product_id",
-    )
-
-    BRAND_KEYS = (
-        "brand",
-        "manufacturer",
-        "maker",
-    )
-
-    NAME_KEYS = (
-        "name",
-        "title",
-        "product_name",
-    )
-
-    def __init__(
-        self,
-        catalog: Iterable[
-            Dict[str, Any] | CatalogProduct
-        ],
-    ):
-
+    def __init__(self, catalog: Iterable[Dict[str, Any] | CatalogProduct]):
         self.catalog = [
-            x
-            if isinstance(
-                x,
-                CatalogProduct,
-            )
-            else CatalogProduct.from_dict(x)
-            for x in catalog
+            item if isinstance(item, CatalogProduct)
+            else CatalogProduct.from_dict(item)
+            for item in catalog
         ]
-
-        self._by_gtin = {}
-        self._by_mpn = {}
-        self._by_catalog_id = {}
+        self._by_gtin: Dict[str, List[CatalogProduct]] = {}
+        self._by_mpn: Dict[str, List[CatalogProduct]] = {}
+        self._by_catalog_id: Dict[str, CatalogProduct] = {}
 
         for product in self.catalog:
-
             if product.catalog_id:
-                self._by_catalog_id[
-                    normalize(
-                        product.catalog_id
-                    )
-                ] = product
-
+                self._by_catalog_id[normalize(product.catalog_id)] = product
             for value in product.gtins:
-                self._by_gtin.setdefault(
-                    value,
-                    [],
-                ).append(product)
-
+                self._by_gtin.setdefault(value, []).append(product)
             for value in product.mpns:
-                self._by_mpn.setdefault(
-                    value,
-                    [],
-                ).append(product)
+                self._by_mpn.setdefault(value, []).append(product)
 
-    def _offer_brand(
-        self,
-        offer: Dict[str, Any],
-    ) -> str:
-
-        value = first_value(
-            offer,
-            self.BRAND_KEYS,
-        )
-
-        if value:
-            return normalize(value)
-
-        source = _nested_source(offer)
-
-        value = first_value(
-            source,
-            (
-                "source_brand",
-                "brand",
-                "manufacturer",
-            ),
-        )
-
-        return (
-            normalize(value)
-            if value
-            else ""
-        )
-
-    def _offer_name(
-        self,
-        offer: Dict[str, Any],
-    ) -> str:
-
-        value = first_value(
-            offer,
-            self.NAME_KEYS,
-        )
-
-        if value:
-            return normalize(value)
-
-        source = _nested_source(offer)
-
-        value = first_value(
-            source,
-            (
-                "source_name",
-                "name",
-                "title",
-            ),
-        )
-
-        return (
-            normalize(value)
-            if value
-            else ""
-        )
-
-    def match(
-        self,
-        offer: Dict[str, Any],
-    ) -> Optional[Dict[str, Any]]:
-
-        # ========================================================
-        # DIAGNOSTICA TEMPORANEA
-        # ========================================================
-
-        started = time.perf_counter()
-
-        store = str(
-            offer.get("store")
-            or ""
-        )
-
-        name = str(
-            offer.get("name")
-            or offer.get("title")
-            or offer.get("product_name")
-            or ""
-        )
-
-        brand = str(
-            offer.get("brand")
-            or ""
-        )
-
-        price = str(
-            offer.get("price")
-            or ""
-        )
-
-        url = str(
-            offer.get("url")
-            or ""
-        )
-
-        raw_size = (
-            offer.get("size_ml")
-            or offer.get("size")
-            or offer.get("format")
-            or ""
-        )
-
-        print(
-            "SCENTHUNTER: MATCHER_RAW "
-            f"store={store!r} "
-            f"brand={brand!r} "
-            f"name={name!r} "
-            f"size={raw_size!r} "
-            f"price={price!r} "
-            f"url={url!r}",
-            flush=True,
-        )
-
-        # ========================================================
-        # MATCHING ORIGINALE
-        # ========================================================
-
-        product, method, score = (
-            self._best_match(offer)
-        )
-
-        if product is None:
-            return None
-
-        elapsed_ms = (
-            time.perf_counter()
-            - started
-        ) * 1000.0
-
-        # ========================================================
-        # DIAGNOSTICA RISULTATO
-        # ========================================================
-
-        if product is None:
-
-            print(
-                "SCENTHUNTER: "
-                "MATCHER_UNRESOLVED "
-                f"store={store!r} "
-                f"name={name!r} "
-                f"score={score:.4f} "
-                f"elapsed_ms={elapsed_ms:.1f}",
-                flush=True,
+    def _offer_brand(self, offer: Dict[str, Any]) -> str:
+        value = first_value(offer, self.BRAND_KEYS)
+        if not value:
+            value = first_value(
+                _nested_dict(offer, "source"),
+                ("source_brand", "brand", "manufacturer"),
             )
+        return normalize(value)
 
-            return None
-
-        print(
-            "SCENTHUNTER: "
-            "MATCHER_RESULT "
-            f"store={store!r} "
-            f"raw_name={name!r} "
-            f"catalog_id={product.catalog_id!r} "
-            f"canonical_name={product.name!r} "
-            f"method={method} "
-            f"score={score:.4f} "
-            f"elapsed_ms={elapsed_ms:.1f}",
-            flush=True,
-        )
-
-        result = dict(offer)
-
-        # Preserve the RAW blocks exactly as supplied by
-        # the scraper while exposing the canonical identity
-        # as flat fields for the API/frontend.
-
-        result.update(
-            catalog_id=product.catalog_id,
-            canonical_brand=product.brand,
-            canonical_name=product.name,
-            match_method=method,
-            match_score=round(
-                score,
-                4,
-            ),
-            product_identity=self._identity_for_product(product),
-        )
-
-        resolved_size = size_ml(offer)
-
-        if resolved_size is not None:
-            result["size_ml"] = (
-                resolved_size
-            )
-
-        result["variant_id"] = result["product_identity"]
-
-        if resolved_size is not None:
-            result["offer_variant_id"] = (
-                f"{result['product_identity']}:{resolved_size:g}"
-            )
-        else:
-            result["offer_variant_id"] = (
-                result["product_identity"]
-            )
-
-        return result
-
-    def _best_match(
-        self,
-        offer: Dict[str, Any],
-    ) -> Tuple[Optional[CatalogProduct], str, float]:
-        if self._is_non_fragrance_offer(offer):
-            return None, "non_fragrance", 0.0
-    
-        gtin = identifier(offer, self.GTIN_KEYS)
-        if gtin and len(self._by_gtin.get(gtin, [])) == 1:
-            return self._by_gtin[gtin][0], "gtin", 1.0
-    
-        mpn = identifier(offer, self.MPN_KEYS)
-        if mpn and len(self._by_mpn.get(mpn, [])) == 1:
-            return self._by_mpn[mpn][0], "mpn", 0.99
-    
-        catalog_id = identifier(offer, self.CATALOG_KEYS)
-        if catalog_id and catalog_id in self._by_catalog_id:
-            product = self._by_catalog_id[catalog_id]
-    
-            if self._product_is_fragrance(product):
-                return product, "catalog_id", 0.98
-    
-            return None, "non_fragrance", 0.0
-    
-        brand = self._offer_brand(offer)
-    
-        raw_name = first_value(offer, self.NAME_KEYS)
-        if not raw_name:
-            raw_name = first_value(
-                _nested_source(offer),
+    def _offer_name(self, offer: Dict[str, Any]) -> str:
+        value = first_value(offer, self.NAME_KEYS)
+        if not value:
+            value = first_value(
+                _nested_dict(offer, "source"),
                 ("source_name", "name", "title"),
             )
-    
-        name = self._clean_match_name(brand, raw_name)
-    
-        if not name:
-            return None, "none", 0.0
-    
-        ranked: List[Tuple[float, CatalogProduct]] = []
-    
-        for product in self.catalog:
-            if not self._product_is_fragrance(product):
+        return value
+
+    @staticmethod
+    def _brand_matches(brand: str, product: CatalogProduct) -> bool:
+        return not brand or brand == product.normalized_brand
+
+    @classmethod
+    def _clean_identity_name(cls, brand: str, value: Any) -> str:
+        text = normalize(value)
+        if not text:
+            return ""
+
+        # Retailer titles may place the brand before or after the product.
+        # Remove only exact brand tokens; variant words remain untouched.
+        brand_tokens = normalize(brand).split()
+        for token in brand_tokens:
+            text = re.sub(rf"\b{re.escape(token)}\b", " ", text)
+
+        for phrase in cls._NON_IDENTITY_PHRASES + cls._STATUS_PHRASES:
+            text = re.sub(rf"\b{re.escape(normalize(phrase))}\b", " ", text)
+
+        text = re.sub(
+            r"\b\d{1,4}(?:[.,]\d+)?\s*(?:ml|cl|l|oz|fl\s*oz)\b",
+            " ",
+            text,
+        )
+        text = re.sub(
+            r"\b(?:eau de parfum|eau de toilette|eau de cologne|"
+            r"extrait de parfum|extrait|parfum|edp|edt|edc|"
+            r"spray|vaporisateur)\b",
+            " ",
+            text,
+        )
+        text = re.sub(
+            r"\b(?:pour homme|pour femme|pour hommes|pour femmes|"
+            r"for men|for women|for him|for her|"
+            r"homme|uomo|men|man|femme|donna|women|woman)\b",
+            " ",
+            text,
+        )
+        return re.sub(r"\s+", " ", text).strip()
+
+    @classmethod
+    def _clean_identity_display(cls, brand: str, value: Any) -> str:
+        text = str(value or "").strip()
+        if not text:
+            return ""
+
+        for token in normalize(brand).split():
+            text = re.sub(rf"\b{re.escape(token)}\b", " ", text, flags=re.I)
+
+        for phrase in cls._NON_IDENTITY_PHRASES + cls._STATUS_PHRASES:
+            text = re.sub(rf"\b{re.escape(phrase)}\b", " ", text, flags=re.I)
+
+        text = re.sub(
+            r"\b\d{1,4}(?:[.,]\d+)?\s*(?:ml|cl|l|oz|fl\s*oz)\b",
+            " ",
+            text,
+            flags=re.I,
+        )
+        text = re.sub(
+            r"\b(?:eau\s+de\s+parfum|eau\s+de\s+toilette|"
+            r"eau\s+de\s+cologne|extrait(?:\s+de\s+parfum)?|"
+            r"parfum|edp|edt|edc|spray|vaporisateur)\b",
+            " ",
+            text,
+            flags=re.I,
+        )
+        text = re.sub(
+            r"\b(?:pour\s+homme|pour\s+femme|pour\s+hommes|"
+            r"pour\s+femmes|for\s+men|for\s+women|for\s+him|"
+            r"for\s+her|homme|uomo|men|man|femme|donna|women|woman)\b",
+            " ",
+            text,
+            flags=re.I,
+        )
+        return re.sub(r"\s+", " ", text).strip(" -:|/")
+
+    @classmethod
+    def _is_non_fragrance(cls, offer: Dict[str, Any]) -> bool:
+        fields = [
+            first_value(offer, cls.NAME_KEYS),
+            first_value(offer, ("category", "product_type", "type", "kind")),
+            first_value(offer, ("description", "subtitle")),
+        ]
+        source = _nested_dict(offer, "source")
+        fields.extend(
+            [
+                first_value(source, ("source_name", "name", "title")),
+                first_value(source, ("category", "product_type", "type")),
+            ]
+        )
+
+        for raw in fields:
+            text = normalize(raw)
+            if not text:
                 continue
-    
+            for phrase in cls._NON_IDENTITY_PHRASES:
+                phrase_n = normalize(phrase)
+                if re.search(rf"\b{re.escape(phrase_n)}\b", text):
+                    return True
+        return False
+
+    @classmethod
+    def _catalog_name_keys(cls, product: CatalogProduct) -> Tuple[str, ...]:
+        values = [
+            product.catalog_variant,
+            product.name,
+            *product.aliases,
+        ]
+        return tuple(
+            key for key in (normalize(value) for value in values)
+            if key
+        )
+
+    def _exact_catalog_match(
+        self,
+        offer: Dict[str, Any],
+    ) -> Tuple[Optional[CatalogProduct], str]:
+        brand = self._offer_brand(offer)
+        raw_name = self._offer_name(offer)
+        cleaned = self._clean_identity_name(brand, raw_name)
+        if not cleaned:
+            return None, "none"
+
+        candidates: List[Tuple[int, CatalogProduct]] = []
+        for product in self.catalog:
             if not self._brand_matches(brand, product):
                 continue
-    
-            score = self._name_score(name, product)
-    
-            if score > 0:
-                ranked.append((score, product))
-    
-        ranked.sort(
+
+            for key in self._catalog_name_keys(product):
+                candidate = self._clean_identity_name(product.brand, key)
+                if not candidate:
+                    continue
+
+                # Exact identity only. No fuzzy score and no partial-prefix
+                # acceptance: Asad cannot absorb Asad Bourbon/Elixir/etc.
+                if cleaned == candidate:
+                    candidates.append((len(candidate.split()), product))
+                    break
+
+        if not candidates:
+            return None, "none"
+
+        candidates.sort(
             key=lambda item: (
                 item[0],
-                len(
-                    normalize(
-                        getattr(item[1], "name", "")
-                    ).split()
-                ),
+                normalize(item[1].catalog_id),
             ),
             reverse=True,
         )
-    
-        if not ranked:
-            return None, "none", 0.0
-    
-        best_score = ranked[0][0]
-    
-        tied = [
-            item
-            for item in ranked
-            if abs(item[0] - best_score) < 0.0001
-        ]
-    
-        if len(tied) > 1:
-            exact = [
-                item
-                for item in tied
-                if normalize(item[1].name) == name
-            ]
-    
-            if len(exact) == 1:
-                score, product = exact[0]
-                return product, "exact_name", score
-    
-            return None, "ambiguous", best_score
-    
-        score, product = ranked[0]
-    
-        if score >= 0.96:
-            return product, "exact_name", score
-    
-        if score >= 0.88:
-            return product, "token_score", score
-    
-        return None, "none", score
 
-    def _is_non_fragrance_offer(
+        # Multiple different catalog products with the same exact normalized
+        # identity are ambiguous and must not be shown.
+        top_len = candidates[0][0]
+        top = [
+            product
+            for length, product in candidates
+            if length == top_len
+        ]
+        if len({product.catalog_id for product in top}) != 1:
+            return None, "ambiguous"
+
+        return top[0], "exact_name"
+
+    def _identifier_match(
         self,
         offer: Dict[str, Any],
-    ) -> bool:
-        values = [
-            offer.get("title"),
-            offer.get("name"),
-            offer.get("product_name"),
-            offer.get("category"),
-            offer.get("product_type"),
-            offer.get("packaging_type"),
-            offer.get("description"),
-        ]
-    
-        text = normalize(
-            " ".join(
-                str(value or "")
-                for value in values
-            )
-        )
-    
-        excluded_terms = (
-            "air freshener",
-            "air freshner",
-            "ambientador",
-            "desodorisant",
-            "desodoriser",
-            "room spray",
-            "car fragrance",
-            "home fragrance",
-            "candle",
-            "diffuser",
-            "diffusor",
-            "miniature",
-            "miniatur",
-            "etui",
-            "case",
-            "pouch",
-        )
-    
-        return any(
-            re.search(
-                rf"(?<!\w){re.escape(term)}(?!\w)",
-                text,
-            )
-            for term in excluded_terms
-        )
-    
-    def _product_is_fragrance(
-        self,
-        product: CatalogProduct,
-    ) -> bool:
-        values = [
-            getattr(product, "name", ""),
-            getattr(product, "brand", ""),
-            getattr(product, "category", ""),
-            getattr(product, "product_type", ""),
-            getattr(product, "packaging_type", ""),
-        ]
-    
-        text = normalize(
-            " ".join(
-                str(value or "")
-                for value in values
-            )
-        )
-    
-        excluded_terms = (
-            "air freshener",
-            "air freshner",
-            "ambientador",
-            "desodorisant",
-            "room spray",
-            "candle",
-            "diffuser",
-            "miniature",
-            "miniatur",
-            "etui",
-            "case",
-            "pouch",
-        )
-    
-        return not any(
-            re.search(
-                rf"(?<!\w){re.escape(term)}(?!\w)",
-                text,
-            )
-            for term in excluded_terms
-        )
-    
-    def _clean_match_name(
-        self,
-        brand: str,
-        raw_name: Any,
-    ) -> str:
-        text = normalize(raw_name)
+    ) -> Tuple[Optional[CatalogProduct], str]:
+        gtin = identifier(offer, self.GTIN_KEYS)
+        if gtin and len(self._by_gtin.get(gtin, [])) == 1:
+            return self._by_gtin[gtin][0], "gtin"
 
-        if brand:
-            text = re.sub(
-                rf"(?<!\w){re.escape(normalize(brand))}(?!\w)",
-                " ",
-                text,
+        mpn = identifier(offer, self.MPN_KEYS)
+        if mpn and len(self._by_mpn.get(mpn, [])) == 1:
+            return self._by_mpn[mpn][0], "mpn"
+
+        catalog_id = identifier(offer, self.CATALOG_KEYS)
+        if catalog_id and catalog_id in self._by_catalog_id:
+            return self._by_catalog_id[catalog_id], "catalog_id"
+
+        return None, "none"
+
+    @classmethod
+    def _derive_identity(
+        cls,
+        offer: Dict[str, Any],
+    ) -> Tuple[str, str, str]:
+        brand = first_value(offer, cls.BRAND_KEYS)
+        if not brand:
+            brand = first_value(
+                _nested_dict(offer, "source"),
+                ("source_brand", "brand", "manufacturer"),
             )
 
-        text = re.sub(
-            r"(?<!\w)(?:eau de parfum|eau de toilette|extrait de parfum|parfum|edp|edt|edc|extrait)(?!\w)",
-            " ",
-            text,
+        raw_name = first_value(offer, cls.NAME_KEYS)
+        if not raw_name:
+            raw_name = first_value(
+                _nested_dict(offer, "source"),
+                ("source_name", "name", "title"),
+            )
+
+        cleaned = cls._clean_identity_name(brand, raw_name)
+        display_name = cls._clean_identity_display(brand, raw_name)
+        concentration = (
+            str(offer.get("concentration") or "").strip()
+            or extract_concentration(raw_name)
         )
 
-        text = re.sub(
-            r"(?<!\w)\d+(?:[.,]\d+)?\s*(?:ml|millilitri|litri|l|oz|fl oz)(?!\w)",
-            " ",
-            text,
-        )
-
-        text = re.sub(
-            r"(?<!\w)(?:for him|for men|pour homme|pour hommes|voor mannen|men|man|homme|heren|mannen|uomo|male)(?!\w)",
-            " ",
-            text,
-        )
-
-        text = re.sub(
-            r"(?<!\w)(?:for her|for women|pour femme|pour femmes|voor dames|voor vrouwen|women|woman|femme|donna|dames|vrouwen|female)(?!\w)",
-            " ",
-            text,
-        )
-
-        return re.sub(r"\s+", " ", text).strip()
-
-    def _brand_matches(
-        self,
-        brand: str,
-        product: CatalogProduct,
-    ) -> bool:
         return (
-            not brand
-            or brand == product.normalized_brand
+            str(brand or "").strip(),
+            display_name or cleaned,
+            concentration,
         )
 
-    def _name_score(
-        self,
+    @classmethod
+    def _canonical_display_title(
+        cls,
+        brand: str,
         name: str,
-        product: CatalogProduct,
-    ) -> float:
-        for candidate in (
-            product.normalized_name,
-            *product.normalized_aliases,
-            normalize(getattr(product, "catalog_variant", "")),
-        ):
-            if candidate and name == candidate:
-                return 1.0
+        concentration: str,
+        gender: str = "",
+    ) -> str:
+        parts = []
+        if brand:
+            parts.append(brand)
+        if name:
+            parts.append(name)
 
-        return self._text_score(
-            "",
-            name,
-            product,
-        )
+        title = " - ".join(parts)
+        if concentration:
+            title = f"{title} {concentration}".strip()
+        if gender:
+            title = f"{title} {gender}".strip()
+        return re.sub(r"\s+", " ", title).strip()
 
     def _identity_for_product(
         self,
         product: CatalogProduct,
     ) -> str:
-        family_id = str(
+        family_id = (
             getattr(product, "family_id", "")
-            or getattr(product, "catalog_id", "")
-            or ""
-        ).strip()
-    
-        variant = str(
+            or product.catalog_id
+        )
+
+        variant = (
             getattr(product, "catalog_variant", "")
-            or getattr(product, "canonical_name", "")
-            or getattr(product, "name", "")
-            or ""
-        ).strip()
-    
-        concentration = str(
-            getattr(product, "concentration", "")
-            or ""
-        ).strip()
-    
-        parts = [
-            normalize(family_id),
-            normalize(variant),
-            normalize(concentration),
-        ]
-    
+            or product.name
+        )
+
+        concentration = getattr(
+            product,
+            "concentration",
+            "",
+        )
+
         return "::".join(
-            part
-            for part in parts
-            if part
+            value
+            for value in (
+                normalize(family_id),
+                normalize(variant),
+                normalize(concentration),
+            )
+            if value
         )
 
-    @staticmethod
-    def _text_score(
-        brand: str,
-        name: str,
-        product: CatalogProduct,
-    ):
+    def match(self, offer: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+        if not isinstance(offer, dict):
+            return None
 
-        brand_score = (
-            1.0
-            if (
-                brand
-                and brand
-                == product.normalized_brand
+        if self._is_non_fragrance(offer):
+            return None
+
+        result = dict(offer)
+
+        product, method = self._identifier_match(offer)
+        if product is None:
+            product, method = self._exact_catalog_match(offer)
+
+        if product is not None:
+            canonical_brand = product.brand
+            canonical_name = product.catalog_variant or product.name
+            concentration = (
+                str(result.get("concentration") or "").strip()
+                or product.concentration
+                or extract_concentration(self._offer_name(offer))
             )
-            else 0.0
+
+            result["catalog_id"] = product.catalog_id
+            result["product_identity"] = product.catalog_id
+            result["canonical_brand"] = canonical_brand
+            result["canonical_name"] = canonical_name
+            result["catalog_variant"] = canonical_name
+            result["family_id"] = product.family_id
+            result["family_name"] = product.family_name
+            result["canonical_concentration"] = concentration
+            result["match_method"] = method
+            result["match_score"] = 1.0
+
+            if concentration and not result.get("concentration"):
+                result["concentration"] = concentration
+            if product.gender and not result.get("gender"):
+                result["gender"] = product.gender
+
+        else:
+            # An unresolved record must never be promoted to a product identity.
+            # No raw-name, catalog-id or automatic identity fallback is allowed.
+            return None
+
+        resolved_size = size_ml(offer)
+        if resolved_size is not None:
+            result["size_ml"] = resolved_size
+
+        # Canonical identity is family + variant + concentration.
+        # Bottle size remains an offer attribute and is never part of variant_id.
+        identity = self._identity_for_product(product)
+
+        result["variant_id"] = identity
+        result["product_identity"] = identity
+
+        if resolved_size is not None:
+            result["offer_variant_id"] = (
+                f"{identity}:{resolved_size:g}"
+            )
+        else:
+            result["offer_variant_id"] = identity
+
+        result["canonical_display_name"] = self._canonical_display_title(
+            result.get("canonical_brand", ""),
+            result.get("canonical_name", ""),
+            result.get("canonical_concentration")
+            or result.get("concentration", ""),
+            "",
         )
 
-        best = 0.0
-
-        for candidate in (
-            product.normalized_name,
-            *product.normalized_aliases,
-        ):
-
-            if not candidate:
-                continue
-
-            if name == candidate:
-                best = max(
-                    best,
-                    1.0,
-                )
-                continue
-
-            query_tokens = set(
-                name.split()
-            )
-
-            candidate_tokens = set(
-                candidate.split()
-            )
-
-            intersection = len(
-                query_tokens
-                & candidate_tokens
-            )
-
-            recall = (
-                intersection
-                / len(candidate_tokens)
-                if candidate_tokens
-                else 0.0
-            )
-
-            precision = (
-                intersection
-                / max(
-                    1,
-                    len(query_tokens),
-                )
-            )
-
-            f_score = (
-                2
-                * recall
-                * precision
-                / (
-                    recall
-                    + precision
-                )
-                if recall + precision
-                else 0.0
-            )
-
-            # A shorter name must NOT match a longer
-            # canonical product name merely because it
-            # is a substring.
-            #
-            # Example:
-            # Hawas must not become Hawas Ice.
-
-            if candidate in name:
-                f_score = max(
-                    f_score,
-                    0.92,
-                )
-
-            best = max(
-                best,
-                f_score,
-            )
-
-        return (
-            0.45 + 0.55 * best
-            if brand_score
-            else 0.95 * best
-        )
-
-
-def offer_key(
-    offer: Dict[str, Any],
-) -> Tuple[
-    str,
-    str,
-    str,
-    str,
-]:
-
-    store = normalize(
-        offer.get("store")
-        or _nested_source(
-            offer
-        ).get("store")
-        or ""
-    )
-
-    identity = normalize(
-        offer.get(
-            "product_identity"
-        )
-        or offer.get(
-            "catalog_id"
-        )
-        or ""
-    )
-
-    resolved_size = size_ml(
-        offer
-    )
-
-    size = (
-        ""
-        if resolved_size is None
-        else f"{resolved_size:g}"
-    )
-
-    url = (
-        str(
-            offer.get("url")
-            or _nested_source(
-                offer
-            ).get("url")
-            or ""
-        )
-        .split("#", 1)[0]
-        .split("?", 1)[0]
-        .strip()
-        .lower()
-    )
-
-    return (
-        store,
-        identity,
-        size,
-        url,
-    )
-
-
-def attach_matches(
-    offers: Iterable[
-        Dict[str, Any]
-    ],
-    catalog: Iterable[
-        Dict[str, Any]
-        | CatalogProduct
-    ],
-) -> List[
-    Dict[str, Any]
-]:
-
-    matcher = ProductMatcher(
-        catalog
-    )
-
-    output = []
-
-    for offer in offers:
-
-        if isinstance(
-            offer,
-            dict,
-        ):
-
-            matched = matcher.match(
-                offer
-            )
-
-            if matched is not None:
-                output.append(
-                    matched
-                )
-
-    return output
+        return result
