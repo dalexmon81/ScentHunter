@@ -1512,6 +1512,34 @@ def _candidate_lookup_rank(
     )
 
 
+def _url_matches_query_identity(
+    url: str,
+    query: str,
+) -> bool:
+    """Require the product URL itself to identify the requested product."""
+    url_name = _name_from_product_url(url)
+    if not url_name:
+        return False
+
+    matched, _, fuzzy_hits = _fuzzy_query_match(
+        url_name,
+        query,
+    )
+    if not matched:
+        return False
+
+    url_norm = _product_norm(url_name)
+    query_norm = _product_norm(query)
+    if not query_norm:
+        return bool(url_norm)
+
+    return (
+        url_norm == query_norm
+        or url_norm.startswith(query_norm + " ")
+        or fuzzy_hits >= max(1, len(_query_tokens(query)) - 1)
+    )
+
+
 def _candidate_product_identity(
     candidate: Dict[str, Any],
 ) -> str:
@@ -2870,6 +2898,9 @@ def _reader_product(
         "",
     )
 
+    if not _url_matches_query_identity(candidate_url, query):
+        return None
+
     identity_text = (
         content
         + " "
@@ -3054,6 +3085,11 @@ def _card_result(
     candidate: Dict[str, Any],
     query: str,
 ) -> Optional[Dict[str, Any]]:
+    candidate_url = candidate.get("url", "")
+
+    if not _url_matches_query_identity(candidate_url, query):
+        return None
+
     anchor = _clean(
         candidate.get(
             "anchor_text"
@@ -3127,6 +3163,9 @@ def _product_details(
 ) -> Optional[Dict[str, Any]]:
     url = candidate["url"]
 
+    if not _url_matches_query_identity(url, query):
+        return None
+
     try:
         response = _request(
             session,
@@ -3157,6 +3196,9 @@ def _product_details(
             )
 
     final_url = response.url.split("?")[0]
+
+    if not _url_matches_query_identity(final_url, query):
+        return None
 
     if _has_non_perfume_marker_in_product(
         candidate.get(
