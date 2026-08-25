@@ -504,6 +504,10 @@ def _stock_status(
     if not raw.strip():
         return None
 
+    # Prima della disponibilità strutturata, controlliamo il testo visibile
+    # della pagina. Su Notino la pagina può contenere dati JSON-LD
+    # incoerenti con lo stato reale mostrato all'utente: in quel caso la
+    # dicitura visibile "Actuellement en rupture de stock" deve prevalere.
     lines = [
         _clean(line)
         for line in raw.splitlines()
@@ -564,29 +568,12 @@ def _stock_status(
                 (relevance, -index, is_out)
             )
 
-    # The visible product-page stock message is authoritative when it is
-    # clearly associated with the requested product. This is important on
-    # pages where structured data can still expose a stale/old offer price
-    # or an InStock availability value after the product has sold out.
     if status_hits:
         status_hits.sort(reverse=True)
+        return status_hits[0][2]
 
-        relevant_out = [
-            hit for hit in status_hits
-            if hit[2] and hit[0] >= 2
-        ]
-
-        if relevant_out:
-            return True
-
-        relevant_in = [
-            hit for hit in status_hits
-            if not hit[2] and hit[0] >= 2
-        ]
-
-        if relevant_in:
-            return False
-
+    # Solo se il testo visibile non contiene uno stato rilevante, usiamo
+    # JSON-LD / structured data come fallback.
     structured = _structured_offer_stock_status(
         raw,
         product_name,
