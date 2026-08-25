@@ -575,52 +575,52 @@ class ProductMatcher:
     ) -> Tuple[Optional[CatalogProduct], str, float]:
         if self._is_non_fragrance_offer(offer):
             return None, "non_fragrance", 0.0
-
+    
         gtin = identifier(offer, self.GTIN_KEYS)
         if gtin and len(self._by_gtin.get(gtin, [])) == 1:
             return self._by_gtin[gtin][0], "gtin", 1.0
-
+    
         mpn = identifier(offer, self.MPN_KEYS)
         if mpn and len(self._by_mpn.get(mpn, [])) == 1:
             return self._by_mpn[mpn][0], "mpn", 0.99
-
+    
         catalog_id = identifier(offer, self.CATALOG_KEYS)
         if catalog_id and catalog_id in self._by_catalog_id:
             product = self._by_catalog_id[catalog_id]
-
+    
             if self._product_is_fragrance(product):
                 return product, "catalog_id", 0.98
-
+    
             return None, "non_fragrance", 0.0
-
+    
         brand = self._offer_brand(offer)
-
+    
         raw_name = first_value(offer, self.NAME_KEYS)
         if not raw_name:
             raw_name = first_value(
-                _nested_dict(offer, "source"),
+                _nested_source(offer),
                 ("source_name", "name", "title"),
             )
-
+    
         name = self._clean_match_name(brand, raw_name)
-
+    
         if not name:
             return None, "none", 0.0
-
+    
         ranked: List[Tuple[float, CatalogProduct]] = []
-
+    
         for product in self.catalog:
             if not self._product_is_fragrance(product):
                 continue
-
+    
             if not self._brand_matches(brand, product):
                 continue
-
+    
             score = self._name_score(name, product)
-
+    
             if score > 0:
                 ranked.append((score, product))
-
+    
         ranked.sort(
             key=lambda item: (
                 item[0],
@@ -632,40 +632,41 @@ class ProductMatcher:
             ),
             reverse=True,
         )
-
+    
         if not ranked:
             return None, "none", 0.0
-
+    
         best_score = ranked[0][0]
-
+    
         tied = [
             item
             for item in ranked
             if abs(item[0] - best_score) < 0.0001
         ]
-
+    
         if len(tied) > 1:
             exact = [
                 item
                 for item in tied
                 if normalize(item[1].name) == name
             ]
-
+    
             if len(exact) == 1:
                 score, product = exact[0]
                 return product, "exact_name", score
-
+    
             return None, "ambiguous", best_score
-
+    
         score, product = ranked[0]
-
+    
         if score >= 0.96:
             return product, "exact_name", score
-
+    
         if score >= 0.88:
             return product, "token_score", score
-
+    
         return None, "none", score
+
     def _is_non_fragrance_offer(
         self,
         offer: Dict[str, Any],
@@ -679,14 +680,14 @@ class ProductMatcher:
             offer.get("packaging_type"),
             offer.get("description"),
         ]
-
+    
         text = normalize(
             " ".join(
                 str(value or "")
                 for value in values
             )
         )
-
+    
         excluded_terms = (
             "air freshener",
             "air freshner",
@@ -705,7 +706,7 @@ class ProductMatcher:
             "case",
             "pouch",
         )
-
+    
         return any(
             re.search(
                 rf"(?<!\w){re.escape(term)}(?!\w)",
@@ -713,7 +714,7 @@ class ProductMatcher:
             )
             for term in excluded_terms
         )
-
+    
     def _product_is_fragrance(
         self,
         product: CatalogProduct,
@@ -725,14 +726,14 @@ class ProductMatcher:
             getattr(product, "product_type", ""),
             getattr(product, "packaging_type", ""),
         ]
-
+    
         text = normalize(
             " ".join(
                 str(value or "")
                 for value in values
             )
         )
-
+    
         excluded_terms = (
             "air freshener",
             "air freshner",
@@ -747,13 +748,70 @@ class ProductMatcher:
             "case",
             "pouch",
         )
-
+    
         return not any(
             re.search(
                 rf"(?<!\w){re.escape(term)}(?!\w)",
                 text,
             )
             for term in excluded_terms
+        )
+    
+    def _clean_match_name(
+        self,
+        brand: str,
+        raw_name: Any,
+    ) -> str:
+        text = normalize(raw_name)
+
+        if brand:
+            text = re.sub(
+                rf"(?<!\w){re.escape(normalize(brand))}(?!\w)",
+                " ",
+                text,
+            )
+
+        text = re.sub(
+            r"(?<!\w)(?:eau de parfum|eau de toilette|extrait de parfum|parfum|edp|edt|edc|extrait)(?!\w)",
+            " ",
+            text,
+        )
+
+        text = re.sub(
+            r"(?<!\w)\d+(?:[.,]\d+)?\s*(?:ml|millilitri|litri|l|oz|fl oz)(?!\w)",
+            " ",
+            text,
+        )
+
+        return re.sub(r"\s+", " ", text).strip()
+
+    def _brand_matches(
+        self,
+        brand: str,
+        product: CatalogProduct,
+    ) -> bool:
+        return (
+            not brand
+            or brand == product.normalized_brand
+        )
+
+    def _name_score(
+        self,
+        name: str,
+        product: CatalogProduct,
+    ) -> float:
+        for candidate in (
+            product.normalized_name,
+            *product.normalized_aliases,
+            normalize(getattr(product, "catalog_variant", "")),
+        ):
+            if candidate and name == candidate:
+                return 1.0
+
+        return self._text_score(
+            "",
+            name,
+            product,
         )
 
     def _identity_for_product(
@@ -765,31 +823,30 @@ class ProductMatcher:
             or getattr(product, "catalog_id", "")
             or ""
         ).strip()
-
+    
         variant = str(
             getattr(product, "catalog_variant", "")
             or getattr(product, "canonical_name", "")
             or getattr(product, "name", "")
             or ""
         ).strip()
-
+    
         concentration = str(
             getattr(product, "concentration", "")
             or ""
         ).strip()
-
+    
         parts = [
             normalize(family_id),
             normalize(variant),
             normalize(concentration),
         ]
-
+    
         return "::".join(
             part
             for part in parts
             if part
         )
-
 
     @staticmethod
     def _text_score(
