@@ -5,6 +5,7 @@ from fastapi.responses import FileResponse
 
 import importlib
 import json
+import math
 
 from product_matcher import ProductMatcher
 import os
@@ -709,6 +710,22 @@ def _load_family_registry() -> List[Dict[str, Any]]:
                 valid_aliases.append(alias)
 
             valid_aliases = list(dict.fromkeys(valid_aliases))
+
+            formats_ml: List[float] = []
+            raw_formats = variant.get("formats_ml") or []
+            if isinstance(raw_formats, (int, float, str)):
+                raw_formats = [raw_formats]
+            if isinstance(raw_formats, list):
+                for raw_size in raw_formats:
+                    try:
+                        size_value = float(
+                            str(raw_size).replace(",", ".").strip()
+                        )
+                    except (TypeError, ValueError):
+                        continue
+                    if size_value > 0 and size_value not in formats_ml:
+                        formats_ml.append(size_value)
+
             normalized_variants.append(
                 {
                     "canonical_name": canonical_name,
@@ -718,6 +735,7 @@ def _load_family_registry() -> List[Dict[str, Any]]:
                         for alias in valid_aliases
                         if catalog_variant_key(alias)
                     ),
+                    "formats_ml": tuple(formats_ml),
                 }
             )
 
@@ -1187,6 +1205,35 @@ def _catalog_offer_url_conflicts_with_variant(
 
     return False
 
+def _catalog_variant_size_allowed(
+    product: Dict[str, Any],
+    variant: Dict[str, Any],
+) -> bool:
+    """
+    Quando il catalogo autorevole dichiara i formati commerciali di una
+    variante, un'offerta con formato esplicito deve appartenere a uno di
+    quei formati. Se il catalogo non dichiara formati, non viene applicato
+    alcun filtro.
+    """
+    size = product_size_ml(product)
+    if size is None:
+        return True
+
+    formats = variant.get("formats_ml") or ()
+    if not formats:
+        return True
+
+    return any(
+        math.isclose(
+            float(size),
+            float(allowed_size),
+            rel_tol=0.0,
+            abs_tol=0.01,
+        )
+        for allowed_size in formats
+    )
+
+
 def _catalog_match(
     product: Dict[str, Any],
     query: str,
@@ -1225,12 +1272,8 @@ def _catalog_match(
         )
 
         if query_is_family:
-            if _catalog_offer_url_conflicts_with_variant(
-                product,
-                family,
-                variant,
-            ):
-                continue
+            if not _catalog_variant_size_allowed(product, variant):
+                return None
 
             result = dict(product)
             result["name"] = variant["canonical_name"]
@@ -1252,12 +1295,8 @@ def _catalog_match(
         )
 
         if requested is variant:
-            if _catalog_offer_url_conflicts_with_variant(
-                product,
-                family,
-                variant,
-            ):
-                continue
+            if not _catalog_variant_size_allowed(product, variant):
+                return None
 
             result = dict(product)
             result["name"] = variant["canonical_name"]
