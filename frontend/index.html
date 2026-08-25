@@ -1937,6 +1937,30 @@ function shGroupData(data){
     g.display_name=g.brand?g.brand+" - "+g.canonical_name:g.canonical_name;
   });
 
+  /*
+   * IMMAGINE DEL GRUPPO — correzione mirata.
+   *
+   * L'immagine non viene più scelta dalla prima offerta incontrata durante
+   * la costruzione del gruppo. Dopo che le offerte sono state completamente
+   * raccolte e deduplicate, scegliamo prima l'offerta disponibile con il
+   * prezzo migliore che possiede una propria immagine; se non esiste,
+   * usiamo la prima offerta con immagine.
+   *
+   * Questo mantiene invariati identità, grouping, prezzi e offerte: cambia
+   * esclusivamente la sorgente dell'immagine visualizzata del gruppo.
+   */
+  groups.forEach(g=>{
+    const offers=Array.isArray(g.offers)?g.offers:[];
+    const withImage=offers.filter(o=>Boolean(o?.image||o?.image_url||o?.thumbnail));
+    if(!withImage.length)return;
+
+    const available=withImage.filter(o=>!isOfferOutOfStock(o));
+    const pool=available.length?available:withImage;
+    pool.sort((a,b)=>shNum(a)-shNum(b));
+    const selected=pool[0];
+    g.image=selected.image||selected.image_url||selected.thumbnail||g.image||"";
+  });
+
   // Mostriamo esclusivamente vere referenze di profumo.
   // Set/cofanetti, Mystery/Gift Box e altri prodotti non-profumo vengono
   // esclusi completamente dai risultati, anche quando contengono il nome
