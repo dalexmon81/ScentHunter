@@ -150,6 +150,12 @@ def _load_product_matcher_catalog() -> List[Dict[str, Any]]:
             "id": product_id,
             "brand": brand,
             "name": name,
+            "canonical_name": name,
+            "catalog_variant": name,
+            "family_id": product.get("family_id") or "",
+            "family_name": product.get("family_name") or "",
+            "concentration": product.get("concentration") or "",
+            "gender": product.get("gender") or "",
             "aliases": aliases,
             "formats_ml": data["formats_ml"],
             "gtins": data["gtins"],
@@ -210,6 +216,11 @@ NON_PERFUME = {
     "skincare",
     "skin care",
     "cosmetici",
+    "air freshener",
+    "air-freshener",
+    "ambientador",
+    "désodorisant",
+    "desodorisant",
 }
 
 IGNORED_WORDS = {
@@ -718,6 +729,12 @@ def _load_family_registry() -> List[Dict[str, Any]]:
                         for alias in valid_aliases
                         if catalog_variant_key(alias)
                     ),
+                    "concentration": str(
+                        variant.get("concentration") or ""
+                    ).strip(),
+                    "gender": str(
+                        variant.get("gender") or ""
+                    ).strip(),
                 }
             )
 
@@ -1122,6 +1139,11 @@ def _catalog_match(
                 else ""
             )
             result["catalog_variant"] = variant["canonical_name"]
+            if variant.get("concentration"):
+                result["concentration"] = variant["concentration"]
+                result["canonical_concentration"] = variant["concentration"]
+            if variant.get("gender"):
+                result["gender"] = variant["gender"]
             result["match_method"] = "family_registry_alias"
             return result
 
@@ -1142,6 +1164,11 @@ def _catalog_match(
                 else ""
             )
             result["catalog_variant"] = variant["canonical_name"]
+            if variant.get("concentration"):
+                result["concentration"] = variant["concentration"]
+                result["canonical_concentration"] = variant["concentration"]
+            if variant.get("gender"):
+                result["gender"] = variant["gender"]
             result["match_method"] = "family_registry_alias"
             return result
 
@@ -1459,13 +1486,19 @@ def resolve_actual_price(product: Dict[str, Any]) -> Dict[str, Any]:
 # IDENTITA / DEDUPLICAZIONE
 # ============================================================
 
-def product_identity_key(product: Dict[str, Any]) -> tuple:
+def offer_identity_key(product: Dict[str, Any]) -> tuple:
+    """
+    Identità di una singola offerta.
+    Lo store fa parte della chiave perché questa funzione serve alla
+    deduplicazione delle offerte dello stesso retailer.
+    """
     store = norm(product.get("store", ""))
 
     variant_id = identity_value(
         product,
         "store_variant_id",
         "variant_id",
+        "offer_variant_id",
     )
     product_id = identity_value(
         product,
@@ -1481,64 +1514,117 @@ def product_identity_key(product: Dict[str, Any]) -> tuple:
         "barcode",
         "upc",
     )
-    sku = identity_value(
-        product,
-        "sku",
-    )
+    sku = identity_value(product, "sku")
+    size = product_size_ml(product)
 
     if variant_id:
-        return ("variant", store, norm(variant_id))
+        return ("variant", store, norm(variant_id), size)
 
     if product_id:
-        return ("product", store, norm(product_id), norm(product.get("name", "")))
+        return (
+            "product",
+            store,
+            norm(product_id),
+            size,
+            norm(product.get("name", "")),
+        )
 
     if gtin:
-        return ("gtin", store, norm(gtin))
+        return ("gtin", store, norm(gtin), size)
 
     if sku:
-        return ("sku", store, norm(sku))
+        return ("sku", store, norm(sku), size)
 
-    name = norm(
-        product_field(
-            product,
-            "name",
-            "title",
-            "product_name",
-        )
-    )
+    name = norm(product_field(
+        product,
+        "name",
+        "title",
+        "product_name",
+    ))
 
     source = product.get("source")
-    if isinstance(source, dict):
-        if not name:
-            name = norm(source.get("source_name", ""))
+    if isinstance(source, dict) and not name:
+        name = norm(source.get("source_name", ""))
 
-    size = product_size_ml(product)
-    concentration = product_concentration(product)
+    url = str(product.get("url") or "").strip().lower()
+    if url:
+        return ("url", store, url)
 
     return (
         "fallback",
         store,
         name,
         size,
-        concentration,
+        product_concentration(product),
     )
 
 
+def product_identity_key(product: Dict[str, Any]) -> tuple:
+    """
+    Identità commerciale del prodotto.
+
+    NON contiene store, prezzo, URL o formato. È quindi adatta al
+    raggruppamento cross-store delle offerte dello stesso prodotto.
+    """
+    product_identity = identity_value(product, "product_identity")
+    if product_identity:
+        return ("identity", norm(product_identity))
+
+    family_id = identity_value(product, "family_id")
+    variant = identity_value(
+        product,
+        "catalog_variant",
+        "canonical_name",
+        "name",
+        "title",
+        "product_name",
+    )
+    concentration = identity_value(
+        product,
+        "canonical_concentration",
+        "concentration",
+    )
+    brand = identity_value(
+        product,
+        "canonical_brand",
+        "brand",
+        "source_brand",
+    )
+
+    if family_id and variant:
+        return (
+            "family",
+            norm(family_id),
+            norm(variant),
+            norm(concentration),
+        )
+
+    if variant:
+        return (
+            "generic",
+            norm(brand),
+            norm(variant),
+            norm(concentration),
+        )
+
+    return ("unresolved",)
+
+
 def unique_results(products: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    """
+    Deduplica offerte, non prodotti.
+    """
     unique: List[Dict[str, Any]] = []
     seen = set()
 
     for product in products:
-        key = product_identity_key(product)
-
+        key = offer_identity_key(product)
         if key in seen:
             continue
-
         seen.add(key)
         unique.append(product)
 
     return unique
-
 
 def deterministic_result_key(product: Dict[str, Any]) -> tuple:
     store = norm(product.get("store", ""))
@@ -1665,7 +1751,7 @@ def run_store(
             if image:
                 product["image"] = image
 
-            key = product_identity_key(product)
+            key = offer_identity_key(product)
 
             if key in seen:
                 continue
@@ -1754,6 +1840,117 @@ def _pre_rank_candidates(
     )
 
 
+def _ensure_product_identity(
+    product: Dict[str, Any],
+) -> Optional[Dict[str, Any]]:
+    """
+    Garantisce un'identità commerciale stabile dopo la validazione.
+
+    Priorità:
+    1. identità già risolta dal ProductMatcher;
+    2. identità famiglia/variante dal Family Registry;
+    3. fallback generico brand + nome + concentrazione.
+
+    La logica è completamente indipendente da profumi e retailer specifici.
+    """
+    result = dict(product)
+
+    existing = identity_value(result, "product_identity")
+    if existing:
+        result["product_identity"] = existing
+        return result
+
+    family_id = identity_value(result, "family_id")
+    variant = identity_value(
+        result,
+        "catalog_variant",
+        "canonical_name",
+        "name",
+        "title",
+        "product_name",
+    )
+    concentration = identity_value(
+        result,
+        "canonical_concentration",
+        "concentration",
+    )
+    brand = identity_value(
+        result,
+        "canonical_brand",
+        "brand",
+        "source_brand",
+    )
+
+    if not variant:
+        return None
+
+    # Per le identità non catalogate, rimuoviamo dal nome soltanto
+    # elementi commerciali non identitari già gestiti dalla normalizzazione
+    # generica: brand, formato e concentrazione. La variante commerciale
+    # restante diventa la chiave cross-store.
+    generic_variant = _catalog_candidate_variant_key(
+        {
+            "name": variant,
+            "canonical_name": variant,
+        }
+    )
+    if brand:
+        for brand_token in catalog_norm(brand).split():
+            generic_variant = re.sub(
+                rf"\b{re.escape(brand_token)}\b",
+                " ",
+                generic_variant,
+            )
+        generic_variant = re.sub(
+            r"\s+",
+            " ",
+            generic_variant,
+        ).strip()
+
+    generic_variant = generic_variant or norm(variant)
+
+    if family_id:
+        parts = [
+            norm(family_id),
+            generic_variant,
+            norm(concentration),
+        ]
+    else:
+        parts = [
+            "generic",
+            norm(brand),
+            generic_variant,
+            norm(concentration),
+        ]
+
+    identity = "::".join(part for part in parts if part)
+    if not identity:
+        return None
+
+    result["product_identity"] = identity
+    result["canonical_name"] = (
+        result.get("canonical_name")
+        or result.get("catalog_variant")
+        or result.get("name")
+        or result.get("title")
+        or result.get("product_name")
+        or ""
+    )
+    result["catalog_variant"] = (
+        result.get("catalog_variant")
+        or result.get("canonical_name")
+        or ""
+    )
+
+    if brand and not result.get("canonical_brand"):
+        result["canonical_brand"] = brand
+
+    if concentration and not result.get("canonical_concentration"):
+        result["canonical_concentration"] = concentration
+
+    return result
+
+
 def _validate_candidate(
     product: Dict[str, Any],
     query: str,
@@ -1761,12 +1958,9 @@ def _validate_candidate(
     if not matches(product, query):
         return None
 
-    # Il main usa il matcher centrale per la risoluzione dell'identità.
-    # Il query matching/family validation resta quello già esistente sopra;
-    # il matcher riceve il candidato RAW e restituisce la sua identità
-    # canonica dal catalogo autorevole.
+    # ProductMatcher.match() riceve esclusivamente il candidato RAW.
     try:
-        matched_product = _PRODUCT_MATCHER.match(product, query)
+        matched_product = _PRODUCT_MATCHER.match(product)
     except Exception as exc:
         print(
             "PRODUCT_MATCHER_RUNTIME_ERROR:",
@@ -1775,43 +1969,29 @@ def _validate_candidate(
         )
         matched_product = None
 
-    if matched_product is None:
-        matched_product = dict(product)
+    if isinstance(matched_product, dict):
+        product = matched_product
+    else:
+        # Il Family Registry può risolvere famiglie/varianti che non sono
+        # ancora presenti nel catalogo piatto del ProductMatcher.
+        try:
+            resolved_identity = _catalog_match(product, query)
+        except Exception as exc:
+            print(
+                "FAMILY_REGISTRY_RUNTIME_ERROR:",
+                f"{type(exc).__name__}: {exc}",
+                flush=True,
+            )
+            resolved_identity = None
 
-    # Per le famiglie governate dal Family Registry, _catalog_match()
-    # contiene l'identità risolta dalla regola autorevole. Questa identità
-    # deve essere propagata nel candidato finale: non può restare confinata
-    # al risultato intermedio del matcher/diagnostica.
-    try:
-        resolved_identity = _catalog_match(
-            product,
-            query,
-        )
-    except Exception as exc:
-        print(
-            "FAMILY_REGISTRY_RUNTIME_ERROR:",
-            f"{type(exc).__name__}: {exc}",
-            flush=True,
-        )
-        resolved_identity = None
+        if isinstance(resolved_identity, dict):
+            product = resolved_identity
+        else:
+            # Per le famiglie non catalogate resta un'identità generica
+            # deterministica. Non viene mai usato lo store.
+            product = dict(product)
 
-    if isinstance(resolved_identity, dict):
-        # L'identità del Family Registry deve essere applicata all'oggetto
-        # candidato che prosegue nel percorso verso matched_candidates.
-        # Non deve restare confinata a un risultato diagnostico o al matcher.
-        product = dict(product)
-        product.update(resolved_identity)
-
-        product["match_method"] = (
-            product.get("match_method")
-            or "family_registry_alias"
-        )
-        product["name"] = product["canonical_name"]
-
-        return product
-
-    return matched_product
-
+    return _ensure_product_identity(product)
 
 def _validate_candidates_parallel(
     candidates: List[Dict[str, Any]],
@@ -1857,6 +2037,103 @@ def _validate_candidates_parallel(
     return validated
 
 
+def group_products(products: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    """
+    Aggrega le offerte per identità commerciale.
+
+    Ogni gruppo rappresenta un prodotto; ogni retailer rimane una singola
+    offerta dentro il gruppo.
+    """
+    grouped: Dict[tuple, Dict[str, Any]] = {}
+
+    for product in products:
+        if not isinstance(product, dict):
+            continue
+
+        product_identity = identity_value(product, "product_identity")
+        if not product_identity:
+            continue
+
+        key = product_identity_key(product)
+        if key == ("unresolved",):
+            continue
+
+        group = grouped.get(key)
+        if group is None:
+            group = {
+                "product_identity": product_identity,
+                "brand": (
+                    product.get("canonical_brand")
+                    or product.get("brand")
+                    or product.get("source_brand")
+                    or ""
+                ),
+                "canonical_name": (
+                    product.get("canonical_name")
+                    or product.get("catalog_variant")
+                    or product.get("name")
+                    or product.get("title")
+                    or product.get("product_name")
+                    or ""
+                ),
+                "name": (
+                    product.get("canonical_name")
+                    or product.get("catalog_variant")
+                    or product.get("name")
+                    or product.get("title")
+                    or product.get("product_name")
+                    or ""
+                ),
+                "catalog_variant": (
+                    product.get("catalog_variant")
+                    or product.get("canonical_name")
+                    or ""
+                ),
+                "concentration": (
+                    product.get("canonical_concentration")
+                    or product.get("concentration")
+                    or ""
+                ),
+                "gender": product.get("gender") or "",
+                "family_id": product.get("family_id") or "",
+                "family_name": product.get("family_name") or "",
+                "offers": [],
+            }
+            grouped[key] = group
+
+        offer_key = offer_identity_key(product)
+        if any(
+            offer_identity_key(existing) == offer_key
+            for existing in group["offers"]
+        ):
+            continue
+
+        group["offers"].append(dict(product))
+
+    output = list(grouped.values())
+
+    for group in output:
+        group["offers"] = sort_by_price(group["offers"])
+
+        if group["offers"]:
+            best = group["offers"][0]
+            group["price"] = best.get("price", "")
+            group["store"] = best.get("store", "")
+            group["url"] = best.get("url", "")
+            group["image"] = product_image(best)
+
+    return sorted(
+        output,
+        key=lambda group: (
+            price_num(group.get("price"))
+            if price_num(group.get("price")) is not None
+            else float("inf"),
+            norm(group.get("brand", "")),
+            norm(group.get("canonical_name", "")),
+        ),
+    )
+
+
 def _orchestrate_results(
     candidates: List[Dict[str, Any]],
     query: str,
@@ -1883,9 +2160,9 @@ def _orchestrate_results(
         query,
     )
 
-    return sort_by_price(
-        unique_results(validated)
-    )
+    validated = unique_results(validated)
+
+    return group_products(validated)
 
 # ============================================================
 # SEARCH CENTRALE
@@ -1966,90 +2243,19 @@ def search_perfume(query: str) -> Dict[str, Any]:
         )
 
     # ← FIX: usa _orchestrate_results() per applicare matches()
-    products = _orchestrate_results(
+    results = _orchestrate_results(
         all_results,
         query,
     )
 
-    grouped_products = {}
-
-    for product in products:
-        if not product:
-            continue
-
-        if not product.get("product_identity"):
-            continue
-
-        text = norm(
-            " ".join(
-                str(product.get(field) or "")
-                for field in (
-                    "title",
-                    "name",
-                    "product_name",
-                    "category",
-                    "product_type",
-                    "packaging_type",
-                    "description",
-                )
-            )
-        )
-
-        if any(
-            term in text
-            for term in (
-                "air freshener",
-                "air freshner",
-                "ambientador",
-                "room spray",
-                "candle",
-                "diffuser",
-                "miniature",
-                "miniatur",
-                "etui",
-                "case",
-            )
-        ):
-            continue
-
-        key = product_identity_key(product)
-
-        if key not in grouped_products:
-            grouped_products[key] = {
-                "product_identity": product.get(
-                    "product_identity"
-                ),
-                "brand": product.get("brand"),
-                "canonical_name": product.get(
-                    "canonical_name"
-                ),
-                "catalog_variant": product.get(
-                    "catalog_variant"
-                ),
-                "concentration": product.get(
-                    "concentration"
-                ),
-                "gender": product.get("gender"),
-                "offers": [],
-            }
-
-        grouped_products[key]["offers"].append(
-            product
-        )
-
-    products = list(
-        grouped_products.values()
-    )
-
     return {
         "query": query,
-        "count": len(products),
-        "results": products,
+        "count": len(results),
+        "results": results,
         "comparisons": [],
         "errors": errors,
     }
-
-
+    
 # ============================================================
 # PRICE HISTORY
 # ============================================================
@@ -2205,11 +2411,7 @@ def _search_job_snapshot(job_id: str) -> Dict[str, Any]:
                 detail="Job di ricerca non trovato",
             )
 
-        results = sort_by_price(
-            unique_results(
-                list(job["results"])
-            )
-        )
+        results = list(job["results"])
 
         return {
             "job_id": job_id,
