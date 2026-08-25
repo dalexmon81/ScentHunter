@@ -87,6 +87,10 @@ OUT_STOCK_MARKERS = (
     "rupture de stock",
     "actuellement indisponible",
     "produit indisponible",
+    "surveiller la disponibilité",
+    "surveiller la disponibilit",
+    "surveiller disponibilite",
+    "watch availability",
 )
 
 NON_PERFUME_MARKERS = {
@@ -3114,6 +3118,16 @@ def _card_result(
     context = (
         f"{anchor} {card}"
     )
+
+    # Anche il fallback dalla card deve rispettare lo stato di disponibilità.
+    # Alcune pagine/listati Notino mostrano il pulsante "Surveiller la disponibilité"
+    # senza esporre il prezzo come prodotto acquistabile.
+    context_low = context.lower()
+    if any(
+        marker in context_low
+        for marker in OUT_STOCK_MARKERS
+    ):
+        return None
 
     if not _requested_size_is_valid(
         context,
