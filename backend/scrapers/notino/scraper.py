@@ -3,7 +3,9 @@ from __future__ import annotations
 import difflib
 import html as html_lib
 import json
+import os
 import re
+import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from typing import Any, Dict, Iterable, List, Optional, Tuple
 from urllib.parse import quote_plus, unquote, urljoin, urlparse
@@ -23,6 +25,24 @@ TIMEOUT = 20
 READER_TIMEOUT = 12
 READER_MAX_WORKERS = 8
 PRODUCT_MAX_WORKERS = 8
+
+# Diagnostic only: disabled by default so normal scraping behaviour is unchanged.
+DEBUG_NOTINO = os.getenv(
+    "DEBUG_NOTINO",
+    "",
+).strip().lower() in {
+    "1",
+    "true",
+    "yes",
+    "on",
+}
+
+DEBUG_NOTINO_MAX_TEXT = int(
+    os.getenv(
+        "DEBUG_NOTINO_MAX_TEXT",
+        "1200",
+    )
+)
 
 SCRAPER_VERSION = "notino-FR-generic-discovery-2026-08-25-v21-fast-io"
 
@@ -3053,6 +3073,39 @@ def _reader_product(
     if not price:
         return None
 
+    if DEBUG_NOTINO:
+        reader_stock_snapshot = _debug_stock_snapshot(
+            raw,
+            name,
+            candidate_url,
+        )
+        reader_price_snapshot = _debug_price_snapshot(
+            raw,
+            candidate,
+            query,
+        )
+
+        _debug_event(
+            "reader_product_stock_gate",
+            query=query,
+            candidate_url=candidate_url,
+            product_name=name,
+            selected_price=reader_price_snapshot.get(
+                "selected_price",
+                price,
+            ),
+            selected_price_source=reader_price_snapshot.get(
+                "selected_price_source",
+                "reader_runtime",
+            ),
+            **reader_stock_snapshot,
+            gate_result=(
+                "REJECT_OUT_OF_STOCK"
+                if reader_stock_snapshot["stock_status"] is True
+                else "ACCEPT"
+            ),
+        )
+
     stock = _stock_status(
         raw,
         name,
@@ -3150,12 +3203,62 @@ def _product_details(
 ) -> Optional[Dict[str, Any]]:
     url = candidate["url"]
 
+    _debug_event(
+        "product_details_start",
+        query=query,
+        candidate_url=url,
+        candidate_name=candidate.get("name", ""),
+        candidate_anchor=candidate.get(
+            "anchor_text",
+            "",
+        ),
+        candidate_card=candidate.get(
+            "card_text",
+            "",
+        ),
+    )
+
     try:
         response = _request(
             session,
             url,
         )
-    except requests.RequestException:
+
+        _debug_event(
+            "product_http_response",
+            query=query,
+            candidate_url=url,
+            status=response.status_code,
+            final_url=response.url,
+            response_length=len(
+                response.text or ""
+            ),
+            challenge=_is_challenge(
+                response.text
+            ),
+            looks_like_product_url=_looks_like_product_url(
+                response.url.split("?")[0]
+            ),
+        )
+    except requests.RequestException as exc:
+        _debug_event(
+            "product_http_error",
+            query=query,
+            candidate_url=url,
+            error=(
+                f"{type(exc).__name__}: "
+                f"{exc}"
+            ),
+            status=getattr(
+                getattr(
+                    exc,
+                    "response",
+                    None,
+                ),
+                "status_code",
+                None,
+            ),
+        )
         try:
             reader_response = _reader_request(
                 session,
@@ -3385,6 +3488,40 @@ def _product_details(
                     "",
                 )
             )
+        )
+
+    if DEBUG_NOTINO:
+        html_stock_snapshot = _debug_stock_snapshot(
+            response.text,
+            name,
+            final_url,
+        )
+        html_price_snapshot = _debug_price_snapshot(
+            response.text,
+            candidate,
+            query,
+        )
+
+        _debug_event(
+            "html_product_stock_gate",
+            query=query,
+            candidate_url=url,
+            final_url=final_url,
+            product_name=name,
+            selected_price=html_price_snapshot.get(
+                "selected_price",
+                price,
+            ),
+            selected_price_source=html_price_snapshot.get(
+                "selected_price_source",
+                "html_runtime",
+            ),
+            **html_stock_snapshot,
+            gate_result=(
+                "REJECT_OUT_OF_STOCK"
+                if html_stock_snapshot["stock_status"] is True
+                else "ACCEPT"
+            ),
         )
 
     stock = _stock_status(
@@ -3618,48 +3755,739 @@ def debug_search(
         session.close()
 
 
+def _debug_excerpt(
+    value: Any,
+    limit: int = DEBUG_NOTINO_MAX_TEXT,
+) -> str:
+    text = _clean(
+        html_lib.unescape(
+            str(value or "")
+        )
+    )
+
+    if len(text) <= limit:
+        return text
+
+    return text[:limit] + "…"
+
+
+def _debug_marker_contexts(
+    text: Any,
+    markers: Iterable[str],
+    limit: int = 8,
+) -> List[Dict[str, str]]:
+    raw = html_lib.unescape(str(text or ""))
+
+    if not raw.strip():
+        return []
+
+    try:
+        visible = BeautifulSoup(
+            raw,
+            "html.parser",
+        ).get_text(
+            " ",
+            strip=True,
+        )
+    except Exception:
+        visible = raw
+
+    low = visible.lower()
+    found: List[Dict[str, str]] = []
+
+    for marker in markers:
+        marker_low = marker.lower()
+        start = 0
+
+        while len(found) < limit:
+            position = low.find(
+                marker_low,
+                start,
+            )
+
+            if position < 0:
+                break
+
+            context_start = max(
+                0,
+                position - 180,
+            )
+            context_end = min(
+                len(visible),
+                position + len(marker) + 240,
+            )
+
+            found.append(
+                {
+                    "marker": marker,
+                    "context": _clean(
+                        visible[
+                            context_start:context_end
+                        ]
+                    ),
+                }
+            )
+
+            start = position + len(marker_low)
+
+    return found
+
+
+def _debug_structured_offers(
+    text: Any,
+    product_name: str = "",
+    product_url: str = "",
+) -> List[Dict[str, Any]]:
+    raw = html_lib.unescape(str(text or ""))
+
+    if not raw.strip():
+        return []
+
+    target_name = _product_norm(product_name)
+    target_url = (
+        str(product_url or "")
+        .lower()
+        .rstrip("/")
+    )
+    target_slug = (
+        _product_norm(
+            _name_from_product_url(
+                product_url
+            )
+        )
+        if product_url
+        else ""
+    )
+
+    try:
+        soup = BeautifulSoup(
+            raw,
+            "html.parser",
+        )
+    except Exception:
+        return []
+
+    matches: List[Dict[str, Any]] = []
+
+    for product in _json_ld_products(soup):
+        item_name = _product_norm(
+            product.get("name")
+        )
+        item_url = (
+            str(
+                product.get("url")
+                or product.get("@id")
+                or ""
+            )
+            .lower()
+            .rstrip("/")
+        )
+        item_slug = (
+            _product_norm(
+                _name_from_product_url(
+                    item_url
+                )
+            )
+            if item_url
+            else ""
+        )
+
+        identity_match = False
+
+        if target_url and item_url:
+            identity_match = (
+                item_url == target_url
+            )
+
+        if (
+            not identity_match
+            and target_name
+            and item_name
+        ):
+            identity_match = (
+                item_name == target_name
+                or target_name in item_name
+                or item_name in target_name
+            )
+
+        if (
+            not identity_match
+            and target_slug
+            and item_slug
+        ):
+            identity_match = (
+                item_slug == target_slug
+                or target_slug in item_slug
+                or item_slug in target_slug
+            )
+
+        if not identity_match:
+            continue
+
+        offers = product.get("offers")
+
+        if isinstance(offers, dict):
+            offers = [offers]
+
+        if not isinstance(offers, list):
+            offers = []
+
+        offer_rows: List[Dict[str, Any]] = []
+
+        for offer in offers:
+            if not isinstance(offer, dict):
+                continue
+
+            offer_rows.append(
+                {
+                    "price": (
+                        _format_price(
+                            offer.get("price")
+                        )
+                        or _format_price(
+                            offer.get("lowPrice")
+                        )
+                    ),
+                    "availability": _clean(
+                        offer.get(
+                            "availability"
+                        )
+                    ),
+                    "url": str(
+                        offer.get("url")
+                        or ""
+                    ),
+                    "seller": _clean(
+                        (
+                            offer.get("seller")
+                            or {}
+                        ).get("name")
+                        if isinstance(
+                            offer.get("seller"),
+                            dict,
+                        )
+                        else offer.get(
+                            "seller"
+                        )
+                    ),
+                }
+            )
+
+        matches.append(
+            {
+                "name": _clean(
+                    product.get("name")
+                ),
+                "url": str(
+                    product.get("url")
+                    or product.get("@id")
+                    or ""
+                ),
+                "offers": offer_rows,
+            }
+        )
+
+    return matches
+
+
+def _debug_stock_snapshot(
+    text: Any,
+    product_name: str = "",
+    product_url: str = "",
+) -> Dict[str, Any]:
+    raw = str(text or "")
+
+    try:
+        stock_status = _stock_status(
+            raw,
+            product_name,
+            product_url,
+        )
+    except Exception as exc:
+        stock_status = None
+        stock_error = (
+            f"{type(exc).__name__}: {exc}"
+        )
+    else:
+        stock_error = None
+
+    if stock_status is True:
+        interpretation = "OUT_OF_STOCK"
+    elif stock_status is False:
+        interpretation = "IN_STOCK"
+    else:
+        interpretation = "UNKNOWN"
+
+    structured_offers = (
+        _debug_structured_offers(
+            raw,
+            product_name,
+            product_url,
+        )
+    )
+
+    structured_availability = [
+        {
+            "price": offer.get("price", ""),
+            "availability": offer.get(
+                "availability",
+                "",
+            ),
+            "availability_normalized": _product_norm(
+                offer.get(
+                    "availability",
+                    "",
+                )
+            ),
+            "seller": offer.get(
+                "seller",
+                "",
+            ),
+        }
+        for product in structured_offers
+        for offer in product.get(
+            "offers",
+            [],
+        )
+    ]
+
+    structured_out = [
+        item
+        for item in structured_availability
+        if any(
+            marker in item.get(
+                "availability_normalized",
+                "",
+            )
+            for marker in (
+                "out of stock",
+                "sold out",
+                "discontinued",
+            )
+        )
+    ]
+
+    structured_in = [
+        item
+        for item in structured_availability
+        if any(
+            marker in item.get(
+                "availability_normalized",
+                "",
+            )
+            for marker in (
+                "in stock",
+                "limited availability",
+                "preorder",
+            )
+        )
+    ]
+
+    visible_out = _debug_marker_contexts(
+        raw,
+        OUT_STOCK_MARKERS,
+    )
+    visible_in = _debug_marker_contexts(
+        raw,
+        IN_STOCK_MARKERS,
+    )
+
+    if visible_out:
+        stock_source = "visible_out_marker"
+    elif visible_in:
+        stock_source = "visible_in_marker"
+    elif structured_out:
+        stock_source = "json_ld_out_of_stock"
+    elif structured_in:
+        stock_source = "json_ld_in_stock"
+    else:
+        stock_source = "unknown"
+
+    return {
+        "stock_status": stock_status,
+        "stock_interpretation": interpretation,
+        "stock_source": stock_source,
+        "stock_status_error": stock_error,
+        "visible_out_of_stock_hits": visible_out,
+        "visible_in_stock_hits": visible_in,
+        "structured_products": structured_offers,
+        "structured_out_of_stock_offers": structured_out,
+        "structured_in_stock_offers": structured_in,
+        "has_visible_out_of_stock": bool(
+            visible_out
+        ),
+        "has_visible_in_stock": bool(
+            visible_in
+        ),
+        "has_structured_out_of_stock": bool(
+            structured_out
+        ),
+        "has_structured_in_stock": bool(
+            structured_in
+        ),
+    }
+
+
+def _debug_price_snapshot(
+    text: Any,
+    candidate: Dict[str, Any],
+    query: str,
+) -> Dict[str, Any]:
+    raw = str(text or "")
+
+    try:
+        soup = BeautifulSoup(
+            raw,
+            "html.parser",
+        )
+    except Exception:
+        soup = None
+
+    json_ld_prices: List[Dict[str, Any]] = []
+
+    if soup is not None:
+        for product in _json_ld_products(
+            soup
+        ):
+            product_name = _clean(
+                product.get("name")
+            )
+
+            if not _matches(
+                product_name,
+                query,
+            ):
+                continue
+
+            offers = product.get("offers")
+
+            if isinstance(offers, dict):
+                offers = [offers]
+
+            if not isinstance(offers, list):
+                continue
+
+            for offer in offers:
+                if not isinstance(
+                    offer,
+                    dict,
+                ):
+                    continue
+
+                json_ld_prices.append(
+                    {
+                        "product_name": product_name,
+                        "price": (
+                            _format_price(
+                                offer.get(
+                                    "price"
+                                )
+                            )
+                            or _format_price(
+                                offer.get(
+                                    "lowPrice"
+                                )
+                            )
+                        ),
+                        "availability": _clean(
+                            offer.get(
+                                "availability"
+                            )
+                        ),
+                    }
+                )
+
+    visible_text = raw
+
+    if soup is not None:
+        visible_text = soup.get_text(
+            " ",
+            strip=True,
+        )
+
+    current_price_match = re.search(
+        r"prix\s+actuel\s+"
+        r"(\d{1,4}[.,]\d{2})\s*€",
+        visible_text,
+        re.I,
+    )
+
+    en_stock_price_match = re.search(
+        r"en\s+stock\s*[|:]?\s*"
+        r"(\d{1,4}[.,]\d{2})\s*€",
+        visible_text,
+        re.I,
+    )
+
+    page_price = _extract_product_price(
+        visible_text
+    )
+
+    anchor_price = (
+        _extract_product_price(
+            candidate.get(
+                "anchor_text",
+                "",
+            )
+        )
+        or _extract_price(
+            candidate.get(
+                "anchor_text",
+                "",
+            )
+        )
+    )
+
+    card_price = (
+        _extract_product_price(
+            candidate.get(
+                "card_text",
+                "",
+            )
+        )
+        or _extract_price(
+            candidate.get(
+                "card_text",
+                "",
+            )
+        )
+    )
+
+    prix_actuel_price = (
+        _format_price(
+            current_price_match.group(1)
+        )
+        if current_price_match
+        else ""
+    )
+
+    en_stock_price = (
+        _format_price(
+            en_stock_price_match.group(1)
+        )
+        if en_stock_price_match
+        else ""
+    )
+
+    # Reproduce the exact price precedence used by _product_details(),
+    # without changing the production path.
+    selected_price = ""
+    selected_price_source = "none"
+
+    for row in json_ld_prices:
+        if row.get("price"):
+            selected_price = row["price"]
+            selected_price_source = "json_ld"
+            break
+
+    if not selected_price and prix_actuel_price:
+        selected_price = prix_actuel_price
+        selected_price_source = "page_prix_actuel"
+
+    if not selected_price and en_stock_price:
+        selected_price = en_stock_price
+        selected_price_source = "page_en_stock"
+
+    if not selected_price and page_price:
+        selected_price = page_price
+        selected_price_source = "page_generic"
+
+    if not selected_price and anchor_price:
+        selected_price = anchor_price
+        selected_price_source = "candidate_anchor"
+
+    if not selected_price and card_price:
+        selected_price = card_price
+        selected_price_source = "candidate_card"
+
+    return {
+        "json_ld_prices": json_ld_prices,
+        "prix_actuel_price": prix_actuel_price,
+        "en_stock_price": en_stock_price,
+        "generic_page_price": page_price,
+        "candidate_anchor_price": anchor_price,
+        "candidate_card_price": card_price,
+        "selected_price": selected_price,
+        "selected_price_source": selected_price_source,
+    }
+
+
+def _debug_event(
+    event: str,
+    **data: Any,
+) -> None:
+    if not DEBUG_NOTINO:
+        return
+
+    payload = {
+        "event": event,
+        "timestamp": time.time(),
+        **data,
+    }
+
+    print(
+        "[NOTINO_DEBUG] "
+        + json.dumps(
+            payload,
+            ensure_ascii=False,
+            default=str,
+        ),
+        flush=True,
+    )
+
+
 def _diagnose_product_job(
     candidate: Dict[str, Any],
     query: str,
 ) -> Dict[str, Any]:
     session = _new_session()
+    url = candidate.get("url", "")
+
+    result: Dict[str, Any] = {
+        "url": url,
+        "candidate": {
+            "name": candidate.get("name", ""),
+            "anchor_text": candidate.get(
+                "anchor_text",
+                "",
+            ),
+            "card_text": candidate.get(
+                "card_text",
+                "",
+            ),
+            "score": candidate.get(
+                "score"
+            ),
+            "source": candidate.get(
+                "source",
+                "",
+            ),
+        },
+        "requested_sizes": _requested_sizes(
+            query
+        ),
+    }
 
     try:
         try:
             response = _request(
                 session,
-                candidate["url"],
+                url,
             )
 
-            return {
-                "url": candidate["url"],
-                "status": response.status_code,
-                "final_url": response.url,
-                "html_length": len(
-                    response.text or ""
-                ),
-                "cloudflare": _is_challenge(
-                    response.text
-                ),
-                "reader_fallback": False,
-                "requested_size": _requested_sizes(
-                    query
-                ),
-                "size_match": _requested_size_is_valid(
+            result.update(
+                {
+                    "http": {
+                        "status": response.status_code,
+                        "final_url": response.url,
+                        "html_length": len(
+                            response.text or ""
+                        ),
+                        "challenge": _is_challenge(
+                            response.text
+                        ),
+                        "looks_like_product_url": (
+                            _looks_like_product_url(
+                                response.url.split("?")[0]
+                            )
+                        ),
+                    },
+                    "direct_price_evidence": (
+                        _debug_price_snapshot(
+                            response.text,
+                            candidate,
+                            query,
+                        )
+                    ),
+                    "direct_stock_evidence": (
+                        _debug_stock_snapshot(
+                            response.text,
+                            candidate.get(
+                                "name",
+                                "",
+                            ),
+                            response.url.split("?")[0],
+                        )
+                    ),
+                }
+            )
+
+            direct_name = (
+                candidate.get("name")
+                or _name_from_product_url(
+                    response.url
+                )
+            )
+
+            result["direct_requested_size_match"] = (
+                _requested_size_is_valid(
                     response.text,
                     query,
-                ),
-            }
+                )
+            )
 
-        except requests.RequestException as exc:
+            result["direct_excerpt"] = _debug_excerpt(
+                response.text
+            )
+
+            # Reader is intentionally fetched during diagnosis even when
+            # the normal scraper did not need it. This lets us compare the
+            # two representations of the SAME product page.
             try:
                 reader = _reader_request(
                     session,
-                    candidate["url"],
+                    url,
                 )
 
-                return {
-                    "url": candidate["url"],
+                reader_url = (
+                    reader.url.split("?")[0]
+                )
+
+                result["reader"] = {
+                    "status": reader.status_code,
+                    "final_url": reader.url,
+                    "text_length": len(
+                        reader.text or ""
+                    ),
+                    "challenge": _is_challenge(
+                        reader.text
+                    ),
+                    "looks_like_product_url": (
+                        _looks_like_product_url(
+                            reader_url
+                        )
+                    ),
+                    "requested_size_match": (
+                        _requested_size_is_valid(
+                            reader.text,
+                            query,
+                        )
+                    ),
+                    "price_evidence": (
+                        _debug_price_snapshot(
+                            reader.text,
+                            candidate,
+                            query,
+                        )
+                    ),
+                    "stock_evidence": (
+                        _debug_stock_snapshot(
+                            reader.text,
+                            direct_name,
+                            reader_url,
+                        )
+                    ),
+                    "excerpt": _debug_excerpt(
+                        reader.text
+                    ),
+                }
+
+            except requests.RequestException as exc:
+                result["reader"] = {
+                    "error": (
+                        f"{type(exc).__name__}: "
+                        f"{exc}"
+                    ),
                     "status": getattr(
                         getattr(
                             exc,
@@ -3669,38 +4497,278 @@ def _diagnose_product_job(
                         "status_code",
                         None,
                     ),
-                    "error": (
-                        f"{type(exc).__name__}: "
-                        f"{exc}"
-                    ),
-                    "reader_status": reader.status_code,
-                    "reader_html_length": len(
+                }
+
+            direct_stock = result[
+                "direct_stock_evidence"
+            ]
+            reader_stock = result.get(
+                "reader",
+                {},
+            ).get(
+                "stock_evidence",
+                {},
+            )
+
+            direct_interpretation = (
+                direct_stock.get(
+                    "stock_interpretation"
+                )
+            )
+            reader_interpretation = (
+                reader_stock.get(
+                    "stock_interpretation"
+                )
+                if reader_stock
+                else None
+            )
+
+            direct_card_price = (
+                result[
+                    "direct_price_evidence"
+                ].get(
+                    "candidate_card_price",
+                    "",
+                )
+            )
+            direct_page_price = (
+                result[
+                    "direct_price_evidence"
+                ].get(
+                    "generic_page_price",
+                    "",
+                )
+            )
+
+            result["diagnostic_verdict"] = {
+                "direct_stock": (
+                    direct_interpretation
+                ),
+                "reader_stock": (
+                    reader_interpretation
+                ),
+                "direct_has_out_marker": (
+                    direct_stock.get(
+                        "has_visible_out_of_stock",
+                        False,
+                    )
+                ),
+                "direct_has_structured_out": (
+                    direct_stock.get(
+                        "has_structured_out_of_stock",
+                        False,
+                    )
+                ),
+                "reader_has_out_marker": (
+                    reader_stock.get(
+                        "has_visible_out_of_stock",
+                        False,
+                    )
+                    if reader_stock
+                    else False
+                ),
+                "reader_has_structured_out": (
+                    reader_stock.get(
+                        "has_structured_out_of_stock",
+                        False,
+                    )
+                    if reader_stock
+                    else False
+                ),
+                "card_price_available": bool(
+                    direct_card_price
+                ),
+                "page_price_available": bool(
+                    direct_page_price
+                ),
+                "selected_direct_price": (
+                    result[
+                        "direct_price_evidence"
+                    ].get(
+                        "selected_price",
+                        "",
+                    )
+                ),
+                "selected_direct_price_source": (
+                    result[
+                        "direct_price_evidence"
+                    ].get(
+                        "selected_price_source",
+                        "none",
+                    )
+                ),
+                "likely_stale_card_price": bool(
+                    direct_card_price
+                    and result[
+                        "direct_price_evidence"
+                    ].get(
+                        "selected_price_source"
+                    ) in {
+                        "candidate_anchor",
+                        "candidate_card",
+                    }
+                    and direct_interpretation
+                    == "UNKNOWN"
+                ),
+                "stock_evidence_conflicts": bool(
+                    (
+                        direct_stock.get(
+                            "has_visible_out_of_stock",
+                            False,
+                        )
+                        and direct_stock.get(
+                            "has_visible_in_stock",
+                            False,
+                        )
+                    )
+                    or (
+                        direct_stock.get(
+                            "has_structured_out_of_stock",
+                            False,
+                        )
+                        and direct_stock.get(
+                            "has_structured_in_stock",
+                            False,
+                        )
+                    )
+                ),
+                "stock_sources_conflict": (
+                    direct_interpretation
+                    != reader_interpretation
+                    and direct_interpretation
+                    is not None
+                    and reader_interpretation
+                    is not None
+                ),
+            }
+
+            _debug_event(
+                "diagnose_product",
+                query=query,
+                candidate_url=url,
+                direct_stock=direct_interpretation,
+                reader_stock=reader_interpretation,
+                likely_stale_card_price=result[
+                    "diagnostic_verdict"
+                ]["likely_stale_card_price"],
+                direct_price=direct_page_price,
+                card_price=direct_card_price,
+                selected_price=result[
+                    "direct_price_evidence"
+                ].get(
+                    "selected_price",
+                    "",
+                ),
+                selected_price_source=result[
+                    "direct_price_evidence"
+                ].get(
+                    "selected_price_source",
+                    "none",
+                ),
+            )
+
+            return result
+
+        except requests.RequestException as exc:
+            result.update(
+                {
+                    "http": {
+                        "status": getattr(
+                            getattr(
+                                exc,
+                                "response",
+                                None,
+                            ),
+                            "status_code",
+                            None,
+                        ),
+                        "error": (
+                            f"{type(exc).__name__}: "
+                            f"{exc}"
+                        ),
+                    }
+                }
+            )
+
+            try:
+                reader = _reader_request(
+                    session,
+                    url,
+                )
+
+                reader_url = (
+                    reader.url.split("?")[0]
+                )
+
+                result["reader"] = {
+                    "status": reader.status_code,
+                    "final_url": reader.url,
+                    "text_length": len(
                         reader.text or ""
                     ),
-                    "reader_fallback": True,
-                    "requested_size": _requested_sizes(
-                        query
+                    "challenge": _is_challenge(
+                        reader.text
                     ),
-                    "size_match": _requested_size_is_valid(
-                        reader.text,
-                        query,
+                    "requested_size_match": (
+                        _requested_size_is_valid(
+                            reader.text,
+                            query,
+                        )
+                    ),
+                    "price_evidence": (
+                        _debug_price_snapshot(
+                            reader.text,
+                            candidate,
+                            query,
+                        )
+                    ),
+                    "stock_evidence": (
+                        _debug_stock_snapshot(
+                            reader.text,
+                            candidate.get(
+                                "name",
+                                "",
+                            ),
+                            reader_url,
+                        )
+                    ),
+                    "excerpt": _debug_excerpt(
+                        reader.text
                     ),
                 }
 
-            except requests.RequestException as reader_exc:
-                return {
-                    "url": candidate["url"],
-                    "status": None,
-                    "error": (
-                        f"{type(exc).__name__}: "
-                        f"{exc}"
+                result["diagnostic_verdict"] = {
+                    "direct_stock": "HTTP_ERROR",
+                    "reader_stock": result[
+                        "reader"
+                    ][
+                        "stock_evidence"
+                    ].get(
+                        "stock_interpretation"
                     ),
-                    "reader_error": (
+                    "reader_used_after_http_error": True,
+                    "card_price_available": bool(
+                        result[
+                            "reader"
+                        ][
+                            "price_evidence"
+                        ].get(
+                            "candidate_card_price",
+                            "",
+                        )
+                    ),
+                }
+
+                return result
+
+            except requests.RequestException as reader_exc:
+                result["reader"] = {
+                    "error": (
                         f"{type(reader_exc).__name__}: "
                         f"{reader_exc}"
-                    ),
-                    "reader_fallback": True,
+                    )
                 }
+                return result
 
     finally:
         session.close()
