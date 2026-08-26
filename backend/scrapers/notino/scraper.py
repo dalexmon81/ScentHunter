@@ -4427,7 +4427,7 @@ def diagnose(
                 ]
 
             order_map = {
-                item["url"]: index
+                str(item.get("url") or ""): index
                 for index, item
                 in enumerate(
                     candidates_for_product_pages
@@ -4435,12 +4435,12 @@ def diagnose(
             }
 
             product_page_results.sort(
-                key=lambda item: order_map.get(
-                    item["url"],
-                    len(
-                        candidates_for_product_pages
-                    ),
-                )
+               key=lambda item: order_map.get(
+                   str(item.get("url") or ""),
+                   len(
+                      candidates_for_product_pages
+                   ),
+               )
             )
         else:
             product_page_results = []
