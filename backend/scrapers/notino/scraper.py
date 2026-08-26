@@ -589,6 +589,21 @@ def _stock_status(
         status_hits.sort(reverse=True)
         return status_hits[0][2]
 
+    # Se la pagina reale espone un indicatore positivo di disponibilità ma
+    # il marker è troppo lontano dal nome/prezzo per entrare nella finestra
+    # di rilevanza, la presenza di un prezzo sulla pagina consente comunque
+    # di confermare genericamente lo stock. I marker OUT vengono già
+    # controllati sopra e hanno sempre priorità.
+    if any(
+        marker in visible_low
+        for marker in IN_STOCK_MARKERS
+    ) and re.search(
+        r"(?:prix actuel|\b\d{1,4}[.,]\d{2}\s*€|€\s*\d{1,4}[.,]\d{2})",
+        visible_low,
+        re.I,
+    ):
+        return True
+
     # JSON-LD solo come fallback: può essere stale rispetto allo stato reale
     # mostrato nella pagina.
     structured = _structured_offer_stock_status(
@@ -3110,10 +3125,7 @@ def _reader_product(
         candidate_url,
     )
 
-    if stock is not True:
-        return None
-
-    if not price:
+    if stock is None:
         return None
 
     return {
@@ -3457,10 +3469,7 @@ def _product_details(
         final_url,
     )
 
-    if stock is not True:
-        return None
-
-    if not price:
+    if stock is None:
         return None
 
     return {
