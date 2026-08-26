@@ -1126,6 +1126,13 @@ function shGroupData(data){
   }
 
   function findBrand(o){
+    // Prefer the canonical brand resolved by the backend catalog.
+    // Scraper brand fields are useful evidence, but they are not the
+    // authoritative identity when the central matcher has already resolved
+    // the product.
+    const canonical=canonicalKnownBrand(o?.canonical_brand||"") || cleanBrandText(o?.canonical_brand||"");
+    if(canonical)return canonical;
+
     const name=cleanBrandText(o.name);
     const n=norm(name);
 
@@ -1592,7 +1599,9 @@ function shGroupData(data){
         id.name=catalogCanonicalName(o,id.brand);
       }
 
-      id.key=(norm(id.brand)+"|"+norm(id.name)).replace(/\|+$/g,"");
+      if(!id.catalog_resolved){
+        id.key=(norm(id.brand)+"|"+norm(id.name)).replace(/\|+$/g,"");
+      }
     });
 
     // Seconda passata: se un nome coincide con una famiglia già associata a
@@ -1618,17 +1627,61 @@ function shGroupData(data){
         if(inherited){
           id.brand=inherited;
           id.name=catalogCanonicalName(o,inherited);
-          id.key=norm(inherited)+"|"+norm(id.name);
+          if(!id.catalog_resolved){
+            id.key=norm(inherited)+"|"+norm(id.name);
+          }
         }
       }
     });
   }
 
+  function catalogResolvedIdentityKey(o){
+    const method=String(o?.match_method||"").trim().toLowerCase();
+    const productIdentity=String(
+      o?.product_identity||o?.catalog_id||""
+    ).trim();
+
+    // A central catalog identity is variant-specific and must be shared by
+    // all retailers. It therefore outranks the retailer title and gender.
+    // Raw identities are intentionally excluded here: they can still need
+    // the generic gender split below when no authoritative catalog match
+    // exists.
+    if(
+      productIdentity
+      && method
+      && method!=="raw_identity"
+    ){
+      return "catalog|"+norm(productIdentity);
+    }
+
+    // Family Registry resolutions do not always carry a product_id. The
+    // family + canonical variant pair is nevertheless a stable, generic
+    // cross-retailer identity.
+    const familyId=String(o?.family_id||"").trim();
+    const catalogVariant=String(o?.catalog_variant||o?.canonical_name||"").trim();
+    if(
+      familyId
+      && catalogVariant
+      && method==="family_registry_alias"
+    ){
+      return "family|"+norm(familyId)+"|"+norm(catalogVariant);
+    }
+
+    return "";
+  }
+
   const identities=raw.map(o=>{
     const brand=findBrand(o);
     const name=catalogCanonicalName(o,brand);
-    const key=(norm(brand)+"|"+norm(name)).replace(/\|+$/g,"");
-    return {brand,name,key,gender:genderHint(o)};
+    const resolvedKey=catalogResolvedIdentityKey(o);
+    const key=resolvedKey || (norm(brand)+"|"+norm(name)).replace(/\|+$/g,"");
+    return {
+      brand,
+      name,
+      key,
+      gender:genderHint(o),
+      catalog_resolved:Boolean(resolvedKey)
+    };
   });
 
   resolveIdentitySet(raw,identities);
@@ -1674,7 +1727,9 @@ function shGroupData(data){
     const id=identities[i];
     if(id.concentration){
       id.name=catalogCanonicalName(o,id.brand);
-      id.key=(norm(id.brand)+"|"+norm(id.name)+"|"+norm(id.concentration)).replace(/\|+$/g,"");
+      if(!id.catalog_resolved){
+        id.key=(norm(id.brand)+"|"+norm(id.name)+"|"+norm(id.concentration)).replace(/\|+$/g,"");
+      }
     }
   });
 
@@ -1696,15 +1751,59 @@ function shGroupData(data){
     }
   });
 
+  // Catalog-resolved products represent one authoritative variant.
+  // Retailers may disagree on the audience label, so audience must never
+  // split that variant into multiple cards. When the catalog itself does
+  // not provide a gender, use a deterministic consensus: a single explicit
+  // label wins; if the only conflict is Uomo/Unisex or Donna/Unisex, keep the
+  // explicit binary audience; a Uomo/Donna conflict remains unlabeled rather
+  // than inventing an audience.
+  const catalogGenderConsensus=new Map();
+  const catalogGenderCounts=new Map();
+  raw.forEach((o,i)=>{
+    const id=identities[i];
+    if(!id.catalog_resolved||!id.key)return;
+    const gender=genderHint(o);
+    if(!gender)return;
+    if(!catalogGenderCounts.has(id.key))catalogGenderCounts.set(id.key,new Map());
+    const counts=catalogGenderCounts.get(id.key);
+    counts.set(gender,(counts.get(gender)||0)+1);
+  });
+  catalogGenderCounts.forEach((counts,key)=>{
+    const labels=[...counts.keys()];
+    if(labels.length===1){
+      catalogGenderConsensus.set(key,labels[0]);
+      return;
+    }
+    const hasUomo=counts.has("Uomo");
+    const hasDonna=counts.has("Donna");
+    const hasUnisex=counts.has("Unisex");
+    if(hasUomo&&!hasDonna&&hasUnisex){
+      catalogGenderConsensus.set(key,"Uomo");
+      return;
+    }
+    if(hasDonna&&!hasUomo&&hasUnisex){
+      catalogGenderConsensus.set(key,"Donna");
+      return;
+    }
+    // If multiple concrete audiences conflict, do not manufacture one.
+    catalogGenderConsensus.set(key,"");
+  });
+
   raw.forEach((o,i)=>{
     const id=identities[i];
     const explicit=id.gender||genderHint(o);
     const known=genderByBase.get(id.key);
     const inherited=(known&&known.size===1)?[...known][0]:"";
-    id.gender=explicit||inherited||"";
+    const catalogConsensus=id.catalog_resolved
+      ?(catalogGenderConsensus.get(id.key)||"")
+      :"";
+    id.gender=catalogConsensus||explicit||inherited||"";
     o.gender=id.gender;
-    const genderKey=id.gender?"|"+norm(id.gender):"";
-    id.key=(norm(id.brand)+"|"+norm(id.name)+(id.concentration?"|"+norm(id.concentration):"")+genderKey).replace(/\|+$/g,"");
+    if(!id.catalog_resolved){
+      const genderKey=id.gender?"|"+norm(id.gender):"";
+      id.key=(norm(id.brand)+"|"+norm(id.name)+(id.concentration?"|"+norm(id.concentration):"")+genderKey).replace(/\|+$/g,"");
+    }
   });
 
   /*
