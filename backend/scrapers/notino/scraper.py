@@ -24,7 +24,7 @@ READER_TIMEOUT = 12
 READER_MAX_WORKERS = 8
 PRODUCT_MAX_WORKERS = 8
 
-SCRAPER_VERSION = "notino-FR-generic-discovery-2026-08-26-v25-stock-priority"
+SCRAPER_VERSION = "notino-FR-generic-discovery-2026-08-26-v26-stock-marker-priority"
 
 HEADERS = {
     "User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 "
@@ -502,6 +502,14 @@ def _stock_status(
     if not raw.strip():
         return None
 
+    # A visible product-page out-of-stock signal must override stale or
+    # contradictory structured data. Notino can keep an old InStock JSON-LD
+    # offer while the actual page explicitly says the product is unavailable.
+    # This check is intentionally generic and applies to every product.
+    raw_low = _clean(raw).lower()
+    if any(marker in raw_low for marker in OUT_STOCK_MARKERS):
+        return True
+
     structured = _structured_offer_stock_status(
         raw,
         product_name,
@@ -510,13 +518,6 @@ def _stock_status(
 
     if structured is not None:
         return structured
-
-    # Prefer explicit out-of-stock markers anywhere in the actual product
-    # response before considering generic in-stock text. Notino can show
-    # availability messages without JSON-LD.
-    raw_low = _clean(raw).lower()
-    if any(marker in raw_low for marker in OUT_STOCK_MARKERS):
-        return True
 
     lines = [
         _clean(line)
