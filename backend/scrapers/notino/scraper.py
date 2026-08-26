@@ -2958,26 +2958,88 @@ def _search_http_candidates(
             # Keep both generic Notino search endpoints in the discovery pool.
             # One endpoint can expose a different subset/order of product cards.
 
-        reader_candidates, report = (
-            _reader_discovery(
-                query,
-                session,
-            )
-        )
+        # IMPORTANT: a successful HTTP response is not a successful
+        # discovery. Notino can answer with HTTP 200 while the parser
+        # extracts zero product candidates. In that case the fallback
+        # must run based on the actual candidate list, not on a
+        # request_failed flag.
+        #
+        # Fallback order:
+        #   1. direct HTTP search
+        #   2. Jina/reader discovery
+        #   3. sitemap discovery
+        #
+        # This remains completely generic: no product-specific names,
+        # URLs, seeds, or exceptions are introduced.
+        report: Dict[str, Any] = {
+            "query": query,
+            "direct_pages": pages,
+            "direct_candidate_count": len(candidates),
+            "fallback_triggered": False,
+            "fallback_reason": None,
+        }
 
-        for candidate in reader_candidates:
-            old = candidates.get(
-                candidate["url"]
+        if not candidates:
+            report["fallback_triggered"] = True
+            report["fallback_reason"] = "zero_http_candidates"
+
+            reader_candidates, reader_report = (
+                _reader_discovery(
+                    query,
+                    session,
+                )
             )
 
-            if (
-                old is None
-                or candidate["score"]
-                > old["score"]
-            ):
-                candidates[
+            for candidate in reader_candidates:
+                old = candidates.get(
                     candidate["url"]
-                ] = candidate
+                )
+
+                if (
+                    old is None
+                    or candidate["score"]
+                    > old["score"]
+                ):
+                    candidates[
+                        candidate["url"]
+                    ] = candidate
+
+            report["reader_discovery"] = reader_report
+            report["reader_candidate_count"] = len(
+                reader_candidates
+            )
+
+        if not candidates:
+            report["fallback_reason"] = (
+                "zero_http_and_reader_candidates"
+            )
+
+            sitemap_candidates, sitemap_pages = (
+                _sitemap_discovery(
+                    query,
+                    session,
+                    max_child_sitemaps=200,
+                )
+            )
+
+            for candidate in sitemap_candidates:
+                old = candidates.get(
+                    candidate["url"]
+                )
+
+                if (
+                    old is None
+                    or candidate["score"]
+                    > old["score"]
+                ):
+                    candidates[
+                        candidate["url"]
+                    ] = candidate
+
+            report["sitemap_pages"] = sitemap_pages
+            report["sitemap_candidate_count"] = len(
+                sitemap_candidates
+            )
 
         ordered = sorted(
             candidates.values(),
@@ -2990,20 +3052,12 @@ def _search_http_candidates(
             ),
         )
 
-        report["direct_pages"] = pages
-        report["direct_candidate_count"] = len(
-            [
-                item
-                for item in ordered
-                if item.get("source")
-                == "direct-search"
-            ]
-        )
         report["merged_candidate_count"] = len(
             ordered
         )
+
         report["fallback"] = (
-            "jina-reader+sitemap-merged-concurrent"
+            "jina-reader+sitemap-if-empty"
         )
 
         return ordered, report
