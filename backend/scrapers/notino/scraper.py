@@ -24,7 +24,7 @@ READER_TIMEOUT = 12
 READER_MAX_WORKERS = 8
 PRODUCT_MAX_WORKERS = 8
 
-SCRAPER_VERSION = "DIAGNOSTIC-notino-FR-generic-discovery-2026-08-26-v22-stock-price-trace"
+SCRAPER_VERSION = "DIAGNOSTIC-notino-FR-generic-discovery-2026-08-26-v23-runtime-stock-price-trace"
 
 HEADERS = {
     "User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 "
@@ -3073,6 +3073,91 @@ def _reader_product(
     }
 
 
+def _emit_runtime_stock_price_trace(
+    *,
+    candidate: Dict[str, Any],
+    query: str,
+    product_name: str,
+    product_url: str,
+    price: str,
+    price_source: str,
+    response_text: str,
+) -> None:
+    """Emit the decisive stock/price evidence during the REAL search path."""
+    try:
+        raw = html_lib.unescape(str(response_text or ""))
+        visible = BeautifulSoup(
+            raw,
+            "html.parser",
+        ).get_text(" ", strip=True)
+        visible_low = visible.lower()
+
+        out_hits = [
+            marker
+            for marker in OUT_STOCK_MARKERS
+            if marker in visible_low
+        ]
+        in_hits = [
+            marker
+            for marker in IN_STOCK_MARKERS
+            if marker in visible_low
+        ]
+
+        stock = _stock_status(
+            raw,
+            product_name,
+            product_url,
+        )
+
+        structured = _structured_offer_stock_status(
+            raw,
+            product_name,
+            product_url,
+        )
+
+        if stock is False and price:
+            conclusion = "OUT_OF_STOCK_BUT_PRICE_PRESENT"
+        elif stock is True and price:
+            conclusion = "IN_STOCK_AND_PRICE_PRESENT"
+        elif stock is False:
+            conclusion = "OUT_OF_STOCK_WITHOUT_PRICE"
+        elif stock is None and price:
+            conclusion = "STOCK_UNVERIFIED_BUT_PRICE_PRESENT"
+        elif stock is True:
+            conclusion = "IN_STOCK_WITHOUT_PRICE"
+        else:
+            conclusion = "STOCK_UNVERIFIED_AND_NO_PRICE"
+
+        print(
+            "NOTINO_RUNTIME_STOCK_PRICE_TRACE "
+            + json.dumps(
+                {
+                    "query": query,
+                    "candidate_name": candidate.get("name", ""),
+                    "candidate_url": candidate.get("url", ""),
+                    "product_name": product_name,
+                    "product_url": product_url,
+                    "price": price,
+                    "price_source": price_source,
+                    "stock_status": stock,
+                    "structured_stock": structured,
+                    "out_markers_found": out_hits,
+                    "in_markers_found": in_hits,
+                    "conclusion": conclusion,
+                },
+                ensure_ascii=False,
+                separators=(",", ":"),
+            ),
+            flush=True,
+        )
+    except Exception as exc:
+        print(
+            "NOTINO_RUNTIME_STOCK_PRICE_TRACE_ERROR:",
+            f"{type(exc).__name__}: {exc}",
+            flush=True,
+        )
+
+
 def _product_details(
     session: requests.Session,
     candidate: Dict[str, Any],
@@ -3151,6 +3236,7 @@ def _product_details(
 
     name = ""
     price = ""
+    price_source = ""
     brand = ""
 
     for product in _json_ld_products(
@@ -3192,6 +3278,7 @@ def _product_details(
             if product_name and price:
                 name = product_name
                 brand = brand_value
+                price_source = "json_ld"
                 break
 
     if not name:
@@ -3258,9 +3345,8 @@ def _product_details(
         )
 
         if match:
-            price = _format_price(
-                match.group(1)
-            )
+            price = _format_price(match.group(1))
+            price_source = "visible_prix_actuel"
 
     if not price:
         match = re.search(
@@ -3271,14 +3357,15 @@ def _product_details(
         )
 
         if match:
-            price = _format_price(
-                match.group(1)
-            )
+            price = _format_price(match.group(1))
+            price_source = "visible_en_stock"
 
     if not price:
         price = _extract_product_price(
             page_text
         )
+        if price:
+            price_source = "visible_product_price"
 
     if not price:
         price = (
@@ -3295,6 +3382,18 @@ def _product_details(
                 )
             )
         )
+        if price:
+            price_source = "search_card"
+
+    _emit_runtime_stock_price_trace(
+        candidate=candidate,
+        query=query,
+        product_name=name,
+        product_url=final_url,
+        price=price,
+        price_source=price_source,
+        response_text=response.text,
+    )
 
     stock = _stock_status(
         response.text,
