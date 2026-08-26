@@ -24,7 +24,7 @@ READER_TIMEOUT = 12
 READER_MAX_WORKERS = 8
 PRODUCT_MAX_WORKERS = 8
 
-SCRAPER_VERSION = "notino-FR-generic-discovery-2026-08-26-v27-discovery-stock-propagation"
+SCRAPER_VERSION = "notino-FR-generic-discovery-2026-08-26-v28-product-local-stock"
 
 HEADERS = {
     "User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 "
@@ -502,14 +502,10 @@ def _stock_status(
     if not raw.strip():
         return None
 
-    # A visible product-page out-of-stock signal must override stale or
-    # contradictory structured data. Notino can keep an old InStock JSON-LD
-    # offer while the actual page explicitly says the product is unavailable.
-    # This check is intentionally generic and applies to every product.
-    raw_low = _clean(raw).lower()
-    if any(marker in raw_low for marker in OUT_STOCK_MARKERS):
-        return True
-
+    # First trust structured availability only when it belongs to the exact
+    # requested product. Never scan the whole page for an out-of-stock marker:
+    # Notino pages contain recommendation, bundle and footer content that can
+    # mention another unavailable product.
     structured = _structured_offer_stock_status(
         raw,
         product_name,
@@ -519,9 +515,19 @@ def _stock_status(
     if structured is not None:
         return structured
 
+    status_text = raw
+    if "<" in raw and ">" in raw:
+        try:
+            status_text = BeautifulSoup(
+                raw,
+                "html.parser",
+            ).get_text("\n", strip=True)
+        except Exception:
+            status_text = raw
+
     lines = [
         _clean(line)
-        for line in raw.splitlines()
+        for line in status_text.splitlines()
         if _clean(line)
     ]
 
@@ -536,11 +542,20 @@ def _stock_status(
         is_out = any(marker in low for marker in OUT_STOCK_MARKERS)
         is_in = any(marker in low for marker in IN_STOCK_MARKERS)
 
+        # "pas en stock" contains the generic in-stock marker "en stock".
+        # Treat explicit negative availability as out of stock first.
+        if "pas en stock" in low or "non disponible" in low:
+            is_out = True
+            is_in = False
+
         if not (is_out or is_in):
             continue
 
+        # Keep the status evidence tightly local to the product. A wider
+        # window can accidentally associate a recommendation's stock label
+        # with the requested product.
         window = " ".join(
-            lines[max(0, index - 4):min(len(lines), index + 5)]
+            lines[max(0, index - 1):min(len(lines), index + 2)]
         )
         window_tokens = set(_query_tokens(window))
 
