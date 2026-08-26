@@ -2969,6 +2969,13 @@ def _reader_product(
         ),
         query,
     ):
+        _debug_event(
+            "reader_product_rejected",
+            reason="reader_requested_size_mismatch",
+            query=query,
+            candidate_url=candidate.get("url", ""),
+            reader_excerpt=_debug_excerpt(content),
+        )
         return None
 
     name = _extract_reader_product_name(
@@ -2978,18 +2985,39 @@ def _reader_product(
     )
 
     if not name:
+        _debug_event(
+            "reader_product_rejected",
+            reason="reader_product_name_not_found",
+            query=query,
+            candidate_url=candidate.get("url", ""),
+            reader_excerpt=_debug_excerpt(raw),
+        )
         return None
 
     if _has_non_perfume_marker_in_product(
         name,
         candidate_url,
     ):
+        _debug_event(
+            "reader_product_rejected",
+            reason="reader_non_perfume_product",
+            query=query,
+            candidate_url=candidate_url,
+            product_name=name,
+        )
         return None
 
     if not _fuzzy_query_match(
         name,
         query,
     )[0]:
+        _debug_event(
+            "reader_product_rejected",
+            reason="reader_product_name_mismatch",
+            query=query,
+            candidate_url=candidate_url,
+            product_name=name,
+        )
         return None
 
     price = ""
@@ -3399,6 +3427,14 @@ def _product_details(
         ),
         final_url,
     ):
+        _debug_event(
+            "product_rejected",
+            reason="candidate_non_perfume_product",
+            query=query,
+            candidate_url=url,
+            final_url=final_url,
+            fallback_card_used=False,
+        )
         return None
 
     if (
@@ -3495,6 +3531,14 @@ def _product_details(
         page_text,
         query,
     ):
+        _debug_event(
+            "html_product_rejected",
+            reason="requested_size_mismatch",
+            query=query,
+            candidate_url=url,
+            final_url=final_url,
+            page_excerpt=_debug_excerpt(page_text),
+        )
         return None
 
     name = ""
@@ -3603,6 +3647,14 @@ def _product_details(
         final_url,
         page_title,
     ):
+        _debug_event(
+            "html_product_rejected",
+            reason="non_perfume_product",
+            query=query,
+            candidate_url=url,
+            final_url=final_url,
+            product_name=name,
+        )
         return None
 
     if not price:
@@ -3905,6 +3957,7 @@ def debug_search(
         _debug_event(
             "debug_search_start",
             query=query,
+            card_result_fallback_available=False,
             candidate_count=len(candidates),
             ranked_candidate_count=len(ranked),
             ranked_candidates=[
