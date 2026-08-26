@@ -4150,6 +4150,31 @@ def debug_search(
             session=session,
         )
 
+        # The contract-audit path uses debug_search() as its raw discovery
+        # entry point. A successful HTTP response with zero extracted
+        # candidates must therefore trigger the same generic fallback chain
+        # here as the production search() caller. Do not key this on
+        # request_failed/status alone: Notino can return HTTP 200 + zero
+        # candidates.
+        if not candidates:
+            reader_candidates, reader_report = _reader_discovery(
+                query,
+                session,
+            )
+            candidates = reader_candidates
+            discovery["debug_reader_fallback"] = reader_report
+            discovery["debug_reader_fallback_triggered"] = True
+
+        if not candidates:
+            sitemap_candidates, sitemap_pages = _sitemap_discovery(
+                query,
+                session,
+                max_child_sitemaps=200,
+            )
+            candidates = sitemap_candidates
+            discovery["debug_sitemap_fallback"] = sitemap_pages
+            discovery["debug_sitemap_fallback_triggered"] = True
+
         ranked = _rank_candidates_for_product_lookup(
             candidates,
             limit=20,
