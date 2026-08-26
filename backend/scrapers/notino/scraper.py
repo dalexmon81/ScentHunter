@@ -411,8 +411,6 @@ def availability_value(value: Any) -> Optional[bool]:
         "instock",
         "in stock",
         "en stock",
-        "disponible",
-        "available",
         "ajouter au panier",
         "add to cart",
     )
@@ -607,16 +605,24 @@ def _stock_status(
             continue
 
         low = line.lower()
-        is_out = any(marker in low for marker in OUT_STOCK_MARKERS)
-        is_in = any(marker in low for marker in IN_STOCK_MARKERS)
+        out_markers_found = [
+            marker
+            for marker in OUT_STOCK_MARKERS
+            if marker in low
+        ]
+        in_markers_found = [
+            marker
+            for marker in IN_STOCK_MARKERS
+            if marker in low
+        ]
 
         # "pas en stock" contains the generic in-stock marker "en stock".
         # Treat explicit negative availability as out of stock first.
         if "pas en stock" in low or "non disponible" in low:
-            is_out = True
-            is_in = False
+            out_markers_found.append("pas en stock" if "pas en stock" in low else "non disponible")
+            in_markers_found = []
 
-        if not (is_out or is_in):
+        if not (out_markers_found or in_markers_found):
             continue
 
         # Keep the status evidence tightly local to the product. A wider
@@ -657,8 +663,16 @@ def _stock_status(
                 2 if name_tokens else 1,
             )
 
-        raw_status = line
-        status_value = availability_value(raw_status)
+        # Normalize the actual marker, not the whole line. A full line can
+        # contain several products, positive and negative phrases, or unrelated
+        # text; passing the whole line to availability_value() can therefore
+        # create a false positive/negative. Negative evidence has priority.
+        if out_markers_found:
+            matched_marker = out_markers_found[0]
+        else:
+            matched_marker = in_markers_found[0]
+
+        status_value = availability_value(matched_marker)
 
         if status_value is None:
             continue
@@ -675,6 +689,171 @@ def _stock_status(
             return True
 
     return None
+
+
+def _stock_status_diagnostic(
+    text: str,
+    product_name: str = "",
+    product_url: str = "",
+) -> Dict[str, Any]:
+    """Return detailed stock evidence without changing normal acceptance logic."""
+    raw = html_lib.unescape(str(text or ""))
+
+    evidence: Dict[str, Any] = {
+        "product_name": product_name or "",
+        "product_url": product_url or "",
+        "structured_stock": None,
+        "stock_status": None,
+        "status_hits": [],
+        "selected_hit": None,
+        "rejection_reason": None,
+    }
+
+    if not raw.strip():
+        evidence["rejection_reason"] = "empty_stock_input"
+        return evidence
+
+    structured = _structured_offer_stock_status(
+        raw,
+        product_name,
+        product_url,
+    )
+    evidence["structured_stock"] = structured
+
+    if structured is not None:
+        evidence["stock_status"] = structured
+        evidence["rejection_reason"] = (
+            "structured_out_of_stock"
+            if structured is False
+            else "structured_in_stock"
+        )
+        return evidence
+
+    status_text = raw
+    if "<" in raw and ">" in raw:
+        try:
+            status_text = BeautifulSoup(
+                raw,
+                "html.parser",
+            ).get_text("\n", strip=True)
+        except Exception:
+            status_text = raw
+
+    lines = [
+        _clean(line)
+        for line in status_text.splitlines()
+        if _clean(line)
+    ]
+
+    name_tokens = set(_query_tokens(product_name))
+    hits: List[Tuple[int, int, bool]] = []
+
+    for index, line in enumerate(lines):
+        if len(line) > 320:
+            continue
+
+        low = line.lower()
+        out_markers_found = [
+            marker
+            for marker in OUT_STOCK_MARKERS
+            if marker in low
+        ]
+        in_markers_found = [
+            marker
+            for marker in IN_STOCK_MARKERS
+            if marker in low
+        ]
+
+        if "pas en stock" in low or "non disponible" in low:
+            out_markers_found.append(
+                "pas en stock" if "pas en stock" in low else "non disponible"
+            )
+            in_markers_found = []
+
+        if not (out_markers_found or in_markers_found):
+            continue
+
+        window = " ".join(
+            lines[max(0, index - 1):min(len(lines), index + 2)]
+        )
+        window_tokens = set(_query_tokens(window))
+
+        relevance = 0
+        if name_tokens:
+            matched_name_tokens = sum(
+                1
+                for token in name_tokens
+                if token in window_tokens
+            )
+
+            if matched_name_tokens >= min(3, len(name_tokens)):
+                relevance = 4
+            elif matched_name_tokens >= min(2, len(name_tokens)):
+                relevance = 3
+            elif matched_name_tokens >= 1 and len(name_tokens) <= 2:
+                relevance = 2
+
+        nearby = " ".join(
+            lines[max(0, index - 2):index + 1]
+        ).lower()
+
+        if re.search(
+            r"(?:prix actuel|\b\d{1,4}[.,]\d{2}\s*€)",
+            nearby,
+            re.I,
+        ):
+            relevance = max(
+                relevance,
+                2 if name_tokens else 1,
+            )
+
+        marker = (
+            out_markers_found[0]
+            if out_markers_found
+            else in_markers_found[0]
+        )
+        status_value = availability_value(marker)
+
+        if status_value is None or not relevance:
+            continue
+
+        hit = {
+            "line_index": index,
+            "line": line,
+            "marker": marker,
+            "status": status_value,
+            "relevance": relevance,
+            "product_name": product_name or "",
+            "product_url": product_url or "",
+        }
+        evidence["status_hits"].append(hit)
+        hits.append((relevance, -index, status_value))
+
+    if hits:
+        hits.sort(reverse=True)
+        selected = hits[0]
+        evidence["stock_status"] = selected[2]
+        selected_index = next(
+            (
+                i
+                for i, item in enumerate(evidence["status_hits"])
+                if item["relevance"] == selected[0]
+                and -item["line_index"] == selected[1]
+                and item["status"] is selected[2]
+            ),
+            None,
+        )
+        if selected_index is not None:
+            evidence["selected_hit"] = evidence["status_hits"][selected_index]
+        evidence["rejection_reason"] = (
+            "matched_out_of_stock_evidence"
+            if selected[2] is False
+            else "matched_in_stock_evidence"
+        )
+    else:
+        evidence["rejection_reason"] = "stock_not_verified"
+
+    return evidence
 
 
 def _is_excluded_notino_path(path: str) -> bool:
@@ -3821,86 +4000,184 @@ def _diagnose_product_job(
     candidate: Dict[str, Any],
     query: str,
 ) -> Dict[str, Any]:
+    """Diagnostic-only product check; production acceptance logic is untouched."""
     session = _new_session()
+    diagnostic: Dict[str, Any] = {
+        "candidate": candidate,
+        "query": query,
+        "url": candidate.get("url", ""),
+        "variant_name": candidate.get("name", ""),
+        "decision": "not_evaluated",
+    }
 
     try:
+        url = candidate.get("url", "")
+
         try:
-            response = _request(
-                session,
-                candidate["url"],
-            )
-
-            return {
-                "url": candidate["url"],
-                "status": response.status_code,
-                "final_url": response.url,
-                "html_length": len(
-                    response.text or ""
-                ),
-                "cloudflare": _is_challenge(
-                    response.text
-                ),
-                "reader_fallback": False,
-                "requested_size": _requested_sizes(
-                    query
-                ),
-                "size_match": _requested_size_is_valid(
-                    response.text,
-                    query,
-                ),
-            }
-
+            response = _request(session, url)
         except requests.RequestException as exc:
+            diagnostic["request_error"] = f"{type(exc).__name__}: {exc}"
             try:
-                reader = _reader_request(
-                    session,
-                    candidate["url"],
-                )
-
-                return {
-                    "url": candidate["url"],
-                    "status": getattr(
-                        getattr(
-                            exc,
-                            "response",
-                            None,
-                        ),
-                        "status_code",
-                        None,
-                    ),
-                    "error": (
-                        f"{type(exc).__name__}: "
-                        f"{exc}"
-                    ),
-                    "reader_status": reader.status_code,
-                    "reader_html_length": len(
-                        reader.text or ""
-                    ),
-                    "reader_fallback": True,
-                    "requested_size": _requested_sizes(
-                        query
-                    ),
-                    "size_match": _requested_size_is_valid(
-                        reader.text,
-                        query,
-                    ),
-                }
-
+                reader = _reader_request(session, url)
             except requests.RequestException as reader_exc:
-                return {
-                    "url": candidate["url"],
-                    "status": None,
-                    "error": (
-                        f"{type(exc).__name__}: "
-                        f"{exc}"
-                    ),
-                    "reader_error": (
-                        f"{type(reader_exc).__name__}: "
-                        f"{reader_exc}"
-                    ),
-                    "reader_fallback": True,
-                }
+                diagnostic["reader_error"] = f"{type(reader_exc).__name__}: {reader_exc}"
+                diagnostic["decision"] = "rejected_no_page_and_no_reader"
+                diagnostic["rejection_reason"] = "product_page_unavailable"
+                return diagnostic
 
+            reader_text = reader.text or ""
+            reader_name = _extract_reader_product_name(
+                reader_text,
+                candidate,
+                query,
+            )
+            diagnostic["path"] = "reader_fallback"
+            diagnostic["http_status"] = getattr(
+                getattr(exc, "response", None),
+                "status_code",
+                None,
+            )
+            diagnostic["reader_status"] = reader.status_code
+            diagnostic["variant_name"] = reader_name or candidate.get("name", "")
+            diagnostic["stock"] = _stock_status_diagnostic(
+                reader_text,
+                diagnostic["variant_name"],
+                url,
+            )
+            diagnostic["decision"] = (
+                "accepted_by_reader"
+                if _reader_product(reader_text, candidate, query)
+                else "rejected_by_reader_pipeline"
+            )
+            diagnostic["rejection_reason"] = (
+                None
+                if diagnostic["decision"] == "accepted_by_reader"
+                else diagnostic["stock"].get("rejection_reason")
+                or "reader_pipeline_rejected"
+            )
+            return diagnostic
+
+        final_url = response.url.split("?")[0]
+        diagnostic["http_status"] = response.status_code
+        diagnostic["final_url"] = final_url
+        diagnostic["path"] = "normal_product_page"
+        diagnostic["challenge"] = _is_challenge(response.text)
+
+        if diagnostic["challenge"] or not _looks_like_product_url(final_url):
+            diagnostic["path"] = "reader_after_challenge_or_bad_product_url"
+            try:
+                reader = _reader_request(session, url)
+            except requests.RequestException as exc:
+                diagnostic["reader_error"] = f"{type(exc).__name__}: {exc}"
+                diagnostic["decision"] = "rejected_reader_request_failed"
+                diagnostic["rejection_reason"] = "reader_request_failed"
+                return diagnostic
+
+            reader_text = reader.text or ""
+            reader_name = _extract_reader_product_name(
+                reader_text,
+                candidate,
+                query,
+            )
+            diagnostic["variant_name"] = reader_name or candidate.get("name", "")
+            diagnostic["reader_status"] = reader.status_code
+            diagnostic["stock"] = _stock_status_diagnostic(
+                reader_text,
+                diagnostic["variant_name"],
+                url,
+            )
+            reader_result = _reader_product(reader_text, candidate, query)
+            diagnostic["decision"] = (
+                "accepted_by_reader" if reader_result else "rejected_by_reader_pipeline"
+            )
+            diagnostic["rejection_reason"] = (
+                None if reader_result else diagnostic["stock"].get("rejection_reason")
+                or "reader_pipeline_rejected"
+            )
+            return diagnostic
+
+        soup = BeautifulSoup(response.text, "html.parser")
+        page_text = _clean(soup.get_text(" ", strip=True))
+
+        name = ""
+        brand = ""
+        price = ""
+
+        for product in _json_ld_products(soup):
+            product_name = _clean(product.get("name"))
+            brand_value = product.get("brand")
+            brand_value = (
+                _clean(brand_value.get("name"))
+                if isinstance(brand_value, dict)
+                else _clean(brand_value)
+            )
+            if _matches(f"{brand_value} {product_name}", query):
+                possible_price, _ = _offer_data(product.get("offers"))
+                if product_name:
+                    name = product_name
+                    brand = brand_value
+                    price = possible_price
+                    break
+
+        if not name:
+            h1 = soup.find("h1")
+            if h1:
+                h1_text = _clean(h1.get_text(" ", strip=True))
+                if _matches(h1_text, query):
+                    name = h1_text
+
+        if not name and soup.title:
+            candidate_name = _clean(soup.title.get_text(" ", strip=True)).split("|")[0]
+            if _matches(candidate_name, query):
+                name = candidate_name
+
+        diagnostic["variant_name"] = name or candidate.get("name", "")
+        diagnostic["brand"] = brand
+        diagnostic["page_size_valid"] = _requested_size_is_valid(page_text, query)
+
+        if not price:
+            price = _extract_product_price(page_text)
+        if not price:
+            price = (
+                _extract_product_price(candidate.get("anchor_text", ""))
+                or _extract_product_price(candidate.get("card_text", ""))
+            )
+        diagnostic["price"] = price
+
+        diagnostic["stock"] = _stock_status_diagnostic(
+            response.text,
+            diagnostic["variant_name"],
+            final_url,
+        )
+
+        if not name:
+            diagnostic["decision"] = "rejected_no_product_name"
+            diagnostic["rejection_reason"] = "product_name_not_found"
+        elif not diagnostic["page_size_valid"]:
+            diagnostic["decision"] = "rejected_requested_size"
+            diagnostic["rejection_reason"] = "requested_size_mismatch"
+        elif not _fuzzy_query_match(name, query)[0]:
+            diagnostic["decision"] = "rejected_name_mismatch"
+            diagnostic["rejection_reason"] = "product_name_query_mismatch"
+        elif diagnostic["stock"]["stock_status"] is False:
+            diagnostic["decision"] = "rejected_out_of_stock"
+            diagnostic["rejection_reason"] = diagnostic["stock"].get("rejection_reason")
+        elif diagnostic["stock"]["stock_status"] is None:
+            diagnostic["decision"] = "rejected_stock_not_verified"
+            diagnostic["rejection_reason"] = "stock_not_verified"
+        elif not price:
+            diagnostic["decision"] = "rejected_no_price"
+            diagnostic["rejection_reason"] = "price_not_found"
+        else:
+            diagnostic["decision"] = "would_be_accepted"
+            diagnostic["rejection_reason"] = None
+
+        return diagnostic
+
+    except Exception as exc:
+        diagnostic["decision"] = "diagnostic_exception"
+        diagnostic["rejection_reason"] = f"{type(exc).__name__}: {exc}"
+        return diagnostic
     finally:
         session.close()
 
