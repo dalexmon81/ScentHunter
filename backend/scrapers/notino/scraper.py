@@ -856,6 +856,62 @@ def _stock_status_diagnostic(
     return evidence
 
 
+
+def _stock_debug_details(
+    raw_text: str,
+    product_name: str = "",
+    product_url: str = "",
+) -> dict:
+    text = _clean(raw_text)
+    low = text.lower()
+
+    out_markers = (
+        "outofstock",
+        "out of stock",
+        "soldout",
+        "sold out",
+        "discontinued",
+        "rupture de stock",
+        "en rupture",
+        "actuellement indisponible",
+        "produit indisponible",
+        "indisponible",
+        "non disponible",
+        "pas en stock",
+        "épuisé",
+        "epuise",
+    )
+
+    in_markers = (
+        "instock",
+        "in stock",
+        "en stock",
+        "disponible",
+        "available",
+        "ajouter au panier",
+        "add to cart",
+    )
+
+    found_out = [marker for marker in out_markers if marker in low]
+    found_in = [marker for marker in in_markers if marker in low]
+
+    status = _stock_status(
+        text,
+        product_name,
+        product_url,
+    )
+
+    return {
+        "stock": status,
+        "stock_type": type(status).__name__,
+        "out_markers_found": found_out,
+        "in_markers_found": found_in,
+        "text_length": len(text),
+        "product_name": product_name,
+        "product_url": product_url,
+        "text_excerpt": text[:3000],
+    }
+
 def _is_excluded_notino_path(path: str) -> bool:
     low = (path or "").rstrip("/").lower()
 
@@ -3200,6 +3256,8 @@ def _reader_product(
     text: str,
     candidate: Dict[str, Any],
     query: str,
+    diagnostics: Optional[List[Dict[str, Any]]] = None,
+    reader_status: Optional[int] = None,
 ) -> Optional[Dict[str, Any]]:
     raw = (
         html_lib.unescape(
@@ -3210,13 +3268,43 @@ def _reader_product(
 
     content = _clean(raw)
 
-    if not content:
-        return None
-
     candidate_url = candidate.get(
         "url",
         "",
     )
+
+    def record_rejection(
+        reason: str,
+        name_value: str = "",
+        final_url: str = "",
+        price_value: Any = "",
+        stock_value: Any = None,
+    ) -> None:
+        if diagnostics is None:
+            return
+
+        debug = {
+            "candidate_url": candidate_url,
+            "candidate_name": name_value or candidate.get("name", ""),
+            "final_url": final_url or candidate_url,
+            "reader_status": reader_status,
+            "reader_fallback": True,
+            "reader_html_length": len(content or ""),
+            "price": price_value,
+            "stock": stock_value,
+            "stock_type": type(stock_value).__name__,
+            "stock_debug": _stock_debug_details(
+                content,
+                name_value or candidate.get("name", ""),
+                final_url or candidate_url,
+            ),
+            "rejected_reason": reason,
+        }
+        diagnostics.append(debug)
+
+    if not content:
+        record_rejection("reader_content_empty")
+        return None
 
     identity_text = (
         content
@@ -3233,6 +3321,7 @@ def _reader_product(
         identity_text,
         query,
     )[0]:
+        record_rejection("query_identity_mismatch")
         return None
 
     if not _requested_size_is_valid(
@@ -3244,6 +3333,7 @@ def _reader_product(
         ),
         query,
     ):
+        record_rejection("requested_size_invalid")
         return None
 
     name = _extract_reader_product_name(
@@ -3253,24 +3343,28 @@ def _reader_product(
     )
 
     if not name:
+        record_rejection("product_name_missing")
         return None
 
     if _has_non_perfume_marker_in_product(
         name,
         candidate_url,
     ):
+        record_rejection("non_perfume_product", name_value=name)
         return None
 
     if not _fuzzy_query_match(
         name,
         query,
     )[0]:
+        record_rejection("product_name_query_mismatch", name_value=name)
         return None
 
     if not _url_identity_matches_query(
         candidate_url,
         query,
     ):
+        record_rejection("url_identity_mismatch", name_value=name)
         return None
 
     # The resolved product name is authoritative. The discovery URL may point
@@ -3384,16 +3478,28 @@ def _reader_product(
             )
         )
 
-    if not price:
-        return None
-
     stock = _stock_status(
-        raw,
+        content,
         name,
         candidate_url,
     )
 
-    if not notino_stock_is_verified(stock):
+    if not price:
+        record_rejection(
+            "price_missing",
+            name_value=name,
+            price_value=price,
+            stock_value=stock,
+        )
+        return None
+
+    if stock is not True:
+        record_rejection(
+            "stock_not_true",
+            name_value=name,
+            price_value=price,
+            stock_value=stock,
+        )
         return None
 
     return {
@@ -3516,6 +3622,7 @@ def _product_details(
     session: requests.Session,
     candidate: Dict[str, Any],
     query: str,
+    diagnostics: Optional[List[Dict[str, Any]]] = None,
 ) -> Optional[Dict[str, Any]]:
     url = candidate["url"]
 
@@ -3536,6 +3643,8 @@ def _product_details(
                     reader_response.text,
                     candidate,
                     query,
+                    diagnostics=diagnostics,
+                    reader_status=reader_response.status_code,
                 )
                 or _card_result(
                     candidate,
@@ -3576,6 +3685,8 @@ def _product_details(
                     reader_response.text,
                     candidate,
                     query,
+                    diagnostics=diagnostics,
+                    reader_status=reader_response.status_code,
                 )
                 or _card_result(
                     candidate,
@@ -3794,6 +3905,7 @@ def _product_detail_job(
     query: str,
 ) -> Dict[str, Any]:
     session = _new_session()
+    diagnostics: List[Dict[str, Any]] = []
 
     try:
         try:
@@ -3801,17 +3913,20 @@ def _product_detail_job(
                 session,
                 candidate,
                 query,
+                diagnostics=diagnostics,
             )
 
             return {
                 "candidate": candidate,
                 "result": result,
+                "diagnostics": diagnostics,
                 "error": None,
             }
         except Exception as exc:
             return {
                 "candidate": candidate,
                 "result": None,
+                "diagnostics": diagnostics,
                 "error": (
                     f"{type(exc).__name__}: "
                     f"{exc}"
