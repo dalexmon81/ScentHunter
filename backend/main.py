@@ -2504,7 +2504,6 @@ def diagnose_hawas(
         try:
             matcher_result = _PRODUCT_MATCHER.match(
                 product,
-                "Hawas",
             )
         except Exception as exc:
             matcher_error = (
