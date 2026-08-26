@@ -899,6 +899,47 @@ function offerPriceSourcePriority(o){
   return source?2:0;
 }
 
+/* GLOBAL DISPLAY HELPERS
+ * Queste funzioni sono usate sia dentro shGroupData() sia dal renderer globale.
+ * Devono quindi vivere nello scope globale e non dentro shGroupData().
+ */
+function cleanBrandText(v){
+  return String(v||"").replace(/\s+/g," ").trim();
+}
+function norm(v){
+  return normalizePerfumeName(v||"").toLowerCase().trim();
+}
+function pretty(v){
+  return String(v||"")
+    .toLowerCase()
+    .replace(/(^|[\s\-'])([a-zà-ÿ])/gi,(m,sep,ch)=>sep+ch.toUpperCase())
+    .replace(/\s+/g," ")
+    .trim();
+}
+function concentrationLabel(value){
+  const n=norm(value);
+  if(n==="extrait de parfum")return "Extrait de Parfum";
+  if(n==="eau de parfum")return "Eau de Parfum";
+  if(n==="eau de toilette")return "Eau de Toilette";
+  if(n==="eau de cologne")return "Eau de Cologne";
+  return cleanBrandText(value);
+}
+function removeTrailingConcentration(name, concentration){
+  let n=String(name||"").trim();
+  const label=concentrationLabel(concentration);
+  if(!n||!label)return n;
+  const escaped=label
+    .split(/\s+/)
+    .map(w=>w.replace(/[.*+?^${}()|[\]\\]/g,"\\$&"))
+    .join("\\s+");
+  const trailing=new RegExp(
+    "\\s*(?:[-–—:]\\s*)?"+escaped+"\\s*$",
+    "i"
+  );
+  while(trailing.test(n))n=n.replace(trailing,"").trim();
+  return n;
+}
+
 function shGroupData(data){
   const raw=[];
 
