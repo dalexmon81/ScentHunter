@@ -40,6 +40,46 @@ def stable_auto_id(brand: Any, name: Any, concentration: Any = "") -> str:
     return "SH-AUTO-" + hashlib.sha1(key.encode("utf-8")).hexdigest()[:16]
 
 
+
+
+def normalize_gender(value: Any) -> str:
+    """Normalize explicit audience/gender data without guessing from brand/product."""
+    text = normalize(value)
+    if not text:
+        return ""
+    if re.search(r"\b(unisex|mixte|unisexe)\b", text):
+        return "Unisex"
+    if re.search(r"\b(woman|women|female|femme|donna|donne|her|pour femme|for women)\b", text):
+        return "Donna"
+    if re.search(r"\b(man|men|male|homme|uomo|pour homme|for men|him)\b", text):
+        return "Uomo"
+    return ""
+
+
+def gender_from_offer(item: Dict[str, Any]) -> str:
+    """Read explicit audience data exposed by a scraper, including nested attributes."""
+    values = [
+        item.get("gender"),
+        item.get("audience"),
+        item.get("for_whom"),
+        item.get("for_who"),
+        item.get("target"),
+        _nested_attribute_value(item, "gender"),
+        _nested_attribute_value(item, "audience"),
+        _nested_attribute_value(item, "for_whom"),
+    ]
+    source = _nested_dict(item, "source")
+    values.extend((source.get("gender"), source.get("audience"), source.get("for_whom")))
+    for value in values:
+        gender = normalize_gender(value)
+        if gender:
+            return gender
+
+    # Only explicit gender markers in the retailer title are accepted.
+    title = " ".join(str(item.get(k) or "") for k in ("name", "title", "product_name"))
+    return normalize_gender(title)
+
+
 def extract_size_ml(text: str) -> Optional[int]:
     if not text:
         return None
@@ -473,6 +513,28 @@ class ProductMatcher:
         if not candidates:
             return None, "none"
 
+        # Generic metadata disambiguation for identical catalog names.
+        offer_gender = gender_from_offer(offer)
+        if offer_gender:
+            filtered = [
+                item for item in candidates
+                if normalize(item[1].gender) == normalize(offer_gender)
+            ]
+            if filtered:
+                candidates = filtered
+
+        offer_concentration = (
+            str(offer.get("concentration") or "").strip()
+            or extract_concentration(raw_name)
+        )
+        if offer_concentration:
+            filtered = [
+                item for item in candidates
+                if normalize(item[1].concentration) == normalize(offer_concentration)
+            ]
+            if filtered:
+                candidates = filtered
+
         candidates.sort(
             key=lambda item: (
                 item[0],
@@ -565,36 +627,6 @@ class ProductMatcher:
             title = f"{title} {gender}".strip()
         return re.sub(r"\s+", " ", title).strip()
 
-    def _identity_for_product(
-        self,
-        product: CatalogProduct,
-    ) -> str:
-        family_id = (
-            getattr(product, "family_id", "")
-            or product.catalog_id
-        )
-
-        variant = (
-            getattr(product, "catalog_variant", "")
-            or product.name
-        )
-
-        concentration = getattr(
-            product,
-            "concentration",
-            "",
-        )
-
-        return "::".join(
-            value
-            for value in (
-                normalize(family_id),
-                normalize(variant),
-                normalize(concentration),
-            )
-            if value
-        )
-
     def match(self, offer: Dict[str, Any]) -> Optional[Dict[str, Any]]:
         if not isinstance(offer, dict):
             return None
@@ -625,6 +657,11 @@ class ProductMatcher:
             result["family_id"] = product.family_id
             result["family_name"] = product.family_name
             result["canonical_concentration"] = concentration
+            result["gender"] = (
+                product.gender
+                or gender_from_offer(offer)
+                or ""
+            )
             result["match_method"] = method
             result["match_score"] = 1.0
 
@@ -634,34 +671,59 @@ class ProductMatcher:
                 result["gender"] = product.gender
 
         else:
-            # An unresolved record must never be promoted to a product identity.
-            # No raw-name, catalog-id or automatic identity fallback is allowed.
-            return None
+            raw_brand, raw_name, concentration = self._derive_identity(offer)
+
+            # No usable product identity means the candidate is not a
+            # single identifiable fragrance.
+            if not raw_name:
+                return None
+
+            # Do not convert ambiguous generic text into a product.
+            if len(raw_name.split()) > 12:
+                return None
+
+            result["canonical_brand"] = raw_brand
+            result["canonical_name"] = raw_name
+            result["catalog_variant"] = raw_name
+            result["family_id"] = ""
+            result["family_name"] = ""
+            result["canonical_concentration"] = concentration
+            result["gender"] = gender_from_offer(offer)
+            result["match_method"] = "raw_identity"
+            result["match_score"] = 0.0
+
+            if concentration and not result.get("concentration"):
+                result["concentration"] = concentration
+
+            result["catalog_id"] = result.get("catalog_id") or stable_auto_id(
+                raw_brand,
+                raw_name,
+                concentration,
+            )
+            result["product_identity"] = result["catalog_id"]
 
         resolved_size = size_ml(offer)
         if resolved_size is not None:
             result["size_ml"] = resolved_size
 
-        # Canonical identity is family + variant + concentration.
-        # Bottle size remains an offer attribute and is never part of variant_id.
-        identity = self._identity_for_product(product)
+        # Product identity is variant + concentration, never bottle size.
+        if product is not None:
+            identity = product.catalog_id
+        else:
+            identity = stable_auto_id(
+                result.get("canonical_brand", ""),
+                result.get("catalog_variant") or result.get("canonical_name", ""),
+            )
 
         result["variant_id"] = identity
         result["product_identity"] = identity
-
-        if resolved_size is not None:
-            result["offer_variant_id"] = (
-                f"{identity}:{resolved_size:g}"
-            )
-        else:
-            result["offer_variant_id"] = identity
 
         result["canonical_display_name"] = self._canonical_display_title(
             result.get("canonical_brand", ""),
             result.get("canonical_name", ""),
             result.get("canonical_concentration")
             or result.get("concentration", ""),
-            "",
+            result.get("gender") or gender_from_offer(offer),
         )
 
         return result
