@@ -24,7 +24,7 @@ READER_TIMEOUT = 12
 READER_MAX_WORKERS = 8
 PRODUCT_MAX_WORKERS = 8
 
-SCRAPER_VERSION = "notino-FR-generic-discovery-2026-08-26-v22-stock-first"
+SCRAPER_VERSION = "notino-FR-generic-discovery-2026-08-25-v21-fast-io"
 
 HEADERS = {
     "User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 "
@@ -3076,7 +3076,14 @@ def _reader_product(
 def _card_result(
     candidate: Dict[str, Any],
     query: str,
+    verified_stock: Optional[bool] = None,
 ) -> Optional[Dict[str, Any]]:
+    # A search card may contain a stale price. Never trust it unless the
+    # corresponding product page has already been positively verified as
+    # in stock. This is deliberately generic and applies to every product.
+    if verified_stock is not False:
+        return None
+
     anchor = _clean(
         candidate.get(
             "anchor_text"
@@ -3121,18 +3128,6 @@ def _card_result(
     ):
         return None
 
-    # A search/card result can contain a stale or crossed price even when
-    # the product is explicitly unavailable. Never expose a price when the
-    # candidate itself contains a definitive out-of-stock status.
-    stock = _stock_status(
-        context,
-        name,
-        candidate.get("url", ""),
-    )
-
-    if stock is True:
-        return None
-
     price = (
         _extract_price(anchor)
         or _extract_price(card)
@@ -3174,22 +3169,15 @@ def _product_details(
                 url,
             )
 
-            return (
-                _reader_product(
-                    reader_response.text,
-                    candidate,
-                    query,
-                )
-                or _card_result(
-                    candidate,
-                    query,
-                )
-            )
-        except requests.RequestException:
-            return _card_result(
+            return _reader_product(
+                reader_response.text,
                 candidate,
                 query,
             )
+        except requests.RequestException:
+            # The product stock could not be verified. Do not fall back to a
+            # possibly stale price from the search card.
+            return None
 
     final_url = response.url.split("?")[0]
 
@@ -3214,22 +3202,15 @@ def _product_details(
                 url,
             )
 
-            return (
-                _reader_product(
-                    reader_response.text,
-                    candidate,
-                    query,
-                )
-                or _card_result(
-                    candidate,
-                    query,
-                )
-            )
-        except requests.RequestException:
-            return _card_result(
+            return _reader_product(
+                reader_response.text,
                 candidate,
                 query,
             )
+        except requests.RequestException:
+            # Challenge/bad response means availability is not verified.
+            # Never turn the search-card price into a confirmed offer.
+            return None
 
     soup = BeautifulSoup(
         response.text,
@@ -3329,9 +3310,15 @@ def _product_details(
                 name = candidate_name
 
     if not name:
+        stock = _stock_status(
+            response.text,
+            candidate.get("name", ""),
+            final_url,
+        )
         return _card_result(
             candidate,
             query,
+            verified_stock=stock,
         )
 
     page_title = (
