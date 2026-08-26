@@ -23,7 +23,18 @@ def tokens(value):
 
 def matches(text, query):
     q = set(tokens(query))
-    return bool(q) and q.issubset(set(tokens(text)))
+    if not q:
+        return False
+
+    text_tokens = set(tokens(text))
+    if q.issubset(text_tokens):
+        return True
+
+    normalized_text = norm(text).replace(" ", "")
+    return all(
+        token in text_tokens or token in normalized_text
+        for token in q
+    )
 
 def price(value):
     match = re.search(r"(?<![\d.,])(\d{1,4}(?:[.,]\d{2}))\s*€|€\s*(\d{1,4}(?:[.,]\d{2}))", clean(value))
@@ -48,6 +59,82 @@ def concentration(*values):
     if re.search(r"\bextrait(?: de parfum)?\b", text): return "Extrait de Parfum"
     return None
 
+NON_PRODUCT_TERMS = {
+    "sample", "samples", "tester", "testers", "gift set", "coffret",
+    "set regalo", "discovery set", "bundle", "kit", "travel set",
+    "deodorant", "deo spray", "shower gel", "body lotion",
+    "body mist", "after shave", "aftershave",
+}
+
+def is_non_product(text):
+    value = norm(text)
+    return any(
+        term in value
+        for term in NON_PRODUCT_TERMS
+    )
+
+def product_name_from_url(url):
+    try:
+        path = url.split("?", 1)[0].rstrip("/")
+        slug = path.rsplit("/", 1)[-1]
+    except Exception:
+        return ""
+    return clean(re.sub(r"[-_]+", " ", slug))
+
+def product_urls_from_search_json(data):
+    urls = []
+    seen = set()
+
+    def walk(value):
+        if isinstance(value, dict):
+            for key, item in value.items():
+                if key in {"url", "handle"} and isinstance(item, str):
+                    candidate = item
+                    if candidate.startswith("/"):
+                        candidate = urljoin(BASE_URL, candidate)
+                    if "/products/" in candidate:
+                        candidate = candidate.split("?", 1)[0]
+                        if candidate not in seen:
+                            seen.add(candidate)
+                            urls.append(candidate)
+                walk(item)
+        elif isinstance(value, list):
+            for item in value:
+                walk(item)
+
+    walk(data)
+    return urls
+
+def shopify_suggest(session, query):
+    urls = []
+    seen = set()
+
+    endpoints = [
+        BASE_URL + "/search/suggest.json?q=" + quote_plus(query)
+        + "&resources[type]=product&resources[limit]=20",
+        BASE_URL + "/search.json?q=" + quote_plus(query),
+    ]
+
+    for endpoint in endpoints:
+        try:
+            response = session.get(
+                endpoint,
+                headers=HEADERS,
+                timeout=TIMEOUT,
+            )
+            if response.status_code != 200:
+                continue
+            data = response.json()
+        except (requests.RequestException, ValueError):
+            continue
+
+        for url in product_urls_from_search_json(data):
+            if url not in seen:
+                seen.add(url)
+                urls.append(url)
+
+    return urls
+
 def product_page(session, url, query):
     try:
         r = session.get(url, headers=HEADERS, timeout=TIMEOUT)
@@ -58,7 +145,15 @@ def product_page(session, url, query):
     soup = BeautifulSoup(r.text, "html.parser")
     h1 = soup.find("h1")
     name = clean(h1.get_text(" ", strip=True)) if h1 else ""
-    if not name or not matches(name, query):
+    if not name:
+        return None
+
+    page_identity = f"{name} {product_name_from_url(url)}"
+
+    if is_non_product(page_identity):
+        return None
+
+    if not matches(page_identity, query):
         return None
 
     amount = None
@@ -136,37 +231,126 @@ def search(query):
     query = clean(query)
     if not query:
         return []
+
     session = requests.Session()
+
     try:
-        r = session.get(BASE_URL + "/search?q=" + quote_plus(query), headers=HEADERS, timeout=TIMEOUT)
-        r.raise_for_status()
-        soup = BeautifulSoup(r.text, "html.parser")
-        urls, seen = [], set()
-        for a in soup.select('a[href*="/products/"]'):
-            url = urljoin(BASE_URL, a.get("href") or "").split("?")[0]
-            if url in seen:
-                continue
-            card = a
-            for _ in range(7):
-                if card is None:
-                    break
-                text = clean(card.get_text(" ", strip=True))
-                if matches(text, query) and "€" in text:
-                    break
-                card = card.parent
-            if card is None:
-                continue
-            if matches(clean(card.get_text(" ", strip=True)), query):
-                seen.add(url)
-                urls.append(url)
+        urls = []
+        seen = set()
+
+        query_variants = [query]
+        query_tokens = tokens(query)
+
+        if len(query_tokens) > 1:
+            reversed_query = " ".join(reversed(query_tokens))
+            if reversed_query not in query_variants:
+                query_variants.append(reversed_query)
+
+        for variant in query_variants:
+            search_url = (
+                BASE_URL
+                + "/search?q="
+                + quote_plus(variant)
+            )
+
+            try:
+                r = session.get(
+                    search_url,
+                    headers=HEADERS,
+                    timeout=TIMEOUT,
+                )
+                r.raise_for_status()
+                soup = BeautifulSoup(r.text, "html.parser")
+            except requests.RequestException:
+                soup = None
+
+            if soup is not None:
+                for a in soup.select('a[href*="/products/"]'):
+                    url = (
+                        urljoin(
+                            BASE_URL,
+                            a.get("href") or "",
+                        )
+                        .split("?")[0]
+                    )
+
+                    if not url or url in seen:
+                        continue
+
+                    card = a
+                    best_text = clean(
+                        a.get_text(" ", strip=True)
+                    )
+
+                    for _ in range(7):
+                        if card is None:
+                            break
+
+                        text = clean(
+                            card.get_text(
+                                " ",
+                                strip=True,
+                            )
+                        )
+
+                        if text:
+                            best_text = text
+
+                        identity = (
+                            f"{text} "
+                            f"{product_name_from_url(url)}"
+                        )
+
+                        if (
+                            matches(identity, variant)
+                            and "€" in text
+                        ):
+                            break
+
+                        card = card.parent
+
+                    identity = (
+                        f"{best_text} "
+                        f"{product_name_from_url(url)}"
+                    )
+
+                    if (
+                        matches(identity, variant)
+                        and not is_non_product(identity)
+                    ):
+                        seen.add(url)
+                        urls.append(url)
+
+            for url in shopify_suggest(
+                session,
+                variant,
+            ):
+                if url in seen:
+                    continue
+
+                identity = product_name_from_url(url)
+
+                if (
+                    matches(identity, variant)
+                    and not is_non_product(identity)
+                ):
+                    seen.add(url)
+                    urls.append(url)
+
         results = []
-        for url in urls[:15]:
-            item = product_page(session, url, query)
+
+        for url in urls[:25]:
+            item = product_page(
+                session,
+                url,
+                query,
+            )
+
             if item:
                 results.append(item)
+
         return results
-    except requests.RequestException:
-        return []
+
     finally:
         session.close()
 
