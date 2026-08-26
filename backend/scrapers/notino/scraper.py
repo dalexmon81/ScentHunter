@@ -24,7 +24,7 @@ READER_TIMEOUT = 12
 READER_MAX_WORKERS = 8
 PRODUCT_MAX_WORKERS = 8
 
-SCRAPER_VERSION = "notino-FR-generic-discovery-2026-08-26-v24-generic-stock-filter"
+SCRAPER_VERSION = "notino-FR-generic-discovery-2026-08-26-v25-stock-priority"
 
 HEADERS = {
     "User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 "
@@ -459,9 +459,15 @@ def _structured_offer_stock_status(
                         ]
                         statuses = [value for value in statuses if value is not None]
                         if statuses:
+                            # An explicit out-of-stock offer must win over any
+                            # simultaneous in-stock/legacy offer for the same
+                            # product. This is generic and prevents stale or
+                            # parallel JSON-LD offers from marking an unavailable
+                            # product as available.
+                            if any(value is True for value in statuses):
+                                return True
                             if any(value is False for value in statuses):
                                 return False
-                            return True
 
             graph = item.get("@graph")
             if isinstance(graph, list):
