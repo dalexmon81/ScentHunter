@@ -1169,11 +1169,27 @@ def _reader_candidates(
         re.I,
     )
 
+    # Keep the text belonging to the exact markdown link that owns a URL.
+    # This prevents a nearby product/card (for example a gift set) from
+    # donating its price to a different product URL.
+    exact_link_text: Dict[str, List[str]] = {}
+
+    for line in lines:
+        for match in markdown.finditer(line):
+            link_url = _normalise_reader_url(match.group(2))
+            if not link_url:
+                continue
+
+            anchor = _clean(match.group(1))
+            if anchor:
+                exact_link_text.setdefault(
+                    link_url,
+                    [],
+                ).append(anchor)
+
     for index, line in enumerate(lines):
         for match in markdown.finditer(line):
-            anchor = _clean(
-                match.group(1)
-            )
+            anchor = _clean(match.group(1))
 
             url = _normalise_reader_url(
                 match.group(2)
@@ -1271,10 +1287,16 @@ def _reader_candidates(
             ):
                 continue
 
+            # For an exact markdown URL, the anchor itself is the safest
+            # search-card context. Do not merge neighbouring product cards.
+            card = " ".join(
+                exact_link_text.get(url, [anchor or name])
+            )
+
             candidate = _make_candidate(
                 url,
                 name,
-                anchor or name,
+                card,
                 query,
                 "reader-markdown",
             )
@@ -1285,6 +1307,391 @@ def _reader_candidates(
                 > found[url]["score"]
             ):
                 found[url] = candidate
+
+    def nearby_price_context(
+        line_index: int,
+        url: str,
+    ) -> str:
+        # Never borrow a price from a line that contains another Notino
+        # product URL. Such lines commonly contain nested cards/links.
+        start = max(
+            0,
+            line_index - 5,
+        )
+        end = min(
+            len(lines),
+            line_index + 6,
+        )
+
+        slug_tokens = set(
+            _query_tokens(
+                _name_from_product_url(url)
+            )
+        )
+        query_tokens = set(
+            _query_tokens(query)
+        )
+
+        best: Optional[
+            Tuple[int, int, str]
+        ] = None
+
+        for candidate_index in range(
+            start,
+            end,
+        ):
+            candidate_line = _clean(
+                lines[candidate_index]
+            )
+
+            if (
+                not candidate_line
+                or not _extract_price(
+                    candidate_line
+                )
+            ):
+                continue
+
+            product_urls_in_line = [
+                _normalise_reader_url(
+                    match.group(0)
+                )
+                for pattern in (
+                    PRODUCT_URL_RE,
+                    READER_ABSOLUTE_PRODUCT_RE,
+                )
+                for match in pattern.finditer(candidate_line)
+            ]
+            product_urls_in_line = [
+                value
+                for value in product_urls_in_line
+                if value
+            ]
+
+            if product_urls_in_line:
+                if url not in product_urls_in_line:
+                    continue
+                # The line contains the exact URL, so it is safe only when
+                # it is not mixing another product URL as well.
+                if any(
+                    value != url
+                    for value in product_urls_in_line
+                ):
+                    continue
+
+            tokens = set(
+                _query_tokens(candidate_line)
+            )
+
+            slug_hits = sum(
+                1
+                for token in slug_tokens
+                if token in tokens
+            )
+
+            query_hits = sum(
+                1
+                for token in query_tokens
+                if token in tokens
+            )
+
+            if slug_hits == 0 and query_hits == 0:
+                continue
+
+            distance = abs(
+                candidate_index - line_index
+            )
+
+            score = (
+                slug_hits * 10
+                + query_hits * 5
+                - distance
+            )
+
+            candidate = (
+                score,
+                -distance,
+                candidate_line,
+            )
+
+            if (
+                best is None
+                or candidate[:2] > best[:2]
+            ):
+                best = candidate
+
+        return best[2] if best else ""
+
+    for pattern in (
+        PRODUCT_URL_RE,
+        READER_ABSOLUTE_PRODUCT_RE,
+        READER_RELATIVE_PRODUCT_RE,
+    ):
+        for match in pattern.finditer(raw):
+            url = _normalise_reader_url(
+                match.group(0)
+            )
+
+            if not url:
+                continue
+
+            slug_name = _name_from_product_url(url)
+
+            if not slug_name:
+                continue
+
+            name = slug_name
+            brand = _brand_from_product_url(url)
+            branded_name = (
+                _clean_name(
+                    f"{brand} {slug_name}"
+                )
+                if brand
+                else ""
+            )
+
+            query_tokens = _query_tokens(query)
+            brand_tokens = _query_tokens(brand)
+
+            brand_relevant = (
+                bool(brand_tokens)
+                and any(
+                    bt in query_tokens
+                    or any(
+                        difflib.SequenceMatcher(
+                            None,
+                            bt,
+                            qt,
+                        ).ratio() >= 0.80
+                        and abs(len(bt) - len(qt)) <= 2
+                        for qt in query_tokens
+                    )
+                    for bt in brand_tokens
+                )
+            )
+
+            if (
+                branded_name
+                and brand_relevant
+                and _fuzzy_query_match(
+                    branded_name,
+                    query,
+                )[0]
+            ):
+                name = branded_name
+
+            if _has_non_perfume_marker_in_product(
+                name,
+                url,
+            ):
+                continue
+
+            if not _fuzzy_query_match(
+                name,
+                query,
+            )[0]:
+                continue
+
+            line_index = 0
+
+            for candidate_index, candidate_line in enumerate(lines):
+                if match.group(0) in candidate_line:
+                    line_index = candidate_index
+                    break
+
+            # Prefer the exact markdown anchor for this URL. This is the
+            # critical association between product URL, product name and
+            # price-bearing card text.
+            card_context = " ".join(
+                exact_link_text.get(url, [])
+            )
+
+            if not card_context:
+                card_context = nearby_price_context(
+                    line_index,
+                    url,
+                )
+
+            candidate = _make_candidate(
+                url,
+                name,
+                card_context or name,
+                query,
+                "reader-url",
+            )
+
+            if candidate and (
+                url not in found
+                or candidate["score"]
+                > found[url]["score"]
+            ):
+                found[url] = candidate
+
+    return sorted(
+        found.values(),
+        key=lambda item: (
+            not bool(
+                item.get(
+                    "contains_all_query_tokens"
+                )
+            ),
+            -int(item.get("score") or 0),
+            item["url"],
+        ),
+    )
+
+
+MODIFICA 2 — dentro `_diagnose_product_job`, subito dopo:
+
+    diagnostic["request_url"] = url
+
+aggiungi:
+
+        diagnostic["candidate_consistency"] = (
+            _diagnostic_candidate_consistency(candidate)
+        )
+
+MODIFICA 3 — aggiungi questa nuova funzione prima di `_diagnose_product_job`:
+
+
+def _diagnostic_candidate_consistency(
+    candidate: Dict[str, Any],
+) -> Dict[str, Any]:
+    target = _normalise_candidate_url_for_compare(
+        candidate.get("url", "")
+    )
+
+    fields: Dict[str, Any] = {}
+
+    for field in ("anchor_text", "card_text", "name"):
+        value = candidate.get(field, "")
+        urls: List[str] = []
+
+        raw = html_lib.unescape(
+            str(value or "")
+        ).replace("\\/", "/")
+
+        for match in PRODUCT_URL_RE.finditer(raw):
+            normalised = _normalise_candidate_url_for_compare(
+                match.group(0)
+            )
+
+            if normalised and normalised not in urls:
+                urls.append(normalised)
+
+        fields[field] = {
+            "urls_found": urls,
+            "matches_candidate_url": (
+                not urls
+                or bool(target and target in urls)
+            ),
+        }
+
+    mismatched_urls = sorted(
+        {
+            url
+            for field in fields.values()
+            for url in field["urls_found"]
+            if target and url != target
+        }
+    )
+
+    return {
+        "candidate_url": target,
+        "fields": fields,
+        "mismatched_urls": mismatched_urls,
+        "url_card_mismatch": bool(mismatched_urls),
+        "warning": (
+            "Candidate URL is paired with text containing a different "
+            "Notino product URL; price/stock from that text must not be "
+            "used for the candidate."
+            if mismatched_urls
+            else ""
+        ),
+    }
+
+MODIFICA 4 — sostituisci il blocco finale di `_diagnostic_price_trace`
+che oggi fa:
+
+    for source, value in (
+        ("candidate.anchor_text", _extract_product_price(candidate.get("anchor_text", ""))),
+        ("candidate.card_text", _extract_product_price(candidate.get("card_text", ""))),
+    ):
+        add(source, value)
+
+con:
+
+
+candidate_target_url = _normalise_candidate_url_for_compare(
+    candidate.get("url", "")
+)
+
+for source, field in (
+    ("candidate.anchor_text", "anchor_text"),
+    ("candidate.card_text", "card_text"),
+):
+    raw_value = html_lib.unescape(
+        str(candidate.get(field, "") or "")
+    ).replace("\\/", "/")
+
+    embedded_urls = [
+        _normalise_candidate_url_for_compare(
+            match.group(0)
+        )
+        for match in PRODUCT_URL_RE.finditer(raw_value)
+    ]
+    embedded_urls = [
+        value
+        for value in embedded_urls
+        if value
+    ]
+
+    # If the text contains a Notino product URL, it must be the exact
+    # candidate URL. Otherwise its price belongs to another product/card
+    # and is ignored.
+    if embedded_urls and (
+        not candidate_target_url
+        or any(
+            value != candidate_target_url
+            for value in embedded_urls
+        )
+    ):
+        continue
+
+    add(
+        source,
+        _extract_product_price(raw_value),
+    )
+
+
+MODIFICA 5 — nella funzione `diagnose`, sostituisci TUTTO il blocco che
+crea `product_page_results` tramite `ThreadPoolExecutor` con:
+
+
+# Diagnostic mode must not fan out against the reader service.
+# Concurrent reader requests cause 429s and hide the evidence.
+product_page_results = [
+    _diagnose_product_job(
+        candidate,
+        query,
+    )
+    for candidate in candidates_for_product_pages
+]
+
+order_map = {
+    str(item.get("url") or ""): index
+    for index, item
+    in enumerate(
+        candidates_for_product_pages
+    )
+}
+
+product_page_results.sort(
+    key=lambda item: order_map.get(
+        str(item.get("url") or ""),
+        len(candidates_for_product_pages),
+    )
+)
 
     def nearby_price_context(
         line_index: int,
