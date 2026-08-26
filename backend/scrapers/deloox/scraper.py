@@ -1,7 +1,9 @@
 import argparse
 import json
+import os
 import re
 import unicodedata
+from typing import Any, Dict
 from urllib.parse import urljoin, urlparse, parse_qs, urlunparse
 
 import requests
@@ -241,76 +243,15 @@ def extract_json_ld_products(soup):
     return products
 
 
-def extract_availability(soup, json_ld=None):
+def extract_availability(soup, json_ld=None, product_name=""):
+    """Determine current availability, preferring the visible product page.
+
+    Deloox may keep a stale JSON-LD Offer after the live buy button has
+    changed. The product-page purchase state therefore wins over JSON-LD.
+    The local text window is anchored to the selected product name so related
+    products do not contaminate the result.
     """
-    Determine availability from every Product/Offer exposed by Deloox.
-
-    Deloox may expose more than one Offer or Product object in JSON-LD.
-    Looking only at the first object can incorrectly turn a product into
-    out_of_stock when another valid offer is actually available.
-
-    An explicit in-stock offer therefore wins over an out-of-stock offer.
-    """
-    products = extract_json_ld_products(soup)
-
-    if isinstance(json_ld, dict) and json_ld not in products:
-        products.insert(0, json_ld)
-
-    structured_in = False
-    structured_out = False
-
-    for product in products:
-        offers = product.get("offers")
-
-        if isinstance(offers, dict):
-            offers = [offers]
-
-        if not isinstance(offers, list):
-            continue
-
-        for offer in offers:
-            if not isinstance(offer, dict):
-                continue
-
-            values = (
-                offer.get("availability"),
-                offer.get("itemCondition"),
-                offer.get("stock"),
-            )
-
-            value = norm(" ".join(
-                str(part)
-                for part in values
-                if part
-            ))
-
-            if any(
-                marker in value
-                for marker in (
-                    "outofstock",
-                    "soldout",
-                    "discontinued",
-                )
-            ):
-                structured_out = True
-
-            elif any(
-                marker in value
-                for marker in (
-                    "instock",
-                    "limitedavailability",
-                    "preorder",
-                )
-            ):
-                structured_in = True
-
-    if structured_in:
-        return "in_stock"
-
-    if structured_out:
-        return "out_of_stock"
-
-    text = norm(soup.get_text(" ", strip=True))
+    page_text = norm(soup.get_text(" ", strip=True))
 
     in_stock_markers = (
         "in winkelwagen",
@@ -329,10 +270,66 @@ def extract_availability(soup, json_ld=None):
         "niet beschikbaar",
     )
 
-    if any(marker in text for marker in in_stock_markers):
+    # First inspect the part of the page surrounding the actual product name.
+    # This keeps recommendation cards outside the decision whenever possible.
+    local_text = page_text
+    product_norm = norm(product_name)
+    if product_norm:
+        pos = page_text.find(product_norm)
+        if pos >= 0:
+            local_text = page_text[max(0, pos - 2500):pos + 6000]
+
+    if any(marker in local_text for marker in out_stock_markers):
+        return "out_of_stock"
+
+    if any(marker in local_text for marker in in_stock_markers):
         return "in_stock"
 
-    if any(marker in text for marker in out_stock_markers):
+    # Only if the visible product area gives no explicit answer, use the
+    # selected Product/Offer JSON-LD.
+    products = []
+    if isinstance(json_ld, dict):
+        products.append(json_ld)
+
+    for product in extract_json_ld_products(soup):
+        if product not in products:
+            products.append(product)
+
+    structured_in = False
+    structured_out = False
+
+    for product in products:
+        offers = product.get("offers")
+        if isinstance(offers, dict):
+            offers = [offers]
+        if not isinstance(offers, list):
+            continue
+
+        for offer in offers:
+            if not isinstance(offer, dict):
+                continue
+            value = norm(" ".join(
+                str(part)
+                for part in (
+                    offer.get("availability"),
+                    offer.get("itemCondition"),
+                    offer.get("stock"),
+                )
+                if part
+            ))
+
+            if any(marker in value for marker in (
+                "instock", "limitedavailability", "preorder"
+            )):
+                structured_in = True
+            elif any(marker in value for marker in (
+                "outofstock", "soldout", "discontinued"
+            )):
+                structured_out = True
+
+    if structured_in:
+        return "in_stock"
+    if structured_out:
         return "out_of_stock"
 
     return "unknown"
@@ -872,8 +869,10 @@ def parse_product_page(
         price = extract_offer_price(
             selected_product,
         )
-        availability = extract_offer_availability(
+        availability = extract_availability(
+            soup,
             selected_product,
+            name,
         )
     else:
         price = extract_price(
@@ -883,6 +882,7 @@ def parse_product_page(
         availability = extract_availability(
             soup,
             json_ld,
+            name,
         )
 
     if not query_matches_product(
@@ -1140,6 +1140,355 @@ def _sitemap_urls(
     return product_urls
 
 
+
+def _debug_visible_stock_evidence(
+    soup: BeautifulSoup,
+    product_name: str = "",
+) -> Dict[str, Any]:
+    page_text = norm(soup.get_text(" ", strip=True))
+
+    in_markers = (
+        "in winkelwagen",
+        "toevoegen aan winkelwagen",
+        "bestel nu",
+        "vandaag besteld",
+        "morgen in huis",
+        "voor 22 00 besteld",
+        "voor 22 00 uur besteld",
+    )
+    out_markers = (
+        "tijdelijk uitverkocht",
+        "uitverkocht",
+        "niet op voorraad",
+        "niet beschikbaar",
+    )
+
+    local_text = page_text
+    product_n = norm(product_name)
+    anchor_position = page_text.find(product_n) if product_n else -1
+    if anchor_position >= 0:
+        local_text = page_text[
+            max(0, anchor_position - 2500):
+            anchor_position + 6000
+        ]
+
+    def evidence(markers):
+        result = []
+        for marker in markers:
+            pos = local_text.find(marker)
+            if pos >= 0:
+                result.append({
+                    "marker": marker,
+                    "context": local_text[
+                        max(0, pos - 220):
+                        pos + len(marker) + 320
+                    ],
+                })
+        return result
+
+    return {
+        "product_anchor_found": anchor_position >= 0,
+        "in_stock": evidence(in_markers),
+        "out_of_stock": evidence(out_markers),
+        "local_text_length": len(local_text),
+    }
+
+
+def _debug_deloox_product(
+    session,
+    url,
+    query,
+):
+    trace = {
+        "url": url,
+        "request": {},
+        "page": {},
+        "identity": {},
+        "json_ld": [],
+        "price": {},
+        "availability": {},
+        "decision": {},
+    }
+
+    response = fetch(session, url)
+    if response is None:
+        trace["request"] = {
+            "status": None,
+            "error": "fetch() returned None",
+        }
+        trace["decision"] = {
+            "accepted": False,
+            "reason": "fetch_failed",
+        }
+        return trace
+
+    trace["request"] = {
+        "status": response.status_code,
+        "final_url": response.url,
+        "html_length": len(response.text or ""),
+    }
+
+    soup = BeautifulSoup(response.text, "html.parser")
+    final_url = response.url.split("?", 1)[0]
+
+    all_products = extract_json_ld_products(soup)
+    visible_name = visible_product_name(soup)
+    visible_brand_value = visible_brand(soup)
+
+    trace["page"] = {
+        "visible_name": visible_name,
+        "visible_brand": visible_brand_value,
+        "title": (
+            clean(soup.title.get_text(" ", strip=True))
+            if soup.title else ""
+        ),
+        "url": final_url,
+    }
+
+    selected = select_matching_json_ld_product(
+        soup,
+        query,
+        final_url,
+    )
+
+    selected_index = None
+    selected_identity = ""
+    for index, product in enumerate(all_products):
+        name = clean(product.get("name"))
+        brand = product.get("brand")
+        if isinstance(brand, dict):
+            brand = brand.get("name")
+        brand = clean(brand)
+        identity = norm(" ".join((name, brand)))
+        matches = query_matches_product(
+            name,
+            query,
+            brand,
+            extract_size_ml(name),
+            final_url,
+        )
+        trace["json_ld"].append({
+            "index": index,
+            "name": name,
+            "brand": brand,
+            "url": clean(
+                product.get("url") or product.get("@id")
+            ),
+            "query_match": matches,
+            "identity": identity,
+            "offers": [
+                {
+                    "price": offer.get("price"),
+                    "availability": offer.get("availability"),
+                    "sku": offer.get("sku"),
+                    "url": offer.get("url"),
+                }
+                for offer in (
+                    [product.get("offers")]
+                    if isinstance(product.get("offers"), dict)
+                    else product.get("offers", [])
+                    if isinstance(product.get("offers"), list)
+                    else []
+                )
+                if isinstance(offer, dict)
+            ],
+        })
+        if selected is product:
+            selected_index = index
+            selected_identity = identity
+
+    trace["identity"] = {
+        "query": query,
+        "visible_name_match": query_matches_product(
+            visible_name,
+            query,
+            visible_brand_value,
+            extract_size_ml(visible_name),
+            final_url,
+        ),
+        "selected_json_ld_index": selected_index,
+        "selected_json_ld_identity": selected_identity,
+        "selected_json_ld_name": (
+            clean(selected.get("name"))
+            if selected else ""
+        ),
+    }
+
+    if selected:
+        json_price = extract_offer_price(selected)
+        json_stock = extract_offer_availability(selected)
+    else:
+        json_price = None
+        json_stock = "unknown"
+
+    visible_stock = _debug_visible_stock_evidence(
+        soup,
+        clean(selected.get("name")) if selected else visible_name,
+    )
+    page_stock = extract_availability(
+        soup,
+        selected,
+        clean(selected.get("name")) if selected else visible_name,
+    )
+
+    meta_prices = []
+    for selector in (
+        'meta[itemprop="price"]',
+        'meta[property="product:price:amount"]',
+        "[data-price]",
+    ):
+        for node in soup.select(selector):
+            meta_prices.append({
+                "selector": selector,
+                "value": (
+                    node.get("content")
+                    or node.get("data-price")
+                    or node.get_text(" ", strip=True)
+                ),
+            })
+
+    generic_price = extract_price(soup, selected)
+
+    trace["price"] = {
+        "selected_json_ld": json_price,
+        "generic_page_extractor": generic_price,
+        "meta_and_data_price": meta_prices[:30],
+    }
+
+    trace["availability"] = {
+        "visible_evidence": visible_stock,
+        "availability_function_final": page_stock,
+        "selected_json_ld": json_stock,
+        "explicit_conflict": (
+            page_stock != "unknown"
+            and json_stock != "unknown"
+            and page_stock != json_stock
+        ),
+    }
+
+    try:
+        actual = parse_product_page(response, query)
+    except Exception as exc:
+        actual = {
+            "debug_exception": f"{type(exc).__name__}: {exc}"
+        }
+
+    trace["decision"] = {
+        "actual_parse_product_page": actual,
+        "accepted": bool(actual),
+        "final_available": (
+            actual.get("available")
+            if isinstance(actual, dict)
+            else None
+        ),
+        "final_price": (
+            actual.get("price")
+            if isinstance(actual, dict)
+            else None
+        ),
+    }
+
+    return trace
+
+
+def diagnose(
+    query,
+):
+    query = clean(query)
+    session = requests.Session()
+
+    try:
+        first = fetch(
+            session,
+            urljoin(BASE_URL, SEARCH_PATH),
+            params={"q": query},
+        )
+
+        if first is None:
+            return {
+                "diagnostic": True,
+                "store": STORE.lower(),
+                "query": query,
+                "error": "search_request_failed",
+            }
+
+        discovery = []
+        seen = set()
+
+        def merge_debug(items, source):
+            for item in items:
+                url = item["url"]
+                if url not in seen:
+                    seen.add(url)
+                    discovery.append({
+                        "url": url,
+                        "source": source,
+                        "search_context": item.get("text", ""),
+                    })
+
+        soup = BeautifulSoup(first.text, "html.parser")
+        merge_debug(
+            extract_search_candidates(
+                soup,
+                first.url,
+                first.text,
+            ),
+            "search",
+        )
+
+        for page_url in _search_page_urls(
+            soup,
+            first.url,
+            query,
+        ):
+            page = fetch(session, page_url)
+            if page is None:
+                continue
+            page_soup = BeautifulSoup(
+                page.text,
+                "html.parser",
+            )
+            merge_debug(
+                extract_search_candidates(
+                    page_soup,
+                    page.url,
+                    page.text,
+                ),
+                "pagination",
+            )
+
+        for url in _sitemap_urls(session, query):
+            if url not in seen:
+                seen.add(url)
+                discovery.append({
+                    "url": url,
+                    "source": "sitemap",
+                    "search_context": "",
+                })
+
+        traces = [
+            _debug_deloox_product(
+                session,
+                item["url"],
+                query,
+            )
+            for item in discovery
+        ]
+
+        return {
+            "diagnostic": True,
+            "store": STORE.lower(),
+            "query": query,
+            "search_status": first.status_code,
+            "search_final_url": first.url,
+            "discovery_count": len(discovery),
+            "discovery": discovery,
+            "product_traces": traces,
+        }
+    finally:
+        session.close()
+
+
 def search(query):
     query = clean(query)
 
@@ -1270,17 +1619,63 @@ def search(query):
 
 
 def scrape(query):
+    # Production behavior is unchanged unless the temporary diagnostic flag
+    # is explicitly enabled in the environment.
+    if os.getenv("SCENTHUNTER_SCRAPER_DEBUG", "").strip() == "1":
+        trace = diagnose(query)
+        print(
+            "[SCENTHUNTER_SCRAPER_DEBUG]"
+            + json.dumps(
+                trace,
+                ensure_ascii=False,
+                separators=(",", ":"),
+            )
+        )
+
+        results = []
+        seen = set()
+        for item in trace.get("product_traces", []):
+            result = (
+                item.get("decision", {})
+                .get("actual_parse_product_page")
+            )
+            if not result:
+                continue
+
+            key = (
+                str(result.get("url", ""))
+                + "|"
+                + norm(result.get("name", ""))
+            ).lower()
+            if key in seen:
+                continue
+            seen.add(key)
+            results.append(result)
+
+        return results
+
     return search(query)
 
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("query")
+    parser.add_argument(
+        "--diagnose",
+        action="store_true",
+        help="run a detailed, non-production diagnostic trace",
+    )
     args = parser.parse_args()
+
+    output = (
+        diagnose(args.query)
+        if args.diagnose
+        else search(args.query)
+    )
 
     print(
         json.dumps(
-            search(args.query),
+            output,
             ensure_ascii=False,
             indent=2,
         )
