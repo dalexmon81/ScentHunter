@@ -381,13 +381,13 @@ def _structured_offer_stock_status(
             marker in low
             for marker in ("outofstock", "soldout", "discontinued")
         ):
-            return True
+            return False
 
         if any(
             marker in low
             for marker in ("instock", "limitedavailability", "preorder")
         ):
-            return False
+            return True
 
         return None
 
@@ -449,9 +449,9 @@ def _structured_offer_stock_status(
             ]
 
             if statuses:
-                if any(value is False for value in statuses):
-                    return False
-                return True
+                if any(value is True for value in statuses):
+                    return True
+                return False
 
         return None
 
@@ -523,7 +523,7 @@ def _stock_status(
         marker in visible_low
         for marker in OUT_STOCK_MARKERS
     ):
-        return True
+        return False
 
     lines = [
         _clean(line)
@@ -582,7 +582,7 @@ def _stock_status(
 
         if relevance:
             status_hits.append(
-                (relevance, -index, is_out)
+                (relevance, -index, not is_out)
             )
 
     if status_hits:
@@ -3059,7 +3059,7 @@ def _reader_product(
         candidate_url,
     )
 
-    if stock is True:
+    if stock is not True:
         return None
 
     return {
@@ -3070,83 +3070,6 @@ def _reader_product(
         ),
         "price": price,
         "url": candidate_url,
-    }
-
-
-def _card_result(
-    candidate: Dict[str, Any],
-    query: str,
-    verified_stock: Optional[bool] = None,
-) -> Optional[Dict[str, Any]]:
-    # A search card may contain a stale price. Never trust it unless the
-    # corresponding product page has already been positively verified as
-    # in stock. This is deliberately generic and applies to every product.
-    if verified_stock is not False:
-        return None
-
-    anchor = _clean(
-        candidate.get(
-            "anchor_text"
-        )
-        or ""
-    )
-
-    card = _clean(
-        candidate.get(
-            "card_text"
-        )
-        or ""
-    )
-
-    name = _clean_name(anchor)
-
-    if not name:
-        return None
-
-    if _has_non_perfume_marker_in_product(
-        name,
-        candidate.get("url", ""),
-        anchor,
-    ):
-        return None
-
-    matched, _, _ = _fuzzy_query_match(
-        name,
-        query,
-    )
-
-    if not matched:
-        return None
-
-    context = (
-        f"{anchor} {card}"
-    )
-
-    if not _requested_size_is_valid(
-        context,
-        query,
-    ):
-        return None
-
-    price = (
-        _extract_price(anchor)
-        or _extract_price(card)
-    )
-
-    if not price:
-        return None
-
-    return {
-        "store": STORE,
-        "name": _display_product_name(
-            name,
-            candidate.get(
-                "url",
-                "",
-            ),
-        ),
-        "price": price,
-        "url": candidate["url"],
     }
 
 
@@ -3175,8 +3098,6 @@ def _product_details(
                 query,
             )
         except requests.RequestException:
-            # The product stock could not be verified. Do not fall back to a
-            # possibly stale price from the search card.
             return None
 
     final_url = response.url.split("?")[0]
@@ -3208,8 +3129,6 @@ def _product_details(
                 query,
             )
         except requests.RequestException:
-            # Challenge/bad response means availability is not verified.
-            # Never turn the search-card price into a confirmed offer.
             return None
 
     soup = BeautifulSoup(
@@ -3310,16 +3229,7 @@ def _product_details(
                 name = candidate_name
 
     if not name:
-        stock = _stock_status(
-            response.text,
-            candidate.get("name", ""),
-            final_url,
-        )
-        return _card_result(
-            candidate,
-            query,
-            verified_stock=stock,
-        )
+        return None
 
     page_title = (
         _clean(
@@ -3392,7 +3302,7 @@ def _product_details(
         final_url,
     )
 
-    if stock is True:
+    if stock is not True:
         return None
 
     if not price:
