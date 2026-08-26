@@ -24,7 +24,7 @@ READER_TIMEOUT = 12
 READER_MAX_WORKERS = 8
 PRODUCT_MAX_WORKERS = 8
 
-SCRAPER_VERSION = "DIAGNOSTIC-notino-FR-generic-discovery-2026-08-26-v23-runtime-stock-price-trace"
+SCRAPER_VERSION = "DIAGNOSTIC-notino-FR-generic-discovery-2026-08-26-v24-generic-context-stock-trace"
 
 HEADERS = {
     "User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 "
@@ -1169,24 +1169,6 @@ def _reader_candidates(
         re.I,
     )
 
-    # Keep the text belonging to the exact markdown link that owns a URL.
-    # This prevents a nearby product/card (for example a gift set) from
-    # donating its price to a different product URL.
-    exact_link_text: Dict[str, List[str]] = {}
-
-    for line in lines:
-        for match in markdown.finditer(line):
-            link_url = _normalise_reader_url(match.group(2))
-            if not link_url:
-                continue
-
-            anchor = _clean(match.group(1))
-            if anchor:
-                exact_link_text.setdefault(
-                    link_url,
-                    [],
-                ).append(anchor)
-
     for index, line in enumerate(lines):
         for match in markdown.finditer(line):
             anchor = _clean(match.group(1))
@@ -1287,16 +1269,10 @@ def _reader_candidates(
             ):
                 continue
 
-            # For an exact markdown URL, the anchor itself is the safest
-            # search-card context. Do not merge neighbouring product cards.
-            card = " ".join(
-                exact_link_text.get(url, [anchor or name])
-            )
-
             candidate = _make_candidate(
                 url,
                 name,
-                card,
+                anchor or name,
                 query,
                 "reader-markdown",
             )
@@ -1499,18 +1475,10 @@ def _reader_candidates(
                     line_index = candidate_index
                     break
 
-            # Prefer the exact markdown anchor for this URL. This is the
-            # critical association between product URL, product name and
-            # price-bearing card text.
-            card_context = " ".join(
-                exact_link_text.get(url, [])
+            card_context = nearby_price_context(
+                line_index,
+                url,
             )
-
-            if not card_context:
-                card_context = nearby_price_context(
-                    line_index,
-                    url,
-                )
 
             candidate = _make_candidate(
                 url,
@@ -3565,7 +3533,7 @@ def search(
 
         ranked = _rank_candidates_for_product_lookup(
             all_candidates,
-            limit=20,
+            limit=40,
             query=query,
         )
 
@@ -4497,7 +4465,7 @@ def debug_search(
 
         ranked = _rank_candidates_for_product_lookup(
             candidates,
-            limit=20,
+            limit=40,
             query=query,
         )
 
@@ -4569,7 +4537,7 @@ def diagnose(
 
         discovery[
             "product_page_candidate_limit"
-        ] = 20
+        ] = 40
 
         discovery[
             "candidate_urls_before_product_page_limit"
