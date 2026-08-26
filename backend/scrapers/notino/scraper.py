@@ -763,29 +763,100 @@ def _make_candidate(
     anchor = _clean(anchor)
     card = _clean(card)
 
-    name = (
-        _clean_name(anchor)
-        or _clean_name(card)
+    url_name = _clean_name(
+        _name_from_product_url(url)
     )
+    brand = _clean_name(
+        _brand_from_product_url(url)
+    )
+
+    name_candidates = [
+        _clean_name(anchor),
+        _clean_name(card),
+    ]
+
+    if url_name:
+        name_candidates.append(url_name)
+
+    if brand and url_name:
+        name_candidates.append(
+            _clean_name(
+                f"{brand} {url_name}"
+            )
+        )
+
+    query_tokens = _query_tokens(query)
+
+    if not query_tokens:
+        return None
+
+    name = ""
+    matched = False
+    hits: Dict[str, bool] = {}
+    fuzzy_hits = 0
+
+    for candidate_name in name_candidates:
+        if not candidate_name:
+            continue
+
+        if _has_non_perfume_marker_in_product(
+            candidate_name,
+            url,
+            anchor,
+        ):
+            continue
+
+        candidate_matched, candidate_hits, candidate_fuzzy = (
+            _fuzzy_query_match(
+                candidate_name,
+                query,
+            )
+        )
+
+        if candidate_matched:
+            name = candidate_name
+            matched = True
+            hits = candidate_hits
+            fuzzy_hits = candidate_fuzzy
+            break
+
+        if not name:
+            name = candidate_name
+            hits = candidate_hits
+            fuzzy_hits = candidate_fuzzy
 
     if not name:
         return None
+
+    if not matched:
+        url_matched, url_hits, url_fuzzy_hits = (
+            _fuzzy_query_match(
+                _clean_name(
+                    f"{brand} {url_name}"
+                    if brand and url_name
+                    else url_name
+                ),
+                query,
+            )
+        )
+
+        if not url_matched:
+            return None
+
+        name = _clean_name(
+            f"{brand} {url_name}"
+            if brand and url_name
+            else url_name
+        )
+        matched = True
+        hits = url_hits
+        fuzzy_hits = url_fuzzy_hits
 
     if _has_non_perfume_marker_in_product(
         name,
         url,
         anchor,
     ):
-        return None
-
-    matched, hits, fuzzy_hits = _fuzzy_query_match(
-        name,
-        query,
-    )
-
-    query_tokens = _query_tokens(query)
-
-    if not query_tokens:
         return None
 
     score = (
@@ -796,7 +867,6 @@ def _make_candidate(
     if matched:
         score += 5
 
-    url_name = _name_from_product_url(url)
     url_matched, _, url_fuzzy_hits = _fuzzy_query_match(
         url_name,
         query,
@@ -807,12 +877,15 @@ def _make_candidate(
     elif url_name:
         score += url_fuzzy_hits * 2
 
-    search_context = f"{anchor} {card}"
+    search_context = f"{anchor} {card} {url_name}"
     requested_sizes = _requested_sizes(query)
 
     if requested_sizes:
         if any(
-            _size_matches(search_context, size)
+            _size_matches(
+                search_context,
+                size,
+            )
             for size in requested_sizes
         ):
             score += 6
@@ -828,7 +901,7 @@ def _make_candidate(
     return {
         "url": url,
         "anchor_text": anchor or name,
-        "card_text": card or anchor,
+        "card_text": card or anchor or name,
         "name": name,
         "score": score,
         "token_hits": hits,
@@ -836,7 +909,10 @@ def _make_candidate(
         "requested_size": bool(requested_sizes),
         "size_match_in_search_context": (
             any(
-                _size_matches(search_context, size)
+                _size_matches(
+                    search_context,
+                    size,
+                )
                 for size in requested_sizes
             )
             if requested_sizes
