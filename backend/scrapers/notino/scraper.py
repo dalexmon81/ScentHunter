@@ -24,7 +24,7 @@ READER_TIMEOUT = 12
 READER_MAX_WORKERS = 8
 PRODUCT_MAX_WORKERS = 8
 
-SCRAPER_VERSION = "DIAGNOSTIC-notino-FR-generic-discovery-2026-08-26-v23-runtime-stock-price-trace"
+SCRAPER_VERSION = "notino-FR-generic-discovery-2026-08-25-v21-fast-io"
 
 HEADERS = {
     "User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 "
@@ -381,13 +381,13 @@ def _structured_offer_stock_status(
             marker in low
             for marker in ("outofstock", "soldout", "discontinued")
         ):
-            return False
+            return True
 
         if any(
             marker in low
             for marker in ("instock", "limitedavailability", "preorder")
         ):
-            return True
+            return False
 
         return None
 
@@ -449,9 +449,9 @@ def _structured_offer_stock_status(
             ]
 
             if statuses:
-                if any(value is True for value in statuses):
-                    return True
-                return False
+                if any(value is False for value in statuses):
+                    return False
+                return True
 
         return None
 
@@ -523,7 +523,7 @@ def _stock_status(
         marker in visible_low
         for marker in OUT_STOCK_MARKERS
     ):
-        return False
+        return True
 
     lines = [
         _clean(line)
@@ -582,27 +582,12 @@ def _stock_status(
 
         if relevance:
             status_hits.append(
-                (relevance, -index, not is_out)
+                (relevance, -index, is_out)
             )
 
     if status_hits:
         status_hits.sort(reverse=True)
         return status_hits[0][2]
-
-    # Se la pagina reale espone un indicatore positivo di disponibilità ma
-    # il marker è troppo lontano dal nome/prezzo per entrare nella finestra
-    # di rilevanza, la presenza di un prezzo sulla pagina consente comunque
-    # di confermare genericamente lo stock. I marker OUT vengono già
-    # controllati sopra e hanno sempre priorità.
-    if any(
-        marker in visible_low
-        for marker in IN_STOCK_MARKERS
-    ) and re.search(
-        r"(?:prix actuel|\b\d{1,4}[.,]\d{2}\s*€|€\s*\d{1,4}[.,]\d{2})",
-        visible_low,
-        re.I,
-    ):
-        return True
 
     # JSON-LD solo come fallback: può essere stale rispetto allo stato reale
     # mostrato nella pagina.
@@ -786,31 +771,6 @@ def _card_text(link: Any) -> str:
     return best
 
 
-def _url_identity_matches_query(
-    url: str,
-    query: str,
-) -> bool:
-    """
-    Generic identity check using the Notino product URL.
-
-    Some Notino result cards expose a generic/short anchor while the product
-    slug contains the complete identity. The URL is used only when its
-    product slug itself contains every query token; it is never a
-    product-specific exception or seed.
-    """
-    url_name = _name_from_product_url(url)
-    if not url_name:
-        return False
-
-    query_tokens = _query_tokens(query)
-    url_tokens = set(_query_tokens(url_name))
-
-    return bool(query_tokens) and all(
-        token in url_tokens
-        for token in query_tokens
-    )
-
-
 def _make_candidate(
     url: str,
     anchor: str,
@@ -851,27 +811,6 @@ def _make_candidate(
     if not query_tokens:
         return None
 
-    # Notino sometimes returns a shortened/generic card title even though
-    # the product URL contains the complete product slug. Recover the name
-    # from that URL only when the URL itself contains every query token.
-    # This keeps discovery generic while avoiding false positives from
-    # unrelated text elsewhere in the card.
-    url_name = _name_from_product_url(url)
-    url_identity_match = _url_identity_matches_query(
-        url,
-        query,
-    )
-
-    if not matched and url_identity_match:
-        name = _clean_name(url_name)
-        matched, hits, fuzzy_hits = _fuzzy_query_match(
-            name,
-            query,
-        )
-
-    if not matched and not url_identity_match:
-        return None
-
     score = (
         sum(hits.values()) * 5
         + fuzzy_hits * 2
@@ -880,6 +819,7 @@ def _make_candidate(
     if matched:
         score += 5
 
+    url_name = _name_from_product_url(url)
     url_matched, _, url_fuzzy_hits = _fuzzy_query_match(
         url_name,
         query,
@@ -1112,15 +1052,6 @@ def _name_from_product_url(url: str) -> str:
         slug,
     )
 
-    # Notino URLs may encode the product id as a trailing ``-p`` segment
-    # instead of a separate ``/p-12345`` path component.
-    slug = re.sub(
-        r"-p$",
-        "",
-        slug,
-        flags=re.I,
-    )
-
     slug = re.sub(
         r"[-_]+",
         " ",
@@ -1238,27 +1169,11 @@ def _reader_candidates(
         re.I,
     )
 
-    # Keep the text belonging to the exact markdown link that owns a URL.
-    # This prevents a nearby product/card (for example a gift set) from
-    # donating its price to a different product URL.
-    exact_link_text: Dict[str, List[str]] = {}
-
-    for line in lines:
-        for match in markdown.finditer(line):
-            link_url = _normalise_reader_url(match.group(2))
-            if not link_url:
-                continue
-
-            anchor = _clean(match.group(1))
-            if anchor:
-                exact_link_text.setdefault(
-                    link_url,
-                    [],
-                ).append(anchor)
-
     for index, line in enumerate(lines):
         for match in markdown.finditer(line):
-            anchor = _clean(match.group(1))
+            anchor = _clean(
+                match.group(1)
+            )
 
             url = _normalise_reader_url(
                 match.group(2)
@@ -1342,16 +1257,10 @@ def _reader_candidates(
 
             if (
                 not name
-                or (
-                    not _fuzzy_query_match(
-                        name,
-                        query,
-                    )[0]
-                    and not _url_identity_matches_query(
-                        url,
-                        query,
-                    )
-                )
+                or not _fuzzy_query_match(
+                    name,
+                    query,
+                )[0]
             ):
                 continue
 
@@ -1362,16 +1271,10 @@ def _reader_candidates(
             ):
                 continue
 
-            # For an exact markdown URL, the anchor itself is the safest
-            # search-card context. Do not merge neighbouring product cards.
-            card = " ".join(
-                exact_link_text.get(url, [anchor or name])
-            )
-
             candidate = _make_candidate(
                 url,
                 name,
-                card,
+                anchor or name,
                 query,
                 "reader-markdown",
             )
@@ -1387,8 +1290,20 @@ def _reader_candidates(
         line_index: int,
         url: str,
     ) -> str:
-        # Never borrow a price from a line that contains another Notino
-        # product URL. Such lines commonly contain nested cards/links.
+        slug_tokens = set(
+            _query_tokens(
+                _name_from_product_url(url)
+            )
+        )
+
+        query_tokens = set(
+            _query_tokens(query)
+        )
+
+        best: Optional[
+            Tuple[int, int, str]
+        ] = None
+
         start = max(
             0,
             line_index - 5,
@@ -1397,19 +1312,6 @@ def _reader_candidates(
             len(lines),
             line_index + 6,
         )
-
-        slug_tokens = set(
-            _query_tokens(
-                _name_from_product_url(url)
-            )
-        )
-        query_tokens = set(
-            _query_tokens(query)
-        )
-
-        best: Optional[
-            Tuple[int, int, str]
-        ] = None
 
         for candidate_index in range(
             start,
@@ -1427,35 +1329,10 @@ def _reader_candidates(
             ):
                 continue
 
-            product_urls_in_line = [
-                _normalise_reader_url(
-                    match.group(0)
-                )
-                for pattern in (
-                    PRODUCT_URL_RE,
-                    READER_ABSOLUTE_PRODUCT_RE,
-                )
-                for match in pattern.finditer(candidate_line)
-            ]
-            product_urls_in_line = [
-                value
-                for value in product_urls_in_line
-                if value
-            ]
-
-            if product_urls_in_line:
-                if url not in product_urls_in_line:
-                    continue
-                # The line contains the exact URL, so it is safe only when
-                # it is not mixing another product URL as well.
-                if any(
-                    value != url
-                    for value in product_urls_in_line
-                ):
-                    continue
-
             tokens = set(
-                _query_tokens(candidate_line)
+                _query_tokens(
+                    candidate_line
+                )
             )
 
             slug_hits = sum(
@@ -1561,16 +1438,10 @@ def _reader_candidates(
             ):
                 continue
 
-            if (
-                not _fuzzy_query_match(
-                    name,
-                    query,
-                )[0]
-                and not _url_identity_matches_query(
-                    url,
-                    query,
-                )
-            ):
+            if not _fuzzy_query_match(
+                name,
+                query,
+            )[0]:
                 continue
 
             line_index = 0
@@ -1580,18 +1451,10 @@ def _reader_candidates(
                     line_index = candidate_index
                     break
 
-            # Prefer the exact markdown anchor for this URL. This is the
-            # critical association between product URL, product name and
-            # price-bearing card text.
-            card_context = " ".join(
-                exact_link_text.get(url, [])
+            card_context = nearby_price_context(
+                line_index,
+                url,
             )
-
-            if not card_context:
-                card_context = nearby_price_context(
-                    line_index,
-                    url,
-                )
 
             candidate = _make_candidate(
                 url,
@@ -1616,7 +1479,9 @@ def _reader_candidates(
                     "contains_all_query_tokens"
                 )
             ),
-            -int(item.get("score") or 0),
+            -int(
+                item.get("score") or 0
+            ),
             item["url"],
         ),
     )
@@ -3185,13 +3050,16 @@ def _reader_product(
             )
         )
 
+    if not price:
+        return None
+
     stock = _stock_status(
         raw,
         name,
         candidate_url,
     )
 
-    if stock is None:
+    if stock is True:
         return None
 
     return {
@@ -3201,95 +3069,85 @@ def _reader_product(
             candidate_url,
         ),
         "price": price,
-        "availability": "in stock" if stock else "out of stock",
-        "available": stock is True,
         "url": candidate_url,
     }
 
 
-def _emit_runtime_stock_price_trace(
-    *,
+def _card_result(
     candidate: Dict[str, Any],
     query: str,
-    product_name: str,
-    product_url: str,
-    price: str,
-    price_source: str,
-    response_text: str,
-) -> None:
-    """Emit the decisive stock/price evidence during the REAL search path."""
-    try:
-        raw = html_lib.unescape(str(response_text or ""))
-        visible = BeautifulSoup(
-            raw,
-            "html.parser",
-        ).get_text(" ", strip=True)
-        visible_low = visible.lower()
+    verified_stock: Optional[bool] = None,
+) -> Optional[Dict[str, Any]]:
+    # A search card may contain a stale price. Never trust it unless the
+    # corresponding product page has already been positively verified as
+    # in stock. This is deliberately generic and applies to every product.
+    if verified_stock is not False:
+        return None
 
-        out_hits = [
-            marker
-            for marker in OUT_STOCK_MARKERS
-            if marker in visible_low
-        ]
-        in_hits = [
-            marker
-            for marker in IN_STOCK_MARKERS
-            if marker in visible_low
-        ]
-
-        stock = _stock_status(
-            raw,
-            product_name,
-            product_url,
+    anchor = _clean(
+        candidate.get(
+            "anchor_text"
         )
+        or ""
+    )
 
-        structured = _structured_offer_stock_status(
-            raw,
-            product_name,
-            product_url,
+    card = _clean(
+        candidate.get(
+            "card_text"
         )
+        or ""
+    )
 
-        if stock is False and price:
-            conclusion = "OUT_OF_STOCK_BUT_PRICE_PRESENT"
-        elif stock is True and price:
-            conclusion = "IN_STOCK_AND_PRICE_PRESENT"
-        elif stock is False:
-            conclusion = "OUT_OF_STOCK_WITHOUT_PRICE"
-        elif stock is None and price:
-            conclusion = "STOCK_UNVERIFIED_BUT_PRICE_PRESENT"
-        elif stock is True:
-            conclusion = "IN_STOCK_WITHOUT_PRICE"
-        else:
-            conclusion = "STOCK_UNVERIFIED_AND_NO_PRICE"
+    name = _clean_name(anchor)
 
-        print(
-            "NOTINO_RUNTIME_STOCK_PRICE_TRACE "
-            + json.dumps(
-                {
-                    "query": query,
-                    "candidate_name": candidate.get("name", ""),
-                    "candidate_url": candidate.get("url", ""),
-                    "product_name": product_name,
-                    "product_url": product_url,
-                    "price": price,
-                    "price_source": price_source,
-                    "stock_status": stock,
-                    "structured_stock": structured,
-                    "out_markers_found": out_hits,
-                    "in_markers_found": in_hits,
-                    "conclusion": conclusion,
-                },
-                ensure_ascii=False,
-                separators=(",", ":"),
+    if not name:
+        return None
+
+    if _has_non_perfume_marker_in_product(
+        name,
+        candidate.get("url", ""),
+        anchor,
+    ):
+        return None
+
+    matched, _, _ = _fuzzy_query_match(
+        name,
+        query,
+    )
+
+    if not matched:
+        return None
+
+    context = (
+        f"{anchor} {card}"
+    )
+
+    if not _requested_size_is_valid(
+        context,
+        query,
+    ):
+        return None
+
+    price = (
+        _extract_price(anchor)
+        or _extract_price(card)
+    )
+
+    if not price:
+        return None
+
+    return {
+        "store": STORE,
+        "name": _display_product_name(
+            name,
+            candidate.get(
+                "url",
+                "",
             ),
-            flush=True,
-        )
-    except Exception as exc:
-        print(
-            "NOTINO_RUNTIME_STOCK_PRICE_TRACE_ERROR:",
-            f"{type(exc).__name__}: {exc}",
-            flush=True,
-        )
+        ),
+        "price": price,
+        "url": candidate["url"],
+    }
 
 
 def _product_details(
@@ -3317,6 +3175,8 @@ def _product_details(
                 query,
             )
         except requests.RequestException:
+            # The product stock could not be verified. Do not fall back to a
+            # possibly stale price from the search card.
             return None
 
     final_url = response.url.split("?")[0]
@@ -3348,6 +3208,8 @@ def _product_details(
                 query,
             )
         except requests.RequestException:
+            # Challenge/bad response means availability is not verified.
+            # Never turn the search-card price into a confirmed offer.
             return None
 
     soup = BeautifulSoup(
@@ -3370,7 +3232,6 @@ def _product_details(
 
     name = ""
     price = ""
-    price_source = ""
     brand = ""
 
     for product in _json_ld_products(
@@ -3412,7 +3273,6 @@ def _product_details(
             if product_name and price:
                 name = product_name
                 brand = brand_value
-                price_source = "json_ld"
                 break
 
     if not name:
@@ -3450,7 +3310,16 @@ def _product_details(
                 name = candidate_name
 
     if not name:
-        return None
+        stock = _stock_status(
+            response.text,
+            candidate.get("name", ""),
+            final_url,
+        )
+        return _card_result(
+            candidate,
+            query,
+            verified_stock=stock,
+        )
 
     page_title = (
         _clean(
@@ -3479,8 +3348,9 @@ def _product_details(
         )
 
         if match:
-            price = _format_price(match.group(1))
-            price_source = "visible_prix_actuel"
+            price = _format_price(
+                match.group(1)
+            )
 
     if not price:
         match = re.search(
@@ -3491,15 +3361,14 @@ def _product_details(
         )
 
         if match:
-            price = _format_price(match.group(1))
-            price_source = "visible_en_stock"
+            price = _format_price(
+                match.group(1)
+            )
 
     if not price:
         price = _extract_product_price(
             page_text
         )
-        if price:
-            price_source = "visible_product_price"
 
     if not price:
         price = (
@@ -3516,18 +3385,6 @@ def _product_details(
                 )
             )
         )
-        if price:
-            price_source = "search_card"
-
-    _emit_runtime_stock_price_trace(
-        candidate=candidate,
-        query=query,
-        product_name=name,
-        product_url=final_url,
-        price=price,
-        price_source=price_source,
-        response_text=response.text,
-    )
 
     stock = _stock_status(
         response.text,
@@ -3535,7 +3392,10 @@ def _product_details(
         final_url,
     )
 
-    if stock is None:
+    if stock is True:
+        return None
+
+    if not price:
         return None
 
     return {
@@ -3546,8 +3406,6 @@ def _product_details(
             brand,
         ),
         "price": price,
-        "availability": "in stock" if stock else "out of stock",
-        "available": stock is True,
         "url": final_url,
     }
 
@@ -3700,861 +3558,6 @@ def scrape(
     return search(query)
 
 
-
-def _diagnostic_stock_snapshot(
-    raw: str,
-    product_name: str,
-    product_url: str,
-) -> Dict[str, Any]:
-    """Return compact evidence used to determine stock status."""
-    raw = html_lib.unescape(str(raw or ""))
-
-    try:
-        visible = BeautifulSoup(
-            raw,
-            "html.parser",
-        ).get_text(" ", strip=True)
-    except Exception:
-        visible = raw
-
-    low = visible.lower()
-
-    out_hits = [
-        marker
-        for marker in OUT_STOCK_MARKERS
-        if marker in low
-    ]
-    in_hits = [
-        marker
-        for marker in IN_STOCK_MARKERS
-        if marker in low
-    ]
-
-    snippets: List[str] = []
-
-    marker_union = tuple(
-        dict.fromkeys(
-            list(OUT_STOCK_MARKERS)
-            + list(IN_STOCK_MARKERS)
-        )
-    )
-
-    for marker in marker_union:
-        start = 0
-        while True:
-            pos = low.find(marker, start)
-            if pos < 0:
-                break
-
-            left = max(0, pos - 180)
-            right = min(
-                len(visible),
-                pos + len(marker) + 220,
-            )
-            snippet = _clean(
-                visible[left:right]
-            )
-
-            if snippet and snippet not in snippets:
-                snippets.append(snippet)
-
-            start = pos + len(marker)
-
-            if len(snippets) >= 8:
-                break
-
-        if len(snippets) >= 8:
-            break
-
-    structured = _structured_offer_stock_status(
-        raw,
-        product_name,
-        product_url,
-    )
-
-    return {
-        "stock_status": _stock_status(
-            raw,
-            product_name,
-            product_url,
-        ),
-        "out_markers_found": out_hits,
-        "in_markers_found": in_hits,
-        "structured_stock": structured,
-        "visible_text_length": len(visible),
-        "stock_snippets": snippets,
-    }
-
-
-
-def _diagnostic_price_trace(
-    raw_html: str,
-    page_text: str,
-    candidate: Dict[str, Any],
-) -> Dict[str, Any]:
-    """Capture every price source used by the diagnostic path."""
-    raw = html_lib.unescape(str(raw_html or ""))
-    visible = str(page_text or "")
-
-    traces: List[Dict[str, Any]] = []
-
-    def add(
-        source: str,
-        value: Any,
-        matched: str = "",
-        context: str = "",
-    ) -> None:
-        formatted = _format_price(value)
-        if not formatted:
-            return
-
-        item = {
-            "source": source,
-            "value": formatted,
-        }
-
-        if matched:
-            item["matched"] = _clean(matched)
-
-        if context:
-            item["context"] = _clean(context)[:500]
-
-        if item not in traces:
-            traces.append(item)
-
-    # JSON-LD: record the exact Product/Offer combinations instead of only
-    # the first price chosen by _offer_data().
-    for product_index, product in enumerate(_json_ld_products(
-        BeautifulSoup(raw, "html.parser")
-    )):
-        product_name = _clean(product.get("name"))
-        brand_value = product.get("brand")
-        brand_value = (
-            _clean(brand_value.get("name"))
-            if isinstance(brand_value, dict)
-            else _clean(brand_value)
-        )
-
-        offers = product.get("offers")
-        offer_list = offers if isinstance(offers, list) else [offers]
-        if not isinstance(offer_list, list):
-            offer_list = []
-
-        for offer_index, offer in enumerate(offer_list):
-            if not isinstance(offer, dict):
-                continue
-
-            availability = _clean(offer.get("availability"))
-            for field in ("price", "lowPrice"):
-                value = offer.get(field)
-                if _format_price(value):
-                    add(
-                        f"json_ld.product[{product_index}].offer[{offer_index}].{field}",
-                        value,
-                        matched=f"{field}={value}; availability={availability}",
-                        context=f"{brand_value} {product_name}",
-                    )
-
-    patterns = (
-        (
-            "visible_prix_actuel",
-            re.compile(
-                r"prix\s+actuel\s+(?:de\s+)?"
-                r"(\d{1,4}[.,]\d{2})\s*€",
-                re.I,
-            ),
-        ),
-        (
-            "visible_en_stock",
-            re.compile(
-                r"en\s+stock\s*[|:]?\s*"
-                r"(\d{1,4}[.,]\d{2})\s*€",
-                re.I,
-            ),
-        ),
-        (
-            "visible_price_generic",
-            PRICE_RE,
-        ),
-    )
-
-    for source, pattern in patterns:
-        for match in pattern.finditer(visible):
-            value = match.group(1) or match.group(2)
-            start = max(0, match.start() - 160)
-            end = min(len(visible), match.end() + 220)
-            add(
-                source,
-                value,
-                matched=match.group(0),
-                context=visible[start:end],
-            )
-
-    for source, pattern in (
-        (
-            "raw_json_price",
-            re.compile(
-                r'"(?:price|lowPrice)"\s*:\s*"?(?:'
-                r"(\d{1,4}[.,]\d{2})"
-                r')',
-                re.I,
-            ),
-        ),
-    ):
-        for match in pattern.finditer(raw):
-            value = match.group(1)
-            start = max(0, match.start() - 120)
-            end = min(len(raw), match.end() + 180)
-            add(
-                source,
-                value,
-                matched=match.group(0),
-                context=raw[start:end],
-            )
-
-    candidate_target_url = _normalise_candidate_url_for_compare(
-        candidate.get("url", "")
-    )
-
-    for source, field in (
-        ("candidate.anchor_text", "anchor_text"),
-        ("candidate.card_text", "card_text"),
-    ):
-        raw_value = html_lib.unescape(
-            str(candidate.get(field, "") or "")
-        ).replace("\\/", "/")
-
-        embedded_urls = [
-            _normalise_candidate_url_for_compare(
-                match.group(0)
-            )
-            for match in PRODUCT_URL_RE.finditer(raw_value)
-        ]
-        embedded_urls = [
-            value
-            for value in embedded_urls
-            if value
-        ]
-
-        # A candidate text may contain another product URL (for example a
-        # coffret). Never use that other product's price for this candidate.
-        if embedded_urls and (
-            not candidate_target_url
-            or any(
-                value != candidate_target_url
-                for value in embedded_urls
-            )
-        ):
-            continue
-
-        add(
-            source,
-            _extract_product_price(raw_value),
-        )
-
-    return {
-        "prices_found": traces,
-        "price_values": list(dict.fromkeys(
-            item["value"] for item in traces
-        )),
-        "candidate_anchor_text": _clean(
-            candidate.get("anchor_text", "")
-        )[:500],
-        "candidate_card_text": _clean(
-            candidate.get("card_text", "")
-        )[:1000],
-    }
-
-
-def _diagnostic_stock_price_reconciliation(
-    stock: Dict[str, Any],
-    price_trace: Dict[str, Any],
-) -> Dict[str, Any]:
-    stock_status = stock.get("stock_status")
-    price_values = price_trace.get("price_values") or []
-
-    if stock_status is False and price_values:
-        conclusion = "OUT_OF_STOCK_BUT_PRICE_PRESENT"
-    elif stock_status is True and price_values:
-        conclusion = "IN_STOCK_AND_PRICE_PRESENT"
-    elif stock_status is False and not price_values:
-        conclusion = "OUT_OF_STOCK_WITHOUT_PRICE"
-    elif stock_status is None and price_values:
-        conclusion = "STOCK_UNVERIFIED_BUT_PRICE_PRESENT"
-    elif stock_status is True and not price_values:
-        conclusion = "IN_STOCK_WITHOUT_PRICE"
-    else:
-        conclusion = "STOCK_UNVERIFIED_AND_NO_PRICE"
-
-    structured = stock.get("structured_stock")
-    return {
-        "conclusion": conclusion,
-        "stock_status": stock_status,
-        "structured_stock": structured,
-        "prices_found": price_values,
-        "out_markers_found": stock.get("out_markers_found", []),
-        "in_markers_found": stock.get("in_markers_found", []),
-        "important_note": (
-            "A price may exist in JSON-LD or hidden page data even when "
-            "the visible page says out of stock. This trace distinguishes "
-            "that stored price from a currently purchasable offer."
-            if stock_status is False and price_values
-            else ""
-        ),
-    }
-
-
-def _normalise_candidate_url_for_compare(value: Any) -> str:
-    """Return a canonical Notino product URL for candidate/card comparison."""
-    normalised = _normalise_reader_url(value)
-    if normalised:
-        return normalised.rstrip("/")
-
-    raw = html_lib.unescape(str(value or "")).strip()
-    raw = raw.replace("\\/", "/").replace("\\u002F", "/")
-    raw = unquote(raw).strip(' <>"\'()[]{}.,;')
-
-    if raw.startswith("//"):
-        raw = "https:" + raw
-    elif raw.startswith("/"):
-        raw = urljoin(BASE_URL, raw)
-
-    try:
-        parsed = urlparse(raw)
-    except Exception:
-        return ""
-
-    if parsed.netloc.lower() not in {"www.notino.fr", "notino.fr"}:
-        return ""
-
-    if not _looks_like_product_url(raw):
-        return ""
-
-    return f"https://{parsed.netloc.lower()}{parsed.path.rstrip('/')}"
-
-
-def _diagnostic_candidate_consistency(
-    candidate: Dict[str, Any],
-) -> Dict[str, Any]:
-    target = _normalise_candidate_url_for_compare(
-        candidate.get("url", "")
-    )
-
-    fields: Dict[str, Any] = {}
-
-    for field in ("anchor_text", "card_text", "name"):
-        value = candidate.get(field, "")
-        urls: List[str] = []
-
-        raw = html_lib.unescape(
-            str(value or "")
-        ).replace("\\/", "/")
-
-        for match in PRODUCT_URL_RE.finditer(raw):
-            normalised = _normalise_candidate_url_for_compare(
-                match.group(0)
-            )
-
-            if normalised and normalised not in urls:
-                urls.append(normalised)
-
-        fields[field] = {
-            "urls_found": urls,
-            "matches_candidate_url": (
-                not urls
-                or bool(target and target in urls)
-            ),
-        }
-
-    mismatched_urls = sorted(
-        {
-            url
-            for field in fields.values()
-            for url in field["urls_found"]
-            if target and url != target
-        }
-    )
-
-    return {
-        "candidate_url": target,
-        "fields": fields,
-        "mismatched_urls": mismatched_urls,
-        "url_card_mismatch": bool(mismatched_urls),
-        "warning": (
-            "Candidate URL is paired with text containing a different "
-            "Notino product URL; price/stock from that text must not be "
-            "used for the candidate."
-            if mismatched_urls
-            else ""
-        ),
-    }
-
-
-def _diagnose_product_job(
-    candidate: Dict[str, Any],
-    query: str,
-) -> Dict[str, Any]:
-    """
-    Diagnostic-only version of the product-page pipeline.
-
-    It does not alter production acceptance logic. It records where a
-    candidate is lost: request, URL/challenge, size/name matching, price,
-    stock, or reader fallback.
-    """
-    session = _new_session()
-
-    diagnostic: Dict[str, Any] = {
-        "candidate": candidate,
-        "query": query,
-        "decision": "not_evaluated",
-        "path": None,
-    }
-
-    try:
-        url = candidate.get("url", "")
-
-        diagnostic["request_url"] = url
-        diagnostic["candidate_consistency"] = (
-            _diagnostic_candidate_consistency(candidate)
-        )
-
-        try:
-            response = _request(
-                session,
-                url,
-            )
-        except requests.RequestException as exc:
-            diagnostic["request_error"] = (
-                f"{type(exc).__name__}: {exc}"
-            )
-            diagnostic["path"] = "reader_after_http_error"
-
-            try:
-                reader_response = _reader_request(
-                    session,
-                    url,
-                )
-            except requests.RequestException as reader_exc:
-                diagnostic["reader_error"] = (
-                    f"{type(reader_exc).__name__}: "
-                    f"{reader_exc}"
-                )
-                diagnostic["decision"] = (
-                    "rejected_no_page_and_no_reader"
-                )
-                return diagnostic
-
-            reader_text = reader_response.text or ""
-            diagnostic["reader_status"] = (
-                reader_response.status_code
-            )
-            diagnostic["reader_final_url"] = (
-                reader_response.url
-            )
-            diagnostic["reader_html_length"] = len(
-                reader_text
-            )
-            diagnostic["reader_challenge"] = _is_challenge(
-                reader_text
-            )
-
-            diagnostic["reader_size_valid"] = (
-                _requested_size_is_valid(
-                    reader_text,
-                    query,
-                )
-            )
-
-            reader_name = _extract_reader_product_name(
-                reader_text,
-                candidate,
-                query,
-            )
-            diagnostic["reader_name"] = reader_name
-            diagnostic["reader_name_match"] = bool(
-                reader_name
-                and _fuzzy_query_match(
-                    reader_name,
-                    query,
-                )[0]
-            )
-
-            diagnostic["reader_stock"] = (
-                _diagnostic_stock_snapshot(
-                    reader_text,
-                    reader_name or candidate.get("name", ""),
-                    url,
-                )
-            )
-            diagnostic["reader_price_trace"] = _diagnostic_price_trace(
-                reader_text,
-                _clean(
-                    BeautifulSoup(
-                        reader_text,
-                        "html.parser",
-                    ).get_text(" ", strip=True)
-                ),
-                candidate,
-            )
-            diagnostic["reader_stock_price_reconciliation"] = (
-                _diagnostic_stock_price_reconciliation(
-                    diagnostic["reader_stock"],
-                    diagnostic["reader_price_trace"],
-                )
-            )
-
-            reader_result = _reader_product(
-                reader_text,
-                candidate,
-                query,
-            )
-
-            diagnostic["reader_result"] = reader_result
-            diagnostic["decision"] = (
-                "accepted_by_reader"
-                if reader_result
-                else "rejected_by_reader_pipeline"
-            )
-            return diagnostic
-
-        diagnostic["http_status"] = response.status_code
-        diagnostic["final_url"] = response.url
-        diagnostic["final_url_no_query"] = (
-            response.url.split("?")[0]
-        )
-        diagnostic["html_length"] = len(
-            response.text or ""
-        )
-        diagnostic["challenge"] = _is_challenge(
-            response.text
-        )
-        diagnostic["looks_like_product_url"] = (
-            _looks_like_product_url(
-                diagnostic["final_url_no_query"]
-            )
-        )
-
-        final_url = diagnostic["final_url_no_query"]
-
-        diagnostic["non_perfume_marker"] = (
-            _has_non_perfume_marker_in_product(
-                candidate.get("name", ""),
-                final_url,
-            )
-        )
-
-        if (
-            diagnostic["challenge"]
-            or not diagnostic["looks_like_product_url"]
-        ):
-            diagnostic["path"] = (
-                "reader_after_challenge_or_bad_product_url"
-            )
-
-            try:
-                reader_response = _reader_request(
-                    session,
-                    url,
-                )
-            except requests.RequestException as exc:
-                diagnostic["reader_error"] = (
-                    f"{type(exc).__name__}: {exc}"
-                )
-                diagnostic["decision"] = (
-                    "rejected_reader_request_failed"
-                )
-                return diagnostic
-
-            reader_text = reader_response.text or ""
-            reader_name = _extract_reader_product_name(
-                reader_text,
-                candidate,
-                query,
-            )
-
-            diagnostic["reader_status"] = (
-                reader_response.status_code
-            )
-            diagnostic["reader_html_length"] = len(
-                reader_text
-            )
-            diagnostic["reader_name"] = reader_name
-            diagnostic["reader_size_valid"] = (
-                _requested_size_is_valid(
-                    reader_text
-                    + " "
-                    + str(candidate.get("card_text") or ""),
-                    query,
-                )
-            )
-            diagnostic["reader_stock"] = (
-                _diagnostic_stock_snapshot(
-                    reader_text,
-                    reader_name or candidate.get("name", ""),
-                    url,
-                )
-            )
-            diagnostic["reader_price_trace"] = _diagnostic_price_trace(
-                reader_text,
-                _clean(
-                    BeautifulSoup(
-                        reader_text,
-                        "html.parser",
-                    ).get_text(" ", strip=True)
-                ),
-                candidate,
-            )
-            diagnostic["reader_stock_price_reconciliation"] = (
-                _diagnostic_stock_price_reconciliation(
-                    diagnostic["reader_stock"],
-                    diagnostic["reader_price_trace"],
-                )
-            )
-            diagnostic["reader_result"] = _reader_product(
-                reader_text,
-                candidate,
-                query,
-            )
-            diagnostic["decision"] = (
-                "accepted_by_reader"
-                if diagnostic["reader_result"]
-                else "rejected_by_reader_pipeline"
-            )
-            return diagnostic
-
-        diagnostic["path"] = "normal_product_page"
-
-        soup = BeautifulSoup(
-            response.text,
-            "html.parser",
-        )
-
-        page_text = _clean(
-            soup.get_text(
-                " ",
-                strip=True,
-            )
-        )
-
-        diagnostic["page_size_valid"] = (
-            _requested_size_is_valid(
-                page_text,
-                query,
-            )
-        )
-
-        diagnostic["page_title"] = (
-            _clean(
-                soup.title.get_text(
-                    " ",
-                    strip=True,
-                )
-            )
-            if soup.title
-            else ""
-        )
-
-        diagnostic["price_trace"] = _diagnostic_price_trace(
-            response.text,
-            page_text,
-            candidate,
-        )
-
-        name = ""
-        price = ""
-        brand = ""
-        price_source = None
-
-        for product in _json_ld_products(soup):
-            product_name = _clean(
-                product.get("name")
-            )
-
-            brand_value = product.get("brand")
-            brand_value = (
-                _clean(
-                    brand_value.get("name")
-                )
-                if isinstance(
-                    brand_value,
-                    dict,
-                )
-                else _clean(brand_value)
-            )
-
-            if _matches(
-                f"{brand_value} {product_name}",
-                query,
-            ):
-                possible_price, _ = _offer_data(
-                    product.get("offers")
-                )
-
-                if product_name:
-                    name = product_name
-                    brand = brand_value
-                    if possible_price:
-                        price = possible_price
-                        price_source = "json_ld"
-                    break
-
-        if not name:
-            h1 = soup.find("h1")
-            if h1:
-                h1_text = _clean(
-                    h1.get_text(
-                        " ",
-                        strip=True,
-                    )
-                )
-                diagnostic["h1"] = h1_text
-
-                if _matches(
-                    h1_text,
-                    query,
-                ):
-                    name = h1_text
-                    diagnostic["name_source"] = "h1"
-
-        if not name and soup.title:
-            candidate_name = _clean(
-                soup.title.get_text(
-                    " ",
-                    strip=True,
-                )
-            ).split("|")[0]
-
-            if _matches(
-                candidate_name,
-                query,
-            ):
-                name = candidate_name
-                diagnostic["name_source"] = "title"
-
-        diagnostic["product_name"] = name
-        diagnostic["brand"] = brand
-
-        if name:
-            diagnostic["name_match"] = _fuzzy_query_match(
-                name,
-                query,
-            )
-
-        if not price:
-            match = re.search(
-                r"prix\s+actuel\s+"
-                r"(\d{1,4}[.,]\d{2})\s*€",
-                page_text,
-                re.I,
-            )
-            if match:
-                price = _format_price(
-                    match.group(1)
-                )
-                price_source = "visible_prix_actuel"
-
-        if not price:
-            match = re.search(
-                r"en\s+stock\s*[|:]?\s*"
-                r"(\d{1,4}[.,]\d{2})\s*€",
-                page_text,
-                re.I,
-            )
-            if match:
-                price = _format_price(
-                    match.group(1)
-                )
-                price_source = "visible_en_stock"
-
-        if not price:
-            price = _extract_product_price(
-                page_text
-            )
-            if price:
-                price_source = "visible_product_price"
-
-        if not price:
-            price = (
-                _extract_product_price(
-                    candidate.get(
-                        "anchor_text",
-                        "",
-                    )
-                )
-                or _extract_product_price(
-                    candidate.get(
-                        "card_text",
-                        "",
-                    )
-                )
-            )
-            if price:
-                price_source = "search_card"
-
-        diagnostic["price"] = price
-        diagnostic["price_source"] = price_source
-
-        diagnostic["stock"] = (
-            _diagnostic_stock_snapshot(
-                response.text,
-                name or candidate.get("name", ""),
-                final_url,
-            )
-        )
-
-        diagnostic["stock_price_reconciliation"] = (
-            _diagnostic_stock_price_reconciliation(
-                diagnostic["stock"],
-                diagnostic.get("price_trace", {}),
-            )
-        )
-
-        if not name:
-            diagnostic["decision"] = (
-                "rejected_no_product_name"
-            )
-        elif not diagnostic["page_size_valid"]:
-            diagnostic["decision"] = (
-                "rejected_requested_size"
-            )
-        elif not diagnostic["name_match"][0]:
-            diagnostic["decision"] = (
-                "rejected_name_mismatch"
-            )
-        elif diagnostic["stock"]["stock_status"] is False:
-            diagnostic["decision"] = (
-                "rejected_out_of_stock"
-            )
-            diagnostic["decision_detail"] = (
-                "price_present_but_stock_rejected"
-                if price
-                else "no_price_and_stock_rejected"
-            )
-        elif diagnostic["stock"]["stock_status"] is None:
-            diagnostic["decision"] = (
-                "rejected_stock_not_verified"
-            )
-        elif not price:
-            diagnostic["decision"] = (
-                "rejected_no_price"
-            )
-        else:
-            diagnostic["decision"] = (
-                "would_be_accepted"
-            )
-
-        return diagnostic
-
-    except Exception as exc:
-        diagnostic["decision"] = "diagnostic_exception"
-        diagnostic["exception"] = (
-            f"{type(exc).__name__}: {exc}"
-        )
-        return diagnostic
-    finally:
-        session.close()
-
-
 def debug_search(
     query: str,
 ) -> Dict[str, Any]:
@@ -4593,27 +3596,110 @@ def debug_search(
             if item.get("result")
         ]
 
-        diagnostics = [
-            _diagnose_product_job(
-                candidate,
-                query,
-            )
-            for candidate in ranked
-        ]
-
         return {
             "ok": bool(valid),
             "store": STORE.lower(),
             "query": query,
             "scraper_version": SCRAPER_VERSION,
-            "candidate_count": len(candidates),
-            "ranked_candidate_count": len(ranked),
+            "candidate_count": len(
+                candidates
+            ),
+            "ranked_candidate_count": len(
+                ranked
+            ),
             "result_count": len(valid),
             "candidates": candidates[:50],
             "products": products,
-            "diagnostics": diagnostics,
             "discovery": discovery,
         }
+
+    finally:
+        session.close()
+
+
+def _diagnose_product_job(
+    candidate: Dict[str, Any],
+    query: str,
+) -> Dict[str, Any]:
+    session = _new_session()
+
+    try:
+        try:
+            response = _request(
+                session,
+                candidate["url"],
+            )
+
+            return {
+                "url": candidate["url"],
+                "status": response.status_code,
+                "final_url": response.url,
+                "html_length": len(
+                    response.text or ""
+                ),
+                "cloudflare": _is_challenge(
+                    response.text
+                ),
+                "reader_fallback": False,
+                "requested_size": _requested_sizes(
+                    query
+                ),
+                "size_match": _requested_size_is_valid(
+                    response.text,
+                    query,
+                ),
+            }
+
+        except requests.RequestException as exc:
+            try:
+                reader = _reader_request(
+                    session,
+                    candidate["url"],
+                )
+
+                return {
+                    "url": candidate["url"],
+                    "status": getattr(
+                        getattr(
+                            exc,
+                            "response",
+                            None,
+                        ),
+                        "status_code",
+                        None,
+                    ),
+                    "error": (
+                        f"{type(exc).__name__}: "
+                        f"{exc}"
+                    ),
+                    "reader_status": reader.status_code,
+                    "reader_html_length": len(
+                        reader.text or ""
+                    ),
+                    "reader_fallback": True,
+                    "requested_size": _requested_sizes(
+                        query
+                    ),
+                    "size_match": _requested_size_is_valid(
+                        reader.text,
+                        query,
+                    ),
+                }
+
+            except requests.RequestException as reader_exc:
+                return {
+                    "url": candidate["url"],
+                    "status": None,
+                    "error": (
+                        f"{type(exc).__name__}: "
+                        f"{exc}"
+                    ),
+                    "reader_error": (
+                        f"{type(reader_exc).__name__}: "
+                        f"{reader_exc}"
+                    ),
+                    "reader_fallback": True,
+                }
 
     finally:
         session.close()
@@ -4656,15 +3742,50 @@ def diagnose(
             "candidate_urls_before_product_page_limit"
         ] = len(candidates)
 
-        # Diagnostic mode is intentionally sequential. Concurrent reader
-        # requests can trigger 429 responses and hide the evidence we need.
-        product_page_results = [
-            _diagnose_product_job(
-                candidate,
-                query,
+        if candidates_for_product_pages:
+            with ThreadPoolExecutor(
+                max_workers=min(
+                    PRODUCT_MAX_WORKERS,
+                    len(
+                        candidates_for_product_pages
+                    ),
+                )
+            ) as executor:
+                futures = [
+                    executor.submit(
+                        _diagnose_product_job,
+                        candidate,
+                        query,
+                    )
+                    for candidate
+                    in candidates_for_product_pages
+                ]
+
+                product_page_results = [
+                    future.result()
+                    for future in as_completed(
+                        futures
+                    )
+                ]
+
+            order_map = {
+                item["url"]: index
+                for index, item
+                in enumerate(
+                    candidates_for_product_pages
+                )
+            }
+
+            product_page_results.sort(
+                key=lambda item: order_map.get(
+                    item["url"],
+                    len(
+                        candidates_for_product_pages
+                    ),
+                )
             )
-            for candidate in candidates_for_product_pages
-        ]
+        else:
+            product_page_results = []
 
         return {
             "diagnostic": True,
