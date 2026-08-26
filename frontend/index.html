@@ -920,6 +920,7 @@ function shGroupData(data){
         family_id:o.family_id||g.family_id||"",
         size_ml:o.size_ml||o.size||g.size_ml||"",
         concentration:concentrationHint(o)||o.concentration||g.concentration||"",
+        gender:genderHint(o)||genderHint(g)||"",
         image:o.image||o.image_url||o.thumbnail||g.image||"",
         _source_name:o.name||g.name||"",
         _source_brand:o.brand||g.brand||"",
@@ -1306,6 +1307,27 @@ function shGroupData(data){
     if(/\beau\s+de\s+cologne\b|\bedc\b/.test(raw))return "Eau de Cologne";
     return "";
   }
+  function genderHint(o){
+    const values=[
+      o?.gender, o?.audience, o?.for_whom, o?.for_who, o?.target,
+      o?.attributes?.gender?.value, o?.attributes?.audience?.value,
+      o?.attributes?.for_whom?.value,
+      o?.source?.gender, o?.source?.audience, o?.source?.for_whom
+    ];
+    for(const value of values){
+      const n=norm(value);
+      if(!n)continue;
+      if(/\b(unisex|mixte|unisexe)\b/.test(n))return "Unisex";
+      if(/\b(woman|women|female|femme|donna|donne|her|pour femme|for women)\b/.test(n))return "Donna";
+      if(/\b(man|men|male|homme|uomo|pour homme|for men|him)\b/.test(n))return "Uomo";
+    }
+    const title=norm([o?.name,o?.title,o?.product_name].filter(Boolean).join(" "));
+    if(/\b(woman|women|female|femme|donna|donne|her|pour femme|for women)\b/.test(title))return "Donna";
+    if(/\b(man|men|male|homme|uomo|pour homme|for men|him)\b/.test(title))return "Uomo";
+    if(/\b(unisex|mixte|unisexe)\b/.test(title))return "Unisex";
+    return "";
+  }
+
   function concentrationLabel(value){
     const n=norm(value);
     if(n==="extrait de parfum")return "Extrait de Parfum";
@@ -1518,7 +1540,7 @@ function shGroupData(data){
     const brand=findBrand(o);
     const name=catalogCanonicalName(o,brand);
     const key=(norm(brand)+"|"+norm(name)).replace(/\|+$/g,"");
-    return {brand,name,key};
+    return {brand,name,key,gender:genderHint(o)};
   });
 
   resolveIdentitySet(raw,identities);
@@ -1566,6 +1588,35 @@ function shGroupData(data){
       id.name=catalogCanonicalName(o,id.brand);
       id.key=(norm(id.brand)+"|"+norm(id.name)+"|"+norm(id.concentration)).replace(/\|+$/g,"");
     }
+  });
+
+  /*
+   * GENERE/AUDIENCE:
+   * eredita solo un genere esplicitamente dichiarato quando per la stessa
+   * identita' esiste una sola audience. Se esistono Uomo e Donna, restano
+   * gruppi distinti. Nessun genere viene inventato.
+   */
+  const genderByBase=new Map();
+  raw.forEach((o,i)=>{
+    const id=identities[i];
+    if(!id.key)return;
+    const gender=genderHint(o);
+    if(gender){
+      id.gender=gender;
+      if(!genderByBase.has(id.key))genderByBase.set(id.key,new Set());
+      genderByBase.get(id.key).add(gender);
+    }
+  });
+
+  raw.forEach((o,i)=>{
+    const id=identities[i];
+    const explicit=id.gender||genderHint(o);
+    const known=genderByBase.get(id.key);
+    const inherited=(known&&known.size===1)?[...known][0]:"";
+    id.gender=explicit||inherited||"";
+    o.gender=id.gender;
+    const genderKey=id.gender?"|"+norm(id.gender):"";
+    id.key=(norm(id.brand)+"|"+norm(id.name)+(id.concentration?"|"+norm(id.concentration):"")+genderKey).replace(/\|+$/g,"");
   });
 
   /*
@@ -1618,6 +1669,7 @@ function shGroupData(data){
         display_name:id.brand?id.brand+" - "+displayName:displayName,
         size_ml:"",
         concentration:concentrationLabel(concentration),
+        gender:o.gender||id.gender||"",
         image:o.image||o.image_url||o.thumbnail||"",
         offers:[]
       });
@@ -1625,6 +1677,7 @@ function shGroupData(data){
 
     const g=map.get(id.key);
     if(!g.brand&&id.brand)g.brand=id.brand;
+    if(!g.gender&&id.gender)g.gender=id.gender;
     if(!g.image)g.image=o.image||o.image_url||o.thumbnail||"";
 
     const normalizedOffer={...o};
@@ -1635,6 +1688,7 @@ function shGroupData(data){
     if(id.brand)normalizedOffer.brand=id.brand;
     if(id.name)normalizedOffer.name=id.name;
     if(id.concentration)normalizedOffer.concentration=concentrationLabel(id.concentration);
+    if(id.gender)normalizedOffer.gender=id.gender;
     if(size)normalizedOffer.size_ml=size;
 
     const store=String(o.store||"").trim().toLowerCase();
@@ -1926,7 +1980,7 @@ function shGroupData(data){
         const concentrationWords=concentration.split(/\s+/).length;
         baseName=words.slice(0,-concentrationWords).join(" ").trim();
       }
-      g.name=(pretty(baseName)+" "+concentration).trim();
+      g.name=pretty(baseName).trim();
       g.concentration=concentration;
     }else{
       g.name=pretty(g.name||"Profumo");
@@ -1934,7 +1988,12 @@ function shGroupData(data){
 
     g.canonical_name=g.canonical_name||g.name;
     g.name=g.canonical_name;
-    g.display_name=g.brand?g.brand+" - "+g.canonical_name:g.canonical_name;
+    const audience=g.gender?" "+g.gender:"";
+    const concentrationText=g.concentration?" "+concentrationLabel(g.concentration):"";
+    const finalBase=removeTrailingGender(removeTrailingConcentration(g.canonical_name,g.concentration)||g.canonical_name)||g.canonical_name;
+    const finalName=(pretty(finalBase)+concentrationText+audience).trim();
+    g.name=finalName;
+    g.display_name=g.brand?g.brand+" - "+finalName:finalName;
   });
 
   /*
@@ -2130,9 +2189,20 @@ document.addEventListener("click",e=>{
   cardPointerMoved=false;
 },{capture:true});
 
+function removeTrailingGender(name){
+  return String(name||"")
+    .replace(/\s*(?:[-–—:]\s*)?(?:uomo|men|man|for men|pour homme|homme|donna|women|woman|for women|pour femme|femme|unisex|mixte|unisexe)\s*$/i,"")
+    .trim();
+}
+
 function displayCatalogName(g){
   const canonical=String(g?.canonical_name||g?.catalog_variant||g?.name||"").trim();
-  return canonical||"Profumo";
+  if(!canonical)return "Profumo";
+  let base=removeTrailingConcentration(canonical,g?.concentration||"")||canonical;
+  base=removeTrailingGender(base)||base;
+  const concentration=g?.concentration?" "+concentrationLabel(g.concentration):"";
+  const gender=g?.gender?" "+String(g.gender).trim():"";
+  return (pretty(base)+concentration+gender).trim();
 }
 
 function showProducts(groups){
