@@ -17,7 +17,7 @@ import hashlib
 import re
 import unicodedata
 from dataclasses import dataclass
-from typing import Any, Dict, Iterable, List, Optional, Sequence, Tuple
+from typing import Any, Dict, Iterable, List, Optional, Sequence, Set, Tuple
 
 
 def normalize(value: Any) -> str:
@@ -322,9 +322,6 @@ class ProductMatcher:
         "minispray",
     )
 
-    # Only phrases that describe the CURRENT RETAILER AVAILABILITY are
-    # removable. Edition/variant markers are part of product identity and
-    # must never be stripped during catalog matching.
     _STATUS_PHRASES = (
         "out of stock",
         "non disponibile",
@@ -345,6 +342,16 @@ class ProductMatcher:
         self._by_mpn: Dict[str, List[CatalogProduct]] = {}
         self._by_catalog_id: Dict[str, CatalogProduct] = {}
 
+        # Direct identity indexes. The previous implementation scanned the
+        # whole catalog for every offer; with a large catalog this multiplied
+        # scraper latency unnecessarily. These indexes keep matching
+        # deterministic while reducing the identity lookup to dictionary
+        # operations plus a small candidate set.
+        self._by_clean_name: Dict[str, List[CatalogProduct]] = {}
+        self._brand_by_prefix: Dict[str, Set[str]] = {}
+        self._brand_display_by_normalized: Dict[str, str] = {}
+        self._catalog_brands: Set[str] = set()
+
         for product in self.catalog:
             if product.catalog_id:
                 self._by_catalog_id[normalize(product.catalog_id)] = product
@@ -352,6 +359,36 @@ class ProductMatcher:
                 self._by_gtin.setdefault(value, []).append(product)
             for value in product.mpns:
                 self._by_mpn.setdefault(value, []).append(product)
+
+            if product.brand:
+                brand_n = product.normalized_brand
+                self._catalog_brands.add(brand_n)
+                self._brand_display_by_normalized[brand_n] = product.brand
+
+            cleaned_names: Set[str] = set()
+            for value in (
+                product.catalog_variant,
+                product.name,
+                product.family_name,
+                *product.aliases,
+            ):
+                cleaned = self._clean_identity_name(product.brand, value)
+                if not cleaned:
+                    continue
+                cleaned_names.add(cleaned)
+                self._by_clean_name.setdefault(cleaned, []).append(product)
+
+            # Every token-prefix is a possible brand-recovery key. Brand
+            # recovery still requires a unique resulting brand, so this does
+            # not resolve a variant merely because it shares a prefix.
+            for cleaned in cleaned_names:
+                tokens = cleaned.split()
+                for end in range(1, len(tokens) + 1):
+                    prefix = " ".join(tokens[:end])
+                    if product.brand:
+                        self._brand_by_prefix.setdefault(prefix, set()).add(
+                            product.normalized_brand
+                        )
 
     def _offer_brand(self, offer: Dict[str, Any]) -> str:
         value = first_value(offer, self.BRAND_KEYS)
@@ -378,68 +415,41 @@ class ProductMatcher:
     def _catalog_brand_hint(
         self,
         raw_name: str,
-        brand: str = "",
     ) -> str:
         """
-        Recover a brand only from the canonical catalog when the retailer
-        did not expose one. The inference is allowed only when every matching
-        catalog family/product points to the same brand.
+        Recover a missing/invalid retailer brand from the canonical catalog.
 
-        This is deliberately structural: it does not know any perfume or
-        retailer name and never promotes a single hard-coded product to a
-        special case.
+        The lookup is index-backed and brand-only. It never resolves a
+        specific product variant.
         """
-        if brand:
+        if not raw_name:
             return ""
 
-        cleaned_offer = self._clean_identity_name("", raw_name)
-        if not cleaned_offer:
+        # First try each catalog brand only when the title contains that brand
+        # explicitly. This handles titles such as "French Avenue - Liquid Brun"
+        # without scanning every catalog product.
+        raw_normalized = normalize(raw_name)
+        for brand_n, brand_display in self._brand_display_by_normalized.items():
+            brand_tokens = brand_n.split()
+            if brand_tokens and all(token in raw_normalized.split() for token in brand_tokens):
+                cleaned = self._clean_identity_name(brand_display, raw_name)
+                if cleaned in self._brand_by_prefix:
+                    brands = self._brand_by_prefix[cleaned]
+                    if len(brands) == 1:
+                        return self._brand_display_by_normalized[next(iter(brands))]
+
+        # Then use the raw normalized title itself. This handles abbreviated
+        # retailer names such as "Hawas" -> Rasasi and "Asad" -> Lattafa when
+        # all matching catalog variants belong to one brand.
+        cleaned = self._clean_identity_name("", raw_name)
+        if not cleaned:
             return ""
 
-        offer_tokens = cleaned_offer.split()
-        if len(offer_tokens) > 6:
-            return ""
+        brands = self._brand_by_prefix.get(cleaned, set())
+        if len(brands) == 1:
+            return self._brand_display_by_normalized[next(iter(brands))]
 
-        matches: List[CatalogProduct] = []
-        for product in self.catalog:
-            names = [
-                product.catalog_variant,
-                product.name,
-                product.family_name,
-                *product.aliases,
-            ]
-            for value in names:
-                candidate = self._clean_identity_name(product.brand, value)
-                if not candidate:
-                    continue
-
-                # Exact family/product name.
-                if cleaned_offer == candidate:
-                    matches.append(product)
-                    break
-
-                # The retailer may expose a new variant whose family stem is
-                # already present in the catalog, e.g. "Family New Variant".
-                if candidate and cleaned_offer.startswith(candidate + " "):
-                    if len(candidate.split()) >= 1:
-                        matches.append(product)
-                        break
-
-                # Conversely, a retailer may expose only the beginning of a
-                # cataloged variant. This is safe only when the resulting brand
-                # is unique across all matching catalog entries.
-                if candidate.startswith(cleaned_offer + " "):
-                    if len(offer_tokens) >= 1:
-                        matches.append(product)
-                        break
-
-        if not matches:
-            return ""
-
-        brands = {product.normalized_brand: product.brand for product in matches if product.brand}
-        if len(brands) != 1:
-            return ""
-        return next(iter(brands.values()))
+        return ""
 
     @classmethod
     def _clean_identity_name(cls, brand: str, value: Any) -> str:
@@ -558,32 +568,22 @@ class ProductMatcher:
     ) -> Tuple[Optional[CatalogProduct], str]:
         brand = self._offer_brand(offer)
         raw_name = self._offer_name(offer)
-        cleaned = self._clean_identity_name(brand, raw_name)
+
+        effective_brand = brand
+        if not effective_brand or effective_brand not in self._catalog_brands:
+            hinted_brand = self._catalog_brand_hint(raw_name)
+            if hinted_brand:
+                effective_brand = normalize(hinted_brand)
+
+        cleaned = self._clean_identity_name(effective_brand, raw_name)
         if not cleaned:
             return None, "none"
 
-        candidates: List[Tuple[int, CatalogProduct]] = []
-        for product in self.catalog:
-            if not self._brand_matches(brand, product):
-                continue
-
-            for key in self._catalog_name_keys(product):
-                candidate = self._clean_identity_name(product.brand, key)
-                if not candidate:
-                    continue
-
-                # Exact identity only. No fuzzy score and no partial-prefix
-                # acceptance. If the retailer omitted the brand field but put
-                # the brand in the title, remove the catalog brand for the
-                # comparison as a second, generic normalization path.
-                offer_candidate = cleaned
-                if not brand:
-                    offer_candidate = self._clean_identity_name(product.brand, raw_name)
-
-                if offer_candidate == candidate:
-                    candidates.append((len(candidate.split()), product))
-                    break
-
+        candidates = [
+            product
+            for product in self._by_clean_name.get(cleaned, [])
+            if self._brand_matches(effective_brand, product)
+        ]
         if not candidates:
             return None, "none"
 
@@ -591,8 +591,9 @@ class ProductMatcher:
         offer_gender = gender_from_offer(offer)
         if offer_gender:
             filtered = [
-                item for item in candidates
-                if normalize(item[1].gender) == normalize(offer_gender)
+                product
+                for product in candidates
+                if normalize(product.gender) == normalize(offer_gender)
             ]
             if filtered:
                 candidates = filtered
@@ -603,32 +604,31 @@ class ProductMatcher:
         )
         if offer_concentration:
             filtered = [
-                item for item in candidates
-                if normalize(item[1].concentration) == normalize(offer_concentration)
+                product
+                for product in candidates
+                if normalize(product.concentration) == normalize(offer_concentration)
             ]
             if filtered:
                 candidates = filtered
 
+        # De-duplicate the same catalog product reached through multiple aliases.
+        unique: Dict[str, CatalogProduct] = {}
+        for product in candidates:
+            unique[product.catalog_id] = product
+        candidates = list(unique.values())
+
         candidates.sort(
-            key=lambda item: (
-                item[0],
-                normalize(item[1].catalog_id),
+            key=lambda product: (
+                len(product.catalog_variant.split()),
+                normalize(product.catalog_id),
             ),
             reverse=True,
         )
 
-        # Multiple different catalog products with the same exact normalized
-        # identity are ambiguous and must not be shown.
-        top_len = candidates[0][0]
-        top = [
-            product
-            for length, product in candidates
-            if length == top_len
-        ]
-        if len({product.catalog_id for product in top}) != 1:
+        if len(candidates) != 1:
             return None, "ambiguous"
 
-        return top[0], "exact_name"
+        return candidates[0], "exact_name"
 
     def _identifier_match(
         self,
@@ -688,11 +688,12 @@ class ProductMatcher:
         concentration: str,
         gender: str = "",
     ) -> str:
+        clean_name = cls._clean_identity_display(brand, name)
         parts = []
         if brand:
-            parts.append(brand)
-        if name:
-            parts.append(name)
+            parts.append(str(brand).strip())
+        if clean_name:
+            parts.append(clean_name)
 
         title = " - ".join(parts)
         if concentration:
@@ -716,7 +717,10 @@ class ProductMatcher:
 
         if product is not None:
             canonical_brand = product.brand
-            canonical_name = product.catalog_variant or product.name
+            canonical_name = self._clean_identity_display(
+                canonical_brand,
+                product.catalog_variant or product.name,
+            ) or (product.catalog_variant or product.name)
             concentration = (
                 str(result.get("concentration") or "").strip()
                 or product.concentration
@@ -746,13 +750,17 @@ class ProductMatcher:
 
         else:
             raw_brand, raw_name, concentration = self._derive_identity(offer)
-            if not raw_brand:
+
+            if not raw_brand or normalize(raw_brand) not in self._catalog_brands:
                 hinted_brand = self._catalog_brand_hint(
                     self._offer_name(offer),
-                    "",
                 )
                 if hinted_brand:
                     raw_brand = hinted_brand
+                    raw_name = self._clean_identity_display(
+                        hinted_brand,
+                        self._offer_name(offer),
+                    ) or raw_name
 
             # No usable product identity means the candidate is not a
             # single identifiable fragrance.
