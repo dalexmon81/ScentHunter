@@ -322,10 +322,10 @@ class ProductMatcher:
         "minispray",
     )
 
+    # Only phrases that describe the CURRENT RETAILER AVAILABILITY are
+    # removable. Edition/variant markers are part of product identity and
+    # must never be stripped during catalog matching.
     _STATUS_PHRASES = (
-        "limited edition",
-        "special edition",
-        "anniversary edition",
         "out of stock",
         "non disponibile",
         "indisponibile",
