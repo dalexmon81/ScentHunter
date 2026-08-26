@@ -24,7 +24,7 @@ READER_TIMEOUT = 12
 READER_MAX_WORKERS = 8
 PRODUCT_MAX_WORKERS = 8
 
-SCRAPER_VERSION = "notino-FR-generic-discovery-2026-08-25-v21-fast-io"
+SCRAPER_VERSION = "notino-FR-generic-discovery-2026-08-26-v22-stock-first"
 
 HEADERS = {
     "User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 "
@@ -3119,6 +3119,18 @@ def _card_result(
         context,
         query,
     ):
+        return None
+
+    # A search/card result can contain a stale or crossed price even when
+    # the product is explicitly unavailable. Never expose a price when the
+    # candidate itself contains a definitive out-of-stock status.
+    stock = _stock_status(
+        context,
+        name,
+        candidate.get("url", ""),
+    )
+
+    if stock is True:
         return None
 
     price = (
