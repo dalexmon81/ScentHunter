@@ -24,7 +24,7 @@ READER_TIMEOUT = 12
 READER_MAX_WORKERS = 8
 PRODUCT_MAX_WORKERS = 8
 
-SCRAPER_VERSION = "notino-FR-generic-discovery-2026-08-26-v23-redirect-identity"
+SCRAPER_VERSION = "notino-FR-generic-discovery-2026-08-26-v24-generic-stock-filter"
 
 HEADERS = {
     "User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 "
@@ -140,32 +140,6 @@ SIZE_RE = re.compile(
     r"(ml|cl|dl|l|oz|fl\s*oz|g|kg)\b",
     re.I,
 )
-
-IDENTITY_NOISE_TOKENS = {
-    "eau",
-    "de",
-    "parfum",
-    "perfume",
-    "edp",
-    "edt",
-    "spray",
-    "pour",
-    "homme",
-    "femme",
-    "men",
-    "women",
-    "woman",
-    "man",
-    "for",
-    "ml",
-    "cl",
-    "dl",
-    "l",
-    "oz",
-    "g",
-    "kg",
-    "fl",
-}
 
 
 def _new_session() -> requests.Session:
@@ -306,108 +280,6 @@ def _contains_requested_size(text: Any, query: Any) -> bool:
         return True
 
     return any(_size_matches(text, size) for size in requested)
-
-
-def _identity_tokens(value: Any, brand_hint: Any = "") -> List[str]:
-    tokens = _query_tokens(value)
-    brand_tokens = set(_query_tokens(brand_hint))
-
-    return [
-        token
-        for token in tokens
-        if token not in IDENTITY_NOISE_TOKENS
-        and token not in brand_tokens
-    ]
-
-
-def _product_identity_matches(candidate_url: str, actual_name: str) -> bool:
-    candidate_slug = _name_from_product_url(candidate_url)
-    candidate_brand = _brand_from_product_url(candidate_url)
-
-    if not candidate_slug or not actual_name:
-        return False
-
-    candidate_tokens = _identity_tokens(
-        candidate_slug,
-        candidate_brand,
-    )
-    actual_tokens = _identity_tokens(
-        actual_name,
-        candidate_brand,
-    )
-
-    if not candidate_tokens or not actual_tokens:
-        return False
-
-    if len(candidate_tokens) == len(actual_tokens) and set(candidate_tokens) == set(actual_tokens):
-        return True
-
-    # Allow harmless spelling/format differences while still rejecting a
-    # different product variant. Every identity-bearing token from the URL
-    # must have a strong counterpart in the resolved page identity, and the
-    # number of identity-bearing tokens must remain the same.
-    if len(candidate_tokens) != len(actual_tokens):
-        return False
-
-    unmatched = list(actual_tokens)
-    for token in candidate_tokens:
-        best_index = -1
-        best_ratio = 0.0
-        for index, actual_token in enumerate(unmatched):
-            ratio = difflib.SequenceMatcher(
-                None,
-                token,
-                actual_token,
-            ).ratio()
-            if ratio > best_ratio:
-                best_ratio = ratio
-                best_index = index
-
-        if best_index < 0 or best_ratio < 0.80:
-            return False
-
-        unmatched.pop(best_index)
-
-    return not unmatched
-
-
-def _product_urls_same_identity(first_url: str, second_url: str) -> bool:
-    first_slug = _name_from_product_url(first_url)
-    second_slug = _name_from_product_url(second_url)
-
-    if not first_slug or not second_slug:
-        return False
-
-    first_brand = _brand_from_product_url(first_url)
-    second_brand = _brand_from_product_url(second_url)
-
-    first_tokens = _identity_tokens(first_slug, first_brand)
-    second_tokens = _identity_tokens(second_slug, second_brand)
-
-    if not first_tokens or not second_tokens:
-        return False
-
-    if _product_identity_matches(first_url, second_slug):
-        return True
-
-    return _product_identity_matches(second_url, first_slug)
-
-
-def _reader_resolved_product_url(text: str) -> str:
-    raw = html_lib.unescape(str(text or "")).replace("\\/", "/")
-
-    patterns = (
-        r"(?:^|\n)\s*canonical\s*:\s*(https?://[^\s<>)\]\"']+)",
-        r"(?:^|\n)\s*url\s*:\s*(https?://[^\s<>)\]\"']+)",
-    )
-
-    for pattern in patterns:
-        for match in re.finditer(pattern, raw, flags=re.I):
-            url = _normalise_reader_url(match.group(1))
-            if url:
-                return url
-
-    return ""
 
 
 def _matches(text: Any, query: Any) -> bool:
@@ -2948,24 +2820,27 @@ def _extract_reader_product_name(
         candidate_url
     )
 
-    lines: List[str] = []
+    if slug_name:
+        url_name = _clean_name(
+            f"{brand} {slug_name}"
+            if brand
+            else slug_name
+        )
 
-    metadata_titles = re.findall(
-        r"(?:^|\n)\s*title\s*:\s*(.+)",
-        raw,
-        flags=re.I,
-    )
-
-    for value in metadata_titles:
-        cleaned = _clean_name(value)
         if (
-            cleaned
-            and _fuzzy_query_match(cleaned, query)[0]
+            url_name
+            and _fuzzy_query_match(
+                url_name,
+                query,
+            )[0]
             and not _has_non_perfume_marker_in_product(
-                cleaned, candidate_url,
+                url_name,
+                candidate_url,
             )
         ):
-            return cleaned
+            return url_name
+
+    lines: List[str] = []
 
     for raw_line in raw.splitlines():
         line = _clean(
@@ -3009,26 +2884,6 @@ def _extract_reader_product_name(
             )
         ):
             return cleaned
-
-    if slug_name:
-        url_name = _clean_name(
-            f"{brand} {slug_name}"
-            if brand
-            else slug_name
-        )
-
-        if (
-            url_name
-            and _fuzzy_query_match(
-                url_name,
-                query,
-            )[0]
-            and not _has_non_perfume_marker_in_product(
-                url_name,
-                candidate_url,
-            )
-        ):
-            return url_name
 
     for value in (
         candidate.get("name"),
@@ -3127,20 +2982,6 @@ def _reader_product(
         name,
         query,
     )[0]:
-        return None
-
-    resolved_url = _reader_resolved_product_url(raw)
-
-    if resolved_url and not _product_urls_same_identity(
-        candidate_url,
-        resolved_url,
-    ):
-        return None
-
-    if not _product_identity_matches(
-        candidate_url,
-        name,
-    ):
         return None
 
     if not _url_identity_matches_query(
@@ -3359,6 +3200,20 @@ def _card_result(
     if not price:
         return None
 
+    # Discovery/card fallback must also respect availability. Product pages
+    # are often blocked by Notino (403) or by the reader (429), so the search
+    # card can be the only reliable source left. Never return a product whose
+    # own card explicitly says it is out of stock. This is intentionally
+    # generic and applies to every Notino product.
+    stock = _stock_status(
+        f"{anchor} {card}",
+        name,
+        url,
+    )
+
+    if stock is True:
+        return None
+
     return {
         "store": STORE,
         "name": _display_product_name(
@@ -3410,12 +3265,6 @@ def _product_details(
             )
 
     final_url = response.url.split("?")[0]
-
-    if final_url and not _product_urls_same_identity(
-        url,
-        final_url,
-    ):
-        return None
 
     if _has_non_perfume_marker_in_product(
         candidate.get(
@@ -3642,12 +3491,6 @@ def _product_details(
         return None
 
     if not price:
-        return None
-
-    if not _product_identity_matches(
-        final_url,
-        name,
-    ):
         return None
 
     return {
