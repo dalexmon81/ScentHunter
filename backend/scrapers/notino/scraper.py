@@ -24,7 +24,7 @@ READER_TIMEOUT = 12
 READER_MAX_WORKERS = 8
 PRODUCT_MAX_WORKERS = 8
 
-SCRAPER_VERSION = "DIAGNOSTIC-notino-FR-generic-discovery-2026-08-25-v21-fast-io"
+SCRAPER_VERSION = "DIAGNOSTIC-notino-FR-generic-discovery-2026-08-26-v22-stock-price-trace"
 
 HEADERS = {
     "User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 "
@@ -3554,6 +3554,190 @@ def _diagnostic_stock_snapshot(
     }
 
 
+
+def _diagnostic_price_trace(
+    raw_html: str,
+    page_text: str,
+    candidate: Dict[str, Any],
+) -> Dict[str, Any]:
+    """Capture every price source used by the diagnostic path."""
+    raw = html_lib.unescape(str(raw_html or ""))
+    visible = str(page_text or "")
+
+    traces: List[Dict[str, Any]] = []
+
+    def add(
+        source: str,
+        value: Any,
+        matched: str = "",
+        context: str = "",
+    ) -> None:
+        formatted = _format_price(value)
+        if not formatted:
+            return
+
+        item = {
+            "source": source,
+            "value": formatted,
+        }
+
+        if matched:
+            item["matched"] = _clean(matched)
+
+        if context:
+            item["context"] = _clean(context)[:500]
+
+        if item not in traces:
+            traces.append(item)
+
+    # JSON-LD: record the exact Product/Offer combinations instead of only
+    # the first price chosen by _offer_data().
+    for product_index, product in enumerate(_json_ld_products(
+        BeautifulSoup(raw, "html.parser")
+    )):
+        product_name = _clean(product.get("name"))
+        brand_value = product.get("brand")
+        brand_value = (
+            _clean(brand_value.get("name"))
+            if isinstance(brand_value, dict)
+            else _clean(brand_value)
+        )
+
+        offers = product.get("offers")
+        offer_list = offers if isinstance(offers, list) else [offers]
+        if not isinstance(offer_list, list):
+            offer_list = []
+
+        for offer_index, offer in enumerate(offer_list):
+            if not isinstance(offer, dict):
+                continue
+
+            availability = _clean(offer.get("availability"))
+            for field in ("price", "lowPrice"):
+                value = offer.get(field)
+                if _format_price(value):
+                    add(
+                        f"json_ld.product[{product_index}].offer[{offer_index}].{field}",
+                        value,
+                        matched=f"{field}={value}; availability={availability}",
+                        context=f"{brand_value} {product_name}",
+                    )
+
+    patterns = (
+        (
+            "visible_prix_actuel",
+            re.compile(
+                r"prix\s+actuel\s+(?:de\s+)?"
+                r"(\d{1,4}[.,]\d{2})\s*€",
+                re.I,
+            ),
+        ),
+        (
+            "visible_en_stock",
+            re.compile(
+                r"en\s+stock\s*[|:]?\s*"
+                r"(\d{1,4}[.,]\d{2})\s*€",
+                re.I,
+            ),
+        ),
+        (
+            "visible_price_generic",
+            PRICE_RE,
+        ),
+    )
+
+    for source, pattern in patterns:
+        for match in pattern.finditer(visible):
+            value = match.group(1) or match.group(2)
+            start = max(0, match.start() - 160)
+            end = min(len(visible), match.end() + 220)
+            add(
+                source,
+                value,
+                matched=match.group(0),
+                context=visible[start:end],
+            )
+
+    for source, pattern in (
+        (
+            "raw_json_price",
+            re.compile(
+                r'"(?:price|lowPrice)"\s*:\s*"?(?:'
+                r"(\d{1,4}[.,]\d{2})"
+                r')',
+                re.I,
+            ),
+        ),
+    ):
+        for match in pattern.finditer(raw):
+            value = match.group(1)
+            start = max(0, match.start() - 120)
+            end = min(len(raw), match.end() + 180)
+            add(
+                source,
+                value,
+                matched=match.group(0),
+                context=raw[start:end],
+            )
+
+    for source, value in (
+        ("candidate.anchor_text", _extract_product_price(candidate.get("anchor_text", ""))),
+        ("candidate.card_text", _extract_product_price(candidate.get("card_text", ""))),
+    ):
+        add(source, value)
+
+    return {
+        "prices_found": traces,
+        "price_values": list(dict.fromkeys(
+            item["value"] for item in traces
+        )),
+        "candidate_anchor_text": _clean(
+            candidate.get("anchor_text", "")
+        )[:500],
+        "candidate_card_text": _clean(
+            candidate.get("card_text", "")
+        )[:1000],
+    }
+
+
+def _diagnostic_stock_price_reconciliation(
+    stock: Dict[str, Any],
+    price_trace: Dict[str, Any],
+) -> Dict[str, Any]:
+    stock_status = stock.get("stock_status")
+    price_values = price_trace.get("price_values") or []
+
+    if stock_status is False and price_values:
+        conclusion = "OUT_OF_STOCK_BUT_PRICE_PRESENT"
+    elif stock_status is True and price_values:
+        conclusion = "IN_STOCK_AND_PRICE_PRESENT"
+    elif stock_status is False and not price_values:
+        conclusion = "OUT_OF_STOCK_WITHOUT_PRICE"
+    elif stock_status is None and price_values:
+        conclusion = "STOCK_UNVERIFIED_BUT_PRICE_PRESENT"
+    elif stock_status is True and not price_values:
+        conclusion = "IN_STOCK_WITHOUT_PRICE"
+    else:
+        conclusion = "STOCK_UNVERIFIED_AND_NO_PRICE"
+
+    structured = stock.get("structured_stock")
+    return {
+        "conclusion": conclusion,
+        "stock_status": stock_status,
+        "structured_stock": structured,
+        "prices_found": price_values,
+        "out_markers_found": stock.get("out_markers_found", []),
+        "in_markers_found": stock.get("in_markers_found", []),
+        "important_note": (
+            "A price may exist in JSON-LD or hidden page data even when "
+            "the visible page says out of stock. This trace distinguishes "
+            "that stored price from a currently purchasable offer."
+            if stock_status is False and price_values
+            else ""
+        ),
+    }
+
+
 def _diagnose_product_job(
     candidate: Dict[str, Any],
     query: str,
@@ -3645,6 +3829,22 @@ def _diagnose_product_job(
                     reader_text,
                     reader_name or candidate.get("name", ""),
                     url,
+                )
+            )
+            diagnostic["reader_price_trace"] = _diagnostic_price_trace(
+                reader_text,
+                _clean(
+                    BeautifulSoup(
+                        reader_text,
+                        "html.parser",
+                    ).get_text(" ", strip=True)
+                ),
+                candidate,
+            )
+            diagnostic["reader_stock_price_reconciliation"] = (
+                _diagnostic_stock_price_reconciliation(
+                    diagnostic["reader_stock"],
+                    diagnostic["reader_price_trace"],
                 )
             )
 
@@ -3739,6 +3939,22 @@ def _diagnose_product_job(
                     url,
                 )
             )
+            diagnostic["reader_price_trace"] = _diagnostic_price_trace(
+                reader_text,
+                _clean(
+                    BeautifulSoup(
+                        reader_text,
+                        "html.parser",
+                    ).get_text(" ", strip=True)
+                ),
+                candidate,
+            )
+            diagnostic["reader_stock_price_reconciliation"] = (
+                _diagnostic_stock_price_reconciliation(
+                    diagnostic["reader_stock"],
+                    diagnostic["reader_price_trace"],
+                )
+            )
             diagnostic["reader_result"] = _reader_product(
                 reader_text,
                 candidate,
@@ -3781,6 +3997,12 @@ def _diagnose_product_job(
             )
             if soup.title
             else ""
+        )
+
+        diagnostic["price_trace"] = _diagnostic_price_trace(
+            response.text,
+            page_text,
+            candidate,
         )
 
         name = ""
@@ -3925,6 +4147,13 @@ def _diagnose_product_job(
             )
         )
 
+        diagnostic["stock_price_reconciliation"] = (
+            _diagnostic_stock_price_reconciliation(
+                diagnostic["stock"],
+                diagnostic.get("price_trace", {}),
+            )
+        )
+
         if not name:
             diagnostic["decision"] = (
                 "rejected_no_product_name"
@@ -3940,6 +4169,11 @@ def _diagnose_product_job(
         elif diagnostic["stock"]["stock_status"] is False:
             diagnostic["decision"] = (
                 "rejected_out_of_stock"
+            )
+            diagnostic["decision_detail"] = (
+                "price_present_but_stock_rejected"
+                if price
+                else "no_price_and_stock_rejected"
             )
         elif diagnostic["stock"]["stock_status"] is None:
             diagnostic["decision"] = (
@@ -4094,7 +4328,7 @@ def diagnose(
                 ]
 
             order_map = {
-                item.get("url", ""): index
+                item["url"]: index
                 for index, item
                 in enumerate(
                     candidates_for_product_pages
@@ -4103,13 +4337,7 @@ def diagnose(
 
             product_page_results.sort(
                 key=lambda item: order_map.get(
-                    item.get(
-                        "request_url",
-                        (item.get("candidate") or {}).get(
-                            "url",
-                            "",
-                        ),
-                    ),
+                    item["url"],
                     len(
                         candidates_for_product_pages
                     ),
