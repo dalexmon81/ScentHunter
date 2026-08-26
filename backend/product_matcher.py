@@ -438,16 +438,28 @@ class ProductMatcher:
                     if len(brands) == 1:
                         return self._brand_display_by_normalized[next(iter(brands))]
 
-        # Then use the raw normalized title itself. This handles abbreviated
-        # retailer names such as "Hawas" -> Rasasi and "Asad" -> Lattafa when
-        # all matching catalog variants belong to one brand.
+        # Then use the normalized title itself. The important part here is
+        # that brand recovery must work from a *known catalog prefix*, not
+        # only from a complete catalog product name. Retailers often publish
+        # valid variants that are not present in the catalog yet (for example
+        # "Hawas Atlantis" when the catalog only knows other Hawas variants).
+        # In that case the shared family/brand prefix is still safe evidence
+        # when it maps to one unique brand.
         cleaned = self._clean_identity_name("", raw_name)
         if not cleaned:
             return ""
 
-        brands = self._brand_by_prefix.get(cleaned, set())
-        if len(brands) == 1:
-            return self._brand_display_by_normalized[next(iter(brands))]
+        tokens = cleaned.split()
+        for end in range(len(tokens), 0, -1):
+            prefix = " ".join(tokens[:end])
+            brands = self._brand_by_prefix.get(prefix, set())
+            if len(brands) == 1:
+                return self._brand_display_by_normalized[next(iter(brands))]
+            if len(brands) > 1:
+                # A non-unique prefix is not enough evidence to infer a brand.
+                # Keep looking at shorter prefixes only if they can provide a
+                # uniquely attributable family/brand boundary.
+                continue
 
         return ""
 
