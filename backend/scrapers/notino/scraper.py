@@ -3104,16 +3104,13 @@ def _reader_product(
             )
         )
 
-    if not price:
-        return None
-
     stock = _stock_status(
         raw,
         name,
         candidate_url,
     )
 
-    if stock is not True:
+    if stock is None:
         return None
 
     return {
@@ -3123,6 +3120,8 @@ def _reader_product(
             candidate_url,
         ),
         "price": price,
+        "availability": "in stock" if stock else "out of stock",
+        "available": stock is True,
         "url": candidate_url,
     }
 
@@ -3455,10 +3454,7 @@ def _product_details(
         final_url,
     )
 
-    if stock is not True:
-        return None
-
-    if not price:
+    if stock is None:
         return None
 
     return {
@@ -3469,6 +3465,8 @@ def _product_details(
             brand,
         ),
         "price": price,
+        "availability": "in stock" if stock else "out of stock",
+        "available": stock is True,
         "url": final_url,
     }
 
