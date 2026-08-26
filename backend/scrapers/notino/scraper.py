@@ -24,7 +24,7 @@ READER_TIMEOUT = 12
 READER_MAX_WORKERS = 8
 PRODUCT_MAX_WORKERS = 8
 
-SCRAPER_VERSION = "notino-FR-generic-discovery-2026-08-26-v26-stock-marker-priority"
+SCRAPER_VERSION = "notino-FR-generic-discovery-2026-08-26-v27-discovery-stock-propagation"
 
 HEADERS = {
     "User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 "
@@ -1328,12 +1328,33 @@ def _reader_candidates(
                 "reader-markdown",
             )
 
-            if candidate and (
-                url not in found
-                or candidate["score"]
-                > found[url]["score"]
-            ):
-                found[url] = candidate
+            if candidate:
+                # The search result itself can carry the authoritative
+                # availability state while the product page is blocked or
+                # stale. Keep only the tight, product-local context here.
+                local_stock_status = _stock_status(
+                    " ".join(
+                        lines[index:min(len(lines), index + 2)]
+                    ),
+                    name,
+                    url,
+                )
+                if local_stock_status is not None:
+                    candidate["discovery_stock_status"] = local_stock_status
+
+                old_candidate = found.get(url)
+                if (
+                    old_candidate is not None
+                    and old_candidate.get("discovery_stock_status") is True
+                ):
+                    candidate["discovery_stock_status"] = True
+
+                if (
+                    old_candidate is None
+                    or candidate["score"]
+                    > old_candidate["score"]
+                ):
+                    found[url] = candidate
 
     def nearby_price_context(
         line_index: int,
@@ -1513,12 +1534,30 @@ def _reader_candidates(
                 "reader-url",
             )
 
-            if candidate and (
-                url not in found
-                or candidate["score"]
-                > found[url]["score"]
-            ):
-                found[url] = candidate
+            if candidate:
+                local_stock_status = _stock_status(
+                    " ".join(
+                        lines[line_index:min(len(lines), line_index + 2)]
+                    ),
+                    name,
+                    url,
+                )
+                if local_stock_status is not None:
+                    candidate["discovery_stock_status"] = local_stock_status
+
+                old_candidate = found.get(url)
+                if (
+                    old_candidate is not None
+                    and old_candidate.get("discovery_stock_status") is True
+                ):
+                    candidate["discovery_stock_status"] = True
+
+                if (
+                    old_candidate is None
+                    or candidate["score"]
+                    > old_candidate["score"]
+                ):
+                    found[url] = candidate
 
     return sorted(
         found.values(),
@@ -2162,6 +2201,9 @@ def _merge_reader_result(
             candidate["url"]
         )
 
+        if old is not None and old.get("discovery_stock_status") is True:
+            candidate["discovery_stock_status"] = True
+
         if (
             old is None
             or candidate["score"]
@@ -2599,6 +2641,12 @@ def _search_http_candidates(
                 )
 
                 if (
+                    old is not None
+                    and old.get("discovery_stock_status") is True
+                ):
+                    candidate["discovery_stock_status"] = True
+
+                if (
                     old is None
                     or candidate["score"]
                     > old["score"]
@@ -2637,6 +2685,12 @@ def _search_http_candidates(
             old = candidates.get(
                 candidate["url"]
             )
+
+            if (
+                old is not None
+                and old.get("discovery_stock_status") is True
+            ):
+                candidate["discovery_stock_status"] = True
 
             if (
                 old is None
@@ -2942,6 +2996,12 @@ def _reader_product(
         "",
     )
 
+    # Discovery is allowed to veto a stale/contradictory product-page price.
+    # This is generic: any product explicitly marked out of stock in the
+    # search result remains unavailable downstream.
+    if candidate.get("discovery_stock_status") is True:
+        return None
+
     identity_text = (
         content
         + " "
@@ -3150,6 +3210,10 @@ def _card_result(
     )
 
     url = candidate.get("url", "")
+
+    if candidate.get("discovery_stock_status") is True:
+        return None
+
     anchor_name = _clean_name(anchor)
     url_name = _name_from_product_url(url)
     url_brand = _brand_from_product_url(url)
@@ -3241,6 +3305,9 @@ def _product_details(
     query: str,
 ) -> Optional[Dict[str, Any]]:
     url = candidate["url"]
+
+    if candidate.get("discovery_stock_status") is True:
+        return None
 
     try:
         response = _request(
