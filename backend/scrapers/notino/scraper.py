@@ -24,7 +24,7 @@ READER_TIMEOUT = 12
 READER_MAX_WORKERS = 8
 PRODUCT_MAX_WORKERS = 8
 
-SCRAPER_VERSION = "notino-FR-generic-discovery-2026-08-25-v21-fast-io"
+SCRAPER_VERSION = "notino-FR-generic-discovery-2026-08-26-v22-generic-identity"
 
 HEADERS = {
     "User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 "
@@ -87,6 +87,13 @@ OUT_STOCK_MARKERS = (
     "rupture de stock",
     "actuellement indisponible",
     "produit indisponible",
+    "momenteel niet op voorraad",
+    "niet op voorraad",
+    "tijdelijk niet op voorraad",
+    "tijdelijk niet beschikbaar",
+    "niet beschikbaar",
+    "uitverkocht",
+    "niet leverbaar",
 )
 
 NON_PERFUME_MARKERS = {
@@ -196,6 +203,13 @@ def _fuzzy_query_match(
     name: Any,
     query: Any,
 ) -> Tuple[bool, Dict[str, bool], int]:
+    """Generic product/query matching used throughout discovery and detail parsing.
+
+    Prefer exact token matches. For tokens not present verbatim, compare against
+    the individual candidate token rather than against the longest token in the
+    whole product name. This avoids rejecting valid product variants when the
+    site normalises, abbreviates, or slightly changes one part of the name.
+    """
     name_tokens = set(_query_tokens(name))
     query_tokens = _query_tokens(query)
 
@@ -217,8 +231,17 @@ def _fuzzy_query_match(
             ),
             default=0.0,
         )
-        longest = max((len(candidate) for candidate in name_tokens), default=0)
-        hit = best >= 0.80 and abs(len(token) - longest) <= 2
+        best_candidate = max(
+            name_tokens,
+            key=lambda candidate: difflib.SequenceMatcher(
+                None, token, candidate
+            ).ratio(),
+            default="",
+        )
+        hit = (
+            best >= 0.80
+            and abs(len(token) - len(best_candidate)) <= 2
+        )
         hits[token] = hit
         fuzzy_hits += int(hit)
 
@@ -354,8 +377,13 @@ def _structured_offer_stock_status(
     product_name: str = "",
     product_url: str = "",
 ) -> Optional[bool]:
-    raw = html_lib.unescape(str(text or ""))
+    """Return True=out of stock, False=in stock, None=unknown.
 
+    Only Product JSON-LD that identifies the same product as the requested
+    page is considered. This prevents a related/recommended product embedded
+    elsewhere in the page from supplying its price or stock state.
+    """
+    raw = html_lib.unescape(str(text or ""))
     if not raw.strip():
         return None
 
@@ -367,6 +395,79 @@ def _structured_offer_stock_status(
         else ""
     )
 
+    def availability_value(value: Any) -> Optional[bool]:
+        low = str(value or "").lower()
+        if any(marker in low for marker in (
+            "outofstock", "soldout", "discontinued"
+        )):
+            return True
+        if any(marker in low for marker in (
+            "instock", "limitedavailability", "preorder"
+        )):
+            return False
+        return None
+
+    def identity_matches(item: Dict[str, Any]) -> bool:
+        item_name = _product_norm(item.get("name"))
+        item_url = str(
+            item.get("url") or item.get("@id") or ""
+        ).lower().rstrip("/")
+        item_slug = (
+            _product_norm(_name_from_product_url(item_url))
+            if item_url else ""
+        )
+
+        if target_url and item_url and item_url == target_url:
+            return True
+        if target_slug and item_slug and (
+            item_slug == target_slug
+            or target_slug in item_slug
+            or item_slug in target_slug
+        ):
+            return True
+        if target_name and item_name and (
+            item_name == target_name
+            or target_name in item_name
+            or item_name in target_name
+        ):
+            return True
+        return False
+
+    def walk(data: Any) -> Optional[bool]:
+        stack = data if isinstance(data, list) else [data]
+        while stack:
+            item = stack.pop()
+            if isinstance(item, list):
+                stack.extend(item)
+                continue
+            if not isinstance(item, dict):
+                continue
+
+            item_type = item.get("@type", "")
+            types = item_type if isinstance(item_type, list) else [item_type]
+
+            if any(str(value).lower() == "product" for value in types):
+                if identity_matches(item):
+                    offers = item.get("offers")
+                    if isinstance(offers, dict):
+                        offers = [offers]
+                    if isinstance(offers, list):
+                        statuses = [
+                            availability_value(offer.get("availability"))
+                            for offer in offers
+                            if isinstance(offer, dict)
+                        ]
+                        statuses = [value for value in statuses if value is not None]
+                        if statuses:
+                            if any(value is False for value in statuses):
+                                return False
+                            return True
+
+            graph = item.get("@graph")
+            if isinstance(graph, list):
+                stack.extend(graph)
+        return None
+
     blocks = re.findall(
         r'<script[^>]+type=["\']application/ld\+json["\'][^>]*>'
         r"(.*?)</script>",
@@ -374,125 +475,16 @@ def _structured_offer_stock_status(
         flags=re.I | re.S,
     )
 
-    def availability_value(value: Any) -> Optional[bool]:
-        low = str(value or "").lower()
-
-        if any(
-            marker in low
-            for marker in ("outofstock", "soldout", "discontinued")
-        ):
-            return True
-
-        if any(
-            marker in low
-            for marker in ("instock", "limitedavailability", "preorder")
-        ):
-            return False
-
-        return None
-
-    def inspect_product(item: Any) -> Optional[bool]:
-        if not isinstance(item, dict):
-            return None
-
-        item_type = item.get("@type", "")
-        types = item_type if isinstance(item_type, list) else [item_type]
-
-        if not any(str(value).lower() == "product" for value in types):
-            return None
-
-        item_name = _product_norm(item.get("name"))
-        item_url = str(
-            item.get("url") or item.get("@id") or ""
-        ).lower().rstrip("/")
-        item_slug = (
-            _product_norm(_name_from_product_url(item_url))
-            if item_url
-            else ""
-        )
-
-        identity_match = False
-
-        if target_url and item_url:
-            identity_match = item_url == target_url
-
-        if not identity_match and target_name and item_name:
-            identity_match = (
-                item_name == target_name
-                or target_name in item_name
-                or item_name in target_name
-            )
-
-        if not identity_match and target_slug and item_slug:
-            identity_match = (
-                item_slug == target_slug
-                or target_slug in item_slug
-                or item_slug in target_slug
-            )
-
-        if not identity_match:
-            return None
-
-        offers = item.get("offers")
-
-        if isinstance(offers, dict):
-            offers = [offers]
-
-        if isinstance(offers, list):
-            statuses = [
-                availability_value(offer.get("availability"))
-                for offer in offers
-                if isinstance(offer, dict)
-            ]
-            statuses = [
-                value for value in statuses if value is not None
-            ]
-
-            if statuses:
-                if any(value is False for value in statuses):
-                    return False
-                return True
-
-        return None
-
-    def walk(data: Any) -> Optional[bool]:
-        stack = data if isinstance(data, list) else [data]
-
-        while stack:
-            item = stack.pop()
-
-            if isinstance(item, list):
-                stack.extend(item)
-                continue
-
-            if not isinstance(item, dict):
-                continue
-
-            result = inspect_product(item)
-
-            if result is not None:
-                return result
-
-            graph = item.get("@graph")
-
-            if isinstance(graph, list):
-                stack.extend(graph)
-
-        return None
-
     for block in blocks:
         try:
             data = json.loads(block)
         except (TypeError, ValueError):
             continue
-
         result = walk(data)
-
         if result is not None:
             return result
 
     return None
-
 
 def _stock_status(
     text: str,
@@ -512,6 +504,13 @@ def _stock_status(
 
     if structured is not None:
         return structured
+
+    # Prefer explicit out-of-stock markers anywhere in the actual product
+    # response before considering generic in-stock text. Notino can show
+    # availability messages without JSON-LD.
+    raw_low = _clean(raw).lower()
+    if any(marker in raw_low for marker in OUT_STOCK_MARKERS):
+        return True
 
     lines = [
         _clean(line)
@@ -763,100 +762,81 @@ def _make_candidate(
     anchor = _clean(anchor)
     card = _clean(card)
 
-    url_name = _clean_name(
-        _name_from_product_url(url)
-    )
-    brand = _clean_name(
-        _brand_from_product_url(url)
+    anchor_name = _clean_name(anchor)
+    card_name = _clean_name(card)
+    url_name = _name_from_product_url(url)
+    url_brand = _brand_from_product_url(url)
+    url_identity = _clean_name(
+        f"{url_brand} {url_name}" if url_brand else url_name
     )
 
-    name_candidates = [
-        _clean_name(anchor),
-        _clean_name(card),
+    # Notino does not always put the product name in the clickable anchor.
+    # Some result cards expose only generic labels such as "Voir le produit"
+    # while the actual product identity is present in the URL slug.  Use the
+    # URL as a generic identity fallback instead of discarding the candidate.
+    name = anchor_name or card_name or url_identity
+
+    candidates_for_identity = [
+        value
+        for value in (anchor_name, card_name, url_identity)
+        if value
     ]
 
-    if url_name:
-        name_candidates.append(url_name)
-
-    if brand and url_name:
-        name_candidates.append(
-            _clean_name(
-                f"{brand} {url_name}"
-            )
-        )
-
-    query_tokens = _query_tokens(query)
-
-    if not query_tokens:
+    if not candidates_for_identity:
         return None
 
-    name = ""
     matched = False
     hits: Dict[str, bool] = {}
     fuzzy_hits = 0
+    best_identity = name
+    best_identity_score = -1
 
-    for candidate_name in name_candidates:
-        if not candidate_name:
-            continue
-
-        if _has_non_perfume_marker_in_product(
-            candidate_name,
-            url,
-            anchor,
-        ):
-            continue
-
-        candidate_matched, candidate_hits, candidate_fuzzy = (
-            _fuzzy_query_match(
-                candidate_name,
-                query,
-            )
+    for identity_name in candidates_for_identity:
+        identity_matched, identity_hits, identity_fuzzy_hits = (
+            _fuzzy_query_match(identity_name, query)
+        )
+        identity_score = (
+            sum(identity_hits.values()) * 5
+            + identity_fuzzy_hits * 2
+            + (5 if identity_matched else 0)
         )
 
-        if candidate_matched:
-            name = candidate_name
+        if identity_score > best_identity_score:
+            best_identity_score = identity_score
+            best_identity = identity_name
+            matched = identity_matched
+            hits = identity_hits
+            fuzzy_hits = identity_fuzzy_hits
+
+        if identity_matched:
+            # Prefer an actual product identity over a generic UI label.
+            name = identity_name
             matched = True
-            hits = candidate_hits
-            fuzzy_hits = candidate_fuzzy
+            hits = identity_hits
+            fuzzy_hits = identity_fuzzy_hits
             break
 
-        if not name:
-            name = candidate_name
-            hits = candidate_hits
-            fuzzy_hits = candidate_fuzzy
-
-    if not name:
-        return None
-
     if not matched:
-        url_matched, url_hits, url_fuzzy_hits = (
-            _fuzzy_query_match(
-                _clean_name(
-                    f"{brand} {url_name}"
-                    if brand and url_name
-                    else url_name
-                ),
-                query,
+        # A URL slug is a valid generic discovery signal, but only when it
+        # independently identifies the requested product.
+        if url_identity and _url_identity_matches_query(url, query):
+            name = url_identity
+            matched, hits, fuzzy_hits = _fuzzy_query_match(
+                name, query
             )
-        )
-
-        if not url_matched:
+        else:
             return None
-
-        name = _clean_name(
-            f"{brand} {url_name}"
-            if brand and url_name
-            else url_name
-        )
-        matched = True
-        hits = url_hits
-        fuzzy_hits = url_fuzzy_hits
 
     if _has_non_perfume_marker_in_product(
         name,
         url,
         anchor,
     ):
+        return None
+
+    query_tokens = _query_tokens(query)
+
+    if not query_tokens:
         return None
 
     score = (
@@ -867,6 +847,7 @@ def _make_candidate(
     if matched:
         score += 5
 
+    url_name = _name_from_product_url(url)
     url_matched, _, url_fuzzy_hits = _fuzzy_query_match(
         url_name,
         query,
@@ -877,15 +858,12 @@ def _make_candidate(
     elif url_name:
         score += url_fuzzy_hits * 2
 
-    search_context = f"{anchor} {card} {url_name}"
+    search_context = f"{anchor} {card}"
     requested_sizes = _requested_sizes(query)
 
     if requested_sizes:
         if any(
-            _size_matches(
-                search_context,
-                size,
-            )
+            _size_matches(search_context, size)
             for size in requested_sizes
         ):
             score += 6
@@ -901,7 +879,7 @@ def _make_candidate(
     return {
         "url": url,
         "anchor_text": anchor or name,
-        "card_text": card or anchor or name,
+        "card_text": card or anchor,
         "name": name,
         "score": score,
         "token_hits": hits,
@@ -909,10 +887,7 @@ def _make_candidate(
         "requested_size": bool(requested_sizes),
         "size_match_in_search_context": (
             any(
-                _size_matches(
-                    search_context,
-                    size,
-                )
+                _size_matches(search_context, size)
                 for size in requested_sizes
             )
             if requested_sizes
@@ -1112,6 +1087,20 @@ def _name_from_product_url(url: str) -> str:
     )
 
     return _clean_name(slug)
+
+
+def _url_identity_matches_query(url: str, query: str) -> bool:
+    """Validate a product candidate using its URL identity generically."""
+    slug = _name_from_product_url(url)
+    brand = _brand_from_product_url(url)
+
+    identities = [slug, f"{brand} {slug}".strip()]
+
+    for identity in identities:
+        if identity and _fuzzy_query_match(identity, query)[0]:
+            return True
+
+    return False
 
 
 def _brand_from_product_url(url: str) -> str:
@@ -2627,8 +2616,8 @@ def _search_http_candidates(
                 }
             )
 
-            if found:
-                break
+            # Keep both generic Notino search endpoints in the discovery pool.
+            # One endpoint can expose a different subset/order of product cards.
 
         reader_candidates, report = (
             _reader_discovery(
@@ -2995,6 +2984,15 @@ def _reader_product(
     )[0]:
         return None
 
+    if not _url_identity_matches_query(
+        candidate_url,
+        query,
+    ):
+        return None
+
+    # The resolved product name is authoritative. The discovery URL may point
+    # to a redirected or unrelated product and must not override it.
+
     price = ""
 
     for price_match in re.finditer(
@@ -3144,14 +3142,25 @@ def _card_result(
         or ""
     )
 
-    name = _clean_name(anchor)
+    url = candidate.get("url", "")
+    anchor_name = _clean_name(anchor)
+    url_name = _name_from_product_url(url)
+    url_brand = _brand_from_product_url(url)
+    url_identity = _clean_name(
+        f"{url_brand} {url_name}" if url_brand else url_name
+    )
+
+    name = anchor_name
+
+    if not name or not _fuzzy_query_match(name, query)[0]:
+        name = url_identity
 
     if not name:
         return None
 
     if _has_non_perfume_marker_in_product(
         name,
-        candidate.get("url", ""),
+        url,
         anchor,
     ):
         return None
@@ -3162,6 +3171,15 @@ def _card_result(
     )
 
     if not matched:
+        return None
+
+    # A card is accepted only when the actual product URL also identifies
+    # the requested product family. The visible card text alone is not enough
+    # because recommendation blocks can contain another product name.
+    if not _url_identity_matches_query(
+        url,
+        query,
+    ):
         return None
 
     context = (
@@ -3320,10 +3338,13 @@ def _product_details(
             )
         )
 
-        if _matches(
-            f"{brand_value} {product_name}",
-            query,
-        ):
+        product_identity = f"{brand_value} {product_name}"
+        identity_matches = (
+            _matches(product_identity, query)
+            or _fuzzy_query_match(product_identity, query)[0]
+        )
+
+        if identity_matches:
             price, _ = _offer_data(
                 product.get(
                     "offers"
@@ -3338,12 +3359,18 @@ def _product_details(
     if not name:
         h1 = soup.find("h1")
 
-        if h1 and _matches(
-            h1.get_text(
-                " ",
-                strip=True,
-            ),
-            query,
+        if h1 and (
+            _matches(
+                h1.get_text(
+                    " ",
+                    strip=True,
+                ),
+                query,
+            )
+            or _fuzzy_query_match(
+                h1.get_text(" ", strip=True),
+                query,
+            )[0]
         ):
             name = _clean(
                 h1.get_text(
@@ -3363,9 +3390,9 @@ def _product_details(
                 )
             ).split("|")[0]
 
-            if _matches(
-                candidate_name,
-                query,
+            if (
+                _matches(candidate_name, query)
+                or _fuzzy_query_match(candidate_name, query)[0]
             ):
                 name = candidate_name
 
