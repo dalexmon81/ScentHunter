@@ -1879,7 +1879,10 @@ def _validate_candidate(
     # il matcher riceve il candidato RAW e restituisce la sua identità
     # canonica dal catalogo autorevole.
     try:
-        matched_product = _PRODUCT_MATCHER.match(product, query)
+        matched_product = _PRODUCT_MATCHER.match(
+            product,
+            query,
+        )
     except Exception as exc:
         print(
             "PRODUCT_MATCHER_RUNTIME_ERROR:",
