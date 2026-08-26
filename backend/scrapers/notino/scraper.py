@@ -3,7 +3,6 @@ from __future__ import annotations
 import difflib
 import html as html_lib
 import json
-import os
 import re
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from typing import Any, Dict, Iterable, List, Optional, Tuple
@@ -25,7 +24,7 @@ READER_TIMEOUT = 12
 READER_MAX_WORKERS = 8
 PRODUCT_MAX_WORKERS = 8
 
-SCRAPER_VERSION = "notino-FR-generic-discovery-2026-08-26-v22-generic-identity"
+SCRAPER_VERSION = "notino-FR-generic-discovery-2026-08-26-v23-redirect-identity"
 
 HEADERS = {
     "User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 "
@@ -141,6 +140,32 @@ SIZE_RE = re.compile(
     r"(ml|cl|dl|l|oz|fl\s*oz|g|kg)\b",
     re.I,
 )
+
+IDENTITY_NOISE_TOKENS = {
+    "eau",
+    "de",
+    "parfum",
+    "perfume",
+    "edp",
+    "edt",
+    "spray",
+    "pour",
+    "homme",
+    "femme",
+    "men",
+    "women",
+    "woman",
+    "man",
+    "for",
+    "ml",
+    "cl",
+    "dl",
+    "l",
+    "oz",
+    "g",
+    "kg",
+    "fl",
+}
 
 
 def _new_session() -> requests.Session:
@@ -281,6 +306,108 @@ def _contains_requested_size(text: Any, query: Any) -> bool:
         return True
 
     return any(_size_matches(text, size) for size in requested)
+
+
+def _identity_tokens(value: Any, brand_hint: Any = "") -> List[str]:
+    tokens = _query_tokens(value)
+    brand_tokens = set(_query_tokens(brand_hint))
+
+    return [
+        token
+        for token in tokens
+        if token not in IDENTITY_NOISE_TOKENS
+        and token not in brand_tokens
+    ]
+
+
+def _product_identity_matches(candidate_url: str, actual_name: str) -> bool:
+    candidate_slug = _name_from_product_url(candidate_url)
+    candidate_brand = _brand_from_product_url(candidate_url)
+
+    if not candidate_slug or not actual_name:
+        return False
+
+    candidate_tokens = _identity_tokens(
+        candidate_slug,
+        candidate_brand,
+    )
+    actual_tokens = _identity_tokens(
+        actual_name,
+        candidate_brand,
+    )
+
+    if not candidate_tokens or not actual_tokens:
+        return False
+
+    if len(candidate_tokens) == len(actual_tokens) and set(candidate_tokens) == set(actual_tokens):
+        return True
+
+    # Allow harmless spelling/format differences while still rejecting a
+    # different product variant. Every identity-bearing token from the URL
+    # must have a strong counterpart in the resolved page identity, and the
+    # number of identity-bearing tokens must remain the same.
+    if len(candidate_tokens) != len(actual_tokens):
+        return False
+
+    unmatched = list(actual_tokens)
+    for token in candidate_tokens:
+        best_index = -1
+        best_ratio = 0.0
+        for index, actual_token in enumerate(unmatched):
+            ratio = difflib.SequenceMatcher(
+                None,
+                token,
+                actual_token,
+            ).ratio()
+            if ratio > best_ratio:
+                best_ratio = ratio
+                best_index = index
+
+        if best_index < 0 or best_ratio < 0.80:
+            return False
+
+        unmatched.pop(best_index)
+
+    return not unmatched
+
+
+def _product_urls_same_identity(first_url: str, second_url: str) -> bool:
+    first_slug = _name_from_product_url(first_url)
+    second_slug = _name_from_product_url(second_url)
+
+    if not first_slug or not second_slug:
+        return False
+
+    first_brand = _brand_from_product_url(first_url)
+    second_brand = _brand_from_product_url(second_url)
+
+    first_tokens = _identity_tokens(first_slug, first_brand)
+    second_tokens = _identity_tokens(second_slug, second_brand)
+
+    if not first_tokens or not second_tokens:
+        return False
+
+    if _product_identity_matches(first_url, second_slug):
+        return True
+
+    return _product_identity_matches(second_url, first_slug)
+
+
+def _reader_resolved_product_url(text: str) -> str:
+    raw = html_lib.unescape(str(text or "")).replace("\\/", "/")
+
+    patterns = (
+        r"(?:^|\n)\s*canonical\s*:\s*(https?://[^\s<>)\]\"']+)",
+        r"(?:^|\n)\s*url\s*:\s*(https?://[^\s<>)\]\"']+)",
+    )
+
+    for pattern in patterns:
+        for match in re.finditer(pattern, raw, flags=re.I):
+            url = _normalise_reader_url(match.group(1))
+            if url:
+                return url
+
+    return ""
 
 
 def _matches(text: Any, query: Any) -> bool:
@@ -497,28 +624,6 @@ def _stock_status(
     if not raw.strip():
         return None
 
-    # The visible product page is authoritative for availability. Notino can
-    # leave an old price / JSON-LD Offer in the page after the product becomes
-    # unavailable, so an explicit product-page OOS message must win.
-    raw_low = _clean(raw).lower()
-    product_low = _product_norm(product_name)
-    page_low = _product_norm(raw_low)
-
-    if product_low:
-        pos = page_low.find(product_low)
-        if pos >= 0:
-            local = page_low[max(0, pos - 2500):pos + 5000]
-            if any(marker in local for marker in OUT_STOCK_MARKERS):
-                return True
-            if any(marker in local for marker in IN_STOCK_MARKERS):
-                return False
-
-    # If the product-name context is not available, an explicit OOS message
-    # still beats structured data; this is safer than reporting a stale offer
-    # as purchasable.
-    if any(marker in raw_low for marker in OUT_STOCK_MARKERS):
-        return True
-
     structured = _structured_offer_stock_status(
         raw,
         product_name,
@@ -527,6 +632,13 @@ def _stock_status(
 
     if structured is not None:
         return structured
+
+    # Prefer explicit out-of-stock markers anywhere in the actual product
+    # response before considering generic in-stock text. Notino can show
+    # availability messages without JSON-LD.
+    raw_low = _clean(raw).lower()
+    if any(marker in raw_low for marker in OUT_STOCK_MARKERS):
+        return True
 
     lines = [
         _clean(line)
@@ -2836,27 +2948,24 @@ def _extract_reader_product_name(
         candidate_url
     )
 
-    if slug_name:
-        url_name = _clean_name(
-            f"{brand} {slug_name}"
-            if brand
-            else slug_name
-        )
+    lines: List[str] = []
 
+    metadata_titles = re.findall(
+        r"(?:^|\n)\s*title\s*:\s*(.+)",
+        raw,
+        flags=re.I,
+    )
+
+    for value in metadata_titles:
+        cleaned = _clean_name(value)
         if (
-            url_name
-            and _fuzzy_query_match(
-                url_name,
-                query,
-            )[0]
+            cleaned
+            and _fuzzy_query_match(cleaned, query)[0]
             and not _has_non_perfume_marker_in_product(
-                url_name,
-                candidate_url,
+                cleaned, candidate_url,
             )
         ):
-            return url_name
-
-    lines: List[str] = []
+            return cleaned
 
     for raw_line in raw.splitlines():
         line = _clean(
@@ -2900,6 +3009,26 @@ def _extract_reader_product_name(
             )
         ):
             return cleaned
+
+    if slug_name:
+        url_name = _clean_name(
+            f"{brand} {slug_name}"
+            if brand
+            else slug_name
+        )
+
+        if (
+            url_name
+            and _fuzzy_query_match(
+                url_name,
+                query,
+            )[0]
+            and not _has_non_perfume_marker_in_product(
+                url_name,
+                candidate_url,
+            )
+        ):
+            return url_name
 
     for value in (
         candidate.get("name"),
@@ -2998,6 +3127,20 @@ def _reader_product(
         name,
         query,
     )[0]:
+        return None
+
+    resolved_url = _reader_resolved_product_url(raw)
+
+    if resolved_url and not _product_urls_same_identity(
+        candidate_url,
+        resolved_url,
+    ):
+        return None
+
+    if not _product_identity_matches(
+        candidate_url,
+        name,
+    ):
         return None
 
     if not _url_identity_matches_query(
@@ -3268,6 +3411,12 @@ def _product_details(
 
     final_url = response.url.split("?")[0]
 
+    if final_url and not _product_urls_same_identity(
+        url,
+        final_url,
+    ):
+        return None
+
     if _has_non_perfume_marker_in_product(
         candidate.get(
             "name",
@@ -3495,6 +3644,12 @@ def _product_details(
     if not price:
         return None
 
+    if not _product_identity_matches(
+        final_url,
+        name,
+    ):
+        return None
+
     return {
         "store": STORE,
         "name": _display_product_name(
@@ -3652,366 +3807,7 @@ def search(
 def scrape(
     query: str,
 ) -> List[Dict[str, Any]]:
-    # Production behavior is unchanged unless the temporary diagnostic flag
-    # is explicitly enabled in the environment.
-    if os.getenv("SCENTHUNTER_SCRAPER_DEBUG", "").strip() == "1":
-        trace = debug_trace(query)
-        print(
-            "[SCENTHUNTER_SCRAPER_DEBUG]"
-            + json.dumps(
-                trace,
-                ensure_ascii=False,
-                separators=(",", ":"),
-            )
-        )
-
-        results = []
-        seen = set()
-        for item in trace.get("product_traces", []):
-            result = (
-                item.get("decision", {})
-                .get("actual_product_details_result")
-            )
-            if not result:
-                result = item.get("reader_result")
-            if not result:
-                continue
-
-            key = (
-                str(result.get("url", ""))
-                + "|"
-                + _clean(result.get("name", ""))
-            ).lower()
-            if key in seen:
-                continue
-            seen.add(key)
-            results.append(result)
-
-            if len(results) >= 20:
-                break
-
-        return results
-
     return search(query)
-
-
-
-def _debug_stock_evidence(text: str) -> Dict[str, Any]:
-    raw = html_lib.unescape(str(text or ""))
-    low = _clean(raw).lower()
-
-    found_out = [
-        marker for marker in OUT_STOCK_MARKERS
-        if marker.lower() in low
-    ]
-    found_in = [
-        marker for marker in IN_STOCK_MARKERS
-        if marker.lower() in low
-    ]
-
-    snippets = []
-    for marker in found_out + found_in:
-        idx = low.find(marker.lower())
-        if idx >= 0:
-            snippets.append({
-                "marker": marker,
-                "context": _clean(
-                    raw[max(0, idx - 180):idx + len(marker) + 260]
-                ),
-            })
-
-    return {
-        "out_markers": found_out,
-        "in_markers": found_in,
-        "snippets": snippets[:20],
-    }
-
-
-def _debug_json_ld_products(soup: BeautifulSoup) -> List[Dict[str, Any]]:
-    products = []
-    for index, product in enumerate(_json_ld_products(soup)):
-        offers = product.get("offers")
-        if isinstance(offers, dict):
-            offers_list = [offers]
-        elif isinstance(offers, list):
-            offers_list = offers
-        else:
-            offers_list = []
-
-        offer_debug = []
-        for offer in offers_list:
-            if not isinstance(offer, dict):
-                continue
-            offer_debug.append({
-                "price": offer.get("price"),
-                "availability": offer.get("availability"),
-                "url": offer.get("url"),
-                "sku": offer.get("sku"),
-            })
-
-        brand = product.get("brand")
-        if isinstance(brand, dict):
-            brand = brand.get("name")
-
-        products.append({
-            "index": index,
-            "name": _clean(product.get("name")),
-            "brand": _clean(brand),
-            "url": _clean(
-                product.get("url") or product.get("@id")
-            ),
-            "offers": offer_debug,
-        })
-    return products
-
-
-def _debug_notino_product(
-    session: requests.Session,
-    candidate: Dict[str, Any],
-    query: str,
-) -> Dict[str, Any]:
-    url = candidate.get("url", "")
-    trace: Dict[str, Any] = {
-        "url": url,
-        "candidate": candidate,
-        "request": {},
-        "identity": {},
-        "price": {},
-        "availability": {},
-        "decision": {},
-    }
-
-    try:
-        response = _request(session, url)
-        trace["request"] = {
-            "status": response.status_code,
-            "final_url": response.url,
-            "html_length": len(response.text or ""),
-            "challenge": _is_challenge(response.text),
-        }
-    except requests.RequestException as exc:
-        trace["request"] = {
-            "error": f"{type(exc).__name__}: {exc}",
-            "reader_attempted": True,
-        }
-        try:
-            reader = _reader_request(session, url)
-            trace["request"].update({
-                "reader_status": reader.status_code,
-                "reader_html_length": len(reader.text or ""),
-            })
-            reader_result = _reader_product(
-                reader.text,
-                candidate,
-                query,
-            )
-            trace["reader_result"] = reader_result
-            trace["decision"] = {
-                "final": "reader_result" if reader_result else "rejected",
-                "reason": (
-                    "reader_product accepted"
-                    if reader_result
-                    else "reader_product returned None"
-                ),
-            }
-        except requests.RequestException as reader_exc:
-            trace["request"]["reader_error"] = (
-                f"{type(reader_exc).__name__}: {reader_exc}"
-            )
-            trace["decision"] = {
-                "final": "rejected",
-                "reason": "direct request and Reader both failed",
-            }
-        return trace
-
-    final_url = response.url.split("?")[0]
-    soup = BeautifulSoup(response.text, "html.parser")
-    page_text = _clean(soup.get_text(" ", strip=True))
-
-    h1 = _clean(
-        soup.find("h1").get_text(" ", strip=True)
-        if soup.find("h1")
-        else ""
-    )
-    title = _clean(
-        soup.title.get_text(" ", strip=True)
-        if soup.title
-        else ""
-    )
-
-    json_products = _debug_json_ld_products(soup)
-    trace["page"] = {
-        "final_url": final_url,
-        "h1": h1,
-        "title": title,
-        "size_match": _requested_size_is_valid(
-            page_text, query
-        ),
-        "page_text_length": len(page_text),
-    }
-    trace["json_ld_products"] = json_products
-
-    selected = None
-    selected_index = None
-    for item in json_products:
-        identity = _clean(
-            f'{item.get("brand","")} {item.get("name","")}'
-        )
-        matched = (
-            _matches(identity, query)
-            or _fuzzy_query_match(identity, query)[0]
-        )
-        if matched:
-            selected = item
-            selected_index = item["index"]
-            break
-
-    page_identity_candidates = [
-        ("h1", h1),
-        ("title", title.split("|")[0] if title else ""),
-        (
-            "url",
-            _clean(
-                f'{_brand_from_product_url(final_url)} '
-                f'{_name_from_product_url(final_url)}'
-            ),
-        ),
-    ]
-
-    trace["identity"] = {
-        "query": query,
-        "candidates": [
-            {
-                "source": source,
-                "value": value,
-                "match": (
-                    _matches(value, query)
-                    or _fuzzy_query_match(value, query)[0]
-                    if value else False
-                ),
-            }
-            for source, value in page_identity_candidates
-        ],
-        "json_ld_selected_index": selected_index,
-        "json_ld_selected": selected,
-    }
-
-    price_sources = []
-    if selected:
-        for offer in selected.get("offers", []):
-            if offer.get("price") is not None:
-                price_sources.append({
-                    "source": "json_ld_offer",
-                    "value": offer.get("price"),
-                    "availability": offer.get("availability"),
-                })
-
-    page_price_matches = re.findall(
-        r"(?:prix\s+actuel|en\s+stock|prix)"
-        r"[^€]{0,80}"
-        r"(\d{1,4}[.,]\d{2})\s*€",
-        page_text,
-        flags=re.I,
-    )
-    for value in page_price_matches[:20]:
-        price_sources.append({
-            "source": "visible_page",
-            "value": value,
-        })
-
-    trace["price"] = {
-        "sources": price_sources,
-        "selected_product_price": (
-            _offer_data(
-                next(
-                    (
-                        p
-                        for p in _json_ld_products(soup)
-                        if selected_index == _json_ld_products(soup).index(p)
-                    ),
-                    {}
-                ).get("offers")
-            )[0]
-            if selected is not None
-            else ""
-        ),
-    }
-
-    stock_evidence = _debug_stock_evidence(response.text)
-    structured = _structured_offer_stock_status(
-        response.text,
-        selected.get("name", "") if selected else h1,
-        final_url,
-    )
-    stock_final = _stock_status(
-        response.text,
-        selected.get("name", "") if selected else h1,
-        final_url,
-    )
-
-    trace["availability"] = {
-        "structured_status": structured,
-        "final_stock_status_function": stock_final,
-        "evidence": stock_evidence,
-        "note": (
-            "This is the exact evidence available to the current "
-            "_stock_status() function."
-        ),
-    }
-
-    try:
-        actual_result = _product_details(
-            session,
-            candidate,
-            query,
-        )
-    except Exception as exc:
-        actual_result = {
-            "debug_exception": f"{type(exc).__name__}: {exc}"
-        }
-
-    trace["decision"] = {
-        "actual_product_details_result": actual_result,
-        "accepted": bool(actual_result),
-    }
-    return trace
-
-
-def debug_trace(
-    query: str,
-) -> Dict[str, Any]:
-    query = _clean(query)
-    session = _new_session()
-
-    try:
-        candidates, discovery = _search_http_candidates(
-            query,
-            session=session,
-        )
-        ranked = _rank_candidates_for_product_lookup(
-            candidates,
-            limit=20,
-            query=query,
-        )
-
-        traces = [
-            _debug_notino_product(session, candidate, query)
-            for candidate in ranked
-        ]
-
-        return {
-            "diagnostic": True,
-            "store": STORE.lower(),
-            "scraper_version": SCRAPER_VERSION,
-            "query": query,
-            "discovery": discovery,
-            "candidate_count": len(candidates),
-            "ranked_candidate_count": len(ranked),
-            "candidates": candidates[:50],
-            "product_traces": traces,
-        }
-    finally:
-        session.close()
 
 
 def debug_search(
@@ -4269,21 +4065,12 @@ if __name__ == "__main__":
         "--diagnose",
         action="store_true",
     )
-    parser.add_argument(
-        "--trace",
-        action="store_true",
-        help="run a detailed, non-production diagnostic trace",
-    )
     args = parser.parse_args()
 
     output = (
-        debug_trace(args.query)
-        if args.trace
-        else (
-            diagnose(args.query)
-            if args.diagnose
-            else search(args.query)
-        )
+        diagnose(args.query)
+        if args.diagnose
+        else search(args.query)
     )
 
     print(
