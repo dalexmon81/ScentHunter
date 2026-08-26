@@ -344,14 +344,26 @@ class ProductMatcher:
         self._by_gtin: Dict[str, List[CatalogProduct]] = {}
         self._by_mpn: Dict[str, List[CatalogProduct]] = {}
         self._by_catalog_id: Dict[str, CatalogProduct] = {}
+        # Fast exact-name index. Live searches can validate many retailer
+        # offers; scanning the complete catalog for every offer is needlessly
+        # expensive and becomes especially costly as the catalog grows.
+        self._by_name: Dict[str, List[CatalogProduct]] = {}
+        self._known_brands: set[str] = set()
 
         for product in self.catalog:
             if product.catalog_id:
                 self._by_catalog_id[normalize(product.catalog_id)] = product
+            if product.normalized_brand:
+                self._known_brands.add(product.normalized_brand)
             for value in product.gtins:
                 self._by_gtin.setdefault(value, []).append(product)
             for value in product.mpns:
                 self._by_mpn.setdefault(value, []).append(product)
+
+            for key in self._catalog_name_keys(product):
+                cleaned_key = self._clean_identity_name(product.brand, key)
+                if cleaned_key:
+                    self._by_name.setdefault(cleaned_key, []).append(product)
 
     def _offer_brand(self, offer: Dict[str, Any]) -> str:
         value = first_value(offer, self.BRAND_KEYS)
@@ -562,27 +574,31 @@ class ProductMatcher:
         if not cleaned:
             return None, "none"
 
-        candidates: List[Tuple[int, CatalogProduct]] = []
-        for product in self.catalog:
-            if not self._brand_matches(brand, product):
-                continue
+        # Primary path: exact normalized identity within the supplied brand.
+        # This is O(1) against the catalog instead of scanning every product.
+        candidates = [
+            product
+            for product in self._by_name.get(cleaned, [])
+            if self._brand_matches(brand, product)
+        ]
 
-            for key in self._catalog_name_keys(product):
-                candidate = self._clean_identity_name(product.brand, key)
-                if not candidate:
-                    continue
+        # Some retailer parsers expose a family/product word as the "brand".
+        # Recover only when that value is not a known catalog brand and the
+        # remaining product name identifies exactly one catalog product.
+        if not candidates and brand and brand not in self._known_brands:
+            name_only = self._clean_identity_name("", raw_name)
+            candidates = list(self._by_name.get(name_only, []))
 
-                # Exact identity only. No fuzzy score and no partial-prefix
-                # acceptance. If the retailer omitted the brand field but put
-                # the brand in the title, remove the catalog brand for the
-                # comparison as a second, generic normalization path.
-                offer_candidate = cleaned
-                if not brand:
-                    offer_candidate = self._clean_identity_name(product.brand, raw_name)
+            # If the title itself contains the real catalog brand, stripping
+            # that brand gives the same canonical key.
+            if not candidates:
+                for product in self.catalog:
+                    candidate = self._clean_identity_name(product.brand, raw_name)
+                    if candidate and candidate in self._by_name:
+                        candidates.extend(self._by_name[candidate])
 
-                if offer_candidate == candidate:
-                    candidates.append((len(candidate.split()), product))
-                    break
+            if len({product.catalog_id for product in candidates}) != 1:
+                candidates = []
 
         if not candidates:
             return None, "none"
@@ -591,8 +607,9 @@ class ProductMatcher:
         offer_gender = gender_from_offer(offer)
         if offer_gender:
             filtered = [
-                item for item in candidates
-                if normalize(item[1].gender) == normalize(offer_gender)
+                product
+                for product in candidates
+                if normalize(product.gender) == normalize(offer_gender)
             ]
             if filtered:
                 candidates = filtered
@@ -603,32 +620,18 @@ class ProductMatcher:
         )
         if offer_concentration:
             filtered = [
-                item for item in candidates
-                if normalize(item[1].concentration) == normalize(offer_concentration)
+                product
+                for product in candidates
+                if normalize(product.concentration) == normalize(offer_concentration)
             ]
             if filtered:
                 candidates = filtered
 
-        candidates.sort(
-            key=lambda item: (
-                item[0],
-                normalize(item[1].catalog_id),
-            ),
-            reverse=True,
-        )
-
-        # Multiple different catalog products with the same exact normalized
-        # identity are ambiguous and must not be shown.
-        top_len = candidates[0][0]
-        top = [
-            product
-            for length, product in candidates
-            if length == top_len
-        ]
-        if len({product.catalog_id for product in top}) != 1:
+        unique_ids = {product.catalog_id for product in candidates}
+        if len(unique_ids) != 1:
             return None, "ambiguous"
 
-        return top[0], "exact_name"
+        return candidates[0], "exact_name"
 
     def _identifier_match(
         self,
