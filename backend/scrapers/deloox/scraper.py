@@ -682,6 +682,139 @@ def fetch(
         return None
 
 
+
+def select_matching_json_ld_product(
+    soup,
+    query,
+    url="",
+):
+    """Select the Product JSON-LD that actually matches this product page.
+
+    Deloox pages can contain several Product objects for recommendations or
+    related variants. The first object is not necessarily the current page.
+    """
+    products = extract_json_ld_products(soup)
+    if not products:
+        return None
+
+    page_url = str(url or "").split("?", 1)[0].rstrip("/").lower()
+    best = None
+    best_score = -1
+
+    for product in products:
+        name = clean(product.get("name"))
+        brand = product.get("brand")
+        if isinstance(brand, dict):
+            brand = brand.get("name")
+        brand = clean(brand)
+
+        identity = norm(" ".join((name, brand)))
+        if not name:
+            continue
+
+        score = 0
+        if query_matches_product(
+            name,
+            query,
+            brand,
+            extract_size_ml(name),
+            page_url,
+        ):
+            score += 100
+
+        product_url = clean(
+            product.get("url")
+            or product.get("@id")
+        ).split("?", 1)[0].rstrip("/").lower()
+
+        if product_url and page_url and product_url == page_url:
+            score += 50
+
+        query_n = norm(query)
+        if query_n and query_n in identity:
+            score += 20
+
+        if score > best_score:
+            best_score = score
+            best = product
+
+    return best if best_score >= 100 else None
+
+
+def extract_offer_availability(product):
+    """Return stock state from the selected Product's offers only."""
+    if not isinstance(product, dict):
+        return "unknown"
+
+    offers = product.get("offers")
+    if isinstance(offers, dict):
+        offers = [offers]
+
+    if not isinstance(offers, list):
+        return "unknown"
+
+    has_out = False
+    for offer in offers:
+        if not isinstance(offer, dict):
+            continue
+
+        value = norm(" ".join(
+            str(part)
+            for part in (
+                offer.get("availability"),
+                offer.get("itemCondition"),
+                offer.get("stock"),
+            )
+            if part
+        ))
+
+        if any(marker in value for marker in (
+            "instock",
+            "limitedavailability",
+            "preorder",
+        )):
+            return "in_stock"
+
+        if any(marker in value for marker in (
+            "outofstock",
+            "soldout",
+            "discontinued",
+        )):
+            has_out = True
+
+    return "out_of_stock" if has_out else "unknown"
+
+
+def extract_offer_price(product):
+    if not isinstance(product, dict):
+        return None
+
+    offers = product.get("offers")
+    if isinstance(offers, dict):
+        offers = [offers]
+
+    if not isinstance(offers, list):
+        return None
+
+    for offer in offers:
+        if not isinstance(offer, dict):
+            continue
+        value = offer.get("price")
+        try:
+            number = float(
+                str(value)
+                .replace("€", "")
+                .replace(" ", "")
+                .replace(",", ".")
+            )
+        except (TypeError, ValueError):
+            continue
+        if 0 < number < 10000:
+            return round(number, 2)
+
+    return None
+
+
 def parse_product_page(
     response,
     query,
@@ -691,17 +824,31 @@ def parse_product_page(
         "html.parser",
     )
 
-    json_ld = extract_json_ld(soup)
+    url = response.url.split("?", 1)[0]
 
-    name = visible_product_name(
+    selected_product = select_matching_json_ld_product(
         soup,
-        json_ld,
+        query,
+        url,
     )
 
-    brand = visible_brand(
-        soup,
-        json_ld,
-    )
+    if selected_product is not None:
+        name = clean(selected_product.get("name"))
+        brand_value = selected_product.get("brand")
+        if isinstance(brand_value, dict):
+            brand_value = brand_value.get("name")
+        brand = clean(brand_value)
+        json_ld = selected_product
+    else:
+        json_ld = extract_json_ld(soup)
+        name = visible_product_name(
+            soup,
+            json_ld,
+        )
+        brand = visible_brand(
+            soup,
+            json_ld,
+        )
 
     page_text = soup.get_text(
         " ",
@@ -721,17 +868,22 @@ def parse_product_page(
         page_text,
     )
 
-    price = extract_price(
-        soup,
-        json_ld,
-    )
-
-    availability = extract_availability(
-        soup,
-        json_ld,
-    )
-
-    url = response.url.split("?", 1)[0]
+    if selected_product is not None:
+        price = extract_offer_price(
+            selected_product,
+        )
+        availability = extract_offer_availability(
+            selected_product,
+        )
+    else:
+        price = extract_price(
+            soup,
+            json_ld,
+        )
+        availability = extract_availability(
+            soup,
+            json_ld,
+        )
 
     if not query_matches_product(
         name,
