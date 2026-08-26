@@ -78,7 +78,12 @@ CHALLENGE_MARKERS = (
 
 IN_STOCK_MARKERS = (
     "en stock",
+    "disponible",
+    "en vente",
     "ajouter au panier",
+    "ajoutez au panier",
+    "acheter",
+    "commander",
     "add to cart",
 )
 
@@ -411,7 +416,12 @@ def availability_value(value: Any) -> Optional[bool]:
         "instock",
         "in stock",
         "en stock",
+        "disponible",
+        "en vente",
         "ajouter au panier",
+        "ajoutez au panier",
+        "acheter",
+        "commander",
         "add to cart",
     )
 
@@ -4419,28 +4429,6 @@ def diagnose(
             query,
             session=session,
         )
-
-        # Caller-level fallback must depend on the actual candidate list.
-        # Notino can return a successful HTTP response with zero extracted
-        # candidates, so request status alone is not a valid fallback trigger.
-        if not candidates:
-            reader_candidates, reader_report = _reader_discovery(
-                query,
-                session,
-            )
-            candidates = reader_candidates
-            discovery["diagnose_reader_fallback"] = reader_report
-            discovery["diagnose_reader_fallback_triggered"] = True
-
-        if not candidates:
-            sitemap_candidates, sitemap_pages = _sitemap_discovery(
-                query,
-                session,
-                max_child_sitemaps=200,
-            )
-            candidates = sitemap_candidates
-            discovery["diagnose_sitemap_fallback"] = sitemap_pages
-            discovery["diagnose_sitemap_fallback_triggered"] = True
 
         candidates_for_product_pages = (
             _rank_candidates_for_product_lookup(
