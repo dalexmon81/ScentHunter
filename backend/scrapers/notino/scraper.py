@@ -400,11 +400,13 @@ def _structured_offer_stock_status(
         if any(marker in low for marker in (
             "outofstock", "soldout", "discontinued"
         )):
+            return False
+        if "instock" in low:
             return True
         if any(marker in low for marker in (
-            "instock", "limitedavailability", "preorder"
+            "limitedavailability", "preorder", "backorder"
         )):
-            return False
+            return None
         return None
 
     def identity_matches(item: Dict[str, Any]) -> bool:
@@ -591,12 +593,14 @@ def _stock_status(
 
         if relevance:
             status_hits.append(
-                (relevance, -index, is_out)
+                (relevance, -index, False if is_out else True)
             )
 
     if status_hits:
-        status_hits.sort(reverse=True)
-        return status_hits[0][2]
+        if any(hit[2] is False for hit in status_hits):
+            return False
+        if any(hit[2] is True for hit in status_hits):
+            return True
 
     return None
 
@@ -1360,9 +1364,9 @@ def _reader_candidates(
                 old_candidate = found.get(url)
                 if (
                     old_candidate is not None
-                    and old_candidate.get("discovery_stock_status") is True
+                    and old_candidate.get("discovery_stock_status") is False
                 ):
-                    candidate["discovery_stock_status"] = True
+                    candidate["discovery_stock_status"] = False
 
                 if (
                     old_candidate is None
@@ -1563,9 +1567,9 @@ def _reader_candidates(
                 old_candidate = found.get(url)
                 if (
                     old_candidate is not None
-                    and old_candidate.get("discovery_stock_status") is True
+                    and old_candidate.get("discovery_stock_status") is False
                 ):
-                    candidate["discovery_stock_status"] = True
+                    candidate["discovery_stock_status"] = False
 
                 if (
                     old_candidate is None
@@ -2216,8 +2220,8 @@ def _merge_reader_result(
             candidate["url"]
         )
 
-        if old is not None and old.get("discovery_stock_status") is True:
-            candidate["discovery_stock_status"] = True
+        if old is not None and old.get("discovery_stock_status") is False:
+            candidate["discovery_stock_status"] = False
 
         if (
             old is None
@@ -2657,9 +2661,9 @@ def _search_http_candidates(
 
                 if (
                     old is not None
-                    and old.get("discovery_stock_status") is True
+                    and old.get("discovery_stock_status") is False
                 ):
-                    candidate["discovery_stock_status"] = True
+                    candidate["discovery_stock_status"] = False
 
                 if (
                     old is None
@@ -2703,9 +2707,9 @@ def _search_http_candidates(
 
             if (
                 old is not None
-                and old.get("discovery_stock_status") is True
+                and old.get("discovery_stock_status") is False
             ):
-                candidate["discovery_stock_status"] = True
+                candidate["discovery_stock_status"] = False
 
             if (
                 old is None
@@ -3014,7 +3018,7 @@ def _reader_product(
     # Discovery is allowed to veto a stale/contradictory product-page price.
     # This is generic: any product explicitly marked out of stock in the
     # search result remains unavailable downstream.
-    if candidate.get("discovery_stock_status") is True:
+    if candidate.get("discovery_stock_status") is False:
         return None
 
     identity_text = (
@@ -3192,7 +3196,7 @@ def _reader_product(
         candidate_url,
     )
 
-    if stock is True:
+    if stock is not True:
         return None
 
     return {
@@ -3226,7 +3230,7 @@ def _card_result(
 
     url = candidate.get("url", "")
 
-    if candidate.get("discovery_stock_status") is True:
+    if candidate.get("discovery_stock_status") is False:
         return None
 
     anchor_name = _clean_name(anchor)
@@ -3297,7 +3301,7 @@ def _card_result(
         url,
     )
 
-    if stock is True:
+    if stock is not True:
         return None
 
     return {
@@ -3321,7 +3325,7 @@ def _product_details(
 ) -> Optional[Dict[str, Any]]:
     url = candidate["url"]
 
-    if candidate.get("discovery_stock_status") is True:
+    if candidate.get("discovery_stock_status") is False:
         return None
 
     try:
@@ -3576,7 +3580,7 @@ def _product_details(
         final_url,
     )
 
-    if stock is True:
+    if stock is not True:
         return None
 
     if not price:
