@@ -426,8 +426,7 @@ class ProductMatcher:
             return ""
 
         # First try each catalog brand only when the title contains that brand
-        # explicitly. This handles titles such as "French Avenue - Liquid Brun"
-        # without scanning every catalog product.
+        # explicitly, without scanning every catalog product.
         raw_normalized = normalize(raw_name)
         for brand_n, brand_display in self._brand_display_by_normalized.items():
             brand_tokens = brand_n.split()
@@ -441,9 +440,8 @@ class ProductMatcher:
         # Then use the normalized title itself. The important part here is
         # that brand recovery must work from a *known catalog prefix*, not
         # only from a complete catalog product name. Retailers often publish
-        # valid variants that are not present in the catalog yet (for example
-        # "Hawas Atlantis" when the catalog only knows other Hawas variants).
-        # In that case the shared family/brand prefix is still safe evidence
+        # valid variants that are not present in the catalog yet. In that case
+        # the shared family/brand prefix is still safe evidence
         # when it maps to one unique brand.
         cleaned = self._clean_identity_name("", raw_name)
         if not cleaned:
@@ -762,6 +760,17 @@ class ProductMatcher:
 
         else:
             raw_brand, raw_name, concentration = self._derive_identity(offer)
+
+            # If the offer was not matched to a single catalog product, first
+            # recover the canonical brand from the catalog name index. This is
+            # deliberately generic: it does not depend on any specific brand
+            # or perfume name.
+            hinted_brand = self._catalog_brand_hint(self._offer_name(offer))
+            if hinted_brand:
+                raw_brand = hinted_brand
+                raw_name = self._clean_identity_display(
+                    hinted_brand, self._offer_name(offer)
+                ) or raw_name
 
             if not raw_brand or normalize(raw_brand) not in self._catalog_brands:
                 hinted_brand = self._catalog_brand_hint(
