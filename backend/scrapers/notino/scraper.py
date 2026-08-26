@@ -372,12 +372,92 @@ def _extract_product_price(text: Any) -> str:
     return ""
 
 
+def availability_value(value: Any) -> Optional[bool]:
+    """Normalize a Notino availability value to True/False/None.
+
+    True  = in stock / available
+    False = explicitly out of stock / unavailable
+    None  = neutral, preorder, backorder, limited or unknown
+    """
+    if isinstance(value, bool):
+        return value
+
+    if value is None:
+        return None
+
+    low = _clean(str(value)).lower()
+
+    if not low:
+        return None
+
+    out_markers = (
+        "outofstock",
+        "out of stock",
+        "soldout",
+        "sold out",
+        "discontinued",
+        "rupture de stock",
+        "en rupture",
+        "actuellement indisponible",
+        "produit indisponible",
+        "indisponible",
+        "non disponible",
+        "pas en stock",
+        "épuisé",
+        "epuise",
+    )
+
+    in_markers = (
+        "instock",
+        "in stock",
+        "en stock",
+        "disponible",
+        "available",
+        "ajouter au panier",
+        "add to cart",
+    )
+
+    neutral_markers = (
+        "limitedavailability",
+        "limited availability",
+        "preorder",
+        "pre-order",
+        "backorder",
+        "back-order",
+    )
+
+    if any(marker in low for marker in out_markers):
+        return False
+
+    if any(marker in low for marker in neutral_markers):
+        return None
+
+    if any(marker in low for marker in in_markers):
+        return True
+
+    return None
+
+
+def notino_stock_is_verified(value: Any) -> bool:
+    normalized = availability_value(value)
+
+    print(
+        "NOTINO stock:",
+        repr(value),
+        type(value).__name__,
+        "=>",
+        normalized,
+    )
+
+    return normalized is True
+
+
 def _structured_offer_stock_status(
     text: str,
     product_name: str = "",
     product_url: str = "",
 ) -> Optional[bool]:
-    """Return True=out of stock, False=in stock, None=unknown.
+    """Return True=in stock, False=out of stock, None=unknown.
 
     Only Product JSON-LD that identifies the same product as the requested
     page is considered. This prevents a related/recommended product embedded
@@ -394,20 +474,6 @@ def _structured_offer_stock_status(
         if product_url
         else ""
     )
-
-    def availability_value(value: Any) -> Optional[bool]:
-        low = str(value or "").lower()
-        if any(marker in low for marker in (
-            "outofstock", "soldout", "discontinued"
-        )):
-            return False
-        if "instock" in low:
-            return True
-        if any(marker in low for marker in (
-            "limitedavailability", "preorder", "backorder"
-        )):
-            return None
-        return None
 
     def identity_matches(item: Dict[str, Any]) -> bool:
         item_name = _product_norm(item.get("name"))
@@ -591,9 +657,15 @@ def _stock_status(
                 2 if name_tokens else 1,
             )
 
+        raw_status = line
+        status_value = availability_value(raw_status)
+
+        if status_value is None:
+            continue
+
         if relevance:
             status_hits.append(
-                (relevance, -index, False if is_out else True)
+                (relevance, -index, status_value)
             )
 
     if status_hits:
@@ -3142,7 +3214,7 @@ def _reader_product(
         candidate_url,
     )
 
-    if stock is not True:
+    if not notino_stock_is_verified(stock):
         return None
 
     return {
@@ -3244,7 +3316,7 @@ def _card_result(
         url,
     )
 
-    if stock is not True:
+    if not notino_stock_is_verified(stock):
         return None
 
     return {
@@ -3514,16 +3586,16 @@ def _product_details(
             )
         )
 
+    if not price:
+        return None
+
     stock = _stock_status(
         response.text,
         name,
         final_url,
     )
 
-    if stock is not True:
-        return None
-
-    if not price:
+    if not notino_stock_is_verified(stock):
         return None
 
     return {
