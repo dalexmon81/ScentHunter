@@ -786,6 +786,31 @@ def _card_text(link: Any) -> str:
     return best
 
 
+def _url_identity_matches_query(
+    url: str,
+    query: str,
+) -> bool:
+    """
+    Generic identity check using the Notino product URL.
+
+    Some Notino result cards expose a generic/short anchor while the product
+    slug contains the complete identity. The URL is used only when its
+    product slug itself contains every query token; it is never a
+    product-specific exception or seed.
+    """
+    url_name = _name_from_product_url(url)
+    if not url_name:
+        return False
+
+    query_tokens = _query_tokens(query)
+    url_tokens = set(_query_tokens(url_name))
+
+    return bool(query_tokens) and all(
+        token in url_tokens
+        for token in query_tokens
+    )
+
+
 def _make_candidate(
     url: str,
     anchor: str,
@@ -826,6 +851,27 @@ def _make_candidate(
     if not query_tokens:
         return None
 
+    # Notino sometimes returns a shortened/generic card title even though
+    # the product URL contains the complete product slug. Recover the name
+    # from that URL only when the URL itself contains every query token.
+    # This keeps discovery generic while avoiding false positives from
+    # unrelated text elsewhere in the card.
+    url_name = _name_from_product_url(url)
+    url_identity_match = _url_identity_matches_query(
+        url,
+        query,
+    )
+
+    if not matched and url_identity_match:
+        name = _clean_name(url_name)
+        matched, hits, fuzzy_hits = _fuzzy_query_match(
+            name,
+            query,
+        )
+
+    if not matched and not url_identity_match:
+        return None
+
     score = (
         sum(hits.values()) * 5
         + fuzzy_hits * 2
@@ -834,7 +880,6 @@ def _make_candidate(
     if matched:
         score += 5
 
-    url_name = _name_from_product_url(url)
     url_matched, _, url_fuzzy_hits = _fuzzy_query_match(
         url_name,
         query,
@@ -1067,6 +1112,15 @@ def _name_from_product_url(url: str) -> str:
         slug,
     )
 
+    # Notino URLs may encode the product id as a trailing ``-p`` segment
+    # instead of a separate ``/p-12345`` path component.
+    slug = re.sub(
+        r"-p$",
+        "",
+        slug,
+        flags=re.I,
+    )
+
     slug = re.sub(
         r"[-_]+",
         " ",
@@ -1288,10 +1342,16 @@ def _reader_candidates(
 
             if (
                 not name
-                or not _fuzzy_query_match(
-                    name,
-                    query,
-                )[0]
+                or (
+                    not _fuzzy_query_match(
+                        name,
+                        query,
+                    )[0]
+                    and not _url_identity_matches_query(
+                        url,
+                        query,
+                    )
+                )
             ):
                 continue
 
@@ -1501,10 +1561,16 @@ def _reader_candidates(
             ):
                 continue
 
-            if not _fuzzy_query_match(
-                name,
-                query,
-            )[0]:
+            if (
+                not _fuzzy_query_match(
+                    name,
+                    query,
+                )[0]
+                and not _url_identity_matches_query(
+                    url,
+                    query,
+                )
+            ):
                 continue
 
             line_index = 0
