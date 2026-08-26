@@ -24,7 +24,7 @@ READER_TIMEOUT = 12
 READER_MAX_WORKERS = 8
 PRODUCT_MAX_WORKERS = 8
 
-SCRAPER_VERSION = "notino-FR-generic-discovery-2026-08-25-v21-fast-io"
+SCRAPER_VERSION = "DIAGNOSTIC-notino-FR-generic-discovery-2026-08-25-v21-fast-io"
 
 HEADERS = {
     "User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 "
@@ -3468,6 +3468,504 @@ def scrape(
     return search(query)
 
 
+
+def _diagnostic_stock_snapshot(
+    raw: str,
+    product_name: str,
+    product_url: str,
+) -> Dict[str, Any]:
+    """Return compact evidence used to determine stock status."""
+    raw = html_lib.unescape(str(raw or ""))
+
+    try:
+        visible = BeautifulSoup(
+            raw,
+            "html.parser",
+        ).get_text(" ", strip=True)
+    except Exception:
+        visible = raw
+
+    low = visible.lower()
+
+    out_hits = [
+        marker
+        for marker in OUT_STOCK_MARKERS
+        if marker in low
+    ]
+    in_hits = [
+        marker
+        for marker in IN_STOCK_MARKERS
+        if marker in low
+    ]
+
+    snippets: List[str] = []
+
+    marker_union = tuple(
+        dict.fromkeys(
+            list(OUT_STOCK_MARKERS)
+            + list(IN_STOCK_MARKERS)
+        )
+    )
+
+    for marker in marker_union:
+        start = 0
+        while True:
+            pos = low.find(marker, start)
+            if pos < 0:
+                break
+
+            left = max(0, pos - 180)
+            right = min(
+                len(visible),
+                pos + len(marker) + 220,
+            )
+            snippet = _clean(
+                visible[left:right]
+            )
+
+            if snippet and snippet not in snippets:
+                snippets.append(snippet)
+
+            start = pos + len(marker)
+
+            if len(snippets) >= 8:
+                break
+
+        if len(snippets) >= 8:
+            break
+
+    structured = _structured_offer_stock_status(
+        raw,
+        product_name,
+        product_url,
+    )
+
+    return {
+        "stock_status": _stock_status(
+            raw,
+            product_name,
+            product_url,
+        ),
+        "out_markers_found": out_hits,
+        "in_markers_found": in_hits,
+        "structured_stock": structured,
+        "visible_text_length": len(visible),
+        "stock_snippets": snippets,
+    }
+
+
+def _diagnose_product_job(
+    candidate: Dict[str, Any],
+    query: str,
+) -> Dict[str, Any]:
+    """
+    Diagnostic-only version of the product-page pipeline.
+
+    It does not alter production acceptance logic. It records where a
+    candidate is lost: request, URL/challenge, size/name matching, price,
+    stock, or reader fallback.
+    """
+    session = _new_session()
+
+    diagnostic: Dict[str, Any] = {
+        "candidate": candidate,
+        "query": query,
+        "decision": "not_evaluated",
+        "path": None,
+    }
+
+    try:
+        url = candidate.get("url", "")
+
+        diagnostic["request_url"] = url
+
+        try:
+            response = _request(
+                session,
+                url,
+            )
+        except requests.RequestException as exc:
+            diagnostic["request_error"] = (
+                f"{type(exc).__name__}: {exc}"
+            )
+            diagnostic["path"] = "reader_after_http_error"
+
+            try:
+                reader_response = _reader_request(
+                    session,
+                    url,
+                )
+            except requests.RequestException as reader_exc:
+                diagnostic["reader_error"] = (
+                    f"{type(reader_exc).__name__}: "
+                    f"{reader_exc}"
+                )
+                diagnostic["decision"] = (
+                    "rejected_no_page_and_no_reader"
+                )
+                return diagnostic
+
+            reader_text = reader_response.text or ""
+            diagnostic["reader_status"] = (
+                reader_response.status_code
+            )
+            diagnostic["reader_final_url"] = (
+                reader_response.url
+            )
+            diagnostic["reader_html_length"] = len(
+                reader_text
+            )
+            diagnostic["reader_challenge"] = _is_challenge(
+                reader_text
+            )
+
+            diagnostic["reader_size_valid"] = (
+                _requested_size_is_valid(
+                    reader_text,
+                    query,
+                )
+            )
+
+            reader_name = _extract_reader_product_name(
+                reader_text,
+                candidate,
+                query,
+            )
+            diagnostic["reader_name"] = reader_name
+            diagnostic["reader_name_match"] = bool(
+                reader_name
+                and _fuzzy_query_match(
+                    reader_name,
+                    query,
+                )[0]
+            )
+
+            diagnostic["reader_stock"] = (
+                _diagnostic_stock_snapshot(
+                    reader_text,
+                    reader_name or candidate.get("name", ""),
+                    url,
+                )
+            )
+
+            reader_result = _reader_product(
+                reader_text,
+                candidate,
+                query,
+            )
+
+            diagnostic["reader_result"] = reader_result
+            diagnostic["decision"] = (
+                "accepted_by_reader"
+                if reader_result
+                else "rejected_by_reader_pipeline"
+            )
+            return diagnostic
+
+        diagnostic["http_status"] = response.status_code
+        diagnostic["final_url"] = response.url
+        diagnostic["final_url_no_query"] = (
+            response.url.split("?")[0]
+        )
+        diagnostic["html_length"] = len(
+            response.text or ""
+        )
+        diagnostic["challenge"] = _is_challenge(
+            response.text
+        )
+        diagnostic["looks_like_product_url"] = (
+            _looks_like_product_url(
+                diagnostic["final_url_no_query"]
+            )
+        )
+
+        final_url = diagnostic["final_url_no_query"]
+
+        diagnostic["non_perfume_marker"] = (
+            _has_non_perfume_marker_in_product(
+                candidate.get("name", ""),
+                final_url,
+            )
+        )
+
+        if (
+            diagnostic["challenge"]
+            or not diagnostic["looks_like_product_url"]
+        ):
+            diagnostic["path"] = (
+                "reader_after_challenge_or_bad_product_url"
+            )
+
+            try:
+                reader_response = _reader_request(
+                    session,
+                    url,
+                )
+            except requests.RequestException as exc:
+                diagnostic["reader_error"] = (
+                    f"{type(exc).__name__}: {exc}"
+                )
+                diagnostic["decision"] = (
+                    "rejected_reader_request_failed"
+                )
+                return diagnostic
+
+            reader_text = reader_response.text or ""
+            reader_name = _extract_reader_product_name(
+                reader_text,
+                candidate,
+                query,
+            )
+
+            diagnostic["reader_status"] = (
+                reader_response.status_code
+            )
+            diagnostic["reader_html_length"] = len(
+                reader_text
+            )
+            diagnostic["reader_name"] = reader_name
+            diagnostic["reader_size_valid"] = (
+                _requested_size_is_valid(
+                    reader_text
+                    + " "
+                    + str(candidate.get("card_text") or ""),
+                    query,
+                )
+            )
+            diagnostic["reader_stock"] = (
+                _diagnostic_stock_snapshot(
+                    reader_text,
+                    reader_name or candidate.get("name", ""),
+                    url,
+                )
+            )
+            diagnostic["reader_result"] = _reader_product(
+                reader_text,
+                candidate,
+                query,
+            )
+            diagnostic["decision"] = (
+                "accepted_by_reader"
+                if diagnostic["reader_result"]
+                else "rejected_by_reader_pipeline"
+            )
+            return diagnostic
+
+        diagnostic["path"] = "normal_product_page"
+
+        soup = BeautifulSoup(
+            response.text,
+            "html.parser",
+        )
+
+        page_text = _clean(
+            soup.get_text(
+                " ",
+                strip=True,
+            )
+        )
+
+        diagnostic["page_size_valid"] = (
+            _requested_size_is_valid(
+                page_text,
+                query,
+            )
+        )
+
+        diagnostic["page_title"] = (
+            _clean(
+                soup.title.get_text(
+                    " ",
+                    strip=True,
+                )
+            )
+            if soup.title
+            else ""
+        )
+
+        name = ""
+        price = ""
+        brand = ""
+        price_source = None
+
+        for product in _json_ld_products(soup):
+            product_name = _clean(
+                product.get("name")
+            )
+
+            brand_value = product.get("brand")
+            brand_value = (
+                _clean(
+                    brand_value.get("name")
+                )
+                if isinstance(
+                    brand_value,
+                    dict,
+                )
+                else _clean(brand_value)
+            )
+
+            if _matches(
+                f"{brand_value} {product_name}",
+                query,
+            ):
+                possible_price, _ = _offer_data(
+                    product.get("offers")
+                )
+
+                if product_name:
+                    name = product_name
+                    brand = brand_value
+                    if possible_price:
+                        price = possible_price
+                        price_source = "json_ld"
+                    break
+
+        if not name:
+            h1 = soup.find("h1")
+            if h1:
+                h1_text = _clean(
+                    h1.get_text(
+                        " ",
+                        strip=True,
+                    )
+                )
+                diagnostic["h1"] = h1_text
+
+                if _matches(
+                    h1_text,
+                    query,
+                ):
+                    name = h1_text
+                    diagnostic["name_source"] = "h1"
+
+        if not name and soup.title:
+            candidate_name = _clean(
+                soup.title.get_text(
+                    " ",
+                    strip=True,
+                )
+            ).split("|")[0]
+
+            if _matches(
+                candidate_name,
+                query,
+            ):
+                name = candidate_name
+                diagnostic["name_source"] = "title"
+
+        diagnostic["product_name"] = name
+        diagnostic["brand"] = brand
+
+        if name:
+            diagnostic["name_match"] = _fuzzy_query_match(
+                name,
+                query,
+            )
+
+        if not price:
+            match = re.search(
+                r"prix\s+actuel\s+"
+                r"(\d{1,4}[.,]\d{2})\s*€",
+                page_text,
+                re.I,
+            )
+            if match:
+                price = _format_price(
+                    match.group(1)
+                )
+                price_source = "visible_prix_actuel"
+
+        if not price:
+            match = re.search(
+                r"en\s+stock\s*[|:]?\s*"
+                r"(\d{1,4}[.,]\d{2})\s*€",
+                page_text,
+                re.I,
+            )
+            if match:
+                price = _format_price(
+                    match.group(1)
+                )
+                price_source = "visible_en_stock"
+
+        if not price:
+            price = _extract_product_price(
+                page_text
+            )
+            if price:
+                price_source = "visible_product_price"
+
+        if not price:
+            price = (
+                _extract_product_price(
+                    candidate.get(
+                        "anchor_text",
+                        "",
+                    )
+                )
+                or _extract_product_price(
+                    candidate.get(
+                        "card_text",
+                        "",
+                    )
+                )
+            )
+            if price:
+                price_source = "search_card"
+
+        diagnostic["price"] = price
+        diagnostic["price_source"] = price_source
+
+        diagnostic["stock"] = (
+            _diagnostic_stock_snapshot(
+                response.text,
+                name or candidate.get("name", ""),
+                final_url,
+            )
+        )
+
+        if not name:
+            diagnostic["decision"] = (
+                "rejected_no_product_name"
+            )
+        elif not diagnostic["page_size_valid"]:
+            diagnostic["decision"] = (
+                "rejected_requested_size"
+            )
+        elif not diagnostic["name_match"][0]:
+            diagnostic["decision"] = (
+                "rejected_name_mismatch"
+            )
+        elif diagnostic["stock"]["stock_status"] is False:
+            diagnostic["decision"] = (
+                "rejected_out_of_stock"
+            )
+        elif diagnostic["stock"]["stock_status"] is None:
+            diagnostic["decision"] = (
+                "rejected_stock_not_verified"
+            )
+        elif not price:
+            diagnostic["decision"] = (
+                "rejected_no_price"
+            )
+        else:
+            diagnostic["decision"] = (
+                "would_be_accepted"
+            )
+
+        return diagnostic
+
+    except Exception as exc:
+        diagnostic["decision"] = "diagnostic_exception"
+        diagnostic["exception"] = (
+            f"{type(exc).__name__}: {exc}"
+        )
+        return diagnostic
+    finally:
+        session.close()
+
+
 def debug_search(
     query: str,
 ) -> Dict[str, Any]:
@@ -3506,110 +4004,27 @@ def debug_search(
             if item.get("result")
         ]
 
+        diagnostics = [
+            _diagnose_product_job(
+                candidate,
+                query,
+            )
+            for candidate in ranked
+        ]
+
         return {
             "ok": bool(valid),
             "store": STORE.lower(),
             "query": query,
             "scraper_version": SCRAPER_VERSION,
-            "candidate_count": len(
-                candidates
-            ),
-            "ranked_candidate_count": len(
-                ranked
-            ),
+            "candidate_count": len(candidates),
+            "ranked_candidate_count": len(ranked),
             "result_count": len(valid),
             "candidates": candidates[:50],
             "products": products,
+            "diagnostics": diagnostics,
             "discovery": discovery,
         }
-
-    finally:
-        session.close()
-
-
-def _diagnose_product_job(
-    candidate: Dict[str, Any],
-    query: str,
-) -> Dict[str, Any]:
-    session = _new_session()
-
-    try:
-        try:
-            response = _request(
-                session,
-                candidate["url"],
-            )
-
-            return {
-                "url": candidate["url"],
-                "status": response.status_code,
-                "final_url": response.url,
-                "html_length": len(
-                    response.text or ""
-                ),
-                "cloudflare": _is_challenge(
-                    response.text
-                ),
-                "reader_fallback": False,
-                "requested_size": _requested_sizes(
-                    query
-                ),
-                "size_match": _requested_size_is_valid(
-                    response.text,
-                    query,
-                ),
-            }
-
-        except requests.RequestException as exc:
-            try:
-                reader = _reader_request(
-                    session,
-                    candidate["url"],
-                )
-
-                return {
-                    "url": candidate["url"],
-                    "status": getattr(
-                        getattr(
-                            exc,
-                            "response",
-                            None,
-                        ),
-                        "status_code",
-                        None,
-                    ),
-                    "error": (
-                        f"{type(exc).__name__}: "
-                        f"{exc}"
-                    ),
-                    "reader_status": reader.status_code,
-                    "reader_html_length": len(
-                        reader.text or ""
-                    ),
-                    "reader_fallback": True,
-                    "requested_size": _requested_sizes(
-                        query
-                    ),
-                    "size_match": _requested_size_is_valid(
-                        reader.text,
-                        query,
-                    ),
-                }
-
-            except requests.RequestException as reader_exc:
-                return {
-                    "url": candidate["url"],
-                    "status": None,
-                    "error": (
-                        f"{type(exc).__name__}: "
-                        f"{exc}"
-                    ),
-                    "reader_error": (
-                        f"{type(reader_exc).__name__}: "
-                        f"{reader_exc}"
-                    ),
-                    "reader_fallback": True,
-                }
 
     finally:
         session.close()
