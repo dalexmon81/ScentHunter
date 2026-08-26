@@ -1123,6 +1123,20 @@ def _catalog_match(
             )
             result["catalog_variant"] = variant["canonical_name"]
             result["match_method"] = "family_registry_alias"
+
+            # Il Family Registry è autorevole anche per il brand.
+            # Quando il candidato RAW non porta il brand, il risultato
+            # della famiglia deve comunque propagare il brand canonico
+            # verso il percorso finale. Se il registro non dichiara un
+            # brand, non inventiamo nulla e lasciamo invariato il valore
+            # già presente nel candidato.
+            family_brand = str(
+                family.get("brand") or ""
+            ).strip()
+            if family_brand:
+                result["brand"] = family_brand
+                result["canonical_brand"] = family_brand
+
             return result
 
         # Query variante: solo quella specifica.
@@ -1143,6 +1157,20 @@ def _catalog_match(
             )
             result["catalog_variant"] = variant["canonical_name"]
             result["match_method"] = "family_registry_alias"
+
+            # Il Family Registry è autorevole anche per il brand.
+            # Quando il candidato RAW non porta il brand, il risultato
+            # della famiglia deve comunque propagare il brand canonico
+            # verso il percorso finale. Se il registro non dichiara un
+            # brand, non inventiamo nulla e lasciamo invariato il valore
+            # già presente nel candidato.
+            family_brand = str(
+                family.get("brand") or ""
+            ).strip()
+            if family_brand:
+                result["brand"] = family_brand
+                result["canonical_brand"] = family_brand
+
             return result
 
     return None
@@ -1593,6 +1621,284 @@ def sort_by_price(products: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
     )
 
 
+def _display_brand(product: Dict[str, Any]) -> str:
+    return (
+        product_field(
+            product,
+            "brand",
+            "source_brand",
+        )
+        or ""
+    ).strip()
+
+
+def _display_raw_name(product: Dict[str, Any]) -> str:
+    return (
+        product.get("canonical_name")
+        or product_field(
+            product,
+            "name",
+            "title",
+            "product_name",
+        )
+        or ""
+    ).strip()
+
+
+def _display_gender(product: Dict[str, Any], raw_name: str) -> str:
+    explicit = product_field(
+        product,
+        "gender",
+        "genere",
+        "sex",
+    )
+
+    source = product.get("source")
+    if isinstance(source, dict) and not explicit:
+        explicit = str(
+            source.get("gender")
+            or source.get("genere")
+            or source.get("sex")
+            or ""
+        ).strip()
+
+    gender = _catalog_gender_class(
+        " ".join(
+            value
+            for value in (explicit, raw_name)
+            if value
+        )
+    )
+
+    if gender == "male":
+        return "Uomo"
+    if gender == "female":
+        return "Donna"
+
+    return ""
+
+
+def _display_variant_name(
+    product: Dict[str, Any],
+    brand: str,
+    raw_name: str,
+) -> str:
+    # Mantiene la grafia originale del catalogo/retailer: la funzione
+    # normalizza solo gli elementi che non devono comparire nella variante.
+    variant = str(raw_name or "").strip()
+
+    if brand:
+        variant = re.sub(
+            rf"\b{re.escape(str(brand).strip())}\b",
+            " ",
+            variant,
+            flags=re.I,
+        )
+
+    variant = re.sub(
+        r"\b\d+(?:[.,]\d+)?\s*(?:ml|cl|l|g|kg|oz)\b",
+        " ",
+        variant,
+        flags=re.I,
+    )
+
+    variant = re.sub(
+        r"\b(?:eau\s+de\s+parfum|eau\s+de\s+toilette|"
+        r"eau\s+de\s+cologne|eau\s+fraiche|"
+        r"extrait\s+de\s+parfum|"
+        r"eau\s+de\s+parfum\s+spray|"
+        r"edp|edt|edc|parfum|perfume|"
+        r"spray)\b",
+        " ",
+        variant,
+        flags=re.I,
+    )
+
+    # Il genere è un attributo finale del titolo, non una parte
+    # dell'identificativo commerciale visualizzato.
+    variant = re.sub(
+        r"\b(?:for\s+him|for\s+her|men|women|man|woman|"
+        r"male|female|homme|femme|heren|mannen|dames|"
+        r"vrouwen|unisex)\b",
+        " ",
+        variant,
+        flags=re.I,
+    )
+
+    return re.sub(r"\s+", " ", variant).strip()
+
+
+def _format_result_title(product: Dict[str, Any]) -> str:
+    """
+    Costruisce il titolo visualizzato in modo uniforme per qualunque
+    profumo:
+
+        Brand-Variante [Concentrazione] [Uomo/Donna]
+
+    La variante viene presa dall'identità canonica quando disponibile;
+    in caso contrario viene ricavata dal nome del candidato. Nessuna
+    regola dipende da un marchio o profumo specifico.
+    """
+    brand = _display_brand(product)
+    raw_name = _display_raw_name(product)
+
+    variant = _display_variant_name(
+        product,
+        brand,
+        raw_name,
+    )
+
+    if not variant:
+        variant = raw_name or "Profumo"
+
+    concentration = product_concentration(product)
+    concentration_display = {
+        "eau de parfum": "Eau de Parfum",
+        "eau de toilette": "Eau de Toilette",
+        "eau de cologne": "Eau de Cologne",
+        "extrait de parfum": "Extrait de Parfum",
+        "parfum": "Parfum",
+    }.get(
+        concentration,
+        concentration.title() if concentration else "",
+    )
+
+    gender = _display_gender(
+        product,
+        raw_name,
+    )
+
+    parts = []
+    if brand:
+        parts.append(f"{brand}-{variant}")
+    else:
+        parts.append(variant)
+
+    if concentration_display:
+        parts.append(concentration_display)
+    if gender:
+        parts.append(gender)
+
+    return " ".join(parts).strip()
+
+
+def _result_group_key(product: Dict[str, Any]) -> tuple:
+    """
+    Raggruppa le offerte che rappresentano la stessa referenza.
+
+    Per le famiglie catalogate la chiave è la variante canonica. Per le
+    altre famiglie usa brand + nome commerciale ripulito da formato e
+    concentrazione, mantenendo le differenze reali della variante.
+    """
+    brand = catalog_norm(_display_brand(product))
+
+    catalog_variant = catalog_norm(
+        product.get("catalog_variant")
+        or product.get("canonical_name")
+        or ""
+    )
+
+    if catalog_variant:
+        return ("catalog", brand, catalog_variant)
+
+    raw_name = _display_raw_name(product)
+    name_key = catalog_norm(raw_name)
+
+    name_key = re.sub(
+        r"\b\d+(?:[.,]\d+)?\s*(?:ml|cl|l|g|kg|oz)\b",
+        " ",
+        name_key,
+        flags=re.I,
+    )
+    name_key = re.sub(
+        r"\b(?:eau\s+de\s+parfum|eau\s+de\s+toilette|"
+        r"eau\s+de\s+cologne|eau\s+fraiche|"
+        r"extrait\s+de\s+parfum|edp|edt|edc|parfum|perfume|spray)\b",
+        " ",
+        name_key,
+        flags=re.I,
+    )
+
+    if brand:
+        name_key = re.sub(
+            rf"\b{re.escape(brand)}\b",
+            " ",
+            name_key,
+            flags=re.I,
+        )
+
+    name_key = re.sub(r"\s+", " ", name_key).strip()
+
+    return ("generic", brand, name_key)
+
+
+def _collapse_family_results(
+    products: List[Dict[str, Any]],
+    query: str,
+) -> List[Dict[str, Any]]:
+    """
+    Per una query che corrisponde a una famiglia del Registry restituisce
+    una sola offerta migliore per ogni variante autorizzata.
+
+    Questo impedisce che più store, formati o diciture commerciali della
+    stessa variante gonfino il numero dei risultati. Il numero finale
+    dipende quindi dalle varianti realmente autorizzate dal catalogo,
+    non da un limite arbitrario e non da eccezioni sul singolo profumo.
+    """
+    family = _catalog_family_for_query(query)
+
+    if family is None:
+        return products
+
+    grouped: Dict[tuple, Dict[str, Any]] = {}
+
+    for product in sort_by_price(products):
+        key = _result_group_key(product)
+
+        if key not in grouped:
+            grouped[key] = product
+
+    # Il Registry è autoritativo: ordina le varianti secondo l'ordine
+    # dichiarato nel catalogo, mantenendo però soltanto quelle realmente
+    # trovate dagli scraper.
+    ordered: List[Dict[str, Any]] = []
+
+    for variant in family.get("variants", []):
+        canonical_key = catalog_norm(
+            variant.get("canonical_name")
+        )
+        for key, product in grouped.items():
+            if (
+                key[0] == "catalog"
+                and key[1] == catalog_norm(family.get("brand"))
+                and key[2] == canonical_key
+            ):
+                ordered.append(product)
+                break
+
+    return ordered
+
+
+def _prepare_final_results(
+    products: List[Dict[str, Any]],
+    query: str,
+) -> List[Dict[str, Any]]:
+    results = _collapse_family_results(
+        unique_results(products),
+        query,
+    )
+
+    prepared: List[Dict[str, Any]] = []
+
+    for product in results:
+        item = dict(product)
+        item["name"] = _format_result_title(item)
+        item["title"] = item["name"]
+        prepared.append(item)
+
+    return sort_by_price(prepared)
+
+
 # ============================================================
 # SCRAPER
 # ============================================================
@@ -1766,7 +2072,7 @@ def _validate_candidate(
     # il matcher riceve il candidato RAW e restituisce la sua identità
     # canonica dal catalogo autorevole.
     try:
-        matched_product = _PRODUCT_MATCHER.match(product, query)
+        matched_product = _PRODUCT_MATCHER.match(product)
     except Exception as exc:
         print(
             "PRODUCT_MATCHER_RUNTIME_ERROR:",
@@ -1883,8 +2189,9 @@ def _orchestrate_results(
         query,
     )
 
-    return sort_by_price(
-        unique_results(validated)
+    return _prepare_final_results(
+        validated,
+        query,
     )
 
 # ============================================================
@@ -2134,10 +2441,9 @@ def _search_job_snapshot(job_id: str) -> Dict[str, Any]:
                 detail="Job di ricerca non trovato",
             )
 
-        results = sort_by_price(
-            unique_results(
-                list(job["results"])
-            )
+        results = _prepare_final_results(
+            list(job["results"]),
+            job["query"],
         )
 
         return {
@@ -2418,303 +2724,6 @@ def diagnostic_search(
             ),
             "traceback": traceback.format_exc(),
         }
-
-
-@app.get("/diagnose-hawas")
-def diagnose_hawas(
-    stores: Optional[str] = None,
-):
-    """
-    TEMPORARY DIAGNOSTIC ENDPOINT.
-
-    Compares real RAW scraper candidates for Hawas Ice and Hawas Tropical
-    before/after the existing central matcher/family-registry path.
-
-    This endpoint is diagnostic-only: it does not modify candidates,
-    catalog data, matcher state, or the normal search response.
-    """
-    selected_stores = None
-
-    if stores:
-        selected_stores = [
-            store.strip().lower()
-            for store in stores.split(",")
-            if store.strip()
-        ]
-
-        invalid_stores = [
-            store
-            for store in selected_stores
-            if store not in STORES
-        ]
-
-        if invalid_stores:
-            raise HTTPException(
-                status_code=400,
-                detail=(
-                    "Store non validi: "
-                    + ", ".join(invalid_stores)
-                    + ". Disponibili: "
-                    + ", ".join(STORES)
-                ),
-            )
-
-    selected_stores = selected_stores or list(STORES)
-
-    def case_for(value: Any) -> str:
-        cleaned = norm(value)
-        if "hawas ice" in cleaned:
-            return "Hawas Ice"
-        if "hawas tropical" in cleaned:
-            return "Hawas Tropical"
-        return ""
-
-    def diagnostic_record(
-        store: str,
-        product: Dict[str, Any],
-    ) -> Optional[Dict[str, Any]]:
-        raw_name = product_field(
-            product,
-            "name",
-            "title",
-            "product_name",
-        )
-        raw_brand = product_field(
-            product,
-            "brand",
-            "source_brand",
-        )
-
-        case = case_for(raw_name)
-        if not case:
-            source = product.get("source")
-            if isinstance(source, dict):
-                case = case_for(
-                    source.get("name")
-                    or source.get("title")
-                    or ""
-                )
-
-        if not case:
-            return None
-
-        matcher_result = None
-        matcher_error = ""
-
-        try:
-            matcher_result = _PRODUCT_MATCHER.match(
-                product,
-            )
-        except Exception as exc:
-            matcher_error = (
-                f"{type(exc).__name__}: {exc}"
-            )
-
-        family_result = None
-        family_error = ""
-
-        try:
-            family_result = _catalog_match(
-                product,
-                "Hawas",
-            )
-        except Exception as exc:
-            family_error = (
-                f"{type(exc).__name__}: {exc}"
-            )
-
-        validated_result = None
-        validation_error = ""
-
-        try:
-            validated_result = _validate_candidate(
-                product,
-                "Hawas",
-            )
-        except Exception as exc:
-            validation_error = (
-                f"{type(exc).__name__}: {exc}"
-            )
-
-        def field(
-            value: Any,
-            key: str,
-        ) -> Any:
-            if not isinstance(value, dict):
-                return None
-            return value.get(key)
-
-        return {
-            "store": store,
-            "case": case,
-
-            "raw": {
-                "name": raw_name,
-                "brand": raw_brand,
-                "title": product.get("title"),
-                "product_name": product.get("product_name"),
-                "url": product.get("url"),
-                "source": product.get("source"),
-                "gtin": identity_value(
-                    product,
-                    "gtin",
-                    "ean",
-                    "ean13",
-                    "barcode",
-                ),
-                "mpn": identity_value(
-                    product,
-                    "mpn",
-                    "manufacturer_part_number",
-                ),
-                "sku": identity_value(
-                    product,
-                    "sku",
-                    "store_sku",
-                ),
-            },
-
-            "product_matcher": {
-                "matched": matcher_result is not None,
-                "canonical_brand": field(
-                    matcher_result,
-                    "canonical_brand",
-                ),
-                "canonical_name": field(
-                    matcher_result,
-                    "canonical_name",
-                ),
-                "catalog_id": field(
-                    matcher_result,
-                    "catalog_id",
-                ),
-                "product_identity": field(
-                    matcher_result,
-                    "product_identity",
-                ),
-                "variant_id": field(
-                    matcher_result,
-                    "variant_id",
-                ),
-                "match_method": field(
-                    matcher_result,
-                    "match_method",
-                ),
-                "error": matcher_error,
-            },
-
-            "family_registry": {
-                "matched": family_result is not None,
-                "brand": field(
-                    family_result,
-                    "brand",
-                ),
-                "canonical_brand": field(
-                    family_result,
-                    "canonical_brand",
-                ),
-                "canonical_name": field(
-                    family_result,
-                    "canonical_name",
-                ),
-                "family_id": field(
-                    family_result,
-                    "family_id",
-                ),
-                "family_name": field(
-                    family_result,
-                    "family_name",
-                ),
-                "catalog_variant": field(
-                    family_result,
-                    "catalog_variant",
-                ),
-                "match_method": field(
-                    family_result,
-                    "match_method",
-                ),
-                "error": family_error,
-            },
-
-            "final_validation": {
-                "matched": validated_result is not None,
-                "brand": field(
-                    validated_result,
-                    "brand",
-                ),
-                "canonical_brand": field(
-                    validated_result,
-                    "canonical_brand",
-                ),
-                "canonical_name": field(
-                    validated_result,
-                    "canonical_name",
-                ),
-                "family_id": field(
-                    validated_result,
-                    "family_id",
-                ),
-                "catalog_variant": field(
-                    validated_result,
-                    "catalog_variant",
-                ),
-                "match_method": field(
-                    validated_result,
-                    "match_method",
-                ),
-                "error": validation_error,
-            },
-        }
-
-    report = {
-        "ok": True,
-        "diagnostic": "Hawas Ice vs Hawas Tropical",
-        "query": "Hawas",
-        "stores_checked": selected_stores,
-        "records": [],
-        "summary": {
-            "ice": 0,
-            "tropical": 0,
-        },
-    }
-
-    for store in selected_stores:
-        try:
-            raw_candidates = run_store(
-                store,
-                "Hawas",
-            )
-        except Exception as exc:
-            report.setdefault("store_errors", []).append(
-                {
-                    "store": store,
-                    "error": (
-                        f"{type(exc).__name__}: {exc}"
-                    ),
-                }
-            )
-            continue
-
-        for product in raw_candidates:
-            if not isinstance(product, dict):
-                continue
-
-            record = diagnostic_record(
-                store,
-                product,
-            )
-
-            if record is None:
-                continue
-
-            report["records"].append(record)
-            report["summary"][
-                record["case"].split()[-1].lower()
-                if record["case"] == "Hawas Ice"
-                else "tropical"
-            ] += 1
-
-    return report
 
 
 @app.get("/routing")
