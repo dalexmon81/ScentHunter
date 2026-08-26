@@ -2029,10 +2029,7 @@ function shGroupData(data){
 
     g.canonical_name=g.canonical_name||g.name;
     g.name=g.canonical_name;
-    const audience=g.gender?" "+g.gender:"";
-    const concentrationText=g.concentration?" "+concentrationLabel(g.concentration):"";
-    const finalBase=removeTrailingGender(removeTrailingConcentration(g.canonical_name,g.concentration)||g.canonical_name)||g.canonical_name;
-    const finalName=(pretty(finalBase)+concentrationText+audience).trim();
+    const finalName=displayCatalogName(g);
     g.name=finalName;
     g.display_name=g.brand?g.brand+" - "+finalName:finalName;
   });
@@ -2236,14 +2233,36 @@ function removeTrailingGender(name){
     .trim();
 }
 
+/*
+ * Normalizza il nome canonico prima di aggiungere concentrazione e pubblico.
+ * I negozi possono concatenare questi dati in qualsiasi ordine, per esempio:
+ *   "Asad Eau de Parfum Unisex"
+ *   "Asad Unisex Eau de Parfum"
+ *   "Asad Eau de Parfum Uomo Eau de Parfum"
+ * La pulizia viene quindi ripetuta finché in coda non rimangono più marcatori
+ * di concentrazione/pubblico. Nessuna regola dipende da un singolo prodotto.
+ */
+function cleanCanonicalDisplayBase(name, concentration){
+  let n=String(name||"").trim();
+  if(!n)return n;
+  for(let i=0;i<6;i++){
+    const before=n;
+    n=removeTrailingGender(n);
+    n=removeTrailingConcentration(n,concentration)||n;
+    n=removeTrailingGender(n);
+    if(n===before)break;
+  }
+  return n.trim();
+}
+
 function displayCatalogName(g){
   const canonical=String(g?.canonical_name||g?.catalog_variant||g?.name||"").trim();
   if(!canonical)return "Profumo";
-  let base=removeTrailingConcentration(canonical,g?.concentration||"")||canonical;
-  base=removeTrailingGender(base)||base;
-  const concentration=g?.concentration?" "+concentrationLabel(g.concentration):"";
+  const concentration=g?.concentration||"";
+  const base=cleanCanonicalDisplayBase(canonical,concentration)||canonical;
+  const concentrationText=concentration?" "+concentrationLabel(concentration):"";
   const gender=g?.gender?" "+String(g.gender).trim():"";
-  return (pretty(base)+concentration+gender).trim();
+  return (pretty(base)+concentrationText+gender).trim();
 }
 
 function showProducts(groups){
