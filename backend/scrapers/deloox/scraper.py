@@ -49,8 +49,6 @@ MAX_SEARCH_PAGES = 10
 MAX_SITEMAPS = 120
 MAX_SITEMAP_PRODUCTS = 200
 
-SCRAPER_VERSION = "deloox-generic-stock-fix-2026-08-25-v2"
-
 
 def clean(value):
     return re.sub(r"\s+", " ", str(value or "")).strip()
@@ -149,6 +147,8 @@ def extract_gender(*texts):
 
 
 def extract_json_ld(soup):
+    products = []
+
     for script in soup.find_all(
         "script",
         attrs={"type": re.compile(r"application/ld\+json", re.I)},
@@ -163,17 +163,179 @@ def extract_json_ld(soup):
         except (ValueError, TypeError):
             continue
 
-        items = data if isinstance(data, list) else [data]
+        stack = data if isinstance(data, list) else [data]
 
-        for item in items:
-            if (
-                isinstance(item, dict)
-                and str(item.get("@type", "")).lower() == "product"
+        while stack:
+            item = stack.pop(0)
+
+            if isinstance(item, list):
+                stack.extend(item)
+                continue
+
+            if not isinstance(item, dict):
+                continue
+
+            item_type = item.get("@type", "")
+            types = item_type if isinstance(item_type, list) else [item_type]
+
+            if any(
+                str(value).lower() == "product"
+                for value in types
             ):
-                return item
+                products.append(item)
 
-    return None
+            graph = item.get("@graph")
 
+            if isinstance(graph, list):
+                stack.extend(graph)
+
+    if not products:
+        return None
+
+    return products[0]
+
+
+def extract_json_ld_products(soup):
+    products = []
+
+    for script in soup.find_all(
+        "script",
+        attrs={"type": re.compile(r"application/ld\+json", re.I)},
+    ):
+        raw = (script.string or script.get_text()).strip()
+
+        if not raw:
+            continue
+
+        try:
+            data = json.loads(raw)
+        except (ValueError, TypeError):
+            continue
+
+        stack = data if isinstance(data, list) else [data]
+
+        while stack:
+            item = stack.pop(0)
+
+            if isinstance(item, list):
+                stack.extend(item)
+                continue
+
+            if not isinstance(item, dict):
+                continue
+
+            item_type = item.get("@type", "")
+            types = item_type if isinstance(item_type, list) else [item_type]
+
+            if any(
+                str(value).lower() == "product"
+                for value in types
+            ):
+                products.append(item)
+
+            graph = item.get("@graph")
+
+            if isinstance(graph, list):
+                stack.extend(graph)
+
+    return products
+
+
+def extract_availability(soup, json_ld=None):
+    """
+    Determine availability from every Product/Offer exposed by Deloox.
+
+    Deloox may expose more than one Offer or Product object in JSON-LD.
+    Looking only at the first object can incorrectly turn a product into
+    out_of_stock when another valid offer is actually available.
+
+    An explicit in-stock offer therefore wins over an out-of-stock offer.
+    """
+    products = extract_json_ld_products(soup)
+
+    if isinstance(json_ld, dict) and json_ld not in products:
+        products.insert(0, json_ld)
+
+    structured_in = False
+    structured_out = False
+
+    for product in products:
+        offers = product.get("offers")
+
+        if isinstance(offers, dict):
+            offers = [offers]
+
+        if not isinstance(offers, list):
+            continue
+
+        for offer in offers:
+            if not isinstance(offer, dict):
+                continue
+
+            values = (
+                offer.get("availability"),
+                offer.get("itemCondition"),
+                offer.get("stock"),
+            )
+
+            value = norm(" ".join(
+                str(part)
+                for part in values
+                if part
+            ))
+
+            if any(
+                marker in value
+                for marker in (
+                    "outofstock",
+                    "soldout",
+                    "discontinued",
+                )
+            ):
+                structured_out = True
+
+            elif any(
+                marker in value
+                for marker in (
+                    "instock",
+                    "limitedavailability",
+                    "preorder",
+                )
+            ):
+                structured_in = True
+
+    if structured_in:
+        return "in_stock"
+
+    if structured_out:
+        return "out_of_stock"
+
+    text = norm(soup.get_text(" ", strip=True))
+
+    in_stock_markers = (
+        "in winkelwagen",
+        "toevoegen aan winkelwagen",
+        "bestel nu",
+        "vandaag besteld",
+        "morgen in huis",
+        "voor 22 00 besteld",
+        "voor 22 00 uur besteld",
+    )
+
+    out_stock_markers = (
+        "tijdelijk uitverkocht",
+        "uitverkocht",
+        "niet op voorraad",
+        "niet beschikbaar",
+    )
+
+    if any(marker in text for marker in in_stock_markers):
+        return "in_stock"
+
+    if any(marker in text for marker in out_stock_markers):
+        return "out_of_stock"
+
+    return "unknown"
 
 def extract_price(soup, json_ld=None):
     candidates = []
@@ -236,77 +398,6 @@ def extract_price(soup, json_ld=None):
             return round(number, 2)
 
     return None
-
-
-def extract_availability(soup, json_ld=None):
-    """
-    Determine product availability from the product page.
-
-    Deloox can expose several offers in JSON-LD. The previous logic only
-    inspected a single dict offer, so a valid in-stock product could become
-    "unknown" and later be treated as unavailable by the main pipeline.
-    Explicit in-stock signals win over a different out-of-stock variant.
-    """
-    structured_in = False
-    structured_out = False
-
-    if isinstance(json_ld, dict):
-        offers = json_ld.get("offers")
-
-        if isinstance(offers, dict):
-            offers = [offers]
-
-        if isinstance(offers, list):
-            for offer in offers:
-                if not isinstance(offer, dict):
-                    continue
-
-                value = norm(
-                    offer.get("availability")
-                    or offer.get("stock")
-                    or ""
-                )
-
-                if "outofstock" in value or "soldout" in value:
-                    structured_out = True
-                elif (
-                    "instock" in value
-                    or "limitedavailability" in value
-                    or "preorder" in value
-                ):
-                    structured_in = True
-
-    if structured_in:
-        return "in_stock"
-
-    if structured_out:
-        return "out_of_stock"
-
-    # Fallback to visible product-page text. These are generic Deloox
-    # availability phrases, not product-specific exceptions.
-    text = norm(soup.get_text(" ", strip=True))
-
-    in_stock_markers = (
-        "in winkelwagen",
-        "vandaag besteld",
-        "morgen in huis",
-        "voor 22 00 besteld",
-        "voor 22 00 uur besteld",
-    )
-
-    out_stock_markers = (
-        "tijdelijk uitverkocht",
-        "uitverkocht",
-        "niet op voorraad",
-    )
-
-    if any(marker in text for marker in in_stock_markers):
-        return "in_stock"
-
-    if any(marker in text for marker in out_stock_markers):
-        return "out_of_stock"
-
-    return "unknown"
 
 
 def visible_product_name(soup, json_ld=None):
