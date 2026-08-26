@@ -4045,10 +4045,33 @@ def search(
     session = _new_session()
 
     try:
-        all_candidates, _ = _search_http_candidates(
+        all_candidates, discovery = _search_http_candidates(
             query,
             session=session,
         )
+
+        # Final caller-level fallback: a successful HTTP discovery can still
+        # produce an empty candidate list. Keep the fallback decision tied to
+        # the actual candidate list, never to request status alone. This is a
+        # generic second chance and introduces no product-specific logic.
+        if not all_candidates:
+            reader_candidates, reader_report = _reader_discovery(
+                query,
+                session,
+            )
+            all_candidates = reader_candidates
+            discovery["caller_reader_fallback"] = reader_report
+            discovery["caller_reader_fallback_triggered"] = True
+
+        if not all_candidates:
+            sitemap_candidates, sitemap_pages = _sitemap_discovery(
+                query,
+                session,
+                max_child_sitemaps=200,
+            )
+            all_candidates = sitemap_candidates
+            discovery["caller_sitemap_fallback"] = sitemap_pages
+            discovery["caller_sitemap_fallback_triggered"] = True
 
         ranked = _rank_candidates_for_product_lookup(
             all_candidates,
