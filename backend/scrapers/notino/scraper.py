@@ -3,7 +3,9 @@ from __future__ import annotations
 import difflib
 import html as html_lib
 import json
+import os
 import re
+import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from typing import Any, Dict, Iterable, List, Optional, Tuple
 from urllib.parse import quote_plus, unquote, urljoin, urlparse
@@ -23,6 +25,23 @@ TIMEOUT = 20
 READER_TIMEOUT = 12
 READER_MAX_WORKERS = 8
 PRODUCT_MAX_WORKERS = 8
+
+DEBUG_NOTINO = os.getenv(
+    "DEBUG_NOTINO",
+    "",
+).strip().lower() in {
+    "1",
+    "true",
+    "yes",
+    "on",
+}
+
+DEBUG_NOTINO_MAX_TEXT = int(
+    os.getenv(
+        "DEBUG_NOTINO_MAX_TEXT",
+        "1200",
+    )
+)
 
 SCRAPER_VERSION = "DIAGNOSTIC-notino-FR-generic-discovery-2026-08-25-v21-fast-io"
 
@@ -792,6 +811,13 @@ def _make_candidate(
     )
 
     if not name:
+        _debug_event(
+            "reader_product_rejected",
+            reason="reader_product_name_not_found",
+            query=query,
+            candidate_url=candidate_url,
+            reader_excerpt=_debug_excerpt(raw),
+        )
         return None
 
     if _has_non_perfume_marker_in_product(
@@ -2883,9 +2909,26 @@ def _reader_product(
         .replace("\\/", "/")
     )
 
+    _debug_event(
+        "reader_product_start",
+        query=query,
+        candidate_url=candidate.get("url", ""),
+        candidate_name=candidate.get("name", ""),
+        candidate_anchor=candidate.get("anchor_text", ""),
+        candidate_card=candidate.get("card_text", ""),
+        text_length=len(raw),
+        text_excerpt=_debug_excerpt(raw),
+    )
+
     content = _clean(raw)
 
     if not content:
+        _debug_event(
+            "reader_product_rejected",
+            reason="reader_empty",
+            query=query,
+            candidate_url=candidate.get("url", ""),
+        )
         return None
 
     candidate_url = candidate.get(
@@ -2908,6 +2951,13 @@ def _reader_product(
         identity_text,
         query,
     )[0]:
+        _debug_event(
+            "reader_product_rejected",
+            reason="reader_identity_mismatch",
+            query=query,
+            candidate_url=candidate.get("url", ""),
+            identity_excerpt=_debug_excerpt(identity_text),
+        )
         return None
 
     if not _requested_size_is_valid(
@@ -2919,6 +2969,13 @@ def _reader_product(
         ),
         query,
     ):
+        _debug_event(
+            "reader_product_rejected",
+            reason="reader_requested_size_invalid",
+            query=query,
+            candidate_url=candidate_url,
+            reader_excerpt=_debug_excerpt(content),
+        )
         return None
 
     name = _extract_reader_product_name(
@@ -2934,12 +2991,26 @@ def _reader_product(
         name,
         candidate_url,
     ):
+        _debug_event(
+            "reader_product_rejected",
+            reason="reader_non_perfume_marker",
+            query=query,
+            candidate_url=candidate_url,
+            product_name=name,
+        )
         return None
 
     if not _fuzzy_query_match(
         name,
         query,
     )[0]:
+        _debug_event(
+            "reader_product_rejected",
+            reason="reader_name_mismatch",
+            query=query,
+            candidate_url=candidate_url,
+            product_name=name,
+        )
         return None
 
     price = ""
@@ -3051,16 +3122,54 @@ def _reader_product(
         )
 
     if not price:
+        _debug_event(
+            "reader_product_rejected",
+            reason="reader_price_not_found",
+            query=query,
+            candidate_url=candidate_url,
+            product_name=name,
+        )
         return None
 
-    stock = _stock_status(
+    stock_snapshot = _debug_stock_snapshot(
         raw,
         name,
         candidate_url,
     )
 
+    _debug_event(
+        "reader_stock_checked",
+        query=query,
+        candidate_url=candidate_url,
+        product_name=name,
+        price=price,
+        price_source="reader",
+        **stock_snapshot,
+    )
+
+    stock = stock_snapshot["stock_status"]
+
     if stock is not True:
+        _debug_event(
+            "reader_product_rejected",
+            reason="stock_not_positive",
+            query=query,
+            candidate_url=candidate_url,
+            product_name=name,
+            price=price,
+            **stock_snapshot,
+        )
         return None
+
+    _debug_event(
+        "reader_product_accepted",
+        query=query,
+        candidate_url=candidate_url,
+        product_name=name,
+        price=price,
+        price_source="reader",
+        stock_status=True,
+    )
 
     return {
         "store": STORE,
@@ -3080,24 +3189,113 @@ def _product_details(
 ) -> Optional[Dict[str, Any]]:
     url = candidate["url"]
 
+    _debug_event(
+        "product_details_start",
+        query=query,
+        candidate_url=url,
+        candidate_name=candidate.get("name", ""),
+        candidate_anchor=candidate.get("anchor_text", ""),
+        candidate_card=candidate.get("card_text", ""),
+        candidate_score=candidate.get("score"),
+    )
+
     try:
         response = _request(
             session,
             url,
         )
-    except requests.RequestException:
+
+        _debug_event(
+            "product_http_response",
+            query=query,
+            candidate_url=url,
+            status=response.status_code,
+            final_url=response.url,
+            response_length=len(response.text or ""),
+            challenge=_is_challenge(response.text),
+            looks_like_product_url=_looks_like_product_url(
+                response.url.split("?")[0]
+            ),
+            out_of_stock_markers_found=(
+                _debug_contains_marker(
+                    response.text,
+                    OUT_STOCK_MARKERS,
+                )
+            ),
+            response_excerpt=_debug_excerpt(response.text),
+        )
+    except requests.RequestException as exc:
+        _debug_event(
+            "product_http_error",
+            query=query,
+            candidate_url=url,
+            error=(
+                f"{type(exc).__name__}: {exc}"
+            ),
+            status=getattr(
+                getattr(
+                    exc,
+                    "response",
+                    None,
+                ),
+                "status_code",
+                None,
+            ),
+        )
+
         try:
             reader_response = _reader_request(
                 session,
                 url,
             )
 
-            return _reader_product(
+            _debug_event(
+                "product_reader_response_after_http_error",
+                query=query,
+                candidate_url=url,
+                reader_status=reader_response.status_code,
+                reader_length=len(
+                    reader_response.text or ""
+                ),
+                reader_out_of_stock_markers_found=(
+                    _debug_contains_marker(
+                        reader_response.text,
+                        OUT_STOCK_MARKERS,
+                    )
+                ),
+                reader_excerpt=_debug_excerpt(
+                    reader_response.text
+                ),
+            )
+
+            reader_result = _reader_product(
                 reader_response.text,
                 candidate,
                 query,
             )
-        except requests.RequestException:
+
+            if reader_result is None:
+                _debug_event(
+                    "product_rejected_after_reader",
+                    reason="reader_returned_none",
+                    query=query,
+                    candidate_url=url,
+                )
+
+            return reader_result
+
+        except requests.RequestException as reader_exc:
+            _debug_event(
+                "product_reader_error",
+                query=query,
+                candidate_url=url,
+                error=(
+                    f"{type(reader_exc).__name__}: "
+                    f"{reader_exc}"
+                ),
+                fallback_card_used=False,
+            )
+
             return None
 
     final_url = response.url.split("?")[0]
@@ -3117,18 +3315,76 @@ def _product_details(
             final_url
         )
     ):
+        _debug_event(
+            "product_page_not_verified",
+            query=query,
+            candidate_url=url,
+            final_url=final_url,
+            challenge=_is_challenge(response.text),
+            looks_like_product_url=_looks_like_product_url(
+                final_url
+            ),
+            out_of_stock_markers_found=(
+                _debug_contains_marker(
+                    response.text,
+                    OUT_STOCK_MARKERS,
+                )
+            ),
+        )
+
         try:
             reader_response = _reader_request(
                 session,
                 url,
             )
 
-            return _reader_product(
+            _debug_event(
+                "product_reader_response_after_unverified_page",
+                query=query,
+                candidate_url=url,
+                reader_status=reader_response.status_code,
+                reader_length=len(
+                    reader_response.text or ""
+                ),
+                reader_out_of_stock_markers_found=(
+                    _debug_contains_marker(
+                        reader_response.text,
+                        OUT_STOCK_MARKERS,
+                    )
+                ),
+                reader_excerpt=_debug_excerpt(
+                    reader_response.text
+                ),
+            )
+
+            reader_result = _reader_product(
                 reader_response.text,
                 candidate,
                 query,
             )
-        except requests.RequestException:
+
+            if reader_result is None:
+                _debug_event(
+                    "product_rejected_after_unverified_page",
+                    reason="reader_returned_none",
+                    query=query,
+                    candidate_url=url,
+                    fallback_card_used=False,
+                )
+
+            return reader_result
+
+        except requests.RequestException as exc:
+            _debug_event(
+                "product_reader_error_after_unverified_page",
+                query=query,
+                candidate_url=url,
+                error=(
+                    f"{type(exc).__name__}: {exc}"
+                ),
+                fallback_card_used=False,
+            )
+
             return None
 
     soup = BeautifulSoup(
@@ -3229,6 +3485,14 @@ def _product_details(
                 name = candidate_name
 
     if not name:
+        _debug_event(
+            "html_product_rejected",
+            reason="product_name_not_found",
+            query=query,
+            candidate_url=url,
+            final_url=final_url,
+            fallback_card_used=False,
+        )
         return None
 
     page_title = (
@@ -3296,17 +3560,67 @@ def _product_details(
             )
         )
 
-    stock = _stock_status(
+    stock_snapshot = _debug_stock_snapshot(
         response.text,
         name,
         final_url,
     )
 
+    _debug_event(
+        "html_stock_checked",
+        query=query,
+        candidate_url=url,
+        final_url=final_url,
+        product_name=name,
+        price=price,
+        price_source=(
+            "json_ld_or_html"
+            if price
+            else "none"
+        ),
+        **stock_snapshot,
+    )
+
+    stock = stock_snapshot["stock_status"]
+
     if stock is not True:
+        _debug_event(
+            "html_product_rejected",
+            reason="stock_not_positive",
+            query=query,
+            candidate_url=url,
+            final_url=final_url,
+            product_name=name,
+            price=price,
+            **stock_snapshot,
+        )
         return None
 
     if not price:
+        _debug_event(
+            "html_product_rejected",
+            reason="price_not_found",
+            query=query,
+            candidate_url=url,
+            final_url=final_url,
+            product_name=name,
+        )
         return None
+
+    _debug_event(
+        "html_product_accepted",
+        query=query,
+        candidate_url=url,
+        final_url=final_url,
+        product_name=name,
+        price=price,
+        price_source=(
+            "json_ld_or_html"
+            if price
+            else "none"
+        ),
+        stock_status=True,
+    )
 
     return {
         "store": STORE,
@@ -3418,6 +3732,22 @@ def search(
             query=query,
         )
 
+        for item in ranked:
+            _debug_event(
+                "card_candidate_observed",
+                query=query,
+                candidate_url=item.get("url", ""),
+                candidate_name=item.get("name", ""),
+                anchor_text=item.get("anchor_text", ""),
+                card_text=item.get("card_text", ""),
+                price_from_anchor=_extract_price(
+                    item.get("anchor_text", "")
+                ),
+                price_from_card=_extract_price(
+                    item.get("card_text", "")
+                ),
+            )
+
         products = _parallel_product_details(
             ranked,
             query,
@@ -3469,89 +3799,121 @@ def scrape(
 
 
 
-def _diagnostic_stock_snapshot(
-    raw: str,
-    product_name: str,
-    product_url: str,
-) -> Dict[str, Any]:
-    """Return compact evidence used to determine stock status."""
-    raw = html_lib.unescape(str(raw or ""))
 
-    try:
-        visible = BeautifulSoup(
-            raw,
-            "html.parser",
-        ).get_text(" ", strip=True)
-    except Exception:
-        visible = raw
-
-    low = visible.lower()
-
-    out_hits = [
-        marker
-        for marker in OUT_STOCK_MARKERS
-        if marker in low
-    ]
-    in_hits = [
-        marker
-        for marker in IN_STOCK_MARKERS
-        if marker in low
-    ]
-
-    snippets: List[str] = []
-
-    marker_union = tuple(
-        dict.fromkeys(
-            list(OUT_STOCK_MARKERS)
-            + list(IN_STOCK_MARKERS)
+def _debug_excerpt(
+    value: Any,
+    limit: int = DEBUG_NOTINO_MAX_TEXT,
+) -> str:
+    text = _clean(
+        html_lib.unescape(
+            str(value or "")
         )
     )
 
-    for marker in marker_union:
-        start = 0
-        while True:
-            pos = low.find(marker, start)
-            if pos < 0:
-                break
+    if len(text) <= limit:
+        return text
 
-            left = max(0, pos - 180)
-            right = min(
-                len(visible),
-                pos + len(marker) + 220,
-            )
-            snippet = _clean(
-                visible[left:right]
-            )
+    return text[:limit] + "…"
 
-            if snippet and snippet not in snippets:
-                snippets.append(snippet)
 
-            start = pos + len(marker)
+def _debug_contains_marker(
+    text: Any,
+    markers: Iterable[str],
+) -> List[str]:
+    content = _clean(
+        html_lib.unescape(
+            str(text or "")
+        )
+    ).lower()
 
-            if len(snippets) >= 8:
-                break
+    return [
+        marker
+        for marker in markers
+        if marker.lower() in content
+    ]
 
-        if len(snippets) >= 8:
-            break
 
-    structured = _structured_offer_stock_status(
-        raw,
-        product_name,
-        product_url,
-    )
+def _debug_stock_snapshot(
+    text: Any,
+    product_name: str = "",
+    product_url: str = "",
+) -> Dict[str, Any]:
+    raw = str(text or "")
 
-    return {
-        "stock_status": _stock_status(
+    try:
+        stock = _stock_status(
             raw,
             product_name,
             product_url,
+        )
+    except Exception as exc:
+        stock = None
+
+        return {
+            "stock_status": stock,
+            "stock_status_error": (
+                f"{type(exc).__name__}: {exc}"
+            ),
+            "in_stock_markers_found": [],
+            "out_of_stock_markers_found": [],
+            "challenge_markers_found": (
+                _debug_contains_marker(
+                    raw,
+                    CHALLENGE_MARKERS,
+                )
+            ),
+            "text_length": len(raw),
+            "text_excerpt": _debug_excerpt(raw),
+        }
+
+    return {
+        "stock_status": stock,
+        "stock_status_error": None,
+        "in_stock_markers_found": (
+            _debug_contains_marker(
+                raw,
+                IN_STOCK_MARKERS,
+            )
         ),
-        "out_markers_found": out_hits,
-        "in_markers_found": in_hits,
-        "structured_stock": structured,
-        "visible_text_length": len(visible),
-        "stock_snippets": snippets,
+        "out_of_stock_markers_found": (
+            _debug_contains_marker(
+                raw,
+                OUT_STOCK_MARKERS,
+            )
+        ),
+        "challenge_markers_found": (
+            _debug_contains_marker(
+                raw,
+                CHALLENGE_MARKERS,
+            )
+        ),
+        "text_length": len(raw),
+        "text_excerpt": _debug_excerpt(raw),
     }
+
+
+def _debug_event(
+    event: str,
+    **data: Any,
+) -> None:
+    if not DEBUG_NOTINO:
+        return
+
+    payload = {
+        "event": event,
+        "timestamp": time.time(),
+        **data,
+    }
+
+    print(
+        "[NOTINO_DEBUG] "
+        + json.dumps(
+            payload,
+            ensure_ascii=False,
+            default=str,
+        ),
+        flush=True,
+    )
 
 
 def _diagnose_product_job(
@@ -3993,9 +4355,48 @@ def debug_search(
             query=query,
         )
 
+        _debug_event(
+            "debug_search_start",
+            query=query,
+            candidate_count=len(candidates),
+            ranked_candidate_count=len(ranked),
+            ranked_candidates=[
+                {
+                    "url": item.get("url", ""),
+                    "name": item.get("name", ""),
+                    "anchor_text": item.get(
+                        "anchor_text",
+                        "",
+                    ),
+                    "card_text": item.get(
+                        "card_text",
+                        "",
+                    ),
+                    "score": item.get("score"),
+                }
+                for item in ranked
+            ],
+        )
+
         products = _parallel_product_details(
             ranked,
             query,
+        )
+
+        _debug_event(
+            "debug_search_products_completed",
+            query=query,
+            product_count=len(products),
+            accepted_count=sum(
+                1
+                for item in products
+                if item.get("result")
+            ),
+            rejected_count=sum(
+                1
+                for item in products
+                if not item.get("result")
+            ),
         )
 
         valid = [
