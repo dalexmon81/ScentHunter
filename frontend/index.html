@@ -516,9 +516,6 @@ function displayPerfumeName(name,brand,concentration){
   let n=String(name||"").replace(/\s+/g," ").trim();
   if(!n)return n;
 
-  // Normalizzazione GENERICA della concentrazione visualizzata.
-  // Il nome può arrivare già con la concentrazione nel titolo e il campo
-  // concentration può ripeterla: il risultato deve mostrarla una sola volta.
   const labels=[
     ["eau de parfum","Eau de Parfum"],
     ["eau de toilette","Eau de Toilette"],
@@ -529,6 +526,23 @@ function displayPerfumeName(name,brand,concentration){
     ["edt","Eau de Toilette"],
     ["edc","Eau de Cologne"]
   ];
+  const genders=[
+    ["unisex","Unisex"],
+    ["mixte","Unisex"],
+    ["unisexe","Unisex"],
+    ["uomo","Uomo"],
+    ["men","Uomo"],
+    ["man","Uomo"],
+    ["for men","Uomo"],
+    ["pour homme","Uomo"],
+    ["homme","Uomo"],
+    ["donna","Donna"],
+    ["women","Donna"],
+    ["woman","Donna"],
+    ["for women","Donna"],
+    ["pour femme","Donna"],
+    ["femme","Donna"]
+  ];
 
   let canonical=String(concentration||"").trim();
   if(canonical){
@@ -537,29 +551,62 @@ function displayPerfumeName(name,brand,concentration){
     canonical=match?match[1]:canonical;
   }
 
-  // Se la concentrazione non è disponibile come campo, riconosciamo solo
-  // concentrazioni COMPLETE alla fine del titolo. Non tocchiamo "Le Parfum"
-  // o altri nomi commerciali che contengono semplicemente "Parfum".
-  if(!canonical){
-    for(const [raw,label] of labels){
+  let audience="";
+  for(let pass=0;pass<8;pass++){
+    const before=n;
+    let removed=false;
+
+    for(const [raw,label] of genders){
       const re=new RegExp("\\s*(?:[-–—:]\\s*)?"+raw.replace(/[.*+?^${}()|[\\]\\]/g,"\\$&")+"\\s*$","i");
-      if(re.test(n)){canonical=label;break;}
+      if(re.test(n)){
+        audience=label;
+        n=n.replace(re,"").trim();
+        removed=true;
+        break;
+      }
+    }
+
+    if(canonical){
+      const escaped=canonical
+        .split(/\s+/)
+        .map(w=>w.replace(/[.*+?^${}()|[\\]\\]/g,"\\$&"))
+        .join("\\s+");
+      const trailing=new RegExp("\\s*(?:[-–—:]\\s*)?"+escaped+"\\s*$","i");
+      while(trailing.test(n)){
+        n=n.replace(trailing,"").trim();
+        removed=true;
+      }
+    }else{
+      for(const [raw,label] of labels){
+        const re=new RegExp("\\s*(?:[-–—:]\\s*)?"+raw.replace(/[.*+?^${}()|[\\]\\]/g,"\\$&")+"\\s*$","i");
+        if(re.test(n)){
+          canonical=label;
+          n=n.replace(re,"").trim();
+          removed=true;
+          break;
+        }
+      }
+    }
+
+    if(n===before || !removed)break;
+  }
+
+  // A name can contain the gender before the concentration. Remove it once
+  // more after concentration cleanup so the final title has one descriptor
+  // of each type, never duplicates.
+  for(const [raw,label] of genders){
+    const re=new RegExp("\\s*(?:[-–—:]\\s*)?"+raw.replace(/[.*+?^${}()|[\\]\\]/g,"\\$&")+"\\s*$","i");
+    if(re.test(n)){
+      audience=label;
+      n=n.replace(re,"").trim();
+      break;
     }
   }
 
-  if(!canonical)return n;
-
-  const escaped=canonical
-    .split(/\s+/)
-    .map(w=>w.replace(/[.*+?^${}()|[\\]\\]/g,"\\$&"))
-    .join("\\s+");
-  const trailing=new RegExp("\\s*(?:[-–—:]\\s*)?"+escaped+"\\s*$","i");
-
-  // Elimina tutte le copie consecutive e poi aggiunge una sola forma
-  // canonica. La regola vale per qualsiasi profumo e qualsiasi negozio.
-  while(trailing.test(n))n=n.replace(trailing,"").trim();
-  return (n+" "+canonical).trim();
+  const title=[n,canonical,audience].filter(Boolean).join(" ");
+  return title.replace(/\s+/g," ").trim();
 }
+
 function perfumeKey(x){
   return normalizePerfumeName(x.name||"");
 }
@@ -2233,15 +2280,6 @@ function removeTrailingGender(name){
     .trim();
 }
 
-/*
- * Normalizza il nome canonico prima di aggiungere concentrazione e pubblico.
- * I negozi possono concatenare questi dati in qualsiasi ordine, per esempio:
- *   "Asad Eau de Parfum Unisex"
- *   "Asad Unisex Eau de Parfum"
- *   "Asad Eau de Parfum Uomo Eau de Parfum"
- * La pulizia viene quindi ripetuta finché in coda non rimangono più marcatori
- * di concentrazione/pubblico. Nessuna regola dipende da un singolo prodotto.
- */
 function cleanCanonicalDisplayBase(name, concentration){
   let n=String(name||"").trim();
   if(!n)return n;
