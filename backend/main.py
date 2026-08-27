@@ -1799,7 +1799,10 @@ def _result_group_key(product: Dict[str, Any]) -> tuple:
     )
 
     if catalog_variant:
-        return ("catalog", brand, catalog_variant)
+        # Una stessa variante può comparire su più negozi.
+        # La deduplicazione finale deve quindi essere per STORE + VARIANTE,
+        # non globale sulla sola variante.
+        return ("catalog", store, brand, catalog_variant)
 
     raw_name = _display_raw_name(product)
     name_key = catalog_norm(raw_name)
@@ -1838,12 +1841,13 @@ def _collapse_family_results(
 ) -> List[Dict[str, Any]]:
     """
     Per una query che corrisponde a una famiglia del Registry restituisce
-    una sola offerta migliore per ogni variante autorizzata.
+    al massimo una offerta per ogni STORE e per ogni variante autorizzata.
 
-    Questo impedisce che più store, formati o diciture commerciali della
-    stessa variante gonfino il numero dei risultati. Il numero finale
-    dipende quindi dalle varianti realmente autorizzate dal catalogo,
-    non da un limite arbitrario e non da eccezioni sul singolo profumo.
+    Più store possono quindi mostrare la stessa variante. Formati o
+    duplicati della stessa referenza nello stesso store vengono invece
+    ridotti a una sola offerta. Il numero finale dipende dai risultati
+    realmente trovati dagli scraper e dalle varianti autorizzate dal
+    catalogo, non da un limite arbitrario o da eccezioni sul singolo profumo.
     """
     family = _catalog_family_for_query(query)
 
@@ -1870,8 +1874,8 @@ def _collapse_family_results(
         for key, product in grouped.items():
             if (
                 key[0] == "catalog"
-                and key[1] == catalog_norm(family.get("brand"))
-                and key[2] == canonical_key
+                and key[2] == catalog_norm(family.get("brand"))
+                and key[3] == canonical_key
             ):
                 ordered.append(product)
                 break
@@ -2991,6 +2995,68 @@ def diagnostic_pipeline(
             for item in final_results
         ],
     }
+
+
+@app.get("/diagnostic-deloox")
+def diagnostic_deloox(q: str):
+    """
+    Deep read-only diagnostic of the Deloox scraper.
+
+    Calls the scraper's own generic diagnose_search() directly,
+    bypassing the normal /search pipeline, so discovery can be
+    inspected independently.
+    """
+    query = str(q or "").strip()
+
+    if not query:
+        raise HTTPException(
+            status_code=400,
+            detail="Parametro q mancante",
+        )
+
+    try:
+        module = importlib.import_module(
+            "scrapers.deloox.scraper"
+        )
+        diagnose = getattr(
+            module,
+            "diagnose_search",
+            None,
+        )
+
+        if not callable(diagnose):
+            raise RuntimeError(
+                "Deloox scraper non espone diagnose_search()"
+            )
+
+        import requests
+
+        session = requests.Session()
+
+        try:
+            return {
+                "ok": True,
+                "store": "deloox",
+                "query": query,
+                "diagnostic": diagnose(
+                    session,
+                    query,
+                ),
+            }
+        finally:
+            session.close()
+
+    except HTTPException:
+        raise
+    except Exception as exc:
+        return {
+            "ok": False,
+            "store": "deloox",
+            "query": query,
+            "error": (
+                f"{type(exc).__name__}: {exc}"
+            ),
+        }
 
 
 @app.get("/diagnostic-search")
