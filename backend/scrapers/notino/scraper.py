@@ -504,30 +504,18 @@ def _stock_status(
     if not raw.strip():
         return None
 
-    # Notino può restituire nel JSON-LD un'offerta ancora marcata come
-    # disponibile anche quando la pagina mostra all'utente "Actuellement en
-    # rupture de stock". Il JSON-LD NON deve quindi avere priorità sullo
-    # stato visibile della pagina. Inoltre l'HTML può essere minificato su
-    # una sola riga, quindi raw.splitlines() da solo non è sufficiente.
-    try:
-        visible_text = BeautifulSoup(
-            raw,
-            "html.parser",
-        ).get_text("\n", strip=True)
-    except Exception:
-        visible_text = raw
+    structured = _structured_offer_stock_status(
+        raw,
+        product_name,
+        product_url,
+    )
 
-    visible_low = visible_text.lower()
-
-    if any(
-        marker in visible_low
-        for marker in OUT_STOCK_MARKERS
-    ):
-        return True
+    if structured is not None:
+        return structured
 
     lines = [
         _clean(line)
-        for line in visible_text.splitlines()
+        for line in raw.splitlines()
         if _clean(line)
     ]
 
@@ -588,17 +576,6 @@ def _stock_status(
     if status_hits:
         status_hits.sort(reverse=True)
         return status_hits[0][2]
-
-    # JSON-LD solo come fallback: può essere stale rispetto allo stato reale
-    # mostrato nella pagina.
-    structured = _structured_offer_stock_status(
-        raw,
-        product_name,
-        product_url,
-    )
-
-    if structured is not None:
-        return structured
 
     return None
 
@@ -3059,9 +3036,6 @@ def _reader_product(
         candidate_url,
     )
 
-    if stock is True:
-        return None
-
     return {
         "store": STORE,
         "name": _display_product_name(
@@ -3069,6 +3043,16 @@ def _reader_product(
             candidate_url,
         ),
         "price": price,
+        "availability": (
+            "in stock" if stock is True
+            else "out of stock" if stock is False
+            else "unknown"
+        ),
+        "available": (
+            True if stock is True
+            else False if stock is False
+            else None
+        ),
         "url": candidate_url,
     }
 
@@ -3129,6 +3113,12 @@ def _card_result(
     if not price:
         return None
 
+    stock = _stock_status(
+        f"{anchor} {card}",
+        name,
+        candidate.get("url", ""),
+    )
+
     return {
         "store": STORE,
         "name": _display_product_name(
@@ -3139,6 +3129,16 @@ def _card_result(
             ),
         ),
         "price": price,
+        "availability": (
+            "in stock" if stock is True
+            else "out of stock" if stock is False
+            else "unknown"
+        ),
+        "available": (
+            True if stock is True
+            else False if stock is False
+            else None
+        ),
         "url": candidate["url"],
     }
 
@@ -3393,9 +3393,6 @@ def _product_details(
         final_url,
     )
 
-    if stock is True:
-        return None
-
     if not price:
         return None
 
@@ -3407,6 +3404,16 @@ def _product_details(
             brand,
         ),
         "price": price,
+        "availability": (
+            "in stock" if stock is True
+            else "out of stock" if stock is False
+            else "unknown"
+        ),
+        "available": (
+            True if stock is True
+            else False if stock is False
+            else None
+        ),
         "url": final_url,
     }
 
