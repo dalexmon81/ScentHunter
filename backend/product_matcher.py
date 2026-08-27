@@ -274,7 +274,8 @@ class ProductMatcher:
     BRAND_KEYS = ("brand", "manufacturer", "maker")
     NAME_KEYS = ("name", "title", "product_name")
 
-    _NON_IDENTITY_PHRASES = (
+    _SET_PHRASES = (
+        "set",
         "gift set",
         "set regalo",
         "discovery set",
@@ -286,6 +287,9 @@ class ProductMatcher:
         "cofanetto",
         "bundle",
         "travel set",
+    )
+
+    _NON_IDENTITY_PHRASES = (
         "mystery box",
         "gift box",
         "tester",
@@ -426,7 +430,8 @@ class ProductMatcher:
             return ""
 
         # First try each catalog brand only when the title contains that brand
-        # explicitly, without scanning every catalog product.
+        # explicitly. This handles titles such as "French Avenue - Liquid Brun"
+        # without scanning every catalog product.
         raw_normalized = normalize(raw_name)
         for brand_n, brand_display in self._brand_display_by_normalized.items():
             brand_tokens = brand_n.split()
@@ -440,8 +445,9 @@ class ProductMatcher:
         # Then use the normalized title itself. The important part here is
         # that brand recovery must work from a *known catalog prefix*, not
         # only from a complete catalog product name. Retailers often publish
-        # valid variants that are not present in the catalog yet. In that case
-        # the shared family/brand prefix is still safe evidence
+        # valid variants that are not present in the catalog yet (for example
+        # "Hawas Atlantis" when the catalog only knows other Hawas variants).
+        # In that case the shared family/brand prefix is still safe evidence
         # when it maps to one unique brand.
         cleaned = self._clean_identity_name("", raw_name)
         if not cleaned:
@@ -534,6 +540,23 @@ class ProductMatcher:
             flags=re.I,
         )
         return re.sub(r"\s+", " ", text).strip(" -:|/")
+
+    @classmethod
+    def _is_set(cls, offer: Dict[str, Any]) -> bool:
+        fields = [
+            first_value(offer, cls.NAME_KEYS),
+            first_value(offer, ("category", "product_type", "type", "kind")),
+        ]
+        source = _nested_dict(offer, "source")
+        fields.extend((
+            first_value(source, ("source_name", "name", "title")),
+            first_value(source, ("category", "product_type", "type")),
+        ))
+        for raw in fields:
+            text = normalize(raw)
+            if any(re.search(rf"\b{re.escape(normalize(phrase))}\b", text) for phrase in cls._SET_PHRASES):
+                return True
+        return False
 
     @classmethod
     def _is_non_fragrance(cls, offer: Dict[str, Any]) -> bool:
@@ -720,10 +743,18 @@ class ProductMatcher:
             return None
 
         result = dict(offer)
+        is_set = self._is_set(offer)
+        result["result_category"] = "set" if is_set else "perfume"
 
-        product, method = self._identifier_match(offer)
-        if product is None:
-            product, method = self._exact_catalog_match(offer)
+        # A set/coffret is a valid ScentHunter result, but it is not the same
+        # catalog identity as the perfume(s) contained in the set. Keep its
+        # own retailer identity instead of collapsing it onto the perfume.
+        if is_set:
+            product, method = None, "set_identity"
+        else:
+            product, method = self._identifier_match(offer)
+            if product is None:
+                product, method = self._exact_catalog_match(offer)
 
         if product is not None:
             canonical_brand = product.brand
@@ -760,17 +791,6 @@ class ProductMatcher:
 
         else:
             raw_brand, raw_name, concentration = self._derive_identity(offer)
-
-            # If the offer was not matched to a single catalog product, first
-            # recover the canonical brand from the catalog name index. This is
-            # deliberately generic: it does not depend on any specific brand
-            # or perfume name.
-            hinted_brand = self._catalog_brand_hint(self._offer_name(offer))
-            if hinted_brand:
-                raw_brand = hinted_brand
-                raw_name = self._clean_identity_display(
-                    hinted_brand, self._offer_name(offer)
-                ) or raw_name
 
             if not raw_brand or normalize(raw_brand) not in self._catalog_brands:
                 hinted_brand = self._catalog_brand_hint(
