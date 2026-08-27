@@ -6,6 +6,7 @@ Discovery strategy:
 - Product pages are parsed through JSON-LD/page content.
 """
 from __future__ import annotations
+import html as html_lib
 
 import json
 import re
