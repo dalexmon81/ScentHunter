@@ -1877,8 +1877,9 @@ def _collapse_family_results(
                 and key[2] == catalog_norm(family.get("brand"))
                 and key[3] == canonical_key
             ):
+                # La stessa variante deve poter comparire in tutti gli
+                # store che l'hanno trovata. Non interrompere al primo.
                 ordered.append(product)
-                break
 
     return ordered
 
