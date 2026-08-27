@@ -6,7 +6,6 @@ Discovery strategy:
 - Product pages are parsed through JSON-LD/page content.
 """
 from __future__ import annotations
-import html as html_lib
 
 import json
 import re
@@ -77,21 +76,123 @@ def parse_price(v):
 
 
 def availability(text, offer=None, soup=None):
-    """Determine availability from product-specific signals only.
+    """Determine availability for the current Deloox product.
 
-    IMPORTANT: do not scan the entire product page for ``out of stock``
-    before checking structured data. Deloox can mention that phrase in
-    unrelated/recommendation/filter content even when the current product
-    is purchasable.
-
-    Priority:
-      1. JSON-LD Product/Offer availability (most reliable)
-      2. product-page purchase controls / availability elements
-      3. only then a tightly scoped textual fallback
+    Deloox can expose stale Offer availability in JSON-LD.  Prefer an
+    explicit purchase/availability signal belonging to the current product,
+    then fall back to the structured Offer.  Never inspect every button on
+    the page because recommendation widgets can contain contradictory stock
+    text.
     """
 
-    # 1) Structured data. Schema.org normally exposes values such as
-    # https://schema.org/InStock, OutOfStock, LimitedAvailability, etc.
+    # 1) Explicit product-level availability elements.
+    if soup is not None:
+        product_scope = []
+
+        # These selectors are deliberately narrow.  Do NOT select every
+        # button/cart element on the page: Deloox recommendation modules can
+        # contain unrelated "out of stock" buttons.
+        selectors = (
+            '[itemprop="availability"]',
+            '[data-testid*="availability" i]',
+            '[data-test*="availability" i]',
+            '[aria-label*="availability" i]',
+            '[aria-label*="voorraad" i]',
+        )
+
+        for selector in selectors:
+            try:
+                nodes = soup.select(selector)
+            except Exception:
+                nodes = []
+
+            for node in nodes[:10]:
+                value = clean(
+                    node.get("content")
+                    or node.get("aria-label")
+                    or node.get_text(" ", strip=True)
+                )
+                if value:
+                    product_scope.append(value)
+
+        scoped = norm(" ".join(product_scope))
+
+        if scoped:
+            if any(marker in scoped for marker in (
+                "out of stock",
+                "sold out",
+                "currently unavailable",
+                "not available",
+                "unavailable",
+                "uitverkocht",
+                "niet op voorraad",
+                "niet beschikbaar",
+                "tijdelijk uitverkocht",
+            )):
+                return "out_of_stock"
+
+            if any(marker in scoped for marker in (
+                "in stock",
+                "available",
+                "op voorraad",
+            )):
+                return "in_stock"
+
+        # A purchase button is useful only when it is explicitly an
+        # add-to-cart/buy control.  We inspect its own text/aria label, not
+        # all buttons on the page.
+        purchase_selectors = (
+            'button[type="submit"]',
+            'input[type="submit"]',
+            '[class*="add-to-cart" i]',
+            '[class*="addtocart" i]',
+            '[class*="purchase" i]',
+        )
+
+        for selector in purchase_selectors:
+            try:
+                nodes = soup.select(selector)
+            except Exception:
+                nodes = []
+
+            for node in nodes[:10]:
+                value = norm(
+                    clean(
+                        node.get("aria-label")
+                        or node.get("value")
+                        or node.get_text(" ", strip=True)
+                    )
+                )
+                if not value:
+                    continue
+
+                if any(marker in value for marker in (
+                    "out of stock",
+                    "sold out",
+                    "unavailable",
+                    "uitverkocht",
+                    "niet op voorraad",
+                    "niet beschikbaar",
+                )):
+                    return "out_of_stock"
+
+                if any(marker in value for marker in (
+                    "add to cart",
+                    "add to basket",
+                    "add to bag",
+                    "in winkelwagen",
+                    "toevoegen aan winkelwagen",
+                    "toevoegen aan winkelmand",
+                    "in winkelmand",
+                    "buy now",
+                    "koop nu",
+                    "bestel nu",
+                    "bestellen",
+                )):
+                    return "in_stock"
+
+    # 2) Structured Offer data.  This remains an important fallback, but it
+    # cannot override an explicit live purchase signal above.
     if isinstance(offer, dict):
         raw = clean(
             offer.get("availability")
@@ -99,76 +200,34 @@ def availability(text, offer=None, soup=None):
             or offer.get("availabilityStatus")
             or ""
         ).lower()
+
         if raw:
-            if any(x in raw for x in (
-                "outofstock", "out_of_stock", "soldout", "sold_out",
-                "discontinued", "unavailable",
-            )):
-                return "out_of_stock"
-            if any(x in raw for x in (
-                "instock", "in_stock", "limitedavailability",
-                "preorder", "pre_order",
+            if any(marker in raw for marker in (
+                "instock",
+                "in_stock",
+                "limitedavailability",
+                "preorder",
+                "pre_order",
             )):
                 return "in_stock"
 
-    # 2) Look only at elements that are likely to describe the current
-    # product's purchase/stock state. Do NOT use soup.get_text() here.
-    if soup is not None:
-        scoped_parts = []
-
-        selectors = [
-            '[itemprop="availability"]',
-            '[data-testid*="availability" i]',
-            '[data-test*="availability" i]',
-            '[class*="availability" i]',
-            '[class*="stock" i]',
-            '[class*="add-to-cart" i]',
-            '[class*="buy" i]',
-            'button[type="submit"]',
-        ]
-
-        seen_nodes = set()
-        for selector in selectors:
-            try:
-                nodes = soup.select(selector)
-            except Exception:
-                nodes = []
-            for node in nodes[:20]:
-                marker = id(node)
-                if marker in seen_nodes:
-                    continue
-                seen_nodes.add(marker)
-                scoped_parts.append(
-                    clean(node.get("content") or node.get("aria-label") or node.get_text(" ", strip=True))
-                )
-
-        scoped = norm(" ".join(x for x in scoped_parts if x))
-        if scoped:
-            if any(x in scoped for x in (
-                "sold out", "out of stock", "not available",
-                "currently unavailable", "unavailable",
+            if any(marker in raw for marker in (
+                "outofstock",
+                "out_of_stock",
+                "soldout",
+                "sold_out",
+                "discontinued",
+                "unavailable",
             )):
                 return "out_of_stock"
-            if any(x in scoped for x in (
-                "in stock", "available", "op voorraad", "add to cart",
-                "add to basket", "buy now", "bestellen",
-            )):
-                return "in_stock"
 
-    # 3) Deliberately conservative fallback. Only use the whole-page text
-    # when there is NO structured/scoped signal at all. This prevents a
-    # recommendation card saying "out of stock" from poisoning the product.
-    t = norm(text)
-    if any(x in t for x in (
-        "sold out",
-        "out of stock",
-        "currently unavailable",
-    )):
-        return "out_of_stock"
-    if any(x in t for x in ("in stock", "op voorraad")):
+    # 3) Conservative fallback: only accept an explicit stock phrase in the
+    # page text.  Do not treat generic recommendation text as authoritative.
+    page_text = norm(text)
+    if "in stock" in page_text or "op voorraad" in page_text:
         return "in_stock"
-    return "unknown"
 
+    return "unknown"
 
 def _jsonld(soup):
     for script in soup.select('script[type="application/ld+json"]'):
@@ -324,49 +383,70 @@ def _candidate_queries(query):
     return out
 
 
+PRODUCT_URL_PATTERNS = [
+    r'href\s*=\s*["\']((?:https?:)?//(?:www\.)?deloox\.com[^"\']*/product/[^"\']+)',
+    r'["\']((?:/)?(?:en/|it/|nl/)?product/[^"\s<>]+)["\']',
+    r'["\']((?:/)?(?:en/|it/|nl/)?product/[^"\s<>]+)',
+]
+
+
 def _candidate_product_urls(
     html,
     query,
     discovery_query=None,
     accept_all_products=False,
 ):
-    """Extract Deloox product URLs robustly from HTML, JSON and JS."""
-    soup = BeautifulSoup(html, "html.parser")
-    found, seen = [], set()
+    """Extract Deloox product URLs from HTML.
 
-    def add(raw_url, context=""):
+    This function is generic and does not depend on specific products.
+    It extracts URLs from <a> tags, data attributes, and raw HTML.
+    """
+    soup = BeautifulSoup(html, "html.parser")
+    found = []
+    seen = set()
+    q_tokens = tokens(discovery_query or query)
+
+    def add(raw_url, text=""):
         if not raw_url:
             return
-        raw_url = html_lib.unescape(clean(raw_url)).replace("\\/", "/")
-        if raw_url.startswith(("javascript:", "mailto:", "#")):
+
+        raw_url = clean(raw_url).replace("\\/", "/")
+        if not raw_url:
             return
-        url = urljoin(BASE_URL, raw_url).split("#")[0].split("?")[0]
+
+        url = urljoin(BASE_URL, raw_url).split("#")[0]
         try:
             parsed = urlparse(url)
         except Exception:
             return
+
         if parsed.netloc.lower() not in {"deloox.com", "www.deloox.com"}:
             return
-        if "/product/" not in parsed.path.lower() or url in seen:
+
+        if "/product/" not in parsed.path.lower():
             return
-        if not accept_all_products and not matches(f"{context} {url}", query):
+
+        if url in seen:
             return
+
         seen.add(url)
         found.append(url)
 
     for a in soup.find_all("a", href=True):
         add(a.get("href"), a.get_text(" ", strip=True))
 
-    normalized = html_lib.unescape(html).replace("\\/", "/")
-    patterns = [
-        r'https?://(?:www\.)?deloox\.com/[^"\'<>\s]+/product/[^"\'<>\s]+',
-        r'["\']((?:https?:)?//(?:www\.)?deloox\.com/[^"\']*/product/[^"\']+)["\']',
-        r'["\']((?:/)?(?:en/|it/)?product/[^"\']+)["\']',
-    ]
-    for pattern in patterns:
-        for raw in re.findall(pattern, normalized, re.I):
-            add(raw)
+    for tag in soup.find_all(True):
+        for attr, value in tag.attrs.items():
+            if isinstance(value, str) and attr.startswith(("data-", "href")):
+                add(value)
+
+    raw_html = html.replace("\\\\/", "/")
+    for pattern in PRODUCT_URL_PATTERNS:
+        for raw_url in re.findall(pattern, raw_html, re.I):
+            add(raw_url)
+
     return found
+
 
 def _category_product_line_links(html, query):
     """Find Deloox Product-line category URLs matching the query.
@@ -681,85 +761,106 @@ def _sitemap_product_urls(session, query, max_sitemaps=12, max_urls=80):
 
 
 def _discover(session, q):
-    """Generic Deloox discovery with broad, non-product-specific fallbacks."""
-    urls, seen = [], set()
+    """Generic Deloox discovery with direct search FIRST.
+
+    The important rule is that Deloox must be attempted for every query.
+    Category crawling is only a fallback because category pages can hang.
+    No perfume/brand-specific rule belongs here.
+    """
+    urls = []
+    seen = set()
 
     def add(url):
-        if url and url not in seen and len(urls) < 60:
+        if url and url not in seen and len(urls) < 24:
             seen.add(url)
             urls.append(url)
 
-    # Search surface.
-    for discovery_query in _candidate_queries(q)[:3]:
-        for route in (
-            "/en/search?query=",
-            "/en/search?search=",
-            "/en/search?q=",
-            "/it/cerca?query=",
-        ):
+    # 1. PRIMARY: Deloox's own search surface.
+    # Try the complete query first, then a small generic broadening.  The
+    # original query is still validated later by _product(), so broadening
+    # discovery cannot make unrelated products appear in the final results.
+    discovery_queries = _candidate_queries(q)[:2]
+    search_endpoints = (
+        "/en/search?query=",
+        "/en/search?search=",
+        "/en/search?q=",
+    )
+
+    for discovery_query in discovery_queries:
+        for route in search_endpoints:
+            endpoint = BASE_URL + route + quote_plus(discovery_query)
             try:
                 r = session.get(
-                    BASE_URL + route + quote_plus(discovery_query),
+                    endpoint,
                     headers=HEADERS,
                     timeout=TIMEOUT,
                 )
             except requests.RequestException:
                 continue
-            if r.status_code < 400:
-                for u in _candidate_product_urls(
-                    r.text, q, discovery_query=discovery_query,
-                    accept_all_products=True,
-                ):
-                    add(u)
 
-    if urls:
-        return urls[:60]
+            if r.status_code >= 400:
+                continue
 
-    # Dedicated category/Product-line discovery from Deloox sitemaps.
-    # This is the missing generic path for product lines that are not exposed
-    # as direct links on the three broad fragrance entry pages.
-    for category_url in _sitemap_category_urls(
-        session, q, max_sitemaps=12, max_urls=30
+            for product_url in _candidate_product_urls(
+                r.text,
+                q,
+                discovery_query=discovery_query,
+                accept_all_products=True,
+            ):
+                add(product_url)
+                if len(urls) >= 24:
+                    return urls[:24]
+
+    # 2. SECONDARY: direct product sitemap.  This is still generic and does
+    # not depend on a brand/category filter being rendered by Deloox.
+    for product_url in _sitemap_product_urls(
+        session,
+        q,
+        max_sitemaps=2,
+        max_urls=12,
     ):
-        try:
-            r = session.get(
-                category_url,
-                headers=HEADERS,
-                timeout=TIMEOUT,
-            )
-        except requests.RequestException:
-            continue
-        if r.status_code >= 400:
-            continue
+        add(product_url)
+        if len(urls) >= 24:
+            return urls[:24]
 
-        for u in _candidate_product_urls(
-            r.text, q, accept_all_products=True
+    # 3. FALLBACK: category -> brand -> product-line discovery.
+    # This is deliberately last: the previous implementation put this first,
+    # so a slow category request could prevent Deloox from ever reaching its
+    # own search endpoint.
+    for url in _discover_from_categories(
+        session,
+        q,
+        max_urls=12,
+    ):
+        add(url)
+        if len(urls) >= 24:
+            return urls[:24]
+
+    # 4. Last-resort search route used by older Deloox deployments.
+    endpoint = BASE_URL + "/it/cerca?query=" + quote_plus(q)
+    try:
+        r = session.get(
+            endpoint,
+            headers=HEADERS,
+            timeout=TIMEOUT,
+        )
+    except requests.RequestException:
+        return urls[:24]
+
+    if r.status_code < 400:
+        for product_url in _candidate_product_urls(
+            r.text,
+            q,
+            discovery_query=q,
+            accept_all_products=True,
         ):
-            add(u)
-            if len(urls) >= 60:
-                return urls[:60]
+            add(product_url)
+            if len(urls) >= 24:
+                break
 
-    if urls:
-        return urls[:60]
+    return urls[:24]
 
-    # Generic sitemap scan.
-    for u in _sitemap_product_urls(
-        session, q, max_sitemaps=12, max_urls=120
-    ):
-        add(u)
-        if len(urls) >= 60:
-            return urls[:60]
 
-    if urls:
-        return urls[:60]
-
-    # Generic category fallback.
-    for u in _discover_from_categories(session, q, max_urls=60):
-        add(u)
-        if len(urls) >= 60:
-            break
-
-    return urls[:60]
 
 def diagnose_search(session, query):
     """Deep Deloox discovery diagnostic; does not change normal search."""
