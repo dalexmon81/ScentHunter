@@ -849,7 +849,54 @@ def _discover(session, q):
         if len(urls) >= 24:
             return urls[:24]
 
-    # 3. FALLBACK: category -> brand -> product-line discovery.
+    # 3. DEDICATED CATEGORY/PRODUCT-LINE DISCOVERY FROM SITEMAPS.
+    # Deloox can expose a product line only through its own dedicated
+    # category page, while the broad fragrance pages contain no matching
+    # filter link. The category sitemap is the generic source of truth for
+    # those pages. The final _product() validation still decides what is a
+    # real result, so this never creates a product-specific exception.
+    for category_url in _sitemap_category_urls(
+        session,
+        q,
+        max_sitemaps=48,
+        max_urls=24,
+    ):
+        try:
+            r = session.get(
+                category_url,
+                headers=HEADERS,
+                timeout=TIMEOUT,
+            )
+        except requests.RequestException:
+            continue
+
+        if r.status_code >= 400:
+            reader_html = _reader_get(session, category_url)
+            for product_url in _reader_candidate_product_urls(reader_html):
+                add(product_url)
+                if len(urls) >= 24:
+                    return urls[:24]
+            continue
+
+        before = len(urls)
+        for product_url in _candidate_product_urls(
+            r.text,
+            q,
+            discovery_query=q,
+            accept_all_products=True,
+        ):
+            add(product_url)
+            if len(urls) >= 24:
+                return urls[:24]
+
+        if len(urls) == before:
+            reader_html = _reader_get(session, category_url)
+            for product_url in _reader_candidate_product_urls(reader_html):
+                add(product_url)
+                if len(urls) >= 24:
+                    return urls[:24]
+
+    # 4. FALLBACK: category -> brand -> product-line discovery.
     # This is deliberately last: the previous implementation put this first,
     # so a slow category request could prevent Deloox from ever reaching its
     # own search endpoint.
@@ -862,7 +909,7 @@ def _discover(session, q):
         if len(urls) >= 24:
             return urls[:24]
 
-    # 4. Last-resort search route used by older Deloox deployments.
+    # 5. Last-resort search route used by older Deloox deployments.
     endpoint = BASE_URL + "/it/cerca?query=" + quote_plus(q)
     try:
         r = session.get(
