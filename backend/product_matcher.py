@@ -808,7 +808,7 @@ class ProductMatcher:
             title = f"{title} {gender}".strip()
         return re.sub(r"\s+", " ", title).strip()
 
-    def match(self, offer: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+    def match(self, offer: Dict[str, Any], query: str = "") -> Optional[Dict[str, Any]]:
         if not isinstance(offer, dict):
             return None
 
