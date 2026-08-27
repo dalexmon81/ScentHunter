@@ -1802,7 +1802,7 @@ def _result_group_key(product: Dict[str, Any]) -> tuple:
         # Una stessa variante può comparire su più negozi.
         # La deduplicazione finale deve quindi essere per STORE + VARIANTE,
         # non globale sulla sola variante.
-        return ("catalog", store, brand, catalog_variant)
+        return ("catalog", catalog_norm(product.get("store")), brand, catalog_variant)
 
     raw_name = _display_raw_name(product)
     name_key = catalog_norm(raw_name)
