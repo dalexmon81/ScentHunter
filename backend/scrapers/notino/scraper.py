@@ -2848,6 +2848,46 @@ def _extract_reader_product_name(
     return ""
 
 
+
+def _extract_size_from_text(text: Any) -> Optional[float]:
+    match = SIZE_RE.search(_clean(text))
+    if not match:
+        return None
+    return _size_value_to_ml(match.group(1), match.group(2))
+
+
+def _extract_concentration_from_text(text: Any) -> str:
+    content = _clean(text)
+    rules = (
+        ("eau de parfum", r"\beau\s+de\s+parfum\b|\bedp\b"),
+        ("eau de toilette", r"\beau\s+de\s+toilette\b|\bedt\b"),
+        ("eau de cologne", r"\beau\s+de\s+cologne\b|\bedc\b"),
+        ("extrait de parfum", r"\bextrait\s+(?:de\s+)?parfum\b|\bextrait\b"),
+        ("parfum", r"\bparfum\b"),
+    )
+    for label, pattern in rules:
+        if re.search(pattern, content, re.I):
+            return label
+    return ""
+
+
+def _extract_gender_from_text(text: Any) -> str:
+    content = _clean(text)
+    if re.search(
+        r"\b(?:pour\s+homme|homme|hommes|men|man|masculin|male|uomo)\b",
+        content,
+        re.I,
+    ):
+        return "men"
+    if re.search(
+        r"\b(?:pour\s+femme|femme|femmes|women|woman|feminine|female|donna)\b",
+        content,
+        re.I,
+    ):
+        return "women"
+    return ""
+
+
 def _reader_product(
     text: str,
     candidate: Dict[str, Any],
@@ -3054,6 +3094,15 @@ def _reader_product(
             else None
         ),
         "url": candidate_url,
+        "size_ml": _extract_size_from_text(
+            raw,
+        ),
+        "concentration": _extract_concentration_from_text(
+            raw,
+        ),
+        "gender": _extract_gender_from_text(
+            raw,
+        ),
     }
 
 
@@ -3140,7 +3189,180 @@ def _card_result(
             else None
         ),
         "url": candidate["url"],
+        "size_ml": _extract_size_from_text(context),
+        "concentration": _extract_concentration_from_text(context),
+        "gender": _extract_gender_from_text(context),
     }
+
+
+
+def _extract_product_page_attribute_texts(
+    soup: BeautifulSoup,
+    title: str = "",
+    product: Optional[Dict[str, Any]] = None,
+) -> List[str]:
+    """Return text restricted to the selected product, not recommendations."""
+    texts: List[str] = []
+
+    if title:
+        texts.append(title)
+
+    if isinstance(product, dict):
+        for key in ("name", "description"):
+            value = product.get(key)
+            if value:
+                texts.append(str(value))
+
+    for selector in (
+        '[itemprop="name"]',
+        '[itemprop="description"]',
+        '[class*="product-detail"]',
+        '[class*="product-information"]',
+        '[class*="product-description"]',
+        '[class*="product-attribute"]',
+        '[class*="product-variant"]',
+        '[class*="product-options"]',
+        '[class*="variant"]',
+    ):
+        for node in soup.select(selector):
+            text = _clean(node.get_text(" ", strip=True))
+            if text:
+                texts.append(text)
+
+    # Keep order while removing duplicates.
+    seen = set()
+    result: List[str] = []
+    for text in texts:
+        key = text.casefold()
+        if key in seen:
+            continue
+        seen.add(key)
+        result.append(text)
+    return result
+
+
+def _extract_size_ml_from_product_page(
+    soup: BeautifulSoup,
+    title: str = "",
+    product: Optional[Dict[str, Any]] = None,
+) -> Optional[float]:
+    """Extract the selected bottle size from product-specific page content."""
+    texts = _extract_product_page_attribute_texts(
+        soup,
+        title,
+        product,
+    )
+
+    # Structured product data is the cleanest source when present.
+    if isinstance(product, dict):
+        for key in ("size", "volume", "capacity"):
+            value = product.get(key)
+            if value:
+                match = SIZE_RE.search(_clean(str(value)))
+                if match:
+                    return _size_value_to_ml(match.group(1), match.group(2))
+
+    # Prefer explicitly labelled size/volume/format fields.
+    labelled = re.compile(
+        r"(?:taille|format|volume|contenance|quantité|quantite|"
+        r"taille du produit|volume du produit)"
+        r"\s*[:\-]?\s*"
+        r"(\d{1,4}(?:[.,]\d{1,2})?)\s*"
+        r"(ml|cl|dl|l|oz|fl\s*oz)\b",
+        re.I,
+    )
+
+    for text in texts:
+        match = labelled.search(text)
+        if match:
+            return _size_value_to_ml(match.group(1), match.group(2))
+
+    # Otherwise use a product-specific text block, stopping at the first
+    # explicit bottle size. Related-product cards are deliberately excluded.
+    for text in texts:
+        match = SIZE_RE.search(text)
+        if match:
+            return _size_value_to_ml(match.group(1), match.group(2))
+
+    return None
+
+
+def _size_value_to_ml(value: str, unit: str) -> Optional[float]:
+    try:
+        number = float(str(value).replace(",", "."))
+    except (TypeError, ValueError):
+        return None
+
+    unit_norm = unit.casefold().replace(" ", "")
+    factors = {
+        "ml": 1.0,
+        "cl": 10.0,
+        "dl": 100.0,
+        "l": 1000.0,
+        "oz": 29.5735,
+        "floz": 29.5735,
+    }
+    factor = factors.get(unit_norm)
+    if factor is None:
+        return None
+    return number * factor
+
+
+def _extract_concentration_from_product_page(
+    soup: BeautifulSoup,
+    title: str = "",
+    product: Optional[Dict[str, Any]] = None,
+) -> str:
+    texts = _extract_product_page_attribute_texts(
+        soup,
+        title,
+        product,
+    )
+    combined = _clean(" ".join(texts))
+
+    rules = (
+        ("eau de parfum", r"\beau\s+de\s+parfum\b|\bedp\b"),
+        ("eau de toilette", r"\beau\s+de\s+toilette\b|\bedt\b"),
+        ("eau de cologne", r"\beau\s+de\s+cologne\b|\bedc\b"),
+        ("extrait de parfum", r"\bextrait\s+(?:de\s+)?parfum\b|\bextrait\b"),
+        ("parfum", r"\bparfum\b"),
+    )
+
+    for label, pattern in rules:
+        if re.search(pattern, combined, re.I):
+            return label
+    return ""
+
+
+def _extract_gender_from_product_page(
+    soup: BeautifulSoup,
+    title: str = "",
+    product: Optional[Dict[str, Any]] = None,
+) -> str:
+    texts = _extract_product_page_attribute_texts(
+        soup,
+        title,
+        product,
+    )
+    combined = _clean(" ".join(texts))
+
+    if re.search(
+        r"\b(?:pour\s+homme|homme|hommes|hom|"
+        r"pour\s+men|men|man|masculin|masculine|male|uomo)\b",
+        combined,
+        re.I,
+    ):
+        return "men"
+
+    if re.search(
+        r"\b(?:pour\s+femme|femme|femmes|"
+        r"women|woman|femenin|feminine|female|donna)\b",
+        combined,
+        re.I,
+    ):
+        return "women"
+
+    return ""
 
 
 def _product_details(
@@ -3333,6 +3555,29 @@ def _product_details(
         else ""
     )
 
+    product_jsonld = next(
+        _json_ld_products(soup),
+        None,
+    )
+
+    extracted_size_ml = _extract_size_ml_from_product_page(
+        soup,
+        name,
+        product_jsonld,
+    )
+
+    extracted_concentration = _extract_concentration_from_product_page(
+        soup,
+        name,
+        product_jsonld,
+    )
+
+    extracted_gender = _extract_gender_from_product_page(
+        soup,
+        name,
+        product_jsonld,
+    )
+
     if _has_non_perfume_marker_in_product(
         name,
         final_url,
@@ -3415,6 +3660,9 @@ def _product_details(
             else None
         ),
         "url": final_url,
+        "size_ml": extracted_size_ml,
+        "concentration": extracted_concentration,
+        "gender": extracted_gender,
     }
 
 
