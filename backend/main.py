@@ -923,8 +923,6 @@ def _catalog_variant_for_product(
     #
     # Il confronto usa sia l'uguaglianza sia l'inclusione, ma sceglie
     # sempre l'alias più specifico. Questo evita che un alias corto
-    # (per esempio "Hawas For Her") vinca su una variante più specifica
-    # (per esempio "Hawas For Her Eclat").
     variant_matches = []
 
     for variant in family.get("variants", []):
@@ -1606,8 +1604,8 @@ def deterministic_result_key(product: Dict[str, Any]) -> tuple:
     )
 
     return (
-        price_key,
         availability_rank,
+        price_key,
         store_rank,
         name,
         url,
@@ -1907,7 +1905,7 @@ def _prepare_final_results(
         item["title"] = item["name"]
         prepared.append(item)
 
-    return sort_by_price(prepared)
+    return prepared
 
 
 # ============================================================
@@ -3193,6 +3191,14 @@ def product(
 
     offers.sort(
         key=lambda offer: (
+            {
+                "in stock": 0,
+                "in_stock": 0,
+                "available": 0,
+                "out of stock": 1,
+                "out_of_stock": 1,
+                "unknown": 2,
+            }.get(product_availability(offer), 3),
             offer["price_value"],
             norm(offer.get("store", "")),
             norm(offer.get("name", "")),
