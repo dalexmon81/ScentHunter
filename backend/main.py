@@ -953,8 +953,7 @@ def _catalog_variant_for_product(
     #
     # Il confronto usa sia l'uguaglianza sia l'inclusione, ma sceglie
     # sempre l'alias più specifico. Questo evita che un alias corto
-    # (per esempio "Hawas For Her") vinca su una variante più specifica
-    # (per esempio "Hawas For Her Eclat").
+    # una variante meno specifica non deve vincere su una variante più specifica.
     variant_matches = []
 
     for variant in family.get("variants", []):
@@ -2360,7 +2359,7 @@ def _validate_candidate(
     # il matcher riceve il candidato RAW e restituisce la sua identità
     # canonica dal catalogo autorevole.
     try:
-        matched_product = _PRODUCT_MATCHER.match(product)
+        matched_product = _PRODUCT_MATCHER.match(product, query)
     except Exception as exc:
         print(
             "PRODUCT_MATCHER_RUNTIME_ERROR:",
@@ -2393,16 +2392,22 @@ def _validate_candidate(
         # L'identità del Family Registry deve essere applicata all'oggetto
         # candidato che prosegue nel percorso verso matched_candidates.
         # Non deve restare confinata a un risultato diagnostico o al matcher.
-        product = dict(product)
-        product.update(resolved_identity)
+        final_product = (
+            dict(matched_product)
+            if isinstance(matched_product, dict)
+            else dict(product)
+        )
+        final_product.update(resolved_identity)
 
-        product["match_method"] = (
-            product.get("match_method")
+        final_product["match_method"] = (
+            resolved_identity.get("match_method")
+            or final_product.get("match_method")
             or "family_registry_alias"
         )
-        product["name"] = product["canonical_name"]
+        if final_product.get("canonical_name"):
+            final_product["name"] = final_product["canonical_name"]
 
-        return product
+        return final_product
 
     return matched_product
 
