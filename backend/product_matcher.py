@@ -57,7 +57,7 @@ def normalize_gender(value: Any) -> str:
 
 
 def gender_from_offer(item: Dict[str, Any]) -> str:
-    """Read explicit audience data exposed by a scraper without guessing."""
+    """Read explicit audience data exposed by a scraper, including nested attributes."""
     values = [
         item.get("gender"),
         item.get("audience"),
@@ -69,66 +69,15 @@ def gender_from_offer(item: Dict[str, Any]) -> str:
         _nested_attribute_value(item, "for_whom"),
     ]
     source = _nested_dict(item, "source")
-    values.extend((
-        source.get("gender"),
-        source.get("audience"),
-        source.get("for_whom"),
-    ))
-
+    values.extend((source.get("gender"), source.get("audience"), source.get("for_whom")))
     for value in values:
         gender = normalize_gender(value)
         if gender:
             return gender
 
-    # Some retailers expose the audience only in the URL, description or
-    # JSON-LD/raw payload. Inspect those generic evidence fields as a fallback.
-    # If both audiences are present, remain neutral instead of guessing.
-    evidence: List[str] = []
-    for key in ("name", "title", "product_name", "url", "description"):
-        value = item.get(key)
-        if value:
-            evidence.append(str(value))
-
-    for key in ("name", "title", "url", "description", "gender", "audience", "for_whom"):
-        value = source.get(key)
-        if value:
-            evidence.append(str(value))
-
-    raw_data = item.get("raw_data")
-    if raw_data:
-        def collect_strings(value: Any) -> None:
-            if isinstance(value, dict):
-                for nested in value.values():
-                    collect_strings(nested)
-            elif isinstance(value, (list, tuple, set)):
-                for nested in value:
-                    collect_strings(nested)
-            elif isinstance(value, str):
-                evidence.append(value)
-
-        collect_strings(raw_data)
-
-    evidence_text = normalize(" ".join(evidence))
-    if not evidence_text:
-        return ""
-
-    male = bool(re.search(
-        r"\b(?:for\s+him|for\s+men|men|man|male|homme|heren|mannen|"
-        r"uomo|hombre|hombres|pour\s+homme)\b",
-        evidence_text,
-    ))
-    female = bool(re.search(
-        r"\b(?:for\s+her|for\s+women|women|woman|female|femme|dames|"
-        r"vrouwen|donna|mujer|mujeres|pour\s+femme)\b",
-        evidence_text,
-    ))
-
-    if male and not female:
-        return "Uomo"
-    if female and not male:
-        return "Donna"
-
-    return ""
+    # Only explicit gender markers in the retailer title are accepted.
+    title = " ".join(str(item.get(k) or "") for k in ("name", "title", "product_name"))
+    return normalize_gender(title)
 
 
 def extract_size_ml(text: str) -> Optional[int]:
@@ -484,34 +433,14 @@ class ProductMatcher:
         # explicitly. This handles titles such as "French Avenue - Liquid Brun"
         # without scanning every catalog product.
         raw_normalized = normalize(raw_name)
-        raw_tokens = raw_normalized.split()
-
-        # If the retailer title explicitly contains a known catalog brand,
-        # that is sufficient evidence to recover the brand. The old logic
-        # required the remaining product name to exist as a catalog prefix,
-        # which incorrectly left valid new/uncatalogued variants without a
-        # canonical brand. Prefer the most specific (longest) matching brand
-        # when catalog brands overlap, e.g. a multi-word brand and one of its
-        # shorter components.
-        explicit_brands = []
         for brand_n, brand_display in self._brand_display_by_normalized.items():
             brand_tokens = brand_n.split()
-            if not brand_tokens or len(brand_tokens) > len(raw_tokens):
-                continue
-
-            for start in range(len(raw_tokens) - len(brand_tokens) + 1):
-                if raw_tokens[start:start + len(brand_tokens)] == brand_tokens:
-                    explicit_brands.append(
-                        (len(brand_tokens), brand_n, brand_display)
-                    )
-                    break
-
-        if explicit_brands:
-            explicit_brands.sort(
-                key=lambda item: (item[0], len(item[1])),
-                reverse=True,
-            )
-            return explicit_brands[0][2]
+            if brand_tokens and all(token in raw_normalized.split() for token in brand_tokens):
+                cleaned = self._clean_identity_name(brand_display, raw_name)
+                if cleaned in self._brand_by_prefix:
+                    brands = self._brand_by_prefix[cleaned]
+                    if len(brands) == 1:
+                        return self._brand_display_by_normalized[next(iter(brands))]
 
         # Then use the normalized title itself. The important part here is
         # that brand recovery must work from a *known catalog prefix*, not
@@ -560,7 +489,7 @@ class ProductMatcher:
         )
         text = re.sub(
             r"\b(?:eau de parfum|eau de toilette|eau de cologne|"
-            r"extrait de parfum|extrait|parfum|parfüm|edp|edt|edc|"
+            r"extrait de parfum|extrait|parfum|edp|edt|edc|"
             r"spray|vaporisateur)\b",
             " ",
             text,
@@ -573,7 +502,6 @@ class ProductMatcher:
             " ",
             text,
         )
-        text = re.sub(r"\(\s*\)", " ", text)
         return re.sub(r"\s+", " ", text).strip()
 
     @classmethod
@@ -597,7 +525,7 @@ class ProductMatcher:
         text = re.sub(
             r"\b(?:eau\s+de\s+parfum|eau\s+de\s+toilette|"
             r"eau\s+de\s+cologne|extrait(?:\s+de\s+parfum)?|"
-            r"parfum|parfüm|edp|edt|edc|spray|vaporisateur)\b",
+            r"parfum|edp|edt|edc|spray|vaporisateur)\b",
             " ",
             text,
             flags=re.I,
@@ -611,7 +539,6 @@ class ProductMatcher:
             text,
             flags=re.I,
         )
-        text = re.sub(r"\(\s*\)", " ", text)
         return re.sub(r"\s+", " ", text).strip(" -:|/")
 
     @classmethod
@@ -776,8 +703,8 @@ class ProductMatcher:
         cleaned = cls._clean_identity_name(brand, raw_name)
         display_name = cls._clean_identity_display(brand, raw_name)
         concentration = (
-            extract_concentration(raw_name)
-            or extract_concentration(offer.get("concentration"))
+            str(offer.get("concentration") or "").strip()
+            or extract_concentration(raw_name)
         )
 
         return (
@@ -808,7 +735,7 @@ class ProductMatcher:
             title = f"{title} {gender}".strip()
         return re.sub(r"\s+", " ", title).strip()
 
-    def match(self, offer: Dict[str, Any], query: str = "") -> Optional[Dict[str, Any]]:
+    def match(self, offer: Dict[str, Any]) -> Optional[Dict[str, Any]]:
         if not isinstance(offer, dict):
             return None
 
@@ -836,9 +763,9 @@ class ProductMatcher:
                 product.catalog_variant or product.name,
             ) or (product.catalog_variant or product.name)
             concentration = (
-                str(product.concentration or "").strip()
+                str(result.get("concentration") or "").strip()
+                or product.concentration
                 or extract_concentration(self._offer_name(offer))
-                or extract_concentration(result.get("concentration"))
             )
 
             result["catalog_id"] = product.catalog_id
@@ -916,8 +843,6 @@ class ProductMatcher:
             identity = stable_auto_id(
                 result.get("canonical_brand", ""),
                 result.get("catalog_variant") or result.get("canonical_name", ""),
-                result.get("canonical_concentration")
-                or result.get("concentration", ""),
             )
 
         result["variant_id"] = identity
