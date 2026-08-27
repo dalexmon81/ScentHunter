@@ -1832,59 +1832,70 @@ def _result_group_key(product: Dict[str, Any]) -> tuple:
     return ("generic", brand, name_key)
 
 
-def _collapse_family_results(
+def _order_family_results(
     products: List[Dict[str, Any]],
     query: str,
 ) -> List[Dict[str, Any]]:
     """
-    Per una query che corrisponde a una famiglia del Registry restituisce
-    una sola offerta migliore per ogni variante autorizzata.
+    Ordina i risultati di una famiglia senza eliminare le offerte.
 
-    Questo impedisce che più store, formati o diciture commerciali della
-    stessa variante gonfino il numero dei risultati. Il numero finale
-    dipende quindi dalle varianti realmente autorizzate dal catalogo,
-    non da un limite arbitrario e non da eccezioni sul singolo profumo.
+    Il Family Registry stabilisce quali varianti sono ammesse e il loro
+    ordine, ma NON deve scegliere una sola offerta per variante: ogni store
+    che ha superato la validazione deve restare nel candidate pool finale,
+    così il frontend può confrontare tutte le offerte disponibili.
+
+    La deduplicazione resta quella generica di unique_results(), che opera
+    sull'identità del prodotto/store e non sulla variante canonica.
     """
+    unique = unique_results(products)
     family = _catalog_family_for_query(query)
 
     if family is None:
-        return products
+        return sort_by_price(unique)
 
-    grouped: Dict[tuple, Dict[str, Any]] = {}
+    family_brand = catalog_norm(family.get("brand"))
+    variant_order = {}
 
-    for product in sort_by_price(products):
-        key = _result_group_key(product)
-
-        if key not in grouped:
-            grouped[key] = product
-
-    # Il Registry è autoritativo: ordina le varianti secondo l'ordine
-    # dichiarato nel catalogo, mantenendo però soltanto quelle realmente
-    # trovate dagli scraper.
-    ordered: List[Dict[str, Any]] = []
-
-    for variant in family.get("variants", []):
+    for index, variant in enumerate(family.get("variants", [])):
         canonical_key = catalog_norm(
             variant.get("canonical_name")
         )
-        for key, product in grouped.items():
-            if (
-                key[0] == "catalog"
-                and key[1] == catalog_norm(family.get("brand"))
-                and key[2] == canonical_key
-            ):
-                ordered.append(product)
-                break
+        if canonical_key and canonical_key not in variant_order:
+            variant_order[canonical_key] = index
 
-    return ordered
+    def result_key(product: Dict[str, Any]) -> tuple:
+        group_key = _result_group_key(product)
+
+        if (
+            len(group_key) == 3
+            and group_key[0] == "catalog"
+            and group_key[1] == family_brand
+        ):
+            variant_key = group_key[2]
+            return (
+                0,
+                variant_order.get(
+                    variant_key,
+                    len(variant_order),
+                ),
+                deterministic_result_key(product),
+            )
+
+        return (
+            1,
+            len(variant_order),
+            deterministic_result_key(product),
+        )
+
+    return sorted(unique, key=result_key)
 
 
 def _prepare_final_results(
     products: List[Dict[str, Any]],
     query: str,
 ) -> List[Dict[str, Any]]:
-    results = _collapse_family_results(
-        unique_results(products),
+    results = _order_family_results(
+        products,
         query,
     )
 
