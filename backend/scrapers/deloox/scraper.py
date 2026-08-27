@@ -329,66 +329,43 @@ def _candidate_product_urls(
     discovery_query=None,
     accept_all_products=False,
 ):
-    """Extract Deloox product URLs from anchors, JSON and JS.
-
-    Discovery may use a broader query, but final matching is performed by
-    _product() against the original query. Therefore this function never
-    creates a product result by itself.
-    """
+    """Extract Deloox product URLs robustly from HTML, JSON and JS."""
     soup = BeautifulSoup(html, "html.parser")
-    found = []
-    seen = set()
-    discovery_query = clean(discovery_query or query)
+    found, seen = [], set()
 
     def add(raw_url, context=""):
         if not raw_url:
             return
-
-        raw_url = clean(raw_url).replace("\\/", "/")
+        raw_url = html_lib.unescape(clean(raw_url)).replace("\\/", "/")
         if raw_url.startswith(("javascript:", "mailto:", "#")):
             return
-
         url = urljoin(BASE_URL, raw_url).split("#")[0].split("?")[0]
-
         try:
             parsed = urlparse(url)
         except Exception:
             return
-
         if parsed.netloc.lower() not in {"deloox.com", "www.deloox.com"}:
             return
-
-        if "/product/" not in parsed.path.lower():
+        if "/product/" not in parsed.path.lower() or url in seen:
             return
-
-        if url in seen:
+        if not accept_all_products and not matches(f"{context} {url}", query):
             return
-
-        # During search discovery we want candidate URLs, not final matches.
-        # _product() performs the authoritative product-name validation later.
-        if not accept_all_products:
-            haystack = f"{context} {url}"
-            if not matches(haystack, query):
-                return
-
         seen.add(url)
         found.append(url)
 
     for a in soup.find_all("a", href=True):
         add(a.get("href"), a.get_text(" ", strip=True))
 
+    normalized = html_lib.unescape(html).replace("\\/", "/")
     patterns = [
-        r'https?://(?:www\.)?deloox\.com/[^"\'>\s]+/product/[^"\'>\s]+',
-        r'["\']((?:/)?(?:en/)?product/[^"\']+)["\']',
+        r'https?://(?:www\.)?deloox\.com/[^"\'<>\s]+/product/[^"\'<>\s]+',
+        r'["\']((?:https?:)?//(?:www\.)?deloox\.com/[^"\']*/product/[^"\']+)["\']',
+        r'["\']((?:/)?(?:en/|it/)?product/[^"\']+)["\']',
     ]
-
     for pattern in patterns:
-        for raw in re.findall(pattern, html, re.I):
+        for raw in re.findall(pattern, normalized, re.I):
             add(raw)
-
     return found
-
-
 
 def _category_product_line_links(html, query):
     """Find Deloox Product-line category URLs matching the query.
@@ -703,106 +680,58 @@ def _sitemap_product_urls(session, query, max_sitemaps=12, max_urls=80):
 
 
 def _discover(session, q):
-    """Generic Deloox discovery with direct search FIRST.
-
-    The important rule is that Deloox must be attempted for every query.
-    Category crawling is only a fallback because category pages can hang.
-    No perfume/brand-specific rule belongs here.
-    """
-    urls = []
-    seen = set()
+    """Generic Deloox discovery with broad, non-product-specific fallbacks."""
+    urls, seen = [], set()
 
     def add(url):
-        if url and url not in seen and len(urls) < 24:
+        if url and url not in seen and len(urls) < 60:
             seen.add(url)
             urls.append(url)
 
-    # 1. PRIMARY: Deloox's own search surface.
-    # Try the complete query first, then a small generic broadening.  The
-    # original query is still validated later by _product(), so broadening
-    # discovery cannot make unrelated products appear in the final results.
-    discovery_queries = _candidate_queries(q)[:2]
-    search_endpoints = (
-        "/en/search?query=",
-        "/en/search?search=",
-        "/en/search?q=",
-    )
-
-    for discovery_query in discovery_queries:
-        for route in search_endpoints:
-            endpoint = BASE_URL + route + quote_plus(discovery_query)
+    # Search surface.
+    for discovery_query in _candidate_queries(q)[:3]:
+        for route in (
+            "/en/search?query=",
+            "/en/search?search=",
+            "/en/search?q=",
+            "/it/cerca?query=",
+        ):
             try:
                 r = session.get(
-                    endpoint,
+                    BASE_URL + route + quote_plus(discovery_query),
                     headers=HEADERS,
                     timeout=TIMEOUT,
                 )
             except requests.RequestException:
                 continue
+            if r.status_code < 400:
+                for u in _candidate_product_urls(
+                    r.text, q, discovery_query=discovery_query,
+                    accept_all_products=True,
+                ):
+                    add(u)
 
-            if r.status_code >= 400:
-                continue
+    if urls:
+        return urls[:60]
 
-            for product_url in _candidate_product_urls(
-                r.text,
-                q,
-                discovery_query=discovery_query,
-                accept_all_products=True,
-            ):
-                add(product_url)
-                if len(urls) >= 24:
-                    return urls[:24]
-
-    # 2. SECONDARY: direct product sitemap.  This is still generic and does
-    # not depend on a brand/category filter being rendered by Deloox.
-    for product_url in _sitemap_product_urls(
-        session,
-        q,
-        max_sitemaps=2,
-        max_urls=12,
+    # Generic sitemap scan.
+    for u in _sitemap_product_urls(
+        session, q, max_sitemaps=12, max_urls=120
     ):
-        add(product_url)
-        if len(urls) >= 24:
-            return urls[:24]
+        add(u)
+        if len(urls) >= 60:
+            return urls[:60]
 
-    # 3. FALLBACK: category -> brand -> product-line discovery.
-    # This is deliberately last: the previous implementation put this first,
-    # so a slow category request could prevent Deloox from ever reaching its
-    # own search endpoint.
-    for url in _discover_from_categories(
-        session,
-        q,
-        max_urls=12,
-    ):
-        add(url)
-        if len(urls) >= 24:
-            return urls[:24]
+    if urls:
+        return urls[:60]
 
-    # 4. Last-resort search route used by older Deloox deployments.
-    endpoint = BASE_URL + "/it/cerca?query=" + quote_plus(q)
-    try:
-        r = session.get(
-            endpoint,
-            headers=HEADERS,
-            timeout=TIMEOUT,
-        )
-    except requests.RequestException:
-        return urls[:24]
+    # Generic category fallback.
+    for u in _discover_from_categories(session, q, max_urls=60):
+        add(u)
+        if len(urls) >= 60:
+            break
 
-    if r.status_code < 400:
-        for product_url in _candidate_product_urls(
-            r.text,
-            q,
-            discovery_query=q,
-            accept_all_products=True,
-        ):
-            add(product_url)
-            if len(urls) >= 24:
-                break
-
-    return urls[:24]
-
-
+    return urls[:60]
 
 def diagnose_search(session, query):
     """Deep Deloox discovery diagnostic; does not change normal search."""
@@ -938,294 +867,3 @@ if __name__ == "__main__":
             indent=2,
         )
     )
-
-
-def diagnose_search(session, query):
-    """Deep, read-only Deloox discovery diagnostic.
-
-    This intentionally does not change normal search behaviour. It reports
-    each discovery layer independently so we can identify exactly where a
-    product disappears.
-    """
-    query = clean(query)
-    q_tokens = sorted(tokens(query))
-    report = {
-        "query": query,
-        "query_tokens": q_tokens,
-        "category_endpoints": [],
-        "sitemap": [],
-        "search_endpoints": [],
-        "aggregate": {
-            "raw_product_hrefs": 0,
-            "candidate_urls_from_categories": 0,
-            "candidate_urls_from_sitemap": 0,
-            "validated_products": 0,
-        },
-    }
-
-    if not query:
-        return report
-
-    seen = set()
-
-    def inspect_html(html):
-        soup = BeautifulSoup(html, "html.parser")
-        anchors = []
-        raw_product_urls = []
-        query_product_urls = []
-        query_product_contexts = []
-
-        for a in soup.find_all("a", href=True):
-            href = clean(a.get("href")).replace("\\/", "/")
-            if "/product/" not in href.lower():
-                continue
-
-            absolute = urljoin(BASE_URL, href).split("#")[0].split("?")[0]
-            label = clean(a.get_text(" ", strip=True))
-            context = f"{label} {absolute}"
-            anchors.append({
-                "url": absolute,
-                "label": label[:200],
-            })
-
-            if absolute not in raw_product_urls:
-                raw_product_urls.append(absolute)
-
-            if matches(context, query):
-                if absolute not in query_product_urls:
-                    query_product_urls.append(absolute)
-                    query_product_contexts.append({
-                        "url": absolute,
-                        "label": label[:200],
-                    })
-
-        # Also inspect serialized HTML/JSON independently of the scraper's
-        # candidate parser. This tells us whether product URLs are actually
-        # present but simply not being extracted.
-        normalized_html = html.replace("\\\\/", "/").replace("\\/", "/")
-        regex_urls = []
-        for m in re.findall(
-            r'https?://(?:www\.)?deloox\.com/[^"\'<>\s]+/product/[^"\'<>\s]+',
-            normalized_html,
-            re.I,
-        ):
-            u = m.rstrip(".,);")
-            if u not in regex_urls:
-                regex_urls.append(u)
-
-        return {
-            "raw_product_hrefs": raw_product_urls[:80],
-            "raw_product_href_count": len(raw_product_urls),
-            "query_matching_product_hrefs": query_product_contexts[:40],
-            "query_matching_product_href_count": len(query_product_urls),
-            "raw_serialized_product_urls": regex_urls[:80],
-            "raw_serialized_product_url_count": len(regex_urls),
-            "scraper_candidate_urls": _candidate_product_urls(
-                html,
-                query,
-                accept_all_products=True,
-            )[:80],
-        }
-
-    # 1) Category pages: compare what is physically present with what the
-    # scraper extracts.
-    for category_url in _category_pages():
-        entry = {
-            "url": category_url,
-            "status": None,
-            "html_bytes": 0,
-            "query_occurrences_in_html": 0,
-            "product_line_filter_urls": [],
-            "inspection": {},
-            "page_candidates": [],
-        }
-
-        try:
-            r = session.get(category_url, headers=HEADERS, timeout=TIMEOUT)
-            entry["status"] = r.status_code
-            entry["html_bytes"] = len(r.text or "")
-        except requests.RequestException as exc:
-            entry["error"] = str(exc)
-            report["category_endpoints"].append(entry)
-            continue
-
-        html_lower = (r.text or "").lower()
-        entry["query_occurrences_in_html"] = html_lower.count(query.lower())
-
-        if r.status_code < 400:
-            entry["product_line_filter_urls"] = _category_product_line_links(
-                r.text, query
-            )[:40]
-            entry["inspection"] = inspect_html(r.text)
-
-            # Inspect both the generic category page and any matching filter
-            # pages, but keep each stage separate.
-            pages_to_check = [category_url] + entry["product_line_filter_urls"][:10]
-            page_candidates = []
-            for page_url in pages_to_check:
-                try:
-                    page = session.get(
-                        page_url,
-                        headers=HEADERS,
-                        timeout=TIMEOUT,
-                    )
-                except requests.RequestException as exc:
-                    page_candidates.append({
-                        "url": page_url,
-                        "error": str(exc),
-                    })
-                    continue
-
-                if page.status_code >= 400:
-                    page_candidates.append({
-                        "url": page_url,
-                        "status": page.status_code,
-                    })
-                    continue
-
-                extracted = _candidate_product_urls(
-                    page.text,
-                    query,
-                    accept_all_products=True,
-                )
-                page_candidates.append({
-                    "url": page_url,
-                    "status": page.status_code,
-                    "candidate_urls": extracted[:80],
-                    "candidate_count": len(extracted),
-                })
-
-                for u in extracted:
-                    seen.add(u)
-
-            entry["page_candidates"] = page_candidates
-
-        report["category_endpoints"].append(entry)
-
-    # 2) Sitemap layer. Test every sitemap helper independently and show
-    # whether it can discover query-relevant product URLs.
-    for name, fn, kwargs in (
-        (
-            "product_sitemap",
-            _sitemap_product_urls,
-            {"max_sitemaps": 12, "max_urls": 120},
-        ),
-        (
-            "category_sitemap",
-            _sitemap_category_urls,
-            {"max_sitemaps": 12, "max_urls": 80},
-        ),
-    ):
-        item = {"name": name}
-        try:
-            if name == "product_sitemap":
-                urls = fn(session, query, **kwargs)
-            else:
-                urls = fn(session, query, **kwargs)
-            item["urls"] = urls[:120]
-            item["count"] = len(urls)
-            for u in urls:
-                seen.add(u)
-        except Exception as exc:
-            item["error"] = f"{type(exc).__name__}: {exc}"
-        report["sitemap"].append(item)
-
-    # 3) Search endpoints: report body evidence, not just HTTP status.
-    for route in (
-        "/en/search?query=",
-        "/en/search?search=",
-        "/en/search?q=",
-        "/it/cerca?query=",
-    ):
-        endpoint = BASE_URL + route + quote_plus(query)
-        item = {
-            "url": endpoint,
-            "status": None,
-            "html_bytes": 0,
-            "query_occurrences": 0,
-            "candidate_urls": [],
-        }
-        try:
-            r = session.get(endpoint, headers=HEADERS, timeout=TIMEOUT)
-            item["status"] = r.status_code
-            item["html_bytes"] = len(r.text or "")
-            item["query_occurrences"] = (r.text or "").lower().count(query.lower())
-            if r.status_code < 400:
-                item["candidate_urls"] = _candidate_product_urls(
-                    r.text,
-                    query,
-                    accept_all_products=True,
-                )[:80]
-        except requests.RequestException as exc:
-            item["error"] = str(exc)
-        report["search_endpoints"].append(item)
-
-    # 4) Validate every unique candidate we actually discovered. This is the
-    # final diagnostic boundary: discovery succeeded but _product may reject.
-    all_candidates = []
-    for entry in report["category_endpoints"]:
-        inspection = entry.get("inspection") or {}
-        for u in inspection.get("scraper_candidate_urls", []):
-            if u not in all_candidates:
-                all_candidates.append(u)
-        for page in entry.get("page_candidates", []):
-            for u in page.get("candidate_urls", []):
-                if u not in all_candidates:
-                    all_candidates.append(u)
-
-    for item in report["sitemap"]:
-        for u in item.get("urls", []):
-            if "/product/" in u.lower() and u not in all_candidates:
-                all_candidates.append(u)
-
-    for item in report["search_endpoints"]:
-        for u in item.get("candidate_urls", []):
-            if u not in all_candidates:
-                all_candidates.append(u)
-
-    validation = []
-    for url in all_candidates[:120]:
-        row = {"url": url}
-        try:
-            r = session.get(url, headers=HEADERS, timeout=TIMEOUT)
-            row["status"] = r.status_code
-            if r.status_code < 400:
-                soup = BeautifulSoup(r.text, "html.parser")
-                data = _jsonld(soup)
-                h1 = soup.find("h1")
-                row["h1"] = clean(h1.get_text(" ", strip=True)) if h1 else ""
-                row["jsonld_name"] = clean(data.get("name"))
-                row["matches_h1"] = matches(row["h1"], query)
-                row["matches_jsonld_name"] = matches(row["jsonld_name"], query)
-                row["product_accepts"] = bool(_product(url, r.text, query))
-            else:
-                row["product_accepts"] = False
-        except requests.RequestException as exc:
-            row["error"] = str(exc)
-            row["product_accepts"] = False
-        except Exception as exc:
-            row["error"] = f"{type(exc).__name__}: {exc}"
-            row["product_accepts"] = False
-        validation.append(row)
-
-    report["validation"] = validation
-    report["aggregate"]["raw_product_hrefs"] = sum(
-        (x.get("inspection") or {}).get("raw_product_href_count", 0)
-        for x in report["category_endpoints"]
-    )
-    report["aggregate"]["candidate_urls_from_categories"] = len({
-        u
-        for x in report["category_endpoints"]
-        for p in x.get("page_candidates", [])
-        for u in p.get("candidate_urls", [])
-    })
-    report["aggregate"]["candidate_urls_from_sitemap"] = sum(
-        1 for x in report["sitemap"] for u in x.get("urls", [])
-        if "/product/" in u.lower()
-    )
-    report["aggregate"]["validated_products"] = sum(
-        1 for x in validation if x.get("product_accepts")
-    )
-    report["all_unique_candidates"] = all_candidates[:120]
-
-    return report
