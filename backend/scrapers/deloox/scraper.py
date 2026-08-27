@@ -715,6 +715,33 @@ def _discover(session, q):
     if urls:
         return urls[:60]
 
+    # Dedicated category/Product-line discovery from Deloox sitemaps.
+    # This is the missing generic path for product lines that are not exposed
+    # as direct links on the three broad fragrance entry pages.
+    for category_url in _sitemap_category_urls(
+        session, q, max_sitemaps=12, max_urls=30
+    ):
+        try:
+            r = session.get(
+                category_url,
+                headers=HEADERS,
+                timeout=TIMEOUT,
+            )
+        except requests.RequestException:
+            continue
+        if r.status_code >= 400:
+            continue
+
+        for u in _candidate_product_urls(
+            r.text, q, accept_all_products=True
+        ):
+            add(u)
+            if len(urls) >= 60:
+                return urls[:60]
+
+    if urls:
+        return urls[:60]
+
     # Generic sitemap scan.
     for u in _sitemap_product_urls(
         session, q, max_sitemaps=12, max_urls=120
