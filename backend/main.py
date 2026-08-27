@@ -709,17 +709,32 @@ def _load_family_registry() -> List[Dict[str, Any]]:
                 valid_aliases.append(alias)
 
             valid_aliases = list(dict.fromkeys(valid_aliases))
-            normalized_variants.append(
-                {
-                    "canonical_name": canonical_name,
-                    "aliases": valid_aliases,
-                    "normalized_aliases": tuple(
-                        catalog_variant_key(alias)
-                        for alias in valid_aliases
-                        if catalog_variant_key(alias)
-                    ),
-                }
-            )
+            normalized_variant = {
+                "canonical_name": canonical_name,
+                "aliases": valid_aliases,
+                "normalized_aliases": tuple(
+                    catalog_variant_key(alias)
+                    for alias in valid_aliases
+                    if catalog_variant_key(alias)
+                ),
+            }
+
+            # Preserve optional identity metadata declared by the
+            # Family Registry.  The registry remains data-only; the
+            # formatting logic below decides how these fields are shown.
+            for source_key, target_key in (
+                ("concentration", "concentration"),
+                ("canonical_concentration", "concentration"),
+                ("gender", "gender"),
+                ("canonical_gender", "gender"),
+                ("genere", "gender"),
+                ("sex", "gender"),
+            ):
+                value = str(variant.get(source_key) or "").strip()
+                if value and target_key not in normalized_variant:
+                    normalized_variant[target_key] = value
+
+            normalized_variants.append(normalized_variant)
 
         if not normalized_variants:
             continue
@@ -1124,6 +1139,14 @@ def _catalog_match(
             result["catalog_variant"] = variant["canonical_name"]
             result["match_method"] = "family_registry_alias"
 
+            # Propaga anche gli attributi identitari, quando dichiarati
+            # dal Registry, così la visualizzazione non dipende dal modo
+            # in cui un singolo retailer scrive il prodotto.
+            for field in ("concentration", "gender"):
+                value = str(variant.get(field) or "").strip()
+                if value:
+                    result[field] = value
+
             # Il Family Registry è autorevole anche per il brand.
             # Quando il candidato RAW non porta il brand, il risultato
             # della famiglia deve comunque propagare il brand canonico
@@ -1157,6 +1180,14 @@ def _catalog_match(
             )
             result["catalog_variant"] = variant["canonical_name"]
             result["match_method"] = "family_registry_alias"
+
+            # Propaga anche gli attributi identitari, quando dichiarati
+            # dal Registry, così la visualizzazione non dipende dal modo
+            # in cui un singolo retailer scrive il prodotto.
+            for field in ("concentration", "gender"):
+                value = str(variant.get(field) or "").strip()
+                if value:
+                    result[field] = value
 
             # Il Family Registry è autorevole anche per il brand.
             # Quando il candidato RAW non porta il brand, il risultato
@@ -1757,25 +1788,53 @@ def _display_gender(product: Dict[str, Any], raw_name: str) -> str:
 
     explicit_norm = catalog_norm(explicit)
 
-    # I dati degli scraper possono arrivare già normalizzati in italiano
-    # (Uomo/Donna) oppure in inglese/francese/olandese. In questo caso
-    # il valore esplicito ha precedenza sul testo del nome.
-    if re.search(r"\b(?:uomo|men|man|male|homme|heren|mannen)\b", explicit_norm):
+    if re.search(r"\\b(?:uomo|men|man|male|homme|heren|mannen)\\b", explicit_norm):
         return "Uomo"
-    if re.search(r"\b(?:donna|women|woman|female|femme|dames|vrouwen)\b", explicit_norm):
+    if re.search(r"\\b(?:donna|women|woman|female|femme|dames|vrouwen)\\b", explicit_norm):
         return "Donna"
 
-    gender = _catalog_gender_class(
-        " ".join(
-            value
-            for value in (explicit, raw_name)
-            if value
-        )
-    )
+    # Some retailers expose the gender only inside JSON-LD/raw data or
+    # descriptive text, not in the normalized top-level fields.  Inspect
+    # those generic source fields as a fallback.  If both genders occur,
+    # keep the result neutral rather than guessing.
+    evidence = []
 
-    if gender == "male":
+    for value in (
+        raw_name,
+        product.get("name"),
+        product.get("title"),
+        product.get("product_name"),
+        product.get("url"),
+    ):
+        if value:
+            evidence.append(str(value))
+
+    if isinstance(source, dict):
+        for key in ("name", "title", "url", "description", "gender", "genere", "sex"):
+            value = source.get(key)
+            if value:
+                evidence.append(str(value))
+
+    raw_data = product.get("raw_data")
+    if raw_data:
+        try:
+            evidence.append(json.dumps(raw_data, ensure_ascii=False))
+        except (TypeError, ValueError):
+            evidence.append(str(raw_data))
+
+    evidence_text = catalog_norm(" ".join(evidence))
+    male = bool(re.search(
+        r"\\b(?:for\\s+him|for\\s+men|men|man|male|homme|heren|mannen|uomo)\\b",
+        evidence_text,
+    ))
+    female = bool(re.search(
+        r"\\b(?:for\\s+her|for\\s+women|women|woman|female|femme|dames|vrouwen|donna)\\b",
+        evidence_text,
+    ))
+
+    if male and not female:
         return "Uomo"
-    if gender == "female":
+    if female and not male:
         return "Donna"
 
     return ""
