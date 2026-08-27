@@ -290,43 +290,18 @@ def _product(url, html, query):
     }
 
 
-def _candidate_queries(query):
-    """Build a small set of generic Deloox search queries.
-
-    The original query is always first. Broadening is only used for discovery;
-    the final product name is still validated by _product(), so this does not
-    whitelist any specific perfume or brand.
-    """
-    q = clean(query)
+def _candidate_queries(q):
+    """Return the original query and optionally a broader discovery query."""
+    q = clean(q)
     if not q:
         return []
-
-    variants = [q]
-
-    parts = q.split()
-    # Generic fallback: remove common concentration/size words only.
-    removable = {
-        "parfum", "perfume", "eau", "de", "toilette", "toilette",
-        "edt", "edp", "extrait", "extract"
-    }
-    broad = " ".join(p for p in parts if p.lower() not in removable).strip()
-    if broad and broad.lower() != q.lower():
-        variants.append(broad)
-
-    out = []
-    seen = set()
-    for item in variants:
-        key = norm(item)
-        if key and key not in seen:
-            seen.add(key)
-            out.append(item)
-    return out
+    return [q]
 
 
 PRODUCT_URL_PATTERNS = [
-    r'href\s*=\s*["\']((?:https?://(?:www\.)?deloox\.com/[^"\']*)?)',
-    r'["\']((?:https?://(?:www\.)?deloox\.com/en/[^"\']*)?)',
-    r'["\']((?:https?://(?:www\.)?deloox\.com/en/it/nl/[^"\']*)?)',
+    r'href\s*=\s*["\']((?:https?:)?//(?:www\.)?deloox\.com[^"\']*/product/[^"\']+)',
+    r'["\']((?:/)?(?:en/|it/|nl/)?product/[^"\'\s<>]+)["\']',
+    r'["\']((?:/)?(?:en/|it/|nl/)?product/[^"\'\s<>]+)',
 ]
 
 
@@ -339,7 +314,7 @@ def _candidate_product_urls(
     """Extract Deloox product URLs from HTML.
 
     This function is generic and does not depend on specific products.
-    It extracts URLs from <a> tags, data attributes, and fallback regex patterns.
+    It extracts URLs from <a> tags, data attributes, and raw HTML.
     """
     soup = BeautifulSoup(html, "html.parser")
     found = []
@@ -347,7 +322,7 @@ def _candidate_product_urls(
     q_tokens = tokens(discovery_query or query)
 
     def add(raw_url, text=""):
-        raw_url = clean(raw_url).replace("\\", "/")
+        raw_url = clean(raw_url).replace("\\/", "/")
         if not raw_url:
             return
 
@@ -359,11 +334,13 @@ def _candidate_product_urls(
 
         if parsed.netloc.lower() not in {"deloox.com", "www.deloox.com"}:
             return
+
         if "/product/" not in parsed.path.lower():
             return
 
         if url in seen:
             return
+
         seen.add(url)
         found.append(url)
 
@@ -372,10 +349,10 @@ def _candidate_product_urls(
 
     for tag in soup.find_all(True):
         for attr, value in tag.attrs.items():
-            if isinstance(value, str) and attr.startswith(("data-href", "data-url", "data-link")):
+            if isinstance(value, str) and attr.startswith(("data-", "href")):
                 add(value)
 
-    raw_html = html.replace("\\\\", "\\")
+    raw_html = html.replace("\\\\/", "/")
     for pattern in PRODUCT_URL_PATTERNS:
         for raw_url in re.findall(pattern, raw_html, re.I):
             add(raw_url)
