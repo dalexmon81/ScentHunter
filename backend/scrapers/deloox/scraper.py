@@ -382,14 +382,8 @@ def _candidate_product_urls(
         r'["\']((?:/)?(?:en/)?product/[^"\']+)["\']',
     ]
 
-    # Deloox can serialize product URLs inside JSON/JavaScript with escaped
-    # slashes (for example https:\\/\\/www.deloox.com\\/product\\/...). Normalize
-    # those representations before applying the URL patterns. This is generic
-    # and does not depend on any product or brand name.
-    raw_html = html.replace("\\\\/", "/")
-
     for pattern in patterns:
-        for raw in re.findall(pattern, raw_html, re.I):
+        for raw in re.findall(pattern, html, re.I):
             add(raw)
 
     return found
@@ -811,321 +805,78 @@ def _discover(session, q):
 
 
 def diagnose_search(session, query):
-    """Very detailed Deloox discovery diagnostic; does not change normal search."""
+    """Deep Deloox discovery diagnostic; does not change normal search."""
     query = clean(query)
     report = {
         "query": query,
-        "limits": {
-            "candidate_max": 80,
-            "sitemap_max_sitemaps": 12,
-            "sitemap_max_products": 80,
-            "probe_max_products": 12,
-        },
-        "candidate_queries": _candidate_queries(query)[:4] if query else [],
-        "search_endpoints": [],
-        "sitemap_endpoints": [],
         "category_endpoints": [],
-        "category_filter_urls": [],
-        "category_candidates": [],
-        "sitemap_candidates": [],
-        "search_candidates": [],
+        "filter_urls": [],
         "candidate_urls": [],
-        "product_probes": [],
         "validated_products": [],
+        "search_fallback": [],
     }
     if not query:
         return report
 
-    def response_meta(r):
-        body = r.text or ""
-        low = body.lower()
-        return {
-            "status": r.status_code,
-            "content_type": r.headers.get("content-type"),
-            "bytes": len(r.content or b""),
-            "title": clean(
-                BeautifulSoup(body, "html.parser").title.get_text(" ", strip=True)
-            ) if BeautifulSoup(body, "html.parser").title else None,
-            "contains_product_marker": "/product/" in low,
-            "product_marker_count": low.count("/product/"),
-            "query_occurrences": low.count(query.lower()),
-            "html_start": body[:300].replace("\n", " "),
-        }
-
-    def extract_product_urls_detailed(html, discovery_query=None):
-        strict = _candidate_product_urls(
-            html,
-            query,
-            discovery_query=discovery_query or query,
-            accept_all_products=False,
-        )
-        broad = _candidate_product_urls(
-            html,
-            query,
-            discovery_query=discovery_query or query,
-            accept_all_products=True,
-        )
-        return {
-            "strict_count": len(strict),
-            "strict_samples": strict[:12],
-            "broad_count": len(broad),
-            "broad_samples": broad[:12],
-        }
-
-    # 1. Search endpoints: test every route and show whether product URLs
-    # are actually present in the returned HTML.
-    for discovery_query in report["candidate_queries"]:
-        for route in (
-            "/en/search?query=",
-            "/en/search?search=",
-            "/en/search?q=",
-        ):
-            url = BASE_URL + route + quote_plus(discovery_query)
-            entry = {
-                "url": url,
-                "discovery_query": discovery_query,
-            }
-            try:
-                r = session.get(url, headers=HEADERS, timeout=TIMEOUT)
-                entry.update(response_meta(r))
-                if r.status_code < 400:
-                    extracted = extract_product_urls_detailed(
-                        r.text,
-                        discovery_query=discovery_query,
-                    )
-                    entry["extraction"] = extracted
-                    report["search_candidates"].extend(extracted["broad_samples"])
-            except requests.RequestException as exc:
-                entry["error"] = str(exc)
-            report["search_endpoints"].append(entry)
-
-    # 2. Sitemap roots: report every root, XML detection, loc count and
-    # query-matching product URLs. This was missing from the old diagnostic.
-    sitemap_roots = (
-        BASE_URL + "/sitemap.xml",
-        BASE_URL + "/sitemap_index.xml",
-        BASE_URL + "/sitemap-index.xml",
-        BASE_URL + "/en/sitemap.xml",
-    )
-    pending = list(sitemap_roots)
-    seen_sitemaps = set()
-    seen_products = set()
-
-    while pending and len(seen_sitemaps) < 12:
-        sitemap_url = pending.pop(0)
-        if sitemap_url in seen_sitemaps:
-            continue
-        seen_sitemaps.add(sitemap_url)
-
-        entry = {"url": sitemap_url}
+    seen_candidates = set()
+    for category_url in _category_pages():
+        entry = {"url": category_url, "status": None, "filter_urls": [], "candidate_urls": []}
         try:
-            r = session.get(sitemap_url, headers=HEADERS, timeout=TIMEOUT)
-            body = r.text or ""
-            entry.update(response_meta(r))
-            entry["is_xml"] = (
-                "xml" in (r.headers.get("content-type") or "").lower()
-                or body.lstrip().startswith(("<?xml", "<urlset", "<sitemapindex"))
-            )
-            entry["loc_count"] = 0
-            entry["product_loc_count"] = 0
-            entry["query_product_loc_count"] = 0
-            entry["matching_product_samples"] = []
-
-            if r.status_code < 400 and entry["is_xml"]:
-                soup_xml = BeautifulSoup(body, "xml")
-                locs = [
-                    clean(loc.get_text())
-                    for loc in soup_xml.find_all("loc")
-                    if clean(loc.get_text())
-                ]
-                entry["loc_count"] = len(locs)
-
-                for value in locs:
-                    low = value.lower()
-                    if "/product/" in low:
-                        entry["product_loc_count"] += 1
-                        if tokens(query) and tokens(query) <= tokens(value):
-                            entry["query_product_loc_count"] += 1
-                            if value not in seen_products:
-                                seen_products.add(value)
-                                report["sitemap_candidates"].append(value)
-                                entry["matching_product_samples"].append(value)
-                                if len(report["sitemap_candidates"]) >= 80:
-                                    break
-                    elif low.endswith(".xml") or "sitemap" in low:
-                        if value not in seen_sitemaps and len(seen_sitemaps) < 12:
-                            pending.append(value)
+            r = session.get(category_url, headers=HEADERS, timeout=TIMEOUT)
+            entry["status"] = r.status_code
         except requests.RequestException as exc:
             entry["error"] = str(exc)
-
-        report["sitemap_endpoints"].append(entry)
-        if len(report["sitemap_candidates"]) >= 80:
+            report["category_endpoints"].append(entry)
+            continue
+        report["category_endpoints"].append(entry)
+        if r.status_code >= 400:
+            continue
+        filter_urls = _category_product_line_links(r.text, query)
+        entry["filter_urls"] = filter_urls[:20]
+        report["filter_urls"].extend(filter_urls)
+        pages = [(category_url, False)] + [(url, True) for url in filter_urls]
+        for page_url, filtered in pages:
+            try:
+                page = session.get(page_url, headers=HEADERS, timeout=TIMEOUT)
+            except requests.RequestException:
+                continue
+            if page.status_code >= 400:
+                continue
+            candidates = _candidate_product_urls(page.text, query, accept_all_products=filtered)
+            entry["candidate_urls"].extend(candidates[:40])
+            for url in candidates:
+                if url in seen_candidates:
+                    continue
+                seen_candidates.add(url)
+                report["candidate_urls"].append(url)
+                if len(report["candidate_urls"]) >= 80:
+                    break
+            if len(report["candidate_urls"]) >= 80:
+                break
+        if len(report["candidate_urls"]) >= 80:
             break
 
-    # 3. Category pages: inspect the actual HTML first, then product-line
-    # links. This tells us whether the failure is link discovery or URL parsing.
-    seen_category_pages = set()
-    for category_url in _category_pages(session):
-        entry = {
-            "url": category_url,
-            "variants": [],
-        }
-        for page_url in _category_page_variants(category_url, max_pages=8):
-            if page_url in seen_category_pages:
-                continue
-            seen_category_pages.add(page_url)
-            variant = {"url": page_url}
-            try:
-                r = session.get(page_url, headers=HEADERS, timeout=TIMEOUT)
-                variant.update(response_meta(r))
-                if r.status_code < 400:
-                    filters = _category_product_line_links(r.text, query)
-                    variant["filter_urls"] = filters[:30]
-                    variant["filter_count"] = len(filters)
-
-                    broad = _candidate_product_urls(
-                        r.text,
-                        query,
-                        accept_all_products=True,
-                    )
-                    strict = _candidate_product_urls(
-                        r.text,
-                        query,
-                        accept_all_products=False,
-                    )
-                    variant["direct_product_extraction"] = {
-                        "broad_count": len(broad),
-                        "broad_samples": broad[:12],
-                        "strict_count": len(strict),
-                        "strict_samples": strict[:12],
-                    }
-
-                    for f_url in filters[:20]:
-                        try:
-                            fr = session.get(
-                                f_url,
-                                headers=HEADERS,
-                                timeout=TIMEOUT,
-                            )
-                            f_entry = {
-                                "url": f_url,
-                                "status": fr.status_code,
-                                "bytes": len(fr.content or b""),
-                            }
-                            if fr.status_code < 400:
-                                fbroad = _candidate_product_urls(
-                                    fr.text,
-                                    query,
-                                    accept_all_products=True,
-                                )
-                                fstrict = _candidate_product_urls(
-                                    fr.text,
-                                    query,
-                                    accept_all_products=False,
-                                )
-                                f_entry["broad_count"] = len(fbroad)
-                                f_entry["broad_samples"] = fbroad[:12]
-                                f_entry["strict_count"] = len(fstrict)
-                                f_entry["strict_samples"] = fstrict[:12]
-                                report["category_candidates"].extend(fbroad[:40])
-                            variant.setdefault("filter_probes", []).append(f_entry)
-                        except requests.RequestException as exc:
-                            variant.setdefault("filter_probes", []).append(
-                                {"url": f_url, "error": str(exc)}
-                            )
-
-                    report["category_filter_urls"].extend(filters)
-                    report["category_candidates"].extend(broad[:40])
-            except requests.RequestException as exc:
-                variant["error"] = str(exc)
-
-            entry["variants"].append(variant)
-
-        report["category_endpoints"].append(entry)
-
-    # 4. Unified candidate list, preserving the source that found each URL.
-    source_lists = (
-        ("search", report["search_candidates"]),
-        ("sitemap", report["sitemap_candidates"]),
-        ("category", report["category_candidates"]),
-    )
-    candidate_sources = {}
-    for source, urls in source_lists:
-        for url in urls:
-            if url:
-                candidate_sources.setdefault(url, set()).add(source)
-
-    report["candidate_urls"] = [
-        {
-            "url": url,
-            "sources": sorted(candidate_sources[url]),
-        }
-        for url in list(candidate_sources)[:80]
-    ]
-
-    # 5. Probe the actual product pages and report WHY _product() rejects them.
-    # This is the key diagnostic missing before.
-    for candidate in report["candidate_urls"][:12]:
-        url = candidate["url"]
-        probe = {
-            "url": url,
-            "sources": candidate["sources"],
-        }
+    for url in report["candidate_urls"]:
         try:
             r = session.get(url, headers=HEADERS, timeout=TIMEOUT)
-            probe["status"] = r.status_code
-            if r.status_code < 400:
-                soup = BeautifulSoup(r.text, "html.parser")
-                data = _jsonld(soup)
-                h1 = soup.find("h1")
-                name = clean(data.get("name")) or (
-                    clean(h1.get_text(" ", strip=True)) if h1 else ""
-                )
-                offers = data.get("offers")
-                offers = offers if isinstance(offers, list) else [offers]
-                offer = next(
-                    (x for x in offers if isinstance(x, dict)),
-                    {},
-                )
-                probe["extracted"] = {
-                    "name": name or None,
-                    "name_matches_query": bool(name and matches(name, query)),
-                    "h1": clean(h1.get_text(" ", strip=True)) if h1 else None,
-                    "brand": (
-                        clean(data.get("brand", {}).get("name"))
-                        if isinstance(data.get("brand"), dict)
-                        else clean(data.get("brand"))
-                    ),
-                    "price": parse_price(offer.get("price")),
-                    "jsonld_type": data.get("@type"),
-                    "gtin": clean(data.get("gtin13") or data.get("gtin") or "") or None,
-                    "sku": clean(data.get("sku") or "") or None,
-                    "availability": availability(
-                        soup.get_text(" ", strip=True),
-                        offer=offer,
-                        soup=soup,
-                    ),
-                    "has_h1": bool(h1),
-                    "has_jsonld": bool(data),
-                }
-                probe["product_result"] = _product(url, r.text, query)
-                probe["accepted_by_product"] = bool(probe["product_result"])
-            else:
-                probe["accepted_by_product"] = False
+        except requests.RequestException:
+            continue
+        if r.status_code >= 400:
+            continue
+        item = _product(url, r.text, query)
+        if item:
+            report["validated_products"].append(item)
+
+    for endpoint in (
+        BASE_URL + "/en/search?query=" + quote_plus(query),
+        BASE_URL + "/en/search?search=" + quote_plus(query),
+        BASE_URL + "/en/search?q=" + quote_plus(query),
+    ):
+        try:
+            r = session.get(endpoint, headers=HEADERS, timeout=TIMEOUT)
+            report["search_fallback"].append({"url": endpoint, "status": r.status_code})
         except requests.RequestException as exc:
-            probe["error"] = str(exc)
-            probe["accepted_by_product"] = False
-
-        report["product_probes"].append(probe)
-
-    report["validated_products"] = [
-        p for p in (
-            probe.get("product_result")
-            for probe in report["product_probes"]
-        )
-        if p
-    ]
-
+            report["search_fallback"].append({"url": endpoint, "error": str(exc)})
     return report
 
 def search(query):
@@ -1183,4 +934,298 @@ if __name__ == "__main__":
     print(
         json.dumps(
             search(args.query),
-            ensure_asc
+            ensure_ascii=False,
+            indent=2,
+        )
+    )
+
+
+def diagnose_search(session, query):
+    """Deep, read-only Deloox discovery diagnostic.
+
+    This intentionally does not change normal search behaviour. It reports
+    each discovery layer independently so we can identify exactly where a
+    product disappears.
+    """
+    query = clean(query)
+    q_tokens = sorted(tokens(query))
+    report = {
+        "query": query,
+        "query_tokens": q_tokens,
+        "category_endpoints": [],
+        "sitemap": [],
+        "search_endpoints": [],
+        "aggregate": {
+            "raw_product_hrefs": 0,
+            "candidate_urls_from_categories": 0,
+            "candidate_urls_from_sitemap": 0,
+            "validated_products": 0,
+        },
+    }
+
+    if not query:
+        return report
+
+    seen = set()
+
+    def inspect_html(html):
+        soup = BeautifulSoup(html, "html.parser")
+        anchors = []
+        raw_product_urls = []
+        query_product_urls = []
+        query_product_contexts = []
+
+        for a in soup.find_all("a", href=True):
+            href = clean(a.get("href")).replace("\\/", "/")
+            if "/product/" not in href.lower():
+                continue
+
+            absolute = urljoin(BASE_URL, href).split("#")[0].split("?")[0]
+            label = clean(a.get_text(" ", strip=True))
+            context = f"{label} {absolute}"
+            anchors.append({
+                "url": absolute,
+                "label": label[:200],
+            })
+
+            if absolute not in raw_product_urls:
+                raw_product_urls.append(absolute)
+
+            if matches(context, query):
+                if absolute not in query_product_urls:
+                    query_product_urls.append(absolute)
+                    query_product_contexts.append({
+                        "url": absolute,
+                        "label": label[:200],
+                    })
+
+        # Also inspect serialized HTML/JSON independently of the scraper's
+        # candidate parser. This tells us whether product URLs are actually
+        # present but simply not being extracted.
+        normalized_html = html.replace("\\\\/", "/").replace("\\/", "/")
+        regex_urls = []
+        for m in re.findall(
+            r'https?://(?:www\.)?deloox\.com/[^"\'<>\s]+/product/[^"\'<>\s]+',
+            normalized_html,
+            re.I,
+        ):
+            u = m.rstrip(".,);")
+            if u not in regex_urls:
+                regex_urls.append(u)
+
+        return {
+            "raw_product_hrefs": raw_product_urls[:80],
+            "raw_product_href_count": len(raw_product_urls),
+            "query_matching_product_hrefs": query_product_contexts[:40],
+            "query_matching_product_href_count": len(query_product_urls),
+            "raw_serialized_product_urls": regex_urls[:80],
+            "raw_serialized_product_url_count": len(regex_urls),
+            "scraper_candidate_urls": _candidate_product_urls(
+                html,
+                query,
+                accept_all_products=True,
+            )[:80],
+        }
+
+    # 1) Category pages: compare what is physically present with what the
+    # scraper extracts.
+    for category_url in _category_pages():
+        entry = {
+            "url": category_url,
+            "status": None,
+            "html_bytes": 0,
+            "query_occurrences_in_html": 0,
+            "product_line_filter_urls": [],
+            "inspection": {},
+            "page_candidates": [],
+        }
+
+        try:
+            r = session.get(category_url, headers=HEADERS, timeout=TIMEOUT)
+            entry["status"] = r.status_code
+            entry["html_bytes"] = len(r.text or "")
+        except requests.RequestException as exc:
+            entry["error"] = str(exc)
+            report["category_endpoints"].append(entry)
+            continue
+
+        html_lower = (r.text or "").lower()
+        entry["query_occurrences_in_html"] = html_lower.count(query.lower())
+
+        if r.status_code < 400:
+            entry["product_line_filter_urls"] = _category_product_line_links(
+                r.text, query
+            )[:40]
+            entry["inspection"] = inspect_html(r.text)
+
+            # Inspect both the generic category page and any matching filter
+            # pages, but keep each stage separate.
+            pages_to_check = [category_url] + entry["product_line_filter_urls"][:10]
+            page_candidates = []
+            for page_url in pages_to_check:
+                try:
+                    page = session.get(
+                        page_url,
+                        headers=HEADERS,
+                        timeout=TIMEOUT,
+                    )
+                except requests.RequestException as exc:
+                    page_candidates.append({
+                        "url": page_url,
+                        "error": str(exc),
+                    })
+                    continue
+
+                if page.status_code >= 400:
+                    page_candidates.append({
+                        "url": page_url,
+                        "status": page.status_code,
+                    })
+                    continue
+
+                extracted = _candidate_product_urls(
+                    page.text,
+                    query,
+                    accept_all_products=True,
+                )
+                page_candidates.append({
+                    "url": page_url,
+                    "status": page.status_code,
+                    "candidate_urls": extracted[:80],
+                    "candidate_count": len(extracted),
+                })
+
+                for u in extracted:
+                    seen.add(u)
+
+            entry["page_candidates"] = page_candidates
+
+        report["category_endpoints"].append(entry)
+
+    # 2) Sitemap layer. Test every sitemap helper independently and show
+    # whether it can discover query-relevant product URLs.
+    for name, fn, kwargs in (
+        (
+            "product_sitemap",
+            _sitemap_product_urls,
+            {"max_sitemaps": 12, "max_urls": 120},
+        ),
+        (
+            "category_sitemap",
+            _sitemap_category_urls,
+            {"max_sitemaps": 12, "max_urls": 80},
+        ),
+    ):
+        item = {"name": name}
+        try:
+            if name == "product_sitemap":
+                urls = fn(session, query, **kwargs)
+            else:
+                urls = fn(session, query, **kwargs)
+            item["urls"] = urls[:120]
+            item["count"] = len(urls)
+            for u in urls:
+                seen.add(u)
+        except Exception as exc:
+            item["error"] = f"{type(exc).__name__}: {exc}"
+        report["sitemap"].append(item)
+
+    # 3) Search endpoints: report body evidence, not just HTTP status.
+    for route in (
+        "/en/search?query=",
+        "/en/search?search=",
+        "/en/search?q=",
+        "/it/cerca?query=",
+    ):
+        endpoint = BASE_URL + route + quote_plus(query)
+        item = {
+            "url": endpoint,
+            "status": None,
+            "html_bytes": 0,
+            "query_occurrences": 0,
+            "candidate_urls": [],
+        }
+        try:
+            r = session.get(endpoint, headers=HEADERS, timeout=TIMEOUT)
+            item["status"] = r.status_code
+            item["html_bytes"] = len(r.text or "")
+            item["query_occurrences"] = (r.text or "").lower().count(query.lower())
+            if r.status_code < 400:
+                item["candidate_urls"] = _candidate_product_urls(
+                    r.text,
+                    query,
+                    accept_all_products=True,
+                )[:80]
+        except requests.RequestException as exc:
+            item["error"] = str(exc)
+        report["search_endpoints"].append(item)
+
+    # 4) Validate every unique candidate we actually discovered. This is the
+    # final diagnostic boundary: discovery succeeded but _product may reject.
+    all_candidates = []
+    for entry in report["category_endpoints"]:
+        inspection = entry.get("inspection") or {}
+        for u in inspection.get("scraper_candidate_urls", []):
+            if u not in all_candidates:
+                all_candidates.append(u)
+        for page in entry.get("page_candidates", []):
+            for u in page.get("candidate_urls", []):
+                if u not in all_candidates:
+                    all_candidates.append(u)
+
+    for item in report["sitemap"]:
+        for u in item.get("urls", []):
+            if "/product/" in u.lower() and u not in all_candidates:
+                all_candidates.append(u)
+
+    for item in report["search_endpoints"]:
+        for u in item.get("candidate_urls", []):
+            if u not in all_candidates:
+                all_candidates.append(u)
+
+    validation = []
+    for url in all_candidates[:120]:
+        row = {"url": url}
+        try:
+            r = session.get(url, headers=HEADERS, timeout=TIMEOUT)
+            row["status"] = r.status_code
+            if r.status_code < 400:
+                soup = BeautifulSoup(r.text, "html.parser")
+                data = _jsonld(soup)
+                h1 = soup.find("h1")
+                row["h1"] = clean(h1.get_text(" ", strip=True)) if h1 else ""
+                row["jsonld_name"] = clean(data.get("name"))
+                row["matches_h1"] = matches(row["h1"], query)
+                row["matches_jsonld_name"] = matches(row["jsonld_name"], query)
+                row["product_accepts"] = bool(_product(url, r.text, query))
+            else:
+                row["product_accepts"] = False
+        except requests.RequestException as exc:
+            row["error"] = str(exc)
+            row["product_accepts"] = False
+        except Exception as exc:
+            row["error"] = f"{type(exc).__name__}: {exc}"
+            row["product_accepts"] = False
+        validation.append(row)
+
+    report["validation"] = validation
+    report["aggregate"]["raw_product_hrefs"] = sum(
+        (x.get("inspection") or {}).get("raw_product_href_count", 0)
+        for x in report["category_endpoints"]
+    )
+    report["aggregate"]["candidate_urls_from_categories"] = len({
+        u
+        for x in report["category_endpoints"]
+        for p in x.get("page_candidates", [])
+        for u in p.get("candidate_urls", [])
+    })
+    report["aggregate"]["candidate_urls_from_sitemap"] = sum(
+        1 for x in report["sitemap"] for u in x.get("urls", [])
+        if "/product/" in u.lower()
+    )
+    report["aggregate"]["validated_products"] = sum(
+        1 for x in validation if x.get("product_accepts")
+    )
+    report["all_unique_candidates"] = all_candidates[:120]
+
+    return report
