@@ -953,7 +953,8 @@ def _catalog_variant_for_product(
     #
     # Il confronto usa sia l'uguaglianza sia l'inclusione, ma sceglie
     # sempre l'alias più specifico. Questo evita che un alias corto
-    # una variante meno specifica non deve vincere su una variante più specifica.
+    # (per esempio "Hawas For Her") vinca su una variante più specifica
+    # (per esempio "Hawas For Her Eclat").
     variant_matches = []
 
     for variant in family.get("variants", []):
@@ -2120,10 +2121,10 @@ def _prepare_final_results(
     products: List[Dict[str, Any]],
     query: str,
 ) -> List[Dict[str, Any]]:
-    # Mantieni tutte le offerte validate: la stessa identità canonica deve
-    # permettere al frontend/comparatore di raggruppare le offerte senza
-    # perdere i singoli store, prezzi e disponibilità.
-    results = unique_results(products)
+    results = _collapse_family_results(
+        unique_results(products),
+        query,
+    )
 
     prepared: List[Dict[str, Any]] = []
 
@@ -2392,22 +2393,16 @@ def _validate_candidate(
         # L'identità del Family Registry deve essere applicata all'oggetto
         # candidato che prosegue nel percorso verso matched_candidates.
         # Non deve restare confinata a un risultato diagnostico o al matcher.
-        final_product = (
-            dict(matched_product)
-            if isinstance(matched_product, dict)
-            else dict(product)
-        )
-        final_product.update(resolved_identity)
+        product = dict(product)
+        product.update(resolved_identity)
 
-        final_product["match_method"] = (
-            resolved_identity.get("match_method")
-            or final_product.get("match_method")
+        product["match_method"] = (
+            product.get("match_method")
             or "family_registry_alias"
         )
-        if final_product.get("canonical_name"):
-            final_product["name"] = final_product["canonical_name"]
+        product["name"] = product["canonical_name"]
 
-        return final_product
+        return product
 
     return matched_product
 
