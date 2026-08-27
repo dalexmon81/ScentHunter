@@ -290,19 +290,37 @@ def _product(url, html, query):
     }
 
 
-def _candidate_queries(q):
-    """Return the original query and optionally a broader discovery query."""
-    q = clean(q)
+def _candidate_queries(query):
+    """Build a small set of generic Deloox search queries.
+
+    The original query is always first. Broadening is only used for discovery;
+    the final product name is still validated by _product(), so this does not
+    whitelist any specific perfume or brand.
+    """
+    q = clean(query)
     if not q:
         return []
-    return [q]
 
+    variants = [q]
 
-PRODUCT_URL_PATTERNS = [
-    r'href\s*=\s*["\']((?:https?:)?//(?:www\.)?deloox\.com[^"\']*/product/[^"\']+)',
-    r'["\']((?:/)?(?:en/|it/|nl/)?product/[^"\'\s<>]+)["\']',
-    r'["\']((?:/)?(?:en/|it/|nl/)?product/[^"\'\s<>]+)',
-]
+    parts = q.split()
+    # Generic fallback: remove common concentration/size words only.
+    removable = {
+        "parfum", "perfume", "eau", "de", "toilette", "toilette",
+        "edt", "edp", "extrait", "extract"
+    }
+    broad = " ".join(p for p in parts if p.lower() not in removable).strip()
+    if broad and broad.lower() != q.lower():
+        variants.append(broad)
+
+    out = []
+    seen = set()
+    for item in variants:
+        key = norm(item)
+        if key and key not in seen:
+            seen.add(key)
+            out.append(item)
+    return out
 
 
 def _candidate_product_urls(
@@ -311,22 +329,27 @@ def _candidate_product_urls(
     discovery_query=None,
     accept_all_products=False,
 ):
-    """Extract Deloox product URLs from HTML.
+    """Extract Deloox product URLs from anchors, JSON and JS.
 
-    This function is generic and does not depend on specific products.
-    It extracts URLs from <a> tags, data attributes, and raw HTML.
+    Discovery may use a broader query, but final matching is performed by
+    _product() against the original query. Therefore this function never
+    creates a product result by itself.
     """
     soup = BeautifulSoup(html, "html.parser")
     found = []
     seen = set()
-    q_tokens = tokens(discovery_query or query)
+    discovery_query = clean(discovery_query or query)
 
-    def add(raw_url, text=""):
-        raw_url = clean(raw_url).replace("\\/", "/")
+    def add(raw_url, context=""):
         if not raw_url:
             return
 
-        url = urljoin(BASE_URL, raw_url).split("#")[0]
+        raw_url = clean(raw_url).replace("\\/", "/")
+        if raw_url.startswith(("javascript:", "mailto:", "#")):
+            return
+
+        url = urljoin(BASE_URL, raw_url).split("#")[0].split("?")[0]
+
         try:
             parsed = urlparse(url)
         except Exception:
@@ -341,23 +364,30 @@ def _candidate_product_urls(
         if url in seen:
             return
 
+        # During search discovery we want candidate URLs, not final matches.
+        # _product() performs the authoritative product-name validation later.
+        if not accept_all_products:
+            haystack = f"{context} {url}"
+            if not matches(haystack, query):
+                return
+
         seen.add(url)
         found.append(url)
 
     for a in soup.find_all("a", href=True):
         add(a.get("href"), a.get_text(" ", strip=True))
 
-    for tag in soup.find_all(True):
-        for attr, value in tag.attrs.items():
-            if isinstance(value, str) and attr.startswith(("data-", "href")):
-                add(value)
+    patterns = [
+        r'https?://(?:www\.)?deloox\.com/[^"\'>\s]+/product/[^"\'>\s]+',
+        r'["\']((?:/)?(?:en/)?product/[^"\']+)["\']',
+    ]
 
-    raw_html = html.replace("\\\\/", "/")
-    for pattern in PRODUCT_URL_PATTERNS:
-        for raw_url in re.findall(pattern, raw_html, re.I):
-            add(raw_url)
+    for pattern in patterns:
+        for raw in re.findall(pattern, html, re.I):
+            add(raw)
 
     return found
+
 
 
 def _category_product_line_links(html, query):
@@ -442,6 +472,12 @@ def _category_pages(session=None):
 
 
 def _category_page_variants(category_url, max_pages=8):
+    """Add bounded pagination only to the broad men's fragrance category."""
+    if not category_url.lower().endswith(
+        "/category/1000054/mens-fragrances.html"
+    ):
+        return [category_url]
+
     return [
         category_url,
         *[
