@@ -456,6 +456,132 @@ def _category_product_line_links(html, query):
     return links
 
 
+
+def _category_brand_links(html):
+    """Extract generic Deloox brand/category pages from a taxonomy page.
+
+    Deloox product-line pages are often nested under a brand category page.
+    The brand itself cannot be inferred reliably from the product query, so
+    discovery first collects generic brand-fragrance category URLs and then
+    searches those pages for the requested product-line link.
+    """
+    soup = BeautifulSoup(html, "html.parser")
+    links = []
+    seen = set()
+
+    def add(raw_url):
+        raw_url = clean(raw_url).replace("\\/", "/")
+        if not raw_url:
+            return
+        url = urljoin(BASE_URL, raw_url).split("#")[0].split("?")[0]
+        try:
+            parsed = urlparse(url)
+        except Exception:
+            return
+        if parsed.netloc.lower() not in {"deloox.com", "www.deloox.com"}:
+            return
+        path = parsed.path.lower()
+        if "/category/" not in path or not path.endswith(".html"):
+            return
+        slug = path.rsplit("/", 1)[-1]
+        # Brand taxonomy pages use the site's normal fragrance-category
+        # naming. Product-line pages do not normally end in these suffixes.
+        brand_suffixes = (
+            "-mens-fragrances.html",
+            "-womens-fragrances.html",
+            "-unisex-fragrances.html",
+            "-fragrances.html",
+            "-mens-perfume.html",
+            "-womens-perfume.html",
+        )
+        if not slug.endswith(brand_suffixes):
+            return
+        if url in seen:
+            return
+        seen.add(url)
+        links.append(url)
+
+    for a in soup.find_all("a", href=True):
+        add(a.get("href"))
+
+    raw = html.replace("\\\\/", "/")
+    pattern = (
+        r'(?:(?:https?:)?//(?:www\\.)?deloox\\.com)?'
+        r'(/(?:en/|it/|nl/)?category/\\d+/[^"\\\'<>\\s]+\\.html)'
+    )
+    for raw_url in re.findall(pattern, raw, re.I):
+        add(raw_url)
+
+    return links
+
+
+def _discover_from_brand_categories(session, query, max_brand_pages=80, max_urls=24, trace=None):
+    """Discover product-line pages through generic Deloox brand categories."""
+    product_line_urls = []
+    seen_lines = set()
+    seen_brands = set()
+    brand_urls = []
+
+    for category_url in _category_pages(session):
+        try:
+            r = session.get(category_url, headers=HEADERS, timeout=TIMEOUT)
+        except requests.RequestException as exc:
+            if trace is not None:
+                trace.setdefault("errors", []).append({
+                    "stage": "brand_discovery",
+                    "url": category_url,
+                    "error": str(exc),
+                })
+            continue
+        if trace is not None:
+            trace.setdefault("requests", []).append({
+                "stage": "brand_discovery",
+                "url": category_url,
+                "status": r.status_code,
+                "bytes": len(r.content),
+            })
+        if r.status_code >= 400:
+            continue
+        for brand_url in _category_brand_links(r.text):
+            if brand_url not in seen_brands:
+                seen_brands.add(brand_url)
+                brand_urls.append(brand_url)
+
+    for brand_url in brand_urls[:max_brand_pages]:
+        try:
+            r = session.get(brand_url, headers=HEADERS, timeout=TIMEOUT)
+        except requests.RequestException as exc:
+            if trace is not None:
+                trace.setdefault("errors", []).append({
+                    "stage": "brand_category",
+                    "url": brand_url,
+                    "error": str(exc),
+                })
+            continue
+        if trace is not None:
+            trace.setdefault("requests", []).append({
+                "stage": "brand_category",
+                "url": brand_url,
+                "status": r.status_code,
+                "bytes": len(r.content),
+            })
+        if r.status_code >= 400:
+            continue
+
+        matches = _category_product_line_links(r.text, query)
+        for url in matches:
+            if url in seen_lines:
+                continue
+            seen_lines.add(url)
+            product_line_urls.append(url)
+            if trace is not None:
+                trace.setdefault("product_line_urls", []).append(url)
+            if len(product_line_urls) >= max_urls:
+                return product_line_urls
+
+    return product_line_urls
+
+
 def _category_pages(session=None):
     """Return generic Deloox fragrance category entry points.
 
@@ -860,6 +986,49 @@ def _discover_with_trace(session, q, trace=None):
                 return urls[:24]
 
     # 4. FALLBACK: category -> brand -> product-line discovery.
+    for category_url in _discover_from_brand_categories(
+        session,
+        q,
+        max_brand_pages=80,
+        max_urls=24,
+        trace=trace,
+    ):
+        try:
+            page = session.get(
+                category_url,
+                headers=HEADERS,
+                timeout=TIMEOUT,
+            )
+        except requests.RequestException as exc:
+            if trace is not None:
+                trace.setdefault("errors", []).append({
+                    "stage": "brand_product_line",
+                    "url": category_url,
+                    "error": str(exc),
+                })
+            continue
+        if trace is not None:
+            trace.setdefault("requests", []).append({
+                "stage": "brand_product_line",
+                "url": category_url,
+                "status": page.status_code,
+                "bytes": len(page.content),
+            })
+        if page.status_code >= 400:
+            continue
+        candidates = _candidate_product_urls(
+            page.text,
+            q,
+            discovery_query=q,
+            accept_all_products=True,
+        )
+        if trace is not None:
+            trace.setdefault("candidate_urls_by_stage", {}).setdefault("brand_product_line", []).extend(candidates)
+        for product_url in candidates:
+            add(product_url)
+            if len(urls) >= 24:
+                return urls[:24]
+
     for url in _discover_from_categories(
         session,
         q,
