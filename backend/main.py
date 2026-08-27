@@ -168,8 +168,9 @@ FRONTEND_INDEX = (
     / "index.html"
 )
 
-NON_PERFUME = {
-    # Confezioni / prodotti multipli: non sono una singola referenza profumo.
+SET_MARKERS = {
+    # Confezioni / prodotti multipli: sono risultati validi e vengono
+    # ordinati dopo le singole referenze profumo.
     "gift set",
     "set regalo",
     "set",
@@ -188,7 +189,10 @@ NON_PERFUME = {
     "trio",
     "mystery box",
     "gift box",
-    # Prodotti non costituiti dalla singola referenza profumo.
+}
+
+NON_PERFUME = {
+    # Prodotti che non rappresentano un profumo o una confezione di profumi.
     "tester",
     "testeur",
     "sample",
@@ -923,6 +927,8 @@ def _catalog_variant_for_product(
     #
     # Il confronto usa sia l'uguaglianza sia l'inclusione, ma sceglie
     # sempre l'alias più specifico. Questo evita che un alias corto
+    # (per esempio "Hawas For Her") vinca su una variante più specifica
+    # (per esempio "Hawas For Her Eclat").
     variant_matches = []
 
     for variant in family.get("variants", []):
@@ -1178,6 +1184,116 @@ def _catalog_match(
 # VALIDAZIONE
 # ============================================================
 
+def _is_set_or_coffret(product: Dict[str, Any]) -> bool:
+    """
+    Identifica genericamente set/coffret senza dipendere da un negozio
+    o da un singolo profumo.
+
+    Prima usa eventuali campi strutturati; poi controlla le diciture
+    commerciali nel titolo. Per titoli con + o & considera un set solo
+    quando entrambe le parti corrispondono a varianti presenti nel
+    Family Registry, evitando falsi positivi come i nomi dei brand.
+    """
+    structured_fields = (
+        "packaging_type",
+        "package_type",
+        "product_type",
+        "product_category",
+        "category",
+        "sub_category",
+        "subcategory",
+        "type",
+    )
+
+    structured_text = " ".join(
+        str(product.get(field) or "")
+        for field in structured_fields
+    )
+
+    source = product.get("source")
+    if isinstance(source, dict):
+        structured_text += " " + " ".join(
+            str(source.get(field) or "")
+            for field in structured_fields
+        )
+
+    structured_normalized = norm(structured_text)
+    if structured_normalized and any(
+        f" {norm(marker)} " in f" {structured_normalized} "
+        for marker in SET_MARKERS
+    ):
+        return True
+
+    name = product_field(
+        product,
+        "name",
+        "title",
+        "product_name",
+    )
+    source = product.get("source")
+    if isinstance(source, dict) and not name:
+        name = str(
+            source.get("name")
+            or source.get("title")
+            or ""
+        ).strip()
+
+    name_normalized = norm(name)
+    if not name_normalized:
+        return False
+
+    if any(
+        f" {norm(marker)} " in f" {name_normalized} "
+        for marker in SET_MARKERS
+    ):
+        return True
+
+    # Some retailers expose a two-fragrance bundle only as
+    # "A + B" / "A & B". Treat it as a set only when both sides
+    # can be resolved to registered fragrance variants.
+    for separator in (" + ", " & "):
+        if separator not in name:
+            continue
+
+        parts = [
+            part.strip()
+            for part in name.split(separator)
+            if part.strip()
+        ]
+        if len(parts) != 2:
+            continue
+
+        resolved_parts = 0
+        for part in parts:
+            part_key = _catalog_candidate_variant_key({"name": part})
+            if not part_key:
+                continue
+
+            for family in FAMILY_REGISTRY:
+                matched = False
+                for variant in family.get("variants", []):
+                    aliases = [
+                        variant.get("canonical_name", ""),
+                        *(variant.get("aliases") or []),
+                    ]
+                    if any(
+                        catalog_variant_key(alias) == part_key
+                        or catalog_variant_key(alias) in part_key
+                        for alias in aliases
+                        if alias
+                    ):
+                        matched = True
+                        break
+                if matched:
+                    resolved_parts += 1
+                    break
+
+        if resolved_parts == 2:
+            return True
+
+    return False
+
+
 def matches(product: Dict[str, Any], query: str) -> bool:
     """
     Validazione centrale.
@@ -1223,14 +1339,17 @@ def matches(product: Dict[str, Any], query: str) -> bool:
     if has_small_size(product) and not query_has_size:
         return False
 
-    for phrase in NON_PERFUME:
-        phrase_normalized = norm(phrase)
+    # Set/coffret sono risultati validi. Il filtro NON_PERFUME resta
+    # riservato ai prodotti che non sono profumi.
+    if not _is_set_or_coffret(product):
+        for phrase in NON_PERFUME:
+            phrase_normalized = norm(phrase)
 
-        if (
-            phrase_normalized in name_normalized
-            and phrase_normalized not in query_normalized
-        ):
-            return False
+            if (
+                phrase_normalized in name_normalized
+                and phrase_normalized not in query_normalized
+            ):
+                return False
 
     # --------------------------------------------------------
     # CATALOGO AUTORITATIVO
@@ -1585,17 +1704,20 @@ def deterministic_result_key(product: Dict[str, Any]) -> tuple:
     )
 
     url = str(product.get("url") or "").strip().lower()
-
     availability = product_availability(product)
 
-    availability_rank = {
-        "in stock": 0,
-        "in_stock": 0,
-        "available": 0,
-        "out of stock": 1,
-        "out_of_stock": 1,
-        "unknown": 2,
-    }.get(availability, 3)
+    # Ordine richiesto da ScentHunter:
+    # 1. Profumi disponibili
+    # 2. Set / Coffret disponibili
+    # 3. Out of stock (profumi e set)
+    if availability in {"out of stock", "out_of_stock"}:
+        stock_rank = 2
+    elif availability in {"unknown", ""}:
+        stock_rank = 1
+    else:
+        stock_rank = 0
+
+    set_rank = 1 if _is_set_or_coffret(product) else 0
 
     store_rank = (
         STORES.index(store)
@@ -1603,8 +1725,14 @@ def deterministic_result_key(product: Dict[str, Any]) -> tuple:
         else len(STORES)
     )
 
+    # Per gli OOS la distinzione profumo/set non deve spostare i risultati
+    # fuori dal blocco finale; per disponibili/unknown mantiene invece
+    # l'ordine Profumi -> Set/Coffret.
+    category_rank = set_rank if stock_rank < 2 else 0
+
     return (
-        availability_rank,
+        stock_rank,
+        category_rank,
         price_key,
         store_rank,
         name,
@@ -1632,13 +1760,15 @@ def _display_brand(product: Dict[str, Any]) -> str:
 
 def _display_raw_name(product: Dict[str, Any]) -> str:
     return (
-        product.get("canonical_name")
+        product.get("display_name")
+        or product.get("source_name")
         or product_field(
             product,
             "name",
             "title",
             "product_name",
         )
+        or product.get("canonical_name")
         or ""
     ).strip()
 
@@ -1830,70 +1960,27 @@ def _result_group_key(product: Dict[str, Any]) -> tuple:
     return ("generic", brand, name_key)
 
 
-def _order_family_results(
+def _collapse_family_results(
     products: List[Dict[str, Any]],
     query: str,
 ) -> List[Dict[str, Any]]:
     """
-    Ordina i risultati di una famiglia senza eliminare le offerte.
+    Mantiene tutte le offerte valide scoperte dagli scraper.
 
-    Il Family Registry stabilisce quali varianti sono ammesse e il loro
-    ordine, ma NON deve scegliere una sola offerta per variante: ogni store
-    che ha superato la validazione deve restare nel candidate pool finale,
-    così il frontend può confrontare tutte le offerte disponibili.
-
-    La deduplicazione resta quella generica di unique_results(), che opera
-    sull'identità del prodotto/store e non sulla variante canonica.
+    Varianti commerciali distinte (incluse Limited Edition) e set/coffret
+    non vengono più persi perché condividono la stessa identità canonica.
+    La deduplica degli stessi articoli resta affidata a unique_results().
     """
-    unique = unique_results(products)
-    family = _catalog_family_for_query(query)
-
-    if family is None:
-        return sort_by_price(unique)
-
-    family_brand = catalog_norm(family.get("brand"))
-    variant_order = {}
-
-    for index, variant in enumerate(family.get("variants", [])):
-        canonical_key = catalog_norm(
-            variant.get("canonical_name")
-        )
-        if canonical_key and canonical_key not in variant_order:
-            variant_order[canonical_key] = index
-
-    def result_key(product: Dict[str, Any]) -> tuple:
-        group_key = _result_group_key(product)
-
-        if (
-            len(group_key) == 3
-            and group_key[0] == "catalog"
-            and group_key[1] == family_brand
-        ):
-            variant_key = group_key[2]
-            return (
-                0,
-                variant_order.get(
-                    variant_key,
-                    len(variant_order),
-                ),
-                deterministic_result_key(product),
-            )
-
-        return (
-            1,
-            len(variant_order),
-            deterministic_result_key(product),
-        )
-
-    return sorted(unique, key=result_key)
+    del query
+    return unique_results(products)
 
 
 def _prepare_final_results(
     products: List[Dict[str, Any]],
     query: str,
 ) -> List[Dict[str, Any]]:
-    results = _order_family_results(
-        products,
+    results = _collapse_family_results(
+        unique_results(products),
         query,
     )
 
@@ -1905,7 +1992,7 @@ def _prepare_final_results(
         item["title"] = item["name"]
         prepared.append(item)
 
-    return prepared
+    return sort_by_price(prepared)
 
 
 # ============================================================
@@ -2111,10 +2198,22 @@ def _validate_candidate(
         resolved_identity = None
 
     if isinstance(resolved_identity, dict):
+        # Conserva il titolo commerciale originale: serve per distinguere
+        # Limited Edition e set/coffret anche quando condividono l'identità
+        # canonica del profumo.
+        product = dict(product)
+        original_name = product_field(
+            product,
+            "name",
+            "title",
+            "product_name",
+        )
+        if original_name and not product.get("display_name"):
+            product["display_name"] = original_name
+
         # L'identità del Family Registry deve essere applicata all'oggetto
         # candidato che prosegue nel percorso verso matched_candidates.
         # Non deve restare confinata a un risultato diagnostico o al matcher.
-        product = dict(product)
         product.update(resolved_identity)
 
         product["match_method"] = (
@@ -2735,89 +2834,6 @@ def diagnostic_search(
         }
 
 
-@app.get("/diagnostic-coverage")
-def diagnostic_coverage(
-    q: str,
-    stores: Optional[str] = None,
-):
-    """
-    Espone il diagnostico di copertura discovery come endpoint JSON.
-
-    Il diagnostico reale resta in discovery_coverage_diagnostic.py.
-    L'endpoint non modifica la pipeline normale di ricerca e non contiene
-    regole specifiche per prodotti, brand o shop.
-    """
-    query = str(q or "").strip()
-
-    if not query:
-        raise HTTPException(
-            status_code=400,
-            detail="Parametro q mancante",
-        )
-
-    selected_stores = None
-
-    if stores:
-        selected_stores = [
-            store.strip().lower()
-            for store in stores.split(",")
-            if store.strip()
-        ]
-
-        invalid_stores = [
-            store
-            for store in selected_stores
-            if store not in STORES
-        ]
-
-        if invalid_stores:
-            raise HTTPException(
-                status_code=400,
-                detail=(
-                    "Store non validi: "
-                    + ", ".join(invalid_stores)
-                    + ". Disponibili: "
-                    + ", ".join(STORES)
-                ),
-            )
-
-    try:
-        diagnostic_module = importlib.import_module(
-            "discovery_coverage_diagnostic"
-        )
-
-        run_query = getattr(
-            diagnostic_module,
-            "run_query",
-            None,
-        )
-
-        if not callable(run_query):
-            raise RuntimeError(
-                "discovery_coverage_diagnostic.py non espone run_query()"
-            )
-
-        return run_query(
-            query,
-            stores=selected_stores,
-        )
-
-    except HTTPException:
-        raise
-
-    except Exception as exc:
-        traceback.print_exc()
-
-        return {
-            "query": query,
-            "ok": False,
-            "error": (
-                f"{type(exc).__name__}: {exc}"
-            ),
-            "traceback": traceback.format_exc(),
-        }
-
-
 @app.get("/routing")
 def routing(q: str):
     return {
@@ -3191,14 +3207,6 @@ def product(
 
     offers.sort(
         key=lambda offer: (
-            {
-                "in stock": 0,
-                "in_stock": 0,
-                "available": 0,
-                "out of stock": 1,
-                "out_of_stock": 1,
-                "unknown": 2,
-            }.get(product_availability(offer), 3),
             offer["price_value"],
             norm(offer.get("store", "")),
             norm(offer.get("name", "")),
