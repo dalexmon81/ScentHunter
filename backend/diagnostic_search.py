@@ -1,32 +1,13 @@
 """
 ScentHunter - global search pipeline diagnostic
 
-Uso:
-    python global_search_diagnostic.py "Liquid Brun"
+Questo modulo è usato dall'endpoint diagnostico HTTP.
+Non modifica la pipeline normale di ricerca.
 
-Opzionale:
-    python global_search_diagnostic.py "Liquid Brun" --json
-    python global_search_diagnostic.py "Liquid Brun" --stores bplatz deloox
+Espone:
+    run_query(query, stores=None)
 
-Il file è diagnostico soltanto.
-NON modifica main.py, gli scraper, il catalogo o il database.
-
-Scopo:
-    Separare il problema di copertura degli scraper dal problema
-    della pipeline centrale.
-
-Per ogni store registra:
-    - query realmente inviate allo scraper
-    - quanti risultati lo scraper restituisce
-    - quanti candidati unici arrivano
-    - quanti candidati superano matches() centrale
-    - nome, URL e identità dei candidati
-    - eventuali errori
-
-Questo permette di stabilire se la perdita avviene:
-    A) dentro lo scraper;
-    B) nel matching centrale;
-    C) dopo il ritorno degli scraper.
+e, per compatibilità, anche una CLI locale.
 """
 
 from __future__ import annotations
@@ -36,7 +17,7 @@ import importlib
 import json
 import os
 import sys
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
 
 
 CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -76,25 +57,34 @@ def _identity(item: Dict[str, Any]) -> Any:
     return scent_main.product_identity_key(item)
 
 
-def _central_match(item: Dict[str, Any], query: str) -> bool:
+def _central_match(
+    item: Dict[str, Any],
+    query: str,
+) -> bool:
     try:
         return bool(scent_main.matches(item, query))
     except Exception:
         return False
 
 
-def run_store(store: str, query: str) -> Dict[str, Any]:
+def run_store(
+    store: str,
+    query: str,
+) -> Dict[str, Any]:
+    attempts = scent_main.build_search_attempts(
+        store,
+        query,
+    )
+
     report: Dict[str, Any] = {
         "store": store,
         "status": "ok",
-        "attempts": scent_main.build_search_attempts(
-            store,
-            query,
-        ),
+        "attempts": attempts,
         "calls": [],
         "returned_total": 0,
         "unique_candidates": 0,
         "central_matches": 0,
+        "central_rejected": 0,
         "errors": [],
         "products": [],
     }
@@ -124,12 +114,14 @@ def run_store(store: str, query: str) -> Dict[str, Any]:
 
     seen = set()
 
-    for attempt in report["attempts"]:
+    for attempt in attempts:
         call = {
             "query": attempt,
             "returned": 0,
             "unique_added": 0,
             "central_matches": 0,
+            "central_rejected": 0,
+            "error": None,
         }
 
         try:
@@ -146,10 +138,7 @@ def run_store(store: str, query: str) -> Dict[str, Any]:
                     continue
 
                 product = dict(item)
-                product.setdefault(
-                    "store",
-                    store,
-                )
+                product.setdefault("store", store)
 
                 key = _identity(product)
 
@@ -157,6 +146,7 @@ def run_store(store: str, query: str) -> Dict[str, Any]:
                     continue
 
                 seen.add(key)
+
                 call["unique_added"] += 1
                 report["unique_candidates"] += 1
 
@@ -165,8 +155,12 @@ def run_store(store: str, query: str) -> Dict[str, Any]:
                     query,
                 )
 
-                call["central_matches"] += int(matches)
-                report["central_matches"] += int(matches)
+                if matches:
+                    call["central_matches"] += 1
+                    report["central_matches"] += 1
+                else:
+                    call["central_rejected"] += 1
+                    report["central_rejected"] += 1
 
                 report["products"].append(
                     {
@@ -220,15 +214,16 @@ def run_store(store: str, query: str) -> Dict[str, Any]:
 
     if report["errors"] and not report["products"]:
         report["status"] = "error"
-
     elif not report["products"]:
         report["status"] = "zero_candidates"
-
     elif report["central_matches"] == 0:
-        report["status"] = "candidates_rejected_by_central_match"
-
+        report["status"] = (
+            "candidates_rejected_by_central_match"
+        )
     else:
-        report["status"] = "candidate_reaches_central_match"
+        report["status"] = (
+            "candidate_reaches_central_match"
+        )
 
     return report
 
@@ -248,6 +243,12 @@ def build_report(
     return {
         "query": query,
         "stores_expected": len(stores),
+        "stores_with_raw_candidates": sum(
+            report["raw_candidates"]
+            if "raw_candidates" in report
+            else report["returned_total"] > 0
+            for report in reports
+        ),
         "stores_with_candidates": sum(
             bool(report["products"])
             for report in reports
@@ -265,6 +266,144 @@ def build_report(
             for report in reports
         ),
         "stores": reports,
+    }
+
+
+def run_query(
+    query: str,
+    stores: Optional[List[str]] = None,
+) -> Dict[str, Any]:
+    """
+    Entry point per l'endpoint HTTP.
+
+    Non usa argparse e restituisce direttamente un dict
+    serializzabile da FastAPI.
+    """
+    query = _text(query)
+
+    if not query:
+        raise ValueError(
+            "La query non può essere vuota."
+        )
+
+    selected_stores = (
+        list(stores)
+        if stores is not None
+        else list(STORES)
+    )
+
+    invalid = [
+        store
+        for store in selected_stores
+        if store not in STORES
+    ]
+
+    if invalid:
+        raise ValueError(
+            "Store non validi: "
+            + ", ".join(invalid)
+            + ". Disponibili: "
+            + ", ".join(STORES)
+        )
+
+    reports = [
+        run_store(
+            store,
+            query,
+        )
+        for store in selected_stores
+    ]
+
+    final_results = []
+
+    for report in reports:
+        if report["central_matches"] <= 0:
+            continue
+
+        for product in report["products"]:
+            if not product["central_matches"]:
+                continue
+
+            final_results.append(
+                {
+                    "store": (
+                        product["store"]
+                        or report["store"]
+                    ),
+                    "name": product["name"],
+                    "url": product["url"],
+                    "price": product["price"],
+                    "identity_key": product[
+                        "identity_key"
+                    ],
+                    "match_method": "raw_identity",
+                    "canonical_name": (
+                        product["canonical_name"]
+                        or product["name"]
+                    ),
+                }
+            )
+
+    raw_candidates = sum(
+        report["returned_total"]
+        for report in reports
+    )
+
+    unique_candidates = sum(
+        report["unique_candidates"]
+        for report in reports
+    )
+
+    central_matches = sum(
+        report["central_matches"]
+        for report in reports
+    )
+
+    central_rejected = sum(
+        report["central_rejected"]
+        for report in reports
+    )
+
+    return {
+        "ok": True,
+        "query": query,
+        "expected_stores": len(selected_stores),
+        "stores_with_raw_candidates": sum(
+            report["returned_total"] > 0
+            for report in reports
+        ),
+        "stores_with_central_matches": sum(
+            report["central_matches"] > 0
+            for report in reports
+        ),
+        "stores_with_final_results": len(
+            {
+                result["store"]
+                for result in final_results
+            }
+        ),
+        "global": {
+            "raw_candidates": raw_candidates,
+            "unique_candidates": unique_candidates,
+            "central_matches": central_matches,
+            "central_rejected": central_rejected,
+            "final_results": len(final_results),
+        },
+        "final_by_store": {
+            store: sum(
+                result["store"].lower()
+                == store.lower()
+                for result in final_results
+            )
+            for store in selected_stores
+        },
+        "errors": {
+            report["store"]: report["errors"]
+            for report in reports
+            if report["errors"]
+        },
+        "stores": reports,
+        "final_results": final_results,
     }
 
 
@@ -293,7 +432,8 @@ def print_report(
             f"{item['status']:34} "
             f"returned={item['returned_total']:3} "
             f"unique={item['unique_candidates']:3} "
-            f"matched={item['central_matches']:3}"
+            f"matched={item['central_matches']:3} "
+            f"rejected={item['central_rejected']:3}"
         )
 
         for call in item["calls"]:
@@ -302,7 +442,8 @@ def print_report(
                 f"query={call['query']!r} "
                 f"returned={call['returned']} "
                 f"unique+={call['unique_added']} "
-                f"matched={call['central_matches']}"
+                f"matched={call['central_matches']} "
+                f"rejected={call['central_rejected']}"
             )
 
         for product in item["products"]:
@@ -358,9 +499,9 @@ def main() -> int:
             "La query non può essere vuota."
         )
 
-    report = build_report(
+    report = run_query(
         query,
-        list(args.stores),
+        stores=list(args.stores),
     )
 
     if args.json:
@@ -379,3 +520,4 @@ def main() -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
+
