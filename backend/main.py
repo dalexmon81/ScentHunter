@@ -2120,10 +2120,10 @@ def _prepare_final_results(
     products: List[Dict[str, Any]],
     query: str,
 ) -> List[Dict[str, Any]]:
-    results = _collapse_family_results(
-        unique_results(products),
-        query,
-    )
+    # Mantieni tutte le offerte validate: la stessa identità canonica deve
+    # permettere al frontend/comparatore di raggruppare le offerte senza
+    # perdere i singoli store, prezzi e disponibilità.
+    results = unique_results(products)
 
     prepared: List[Dict[str, Any]] = []
 
@@ -2359,7 +2359,7 @@ def _validate_candidate(
     # il matcher riceve il candidato RAW e restituisce la sua identità
     # canonica dal catalogo autorevole.
     try:
-        matched_product = _PRODUCT_MATCHER.match(product, query)
+        matched_product = _PRODUCT_MATCHER.match(product)
     except Exception as exc:
         print(
             "PRODUCT_MATCHER_RUNTIME_ERROR:",
@@ -2397,42 +2397,13 @@ def _validate_candidate(
             if isinstance(matched_product, dict)
             else dict(product)
         )
-        # Il matcher centrale resta la fonte autorevole per l'identità
-        # strutturata quando ha già risolto il candidato contro il catalogo.
-        # Il Family Registry aggiunge/valida l'identità, ma non deve
-        # sovrascrivere campi più completi con valori parziali (per esempio
-        # family_name o gender assenti nel Registry). Se il matcher non ha
-        # trovato una referenza catalogata, il Registry può invece fornire
-        # l'identità disponibile.
-        matcher_is_catalog_match = bool(
-            isinstance(matched_product, dict)
-            and matched_product.get("match_score", 0) > 0
+        final_product.update(resolved_identity)
+
+        final_product["match_method"] = (
+            resolved_identity.get("match_method")
+            or final_product.get("match_method")
+            or "family_registry_alias"
         )
-
-        if matcher_is_catalog_match:
-            for key, value in resolved_identity.items():
-                if key not in final_product or final_product.get(key) in (
-                    None,
-                    "",
-                    [],
-                    {},
-                ):
-                    final_product[key] = value
-        else:
-            final_product.update(resolved_identity)
-
-        if matcher_is_catalog_match:
-            final_product["match_method"] = (
-                final_product.get("match_method")
-                or resolved_identity.get("match_method")
-                or "family_registry_alias"
-            )
-        else:
-            final_product["match_method"] = (
-                resolved_identity.get("match_method")
-                or final_product.get("match_method")
-                or "family_registry_alias"
-            )
         if final_product.get("canonical_name"):
             final_product["name"] = final_product["canonical_name"]
 
