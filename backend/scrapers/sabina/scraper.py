@@ -213,6 +213,63 @@ def extract_concentration(*texts):
     return None, None
 
 
+def extract_concentration_from_product_page(
+    soup,
+    title="",
+    product=None,
+):
+    """
+    Read concentration only from product-specific data.
+
+    The full Sabina page can contain recommendations/related products with
+    other concentrations. Those unrelated blocks must never determine the
+    selected product's concentration.
+    """
+    texts = []
+
+    if title:
+        texts.append(title)
+
+    if isinstance(product, dict):
+        for key in ("name", "description"):
+            value = product.get(key)
+            if value:
+                texts.append(str(value))
+
+    for selector in (
+        '[itemprop="description"]',
+        '[itemprop="name"]',
+        '[class*="product-information"]',
+        '[class*="product-detail"]',
+        '[class*="product-description"]',
+        '[class*="product-attribute"]',
+        '[class*="product-variant"]',
+        '[class*="product-combination"]',
+    ):
+        for node in soup.select(selector):
+            text = node.get_text(" ", strip=True)
+            if text:
+                texts.append(text)
+
+    # Prefer the product's explicit Eau de Parfum/Toilette wording before
+    # falling back to other concentration labels.
+    combined = norm(" ".join(texts))
+    priority_rules = (
+        ("Eau de Parfum", (r"\beau\s+de\s+parfum\b", r"\bedp\b")),
+        ("Eau de Toilette", (r"\beau\s+de\s+toilette\b", r"\bedt\b")),
+        ("Eau de Cologne", (r"\beau\s+de\s+cologne\b", r"\bedc\b")),
+        ("Extrait de Parfum", (r"\bextrait\s+(?:de\s+)?parfum\b",)),
+        ("Parfum", (r"\bparfum\b",)),
+    )
+
+    for label, patterns in priority_rules:
+        for pattern in patterns:
+            if re.search(pattern, combined, re.I):
+                return label, "product_page"
+
+    return None, None
+
+
 def extract_gender(*texts):
     normalized = norm(
         " ".join(str(text or "") for text in texts)
@@ -1041,9 +1098,10 @@ def extract_product_page(session, url, query):
     )
 
     concentration, concentration_source = (
-        extract_concentration(
+        extract_concentration_from_product_page(
+            soup,
             title,
-            page_text,
+            product,
         )
     )
 
