@@ -146,25 +146,14 @@ def _load_product_matcher_catalog() -> List[Dict[str, Any]]:
         aliases.extend(data["aliases"])
         aliases = list(dict.fromkeys(str(x).strip() for x in aliases if str(x).strip()))
 
-        concentration = str(product.get("concentration") or "").strip()
-        gender = str(product.get("gender") or "").strip()
-        family_name = str(product.get("family_name") or "").strip()
-        catalog_variant = name
-
         catalog.append({
             "id": product_id,
             "brand": brand,
             "name": name,
-            "canonical_name": name,
             "aliases": aliases,
             "formats_ml": data["formats_ml"],
             "gtins": data["gtins"],
             "mpns": data["mpns"],
-            "concentration": concentration,
-            "gender": gender,
-            "family_id": str(product.get("family_id") or "").strip(),
-            "family_name": family_name,
-            "catalog_variant": catalog_variant,
         })
 
     return catalog
@@ -382,11 +371,7 @@ def product_size_ml(product: Dict[str, Any]) -> Optional[float]:
 
 
 def product_concentration(product: Dict[str, Any]) -> str:
-    value = product_field(
-        product,
-        "canonical_concentration",
-        "concentration",
-    )
+    value = product_field(product, "concentration")
     if value:
         return norm(value)
 
@@ -724,32 +709,17 @@ def _load_family_registry() -> List[Dict[str, Any]]:
                 valid_aliases.append(alias)
 
             valid_aliases = list(dict.fromkeys(valid_aliases))
-            normalized_variant = {
-                "canonical_name": canonical_name,
-                "aliases": valid_aliases,
-                "normalized_aliases": tuple(
-                    catalog_variant_key(alias)
-                    for alias in valid_aliases
-                    if catalog_variant_key(alias)
-                ),
-            }
-
-            # Preserve optional identity metadata declared by the
-            # Family Registry.  The registry remains data-only; the
-            # formatting logic below decides how these fields are shown.
-            for source_key, target_key in (
-                ("concentration", "concentration"),
-                ("canonical_concentration", "concentration"),
-                ("gender", "gender"),
-                ("canonical_gender", "gender"),
-                ("genere", "gender"),
-                ("sex", "gender"),
-            ):
-                value = str(variant.get(source_key) or "").strip()
-                if value and target_key not in normalized_variant:
-                    normalized_variant[target_key] = value
-
-            normalized_variants.append(normalized_variant)
+            normalized_variants.append(
+                {
+                    "canonical_name": canonical_name,
+                    "aliases": valid_aliases,
+                    "normalized_aliases": tuple(
+                        catalog_variant_key(alias)
+                        for alias in valid_aliases
+                        if catalog_variant_key(alias)
+                    ),
+                }
+            )
 
         if not normalized_variants:
             continue
@@ -1154,14 +1124,6 @@ def _catalog_match(
             result["catalog_variant"] = variant["canonical_name"]
             result["match_method"] = "family_registry_alias"
 
-            # Propaga anche gli attributi identitari, quando dichiarati
-            # dal Registry, così la visualizzazione non dipende dal modo
-            # in cui un singolo retailer scrive il prodotto.
-            for field in ("concentration", "gender"):
-                value = str(variant.get(field) or "").strip()
-                if value:
-                    result[field] = value
-
             # Il Family Registry è autorevole anche per il brand.
             # Quando il candidato RAW non porta il brand, il risultato
             # della famiglia deve comunque propagare il brand canonico
@@ -1195,14 +1157,6 @@ def _catalog_match(
             )
             result["catalog_variant"] = variant["canonical_name"]
             result["match_method"] = "family_registry_alias"
-
-            # Propaga anche gli attributi identitari, quando dichiarati
-            # dal Registry, così la visualizzazione non dipende dal modo
-            # in cui un singolo retailer scrive il prodotto.
-            for field in ("concentration", "gender"):
-                value = str(variant.get(field) or "").strip()
-                if value:
-                    result[field] = value
 
             # Il Family Registry è autorevole anche per il brand.
             # Quando il candidato RAW non porta il brand, il risultato
@@ -1587,10 +1541,7 @@ def product_identity_key(product: Dict[str, Any]) -> tuple:
             name = norm(source.get("source_name", ""))
 
     size = product_size_ml(product)
-    concentration = (
-        product_concentration(product)
-        or norm(product.get("canonical_concentration") or "")
-    )
+    concentration = product_concentration(product)
 
     return (
         "fallback",
@@ -1670,45 +1621,10 @@ def sort_by_price(products: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
     )
 
 
-def _final_result_sort_key(product: Dict[str, Any]) -> tuple:
-    """
-    Ordine finale ScentHunter:
-      1. profumi disponibili
-      2. set/coffret disponibili
-      3. profumi non disponibili
-      4. set/coffret non disponibili
-
-    Il prezzo continua a ordinare i risultati all'interno della categoria.
-    """
-    availability = product_availability(product)
-    in_stock = availability in {"in stock", "in_stock", "available"}
-    packaging = _display_packaging_type(product)
-
-    if in_stock and packaging == "product":
-        category = 0
-    elif in_stock and packaging == "set":
-        category = 1
-    elif not in_stock and packaging == "product":
-        category = 2
-    else:
-        category = 3
-
-    base = deterministic_result_key(product)
-    return (category, *base)
-
-
-def sort_final_results(products: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
-    return sorted(products, key=_final_result_sort_key)
-
-
 def _display_brand(product: Dict[str, Any]) -> str:
-    # Dopo una risoluzione canonica, il catalogo/matcher è la fonte
-    # autorevole dell'identità. I dati RAW restano un fallback soltanto
-    # quando l'identità canonica non è disponibile.
     return (
         product_field(
             product,
-            "canonical_brand",
             "brand",
             "source_brand",
         )
@@ -1717,71 +1633,16 @@ def _display_brand(product: Dict[str, Any]) -> str:
 
 
 def _display_raw_name(product: Dict[str, Any]) -> str:
-    # Per le confezioni e per varianti commerciali esplicite come
-    # "Limited Edition", preferiamo il nome reale del retailer: il
-    # matcher/catalogo può averlo ricondotto alla famiglia canonica,
-    # ma non dobbiamo perdere l'informazione commerciale.
-    retailer_name = product_field(
-        product,
-        "name",
-        "title",
-        "product_name",
-    ).strip()
-    retailer_name_n = catalog_norm(retailer_name)
-
-    if retailer_name and (
-        re.search(r"\blimited\s+edition\b", retailer_name_n)
-        or _looks_like_set_name(retailer_name)
-    ):
-        return retailer_name
-
     return (
         product.get("canonical_name")
-        or retailer_name
+        or product_field(
+            product,
+            "name",
+            "title",
+            "product_name",
+        )
         or ""
     ).strip()
-
-
-def _looks_like_set_name(value: Any) -> bool:
-    text = catalog_norm(value)
-    if not text:
-        return False
-
-    markers = (
-        "gift set", "set regalo", "discovery set",
-        "fragrance set", "perfume set", "parfum set",
-        "coffret", "coffret cadeau", "cofanetto",
-        "bundle", "travel set", "gift box",
-        "duo", "trio", "mystery box",
-    )
-    return any(
-        re.search(rf"\b{re.escape(marker)}\b", text)
-        for marker in markers
-    ) or bool(re.search(r"\bset\b", text))
-
-
-def _display_packaging_type(product: Dict[str, Any]) -> str:
-    attributes = product.get("attributes")
-    value = None
-    if isinstance(attributes, dict):
-        value = nested_value(attributes.get("packaging_type"))
-
-    explicit = str(
-        product.get("packaging_type")
-        or value
-        or ""
-    ).strip().lower()
-
-    if explicit in {"set", "coffret", "bundle", "kit", "gift_set", "gift set"}:
-        return "set"
-
-    raw_name = product_field(
-        product,
-        "name",
-        "title",
-        "product_name",
-    )
-    return "set" if _looks_like_set_name(raw_name) else "product"
 
 
 def _display_gender(product: Dict[str, Any], raw_name: str) -> str:
@@ -1801,55 +1662,17 @@ def _display_gender(product: Dict[str, Any], raw_name: str) -> str:
             or ""
         ).strip()
 
-    explicit_norm = catalog_norm(explicit)
+    gender = _catalog_gender_class(
+        " ".join(
+            value
+            for value in (explicit, raw_name)
+            if value
+        )
+    )
 
-    if re.search(r"\b(?:uomo|men|man|male|homme|heren|mannen)\b", explicit_norm):
+    if gender == "male":
         return "Uomo"
-    if re.search(r"\b(?:donna|women|woman|female|femme|dames|vrouwen)\b", explicit_norm):
-        return "Donna"
-
-    # Some retailers expose the gender only inside JSON-LD/raw data or
-    # descriptive text, not in the normalized top-level fields.  Inspect
-    # those generic source fields as a fallback.  If both genders occur,
-    # keep the result neutral rather than guessing.
-    evidence = []
-
-    for value in (
-        raw_name,
-        product.get("name"),
-        product.get("title"),
-        product.get("product_name"),
-        product.get("url"),
-    ):
-        if value:
-            evidence.append(str(value))
-
-    if isinstance(source, dict):
-        for key in ("name", "title", "url", "description", "gender", "genere", "sex"):
-            value = source.get(key)
-            if value:
-                evidence.append(str(value))
-
-    raw_data = product.get("raw_data")
-    if raw_data:
-        try:
-            evidence.append(json.dumps(raw_data, ensure_ascii=False))
-        except (TypeError, ValueError):
-            evidence.append(str(raw_data))
-
-    evidence_text = catalog_norm(" ".join(evidence))
-    male = bool(re.search(
-        r"\b(?:for\s+him|for\s+men|men|man|male|homme|heren|mannen|uomo)\b",
-        evidence_text,
-    ))
-    female = bool(re.search(
-        r"\b(?:for\s+her|for\s+women|women|woman|female|femme|dames|vrouwen|donna)\b",
-        evidence_text,
-    ))
-
-    if male and not female:
-        return "Uomo"
-    if female and not male:
+    if gender == "female":
         return "Donna"
 
     return ""
@@ -1894,7 +1717,7 @@ def _display_variant_name(
     # Il genere è un attributo finale del titolo, non una parte
     # dell'identificativo commerciale visualizzato.
     variant = re.sub(
-        r"\b(?:for\s+him|for\s+her|uomo|donna|men|women|man|woman|"
+        r"\b(?:for\s+him|for\s+her|men|women|man|woman|"
         r"male|female|homme|femme|heren|mannen|dames|"
         r"vrouwen|unisex)\b",
         " ",
@@ -1902,10 +1725,7 @@ def _display_variant_name(
         flags=re.I,
     )
 
-    variant = re.sub(r"[()\[\]{}]", " ", variant)
-    variant = re.sub(r"\s+", " ", variant).strip()
-
-    return variant
+    return re.sub(r"\s+", " ", variant).strip()
 
 
 def _format_result_title(product: Dict[str, Any]) -> str:
@@ -1966,40 +1786,11 @@ def _result_group_key(product: Dict[str, Any]) -> tuple:
     """
     Raggruppa le offerte che rappresentano la stessa referenza.
 
-    I set/coffret sono entità commerciali autonome: non possono essere
-    collassati dentro la bottiglia singola a cui fanno riferimento.
-    Allo stesso modo una "Limited Edition" esplicita resta distinta dalla
-    versione standard anche quando il catalogo le riconduce alla stessa
-    famiglia. Tutte le regole sono generiche e indipendenti dal prodotto.
+    Per le famiglie catalogate la chiave è la variante canonica. Per le
+    altre famiglie usa brand + nome commerciale ripulito da formato e
+    concentrazione, mantenendo le differenze reali della variante.
     """
     brand = catalog_norm(_display_brand(product))
-    packaging = _display_packaging_type(product)
-
-    raw_name = _display_raw_name(product)
-    raw_name_n = catalog_norm(raw_name)
-
-    if packaging == "set":
-        name_key = raw_name_n
-        name_key = re.sub(
-            r"\b\d+(?:[.,]\d+)?\s*(?:ml|cl|l|g|kg|oz)\b",
-            " ",
-            name_key,
-        )
-        name_key = re.sub(
-            r"\b(?:eau\s+de\s+parfum|eau\s+de\s+toilette|"
-            r"eau\s+de\s+cologne|extrait\s+de\s+parfum|"
-            r"edp|edt|edc|parfum|perfume|spray)\b",
-            " ",
-            name_key,
-        )
-        if brand:
-            name_key = re.sub(
-                rf"\b{re.escape(brand)}\b",
-                " ",
-                name_key,
-            )
-        name_key = re.sub(r"\s+", " ", name_key).strip()
-        return ("set", brand, name_key)
 
     catalog_variant = catalog_norm(
         product.get("catalog_variant")
@@ -2008,8 +1799,6 @@ def _result_group_key(product: Dict[str, Any]) -> tuple:
     )
 
     if catalog_variant:
-        if re.search(r"\blimited\s+edition\b", raw_name_n):
-            catalog_variant = f"{catalog_variant} limited edition"
         return ("catalog", brand, catalog_variant)
 
     raw_name = _display_raw_name(product)
@@ -2069,50 +1858,23 @@ def _collapse_family_results(
         if key not in grouped:
             grouped[key] = product
 
-    # Il Registry resta autoritativo per l'ordine delle varianti normali.
-    # Le varianti commerciali esplicite (es. Limited Edition) vengono
-    # mantenute come risultati distinti; set/coffret vengono aggiunti dopo
-    # tutti i profumi.
+    # Il Registry è autoritativo: ordina le varianti secondo l'ordine
+    # dichiarato nel catalogo, mantenendo però soltanto quelle realmente
+    # trovate dagli scraper.
     ordered: List[Dict[str, Any]] = []
-    used_keys = set()
-    family_brand = catalog_norm(family.get("brand"))
 
     for variant in family.get("variants", []):
-        canonical_key = catalog_norm(variant.get("canonical_name"))
-        matching = []
-
+        canonical_key = catalog_norm(
+            variant.get("canonical_name")
+        )
         for key, product in grouped.items():
             if (
                 key[0] == "catalog"
-                and key[1] == family_brand
-                and (
-                    key[2] == canonical_key
-                    or key[2] == f"{canonical_key} limited edition"
-                )
+                and key[1] == catalog_norm(family.get("brand"))
+                and key[2] == canonical_key
             ):
-                matching.append((key, product))
-
-        matching.sort(
-            key=lambda pair: (
-                1 if pair[0][2].endswith(" limited edition") else 0,
-                deterministic_result_key(pair[1]),
-            )
-        )
-
-        for key, product in matching:
-            ordered.append(product)
-            used_keys.add(key)
-
-    # Tutto ciò che il catalogo ha validato ma che non è una bottiglia
-    # standard della sequenza precedente viene mantenuto. I set/coffret
-    # restano separati grazie alla loro chiave di packaging.
-    extras = [
-        (key, product)
-        for key, product in grouped.items()
-        if key not in used_keys
-    ]
-    extras.sort(key=lambda pair: deterministic_result_key(pair[1]))
-    ordered.extend(product for _, product in extras)
+                ordered.append(product)
+                break
 
     return ordered
 
@@ -2130,61 +1892,11 @@ def _prepare_final_results(
 
     for product in results:
         item = dict(product)
-
-        # Una volta risolta l'identità, i campi canonici devono essere
-        # completi e coerenti prima di costruire qualsiasi testo per la UI.
-        # Il RAW resta disponibile, ma non deve avere precedenza sul
-        # risultato del matcher/catalogo.
-        canonical_brand = str(
-            item.get("canonical_brand") or ""
-        ).strip()
-        if canonical_brand:
-            item["brand"] = canonical_brand
-        elif str(item.get("brand") or "").strip():
-            item["canonical_brand"] = str(
-                item.get("brand")
-            ).strip()
-
-        canonical_name = str(
-            item.get("canonical_name")
-            or item.get("catalog_variant")
-            or ""
-        ).strip()
-        if canonical_name:
-            item["canonical_name"] = canonical_name
-            item["catalog_variant"] = str(
-                item.get("catalog_variant")
-                or canonical_name
-            ).strip()
-
-        canonical_concentration = str(
-            item.get("canonical_concentration")
-            or item.get("concentration")
-            or ""
-        ).strip()
-        if canonical_concentration:
-            item["canonical_concentration"] = canonical_concentration
-            if not str(item.get("concentration") or "").strip():
-                item["concentration"] = canonical_concentration
-
-        canonical_gender = str(
-            item.get("gender") or ""
-        ).strip()
-        if canonical_gender:
-            item["gender"] = canonical_gender
-
-        # Unifica il titolo finale in un solo punto.
-        # Questo valore è quello che deve essere usato sia dalla UI sia
-        # dall'endpoint JSON: Brand-Variante [Concentrazione] [Uomo/Donna].
-        display_title = _format_result_title(item)
-
-        item["name"] = display_title
-        item["title"] = display_title
-        item["canonical_display_name"] = display_title
-
+        item["name"] = _format_result_title(item)
+        item["title"] = item["name"]
         prepared.append(item)
 
-    return sort_final_results(prepared)
+    return sort_by_price(prepared)
 
 
 # ============================================================
