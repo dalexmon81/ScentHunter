@@ -290,6 +290,58 @@ def _product(url, html, query):
     }
 
 
+
+READER_BASE = "https://r.jina.ai/"
+READER_TIMEOUT = 15
+
+
+def _reader_get(session, url):
+    """Generic read-only fallback when Deloox blocks/omits the normal HTML."""
+    try:
+        response = session.get(
+            READER_BASE + url,
+            headers={
+                "User-Agent": "ScentHunter/1.0",
+                "Accept": "text/plain,text/markdown,text/html;q=0.9,*/*;q=0.8",
+            },
+            timeout=READER_TIMEOUT,
+        )
+        response.raise_for_status()
+        return response.text or ""
+    except requests.RequestException:
+        return ""
+
+
+def _reader_candidate_product_urls(text):
+    """Extract Deloox product URLs from reader/markdown output."""
+    found = []
+    seen = set()
+
+    patterns = (
+        r'https?://(?:www\.)?deloox\.com/[^\s<>\]\)"\']+/product/[^\s<>\]\)"\']+',
+        r'\]\((https?://(?:www\.)?deloox\.com/[^\s\)]+/product/[^\s\)]+)\)',
+        r'\]\((/[^)\s]+/product/[^)\s]+)\)',
+    )
+
+    for pattern in patterns:
+        for raw in re.findall(pattern, text or "", re.I):
+            url = urljoin(BASE_URL, clean(raw)).split("#")[0].split("?")[0]
+            try:
+                parsed = urlparse(url)
+            except Exception:
+                continue
+            if parsed.netloc.lower() not in {"deloox.com", "www.deloox.com"}:
+                continue
+            if "/product/" not in parsed.path.lower():
+                continue
+            if url not in seen:
+                seen.add(url)
+                found.append(url)
+
+    return found
+
+
+
 def _candidate_queries(query):
     """Build a small set of generic Deloox search queries.
 
@@ -456,86 +508,128 @@ def _category_product_line_links(html, query):
     return links
 
 
-def _category_pages(session):
-    # These are Deloox's current perfume category URLs verified from the
-    # public site structure. We use both genders because Born in Roma exists
-    # as separate Uomo/Donna product lines.
+def _category_pages(session=None):
+    """Return generic Deloox fragrance category entry points.
+
+    These are store taxonomy pages, not product-specific exceptions.
+    The broad men's-fragrances category is important because Deloox can
+    expose product-line filters there that are not present in the narrower
+    men's-perfume page.
+    """
     return (
-        BASE_URL + "/category/1000003/fragrances.html",
         BASE_URL + "/category/1000054/mens-fragrances.html",
-        BASE_URL + "/category/1000063/womens-fragrances.html",
         BASE_URL + "/category/1075660/womens-perfume.html",
         BASE_URL + "/category/1075750/mens-perfume.html",
     )
 
 
-def _targeted_category_seed_urls(query):
-    """
-    Deloox sometimes exposes a product line on a dedicated category page
-    without exposing that category URL through the sitemap used by the
-    scraper. Keep a small, query-aware seed map for these cases, then fall
-    back to the broader brand category pages.
-    """
-    q = norm(query)
+def _category_page_variants(category_url, max_pages=8):
+    """Add bounded pagination only to the broad men's fragrance category."""
+    if not category_url.lower().endswith(
+        "/category/1000054/mens-fragrances.html"
+    ):
+        return [category_url]
 
-    seeds = []
-
-    # Liquid Brun has a dedicated Deloox category page.
-    if "liquid brun" in q:
-        seeds.append(
-            BASE_URL + "/en/category/1132834/liquid-brun.html"
-        )
-
-    # French Avenue's category index exposes both the regular Liquid Brun
-    # 100 ml and the Limited Edition 150 ml, plus other French Avenue lines.
-    if "liquid brun" in q or "french avenue" in q:
-        seeds.extend(
-            [
-                BASE_URL + "/en/category/1121334/french-avenue-mens-fragrances.html",
-                BASE_URL + "/en/category/1121322/french-avenue-fragrances.html",
-            ]
-        )
-
-    # De-duplicate while preserving order.
-    seen = set()
-    return [u for u in seeds if not (u in seen or seen.add(u))]
+    return [
+        category_url,
+        *[
+            category_url + "?page=" + str(page_number)
+            for page_number in range(2, max_pages + 1)
+        ],
+    ]
 
 
 def _discover_from_categories(session, query, max_urls=80):
     urls = []
     seen = set()
+    seen_category_pages = set()
 
     for category_url in _category_pages(session):
-        try:
-            r = session.get(category_url, headers=HEADERS, timeout=TIMEOUT)
-        except requests.RequestException:
-            continue
+        for category_page_url in _category_page_variants(
+            category_url,
+            max_pages=8,
+        ):
+            if category_page_url in seen_category_pages:
+                continue
+            seen_category_pages.add(category_page_url)
 
-        if r.status_code >= 400:
-            continue
-
-        # First, discover the exact Product line links exposed by Deloox.
-        product_line_links = _category_product_line_links(r.text, query)
-
-        # If Deloox's current HTML does not expose a filter link, also inspect
-        # the current category page itself for product cards.
-        candidate_pages = product_line_links or [category_url]
-
-        for page_url in candidate_pages:
             try:
-                page = session.get(page_url, headers=HEADERS, timeout=TIMEOUT)
+                r = session.get(
+                    category_page_url,
+                    headers=HEADERS,
+                    timeout=TIMEOUT,
+                )
             except requests.RequestException:
                 continue
 
-            if page.status_code >= 400:
-                continue
-
-            for product_url in _candidate_product_urls(page.text, query):
-                if product_url not in seen:
+            if r.status_code >= 400:
+                reader_html = _reader_get(session, category_page_url)
+                for product_url in _reader_candidate_product_urls(reader_html):
+                    if product_url in seen:
+                        continue
                     seen.add(product_url)
                     urls.append(product_url)
                     if len(urls) >= max_urls:
                         return urls[:max_urls]
+                continue
+
+            # First, discover exact Product-line category links exposed by
+            # Deloox. If no filter link is available, reuse the category HTML
+            # already downloaded and inspect its product cards directly.
+            product_line_links = _category_product_line_links(
+                r.text,
+                query,
+            )
+
+            if product_line_links:
+                candidate_pages = [
+                    (page_url, None)
+                    for page_url in product_line_links
+                ]
+            else:
+                candidate_pages = [
+                    (category_page_url, r.text)
+                ]
+
+            for page_url, page_html in candidate_pages:
+                if page_html is None:
+                    try:
+                        page = session.get(
+                            page_url,
+                            headers=HEADERS,
+                            timeout=TIMEOUT,
+                        )
+                    except requests.RequestException:
+                        continue
+
+                    if page.status_code >= 400:
+                        continue
+
+                    page_html = page.text
+
+                before = len(urls)
+                for product_url in _candidate_product_urls(
+                    page_html,
+                    query,
+                ):
+                    if product_url in seen:
+                        continue
+
+                    seen.add(product_url)
+                    urls.append(product_url)
+
+                    if len(urls) >= max_urls:
+                        return urls[:max_urls]
+
+                if len(urls) == before:
+                    reader_html = _reader_get(session, page_url)
+                    for product_url in _reader_candidate_product_urls(reader_html):
+                        if product_url in seen:
+                            continue
+                        seen.add(product_url)
+                        urls.append(product_url)
+                        if len(urls) >= max_urls:
+                            return urls[:max_urls]
 
     return urls[:max_urls]
 
@@ -718,8 +812,14 @@ def _discover(session, q):
                 continue
 
             if r.status_code >= 400:
+                reader_html = _reader_get(session, endpoint)
+                for product_url in _reader_candidate_product_urls(reader_html):
+                    add(product_url)
+                    if len(urls) >= 24:
+                        return urls[:24]
                 continue
 
+            before = len(urls)
             for product_url in _candidate_product_urls(
                 r.text,
                 q,
@@ -730,43 +830,20 @@ def _discover(session, q):
                 if len(urls) >= 24:
                     return urls[:24]
 
-    # 2. SECONDARY: discover matching product-line/category pages from
-    # Deloox's sitemap hierarchy. This is generic and query-driven.
-    for category_url in _sitemap_category_urls(
-        session,
-        q,
-        max_sitemaps=12,
-        max_urls=12,
-    ):
-        try:
-            r = session.get(
-                category_url,
-                headers=HEADERS,
-                timeout=TIMEOUT,
-            )
-        except requests.RequestException:
-            continue
+            if len(urls) == before:
+                reader_html = _reader_get(session, endpoint)
+                for product_url in _reader_candidate_product_urls(reader_html):
+                    add(product_url)
+                    if len(urls) >= 24:
+                        return urls[:24]
 
-        if r.status_code >= 400:
-            continue
-
-        for product_url in _candidate_product_urls(
-            r.text,
-            q,
-            discovery_query=q,
-            accept_all_products=True,
-        ):
-            add(product_url)
-            if len(urls) >= 24:
-                return urls[:24]
-
-    # 3. SECONDARY: direct product sitemap. This is still generic and does
+    # 2. SECONDARY: direct product sitemap.  This is still generic and does
     # not depend on a brand/category filter being rendered by Deloox.
     for product_url in _sitemap_product_urls(
         session,
         q,
-        max_sitemaps=2,
-        max_urls=12,
+        max_sitemaps=12,
+        max_urls=24,
     ):
         add(product_url)
         if len(urls) >= 24:
