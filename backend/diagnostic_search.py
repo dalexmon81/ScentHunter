@@ -579,16 +579,32 @@ def run_store(
         module = importlib.import_module(
             f"scrapers.{store}.scraper"
         )
+        # IMPORTANT: this diagnostic must inspect RAW DISCOVERY, not the
+        # production search() result. The production search() continues into
+        # price/stock validation and can legitimately return [] for an
+        # out-of-stock product even when discovery found the product page.
+        #
+        # Notino exposes debug_search(), which returns the raw candidate list
+        # together with the discovery report. Use it when available so the
+        # audit can prove whether HTTP -> Reader -> Sitemap actually found a
+        # candidate. Fall back to search()/scrape() only for stores that do
+        # not expose a raw-discovery diagnostic.
+        debug_fn = getattr(module, "debug_search", None)
         search_fn = getattr(module, "search", None)
         if not callable(search_fn):
             search_fn = getattr(module, "scrape", None)
 
-        if not callable(search_fn):
+        if not callable(debug_fn) and not callable(search_fn):
             raise RuntimeError(
-                f"{store}: scraper senza funzione search()/scrape()"
+                f"{store}: scraper senza debug_search() o search()/scrape()"
             )
 
         report["scraper_module"] = module.__name__
+        report["raw_source"] = (
+            "debug_search"
+            if callable(debug_fn)
+            else "search_or_scrape"
+        )
 
     except Exception as exc:
         report["status"] = "error"
@@ -616,11 +632,37 @@ def run_store(
 
     for attempt in attempts:
         try:
-            results = search_fn(attempt) or []
+            if callable(debug_fn):
+                debug_result = debug_fn(attempt) or {}
+
+                if not isinstance(debug_result, dict):
+                    raise TypeError(
+                        "debug_search() ha restituito "
+                        f"{type(debug_result).__name__}, non dict"
+                    )
+
+                # candidates is the discovery output BEFORE final product
+                # detail/price/stock acceptance. This is the value the audit
+                # calls raw_total.
+                results = debug_result.get("candidates") or []
+
+                discovery = debug_result.get("discovery")
+                if isinstance(discovery, dict):
+                    report.setdefault("discovery", {})[attempt] = discovery
+
+                report.setdefault("debug_result_summary", {})[attempt] = {
+                    "ok": debug_result.get("ok"),
+                    "candidate_count": debug_result.get("candidate_count", len(results)),
+                    "ranked_candidate_count": debug_result.get("ranked_candidate_count"),
+                    "result_count": debug_result.get("result_count"),
+                }
+            else:
+                results = search_fn(attempt) or []
+
         except Exception as exc:
             report["errors"].append(
                 {
-                    "stage": "scraper_search",
+                    "stage": "raw_discovery",
                     "attempt": attempt,
                     "error": f"{type(exc).__name__}: {exc}",
                     "traceback": traceback.format_exc(),
@@ -638,7 +680,7 @@ def run_store(
         if not isinstance(results, list):
             report["errors"].append(
                 {
-                    "stage": "scraper_search",
+                    "stage": "raw_discovery",
                     "attempt": attempt,
                     "error": (
                         "Risposta non-list: "
@@ -803,32 +845,32 @@ def run_store(
             continue
 
         if matched:
-            catalog_result = None
+            central_match = None
             try:
-                catalog_result = scent_main._catalog_match(
+                central_match = scent_main._PRODUCT_MATCHER.match(
                     product,
                     query,
                 )
             except Exception:
-                catalog_result = None
+                central_match = None
 
-            if isinstance(catalog_result, dict):
+            if isinstance(central_match, dict):
                 resolved_identity = {
                     "family_id": text(
-                        catalog_result.get("family_id")
+                        central_match.get("family_id")
                     ),
                     "family_name": text(
-                        catalog_result.get("family_name")
+                        central_match.get("family_name")
                     ),
                     "canonical_name": text(
-                        catalog_result.get("canonical_name")
+                        central_match.get("canonical_name")
                     ),
                     "catalog_variant": text(
-                        catalog_result.get("catalog_variant")
+                        central_match.get("catalog_variant")
                     ),
                     "match_method": text(
-                        catalog_result.get("match_method")
-                    ) or "family_registry_alias",
+                        central_match.get("match_method")
+                    ) or "generic",
                 }
 
                 # Applica realmente l'identità risolta al candidato che
@@ -874,6 +916,7 @@ def run_store(
     report["summary"] = {
         "attempt_count": len(attempts),
         "raw_total": report["raw_total"],
+        "raw_source": report.get("raw_source"),
         "unique_after_dedup": len(
             report["deduplicated_candidates"]
         ),
