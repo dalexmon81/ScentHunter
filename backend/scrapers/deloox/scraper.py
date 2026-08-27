@@ -16,7 +16,9 @@ from bs4 import BeautifulSoup
 
 STORE = "Deloox"
 BASE_URL = "https://www.deloox.com"
+READER_BASE = "https://r.jina.ai/"
 TIMEOUT = 10
+READER_TIMEOUT = 15
 HEADERS = {
     "User-Agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 Version/17.0 Mobile/15E148 Safari/604.1",
     "Accept-Language": "en-GB,en;q=0.9",
@@ -323,6 +325,55 @@ def _candidate_queries(query):
     return out
 
 
+
+def _reader_get(session, url):
+    """Generic read-only fallback for Deloox pages blocked to normal HTTP."""
+    try:
+        response = session.get(
+            READER_BASE + url,
+            headers={
+                "User-Agent": "ScentHunter/1.0",
+                "Accept": "text/plain,text/markdown,text/html;q=0.9,*/*;q=0.8",
+            },
+            timeout=READER_TIMEOUT,
+        )
+        response.raise_for_status()
+        return response.text or ""
+    except requests.RequestException:
+        return ""
+
+
+def _reader_product_urls(text, query):
+    """Extract Deloox product URLs from reader/markdown output."""
+    found = []
+    seen = set()
+
+    patterns = (
+        r'https?://(?:www\.)?deloox\.com/[^\s<>\]\)"\']+/product/[^\s<>\]\)"\']+',
+        r'\]\((https?://(?:www\.)?deloox\.com/[^\s\)]+/product/[^\s\)]+)\)',
+        r'\]\((/[^)\s]+/product/[^)\s]+)\)',
+    )
+
+    for pattern in patterns:
+        for raw in re.findall(pattern, text or "", re.I):
+            url = urljoin(BASE_URL, clean(raw)).split("#")[0].split("?")[0]
+            try:
+                parsed = urlparse(url)
+            except Exception:
+                continue
+            if parsed.netloc.lower() not in {"deloox.com", "www.deloox.com"}:
+                continue
+            if "/product/" not in parsed.path.lower():
+                continue
+            if url in seen:
+                continue
+            seen.add(url)
+            found.append(url)
+
+    return found
+
+
+
 def _candidate_product_urls(
     html,
     query,
@@ -524,6 +575,14 @@ def _discover_from_categories(session, query, max_urls=80):
             continue
 
         if r.status_code >= 400:
+            reader_html = _reader_get(session, page_url)
+            if reader_html:
+                for product_url in _reader_product_urls(reader_html, query):
+                    if product_url not in seen_urls:
+                        seen_urls.add(product_url)
+                        urls.append(product_url)
+                        if len(urls) >= max_urls:
+                            return urls[:max_urls]
             continue
 
         # A category can expose a more specific Product-line filter.
@@ -563,6 +622,8 @@ def _discover_from_categories(session, query, max_urls=80):
             # present on that page; _product() remains the final validator.
             filtered_page = page_url != category_url
 
+            before_count = len(urls)
+
             for product_url in _candidate_product_urls(
                 page_html,
                 query,
@@ -576,6 +637,18 @@ def _discover_from_categories(session, query, max_urls=80):
 
                 if len(urls) >= max_urls:
                     return urls[:max_urls]
+
+            # Deloox can render the product grid in client-side structures
+            # that are visible to a reader but not exposed as normal anchors.
+            if len(urls) == before_count:
+                reader_html = _reader_get(session, page_url)
+                for product_url in _reader_product_urls(reader_html, query):
+                    if product_url in seen_urls:
+                        continue
+                    seen_urls.add(product_url)
+                    urls.append(product_url)
+                    if len(urls) >= max_urls:
+                        return urls[:max_urls]
 
     return urls[:max_urls]
 
