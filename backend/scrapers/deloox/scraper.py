@@ -11,7 +11,7 @@ from bs4 import BeautifulSoup
 
 
 STORE = "Deloox"
-BASE_URL = "https://www.deloox.nl"
+BASE_URL = "https://www.deloox.be"
 SEARCH_PATH = "/zoeken.html"
 TIMEOUT = 20
 
@@ -67,7 +67,7 @@ def norm(value):
 def same_host(url):
     try:
         host = urlparse(url).netloc.lower()
-        return host == "deloox.nl" or host.endswith(".deloox.nl")
+        return host == "deloox.be" or host.endswith(".deloox.be")
     except Exception:
         return False
 
@@ -671,7 +671,7 @@ def _search_page_urls(
         clean_url = urlunparse(
             (
                 parsed.scheme or "https",
-                parsed.netloc or "www.deloox.nl",
+                parsed.netloc or "www.deloox.be",
                 parsed.path,
                 parsed.params,
                 parsed.query,
