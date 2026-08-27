@@ -312,6 +312,41 @@ def _reader_get(session, url):
         return ""
 
 
+def _reader_category_urls(text, query):
+    """Extract matching Deloox category URLs from reader output.
+
+    The normal Deloox HTML can omit the taxonomy links while the reader
+    representation still exposes them. Matching is query-driven and generic.
+    """
+    found = []
+    seen = set()
+    q_tokens = tokens(query)
+    if not q_tokens:
+        return found
+
+    pattern = re.compile(
+        r'\[([^\]]+)\]\((https?://(?:www\.)?deloox\.com/[^\s\)]+/category/\d+/[^\s\)]+?\.html|/[^\s\)]+/category/\d+/[^\s\)]+?\.html)\)',
+        re.I,
+    )
+    for label, raw in pattern.findall(text or ""):
+        if not q_tokens.issubset(tokens(label)):
+            continue
+        url = urljoin(BASE_URL, clean(raw)).split("#")[0].split("?")[0]
+        try:
+            parsed = urlparse(url)
+        except Exception:
+            continue
+        if parsed.netloc.lower() not in {"deloox.com", "www.deloox.com"}:
+            continue
+        if "/category/" not in parsed.path.lower() or not parsed.path.lower().endswith(".html"):
+            continue
+        if url not in seen:
+            seen.add(url)
+            found.append(url)
+
+    return found
+
+
 def _reader_candidate_product_urls(text):
     """Extract Deloox product URLs from reader/markdown output."""
     found = []
@@ -623,13 +658,28 @@ def _discover_from_categories(session, query, max_urls=80):
 
                 if len(urls) == before:
                     reader_html = _reader_get(session, page_url)
-                    for product_url in _reader_candidate_product_urls(reader_html):
-                        if product_url in seen:
-                            continue
-                        seen.add(product_url)
-                        urls.append(product_url)
-                        if len(urls) >= max_urls:
-                            return urls[:max_urls]
+                    if reader_html:
+                        # First: product cards exposed directly by the reader.
+                        reader_candidates = _reader_candidate_product_urls(reader_html)
+
+                        # Second: follow matching category links from the
+                        # reader's taxonomy/navigation. This is the critical
+                        # generic fallback when Deloox hides category anchors
+                        # from the normal HTML response.
+                        for category_url in _reader_category_urls(reader_html, query):
+                            category_reader = _reader_get(session, category_url)
+                            if category_reader:
+                                reader_candidates.extend(
+                                    _reader_candidate_product_urls(category_reader)
+                                )
+
+                        for product_url in reader_candidates:
+                            if product_url in seen:
+                                continue
+                            seen.add(product_url)
+                            urls.append(product_url)
+                            if len(urls) >= max_urls:
+                                return urls[:max_urls]
 
     return urls[:max_urls]
 
