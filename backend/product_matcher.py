@@ -502,6 +502,7 @@ class ProductMatcher:
             " ",
             text,
         )
+        text = re.sub(r"\(\s*\)", " ", text)
         return re.sub(r"\s+", " ", text).strip()
 
     @classmethod
@@ -539,6 +540,7 @@ class ProductMatcher:
             text,
             flags=re.I,
         )
+        text = re.sub(r"\(\s*\)", " ", text)
         return re.sub(r"\s+", " ", text).strip(" -:|/")
 
     @classmethod
