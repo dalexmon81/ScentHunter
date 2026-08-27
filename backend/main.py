@@ -3206,6 +3206,66 @@ def diagnose_notino_module():
         }
 
 
+@app.get("/diagnose-deloox")
+def diagnose_deloox(q: str):
+    """
+    Deep Deloox discovery diagnostic.
+    Example:
+      /diagnose-deloox?q=Asad
+    """
+    query = str(q or "").strip()
+
+    if not query:
+        return {
+            "ok": False,
+            "store": "deloox",
+            "error": "empty_query",
+        }
+
+    try:
+        module = importlib.import_module("scrapers.deloox.scraper")
+        diagnose_fn = getattr(module, "diagnose_search", None)
+
+        if not callable(diagnose_fn):
+            return {
+                "ok": False,
+                "store": "deloox",
+                "query": query,
+                "error": "Deloox scraper has no diagnose_search() function",
+            }
+
+        requests_module = getattr(module, "requests", None)
+        if requests_module is None:
+            return {
+                "ok": False,
+                "store": "deloox",
+                "query": query,
+                "error": "Deloox scraper does not expose requests",
+            }
+
+        session = requests_module.Session()
+        try:
+            diagnostic = diagnose_fn(session, query)
+        finally:
+            session.close()
+
+        return {
+            "ok": True,
+            "store": "deloox",
+            "query": query,
+            "diagnostic": diagnostic,
+        }
+
+    except Exception as exc:
+        return {
+            "ok": False,
+            "store": "deloox",
+            "query": query,
+            "error": f"{type(exc).__name__}: {exc}",
+            "traceback": traceback.format_exc(),
+        }
+
+
 @app.get("/diagnose-notino")
 def diagnose_notino(q: str):
     query = str(q or "").strip()
