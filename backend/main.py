@@ -2726,6 +2726,89 @@ def diagnostic_search(
         }
 
 
+@app.get("/diagnostic-coverage")
+def diagnostic_coverage(
+    q: str,
+    stores: Optional[str] = None,
+):
+    """
+    Espone il diagnostico di copertura discovery come endpoint JSON.
+
+    Il diagnostico reale resta in discovery_coverage_diagnostic.py.
+    L'endpoint non modifica la pipeline normale di ricerca e non contiene
+    regole specifiche per prodotti, brand o shop.
+    """
+    query = str(q or "").strip()
+
+    if not query:
+        raise HTTPException(
+            status_code=400,
+            detail="Parametro q mancante",
+        )
+
+    selected_stores = None
+
+    if stores:
+        selected_stores = [
+            store.strip().lower()
+            for store in stores.split(",")
+            if store.strip()
+        ]
+
+        invalid_stores = [
+            store
+            for store in selected_stores
+            if store not in STORES
+        ]
+
+        if invalid_stores:
+            raise HTTPException(
+                status_code=400,
+                detail=(
+                    "Store non validi: "
+                    + ", ".join(invalid_stores)
+                    + ". Disponibili: "
+                    + ", ".join(STORES)
+                ),
+            )
+
+    try:
+        diagnostic_module = importlib.import_module(
+            "discovery_coverage_diagnostic"
+        )
+
+        run_query = getattr(
+            diagnostic_module,
+            "run_query",
+            None,
+        )
+
+        if not callable(run_query):
+            raise RuntimeError(
+                "discovery_coverage_diagnostic.py non espone run_query()"
+            )
+
+        return run_query(
+            query,
+            stores=selected_stores,
+        )
+
+    except HTTPException:
+        raise
+
+    except Exception as exc:
+        traceback.print_exc()
+
+        return {
+            "query": query,
+            "ok": False,
+            "error": (
+                f"{type(exc).__name__}: {exc}"
+            ),
+            "traceback": traceback.format_exc(),
+        }
+
+
 @app.get("/routing")
 def routing(q: str):
     return {
