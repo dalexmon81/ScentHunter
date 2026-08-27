@@ -146,14 +146,25 @@ def _load_product_matcher_catalog() -> List[Dict[str, Any]]:
         aliases.extend(data["aliases"])
         aliases = list(dict.fromkeys(str(x).strip() for x in aliases if str(x).strip()))
 
+        concentration = str(product.get("concentration") or "").strip()
+        gender = str(product.get("gender") or "").strip()
+        family_name = str(product.get("family_name") or "").strip()
+        catalog_variant = name
+
         catalog.append({
             "id": product_id,
             "brand": brand,
             "name": name,
+            "canonical_name": name,
             "aliases": aliases,
             "formats_ml": data["formats_ml"],
             "gtins": data["gtins"],
             "mpns": data["mpns"],
+            "concentration": concentration,
+            "gender": gender,
+            "family_id": str(product.get("family_id") or "").strip(),
+            "family_name": family_name,
+            "catalog_variant": catalog_variant,
         })
 
     return catalog
@@ -371,7 +382,11 @@ def product_size_ml(product: Dict[str, Any]) -> Optional[float]:
 
 
 def product_concentration(product: Dict[str, Any]) -> str:
-    value = product_field(product, "concentration")
+    value = product_field(
+        product,
+        "canonical_concentration",
+        "concentration",
+    )
     if value:
         return norm(value)
 
@@ -1687,15 +1702,15 @@ def sort_final_results(products: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
 
 
 def _display_brand(product: Dict[str, Any]) -> str:
-    # Per la visualizzazione usiamo prima il brand effettivamente presente
-    # nell'offerta; se il retailer lo lascia vuoto, ricorriamo al brand
-    # canonico già risolto dal ProductMatcher.
+    # Dopo una risoluzione canonica, il catalogo/matcher è la fonte
+    # autorevole dell'identità. I dati RAW restano un fallback soltanto
+    # quando l'identità canonica non è disponibile.
     return (
         product_field(
             product,
+            "canonical_brand",
             "brand",
             "source_brand",
-            "canonical_brand",
         )
         or ""
     ).strip()
@@ -2116,6 +2131,48 @@ def _prepare_final_results(
     for product in results:
         item = dict(product)
 
+        # Una volta risolta l'identità, i campi canonici devono essere
+        # completi e coerenti prima di costruire qualsiasi testo per la UI.
+        # Il RAW resta disponibile, ma non deve avere precedenza sul
+        # risultato del matcher/catalogo.
+        canonical_brand = str(
+            item.get("canonical_brand") or ""
+        ).strip()
+        if canonical_brand:
+            item["brand"] = canonical_brand
+        elif str(item.get("brand") or "").strip():
+            item["canonical_brand"] = str(
+                item.get("brand")
+            ).strip()
+
+        canonical_name = str(
+            item.get("canonical_name")
+            or item.get("catalog_variant")
+            or ""
+        ).strip()
+        if canonical_name:
+            item["canonical_name"] = canonical_name
+            item["catalog_variant"] = str(
+                item.get("catalog_variant")
+                or canonical_name
+            ).strip()
+
+        canonical_concentration = str(
+            item.get("canonical_concentration")
+            or item.get("concentration")
+            or ""
+        ).strip()
+        if canonical_concentration:
+            item["canonical_concentration"] = canonical_concentration
+            if not str(item.get("concentration") or "").strip():
+                item["concentration"] = canonical_concentration
+
+        canonical_gender = str(
+            item.get("gender") or ""
+        ).strip()
+        if canonical_gender:
+            item["gender"] = canonical_gender
+
         # Unifica il titolo finale in un solo punto.
         # Questo valore è quello che deve essere usato sia dalla UI sia
         # dall'endpoint JSON: Brand-Variante [Concentrazione] [Uomo/Donna].
@@ -2124,15 +2181,6 @@ def _prepare_final_results(
         item["name"] = display_title
         item["title"] = display_title
         item["canonical_display_name"] = display_title
-
-        # Se lo scraper non ha valorizzato il brand ma il matcher lo ha
-        # risolto, propaghiamo il brand canonico anche nel campo brand.
-        if not str(item.get("brand") or "").strip():
-            canonical_brand = str(
-                item.get("canonical_brand") or ""
-            ).strip()
-            if canonical_brand:
-                item["brand"] = canonical_brand
 
         prepared.append(item)
 
