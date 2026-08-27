@@ -2643,6 +2643,356 @@ def search(q: str):
     return search_perfume(q)
 
 
+@app.get("/diagnostic-pipeline")
+def diagnostic_pipeline(
+    q: str,
+    stores: Optional[str] = None,
+):
+    """
+    Diagnostica HTTP della pipeline completa.
+
+    Non modifica la ricerca normale e non applica regole specifiche
+    per singoli prodotti. Esegue gli stessi scraper usati da /search,
+    poi misura separatamente:
+      1) candidati grezzi per store;
+      2) candidati che superano matches();
+      3) candidati risolti dal ProductMatcher;
+      4) risultati finali della pipeline centrale.
+
+    Utile per individuare se una perdita avviene nello scraper,
+    nel matching centrale o nella preparazione finale.
+    """
+    query = str(q or "").strip()
+
+    if not query:
+        raise HTTPException(
+            status_code=400,
+            detail="Parametro q mancante",
+        )
+
+    selected_stores = list(STORES)
+
+    if stores:
+        selected_stores = [
+            store.strip().lower()
+            for store in stores.split(",")
+            if store.strip()
+        ]
+
+        invalid_stores = [
+            store
+            for store in selected_stores
+            if store not in STORES
+        ]
+
+        if invalid_stores:
+            raise HTTPException(
+                status_code=400,
+                detail=(
+                    "Store non validi: "
+                    + ", ".join(invalid_stores)
+                    + ". Disponibili: "
+                    + ", ".join(STORES)
+                ),
+            )
+
+    raw_by_store: Dict[str, List[Dict[str, Any]]] = {
+        store: [] for store in selected_stores
+    }
+    errors: Dict[str, str] = {}
+
+    executor = ThreadPoolExecutor(
+        max_workers=max(1, len(selected_stores)),
+        thread_name_prefix="scent_diagnostic_store",
+    )
+
+    futures = {
+        executor.submit(run_store, store, query): store
+        for store in selected_stores
+    }
+
+    try:
+        for future in as_completed(
+            futures,
+            timeout=GLOBAL_SEARCH_TIMEOUT,
+        ):
+            store = futures[future]
+
+            try:
+                result = future.result()
+
+                if isinstance(result, list):
+                    raw_by_store[store] = [
+                        dict(item)
+                        for item in result
+                        if isinstance(item, dict)
+                    ]
+
+            except Exception as exc:
+                errors[store] = (
+                    f"{type(exc).__name__}: {exc}"
+                )
+
+    except TimeoutError:
+        for future, store in futures.items():
+            if future.done():
+                try:
+                    result = future.result()
+
+                    if isinstance(result, list):
+                        raw_by_store[store] = [
+                            dict(item)
+                            for item in result
+                            if isinstance(item, dict)
+                        ]
+
+                except Exception as exc:
+                    errors[store] = (
+                        f"{type(exc).__name__}: {exc}"
+                    )
+            else:
+                errors[store] = (
+                    "Timeout: ricerca del negozio "
+                    "oltre il limite globale"
+                )
+
+    finally:
+        for future in futures:
+            if not future.done():
+                future.cancel()
+
+        executor.shutdown(
+            wait=False,
+            cancel_futures=True,
+        )
+
+    store_reports: Dict[str, Any] = {}
+    all_raw: List[Dict[str, Any]] = []
+
+    for store in selected_stores:
+        raw = raw_by_store.get(store, [])
+        unique_store = unique_results(raw)
+
+        matched: List[Dict[str, Any]] = []
+        rejected: List[Dict[str, Any]] = []
+
+        for product in unique_store:
+            item = dict(product)
+            item.setdefault("store", store)
+
+            try:
+                is_match = bool(
+                    matches(item, query)
+                )
+            except Exception as exc:
+                is_match = False
+                errors.setdefault(
+                    store,
+                    f"matches(): {type(exc).__name__}: {exc}",
+                )
+
+            if is_match:
+                matched.append(item)
+            else:
+                rejected.append({
+                    "name": product_field(
+                        item,
+                        "name",
+                        "title",
+                        "product_name",
+                    ),
+                    "url": str(
+                        item.get("url") or ""
+                    ),
+                    "identity_key": list(
+                        product_identity_key(item)
+                    ),
+                    "reason": "central_matches_false",
+                })
+
+        resolved: List[Dict[str, Any]] = []
+
+        for product in matched:
+            try:
+                validated = _validate_candidate(
+                    product,
+                    query,
+                )
+            except Exception as exc:
+                errors.setdefault(
+                    store,
+                    (
+                        "_validate_candidate(): "
+                        f"{type(exc).__name__}: {exc}"
+                    ),
+                )
+                validated = None
+
+            if isinstance(validated, dict):
+                resolved.append(validated)
+
+        raw_by_store[store] = raw
+        all_raw.extend(raw)
+
+        store_reports[store] = {
+            "raw_candidates": len(raw),
+            "unique_candidates": len(unique_store),
+            "central_matches": len(matched),
+            "central_rejected": len(rejected),
+            "resolved_candidates": len(resolved),
+            "raw_products": [
+                {
+                    "name": product_field(
+                        item,
+                        "name",
+                        "title",
+                        "product_name",
+                    ),
+                    "url": str(
+                        item.get("url") or ""
+                    ),
+                    "price": str(
+                        item.get("price") or ""
+                    ),
+                    "identity_key": list(
+                        product_identity_key(item)
+                    ),
+                }
+                for item in raw
+            ],
+            "matched_products": [
+                {
+                    "name": product_field(
+                        item,
+                        "name",
+                        "title",
+                        "product_name",
+                    ),
+                    "url": str(
+                        item.get("url") or ""
+                    ),
+                    "price": str(
+                        item.get("price") or ""
+                    ),
+                    "identity_key": list(
+                        product_identity_key(item)
+                    ),
+                }
+                for item in matched
+            ],
+            "rejected_products": rejected,
+            "resolved_products": [
+                {
+                    "name": product_field(
+                        item,
+                        "name",
+                        "title",
+                        "product_name",
+                    ),
+                    "url": str(
+                        item.get("url") or ""
+                    ),
+                    "identity_key": list(
+                        product_identity_key(item)
+                    ),
+                    "match_method": str(
+                        item.get("match_method") or ""
+                    ),
+                    "canonical_name": str(
+                        item.get("canonical_name") or ""
+                    ),
+                }
+                for item in resolved
+            ],
+        }
+
+    global_unique = unique_results(all_raw)
+
+    globally_matched: List[Dict[str, Any]] = []
+    globally_rejected: List[Dict[str, Any]] = []
+
+    for product in global_unique:
+        if matches(product, query):
+            globally_matched.append(product)
+        else:
+            globally_rejected.append(product)
+
+    final_results = _orchestrate_results(
+        all_raw,
+        query,
+    )
+
+    final_by_store: Dict[str, int] = {
+        store: 0
+        for store in selected_stores
+    }
+
+    for product in final_results:
+        store = str(
+            product.get("store") or ""
+        ).strip().lower()
+
+        if store in final_by_store:
+            final_by_store[store] += 1
+
+    return {
+        "ok": True,
+        "query": query,
+        "expected_stores": len(selected_stores),
+        "stores_with_raw_candidates": sum(
+            report["raw_candidates"] > 0
+            for report in store_reports.values()
+        ),
+        "stores_with_central_matches": sum(
+            report["central_matches"] > 0
+            for report in store_reports.values()
+        ),
+        "stores_with_final_results": sum(
+            final_by_store.get(store, 0) > 0
+            for store in selected_stores
+        ),
+        "global": {
+            "raw_candidates": len(all_raw),
+            "unique_candidates": len(global_unique),
+            "central_matches": len(globally_matched),
+            "central_rejected": len(globally_rejected),
+            "final_results": len(final_results),
+        },
+        "final_by_store": final_by_store,
+        "errors": errors,
+        "stores": store_reports,
+        "final_results": [
+            {
+                "store": str(
+                    item.get("store") or ""
+                ),
+                "name": product_field(
+                    item,
+                    "name",
+                    "title",
+                    "product_name",
+                ),
+                "url": str(
+                    item.get("url") or ""
+                ),
+                "price": str(
+                    item.get("price") or ""
+                ),
+                "identity_key": list(
+                    product_identity_key(item)
+                ),
+                "match_method": str(
+                    item.get("match_method") or ""
+                ),
+                "canonical_name": str(
+                    item.get("canonical_name") or ""
+                ),
+            }
+            for item in final_results
+        ],
+    }
+
+
 @app.get("/diagnostic-search")
 def diagnostic_search(
     q: str,
