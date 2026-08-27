@@ -76,62 +76,51 @@ def parse_price(v):
 
 
 def availability(text, offer=None, soup=None):
-    """Determine availability from product-specific purchase signals.
+    """Determine availability for the current Deloox product.
 
-    Deloox pages can contain stale or unrelated availability information in
-    JSON-LD and recommendation/filter blocks. The live purchase controls on
-    the current product page therefore have priority. Structured Offer data is
-    used only when the page itself does not expose a clear purchase state.
+    Deloox can expose stale Offer availability in JSON-LD.  Prefer an
+    explicit purchase/availability signal belonging to the current product,
+    then fall back to the structured Offer.  Never inspect every button on
+    the page because recommendation widgets can contain contradictory stock
+    text.
     """
-    # 1) Live product-page purchase controls.
-    # Keep this deliberately focused on elements that can represent the
-    # current product's purchase state. Avoid scanning the whole page.
-    if soup is not None:
-        scoped_parts = []
 
+    # 1) Explicit product-level availability elements.
+    if soup is not None:
+        product_scope = []
+
+        # These selectors are deliberately narrow.  Do NOT select every
+        # button/cart element on the page: Deloox recommendation modules can
+        # contain unrelated "out of stock" buttons.
         selectors = (
             '[itemprop="availability"]',
             '[data-testid*="availability" i]',
             '[data-test*="availability" i]',
             '[aria-label*="availability" i]',
             '[aria-label*="voorraad" i]',
-            '[class*="availability" i]',
-            '[class*="add-to-cart" i]',
-            '[class*="addtocart" i]',
-            '[class*="buy" i]',
-            '[class*="purchase" i]',
-            '[class*="cart" i]',
-            'button[type="submit"]',
-            'button',
         )
 
-        seen_nodes = set()
         for selector in selectors:
             try:
                 nodes = soup.select(selector)
             except Exception:
                 nodes = []
 
-            for node in nodes[:30]:
-                marker = id(node)
-                if marker in seen_nodes:
-                    continue
-                seen_nodes.add(marker)
-
+            for node in nodes[:10]:
                 value = clean(
                     node.get("content")
                     or node.get("aria-label")
                     or node.get_text(" ", strip=True)
                 )
                 if value:
-                    scoped_parts.append(value)
+                    product_scope.append(value)
 
-        scoped = norm(" ".join(scoped_parts))
+        scoped = norm(" ".join(product_scope))
 
         if scoped:
-            out_markers = (
-                "sold out",
+            if any(marker in scoped for marker in (
                 "out of stock",
+                "sold out",
                 "currently unavailable",
                 "not available",
                 "unavailable",
@@ -139,33 +128,71 @@ def availability(text, offer=None, soup=None):
                 "niet op voorraad",
                 "niet beschikbaar",
                 "tijdelijk uitverkocht",
-            )
-            in_markers = (
+            )):
+                return "out_of_stock"
+
+            if any(marker in scoped for marker in (
                 "in stock",
                 "available",
                 "op voorraad",
-                "in winkelwagen",
-                "toevoegen aan winkelwagen",
-                "toevoegen aan winkelmand",
-                "bestel nu",
-                "bestellen",
-                "in winkelmand",
-                "winkelwagen",
-                "add to cart",
-                "add to basket",
-                "buy now",
-                "koop nu",
-            )
-
-            if any(marker in scoped for marker in out_markers):
-                return "out_of_stock"
-
-            if any(marker in scoped for marker in in_markers):
+            )):
                 return "in_stock"
 
-    # 2) Structured Offer availability.
-    # This is useful, but it comes after the live purchase controls because
-    # Deloox may expose stale Offer metadata.
+        # A purchase button is useful only when it is explicitly an
+        # add-to-cart/buy control.  We inspect its own text/aria label, not
+        # all buttons on the page.
+        purchase_selectors = (
+            'button[type="submit"]',
+            'input[type="submit"]',
+            '[class*="add-to-cart" i]',
+            '[class*="addtocart" i]',
+            '[class*="purchase" i]',
+        )
+
+        for selector in purchase_selectors:
+            try:
+                nodes = soup.select(selector)
+            except Exception:
+                nodes = []
+
+            for node in nodes[:10]:
+                value = norm(
+                    clean(
+                        node.get("aria-label")
+                        or node.get("value")
+                        or node.get_text(" ", strip=True)
+                    )
+                )
+                if not value:
+                    continue
+
+                if any(marker in value for marker in (
+                    "out of stock",
+                    "sold out",
+                    "unavailable",
+                    "uitverkocht",
+                    "niet op voorraad",
+                    "niet beschikbaar",
+                )):
+                    return "out_of_stock"
+
+                if any(marker in value for marker in (
+                    "add to cart",
+                    "add to basket",
+                    "add to bag",
+                    "in winkelwagen",
+                    "toevoegen aan winkelwagen",
+                    "toevoegen aan winkelmand",
+                    "in winkelmand",
+                    "buy now",
+                    "koop nu",
+                    "bestel nu",
+                    "bestellen",
+                )):
+                    return "in_stock"
+
+    # 2) Structured Offer data.  This remains an important fallback, but it
+    # cannot override an explicit live purchase signal above.
     if isinstance(offer, dict):
         raw = clean(
             offer.get("availability")
@@ -175,21 +202,31 @@ def availability(text, offer=None, soup=None):
         ).lower()
 
         if raw:
-            if any(x in raw for x in (
-                "instock", "in_stock", "limitedavailability",
-                "preorder", "pre_order",
+            if any(marker in raw for marker in (
+                "instock",
+                "in_stock",
+                "limitedavailability",
+                "preorder",
+                "pre_order",
             )):
                 return "in_stock"
 
-            if any(x in raw for x in (
-                "outofstock", "out_of_stock", "soldout", "sold_out",
-                "discontinued", "unavailable",
+            if any(marker in raw for marker in (
+                "outofstock",
+                "out_of_stock",
+                "soldout",
+                "sold_out",
+                "discontinued",
+                "unavailable",
             )):
                 return "out_of_stock"
 
-    # 3) No reliable product-specific signal.
-    # Do not scan the entire page: recommendation cards and related products
-    # can contain contradictory stock text.
+    # 3) Conservative fallback: only accept an explicit stock phrase in the
+    # page text.  Do not treat generic recommendation text as authoritative.
+    page_text = norm(text)
+    if "in stock" in page_text or "op voorraad" in page_text:
+        return "in_stock"
+
     return "unknown"
 
 def _jsonld(soup):
