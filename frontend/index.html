@@ -516,6 +516,9 @@ function displayPerfumeName(name,brand,concentration){
   let n=String(name||"").replace(/\s+/g," ").trim();
   if(!n)return n;
 
+  // Normalizzazione GENERICA della concentrazione visualizzata.
+  // Il nome può arrivare già con la concentrazione nel titolo e il campo
+  // concentration può ripeterla: il risultato deve mostrarla una sola volta.
   const labels=[
     ["eau de parfum","Eau de Parfum"],
     ["eau de toilette","Eau de Toilette"],
@@ -526,23 +529,6 @@ function displayPerfumeName(name,brand,concentration){
     ["edt","Eau de Toilette"],
     ["edc","Eau de Cologne"]
   ];
-  const genders=[
-    ["unisex","Unisex"],
-    ["mixte","Unisex"],
-    ["unisexe","Unisex"],
-    ["uomo","Uomo"],
-    ["men","Uomo"],
-    ["man","Uomo"],
-    ["for men","Uomo"],
-    ["pour homme","Uomo"],
-    ["homme","Uomo"],
-    ["donna","Donna"],
-    ["women","Donna"],
-    ["woman","Donna"],
-    ["for women","Donna"],
-    ["pour femme","Donna"],
-    ["femme","Donna"]
-  ];
 
   let canonical=String(concentration||"").trim();
   if(canonical){
@@ -551,62 +537,29 @@ function displayPerfumeName(name,brand,concentration){
     canonical=match?match[1]:canonical;
   }
 
-  let audience="";
-  for(let pass=0;pass<8;pass++){
-    const before=n;
-    let removed=false;
-
-    for(const [raw,label] of genders){
+  // Se la concentrazione non è disponibile come campo, riconosciamo solo
+  // concentrazioni COMPLETE alla fine del titolo. Non tocchiamo "Le Parfum"
+  // o altri nomi commerciali che contengono semplicemente "Parfum".
+  if(!canonical){
+    for(const [raw,label] of labels){
       const re=new RegExp("\\s*(?:[-–—:]\\s*)?"+raw.replace(/[.*+?^${}()|[\\]\\]/g,"\\$&")+"\\s*$","i");
-      if(re.test(n)){
-        audience=label;
-        n=n.replace(re,"").trim();
-        removed=true;
-        break;
-      }
-    }
-
-    if(canonical){
-      const escaped=canonical
-        .split(/\s+/)
-        .map(w=>w.replace(/[.*+?^${}()|[\\]\\]/g,"\\$&"))
-        .join("\\s+");
-      const trailing=new RegExp("\\s*(?:[-–—:]\\s*)?"+escaped+"\\s*$","i");
-      while(trailing.test(n)){
-        n=n.replace(trailing,"").trim();
-        removed=true;
-      }
-    }else{
-      for(const [raw,label] of labels){
-        const re=new RegExp("\\s*(?:[-–—:]\\s*)?"+raw.replace(/[.*+?^${}()|[\\]\\]/g,"\\$&")+"\\s*$","i");
-        if(re.test(n)){
-          canonical=label;
-          n=n.replace(re,"").trim();
-          removed=true;
-          break;
-        }
-      }
-    }
-
-    if(n===before || !removed)break;
-  }
-
-  // A name can contain the gender before the concentration. Remove it once
-  // more after concentration cleanup so the final title has one descriptor
-  // of each type, never duplicates.
-  for(const [raw,label] of genders){
-    const re=new RegExp("\\s*(?:[-–—:]\\s*)?"+raw.replace(/[.*+?^${}()|[\\]\\]/g,"\\$&")+"\\s*$","i");
-    if(re.test(n)){
-      audience=label;
-      n=n.replace(re,"").trim();
-      break;
+      if(re.test(n)){canonical=label;break;}
     }
   }
 
-  const title=[n,canonical,audience].filter(Boolean).join(" ");
-  return title.replace(/\s+/g," ").trim();
+  if(!canonical)return n;
+
+  const escaped=canonical
+    .split(/\s+/)
+    .map(w=>w.replace(/[.*+?^${}()|[\\]\\]/g,"\\$&"))
+    .join("\\s+");
+  const trailing=new RegExp("\\s*(?:[-–—:]\\s*)?"+escaped+"\\s*$","i");
+
+  // Elimina tutte le copie consecutive e poi aggiunge una sola forma
+  // canonica. La regola vale per qualsiasi profumo e qualsiasi negozio.
+  while(trailing.test(n))n=n.replace(trailing,"").trim();
+  return (n+" "+canonical).trim();
 }
-
 function perfumeKey(x){
   return normalizePerfumeName(x.name||"");
 }
@@ -946,47 +899,6 @@ function offerPriceSourcePriority(o){
   return source?2:0;
 }
 
-/* GLOBAL DISPLAY HELPERS
- * Queste funzioni sono usate sia dentro shGroupData() sia dal renderer globale.
- * Devono quindi vivere nello scope globale e non dentro shGroupData().
- */
-function cleanBrandText(v){
-  return String(v||"").replace(/\s+/g," ").trim();
-}
-function norm(v){
-  return normalizePerfumeName(v||"").toLowerCase().trim();
-}
-function pretty(v){
-  return String(v||"")
-    .toLowerCase()
-    .replace(/(^|[\s\-'])([a-zà-ÿ])/gi,(m,sep,ch)=>sep+ch.toUpperCase())
-    .replace(/\s+/g," ")
-    .trim();
-}
-function concentrationLabel(value){
-  const n=norm(value);
-  if(n==="extrait de parfum")return "Extrait de Parfum";
-  if(n==="eau de parfum")return "Eau de Parfum";
-  if(n==="eau de toilette")return "Eau de Toilette";
-  if(n==="eau de cologne")return "Eau de Cologne";
-  return cleanBrandText(value);
-}
-function removeTrailingConcentration(name, concentration){
-  let n=String(name||"").trim();
-  const label=concentrationLabel(concentration);
-  if(!n||!label)return n;
-  const escaped=label
-    .split(/\s+/)
-    .map(w=>w.replace(/[.*+?^${}()|[\]\\]/g,"\\$&"))
-    .join("\\s+");
-  const trailing=new RegExp(
-    "\\s*(?:[-–—:]\\s*)?"+escaped+"\\s*$",
-    "i"
-  );
-  while(trailing.test(n))n=n.replace(trailing,"").trim();
-  return n;
-}
-
 function shGroupData(data){
   const raw=[];
 
@@ -1008,7 +920,6 @@ function shGroupData(data){
         family_id:o.family_id||g.family_id||"",
         size_ml:o.size_ml||o.size||g.size_ml||"",
         concentration:concentrationHint(o)||o.concentration||g.concentration||"",
-        gender:genderHint(o)||genderHint(g)||"",
         image:o.image||o.image_url||o.thumbnail||g.image||"",
         _source_name:o.name||g.name||"",
         _source_brand:o.brand||g.brand||"",
@@ -1126,13 +1037,6 @@ function shGroupData(data){
   }
 
   function findBrand(o){
-    // Prefer the canonical brand resolved by the backend catalog.
-    // Scraper brand fields are useful evidence, but they are not the
-    // authoritative identity when the central matcher has already resolved
-    // the product.
-    const canonical=canonicalKnownBrand(o?.canonical_brand||"") || cleanBrandText(o?.canonical_brand||"");
-    if(canonical)return canonical;
-
     const name=cleanBrandText(o.name);
     const n=norm(name);
 
@@ -1402,27 +1306,6 @@ function shGroupData(data){
     if(/\beau\s+de\s+cologne\b|\bedc\b/.test(raw))return "Eau de Cologne";
     return "";
   }
-  function genderHint(o){
-    const values=[
-      o?.gender, o?.audience, o?.for_whom, o?.for_who, o?.target,
-      o?.attributes?.gender?.value, o?.attributes?.audience?.value,
-      o?.attributes?.for_whom?.value,
-      o?.source?.gender, o?.source?.audience, o?.source?.for_whom
-    ];
-    for(const value of values){
-      const n=norm(value);
-      if(!n)continue;
-      if(/\b(unisex|mixte|unisexe)\b/.test(n))return "Unisex";
-      if(/\b(woman|women|female|femme|donna|donne|her|pour femme|for women)\b/.test(n))return "Donna";
-      if(/\b(man|men|male|homme|uomo|pour homme|for men|him)\b/.test(n))return "Uomo";
-    }
-    const title=norm([o?.name,o?.title,o?.product_name].filter(Boolean).join(" "));
-    if(/\b(woman|women|female|femme|donna|donne|her|pour femme|for women)\b/.test(title))return "Donna";
-    if(/\b(man|men|male|homme|uomo|pour homme|for men|him)\b/.test(title))return "Uomo";
-    if(/\b(unisex|mixte|unisexe)\b/.test(title))return "Unisex";
-    return "";
-  }
-
   function concentrationLabel(value){
     const n=norm(value);
     if(n==="extrait de parfum")return "Extrait de Parfum";
@@ -1599,9 +1482,7 @@ function shGroupData(data){
         id.name=catalogCanonicalName(o,id.brand);
       }
 
-      if(!id.catalog_resolved){
-        id.key=(norm(id.brand)+"|"+norm(id.name)).replace(/\|+$/g,"");
-      }
+      id.key=(norm(id.brand)+"|"+norm(id.name)).replace(/\|+$/g,"");
     });
 
     // Seconda passata: se un nome coincide con una famiglia già associata a
@@ -1627,61 +1508,17 @@ function shGroupData(data){
         if(inherited){
           id.brand=inherited;
           id.name=catalogCanonicalName(o,inherited);
-          if(!id.catalog_resolved){
-            id.key=norm(inherited)+"|"+norm(id.name);
-          }
+          id.key=norm(inherited)+"|"+norm(id.name);
         }
       }
     });
   }
 
-  function catalogResolvedIdentityKey(o){
-    const method=String(o?.match_method||"").trim().toLowerCase();
-    const productIdentity=String(
-      o?.product_identity||o?.catalog_id||""
-    ).trim();
-
-    // A central catalog identity is variant-specific and must be shared by
-    // all retailers. It therefore outranks the retailer title and gender.
-    // Raw identities are intentionally excluded here: they can still need
-    // the generic gender split below when no authoritative catalog match
-    // exists.
-    if(
-      productIdentity
-      && method
-      && method!=="raw_identity"
-    ){
-      return "catalog|"+norm(productIdentity);
-    }
-
-    // Family Registry resolutions do not always carry a product_id. The
-    // family + canonical variant pair is nevertheless a stable, generic
-    // cross-retailer identity.
-    const familyId=String(o?.family_id||"").trim();
-    const catalogVariant=String(o?.catalog_variant||o?.canonical_name||"").trim();
-    if(
-      familyId
-      && catalogVariant
-      && method==="family_registry_alias"
-    ){
-      return "family|"+norm(familyId)+"|"+norm(catalogVariant);
-    }
-
-    return "";
-  }
-
   const identities=raw.map(o=>{
     const brand=findBrand(o);
     const name=catalogCanonicalName(o,brand);
-    const resolvedKey=catalogResolvedIdentityKey(o);
-    const key=resolvedKey || (norm(brand)+"|"+norm(name)).replace(/\|+$/g,"");
-    return {
-      brand,
-      name,
-      key,
-      gender:genderHint(o),
-      catalog_resolved:Boolean(resolvedKey)
-    };
+    const key=(norm(brand)+"|"+norm(name)).replace(/\|+$/g,"");
+    return {brand,name,key};
   });
 
   resolveIdentitySet(raw,identities);
@@ -1727,82 +1564,7 @@ function shGroupData(data){
     const id=identities[i];
     if(id.concentration){
       id.name=catalogCanonicalName(o,id.brand);
-      if(!id.catalog_resolved){
-        id.key=(norm(id.brand)+"|"+norm(id.name)+"|"+norm(id.concentration)).replace(/\|+$/g,"");
-      }
-    }
-  });
-
-  /*
-   * GENERE/AUDIENCE:
-   * eredita solo un genere esplicitamente dichiarato quando per la stessa
-   * identita' esiste una sola audience. Se esistono Uomo e Donna, restano
-   * gruppi distinti. Nessun genere viene inventato.
-   */
-  const genderByBase=new Map();
-  raw.forEach((o,i)=>{
-    const id=identities[i];
-    if(!id.key)return;
-    const gender=genderHint(o);
-    if(gender){
-      id.gender=gender;
-      if(!genderByBase.has(id.key))genderByBase.set(id.key,new Set());
-      genderByBase.get(id.key).add(gender);
-    }
-  });
-
-  // Catalog-resolved products represent one authoritative variant.
-  // Retailers may disagree on the audience label, so audience must never
-  // split that variant into multiple cards. When the catalog itself does
-  // not provide a gender, use a deterministic consensus: a single explicit
-  // label wins; if the only conflict is Uomo/Unisex or Donna/Unisex, keep the
-  // explicit binary audience; a Uomo/Donna conflict remains unlabeled rather
-  // than inventing an audience.
-  const catalogGenderConsensus=new Map();
-  const catalogGenderCounts=new Map();
-  raw.forEach((o,i)=>{
-    const id=identities[i];
-    if(!id.catalog_resolved||!id.key)return;
-    const gender=genderHint(o);
-    if(!gender)return;
-    if(!catalogGenderCounts.has(id.key))catalogGenderCounts.set(id.key,new Map());
-    const counts=catalogGenderCounts.get(id.key);
-    counts.set(gender,(counts.get(gender)||0)+1);
-  });
-  catalogGenderCounts.forEach((counts,key)=>{
-    const labels=[...counts.keys()];
-    if(labels.length===1){
-      catalogGenderConsensus.set(key,labels[0]);
-      return;
-    }
-    const hasUomo=counts.has("Uomo");
-    const hasDonna=counts.has("Donna");
-    const hasUnisex=counts.has("Unisex");
-    if(hasUomo&&!hasDonna&&hasUnisex){
-      catalogGenderConsensus.set(key,"Uomo");
-      return;
-    }
-    if(hasDonna&&!hasUomo&&hasUnisex){
-      catalogGenderConsensus.set(key,"Donna");
-      return;
-    }
-    // If multiple concrete audiences conflict, do not manufacture one.
-    catalogGenderConsensus.set(key,"");
-  });
-
-  raw.forEach((o,i)=>{
-    const id=identities[i];
-    const explicit=id.gender||genderHint(o);
-    const known=genderByBase.get(id.key);
-    const inherited=(known&&known.size===1)?[...known][0]:"";
-    const catalogConsensus=id.catalog_resolved
-      ?(catalogGenderConsensus.get(id.key)||"")
-      :"";
-    id.gender=catalogConsensus||explicit||inherited||"";
-    o.gender=id.gender;
-    if(!id.catalog_resolved){
-      const genderKey=id.gender?"|"+norm(id.gender):"";
-      id.key=(norm(id.brand)+"|"+norm(id.name)+(id.concentration?"|"+norm(id.concentration):"")+genderKey).replace(/\|+$/g,"");
+      id.key=(norm(id.brand)+"|"+norm(id.name)+"|"+norm(id.concentration)).replace(/\|+$/g,"");
     }
   });
 
@@ -1856,7 +1618,6 @@ function shGroupData(data){
         display_name:id.brand?id.brand+" - "+displayName:displayName,
         size_ml:"",
         concentration:concentrationLabel(concentration),
-        gender:o.gender||id.gender||"",
         image:o.image||o.image_url||o.thumbnail||"",
         offers:[]
       });
@@ -1864,7 +1625,6 @@ function shGroupData(data){
 
     const g=map.get(id.key);
     if(!g.brand&&id.brand)g.brand=id.brand;
-    if(!g.gender&&id.gender)g.gender=id.gender;
     if(!g.image)g.image=o.image||o.image_url||o.thumbnail||"";
 
     const normalizedOffer={...o};
@@ -1875,7 +1635,6 @@ function shGroupData(data){
     if(id.brand)normalizedOffer.brand=id.brand;
     if(id.name)normalizedOffer.name=id.name;
     if(id.concentration)normalizedOffer.concentration=concentrationLabel(id.concentration);
-    if(id.gender)normalizedOffer.gender=id.gender;
     if(size)normalizedOffer.size_ml=size;
 
     const store=String(o.store||"").trim().toLowerCase();
@@ -2167,7 +1926,7 @@ function shGroupData(data){
         const concentrationWords=concentration.split(/\s+/).length;
         baseName=words.slice(0,-concentrationWords).join(" ").trim();
       }
-      g.name=pretty(baseName).trim();
+      g.name=(pretty(baseName)+" "+concentration).trim();
       g.concentration=concentration;
     }else{
       g.name=pretty(g.name||"Profumo");
@@ -2175,9 +1934,7 @@ function shGroupData(data){
 
     g.canonical_name=g.canonical_name||g.name;
     g.name=g.canonical_name;
-    const finalName=displayCatalogName(g);
-    g.name=finalName;
-    g.display_name=g.brand?g.brand+" - "+finalName:finalName;
+    g.display_name=g.brand?g.brand+" - "+g.canonical_name:g.canonical_name;
   });
 
   /*
@@ -2204,19 +1961,68 @@ function shGroupData(data){
     g.image=selected.image||selected.image_url||selected.thumbnail||g.image||"";
   });
 
-  // Mostriamo esclusivamente vere referenze di profumo.
-  // Set/cofanetti, Mystery/Gift Box e altri prodotti non-profumo vengono
-  // esclusi completamente dai risultati, anche quando contengono il nome
-  // di un profumo al loro interno.
+  // Mostriamo le referenze di profumo e anche i SET/COFFRET.
+  // I set/cofanetti sono risultati validi e non devono essere eliminati:
+  // vengono classificati separatamente e ordinati dopo i profumi disponibili.
+  // Le vere categorie non-profumo (deodoranti, shower gel, cosmetici, ecc.)
+  // continuano invece a essere escluse.
   const perfumeGroups=groups.filter(g=>g.offers.length && !isNonPerfumeProduct(g));
 
+  /*
+   * ORDINE GENERALE DEI RISULTATI:
+   *   1. Profumi disponibili
+   *   2. Set / Coffret disponibili
+   *   3. Out of stock
+   *
+   * "Limited Edition" NON è un set: resta una normale variante del profumo.
+   * La classificazione è basata esclusivamente sui dati del risultato e su
+   * marker generici; non contiene eccezioni per brand o prodotti specifici.
+   */
   perfumeGroups.sort((a,b)=>{
+    const aOut=isGroupOutOfStock(a);
+    const bOut=isGroupOutOfStock(b);
+    if(aOut!==bOut)return aOut?1:-1;
+
+    const aSet=isSetOrCoffretGroup(a);
+    const bSet=isSetOrCoffretGroup(b);
+    if(aSet!==bSet)return aSet?1:-1;
+
     const brandCmp=String(a.brand||"").localeCompare(String(b.brand||""),"it",{sensitivity:"base"});
     if(brandCmp!==0)return brandCmp;
     return String(a.name||"").localeCompare(String(b.name||""),"it",{sensitivity:"base",numeric:true});
   });
 
   return perfumeGroups;
+}
+
+function isSetOrCoffretGroup(g){
+  if(!g)return false;
+
+  const clean=v=>String(v||"")
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g,"")
+    .replace(/[’‘]/g,"'")
+    .replace(/\s+/g," ")
+    .trim();
+
+  const text=[
+    g.name,g.canonical_name,g.display_name,g.category,g.type,g.product_type,
+    g.productType,g.sub_category,g.subcategory,
+    ...(g.offers||[]).map(o=>[
+      o?.name,o?.category,o?.type,o?.product_type,o?.productType,
+      o?.sub_category,o?.subcategory,o?.result_category
+    ].filter(Boolean).join(" "))
+  ].map(clean).filter(Boolean).join(" ");
+
+  if(!text)return false;
+
+  return /\b(?:set|gift\s*set|coffret|cofanetto|coffret\s+cadeau|bundle|pack|kit|travel\s+set|discovery\s+set|set\s+regalo)\b/.test(text);
+}
+
+function isGroupOutOfStock(g){
+  const offers=Array.isArray(g?.offers)?g.offers:[];
+  return offers.length>0 && offers.every(isOfferOutOfStock);
 }
 
 function isNonPerfumeProduct(g){
@@ -2250,11 +2056,11 @@ function isNonPerfumeProduct(g){
   // Prodotti chiaramente diversi dal profumo.
   const nonPerfume=/(?:\bdeodorant(?:e|s)?\b|\bdeostick\b|\bdeo\s*stick\b|\bdeo\b|\bantiperspirant\b|\banti[- ]?transpirant\b|\bshower\s*(?:gel|cream|foam|oil)\b|\bgel\s+(?:douche|doccia|bain)\b|\bgel\s+doccia\b|\bdoccia\s+gel\b|\bbagno\s+(?:doccia|schiuma)\b|\bbagnoschiuma\b|\bduschgel\b|\bdusch[- ]?(?:gel|schaum|creme|lotion)\b|\bbad[- ]?(?:gel|schaum|foam)\b|\bbody\s+(?:wash|gel|cleanser|cleaning)\b|\bshampoo\b|\bconditioner\b|\bhaarmaske\b|\bhaarshampoo\b|\bbody\s+(?:lotion|cream|creme|milk|butter|moisturizer)\b|\blotion\s+corps\b|\bcreme?\s+corps\b|\bhand\s+(?:cream|creme|lotion)\b|\bface\s+(?:cream|creme|lotion|wash)\b|\bhandcreme\b|\bkorperlotion\b|\bkoerperlotion\b|\bsoap\b|\bsavon\b|\bsapone\b|\bshaving\b|\bafter\s*shave\b|\baftershave\b|\brazor\b|\bdemaquillant\b|\bmake[- ]?up\b|\blipstick\b|\bmascara\b|\btoothpaste\b|\btoothbrush\b)/.test(text);
 
-  // Set/cofanetti e box non sono la singola referenza profumo.
-  // Vanno quindi esclusi sempre, anche quando il testo contiene il nome
-  // di un profumo presente nella confezione.
-  if(isSet)return true;
-
+  // SET e COFFRET sono risultati validi per ScentHunter.
+  // Non vengono esclusi: la funzione di ordinamento li classifica dopo
+  // i profumi disponibili e prima del blocco OUT OF STOCK.
+  // "Limited Edition" non è un marker di set e resta quindi una variante
+  // normale del profumo.
   return nonPerfume;
 }
 
@@ -2373,33 +2179,9 @@ document.addEventListener("click",e=>{
   cardPointerMoved=false;
 },{capture:true});
 
-function removeTrailingGender(name){
-  return String(name||"")
-    .replace(/\s*(?:[-–—:]\s*)?(?:uomo|men|man|for men|pour homme|homme|donna|women|woman|for women|pour femme|femme|unisex|mixte|unisexe)\s*$/i,"")
-    .trim();
-}
-
-function cleanCanonicalDisplayBase(name, concentration){
-  let n=String(name||"").trim();
-  if(!n)return n;
-  for(let i=0;i<6;i++){
-    const before=n;
-    n=removeTrailingGender(n);
-    n=removeTrailingConcentration(n,concentration)||n;
-    n=removeTrailingGender(n);
-    if(n===before)break;
-  }
-  return n.trim();
-}
-
 function displayCatalogName(g){
   const canonical=String(g?.canonical_name||g?.catalog_variant||g?.name||"").trim();
-  if(!canonical)return "Profumo";
-  const concentration=g?.concentration||"";
-  const base=cleanCanonicalDisplayBase(canonical,concentration)||canonical;
-  const concentrationText=concentration?" "+concentrationLabel(concentration):"";
-  const gender=g?.gender?" "+String(g.gender).trim():"";
-  return (pretty(base)+concentrationText+gender).trim();
+  return canonical||"Profumo";
 }
 
 function showProducts(groups){
