@@ -1788,9 +1788,9 @@ def _display_gender(product: Dict[str, Any], raw_name: str) -> str:
 
     explicit_norm = catalog_norm(explicit)
 
-    if re.search(r"\\b(?:uomo|men|man|male|homme|heren|mannen)\\b", explicit_norm):
+    if re.search(r"\b(?:uomo|men|man|male|homme|heren|mannen)\b", explicit_norm):
         return "Uomo"
-    if re.search(r"\\b(?:donna|women|woman|female|femme|dames|vrouwen)\\b", explicit_norm):
+    if re.search(r"\b(?:donna|women|woman|female|femme|dames|vrouwen)\b", explicit_norm):
         return "Donna"
 
     # Some retailers expose the gender only inside JSON-LD/raw data or
@@ -1824,11 +1824,11 @@ def _display_gender(product: Dict[str, Any], raw_name: str) -> str:
 
     evidence_text = catalog_norm(" ".join(evidence))
     male = bool(re.search(
-        r"\\b(?:for\\s+him|for\\s+men|men|man|male|homme|heren|mannen|uomo)\\b",
+        r"\b(?:for\s+him|for\s+men|men|man|male|homme|heren|mannen|uomo)\b",
         evidence_text,
     ))
     female = bool(re.search(
-        r"\\b(?:for\\s+her|for\\s+women|women|woman|female|femme|dames|vrouwen|donna)\\b",
+        r"\b(?:for\s+her|for\s+women|women|woman|female|femme|dames|vrouwen|donna)\b",
         evidence_text,
     ))
 
