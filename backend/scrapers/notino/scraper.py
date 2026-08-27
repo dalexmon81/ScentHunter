@@ -377,17 +377,20 @@ def _structured_offer_stock_status(
     def availability_value(value: Any) -> Optional[bool]:
         low = str(value or "").lower()
 
+        # Return semantics used by the scraper:
+        # True  = in stock
+        # False = out of stock
         if any(
             marker in low
             for marker in ("outofstock", "soldout", "discontinued")
         ):
-            return True
+            return False
 
         if any(
             marker in low
             for marker in ("instock", "limitedavailability", "preorder")
         ):
-            return False
+            return True
 
         return None
 
