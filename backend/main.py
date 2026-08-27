@@ -1837,13 +1837,13 @@ def _collapse_family_results(
     query: str,
 ) -> List[Dict[str, Any]]:
     """
-    Per una query che corrisponde a una famiglia del Registry restituisce
-    una sola offerta migliore per ogni variante autorizzata.
+    Per una query che corrisponde a una famiglia del Registry mantiene
+    una sola offerta per variante e per store.
 
-    Questo impedisce che più store, formati o diciture commerciali della
-    stessa variante gonfino il numero dei risultati. Il numero finale
-    dipende quindi dalle varianti realmente autorizzate dal catalogo,
-    non da un limite arbitrario e non da eccezioni sul singolo profumo.
+    La stessa variante trovata da store diversi deve restare presente:
+    la deduplicazione è quindi limitata alla combinazione
+    variante + store, evitando di perdere offerte valide provenienti
+    da negozi differenti.
     """
     family = _catalog_family_for_query(query)
 
@@ -1853,31 +1853,46 @@ def _collapse_family_results(
     grouped: Dict[tuple, Dict[str, Any]] = {}
 
     for product in sort_by_price(products):
-        key = _result_group_key(product)
+        variant_key = _result_group_key(product)
+
+        if variant_key[0] != "catalog":
+            continue
+
+        store_key = norm(product.get("store", ""))
+
+        key = (
+            variant_key[0],
+            variant_key[1],
+            variant_key[2],
+            store_key,
+        )
 
         if key not in grouped:
             grouped[key] = product
 
     # Il Registry è autoritativo: ordina le varianti secondo l'ordine
-    # dichiarato nel catalogo, mantenendo però soltanto quelle realmente
-    # trovate dagli scraper.
+    # dichiarato nel catalogo, mantenendo tutte le offerte realmente
+    # trovate dagli scraper, una per store e variante.
     ordered: List[Dict[str, Any]] = []
 
     for variant in family.get("variants", []):
         canonical_key = catalog_norm(
             variant.get("canonical_name")
         )
-        for key, product in grouped.items():
+
+        variant_products = [
+            product
+            for key, product in grouped.items()
             if (
                 key[0] == "catalog"
                 and key[1] == catalog_norm(family.get("brand"))
                 and key[2] == canonical_key
-            ):
-                ordered.append(product)
-                break
+            )
+        ]
+
+        ordered.extend(sort_by_price(variant_products))
 
     return ordered
-
 
 def _prepare_final_results(
     products: List[Dict[str, Any]],
@@ -2703,89 +2718,6 @@ def diagnostic_search(
         if not callable(run_query):
             raise RuntimeError(
                 "diagnostic_search.py non espone run_query()"
-            )
-
-        return run_query(
-            query,
-            stores=selected_stores,
-        )
-
-    except HTTPException:
-        raise
-
-    except Exception as exc:
-        traceback.print_exc()
-
-        return {
-            "query": query,
-            "ok": False,
-            "error": (
-                f"{type(exc).__name__}: {exc}"
-            ),
-            "traceback": traceback.format_exc(),
-        }
-
-
-@app.get("/diagnostic-coverage")
-def diagnostic_coverage(
-    q: str,
-    stores: Optional[str] = None,
-):
-    """
-    Espone il diagnostico di copertura discovery come endpoint JSON.
-
-    Il diagnostico reale resta in discovery_coverage_diagnostic.py.
-    L'endpoint non modifica la pipeline normale di ricerca e non contiene
-    regole specifiche per prodotti, brand o shop.
-    """
-    query = str(q or "").strip()
-
-    if not query:
-        raise HTTPException(
-            status_code=400,
-            detail="Parametro q mancante",
-        )
-
-    selected_stores = None
-
-    if stores:
-        selected_stores = [
-            store.strip().lower()
-            for store in stores.split(",")
-            if store.strip()
-        ]
-
-        invalid_stores = [
-            store
-            for store in selected_stores
-            if store not in STORES
-        ]
-
-        if invalid_stores:
-            raise HTTPException(
-                status_code=400,
-                detail=(
-                    "Store non validi: "
-                    + ", ".join(invalid_stores)
-                    + ". Disponibili: "
-                    + ", ".join(STORES)
-                ),
-            )
-
-    try:
-        diagnostic_module = importlib.import_module(
-            "discovery_coverage_diagnostic"
-        )
-
-        run_query = getattr(
-            diagnostic_module,
-            "run_query",
-            None,
-        )
-
-        if not callable(run_query):
-            raise RuntimeError(
-                "discovery_coverage_diagnostic.py non espone run_query()"
             )
 
         return run_query(
