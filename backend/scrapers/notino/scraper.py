@@ -614,9 +614,11 @@ def _looks_like_product_url(url: str) -> bool:
     if _is_excluded_notino_path(path):
         return False
 
-    segments = [part for part in path.split("/") if part]
-
-    return len(segments) >= 2
+    # Notino product pages use the canonical /p-<numeric-id> path marker.
+    # A generic "two or more path segments" check is too permissive: search,
+    # category, brand and other landing pages can satisfy it and later
+    # redirect to unrelated pages while retaining a product-card price/name.
+    return bool(PRODUCT_RE.search(path))
 
 
 def _normalise_reader_url(raw: Any) -> Optional[str]:
