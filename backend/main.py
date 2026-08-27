@@ -1541,7 +1541,10 @@ def product_identity_key(product: Dict[str, Any]) -> tuple:
             name = norm(source.get("source_name", ""))
 
     size = product_size_ml(product)
-    concentration = product_concentration(product)
+    concentration = (
+        product_concentration(product)
+        or norm(product.get("canonical_concentration") or "")
+    )
 
     return (
         "fallback",
@@ -1653,11 +1656,15 @@ def sort_final_results(products: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
 
 
 def _display_brand(product: Dict[str, Any]) -> str:
+    # Per la visualizzazione usiamo prima il brand effettivamente presente
+    # nell'offerta; se il retailer lo lascia vuoto, ricorriamo al brand
+    # canonico già risolto dal ProductMatcher.
     return (
         product_field(
             product,
             "brand",
             "source_brand",
+            "canonical_brand",
         )
         or ""
     ).strip()
@@ -1748,6 +1755,16 @@ def _display_gender(product: Dict[str, Any], raw_name: str) -> str:
             or ""
         ).strip()
 
+    explicit_norm = catalog_norm(explicit)
+
+    # I dati degli scraper possono arrivare già normalizzati in italiano
+    # (Uomo/Donna) oppure in inglese/francese/olandese. In questo caso
+    # il valore esplicito ha precedenza sul testo del nome.
+    if re.search(r"\b(?:uomo|men|man|male|homme|heren|mannen)\b", explicit_norm):
+        return "Uomo"
+    if re.search(r"\b(?:donna|women|woman|female|femme|dames|vrouwen)\b", explicit_norm):
+        return "Donna"
+
     gender = _catalog_gender_class(
         " ".join(
             value
@@ -1803,7 +1820,7 @@ def _display_variant_name(
     # Il genere è un attributo finale del titolo, non una parte
     # dell'identificativo commerciale visualizzato.
     variant = re.sub(
-        r"\b(?:for\s+him|for\s+her|men|women|man|woman|"
+        r"\b(?:for\s+him|for\s+her|uomo|donna|men|women|man|woman|"
         r"male|female|homme|femme|heren|mannen|dames|"
         r"vrouwen|unisex)\b",
         " ",
@@ -2039,8 +2056,25 @@ def _prepare_final_results(
 
     for product in results:
         item = dict(product)
-        item["name"] = _format_result_title(item)
-        item["title"] = item["name"]
+
+        # Unifica il titolo finale in un solo punto.
+        # Questo valore è quello che deve essere usato sia dalla UI sia
+        # dall'endpoint JSON: Brand-Variante [Concentrazione] [Uomo/Donna].
+        display_title = _format_result_title(item)
+
+        item["name"] = display_title
+        item["title"] = display_title
+        item["canonical_display_name"] = display_title
+
+        # Se lo scraper non ha valorizzato il brand ma il matcher lo ha
+        # risolto, propaghiamo il brand canonico anche nel campo brand.
+        if not str(item.get("brand") or "").strip():
+            canonical_brand = str(
+                item.get("canonical_brand") or ""
+            ).strip()
+            if canonical_brand:
+                item["brand"] = canonical_brand
+
         prepared.append(item)
 
     return sort_final_results(prepared)
