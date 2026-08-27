@@ -1,5 +1,6 @@
 import json
 import re
+import time
 import unicodedata
 from urllib.parse import quote_plus, urljoin, urlparse
 
@@ -13,6 +14,8 @@ HEADERS = {
     "Accept-Language": "de-DE,de;q=0.9,en;q=0.8",
 }
 TIMEOUT = 20
+RETRIES = 3
+RETRY_SLEEP = 0.6
 
 NON_PERFUME_MARKERS = {
     "gift set", "set regalo", "discovery set", "fragrance set", "perfume set",
@@ -61,32 +64,58 @@ def money(value):
         return ""
 
 
+def _request_json(session, url, **kwargs):
+    for attempt in range(RETRIES):
+        try:
+            response = session.get(url, **kwargs)
+            if response.ok:
+                return response
+        except requests.RequestException:
+            pass
+        if attempt + 1 < RETRIES:
+            time.sleep(RETRY_SLEEP)
+    return None
+
+
+def _request_html(session, url, **kwargs):
+    for attempt in range(RETRIES):
+        try:
+            response = session.get(url, **kwargs)
+            if response.ok:
+                return response
+        except requests.RequestException:
+            pass
+        if attempt + 1 < RETRIES:
+            time.sleep(RETRY_SLEEP)
+    return None
+
+
 def predictive_products(session, query):
     endpoint = BASE + "/search/suggest.json"
     params = {
         "q": query,
         "resources[type]": "product",
-        "resources[limit]": "10",
+        "resources[limit]": "20",
         "resources[options][unavailable_products]": "show",
     }
+    response = _request_json(session, endpoint, params=params, headers=HEADERS, timeout=TIMEOUT)
+    if not response:
+        return []
     try:
-        response = session.get(endpoint, params=params, headers=HEADERS, timeout=TIMEOUT)
-        if not response.ok:
-            return []
         data = response.json()
         return (((data or {}).get("resources") or {}).get("results") or {}).get("products") or []
-    except (requests.RequestException, ValueError, TypeError):
+    except (ValueError, TypeError):
         return []
 
 
 def product_json(session, url):
     clean = url.split("?")[0].rstrip("/")
+    response = _request_json(session, clean + ".js", headers=HEADERS, timeout=TIMEOUT)
+    if not response:
+        return None
     try:
-        response = session.get(clean + ".js", headers=HEADERS, timeout=TIMEOUT)
-        if not response.ok:
-            return None
         return response.json()
-    except (requests.RequestException, ValueError):
+    except (ValueError, TypeError):
         return None
 
 
@@ -120,39 +149,50 @@ def product_from_json(data, url):
     }
 
 
+def _anchor_candidate(anchor, query):
+    href = anchor.get("href") or ""
+    absolute = urljoin(BASE, href).split("?")[0]
+    path = urlparse(absolute).path.rstrip("/")
+    if not path or "/products/" not in path:
+        return None
+
+    texts = [
+        anchor.get("title") or "",
+        anchor.get("aria-label") or "",
+        anchor.get_text(" ", strip=True) or "",
+        path.replace("/products/", " ").replace("-", " "),
+    ]
+
+    card = anchor
+    for _ in range(6):
+        if not card.parent:
+            break
+        card = card.parent
+        candidate = card.get_text(" ", strip=True)
+        if candidate:
+            texts.append(candidate)
+
+    if not any(query_matches(text, query) for text in texts):
+        return None
+    return absolute
+
+
 def search_html_urls(session, query):
     url = BASE + "/search?q=" + quote_plus(query) + "&type=product"
-    try:
-        response = session.get(url, headers=HEADERS, timeout=TIMEOUT)
-        if not response.ok:
-            return []
-    except requests.RequestException:
+    response = _request_html(session, url, headers=HEADERS, timeout=TIMEOUT)
+    if not response:
         return []
 
     soup = BeautifulSoup(response.text, "html.parser")
     urls = []
     seen = set()
     for anchor in soup.select('a[href*="/products/"]'):
-        href = anchor.get("href") or ""
-        absolute = urljoin(BASE, href).split("?")[0]
+        absolute = _anchor_candidate(anchor, query)
+        if not absolute:
+            continue
         path = urlparse(absolute).path.rstrip("/")
-        if not path or path in seen:
+        if path in seen:
             continue
-
-        title = anchor.get("title") or anchor.get("aria-label") or anchor.get_text(" ", strip=True) or ""
-        if not query_matches(title, query):
-            card = anchor
-            for _ in range(5):
-                if not card.parent:
-                    break
-                card = card.parent
-                candidate = card.get_text(" ", strip=True)
-                if query_matches(candidate, query):
-                    title = candidate
-                    break
-        if not query_matches(title, query):
-            continue
-
         seen.add(path)
         urls.append(absolute)
     return urls
@@ -160,18 +200,18 @@ def search_html_urls(session, query):
 
 def candidate_urls(session, query):
     searches = [query]
-    compact = re.sub(r"(?<=\d)\s+(?=[a-z])|(?<=[a-z])\s+(?=\d)", "", norm(query))
-    if compact and compact != norm(query):
+    normalized = norm(query)
+    compact = re.sub(r"(?<=\d)\s+(?=[a-z])|(?<=[a-z])\s+(?=\d)", "", normalized)
+    if compact and compact != normalized:
         searches.append(compact)
 
-    # Token discovery is retained for numeric/compound product searches,
-    # but every token result is title-filtered before it can be returned.
-    for token in norm(query).split():
+    for token in normalized.split():
         if len(token) >= 3 and token not in searches:
             searches.append(token)
 
     urls = []
     seen = set()
+
     for search_query in searches:
         for product in predictive_products(session, search_query):
             product_title = product.get("title") or product.get("name") or ""
@@ -186,6 +226,13 @@ def candidate_urls(session, query):
                 continue
             seen.add(path)
             urls.append(absolute)
+
+    # Always run the normal search page as a second independent discovery
+    # channel. A temporary predictive-search failure must never hide products.
+    for url in search_html_urls(session, query):
+        if url not in urls:
+            urls.append(url)
+
     return urls
 
 
@@ -197,21 +244,21 @@ def search(query):
     session = requests.Session()
     results = []
     seen = set()
-    urls = candidate_urls(session, query)
-    for url in search_html_urls(session, query):
-        if url not in urls:
-            urls.append(url)
 
-    for url in urls:
-        item = product_from_json(product_json(session, url), url)
-        if not item or not query_matches(item["name"], query):
-            continue
-        key = urlparse(item["url"]).path.rstrip("/")
-        if key in seen:
-            continue
-        seen.add(key)
-        results.append(item)
-    return results
+    try:
+        urls = candidate_urls(session, query)
+        for url in urls:
+            item = product_from_json(product_json(session, url), url)
+            if not item or not query_matches(item["name"], query):
+                continue
+            key = urlparse(item["url"]).path.rstrip("/")
+            if key in seen:
+                continue
+            seen.add(key)
+            results.append(item)
+        return results
+    finally:
+        session.close()
 
 
 if __name__ == "__main__":
