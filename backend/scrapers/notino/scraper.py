@@ -377,20 +377,17 @@ def _structured_offer_stock_status(
     def availability_value(value: Any) -> Optional[bool]:
         low = str(value or "").lower()
 
-        # Return semantics used by the scraper:
-        # True  = in stock
-        # False = out of stock
         if any(
             marker in low
             for marker in ("outofstock", "soldout", "discontinued")
         ):
-            return False
+            return True
 
         if any(
             marker in low
             for marker in ("instock", "limitedavailability", "preorder")
         ):
-            return True
+            return False
 
         return None
 
@@ -3087,13 +3084,13 @@ def _reader_product(
         ),
         "price": price,
         "availability": (
-            "in stock" if stock is True
-            else "out of stock" if stock is False
+            "out of stock" if stock is True
+            else "in stock" if stock is False
             else "unknown"
         ),
         "available": (
-            True if stock is True
-            else False if stock is False
+            False if stock is True
+            else True if stock is False
             else None
         ),
         "url": candidate_url,
@@ -3182,13 +3179,13 @@ def _card_result(
         ),
         "price": price,
         "availability": (
-            "in stock" if stock is True
-            else "out of stock" if stock is False
+            "out of stock" if stock is True
+            else "in stock" if stock is False
             else "unknown"
         ),
         "available": (
-            True if stock is True
-            else False if stock is False
+            False if stock is True
+            else True if stock is False
             else None
         ),
         "url": candidate["url"],
@@ -3653,13 +3650,13 @@ def _product_details(
         ),
         "price": price,
         "availability": (
-            "in stock" if stock is True
-            else "out of stock" if stock is False
+            "out of stock" if stock is True
+            else "in stock" if stock is False
             else "unknown"
         ),
         "available": (
-            True if stock is True
-            else False if stock is False
+            False if stock is True
+            else True if stock is False
             else None
         ),
         "url": final_url,
