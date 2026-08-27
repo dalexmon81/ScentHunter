@@ -1,8 +1,8 @@
 """Deloox adapter for ScentHunter.
 
 Discovery strategy:
-- Prefer Deloox's current category pages and their Product line filter links.
-- Fall back to Deloox search endpoints and sitemap discovery.
+- Prefer Deloox search and sitemap discovery, including dedicated Product-line category pages.
+- Fall back to Deloox category -> brand -> Product-line discovery and legacy search routes.
 - Product pages are parsed through JSON-LD/page content.
 """
 from __future__ import annotations
@@ -487,12 +487,14 @@ def _category_page_variants(category_url, max_pages=8):
     ]
 
 
-def _discover_from_categories(session, query, max_urls=80):
+def _discover_from_categories(session, query, max_urls=80, trace=None):
     urls = []
     seen = set()
     seen_category_pages = set()
 
     for category_url in _category_pages(session):
+        if trace is not None:
+            trace.setdefault("category_urls", []).append(category_url)
         for category_page_url in _category_page_variants(
             category_url,
             max_pages=8,
@@ -507,7 +509,19 @@ def _discover_from_categories(session, query, max_urls=80):
                     headers=HEADERS,
                     timeout=TIMEOUT,
                 )
-            except requests.RequestException:
+                if trace is not None:
+                    trace.setdefault("requests", []).append({
+                        "stage": "category_discovery",
+                        "url": category_page_url,
+                        "status": r.status_code,
+                    })
+            except requests.RequestException as exc:
+                if trace is not None:
+                    trace.setdefault("errors", []).append({
+                        "stage": "category_discovery",
+                        "url": category_page_url,
+                        "error": str(exc),
+                    })
                 continue
 
             if r.status_code >= 400:
@@ -520,6 +534,9 @@ def _discover_from_categories(session, query, max_urls=80):
                 r.text,
                 query,
             )
+
+            if trace is not None:
+                trace.setdefault("product_line_urls", []).extend(product_line_links)
 
             if product_line_links:
                 candidate_pages = [
@@ -547,10 +564,13 @@ def _discover_from_categories(session, query, max_urls=80):
 
                     page_html = page.text
 
-                for product_url in _candidate_product_urls(
+                candidates = _candidate_product_urls(
                     page_html,
                     query,
-                ):
+                )
+                if trace is not None:
+                    trace.setdefault("candidate_urls", []).extend(candidates)
+                for product_url in candidates:
                     if product_url in seen:
                         continue
 
@@ -563,7 +583,7 @@ def _discover_from_categories(session, query, max_urls=80):
     return urls[:max_urls]
 
 
-def _sitemap_category_urls(session, query, max_sitemaps=12, max_urls=30):
+def _sitemap_category_urls(session, query, max_sitemaps=12, max_urls=30, trace=None):
     """Discover dedicated Deloox category/Product-line pages from sitemaps."""
     query_tokens = tokens(query)
     if not query_tokens:
@@ -605,6 +625,8 @@ def _sitemap_category_urls(session, query, max_sitemaps=12, max_urls=30):
         if sitemap_url in seen_sitemaps:
             continue
         seen_sitemaps.add(sitemap_url)
+        if trace is not None:
+            trace.setdefault("sitemaps_traversed", []).append(sitemap_url)
 
         xml = fetch_xml(sitemap_url)
         if not xml:
@@ -628,11 +650,13 @@ def _sitemap_category_urls(session, query, max_sitemaps=12, max_urls=30):
             elif low.endswith(".xml") or "sitemap" in low:
                 if value not in seen_sitemaps:
                     pending.append(value)
+                    if trace is not None:
+                        trace.setdefault("sitemaps_discovered", []).append(value)
 
     return category_urls[:max_urls]
 
 
-def _sitemap_product_urls(session, query, max_sitemaps=12, max_urls=80):
+def _sitemap_product_urls(session, query, max_sitemaps=12, max_urls=80, trace=None):
     query_tokens = tokens(query)
     if not query_tokens:
         return []
@@ -674,6 +698,8 @@ def _sitemap_product_urls(session, query, max_sitemaps=12, max_urls=80):
         if sitemap_url in seen_sitemaps:
             continue
         seen_sitemaps.add(sitemap_url)
+        if trace is not None:
+            trace.setdefault("sitemaps_traversed", []).append(sitemap_url)
 
         xml = fetch_xml(sitemap_url)
         if not xml:
@@ -698,29 +724,29 @@ def _sitemap_product_urls(session, query, max_sitemaps=12, max_urls=80):
             elif low.endswith(".xml") or "sitemap" in low:
                 if value not in seen_sitemaps:
                     pending.append(value)
+                    if trace is not None:
+                        trace.setdefault("sitemaps_discovered", []).append(value)
 
     return product_urls
 
 
-def _discover(session, q):
-    """Generic Deloox discovery with direct search FIRST.
-
-    The important rule is that Deloox must be attempted for every query.
-    Category crawling is only a fallback because category pages can hang.
-    No perfume/brand-specific rule belongs here.
-    """
+def _discover_with_trace(session, q, trace=None):
+    """Generic Deloox discovery, optionally recording every discovery stage."""
+    q = clean(q)
     urls = []
     seen = set()
+
+    if trace is not None:
+        trace["query"] = q
 
     def add(url):
         if url and url not in seen and len(urls) < 24:
             seen.add(url)
             urls.append(url)
+            if trace is not None:
+                trace.setdefault("candidate_urls", []).append(url)
 
     # 1. PRIMARY: Deloox's own search surface.
-    # Try the complete query first, then a small generic broadening.  The
-    # original query is still validated later by _product(), so broadening
-    # discovery cannot make unrelated products appear in the final results.
     discovery_queries = _candidate_queries(q)[:2]
     search_endpoints = (
         "/en/search?query=",
@@ -728,57 +754,123 @@ def _discover(session, q):
         "/en/search?q=",
     )
 
+    if trace is not None:
+        trace["discovery_queries"] = discovery_queries
+
     for discovery_query in discovery_queries:
         for route in search_endpoints:
             endpoint = BASE_URL + route + quote_plus(discovery_query)
             try:
-                r = session.get(
-                    endpoint,
-                    headers=HEADERS,
-                    timeout=TIMEOUT,
-                )
-            except requests.RequestException:
+                r = session.get(endpoint, headers=HEADERS, timeout=TIMEOUT)
+                if trace is not None:
+                    trace.setdefault("requests", []).append({
+                        "stage": "search",
+                        "url": endpoint,
+                        "query": discovery_query,
+                        "status": r.status_code,
+                        "bytes": len(r.content),
+                    })
+            except requests.RequestException as exc:
+                if trace is not None:
+                    trace.setdefault("errors", []).append({
+                        "stage": "search",
+                        "url": endpoint,
+                        "error": str(exc),
+                    })
                 continue
 
             if r.status_code >= 400:
                 continue
 
-            for product_url in _candidate_product_urls(
+            candidates = _candidate_product_urls(
                 r.text,
                 q,
                 discovery_query=discovery_query,
                 accept_all_products=True,
-            ):
+            )
+            if trace is not None:
+                trace.setdefault("candidate_urls_by_stage", {}).setdefault("search", []).extend(candidates)
+            for product_url in candidates:
                 add(product_url)
                 if len(urls) >= 24:
                     return urls[:24]
 
-    # 2. SECONDARY: direct product sitemap.  This is still generic and does
-    # not depend on a brand/category filter being rendered by Deloox.
+    # 2. SECONDARY: direct product sitemap.
     for product_url in _sitemap_product_urls(
         session,
         q,
         max_sitemaps=2,
         max_urls=12,
+        trace=trace,
     ):
         add(product_url)
         if len(urls) >= 24:
             return urls[:24]
 
-    # 3. FALLBACK: category -> brand -> product-line discovery.
-    # This is deliberately last: the previous implementation put this first,
-    # so a slow category request could prevent Deloox from ever reaching its
-    # own search endpoint.
+    # 3. SECONDARY: sitemap category/Product-line pages.
+    # This discovers dedicated product-line category pages even when Deloox
+    # does not render their links in the generic taxonomy pages.
+    category_sitemap_urls = _sitemap_category_urls(
+        session,
+        q,
+        max_sitemaps=12,
+        max_urls=30,
+        trace=trace,
+    )
+    if trace is not None:
+        trace.setdefault("category_urls", []).extend(category_sitemap_urls)
+
+    for category_url in category_sitemap_urls:
+        try:
+            response = session.get(
+                category_url,
+                headers=HEADERS,
+                timeout=TIMEOUT,
+            )
+            if trace is not None:
+                trace.setdefault("requests", []).append({
+                    "stage": "sitemap_category",
+                    "url": category_url,
+                    "status": response.status_code,
+                    "bytes": len(response.content),
+                })
+        except requests.RequestException as exc:
+            if trace is not None:
+                trace.setdefault("errors", []).append({
+                    "stage": "sitemap_category",
+                    "url": category_url,
+                    "error": str(exc),
+                })
+            continue
+
+        if response.status_code >= 400:
+            continue
+
+        candidates = _candidate_product_urls(
+            response.text,
+            q,
+            discovery_query=q,
+            accept_all_products=True,
+        )
+        if trace is not None:
+            trace.setdefault("candidate_urls_by_stage", {}).setdefault("sitemap_category", []).extend(candidates)
+        for product_url in candidates:
+            add(product_url)
+            if len(urls) >= 24:
+                return urls[:24]
+
+    # 4. FALLBACK: category -> brand -> product-line discovery.
     for url in _discover_from_categories(
         session,
         q,
         max_urls=12,
+        trace=trace,
     ):
         add(url)
         if len(urls) >= 24:
             return urls[:24]
 
-    # 4. Last-resort search route used by older Deloox deployments.
+    # 5. Last-resort search route used by older Deloox deployments.
     endpoint = BASE_URL + "/it/cerca?query=" + quote_plus(q)
     try:
         r = session.get(
@@ -786,16 +878,32 @@ def _discover(session, q):
             headers=HEADERS,
             timeout=TIMEOUT,
         )
-    except requests.RequestException:
+        if trace is not None:
+            trace.setdefault("requests", []).append({
+                "stage": "legacy_search",
+                "url": endpoint,
+                "status": r.status_code,
+                "bytes": len(r.content),
+            })
+    except requests.RequestException as exc:
+        if trace is not None:
+            trace.setdefault("errors", []).append({
+                "stage": "legacy_search",
+                "url": endpoint,
+                "error": str(exc),
+            })
         return urls[:24]
 
     if r.status_code < 400:
-        for product_url in _candidate_product_urls(
+        candidates = _candidate_product_urls(
             r.text,
             q,
             discovery_query=q,
             accept_all_products=True,
-        ):
+        )
+        if trace is not None:
+            trace.setdefault("candidate_urls_by_stage", {}).setdefault("legacy_search", []).extend(candidates)
+        for product_url in candidates:
             add(product_url)
             if len(urls) >= 24:
                 break
@@ -803,81 +911,101 @@ def _discover(session, q):
     return urls[:24]
 
 
+def _discover(session, q):
+    return _discover_with_trace(session, q, trace=None)
 
 def diagnose_search(session, query):
-    """Deep Deloox discovery diagnostic; does not change normal search."""
+    """Deep Deloox discovery diagnostic following the real _discover() order."""
     query = clean(query)
-    report = {
+    trace = {
         "query": query,
-        "category_endpoints": [],
-        "filter_urls": [],
+        "requests": [],
+        "sitemaps_discovered": [],
+        "sitemaps_traversed": [],
+        "category_urls": [],
+        "product_line_urls": [],
         "candidate_urls": [],
+        "candidate_urls_by_stage": {},
+        "product_requests": [],
         "validated_products": [],
-        "search_fallback": [],
+        "rejected_products": [],
+        "errors": [],
     }
     if not query:
-        return report
+        return trace
 
-    seen_candidates = set()
-    for category_url in _category_pages(session):
-        entry = {"url": category_url, "status": None, "filter_urls": [], "candidate_urls": []}
-        try:
-            r = session.get(category_url, headers=HEADERS, timeout=TIMEOUT)
-            entry["status"] = r.status_code
-        except requests.RequestException as exc:
-            entry["error"] = str(exc)
-            report["category_endpoints"].append(entry)
-            continue
-        report["category_endpoints"].append(entry)
-        if r.status_code >= 400:
-            continue
-        filter_urls = _category_product_line_links(r.text, query)
-        entry["filter_urls"] = filter_urls[:20]
-        report["filter_urls"].extend(filter_urls)
-        pages = [(category_url, False)] + [(url, True) for url in filter_urls]
-        for page_url, filtered in pages:
-            try:
-                page = session.get(page_url, headers=HEADERS, timeout=TIMEOUT)
-            except requests.RequestException:
-                continue
-            if page.status_code >= 400:
-                continue
-            candidates = _candidate_product_urls(page.text, query, accept_all_products=filtered)
-            entry["candidate_urls"].extend(candidates[:40])
-            for url in candidates:
-                if url in seen_candidates:
-                    continue
-                seen_candidates.add(url)
-                report["candidate_urls"].append(url)
-                if len(report["candidate_urls"]) >= 80:
-                    break
-            if len(report["candidate_urls"]) >= 80:
-                break
-        if len(report["candidate_urls"]) >= 80:
-            break
+    candidate_urls = _discover_with_trace(session, query, trace=trace)
 
-    for url in report["candidate_urls"]:
+    # _discover_with_trace records discovery candidates. Keep a stable,
+    # deduplicated list for the validation phase.
+    ordered = []
+    seen = set()
+    for url in candidate_urls:
+        if url not in seen:
+            seen.add(url)
+            ordered.append(url)
+
+    trace["candidate_urls"] = ordered[:24]
+
+    for url in trace["candidate_urls"]:
         try:
             r = session.get(url, headers=HEADERS, timeout=TIMEOUT)
-        except requests.RequestException:
-            continue
-        if r.status_code >= 400:
-            continue
-        item = _product(url, r.text, query)
-        if item:
-            report["validated_products"].append(item)
-
-    for endpoint in (
-        BASE_URL + "/en/search?query=" + quote_plus(query),
-        BASE_URL + "/en/search?search=" + quote_plus(query),
-        BASE_URL + "/en/search?q=" + quote_plus(query),
-    ):
-        try:
-            r = session.get(endpoint, headers=HEADERS, timeout=TIMEOUT)
-            report["search_fallback"].append({"url": endpoint, "status": r.status_code})
+            request_info = {
+                "url": url,
+                "status": r.status_code,
+                "bytes": len(r.content),
+            }
+            trace["product_requests"].append(request_info)
         except requests.RequestException as exc:
-            report["search_fallback"].append({"url": endpoint, "error": str(exc)})
-    return report
+            trace["product_requests"].append({
+                "url": url,
+                "error": str(exc),
+            })
+            trace["errors"].append({
+                "stage": "product_validation",
+                "url": url,
+                "error": str(exc),
+            })
+            continue
+
+        if r.status_code >= 400:
+            trace["rejected_products"].append({
+                "url": url,
+                "reason": "http_error",
+                "status": r.status_code,
+            })
+            continue
+
+        try:
+            item = _product(url, r.text, query)
+        except Exception as exc:
+            trace["errors"].append({
+                "stage": "product_validation",
+                "url": url,
+                "error": f"{type(exc).__name__}: {exc}",
+            })
+            trace["rejected_products"].append({
+                "url": url,
+                "reason": f"parser_error: {type(exc).__name__}: {exc}",
+            })
+            continue
+
+        if item:
+            trace["validated_products"].append(item)
+        else:
+            trace["rejected_products"].append({
+                "url": url,
+                "reason": "product_validation_failed",
+            })
+
+    # Backward-compatible summary fields for existing consumers.
+    trace["filter_urls"] = list(dict.fromkeys(trace.get("product_line_urls", [])))[:80]
+    trace["search_fallback"] = [
+        request for request in trace["requests"]
+        if request.get("stage") in {"search", "legacy_search"}
+    ]
+
+    return trace
 
 def search(query):
     query = clean(query)
