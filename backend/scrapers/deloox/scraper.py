@@ -244,12 +244,15 @@ def extract_json_ld_products(soup):
 
 
 def extract_availability(soup, json_ld=None, product_name=""):
-    """Determine current availability, preferring the visible product page.
+    """Determine the availability of the selected product offer.
 
-    Deloox may keep a stale JSON-LD Offer after the live buy button has
-    changed. The product-page purchase state therefore wins over JSON-LD.
-    The local text window is anchored to the selected product name so related
-    products do not contaminate the result.
+    Availability evidence is ranked by specificity:
+    1) explicit purchase controls on the product page;
+    2) structured Offer availability;
+    3) text around the product name.
+
+    This prevents stale recommendation text or a stale JSON-LD value from
+    overriding a live purchase action. The rule is generic for every product.
     """
     page_text = norm(soup.get_text(" ", strip=True))
 
@@ -270,23 +273,36 @@ def extract_availability(soup, json_ld=None, product_name=""):
         "niet beschikbaar",
     )
 
-    # First inspect the part of the page surrounding the actual product name.
-    # This keeps recommendation cards outside the decision whenever possible.
-    local_text = page_text
-    product_norm = norm(product_name)
-    if product_norm:
-        pos = page_text.find(product_norm)
-        if pos >= 0:
-            local_text = page_text[max(0, pos - 2500):pos + 6000]
+    # Purchase controls are the strongest live signal. Inspect button/input/link
+    # text and disabled state before generic page text.
+    purchase_in = False
+    purchase_out = False
+    for node in soup.find_all(["button", "input", "a"]):
+        text = clean(
+            node.get("value")
+            or node.get("aria-label")
+            or node.get_text(" ", strip=True)
+        )
+        low = norm(text)
+        if not low:
+            continue
 
-    if any(marker in local_text for marker in out_stock_markers):
-        return "out_of_stock"
+        if any(marker in low for marker in in_stock_markers):
+            disabled = node.has_attr("disabled") or str(node.get("aria-disabled") or "").lower() == "true"
+            if not disabled:
+                purchase_in = True
 
-    if any(marker in local_text for marker in in_stock_markers):
+        if any(marker in low for marker in out_stock_markers):
+            purchase_out = True
+
+    if purchase_in:
         return "in_stock"
+    if purchase_out:
+        # Do not return immediately: structured Offer data below may provide
+        # a stronger current state than a passive text label.
+        pass
 
-    # Only if the visible product area gives no explicit answer, use the
-    # selected Product/Offer JSON-LD.
+    # Use the selected Product/Offer JSON-LD as the next source of evidence.
     products = []
     if isinstance(json_ld, dict):
         products.append(json_ld)
@@ -330,6 +346,23 @@ def extract_availability(soup, json_ld=None, product_name=""):
     if structured_in:
         return "in_stock"
     if structured_out:
+        return "out_of_stock"
+
+    # Finally inspect the local product-name window. If both passive markers
+    # are present, prefer the positive purchase signal.
+    local_text = page_text
+    product_norm = norm(product_name)
+    if product_norm:
+        pos = page_text.find(product_norm)
+        if pos >= 0:
+            local_text = page_text[max(0, pos - 2500):pos + 6000]
+
+    local_in = any(marker in local_text for marker in in_stock_markers)
+    local_out = any(marker in local_text for marker in out_stock_markers)
+
+    if local_in:
+        return "in_stock"
+    if local_out:
         return "out_of_stock"
 
     return "unknown"
@@ -986,7 +1019,11 @@ def parse_product_page(
         ),
         "url": url,
         "image": image,
-        "available": availability == "in_stock",
+        "available": (
+            True if availability == "in_stock"
+            else False if availability == "out_of_stock"
+            else None
+        ),
     }
 
 
