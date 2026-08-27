@@ -827,16 +827,20 @@ def run_store(
         }
 
         try:
-            matched = bool(
-                scent_main.matches(
-                    product,
-                    query,
-                )
+            # The diagnostic must exercise the exact production validation
+            # path.  _validate_candidate() performs the central matcher call
+            # and then propagates the Family Registry identity into the final
+            # candidate.  Calling matches() and ProductMatcher independently
+            # here would create a second decision path and can hide contract
+            # failures between the matcher and the production identity layer.
+            validated = scent_main._validate_candidate(
+                product,
+                query,
             )
         except Exception as exc:
             report["errors"].append(
                 {
-                    "stage": "matches",
+                    "stage": "validate_candidate",
                     "candidate": entry,
                     "error": f"{type(exc).__name__}: {exc}",
                     "traceback": traceback.format_exc(),
@@ -844,67 +848,31 @@ def run_store(
             )
             continue
 
-        if matched:
-            central_match = None
-            try:
-                central_match = scent_main._PRODUCT_MATCHER.match(
-                    product,
-                    query,
-                )
-            except Exception:
-                central_match = None
-
-            if isinstance(central_match, dict):
-                resolved_identity = {
-                    "family_id": text(
-                        central_match.get("family_id")
-                    ),
-                    "family_name": text(
-                        central_match.get("family_name")
-                    ),
+        if isinstance(validated, dict):
+            entry.update(
+                {
+                    "name": text(validated.get("name")),
+                    "brand": text(validated.get("brand")),
+                    "family_id": text(validated.get("family_id")),
+                    "family_name": text(validated.get("family_name")),
                     "canonical_name": text(
-                        central_match.get("canonical_name")
+                        validated.get("canonical_name")
                     ),
                     "catalog_variant": text(
-                        central_match.get("catalog_variant")
+                        validated.get("catalog_variant")
                     ),
                     "match_method": text(
-                        central_match.get("match_method")
-                    ) or "generic",
+                        validated.get("match_method")
+                    ),
+                    "current_identity_key": current_identity_key(
+                        validated
+                    ),
+                    "proposed_variant_key": proposed_variant_key(
+                        validated
+                    ),
                 }
-
-                # Applica realmente l'identità risolta al candidato che
-                # alimenta matched_candidates: non lasciarla annidata in
-                # un campo diagnostico separato.
-                product.update(resolved_identity)
-                product["match_method"] = (
-                    product.get("match_method")
-                    or "family_registry_alias"
-                )
-                product["name"] = product["canonical_name"]
-
-                # matched_candidates mantiene i metadati diagnostici già
-                # presenti nell'entry, ma i campi identitari devono essere
-                # flat e direttamente leggibili dal candidato.
-                entry.update(
-                    {
-                        "name": product["name"],
-                        "family_id": product["family_id"],
-                        "family_name": product["family_name"],
-                        "canonical_name": product["canonical_name"],
-                        "catalog_variant": product["catalog_variant"],
-                        "match_method": product["match_method"],
-                        "current_identity_key": current_identity_key(
-                            product
-                        ),
-                        "proposed_variant_key": proposed_variant_key(
-                            product
-                        ),
-                    }
-                )
-
+            )
             report["matched_candidates"].append(entry)
-
         else:
             diagnostic = classify_rejection(
                 product,
