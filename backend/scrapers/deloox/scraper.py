@@ -76,123 +76,21 @@ def parse_price(v):
 
 
 def availability(text, offer=None, soup=None):
-    """Determine availability for the current Deloox product.
+    """Determine availability from product-specific signals only.
 
-    Deloox can expose stale Offer availability in JSON-LD.  Prefer an
-    explicit purchase/availability signal belonging to the current product,
-    then fall back to the structured Offer.  Never inspect every button on
-    the page because recommendation widgets can contain contradictory stock
-    text.
+    IMPORTANT: do not scan the entire product page for ``out of stock``
+    before checking structured data. Deloox can mention that phrase in
+    unrelated/recommendation/filter content even when the current product
+    is purchasable.
+
+    Priority:
+      1. JSON-LD Product/Offer availability (most reliable)
+      2. product-page purchase controls / availability elements
+      3. only then a tightly scoped textual fallback
     """
 
-    # 1) Explicit product-level availability elements.
-    if soup is not None:
-        product_scope = []
-
-        # These selectors are deliberately narrow.  Do NOT select every
-        # button/cart element on the page: Deloox recommendation modules can
-        # contain unrelated "out of stock" buttons.
-        selectors = (
-            '[itemprop="availability"]',
-            '[data-testid*="availability" i]',
-            '[data-test*="availability" i]',
-            '[aria-label*="availability" i]',
-            '[aria-label*="voorraad" i]',
-        )
-
-        for selector in selectors:
-            try:
-                nodes = soup.select(selector)
-            except Exception:
-                nodes = []
-
-            for node in nodes[:10]:
-                value = clean(
-                    node.get("content")
-                    or node.get("aria-label")
-                    or node.get_text(" ", strip=True)
-                )
-                if value:
-                    product_scope.append(value)
-
-        scoped = norm(" ".join(product_scope))
-
-        if scoped:
-            if any(marker in scoped for marker in (
-                "out of stock",
-                "sold out",
-                "currently unavailable",
-                "not available",
-                "unavailable",
-                "uitverkocht",
-                "niet op voorraad",
-                "niet beschikbaar",
-                "tijdelijk uitverkocht",
-            )):
-                return "out_of_stock"
-
-            if any(marker in scoped for marker in (
-                "in stock",
-                "available",
-                "op voorraad",
-            )):
-                return "in_stock"
-
-        # A purchase button is useful only when it is explicitly an
-        # add-to-cart/buy control.  We inspect its own text/aria label, not
-        # all buttons on the page.
-        purchase_selectors = (
-            'button[type="submit"]',
-            'input[type="submit"]',
-            '[class*="add-to-cart" i]',
-            '[class*="addtocart" i]',
-            '[class*="purchase" i]',
-        )
-
-        for selector in purchase_selectors:
-            try:
-                nodes = soup.select(selector)
-            except Exception:
-                nodes = []
-
-            for node in nodes[:10]:
-                value = norm(
-                    clean(
-                        node.get("aria-label")
-                        or node.get("value")
-                        or node.get_text(" ", strip=True)
-                    )
-                )
-                if not value:
-                    continue
-
-                if any(marker in value for marker in (
-                    "out of stock",
-                    "sold out",
-                    "unavailable",
-                    "uitverkocht",
-                    "niet op voorraad",
-                    "niet beschikbaar",
-                )):
-                    return "out_of_stock"
-
-                if any(marker in value for marker in (
-                    "add to cart",
-                    "add to basket",
-                    "add to bag",
-                    "in winkelwagen",
-                    "toevoegen aan winkelwagen",
-                    "toevoegen aan winkelmand",
-                    "in winkelmand",
-                    "buy now",
-                    "koop nu",
-                    "bestel nu",
-                    "bestellen",
-                )):
-                    return "in_stock"
-
-    # 2) Structured Offer data.  This remains an important fallback, but it
-    # cannot override an explicit live purchase signal above.
+    # 1) Structured data. Schema.org normally exposes values such as
+    # https://schema.org/InStock, OutOfStock, LimitedAvailability, etc.
     if isinstance(offer, dict):
         raw = clean(
             offer.get("availability")
@@ -200,34 +98,76 @@ def availability(text, offer=None, soup=None):
             or offer.get("availabilityStatus")
             or ""
         ).lower()
-
         if raw:
-            if any(marker in raw for marker in (
-                "instock",
-                "in_stock",
-                "limitedavailability",
-                "preorder",
-                "pre_order",
+            if any(x in raw for x in (
+                "outofstock", "out_of_stock", "soldout", "sold_out",
+                "discontinued", "unavailable",
+            )):
+                return "out_of_stock"
+            if any(x in raw for x in (
+                "instock", "in_stock", "limitedavailability",
+                "preorder", "pre_order",
             )):
                 return "in_stock"
 
-            if any(marker in raw for marker in (
-                "outofstock",
-                "out_of_stock",
-                "soldout",
-                "sold_out",
-                "discontinued",
-                "unavailable",
+    # 2) Look only at elements that are likely to describe the current
+    # product's purchase/stock state. Do NOT use soup.get_text() here.
+    if soup is not None:
+        scoped_parts = []
+
+        selectors = [
+            '[itemprop="availability"]',
+            '[data-testid*="availability" i]',
+            '[data-test*="availability" i]',
+            '[class*="availability" i]',
+            '[class*="stock" i]',
+            '[class*="add-to-cart" i]',
+            '[class*="buy" i]',
+            'button[type="submit"]',
+        ]
+
+        seen_nodes = set()
+        for selector in selectors:
+            try:
+                nodes = soup.select(selector)
+            except Exception:
+                nodes = []
+            for node in nodes[:20]:
+                marker = id(node)
+                if marker in seen_nodes:
+                    continue
+                seen_nodes.add(marker)
+                scoped_parts.append(
+                    clean(node.get("content") or node.get("aria-label") or node.get_text(" ", strip=True))
+                )
+
+        scoped = norm(" ".join(x for x in scoped_parts if x))
+        if scoped:
+            if any(x in scoped for x in (
+                "sold out", "out of stock", "not available",
+                "currently unavailable", "unavailable",
             )):
                 return "out_of_stock"
+            if any(x in scoped for x in (
+                "in stock", "available", "op voorraad", "add to cart",
+                "add to basket", "buy now", "bestellen",
+            )):
+                return "in_stock"
 
-    # 3) Conservative fallback: only accept an explicit stock phrase in the
-    # page text.  Do not treat generic recommendation text as authoritative.
-    page_text = norm(text)
-    if "in stock" in page_text or "op voorraad" in page_text:
+    # 3) Deliberately conservative fallback. Only use the whole-page text
+    # when there is NO structured/scoped signal at all. This prevents a
+    # recommendation card saying "out of stock" from poisoning the product.
+    t = norm(text)
+    if any(x in t for x in (
+        "sold out",
+        "out of stock",
+        "currently unavailable",
+    )):
+        return "out_of_stock"
+    if any(x in t for x in ("in stock", "op voorraad")):
         return "in_stock"
-
     return "unknown"
+
 
 def _jsonld(soup):
     for script in soup.select('script[type="application/ld+json"]'):
@@ -384,9 +324,9 @@ def _candidate_queries(query):
 
 
 PRODUCT_URL_PATTERNS = [
-    r'href\s*=\s*["\']((?:https?:)?//(?:www\.)?deloox\.com[^"\']*/product/[^"\']+)',
-    r'["\']((?:/)?(?:en/|it/|nl/)?product/[^"\s<>]+)["\']',
-    r'["\']((?:/)?(?:en/|it/|nl/)?product/[^"\s<>]+)',
+    r'href\s*=\s*["\']((?:https?://(?:www\.)?deloox\.com/[^"\']*)?)',
+    r'["\']((?:https?://(?:www\.)?deloox\.com/en/[^"\']*)?)',
+    r'["\']((?:https?://(?:www\.)?deloox\.com/en/it/nl/[^"\']*)?)',
 ]
 
 
@@ -399,7 +339,7 @@ def _candidate_product_urls(
     """Extract Deloox product URLs from HTML.
 
     This function is generic and does not depend on specific products.
-    It extracts URLs from <a> tags, data attributes, and raw HTML.
+    It extracts URLs from <a> tags, data attributes, and fallback regex patterns.
     """
     soup = BeautifulSoup(html, "html.parser")
     found = []
@@ -407,10 +347,7 @@ def _candidate_product_urls(
     q_tokens = tokens(discovery_query or query)
 
     def add(raw_url, text=""):
-        if not raw_url:
-            return
-
-        raw_url = clean(raw_url).replace("\\/", "/")
+        raw_url = clean(raw_url).replace("\\", "/")
         if not raw_url:
             return
 
@@ -422,13 +359,11 @@ def _candidate_product_urls(
 
         if parsed.netloc.lower() not in {"deloox.com", "www.deloox.com"}:
             return
-
         if "/product/" not in parsed.path.lower():
             return
 
         if url in seen:
             return
-
         seen.add(url)
         found.append(url)
 
@@ -437,10 +372,10 @@ def _candidate_product_urls(
 
     for tag in soup.find_all(True):
         for attr, value in tag.attrs.items():
-            if isinstance(value, str) and attr.startswith(("data-", "href")):
+            if isinstance(value, str) and attr.startswith(("data-href", "data-url", "data-link")):
                 add(value)
 
-    raw_html = html.replace("\\\\/", "/")
+    raw_html = html.replace("\\\\", "\\")
     for pattern in PRODUCT_URL_PATTERNS:
         for raw_url in re.findall(pattern, raw_html, re.I):
             add(raw_url)
@@ -530,12 +465,6 @@ def _category_pages(session=None):
 
 
 def _category_page_variants(category_url, max_pages=8):
-    """Add bounded pagination only to the broad men's fragrance category."""
-    if not category_url.lower().endswith(
-        "/category/1000054/mens-fragrances.html"
-    ):
-        return [category_url]
-
     return [
         category_url,
         *[
