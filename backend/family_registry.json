@@ -414,6 +414,43 @@
           ]
         }
       ]
+    },
+    {
+      "family_id": "french_avenue_liquid_brun",
+      "brand": "French Avenue",
+      "query_aliases": [
+        "Liquid Brun",
+        "French Avenue Liquid Brun"
+      ],
+      "products": [
+        {
+          "canonical_name": "Liquid Brun",
+          "aliases": [
+            "Liquid Brun",
+            "French Avenue Liquid Brun",
+            "French Avenue - Liquid Brun",
+            "Liquid Brun Eau de Parfum",
+            "French Avenue Liquid Brun Eau de Parfum"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "Liquid Brun Limited Edition",
+          "aliases": [
+            "Liquid Brun Limited Edition",
+            "French Avenue Liquid Brun Limited Edition",
+            "French Avenue - Liquid Brun Limited Edition",
+            "Liquid Brun Limited Edition Extrait de Parfum",
+            "French Avenue Liquid Brun Limited Edition Extrait de Parfum",
+            "French Avenue - Liquid Brun Limited Edition Extrait de Parfum"
+          ],
+          "formats_ml": [
+            150
+          ]
+        }
+      ]
     }
   ]
 }
