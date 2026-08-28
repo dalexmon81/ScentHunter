@@ -8,6 +8,8 @@ import json
 import os
 import re
 import traceback
+import threading
+import uuid
 from concurrent.futures import ThreadPoolExecutor, as_completed, TimeoutError
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
@@ -969,6 +971,131 @@ def health():
 # ============================================================
 # API - SEARCH
 # ============================================================
+
+# Ricerca progressiva usata dal frontend: ogni store viene eseguito in
+# parallelo e /search-status restituisce subito i risultati degli store
+# già terminati, senza aspettare quelli più lenti.
+SEARCH_JOBS: Dict[str, Dict[str, Any]] = {}
+SEARCH_JOBS_LOCK = threading.Lock()
+SEARCH_JOB_TIMEOUT = 60
+SEARCH_JOB_TTL = 300
+
+
+def _cleanup_search_jobs() -> None:
+    now = datetime.now(timezone.utc).timestamp()
+    stale: List[Dict[str, Any]] = []
+    with SEARCH_JOBS_LOCK:
+        for job_id, job in list(SEARCH_JOBS.items()):
+            if job.get("completed") and now - float(job.get("finished_at") or now) > SEARCH_JOB_TTL:
+                stale.append(SEARCH_JOBS.pop(job_id))
+    for job in stale:
+        executor = job.get("executor")
+        if executor is not None:
+            executor.shutdown(wait=False, cancel_futures=True)
+
+
+def _search_job_payload(job: Dict[str, Any]) -> Dict[str, Any]:
+    all_results: List[Dict[str, Any]] = list(job.get("all_results") or [])
+    errors: Dict[str, str] = dict(job.get("errors") or {})
+
+    for store, future in job["futures"].items():
+        if not future.done():
+            continue
+        if store in job["collected"]:
+            continue
+        job["collected"].add(store)
+        try:
+            new_results = future.result() or []
+            all_results.extend(new_results)
+            job["all_results"].extend(new_results)
+        except Exception as error:
+            errors[store] = f"{type(error).__name__}: {error}"
+            traceback.print_exc()
+
+    query = job["query"]
+    normalized_results = [
+        normalize_product(product, query)
+        for product in all_results
+    ]
+    results = sort_by_name(unique_results(normalized_results))
+
+    return {
+        "query": query,
+        "count": len(results),
+        "results": results,
+        "comparisons": [],
+        "errors": errors,
+        "completed": bool(job.get("completed")),
+    }
+
+
+@app.get("/search-start")
+def search_start(q: str):
+    query = str(q or "").strip()
+    if not query:
+        raise HTTPException(status_code=400, detail="Query vuota")
+
+    _cleanup_search_jobs()
+
+    catalog_hints: List[str] = _catalog_brand_candidates(query)
+    family_candidates: List[str] = _catalog_family_candidates(query)
+    executor = ThreadPoolExecutor(max_workers=len(STORES))
+    job_id = uuid.uuid4().hex
+    futures = {
+        executor.submit(
+            run_store,
+            store,
+            query,
+            catalog_hints,
+            family_candidates,
+        ): store
+        for store in STORES
+    }
+    job = {
+        "query": query,
+        "created_at": datetime.now(timezone.utc).timestamp(),
+        "finished_at": None,
+        "executor": executor,
+        "futures": {store: future for future, store in futures.items()},
+        "collected": set(),
+        "all_results": [],
+        "errors": {},
+        "completed": False,
+    }
+    with SEARCH_JOBS_LOCK:
+        SEARCH_JOBS[job_id] = job
+
+    return {"job_id": job_id, "query": query}
+
+
+@app.get("/search-status")
+def search_status(job_id: str):
+    _cleanup_search_jobs()
+    with SEARCH_JOBS_LOCK:
+        job = SEARCH_JOBS.get(str(job_id or ""))
+
+    if job is None:
+        raise HTTPException(status_code=404, detail="Ricerca non trovata o scaduta")
+
+    now = datetime.now(timezone.utc).timestamp()
+    all_done = all(future.done() for future in job["futures"].values())
+    timed_out = now - float(job["created_at"]) >= SEARCH_JOB_TIMEOUT
+
+    if (all_done or timed_out) and not job["completed"]:
+        if timed_out and not all_done:
+            for store, future in job["futures"].items():
+                if not future.done():
+                    if future.cancel():
+                        job["errors"][store] = "Non eseguito: limite tempo ricerca"
+                    else:
+                        job["errors"][store] = "Timeout: negozio troppo lento"
+        job["completed"] = True
+        job["finished_at"] = now
+        job["executor"].shutdown(wait=False, cancel_futures=True)
+
+    payload = _search_job_payload(job)
+    return payload
+
 
 @app.get("/search")
 def search_perfume(q: str):
