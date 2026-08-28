@@ -2236,8 +2236,8 @@ function shImageTag(g, alt) {
     : [];
 
   // Fallback: immagini già presenti nel gruppo
-  const fallbackSource = Array.isArray(g?.imageCandidates)
-    ? g.imageCandidates
+  const fallbackSource = Array.isArray(g?.image_candidates)
+    ? g.image_candidates
     : g?.image
       ? [g.image]
       : [];
@@ -2245,10 +2245,7 @@ function shImageTag(g, alt) {
   const seen = new Set();
 
   const candidates = [...source, ...fallbackSource]
-    .map(url => {
-      const normalized = shNormalizeImageUrl(url);
-      return normalized || null;
-    })
+    .map(url => shNormalizeImageUrl(url))
     .filter(Boolean)
     .filter(url => {
       if (seen.has(url)) return false;
