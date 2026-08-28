@@ -1656,53 +1656,136 @@ async function fetchJSONWithTimeout(url,ms=180000){
 }
 
 async function searchPerfume(){
- const q=queryInput.value.trim();if(!q){statusBox.textContent="";resultsBox.innerHTML="";errorsBox.innerHTML="";return}
- searchButton.disabled=true;searchButton.classList.add("searching");
- let dots=0;
- const updateSearchButton=()=>{dots=(dots+1)%4;searchButton.innerHTML='<span class="search-fixed">CERCO</span><span class="search-dots">'+". ".trim().repeat(0)+". ".trim().repeat(dots)+'</span>'};
- updateSearchButton();
- const dotsTimer=setInterval(updateSearchButton,500);
- statusBox.textContent="";resultsBox.innerHTML="";errorsBox.innerHTML="";
- try{
-  const term=q;
-  const started=await fetchJSONWithTimeout(
-    backend()+"/search-start?q="+encodeURIComponent(term),
-    30000
-  );
+  const q=queryInput.value.trim();
 
-  if(!started||!started.job_id){
-    throw new Error("Il backend non ha restituito job_id.");
+  if(!q){
+    statusBox.textContent="";
+    resultsBox.innerHTML="";
+    errorsBox.innerHTML="";
+    return;
   }
 
-  let data=null;
-  let completed=false;
+  searchButton.disabled=true;
+  searchButton.classList.add("searching");
 
-  for(let attempt=0;attempt<50;attempt++){
-    await new Promise(resolve=>setTimeout(resolve,1500));
+  let dots=0;
+  const updateSearchButton=()=>{
+    dots=(dots+1)%4;
+    searchButton.innerHTML=
+      '<span class="search-fixed">CERCO</span>'+
+      '<span class="search-dots">'+".".repeat(dots)+'</span>';
+  };
 
-    data=await fetchJSONWithTimeout(
-      backend()+"/search-status?job_id="+encodeURIComponent(started.job_id),
+  updateSearchButton();
+  const dotsTimer=setInterval(updateSearchButton,500);
+
+  statusBox.textContent="";
+  resultsBox.innerHTML="";
+  errorsBox.innerHTML="";
+
+  try{
+    const term=q;
+
+    const started=await fetchJSONWithTimeout(
+      backend()+"/search-start?q="+encodeURIComponent(term),
       30000
     );
 
-    if(data&&data.completed===true){
-      completed=true;
-      break;
+    if(!started||!started.job_id){
+      throw new Error("Il backend non ha restituito job_id.");
     }
-  }
 
-  if(!completed){
-    throw new Error(
-      "La ricerca non è terminata entro 75 secondi. "+
-      "Il backend potrebbe avere scraper bloccati."
+    let data=null;
+    let completed=false;
+
+    for(let attempt=0;attempt<50;attempt++){
+      await new Promise(resolve=>setTimeout(resolve,1500));
+
+      data=await fetchJSONWithTimeout(
+        backend()+"/search-status?job_id="+encodeURIComponent(started.job_id),
+        30000
+      );
+
+      if(data&&data.completed===true){
+        completed=true;
+        break;
+      }
+    }
+
+    if(!completed){
+      throw new Error(
+        "La ricerca non è terminata entro 75 secondi. "+
+        "Il backend potrebbe avere scraper bloccati."
+      );
+    }
+
+    /*
+     * Compatibilità: il frontend storico usa { comparisons: [] } oppure
+     * { results: [] }, ma accetta anche risposte JSON equivalenti ricevute
+     * dal backend sotto data, products o items.
+     */
+    const normalizedData=Array.isArray(data)
+      ?{results:data}
+      :{
+          ...data,
+          results:Array.isArray(data?.results)
+            ?data.results
+            :Array.isArray(data?.data)
+              ?data.data
+              :Array.isArray(data?.products)
+                ?data.products
+                :Array.isArray(data?.items)
+                  ?data.items
+                  :[],
+          comparisons:Array.isArray(data?.comparisons)
+            ?data.comparisons
+            :[]
+        };
+
+    const groups=shGroupData(normalizedData);
+
+    if(!groups.length){
+      statusBox.textContent="La ricerca è terminata, ma il backend non ha restituito offerte utilizzabili.";
+      errorsBox.textContent=
+        "Schema ricevuto dal backend: "+
+        Object.keys(data||{}).join(", ")||"nessuna chiave JSON disponibile.";
+      return;
+    }
+
+    showProducts(groups);
+    currentProductGroups=groups;
+
+    refreshWishlistFromResults(
+      groups.flatMap(g=>g.offers.map(o=>({
+        name:g.name||"",
+        brand:g.brand||"",
+        price:shPrice(o),
+        price_value:o.price_value,
+        store:o.store||"",
+        url:o.url||""
+      })))
     );
+
+    if(normalizedData.errors&&Object.keys(normalizedData.errors).length){
+      errorsBox.innerHTML=
+        "Alcuni negozi non hanno risposto: "+
+        Object.keys(normalizedData.errors).map(esc).join(", ")+".";
+    }
+  }catch(e){
+    console.error("Errore ricerca ScentHunter:",e);
+
+    statusBox.textContent="Impossibile completare la ricerca.";
+
+    errorsBox.textContent=
+      e&&e.message
+        ?e.message
+        :"Errore non identificato durante la richiesta al backend.";
+  }finally{
+    clearInterval(dotsTimer);
+    searchButton.disabled=false;
+    searchButton.classList.remove("searching");
+    searchButton.textContent="INIZIA LA RICERCA";
   }
-  const groups=shGroupData(data);showProducts(groups);
-  currentProductGroups=groups;
-  refreshWishlistFromResults(groups.flatMap(g=>g.offers.map(o=>({name:g.name||"",brand:g.brand||"",price:shPrice(o),price_value:o.price_value,store:o.store||"",url:o.url||""}))));
-  if(data.errors&&Object.keys(data.errors).length)errorsBox.innerHTML="Alcuni negozi non hanno risposto: "+Object.keys(data.errors).map(esc).join(", ")+".";
- }catch(e){console.error(e);statusBox.textContent="Impossibile completare la ricerca."}
- finally{clearInterval(dotsTimer);searchButton.disabled=false;searchButton.classList.remove("searching");searchButton.textContent="INIZIA LA RICERCA"}
 }
 
 searchButton.addEventListener("click",searchPerfume);queryInput.addEventListener("keydown",e=>{if(e.key==="Enter"){e.preventDefault();searchPerfume()}});
