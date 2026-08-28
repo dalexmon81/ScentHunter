@@ -11,7 +11,9 @@
 .search-card{padding:0;margin:0 0 18px;border:0;background:none}
 input{width:100%;border:1px solid #34363a;outline:0;border-radius:18px;padding:17px 18px 17px 48px;background:linear-gradient(135deg,#181a1d,#101113);color:white;font-size:17px}
 .searchwrap{position:relative} .searchicon{position:absolute;left:17px;top:13px;font-size:24px;z-index:2}
-button{border:0;font-weight:800} #searchButton{display:block!important} #status{display:block!important}
+button{border:0;font-weight:800} #searchButton{display:block!important} #status{
+  display:block!important;
+}
 .hero{border:1px solid #234638;border-radius:22px;padding:25px 20px;background:radial-gradient(circle at 85% 45%,#173c2d 0,#0b1c16 24%,#07100d 58%,#060808 100%);min-height:205px;position:relative;overflow:hidden}
 .hero h2{font-size:22px;margin:0 0 12px;max-width:64%;line-height:1.1} .hero p{font-size:16px;line-height:1.45;margin:0 0 18px;max-width:58%}
 .herobtn{display:inline-block;background:linear-gradient(#f4ca5d,#d99c22);color:#111;padding:13px 20px;border-radius:30px;font-size:14px;font-weight:900}
@@ -1607,14 +1609,50 @@ function chooseOffer(gi,sizeKey,oi){
   }
 }
 
-async function fetchJSONWithTimeout(url,ms=90000){
- const controller=new AbortController();
- const timer=setTimeout(()=>controller.abort(),ms);
- try{
-  const response=await fetch(url,{signal:controller.signal,headers:{"Accept":"application/json"}});
-  if(!response.ok)throw new Error("HTTP "+response.status);
-  return await response.json();
- }finally{clearTimeout(timer)}
+async function fetchJSONWithTimeout(url,ms=180000){
+  const controller=new AbortController();
+  const timer=setTimeout(()=>controller.abort(),ms);
+
+  try{
+    const response=await fetch(url,{
+      method:"GET",
+      signal:controller.signal,
+      headers:{
+        "Accept":"application/json, text/plain;q=0.9, */*;q=0.8"
+      }
+    });
+
+    const contentType=String(response.headers.get("content-type")||"").toLowerCase();
+    const body=await response.text();
+
+    if(!response.ok){
+      throw new Error(
+        "HTTP "+response.status+
+        (body ? " — "+body.slice(0,500) : "")
+      );
+    }
+
+    if(!body.trim()){
+      throw new Error("Il backend ha restituito una risposta vuota.");
+    }
+
+    try{
+      return JSON.parse(body);
+    }catch(parseError){
+      throw new Error(
+        "Risposta del backend non JSON. Content-Type: "+
+        (contentType||"non dichiarato")+
+        " — "+body.slice(0,500)
+      );
+    }
+  }catch(error){
+    if(error&&error.name==="AbortError"){
+      throw new Error("Timeout dopo "+Math.round(ms/1000)+" secondi durante la richiesta /search.");
+    }
+    throw error;
+  }finally{
+    clearTimeout(timer);
+  }
 }
 
 async function searchPerfume(){
