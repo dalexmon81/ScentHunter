@@ -2054,9 +2054,18 @@ for store in selected:
 
     report["global_summary"] = {
         "stores_total": len(selected),
-        "stores_completed": len(done),
-        "stores_timed_out": len(not_done),
-        "store_timeout_seconds": STORE_TIMEOUT_SECONDS,
+        "stores_completed": sum(
+    1
+    for value in report["stores"].values()
+    if value.get("status") in {"ok", "partial"}
+),
+"stores_timed_out": sum(
+    1
+    for value in report["stores"].values()
+    if value.get("status") == "timeout"
+),
+"store_timeout_seconds": STORE_TIMEOUT_SECONDS,
+
         "raw_total": sum(
             int(value.get("raw_total", 0))
             for value in report["stores"].values()
