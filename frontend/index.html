@@ -501,11 +501,11 @@ const OLD_WISH_KEY="scenthunter_wishlist_v1";
 function normalizePerfumeName(v){
   return String(v||"")
     .toLowerCase()
-    // Per confronti e raggruppamenti, considera equivalenti le lettere
-    // accentate e non accentate: "Rosée" = "Rosee".
+    /* Per confronti e raggruppamenti, considera equivalenti le lettere*/
+    /* accentate e non accentate: "Rosée" = "Rosee".*/
     .normalize("NFD")
     .replace(/[\u0300-\u036f]/g,"")
-    // NON eliminare "parfum": può essere parte del nome/variante
+    /* NON eliminare "parfum": può essere parte del nome/variante*/
     .replace(/\b(eau de parfum|eau de toilette|eau de cologne|extrait de parfum|extract de parfum|extrait|edp|edt|perfume|spray|men|women|for men|for women)\b/g," ")
     .replace(/\b\d+\s*ml\b/g," ")
     .replace(/(?<=\d)(?=[a-z])|(?<=[a-z])(?=\d)/g," ")
@@ -516,9 +516,9 @@ function displayPerfumeName(name,brand,concentration){
   let n=String(name||"").replace(/\s+/g," ").trim();
   if(!n)return n;
 
-  // Normalizzazione GENERICA della concentrazione visualizzata.
-  // Il nome può arrivare già con la concentrazione nel titolo e il campo
-  // concentration può ripeterla: il risultato deve mostrarla una sola volta.
+  /* Normalizzazione GENERICA della concentrazione visualizzata.*/
+  /* Il nome può arrivare già con la concentrazione nel titolo e il campo*/
+  /* concentration può ripeterla: il risultato deve mostrarla una sola volta.*/
   const labels=[
     ["eau de parfum","Eau de Parfum"],
     ["eau de toilette","Eau de Toilette"],
@@ -537,9 +537,9 @@ function displayPerfumeName(name,brand,concentration){
     canonical=match?match[1]:canonical;
   }
 
-  // Se la concentrazione non è disponibile come campo, riconosciamo solo
-  // concentrazioni COMPLETE alla fine del titolo. Non tocchiamo "Le Parfum"
-  // o altri nomi commerciali che contengono semplicemente "Parfum".
+  /* Se la concentrazione non è disponibile come campo, riconosciamo solo*/
+  /* concentrazioni COMPLETE alla fine del titolo. Non tocchiamo "Le Parfum"*/
+  /* o altri nomi commerciali che contengono semplicemente "Parfum".*/
   if(!canonical){
     for(const [raw,label] of labels){
       const re=new RegExp("\\s*(?:[-–—:]\\s*)?"+raw.replace(/[.*+?^${}()|[\\]\\]/g,"\\$&")+"\\s*$","i");
@@ -555,8 +555,8 @@ function displayPerfumeName(name,brand,concentration){
     .join("\\s+");
   const trailing=new RegExp("\\s*(?:[-–—:]\\s*)?"+escaped+"\\s*$","i");
 
-  // Elimina tutte le copie consecutive e poi aggiunge una sola forma
-  // canonica. La regola vale per qualsiasi profumo e qualsiasi negozio.
+  /* Elimina tutte le copie consecutive e poi aggiunge una sola forma*/
+  /* canonica. La regola vale per qualsiasi profumo e qualsiasi negozio.*/
   while(trailing.test(n))n=n.replace(trailing,"").trim();
   return (n+" "+canonical).trim();
 }
@@ -569,8 +569,8 @@ function samePerfume(a,b){
   if(A===B)return true;
   const longer=A.length>=B.length?A:B;
   const shorter=A.length>=B.length?B:A;
-  // Consente solo un prefisso breve (tipicamente la marca):
-  // Non unisce varianti aggiunte in coda:
+  /* Consente solo un prefisso breve (tipicamente la marca):*/
+  /* Non unisce varianti aggiunte in coda:*/
   if(longer.endsWith(" "+shorter)){
     const prefix=longer.slice(0,longer.length-shorter.length).trim();
     return prefix.split(/\s+/).filter(Boolean).length<=2;
@@ -589,7 +589,7 @@ function getWishlist(){
       return Array.isArray(list)?list:[];
     }
 
-    // Migrazione trasparente dalla vecchia wishlist.
+    /* Migrazione trasparente dalla vecchia wishlist.*/
     const previous=JSON.parse(localStorage.getItem(PREV_WISH_KEY)||"null");
     const old=previous!==null ? previous : JSON.parse(localStorage.getItem(OLD_WISH_KEY)||"[]");
     const list=[];
@@ -702,9 +702,9 @@ function renderWishlist(){
     return;
   }
 
-  // La Wishlist rappresenta l'OFFERTA che l'utente ha selezionato,
-  // non il miglior prezzo in assoluto. Il miglior prezzo viene mostrato
-  // separatamente e resta cliccabile.
+  /* La Wishlist rappresenta l'OFFERTA che l'utente ha selezionato,*/
+  /* non il miglior prezzo in assoluto. Il miglior prezzo viene mostrato*/
+  /* separatamente e resta cliccabile.*/
   box.innerHTML=list.map(x=>{
     const out=isWishlistOutOfStock(x);
     const best=getBestKnownOfferForWishlist(x);
@@ -727,8 +727,8 @@ function renderWishlist(){
 }
 
 function getBestKnownOfferForWishlist(item){
-  // La wishlist conserva il miglior prezzo dell'ultima ricerca disponibile,
-  // così resta corretto anche entrando nella Wishlist dopo un refresh.
+  /* La wishlist conserva il miglior prezzo dell'ultima ricerca disponibile,*/
+  /* così resta corretto anche entrando nella Wishlist dopo un refresh.*/
   if(item.bestShop && item.bestPrice && !item.bestOutOfStock){
     return {
       brand:item.brand||"",
@@ -741,8 +741,8 @@ function getBestKnownOfferForWishlist(item){
     };
   }
 
-  // Fallback: se i risultati sono ancora presenti nella pagina, ricalcoliamo
-  // il miglior prezzo solo tra le offerte realmente disponibili.
+  /* Fallback: se i risultati sono ancora presenti nella pagina, ricalcoliamo*/
+  /* il miglior prezzo solo tra le offerte realmente disponibili.*/
   let candidates=[];
   currentProductGroups.forEach(g=>{
     if(!samePerfume({name:g.name||""},item))return;
@@ -890,9 +890,9 @@ function offerPriceSourcePriority(o){
     ||""
   ).toLowerCase().trim();
 
-  // Prefer the price read from the verified product page / structured
-  // product data over a search/listing-page price. This is generic and
-  // deliberately independent of any store or product name.
+  /* Prefer the price read from the verified product page / structured*/
+  /* product data over a search/listing-page price. This is generic and*/
+  /* deliberately independent of any store or product name.*/
   if(/jsonld|product[_ -]?page|product[_ -]?detail|detail[_ -]?page/.test(source))return 4;
   if(/html[_ -]?price|page[_ -]?price|structured/.test(source))return 3;
   if(/search[_ -]?page|listing|search/.test(source))return 1;
@@ -1109,8 +1109,8 @@ function shGroupData(data){
       .replace(/\s+/g," ")
       .trim();
 
-    // Ricaviamo il nome del negozio da tutte le fonti disponibili.
-    // Se lo scraper non compila "store", usiamo comunque l'hostname dell'URL.
+    /* Ricaviamo il nome del negozio da tutte le fonti disponibili.*/
+    /* Se lo scraper non compila "store", usiamo comunque l'hostname dell'URL.*/
     const candidates=[];
     const addStoreCandidate=value=>{
       const s=cleanBrandText(value);
@@ -1166,7 +1166,7 @@ function shGroupData(data){
         if(cleaned!==v)return cleaned;
       }
 
-      // Gestisce slug del negozio scritto come parole separate.
+      /* Gestisce slug del negozio scritto come parole separate.*/
       const tokens=v.split(/\s+/).filter(Boolean);
       const maxWords=Math.min(4,tokens.length);
       for(let count=1;count<=maxWords;count++){
@@ -1205,9 +1205,9 @@ function shGroupData(data){
       .sort((a,b)=>norm(b).length-norm(a).length)
       .map(b=>b.replace(/[.*+?^${}()|[\]\\]/g,"\\$&"));
 
-    // "By BRAND" è sempre informazione commerciale del produttore, non
-    // parte dell'identità del profumo. Lo rimuoviamo in modo robusto anche
-    // quando lo scraper restituisce un brand sporco o non presente nella lista.
+    /* "By BRAND" è sempre informazione commerciale del produttore, non*/
+    /* parte dell'identità del profumo. Lo rimuoviamo in modo robusto anche*/
+    /* quando lo scraper restituisce un brand sporco o non presente nella lista.*/
     n=n.replace(/\s+by\s+[^|,;]+$/i," ").trim();
     n=n.replace(new RegExp("\\s+by\\s+(?:"+knownBrandPatterns.join("|")+ ")\\s*$","i")," ").trim();
     if(brand){
@@ -1216,15 +1216,15 @@ function shGroupData(data){
       if(brandWords)n=n.replace(new RegExp("\\s+by\\s+"+brandWords+"\\s*$","i")," ").trim();
     }
 
-    // Residui come "()", "(man)", "(woman)".
+    /* Residui come "()", "(man)", "(woman)".*/
     n=n
       .replace(/\(\s*\)/g," ")
       .replace(/\((?:man|woman|men|women|homme|femme|unisex)\)/gi," ")
       .replace(/\s+/g," ")
       .trim();
 
-    // Elimina descrizioni commerciali iniziali con concentrazione e formato.
-    // Protegge temporaneamente una dicitura di genere che può far parte del nome.
+    /* Elimina descrizioni commerciali iniziali con concentrazione e formato.*/
+    /* Protegge temporaneamente una dicitura di genere che può far parte del nome.*/
     const protectedPourFemme="__SCENTHUNTER_POUR_FEMME__";
     n=n.replace(/\bpour\s+femme\b/gi,protectedPourFemme);
 
@@ -1239,7 +1239,7 @@ function shGroupData(data){
 
     n=n.replace(new RegExp(protectedPourFemme,"g"),"Pour Femme");
 
-    // Togliamo il brand all'inizio. Ripetiamo l'operazione anche se il
+    /* Togliamo il brand all'inizio. Ripetiamo l'operazione anche se il*/
     if(brand){
       const escapedBrand=cleanBrandText(brand).replace(/[.*+?^${}()|[\]\\]/g,"\\$&");
       const brandWords=norm(brand).split(/\s+/).filter(Boolean)
@@ -1251,7 +1251,7 @@ function shGroupData(data){
         if(n===before)break;
       }
     }else{
-      // Anche senza campo brand, togliamo un brand noto che compare all'inizio.
+      /* Anche senza campo brand, togliamo un brand noto che compare all'inizio.*/
       for(const b of KNOWN_BRANDS){
         const bw=norm(b).split(/\s+/).filter(Boolean)
           .map(w=>w.replace(/[.*+?^${}()|[\]\\]/g,"\\$&")).join("\\s+");
@@ -1259,14 +1259,14 @@ function shGroupData(data){
       }
     }
 
-    // Se il brand è stato identificato con certezza, rimuoviamo anche quel suffisso.
+    /* Se il brand è stato identificato con certezza, rimuoviamo anche quel suffisso.*/
     if(brand){
       const bw=norm(brand).split(/\s+/).filter(Boolean)
         .map(w=>w.replace(/[.*+?^${}()|[\]\\]/g,"\\$&")).join("\\s+");
       if(bw)n=n.replace(new RegExp("\\s+"+bw+"\\s*$","i")," ").trim();
     }
 
-    // Ultima barriera: nessun "By BRAND" conosciuto deve mai restare nel nome.
+    /* Ultima barriera: nessun "By BRAND" conosciuto deve mai restare nel nome.*/
     n=n.replace(new RegExp("\\s+by\\s+(?:"+knownBrandPatterns.join("|")+ ")\\s*$","i")," ").trim();
 
     n=n
@@ -1340,9 +1340,9 @@ function shGroupData(data){
       .map(w=>w.replace(/[.*+?^${}()|[\]\\]/g,"\\$&"))
       .join("\\s+");
 
-    // Rimuove una o più occorrenze consecutive della concentrazione
-    // alla fine del nome. I negozi possono riportarla sia nel titolo
-    // sia nei metadati; l'Index la visualizza poi una sola volta.
+    /* Rimuove una o più occorrenze consecutive della concentrazione*/
+    /* alla fine del nome. I negozi possono riportarla sia nel titolo*/
+    /* sia nei metadati; l'Index la visualizza poi una sola volta.*/
     const trailing=new RegExp(
       "\\s*(?:[-–—:]\\s*)?"+escaped+"\\s*$",
       "i"
@@ -1403,7 +1403,7 @@ function shGroupData(data){
       }
     };
 
-    // Prove esplicite: campo brand / brand già riconosciuto.
+    /* Prove esplicite: campo brand / brand già riconosciuto.*/
     identities.forEach((id,index)=>{
       if(id.brand && !isNonPerfumeProduct({
         brand:id.brand,
@@ -1462,12 +1462,12 @@ function shGroupData(data){
       }
     }
 
-    // Un candidato ricavato soltanto dal confronto fra nomi di prodotto
-    // NON può diventare un brand: può essere infatti una variante reale
-    // (es. Elixir, Rebel, Pour Femme, Limited Edition, ecc.).
-    // I brand condivisi devono essere già confermati da una prova esplicita
-    // presente nei dati della ricerca. Questo mantiene l'inferenza generica
-    // senza trasformare una variante in una nuova categoria.
+    /* Un candidato ricavato soltanto dal confronto fra nomi di prodotto*/
+    /* NON può diventare un brand: può essere infatti una variante reale*/
+    /* (es. Elixir, Rebel, Pour Femme, Limited Edition, ecc.).*/
+    /* I brand condivisi devono essere già confermati da una prova esplicita*/
+    /* presente nei dati della ricerca. Questo mantiene l'inferenza generica*/
+    /* senza trasformare una variante in una nuova categoria.*/
     const candidates=[...candidateScore.values()]
       .filter(x=>x.explicit)
       .sort((a,b)=>b.weight-a.weight || norm(b.value).length-norm(a.value).length);
@@ -1480,7 +1480,7 @@ function shGroupData(data){
       return nn.startsWith(bb+" ") || nn.endsWith(" "+bb);
     };
 
-    // Applichiamo i brand condivisi e ricalcoliamo il nome pulito.
+    /* Applichiamo i brand condivisi e ricalcoliamo il nome pulito.*/
     raw.forEach((o,i)=>{
       const id=identities[i];
       let brand=id.brand||"";
@@ -1500,9 +1500,9 @@ function shGroupData(data){
       id.key=groupIdentityKey(id.brand,id.name);
     });
 
-    // Seconda passata: se un nome coincide con una famiglia già associata a
-    // un brand, ereditiamo quel brand. Non usiamo mai il nome di un prodotto
-    // specifico come eccezione.
+    /* Seconda passata: se un nome coincide con una famiglia già associata a*/
+    /* un brand, ereditiamo quel brand. Non usiamo mai il nome di un prodotto*/
+    /* specifico come eccezione.*/
     const nameToBrand=new Map();
     raw.forEach((o,i)=>{
       const id=identities[i];
@@ -1579,9 +1579,9 @@ function shGroupData(data){
     const id=identities[i];
     if(id.concentration){
       id.name=catalogCanonicalName(o,id.brand);
-      // La concentrazione resta nell'offerta, ma non crea una nuova scheda: la
-      // stessa famiglia/variante viene confrontata insieme anche se uno store
-      // pubblica EDP, EDT o Extrait e un altro usa un titolo diverso.
+      /* La concentrazione resta nell'offerta, ma non crea una nuova scheda: la*/
+      /* stessa famiglia/variante viene confrontata insieme anche se uno store*/
+      /* pubblica EDP, EDT o Extrait e un altro usa un titolo diverso.*/
       id.key=groupIdentityKey(id.brand,id.name);
     }
   });
@@ -1753,9 +1753,9 @@ function shGroupData(data){
     groups.forEach(g=>{
       if(!g||!g.offers||!g.offers.length)return;
 
-      // Ricostruisce il nome della variante dalla fonte originale quando
-      // possibile, così il prefisso della marca non viene perso durante la
-      // precedente pulizia del titolo.
+      /* Ricostruisce il nome della variante dalla fonte originale quando*/
+      /* possibile, così il prefisso della marca non viene perso durante la*/
+      /* precedente pulizia del titolo.*/
       const source=g.offers.find(o=>{
         const sourceName=norm(o._source_name||o.name||"");
         return sourceName.startsWith(searchBrandNorm+" ");
@@ -1856,7 +1856,7 @@ function shGroupData(data){
           const aTokens=an.split(/\s+/).filter(Boolean);
           const bTokens=bn.split(/\s+/).filter(Boolean);
 
-          // Caso 1: titolo incompleto "... Pour" rispetto a "... Pour Femme".
+          /* Caso 1: titolo incompleto "... Pour" rispetto a "... Pour Femme".*/
           const shorter=aTokens.length<=bTokens.length?aTokens:bTokens;
           const longer=aTokens.length<=bTokens.length?bTokens:aTokens;
           const shorterGroup=aTokens.length<=bTokens.length?a:b;
@@ -1875,10 +1875,10 @@ function shGroupData(data){
             break outer;
           }
 
-          // Caso 2: un titolo aggiunge soltanto "Parfum Intense".
-          // Per evitare di fondere varianti realmente diverse, il gruppo
-          // corto deve avere una concentrazione già riconosciuta e quello
-          // lungo non deve averne una propria.
+          /* Caso 2: un titolo aggiunge soltanto "Parfum Intense".*/
+          /* Per evitare di fondere varianti realmente diverse, il gruppo*/
+          /* corto deve avere una concentrazione già riconosciuta e quello*/
+          /* lungo non deve averne una propria.*/
           const extra="parfum intense";
           if(
             longer.length===shorter.length+2
@@ -1987,11 +1987,11 @@ function shGroupData(data){
     g.image=selected.image||selected.image_url||selected.thumbnail||g.image||"";
   });
 
-  // Mostriamo le referenze di profumo e anche i SET/COFFRET.
-  // I set/cofanetti sono risultati validi e non devono essere eliminati:
-  // vengono classificati separatamente e ordinati dopo i profumi disponibili.
-  // Le vere categorie non-profumo (deodoranti, shower gel, cosmetici, ecc.)
-  // continuano invece a essere escluse.
+  /* Mostriamo le referenze di profumo e anche i SET/COFFRET.*/
+  /* I set/cofanetti sono risultati validi e non devono essere eliminati:*/
+  /* vengono classificati separatamente e ordinati dopo i profumi disponibili.*/
+  /* Le vere categorie non-profumo (deodoranti, shower gel, cosmetici, ecc.)*/
+  /* continuano invece a essere escluse.*/
   const perfumeGroups=groups.filter(g=>g.offers.length && !isNonPerfumeProduct(g));
 
   /*
@@ -2073,20 +2073,20 @@ function isNonPerfumeProduct(g){
 
   if(!text)return false;
 
-  // Mystery/Gift Box generiche NON sono il profumo stesso: sempre in fondo.
-  // Questo vale anche quando il nome contiene un prodotto all'interno della confezione.
+  /* Mystery/Gift Box generiche NON sono il profumo stesso: sempre in fondo.*/
+  /* Questo vale anche quando il nome contiene un prodotto all'interno della confezione.*/
   if(/\b(?:mystery\s+box|gift\s+box)\b/.test(text))return true;
 
   const isSet=/\b(?:set|gift\s*set|coffret|cofanetto|coffret\s+cadeau|pack|kit)\b/.test(text);
 
-  // Prodotti chiaramente diversi dal profumo.
+  /* Prodotti chiaramente diversi dal profumo.*/
   const nonPerfume=/(?:\bdeodorant(?:e|s)?\b|\bdeostick\b|\bdeo\s*stick\b|\bdeo\b|\bantiperspirant\b|\banti[- ]?transpirant\b|\bshower\s*(?:gel|cream|foam|oil)\b|\bgel\s+(?:douche|doccia|bain)\b|\bgel\s+doccia\b|\bdoccia\s+gel\b|\bbagno\s+(?:doccia|schiuma)\b|\bbagnoschiuma\b|\bduschgel\b|\bdusch[- ]?(?:gel|schaum|creme|lotion)\b|\bbad[- ]?(?:gel|schaum|foam)\b|\bbody\s+(?:wash|gel|cleanser|cleaning)\b|\bshampoo\b|\bconditioner\b|\bhaarmaske\b|\bhaarshampoo\b|\bbody\s+(?:lotion|cream|creme|milk|butter|moisturizer)\b|\blotion\s+corps\b|\bcreme?\s+corps\b|\bhand\s+(?:cream|creme|lotion)\b|\bface\s+(?:cream|creme|lotion|wash)\b|\bhandcreme\b|\bkorperlotion\b|\bkoerperlotion\b|\bsoap\b|\bsavon\b|\bsapone\b|\bshaving\b|\bafter\s*shave\b|\baftershave\b|\brazor\b|\bdemaquillant\b|\bmake[- ]?up\b|\blipstick\b|\bmascara\b|\btoothpaste\b|\btoothbrush\b)/.test(text);
 
-  // SET e COFFRET sono risultati validi per ScentHunter.
-  // Non vengono esclusi: la funzione di ordinamento li classifica dopo
-  // i profumi disponibili e prima del blocco OUT OF STOCK.
-  // "Limited Edition" non è un marker di set e resta quindi una variante
-  // normale del profumo.
+  /* SET e COFFRET sono risultati validi per ScentHunter.*/
+  /* Non vengono esclusi: la funzione di ordinamento li classifica dopo*/
+  /* i profumi disponibili e prima del blocco OUT OF STOCK.*/
+  /* "Limited Edition" non è un marker di set e resta quindi una variante*/
+  /* normale del profumo.*/
   return nonPerfume;
 }
 
@@ -2169,9 +2169,9 @@ function sizeOfOffer(o){
   return m?m[1]:"";
 }
 
-// Schede prodotto: click/tap gestito direttamente dalla scheda.
-// Nessun intercettatore globale: su iPhone Safari puo' generare pointercancel
-// anche durante un tap e impedire il click della scheda.
+/* Schede prodotto: click/tap gestito direttamente dalla scheda.*/
+/* Nessun intercettatore globale: su iPhone Safari puo' generare pointercancel*/
+/* anche durante un tap e impedire il click della scheda.*/
 
 function displayCatalogName(g){
   const canonical=String(g?.canonical_name||g?.catalog_variant||g?.name||"").trim();
@@ -2215,10 +2215,10 @@ function showProducts(groups){
     const sizes=getSizeGroups(g);
     const img=productImage(g);
 
-    // Regola generale: la scheda principale apre sempre la scheda del prodotto.
-    // Se esiste un solo formato, la scheda del prodotto mostrerà direttamente
-    // formato + negozi, evitando un terzo passaggio. Con più formati, invece,
-    // la scheda del prodotto presenterà la scelta dei formati.
+    /* Regola generale: la scheda principale apre sempre la scheda del prodotto.*/
+    /* Se esiste un solo formato, la scheda del prodotto mostrerà direttamente*/
+    /* formato + negozi, evitando un terzo passaggio. Con più formati, invece,*/
+    /* la scheda del prodotto presenterà la scelta dei formati.*/
     const best=g.offers.find(o=>!isOfferOutOfStock(o))||null;
 
     return `<article class="product-choice" data-product-index="${i}" role="button" tabindex="0" onclick="openProduct(${i})" onkeydown="if(event.key===\"Enter\"||event.key===\" \"){event.preventDefault();openProduct(${i})}">
@@ -2253,9 +2253,9 @@ function openProduct(i){
 
   statusBox.textContent="";
 
-  // REGOLA GENERALE:
-  // un solo formato = niente terza scheda.
-  // La seconda scheda contiene direttamente formato + negozi + link.
+  /* REGOLA GENERALE:*/
+  /* un solo formato = niente terza scheda.*/
+  /* La seconda scheda contiene direttamente formato + negozi + link.*/
   if(sizes.length===1){
     const s=sizes[0];
     const offers=s.offers;
@@ -2328,8 +2328,8 @@ function openProduct(i){
     return;
   }
 
-  // Più formati: seconda scheda = scelta dei formati.
-  // Il passaggio successivo mostra i negozi del formato selezionato.
+  /* Più formati: seconda scheda = scelta dei formati.*/
+  /* Il passaggio successivo mostra i negozi del formato selezionato.*/
   resultsBox.innerHTML=`<article class="comparison">
     <button class="detail-back" onclick="showProducts(currentProductGroups)">← Torna ai profumi</button>
     <div class="comparison-head">
@@ -2628,15 +2628,15 @@ if (productDetailOpen) {
 
    refreshWishlistFromResults(groups.flatMap(g=>g.offers.map(o=>({name:g.name||"",brand:g.brand||"",price:shPrice(o),price_value:o.price_value,store:o.store||"",url:o.url||""}))));
 
-   // I timeout delle singole fonti non devono comparire nella pagina e non devono
-   // trasformare una ricerca con risultati validi in una ricerca "fallita".
-   // Conserviamo gli errori internamente, ma l'utente vede solo i risultati utili.
+   /* I timeout delle singole fonti non devono comparire nella pagina e non devono*/
+   /* trasformare una ricerca con risultati validi in una ricerca "fallita".*/
+   /* Conserviamo gli errori internamente, ma l'utente vede solo i risultati utili.*/
    errorsBox.innerHTML="";
    if(final)statusBox.textContent=groups.length?`Ricerca completata: ${groups.length} prodotti trovati.`:"Nessun risultato trovato.";
   };
 
-  // Regola generale: tutte le ricerche passano dalla regia centrale.
-  // Il frontend non contiene seed o percorsi speciali per singoli prodotti.
+  /* Regola generale: tutte le ricerche passano dalla regia centrale.*/
+  /* Il frontend non contiene seed o percorsi speciali per singoli prodotti.*/
   data=await searchStoresProgressive(q,renderData);
 
  }catch(e){
