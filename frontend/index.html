@@ -2027,6 +2027,31 @@ function shGroupData(data){
     g.display_name=g.brand?g.brand+" - "+g.canonical_name:g.canonical_name;
   });
 
+  /*
+   * IMMAGINE DEL GRUPPO — scelta progressiva per prezzo.
+   *
+   * Le offerte sono già ordinate con il prezzo migliore per primo.
+   * Costruiamo quindi una lista di immagini nello stesso ordine: la prima
+   * è quella del negozio meno caro; se il browser non riesce a caricarla,
+   * shImageFallback() passa automaticamente alla seconda, poi alla terza,
+   * e così via.
+   *
+   * La scelta dell'immagine non modifica in alcun modo prezzi, negozi,
+   * grouping o ordine delle offerte.
+   */
+  groups.forEach(g=>{
+    const offers=Array.isArray(g.offers)?g.offers:[];
+    const available=offers.filter(o=>!isOfferOutOfStock(o));
+    const source=available.length?available:offers;
+
+    g.image_candidates=source
+      .map(o=>o?.image||o?.image_url||o?.thumbnail||"")
+      .map(v=>String(v).trim())
+      .filter(Boolean);
+
+    g.image=g.image_candidates[0]||g.image||"";
+  });
+
   // Mostriamo esclusivamente vere referenze di profumo.
   // Set/cofanetti, Mystery/Gift Box e altri prodotti non-profumo vengono
   // esclusi completamente dai risultati, anche quando contengono il nome
@@ -2198,7 +2223,7 @@ document.addEventListener("click",e=>{
 
 function shNormalizeImageUrl(value){
   let url=String(value||"").trim();
-  if(!url)return "";
+  if(!url)return null;
 
   // Le pagine ScentHunter sono HTTPS. Alcuni scraper restituiscono ancora
   // immagini HTTP: il browser le blocca come mixed content. Per le immagini
@@ -2232,6 +2257,7 @@ function shImageTag(g, alt) {
     ? g.offers
         .filter(o => !isOfferOutOfStock(o))
         .map(o => o?.image || o?.image_url || o?.thumbnail)
+        .filter(Boolean)
     : [];
 
   // Fallback: immagini già presenti nel gruppo
@@ -2244,14 +2270,21 @@ function shImageTag(g, alt) {
   const seen = new Set();
 
   const candidates = [...source, ...fallbackSource]
-    .map(shNormalizeImageUrl)
+    .map(url => {
+      const normalized = shNormalizeImageUrl(url);
+      return normalized || null;
+    })
+    .filter(Boolean)
     .filter(url => {
-      if (!url || seen.has(url)) return false;
+      if (seen.has(url)) return false;
       seen.add(url);
       return true;
     });
 
-  if (!candidates.length) return '';
+  // Se non ci sono candidati, restituisci un img con src vuoto (placeholder)
+  if (!candidates.length) {
+    return `<img src="" alt="${esc(alt)}" referrerpolicy="no-referrer" loading="eager" decoding="async">`;
+  }
 
   return `<img
     src="${esc(candidates[0])}"
