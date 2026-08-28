@@ -1808,7 +1808,7 @@ def _search_job_payload(job: Dict[str, Any]) -> Dict[str, Any]:
     }
 
 
-
+print(f"[diagnostic] ENTERED: query={query!r}", flush=True)
 @app.get("/diagnostic/search")
 def diagnostic_search_endpoint(
     query: str = "",
