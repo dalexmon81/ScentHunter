@@ -1907,6 +1907,86 @@ function shGroupData(data){
   groups.length=0;
   mergedGroups.forEach(g=>groups.push(g));
 
+  /*
+   * CONSOLIDAMENTO DELLA STESSA VARIANTE:
+   * la stessa variante può arrivare da negozi diversi con concentrazione
+   * compilata in modo diverso. Se family_id + catalog_variant coincidono,
+   * la concentrazione NON viene usata per creare una seconda scheda.
+   *
+   * Se il catalogo non fornisce questi identificatori, usiamo brand + nome
+   * normalizzati. Le varianti con nome diverso (es. una Limited Edition)
+   * restano quindi separate.
+   */
+  const consolidateSameVariant=(list)=>{
+    const out=[];
+    const index=new Map();
+
+    const keyFor=g=>{
+      const family=norm(g?.family_id||"");
+      const variant=norm(g?.canonical_name||g?.catalog_variant||"");
+      if(family&&variant)return "catalog|"+family+"|"+variant;
+
+      const brand=norm(g?.brand||"");
+      const name=norm(g?.canonical_name||g?.name||"");
+      if(!name)return "";
+      return "name|"+brand+"|"+name;
+    };
+
+    const mergeOffers=(target,source)=>{
+      const seen=new Set((target.offers||[]).map(o=>[
+        String(o?.store||"").trim().toLowerCase(),
+        String(o?.url||"").split("?")[0].toLowerCase(),
+        String(o?.size_ml||o?.size||"").trim(),
+        norm(o?.name||"")
+      ].join("|")));
+
+      (source.offers||[]).forEach(o=>{
+        const k=[
+          String(o?.store||"").trim().toLowerCase(),
+          String(o?.url||"").split("?")[0].toLowerCase(),
+          String(o?.size_ml||o?.size||"").trim(),
+          norm(o?.name||"")
+        ].join("|");
+        if(!seen.has(k)){
+          target.offers.push(o);
+          seen.add(k);
+        }
+      });
+    };
+
+    list.forEach(g=>{
+      const k=keyFor(g);
+      if(!k){
+        out.push(g);
+        return;
+      }
+
+      const existing=index.get(k);
+      if(!existing){
+        const copy={...g,offers:[...(g.offers||[])]};
+        out.push(copy);
+        index.set(k,copy);
+        return;
+      }
+
+      mergeOffers(existing,g);
+
+      // Mantieni la prima immagine valida secondo l'ordine delle fonti.
+      if(!existing.image&&g.image)existing.image=g.image;
+
+      if(!existing.brand&&g.brand)existing.brand=g.brand;
+      if(!existing.family_id&&g.family_id)existing.family_id=g.family_id;
+      if(!existing.canonical_name&&g.canonical_name)existing.canonical_name=g.canonical_name;
+      if(!existing.canonical&&g.canonical)existing.canonical=g.canonical;
+    });
+
+    return out;
+  };
+
+  const consolidatedGroups=consolidateSameVariant(groups);
+  groups.length=0;
+  consolidatedGroups.forEach(g=>groups.push(g));
+
 
   groups.forEach(g=>{
     const bySize=new Map();
@@ -1978,14 +2058,13 @@ function shGroupData(data){
    */
   groups.forEach(g=>{
     const offers=Array.isArray(g.offers)?g.offers:[];
-    const withImage=offers.filter(o=>Boolean(o?.image||o?.image_url||o?.thumbnail));
-    if(!withImage.length)return;
-
-    const available=withImage.filter(o=>!isOfferOutOfStock(o));
-    const pool=available.length?available:withImage;
-    pool.sort((a,b)=>shNum(a)-shNum(b));
-    const selected=pool[0];
-    g.image=selected.image||selected.image_url||selected.thumbnail||g.image||"";
+    // Priorità immagine: primo negozio nell'ordine delle offerte che
+    // fornisce una vera immagine; se manca, passa al secondo, poi al terzo.
+    // NON ordiniamo per prezzo: l'immagine deve seguire la priorità delle fonti.
+    const selected=offers.find(o=>Boolean(o?.image||o?.image_url||o?.thumbnail));
+    if(selected){
+      g.image=selected.image||selected.image_url||selected.thumbnail||"";
+    }
   });
 
   // Mostriamo esclusivamente vere referenze di profumo.
@@ -2456,7 +2535,7 @@ async function searchStoresProgressive(query, onPartial) {
   }
 
   const startResponse = await fetch(
-    backend()+`/search-start?q=${encodeURIComponent(q)}`,
+    `/search-start?q=${encodeURIComponent(q)}`,
     {
       headers: {
         Accept: "application/json"
@@ -2481,7 +2560,7 @@ async function searchStoresProgressive(query, onPartial) {
 
   while (true) {
     const response = await fetch(
-      backend()+`/search-status?job_id=${jobId}`,
+      `/search-status?job_id=${jobId}`,
       {
         headers: {
           Accept: "application/json"
