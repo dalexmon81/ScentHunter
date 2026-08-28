@@ -2044,31 +2044,11 @@ function shGroupData(data){
     const available=offers.filter(o=>!isOfferOutOfStock(o));
     const source=available.length?available:offers;
 
-    g.image_candidates=[];
-    source.forEach(o=>{
-      const values=[
-        o?.image,
-        o?.image_url,
-        o?.thumbnail
-      ];
+    g.image_candidates=source
+      .map(o=>o?.image||o?.image_url||o?.thumbnail||"")
+      .map(v=>String(v).trim())
+      .filter(Boolean);
 
-      // Alcuni scraper possono esporre più immagini nello stesso campo.
-      values.forEach(v=>{
-        if(Array.isArray(v)){
-          v.forEach(x=>{
-            const u=String(x||"").trim();
-            if(u)g.image_candidates.push(u);
-          });
-        }else{
-          const u=String(v||"").trim();
-          if(u)g.image_candidates.push(u);
-        }
-      });
-    });
-
-    // Mantiene l'ordine del prezzo: la prima immagine appartiene
-    // all'offerta più economica che ne dispone di una.
-    g.image_candidates=[...new Set(g.image_candidates)];
     g.image=g.image_candidates[0]||g.image||"";
   });
 
