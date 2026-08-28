@@ -2027,31 +2027,6 @@ function shGroupData(data){
     g.display_name=g.brand?g.brand+" - "+g.canonical_name:g.canonical_name;
   });
 
-  /*
-   * IMMAGINE DEL GRUPPO — scelta progressiva per prezzo.
-   *
-   * Le offerte sono già ordinate con il prezzo migliore per primo.
-   * Costruiamo quindi una lista di immagini nello stesso ordine: la prima
-   * è quella del negozio meno caro; se il browser non riesce a caricarla,
-   * shImageFallback() passa automaticamente alla seconda, poi alla terza,
-   * e così via.
-   *
-   * La scelta dell'immagine non modifica in alcun modo prezzi, negozi,
-   * grouping o ordine delle offerte.
-   */
-  groups.forEach(g=>{
-    const offers=Array.isArray(g.offers)?g.offers:[];
-    const available=offers.filter(o=>!isOfferOutOfStock(o));
-    const source=available.length?available:offers;
-
-    g.image_candidates=source
-      .map(o=>o?.image||o?.image_url||o?.thumbnail||"")
-      .map(v=>String(v).trim())
-      .filter(Boolean);
-
-    g.image=g.image_candidates[0]||g.image||"";
-  });
-
   // Mostriamo esclusivamente vere referenze di profumo.
   // Set/cofanetti, Mystery/Gift Box e altri prodotti non-profumo vengono
   // esclusi completamente dai risultati, anche quando contengono il nome
