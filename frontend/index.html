@@ -2254,9 +2254,16 @@ function shImageTag(g, alt) {
     });
 
   // Se non ci sono candidati, restituisci un img con src vuoto (placeholder)
+ console.log("IMAGE DEBUG", {
+  offers: g?.offers,
+  source,
+  fallbackSource,
+  candidates
+});
+
   if (!candidates.length) {
-    return `<img src="" alt="${esc(alt)}" referrerpolicy="no-referrer" loading="eager" decoding="async">`;
-  }
+  return "";
+}
 
   return `<img
     src="${esc(candidates[0])}"
