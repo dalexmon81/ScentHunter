@@ -920,7 +920,18 @@ function shGroupData(data){
         family_id:o.family_id||g.family_id||"",
         size_ml:o.size_ml||o.size||g.size_ml||"",
         concentration:concentrationHint(o)||o.concentration||g.concentration||"",
-        image:o.image||o.image_url||o.thumbnail||g.image||"",
+        image:
+  o.image ||
+  o.image_url ||
+  o.thumbnail ||
+  o.source?.image ||
+  o.source?.image_url ||
+  o.source?.thumbnail ||
+  g.image ||
+  g.source?.image ||
+  g.source?.image_url ||
+  g.source?.thumbnail ||
+  "",
         _source_name:o.name||g.name||"",
         _source_brand:o.brand||g.brand||"",
         _source_url:o.url||"",
