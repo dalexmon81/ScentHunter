@@ -2027,37 +2027,6 @@ function shGroupData(data){
     g.display_name=g.brand?g.brand+" - "+g.canonical_name:g.canonical_name;
   });
 
-  /*
-   * IMMAGINE DEL GRUPPO — scelta progressiva per prezzo.
-   *
-   * Le offerte sono già ordinate con il prezzo migliore per primo.
-   * Costruiamo quindi una lista di immagini nello stesso ordine: la prima
-   * è quella del negozio meno caro; se il browser non riesce a caricarla,
-   * shImageFallback() passa automaticamente alla seconda, poi alla terza,
-   * e così via.
-   *
-   * La scelta dell'immagine non modifica in alcun modo prezzi, negozi,
-   * grouping o ordine delle offerte.
-   */
-  groups.forEach(g=>{
-    const offers=Array.isArray(g.offers)?g.offers:[];
-    const available=offers.filter(o=>!isOfferOutOfStock(o));
-    const source=available.length?available:offers;
-
-    g.image_candidates=[];
-    const seenImages=new Set();
-    source.forEach(o=>{
-      shImageCandidatesFromOffer(o).forEach(url=>{
-        if(!seenImages.has(url)){
-          seenImages.add(url);
-          g.image_candidates.push(url);
-        }
-      });
-    });
-
-    g.image=g.image_candidates[0]||g.image||"";
-  });
-
   // Mostriamo esclusivamente vere referenze di profumo.
   // Set/cofanetti, Mystery/Gift Box e altri prodotti non-profumo vengono
   // esclusi completamente dai risultati, anche quando contengono il nome
@@ -2238,28 +2207,6 @@ function shNormalizeImageUrl(value){
   return url;
 }
 
-function shImageCandidatesFromOffer(o){
-  const out=[];
-  const seen=new Set();
-  const add=value=>{
-    if(value==null)return;
-    if(Array.isArray(value)){
-      value.forEach(add);
-      return;
-    }
-    if(typeof value==="object"){
-      [value.url,value.src,value.image,value.image_url,value.thumbnail,value.original,value.originalSrc,value.preview_image,value.previewImage].forEach(add);
-      return;
-    }
-    const url=shNormalizeImageUrl(value);
-    if(!url||seen.has(url))return;
-    seen.add(url);
-    out.push(url);
-  };
-  [o?.image,o?.image_url,o?.thumbnail,o?.images,o?.image_urls,o?.media,o?.featured_image,o?.featuredImage,o?.product_image,o?.productImage].forEach(add);
-  return out;
-}
-
 function shImageFallback(img){
   try{
     const candidates=JSON.parse(img.dataset.imageCandidates||"[]");
@@ -2279,25 +2226,43 @@ function shImageFallback(img){
   img.outerHTML="🧴";
 }
 
-function shImageTag(g,alt){
-  const source=Array.isArray(g?.image_candidates)&&g.image_candidates.length
-    ?g.image_candidates
-    :((g?.offers||[]).flatMap(shImageCandidatesFromOffer));
+function shImageTag(g, alt) {
+  // Prima fonte: immagini dalle offerte già ordinate per prezzo
+  const source = Array.isArray(g?.offers)
+    ? g.offers
+        .filter(o => !isOfferOutOfStock(o))
+        .map(o => o?.image || o?.image_url || o?.thumbnail)
+    : [];
 
-  // Manteniamo l'ordine delle offerte: prima il negozio meno caro,
-  // poi il secondo, il terzo, ecc. Duplicati e URL vuoti vengono eliminati.
-  const seen=new Set();
-  const candidates=source
+  // Fallback: immagini già presenti nel gruppo
+  const fallbackSource = Array.isArray(g?.imageCandidates)
+    ? g.imageCandidates
+    : g?.image
+      ? [g.image]
+      : [];
+
+  const seen = new Set();
+
+  const candidates = [...source, ...fallbackSource]
     .map(shNormalizeImageUrl)
-    .filter(url=>{
-      if(!url||seen.has(url))return false;
+    .filter(url => {
+      if (!url || seen.has(url)) return false;
       seen.add(url);
       return true;
     });
 
-  if(!candidates.length)return "🧴";
+  if (!candidates.length) return '';
 
-  return `<img src="${esc(candidates[0])}" alt="${esc(alt)}" referrerpolicy="no-referrer" loading="eager" decoding="async" data-image-index="0" data-image-candidates="${esc(JSON.stringify(candidates))}" onerror="shImageFallback(this)">`;
+  return `<img
+    src="${esc(candidates[0])}"
+    alt="${esc(alt)}"
+    referrerpolicy="no-referrer"
+    loading="eager"
+    decoding="async"
+    data-image-index="0"
+    data-image-candidates="${esc(JSON.stringify(candidates))}"
+    onerror="shImageFallback(this)"
+  >`;
 }
 
 function displayCatalogName(g){
