@@ -934,6 +934,7 @@ function shGroupData(data){
     ...o,
     canonical_name:o.canonical_name||o.catalog_variant||"",
     family_id:o.family_id||"",
+    image:o.image||o.image_url||o.imageUrl||o.thumbnail||o.product_image||o.productImage||o.pic||o.picture||o.photo||"",
     _source_priority:2,
     _price_source_priority:offerPriceSourcePriority(o)
   }));
@@ -2209,6 +2210,28 @@ function displayCatalogName(g){
   return canonical||"Profumo";
 }
 
+function productImage(g){
+  if(!g)return "";
+  const direct=[
+    g.image,g.image_url,g.imageUrl,g.thumbnail,g.product_image,
+    g.productImage,g.pic,g.picture,g.photo
+  ];
+  for(const v of direct){
+    if(typeof v==="string"&&v.trim())return v.trim();
+  }
+  const offers=Array.isArray(g.offers)?g.offers:[];
+  for(const o of offers){
+    const candidates=[
+      o?.image,o?.image_url,o?.imageUrl,o?.thumbnail,o?.product_image,
+      o?.productImage,o?.pic,o?.picture,o?.photo
+    ];
+    for(const v of candidates){
+      if(typeof v==="string"&&v.trim())return v.trim();
+    }
+  }
+  return "";
+}
+
 function showProducts(groups){
   currentProductGroups=groups;
 
@@ -2222,7 +2245,7 @@ function showProducts(groups){
 
   resultsBox.innerHTML=groups.map((g,i)=>{
     const sizes=getSizeGroups(g);
-    const img=g.image||"";
+    const img=productImage(g);
 
     // Regola generale: la scheda principale apre sempre la scheda del prodotto.
     // Se esiste un solo formato, la scheda del prodotto mostrerà direttamente
@@ -2230,7 +2253,7 @@ function showProducts(groups){
     // la scheda del prodotto presenterà la scelta dei formati.
     const best=g.offers.find(o=>!isOfferOutOfStock(o))||null;
 
-    return `<article class="product-choice" onclick='openProduct(${i})'>
+    return `<article class="product-choice" data-product-index="${i}" role="button" tabindex="0">
       <div class="result-image">${img?`<img src="${esc(img)}" alt="${esc(displayPerfumeName(displayCatalogName(g),g.brand,g.concentration))}" onerror="this.outerHTML='🧴'">`:"🧴"}</div>
       <div class="product-choice-main">
         <div class="name">${esc(g.brand ? g.brand+" - "+displayPerfumeName(displayCatalogName(g),g.brand,g.concentration) : displayPerfumeName(displayCatalogName(g),g.brand,g.concentration))}</div>
@@ -2240,6 +2263,42 @@ function showProducts(groups){
     </article>`;
   }).join("");
 }
+
+function handleProductCardActivation(card){
+  if(!card)return;
+  if(card.classList.contains("format-choice")){
+    const gi=Number(card.dataset.formatGroup);
+    const size=card.dataset.formatSize||"";
+    openSize(gi,size);
+    return;
+  }
+  const gi=Number(card.dataset.productIndex);
+  if(Number.isInteger(gi))openProduct(gi);
+}
+
+document.addEventListener("click",e=>{
+  const card=e.target.closest(".product-choice");
+  if(!card)return;
+
+  // I pulsanti/link interni hanno una propria azione.
+  if(e.target.closest("button,a"))return;
+
+  if(cardPointerMoved){
+    cardPointerMoved=false;
+    return;
+  }
+
+  e.preventDefault();
+  handleProductCardActivation(card);
+});
+
+document.addEventListener("keydown",e=>{
+  if(e.key!=="Enter"&&e.key!==" ")return;
+  const card=e.target.closest(".product-choice");
+  if(!card)return;
+  e.preventDefault();
+  handleProductCardActivation(card);
+});
 
 function toggleWishButton(el){
   toggleWish({
@@ -2257,7 +2316,7 @@ function openProduct(i){
   if(!g)return;
 
   const sizes=getSizeGroups(g);
-  const img=g.image||"";
+  const img=productImage(g);
   const saved=getWishlist();
 
   statusBox.textContent="";
@@ -2303,7 +2362,7 @@ function openProduct(i){
           price:isOut?"":shPrice(o),
           shop:o.store||"",
           url:o.url||"",
-          pic:img||"🧴",
+          pic:img||productImage(g)||"🧴",
           outOfStock:isOut
         };
         const on=saved.some(x=>sameWishOffer(x,item));
@@ -2352,7 +2411,7 @@ function openProduct(i){
     ${sizes.map(s=>{
       const best=s.best;
       const shopCount=s.offers.length;
-      return `<div class="product-choice format-choice" onclick='openSize(${i},${JSON.stringify(s.size)})'>
+      return `<div class="product-choice format-choice" data-format-group="${i}" data-format-size="${esc(s.size)}" role="button" tabindex="0">
         <div class="format-icon">🧴</div>
         <div class="product-choice-main">
           <div class="name">${esc(formatLabel(s.size))}</div>
@@ -2376,7 +2435,7 @@ function openSize(gi,sizeKey,fromFormats=true){
 
   const offers=selected.offers;
   const saved=getWishlist();
-  const img=g.image||"";
+  const img=productImage(g);
 
   statusBox.textContent="";
   resultsBox.innerHTML=`<article class="comparison">
@@ -2414,7 +2473,7 @@ function openSize(gi,sizeKey,fromFormats=true){
         price:isOut?"":shPrice(o),
         shop:o.store||"",
         url:o.url||"",
-        pic:img||"🧴",
+        pic:img||productImage(g)||"🧴",
         outOfStock:isOut
       };
       const on=saved.some(x=>sameWishOffer(x,item));
@@ -2463,7 +2522,7 @@ function chooseOffer(gi,sizeKey,oi){
     price:isOut?"":shPrice(o),
     shop:o.store||"",
     url:o.url||"",
-    pic:g.image||"🧴",
+    pic:productImage(g)||"🧴",
     outOfStock:isOut
   };
 
