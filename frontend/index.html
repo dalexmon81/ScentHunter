@@ -2231,8 +2231,17 @@ function shImageTag(g, alt) {
   const source = Array.isArray(g?.offers)
     ? g.offers
         .filter(o => !isOfferOutOfStock(o))
-        .map(o => o?.image || o?.image_url || o?.thumbnail)
-        .filter(Boolean)
+        .map(o =>
+  o?.image ||
+  o?.image_url ||
+  o?.thumbnail ||
+  o?.source?.image ||
+  o?.source?.image_url ||
+  o?.source?.thumbnail ||
+  ""
+)
+.filter(Boolean)
+
     : [];
 
   // Fallback: immagini già presenti nel gruppo
