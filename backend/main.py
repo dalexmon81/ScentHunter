@@ -72,7 +72,11 @@ FRONTEND_INDEX = (
     / "index.html"
 )
 
-CATALOG_FILENAME = "product_catalog.json"
+CATALOG_FILENAME = "SCENTHUNTER CATALOGO CORRETTO.json"
+CATALOG_FALLBACK_FILENAMES = (
+    "product_catalog.json",
+    "ScentHunter_catalogo_master_V4_VERIFICATO.json",
+)
 PRODUCT_MATCHER = None
 CATALOG_LOAD_ERROR = ""
 
@@ -229,10 +233,13 @@ def _catalog_paths() -> List[Path]:
     candidates = [
         base / CATALOG_FILENAME,
         base / "SCENTHUNTER CATALOGO CORRETTO.json",
+        *(base / name for name in CATALOG_FALLBACK_FILENAMES),
         base.parent / CATALOG_FILENAME,
         base.parent / "SCENTHUNTER CATALOGO CORRETTO.json",
+        *(base.parent / name for name in CATALOG_FALLBACK_FILENAMES),
         Path.cwd() / CATALOG_FILENAME,
         Path.cwd() / "SCENTHUNTER CATALOGO CORRETTO.json",
+        *(Path.cwd() / name for name in CATALOG_FALLBACK_FILENAMES),
     ]
     unique: List[Path] = []
     seen = set()
@@ -965,6 +972,117 @@ def _contains_term(text: str, phrase: str) -> bool:
     if not text_n or not phrase_n:
         return False
     return bool(re.search(r"(?<![a-z0-9])" + re.escape(phrase_n) + r"(?![a-z0-9])", text_n))
+
+
+SET_PRODUCTS = {
+    "gift set", "set regalo", "fragrance set", "perfume set",
+    "parfum set", "discovery set", "coffret", "bundle", "giftbox",
+}
+
+
+def product_field(product: Dict[str, Any], *keys: str, default: Any = None) -> Any:
+    if not isinstance(product, dict):
+        return default
+    for key in keys:
+        value = product.get(key)
+        if value is not None and str(value).strip():
+            return value
+    source = product.get("source")
+    if isinstance(source, dict):
+        for key in keys:
+            value = source.get(key)
+            if value is not None and str(value).strip():
+                return value
+    return default
+
+
+def identity_value(product: Dict[str, Any], *keys: str) -> Any:
+    if not isinstance(product, dict):
+        return None
+    for key in keys:
+        value = product.get(key)
+        if isinstance(value, dict):
+            value = value.get("value")
+        if value is not None and str(value).strip():
+            return value
+        identity = product.get("identity")
+        if isinstance(identity, dict):
+            node = identity.get(key)
+            if isinstance(node, dict):
+                node = node.get("value")
+            if node is not None and str(node).strip():
+                return node
+    return None
+
+
+def product_size_ml(product: Dict[str, Any]) -> Optional[float]:
+    value = product_field(product, "size_ml", "volume_ml", "ml")
+    if value not in (None, ""):
+        try:
+            return float(str(value).replace(",", "."))
+        except (TypeError, ValueError):
+            pass
+    text = " ".join(str(product_field(product, key, default="") or "") for key in ("name", "title", "product_name", "size", "format"))
+    match = re.search(r"(?<!\d)(\d+(?:[.,]\d+)?)\s*(ml|cl)\b", text, re.I)
+    if not match:
+        return None
+    value = float(match.group(1).replace(",", "."))
+    return value * 10 if match.group(2).lower() == "cl" else value
+
+
+def product_concentration(product: Dict[str, Any]) -> str:
+    value = product_field(product, "concentration", "concentration_type", default="")
+    if value:
+        return str(value).strip()
+    text = str(product_field(product, "name", "title", "product_name", default="") or "")
+    match = re.search(r"\b(eau\s+de\s+parfum|eau\s+de\s+toilette|eau\s+de\s+cologne|extrait(?:\s+de\s+parfum)?|edp|edt|edc|parfum)\b", text, re.I)
+    return match.group(1).strip() if match else ""
+
+
+def resolve_actual_price(product: Dict[str, Any]) -> Dict[str, Any]:
+    item = dict(product)
+    raw_price = str(item.get("price") or "").strip()
+    size = product_size_ml(item)
+    unit_match = re.search(r"(?:/|per\s*)100\s*ml", raw_price, re.I)
+    if unit_match and size and size > 0:
+        unit_text = raw_price[:unit_match.start()]
+        match = re.search(r"(\d{1,5}(?:[.,]\d{1,2})?)", unit_text)
+        if match:
+            actual = round(float(match.group(1).replace(",", ".")) * size / 100.0, 2)
+            item["price"] = f"{actual:.2f} €"
+            item["price_value"] = actual
+    return item
+
+
+def product_identity_key(product: Dict[str, Any]) -> tuple:
+    store = norm(product.get("store", ""))
+    variant_id = identity_value(product, "store_variant_id", "variant_id")
+    product_id = identity_value(product, "store_product_id", "product_id", "catalog_id")
+    gtin = identity_value(product, "gtin", "ean", "ean13", "barcode", "upc")
+    sku = identity_value(product, "sku")
+    if variant_id:
+        return ("variant", store, norm(variant_id))
+    if product_id:
+        return ("product", store, norm(product_id), norm(product.get("name", "")))
+    if gtin:
+        return ("gtin", store, norm(gtin))
+    if sku:
+        return ("sku", store, norm(sku))
+    name = norm(product_field(product, "name", "title", "product_name", default=""))
+    source = product.get("source")
+    if isinstance(source, dict) and not name:
+        name = norm(source.get("source_name", ""))
+    return ("fallback", store, name, product_size_ml(product), product_concentration(product))
+
+
+def product_availability(product: Dict[str, Any]) -> str:
+    value = product_field(product, "availability", "stock_status", "availability_status", default="")
+    if value:
+        return str(value).strip()
+    available = product.get("available") if isinstance(product, dict) else None
+    if isinstance(available, bool):
+        return "in_stock" if available else "out_of_stock"
+    return ""
 
 
 def _is_set_product(product: Dict[str, Any]) -> bool:
