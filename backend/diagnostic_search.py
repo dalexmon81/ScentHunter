@@ -896,103 +896,41 @@ def run_query(
     # Tutti gli store partono insieme. In questo modo il diagnostico può
     # rivelare problemi di concorrenza/timeout che una scansione sequenziale
     # nasconderebbe.
-    def run_store_with_timeout(store_name: str) -> Dict[str, Any]:
-        worker_executor = ThreadPoolExecutor(
-            max_workers=1,
-            thread_name_prefix=f"scent_diag_{store_name}",
-        )
-        worker_future = worker_executor.submit(
-            run_store,
-            store_name,
-            query,
-        )
-        try:
-            return worker_future.result(
-                timeout=DIAGNOSTIC_STORE_TIMEOUT
-            )
-        except FuturesTimeoutError:
-            worker_future.cancel()
-            return {
-                "store": store_name,
-                "status": "store_timeout",
-                "errors": [{
-                    "stage": "diagnostic_store_timeout",
-                    "error": (
-                        f"Store non terminato entro "
-                        f"{DIAGNOSTIC_STORE_TIMEOUT:.1f}s"
-                    ),
-                }],
-                "timing": {
-                    "duration_ms": DIAGNOSTIC_STORE_TIMEOUT * 1000,
-                },
-                "summary": {
-                    "attempt_count": 0,
-                    "raw_total": 0,
-                    "unique_after_dedup": 0,
-                    "duplicates_removed": 0,
-                    "matched_total": 0,
-                    "non_matched_total": 0,
-                    "error_total": 1,
-                },
-            }
-        finally:
-            worker_executor.shutdown(
-                wait=False,
-                cancel_futures=True,
-            )
-
+    # Un solo pool per tutti gli store. Non creiamo un executor annidato per
+    # ogni store: un worker che resta bloccato non deve poter trattenere la
+    # risposta HTTP oltre il limite globale del diagnostico.
     executor = ThreadPoolExecutor(
         max_workers=max(1, len(selected_stores)),
         thread_name_prefix="scent_diagnostic_store",
     )
 
     futures = {
-        executor.submit(run_store_with_timeout, store): store
+        executor.submit(run_store, store, query): store
         for store in selected_stores
     }
 
     completed_stores = set()
     timed_out_stores = set()
+    global_deadline = started + DIAGNOSTIC_GLOBAL_TIMEOUT
+    store_deadlines = {
+        store: started + DIAGNOSTIC_STORE_TIMEOUT
+        for store in selected_stores
+    }
 
     try:
-        try:
-            for future in as_completed(
-                futures,
-                timeout=DIAGNOSTIC_GLOBAL_TIMEOUT,
-            ):
+        # Polling leggero invece di as_completed(): ci permette di distinguere
+        # il timeout del singolo store dal timeout globale senza creare thread
+        # executor annidati.
+        pending = set(futures)
+        while pending:
+            now = time.perf_counter()
+            if now >= global_deadline:
+                break
+
+            for future in list(pending):
                 store = futures[future]
-                try:
-                    store_report = future.result()
-                    report["stores"][store] = store_report
-                    completed_stores.add(store)
-                except Exception as exc:
-                    report["stores"][store] = {
-                        "store": store,
-                        "status": "worker_error",
-                        "errors": [{
-                            "stage": "diagnostic_worker",
-                            "error": f"{type(exc).__name__}: {exc}",
-                            "traceback": traceback.format_exc(),
-                        }],
-                        "timing": {
-                            "duration_ms": None,
-                        },
-                        "summary": {
-                            "attempt_count": 0,
-                            "raw_total": 0,
-                            "unique_after_dedup": 0,
-                            "duplicates_removed": 0,
-                            "matched_total": 0,
-                            "non_matched_total": 0,
-                            "error_total": 1,
-                        },
-                    }
-                    completed_stores.add(store)
-        except FuturesTimeoutError:
-            for future, store in futures.items():
-                if store in completed_stores:
-                    continue
                 if future.done():
+                    pending.remove(future)
                     try:
                         report["stores"][store] = future.result()
                         completed_stores.add(store)
@@ -1005,25 +943,34 @@ def run_query(
                                 "error": f"{type(exc).__name__}: {exc}",
                                 "traceback": traceback.format_exc(),
                             }],
+                            "timing": {"duration_ms": None},
+                            "summary": {
+                                "attempt_count": 0,
+                                "raw_total": 0,
+                                "unique_after_dedup": 0,
+                                "duplicates_removed": 0,
+                                "matched_total": 0,
+                                "non_matched_total": 0,
+                                "error_total": 1,
+                            },
                         }
                         completed_stores.add(store)
-                else:
+                    continue
+
+                if store not in timed_out_stores and now >= store_deadlines[store]:
                     timed_out_stores.add(store)
                     report["stores"][store] = {
                         "store": store,
-                        "status": "diagnostic_timeout",
+                        "status": "store_timeout",
                         "errors": [{
-                            "stage": "diagnostic_global_timeout",
+                            "stage": "diagnostic_store_timeout",
                             "error": (
                                 f"Store non terminato entro "
-                                f"{DIAGNOSTIC_GLOBAL_TIMEOUT:.1f}s"
+                                f"{DIAGNOSTIC_STORE_TIMEOUT:.1f}s"
                             ),
                         }],
                         "timing": {
-                            "duration_ms": round(
-                                (time.perf_counter() - started) * 1000,
-                                1,
-                            ),
+                            "duration_ms": DIAGNOSTIC_STORE_TIMEOUT * 1000,
                         },
                         "summary": {
                             "attempt_count": 0,
@@ -1035,85 +982,53 @@ def run_query(
                             "error_total": 1,
                         },
                     }
+
+            if not pending:
+                break
+            time.sleep(0.05)
+
+        # Tutti gli store ancora in esecuzione hanno superato il limite globale.
+        # La risposta viene chiusa comunque: il diagnostico non deve mai
+        # trasformarsi in una richiesta HTTP appesa.
+        for future in pending:
+            store = futures[future]
+            if store in completed_stores or store in timed_out_stores:
+                continue
+            timed_out_stores.add(store)
+            report["stores"][store] = {
+                "store": store,
+                "status": "diagnostic_timeout",
+                "errors": [{
+                    "stage": "diagnostic_global_timeout",
+                    "error": (
+                        f"Store non terminato entro "
+                        f"{DIAGNOSTIC_GLOBAL_TIMEOUT:.1f}s"
+                    ),
+                }],
+                "timing": {
+                    "duration_ms": round(
+                        (time.perf_counter() - started) * 1000,
+                        1,
+                    ),
+                },
+                "summary": {
+                    "attempt_count": 0,
+                    "raw_total": 0,
+                    "unique_after_dedup": 0,
+                    "duplicates_removed": 0,
+                    "matched_total": 0,
+                    "non_matched_total": 0,
+                    "error_total": 1,
+                },
+            }
     finally:
+        # Non aspettare mai worker che hanno superato il timeout. Il loro
+        # risultato non e' piu' necessario alla risposta diagnostica.
         for future in futures:
             if not future.done():
                 future.cancel()
         executor.shutdown(wait=False, cancel_futures=True)
 
-    counters = {
-        "raw_total": 0,
-        "unique_after_dedup": 0,
-        "duplicates_removed": 0,
-        "matched_total": 0,
-        "non_matched_total": 0,
-        "errors": 0,
-    }
-
-    rejection_reasons: Dict[str, int] = {}
-    stores_with_zero_raw: List[str] = []
-    stores_with_matches: List[str] = []
-    stores_with_errors: List[str] = []
-    stores_with_timeouts: List[str] = []
-
-    for store in selected_stores:
-        store_report = report["stores"].get(store, {})
-        summary = store_report.get("summary", {})
-
-        for key in counters:
-            counters[key] += int(summary.get(key, 0) or 0)
-
-        if int(summary.get("raw_total", 0) or 0) == 0:
-            stores_with_zero_raw.append(store)
-
-        if int(summary.get("matched_total", 0) or 0) > 0:
-            stores_with_matches.append(store)
-
-        if store_report.get("errors"):
-            stores_with_errors.append(store)
-
-        if store_report.get("status") in {
-            "diagnostic_timeout",
-            "store_timeout",
-        }:
-            stores_with_timeouts.append(store)
-
-        for candidate in store_report.get(
-            "non_matched_candidates",
-            [],
-        ):
-            diagnostic = candidate.get(
-                "rejection_diagnostic",
-                {},
-            )
-            for reason in diagnostic.get("reasons", []):
-                rejection_reasons[reason] = (
-                    rejection_reasons.get(reason, 0) + 1
-                )
-
-    report["timing"]["global_duration_ms"] = round(
-        (time.perf_counter() - started) * 1000,
-        1,
-    )
-
-    report["global_summary"] = {
-        "stores_total": len(selected_stores),
-        "stores_completed": len(completed_stores),
-        "stores_timed_out": sorted(timed_out_stores),
-        "stores_with_zero_raw": stores_with_zero_raw,
-        "stores_with_matches": stores_with_matches,
-        "stores_with_errors": stores_with_errors,
-        "stores_with_timeouts": stores_with_timeouts,
-        **counters,
-        "rejection_reasons": dict(
-            sorted(
-                rejection_reasons.items(),
-                key=lambda item: (-item[1], item[0]),
-            )
-        ),
-    }
-
-    return report
 
 
 def print_report(
