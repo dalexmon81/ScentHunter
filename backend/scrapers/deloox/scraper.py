@@ -15,7 +15,7 @@ import requests
 from bs4 import BeautifulSoup
 
 STORE = "Deloox"
-BASE_URL = "https://www.deloox.com"
+BASE_URL = "https://www.deloox.be"
 TIMEOUT = 4
 HEADERS = {
     "User-Agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 Version/17.0 Mobile/15E148 Safari/604.1",
