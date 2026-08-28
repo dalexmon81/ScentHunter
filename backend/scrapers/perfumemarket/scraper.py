@@ -17,7 +17,7 @@ HEADERS = {
     "User-Agent": "Mozilla/5.0",
     "Accept-Language": "nl-NL,nl;q=0.9,en;q=0.8",
 }
-MAX_PRODUCT_URLS = 80
+MAX_PRODUCT_URLS = 30
 
 
 def clean(v):
