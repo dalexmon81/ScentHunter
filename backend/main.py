@@ -1985,37 +1985,23 @@ def diagnostic_search_endpoint(
         flush=True,
     )
 
-    executor = ThreadPoolExecutor(max_workers=max(1, len(selected)))
-    futures = {
-        executor.submit(diagnose_store, store): store
-        for store in selected
-    }
+    STORE_TIMEOUT_SECONDS = 20
 
-    done, not_done = wait(
-        futures,
-        timeout=STORE_TIMEOUT_SECONDS,
+for store in selected:
+    print(
+        f"[diagnostic] QUEUED store={store} query={raw_query!r}",
+        flush=True,
     )
 
-    for future in done:
-        store = futures[future]
+    executor = ThreadPoolExecutor(max_workers=1)
+    future = executor.submit(diagnose_store, store)
 
-        try:
-            report["stores"][store] = future.result()
-        except Exception as exc:
-            print(
-                f"[diagnostic] ERROR store={store}: "
-                f"{type(exc).__name__}: {exc}",
-                flush=True,
-            )
-            report["stores"][store] = {
-                "store": store,
-                "status": "worker_error",
-                "errors": [f"{type(exc).__name__}: {exc}"],
-            }
+    try:
+        report["stores"][store] = future.result(
+            timeout=STORE_TIMEOUT_SECONDS
+        )
 
-    for future in not_done:
-        store = futures[future]
-
+    except FuturesTimeoutError:
         future.cancel()
 
         print(
@@ -2035,12 +2021,36 @@ def diagnostic_search_endpoint(
             "rejection_reasons": {},
             "candidates": [],
             "errors": [
-                f"Diagnostic store timeout after {STORE_TIMEOUT_SECONDS} seconds"
+                f"Diagnostic store timeout after "
+                f"{STORE_TIMEOUT_SECONDS} seconds"
             ],
             "duration_ms": STORE_TIMEOUT_SECONDS * 1000,
         }
 
-    executor.shutdown(wait=False, cancel_futures=True)
+    except Exception as exc:
+        print(
+            f"[diagnostic] ERROR store={store}: "
+            f"{type(exc).__name__}: {exc}",
+            flush=True,
+        )
+
+        report["stores"][store] = {
+            "store": store,
+            "status": "worker_error",
+            "attempts": [],
+            "raw_total": 0,
+            "unique_candidates": 0,
+            "accepted": 0,
+            "rejected": 0,
+            "rejection_reasons": {},
+            "candidates": [],
+            "errors": [f"{type(exc).__name__}: {exc}"],
+            "duration_ms": 0,
+        }
+
+    finally:
+        executor.shutdown(wait=False, cancel_futures=True)
+
 
     report["global_summary"] = {
         "stores_total": len(selected),
