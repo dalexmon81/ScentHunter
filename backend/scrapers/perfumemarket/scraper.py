@@ -81,9 +81,8 @@ def _get(session, url, **kwargs):
 
 
 def _xml_urls(text):
-    soup = BeautifulSoup(text, "html.parser")
+    soup = BeautifulSoup(text, "xml")
     return [x.get_text(strip=True) for x in soup.find_all("loc")]
-
 
 def sitemap(s):
     root = _get(s, SITEMAP, headers=HEADERS, timeout=TIMEOUT)
