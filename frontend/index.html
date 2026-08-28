@@ -1388,6 +1388,19 @@ function getSizeGroups(g){
     map.get(size).push(o);
   });
 
+  /*
+   * FORMATO UNICO: se la variante ha una sola misura reale (es. 150 ml),
+   * tutte le offerte della stessa variante che non riportano gli ml devono
+   * restare nello stesso formato. Non deve comparire una seconda scheda
+   * vuota solo perché uno store non comunica la misura nel risultato.
+   */
+  const knownSizes=[...map.keys()].filter(Boolean);
+  if(knownSizes.length===1 && map.has("")){
+    const onlySize=knownSizes[0];
+    map.set(onlySize,[...(map.get(onlySize)||[]),...(map.get("")||[])]);
+    map.delete("");
+  }
+
   return [...map.entries()].map(([size,offers])=>{
     offers.sort((a,b)=>{
       const ao=isOfferOutOfStock(a),bo=isOfferOutOfStock(b);
