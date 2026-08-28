@@ -1293,22 +1293,7 @@ function shGroupData(data){
     );
     if(canonical){
       const concentration=concentrationHint(o)||o?.concentration||"";
-
-      // Il catalogo può conservare nel canonical_name descrittori
-      // commerciali che non cambiano la referenza: formato, concentrazione
-      // e indicazioni generiche di genere (es. Uomo/Men). Questi elementi
-      // non devono creare una seconda categoria quando la variante reale è
-      // la stessa. Manteniamo invece i descrittori che identificano davvero
-      // la variante (es. Limited Edition, Pour Femme, Intense, ecc.).
-      let normalized=removeTrailingConcentration(canonical,concentration)||canonical;
-      normalized=normalized
-        .replace(/\b\d{1,4}\s*ml\b/gi," ")
-        .replace(/\b(?:eau de parfum|eau de toilette|eau de cologne|extrait de parfum|extract de parfum|extrait|edp|edt|edc|spray)\b/gi," ")
-        .replace(/\b(?:for men|for women|for him|for her|pour homme|homme|men|man|women|woman|unisex|uomo|donna)\b/gi," ")
-        .replace(/\s+/g," ")
-        .trim();
-
-      return pretty(normalized||canonical);
+      return pretty(removeTrailingConcentration(canonical,concentration)||canonical);
     }
     return cleanProductName(o,brand);
   }
@@ -1909,6 +1894,69 @@ function shGroupData(data){
               absorb(targetIndex,sourceIndex);
               changed=true;
               break outer;
+            }
+          }
+
+          /*
+           * Caso 3: suffisso di genere commerciale.
+           *
+           * Alcuni negozi aggiungono al titolo un marcatore generico come
+           * "Uomo", "Donna", "Men", "Women", "Homme" o "Femme", mentre
+           * altri negozi pubblicano la stessa referenza senza quel marcatore.
+           * Non creiamo una seconda categoria solo per questa differenza
+           * editoriale.
+           *
+           * La fusione è consentita soltanto quando, nella stessa ricerca,
+           * esiste già il titolo base e brand/concentrazione/formato sono
+           * compatibili. Se esiste solo la forma con il marcatore, resta
+           * separata: non inventiamo un'identità che non abbiamo osservato.
+           */
+          const genericGender=new Set([
+            "uomo","donna","men","women","man","woman",
+            "homme","femme","male","female"
+          ]);
+
+          const stripTrailingGender=name=>{
+            const tokens=norm(name).split(/\s+/).filter(Boolean);
+            while(tokens.length>1 && genericGender.has(tokens[tokens.length-1])){
+              tokens.pop();
+            }
+            return tokens.join(" ");
+          };
+
+          const aGenderBase=stripTrailingGender(a.name);
+          const bGenderBase=stripTrailingGender(b.name);
+
+          if(
+            aGenderBase &&
+            bGenderBase &&
+            aGenderBase===bGenderBase &&
+            ((aGenderBase===an) !== (bGenderBase===bn))
+          ){
+            const sameConcentration=
+              norm(a.concentration||"")===norm(b.concentration||"");
+
+            const sizeSet=g=>new Set(
+              (g.offers||[]).map(o=>sizeOf(o)||"")
+            );
+            const aSizes=sizeSet(a);
+            const bSizes=sizeSet(b);
+            const sizeCompatible=
+              !aSizes.size ||
+              !bSizes.size ||
+              [...aSizes].some(size=>size && bSizes.has(size));
+
+            if(sameConcentration && sizeCompatible){
+              const target=aGenderBase===an?a:b;
+              const source=target===a?b:a;
+              const targetIndex=list.indexOf(target);
+              const sourceIndex=list.indexOf(source);
+
+              if(targetIndex>=0 && sourceIndex>=0){
+                absorb(targetIndex,sourceIndex);
+                changed=true;
+                break outer;
+              }
             }
           }
         }
