@@ -1126,6 +1126,73 @@ def diagnostic_deloox():
 
 
 # ============================================================
+# API - DIAGNOSTICA PROFONDA ESCLUSIVA DELOOX
+# ============================================================
+
+@app.get("/diagnostic-deloox-search")
+def diagnostic_deloox_search(q: str):
+    """
+    Diagnostica profonda esclusivamente Deloox.
+
+    Chiama direttamente diagnose_search() del vero scraper Deloox,
+    usando la stessa requests.Session del modulo, senza passare
+    dalla normale pipeline /search e senza applicare il matcher.
+    """
+    query = str(q or "").strip()
+
+    if not query:
+        raise HTTPException(
+            status_code=400,
+            detail="Parametro q mancante",
+        )
+
+    try:
+        module = load_scraper("deloox")
+        diagnose_fn = getattr(module, "diagnose_search", None)
+
+        if not callable(diagnose_fn):
+            raise RuntimeError(
+                "Deloox scraper non espone diagnose_search()"
+            )
+
+        requests_module = getattr(module, "requests", None)
+
+        if requests_module is None:
+            raise RuntimeError(
+                "Deloox scraper non espone il modulo requests"
+            )
+
+        session = requests_module.Session()
+
+        try:
+            diagnostic = diagnose_fn(
+                session,
+                query,
+            )
+        finally:
+            session.close()
+
+        return {
+            "ok": True,
+            "store": "deloox",
+            "query": query,
+            "diagnostic": diagnostic,
+        }
+
+    except HTTPException:
+        raise
+    except Exception as error:
+        traceback.print_exc()
+        return {
+            "ok": False,
+            "store": "deloox",
+            "query": query,
+            "error": f"{type(error).__name__}: {error}",
+            "traceback": traceback.format_exc(),
+        }
+
+
+# ============================================================
 # API - SUGGEST
 # ============================================================
 
