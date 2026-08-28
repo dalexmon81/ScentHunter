@@ -19,6 +19,11 @@ from urllib.parse import urlencode
 from urllib.request import Request, urlopen
 from urllib.error import HTTPError, URLError
 
+try:
+    from product_matcher import ProductMatcher
+except Exception:
+    ProductMatcher = None
+
 
 # ============================================================
 # ScentHunter API
@@ -67,7 +72,9 @@ FRONTEND_INDEX = (
     / "index.html"
 )
 
-CATALOG_FILENAME = "SCENTHUNTER CATALOGO CORRETTO.json"
+CATALOG_FILENAME = "product_catalog.json"
+PRODUCT_MATCHER = None
+CATALOG_LOAD_ERROR = ""
 
 VARIANT_MARKERS = {
     "pour femme", "pour homme", "femme", "homme",
@@ -193,6 +200,134 @@ CATALOG_ALIASES: Dict[str, str] = {}
 CATALOG_BRANDS: Dict[str, str] = {}
 CATALOG_PRODUCTS: List[Dict[str, Any]] = []
 CATALOG_FAMILY_FORMS: List[str] = []
+
+
+# ============================================================
+# CARICAMENTO CATALOGO MASTER + MATCHER CENTRALE
+# ============================================================
+
+def _load_json_object_tolerant(path: Path) -> Optional[Dict[str, Any]]:
+    """
+    Carica il catalogo JSON anche se il file contiene materiale non-JSON
+    dopo il primo oggetto JSON completo. Non modifica il file su disco.
+    """
+    global CATALOG_LOAD_ERROR
+    try:
+        raw = path.read_text(encoding="utf-8-sig")
+        decoder = json.JSONDecoder()
+        payload, _end = decoder.raw_decode(raw.lstrip())
+        if isinstance(payload, dict):
+            return payload
+        CATALOG_LOAD_ERROR = "catalog_root_not_object"
+    except Exception as exc:
+        CATALOG_LOAD_ERROR = f"{type(exc).__name__}: {exc}"
+    return None
+
+
+def _catalog_paths() -> List[Path]:
+    base = Path(BASE_DIR).resolve()
+    candidates = [
+        base / CATALOG_FILENAME,
+        base / "SCENTHUNTER CATALOGO CORRETTO.json",
+        base.parent / CATALOG_FILENAME,
+        base.parent / "SCENTHUNTER CATALOGO CORRETTO.json",
+        Path.cwd() / CATALOG_FILENAME,
+        Path.cwd() / "SCENTHUNTER CATALOGO CORRETTO.json",
+    ]
+    unique: List[Path] = []
+    seen = set()
+    for candidate in candidates:
+        key = str(candidate)
+        if key not in seen:
+            seen.add(key)
+            unique.append(candidate)
+    return unique
+
+
+def _load_catalog_master() -> None:
+    global CATALOG_ALIASES, CATALOG_BRANDS, CATALOG_PRODUCTS
+    global CATALOG_FAMILY_FORMS, PRODUCT_MATCHER
+
+    payload = None
+    for path in _catalog_paths():
+        if path.exists():
+            payload = _load_json_object_tolerant(path)
+            if isinstance(payload, dict):
+                break
+
+    if not isinstance(payload, dict):
+        CATALOG_PRODUCTS = []
+        PRODUCT_MATCHER = ProductMatcher([]) if ProductMatcher is not None else None
+        return
+
+    products = payload.get("products")
+    if not isinstance(products, list):
+        products = []
+
+    CATALOG_PRODUCTS = [
+        item for item in products
+        if isinstance(item, dict)
+    ]
+
+    for product in CATALOG_PRODUCTS:
+        brand = str(
+            product.get("brand")
+            or product.get("brand_name")
+            or ""
+        ).strip()
+        canonical = str(
+            product.get("name")
+            or product.get("canonical_name")
+            or product.get("catalog_variant")
+            or product.get("family_name")
+            or ""
+        ).strip()
+
+        aliases = product.get("aliases") or []
+        if isinstance(aliases, str):
+            aliases = [aliases]
+
+        if brand and canonical:
+            CATALOG_BRANDS[norm(canonical)] = brand
+            CATALOG_BRANDS[norm(f"{brand} {canonical}")] = brand
+
+        if canonical:
+            for alias in aliases:
+                alias_text = str(alias or "").strip()
+                if not alias_text:
+                    continue
+                CATALOG_ALIASES[norm(alias_text)] = canonical
+                if brand:
+                    CATALOG_ALIASES[norm(f"{brand} {alias_text}")] = canonical
+
+        for value in (
+            canonical,
+            product.get("family_name"),
+            *aliases,
+        ):
+            value_text = str(value or "").strip()
+            if value_text:
+                CATALOG_FAMILY_FORMS.append(value_text)
+
+    # Keep only deterministic unique family/query forms.
+    seen_forms = set()
+    CATALOG_FAMILY_FORMS = [
+        value for value in CATALOG_FAMILY_FORMS
+        if not (norm(value) in seen_forms or seen_forms.add(norm(value)))
+    ]
+
+    if ProductMatcher is not None:
+        try:
+            PRODUCT_MATCHER = ProductMatcher(CATALOG_PRODUCTS)
+        except Exception as exc:
+            PRODUCT_MATCHER = None
+            global CATALOG_LOAD_ERROR
+            CATALOG_LOAD_ERROR = (
+                f"{type(exc).__name__}: {exc}"
+            )
+
+
+_load_catalog_master()
 
 # ============================================================
 # REGISTRO GENERICO DELLE FAMIGLIE
@@ -472,6 +607,21 @@ def _family_variant_allowed(
         return False
 
     match_brand = str(product.get("brand") or "").strip() or str(family.get("brand") or "").strip()
+
+    if PRODUCT_MATCHER is not None:
+        try:
+            matched = PRODUCT_MATCHER.match(product)
+        except Exception:
+            matched = None
+        if isinstance(matched, dict):
+            matched_family = norm(matched.get("family_id") or "")
+            target_family = norm(family.get("family_id") or "")
+            if matched_family and target_family:
+                if matched_family == target_family:
+                    return True
+                # A deterministic catalog match to another family is a hard veto.
+                return False
+
     resolved = _registry_canonical_variant(
         match_brand,
         raw_name,
@@ -615,8 +765,65 @@ def canonical_product_name(product: Dict[str, Any], family_query: str = "") -> s
 
 def normalize_product(product: Dict[str, Any], family_query: str = "") -> Dict[str, Any]:
     item = dict(product)
+
+    # Il matcher centrale è la prima sorgente di identità quando riesce a
+    # risolvere il prodotto nel catalogo. Il registry di famiglia resta il
+    # confine finale per le varianti verificate.
+    matcher_result = None
+    if PRODUCT_MATCHER is not None:
+        try:
+            matcher_result = PRODUCT_MATCHER.match(item)
+        except Exception:
+            matcher_result = None
+
+    if isinstance(matcher_result, dict):
+        for key in (
+            "canonical_brand",
+            "canonical_name",
+            "catalog_variant",
+            "family_id",
+            "family_name",
+            "canonical_concentration",
+            "gender",
+            "match_method",
+            "match_score",
+            "catalog_id",
+            "product_identity",
+            "variant_id",
+        ):
+            value = matcher_result.get(key)
+            if value not in (None, ""):
+                item[key] = value
+
+        if matcher_result.get("canonical_brand"):
+            item["brand"] = matcher_result["canonical_brand"]
+        if matcher_result.get("canonical_name"):
+            item["name"] = matcher_result["canonical_name"]
+
     item["brand"] = canonical_product_brand(item)
     item["name"] = canonical_product_name(item, family_query)
+
+    family = _resolve_family(family_query)
+    if family is not None:
+        resolved_variant = _registry_canonical_variant(
+            str(item.get("brand") or family.get("brand") or ""),
+            str(
+                product.get("name")
+                or product.get("title")
+                or product.get("product_name")
+                or product.get("source_name")
+                or item.get("name")
+                or ""
+            ),
+            family=family,
+        )
+        if resolved_variant:
+            item["canonical_name"] = resolved_variant
+            item["catalog_variant"] = resolved_variant
+            item["family_id"] = family.get("family_id", "")
+            item["family_name"] = family.get("brand", "") + " " + resolved_variant
+            item["match_method"] = "family_registry"
+
     brand = str(item.get("brand") or "").strip()
     name = str(item.get("name") or "").strip()
     item["display_name"] = f"{brand} - {name}" if brand else name
@@ -626,6 +833,102 @@ def normalize_product(product: Dict[str, Any], family_query: str = "") -> Dict[s
 # ============================================================
 # FILTRO RISULTATI
 # ============================================================
+
+
+def _word_tokens(value: Any) -> List[str]:
+    return [token for token in norm(value).split() if token]
+
+
+def _catalog_brand_candidates(query: str) -> List[str]:
+    q_tokens = set(norm(query).split())
+    if not q_tokens:
+        return []
+
+    scores: Dict[str, int] = {}
+    for product in CATALOG_PRODUCTS:
+        brand = str(
+            product.get("brand")
+            or product.get("brand_name")
+            or ""
+        ).strip()
+        if not brand:
+            continue
+        searchable = norm(" ".join(
+            str(product.get(key) or "")
+            for key in (
+                "name", "canonical_name", "catalog_variant",
+                "family_name",
+            )
+        ))
+        aliases = product.get("aliases") or []
+        if isinstance(aliases, str):
+            aliases = [aliases]
+        searchable += " " + norm(" ".join(str(x) for x in aliases))
+        overlap = len(q_tokens & set(searchable.split()))
+        if overlap:
+            key = norm(brand)
+            scores[key] = max(scores.get(key, 0), overlap)
+
+    ordered = sorted(scores.items(), key=lambda item: (-item[1], item[0]))
+    return [
+        next(
+            (
+                str(p.get("brand") or p.get("brand_name") or "").strip()
+                for p in CATALOG_PRODUCTS
+                if norm(str(p.get("brand") or p.get("brand_name") or "")) == brand_n
+            ),
+            brand_n,
+        )
+        for brand_n, _score in ordered[:5]
+    ]
+
+
+def _catalog_family_candidates(query: str) -> List[str]:
+    q_tokens = set(norm(query).split())
+    if not q_tokens:
+        return []
+
+    candidates: List[tuple[int, str]] = []
+    seen = set()
+    for product in CATALOG_PRODUCTS:
+        values = [
+            product.get("family_name"),
+            product.get("canonical_name"),
+            product.get("catalog_variant"),
+            product.get("name"),
+        ]
+        aliases = product.get("aliases") or []
+        if isinstance(aliases, str):
+            aliases = [aliases]
+        values.extend(aliases)
+
+        for value in values:
+            value_text = str(value or "").strip()
+            if not value_text:
+                continue
+            value_tokens = set(norm(value_text).split())
+            if not q_tokens.issubset(value_tokens):
+                continue
+            key = norm(value_text)
+            if key in seen:
+                continue
+            seen.add(key)
+            # Prefer the shortest exact family/product form containing
+            # the query; this keeps discovery broad without exploding
+            # the number of scraper requests.
+            candidates.append((len(value_tokens), value_text))
+
+    candidates.sort(key=lambda item: (item[0], norm(item[1])))
+    return [value for _score, value in candidates[:8]]
+
+
+def _catalog_family_form(query: str) -> str:
+    qn = norm(query)
+    for value in CATALOG_FAMILY_FORMS:
+        if norm(value) == qn:
+            return value
+    return query
+
 
 def _query_concentration(value: Any) -> str:
     """
@@ -1130,6 +1433,184 @@ def _search_job_payload(job: Dict[str, Any]) -> Dict[str, Any]:
         "errors": errors,
         "completed": bool(job.get("completed")),
     }
+
+
+
+@app.get("/diagnostic/search")
+def diagnostic_search_endpoint(
+    query: str = "",
+    stores: str = "",
+):
+    """
+    Diagnostica HTTP autonoma.
+    Mostra discovery, dedup, matching e motivi di rifiuto senza modificare
+    la ricerca normale o il database.
+    """
+    raw_query = str(query or "").strip()
+    if not raw_query:
+        raise HTTPException(status_code=400, detail="Parametro 'query' obbligatorio")
+
+    selected = [
+        item.strip()
+        for item in stores.split(",")
+        if item.strip()
+    ] if stores.strip() else list(STORES)
+
+    family = _resolve_family(raw_query)
+    catalog_hints = _catalog_brand_candidates(raw_query)
+    family_candidates = _catalog_family_candidates(raw_query)
+
+    report: Dict[str, Any] = {
+        "query": raw_query,
+        "contract_audit": {
+            "central_product_matcher_used_by_main": PRODUCT_MATCHER is not None,
+            "catalog_products": len(CATALOG_PRODUCTS),
+            "catalog_load_error": CATALOG_LOAD_ERROR,
+            "family_registry_loaded": bool(FAMILY_REGISTRY),
+            "resolved_family": family.get("family_id") if family else "",
+        },
+        "stores": {},
+    }
+
+    def diagnose_store(store: str) -> Dict[str, Any]:
+        started = datetime.now(timezone.utc).timestamp()
+        module = load_scraper(store)
+        attempts = build_search_attempts(
+            store,
+            raw_query,
+            catalog_hints,
+            [],
+            family_candidates,
+        )
+
+        batches: List[tuple[str, List[Dict[str, Any]]]] = []
+        errors: List[str] = []
+
+        try:
+            first = module.search(raw_query) or []
+            batches.append((raw_query, first))
+        except Exception as exc:
+            errors.append(f"initial_search: {type(exc).__name__}: {exc}")
+
+        for attempt in attempts:
+            if norm(attempt) == norm(raw_query):
+                continue
+            try:
+                batches.append((attempt, module.search(attempt) or []))
+            except Exception as exc:
+                errors.append(
+                    f"search[{attempt}]: {type(exc).__name__}: {exc}"
+                )
+
+        candidates = []
+        seen_keys = set()
+        rejection_reasons: Dict[str, int] = {}
+
+        for attempt, rows in batches:
+            for index, item in enumerate(rows):
+                if not isinstance(item, dict):
+                    continue
+
+                raw_name = str(
+                    item.get("name")
+                    or item.get("title")
+                    or item.get("product_name")
+                    or ""
+                ).strip()
+
+                product = normalize_product(
+                    {**item, "store": item.get("store") or store},
+                    raw_query,
+                )
+
+                key = (
+                    str(product.get("url") or "").lower(),
+                    norm(raw_name),
+                    norm(product.get("brand") or ""),
+                )
+                if key in seen_keys:
+                    continue
+                seen_keys.add(key)
+
+                reason = ""
+                if not raw_name:
+                    reason = "missing_product_name"
+                elif is_non_perfume(product):
+                    reason = "non_perfume_product"
+                elif family is not None and not _family_variant_allowed(product, family):
+                    reason = "family_variant_rejected"
+                elif not matches(product, raw_query, family=family):
+                    reason = "generic_match_rejected"
+
+                accepted = not reason
+                if reason:
+                    rejection_reasons[reason] = rejection_reasons.get(reason, 0) + 1
+
+                candidates.append({
+                    "attempt": attempt,
+                    "raw_index": index,
+                    "name": raw_name,
+                    "brand": str(item.get("brand") or ""),
+                    "normalized_name": str(product.get("name") or ""),
+                    "canonical_name": str(product.get("canonical_name") or ""),
+                    "catalog_variant": str(product.get("catalog_variant") or ""),
+                    "family_id": str(product.get("family_id") or ""),
+                    "family_name": str(product.get("family_name") or ""),
+                    "match_method": str(product.get("match_method") or ""),
+                    "url": str(item.get("url") or ""),
+                    "accepted": accepted,
+                    "rejection_reason": reason,
+                })
+
+        duration_ms = (datetime.now(timezone.utc).timestamp() - started) * 1000
+        return {
+            "store": store,
+            "status": "ok" if not errors else "partial",
+            "attempts": attempts,
+            "raw_total": sum(len(rows) for _attempt, rows in batches),
+            "unique_candidates": len(candidates),
+            "accepted": sum(1 for x in candidates if x["accepted"]),
+            "rejected": sum(1 for x in candidates if not x["accepted"]),
+            "rejection_reasons": rejection_reasons,
+            "candidates": candidates,
+            "errors": errors,
+            "duration_ms": round(duration_ms, 1),
+        }
+
+    with ThreadPoolExecutor(max_workers=max(1, len(selected))) as executor:
+        futures = {
+            executor.submit(diagnose_store, store): store
+            for store in selected
+        }
+        for future, store in [(future, futures[future]) for future in futures]:
+            try:
+                report["stores"][store] = future.result()
+            except Exception as exc:
+                report["stores"][store] = {
+                    "store": store,
+                    "status": "worker_error",
+                    "errors": [f"{type(exc).__name__}: {exc}"],
+                }
+
+    report["global_summary"] = {
+        "stores_total": len(selected),
+        "raw_total": sum(
+            int(value.get("raw_total", 0))
+            for value in report["stores"].values()
+            if isinstance(value, dict)
+        ),
+        "accepted_total": sum(
+            int(value.get("accepted", 0))
+            for value in report["stores"].values()
+            if isinstance(value, dict)
+        ),
+        "rejected_total": sum(
+            int(value.get("rejected", 0))
+            for value in report["stores"].values()
+            if isinstance(value, dict)
+        ),
+    }
+    return report
 
 
 @app.get("/search-start")
@@ -2084,18 +2565,6 @@ def product(
             else "Nessuna offerta disponibile al momento"
         ),
     }
-
-
-
-# Compatibility helper used by diagnostic_search.py.
-def product_field(product: Any, *keys: str, default: Any = None) -> Any:
-    if not isinstance(product, dict):
-        return default
-    for key in keys:
-        value = product.get(key)
-        if value is not None and str(value).strip():
-            return value
-    return default
 
 
 # ============================================================
