@@ -1876,111 +1876,36 @@ function progressiveMergeResults(current, incoming){
 }
 
 async function searchPerfume(){
- const q=queryInput.value.trim();
- if(!q){statusBox.textContent="";resultsBox.innerHTML="";errorsBox.innerHTML="";return}
- searchButton.disabled=true;searchButton.classList.add("searching");
- let dots=0;
- const updateSearchButton=()=>{
-   dots=(dots+1)%4;
-   searchButton.innerHTML='<span class="search-fixed">CERCO</span><span class="search-dots">'+". ".repeat(dots)+'</span>';
- };
- updateSearchButton();
- const dotsTimer=setInterval(updateSearchButton,500);
- statusBox.textContent="Ricerca in corso…";resultsBox.innerHTML="";errorsBox.innerHTML="";
- let progressiveRaw=[];
- let previewFinished=0;
- let finalData=null;
- let previewStopped=false;
- try{
-   const term=q;
-
-   // Avviamo la ricerca completa senza aspettare che tutti i negozi abbiano finito.
-   const startResponse=await fetchJSONWithTimeout(
-     backend()+"/search?q="+encodeURIComponent(term),
-     30000
-   );
-   const jobId=String(startResponse?.job_id||"").trim();
-   if(!jobId)throw new Error("Job di ricerca non ricevuto");
-
-   // Anteprima progressiva controllata: massimo 2 /test-store alla volta.
-   // La ricerca /search resta la fonte autorevole per il risultato completo.
-   const previewTasks=[];
-   let previewCursor=0;
-   async function previewWorker(){
-     while(!previewStopped){
-       const index=previewCursor++;
-       if(index>=PROGRESSIVE_STORES.length)return;
-       const store=PROGRESSIVE_STORES[index];
-       try{
-         const data=await fetchJSONWithTimeout(
-           backend()+"/test-store?store="+encodeURIComponent(store)+"&q="+encodeURIComponent(term),
-           90000
-         );
-         if(previewStopped)continue;
-         const incoming=Array.isArray(data?.results)?data.results:[];
-         progressiveRaw=progressiveMergeResults(progressiveRaw,incoming);
-         const groups=shGroupData({results:progressiveRaw});
-         if(groups.length){
-           showProducts(groups);
-           currentProductGroups=groups;
-           statusBox.textContent=groups.length+(groups.length===1?" profumo trovato.":" profumi trovati.")+" · ricerca in corso…";
-         }
-       }catch(error){
-         // L'anteprima è opzionale: un singolo negozio lento/non disponibile
-         // non deve mai interrompere la ricerca completa.
-       }finally{
-         previewFinished++;
-       }
-     }
-   }
-   for(let w=0;w<PROGRESSIVE_CONCURRENCY;w++)previewTasks.push(previewWorker());
-
-   // Polling breve del job completo: non blocchiamo la UI mentre gli scraper lavorano.
-   for(let attempt=0;attempt<360;attempt++){
-     await new Promise(resolve=>setTimeout(resolve,500));
-     const state=await fetchJSONWithTimeout(
-       backend()+"/search-status/"+encodeURIComponent(jobId),
-       30000
-     );
-     if(state?.status==="completed"){
-       finalData=state;
-       break;
-     }
-     if(state?.status==="failed")throw new Error(state.error||"Ricerca fallita");
-     if(previewFinished===PROGRESSIVE_STORES.length){
-       statusBox.textContent=progressiveRaw.length?"Ricerca completa in corso…":"Ricerca in corso…";
-     }
-   }
-
-   previewStopped=true;
-   await Promise.allSettled(previewTasks);
-   const groups=shGroupData(finalData||{results:progressiveRaw});
-   showProducts(groups);
-   currentProductGroups=groups;
-   refreshWishlistFromResults(groups.flatMap(g=>g.offers.map(o=>({
-     name:g.name||"",brand:g.brand||"",price:shPrice(o),price_value:o.price_value,
-     store:o.store||"",url:o.url||""
-   }))));
-   if(finalData?.errors&&Object.keys(finalData.errors).length){
-     errorsBox.innerHTML="Alcuni negozi non hanno risposto: "+Object.keys(finalData.errors).map(esc).join(", ")+".";
-   }
- }catch(e){
-   previewStopped=true;
-   console.error(e);
-   if(progressiveRaw.length){
-     const groups=shGroupData({results:progressiveRaw});
-     showProducts(groups);
-     statusBox.textContent=groups.length+(groups.length===1?" profumo trovato.":" profumi trovati.");
-     errorsBox.textContent="La ricerca completa non è terminata: mostrati i risultati già ricevuti.";
-   }else{
-     statusBox.textContent="Impossibile completare la ricerca.";
-   }
- }finally{
-   clearInterval(dotsTimer);
-   searchButton.disabled=false;
-   searchButton.classList.remove("searching");
-   searchButton.textContent="INIZIA LA RICERCA";
- }
+  const q=queryInput.value.trim();
+  if(!q){statusBox.textContent="";resultsBox.innerHTML="";errorsBox.innerHTML="";return}
+  searchButton.disabled=true;searchButton.classList.add("searching");
+  let dots=0;
+  const updateSearchButton=()=>{dots=(dots+1)%4;searchButton.innerHTML='<span class="search-fixed">CERCO</span><span class="search-dots">'+". ".trim().repeat(0)+". ".trim().repeat(dots)+'</span>'};
+  updateSearchButton();
+  const dotsTimer=setInterval(updateSearchButton,500);
+  statusBox.textContent="";resultsBox.innerHTML="";errorsBox.innerHTML="";
+  try{
+    const term=q;
+    const data=await fetchJSONWithTimeout(
+      backend()+"/search?q="+encodeURIComponent(term),
+      180000
+    );
+    const groups=shGroupData(data);
+    showProducts(groups);
+    currentProductGroups=groups;
+    refreshWishlistFromResults(groups.flatMap(g=>g.offers.map(o=>({
+      name:g.name||"",brand:g.brand||"",price:shPrice(o),price_value:o.price_value,store:o.store||"",url:o.url||""
+    }))));
+    if(data.errors&&Object.keys(data.errors).length)errorsBox.innerHTML="Alcuni negozi non hanno risposto: "+Object.keys(data.errors).map(esc).join(", ")+".";
+  }catch(e){
+    console.error(e);
+    statusBox.textContent="Impossibile completare la ricerca.";
+  }finally{
+    clearInterval(dotsTimer);
+    searchButton.disabled=false;
+    searchButton.classList.remove("searching");
+    searchButton.textContent="INIZIA LA RICERCA";
+  }
 }
 
 searchButton.addEventListener("click",searchPerfume);queryInput.addEventListener("keydown",e=>{if(e.key==="Enter"){e.preventDefault();searchPerfume()}});
