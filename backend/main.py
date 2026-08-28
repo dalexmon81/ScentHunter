@@ -825,6 +825,13 @@ def normalize_product(product: Dict[str, Any], family_query: str = "") -> Dict[s
             family=family,
         )
         if resolved_variant:
+            # La variante risolta dal Family Registry è l'identità canonica
+            # finale. Il campo `name` deve seguire la stessa identità di
+            # `canonical_name`/`catalog_variant`: non può restare il nome
+            # eventualmente ridotto dal matcher centrale (es. "Hawas"),
+            # altrimenti "For Him" / "For Her" viene perso nella fase
+            # successiva di raggruppamento e visualizzazione.
+            item["name"] = resolved_variant
             item["canonical_name"] = resolved_variant
             item["catalog_variant"] = resolved_variant
             item["family_id"] = family.get("family_id", "")
