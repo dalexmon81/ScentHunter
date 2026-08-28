@@ -533,6 +533,28 @@ def _registry_canonical_variant(
     if not raw_tokens:
         return ""
 
+    # Se il retailer usa semplicemente il nome della famiglia (es.
+    # "Rasasi Hawas"), il registry puo' avere una referenza canonica
+    # esplicita "For Him" che rappresenta la referenza base. La scegliamo
+    # solo quando esiste realmente nel registry e non esiste una variante
+    # canonica con la stessa identita' senza genere: e' una regola generica
+    # basata sui dati, non un'eccezione per un singolo profumo.
+    family_alias_tokens = set()
+    for alias in family.get("query_aliases") or []:
+        alias_tokens = _family_identity_tokens(alias, brand)
+        if alias_tokens == raw_tokens:
+            family_alias_tokens = set(alias_tokens)
+            break
+    if family_alias_tokens and not raw_gender:
+        for product in family.get("variant_records") or []:
+            if not isinstance(product, dict):
+                continue
+            canonical = str(product.get("canonical_name") or "").strip()
+            if canonical and norm(canonical).endswith(" for him"):
+                canonical_tokens = _family_identity_tokens(canonical, brand)
+                if canonical_tokens == raw_tokens:
+                    return canonical
+
     best = ""
     best_score = -1
     for product in family.get("variant_records") or []:
@@ -604,9 +626,10 @@ def _family_variant_allowed(
         return False
 
     raw_name = str(
-        product.get("title")
-        or product.get("product_name")
+        product.get("_raw_source_name")
         or product.get("source_name")
+        or product.get("title")
+        or product.get("product_name")
         or product.get("name")
         or ""
     ).strip()
@@ -772,6 +795,15 @@ def canonical_product_name(product: Dict[str, Any], family_query: str = "") -> s
 
 def normalize_product(product: Dict[str, Any], family_query: str = "") -> Dict[str, Any]:
     item = dict(product)
+    raw_source_name = str(
+        product.get("name")
+        or product.get("title")
+        or product.get("product_name")
+        or product.get("source_name")
+        or ""
+    ).strip()
+    if raw_source_name:
+        item["_raw_source_name"] = raw_source_name
 
     # Il matcher centrale è la prima sorgente di identità quando riesce a
     # risolvere il prodotto nel catalogo. Il registry di famiglia resta il
@@ -898,6 +930,28 @@ def _catalog_brand_candidates(query: str) -> List[str]:
 
 
 def _catalog_family_candidates(query: str) -> List[str]:
+    """
+    Restituisce tutte le referenze canoniche della famiglia verificata.
+
+    La discovery non deve fermarsi arbitrariamente alle prime 8 referenze:
+    una variante che si trova piu' avanti nel registry deve avere la stessa
+    possibilita' di essere scoperta. Le referenze arrivano dai dati del
+    Family Registry; non esistono nomi di profumi hard-coded qui.
+    """
+    family = _resolve_family(query)
+    if family is not None:
+        values: List[str] = []
+        seen = set()
+        for product in family.get("variant_records") or []:
+            if not isinstance(product, dict):
+                continue
+            value = str(product.get("canonical_name") or "").strip()
+            key = norm(value)
+            if value and key not in seen:
+                seen.add(key)
+                values.append(value)
+        return values
+
     q_tokens = set(norm(query).split())
     if not q_tokens:
         return []
@@ -927,9 +981,6 @@ def _catalog_family_candidates(query: str) -> List[str]:
             if key in seen:
                 continue
             seen.add(key)
-            # Prefer the shortest exact family/product form containing
-            # the query; this keeps discovery broad without exploding
-            # the number of scraper requests.
             candidates.append((len(value_tokens), value_text))
 
     candidates.sort(key=lambda item: (item[0], norm(item[1])))
@@ -1224,15 +1275,15 @@ def build_search_attempts(
     # Prima la query esatta.
     add(raw)
 
-    # Se il catalogo conosce già le referenze della famiglia, usiamo quelle
-    # come query mirate. Questo evita di lanciare 10-20 ricerche sullo stesso
-    # negozio e, soprattutto, permette di recuperare separatamente EDT/EDP.
+    # Se il Family Registry conosce le referenze della famiglia, le usiamo
+    # tutte come query mirate: nessuna variante puo' essere persa solo perche'
+    # si trova oltre un limite arbitrario di discovery.
     if family_candidates:
         for family_name in family_candidates:
             add(family_name)
         for hint in catalog_hints or []:
             add(hint)
-        return attempts[:8]
+        return attempts
 
     # Fallback per query che non hanno corrispondenze nel catalogo.
     for brand in discovered_brands or []:
@@ -1297,11 +1348,24 @@ def run_store(
     seen = set()
     pending = [attempt for attempt in attempts if norm(attempt) != norm(raw_query)]
     batches = [(raw_query, initial_results)]
-    for attempt in pending:
-        try:
-            batches.append((attempt, module.search(attempt) or []))
-        except Exception:
-            continue
+
+    # Le query di espansione della famiglia sono indipendenti. Le eseguiamo
+    # in parallelo con un limite locale per non trasformare la discovery in
+    # una lunga coda sequenziale e per dare anche a store piu' lenti (come
+    # Sabina) la possibilita' di completare.
+    if pending:
+        max_workers = min(4, len(pending)) if family is not None else 1
+        with ThreadPoolExecutor(max_workers=max_workers) as expansion_executor:
+            future_to_attempt = {
+                expansion_executor.submit(module.search, attempt): attempt
+                for attempt in pending
+            }
+            for future in as_completed(future_to_attempt):
+                attempt = future_to_attempt[future]
+                try:
+                    batches.append((attempt, future.result() or []))
+                except Exception:
+                    continue
 
     for attempt, results in batches:
         for item in results:
@@ -1315,6 +1379,186 @@ def run_store(
             if matches(product, raw_query, family=family):
                 output.append(product)
     return output
+
+
+# ============================================================
+# CONFRONTO TRA NEGOZI
+# ============================================================
+
+def _comparison_parts(product: Dict[str, Any]) -> tuple:
+    """
+    Costruisce l'identita' di confronto nel modo corretto:
+    variante canonica + formato.
+
+    Uomo/donna e concentrazione NON creano una seconda scheda. Il formato
+    (ml) resta invece un criterio di separazione. Questo impedisce la
+    duplicazione artificiale dello stesso prodotto dovuta a parole
+    commerciali come "parfum".
+    """
+    brand = norm(product.get("brand") or "")
+    family_id = norm(product.get("family_id") or "")
+    variant = norm(
+        product.get("canonical_name")
+        or product.get("catalog_variant")
+        or product.get("name")
+        or ""
+    )
+    size = product_size_ml(product)
+    concentration = _query_concentration(
+        product.get("concentration")
+        or product.get("name")
+        or product.get("title")
+        or ""
+    )
+
+    if not variant:
+        variant = norm(product.get("display_name") or "")
+
+    # La separazione delle schede avviene per variante e formato.
+    # EDP/EDT e genere restano attributi visuali dell'offerta, non creano
+    # una seconda scheda dello stesso formato.
+    return (
+        family_id,
+        brand,
+        variant,
+        size,
+    )
+
+
+def _comparison_key(product: Dict[str, Any]) -> str:
+    family_id, brand, variant, size = _comparison_parts(product)
+    size_key = "" if size is None else f"{size:g}"
+    return "|".join((family_id, brand, variant, size_key))
+
+
+def _comparison_name(product: Dict[str, Any]) -> str:
+    brand = str(product.get("brand") or "").strip()
+    variant = str(
+        product.get("canonical_name")
+        or product.get("catalog_variant")
+        or product.get("name")
+        or ""
+    ).strip()
+    return f"{brand} - {variant}" if brand and variant else (variant or brand)
+
+
+def _catalog_default_size(product: Dict[str, Any]) -> Optional[float]:
+    """
+    Usa il formato del catalogo solo quando per quella referenza esiste un
+    unico formato verificato. Non inventa mai un formato se il catalogo ne
+    prevede piu' di uno.
+    """
+    family_id = norm(product.get("family_id") or "")
+    variant = norm(
+        product.get("canonical_name")
+        or product.get("catalog_variant")
+        or product.get("name")
+        or ""
+    )
+    if not variant:
+        return None
+
+    matches = []
+    for catalog_item in CATALOG_PRODUCTS:
+        if not isinstance(catalog_item, dict):
+            continue
+        if family_id and norm(catalog_item.get("family_id") or "") != family_id:
+            continue
+        catalog_name = norm(
+            catalog_item.get("name")
+            or catalog_item.get("canonical_name")
+            or catalog_item.get("catalog_variant")
+            or ""
+        )
+        if catalog_name != variant:
+            continue
+        formats = catalog_item.get("formats_ml") or catalog_item.get("sizes_ml") or []
+        if isinstance(formats, (int, float, str)):
+            formats = [formats]
+        numeric = []
+        for value in formats:
+            try:
+                numeric.append(float(str(value).replace(",", ".")))
+            except (TypeError, ValueError):
+                continue
+        numeric = sorted(set(numeric))
+        if len(numeric) == 1:
+            matches.append(numeric[0])
+
+    return matches[0] if len(set(matches)) == 1 else None
+
+
+def enrich_and_group(results: List[Dict[str, Any]]) -> tuple[List[Dict[str, Any]], List[Dict[str, Any]]]:
+    cleaned: List[Dict[str, Any]] = []
+    seen = set()
+
+    for product in results:
+        if not isinstance(product, dict):
+            continue
+        item = dict(product)
+        if not item.get("name") and not item.get("canonical_name") and not item.get("catalog_variant"):
+            continue
+        item = resolve_actual_price(item)
+        price = price_num(item.get("price"))
+        if price is None:
+            continue
+        item["price_value"] = price
+        raw_name = str(
+            item.get("_raw_source_name")
+            or item.get("source_name")
+            or item.get("name")
+            or item.get("title")
+            or item.get("product_name")
+            or ""
+        ).strip()
+        if item.get("size_ml") in (None, ""):
+            item["size_ml"] = (
+                product_size_ml(item)
+                or product_size_ml({"name": raw_name})
+                or _catalog_default_size(item)
+            )
+        item["concentration"] = (
+            item.get("concentration")
+            or _query_concentration(raw_name)
+            or _query_concentration(item.get("name") or "")
+        )
+        item["comparison_key"] = _comparison_key(item)
+
+        identity = (
+            norm(item.get("store") or ""),
+            str(item.get("url") or "").strip().lower(),
+            norm(item.get("canonical_name") or item.get("catalog_variant") or item.get("name") or ""),
+            item.get("size_ml"),
+            norm(item.get("concentration") or ""),
+        )
+        if identity in seen:
+            continue
+        seen.add(identity)
+        cleaned.append(item)
+
+    groups: Dict[str, List[Dict[str, Any]]] = {}
+    for item in cleaned:
+        groups.setdefault(item["comparison_key"], []).append(item)
+
+    comparisons: List[Dict[str, Any]] = []
+    for key, offers in groups.items():
+        offers.sort(key=lambda x: x["price_value"])
+        best = offers[0]
+        comparisons.append({
+            "key": key,
+            "name": _comparison_name(best),
+            "size_ml": best.get("size_ml"),
+            "concentration": best.get("concentration"),
+            "best_price": best["price_value"],
+            "best_store": best.get("store"),
+            "best_url": best.get("url"),
+            "offer_count": len(offers),
+            "offers": offers,
+        })
+
+    comparisons.sort(key=lambda x: (x["best_price"], norm(x["name"])))
+    cleaned.sort(key=lambda x: (x["price_value"], norm(_comparison_name(x))))
+    return cleaned, comparisons
 
 
 # ============================================================
@@ -1549,12 +1793,16 @@ def _search_job_payload(job: Dict[str, Any]) -> Dict[str, Any]:
         for product in all_results
     ]
     results = sort_by_name(unique_results(normalized_results))
+    for product in results:
+        product.pop("_raw_source_name", None)
+    grouped_results, comparisons = enrich_and_group(results)
 
     return {
         "query": query,
-        "count": len(results),
-        "results": results,
-        "comparisons": [],
+        "count": len(grouped_results),
+        "results": grouped_results,
+        "comparisons": comparisons,
+        "comparison_count": len(comparisons),
         "errors": errors,
         "completed": bool(job.get("completed")),
     }
@@ -1861,11 +2109,16 @@ def search_perfume(q: str):
         for product in all_results
     ]
     results = sort_by_name(unique_results(normalized_results))
+    for product in results:
+        product.pop("_raw_source_name", None)
+    grouped_results, comparisons = enrich_and_group(results)
 
     return {
         "query": query,
-        "count": len(results),
-        "results": results,
+        "count": len(grouped_results),
+        "results": grouped_results,
+        "comparisons": comparisons,
+        "comparison_count": len(comparisons),
         "errors": errors,
     }
 
