@@ -252,6 +252,7 @@ def _load_family_registry() -> None:
             aliases = [aliases]
 
         variants = []
+        variant_records = []
         for product in family.get("products") or []:
             if not isinstance(product, dict):
                 continue
@@ -267,6 +268,11 @@ def _load_family_registry() -> None:
             if isinstance(product_aliases, str):
                 product_aliases = [product_aliases]
 
+            variant_records.append({
+                "canonical_name": canonical,
+                "aliases": [str(alias).strip() for alias in product_aliases if str(alias).strip()],
+            })
+
             for alias in product_aliases:
                 alias_text = str(alias or "").strip()
                 if not alias_text:
@@ -279,6 +285,7 @@ def _load_family_registry() -> None:
             "brand": brand,
             "query_aliases": [str(x).strip() for x in aliases if str(x).strip()],
             "canonical_variants": variants,
+            "variant_records": variant_records,
         }
 
         for alias in aliases:
@@ -286,6 +293,9 @@ def _load_family_registry() -> None:
             if alias_text:
                 FAMILY_ALIAS_TO_ID[norm(alias_text)] = family_id
                 FAMILY_ALIAS_TO_ID[norm(f"{brand} {alias_text}")] = family_id
+
+
+_load_family_registry()
 
 
 def _resolve_family(query: str) -> Optional[Dict[str, Any]]:
@@ -310,12 +320,135 @@ def _resolve_family(query: str) -> Optional[Dict[str, Any]]:
     return FAMILY_REGISTRY.get(family_id) if family_id else None
 
 
-def _registry_canonical_variant(brand: str, raw_name: str) -> str:
-    for candidate in (norm(raw_name), norm(f"{brand} {raw_name}")):
+def _family_identity_tokens(value: Any, brand: str = "") -> tuple:
+    """
+    Riduce un titolo commerciale alla sola identità della variante.
+
+    Vengono ignorati solo elementi che non identificano la variante:
+    brand, concentrazione, formato e sinonimi linguistici del genere.
+    I token che possono identificare una variante (Ice, Black, Daarej, ecc.)
+    restano intatti. Questo permette di accettare titoli diversi dei negozi
+    senza trasformare "Hawas Daarej" in una variante di "Hawas".
+    """
+    text = norm(value)
+    if brand:
+        brand_tokens = set(norm(brand).split())
+        text_tokens = text.split()
+        text_tokens = [token for token in text_tokens if token not in brand_tokens]
+        text = " ".join(text_tokens)
+
+    # Concentrazione e indicatori di confezione: non fanno parte della variante.
+    text = re.sub(
+        r"\b(?:eau de parfum|eau de toilette|eau de cologne|"
+        r"eau de toilette spray|extrait(?: de parfum)?|"
+        r"edp|edt|edc|parfum|perfume|spray|vaporisateur|"
+        r"vaporizzatore|"
+        r"\d{1,4}(?:[.,]\d+)?\s*ml|\d{1,4}\s*ml)\b",
+        " ",
+        text,
+    )
+
+    # Il genere viene normalizzato separatamente. Non lo lasciamo nei token
+    # della variante perché "Hawas Men" e "Hawas For Him" sono la stessa
+    # identità, mentre "Hawas Ice" deve restare distinta da "Hawas".
+    # Il genere viene rimosso dai token identitari e verificato separatamente.
+    # In questo modo "Hawas Ice Men" resta "Hawas Ice", mentre "Hawas Men"
+    # può essere confrontato con "Hawas For Him" tramite _family_gender_tokens.
+    text = re.sub(r"\b(?:pour homme|for men|for him|uomo|men|man|homme)\b", " ", text)
+    text = re.sub(r"\b(?:pour femme|for women|for her|donna|women|woman|femme)\b", " ", text)
+    text = re.sub(r"\s+", " ", text).strip()
+    return tuple(text.split())
+
+
+def _family_gender_tokens(value: Any) -> set:
+    text = norm(value)
+    genders = set()
+    if re.search(r"\b(?:pour homme|for men|for him|uomo|men|man|homme)\b", text):
+        genders.add("for him")
+    if re.search(r"\b(?:pour femme|for women|for her|donna|women|woman|femme)\b", text):
+        genders.add("for her")
+    return genders
+
+
+def _registry_canonical_variant(
+    brand: str,
+    raw_name: str,
+    family: Optional[Dict[str, Any]] = None,
+) -> str:
+    """Riconosce una variante del registry anche quando il retailer usa
+    concentrazione, formato, genere o ordine delle parole differenti."""
+    direct_candidates = (norm(raw_name), norm(f"{brand} {raw_name}"))
+    for candidate in direct_candidates:
         canonical = FAMILY_VARIANT_ALIASES.get(candidate)
         if canonical:
             return canonical
-    return ""
+
+    if not family:
+        return ""
+
+    raw_tokens = _family_identity_tokens(raw_name, brand)
+    raw_gender = _family_gender_tokens(raw_name)
+    if not raw_tokens:
+        return ""
+
+    best = ""
+    best_score = -1
+    for product in family.get("variant_records") or []:
+        if not isinstance(product, dict):
+            continue
+        canonical = str(product.get("canonical_name") or "").strip()
+        if not canonical:
+            continue
+        canonical_tokens = _family_identity_tokens(canonical, brand)
+        if not canonical_tokens:
+            continue
+        canonical_gender = _family_gender_tokens(canonical)
+
+        # La forma canonica deve coincidere ESATTAMENTE dopo aver rimosso
+        # soltanto brand/concentrazione/formato/genere. Questo è il confine
+        # che impedisce, per esempio, Hawas + Daarej -> Hawas.
+        if canonical_tokens == raw_tokens:
+            if canonical_gender and canonical_gender != raw_gender:
+                continue
+            score = len(canonical_tokens) + (2 if canonical_gender and raw_gender else 0)
+            if score > best_score:
+                best_score = score
+                best = canonical
+            continue
+
+        # Gli alias sono dati verificati nel registry. Per loro permettiamo
+        # una corrispondenza contenuta nel titolo commerciale (es. "Cobra"
+        # per "Hawas Kobra"), ma scegliamo sempre l'alias più specifico.
+        aliases = product.get("aliases") or []
+        if isinstance(aliases, str):
+            aliases = [aliases]
+        for alias in aliases:
+            alias_tokens = _family_identity_tokens(alias, brand)
+            if not alias_tokens:
+                continue
+            if not all(token in raw_tokens for token in alias_tokens):
+                continue
+            alias_gender = _family_gender_tokens(alias)
+            if alias_gender and alias_gender != raw_gender:
+                continue
+            # Unqualified aliases such as "For Him" / "For Her" are not
+            # sufficient to identify a variant by themselves.
+            alias_identity_without_gender = _family_identity_tokens(alias, brand)
+            if not alias_identity_without_gender:
+                continue
+            # Un alias che, una volta rimosso il genere, è identico alla
+            # variante canonica non può essere usato come prefisso generico:
+            # "Hawas For Him" non deve quindi catturare "Hawas Ice".
+            if alias_identity_without_gender == canonical_tokens:
+                continue
+            score = len(alias_tokens) + 1
+            if alias_gender and raw_gender:
+                score += 2
+            if score > best_score:
+                best_score = score
+                best = canonical
+
+    return best
 
 
 def _family_variant_allowed(
@@ -328,15 +461,6 @@ def _family_variant_allowed(
     if product_brand and family_brand and product_brand != family_brand:
         return False
 
-    allowed = {
-        norm(value)
-        for value in family.get("canonical_variants") or []
-    }
-
-    canonical_name = norm(product.get("name") or "")
-    if canonical_name in allowed:
-        return True
-
     raw_name = str(
         product.get("title")
         or product.get("product_name")
@@ -344,259 +468,60 @@ def _family_variant_allowed(
         or product.get("name")
         or ""
     ).strip()
+    if not raw_name:
+        return False
 
+    match_brand = str(product.get("brand") or "").strip() or str(family.get("brand") or "").strip()
     resolved = _registry_canonical_variant(
-        str(product.get("brand") or ""),
+        match_brand,
         raw_name,
+        family=family,
     )
+    if resolved:
+        return True
 
-    return bool(resolved and norm(resolved) in allowed)
+    # Se il registry non riesce a identificare la variante, NON la facciamo
+    # passare solo perché il titolo contiene la parola della famiglia.
+    # Prima chiediamo al catalogo master se esiste una referenza canonica
+    # compatibile con quella famiglia. Il registry resta il veto finale per
+    # le varianti che conosce esplicitamente.
+    candidate_name = canonical_product_name(product, "")
+    candidate_tokens = set(norm(candidate_name).split())
+    family_tokens = set(norm(family.get("query_aliases", [""])[0]).split())
+    family_tokens.discard(norm(family.get("brand") or ""))
 
-
-_load_family_registry()
-
-
-
-SET_PRODUCTS = {
-    "gift set", "set regalo", "coffret", "bundle", "travel set",
-    "discovery set", "kit",
-}
-
-NON_PERFUME = {
-    # Deodoranti / antitraspiranti
-    "deodorant", "deodorante", "deodorants", "deodorantes", "déodorant",
-    "deo", "deo spray", "deo stick", "deostick", "deodorant stick",
-    "deodorant spray", "deodorant roll on", "antiperspirant",
-    "antitranspirant", "anti transpirant", "anti-transpirant",
-    # Doccia / bagno / capelli (incluse le forme tedesche)
-    "shampoo", "shampo", "conditioner", "hair conditioner", "hair care",
-    "hair", "shower gel", "showergel", "gel douche", "gel doccia",
-    "doccia gel", "duschgel", "dusch gel", "duschbad", "dusch bad",
-    "shower", "body wash", "body gel", "bath", "bath gel", "bath oil",
-    "bagnoschiuma", "bagno schiuma", "douche", "gel da bagno",
-    # Creme / lozioni / trattamenti corpo-viso-mani (incluse forme tedesche)
-    "body lotion", "body cream", "body creme", "body butter", "body milk",
-    "body moisturizer", "body moisturiser", "body balm", "body mist",
-    "hair mist", "face mist", "fragrance mist", "body splash",
-    "hand cream", "hand creme", "hand lotion", "face cream", "face creme",
-    "face lotion", "face wash", "facial cream", "facial lotion",
-    "cream", "creme", "crème", "crema", "creme hydratante",
-    "lotion", "lozione", "locion", "lotion corps", "moisturizer",
-    "moisturiser", "emulsion", "émulsion", "emulsione", "serum", "siero",
-    "balsam", "balm", "baume", "körperlotion", "körper lotion",
-    "körpercreme", "körper creme", "gesichtscreme", "gesicht creme",
-    "handcreme", "haarshampoo",
-    # Oli
-    "body oil", "oil", "huile", "olio", "fragrance oil", "perfume oil",
-    "essential oil", "huile essentielle", "körperöl", "körper öl",
-    # Saponi / barba / igiene
-    "soap", "savon", "sapone", "seife", "shaving", "shave",
-    "after shave", "aftershave", "beard", "barba", "rasage", "razor",
-    "roll on", "roll-on", "rasier",
-    # Altri cosmetici / casa
-    "candle", "diffuser", "room spray", "home fragrance", "fabric spray",
-    "scrub", "cleanser", "mask", "toothpaste", "toothbrush", "detergent",
-    "powder", "talc",
-}
-
-
-def _catalog_paths() -> List[Path]:
-    base = Path(BASE_DIR).resolve()
-    candidates = [
-        base / CATALOG_FILENAME,
-        base.parent / CATALOG_FILENAME,
-        Path.cwd() / CATALOG_FILENAME,
-    ]
-    unique = []
-    seen = set()
-    for candidate in candidates:
-        if str(candidate) not in seen:
-            seen.add(str(candidate))
-            unique.append(candidate)
-    return unique
-
-
-def _word_tokens(value: Any) -> List[str]:
-    return re.findall(r"[A-Za-zÀ-ÿ0-9]+(?:['’][A-Za-zÀ-ÿ0-9]+)?", str(value or ""))
-
-
-def _load_catalog() -> None:
-    global CATALOG_PRODUCTS, CATALOG_ALIASES, CATALOG_BRANDS, CATALOG_FAMILY_FORMS
-    payload = None
-    for path in _catalog_paths():
-        try:
-            with path.open("r", encoding="utf-8") as file:
-                payload = json.load(file)
-            break
-        except (OSError, ValueError, TypeError):
+    catalog_match = None
+    for catalog_item in CATALOG_PRODUCTS:
+        if not isinstance(catalog_item, dict):
             continue
-    if not isinstance(payload, dict):
-        return
-    products = payload.get("products", [])
-    if not isinstance(products, list):
-        return
-    CATALOG_PRODUCTS = [item for item in products if isinstance(item, dict)]
-    forms = set()
-    for item in CATALOG_PRODUCTS:
-        brand = str(item.get("brand") or "").strip()
-        canonical = str(item.get("name") or "").strip()
-        if not canonical:
+        catalog_brand = norm(catalog_item.get("brand") or "")
+        if family_brand and catalog_brand != family_brand:
             continue
-        candidates = [canonical]
-        aliases = item.get("aliases")
-        if isinstance(aliases, list):
-            candidates.extend(str(alias or "").strip() for alias in aliases)
-        for candidate in candidates:
-            if not candidate:
-                continue
-            key = norm(candidate)
-            CATALOG_ALIASES[key] = canonical
-            if brand:
-                CATALOG_ALIASES[norm(f"{brand} {candidate}")] = canonical
-                CATALOG_BRANDS[key] = brand
-                CATALOG_BRANDS[norm(f"{brand} {candidate}")] = brand
-        if brand:
-            CATALOG_BRANDS[norm(canonical)] = brand
-        forms.add(canonical)
-    CATALOG_FAMILY_FORMS = sorted(forms, key=lambda value: len(norm(value).split()), reverse=True)
-
-
-_load_catalog()
-
-
-def _catalog_brand_candidates(query: str) -> List[str]:
-    q_tokens = [token for token in norm(query).split() if token not in IGNORED_WORDS]
-    if not q_tokens:
-        return []
-
-    # Per una variante specifica, se il catalogo non contiene quella variante,
-    # togliamo solo i marcatori generici e risaliamo comunque al brand della famiglia.
-    # Nessun profumo è hard-coded.
-    core_tokens = [
-        token for token in q_tokens
-        if not any(token == marker_token for marker in VARIANT_MARKERS for marker_token in norm(marker).split())
-    ]
-    search_sets = [q_tokens]
-    if core_tokens and core_tokens != q_tokens:
-        search_sets.append(core_tokens)
-
-    brands = []
-    seen = set()
-    for search_tokens in search_sets:
-        for item in CATALOG_PRODUCTS:
-            brand = str(item.get("brand") or "").strip()
-            name = str(item.get("name") or "").strip()
-            text = norm(f"{brand} {name}")
-            if brand and all(token in text for token in search_tokens):
-                key = norm(brand)
-                if key not in seen:
-                    seen.add(key)
-                    brands.append(brand)
-    return brands[:4]
-
-
-def _catalog_family_candidates(query: str) -> List[str]:
-    """
-    Restituisce TUTTE le denominazioni del catalogo che appartengono alla
-    famiglia cercata. Non contiene nomi di profumi hard-coded.
-
-    La sorgente primaria è il catalogo locale. Se disponibile, Fragella viene
-    usato solo per ampliare il catalogo della famiglia; il risultato completo
-    viene poi passato agli scraper come serie di query separate.
-    """
-    query_tokens = [
-        token for token in norm(query).split()
-        if token not in IGNORED_WORDS
-    ]
-    if not query_tokens:
-        return []
-
-    candidates: List[str] = []
-    seen = set()
-
-    def add(value: Any, brand: str = "") -> None:
-        name = str(value or "").strip()
-        if not name:
-            return
-        # Preferiamo il solo nome del profumo: il filtro finale continuerà
-        # comunque a verificare che la famiglia richiesta sia presente.
-        key = norm(name)
-        if key and key not in seen:
-            seen.add(key)
-            candidates.append(name)
-
-    # 1) Catalogo locale
-    for item in CATALOG_PRODUCTS:
-        if not isinstance(item, dict):
+        catalog_name = str(catalog_item.get("name") or "").strip()
+        if not catalog_name:
             continue
-        name = str(item.get("name") or "").strip()
-        brand = str(item.get("brand") or "").strip()
-        if not name:
+        catalog_name_n = norm(catalog_name)
+        candidate_n = norm(candidate_name)
+        if candidate_n != catalog_name_n:
             continue
-        text = norm(f"{brand} {name}")
-        if all(token in text for token in query_tokens):
-            add(name, brand)
-        aliases = item.get("aliases")
-        if isinstance(aliases, list):
-            for alias in aliases:
-                alias_text = norm(f"{brand} {alias}")
-                if all(token in alias_text for token in query_tokens):
-                    add(name, brand)
+        catalog_match = catalog_item
+        break
 
-    # 2) Catalogo remoto: non ci fermiamo al primo record.
-    #    Questo è il punto che evita il caso "Eros + Eros Flame" soltanto.
-    try:
-        remote_items = fragella_search(query, 50)
-        for item in remote_items:
-            if not isinstance(item, dict):
-                continue
-            name = str(item.get("name") or "").strip()
-            brand = str(item.get("brand") or "").strip()
-            if not name:
-                continue
-            text = norm(f"{brand} {name}")
-            if all(token in text for token in query_tokens):
-                add(name, brand)
-    except Exception:
-        pass
+    if catalog_match is not None:
+        catalog_name_n = norm(catalog_match.get("name") or "")
+        # Il catalogo deve identificare realmente la famiglia, non solo
+        # contenere un token preso dal titolo del retailer.
+        if family_tokens and family_tokens.issubset(set(catalog_name_n.split())):
+            # Se il registry conosce una variante con la stessa identità ma
+            # non l'ha riconosciuta per differenze di formato/genere, il nome
+            # del catalogo può essere usato come fallback canonico.
+            return True
 
-    # Più specifico prima, poi ordine alfabetico stabile.
-    candidates.sort(key=lambda value: (-len(norm(value).split()), norm(value)))
-    return candidates
-
-
-def _catalog_family_form(query: str) -> str:
-    q_tokens = [token for token in norm(query).split() if token not in IGNORED_WORDS]
-    if not q_tokens:
-        return str(query or "").strip()
-    best = None
-    for item in CATALOG_PRODUCTS:
-        canonical = str(item.get("name") or "").strip()
-        if not canonical:
-            continue
-        original_tokens = _word_tokens(canonical)
-        normalized_tokens = norm(canonical).split()
-        for index in range(len(normalized_tokens) - len(q_tokens) + 1):
-            if normalized_tokens[index:index + len(q_tokens)] == q_tokens:
-                best = " ".join(original_tokens[index:index + len(q_tokens)])
-                return best
-    return str(query or "").strip()
+    return False
 
 
 def _move_gender_after_family(name: str, family_query: str = "") -> str:
-    """
-    Porta SEMPRE il genere alla fine del nome del profumo.
-
-    Formato rigoroso ScentHunter:
-        Brand - Nome profumo - tutto il resto - Genere
-
-    Esempi:
-        Donna Born In Roma Coral Fantasy -> Born in Roma Coral Fantasy Donna
-        Uomo Born In Roma Coral Fantasy -> Born in Roma Coral Fantasy Uomo
-        Born In Roma Donna Coral Fantasy -> Born in Roma Coral Fantasy Donna
-        Born In Roma Uomo Extradose -> Born in Roma Extradose Uomo
-        Born In Roma Intense Uomo -> Born in Roma Intense Uomo
-    """
+    """Porta il genere in coda al nome visualizzato, senza modificarne la variante."""
     raw = re.sub(r"\s+", " ", str(name or "")).strip()
     if not raw:
         return raw
@@ -606,8 +531,6 @@ def _move_gender_after_family(name: str, family_query: str = "") -> str:
     if not matches:
         return raw
 
-    # Prendiamo il primo indicatore di genere e lo rimuoviamo da qualsiasi
-    # posizione. Il genere viene poi sempre aggiunto in coda al nome completo.
     gender_map = {
         "uomo": "Uomo", "donna": "Donna",
         "men": "Uomo", "man": "Uomo",
@@ -618,9 +541,10 @@ def _move_gender_after_family(name: str, family_query: str = "") -> str:
     without_gender = gender_re.sub(" ", raw)
     without_gender = re.sub(r"\s+", " ", without_gender).strip()
 
-    # Il catalogo può fornire la forma canonica della famiglia (es. Born in Roma).
-    # Qui NON rimettiamo il genere in mezzo: deve stare sempre alla fine.
-    family_tokens = [token for token in norm(family_query).split() if token not in IGNORED_WORDS]
+    family_tokens = [
+        token for token in norm(family_query).split()
+        if token not in IGNORED_WORDS
+    ]
     base_tokens = norm(without_gender).split()
     original_tokens = _word_tokens(without_gender)
 
@@ -628,14 +552,17 @@ def _move_gender_after_family(name: str, family_query: str = "") -> str:
         for index in range(len(base_tokens) - len(family_tokens) + 1):
             if base_tokens[index:index + len(family_tokens)] != family_tokens:
                 continue
-            family_text = _catalog_family_form(family_query) if family_query else " ".join(original_tokens[index:index + len(family_tokens)])
+            family_text = (
+                _catalog_family_form(family_query)
+                if family_query else
+                " ".join(original_tokens[index:index + len(family_tokens)])
+            )
             before = " ".join(original_tokens[:index]).strip()
             after = " ".join(original_tokens[index + len(family_tokens):]).strip()
-            parts = [before, family_text, after, gender]
-            return " ".join(part for part in parts if part).strip()
+            return " ".join(
+                part for part in [before, family_text, after, gender] if part
+            ).strip()
 
-    # Se non riusciamo a ricostruire la famiglia, manteniamo tutto il nome
-    # nell'ordine originale, ma il genere viene comunque portato in coda.
     return f"{without_gender} {gender}".strip()
 
 
@@ -655,7 +582,7 @@ def canonical_product_name(product: Dict[str, Any], family_query: str = "") -> s
     if not raw_name:
         return ""
     canonical = (
-        _registry_canonical_variant(brand, raw_name)
+        _registry_canonical_variant(brand, raw_name, _resolve_family(family_query))
         or CATALOG_ALIASES.get(norm(raw_name))
         or CATALOG_ALIASES.get(norm(f"{brand} {raw_name}"))
     )
@@ -2157,3 +2084,50 @@ def product(
             else "Nessuna offerta disponibile al momento"
         ),
     }
+
+
+# ============================================================
+# ENDPOINT DIAGNOSTICO HTTP
+# ============================================================
+@app.get("/diagnostic/search")
+def diagnostic_search_endpoint(
+    query: str = "",
+    stores: str = "",
+):
+    """
+    Endpoint diagnostico HTTP per Railway.
+    Non modifica la pipeline normale e non scrive sul database.
+
+    Esempio:
+      /diagnostic/search?query=Hawas
+      /diagnostic/search?query=Hawas&stores=bplatz,deloox,notino
+    """
+    query = str(query or "").strip()
+    if not query:
+        raise HTTPException(
+            status_code=400,
+            detail="Parametro 'query' obbligatorio.",
+        )
+
+    selected_stores = None
+    if stores.strip():
+        selected_stores = [
+            item.strip()
+            for item in stores.split(",")
+            if item.strip()
+        ]
+
+    try:
+        import diagnostic_search as diagnostic
+
+        report = diagnostic.run_query(
+            query=query,
+            stores=selected_stores,
+        )
+        return report
+
+    except Exception as exc:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Diagnostic error: {type(exc).__name__}: {exc}",
+        )
