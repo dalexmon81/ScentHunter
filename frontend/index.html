@@ -4,14 +4,14 @@
 <meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>ScentHunter</title>
 <style>
-*{box-sizing:border-box} html{background:#050607} body{margin:0;background:radial-gradient(circle at 50% 0,#111713 0,#07090a 30%,#030405 100%);color:#f7f7f5;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif}
+*{box-sizing:border-box} html{-webkit-text-size-adjust:100%;text-size-adjust:100%} html{background:#050607} body{margin:0;background:radial-gradient(circle at 50% 0,#111713 0,#07090a 30%,#030405 100%);color:#f7f7f5;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif}
 .app{width:min(100%,760px);margin:auto;min-height:100vh;padding:22px 18px 110px}
 .top{display:flex;align-items:center;justify-content:center;position:relative;padding:5px 0 20px}
 .logo{font-size:31px;font-weight:800;letter-spacing:-1.5px} .gold{color:#e7b83f} .bell{position:absolute;right:4px;font-size:24px;color:#e7b83f}
 .search-card{padding:0;margin:0 0 18px;border:0;background:none}
 input{width:100%;border:1px solid #34363a;outline:0;border-radius:18px;padding:17px 18px 17px 48px;background:linear-gradient(135deg,#181a1d,#101113);color:white;font-size:17px}
 .searchwrap{position:relative} .searchicon{position:absolute;left:17px;top:13px;font-size:24px;z-index:2}
-button{border:0;font-weight:800} #searchButton{display:block!important}
+button{border:0;font-weight:800} #searchButton{display:block!important} #status{display:none!important}
 .hero{border:1px solid #234638;border-radius:22px;padding:25px 20px;background:radial-gradient(circle at 85% 45%,#173c2d 0,#0b1c16 24%,#07100d 58%,#060808 100%);min-height:205px;position:relative;overflow:hidden}
 .hero h2{font-size:22px;margin:0 0 12px;max-width:64%;line-height:1.1} .hero p{font-size:16px;line-height:1.45;margin:0 0 18px;max-width:58%}
 .herobtn{display:inline-block;background:linear-gradient(#f4ca5d,#d99c22);color:#111;padding:13px 20px;border-radius:30px;font-size:14px;font-weight:900}
@@ -86,7 +86,7 @@ html,body{min-height:100%;overflow-x:hidden}
 /* iPhone/Safari: viewport stabile + contenuto scrollabile */
 html,body{height:100%;height:100dvh;overflow:hidden!important}
 body{position:relative}
-.app{height:100%;height:100dvh;min-height:0!important;overflow-y:auto;-webkit-overflow-scrolling:touch;padding-bottom:calc(125px + env(safe-area-inset-bottom))!important}
+.app{width:100%!important;max-width:760px!important;height:100%;height:100dvh;min-height:0!important;overflow-x:hidden!important;overflow-y:auto;-webkit-overflow-scrolling:touch;padding-bottom:calc(125px + env(safe-area-inset-bottom))!important}
 .nav{position:fixed!important;left:0!important;right:0!important;bottom:0!important;top:auto!important;transform:none!important;width:100%!important;max-width:760px!important;margin:0 auto!important;z-index:2147483647!important}
 </style>
 
@@ -255,7 +255,7 @@ body{position:relative}
   }
   .hero.hero-search .hero-actions input{
     height:48px!important;
-    font-size:14px!important;
+    font-size:16px!important;
     padding-left:43px!important;
   }
   .hero.hero-search .hero-actions .herobtn{
@@ -276,16 +276,19 @@ body{position:relative}
 .home-art-image{position:absolute;inset:0;width:100%;height:100%;display:block;object-fit:cover}
 .home-search-overlay{position:absolute;inset:0;z-index:2;pointer-events:none}
 .home-search-field{position:absolute;left:6.0%;top:78.05%;width:48.6%;height:6.35%;pointer-events:auto;display:flex;align-items:center}
-.home-search-field input{width:100%;height:100%;margin:0;border:1px solid #3b403e;border-radius:18px;background:rgba(18,21,22,.97);color:#f7f7f5;font-size:clamp(14px,2.3vw,19px);padding:0 15px 0 47px;outline:0;box-shadow:none}
+.home-search-field input{width:100%;height:100%;margin:0;border:1px solid #3b403e;border-radius:18px;background:rgba(18,21,22,.97);color:#f7f7f5;font-size:16px!important;padding:0 15px 0 47px;outline:0;box-shadow:none}
 .home-search-field input::placeholder{color:#9b9da0;opacity:1}
 .home-search-icon{position:absolute;left:14px;top:50%;transform:translateY(-50%);width:23px;height:23px;z-index:2;color:#a5a7aa;pointer-events:none}
 .home-search-icon svg{width:100%;height:100%;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round}
 .home-search-button{position:absolute;left:6.0%;top:86.4%;width:48.6%;height:6.5%;pointer-events:auto;border:0;border-radius:18px;background:linear-gradient(#f4ca5d,#d99c22);color:#111;font-size:clamp(12px,2.0vw,17px);font-weight:900;letter-spacing:.1px;cursor:pointer;box-shadow:none}
-.home-search-button:disabled{opacity:.72;cursor:default}
+.home-search-button:disabled{opacity:1!important;cursor:default}
+.home-search-button.searching{letter-spacing:.1px}
+.home-search-button.searching .search-fixed{display:inline-block}
+.home-search-button.searching .search-dots{display:inline-block;min-width:3ch;text-align:left}
 @media(max-width:390px){
  .home-art{border-radius:18px}
  .home-search-field{left:6.0%;width:48.6%;top:78.0%;height:6.35%}
- .home-search-field input{border-radius:14px;padding-left:40px;font-size:13px}
+ .home-search-field input{border-radius:14px;padding-left:40px;font-size:16px!important}
  .home-search-icon{left:12px;width:20px;height:20px}
  .home-search-button{left:6.0%;width:48.6%;top:86.35%;height:6.55%;border-radius:14px;font-size:11px}
 }
@@ -766,17 +769,45 @@ function shGroupData(data){
     return b;
   }
 
+  // INFERENZA GENERALE DEL FORMATO
+  // Se per lo stesso profumo esiste una sola misura esplicita (es. 100 ml),
+  // tutte le offerte dello stesso profumo che non dichiarano i ml vengono
+  // inserite automaticamente nella stessa categoria.
+  // La regola vale per TUTTI i profumi, non solo Liquid Brun.
+  // Se sono presenti più misure (es. 50 e 100 ml), non viene fatta alcuna
+  // supposizione: le offerte senza formato restano nella categoria unknown.
+  const inferredSizeByGroup=new Map();
+
+  raw.forEach(o=>{
+    const groupName=groupingName(o);
+    const size=sizeOf(o);
+    if(!groupName||!size||liquidBrunFamily(o))return;
+
+    if(!inferredSizeByGroup.has(groupName)){
+      inferredSizeByGroup.set(groupName,new Set());
+    }
+    inferredSizeByGroup.get(groupName).add(size);
+  });
+
   const map=new Map();
 
   raw.forEach(o=>{
     const cname=canonicalName(o);
     const groupName=groupingName(o);
     if(!cname||!groupName)return;
-    const size=sizeOf(o);
-    // Per Liquid Brun il formato NON deve creare una categoria separata:
-    // 100 ml e formato non dichiarato appartengono alla stessa famiglia,
-    // così come 150 ml e formato non dichiarato per la Limited Edition.
+
+    const explicitSize=sizeOf(o);
     const lb=liquidBrunFamily(o);
+    const knownSizes=inferredSizeByGroup.get(groupName);
+    const inferredSize=(
+      !lb && !explicitSize && knownSizes && knownSizes.size===1
+    ) ? [...knownSizes][0] : "";
+    const size=explicitSize||inferredSize;
+
+    // Per Liquid Brun il formato NON deve creare una categoria separata.
+    // Per tutti gli altri profumi, se esiste una sola misura esplicita,
+    // un'offerta senza ml viene assegnata a quella stessa categoria.
+    // Con più misure diverse, invece, non facciamo supposizioni.
     const key=groupName+"|"+(lb ? "liquid-brun-family" : (size||"unknown"));
 
     if(!map.has(key)){
@@ -794,6 +825,7 @@ function shGroupData(data){
 
     const g=map.get(key);
     if(!g.brand && o.brand)g.brand=o.brand;
+    if(!g.image)g.image=o.image||o.image_url||o.thumbnail||"";;
 
     // DEDUPLICA LE OFFERTE.
     // ScentHunter deve mostrare una sola offerta per negozio dentro
@@ -857,8 +889,7 @@ function shGroupData(data){
       return shNum(a)-shNum(b);
     });
 
-    // Sceglie l'immagine dal negozio con il prezzo migliore che
-    // dispone di un URL immagine. Non modifica il raggruppamento.
+    // Seleziona l'immagine dalla migliore offerta disponibile.
     const imageOffer=g.offers.find(o=>String(o.image||o.image_url||o.thumbnail||"").trim());
     g.image=imageOffer?String(imageOffer.image||imageOffer.image_url||imageOffer.thumbnail||"").trim():"";
 
@@ -968,8 +999,13 @@ async function fetchJSONWithTimeout(url,ms=90000){
 }
 
 async function searchPerfume(){
- const q=queryInput.value.trim();if(!q){statusBox.textContent="Scrivi il nome di un profumo.";resultsBox.innerHTML="";errorsBox.innerHTML="";return}
- searchButton.disabled=true;searchButton.textContent="Cerco…";statusBox.textContent="Ricerca in corso…";resultsBox.innerHTML="";errorsBox.innerHTML="";document.getElementById("searchOutput").scrollIntoView({behavior:"smooth",block:"start"});
+ const q=queryInput.value.trim();if(!q){statusBox.textContent="";resultsBox.innerHTML="";errorsBox.innerHTML="";return}
+ searchButton.disabled=true;searchButton.classList.add("searching");
+ let dots=0;
+ const updateSearchButton=()=>{dots=(dots+1)%4;searchButton.innerHTML='<span class="search-fixed">CERCO</span><span class="search-dots">'+". ".trim().repeat(0)+". ".trim().repeat(dots)+'</span>'};
+ updateSearchButton();
+ const dotsTimer=setInterval(updateSearchButton,500);
+ statusBox.textContent="";resultsBox.innerHTML="";errorsBox.innerHTML="";
  try{
   const term=q;
   const data=await fetchJSONWithTimeout(
@@ -982,7 +1018,7 @@ async function searchPerfume(){
   refreshWishlistFromResults(groups.flatMap(g=>g.offers.map(o=>({name:g.name||"",brand:g.brand||"",price:shPrice(o),price_value:o.price_value,store:o.store||"",url:o.url||""}))));
   if(data.errors&&Object.keys(data.errors).length)errorsBox.innerHTML="Alcuni negozi non hanno risposto: "+Object.keys(data.errors).map(esc).join(", ")+".";
  }catch(e){console.error(e);statusBox.textContent="Impossibile completare la ricerca."}
- finally{searchButton.disabled=false;searchButton.textContent="Cerca"}
+ finally{clearInterval(dotsTimer);searchButton.disabled=false;searchButton.classList.remove("searching");searchButton.textContent="INIZIA LA RICERCA"}
 }
 
 searchButton.addEventListener("click",searchPerfume);queryInput.addEventListener("keydown",e=>{if(e.key==="Enter"){e.preventDefault();searchPerfume()}});
