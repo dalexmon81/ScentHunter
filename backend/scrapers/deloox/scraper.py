@@ -913,69 +913,383 @@ def _discover(session, q):
 
 
 def diagnose_search(session, query):
-    """Deep Deloox discovery diagnostic; does not change normal search."""
+    """Deep, read-only diagnostic of the REAL generic Deloox discovery.
+
+    This diagnostic follows the same discovery order used by _discover():
+      1. current /chercher.html search surface
+      2. product sitemaps
+      3. generic category/Product-line discovery
+      4. final bounded /chercher.html retry
+
+    It records the HTTP result of every stage, timing, final URL, content
+    type/size, candidate URLs and validation results.  It never contains
+    product-specific seeds or exceptions.
+    """
+    import time
+
     query = clean(query)
     report = {
         "query": query,
-        "category_endpoints": [],
-        "filter_urls": [],
+        "base_url": BASE_URL,
+        "discovery_order": [
+            "search",
+            "product_sitemap",
+            "categories",
+            "final_search_retry",
+        ],
         "candidate_urls": [],
         "validated_products": [],
-        "search_fallback": [],
+        "stages": {
+            "search": [],
+            "product_sitemap": [],
+            "categories": [],
+            "final_search_retry": [],
+        },
+        "summary": {
+            "candidate_count": 0,
+            "validated_count": 0,
+        },
     }
+
     if not query:
         return report
 
     seen_candidates = set()
-    for category_url in _category_pages():
-        entry = {"url": category_url, "status": None, "filter_urls": [], "candidate_urls": []}
-        try:
-            r = session.get(category_url, headers=HEADERS, timeout=TIMEOUT)
-            entry["status"] = r.status_code
-        except requests.RequestException as exc:
-            entry["error"] = str(exc)
-            report["category_endpoints"].append(entry)
-            continue
-        report["category_endpoints"].append(entry)
-        if r.status_code >= 400:
-            continue
-        filter_urls = _category_product_line_links(r.text, query)
-        entry["filter_urls"] = filter_urls[:20]
-        report["filter_urls"].extend(filter_urls)
-        pages = [(category_url, False)] + [(url, True) for url in filter_urls]
-        for page_url, filtered in pages:
-            try:
-                page = session.get(page_url, headers=HEADERS, timeout=TIMEOUT)
-            except requests.RequestException:
+
+    def request_trace(stage, url, started, response=None, error=None):
+        elapsed_ms = round((time.perf_counter() - started) * 1000, 1)
+        item = {
+            "url": url,
+            "elapsed_ms": elapsed_ms,
+        }
+
+        if response is not None:
+            item.update({
+                "status": response.status_code,
+                "final_url": getattr(response, "url", url),
+                "content_type": (
+                    response.headers.get("content-type")
+                    if getattr(response, "headers", None)
+                    else None
+                ),
+                "bytes": len(response.content or b""),
+            })
+
+        if error is not None:
+            item["error"] = f"{type(error).__name__}: {error}"
+
+        report["stages"][stage].append(item)
+        return item
+
+    def add_candidates(urls, stage_item=None):
+        added = []
+        for url in urls or []:
+            if not url or url in seen_candidates:
                 continue
-            if page.status_code >= 400:
-                continue
-            candidates = _candidate_product_urls(page.text, query, accept_all_products=filtered)
-            entry["candidate_urls"].extend(candidates[:40])
-            for url in candidates:
-                if url in seen_candidates:
-                    continue
-                seen_candidates.add(url)
-                report["candidate_urls"].append(url)
-                if len(report["candidate_urls"]) >= 80:
-                    break
+            seen_candidates.add(url)
+            report["candidate_urls"].append(url)
+            added.append(url)
             if len(report["candidate_urls"]) >= 80:
                 break
-        if len(report["candidate_urls"]) >= 80:
+
+        if stage_item is not None:
+            stage_item["candidate_count"] = len(added)
+            stage_item["candidates"] = added[:40]
+
+        return added
+
+    # ------------------------------------------------------------
+    # 1. PRIMARY: the current Deloox search surface.
+    # ------------------------------------------------------------
+    discovery_queries = _candidate_queries(query)[:2]
+    search_endpoints = (
+        "/chercher.html?q=",
+        "/chercher.html?search=",
+        "/chercher.html?query=",
+    )
+
+    for discovery_query in discovery_queries:
+        for route in search_endpoints:
+            endpoint = BASE_URL + route + quote_plus(discovery_query)
+            started = time.perf_counter()
+
+            try:
+                response = session.get(
+                    endpoint,
+                    headers=HEADERS,
+                    timeout=TIMEOUT,
+                )
+            except requests.RequestException as exc:
+                request_trace(
+                    "search",
+                    endpoint,
+                    started,
+                    error=exc,
+                )
+                continue
+
+            trace = request_trace(
+                "search",
+                endpoint,
+                started,
+                response=response,
+            )
+
+            if response.status_code >= 400:
+                continue
+
+            candidates = _candidate_product_urls(
+                response.text,
+                query,
+                discovery_query=discovery_query,
+                accept_all_products=True,
+            )
+            added = add_candidates(candidates, trace)
+
+            if candidates:
+                trace["discovery_query"] = discovery_query
+                trace["route"] = route
+                trace["returned_candidates"] = len(candidates)
+                break
+
+        if report["candidate_urls"]:
             break
 
-    for url in report["candidate_urls"]:
-        try:
-            r = session.get(url, headers=HEADERS, timeout=TIMEOUT)
-        except requests.RequestException:
-            continue
-        if r.status_code >= 400:
-            continue
-        item = _product(url, r.text, query)
-        if item:
-            report["validated_products"].append(item)
+    # ------------------------------------------------------------
+    # 2. SECONDARY: product sitemap discovery.
+    # Trace the actual sitemap requests and extract query-matching
+    # product URLs using the same generic rules.
+    # ------------------------------------------------------------
+    if not report["candidate_urls"]:
+        sitemap_roots = (
+            BASE_URL + "/sitemap.xml",
+            BASE_URL + "/sitemap_index.xml",
+            BASE_URL + "/sitemap-index.xml",
+            BASE_URL + "/en/sitemap.xml",
+        )
 
-    for route in (
+        pending = list(sitemap_roots)
+        seen_sitemaps = set()
+
+        while (
+            pending
+            and len(seen_sitemaps) < 2
+            and not report["candidate_urls"]
+        ):
+            sitemap_url = pending.pop(0)
+            if sitemap_url in seen_sitemaps:
+                continue
+            seen_sitemaps.add(sitemap_url)
+
+            started = time.perf_counter()
+            try:
+                response = session.get(
+                    sitemap_url,
+                    headers=HEADERS,
+                    timeout=TIMEOUT,
+                )
+            except requests.RequestException as exc:
+                request_trace(
+                    "product_sitemap",
+                    sitemap_url,
+                    started,
+                    error=exc,
+                )
+                continue
+
+            trace = request_trace(
+                "product_sitemap",
+                sitemap_url,
+                started,
+                response=response,
+            )
+
+            if response.status_code >= 400:
+                continue
+
+            body = response.text.lstrip()
+            content_type = (
+                response.headers.get("content-type") or ""
+            ).lower()
+
+            if "xml" not in content_type and not body.startswith(
+                ("<?xml", "<urlset", "<sitemapindex")
+            ):
+                trace["xml_usable"] = False
+                continue
+
+            trace["xml_usable"] = True
+            soup = BeautifulSoup(response.text, "xml")
+
+            found = []
+            for loc in soup.find_all("loc"):
+                value = clean(loc.get_text())
+                if not value:
+                    continue
+
+                low = value.lower()
+
+                if re.search(r"/(?:product|produit)/", low):
+                    if tokens(query).issubset(tokens(value)):
+                        found.append(value)
+                        if len(found) >= 40:
+                            break
+                elif low.endswith(".xml") or "sitemap" in low:
+                    if value not in seen_sitemaps:
+                        pending.append(value)
+
+            add_candidates(found, trace)
+
+    # ------------------------------------------------------------
+    # 3. FALLBACK: generic live category discovery.
+    # ------------------------------------------------------------
+    if not report["candidate_urls"]:
+        category_urls = _category_pages(session)
+
+        for category_url in category_urls:
+            if len(report["candidate_urls"]) >= 80:
+                break
+
+            started = time.perf_counter()
+            try:
+                response = session.get(
+                    category_url,
+                    headers=HEADERS,
+                    timeout=TIMEOUT,
+                )
+            except requests.RequestException as exc:
+                request_trace(
+                    "categories",
+                    category_url,
+                    started,
+                    error=exc,
+                )
+                continue
+
+            trace = request_trace(
+                "categories",
+                category_url,
+                started,
+                response=response,
+            )
+
+            if response.status_code >= 400:
+                continue
+
+            product_line_links = _category_product_line_links(
+                response.text,
+                query,
+            )
+            trace["product_line_links"] = product_line_links[:20]
+
+            candidate_pages = (
+                product_line_links[:12]
+                if product_line_links
+                else [category_url]
+            )
+
+            category_candidates = []
+
+            for page_url in candidate_pages:
+                if page_url == category_url:
+                    page_html = response.text
+                else:
+                    page_started = time.perf_counter()
+                    try:
+                        page = session.get(
+                            page_url,
+                            headers=HEADERS,
+                            timeout=TIMEOUT,
+                        )
+                    except requests.RequestException as exc:
+                        page_trace = request_trace(
+                            "categories",
+                            page_url,
+                            page_started,
+                            error=exc,
+                        )
+                        page_trace["parent_category"] = category_url
+                        continue
+
+                    page_trace = request_trace(
+                        "categories",
+                        page_url,
+                        page_started,
+                        response=page,
+                    )
+                    page_trace["parent_category"] = category_url
+
+                    if page.status_code >= 400:
+                        continue
+
+                    page_html = page.text
+
+                candidates = _candidate_product_urls(
+                    page_html,
+                    query,
+                    accept_all_products=bool(product_line_links),
+                )
+                category_candidates.extend(candidates)
+
+                if len(category_candidates) >= 40:
+                    break
+
+            add_candidates(category_candidates, trace)
+
+    # ------------------------------------------------------------
+    # 4. Validate every discovered candidate through the real parser.
+    # ------------------------------------------------------------
+    for url in report["candidate_urls"]:
+        started = time.perf_counter()
+
+        try:
+            response = session.get(
+                url,
+                headers=HEADERS,
+                timeout=TIMEOUT,
+            )
+        except requests.RequestException as exc:
+            report["validated_products"].append({
+                "url": url,
+                "status": None,
+                "elapsed_ms": round(
+                    (time.perf_counter() - started) * 1000,
+                    1,
+                ),
+                "decision": "request_error",
+                "error": f"{type(exc).__name__}: {exc}",
+            })
+            continue
+
+        validation = {
+            "url": url,
+            "status": response.status_code,
+            "final_url": getattr(response, "url", url),
+            "elapsed_ms": round(
+                (time.perf_counter() - started) * 1000,
+                1,
+            ),
+            "bytes": len(response.content or b""),
+        }
+
+        if response.status_code >= 400:
+            validation["decision"] = "http_error"
+        else:
+            item = _product(url, response.text, query)
+            validation["decision"] = (
+                "accepted" if item else "rejected_by_product_parser"
+            )
+            if item:
+                validation["product"] = item
+
+        report["validated_products"].append(validation)
+
+    # ------------------------------------------------------------
+    # 5. Always record the legacy localized routes separately.
+    # This is diagnostic evidence only; these routes are NOT used by
+    # the normal discovery algorithm.
+    # ------------------------------------------------------------
+    legacy_routes = (
         "/fr/recherche?query=",
         "/fr/recherche?search=",
         "/fr/recherche?q=",
@@ -988,13 +1302,49 @@ def diagnose_search(session, query):
         "/search?query=",
         "/search?search=",
         "/search?q=",
-    ):
+    )
+
+    for route in legacy_routes:
         endpoint = BASE_URL + route + quote_plus(query)
+        started = time.perf_counter()
+
         try:
-            r = session.get(endpoint, headers=HEADERS, timeout=TIMEOUT)
-            report["search_fallback"].append({"url": endpoint, "status": r.status_code})
+            response = session.get(
+                endpoint,
+                headers=HEADERS,
+                timeout=TIMEOUT,
+            )
         except requests.RequestException as exc:
-            report["search_fallback"].append({"url": endpoint, "error": str(exc)})
+            request_trace(
+                "final_search_retry",
+                endpoint,
+                started,
+                error=exc,
+            )
+            continue
+
+        trace = request_trace(
+            "final_search_retry",
+            endpoint,
+            started,
+            response=response,
+        )
+        trace["legacy_route"] = True
+
+    report["summary"]["candidate_count"] = len(
+        report["candidate_urls"]
+    )
+    report["summary"]["validated_count"] = sum(
+        1
+        for item in report["validated_products"]
+        if item.get("decision") == "accepted"
+    )
+    report["summary"]["rejected_count"] = sum(
+        1
+        for item in report["validated_products"]
+        if item.get("decision") != "accepted"
+    )
+
     return report
 
 def search(query):
