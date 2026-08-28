@@ -1315,6 +1315,20 @@ function shGroupData(data){
     return cleanBrandText(value);
   }
 
+  function groupIdentityName(value){
+    const genderTokens=new Set([
+      "uomo","donna","men","women","man","woman","homme","femme"
+    ]);
+    return norm(value)
+      .split(/\s+/)
+      .filter(token=>token && !genderTokens.has(token))
+      .join(" ");
+  }
+
+  function groupIdentityKey(brand,name){
+    return (norm(brand)+"|"+groupIdentityName(name)).replace(/\|+$/g,"");
+  }
+
   function removeTrailingConcentration(name, concentration){
     let n=String(name||"").trim();
     const label=concentrationLabel(concentration);
@@ -1482,7 +1496,7 @@ function shGroupData(data){
         id.name=catalogCanonicalName(o,id.brand);
       }
 
-      id.key=(norm(id.brand)+"|"+norm(id.name)).replace(/\|+$/g,"");
+      id.key=groupIdentityKey(id.brand,id.name);
     });
 
     // Seconda passata: se un nome coincide con una famiglia già associata a
@@ -1564,7 +1578,10 @@ function shGroupData(data){
     const id=identities[i];
     if(id.concentration){
       id.name=catalogCanonicalName(o,id.brand);
-      id.key=(norm(id.brand)+"|"+norm(id.name)+"|"+norm(id.concentration)).replace(/\|+$/g,"");
+      // La concentrazione resta nell'offerta, ma non crea una nuova scheda: la
+      // stessa famiglia/variante viene confrontata insieme anche se uno store
+      // pubblica EDP, EDT o Extrait e un altro usa un titolo diverso.
+      id.key=groupIdentityKey(id.brand,id.name);
     }
   });
 
@@ -1611,13 +1628,13 @@ function shGroupData(data){
     if(!map.has(id.key)){
       map.set(id.key,{
         brand:id.brand||"",
-        name:displayName,
+        name:id.name,
         canonical_name:id.name,
         family_id:o.family_id||"",
         canonical:norm(displayName),
         display_name:id.brand?id.brand+" - "+displayName:displayName,
         size_ml:"",
-        concentration:concentrationLabel(concentration),
+        concentration:"",
         image:o.image||o.image_url||o.thumbnail||"",
         offers:[]
       });
@@ -1682,6 +1699,14 @@ function shGroupData(data){
   });
 
   const groups=[...map.values()];
+
+  groups.forEach(g=>{
+    if(g.image)return;
+    const withImage=(g.offers||[]).find(o=>o.image||o.image_url||o.thumbnail);
+    if(withImage){
+      g.image=withImage.image||withImage.image_url||withImage.thumbnail||"";
+    }
+  });
 
   /*
    * RICERCA PER BRAND — regola generica.
@@ -2288,6 +2313,7 @@ function openProduct(i){
             <div>
               <div class="offer-store">${!isOut&&n===0?"🥇 ":""}${esc(o.store||"Negozio")}</div>
               ${!isOut&&n===0?'<div class="offer-meta">MIGLIOR PREZZO</div>':""}
+              ${o.concentration?`<div class="offer-meta">${esc(concentrationLabel(o.concentration))}</div>`:""}
               ${isOut?'<div class="offer-outstock">OUT OF STOCK</div>':""}
             </div>
             <div style="display:flex;align-items:center;gap:8px">
