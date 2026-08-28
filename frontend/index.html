@@ -2028,27 +2028,28 @@ function shGroupData(data){
   });
 
   /*
-   * IMMAGINE DEL GRUPPO — correzione mirata.
+   * IMMAGINE DEL GRUPPO — scelta progressiva per prezzo.
    *
-   * L'immagine non viene più scelta dalla prima offerta incontrata durante
-   * la costruzione del gruppo. Dopo che le offerte sono state completamente
-   * raccolte e deduplicate, scegliamo prima l'offerta disponibile con il
-   * prezzo migliore che possiede una propria immagine; se non esiste,
-   * usiamo la prima offerta con immagine.
+   * Le offerte sono già ordinate con il prezzo migliore per primo.
+   * Costruiamo quindi una lista di immagini nello stesso ordine: la prima
+   * è quella del negozio meno caro; se il browser non riesce a caricarla,
+   * shImageFallback() passa automaticamente alla seconda, poi alla terza,
+   * e così via.
    *
-   * Questo mantiene invariati identità, grouping, prezzi e offerte: cambia
-   * esclusivamente la sorgente dell'immagine visualizzata del gruppo.
+   * La scelta dell'immagine non modifica in alcun modo prezzi, negozi,
+   * grouping o ordine delle offerte.
    */
   groups.forEach(g=>{
     const offers=Array.isArray(g.offers)?g.offers:[];
-    const withImage=offers.filter(o=>Boolean(o?.image||o?.image_url||o?.thumbnail));
-    if(!withImage.length)return;
+    const available=offers.filter(o=>!isOfferOutOfStock(o));
+    const source=available.length?available:offers;
 
-    const available=withImage.filter(o=>!isOfferOutOfStock(o));
-    const pool=available.length?available:withImage;
-    pool.sort((a,b)=>shNum(a)-shNum(b));
-    const selected=pool[0];
-    g.image=selected.image||selected.image_url||selected.thumbnail||g.image||"";
+    g.image_candidates=source
+      .map(o=>o?.image||o?.image_url||o?.thumbnail||"")
+      .map(v=>String(v).trim())
+      .filter(Boolean);
+
+    g.image=g.image_candidates[0]||g.image||"";
   });
 
   // Mostriamo esclusivamente vere referenze di profumo.
@@ -2220,6 +2221,57 @@ document.addEventListener("click",e=>{
   cardPointerMoved=false;
 },{capture:true});
 
+function shNormalizeImageUrl(value){
+  let url=String(value||"").trim();
+  if(!url)return "";
+
+  // Le pagine ScentHunter sono HTTPS. Alcuni scraper restituiscono ancora
+  // immagini HTTP: il browser le blocca come mixed content. Per le immagini
+  // remote proviamo quindi automaticamente HTTPS.
+  if(/^http:\/\//i.test(url))url="https://"+url.slice(7);
+  return url;
+}
+
+function shImageFallback(img){
+  try{
+    const candidates=JSON.parse(img.dataset.imageCandidates||"[]");
+    let index=Number(img.dataset.imageIndex||0)+1;
+
+    while(index<candidates.length && !String(candidates[index]||"").trim())index++;
+
+    if(index<candidates.length){
+      img.dataset.imageIndex=String(index);
+      img.src=shNormalizeImageUrl(candidates[index]);
+      return;
+    }
+  }catch(e){
+    console.warn("Errore fallback immagine:",e);
+  }
+
+  img.outerHTML="🧴";
+}
+
+function shImageTag(g,alt){
+  const source=Array.isArray(g?.image_candidates)
+    ?g.image_candidates
+    :(g?.image?[g.image]:[]);
+
+  // Manteniamo l'ordine delle offerte: prima il negozio meno caro,
+  // poi il secondo, il terzo, ecc. Duplicati e URL vuoti vengono eliminati.
+  const seen=new Set();
+  const candidates=source
+    .map(shNormalizeImageUrl)
+    .filter(url=>{
+      if(!url||seen.has(url))return false;
+      seen.add(url);
+      return true;
+    });
+
+  if(!candidates.length)return "🧴";
+
+  return `<img src="${esc(candidates[0])}" alt="${esc(alt)}" referrerpolicy="no-referrer" loading="eager" decoding="async" data-image-index="0" data-image-candidates="${esc(JSON.stringify(candidates))}" onerror="shImageFallback(this)">`;
+}
+
 function displayCatalogName(g){
   const canonical=String(g?.canonical_name||g?.catalog_variant||g?.name||"").trim();
   return canonical||"Profumo";
@@ -2247,7 +2299,7 @@ function showProducts(groups){
     const best=g.offers.find(o=>!isOfferOutOfStock(o))||null;
 
     return `<article class="product-choice" onclick='openProduct(${i})'>
-      <div class="result-image">${img?`<img src="${esc(img)}" alt="${esc(displayPerfumeName(displayCatalogName(g),g.brand,g.concentration))}" onerror="this.outerHTML='🧴'">`:"🧴"}</div>
+      <div class="result-image">${shImageTag(g,displayPerfumeName(displayCatalogName(g),g.brand,g.concentration))}</div>
       <div class="product-choice-main">
         <div class="name">${esc(g.brand ? g.brand+" - "+displayPerfumeName(displayCatalogName(g),g.brand,g.concentration) : displayPerfumeName(displayCatalogName(g),g.brand,g.concentration))}</div>
         ${best?`<div class="bestprice">da ${esc(shPrice(best))}</div>`:`<div class="bestprice">OUT OF STOCK</div>`}
@@ -2288,7 +2340,7 @@ function openProduct(i){
     resultsBox.innerHTML=`<article class="comparison">
       <button class="detail-back" onclick="showProducts(currentProductGroups)">← Torna ai profumi</button>
       <div class="comparison-head">
-        <div class="result-image">${img?`<img src="${esc(img)}" alt="${esc(displayPerfumeName(displayCatalogName(g),g.brand,g.concentration))}" onerror="this.outerHTML='🧴'">`:"🧴"}</div>
+        <div class="result-image">${shImageTag(g,displayPerfumeName(displayCatalogName(g),g.brand,g.concentration))}</div>
         <div class="result-main">
           <div class="store">${esc(g.brand||"")}</div>
           <div class="name">${esc(displayPerfumeName(displayCatalogName(g),g.brand,g.concentration))}</div>
@@ -2357,7 +2409,7 @@ function openProduct(i){
   resultsBox.innerHTML=`<article class="comparison">
     <button class="detail-back" onclick="showProducts(currentProductGroups)">← Torna ai profumi</button>
     <div class="comparison-head">
-      <div class="result-image">${img?`<img src="${esc(img)}" alt="${esc(displayPerfumeName(displayCatalogName(g),g.brand,g.concentration))}" onerror="this.outerHTML='🧴'">`:"🧴"}</div>
+      <div class="result-image">${shImageTag(g,displayPerfumeName(displayCatalogName(g),g.brand,g.concentration))}</div>
       <div class="result-main">
         <div class="store">${esc(g.brand||"")}</div>
         <div class="name">${esc(displayPerfumeName(displayCatalogName(g),g.brand,g.concentration))}</div>
@@ -2397,7 +2449,7 @@ function openSize(gi,sizeKey,fromFormats=true){
   resultsBox.innerHTML=`<article class="comparison">
     <button class="detail-back" onclick="${fromFormats?`openProduct(${gi})`:`showProducts(currentProductGroups)`}">${fromFormats?'← Torna ai formati':'← Torna ai profumi'}</button>
     <div class="comparison-head">
-      <div class="result-image">${img?`<img src="${esc(img)}" alt="${esc(displayPerfumeName(displayCatalogName(g),g.brand,g.concentration))}" onerror="this.outerHTML='🧴'">`:"🧴"}</div>
+      <div class="result-image">${shImageTag(g,displayPerfumeName(displayCatalogName(g),g.brand,g.concentration))}</div>
       <div class="result-main">
         <div class="store">${esc(g.brand||"")}</div>
         <div class="name">${esc(displayPerfumeName(displayCatalogName(g),g.brand,g.concentration))}</div>
