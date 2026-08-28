@@ -1896,7 +1896,7 @@ async function searchPerfume(){
 
    // Avviamo la ricerca completa senza aspettare che tutti i negozi abbiano finito.
    const startResponse=await fetchJSONWithTimeout(
-     backend()+"/search-start?q="+encodeURIComponent(term),
+     backend()+"/search?q="+encodeURIComponent(term),
      30000
    );
    const jobId=String(startResponse?.job_id||"").trim();
