@@ -1,23 +1,45 @@
 """
-ScentHunter - global search pipeline diagnostic
+ScentHunter - 5 phase pipeline diagnostic
 
-Questo modulo è usato dall'endpoint diagnostico HTTP.
-Non modifica la pipeline normale di ricerca.
+This file is diagnostic only. It does NOT modify main.py, scrapers,
+product_index.py, product_matcher.py or the SQLite index.
 
-Espone:
-    run_query(query, stores=None)
+It follows the five diagnostic phases discussed for the matcher/indexer
+contract:
 
-e, per compatibilità, anche una CLI locale.
+1. contract audit;
+2. discovery/extraction separated from validation;
+3. canonical_name / catalog_variant preservation;
+4. variant-aware identity/grouping audit;
+5. rejection diagnostics for every candidate.
+
+Usage from backend/:
+
+    python diagnostic_search.py "YOUR QUERY"
+
+Optional:
+
+    python diagnostic_search.py "YOUR QUERY" --stores bplatz deloox
+    python diagnostic_search.py "YOUR QUERY" --json-only
+    python diagnostic_search.py "YOUR QUERY" --output diagnostic_search_report.json
+
+The diagnostic uses the real scraper modules and the current main.py.
+It is deliberately generic: no product/store-specific rules are embedded.
 """
 
 from __future__ import annotations
 
 import argparse
 import importlib
+import inspect
 import json
 import os
+import re
 import sys
-from typing import Any, Dict, List, Optional
+import time
+import traceback
+from concurrent.futures import ThreadPoolExecutor, as_completed, TimeoutError as FuturesTimeoutError
+from typing import Any, Dict, List, Optional, Tuple
 
 
 CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -31,15 +53,30 @@ if PROJECT_ROOT not in sys.path:
 import main as scent_main
 
 
-STORES = list(scent_main.STORES)
+DEFAULT_OUTPUT = os.path.join(
+    CURRENT_DIR,
+    "diagnostic_search_report.json",
+)
+
+# Solo per il diagnostico: non modifica il timeout della ricerca normale.
+DIAGNOSTIC_STORE_TIMEOUT = float(
+    os.getenv("SCENTHUNTER_DIAGNOSTIC_STORE_TIMEOUT", "45")
+)
+DIAGNOSTIC_GLOBAL_TIMEOUT = float(
+    os.getenv("SCENTHUNTER_DIAGNOSTIC_GLOBAL_TIMEOUT", "55")
+)
 
 
-def _text(value: Any) -> str:
+def text(value: Any) -> str:
     return str(value or "").strip()
 
 
-def _name(item: Dict[str, Any]) -> str:
-    return _text(
+def normalized(value: Any) -> str:
+    return scent_main.norm(value)
+
+
+def safe_name(item: Dict[str, Any]) -> str:
+    return text(
         scent_main.product_field(
             item,
             "name",
@@ -49,22 +86,407 @@ def _name(item: Dict[str, Any]) -> str:
     )
 
 
-def _store(item: Dict[str, Any]) -> str:
-    return _text(item.get("store"))
+def safe_brand(item: Dict[str, Any]) -> str:
+    return text(
+        scent_main.product_field(
+            item,
+            "brand",
+            "source_brand",
+        )
+    )
 
 
-def _identity(item: Dict[str, Any]) -> Any:
-    return scent_main.product_identity_key(item)
+def identity_value(item: Dict[str, Any], *keys: str) -> str:
+    return text(
+        scent_main.identity_value(
+            item,
+            *keys,
+        )
+    )
 
 
-def _central_match(
+def base_candidate_summary(
+    item: Dict[str, Any],
+    store: str,
+    attempt: str,
+    raw_index: int,
+) -> Dict[str, Any]:
+    return {
+        "store": store,
+        "attempt": attempt,
+        "raw_index": raw_index,
+        "name": safe_name(item),
+        "brand": safe_brand(item),
+        "url": text(item.get("url")),
+        "price": text(item.get("price")),
+        "available": item.get("available"),
+        "availability": text(
+            scent_main.product_availability(item)
+        ),
+        "size_ml": scent_main.product_size_ml(item),
+        "concentration": text(
+            scent_main.product_concentration(item)
+        ),
+        "store_product_id": identity_value(
+            item,
+            "store_product_id",
+            "product_id",
+            "catalog_id",
+        ),
+        "store_variant_id": identity_value(
+            item,
+            "store_variant_id",
+            "variant_id",
+        ),
+        "gtin": identity_value(
+            item,
+            "gtin",
+            "ean",
+            "ean13",
+            "barcode",
+            "upc",
+        ),
+        "mpn": identity_value(
+            item,
+            "mpn",
+            "manufacturer_part_number",
+            "manufacturerNumber",
+        ),
+        "sku": identity_value(
+            item,
+            "sku",
+        ),
+        "family_id": text(item.get("family_id")),
+        "family_name": text(item.get("family_name")),
+        "canonical_name": text(item.get("canonical_name")),
+        "catalog_variant": text(item.get("catalog_variant")),
+        "match_method": text(item.get("match_method")),
+    }
+
+
+def target_overlap(
     item: Dict[str, Any],
     query: str,
-) -> bool:
+) -> Dict[str, Any]:
+    query_tokens = [
+        token
+        for token in normalized(query).split()
+        if token not in scent_main.IGNORED_WORDS
+        and token
+    ]
+
+    searchable = scent_main.product_search_text(item)
+    searchable_tokens = set(searchable.split())
+
+    matched = [
+        token
+        for token in query_tokens
+        if token in searchable_tokens
+    ]
+
+    return {
+        "query_tokens": query_tokens,
+        "matched_tokens": matched,
+        "matched_count": len(matched),
+        "query_token_count": len(query_tokens),
+        "all_query_tokens_present": (
+            bool(query_tokens)
+            and len(matched) == len(query_tokens)
+        ),
+    }
+
+
+def current_identity_key(item: Dict[str, Any]) -> List[Any]:
+    return list(
+        scent_main.product_identity_key(item)
+    )
+
+
+def proposed_variant_key(item: Dict[str, Any]) -> List[str]:
+    family_id = text(item.get("family_id"))
+    canonical = text(
+        item.get("canonical_name")
+        or item.get("catalog_variant")
+    )
+
+    if family_id and canonical:
+        variant = normalized(canonical)
+        return [
+            family_id,
+            variant,
+        ]
+
+    return [
+        normalized(
+            item.get("brand")
+            or item.get("source_brand")
+        ),
+        normalized(
+            item.get("name")
+            or item.get("title")
+            or item.get("product_name")
+        ),
+    ]
+
+
+def classify_rejection(
+    item: Dict[str, Any],
+    query: str,
+) -> Dict[str, Any]:
+    """
+    Diagnostic classification only.
+
+    It never decides acceptance. The authoritative decision remains
+    scent_main.matches().
+    """
+    name = safe_name(item)
+    query_normalized = normalized(query)
+    name_normalized = normalized(name)
+
+    reasons: List[str] = []
+
+    if not name_normalized:
+        reasons.append("missing_product_name")
+
+    if scent_main.has_small_size(item) and not re.search(
+        r"(?<!\d)\d+(?:[.,]\d+)?\s*(?:ml|cl)\b",
+        query_normalized,
+    ):
+        reasons.append("small_size_without_requested_size")
+
+    for phrase in scent_main.NON_PERFUME:
+        phrase_normalized = normalized(phrase)
+        if (
+            phrase_normalized
+            and phrase_normalized in name_normalized
+            and phrase_normalized not in query_normalized
+        ):
+            reasons.append("non_perfume_product")
+
+    catalog_family = None
+    catalog_match = None
+
     try:
-        return bool(scent_main.matches(item, query))
+        catalog_family = scent_main._catalog_family_for_query(
+            query
+        )
     except Exception:
-        return False
+        pass
+
+    if catalog_family is not None:
+        try:
+            catalog_match = scent_main._catalog_match(
+                item,
+                query,
+            )
+        except Exception as exc:
+            reasons.append(
+                "catalog_validation_error"
+            )
+            return {
+                "reasons": reasons,
+                "catalog_family": text(
+                    catalog_family.get("family_id")
+                ),
+                "catalog_match_error": (
+                    f"{type(exc).__name__}: {exc}"
+                ),
+            }
+
+        if catalog_match is None:
+            reasons.append(
+                "catalog_variant_not_resolved"
+            )
+    else:
+        try:
+            generic_match = scent_main.matches(
+                item,
+                query,
+            )
+        except Exception:
+            generic_match = None
+
+        if generic_match is False:
+            reasons.append(
+                "generic_match_rejected"
+            )
+
+    if not reasons:
+        reasons.append(
+            "rejected_without_specific_diagnostic_reason"
+        )
+
+    return {
+        "reasons": list(dict.fromkeys(reasons)),
+        "catalog_family": (
+            text(catalog_family.get("family_id"))
+            if isinstance(catalog_family, dict)
+            else ""
+        ),
+        "catalog_match": (
+            {
+                "family_id": text(
+                    catalog_match.get("family_id")
+                ),
+                "family_name": text(
+                    catalog_match.get("family_name")
+                ),
+                "canonical_name": text(
+                    catalog_match.get("canonical_name")
+                ),
+                "catalog_variant": text(
+                    catalog_match.get("catalog_variant")
+                ),
+            }
+            if isinstance(catalog_match, dict)
+            else None
+        ),
+    }
+
+
+def audit_contract() -> Dict[str, Any]:
+    result: Dict[str, Any] = {
+        "phase": 1,
+        "status": "unknown",
+        "checks": [],
+    }
+
+    try:
+        source = inspect.getsource(scent_main)
+        uses_product_matcher = (
+            "ProductMatcher" in source
+            or "product_matcher" in source
+        )
+    except Exception:
+        uses_product_matcher = None
+
+    result["checks"].append(
+        {
+            "check": "central_product_matcher_used_by_main",
+            "value": uses_product_matcher,
+            "expected": True,
+        }
+    )
+
+    registry_fields = {
+        "family_id": False,
+        "family_name": False,
+        "canonical_name": False,
+        "catalog_variant": False,
+        "match_method": False,
+    }
+
+    try:
+        families = getattr(
+            scent_main,
+            "FAMILY_REGISTRY",
+            [],
+        )
+        for family in families:
+            for variant in family.get("variants", []):
+                if variant.get("canonical_name"):
+                    registry_fields["canonical_name"] = True
+                    registry_fields["catalog_variant"] = True
+                    break
+            if family.get("family_id"):
+                registry_fields["family_id"] = True
+            if family.get("query_aliases"):
+                registry_fields["family_name"] = True
+    except Exception:
+        pass
+
+    result["checks"].append(
+        {
+            "check": "registry_identity_fields",
+            "value": registry_fields,
+            "expected": {
+                "family_id": True,
+                "family_name": True,
+                "canonical_name": True,
+                "catalog_variant": True,
+                "match_method": True,
+            },
+        }
+    )
+
+    try:
+        import product_matcher
+
+        result["checks"].append(
+            {
+                "check": "product_matcher_importable",
+                "value": True,
+            }
+        )
+
+        catalog_path = os.path.join(
+            CURRENT_DIR,
+            "product_catalog.json",
+        )
+
+        if os.path.exists(catalog_path):
+            with open(
+                catalog_path,
+                "r",
+                encoding="utf-8",
+            ) as file:
+                payload = json.load(file)
+
+            products = payload.get("products", [])
+            if products:
+                sample = products[0]
+                parsed = (
+                    product_matcher.CatalogProduct.from_dict(
+                        sample
+                    )
+                )
+
+                result["checks"].append(
+                    {
+                        "check": "product_matcher_catalog_schema_compatibility",
+                        "value": {
+                            "catalog_product_id": text(
+                                sample.get("product_id")
+                            ),
+                            "matcher_catalog_id": parsed.catalog_id,
+                            "catalog_canonical_name": text(
+                                sample.get("canonical_name")
+                            ),
+                            "matcher_name": parsed.name,
+                            "catalog_brand": text(
+                                sample.get("brand_name")
+                            ),
+                            "matcher_brand": parsed.brand,
+                        },
+                        "expected": "catalog and matcher fields populated",
+                    }
+                )
+    except Exception as exc:
+        result["checks"].append(
+            {
+                "check": "product_matcher_audit_error",
+                "error": f"{type(exc).__name__}: {exc}",
+            }
+        )
+
+    failed = []
+    for check in result["checks"]:
+        expected = check.get("expected")
+        value = check.get("value")
+
+        if (
+            expected is True
+            and value is not True
+        ):
+            failed.append(check["check"])
+
+    result["status"] = (
+        "FAIL"
+        if failed
+        else "PASS"
+    )
+    result["failed_checks"] = failed
+    return result
 
 
 def run_store(
@@ -76,197 +498,367 @@ def run_store(
         query,
     )
 
+    started = time.perf_counter()
     report: Dict[str, Any] = {
         "store": store,
-        "status": "ok",
         "attempts": attempts,
-        "calls": [],
-        "returned_total": 0,
-        "unique_candidates": 0,
-        "central_matches": 0,
-        "central_rejected": 0,
+        "status": "ok",
+        "timing": {
+            "started_at": time.time(),
+            "duration_ms": None,
+            "import_ms": None,
+            "attempts_ms": {},
+        },
+        "raw_total": 0,
+        "raw_by_attempt": [],
+        "all_raw_candidates": [],
+        "deduplicated_candidates": [],
+        "duplicates": [],
+        "matched_candidates": [],
+        "non_matched_candidates": [],
         "errors": [],
-        "products": [],
     }
 
+    import_started = time.perf_counter()
     try:
         module = importlib.import_module(
             f"scrapers.{store}.scraper"
         )
+        report["timing"]["import_ms"] = round(
+            (time.perf_counter() - import_started) * 1000,
+            1,
+        )
+        search_fn = getattr(module, "search", None)
+        if not callable(search_fn):
+            search_fn = getattr(module, "scrape", None)
+
+        if not callable(search_fn):
+            raise RuntimeError(
+                f"{store}: scraper senza funzione search()/scrape()"
+            )
+
+        report["scraper_module"] = module.__name__
+
     except Exception as exc:
-        report["status"] = "import_error"
+        report["status"] = "error"
         report["errors"].append(
-            f"{type(exc).__name__}: {exc}"
+            {
+                "stage": "load_scraper",
+                "error": f"{type(exc).__name__}: {exc}",
+                "traceback": traceback.format_exc(),
+            }
+        )
+        report["summary"] = {
+            "attempt_count": len(attempts),
+            "raw_total": 0,
+            "unique_after_dedup": 0,
+            "duplicates_removed": 0,
+            "matched_total": 0,
+            "non_matched_total": 0,
+            "error_total": len(report["errors"]),
+        }
+        report["timing"]["duration_ms"] = round(
+            (time.perf_counter() - started) * 1000,
+            1,
         )
         return report
 
-    search_fn = getattr(module, "search", None)
-
-    if not callable(search_fn):
-        search_fn = getattr(module, "scrape", None)
-
-    if not callable(search_fn):
-        report["status"] = "missing_search_function"
-        report["errors"].append(
-            "Lo scraper non espone search()/scrape()"
-        )
-        return report
-
-    seen = set()
+    raw_candidates: List[
+        Tuple[str, int, Dict[str, Any]]
+    ] = []
 
     for attempt in attempts:
-        call = {
-            "query": attempt,
-            "returned": 0,
-            "unique_added": 0,
-            "central_matches": 0,
-            "central_rejected": 0,
-            "error": None,
-        }
-
+        attempt_started = time.perf_counter()
         try:
             results = search_fn(attempt) or []
+        except Exception as exc:
+            report["errors"].append(
+                {
+                    "stage": "scraper_search",
+                    "attempt": attempt,
+                    "error": f"{type(exc).__name__}: {exc}",
+                    "traceback": traceback.format_exc(),
+                }
+            )
+            elapsed_ms = round(
+                (time.perf_counter() - attempt_started) * 1000,
+                1,
+            )
+            report["timing"]["attempts_ms"][attempt] = elapsed_ms
+            report["raw_by_attempt"].append(
+                {
+                    "attempt": attempt,
+                    "count": 0,
+                    "status": "error",
+                    "duration_ms": elapsed_ms,
+                }
+            )
+            continue
 
-            if not isinstance(results, list):
-                results = []
+        if not isinstance(results, list):
+            report["errors"].append(
+                {
+                    "stage": "scraper_search",
+                    "attempt": attempt,
+                    "error": (
+                        "Risposta non-list: "
+                        f"{type(results).__name__}"
+                    ),
+                }
+            )
+            elapsed_ms = round(
+                (time.perf_counter() - attempt_started) * 1000,
+                1,
+            )
+            report["timing"]["attempts_ms"][attempt] = elapsed_ms
+            report["raw_by_attempt"].append(
+                {
+                    "attempt": attempt,
+                    "count": 0,
+                    "status": "invalid_response",
+                    "response_type": type(results).__name__,
+                    "duration_ms": elapsed_ms,
+                }
+            )
+            continue
 
-            call["returned"] = len(results)
-            report["returned_total"] += len(results)
+        report["raw_total"] += len(results)
 
-            for item in results:
-                if not isinstance(item, dict):
-                    continue
+        attempt_items = []
 
-                product = dict(item)
-                product.setdefault("store", store)
+        for raw_index, item in enumerate(results):
+            if not isinstance(item, dict):
+                attempt_items.append(
+                    {
+                        "raw_index": raw_index,
+                        "invalid_item_type": type(item).__name__,
+                    }
+                )
+                continue
 
-                key = _identity(product)
+            product = dict(item)
+            product.setdefault("store", store)
 
-                if key in seen:
-                    continue
+            summary = base_candidate_summary(
+                product,
+                store,
+                attempt,
+                raw_index,
+            )
+            summary["target_overlap"] = target_overlap(
+                product,
+                query,
+            )
+            summary["current_identity_key"] = (
+                current_identity_key(product)
+            )
+            summary["proposed_variant_key"] = (
+                proposed_variant_key(product)
+            )
 
-                seen.add(key)
+            attempt_items.append(summary)
+            raw_candidates.append(
+                (
+                    attempt,
+                    raw_index,
+                    product,
+                )
+            )
 
-                call["unique_added"] += 1
-                report["unique_candidates"] += 1
+        elapsed_ms = round(
+            (time.perf_counter() - attempt_started) * 1000,
+            1,
+        )
+        report["timing"]["attempts_ms"][attempt] = elapsed_ms
+        report["raw_by_attempt"].append(
+            {
+                "attempt": attempt,
+                "count": len(results),
+                "status": "ok",
+                "duration_ms": elapsed_ms,
+                "candidates": attempt_items,
+            }
+        )
 
-                matches = _central_match(
+    report["all_raw_candidates"] = [
+        {
+            **base_candidate_summary(
+                product,
+                store,
+                attempt,
+                raw_index,
+            ),
+            "target_overlap": target_overlap(
+                product,
+                query,
+            ),
+            "current_identity_key": current_identity_key(
+                product
+            ),
+            "proposed_variant_key": proposed_variant_key(
+                product
+            ),
+        }
+        for attempt, raw_index, product
+        in raw_candidates
+    ]
+
+    seen = {}
+
+    for attempt, raw_index, product in raw_candidates:
+        key = current_identity_key(product)
+
+        entry = {
+            **base_candidate_summary(
+                product,
+                store,
+                attempt,
+                raw_index,
+            ),
+            "dedupe_key": list(key),
+            "target_overlap": target_overlap(
+                product,
+                query,
+            ),
+            "proposed_variant_key": proposed_variant_key(
+                product
+            ),
+        }
+
+        if tuple(key) in seen:
+            report["duplicates"].append(
+                {
+                    "duplicate": entry,
+                    "kept_candidate": seen[
+                        tuple(key)
+                    ],
+                }
+            )
+            continue
+
+        seen[tuple(key)] = entry
+        report["deduplicated_candidates"].append(entry)
+
+    for entry in report["deduplicated_candidates"]:
+        product = {
+            "store": store,
+            "name": entry.get("name"),
+            "brand": entry.get("brand"),
+            "url": entry.get("url"),
+            "price": entry.get("price"),
+            "available": entry.get("available"),
+            "size_ml": entry.get("size_ml"),
+            "concentration": entry.get("concentration"),
+            "store_product_id": entry.get("store_product_id"),
+            "store_variant_id": entry.get("store_variant_id"),
+            "gtin": entry.get("gtin"),
+            "mpn": entry.get("mpn"),
+            "sku": entry.get("sku"),
+        }
+
+        match_started = time.perf_counter()
+        try:
+            matched = bool(
+                scent_main.matches(
                     product,
                     query,
                 )
+            )
+            entry["match_duration_ms"] = round(
+                (time.perf_counter() - match_started) * 1000,
+                1,
+            )
+        except Exception as exc:
+            entry["match_duration_ms"] = round(
+                (time.perf_counter() - match_started) * 1000,
+                1,
+            )
+            report["errors"].append(
+                {
+                    "stage": "matches",
+                    "candidate": entry,
+                    "error": f"{type(exc).__name__}: {exc}",
+                    "traceback": traceback.format_exc(),
+                }
+            )
+            continue
 
-                if matches:
-                    call["central_matches"] += 1
-                    report["central_matches"] += 1
-                else:
-                    call["central_rejected"] += 1
-                    report["central_rejected"] += 1
+        if matched:
+            catalog_result = None
+            try:
+                catalog_result = scent_main._catalog_match(
+                    product,
+                    query,
+                )
+            except Exception:
+                catalog_result = None
 
-                report["products"].append(
+            if isinstance(catalog_result, dict):
+                enriched = dict(product)
+                enriched.update(
                     {
-                        "name": _name(product),
-                        "store": (
-                            _store(product)
-                            or store
+                        "family_id": text(
+                            catalog_result.get("family_id")
                         ),
-                        "url": _text(
-                            product.get("url")
+                        "family_name": text(
+                            catalog_result.get("family_name")
                         ),
-                        "price": _text(
-                            product.get("price")
+                        "canonical_name": text(
+                            catalog_result.get("canonical_name")
                         ),
-                        "available": product.get(
-                            "available"
-                        ),
-                        "availability": _text(
-                            scent_main.product_availability(
-                                product
-                            )
-                        ),
-                        "identity_key": list(key),
-                        "central_matches": matches,
-                        "family_id": _text(
-                            product.get("family_id")
-                        ),
-                        "canonical_name": _text(
-                            product.get(
-                                "canonical_name"
-                            )
-                        ),
-                        "catalog_variant": _text(
-                            product.get(
-                                "catalog_variant"
-                            )
+                        "catalog_variant": text(
+                            catalog_result.get("catalog_variant")
                         ),
                     }
                 )
+                entry["resolved_identity"] = {
+                    "family_id": enriched["family_id"],
+                    "family_name": enriched["family_name"],
+                    "canonical_name": enriched["canonical_name"],
+                    "catalog_variant": enriched["catalog_variant"],
+                    "current_identity_key": current_identity_key(
+                        enriched
+                    ),
+                    "proposed_variant_key": proposed_variant_key(
+                        enriched
+                    ),
+                }
 
-        except Exception as exc:
-            error = (
-                f"{attempt}: "
-                f"{type(exc).__name__}: {exc}"
+            report["matched_candidates"].append(entry)
+
+        else:
+            diagnostic = classify_rejection(
+                product,
+                query,
             )
+            entry["rejection_diagnostic"] = diagnostic
+            report["non_matched_candidates"].append(entry)
 
-            call["error"] = error
-            report["errors"].append(error)
-
-        report["calls"].append(call)
-
-    if report["errors"] and not report["products"]:
-        report["status"] = "error"
-    elif not report["products"]:
-        report["status"] = "zero_candidates"
-    elif report["central_matches"] == 0:
-        report["status"] = (
-            "candidates_rejected_by_central_match"
-        )
-    else:
-        report["status"] = (
-            "candidate_reaches_central_match"
-        )
-
-    return report
-
-
-def build_report(
-    query: str,
-    stores: List[str],
-) -> Dict[str, Any]:
-    reports = [
-        run_store(
-            store,
-            query,
-        )
-        for store in stores
-    ]
-
-    return {
-        "query": query,
-        "stores_expected": len(stores),
-        "stores_with_raw_candidates": sum(
-            report["raw_candidates"]
-            if "raw_candidates" in report
-            else report["returned_total"] > 0
-            for report in reports
+    report["summary"] = {
+        "attempt_count": len(attempts),
+        "raw_total": report["raw_total"],
+        "unique_after_dedup": len(
+            report["deduplicated_candidates"]
         ),
-        "stores_with_candidates": sum(
-            bool(report["products"])
-            for report in reports
+        "duplicates_removed": len(
+            report["duplicates"]
         ),
-        "stores_with_central_matches": sum(
-            report["central_matches"] > 0
-            for report in reports
+        "matched_total": len(
+            report["matched_candidates"]
         ),
-        "stores_with_errors": sum(
-            bool(report["errors"])
-            for report in reports
+        "non_matched_total": len(
+            report["non_matched_candidates"]
         ),
-        "stores_with_zero_candidates": sum(
-            not report["products"]
-            for report in reports
+        "error_total": len(
+            report["errors"]
         ),
-        "stores": reports,
     }
+
+    report["timing"]["duration_ms"] = round(
+        (time.perf_counter() - started) * 1000,
+        1,
+    )
+    return report
 
 
 def run_query(
@@ -274,246 +866,469 @@ def run_query(
     stores: Optional[List[str]] = None,
 ) -> Dict[str, Any]:
     """
-    Entry point per l'endpoint HTTP.
+    Esegue TUTTI gli scraper in parallelo e misura ogni fase.
 
-    Non usa argparse e restituisce direttamente un dict
-    serializzabile da FastAPI.
+    Questo è volutamente separato dalla pipeline normale: serve a capire
+    se un negozio non produce candidati, se è lento, se genera errori,
+    oppure se i candidati vengono eliminati dal matching centrale.
     """
-    query = _text(query)
-
-    if not query:
-        raise ValueError(
-            "La query non può essere vuota."
-        )
-
-    selected_stores = (
-        list(stores)
+    selected_stores = list(
+        stores
         if stores is not None
-        else list(STORES)
+        else scent_main.STORES
     )
 
-    invalid = [
-        store
-        for store in selected_stores
-        if store not in STORES
-    ]
+    started = time.perf_counter()
+    report: Dict[str, Any] = {
+        "query": query,
+        "diagnostic_version": "global-endpoint-v2",
+        "timing": {
+            "started_at": time.time(),
+            "global_duration_ms": None,
+            "global_timeout_s": DIAGNOSTIC_GLOBAL_TIMEOUT,
+            "store_timeout_s": DIAGNOSTIC_STORE_TIMEOUT,
+        },
+        "contract_audit": audit_contract(),
+        "stores": {},
+        "global_summary": {},
+    }
 
-    if invalid:
-        raise ValueError(
-            "Store non validi: "
-            + ", ".join(invalid)
-            + ". Disponibili: "
-            + ", ".join(STORES)
+    # Tutti gli store partono insieme. In questo modo il diagnostico può
+    # rivelare problemi di concorrenza/timeout che una scansione sequenziale
+    # nasconderebbe.
+    def run_store_with_timeout(store_name: str) -> Dict[str, Any]:
+        worker_executor = ThreadPoolExecutor(
+            max_workers=1,
+            thread_name_prefix=f"scent_diag_{store_name}",
         )
-
-    reports = [
-        run_store(
-            store,
+        worker_future = worker_executor.submit(
+            run_store,
+            store_name,
             query,
         )
-        for store in selected_stores
-    ]
-
-    final_results = []
-
-    for report in reports:
-        if report["central_matches"] <= 0:
-            continue
-
-        for product in report["products"]:
-            if not product["central_matches"]:
-                continue
-
-            final_results.append(
-                {
-                    "store": (
-                        product["store"]
-                        or report["store"]
-                    ),
-                    "name": product["name"],
-                    "url": product["url"],
-                    "price": product["price"],
-                    "identity_key": product[
-                        "identity_key"
-                    ],
-                    "match_method": "raw_identity",
-                    "canonical_name": (
-                        product["canonical_name"]
-                        or product["name"]
-                    ),
-                }
+        try:
+            return worker_future.result(
+                timeout=DIAGNOSTIC_STORE_TIMEOUT
             )
-
-    raw_candidates = sum(
-        report["returned_total"]
-        for report in reports
-    )
-
-    unique_candidates = sum(
-        report["unique_candidates"]
-        for report in reports
-    )
-
-    central_matches = sum(
-        report["central_matches"]
-        for report in reports
-    )
-
-    central_rejected = sum(
-        report["central_rejected"]
-        for report in reports
-    )
-
-    return {
-        "ok": True,
-        "query": query,
-        "expected_stores": len(selected_stores),
-        "stores_with_raw_candidates": sum(
-            report["returned_total"] > 0
-            for report in reports
-        ),
-        "stores_with_central_matches": sum(
-            report["central_matches"] > 0
-            for report in reports
-        ),
-        "stores_with_final_results": len(
-            {
-                result["store"]
-                for result in final_results
+        except FuturesTimeoutError:
+            worker_future.cancel()
+            return {
+                "store": store_name,
+                "status": "store_timeout",
+                "errors": [{
+                    "stage": "diagnostic_store_timeout",
+                    "error": (
+                        f"Store non terminato entro "
+                        f"{DIAGNOSTIC_STORE_TIMEOUT:.1f}s"
+                    ),
+                }],
+                "timing": {
+                    "duration_ms": DIAGNOSTIC_STORE_TIMEOUT * 1000,
+                },
+                "summary": {
+                    "attempt_count": 0,
+                    "raw_total": 0,
+                    "unique_after_dedup": 0,
+                    "duplicates_removed": 0,
+                    "matched_total": 0,
+                    "non_matched_total": 0,
+                    "error_total": 1,
+                },
             }
-        ),
-        "global": {
-            "raw_candidates": raw_candidates,
-            "unique_candidates": unique_candidates,
-            "central_matches": central_matches,
-            "central_rejected": central_rejected,
-            "final_results": len(final_results),
-        },
-        "final_by_store": {
-            store: sum(
-                result["store"].lower()
-                == store.lower()
-                for result in final_results
+        finally:
+            worker_executor.shutdown(
+                wait=False,
+                cancel_futures=True,
             )
-            for store in selected_stores
-        },
-        "errors": {
-            report["store"]: report["errors"]
-            for report in reports
-            if report["errors"]
-        },
-        "stores": reports,
-        "final_results": final_results,
+
+    executor = ThreadPoolExecutor(
+        max_workers=max(1, len(selected_stores)),
+        thread_name_prefix="scent_diagnostic_store",
+    )
+
+    futures = {
+        executor.submit(run_store_with_timeout, store): store
+        for store in selected_stores
     }
+
+    completed_stores = set()
+    timed_out_stores = set()
+
+    try:
+        try:
+            for future in as_completed(
+                futures,
+                timeout=DIAGNOSTIC_GLOBAL_TIMEOUT,
+            ):
+                store = futures[future]
+                try:
+                    store_report = future.result()
+                    report["stores"][store] = store_report
+                    completed_stores.add(store)
+                except Exception as exc:
+                    report["stores"][store] = {
+                        "store": store,
+                        "status": "worker_error",
+                        "errors": [{
+                            "stage": "diagnostic_worker",
+                            "error": f"{type(exc).__name__}: {exc}",
+                            "traceback": traceback.format_exc(),
+                        }],
+                        "timing": {
+                            "duration_ms": None,
+                        },
+                        "summary": {
+                            "attempt_count": 0,
+                            "raw_total": 0,
+                            "unique_after_dedup": 0,
+                            "duplicates_removed": 0,
+                            "matched_total": 0,
+                            "non_matched_total": 0,
+                            "error_total": 1,
+                        },
+                    }
+                    completed_stores.add(store)
+        except FuturesTimeoutError:
+            for future, store in futures.items():
+                if store in completed_stores:
+                    continue
+                if future.done():
+                    try:
+                        report["stores"][store] = future.result()
+                        completed_stores.add(store)
+                    except Exception as exc:
+                        report["stores"][store] = {
+                            "store": store,
+                            "status": "worker_error",
+                            "errors": [{
+                                "stage": "diagnostic_worker",
+                                "error": f"{type(exc).__name__}: {exc}",
+                                "traceback": traceback.format_exc(),
+                            }],
+                        }
+                        completed_stores.add(store)
+                else:
+                    timed_out_stores.add(store)
+                    report["stores"][store] = {
+                        "store": store,
+                        "status": "diagnostic_timeout",
+                        "errors": [{
+                            "stage": "diagnostic_global_timeout",
+                            "error": (
+                                f"Store non terminato entro "
+                                f"{DIAGNOSTIC_GLOBAL_TIMEOUT:.1f}s"
+                            ),
+                        }],
+                        "timing": {
+                            "duration_ms": round(
+                                (time.perf_counter() - started) * 1000,
+                                1,
+                            ),
+                        },
+                        "summary": {
+                            "attempt_count": 0,
+                            "raw_total": 0,
+                            "unique_after_dedup": 0,
+                            "duplicates_removed": 0,
+                            "matched_total": 0,
+                            "non_matched_total": 0,
+                            "error_total": 1,
+                        },
+                    }
+    finally:
+        for future in futures:
+            if not future.done():
+                future.cancel()
+        executor.shutdown(wait=False, cancel_futures=True)
+
+    counters = {
+        "raw_total": 0,
+        "unique_after_dedup": 0,
+        "duplicates_removed": 0,
+        "matched_total": 0,
+        "non_matched_total": 0,
+        "errors": 0,
+    }
+
+    rejection_reasons: Dict[str, int] = {}
+    stores_with_zero_raw: List[str] = []
+    stores_with_matches: List[str] = []
+    stores_with_errors: List[str] = []
+    stores_with_timeouts: List[str] = []
+
+    for store in selected_stores:
+        store_report = report["stores"].get(store, {})
+        summary = store_report.get("summary", {})
+
+        for key in counters:
+            counters[key] += int(summary.get(key, 0) or 0)
+
+        if int(summary.get("raw_total", 0) or 0) == 0:
+            stores_with_zero_raw.append(store)
+
+        if int(summary.get("matched_total", 0) or 0) > 0:
+            stores_with_matches.append(store)
+
+        if store_report.get("errors"):
+            stores_with_errors.append(store)
+
+        if store_report.get("status") in {
+            "diagnostic_timeout",
+            "store_timeout",
+        }:
+            stores_with_timeouts.append(store)
+
+        for candidate in store_report.get(
+            "non_matched_candidates",
+            [],
+        ):
+            diagnostic = candidate.get(
+                "rejection_diagnostic",
+                {},
+            )
+            for reason in diagnostic.get("reasons", []):
+                rejection_reasons[reason] = (
+                    rejection_reasons.get(reason, 0) + 1
+                )
+
+    report["timing"]["global_duration_ms"] = round(
+        (time.perf_counter() - started) * 1000,
+        1,
+    )
+
+    report["global_summary"] = {
+        "stores_total": len(selected_stores),
+        "stores_completed": len(completed_stores),
+        "stores_timed_out": sorted(timed_out_stores),
+        "stores_with_zero_raw": stores_with_zero_raw,
+        "stores_with_matches": stores_with_matches,
+        "stores_with_errors": stores_with_errors,
+        "stores_with_timeouts": stores_with_timeouts,
+        **counters,
+        "rejection_reasons": dict(
+            sorted(
+                rejection_reasons.items(),
+                key=lambda item: (-item[1], item[0]),
+            )
+        ),
+    }
+
+    return report
 
 
 def print_report(
     report: Dict[str, Any],
 ) -> None:
     print()
-    print(
-        f"QUERY: {report['query']}"
-    )
-    print(
-        "COPERTURA SCRAPER: "
-        f"{report['stores_with_candidates']}/"
-        f"{report['stores_expected']}"
-    )
-    print(
-        "COPERTURA MATCHER: "
-        f"{report['stores_with_central_matches']}/"
-        f"{report['stores_expected']}"
-    )
+    print("=" * 80)
+    print("SCENTHUNTER - 5 PHASE PIPELINE DIAGNOSTIC")
+    print("=" * 80)
+    print(f"QUERY: {report['query']}")
     print()
 
-    for item in report["stores"]:
+    audit = report.get(
+        "contract_audit",
+        {},
+    )
+
+    print(
+        f"PHASE 1 - CONTRACT AUDIT: "
+        f"{audit.get('status', 'UNKNOWN')}"
+    )
+
+    for check in audit.get(
+        "checks",
+        [],
+    ):
         print(
-            f"{item['store']:16} "
-            f"{item['status']:34} "
-            f"returned={item['returned_total']:3} "
-            f"unique={item['unique_candidates']:3} "
-            f"matched={item['central_matches']:3} "
-            f"rejected={item['central_rejected']:3}"
+            f"  - {check.get('check')}: "
+            f"{check.get('value')}"
         )
 
-        for call in item["calls"]:
+    summary = report["global_summary"]
+
+    print()
+    print("PIPELINE TOTALS")
+    print(
+        f"  Raw                         : "
+        f"{summary['raw_total']}"
+    )
+    print(
+        f"  Unici dopo dedup            : "
+        f"{summary['unique_after_dedup']}"
+    )
+    print(
+        f"  Duplicati rimossi           : "
+        f"{summary['duplicates_removed']}"
+    )
+    print(
+        f"  Accettati da matches()      : "
+        f"{summary['matched_total']}"
+    )
+    print(
+        f"  Rifiutati da matches()      : "
+        f"{summary['non_matched_total']}"
+    )
+    print(
+        f"  Errori                      : "
+        f"{summary['errors']}"
+    )
+
+    print()
+    print("PHASE 5 - REJECTION DIAGNOSTICS")
+    reasons = summary.get(
+        "rejection_reasons",
+        {},
+    )
+
+    if not reasons:
+        print("  Nessun rifiuto diagnosticato.")
+    else:
+        for reason, count in reasons.items():
             print(
-                "  "
-                f"query={call['query']!r} "
-                f"returned={call['returned']} "
-                f"unique+={call['unique_added']} "
-                f"matched={call['central_matches']} "
-                f"rejected={call['central_rejected']}"
+                f"  - {reason}: {count}"
             )
 
-        for product in item["products"]:
-            print(
-                "    - "
-                f"{product['name']} | "
-                f"central_match="
-                f"{product['central_matches']} | "
-                f"{product['url']}"
-            )
-
-        for error in item["errors"]:
-            print(
-                f"    ! {error}"
-            )
+    for store, store_report in report["stores"].items():
+        store_summary = store_report.get(
+            "summary",
+            {},
+        )
 
         print()
+        print("-" * 80)
+        print(f"STORE: {store}")
+        timing = store_report.get("timing", {})
+        print(
+            f"  Status={store_report.get('status', '-') } "
+            f"Time={timing.get('duration_ms', '-') }ms "
+            f"Raw={store_summary.get('raw_total', 0)} "
+            f"Unique={store_summary.get('unique_after_dedup', 0)} "
+            f"Duplicates={store_summary.get('duplicates_removed', 0)} "
+            f"Matched={store_summary.get('matched_total', 0)} "
+            f"Rejected={store_summary.get('non_matched_total', 0)} "
+            f"Errors={store_summary.get('error_total', 0)}"
+        )
+
+        if store_report.get(
+            "raw_by_attempt"
+        ):
+            print("  DISCOVERY:")
+            for attempt in store_report[
+                "raw_by_attempt"
+            ]:
+                print(
+                    f"    {attempt.get('attempt')!r}: "
+                    f"{attempt.get('count', 0)} raw "
+                    f"({attempt.get('duration_ms', '-')}ms)"
+                )
+
+        rejected = store_report.get(
+            "non_matched_candidates",
+            [],
+        )
+
+        if rejected:
+            print("  REJECTED CANDIDATES:")
+            for candidate in rejected[:20]:
+                diagnostic = candidate.get(
+                    "rejection_diagnostic",
+                    {},
+                )
+                print(
+                    f"    - {candidate.get('name') or '-'} "
+                    f"| reasons={diagnostic.get('reasons', [])}"
+                )
+
+        resolved = [
+            candidate
+            for candidate in store_report.get(
+                "matched_candidates",
+                [],
+            )
+            if candidate.get(
+                "resolved_identity"
+            )
+        ]
+
+        if resolved:
+            print("  RESOLVED IDENTITIES:")
+            for candidate in resolved[:20]:
+                identity = candidate[
+                    "resolved_identity"
+                ]
+                print(
+                    f"    - {candidate.get('name') or '-'} "
+                    f"=> {identity.get('canonical_name') or '-'} "
+                    f"| family_id={identity.get('family_id') or '-'}"
+                )
 
 
-def main() -> int:
+def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         description=(
-            "Diagnostica globale della pipeline "
-            "ScentHunter."
+            "Diagnostica generica delle cinque fasi "
+            "matcher/indexer ScentHunter."
         )
     )
 
     parser.add_argument(
         "query",
-        help="Termine di ricerca da testare.",
+        help="Query reale da diagnosticare",
     )
 
     parser.add_argument(
         "--stores",
-        nargs="*",
-        choices=STORES,
-        default=STORES,
-        help="Limita il test a determinati store.",
+        nargs="+",
+        default=None,
+        help="Limita il test agli store indicati",
     )
 
     parser.add_argument(
-        "--json",
-        action="store_true",
-        help="Restituisce soltanto JSON.",
+        "--output",
+        default=DEFAULT_OUTPUT,
+        help="File JSON del report",
     )
 
-    args = parser.parse_args()
+    parser.add_argument(
+        "--json-only",
+        action="store_true",
+        help="Non stampa il report testuale",
+    )
 
-    query = _text(args.query)
+    return parser.parse_args()
 
-    if not query:
-        parser.error(
-            "La query non può essere vuota."
-        )
+
+def main() -> int:
+    args = parse_args()
 
     report = run_query(
-        query,
-        stores=list(args.stores),
+        args.query,
+        stores=args.stores,
     )
 
-    if args.json:
-        print(
-            json.dumps(
-                report,
-                ensure_ascii=False,
-                indent=2,
-            )
+    output_path = os.path.abspath(
+        args.output
+    )
+
+    with open(
+        output_path,
+        "w",
+        encoding="utf-8",
+    ) as file:
+        json.dump(
+            report,
+            file,
+            ensure_ascii=False,
+            indent=2,
         )
-    else:
+
+    if not args.json_only:
         print_report(report)
+
+    print(
+        f"\nReport JSON: {output_path}"
+    )
 
     return 0
 
