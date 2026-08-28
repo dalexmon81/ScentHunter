@@ -11,13 +11,7 @@
 .search-card{padding:0;margin:0 0 18px;border:0;background:none}
 input{width:100%;border:1px solid #34363a;outline:0;border-radius:18px;padding:17px 18px 17px 48px;background:linear-gradient(135deg,#181a1d,#101113);color:white;font-size:17px}
 .searchwrap{position:relative} .searchicon{position:absolute;left:17px;top:13px;font-size:24px;z-index:2}
-button{border:0;font-weight:800} #searchButton{display:block!important} #status{
- display:block!important;
- margin:14px 5px 10px!important;
- color:#b6b6bd!important;
- font-size:14px!important;
- line-height:1.4!important;
-}
+button{border:0;font-weight:800} #searchButton{display:block!important} #status{display:block!important}
 .hero{border:1px solid #234638;border-radius:22px;padding:25px 20px;background:radial-gradient(circle at 85% 45%,#173c2d 0,#0b1c16 24%,#07100d 58%,#060808 100%);min-height:205px;position:relative;overflow:hidden}
 .hero h2{font-size:22px;margin:0 0 12px;max-width:64%;line-height:1.1} .hero p{font-size:16px;line-height:1.45;margin:0 0 18px;max-width:58%}
 .herobtn{display:inline-block;background:linear-gradient(#f4ca5d,#d99c22);color:#111;padding:13px 20px;border-radius:30px;font-size:14px;font-weight:900}
@@ -1613,155 +1607,64 @@ function chooseOffer(gi,sizeKey,oi){
   }
 }
 
-async function fetchJSONWithTimeout(url,ms=180000){
-  const controller=new AbortController();
-  const timer=setTimeout(()=>controller.abort(),ms);
-
-  try{
-    const response=await fetch(url,{
-      method:"GET",
-      signal:controller.signal,
-      headers:{
-        "Accept":"application/json, text/plain;q=0.9, */*;q=0.8"
-      }
-    });
-
-    const contentType=String(response.headers.get("content-type")||"").toLowerCase();
-    const body=await response.text();
-
-    if(!response.ok){
-      throw new Error(
-        "HTTP "+response.status+
-        (body ? " — "+body.slice(0,500) : "")
-      );
-    }
-
-    if(!body.trim()){
-      throw new Error("Il backend ha restituito una risposta vuota.");
-    }
-
-    try{
-      return JSON.parse(body);
-    }catch(parseError){
-      throw new Error(
-        "Risposta del backend non JSON. Content-Type: "+
-        (contentType||"non dichiarato")+
-        " — "+body.slice(0,500)
-      );
-    }
-  }catch(error){
-    if(error&&error.name==="AbortError"){
-      throw new Error("Timeout dopo "+Math.round(ms/1000)+" secondi durante la richiesta /search.");
-    }
-    throw error;
-  }finally{
-    clearTimeout(timer);
-  }
+async function fetchJSONWithTimeout(url,ms=90000){
+ const controller=new AbortController();
+ const timer=setTimeout(()=>controller.abort(),ms);
+ try{
+  const response=await fetch(url,{signal:controller.signal,headers:{"Accept":"application/json"}});
+  if(!response.ok)throw new Error("HTTP "+response.status);
+  return await response.json();
+ }finally{clearTimeout(timer)}
 }
 
 async function searchPerfume(){
-  const q=queryInput.value.trim();
+ const q=queryInput.value.trim();if(!q){statusBox.textContent="";resultsBox.innerHTML="";errorsBox.innerHTML="";return}
+ searchButton.disabled=true;searchButton.classList.add("searching");
+ let dots=0;
+ const updateSearchButton=()=>{dots=(dots+1)%4;searchButton.innerHTML='<span class="search-fixed">CERCO</span><span class="search-dots">'+". ".trim().repeat(0)+". ".trim().repeat(dots)+'</span>'};
+ updateSearchButton();
+ const dotsTimer=setInterval(updateSearchButton,500);
+ statusBox.textContent="";resultsBox.innerHTML="";errorsBox.innerHTML="";
+ try{
+  const term=q;
+  const started=await fetchJSONWithTimeout(
+    backend()+"/search-start?q="+encodeURIComponent(term),
+    30000
+  );
 
-  if(!q){
-    statusBox.textContent="";
-    resultsBox.innerHTML="";
-    errorsBox.innerHTML="";
-    return;
+  if(!started||!started.job_id){
+    throw new Error("Il backend non ha restituito job_id.");
   }
 
-  searchButton.disabled=true;
-  searchButton.classList.add("searching");
+  let data=null;
+  let completed=false;
 
-  let dots=0;
-  const updateSearchButton=()=>{
-    dots=(dots+1)%4;
-    searchButton.innerHTML=
-      '<span class="search-fixed">CERCO</span>'+
-      '<span class="search-dots">'+".".repeat(dots)+'</span>';
-  };
+  for(let attempt=0;attempt<50;attempt++){
+    await new Promise(resolve=>setTimeout(resolve,1500));
 
-  updateSearchButton();
-  const dotsTimer=setInterval(updateSearchButton,500);
-
-  statusBox.textContent="";
-  resultsBox.innerHTML="";
-  errorsBox.innerHTML="";
-
-  try{
-    const term=q;
-
-    const data=await fetchJSONWithTimeout(
-      backend()+"/search?q="+encodeURIComponent(term),
-      180000
+    data=await fetchJSONWithTimeout(
+      backend()+"/search-status?job_id="+encodeURIComponent(started.job_id),
+      30000
     );
 
-    /*
-     * Compatibilità: il frontend storico usa { comparisons: [] } oppure
-     * { results: [] }, ma accetta anche risposte JSON equivalenti ricevute
-     * dal backend sotto data, products o items.
-     */
-    const normalizedData=Array.isArray(data)
-      ?{results:data}
-      :{
-          ...data,
-          results:Array.isArray(data?.results)
-            ?data.results
-            :Array.isArray(data?.data)
-              ?data.data
-              :Array.isArray(data?.products)
-                ?data.products
-                :Array.isArray(data?.items)
-                  ?data.items
-                  :[],
-          comparisons:Array.isArray(data?.comparisons)
-            ?data.comparisons
-            :[]
-        };
-
-    const groups=shGroupData(normalizedData);
-
-    if(!groups.length){
-      statusBox.textContent="La ricerca è terminata, ma il backend non ha restituito offerte utilizzabili.";
-      errorsBox.textContent=
-        "Schema ricevuto dal backend: "+
-        Object.keys(data||{}).join(", ")||"nessuna chiave JSON disponibile.";
-      return;
+    if(data&&data.completed===true){
+      completed=true;
+      break;
     }
-
-    showProducts(groups);
-    currentProductGroups=groups;
-
-    refreshWishlistFromResults(
-      groups.flatMap(g=>g.offers.map(o=>({
-        name:g.name||"",
-        brand:g.brand||"",
-        price:shPrice(o),
-        price_value:o.price_value,
-        store:o.store||"",
-        url:o.url||""
-      })))
-    );
-
-    if(normalizedData.errors&&Object.keys(normalizedData.errors).length){
-      errorsBox.innerHTML=
-        "Alcuni negozi non hanno risposto: "+
-        Object.keys(normalizedData.errors).map(esc).join(", ")+".";
-    }
-  }catch(e){
-    console.error("Errore ricerca ScentHunter:",e);
-
-    statusBox.textContent="Impossibile completare la ricerca.";
-
-    errorsBox.textContent=
-      e&&e.message
-        ?e.message
-        :"Errore non identificato durante la richiesta al backend.";
-  }finally{
-    clearInterval(dotsTimer);
-    searchButton.disabled=false;
-    searchButton.classList.remove("searching");
-    searchButton.textContent="INIZIA LA RICERCA";
   }
+
+  if(!completed){
+    throw new Error(
+      "La ricerca non è terminata entro 75 secondi. "+
+      "Il backend potrebbe avere scraper bloccati."
+    );
+  }
+  const groups=shGroupData(data);showProducts(groups);
+  currentProductGroups=groups;
+  refreshWishlistFromResults(groups.flatMap(g=>g.offers.map(o=>({name:g.name||"",brand:g.brand||"",price:shPrice(o),price_value:o.price_value,store:o.store||"",url:o.url||""}))));
+  if(data.errors&&Object.keys(data.errors).length)errorsBox.innerHTML="Alcuni negozi non hanno risposto: "+Object.keys(data.errors).map(esc).join(", ")+".";
+ }catch(e){console.error(e);statusBox.textContent="Impossibile completare la ricerca."}
+ finally{clearInterval(dotsTimer);searchButton.disabled=false;searchButton.classList.remove("searching");searchButton.textContent="INIZIA LA RICERCA"}
 }
 
 searchButton.addEventListener("click",searchPerfume);queryInput.addEventListener("keydown",e=>{if(e.key==="Enter"){e.preventDefault();searchPerfume()}});
