@@ -2044,10 +2044,16 @@ function shGroupData(data){
     const available=offers.filter(o=>!isOfferOutOfStock(o));
     const source=available.length?available:offers;
 
-    g.image_candidates=source
-      .map(o=>o?.image||o?.image_url||o?.thumbnail||"")
-      .map(v=>String(v).trim())
-      .filter(Boolean);
+    g.image_candidates=[];
+    const seenImages=new Set();
+    source.forEach(o=>{
+      shImageCandidatesFromOffer(o).forEach(url=>{
+        if(!seenImages.has(url)){
+          seenImages.add(url);
+          g.image_candidates.push(url);
+        }
+      });
+    });
 
     g.image=g.image_candidates[0]||g.image||"";
   });
@@ -2232,6 +2238,28 @@ function shNormalizeImageUrl(value){
   return url;
 }
 
+function shImageCandidatesFromOffer(o){
+  const out=[];
+  const seen=new Set();
+  const add=value=>{
+    if(value==null)return;
+    if(Array.isArray(value)){
+      value.forEach(add);
+      return;
+    }
+    if(typeof value==="object"){
+      [value.url,value.src,value.image,value.image_url,value.thumbnail,value.original,value.originalSrc,value.preview_image,value.previewImage].forEach(add);
+      return;
+    }
+    const url=shNormalizeImageUrl(value);
+    if(!url||seen.has(url))return;
+    seen.add(url);
+    out.push(url);
+  };
+  [o?.image,o?.image_url,o?.thumbnail,o?.images,o?.image_urls,o?.media,o?.featured_image,o?.featuredImage,o?.product_image,o?.productImage].forEach(add);
+  return out;
+}
+
 function shImageFallback(img){
   try{
     const candidates=JSON.parse(img.dataset.imageCandidates||"[]");
@@ -2252,9 +2280,9 @@ function shImageFallback(img){
 }
 
 function shImageTag(g,alt){
-  const source=Array.isArray(g?.image_candidates)
+  const source=Array.isArray(g?.image_candidates)&&g.image_candidates.length
     ?g.image_candidates
-    :(g?.image?[g.image]:[]);
+    :((g?.offers||[]).flatMap(shImageCandidatesFromOffer));
 
   // Manteniamo l'ordine delle offerte: prima il negozio meno caro,
   // poi il secondo, il terzo, ecc. Duplicati e URL vuoti vengono eliminati.
