@@ -11,6 +11,8 @@ import traceback
 from concurrent.futures import ThreadPoolExecutor, as_completed, TimeoutError
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
+from html.parser import HTMLParser
+from urllib.parse import urljoin, urlparse
 from urllib.parse import urlencode
 from urllib.request import Request, urlopen
 from urllib.error import HTTPError, URLError
@@ -1187,6 +1189,223 @@ def diagnostic_deloox_search(q: str):
             "ok": False,
             "store": "deloox",
             "query": query,
+            "error": f"{type(error).__name__}: {error}",
+            "traceback": traceback.format_exc(),
+        }
+
+
+# ============================================================
+# API - DIAGNOSTICA HOMEPAGE REALE DELOOX
+# ============================================================
+
+class _DelooxHomepageParser(HTMLParser):
+    """Parser HTML leggero usato solo dal diagnostico Deloox."""
+
+    def __init__(self):
+        super().__init__(convert_charrefs=True)
+        self.links: List[str] = []
+        self.forms: List[Dict[str, Any]] = []
+        self.scripts: List[Dict[str, Any]] = []
+        self.meta: List[Dict[str, str]] = []
+        self.title_parts: List[str] = []
+        self._in_title = False
+        self._current_form: Optional[Dict[str, Any]] = None
+        self._current_script: Optional[Dict[str, Any]] = None
+
+    def handle_starttag(self, tag, attrs):
+        data = dict(attrs)
+        tag = tag.lower()
+
+        if tag == "title":
+            self._in_title = True
+        elif tag == "a" and data.get("href"):
+            self.links.append(data["href"].strip())
+        elif tag == "form":
+            self._current_form = {
+                "action": data.get("action", ""),
+                "method": data.get("method", "get").lower(),
+                "inputs": [],
+            }
+            self.forms.append(self._current_form)
+        elif tag in {"input", "select", "textarea", "button"} and self._current_form is not None:
+            self._current_form["inputs"].append({
+                "tag": tag,
+                "name": data.get("name", ""),
+                "type": data.get("type", ""),
+                "value": data.get("value", ""),
+                "placeholder": data.get("placeholder", ""),
+            })
+        elif tag == "script":
+            self._current_script = {
+                "src": data.get("src", ""),
+                "type": data.get("type", ""),
+                "text": [],
+            }
+            self.scripts.append(self._current_script)
+        elif tag == "meta":
+            key = data.get("name") or data.get("property") or data.get("http-equiv") or ""
+            value = data.get("content", "")
+            if key or value:
+                self.meta.append({"key": key, "content": value})
+
+    def handle_endtag(self, tag):
+        tag = tag.lower()
+        if tag == "title":
+            self._in_title = False
+        elif tag == "form":
+            self._current_form = None
+        elif tag == "script":
+            self._current_script = None
+
+    def handle_data(self, data):
+        if self._in_title:
+            self.title_parts.append(data)
+        if self._current_script is not None:
+            self._current_script["text"].append(data)
+
+
+@app.get("/diagnostic-deloox-homepage")
+def diagnostic_deloox_homepage():
+    """
+    Diagnostica esclusivamente la homepage REALE di Deloox.
+
+    Non esegue il normale search(), non usa il matcher e non assume
+    categorie o URL prodotto predefiniti. Parte da BASE_URL del vero
+    scraper caricato da Railway e analizza ciò che Deloox espone oggi.
+    """
+    try:
+        module = load_scraper("deloox")
+        base_url = str(getattr(module, "BASE_URL", "") or "").strip()
+        if not base_url:
+            raise RuntimeError("Deloox scraper non espone BASE_URL")
+
+        requests_module = getattr(module, "requests", None)
+        if requests_module is None:
+            raise RuntimeError("Deloox scraper non espone il modulo requests")
+
+        session = requests_module.Session()
+        try:
+            response = session.get(
+                base_url,
+                timeout=30,
+                allow_redirects=True,
+                headers={
+                    "User-Agent": (
+                        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+                        "AppleWebKit/537.36 (KHTML, like Gecko) "
+                        "Chrome/131.0 Safari/537.36"
+                    ),
+                    "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+                    "Accept-Language": "en-US,en;q=0.9,nl;q=0.8,fr;q=0.7",
+                },
+            )
+
+            html = response.text or ""
+            parser = _DelooxHomepageParser()
+            parser.feed(html)
+
+            base_host = urlparse(response.url).netloc.lower()
+            resolved_links: List[Dict[str, str]] = []
+            seen = set()
+
+            for raw_href in parser.links:
+                if not raw_href or raw_href.startswith(("#", "javascript:", "mailto:", "tel:")):
+                    continue
+                absolute = urljoin(response.url, raw_href)
+                parsed = urlparse(absolute)
+                if parsed.scheme not in {"http", "https"}:
+                    continue
+                key = absolute
+                if key in seen:
+                    continue
+                seen.add(key)
+                resolved_links.append({
+                    "href": raw_href,
+                    "url": absolute,
+                    "path": parsed.path,
+                    "query": parsed.query,
+                    "same_host": parsed.netloc.lower() == base_host,
+                })
+
+            same_host_links = [x for x in resolved_links if x["same_host"]]
+            search_links = [
+                x for x in same_host_links
+                if any(token in (x["url"] + " " + x["path"] + " " + x["query"]).lower()
+                       for token in ("search", "zoek", "query", "q="))
+            ]
+            category_links = [
+                x for x in same_host_links
+                if any(token in x["path"].lower()
+                       for token in ("category", "categorie", "parfum", "fragrance", "heren", "dames", "men", "women"))
+            ]
+            product_links = [
+                x for x in same_host_links
+                if any(token in x["path"].lower()
+                       for token in ("product", "parfum", "perfume"))
+            ]
+
+            script_report = []
+            clue_patterns = (
+                "api", "graphql", "/search", "search?", "algolia", "elastic", "product",
+                "autocomplete", "suggest", "__next_data__", "application/ld+json"
+            )
+            for script in parser.scripts:
+                text = "".join(script.get("text", []))
+                lowered = text.lower()
+                clues = [pattern for pattern in clue_patterns if pattern in lowered]
+                src = script.get("src", "")
+                if src or clues:
+                    script_report.append({
+                        "src": urljoin(response.url, src) if src else "",
+                        "type": script.get("type", ""),
+                        "length": len(text),
+                        "clues": clues,
+                        "snippet": text[:1200] if clues else "",
+                    })
+
+            meta_report = [m for m in parser.meta if m["key"] and m["content"]]
+
+            return {
+                "ok": True,
+                "store": "deloox",
+                "base_url_from_scraper": base_url,
+                "request": {
+                    "url": base_url,
+                    "method": "GET",
+                },
+                "response": {
+                    "status": response.status_code,
+                    "final_url": response.url,
+                    "content_type": response.headers.get("Content-Type", ""),
+                    "content_length_bytes": len(response.content or b""),
+                    "history": [
+                        {"status": r.status_code, "url": r.url, "location": r.headers.get("Location", "")}
+                        for r in response.history
+                    ],
+                },
+                "html": {
+                    "title": " ".join(" ".join(parser.title_parts).split()),
+                    "forms": parser.forms,
+                    "meta": meta_report[:100],
+                    "total_links": len(resolved_links),
+                    "same_host_links": len(same_host_links),
+                },
+                "discovery": {
+                    "search_links": search_links[:100],
+                    "category_links": category_links[:200],
+                    "product_like_links": product_links[:200],
+                },
+                "scripts": script_report[:100],
+                "raw_html_head": html[:5000],
+            }
+        finally:
+            session.close()
+
+    except Exception as error:
+        traceback.print_exc()
+        return {
+            "ok": False,
+            "store": "deloox",
             "error": f"{type(error).__name__}: {error}",
             "traceback": traceback.format_exc(),
         }
