@@ -296,6 +296,158 @@ body{position:relative}
  .home-search-button{left:6.0%;width:48.6%;top:86.35%;height:6.55%;border-radius:14px;font-size:11px}
 }
 </style>
+
+<style id="APPROVED-PRODUCT-DETAIL-VISUAL">
+/* PRODUCT DETAIL — grafica approvata: immagine grande + fascia statistiche */
+.detail-approved{
+  border:1px solid #365b46!important;
+  border-radius:22px!important;
+  background:linear-gradient(145deg,#111814,#0a0e0c)!important;
+  padding:28px 22px 24px!important;
+  box-shadow:0 10px 30px rgba(0,0,0,.22)!important;
+}
+.detail-approved .detail-back{
+  display:block!important;
+  margin:0 0 24px!important;
+  padding:0!important;
+  background:none!important;
+  border:0!important;
+  color:#e7b83f!important;
+  font-size:17px!important;
+  font-weight:900!important;
+  line-height:1.2!important;
+  cursor:pointer!important;
+}
+.detail-product{
+  display:flex;
+  align-items:center;
+  gap:28px;
+  margin:0 0 24px;
+}
+.detail-product-image{
+  width:155px;
+  height:165px;
+  flex:0 0 155px;
+  border:1px solid #30343a;
+  border-radius:22px;
+  background:#090b0c;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  overflow:hidden;
+}
+.detail-product-image img{
+  width:100%;
+  height:100%;
+  object-fit:contain;
+  display:block;
+  background:white;
+}
+.detail-product-info{min-width:0;flex:1}
+.detail-product-brand{
+  color:#e7b83f;
+  font-size:22px;
+  font-weight:950;
+  text-transform:uppercase;
+  letter-spacing:.5px;
+  line-height:1.05;
+  margin-bottom:7px;
+}
+.detail-product-name{
+  color:#f7f7f5;
+  font-size:34px;
+  font-weight:900;
+  line-height:1.05;
+  word-break:break-word;
+}
+.detail-product-size{
+  color:#aeb0b2;
+  font-size:18px;
+  font-weight:700;
+  margin-top:12px;
+}
+.detail-stats{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  border:1px solid #303238;
+  border-radius:22px;
+  background:#090b0b;
+  overflow:hidden;
+  margin:0 0 26px;
+}
+.detail-stat{
+  min-width:0;
+  min-height:106px;
+  display:flex;
+  align-items:center;
+  gap:14px;
+  padding:16px 18px;
+}
+.detail-stat+ .detail-stat{border-left:1px solid #303238}
+.detail-stat-icon{
+  width:54px;
+  height:54px;
+  flex:0 0 54px;
+  border-radius:50%;
+  background:#073d28;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  color:#e7b83f;
+  font-size:28px;
+  font-weight:900;
+}
+.detail-stat-text{min-width:0}
+.detail-stat-label{
+  display:block;
+  color:#aeb0b2;
+  font-size:16px;
+  font-weight:900;
+  letter-spacing:.4px;
+  text-transform:uppercase;
+  line-height:1.1;
+  margin-bottom:5px;
+}
+.detail-stat-value{
+  display:block;
+  color:#f7f7f5;
+  font-size:30px;
+  font-weight:950;
+  line-height:1;
+  white-space:nowrap;
+}
+.detail-offers-title{
+  margin:0 0 12px;
+  color:#aeb0b2;
+  font-size:18px;
+  font-weight:900;
+  letter-spacing:.8px;
+}
+.detail-approved .offer{
+  padding:16px 0!important;
+}
+@media(max-width:600px){
+  .detail-approved{padding:24px 16px 20px!important}
+  .detail-product{gap:18px;margin-bottom:20px}
+  .detail-product-image{width:125px;height:140px;flex-basis:125px;border-radius:19px}
+  .detail-product-brand{font-size:17px}
+  .detail-product-name{font-size:27px}
+  .detail-product-size{font-size:16px;margin-top:8px}
+  .detail-stat{min-height:94px;padding:13px 12px;gap:9px}
+  .detail-stat-icon{width:44px;height:44px;flex-basis:44px;font-size:23px}
+  .detail-stat-label{font-size:12px}
+  .detail-stat-value{font-size:23px}
+}
+@media(max-width:390px){
+  .detail-product-image{width:105px;height:120px;flex-basis:105px}
+  .detail-product-brand{font-size:15px}
+  .detail-product-name{font-size:23px}
+  .detail-stat{padding:11px 9px;gap:7px}
+  .detail-stat-icon{width:38px;height:38px;flex-basis:38px;font-size:20px}
+  .detail-stat-label{font-size:10px}
+  .detail-stat-value{font-size:20px}
+}
+</style>
 </head>
 <body>
 <main class="app">
@@ -1562,24 +1714,46 @@ function openSize(gi,sizeKey,fromFormats=true){
   const offers=selected.offers;
   const saved=getWishlist();
   const img=g.image||"";
+  const brand=g.brand||"";
+  const name=g.name||"Profumo";
+  const sizeLabel=formatLabel(sizeKey);
 
   statusBox.textContent="";
-  resultsBox.innerHTML=`<article class="comparison">
+  resultsBox.innerHTML=`<article class="comparison detail-approved">
     <button class="detail-back" onclick="${fromFormats?`openProduct(${gi})`:`showProducts(currentProductGroups)`}">${fromFormats?'← Torna ai formati':'← Torna ai profumi'}</button>
-    <div class="comparison-head">
-      <div class="result-image">${img?`<img src="${esc(img)}" alt="${esc(g.name)}" onerror="this.outerHTML='🧴'">`:"🧴"}</div>
-      <div class="result-main">
-        <div class="store">${esc(g.brand||"")}</div>
-        <div class="name">${esc(g.name)}</div>
-        ${sizeKey?`<div class="offer-meta">${esc(formatLabel(sizeKey))}</div>`:""}
+
+    <div class="detail-product">
+      <div class="detail-product-image">${img?`<img src="${esc(img)}" alt="${esc(name)}" onerror="this.outerHTML='🧴'">`:'🧴'}</div>
+      <div class="detail-product-info">
+        <div class="detail-product-brand">${esc(brand)}</div>
+        <div class="detail-product-name">${esc(name)}</div>
+        ${sizeLabel?`<div class="detail-product-size">${esc(sizeLabel)}</div>`:""}
       </div>
     </div>
-    <div class="bestlabel">CONFRONTA I PREZZI · ${offers.length} ${offers.length===1?"NEGOZIO":"NEGOZI"}</div>
+
+    <div class="detail-stats">
+      <div class="detail-stat">
+        <div class="detail-stat-icon">♙</div>
+        <div class="detail-stat-text">
+          <span class="detail-stat-label">FORMATO</span>
+          <strong class="detail-stat-value">${esc(sizeLabel||"—")}</strong>
+        </div>
+      </div>
+      <div class="detail-stat">
+        <div class="detail-stat-icon">◇</div>
+        <div class="detail-stat-text">
+          <span class="detail-stat-label">CONFRONTA I PREZZI</span>
+          <strong class="detail-stat-value">${offers.length} ${offers.length===1?'negozio':'negozi'}</strong>
+        </div>
+      </div>
+    </div>
+
+    <div class="detail-offers-title">CONFRONTA I PREZZI</div>
     ${offers.map((o,n)=>{
       const isOut=isOfferOutOfStock(o);
       const item={
-        brand:g.brand||o.brand||"",
-        name:g.name||o.name||"",
+        brand:brand||o.brand||"",
+        name:name||o.name||"",
         price:isOut?"":shPrice(o),
         shop:o.store||"",
         url:o.url||"",
