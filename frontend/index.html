@@ -139,7 +139,7 @@ body{position:relative}
 </style>
 
 <style>
-.product-choice{margin-top:12px;padding:15px;border:1px solid #303238;border-radius:18px;background:#121416;display:flex;gap:13px;align-items:center;cursor:pointer;touch-action:pan-y;-webkit-tap-highlight-color:transparent}
+.product-choice{margin-top:12px;padding:15px;border:1px solid #303238;border-radius:18px;background:#121416;display:flex;gap:13px;align-items:center;cursor:pointer;touch-action:manipulation;-webkit-tap-highlight-color:transparent}
 .product-choice-main{min-width:0;flex:1}.product-choice .arrow{color:#e7b83f;font-size:28px}
 .detail-back{background:none;color:#e7b83f;padding:0 0 12px;font-size:14px;cursor:pointer}
 .offer-heart{background:none;color:#aaa;font-size:26px;cursor:pointer;padding:0 4px;opacity:1!important;pointer-events:auto!important;touch-action:manipulation}.offer-heart.saved{color:#e7b83f}
@@ -2169,41 +2169,9 @@ function sizeOfOffer(o){
   return m?m[1]:"";
 }
 
-// Evita che uno scroll venga interpretato come tap sulla scheda,
-// senza bloccare i normali tap su iPhone/Safari.
-let cardPointerStartX=0;
-let cardPointerStartY=0;
-let cardPointerMoved=false;
-let cardPointerActive=false;
-
-document.addEventListener("pointerdown",e=>{
-  const card=e.target.closest(".product-choice");
-  if(!card)return;
-  cardPointerActive=true;
-  cardPointerMoved=false;
-  cardPointerStartX=e.clientX;
-  cardPointerStartY=e.clientY;
-},{passive:true,capture:true});
-
-document.addEventListener("pointerup",e=>{
-  if(!cardPointerActive)return;
-  cardPointerMoved=Math.hypot(e.clientX-cardPointerStartX,e.clientY-cardPointerStartY)>12;
-  cardPointerActive=false;
-},{passive:true,capture:true});
-
-document.addEventListener("pointercancel",()=>{
-  cardPointerActive=false;
-  cardPointerMoved=true;
-},{passive:true,capture:true});
-
-document.addEventListener("click",e=>{
-  if(!cardPointerMoved)return;
-  if(e.target.closest(".product-choice")){
-    e.preventDefault();
-    e.stopImmediatePropagation();
-  }
-  cardPointerMoved=false;
-},{capture:true});
+// Schede prodotto: click/tap gestito direttamente dalla scheda.
+// Nessun intercettatore globale: su iPhone Safari puo' generare pointercancel
+// anche durante un tap e impedire il click della scheda.
 
 function displayCatalogName(g){
   const canonical=String(g?.canonical_name||g?.catalog_variant||g?.name||"").trim();
@@ -2253,7 +2221,7 @@ function showProducts(groups){
     // la scheda del prodotto presenterà la scelta dei formati.
     const best=g.offers.find(o=>!isOfferOutOfStock(o))||null;
 
-    return `<article class="product-choice" data-product-index="${i}" role="button" tabindex="0">
+    return `<article class="product-choice" data-product-index="${i}" role="button" tabindex="0" onclick="openProduct(${i})" onkeydown="if(event.key===\"Enter\"||event.key===\" \"){event.preventDefault();openProduct(${i})}">
       <div class="result-image">${img?`<img src="${esc(img)}" alt="${esc(displayPerfumeName(displayCatalogName(g),g.brand,g.concentration))}" onerror="this.outerHTML='🧴'">`:"🧴"}</div>
       <div class="product-choice-main">
         <div class="name">${esc(g.brand ? g.brand+" - "+displayPerfumeName(displayCatalogName(g),g.brand,g.concentration) : displayPerfumeName(displayCatalogName(g),g.brand,g.concentration))}</div>
@@ -2263,42 +2231,6 @@ function showProducts(groups){
     </article>`;
   }).join("");
 }
-
-function handleProductCardActivation(card){
-  if(!card)return;
-  if(card.classList.contains("format-choice")){
-    const gi=Number(card.dataset.formatGroup);
-    const size=card.dataset.formatSize||"";
-    openSize(gi,size);
-    return;
-  }
-  const gi=Number(card.dataset.productIndex);
-  if(Number.isInteger(gi))openProduct(gi);
-}
-
-document.addEventListener("click",e=>{
-  const card=e.target.closest(".product-choice");
-  if(!card)return;
-
-  // I pulsanti/link interni hanno una propria azione.
-  if(e.target.closest("button,a"))return;
-
-  if(cardPointerMoved){
-    cardPointerMoved=false;
-    return;
-  }
-
-  e.preventDefault();
-  handleProductCardActivation(card);
-});
-
-document.addEventListener("keydown",e=>{
-  if(e.key!=="Enter"&&e.key!==" ")return;
-  const card=e.target.closest(".product-choice");
-  if(!card)return;
-  e.preventDefault();
-  handleProductCardActivation(card);
-});
 
 function toggleWishButton(el){
   toggleWish({
@@ -2411,7 +2343,7 @@ function openProduct(i){
     ${sizes.map(s=>{
       const best=s.best;
       const shopCount=s.offers.length;
-      return `<div class="product-choice format-choice" data-format-group="${i}" data-format-size="${esc(s.size)}" role="button" tabindex="0">
+      return `<div class="product-choice format-choice" data-format-group="${i}" data-format-size="${esc(s.size)}" role="button" tabindex="0" onclick="openSizeFromCard(this)" onkeydown="if(event.key===\"Enter\"||event.key===\" \"){event.preventDefault();openSizeFromCard(this)}">
         <div class="format-icon">🧴</div>
         <div class="product-choice-main">
           <div class="name">${esc(formatLabel(s.size))}</div>
@@ -2424,6 +2356,13 @@ function openProduct(i){
   </article>`;
 
   document.getElementById("searchOutput").scrollIntoView({behavior:"smooth",block:"start"});
+}
+
+function openSizeFromCard(card){
+  if(!card)return;
+  const gi=Number(card.dataset.formatGroup);
+  const size=card.dataset.formatSize||"";
+  if(Number.isInteger(gi))openSize(gi,size);
 }
 
 function openSize(gi,sizeKey,fromFormats=true){
