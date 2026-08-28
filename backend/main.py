@@ -2086,6 +2086,18 @@ def product(
     }
 
 
+
+# Compatibility helper used by diagnostic_search.py.
+def product_field(product: Any, *keys: str, default: Any = None) -> Any:
+    if not isinstance(product, dict):
+        return default
+    for key in keys:
+        value = product.get(key)
+        if value is not None and str(value).strip():
+            return value
+    return default
+
+
 # ============================================================
 # ENDPOINT DIAGNOSTICO HTTP
 # ============================================================
