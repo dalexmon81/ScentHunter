@@ -1818,14 +1818,7 @@ def diagnostic_search_endpoint(
     Diagnostica HTTP autonoma.
     Mostra discovery, dedup, matching e motivi di rifiuto senza modificare
     la ricerca normale o il database.
-
-    Ogni store ha un limite indipendente: un scraper bloccato non impedisce
-    agli altri store di restituire il report diagnostico.
     """
-    from concurrent.futures import ThreadPoolExecutor, wait
-
-    STORE_TIMEOUT_SECONDS = 25
-
     raw_query = str(query or "").strip()
     if not raw_query:
         raise HTTPException(status_code=400, detail="Parametro 'query' obbligatorio")
@@ -1854,12 +1847,6 @@ def diagnostic_search_endpoint(
 
     def diagnose_store(store: str) -> Dict[str, Any]:
         started = datetime.now(timezone.utc).timestamp()
-
-        print(
-            f"[diagnostic] START store={store} query={raw_query!r}",
-            flush=True,
-        )
-
         module = load_scraper(store)
         attempts = build_search_attempts(
             store,
@@ -1881,10 +1868,8 @@ def diagnostic_search_endpoint(
         for attempt in attempts:
             if norm(attempt) == norm(raw_query):
                 continue
-
             try:
-                rows = module.search(attempt) or []
-                batches.append((attempt, rows))
+                batches.append((attempt, module.search(attempt) or []))
             except Exception as exc:
                 errors.append(
                     f"search[{attempt}]: {type(exc).__name__}: {exc}"
@@ -1946,126 +1931,42 @@ def diagnostic_search_endpoint(
                     "family_name": str(product.get("family_name") or ""),
                     "match_method": str(product.get("match_method") or ""),
                     "url": str(item.get("url") or ""),
-                    "image": str(
-                        item.get("image")
-                        or item.get("image_url")
-                        or item.get("thumbnail")
-                        or ""
-                    ),
                     "accepted": accepted,
                     "rejection_reason": reason,
                 })
 
         duration_ms = (datetime.now(timezone.utc).timestamp() - started) * 1000
-
-        print(
-            f"[diagnostic] END store={store} "
-            f"raw={sum(len(rows) for _attempt, rows in batches)} "
-            f"accepted={sum(1 for item in candidates if item['accepted'])} "
-            f"duration_ms={round(duration_ms, 1)}",
-            flush=True,
-        )
-
         return {
             "store": store,
             "status": "ok" if not errors else "partial",
             "attempts": attempts,
             "raw_total": sum(len(rows) for _attempt, rows in batches),
             "unique_candidates": len(candidates),
-            "accepted": sum(1 for item in candidates if item["accepted"]),
-            "rejected": sum(1 for item in candidates if not item["accepted"]),
+            "accepted": sum(1 for x in candidates if x["accepted"]),
+            "rejected": sum(1 for x in candidates if not x["accepted"]),
             "rejection_reasons": rejection_reasons,
             "candidates": candidates,
             "errors": errors,
             "duration_ms": round(duration_ms, 1),
         }
 
-    print(
-        f"[diagnostic] ENTERED query={raw_query!r} stores={selected}",
-        flush=True,
-    )
-
-    STORE_TIMEOUT_SECONDS = 20
-
-for store in selected:
-    print(
-        f"[diagnostic] QUEUED store={store} query={raw_query!r}",
-        flush=True,
-    )
-
-    executor = ThreadPoolExecutor(max_workers=1)
-    future = executor.submit(diagnose_store, store)
-
-    try:
-        report["stores"][store] = future.result(
-            timeout=STORE_TIMEOUT_SECONDS
-        )
-
-    except FuturesTimeoutError:
-        future.cancel()
-
-        print(
-            f"[diagnostic] TIMEOUT store={store} "
-            f"limit_seconds={STORE_TIMEOUT_SECONDS}",
-            flush=True,
-        )
-
-        report["stores"][store] = {
-            "store": store,
-            "status": "timeout",
-            "attempts": [],
-            "raw_total": 0,
-            "unique_candidates": 0,
-            "accepted": 0,
-            "rejected": 0,
-            "rejection_reasons": {},
-            "candidates": [],
-            "errors": [
-                f"Diagnostic store timeout after "
-                f"{STORE_TIMEOUT_SECONDS} seconds"
-            ],
-            "duration_ms": STORE_TIMEOUT_SECONDS * 1000,
+    with ThreadPoolExecutor(max_workers=max(1, len(selected))) as executor:
+        futures = {
+            executor.submit(diagnose_store, store): store
+            for store in selected
         }
-
-    except Exception as exc:
-        print(
-            f"[diagnostic] ERROR store={store}: "
-            f"{type(exc).__name__}: {exc}",
-            flush=True,
-        )
-
-        report["stores"][store] = {
-            "store": store,
-            "status": "worker_error",
-            "attempts": [],
-            "raw_total": 0,
-            "unique_candidates": 0,
-            "accepted": 0,
-            "rejected": 0,
-            "rejection_reasons": {},
-            "candidates": [],
-            "errors": [f"{type(exc).__name__}: {exc}"],
-            "duration_ms": 0,
-        }
-
-    finally:
-        executor.shutdown(wait=False, cancel_futures=True)
-
+        for future, store in [(future, futures[future]) for future in futures]:
+            try:
+                report["stores"][store] = future.result()
+            except Exception as exc:
+                report["stores"][store] = {
+                    "store": store,
+                    "status": "worker_error",
+                    "errors": [f"{type(exc).__name__}: {exc}"],
+                }
 
     report["global_summary"] = {
         "stores_total": len(selected),
-        "stores_completed": sum(
-    1
-    for value in report["stores"].values()
-    if value.get("status") in {"ok", "partial"}
-),
-"stores_timed_out": sum(
-    1
-    for value in report["stores"].values()
-    if value.get("status") == "timeout"
-),
-"store_timeout_seconds": STORE_TIMEOUT_SECONDS,
-
         "raw_total": sum(
             int(value.get("raw_total", 0))
             for value in report["stores"].values()
@@ -2082,13 +1983,6 @@ for store in selected:
             if isinstance(value, dict)
         ),
     }
-
-    print(
-        f"[diagnostic] RETURNING query={raw_query!r} "
-        f"completed={len(done)} timed_out={len(not_done)}",
-        flush=True,
-    )
-
     return report
 
 
