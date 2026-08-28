@@ -1844,9 +1844,15 @@ async function fetchJSONWithTimeout(url,ms=90000){
 }
 
 const PROGRESSIVE_STORES=[
- "bplatz","deloox","parfumcity","parfumzentrum",
- "perfumemarket","sabina","orioudh","notino"
+ "deloox","parfumcity","parfumzentrum",
+ "perfumemarket","sabina","orioudh","notino","bplatz"
 ];
+
+// Il backend principale esegue già la ricerca completa.
+// Le chiamate /test-store servono solo come anteprima progressiva e
+// devono essere eseguite a piccoli gruppi: troppe richieste simultanee
+// fanno saturare il browser/Render e possono lasciare la ricerca senza risultati.
+const PROGRESSIVE_CONCURRENCY=2;
 
 function progressiveMergeResults(current, incoming){
  const merged=[...(current||[])];
@@ -1896,29 +1902,38 @@ async function searchPerfume(){
    const jobId=String(startResponse?.job_id||"").trim();
    if(!jobId)throw new Error("Job di ricerca non ricevuto");
 
-   // In parallelo interroghiamo i singoli negozi. Ogni risposta viene mostrata
-   // subito; la risposta finale /search-status resta la fonte autorevole completa.
-   const previewTasks=PROGRESSIVE_STORES.map(async store=>{
-     try{
-       const data=await fetchJSONWithTimeout(
-         backend()+"/test-store?store="+encodeURIComponent(store)+"&q="+encodeURIComponent(term),
-         90000
-       );
-       if(previewStopped)return;
-       const incoming=Array.isArray(data?.results)?data.results:[];
-       progressiveRaw=progressiveMergeResults(progressiveRaw,incoming);
-       previewFinished++;
-       const groups=shGroupData({results:progressiveRaw});
-       if(groups.length){
-         showProducts(groups);
-         statusBox.textContent=groups.length+(groups.length===1?" profumo trovato.":" profumi trovati.");
-       }else{
-         statusBox.textContent="Ricerca in corso…";
+   // Anteprima progressiva controllata: massimo 2 /test-store alla volta.
+   // La ricerca /search resta la fonte autorevole per il risultato completo.
+   const previewTasks=[];
+   let previewCursor=0;
+   async function previewWorker(){
+     while(!previewStopped){
+       const index=previewCursor++;
+       if(index>=PROGRESSIVE_STORES.length)return;
+       const store=PROGRESSIVE_STORES[index];
+       try{
+         const data=await fetchJSONWithTimeout(
+           backend()+"/test-store?store="+encodeURIComponent(store)+"&q="+encodeURIComponent(term),
+           90000
+         );
+         if(previewStopped)continue;
+         const incoming=Array.isArray(data?.results)?data.results:[];
+         progressiveRaw=progressiveMergeResults(progressiveRaw,incoming);
+         const groups=shGroupData({results:progressiveRaw});
+         if(groups.length){
+           showProducts(groups);
+           currentProductGroups=groups;
+           statusBox.textContent=groups.length+(groups.length===1?" profumo trovato.":" profumi trovati.")+" · ricerca in corso…";
+         }
+       }catch(error){
+         // L'anteprima è opzionale: un singolo negozio lento/non disponibile
+         // non deve mai interrompere la ricerca completa.
+       }finally{
+         previewFinished++;
        }
-     }catch(error){
-       previewFinished++;
      }
-   });
+   }
+   for(let w=0;w<PROGRESSIVE_CONCURRENCY;w++)previewTasks.push(previewWorker());
 
    // Polling breve del job completo: non blocchiamo la UI mentre gli scraper lavorano.
    for(let attempt=0;attempt<360;attempt++){
