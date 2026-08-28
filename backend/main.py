@@ -194,6 +194,168 @@ CATALOG_BRANDS: Dict[str, str] = {}
 CATALOG_PRODUCTS: List[Dict[str, Any]] = []
 CATALOG_FAMILY_FORMS: List[str] = []
 
+# ============================================================
+# REGISTRO GENERICO DELLE FAMIGLIE
+# ============================================================
+FAMILY_REGISTRY_FILENAME = "family_registry.json"
+FAMILY_REGISTRY: Dict[str, Dict[str, Any]] = {}
+FAMILY_ALIAS_TO_ID: Dict[str, str] = {}
+FAMILY_VARIANT_ALIASES: Dict[str, str] = {}
+
+
+def _family_registry_paths() -> List[Path]:
+    base = Path(BASE_DIR).resolve()
+    candidates = [
+        base / FAMILY_REGISTRY_FILENAME,
+        base.parent / FAMILY_REGISTRY_FILENAME,
+        Path.cwd() / FAMILY_REGISTRY_FILENAME,
+    ]
+    unique = []
+    seen = set()
+    for candidate in candidates:
+        if str(candidate) not in seen:
+            seen.add(str(candidate))
+            unique.append(candidate)
+    return unique
+
+
+def _load_family_registry() -> None:
+    global FAMILY_REGISTRY, FAMILY_ALIAS_TO_ID, FAMILY_VARIANT_ALIASES
+
+    payload = None
+    for path in _family_registry_paths():
+        try:
+            with path.open("r", encoding="utf-8") as file:
+                payload = json.load(file)
+            break
+        except (OSError, ValueError, TypeError):
+            continue
+
+    if not isinstance(payload, dict):
+        return
+
+    families = payload.get("families")
+    if not isinstance(families, list):
+        return
+
+    for family in families:
+        if not isinstance(family, dict):
+            continue
+
+        family_id = norm(family.get("family_id"))
+        brand = str(family.get("brand") or "").strip()
+        if not family_id or not brand:
+            continue
+
+        aliases = family.get("query_aliases") or []
+        if isinstance(aliases, str):
+            aliases = [aliases]
+
+        variants = []
+        for product in family.get("products") or []:
+            if not isinstance(product, dict):
+                continue
+
+            canonical = str(product.get("canonical_name") or "").strip()
+            if not canonical:
+                continue
+
+            if norm(canonical) not in {norm(v) for v in variants}:
+                variants.append(canonical)
+
+            product_aliases = product.get("aliases") or []
+            if isinstance(product_aliases, str):
+                product_aliases = [product_aliases]
+
+            for alias in product_aliases:
+                alias_text = str(alias or "").strip()
+                if not alias_text:
+                    continue
+                FAMILY_VARIANT_ALIASES[norm(alias_text)] = canonical
+                FAMILY_VARIANT_ALIASES[norm(f"{brand} {alias_text}")] = canonical
+
+        FAMILY_REGISTRY[family_id] = {
+            "family_id": family_id,
+            "brand": brand,
+            "query_aliases": [str(x).strip() for x in aliases if str(x).strip()],
+            "canonical_variants": variants,
+        }
+
+        for alias in aliases:
+            alias_text = str(alias or "").strip()
+            if alias_text:
+                FAMILY_ALIAS_TO_ID[norm(alias_text)] = family_id
+                FAMILY_ALIAS_TO_ID[norm(f"{brand} {alias_text}")] = family_id
+
+
+def _resolve_family(query: str) -> Optional[Dict[str, Any]]:
+    query_n = norm(query)
+    if not query_n:
+        return None
+
+    family_id = FAMILY_ALIAS_TO_ID.get(query_n)
+
+    if not family_id:
+        stripped = re.sub(
+            r"\b(?:eau de parfum|eau de toilette|eau de cologne|"
+            r"extrait(?: de parfum)?|edp|edt|edc|"
+            r"pour homme|pour femme|for men|for women|for him|for her|"
+            r"uomo|donna|men|women|man|woman|homme|femme)\b",
+            " ",
+            query_n,
+        )
+        stripped = re.sub(r"\s+", " ", stripped).strip()
+        family_id = FAMILY_ALIAS_TO_ID.get(stripped)
+
+    return FAMILY_REGISTRY.get(family_id) if family_id else None
+
+
+def _registry_canonical_variant(brand: str, raw_name: str) -> str:
+    for candidate in (norm(raw_name), norm(f"{brand} {raw_name}")):
+        canonical = FAMILY_VARIANT_ALIASES.get(candidate)
+        if canonical:
+            return canonical
+    return ""
+
+
+def _family_variant_allowed(
+    product: Dict[str, Any],
+    family: Dict[str, Any],
+) -> bool:
+    product_brand = norm(product.get("brand") or "")
+    family_brand = norm(family.get("brand") or "")
+
+    if product_brand and family_brand and product_brand != family_brand:
+        return False
+
+    allowed = {
+        norm(value)
+        for value in family.get("canonical_variants") or []
+    }
+
+    canonical_name = norm(product.get("name") or "")
+    if canonical_name in allowed:
+        return True
+
+    raw_name = str(
+        product.get("title")
+        or product.get("product_name")
+        or product.get("source_name")
+        or product.get("name")
+        or ""
+    ).strip()
+
+    resolved = _registry_canonical_variant(
+        str(product.get("brand") or ""),
+        raw_name,
+    )
+
+    return bool(resolved and norm(resolved) in allowed)
+
+
+_load_family_registry()
+
+
 
 SET_PRODUCTS = {
     "gift set", "set regalo", "coffret", "bundle", "travel set",
@@ -492,7 +654,11 @@ def canonical_product_name(product: Dict[str, Any], family_query: str = "") -> s
     brand = canonical_product_brand(product)
     if not raw_name:
         return ""
-    canonical = CATALOG_ALIASES.get(norm(raw_name)) or CATALOG_ALIASES.get(norm(f"{brand} {raw_name}"))
+    canonical = (
+        _registry_canonical_variant(brand, raw_name)
+        or CATALOG_ALIASES.get(norm(raw_name))
+        or CATALOG_ALIASES.get(norm(f"{brand} {raw_name}"))
+    )
     name = canonical or raw_name
     if brand:
         name = re.sub(rf"^\s*{re.escape(brand)}\s*[-–—:]?\s*", "", name, flags=re.I).strip()
@@ -596,11 +762,20 @@ def is_non_perfume(product: Dict[str, Any]) -> bool:
     return any(_contains_term(text, phrase) for phrase in NON_PERFUME if norm(phrase))
 
 
-def matches(product: Dict[str, Any], query: str) -> bool:
+def matches(
+    product: Dict[str, Any],
+    query: str,
+    family: Optional[Dict[str, Any]] = None,
+) -> bool:
     item = normalize_product(product, query)
     name = norm(item.get("name", ""))
     query_normalized = norm(query)
     if not name or is_non_perfume(item):
+        return False
+
+    # Famiglia verificata = confine rigido dell'identità.
+    # Il titolo del retailer non può creare appartenenza alla famiglia.
+    if family is not None and not _family_variant_allowed(item, family):
         return False
 
     # Se la query specifica una concentrazione, la stessa concentrazione
@@ -763,6 +938,7 @@ def run_store(
         family_candidates,
     )
     output: List[Dict[str, Any]] = []
+    family = _resolve_family(raw_query)
     seen = set()
     pending = [attempt for attempt in attempts if norm(attempt) != norm(raw_query)]
     batches = [(raw_query, initial_results)]
@@ -781,7 +957,7 @@ def run_store(
             if key in seen:
                 continue
             seen.add(key)
-            if matches(product, raw_query):
+            if matches(product, raw_query, family=family):
                 output.append(product)
     return output
 
