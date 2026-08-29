@@ -2715,224 +2715,293 @@ def search(q: str):
 @app.get("/diagnostic-liquid-brun")
 def diagnostic_liquid_brun():
     """
-    Isolated Liquid Brun diagnostic.
+    READ-ONLY production-pipeline diagnostic for Liquid Brun.
 
-    Runs every configured scraper independently and reports:
-    loading, start/completion, duration, HTTP activity, candidates,
-    timeout and exception. It deliberately bypasses matcher/grouping.
+    It does NOT change normal search behaviour. It runs the same run_store()
+    and _orchestrate_results() functions used by ScentHunter, in parallel,
+    and records exactly when each store returns, when candidates exist, when
+    validated results exist, and how long orchestration/matching takes.
     """
-    import importlib
-    import multiprocessing as mp
-    import os
     import time
     import traceback
 
     query = "Liquid Brun"
-    timeout_per_store = 30.0
+    started = time.perf_counter()
+    timeline = []
+    store_reports = {}
 
-    def safe_candidate(item):
-        if not isinstance(item, dict):
-            return {"value": str(item)}
-        return {
-            "name": item.get("name") or item.get("title") or item.get("product_name"),
-            "brand": item.get("brand") or item.get("source_brand"),
-            "url": item.get("url"),
-            "price": item.get("price"),
-            "size_ml": item.get("size_ml") or item.get("volume_ml") or item.get("format_ml"),
-            "concentration": item.get("concentration"),
-            "store_product_id": item.get("store_product_id") or item.get("product_id"),
-            "store_variant_id": item.get("store_variant_id") or item.get("variant_id"),
-        }
+    def now_ms():
+        return round((time.perf_counter() - started) * 1000, 2)
 
-    def worker(store, pipe):
-        started = time.perf_counter()
-        report = {
-            "store": store,
+    def snapshot_event(kind, **data):
+        event = {"t_ms": now_ms(), "event": kind}
+        event.update(data)
+        timeline.append(event)
+
+    # ------------------------------------------------------------
+    # 1) EXACT production async pipeline: start the same search job
+    #    that /search-start uses, then observe its internal state.
+    # ------------------------------------------------------------
+    job_id = uuid.uuid4().hex
+    with SEARCH_JOBS_LOCK:
+        SEARCH_JOBS[job_id] = {
             "query": query,
-            "loaded": False,
-            "search_started": False,
-            "search_completed": False,
-            "timeout": False,
-            "duration_ms": None,
-            "raw_candidates": 0,
-            "sample_candidates": [],
-            "http": {
-                "requests": 0,
-                "responses": 0,
-                "http_errors": 0,
-                "exceptions": 0,
-                "status_codes": {},
-                "errors": [],
-            },
-            "error": None,
+            "candidates": [],
+            "results": [],
+            "errors": {},
+            "completed": False,
         }
 
-        counters = report["http"]
+    snapshot_event("production_job_created", job_id=job_id)
 
+    thread = threading.Thread(
+        target=_run_search_job,
+        args=(job_id, query),
+        daemon=True,
+    )
+    thread.start()
+    snapshot_event("production_job_thread_started")
+
+    last_candidate_count = 0
+    last_result_count = 0
+    last_candidate_stores = set()
+    last_result_stores = set()
+    first_candidate_ms = None
+    first_result_ms = None
+    completed_ms = None
+
+    # Observe the actual production job at 100 ms resolution. This is the
+    # critical part: if candidates/results exist early but the UI does not
+    # show them, the delay is downstream of discovery; if they only appear
+    # late, the delay is in discovery/matching/orchestration.
+    while True:
+        with SEARCH_JOBS_LOCK:
+            job = SEARCH_JOBS.get(job_id)
+            if job is None:
+                break
+            candidate_snapshot = list(job["candidates"])
+            result_snapshot = list(job["results"])
+            error_snapshot = dict(job["errors"])
+            completed = bool(job["completed"])
+
+        candidate_count = len(candidate_snapshot)
+        result_count = len(result_snapshot)
+        candidate_stores = sorted({
+            str(x.get("store") or "").strip()
+            for x in candidate_snapshot
+            if isinstance(x, dict) and str(x.get("store") or "").strip()
+        })
+        result_stores = sorted({
+            str(x.get("store") or "").strip()
+            for x in result_snapshot
+            if isinstance(x, dict) and str(x.get("store") or "").strip()
+        })
+
+        if candidate_count != last_candidate_count or set(candidate_stores) != last_candidate_stores:
+            if first_candidate_ms is None and candidate_count:
+                first_candidate_ms = now_ms()
+            snapshot_event(
+                "candidate_pool_changed",
+                count=candidate_count,
+                stores=candidate_stores,
+            )
+            last_candidate_count = candidate_count
+            last_candidate_stores = set(candidate_stores)
+
+        if result_count != last_result_count or set(result_stores) != last_result_stores:
+            if first_result_ms is None and result_count:
+                first_result_ms = now_ms()
+            snapshot_event(
+                "validated_results_changed",
+                count=result_count,
+                stores=result_stores,
+            )
+            last_result_count = result_count
+            last_result_stores = set(result_stores)
+
+        if error_snapshot:
+            snapshot_event(
+                "production_errors_present",
+                errors=error_snapshot,
+            )
+
+        if completed:
+            completed_ms = now_ms()
+            snapshot_event(
+                "production_job_completed",
+                candidates=candidate_count,
+                results=result_count,
+                stores_candidates=candidate_stores,
+                stores_results=result_stores,
+                errors=error_snapshot,
+            )
+            break
+
+        if now_ms() >= (GLOBAL_SEARCH_TIMEOUT * 1000 + 5000):
+            snapshot_event("diagnostic_observer_timeout")
+            break
+
+        time.sleep(0.10)
+
+    # ------------------------------------------------------------
+    # 2) Exact discovery timing per store, independently.
+    #    This identifies which scraper is actually slow and whether the
+    #    scraper itself returns candidates. No matcher is involved here.
+    # ------------------------------------------------------------
+    from concurrent.futures import ThreadPoolExecutor, as_completed
+
+    store_started = {}
+    store_finished = {}
+    store_futures = {}
+
+    def probe_store(store):
+        t0 = time.perf_counter()
+        store_started[store] = round((t0 - started) * 1000, 2)
         try:
-            # Lightweight instrumentation for requests without changing
-            # scraper return values.
-            try:
-                import requests
-                original_request = requests.sessions.Session.request
-
-                def counted_request(self, method, url, **kwargs):
-                    counters["requests"] += 1
-                    try:
-                        response = original_request(self, method, url, **kwargs)
-                        counters["responses"] += 1
-                        code = str(getattr(response, "status_code", "unknown"))
-                        counters["status_codes"][code] = counters["status_codes"].get(code, 0) + 1
-                        if isinstance(getattr(response, "status_code", None), int) and response.status_code >= 400:
-                            counters["http_errors"] += 1
-                        return response
-                    except Exception as exc:
-                        counters["exceptions"] += 1
-                        if len(counters["errors"]) < 20:
-                            counters["errors"].append(f"{type(exc).__name__}: {exc}")
-                        raise
-
-                requests.sessions.Session.request = counted_request
-            except Exception:
-                pass
-
-            module = importlib.import_module(f"scrapers.{store}.scraper")
-            report["loaded"] = True
-
-            search_fn = getattr(module, "search", None)
-            if not callable(search_fn):
-                search_fn = getattr(module, "scrape", None)
-            if not callable(search_fn):
-                raise RuntimeError(f"{store}: scraper senza funzione search()/scrape()")
-
-            report["search_started"] = True
-            result = search_fn(query)
-
-            if isinstance(result, list):
-                report["raw_candidates"] = len(result)
-                report["sample_candidates"] = [safe_candidate(x) for x in result[:10]]
-            else:
-                report["result_type"] = type(result).__name__
-
-            report["search_completed"] = True
-
-        except Exception as exc:
-            report["error"] = {
-                "type": type(exc).__name__,
-                "message": str(exc),
-                "traceback": traceback.format_exc(limit=20),
-            }
-
-        finally:
-            report["duration_ms"] = round((time.perf_counter() - started) * 1000, 2)
-            try:
-                pipe.send(report)
-            except Exception:
-                pass
-            try:
-                pipe.close()
-            except Exception:
-                pass
-
-    def run_one(store):
-        parent, child = mp.Pipe(False)
-        process = mp.Process(target=worker, args=(store, child), daemon=True)
-        started = time.perf_counter()
-        process.start()
-        child.close()
-        process.join(timeout_per_store)
-
-        if process.is_alive():
-            process.terminate()
-            process.join(2.0)
+            raw = run_store(store, query)
+            elapsed = round((time.perf_counter() - t0) * 1000, 2)
+            candidates = raw if isinstance(raw, list) else []
+            stores = sorted({
+                str(x.get("store") or store).strip()
+                for x in candidates if isinstance(x, dict)
+            })
             return {
                 "store": store,
-                "query": query,
-                "loaded": None,
-                "search_started": None,
-                "search_completed": False,
-                "timeout": True,
-                "duration_ms": round((time.perf_counter() - started) * 1000, 2),
-                "raw_candidates": 0,
-                "sample_candidates": [],
-                "http": {},
-                "error": {
-                    "type": "TimeoutError",
-                    "message": f"Scraper terminato dopo {timeout_per_store:.1f} secondi",
-                },
+                "duration_ms": elapsed,
+                "raw_candidates": len(candidates),
+                "candidate_stores": stores,
+                "error": None,
             }
-
-        try:
-            if parent.poll(0.2):
-                result = parent.recv()
-            else:
-                result = {
-                    "store": store,
-                    "query": query,
-                    "loaded": None,
-                    "search_started": None,
-                    "search_completed": False,
-                    "timeout": False,
-                    "duration_ms": round((time.perf_counter() - started) * 1000, 2),
-                    "raw_candidates": 0,
-                    "sample_candidates": [],
-                    "http": {},
-                    "error": {
-                        "type": "NoDiagnosticPayload",
-                        "message": "Il processo è terminato senza restituire il report.",
-                    },
-                }
-        except (EOFError, OSError):
-            result = {
+        except Exception as exc:
+            return {
                 "store": store,
-                "query": query,
-                "loaded": None,
-                "search_started": None,
-                "search_completed": False,
-                "timeout": False,
-                "duration_ms": round((time.perf_counter() - started) * 1000, 2),
+                "duration_ms": round((time.perf_counter() - t0) * 1000, 2),
                 "raw_candidates": 0,
-                "sample_candidates": [],
-                "http": {},
+                "candidate_stores": [],
                 "error": {
-                    "type": "DiagnosticIPCError",
-                    "message": "Impossibile ricevere il report dal processo scraper.",
+                    "type": type(exc).__name__,
+                    "message": str(exc),
+                    "traceback": traceback.format_exc(limit=10),
                 },
             }
-        return result
 
+    probe_started_ms = now_ms()
+    snapshot_event("isolated_store_probe_started")
+    with ThreadPoolExecutor(
+        max_workers=len(STORES),
+        thread_name_prefix="scent_diag_store",
+    ) as executor:
+        for store in STORES:
+            store_futures[executor.submit(probe_store, store)] = store
+
+        for future in as_completed(store_futures):
+            store = store_futures[future]
+            report = future.result()
+            store_finished[store] = now_ms()
+            store_reports[store] = report
+            snapshot_event(
+                "isolated_store_completed",
+                store=store,
+                duration_ms=report["duration_ms"],
+                raw_candidates=report["raw_candidates"],
+                error=report["error"],
+            )
+
+    snapshot_event("isolated_store_probe_completed")
+
+    # ------------------------------------------------------------
+    # 3) One explicit orchestration pass over the complete RAW pool.
+    #    This separates scraper latency from identity/matching latency.
+    # ------------------------------------------------------------
+    all_raw = []
+    for report in store_reports.values():
+        # Re-run is intentionally avoided here. The production-job snapshot
+        # already contains the raw pool produced during the first phase.
+        pass
+
+    with SEARCH_JOBS_LOCK:
+        job = SEARCH_JOBS.get(job_id)
+        production_raw = list(job.get("candidates", [])) if job else []
+
+    orchestration_started = time.perf_counter()
+    snapshot_event(
+        "explicit_orchestration_started",
+        raw_candidates=len(production_raw),
+    )
     try:
-        stores = list(STORES)
-        started = time.perf_counter()
-        reports = {store: run_one(store) for store in stores}
-
-        return {
-            "ok": True,
-            "query": query,
-            "timeout_per_store_seconds": timeout_per_store,
-            "duration_ms": round((time.perf_counter() - started) * 1000, 2),
-            "summary": {
-                "stores_total": len(stores),
-                "loaded": sum(1 for x in reports.values() if x.get("loaded") is True),
-                "search_started": sum(1 for x in reports.values() if x.get("search_started") is True),
-                "completed": sum(1 for x in reports.values() if x.get("search_completed") is True),
-                "with_candidates": sum(1 for x in reports.values() if x.get("raw_candidates", 0) > 0),
-                "timeouts": sum(1 for x in reports.values() if x.get("timeout") is True),
-                "errors": sum(1 for x in reports.values() if x.get("error") is not None),
-            },
-            "stores": reports,
-        }
-
+        explicit_results = _orchestrate_results(production_raw, query)
+        orchestration_error = None
     except Exception as exc:
-        return {
-            "ok": False,
-            "query": query,
-            "error": {
-                "type": type(exc).__name__,
-                "message": str(exc),
-                "traceback": traceback.format_exc(limit=20),
-            },
+        explicit_results = []
+        orchestration_error = {
+            "type": type(exc).__name__,
+            "message": str(exc),
+            "traceback": traceback.format_exc(limit=20),
         }
+
+    orchestration_ms = round(
+        (time.perf_counter() - orchestration_started) * 1000,
+        2,
+    )
+    snapshot_event(
+        "explicit_orchestration_completed",
+        duration_ms=orchestration_ms,
+        validated_results=len(explicit_results),
+        error=orchestration_error,
+    )
+
+    with SEARCH_JOBS_LOCK:
+        SEARCH_JOBS.pop(job_id, None)
+
+    return {
+        "ok": True,
+        "query": query,
+        "diagnostic_version": "production-pipeline-v2",
+        "purpose": "Determine exactly where Liquid Brun is delayed or lost.",
+        "production_pipeline": {
+            "job_id": job_id,
+            "first_candidate_ms": first_candidate_ms,
+            "first_validated_result_ms": first_result_ms,
+            "completed_ms": completed_ms,
+            "final_candidate_count": last_candidate_count,
+            "final_result_count": last_result_count,
+            "final_candidate_stores": sorted(last_candidate_stores),
+            "final_result_stores": sorted(last_result_stores),
+        },
+        "isolated_scraper_timing": {
+            "probe_started_ms": probe_started_ms,
+            "stores": {
+                store: {
+                    **report,
+                    "started_at_ms": store_started.get(store),
+                    "finished_at_ms": store_finished.get(store),
+                }
+                for store, report in sorted(store_reports.items())
+            },
+        },
+        "explicit_orchestration": {
+            "raw_candidates": len(production_raw),
+            "validated_results": len(explicit_results),
+            "duration_ms": orchestration_ms,
+            "error": orchestration_error,
+        },
+        "timeline": timeline,
+        "interpretation": {
+            "first_result_fast": (
+                "YES" if first_result_ms is not None and first_result_ms < 5000 else "NO"
+            ),
+            "production_waits_for_slow_store": (
+                "CHECK_TIMELINE"
+            ),
+            "what_to_look_at": [
+                "first_candidate_ms",
+                "first_validated_result_ms",
+                "completed_ms",
+                "isolated_scraper_timing.stores.*.duration_ms",
+                "timeline event order",
+            ],
+        },
+    }
 
 @app.get("/diagnostic-search")
 def diagnostic_search(
