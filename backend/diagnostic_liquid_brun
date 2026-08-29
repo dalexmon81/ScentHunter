@@ -1,0 +1,281 @@
+"""
+DIAGNOSTICO COMPLETO PER LIQUID BRUN - ScentHunter
+
+Questo file è un endpoint diagnostico standalone che testa tutti e 8 gli scraper
+con il prodotto "Liquid Brun" e restituisce un JSON dettagliato.
+
+NON modifica main.py, scrapers, product_index.py, product_matcher.py o l'indice SQLite.
+Usa i moduli scraper reali e la pipeline corrente.
+
+Deploy su Railway:
+1. Copia questo file in backend/diagnostic_liquid_brun.py
+2. Aggiungi l'endpoint in main.py (vedi istruzioni in fondo)
+3. Riavvia il deployment su Railway
+4. Chiama GET /diagnostic-liquid-brun
+
+Output JSON:
+{
+    "timestamp": "ISO8601",
+    "query": "Liquid Brun",
+    "total_duration_ms": 12345,
+    "shops": [
+        {
+            "store": "notino",
+            "scraper_loaded": true,
+            "search_started": "ISO8601",
+            "search_completed": "ISO8601",
+            "duration_ms": 1234,
+            "http_requests": 3,
+            "http_errors": 0,
+            "timeout": false,
+            "raw_candidates": 15,
+            "candidates_after_validation": 12,
+            "final_results": 5,
+            "exception": null,
+            "traceback": null,
+            "products": [...]
+        },
+        ...
+    ]
+}
+"""
+
+import json
+import time
+import traceback
+import importlib
+import sys
+from datetime import datetime, timezone
+from pathlib import Path
+from typing import Any, Dict, List, Optional
+
+# Assicura che il backend directory sia nel path
+BACKEND_DIR = Path(__file__).parent
+if str(BACKEND_DIR) not in sys.path:
+    sys.path.insert(0, str(BACKEND_DIR))
+
+
+def iso_now() -> str:
+    """Restituisce timestamp ISO8601 corrente."""
+    return datetime.now(timezone.utc).isoformat()
+
+
+def load_scraper_module(store_name: str) -> Optional[Any]:
+    """
+    Carica dinamicamente il modulo scraper per uno store.
+    Restituisce il modulo o None se fallisce.
+    """
+    scraper_path = BACKEND_DIR / "scrapers" / store_name / "scraper.py"
+    if not scraper_path.exists():
+        return None
+    
+    try:
+        # Importa il modulo scraper
+        module_name = f"scrapers.{store_name}.scraper"
+        module = importlib.import_module(module_name)
+        return module
+    except Exception:
+        return None
+
+
+def get_scraper_function(module: Any) -> Optional[Any]:
+    """
+    Ottiene la funzione principale di scraping dal modulo.
+    Cerca nomi comuni: scrape_search, search_products, scrape, main.
+    """
+    for func_name in ["scrape_search", "search_products", "scrape", "search", "main"]:
+        if hasattr(module, func_name):
+            return getattr(module, func_name)
+    return None
+
+
+def diagnose_single_store(
+    store_name: str,
+    query: str = "Liquid Brun",
+    timeout_seconds: float = 30.0
+) -> Dict[str, Any]:
+    """
+    Diagnostico per un singolo store.
+    Restituisce un dict con tutti i campi richiesti.
+    """
+    result = {
+        "store": store_name,
+        "scraper_loaded": False,
+        "search_started": None,
+        "search_completed": None,
+        "duration_ms": 0,
+        "http_requests": 0,
+        "http_errors": 0,
+        "timeout": False,
+        "raw_candidates": 0,
+        "candidates_after_validation": 0,
+        "final_results": 0,
+        "exception": None,
+        "traceback": None,
+        "products": [],
+        "diagnostic_notes": []
+    }
+    
+    start_time = time.perf_counter()
+    
+    # 1. Carica il modulo scraper
+    try:
+        module = load_scraper_module(store_name)
+        if module is None:
+            result["exception"] = "scraper_not_found"
+            result["traceback"] = f"Scraper module not found for store: {store_name}"
+            result["diagnostic_notes"].append(f"File backend/scrapers/{store_name}/scraper.py non esiste o non importabile")
+            return result
+        
+        result["scraper_loaded"] = True
+        result["diagnostic_notes"].append(f"Modulo {store_name}.scraper caricato con successo")
+    except Exception as e:
+        result["exception"] = "import_error"
+        result["traceback"] = traceback.format_exc()
+        result["diagnostic_notes"].append(f"Errore import: {type(e).__name__}: {e}")
+        return result
+    
+    # 2. Ottieni la funzione scraper
+    scraper_func = get_scraper_function(module)
+    if scraper_func is None:
+        result["exception"] = "no_scraper_function"
+        result["traceback"] = "Nessuna funzione scraper trovata (cerca: scrape_search, search_products, scrape, search, main)"
+        result["diagnostic_notes"].append("Il modulo esiste ma non espone una funzione scraper riconosciuta")
+        return result
+    
+    result["diagnostic_notes"].append(f"Funzione scraper trovata: {scraper_func.__name__}")
+    
+    # 3. Esegui lo scraper con timeout
+    result["search_started"] = iso_now()
+    
+    try:
+        # Nota: la signature esatta dipende dal tuo scraper
+        # Adatta i parametri qui sotto in base alla tua implementazione reale
+        import asyncio
+        
+        async def run_with_timeout():
+            # Prova a chiamare la funzione scraper
+            # Assumiamo che accetti un parametro 'query' o 'search_term'
+            if hasattr(scraper_func, '__await__') or asyncio.iscoroutinefunction(scraper_func):
+                # Funzione async
+                return await asyncio.wait_for(
+                    scraper_func(query),
+                    timeout=timeout_seconds
+                )
+            else:
+                # Funzione sync - esegui in un executor per non bloccare
+                loop = asyncio.get_event_loop()
+                return await asyncio.wait_for(
+                    loop.run_in_executor(None, scraper_func, query),
+                    timeout=timeout_seconds
+                )
+        
+        # Esegui lo scraper
+        scraper_result = asyncio.run(run_with_timeout())
+        
+        result["search_completed"] = iso_now()
+        result["duration_ms"] = int((time.perf_counter() - start_time) * 1000)
+        
+        # 4. Analizza il risultato
+        if scraper_result is None:
+            result["exception"] = "scraper_returned_none"
+            result["diagnostic_notes"].append("Scraper ha restituito None - nessun risultato trovato")
+            return result
+        
+        if isinstance(scraper_result, dict):
+            # Estrai informazioni dal dict
+            result["raw_candidates"] = scraper_result.get("raw_candidates", scraper_result.get("candidates", 0))
+            result["candidates_after_validation"] = scraper_result.get("candidates_after_validation", scraper_result.get("validated", 0))
+            result["final_results"] = scraper_result.get("final_results", scraper_result.get("results", 0))
+            result["http_requests"] = scraper_result.get("http_requests", 0)
+            result["http_errors"] = scraper_result.get("http_errors", 0)
+            result["products"] = scraper_result.get("products", scraper_result.get("items", []))
+            
+            if isinstance(result["products"], list):
+                result["final_results"] = len(result["products"])
+            
+            result["diagnostic_notes"].append(f"Scraper ha restituito dict con {result['final_results']} prodotti")
+            
+        elif isinstance(scraper_result, list):
+            # Lista diretta di prodotti
+            result["products"] = scraper_result
+            result["raw_candidates"] = len(scraper_result)
+            result["candidates_after_validation"] = len(scraper_result)
+            result["final_results"] = len(scraper_result)
+            result["diagnostic_notes"].append(f"Scraper ha restituito lista con {len(scraper_result)} prodotti")
+        
+        else:
+            result["exception"] = "unexpected_return_type"
+            result["traceback"] = f"Tipo restituito inatteso: {type(scraper_result).__name__}"
+            result["diagnostic_notes"].append(f"Scraper ha restituito {type(scraper_result).__name__} invece di dict o list")
+    
+    except asyncio.TimeoutError:
+        result["timeout"] = True
+        result["exception"] = "timeout"
+        result["traceback"] = f"Scraper terminato dopo {timeout_seconds}s di timeout"
+        result["search_completed"] = iso_now()
+        result["duration_ms"] = int((time.perf_counter() - start_time) * 1000)
+        result["diagnostic_notes"].append(f"TIMEOUT: scraper bloccato o troppo lento (> {timeout_seconds}s)")
+    
+    except Exception as e:
+        result["exception"] = f"runtime_error: {type(e).__name__}"
+        result["traceback"] = traceback.format_exc()
+        result["search_completed"] = iso_now()
+        result["duration_ms"] = int((time.perf_counter() - start_time) * 1000)
+        result["diagnostic_notes"].append(f"Errore runtime: {type(e).__name__}: {e}")
+    
+    return result
+
+
+def run_full_diagnostic(
+    query: str = "Liquid Brun",
+    stores: Optional[List[str]] = None,
+    timeout_per_store: float = 30.0
+) -> Dict[str, Any]:
+    """
+    Esegue il diagnostico completo su tutti gli store.
+    
+    Args:
+        query: Termine di ricerca (default: "Liquid Brun")
+        stores: Lista di store da testare (default: tutti e 8)
+        timeout_per_store: Timeout in secondi per ogni scraper
+    
+    Returns:
+        Dict con risultati completi
+    """
+    # Lista completa degli 8 store
+    if stores is None:
+        stores = [
+            "bplatz",
+            "deloox",
+            "notino",
+            "orioudh",
+            "parfumcity",
+            "parfumzentrum",
+            "perfumemarket",
+            "sabina"
+        ]
+    
+    start_time = time.perf_counter()
+    
+    diagnostic = {
+        "timestamp": iso_now(),
+        "query": query,
+        "timeout_per_store_seconds": timeout_per_store,
+        "total_duration_ms": 0,
+        "stores_tested": len(stores),
+        "shops": []
+    }
+    
+    # Esegui diagnostico per ogni store
+    for store_name in stores:
+        print(f"Testing store: {store_name}...", file=sys.stderr)
+        store_result = diagnose_single_store(
+            store_name=store_name,
+            query=query,
+            timeout_seconds=timeout_per_store
+        )
+        diagnostic["shops"].append(store_result)
+        print(f"  -> {store_result['final_results']} risultati, exception: {store_result['exception']}", file=sys.stderr)
+    
+    diagno
