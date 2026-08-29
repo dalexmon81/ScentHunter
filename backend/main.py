@@ -1540,18 +1540,23 @@ def run_store(
             product = dict(item)
             product.setdefault("store", store)
 
-            product = resolve_actual_price(product)
-
-            image = product_image(product)
-            if image:
-                product["image"] = image
-
+            # Deduplica il medesimo candidato proveniente da tentativi di
+            # discovery diversi PRIMA delle operazioni costose (prezzo,
+            # immagine). La chiave resta quella generale già usata dal
+            # sistema e non elimina varianti diverse.
             key = product_identity_key(product)
 
             if key in seen:
                 continue
 
             seen.add(key)
+
+            product = resolve_actual_price(product)
+
+            image = product_image(product)
+            if image:
+                product["image"] = image
+
             output.append(product)
 
     return output
@@ -2145,6 +2150,11 @@ def _run_search_job(
         if not isinstance(store_candidates, list):
             return
 
+        # IMPORTANT:
+        # non ricalcolare la validazione dell'intero candidate pool ogni
+        # volta che termina uno store. I candidati già validati non cambiano
+        # quando arriva un altro store. Validiamo quindi solo il nuovo lotto
+        # e poi lo fondiamo con i risultati già ottenuti.
         with SEARCH_JOBS_LOCK:
             job = SEARCH_JOBS.get(job_id)
 
@@ -2154,14 +2164,28 @@ def _run_search_job(
             job["candidates"].extend(
                 store_candidates
             )
-
-            candidate_pool = list(
-                job["candidates"]
+            existing_results = list(
+                job["results"]
             )
 
-        results = _orchestrate_results(
-            candidate_pool,
+        new_candidates = unique_results(
+            store_candidates
+        )
+
+        ranked_candidates = _pre_rank_candidates(
+            new_candidates,
             query,
+        )
+
+        new_results = _validate_candidates_parallel(
+            ranked_candidates,
+            query,
+        )
+
+        results = sort_by_price(
+            unique_results(
+                existing_results + new_results
+            )
         )
 
         with SEARCH_JOBS_LOCK:
