@@ -4,6 +4,7 @@ Normalizzazione e raggruppamento dei nomi dei profumi.
 Raggruppa varianti equivalenti (es. "Eau Rosé®®" vs "Eau Rosè®®") in un'unica scheda.
 """
 import re
+import unicodedata
 from typing import List, Dict, Any
 
 NUMBER_WORDS = {
@@ -14,20 +15,13 @@ NUMBER_WORDS = {
     'nineteen': '19', 'twenty': '20'
 }
 
-ACCENT_MAP = {
-    'à®®': 'a', 'à®µ': 'a', 'à¢µ': 'a', 'à®´': 'a',
-    'é®®': 'e', 'é®µ': 'e', 'é´µ': 'e', 'é¦§': 'e',
-    'è®®': 'e', 'è®µ': 'e', 'è´µ': 'e', 'è¨©': 'e',
-    'ê®®': 'e', 'ê®µ': 'e', 'ê´µ': 'e', 'ê«¬': 'e',
-}
-
 def normalize_name(name: str) -> str:
     if not name:
         return ""
     n = name.lower()
     n = re.sub(r'[\u00ae\u00a9\u2122\u2014\u2013\u2010\u2011]', '', n)
-    for accented, normal in ACCENT_MAP.items():
-        n = n.replace(accented, normal)
+    n = unicodedata.normalize('NFKD', n)
+    n = re.sub(r'[\u0300-\u036f]', '', n)
     n = re.sub(r"\bl['\u2019]?eau\b", 'eau', n)
     stopwords = ['eau de parfum', 'eau de toilette', 'edp', 'edt', 'parfum', 'perfume', 'for women', 'for men', 'for her', 'for him']
     for sw in stopwords:
