@@ -175,6 +175,7 @@ def extract_concentration(text: Any) -> str:
     value = normalize(text)
     rules = (
         ("Extrait de Parfum", r"\bextrait(?: de)? parfum\b|\bextrait\b"),
+        ("Parfum Intense", r"\bparfum intense\b"),
         ("Eau de Parfum", r"\beau de parfum\b|\bedp\b"),
         ("Eau de Toilette", r"\beau de toilette\b|\bedt\b"),
         ("Eau de Cologne", r"\beau de cologne\b|\bedc\b"),
@@ -502,6 +503,7 @@ class ProductMatcher:
             " ",
             text,
         )
+        text = re.sub(r"\(\s*\)", " ", text)
         return re.sub(r"\s+", " ", text).strip()
 
     @classmethod
@@ -539,6 +541,7 @@ class ProductMatcher:
             text,
             flags=re.I,
         )
+        text = re.sub(r"\(\s*\)", " ", text)
         return re.sub(r"\s+", " ", text).strip(" -:|/")
 
     @classmethod
@@ -721,14 +724,30 @@ class ProductMatcher:
         concentration: str,
         gender: str = "",
     ) -> str:
+        # Brand, variante, concentrazione e genere sono campi distinti.
+        # Il genere non deve mai restare duplicato dentro il nome della
+        # variante: viene visualizzato una sola volta dopo la concentrazione.
         clean_name = cls._clean_identity_display(brand, name)
+        clean_name = re.sub(
+            r"\b(?:for\s+(?:him|her|men|women)|"
+            r"pour\s+(?:homme|femme|hommes|femmes)|"
+            r"voor\s+(?:mannen|dames|vrouwen)|"
+            r"homme|uomo|men|man|femme|donna|women|woman|"
+            r"male|female|heren|mannen|dames|vrouwen|unisex|mixte|unisexe)\b",
+            " ",
+            clean_name,
+            flags=re.I,
+        )
+        clean_name = re.sub(r"\(\s*\)", " ", clean_name)
+        clean_name = re.sub(r"\s+", " ", clean_name).strip(" -:|/")
+
         parts = []
         if brand:
             parts.append(str(brand).strip())
         if clean_name:
             parts.append(clean_name)
 
-        title = " - ".join(parts)
+        title = "-".join(parts)
         if concentration:
             title = f"{title} {concentration}".strip()
         if gender:
@@ -843,6 +862,8 @@ class ProductMatcher:
             identity = stable_auto_id(
                 result.get("canonical_brand", ""),
                 result.get("catalog_variant") or result.get("canonical_name", ""),
+                result.get("canonical_concentration")
+                or result.get("concentration", ""),
             )
 
         result["variant_id"] = identity
