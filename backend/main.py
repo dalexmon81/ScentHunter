@@ -2536,21 +2536,33 @@ def _run_search_job(
                             )
 
     finally:
-        for future in futures:
-            if not future.done():
-                future.cancel()
+        with SEARCH_JOBS_LOCK:
+    job = SEARCH_JOBS.get(job_id)
+    candidate_pool = list(job["candidates"]) if job is not None else []
 
-        executor.shutdown(
-            wait=False,
-            cancel_futures=True,
+if job is not None:
+    try:
+        final_results = _orchestrate_results(
+            candidate_pool,
+            query,
         )
+    except Exception as exc:
+        final_results = []
 
         with SEARCH_JOBS_LOCK:
             job = SEARCH_JOBS.get(job_id)
 
             if job is not None:
-                job["completed"] = True
+                job["errors"]["central_validation"] = (
+                    f"{type(exc).__name__}: {exc}"
+                )
 
+    with SEARCH_JOBS_LOCK:
+        job = SEARCH_JOBS.get(job_id)
+
+        if job is not None:
+            job["results"] = final_results
+            job["completed"] = True
 
 @app.get("/search-start")
 def search_start(q: str):
