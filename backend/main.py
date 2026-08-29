@@ -395,6 +395,8 @@ def product_concentration(product: Dict[str, Any]) -> str:
 
     for label, pattern in (
         ("extrait de parfum", r"\bextrait(?: de)? parfum\b"),
+        ("eau de parfum intense", r"\beau de parfum intense\b"),
+        ("eau de toilette intense", r"\beau de toilette intense\b"),
         ("parfum intense", r"\bparfum intense\b"),
         ("eau de parfum", r"\beau de parfum\b|\bedp\b"),
         ("eau de toilette", r"\beau de toilette\b|\bedt\b"),
@@ -545,16 +547,29 @@ def catalog_variant_key(value: Any) -> str:
     return _catalog_clean_text(value)
 
 
-def _catalog_candidate_variant_key(product: Dict[str, Any]) -> str:
-    """
-    Restituisce la chiave identitaria della variante commerciale.
+def _catalog_variant_form_key(value: Any) -> str:
+    """Identity key for a commercial variant, preserving audience words."""
+    text = catalog_variant_key(value)
+    text = re.sub(
+        r"\b(?:eau de parfum intense|eau de toilette intense|"
+        r"eau de parfum|eau de toilette|eau de cologne|"
+        r"eau fraiche|extrait de parfum|parfum intense|"
+        r"edp|edt|edc|parfum|perfume|spray)\b",
+        " ",
+        text,
+        flags=re.I,
+    )
+    text = re.sub(
+        r"\b\d+(?:[.,]\d+)?\s*(?:ml|cl|l|g|kg|oz)\b",
+        " ",
+        text,
+        flags=re.I,
+    )
+    return re.sub(r"\s+", " ", text).strip()
 
-    La chiave elimina soltanto informazioni non appartenenti alla variante:
-    formato, concentrazione e marcatori espliciti di genere. Il confronto
-    con il Family Registry viene poi fatto per uguaglianza, mai per
-    sottostringa: una variante autorizzata "Hawas" non può quindi validare
-    automaticamente "Hawas Al Wisam".
-    """
+
+def _catalog_candidate_variant_key(product: Dict[str, Any]) -> str:
+    """Return the candidate commercial variant identity, preserving gender."""
     raw_name = (
         product.get("canonical_name")
         or product.get("name")
@@ -562,35 +577,7 @@ def _catalog_candidate_variant_key(product: Dict[str, Any]) -> str:
         or product.get("product_name")
         or ""
     )
-
-    key = catalog_variant_key(raw_name)
-
-    key = re.sub(
-        r"\b\d+(?:[.,]\d+)?\s*(?:ml|cl|l|g|kg|oz)\b",
-        " ",
-        key,
-    )
-    key = re.sub(
-        r"\b(?:eau de parfum|eau de toilette|eau de cologne|"
-        r"eau fraiche|extrait de parfum|parfum intense|parfum|perfume|edp|edt|edc|spray)\b",
-        " ",
-        key,
-    )
-
-    # Genere = attributo separato, mai parte della variante visualizzata.
-    # Sono comprese le principali formulazioni commerciali multilingua.
-    key = re.sub(
-        r"\b(?:for\s+(?:him|her|men|women)|"
-        r"pour\s+(?:homme|femme|hommes|femmes)|"
-        r"voor\s+(?:mannen|dames|vrouwen)|"
-        r"men|women|man|woman|male|female|"
-        r"homme|femme|heren|mannen|dames|vrouwen|uomo|donna|unisex)\b",
-        " ",
-        key,
-        flags=re.I,
-    )
-
-    return re.sub(r"\s+", " ", key).strip()
+    return _catalog_variant_form_key(raw_name)
 
 
 def _catalog_tokens(value: Any) -> List[str]:
@@ -871,6 +858,15 @@ def _catalog_product_text(product: Dict[str, Any]) -> str:
     ).strip()
 
 
+def _catalog_variant_concentration(variant: Dict[str, Any]) -> str:
+    """Return authoritative concentration metadata for a registry variant."""
+    explicit = str(variant.get("concentration") or "").strip()
+    if explicit:
+        return catalog_norm(explicit)
+    canonical = str(variant.get("canonical_name") or "").strip()
+    return product_concentration({"name": canonical}) if canonical else ""
+
+
 def _catalog_gender_neutral_key(value: Any) -> str:
     """
     Restituisce la forma identitaria senza marcatori di genere espliciti.
@@ -899,17 +895,16 @@ def _catalog_variant_for_product(
     product: Dict[str, Any],
     family: Dict[str, Any],
 ) -> Optional[Dict[str, Any]]:
-    """
-    Identifica una sola variante autorizzata del catalogo.
+    """Resolve one authorized catalog variant without destroying identity.
 
-    Il confronto è deterministico: la chiave della variante candidata deve
-    essere identica alla chiave di una forma autorizzata. Non viene usata
-    alcuna inclusione per sottostringa, perché trasformerebbe una famiglia
-    ampia in un contenitore di falsi positivi.
+    The resolver has two deliberate stages:
+    1. exact commercial identity, where audience words are preserved;
+    2. neutral identity fallback, only when gender evidence makes the match
+       unambiguous.
 
-    Il genere viene valutato separatamente. Questo permette, ad esempio,
-    di trattare "Hawas For Him" come la variante "Hawas" + Uomo nel titolo,
-    senza confondere "Hawas" con "Hawas For Her".
+    This prevents ``9 PM`` and ``9 PM Pour Femme`` (or the equivalent
+    Uomo/Donna, Men/Women, For Him/For Her forms) from collapsing into one
+    product while still allowing retailer wording differences.
     """
     if not _catalog_brand_matches(product, family):
         return None
@@ -937,70 +932,116 @@ def _catalog_variant_for_product(
             flags=re.I,
         )
         candidate_key = re.sub(r"\s+", " ", candidate_key).strip()
+
     if not candidate_key:
         return None
 
     candidate_gender = _catalog_gender_class(candidate_text)
-    matches: List[Tuple[int, Dict[str, Any]]] = []
+    candidate_neutral_key = _catalog_gender_neutral_key(candidate_key)
 
+    # Stage 1: exact commercial forms. This is the most important path:
+    # an explicit alias such as ``9 PM Pour`` must resolve to the exact
+    # authorized variant that owns that alias.
+    exact_matches: List[Dict[str, Any]] = []
     for variant in family.get("variants", []):
-        canonical = str(variant.get("canonical_name") or "").strip()
+        forms = [str(variant.get("canonical_name") or "").strip()]
         aliases = variant.get("aliases") or []
         if isinstance(aliases, str):
             aliases = [aliases]
+        forms.extend(str(alias or "").strip() for alias in aliases)
 
-        variant_forms = [canonical]
-        variant_forms.extend(str(alias or "").strip() for alias in aliases)
-
-        # Tutte le forme della stessa variante devono ridursi alla stessa
-        # chiave identitaria. La specificità serve solo a scegliere fra alias
-        # equivalenti, mai fra varianti diverse.
-        canonical_key = _catalog_gender_neutral_key(canonical)
-        alias_keys = {
-            _catalog_gender_neutral_key(alias)
-            for alias in aliases
-            if _catalog_gender_neutral_key(alias)
+        keys = {
+            _catalog_variant_form_key(form)
+            for form in forms
+            if _catalog_variant_form_key(form)
         }
-        variant_keys = {key for key in (canonical_key, *alias_keys) if key}
+        if candidate_key in keys:
+            exact_matches.append(variant)
 
-        if candidate_key not in variant_keys:
+    if exact_matches:
+        # An exact alias is authoritative. Gender and concentration are
+        # additional identity dimensions when several catalog entries share
+        # the same normalized commercial form.
+        compatible = list(exact_matches)
+        if candidate_gender != "none":
+            gendered = []
+            for variant in compatible:
+                canonical = str(variant.get("canonical_name") or "")
+                variant_gender = str(variant.get("gender") or "").strip() or _catalog_gender_class(canonical)
+                if variant_gender == candidate_gender:
+                    gendered.append(variant)
+            if gendered:
+                compatible = gendered
+
+        candidate_concentration = product_concentration(product)
+        if candidate_concentration:
+            concentration_matches = [
+                variant for variant in compatible
+                if _catalog_variant_concentration(variant)
+                and _catalog_variant_concentration(variant) == catalog_norm(candidate_concentration)
+            ]
+            if concentration_matches:
+                compatible = concentration_matches
+
+        if len(compatible) == 1:
+            return compatible[0]
+        if len(exact_matches) == 1:
+            return exact_matches[0]
+
+    # Stage 2: neutral fallback. It may remove only audience markers, and it
+    # is legal only when the gender dimension remains unambiguous.
+    if not candidate_neutral_key:
+        return None
+
+    fallback: List[Tuple[int, Dict[str, Any]]] = []
+    for variant in family.get("variants", []):
+        canonical = str(variant.get("canonical_name") or "")
+        aliases = variant.get("aliases") or []
+        if isinstance(aliases, str):
+            aliases = [aliases]
+        forms = [canonical, *[str(x or "") for x in aliases]]
+        neutral_keys = {
+            _catalog_gender_neutral_key(form)
+            for form in forms
+            if _catalog_gender_neutral_key(form)
+        }
+        if candidate_neutral_key not in neutral_keys:
             continue
 
-        # Only the canonical variant name defines the catalog gender.
-        variant_gender = _catalog_gender_class(canonical)
+        variant_gender = (
+            str(variant.get("gender") or "").strip()
+            or _catalog_gender_class(canonical)
+        )
 
-        # Se il candidato espone un genere esplicito, deve essere compatibile
-        # con quello canonico. Un candidato senza genere può invece usare un
-        # alias AUTOREVOLE del Registry che rappresenta una forma commerciale
-        # abbreviata di una variante gendered: l'alias è già la prova esplicita
-        # che quella forma appartiene a quella variante. Non facciamo questa
-        # inferenza sul solo testo del prodotto.
-        if variant_gender != "none":
-            alias_match = candidate_key in alias_keys and candidate_key != canonical_key
-            if candidate_gender != variant_gender and not (candidate_gender == "none" and alias_match):
+        if candidate_gender == "none":
+            if variant_gender != "none":
                 continue
-        elif candidate_gender == "mixed":
+            rank = 20
+        elif variant_gender == candidate_gender:
+            rank = 30
+        elif variant_gender == "none":
+            rank = 10
+        else:
             continue
 
+        # Prefer the most specific commercial form, but never let specificity
+        # override a conflicting gender.
         specificity = max(
             len(_catalog_gender_neutral_key(form))
-            for form in variant_forms
+            for form in forms
             if _catalog_gender_neutral_key(form)
         )
-        matches.append((specificity, variant))
+        fallback.append((rank * 100000 + specificity, variant))
 
-    if not matches:
+    if not fallback:
         return None
 
-    matches.sort(key=lambda item: item[0], reverse=True)
-    best_specificity = matches[0][0]
-    best = [variant for specificity, variant in matches if specificity == best_specificity]
-
-    canonical_names = {str(item.get("canonical_name") or "") for item in best}
-    if len(canonical_names) != 1:
-        return None
-
-    return best[0]
+    fallback.sort(key=lambda item: item[0], reverse=True)
+    best_score = fallback[0][0]
+    best = [variant for score, variant in fallback if score == best_score]
+    if len({str(v.get("canonical_name") or "") for v in best}) == 1:
+        return best[0]
+    return None
 
 
 def _catalog_family_for_query(
@@ -1030,79 +1071,76 @@ def _catalog_requested_variant(
     query: str,
     family: Dict[str, Any],
 ) -> Optional[Dict[str, Any]]:
-    """Resolve a specific family variant from an explicit query.
+    """Resolve an explicit family variant from the user's query.
 
-    The query uses the same neutral identity rules as a retailer title:
-    brand, format/concentration and gender wording are removed for the
-    variant key, while the explicit gender remains available to disambiguate
-    gendered variants.
+    Exact aliases are checked before any gender-neutral fallback. This keeps
+    explicit requests such as ``9 PM Pour Femme`` distinct from ``9 PM``.
     """
+    query_concentration = product_concentration({"name": query})
     query_clean = _catalog_clean_text(query)
-
     brand = _catalog_clean_text(family.get("brand"))
     if brand:
         query_clean = re.sub(
-            rf"\b{re.escape(brand)}\b",
-            " ",
-            query_clean,
-            flags=re.I,
+            rf"\b{re.escape(brand)}\b", " ", query_clean, flags=re.I
         )
         query_clean = re.sub(r"\s+", " ", query_clean).strip()
 
-    query_key = _catalog_candidate_variant_key({"name": query_clean})
+    query_key = _catalog_variant_form_key(query_clean)
     query_gender = _catalog_gender_class(query_clean)
     if not query_key:
         return None
 
-    matches: List[Dict[str, Any]] = []
-
+    exact: List[Dict[str, Any]] = []
     for variant in family.get("variants", []):
-        forms = [
-            str(variant.get("canonical_name") or ""),
-            *[
-                str(alias or "")
-                for alias in (variant.get("aliases") or [])
-            ],
+        forms = [str(variant.get("canonical_name") or "")]
+        aliases = variant.get("aliases") or []
+        if isinstance(aliases, str):
+            aliases = [aliases]
+        forms.extend(str(x or "") for x in aliases)
+        keys = {_catalog_variant_form_key(form) for form in forms if _catalog_variant_form_key(form)}
+        if query_key in keys:
+            exact.append(variant)
+
+    if query_gender != "none":
+        gendered = [
+            v for v in exact
+            if (str(v.get("gender") or "").strip() or _catalog_gender_class(v.get("canonical_name"))) == query_gender
         ]
-        neutral_keys = {
-            _catalog_gender_neutral_key(form)
-            for form in forms
-            if _catalog_gender_neutral_key(form)
-        }
-        if query_key not in neutral_keys:
+        if gendered:
+            exact = gendered
+
+    query_concentration = query_concentration
+    if query_concentration:
+        concentration_matches = [
+            v for v in exact
+            if _catalog_variant_concentration(v)
+            and _catalog_variant_concentration(v) == catalog_norm(query_concentration)
+        ]
+        if concentration_matches:
+            exact = concentration_matches
+
+    if len(exact) == 1:
+        return exact[0]
+
+    neutral_query = _catalog_gender_neutral_key(query_key)
+    fallback: List[Dict[str, Any]] = []
+    for variant in family.get("variants", []):
+        forms = [str(variant.get("canonical_name") or "")]
+        aliases = variant.get("aliases") or []
+        if isinstance(aliases, str):
+            aliases = [aliases]
+        forms.extend(str(x or "") for x in aliases)
+        keys = {_catalog_gender_neutral_key(form) for form in forms if _catalog_gender_neutral_key(form)}
+        if neutral_query not in keys:
             continue
-
-        variant_gender = _catalog_gender_class(str(variant.get("canonical_name") or ""))
-        # When the user explicitly requests a gendered variant, a neutral
-        # variant is not an acceptable substitute. This is what keeps
-        # "9 PM Pour Femme" distinct from plain "9 PM".
-        if query_gender != "none":
-            if variant_gender != query_gender:
-                continue
-        elif variant_gender == "mixed":
+        variant_gender = str(variant.get("gender") or "").strip() or _catalog_gender_class(variant.get("canonical_name"))
+        if query_gender == "none" and variant_gender != "none":
             continue
+        if query_gender != "none" and variant_gender not in {query_gender, "none"}:
+            continue
+        fallback.append(variant)
 
-        matches.append(variant)
-
-    if len(matches) == 1:
-        return matches[0]
-
-    # A completely neutral query can legitimately identify one neutral
-    # variant. It must never be used to guess between two gendered variants.
-    neutral = [
-        variant
-        for variant in matches
-        if _catalog_gender_class(
-            " ".join(
-                [str(variant.get("canonical_name") or "")]
-                + [str(x or "") for x in (variant.get("aliases") or [])]
-            )
-        ) == "none"
-    ]
-    if len(neutral) == 1:
-        return neutral[0]
-
-    return None
+    return fallback[0] if len(fallback) == 1 else None
 
 
 def _catalog_match(
@@ -1130,11 +1168,7 @@ def _catalog_match(
 
     query_key = catalog_variant_key(query)
     is_family_query = query_key in family.get("normalized_query_aliases", ())
-
-    requested = None if is_family_query else _catalog_requested_variant(
-        query,
-        family,
-    )
+    requested = None if is_family_query else _catalog_requested_variant(query, family)
 
     # Una query che contiene il nome della famiglia ma aggiunge una variante
     # non registrata non deve ricadere nel matching generico.
@@ -1170,11 +1204,23 @@ def _catalog_match(
     )
     result["catalog_variant"] = canonical_name
 
+    # Registry metadata is authoritative. The canonical variant name is kept
+    # intact because audience words can be part of the actual commercial
+    # identity, not merely display metadata.
+    registry_concentration = str(variant.get("concentration") or "").strip()
+    if registry_concentration:
+        result["concentration"] = registry_concentration
+        result["canonical_concentration"] = registry_concentration
+
+    variant_gender = str(variant.get("gender") or "").strip() or _catalog_gender_class(canonical_name)
     candidate_gender = _catalog_gender_class(_catalog_product_text(product))
-    if candidate_gender == "male":
+    resolved_gender = variant_gender if variant_gender != "none" else candidate_gender
+    if resolved_gender == "male":
         result["gender"] = "Uomo"
-    elif candidate_gender == "female":
+    elif resolved_gender == "female":
         result["gender"] = "Donna"
+    elif resolved_gender == "none":
+        result.pop("gender", None)
 
     result["match_method"] = "family_registry_alias"
     return result
@@ -1720,34 +1766,69 @@ def _display_variant_name(
         flags=re.I,
     )
 
-    variant = re.sub(
-        r"\b(?:eau\s+de\s+parfum|eau\s+de\s+toilette|"
-        r"eau\s+de\s+cologne|eau\s+fraiche|"
-        r"extrait\s+de\s+parfum|eau\s+de\s+parfum\s+spray|"
-        r"parfum\s+intense|edp|edt|edc|parfum|perfume|spray)\b",
-        " ",
-        variant,
-        flags=re.I,
+    is_catalog_identity = bool(
+        product.get("catalog_id")
+        and product.get("match_method") != "raw_identity"
     )
 
-    # Se il nome è già canonico/catalogato, le parole di genere possono
-    # essere parte integrante della variante (es. "For Him", "Pour Femme").
-    # Non vanno distrutte: altrimenti due referenze diverse diventano la
-    # stessa variante. Per i nomi RAW, invece, il genere resta un attributo
-    # separato e può essere ripulito dal titolo.
-    is_canonical_variant = bool(
-        product.get("catalog_variant")
-        or product.get("canonical_name")
+    if is_catalog_identity:
+        # For catalog identities, remove only the exact catalog concentration.
+        # Generic removal of the word "parfum" would corrupt valid names such
+        # as "Le Male Le Parfum".
+        concentration = product_concentration(product)
+        if concentration:
+            variant = re.sub(
+                rf"\b{re.escape(concentration)}\b",
+                " ",
+                variant,
+                flags=re.I,
+            )
+    else:
+        variant = re.sub(
+            r"\b(?:eau\s+de\s+parfum|eau\s+de\s+toilette|"
+            r"eau\s+de\s+cologne|eau\s+fraiche|"
+            r"extrait\s+de\s+parfum|eau\s+de\s+parfum\s+spray|"
+            r"eau\s+de\s+parfum\s+intense|eau\s+de\s+toilette\s+intense|"
+            r"parfum\s+intense|edp|edt|edc|parfum|perfume|spray)\b",
+            " ",
+            variant,
+            flags=re.I,
+        )
+
+    # Audience words are part of the canonical commercial identity for
+    # Registry-resolved products. For raw/unresolved products they remain
+    # display metadata and can be removed from the variant field.
+    gender_words = (
+        r"men|women|man|woman|male|female|homme|femme|heren|mannen|"
+        r"dames|vrouwen|uomo|donna|unisex|mixte|unisexe"
     )
 
-    if not is_canonical_variant:
+    if product.get("match_method") == "family_registry_alias":
+        # Preserve the canonical variant exactly enough to distinguish
+        # products such as "Hawas for Him", "Hawas for Her" and
+        # "9 PM - Pour Femme".
+        pass
+    else:
         variant = re.sub(
             r"\b(?:for\s+(?:him|her|men|women)|"
             r"pour\s+(?:homme|femme|hommes|femmes)|"
-            r"voor\s+(?:mannen|dames|vrouwen)|"
-            r"men|women|man|woman|male|female|homme|femme|heren|mannen|"
-            r"dames|vrouwen|uomo|donna|unisex)\b",
+            r"voor\s+(?:mannen|heren|dames|vrouwen))\b",
             " ",
+            variant,
+            flags=re.I,
+        )
+        # Catalog identities have already been normalized by ProductMatcher.
+        # Remove standalone audience words only at the boundaries so a real
+        # name such as "Le Male" remains intact.
+        variant = re.sub(
+            rf"^(?:{gender_words})\s+",
+            "",
+            variant,
+            flags=re.I,
+        )
+        variant = re.sub(
+            rf"\s+(?:{gender_words})$",
+            "",
             variant,
             flags=re.I,
         )
@@ -1783,6 +1864,8 @@ def _format_result_title(product: Dict[str, Any]) -> str:
 
     concentration = product_concentration(product)
     concentration_display = {
+        "eau de parfum intense": "Eau de Parfum Intense",
+        "eau de toilette intense": "Eau de Toilette Intense",
         "eau de parfum": "Eau de Parfum",
         "eau de toilette": "Eau de Toilette",
         "eau de cologne": "Eau de Cologne",
@@ -1799,17 +1882,6 @@ def _format_result_title(product: Dict[str, Any]) -> str:
         raw_name,
     )
 
-    # If the gender is already embedded in the canonical commercial variant,
-    # do not append a second "Uomo/Donna" token.  The variant remains intact.
-    if re.search(
-        r"\b(?:for\s+him|for\s+her|pour\s+homme|pour\s+femme|"
-        r"men|women|man|woman|male|female|homme|femme|heren|mannen|dames|"
-        r"vrouwen|uomo|donna|unisex)\b",
-        catalog_norm(variant),
-        re.I,
-    ):
-        gender = ""
-
     parts = []
     if brand:
         parts.append(f"{brand}-{variant}")
@@ -1819,7 +1891,17 @@ def _format_result_title(product: Dict[str, Any]) -> str:
     if concentration_display:
         parts.append(concentration_display)
     if gender:
-        parts.append(gender)
+        variant_has_gender = bool(
+            re.search(
+                r"\b(?:for\s+(?:him|her|men|women)|pour\s+(?:homme|femme|hommes|femmes)|"
+                r"men|women|man|woman|male|female|homme|femme|uomo|donna|heren|mannen|"
+                r"dames|vrouwen|unisex|mixte|unisexe)\b",
+                variant,
+                flags=re.I,
+            )
+        )
+        if not variant_has_gender:
+            parts.append(gender)
 
     return " ".join(parts).strip()
 
@@ -1833,6 +1915,9 @@ def _result_group_key(product: Dict[str, Any]) -> tuple:
     concentrazione, mantenendo le differenze reali della variante.
     """
     brand = catalog_norm(_display_brand(product))
+    raw_name = _display_raw_name(product)
+    gender = catalog_norm(_display_gender(product, raw_name))
+    concentration = product_concentration(product)
 
     catalog_variant = catalog_norm(
         product.get("catalog_variant")
@@ -1841,7 +1926,16 @@ def _result_group_key(product: Dict[str, Any]) -> tuple:
     )
 
     if catalog_variant:
-        return ("catalog", brand, catalog_variant)
+        # Same variant name can legitimately exist in different concentrations
+        # and for different audiences. Both are identity dimensions; bottle
+        # size is deliberately excluded.
+        return (
+            "catalog",
+            brand,
+            catalog_variant,
+            catalog_norm(concentration),
+            gender,
+        )
 
     raw_name = _display_raw_name(product)
     name_key = catalog_norm(raw_name)
@@ -1871,7 +1965,13 @@ def _result_group_key(product: Dict[str, Any]) -> tuple:
 
     name_key = re.sub(r"\s+", " ", name_key).strip()
 
-    return ("generic", brand, name_key)
+    return (
+        "generic",
+        brand,
+        name_key,
+        catalog_norm(concentration),
+        gender,
+    )
 
 
 def _collapse_family_results(
@@ -1905,18 +2005,34 @@ def _collapse_family_results(
     # trovate dagli scraper.
     ordered: List[Dict[str, Any]] = []
 
+    family_brand_key = catalog_norm(family.get("brand"))
+
     for variant in family.get("variants", []):
         canonical_key = catalog_norm(
             variant.get("canonical_name")
         )
-        for key, product in grouped.items():
+
+        matching = [
+            (key, product)
+            for key, product in grouped.items()
             if (
                 key[0] == "catalog"
-                and key[1] == catalog_norm(family.get("brand"))
+                and key[1] == family_brand_key
                 and key[2] == canonical_key
-            ):
-                ordered.append(product)
-                break
+            )
+        ]
+
+        # Keep concentration and gender as separate identity dimensions.
+        # The old implementation took only the first product for a canonical
+        # variant, which collapsed EDP/EDT and Uomo/Donna into one result.
+        matching.sort(
+            key=lambda item: (
+                catalog_norm(product_concentration(item[1])),
+                catalog_norm(_display_gender(item[1], _display_raw_name(item[1]))),
+                deterministic_result_key(item[1]),
+            )
+        )
+        ordered.extend(product for _, product in matching)
 
     return ordered
 
@@ -2126,6 +2242,17 @@ def _validate_candidate(
 
     if matched_product is None:
         matched_product = dict(product)
+    elif isinstance(matched_product, dict):
+        # The central catalog is authoritative for concentration once it has
+        # identified a real catalog product. This applies to cataloged and
+        # non-Registry families alike, so a retailer's generic word "parfum"
+        # cannot split an otherwise identical EDP into a second category.
+        canonical_concentration = str(
+            matched_product.get("canonical_concentration") or ""
+        ).strip()
+        if canonical_concentration:
+            matched_product["concentration"] = canonical_concentration
+            matched_product["canonical_concentration"] = canonical_concentration
 
     # Per le famiglie governate dal Family Registry, _catalog_match()
     # contiene l'identità risolta dalla regola autorevole. Questa identità
@@ -2156,18 +2283,27 @@ def _validate_candidate(
         # genere. Li usiamo soltanto come arricchimento del risultato già
         # validato dalla famiglia: non influenzano la decisione di appartenenza.
         if isinstance(matched_product, dict):
-            if not product_concentration(product):
-                matcher_concentration = str(
-                    matched_product.get("concentration")
-                    or matched_product.get("canonical_concentration")
-                    or ""
-                ).strip()
-                if matcher_concentration:
-                    product["concentration"] = matcher_concentration
-                    product["canonical_concentration"] = matcher_concentration
+            matcher_concentration = str(
+                matched_product.get("canonical_concentration")
+                or matched_product.get("concentration")
+                or ""
+            ).strip() if isinstance(matched_product, dict) else ""
+            # Once the central catalog has identified the product, its
+            # concentration is authoritative. Retailer wording such as
+            # plain "parfum" must not create a second category.
+            if matcher_concentration:
+                product["concentration"] = matcher_concentration
+                product["canonical_concentration"] = matcher_concentration
 
             if not product.get("gender") and matched_product.get("gender"):
                 product["gender"] = matched_product.get("gender")
+
+            # Preserve the central catalog identity when the Family Registry
+            # supplies only the family/variant validation layer.
+            if matched_product.get("catalog_id"):
+                product["catalog_id"] = matched_product.get("catalog_id")
+                product["product_identity"] = matched_product.get("product_identity") or matched_product.get("catalog_id")
+                product["variant_id"] = matched_product.get("variant_id") or matched_product.get("catalog_id")
 
         product["match_method"] = (
             product.get("match_method")
