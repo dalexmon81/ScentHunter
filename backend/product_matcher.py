@@ -501,6 +501,48 @@ class ProductMatcher:
         return re.sub(r"\s+", " ", text).strip()
 
     @classmethod
+    def _identity_name_candidates(
+        cls,
+        product: CatalogProduct,
+        raw_name: str,
+    ) -> set[str]:
+        """Return safe normalized identity candidates for a raw title.
+
+        Retailers frequently append presentation metadata to the title
+        (size, concentration, audience labels such as ``men``/``mixte``).
+        These are not removed from the canonical identity itself. Instead,
+        they are removed only for this comparison, and only when the
+        resulting text exactly equals a catalog identity for the same
+        product. Variant-defining phrases such as ``Pour Femme`` remain
+        untouched because they are part of the catalog identity when present.
+        """
+        candidates = set()
+        raw = cls._clean_identity_name(product.brand, raw_name)
+        if raw:
+            candidates.add(raw)
+
+        # Audience labels are treated as separate evidence, never as a
+        # destructive normalization rule for the canonical name.
+        gender = normalize_gender(raw_name)
+        if gender:
+            gender_patterns = {
+                "Uomo": r"\b(?:man|men|male|homme|uomo|him)\b",
+                "Donna": r"\b(?:woman|women|female|femme|donna|donne|her)\b",
+                "Unisex": r"\b(?:unisex|mixte|unisexe)\b",
+            }
+            pattern = gender_patterns.get(gender)
+            if pattern:
+                without_gender = re.sub(pattern, " ", raw_name, flags=re.I)
+                without_gender = cls._clean_identity_name(
+                    product.brand,
+                    without_gender,
+                )
+                if without_gender:
+                    candidates.add(without_gender)
+
+        return candidates
+
+    @classmethod
     def _is_rejected_listing(
         cls,
         offer: Dict[str, Any],
@@ -636,6 +678,18 @@ class ProductMatcher:
 
         direct_matches: Dict[str, CatalogProduct] = {}
 
+        # A catalog can intentionally contain multiple identities sharing
+        # the same canonical display name while their family/aliases
+        # distinguish them (for example a base fragrance and a Pour Femme
+        # variant). A shared normalized_name is therefore not sufficient
+        # evidence by itself. Count those names once and require an explicit
+        # variant alias/catalog_variant when the canonical name is shared.
+        name_counts: Dict[str, int] = {}
+        for catalog_product in self.catalog:
+            key = catalog_product.normalized_name
+            if key:
+                name_counts[key] = name_counts.get(key, 0) + 1
+
         for product in self.catalog:
             if (
                 brand
@@ -644,10 +698,15 @@ class ProductMatcher:
                 continue
 
             keys = {
-                product.normalized_name,
                 normalize(product.catalog_variant),
                 *product.normalized_aliases,
             }
+
+            if (
+                product.normalized_name
+                and name_counts.get(product.normalized_name, 0) == 1
+            ):
+                keys.add(product.normalized_name)
 
             if direct_keys & keys:
                 direct_matches[product.catalog_id] = product
@@ -660,20 +719,72 @@ class ProductMatcher:
             raw_name,
         )
 
-        if not cleaned:
-            return []
+        if cleaned:
+            candidates = [
+                product
+                for product in self._by_clean_name.get(
+                    cleaned,
+                    [],
+                )
+                if (
+                    not brand
+                    or product.normalized_brand == brand
+                )
+            ]
+            if candidates:
+                return candidates
 
-        return [
-            product
-            for product in self._by_clean_name.get(
-                cleaned,
-                [],
-            )
-            if (
-                not brand
-                or product.normalized_brand == brand
-            )
-        ]
+        # Some retailers do not expose the brand as a separate field and
+        # instead put the brand directly in the product title.
+        # In that case the previous lookup searched for
+        # "french avenue liquid brun" while the catalog index correctly
+        # stores "liquid brun" after removing the catalog brand.
+        #
+        # Resolve this generically by testing the raw name against each
+        # catalog brand/name pair. This does NOT invent a brand: a candidate
+        # is accepted only when removing that catalog product's own brand,
+        # size and concentration leaves an exact catalog identity. If more
+        # than one catalog identity survives, the normal ambiguity check in
+        # _resolve() rejects it.
+        if not brand:
+            inferred: Dict[str, CatalogProduct] = {}
+
+            for product in self.catalog:
+                product_keys = {
+                    normalize(product.catalog_variant),
+                    *product.normalized_aliases,
+                }
+
+                if (
+                    product.normalized_name
+                    and sum(
+                        1
+                        for catalog_product in self.catalog
+                        if catalog_product.normalized_name == product.normalized_name
+                    ) == 1
+                ):
+                    product_keys.add(product.normalized_name)
+
+                raw_candidates = self._identity_name_candidates(
+                    product,
+                    raw_name,
+                )
+                if not raw_candidates:
+                    continue
+
+                catalog_cleaned_keys = {
+                    self._clean_identity_name(product.brand, key)
+                    for key in product_keys
+                }
+                catalog_cleaned_keys.discard("")
+
+                if raw_candidates & catalog_cleaned_keys:
+                    inferred[product.catalog_id] = product
+
+            if inferred:
+                return list(inferred.values())
+
+        return []
 
     def _identifier_match(
         self,
