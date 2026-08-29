@@ -2672,46 +2672,224 @@ def search(q: str):
 @app.get("/diagnostic-liquid-brun")
 def diagnostic_liquid_brun():
     """
-    Diagnostico isolato dei soli scraper usando Liquid Brun.
-    Non passa dal matcher, grouping o frontend.
+    Isolated Liquid Brun diagnostic.
+
+    Runs every configured scraper independently and reports:
+    loading, start/completion, duration, HTTP activity, candidates,
+    timeout and exception. It deliberately bypasses matcher/grouping.
     """
     import importlib
+    import multiprocessing as mp
+    import os
+    import time
+    import traceback
+
+    query = "Liquid Brun"
+    timeout_per_store = 30.0
+
+    def safe_candidate(item):
+        if not isinstance(item, dict):
+            return {"value": str(item)}
+        return {
+            "name": item.get("name") or item.get("title") or item.get("product_name"),
+            "brand": item.get("brand") or item.get("source_brand"),
+            "url": item.get("url"),
+            "price": item.get("price"),
+            "size_ml": item.get("size_ml") or item.get("volume_ml") or item.get("format_ml"),
+            "concentration": item.get("concentration"),
+            "store_product_id": item.get("store_product_id") or item.get("product_id"),
+            "store_variant_id": item.get("store_variant_id") or item.get("variant_id"),
+        }
+
+    def worker(store, pipe):
+        started = time.perf_counter()
+        report = {
+            "store": store,
+            "query": query,
+            "loaded": False,
+            "search_started": False,
+            "search_completed": False,
+            "timeout": False,
+            "duration_ms": None,
+            "raw_candidates": 0,
+            "sample_candidates": [],
+            "http": {
+                "requests": 0,
+                "responses": 0,
+                "http_errors": 0,
+                "exceptions": 0,
+                "status_codes": {},
+                "errors": [],
+            },
+            "error": None,
+        }
+
+        counters = report["http"]
+
+        try:
+            # Lightweight instrumentation for requests without changing
+            # scraper return values.
+            try:
+                import requests
+                original_request = requests.sessions.Session.request
+
+                def counted_request(self, method, url, **kwargs):
+                    counters["requests"] += 1
+                    try:
+                        response = original_request(self, method, url, **kwargs)
+                        counters["responses"] += 1
+                        code = str(getattr(response, "status_code", "unknown"))
+                        counters["status_codes"][code] = counters["status_codes"].get(code, 0) + 1
+                        if isinstance(getattr(response, "status_code", None), int) and response.status_code >= 400:
+                            counters["http_errors"] += 1
+                        return response
+                    except Exception as exc:
+                        counters["exceptions"] += 1
+                        if len(counters["errors"]) < 20:
+                            counters["errors"].append(f"{type(exc).__name__}: {exc}")
+                        raise
+
+                requests.sessions.Session.request = counted_request
+            except Exception:
+                pass
+
+            module = importlib.import_module(f"scrapers.{store}.scraper")
+            report["loaded"] = True
+
+            search_fn = getattr(module, "search", None)
+            if not callable(search_fn):
+                search_fn = getattr(module, "scrape", None)
+            if not callable(search_fn):
+                raise RuntimeError(f"{store}: scraper senza funzione search()/scrape()")
+
+            report["search_started"] = True
+            result = search_fn(query)
+
+            if isinstance(result, list):
+                report["raw_candidates"] = len(result)
+                report["sample_candidates"] = [safe_candidate(x) for x in result[:10]]
+            else:
+                report["result_type"] = type(result).__name__
+
+            report["search_completed"] = True
+
+        except Exception as exc:
+            report["error"] = {
+                "type": type(exc).__name__,
+                "message": str(exc),
+                "traceback": traceback.format_exc(limit=20),
+            }
+
+        finally:
+            report["duration_ms"] = round((time.perf_counter() - started) * 1000, 2)
+            try:
+                pipe.send(report)
+            except Exception:
+                pass
+            try:
+                pipe.close()
+            except Exception:
+                pass
+
+    def run_one(store):
+        parent, child = mp.Pipe(False)
+        process = mp.Process(target=worker, args=(store, child), daemon=True)
+        started = time.perf_counter()
+        process.start()
+        child.close()
+        process.join(timeout_per_store)
+
+        if process.is_alive():
+            process.terminate()
+            process.join(2.0)
+            return {
+                "store": store,
+                "query": query,
+                "loaded": None,
+                "search_started": None,
+                "search_completed": False,
+                "timeout": True,
+                "duration_ms": round((time.perf_counter() - started) * 1000, 2),
+                "raw_candidates": 0,
+                "sample_candidates": [],
+                "http": {},
+                "error": {
+                    "type": "TimeoutError",
+                    "message": f"Scraper terminato dopo {timeout_per_store:.1f} secondi",
+                },
+            }
+
+        try:
+            if parent.poll(0.2):
+                result = parent.recv()
+            else:
+                result = {
+                    "store": store,
+                    "query": query,
+                    "loaded": None,
+                    "search_started": None,
+                    "search_completed": False,
+                    "timeout": False,
+                    "duration_ms": round((time.perf_counter() - started) * 1000, 2),
+                    "raw_candidates": 0,
+                    "sample_candidates": [],
+                    "http": {},
+                    "error": {
+                        "type": "NoDiagnosticPayload",
+                        "message": "Il processo è terminato senza restituire il report.",
+                    },
+                }
+        except (EOFError, OSError):
+            result = {
+                "store": store,
+                "query": query,
+                "loaded": None,
+                "search_started": None,
+                "search_completed": False,
+                "timeout": False,
+                "duration_ms": round((time.perf_counter() - started) * 1000, 2),
+                "raw_candidates": 0,
+                "sample_candidates": [],
+                "http": {},
+                "error": {
+                    "type": "DiagnosticIPCError",
+                    "message": "Impossibile ricevere il report dal processo scraper.",
+                },
+            }
+        return result
 
     try:
-        diagnostic_module = importlib.import_module(
-            "diagnostic_liquid_brun"
-        )
-
-        run_full_diagnostic = getattr(
-            diagnostic_module,
-            "run_full_diagnostic",
-            None,
-        )
-
-        if not callable(run_full_diagnostic):
-            raise RuntimeError(
-                "diagnostic_liquid_brun.py non espone "
-                "run_full_diagnostic()"
-            )
-
-        return run_full_diagnostic(
-            query="Liquid Brun",
-            timeout_per_store=30.0,
-        )
-
-    except Exception as exc:
-        traceback.print_exc()
+        stores = list(STORES)
+        started = time.perf_counter()
+        reports = {store: run_one(store) for store in stores}
 
         return {
+            "ok": True,
+            "query": query,
+            "timeout_per_store_seconds": timeout_per_store,
+            "duration_ms": round((time.perf_counter() - started) * 1000, 2),
+            "summary": {
+                "stores_total": len(stores),
+                "loaded": sum(1 for x in reports.values() if x.get("loaded") is True),
+                "search_started": sum(1 for x in reports.values() if x.get("search_started") is True),
+                "completed": sum(1 for x in reports.values() if x.get("search_completed") is True),
+                "with_candidates": sum(1 for x in reports.values() if x.get("raw_candidates", 0) > 0),
+                "timeouts": sum(1 for x in reports.values() if x.get("timeout") is True),
+                "errors": sum(1 for x in reports.values() if x.get("error") is not None),
+            },
+            "stores": reports,
+        }
+
+    except Exception as exc:
+        return {
             "ok": False,
-            "query": "Liquid Brun",
+            "query": query,
             "error": {
                 "type": type(exc).__name__,
                 "message": str(exc),
-                "traceback": traceback.format_exc(),
+                "traceback": traceback.format_exc(limit=20),
             },
         }
-
 
 @app.get("/diagnostic-search")
 def diagnostic_search(
