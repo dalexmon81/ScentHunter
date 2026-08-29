@@ -1512,16 +1512,27 @@ def product_identity_key(product: Dict[str, Any]) -> tuple:
         if not name:
             name = norm(source.get("source_name", ""))
 
-    size = product_size_ml(product)
+        size = product_size_ml(product)
     concentration = product_concentration(product)
-
+    
+    variant = norm(
+        product_field(
+            product,
+            "variant",
+            "canonical_variant",
+            "catalog_variant",
+        )
+    )
+    
     return (
         "fallback",
         store,
         name,
+        variant,
         size,
         concentration,
     )
+
 
 
 def unique_results(products: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
