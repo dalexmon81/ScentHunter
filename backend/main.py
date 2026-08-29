@@ -2078,24 +2078,24 @@ def _validate_candidate(
         resolved_identity = None
 
     if isinstance(resolved_identity, dict):
-    product = dict(product)
-    product.update(resolved_identity)
+        product = dict(product)
+        product.update(resolved_identity)
 
-    product["match_method"] = (
+        product["match_method"] = (
         product.get("match_method")
         or "family_registry_alias"
-    )
+        )
 
     # Mantieni il nome canonico separato dal nome originale.
     # Il nome originale può contenere una variante commerciale
     # realmente distinta, come For Him, For Her, Homme o Femme.
-    product["canonical_variant"] = (
+        product["canonical_variant"] = (
         product.get("canonical_name")
         or product.get("catalog_variant")
         or ""
-    )
+        )
 
-    return product
+        return product
 
     return matched_product
 
