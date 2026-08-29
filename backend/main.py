@@ -150,12 +150,6 @@ def _load_product_matcher_catalog() -> List[Dict[str, Any]]:
             "id": product_id,
             "brand": brand,
             "name": name,
-            "canonical_name": name,
-            "catalog_variant": name,
-            "family_id": str(product.get("family_id") or "").strip(),
-            "family_name": str(product.get("family_name") or "").strip(),
-            "concentration": str(product.get("concentration") or "").strip(),
-            "gender": product.get("gender"),
             "aliases": aliases,
             "formats_ml": data["formats_ml"],
             "gtins": data["gtins"],
@@ -693,6 +687,22 @@ def _load_family_registry() -> List[Dict[str, Any]]:
                 or ""
             ).strip()
 
+            # The registry stores the brand at family level.  Some historical
+            # registry versions also repeated that brand inside
+            # canonical_name (for example "Brand Variant").  Canonical
+            # identity must keep the brand in its own field, so remove only
+            # a leading family-brand prefix from the canonical variant name.
+            # Do not remove gender/variant words: they remain part of the
+            # commercial variant identity.
+            family_brand = str(family.get("brand") or "").strip()
+            if family_brand and canonical_name:
+                canonical_name = re.sub(
+                    rf"^\s*{re.escape(family_brand)}(?:\s*[-:–—]\s*|\s+)",
+                    "",
+                    canonical_name,
+                    flags=re.I,
+                ).strip()
+
             if not canonical_name:
                 continue
 
@@ -1080,119 +1090,6 @@ def _catalog_requested_variant(
     return None
 
 
-
-def _catalog_offer_url_conflicts_with_variant(
-    product: Dict[str, Any],
-    family: Dict[str, Any],
-    variant: Dict[str, Any],
-) -> bool:
-    """
-    Scarta genericamente un'offerta quando il suo URL identifica
-    esplicitamente una variante sorella diversa da quella catalogata.
-
-    Esempio generale:
-        variante canonica: "Asad Zanzibar"
-        URL: ".../asad-eau-de-parfum-100-ml..."
-    L'URL identifica esplicitamente "Asad", che è una variante
-    più corta della stessa famiglia, ma non contiene "Zanzibar".
-    L'offerta non deve quindi essere assegnata a Zanzibar.
-
-    La regola è puramente basata sui dati del Family Registry:
-    nessun prodotto/store specifico è codificato nel main.
-    """
-    url_values = [
-        product.get("url"),
-        product.get("source_url"),
-        product.get("product_url"),
-        product.get("source_page"),
-        product.get("page_url"),
-        product.get("product_page_url"),
-        product.get("canonical_url"),
-        product.get("link"),
-        product.get("href"),
-    ]
-
-    source = product.get("source")
-    if isinstance(source, dict):
-        url_values.extend(
-            [
-                source.get("url"),
-                source.get("source_url"),
-                source.get("product_url"),
-                source.get("source_page"),
-                source.get("page_url"),
-                source.get("product_page_url"),
-                source.get("link"),
-                source.get("href"),
-            ]
-        )
-
-    provenance = product.get("provenance")
-    if isinstance(provenance, dict):
-        url_values.extend(
-            [
-                provenance.get("source_page"),
-                provenance.get("url"),
-                provenance.get("page_url"),
-                provenance.get("product_url"),
-                provenance.get("link"),
-                provenance.get("href"),
-            ]
-        )
-
-    url_text = " ".join(
-        str(value or "").strip()
-        for value in url_values
-        if value not in (None, "")
-    )
-    if not url_text:
-        return False
-
-    url_key = catalog_norm(url_text)
-    canonical_key = catalog_variant_key(
-        variant.get("canonical_name", "")
-    )
-    if not canonical_key:
-        return False
-
-    # If the URL explicitly contains the requested canonical variant,
-    # there is no sibling-variant conflict.
-    if _catalog_phrase_in_text(canonical_key, url_key):
-        return False
-
-    canonical_tokens = set(canonical_key.split())
-    if len(canonical_tokens) <= 1:
-        return False
-
-    for sibling in family.get("variants", []):
-        if sibling is variant:
-            continue
-
-        sibling_key = catalog_variant_key(
-            sibling.get("canonical_name", "")
-        )
-        if not sibling_key or sibling_key == canonical_key:
-            continue
-
-        sibling_tokens = sibling_key.split()
-        canonical_tokens_list = canonical_key.split()
-
-        # Only treat a sibling as an explicit conflict when its complete
-        # identity is a strict, shorter phrase inside the requested
-        # variant. This avoids rejecting unrelated sibling names that
-        # merely share a common token such as a brand/family name.
-        if len(sibling_tokens) >= len(canonical_tokens_list):
-            continue
-
-        if not _catalog_phrase_in_text(sibling_key, url_key):
-            continue
-
-        # The requested canonical variant is absent from the URL while
-        # the shorter sibling is explicitly present.
-        return True
-
-    return False
-
 def _catalog_match(
     product: Dict[str, Any],
     query: str,
@@ -1234,11 +1131,6 @@ def _catalog_match(
             result = dict(product)
             result["name"] = variant["canonical_name"]
             result["canonical_name"] = variant["canonical_name"]
-            # The family registry is authoritative for the identity. A RAW
-            # retailer candidate may omit the brand (some shops publish only
-            # the product title), so carry the registry brand into the same
-            # canonical fields used by the normal matcher. This is generic
-            # and applies to every cataloged family.
             family_brand = str(family.get("brand") or "").strip()
             if family_brand:
                 result["canonical_brand"] = family_brand
@@ -1263,11 +1155,6 @@ def _catalog_match(
             result = dict(product)
             result["name"] = variant["canonical_name"]
             result["canonical_name"] = variant["canonical_name"]
-            # The family registry is authoritative for the identity. A RAW
-            # retailer candidate may omit the brand (some shops publish only
-            # the product title), so carry the registry brand into the same
-            # canonical fields used by the normal matcher. This is generic
-            # and applies to every cataloged family.
             family_brand = str(family.get("brand") or "").strip()
             if family_brand:
                 result["canonical_brand"] = family_brand
@@ -1730,6 +1617,303 @@ def sort_by_price(products: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
     )
 
 
+def _display_brand(product: Dict[str, Any]) -> str:
+    # Canonical identity wins over retailer/raw fields.  This is especially
+    # important when a retailer title contains only the variant name and the
+    # Family Registry supplies the authoritative brand.
+    return (
+        product_field(
+            product,
+            "canonical_brand",
+            "brand",
+            "source_brand",
+        )
+        or ""
+    ).strip()
+
+
+def _display_raw_name(product: Dict[str, Any]) -> str:
+    return (
+        product.get("canonical_name")
+        or product_field(
+            product,
+            "name",
+            "title",
+            "product_name",
+        )
+        or ""
+    ).strip()
+
+
+def _display_gender(product: Dict[str, Any], raw_name: str) -> str:
+    explicit = product_field(
+        product,
+        "gender",
+        "genere",
+        "sex",
+    )
+
+    source = product.get("source")
+    if isinstance(source, dict) and not explicit:
+        explicit = str(
+            source.get("gender")
+            or source.get("genere")
+            or source.get("sex")
+            or ""
+        ).strip()
+
+    gender = _catalog_gender_class(
+        " ".join(
+            value
+            for value in (explicit, raw_name)
+            if value
+        )
+    )
+
+    if gender == "male":
+        return "Uomo"
+    if gender == "female":
+        return "Donna"
+
+    return ""
+
+
+def _display_variant_name(
+    product: Dict[str, Any],
+    brand: str,
+    raw_name: str,
+) -> str:
+    # Mantiene la grafia originale del catalogo/retailer: la funzione
+    # normalizza solo gli elementi che non devono comparire nella variante.
+    variant = str(raw_name or "").strip()
+
+    if brand:
+        variant = re.sub(
+            rf"\b{re.escape(str(brand).strip())}\b",
+            " ",
+            variant,
+            flags=re.I,
+        )
+
+    variant = re.sub(
+        r"\b\d+(?:[.,]\d+)?\s*(?:ml|cl|l|g|kg|oz)\b",
+        " ",
+        variant,
+        flags=re.I,
+    )
+
+    variant = re.sub(
+        r"\b(?:eau\s+de\s+parfum|eau\s+de\s+toilette|"
+        r"eau\s+de\s+cologne|eau\s+fraiche|"
+        r"extrait\s+de\s+parfum|"
+        r"eau\s+de\s+parfum\s+spray|"
+        r"edp|edt|edc|parfum|perfume|"
+        r"spray)\b",
+        " ",
+        variant,
+        flags=re.I,
+    )
+
+    # A gender marker can be a genuine part of the commercial variant
+    # ("For Him", "For Her", "Pour Homme", "Pour Femme", "Homme",
+    # "Femme", etc.).  When the Family Registry has resolved the variant,
+    # preserve it verbatim instead of stripping it.  For non-catalogued raw
+    # products the old fallback behaviour remains available.
+    if product.get("match_method") != "family_registry_alias":
+        variant = re.sub(
+            r"\b(?:for\s+him|for\s+her|pour\s+homme|pour\s+femme|"
+            r"men|women|man|woman|male|female|homme|femme|heren|mannen|dames|"
+            r"vrouwen|unisex)\b",
+            " ",
+            variant,
+            flags=re.I,
+        )
+
+    return re.sub(r"\s+", " ", variant).strip()
+
+
+def _format_result_title(product: Dict[str, Any]) -> str:
+    """
+    Costruisce il titolo visualizzato in modo uniforme per qualunque
+    profumo:
+
+        Brand-Variante [Concentrazione] [Uomo/Donna]
+
+    La variante viene presa dall'identità canonica quando disponibile;
+    in caso contrario viene ricavata dal nome del candidato. Nessuna
+    regola dipende da un marchio o profumo specifico.
+    """
+    brand = _display_brand(product)
+    raw_name = _display_raw_name(product)
+
+    variant = _display_variant_name(
+        product,
+        brand,
+        raw_name,
+    )
+
+    if not variant:
+        variant = raw_name or "Profumo"
+
+    concentration = product_concentration(product)
+    concentration_display = {
+        "eau de parfum": "Eau de Parfum",
+        "eau de toilette": "Eau de Toilette",
+        "eau de cologne": "Eau de Cologne",
+        "extrait de parfum": "Extrait de Parfum",
+        "parfum": "Parfum",
+    }.get(
+        concentration,
+        concentration.title() if concentration else "",
+    )
+
+    gender = _display_gender(
+        product,
+        raw_name,
+    )
+
+    # If the gender is already embedded in the canonical commercial variant,
+    # do not append a second "Uomo/Donna" token.  The variant remains intact.
+    if re.search(
+        r"\b(?:for\s+him|for\s+her|pour\s+homme|pour\s+femme|"
+        r"men|women|man|woman|male|female|homme|femme|heren|mannen|dames|"
+        r"vrouwen|uomo|donna|unisex)\b",
+        catalog_norm(variant),
+        re.I,
+    ):
+        gender = ""
+
+    parts = []
+    if brand:
+        parts.append(f"{brand}-{variant}")
+    else:
+        parts.append(variant)
+
+    if concentration_display:
+        parts.append(concentration_display)
+    if gender:
+        parts.append(gender)
+
+    return " ".join(parts).strip()
+
+
+def _result_group_key(product: Dict[str, Any]) -> tuple:
+    """
+    Raggruppa le offerte che rappresentano la stessa referenza.
+
+    Per le famiglie catalogate la chiave è la variante canonica. Per le
+    altre famiglie usa brand + nome commerciale ripulito da formato e
+    concentrazione, mantenendo le differenze reali della variante.
+    """
+    brand = catalog_norm(_display_brand(product))
+
+    catalog_variant = catalog_norm(
+        product.get("catalog_variant")
+        or product.get("canonical_name")
+        or ""
+    )
+
+    if catalog_variant:
+        return ("catalog", brand, catalog_variant)
+
+    raw_name = _display_raw_name(product)
+    name_key = catalog_norm(raw_name)
+
+    name_key = re.sub(
+        r"\b\d+(?:[.,]\d+)?\s*(?:ml|cl|l|g|kg|oz)\b",
+        " ",
+        name_key,
+        flags=re.I,
+    )
+    name_key = re.sub(
+        r"\b(?:eau\s+de\s+parfum|eau\s+de\s+toilette|"
+        r"eau\s+de\s+cologne|eau\s+fraiche|"
+        r"extrait\s+de\s+parfum|edp|edt|edc|parfum|perfume|spray)\b",
+        " ",
+        name_key,
+        flags=re.I,
+    )
+
+    if brand:
+        name_key = re.sub(
+            rf"\b{re.escape(brand)}\b",
+            " ",
+            name_key,
+            flags=re.I,
+        )
+
+    name_key = re.sub(r"\s+", " ", name_key).strip()
+
+    return ("generic", brand, name_key)
+
+
+def _collapse_family_results(
+    products: List[Dict[str, Any]],
+    query: str,
+) -> List[Dict[str, Any]]:
+    """
+    Per una query che corrisponde a una famiglia del Registry restituisce
+    una sola offerta migliore per ogni variante autorizzata.
+
+    Questo impedisce che più store, formati o diciture commerciali della
+    stessa variante gonfino il numero dei risultati. Il numero finale
+    dipende quindi dalle varianti realmente autorizzate dal catalogo,
+    non da un limite arbitrario e non da eccezioni sul singolo profumo.
+    """
+    family = _catalog_family_for_query(query)
+
+    if family is None:
+        return products
+
+    grouped: Dict[tuple, Dict[str, Any]] = {}
+
+    for product in sort_by_price(products):
+        key = _result_group_key(product)
+
+        if key not in grouped:
+            grouped[key] = product
+
+    # Il Registry è autoritativo: ordina le varianti secondo l'ordine
+    # dichiarato nel catalogo, mantenendo però soltanto quelle realmente
+    # trovate dagli scraper.
+    ordered: List[Dict[str, Any]] = []
+
+    for variant in family.get("variants", []):
+        canonical_key = catalog_norm(
+            variant.get("canonical_name")
+        )
+        for key, product in grouped.items():
+            if (
+                key[0] == "catalog"
+                and key[1] == catalog_norm(family.get("brand"))
+                and key[2] == canonical_key
+            ):
+                ordered.append(product)
+                break
+
+    return ordered
+
+
+def _prepare_final_results(
+    products: List[Dict[str, Any]],
+    query: str,
+) -> List[Dict[str, Any]]:
+    results = _collapse_family_results(
+        unique_results(products),
+        query,
+    )
+
+    prepared: List[Dict[str, Any]] = []
+
+    for product in results:
+        item = dict(product)
+        item["name"] = _format_result_title(item)
+        item["title"] = item["name"]
+        prepared.append(item)
+
+    return sort_by_price(prepared)
+
+
 # ============================================================
 # SCRAPER
 # ============================================================
@@ -1915,62 +2099,6 @@ def _validate_candidate(
     if matched_product is None:
         matched_product = dict(product)
 
-    # La risoluzione del ProductMatcher può già assegnare un'identità canonica
-    # prima che intervenga il Family Registry. In quel percorso il controllo URL
-    # deve essere applicato comunque, altrimenti un'offerta con URL di una
-    # variante sorella può sopravvivere alla validazione.
-    if isinstance(matched_product, dict):
-        matched_family_id = str(
-            matched_product.get("family_id") or ""
-        ).strip()
-        matched_catalog_variant = str(
-            matched_product.get("catalog_variant")
-            or matched_product.get("canonical_name")
-            or matched_product.get("name")
-            or ""
-        ).strip()
-
-        if matched_family_id and matched_catalog_variant:
-            matched_family = next(
-                (
-                    item
-                    for item in FAMILY_REGISTRY
-                    if str(item.get("family_id") or "").strip()
-                    == matched_family_id
-                ),
-                None,
-            )
-
-            if isinstance(matched_family, dict):
-                matched_variant = next(
-                    (
-                        item
-                        for item in matched_family.get("variants", [])
-                        if catalog_variant_key(
-                            item.get("canonical_name", "")
-                        )
-                        == catalog_variant_key(matched_catalog_variant)
-                    ),
-                    None,
-                )
-
-                if (
-                    isinstance(matched_variant, dict)
-                    and _catalog_offer_url_conflicts_with_variant(
-                        matched_product,
-                        matched_family,
-                        matched_variant,
-                    )
-                ):
-                    print(
-                        "FAMILY_REGISTRY_URL_CONFLICT: "
-                        f"family={matched_family_id!r} "
-                        f"variant={matched_catalog_variant!r} "
-                        f"url={matched_product.get('url') or ''!r}",
-                        flush=True,
-                    )
-                    matched_product = None
-
     # Per le famiglie governate dal Family Registry, _catalog_match()
     # contiene l'identità risolta dalla regola autorevole. Questa identità
     # deve essere propagata nel candidato finale: non può restare confinata
@@ -1992,51 +2120,6 @@ def _validate_candidate(
         # L'identità del Family Registry deve essere applicata all'oggetto
         # candidato che prosegue nel percorso verso matched_candidates.
         # Non deve restare confinata a un risultato diagnostico o al matcher.
-        family_id = str(
-            resolved_identity.get("family_id") or ""
-        ).strip()
-        catalog_variant = str(
-            resolved_identity.get("catalog_variant")
-            or resolved_identity.get("canonical_name")
-            or ""
-        ).strip()
-
-        family = next(
-            (
-                item
-                for item in FAMILY_REGISTRY
-                if str(item.get("family_id") or "").strip() == family_id
-            ),
-            None,
-        )
-
-        if isinstance(family, dict):
-            variant = next(
-                (
-                    item
-                    for item in family.get("variants", [])
-                    if catalog_variant_key(
-                        item.get("canonical_name", "")
-                    )
-                    == catalog_variant_key(catalog_variant)
-                ),
-                None,
-            )
-
-            if isinstance(variant, dict) and _catalog_offer_url_conflicts_with_variant(
-                product,
-                family,
-                variant,
-            ):
-                print(
-                    "FAMILY_REGISTRY_URL_CONFLICT: "
-                    f"family={family_id!r} "
-                    f"variant={catalog_variant!r} "
-                    f"url={product.get('url') or ''!r}",
-                    flush=True,
-                )
-                return None
-
         product = dict(product)
         product.update(resolved_identity)
 
@@ -2121,8 +2204,9 @@ def _orchestrate_results(
         query,
     )
 
-    return sort_by_price(
-        unique_results(validated)
+    return _prepare_final_results(
+        validated,
+        query,
     )
 
 # ============================================================
@@ -2372,10 +2456,9 @@ def _search_job_snapshot(job_id: str) -> Dict[str, Any]:
                 detail="Job di ricerca non trovato",
             )
 
-        results = sort_by_price(
-            unique_results(
-                list(job["results"])
-            )
+        results = _prepare_final_results(
+            list(job["results"]),
+            job["query"],
         )
 
         return {
