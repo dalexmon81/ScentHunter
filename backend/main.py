@@ -8,7 +8,6 @@ import json
 import os
 import re
 import threading
-import time
 import traceback
 import unicodedata
 import uuid
@@ -1749,6 +1748,17 @@ def _run_search_job(
                 job["candidates"]
             )
 
+        with SEARCH_JOBS_LOCK:
+            job = SEARCH_JOBS.get(job_id)
+            if job is not None:
+                job["diagnostic_events"].append({
+                    "event": "store_candidates_received",
+                    "store": store,
+                    "candidate_count": len(store_candidates),
+                    "cumulative_candidates": len(candidate_pool),
+                    "elapsed_ms": round((datetime.now(timezone.utc).timestamp() - job["diagnostic_started_epoch"]) * 1000, 2),
+                })
+
         results = _orchestrate_results(
             candidate_pool,
             query,
@@ -1759,6 +1769,12 @@ def _run_search_job(
 
             if job is not None:
                 job["results"] = results
+                job["diagnostic_events"].append({
+                    "event": "results_published",
+                    "store": store,
+                    "result_count": len(results),
+                    "elapsed_ms": round((datetime.now(timezone.utc).timestamp() - job["diagnostic_started_epoch"]) * 1000, 2),
+                })
 
     try:
         try:
@@ -1830,6 +1846,10 @@ def _run_search_job(
 
             if job is not None:
                 job["completed"] = True
+                job["diagnostic_events"].append({
+                    "event": "job_completed",
+                    "elapsed_ms": round((datetime.now(timezone.utc).timestamp() - job["diagnostic_started_epoch"]) * 1000, 2),
+                })
 
 
 @app.get("/search-start")
@@ -1851,6 +1871,8 @@ def search_start(q: str):
             "results": [],
             "errors": {},
             "completed": False,
+            "diagnostic_started_epoch": datetime.now(timezone.utc).timestamp(),
+            "diagnostic_events": [{"event": "job_created", "elapsed_ms": 0.0}],
         }
 
     thread = threading.Thread(
@@ -1876,6 +1898,72 @@ def search_start(q: str):
 @app.get("/search-status")
 def search_status(job_id: str):
     return _search_job_snapshot(job_id)
+
+
+@app.get("/diagnostic-search-start")
+def diagnostic_search_start(q: str = "Liquid Brun", wait_seconds: float = 20.0):
+    """
+    Diagnostic of the REAL async search path used by /search-start.
+    It measures when each store finishes and when partial results are published.
+    It does not alter scraper behavior or validation rules.
+    """
+    query = str(q or "").strip()
+    if not query:
+        raise HTTPException(status_code=400, detail="Parametro q mancante")
+
+    try:
+        wait = max(1.0, min(float(wait_seconds), 30.0))
+    except (TypeError, ValueError):
+        wait = 20.0
+
+    job_id = uuid.uuid4().hex
+    started_epoch = datetime.now(timezone.utc).timestamp()
+    with SEARCH_JOBS_LOCK:
+        SEARCH_JOBS[job_id] = {
+            "query": query,
+            "candidates": [],
+            "results": [],
+            "errors": {},
+            "completed": False,
+            "diagnostic_started_epoch": started_epoch,
+            "diagnostic_events": [{"event": "job_created", "elapsed_ms": 0.0}],
+        }
+
+    thread = threading.Thread(
+        target=_run_search_job,
+        args=(job_id, query),
+        daemon=True,
+    )
+    thread.start()
+
+    deadline = started_epoch + wait
+    while datetime.now(timezone.utc).timestamp() < deadline:
+        with SEARCH_JOBS_LOCK:
+            job = SEARCH_JOBS.get(job_id)
+            if job is not None and job.get("completed"):
+                break
+        threading.Event().wait(0.05)
+
+    with SEARCH_JOBS_LOCK:
+        job = SEARCH_JOBS.get(job_id)
+        if job is None:
+            raise HTTPException(status_code=500, detail="Diagnostic job perso")
+        return {
+            "ok": True,
+            "diagnostic": "real_async_search_timeline",
+            "job_id": job_id,
+            "query": query,
+            "wait_seconds": wait,
+            "completed": job.get("completed", False),
+            "event_count": len(job.get("diagnostic_events", [])),
+            "events": list(job.get("diagnostic_events", [])),
+            "errors": dict(job.get("errors", {})),
+            "current_result_count": len(job.get("results", [])),
+            "interpretation": {
+                "first_results_ms": next((e["elapsed_ms"] for e in job.get("diagnostic_events", []) if e.get("event") == "results_published"), None),
+                "note": "Se results_published compare pochi secondi dopo job_created, il backend produce risultati presto e il ritardo percepito e' nel polling/frontend. Se compare solo dopo molti secondi, il ritardo e' nel backend async."
+            },
+        }
 
 
 @app.get("/search")
