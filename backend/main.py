@@ -2469,21 +2469,36 @@ def _run_search_job(
         ): store
         for store in STORES
     }
+def process_store_candidates(
+    job_id: str,
+    query: str,
+    store: str,
+    store_candidates: Any,
+) -> None:
+    if not isinstance(store_candidates, list):
+        return
 
-        def process_store_candidates(
-        store: str,
-        store_candidates: Any,
-    ) -> None:
-        if not isinstance(store_candidates, list):
+    with SEARCH_JOBS_LOCK:
+        job = SEARCH_JOBS.get(job_id)
+
+        if job is None:
             return
 
-        with SEARCH_JOBS_LOCK:
-            job = SEARCH_JOBS.get(job_id)
+        job["candidates"].extend(store_candidates)
 
-            if job is None:
-                return
+    candidate_pool = list(job["candidates"])
 
-            job["candidates"].extend(store_candidates)
+    results = _orchestrate_results(
+        candidate_pool,
+        query,
+    )
+
+    with SEARCH_JOBS_LOCK:
+        job = SEARCH_JOBS.get(job_id)
+
+        if job is not None:
+            job["results"] = results
+
 
 
         # Non ricalcolare qui l'intero candidate pool.
