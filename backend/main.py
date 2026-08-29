@@ -3144,3 +3144,345 @@ def diagnose_notino_search(q: str):
             "error": f"{type(exc).__name__}: {exc}",
             "traceback": traceback.format_exc(),
         }
+
+# ============================================================
+# GENERIC HTTP TRACE DIAGNOSTIC
+# ============================================================
+
+_DIAGNOSTIC_HTTP_LOCK = threading.Lock()
+
+
+@app.get("/diagnostic-http-trace")
+def diagnostic_http_trace(
+    q: str = "Liquid Brun",
+    wait_seconds: float = 20.0,
+):
+    """
+    Traccia la discovery REALE degli scraper senza modificarne il codice.
+
+    Per ogni store registra:
+      - ogni attempt della discovery;
+      - ogni richiesta HTTP effettuata dallo scraper;
+      - URL, metodo, status/error e durata;
+      - numero di candidati grezzi restituiti.
+
+    Il diagnostico NON esegue matching, catalogo o frontend: serve soltanto
+    a capire dove lo scraper perde tempo o perché restituisce zero candidati.
+    """
+    query = str(q or "").strip()
+    if not query:
+        return {"ok": False, "error": "empty_query"}
+
+    try:
+        wait_seconds = max(1.0, min(float(wait_seconds), 60.0))
+    except (TypeError, ValueError):
+        wait_seconds = 20.0
+
+    if not _DIAGNOSTIC_HTTP_LOCK.acquire(blocking=False):
+        return {
+            "ok": False,
+            "error": "diagnostic_busy",
+            "message": "Un altro HTTP diagnostic è già in esecuzione.",
+        }
+
+    started = time.perf_counter() if "time" in globals() else __import__("time").perf_counter()
+    import time as _http_trace_time
+
+    original_session_request = None
+    original_requests_request = None
+    thread_context = threading.local()
+    events: List[Dict[str, Any]] = []
+    events_lock = threading.Lock()
+
+    def record(event: Dict[str, Any]):
+        with events_lock:
+            event["trace_elapsed_ms"] = round(
+                (_http_trace_time.perf_counter() - started) * 1000,
+                2,
+            )
+            events.append(event)
+
+    def traced_session_request(self, method, url, *args, **kwargs):
+        store = getattr(thread_context, "store", "unknown")
+        attempt = getattr(thread_context, "attempt", None)
+        request_started = _http_trace_time.perf_counter()
+        timeout = kwargs.get("timeout")
+        try:
+            response = original_session_request(
+                self,
+                method,
+                url,
+                *args,
+                **kwargs,
+            )
+            record({
+                "event": "http_response",
+                "store": store,
+                "attempt": attempt,
+                "method": str(method).upper(),
+                "url": str(url),
+                "status_code": response.status_code,
+                "duration_ms": round(
+                    (_http_trace_time.perf_counter() - request_started) * 1000,
+                    2,
+                ),
+                "timeout": timeout,
+                "response_bytes": len(response.content or b""),
+            })
+            return response
+        except Exception as exc:
+            record({
+                "event": "http_exception",
+                "store": store,
+                "attempt": attempt,
+                "method": str(method).upper(),
+                "url": str(url),
+                "duration_ms": round(
+                    (_http_trace_time.perf_counter() - request_started) * 1000,
+                    2,
+                ),
+                "timeout": timeout,
+                "exception": f"{type(exc).__name__}: {exc}",
+            })
+            raise
+
+    def traced_requests_request(method, url, *args, **kwargs):
+        store = getattr(thread_context, "store", "unknown")
+        attempt = getattr(thread_context, "attempt", None)
+        request_started = _http_trace_time.perf_counter()
+        timeout = kwargs.get("timeout")
+        try:
+            response = original_requests_request(
+                method,
+                url,
+                *args,
+                **kwargs,
+            )
+            record({
+                "event": "http_response",
+                "store": store,
+                "attempt": attempt,
+                "method": str(method).upper(),
+                "url": str(url),
+                "status_code": response.status_code,
+                "duration_ms": round(
+                    (_http_trace_time.perf_counter() - request_started) * 1000,
+                    2,
+                ),
+                "timeout": timeout,
+                "response_bytes": len(response.content or b""),
+            })
+            return response
+        except Exception as exc:
+            record({
+                "event": "http_exception",
+                "store": store,
+                "attempt": attempt,
+                "method": str(method).upper(),
+                "url": str(url),
+                "duration_ms": round(
+                    (_http_trace_time.perf_counter() - request_started) * 1000,
+                    2,
+                ),
+                "timeout": timeout,
+                "exception": f"{type(exc).__name__}: {exc}",
+            })
+            raise
+
+    def trace_store(store: str):
+        store_started = _http_trace_time.perf_counter()
+        report: Dict[str, Any] = {
+            "store": store,
+            "query": query,
+            "attempts": [],
+            "raw_candidates": 0,
+            "candidates": [],
+            "error": None,
+        }
+
+        try:
+            module = load_scraper(store)
+            search_fn = getattr(module, "search", None)
+            if not callable(search_fn):
+                search_fn = getattr(module, "scrape", None)
+            if not callable(search_fn):
+                raise RuntimeError(
+                    f"{store}: scraper senza funzione search()/scrape()"
+                )
+
+            attempts = build_search_attempts(store, norm(query))
+            for index, attempt in enumerate(attempts):
+                attempt_started = _http_trace_time.perf_counter()
+                thread_context.store = store
+                thread_context.attempt = attempt
+                before = len(events)
+
+                try:
+                    results = search_fn(attempt) or []
+                    if not isinstance(results, list):
+                        results = []
+                except Exception as exc:
+                    results = []
+                    report["error"] = f"{type(exc).__name__}: {exc}"
+                    record({
+                        "event": "scraper_exception",
+                        "store": store,
+                        "attempt": attempt,
+                        "exception": f"{type(exc).__name__}: {exc}",
+                    })
+
+                after = len(events)
+                attempt_events = events[before:after]
+                attempt_report = {
+                    "index": index,
+                    "query": attempt,
+                    "duration_ms": round(
+                        (_http_trace_time.perf_counter() - attempt_started) * 1000,
+                        2,
+                    ),
+                    "raw_count": len(results),
+                    "http_event_count": len(attempt_events),
+                }
+                report["attempts"].append(attempt_report)
+                report["raw_candidates"] += len(results)
+                if results:
+                    report["candidates"].extend(results[:20])
+
+                # Once a generic attempt produces candidates, the normal
+                # run_store would continue only according to its configured
+                # attempts. We reproduce that behavior exactly here.
+
+            report["duration_ms"] = round(
+                (_http_trace_time.perf_counter() - store_started) * 1000,
+                2,
+            )
+            report["finished"] = True
+        except Exception as exc:
+            report["error"] = f"{type(exc).__name__}: {exc}"
+            report["duration_ms"] = round(
+                (_http_trace_time.perf_counter() - store_started) * 1000,
+                2,
+            )
+            report["finished"] = True
+        finally:
+            thread_context.store = None
+            thread_context.attempt = None
+
+        return report
+
+    try:
+        import requests
+
+        original_session_request = requests.sessions.Session.request
+        original_requests_request = requests.request
+        requests.sessions.Session.request = traced_session_request
+        requests.request = traced_requests_request
+
+        executor = ThreadPoolExecutor(
+            max_workers=len(STORES),
+            thread_name_prefix="scent_http_trace",
+        )
+        futures = {
+            executor.submit(trace_store, store): store
+            for store in STORES
+        }
+
+        reports = {}
+        try:
+            completed = as_completed(
+                futures,
+                timeout=wait_seconds,
+            )
+            for future in completed:
+                store = futures[future]
+                try:
+                    reports[store] = future.result()
+                except Exception as exc:
+                    reports[store] = {
+                        "store": store,
+                        "finished": False,
+                        "error": f"{type(exc).__name__}: {exc}",
+                    }
+        except TimeoutError:
+            for future, store in futures.items():
+                if future.done():
+                    try:
+                        reports[store] = future.result()
+                    except Exception as exc:
+                        reports[store] = {
+                            "store": store,
+                            "finished": False,
+                            "error": f"{type(exc).__name__}: {exc}",
+                        }
+                else:
+                    reports[store] = {
+                        "store": store,
+                        "finished": False,
+                        "timeout": True,
+                        "error": f"Store non terminato entro {wait_seconds} secondi.",
+                    }
+        finally:
+            executor.shutdown(wait=False, cancel_futures=True)
+
+        ordered_events = sorted(
+            events,
+            key=lambda item: item.get("trace_elapsed_ms", 0),
+        )
+        ordered_reports = {
+            store: reports.get(
+                store,
+                {
+                    "store": store,
+                    "finished": False,
+                    "error": "missing_report",
+                },
+            )
+            for store in STORES
+        }
+
+        duration_ms = round(
+            (_http_trace_time.perf_counter() - started) * 1000,
+            2,
+        )
+
+        return {
+            "ok": True,
+            "diagnostic": "generic_http_trace",
+            "query": query,
+            "duration_ms": duration_ms,
+            "wait_seconds": wait_seconds,
+            "stores_total": len(STORES),
+            "stores_finished": [
+                store
+                for store, report in ordered_reports.items()
+                if report.get("finished") and not report.get("timeout")
+            ],
+            "stores_timed_out": [
+                store
+                for store, report in ordered_reports.items()
+                if report.get("timeout")
+            ],
+            "http_events": ordered_events,
+            "stores": ordered_reports,
+            "interpretation": {
+                "purpose": (
+                    "Diagnostica la discovery HTTP degli scraper senza catalogo, "
+                    "matching o frontend."
+                ),
+                "important": (
+                    "Un 200 senza candidati indica un problema di parsing/filtri dello "
+                    "scraper; 4xx/5xx indica risposta HTTP; una richiesta vicina al "
+                    "timeout indica il collo di bottiglia di rete/server."
+                ),
+            },
+        }
+    finally:
+        try:
+            if original_session_request is not None:
+                import requests
+                requests.sessions.Session.request = original_session_request
+            if original_requests_request is not None:
+                import requests
+                requests.request = original_requests_request
+        finally:
+            _DIAGNOSTIC_HTTP_LOCK.release()
