@@ -2074,19 +2074,24 @@ def _validate_candidate(
         resolved_identity = None
 
     if isinstance(resolved_identity, dict):
-        # L'identità del Family Registry deve essere applicata all'oggetto
-        # candidato che prosegue nel percorso verso matched_candidates.
-        # Non deve restare confinata a un risultato diagnostico o al matcher.
-        product = dict(product)
-        product.update(resolved_identity)
+    product = dict(product)
+    product.update(resolved_identity)
 
-        product["match_method"] = (
-            product.get("match_method")
-            or "family_registry_alias"
-        )
-        product["name"] = product["canonical_name"]
+    product["match_method"] = (
+        product.get("match_method")
+        or "family_registry_alias"
+    )
 
-        return product
+    # Mantieni il nome canonico separato dal nome originale.
+    # Il nome originale può contenere una variante commerciale
+    # realmente distinta, come For Him, For Her, Homme o Femme.
+    product["canonical_variant"] = (
+        product.get("canonical_name")
+        or product.get("catalog_variant")
+        or ""
+    )
+
+    return product
 
     return matched_product
 
@@ -2098,10 +2103,11 @@ def _validate_candidates_parallel(
     if not candidates:
         return []
 
-    max_workers = min(
-        32,
+        max_workers = min(
+        8,
         max(1, len(candidates)),
     )
+
 
     with ThreadPoolExecutor(
         max_workers=max_workers,
