@@ -150,13 +150,19 @@ def _load_product_matcher_catalog() -> List[Dict[str, Any]]:
         if isinstance(verification_sources, str):
             verification_sources = [verification_sources]
 
+        family_name = str(product.get("family_name") or "").strip()
+
         catalog.append({
             "id": product_id,
             "brand": brand,
             "name": name,
-            "catalog_variant": name,
+            # family_name is the catalog's variant identity when present.
+            # canonical_name can intentionally be shared by multiple
+            # gender/variant rows (e.g. a base name plus Pour Femme), so
+            # using canonical_name alone would collapse distinct identities.
+            "catalog_variant": family_name or name,
             "family_id": str(product.get("family_id") or "").strip(),
-            "family_name": str(product.get("family_name") or "").strip(),
+            "family_name": family_name,
             "gender": str(product.get("gender") or "").strip(),
             "concentration": str(product.get("concentration") or "").strip(),
             "source_status": str(product.get("source_status") or "").strip(),
@@ -1644,6 +1650,7 @@ def _display_brand(product: Dict[str, Any]) -> str:
     return (
         product_field(
             product,
+            "canonical_brand",
             "brand",
             "source_brand",
         )
