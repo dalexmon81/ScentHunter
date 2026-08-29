@@ -19,7 +19,6 @@ from typing import Any, Dict, List, Optional
 from urllib.parse import urlencode
 from urllib.request import Request, urlopen
 from urllib.error import HTTPError, URLError
-from product_normalizer import normalize_and_group
 
 
 # ============================================================
@@ -2250,8 +2249,7 @@ def search_perfume(query: str) -> Dict[str, Any]:
         all_results,
         query,
     )
-    # Raggruppa varianti equivalenti di profumi
-    results = normalize_and_group(results)
+
     return {
         "query": query,
         "count": len(results),
