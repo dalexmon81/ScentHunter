@@ -8,6 +8,7 @@ import json
 import os
 import re
 import threading
+import time
 import traceback
 import unicodedata
 import uuid
@@ -2785,7 +2786,7 @@ def diagnostic_search_pipeline(
     except (TypeError, ValueError):
         per_store_timeout = 18.0
 
-    started = time.perf_counter()
+    started = _diagnostic_time.perf_counter()
     stores = list(STORES)
     reports: Dict[str, Any] = {}
     completion_order: List[str] = []
@@ -2795,23 +2796,23 @@ def diagnostic_search_pipeline(
     def profile_orchestration(
         candidates: List[Dict[str, Any]],
     ) -> Dict[str, Any]:
-        orchestration_started = time.perf_counter()
+        orchestration_started = _diagnostic_time.perf_counter()
 
-        t = time.perf_counter()
+        t = _diagnostic_time.perf_counter()
         unique_pool = unique_results(candidates)
-        dedup_ms = round((time.perf_counter() - t) * 1000, 2)
+        dedup_ms = round((_diagnostic_time.perf_counter() - t) * 1000, 2)
 
-        t = time.perf_counter()
+        t = _diagnostic_time.perf_counter()
         ranked = _pre_rank_candidates(unique_pool, query)
-        pre_rank_ms = round((time.perf_counter() - t) * 1000, 2)
+        pre_rank_ms = round((_diagnostic_time.perf_counter() - t) * 1000, 2)
 
-        t = time.perf_counter()
+        t = _diagnostic_time.perf_counter()
         validated = _validate_candidates_parallel(ranked, query)
-        validation_ms = round((time.perf_counter() - t) * 1000, 2)
+        validation_ms = round((_diagnostic_time.perf_counter() - t) * 1000, 2)
 
-        t = time.perf_counter()
+        t = _diagnostic_time.perf_counter()
         final_results = sort_by_price(unique_results(validated))
-        final_ms = round((time.perf_counter() - t) * 1000, 2)
+        final_ms = round((_diagnostic_time.perf_counter() - t) * 1000, 2)
 
         return {
             "input_candidates": len(candidates),
@@ -2825,7 +2826,7 @@ def diagnostic_search_pipeline(
                 "validation": validation_ms,
                 "final_dedup_and_sort": final_ms,
                 "orchestration_total": round(
-                    (time.perf_counter() - orchestration_started) * 1000,
+                    (_diagnostic_time.perf_counter() - orchestration_started) * 1000,
                     2,
                 ),
             },
@@ -2843,7 +2844,7 @@ def diagnostic_search_pipeline(
         for store in stores:
             future = executor.submit(run_store, store, query)
             futures[future] = store
-            future_started[future] = time.perf_counter()
+            future_started[future] = _diagnostic_time.perf_counter()
 
         try:
             for future in as_completed(
@@ -2853,11 +2854,11 @@ def diagnostic_search_pipeline(
                 store = futures[future]
                 completion_order.append(store)
                 finished_at_ms = round(
-                    (time.perf_counter() - started) * 1000,
+                    (_diagnostic_time.perf_counter() - started) * 1000,
                     2,
                 )
                 scraper_ms = round(
-                    (time.perf_counter() - future_started[future]) * 1000,
+                    (_diagnostic_time.perf_counter() - future_started[future]) * 1000,
                     2,
                 )
 
@@ -2876,7 +2877,7 @@ def diagnostic_search_pipeline(
                         list(candidate_pool)
                     )
                     orchestration_finished_ms = round(
-                        (time.perf_counter() - started) * 1000,
+                        (_diagnostic_time.perf_counter() - started) * 1000,
                         2,
                     )
 
@@ -2923,7 +2924,7 @@ def diagnostic_search_pipeline(
                             if isinstance(item, dict)
                         )
                         finished_at_ms = round(
-                            (time.perf_counter() - started) * 1000,
+                            (_diagnostic_time.perf_counter() - started) * 1000,
                             2,
                         )
                         orchestration = profile_orchestration(
@@ -2933,7 +2934,7 @@ def diagnostic_search_pipeline(
                             "store": store,
                             "finished": True,
                             "scraper_duration_ms": round(
-                                (time.perf_counter() - future_started[future]) * 1000,
+                                (_diagnostic_time.perf_counter() - future_started[future]) * 1000,
                                 2,
                             ),
                             "store_finished_at_ms": finished_at_ms,
@@ -2985,7 +2986,7 @@ def diagnostic_search_pipeline(
     }
 
     total_ms = round(
-        (time.perf_counter() - started) * 1000,
+        (_diagnostic_time.perf_counter() - started) * 1000,
         2,
     )
 
