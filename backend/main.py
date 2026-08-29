@@ -150,7 +150,13 @@ def _load_product_matcher_catalog() -> List[Dict[str, Any]]:
             "id": product_id,
             "brand": brand,
             "name": name,
+            "canonical_name": name,
+            "catalog_variant": name,
             "aliases": aliases,
+            "concentration": str(product.get("concentration") or "").strip(),
+            "gender": str(product.get("gender") or "").strip(),
+            "family_id": str(product.get("family_id") or "").strip(),
+            "family_name": str(product.get("family_name") or "").strip(),
             "formats_ml": data["formats_ml"],
             "gtins": data["gtins"],
             "mpns": data["mpns"],
@@ -1063,9 +1069,13 @@ def _catalog_requested_variant(
             continue
 
         variant_gender = _catalog_gender_class(str(variant.get("canonical_name") or ""))
-        if variant_gender != "none" and query_gender not in (variant_gender, "none"):
-            continue
-        if variant_gender == "none" and query_gender == "mixed":
+        # When the user explicitly requests a gendered variant, a neutral
+        # variant is not an acceptable substitute. This is what keeps
+        # "9 PM Pour Femme" distinct from plain "9 PM".
+        if query_gender != "none":
+            if variant_gender != query_gender:
+                continue
+        elif variant_gender == "mixed":
             continue
 
         matches.append(variant)
@@ -1096,91 +1106,74 @@ def _catalog_match(
     query: str,
 ) -> Optional[Dict[str, Any]]:
     """
-    Restituisce la variante catalogata del candidato, oppure None.
+    Risolve il candidato esclusivamente contro la famiglia individuata dalla
+    query.
 
-    Il catalogo è autoritativo soltanto per le famiglie che dichiara.
-    Per tutte le altre famiglie resta attiva la validazione generica.
+    Regole:
+    - una query che identifica una famiglia autorizza tutte e sole le sue
+      varianti presenti nel Registry;
+    - una query che identifica una variante autorizza soltanto quella
+      variante;
+    - il confronto della variante è per uguaglianza della chiave identitaria,
+      mai per sottostringa;
+    - il genere serve solo a distinguere varianti omonime/genderizzate;
+    - il brand del Registry viene propagato anche quando il retailer non lo
+      espone.
     """
-    if not FAMILY_REGISTRY:
+    family = _catalog_family_for_query(query)
+    if family is None:
         return None
 
-    query_clean = _catalog_clean_text(query)
-    if not query_clean:
+    query_key = catalog_variant_key(query)
+    is_family_query = query_key in family.get("normalized_query_aliases", ())
+
+    requested = None if is_family_query else _catalog_requested_variant(
+        query,
+        family,
+    )
+
+    # Una query che contiene il nome della famiglia ma aggiunge una variante
+    # non registrata non deve ricadere nel matching generico.
+    if not is_family_query and requested is None:
         return None
 
-    for family in FAMILY_REGISTRY:
-        variant = _catalog_variant_for_product(
-            product,
-            family,
-        )
+    variant = _catalog_variant_for_product(product, family)
+    if variant is None:
+        return None
 
-        if variant is None:
-            continue
+    if requested is not None and variant is not requested:
+        return None
 
-        # Query famiglia: tutte e sole le varianti catalogate.
-        # Qui usiamo il confronto ESATTO con query_aliases. Una query
-        # una query che aggiunge una variante non catalogata è invece una
-        # query della famiglia ma non una query-famiglia: deve passare dalla
-        # variante richiesta e,
-        # se non esiste nel catalogo, essere respinta.
-        query_is_family = (
-            catalog_variant_key(query_clean)
-            in family.get("normalized_query_aliases", ())
-        )
+    result = dict(product)
+    canonical_name = str(variant.get("canonical_name") or "").strip()
+    family_brand = str(family.get("brand") or "").strip()
 
-        if query_is_family:
-            result = dict(product)
-            result["name"] = variant["canonical_name"]
-            result["canonical_name"] = variant["canonical_name"]
-            family_brand = str(family.get("brand") or "").strip()
-            if family_brand:
-                result["canonical_brand"] = family_brand
-                result["brand"] = family_brand
-            result["family_id"] = family.get("family_id", "")
-            result["family_name"] = (
-                family.get("query_aliases", [""])[0]
-                if family.get("query_aliases")
-                else ""
-            )
-            result["catalog_variant"] = variant["canonical_name"]
-            candidate_gender = _catalog_gender_class(_catalog_product_text(product))
-            if candidate_gender == "male":
-                result["gender"] = "Uomo"
-            elif candidate_gender == "female":
-                result["gender"] = "Donna"
-            result["match_method"] = "family_registry_alias"
-            return result
+    if not canonical_name:
+        return None
 
-        # Query variante: solo quella specifica.
-        requested = _catalog_requested_variant(
-            query,
-            family,
-        )
+    result["name"] = canonical_name
+    result["canonical_name"] = canonical_name
 
-        if requested is variant:
-            result = dict(product)
-            result["name"] = variant["canonical_name"]
-            result["canonical_name"] = variant["canonical_name"]
-            family_brand = str(family.get("brand") or "").strip()
-            if family_brand:
-                result["canonical_brand"] = family_brand
-                result["brand"] = family_brand
-            result["family_id"] = family.get("family_id", "")
-            result["family_name"] = (
-                family.get("query_aliases", [""])[0]
-                if family.get("query_aliases")
-                else ""
-            )
-            result["catalog_variant"] = variant["canonical_name"]
-            candidate_gender = _catalog_gender_class(_catalog_product_text(product))
-            if candidate_gender == "male":
-                result["gender"] = "Uomo"
-            elif candidate_gender == "female":
-                result["gender"] = "Donna"
-            result["match_method"] = "family_registry_alias"
-            return result
+    if family_brand:
+        result["canonical_brand"] = family_brand
+        result["brand"] = family_brand
 
-    return None
+    result["family_id"] = family.get("family_id", "")
+    result["family_name"] = (
+        family.get("query_aliases", [""])[0]
+        if family.get("query_aliases")
+        else ""
+    )
+    result["catalog_variant"] = canonical_name
+
+    candidate_gender = _catalog_gender_class(_catalog_product_text(product))
+    if candidate_gender == "male":
+        result["gender"] = "Uomo"
+    elif candidate_gender == "female":
+        result["gender"] = "Donna"
+
+    result["match_method"] = "family_registry_alias"
+    return result
 
 
 # ============================================================
@@ -1733,18 +1726,27 @@ def _display_variant_name(
         flags=re.I,
     )
 
-    # Il genere non è una variante. Le forme multilingua vengono tutte
-    # convertite nell'attributo separato mostrato dal formatter.
-    variant = re.sub(
-        r"\b(?:for\s+(?:him|her|men|women)|"
-        r"pour\s+(?:homme|femme|hommes|femmes)|"
-        r"voor\s+(?:mannen|dames|vrouwen)|"
-        r"men|women|man|woman|male|female|homme|femme|heren|mannen|"
-        r"dames|vrouwen|uomo|donna|unisex)\b",
-        " ",
-        variant,
-        flags=re.I,
+    # Se il nome è già canonico/catalogato, le parole di genere possono
+    # essere parte integrante della variante (es. "For Him", "Pour Femme").
+    # Non vanno distrutte: altrimenti due referenze diverse diventano la
+    # stessa variante. Per i nomi RAW, invece, il genere resta un attributo
+    # separato e può essere ripulito dal titolo.
+    is_canonical_variant = bool(
+        product.get("catalog_variant")
+        or product.get("canonical_name")
     )
+
+    if not is_canonical_variant:
+        variant = re.sub(
+            r"\b(?:for\s+(?:him|her|men|women)|"
+            r"pour\s+(?:homme|femme|hommes|femmes)|"
+            r"voor\s+(?:mannen|dames|vrouwen)|"
+            r"men|women|man|woman|male|female|homme|femme|heren|mannen|"
+            r"dames|vrouwen|uomo|donna|unisex)\b",
+            " ",
+            variant,
+            flags=re.I,
+        )
 
     # Elimina parentesi vuote e punteggiatura residua generata dalla pulizia.
     variant = re.sub(r"\(\s*\)", " ", variant)
@@ -2143,6 +2145,24 @@ def _validate_candidate(
         # Non deve restare confinata a un risultato diagnostico o al matcher.
         product = dict(product)
         product.update(resolved_identity)
+
+        # Il matcher centrale può aver recuperato metadati autorevoli che il
+        # Family Registry non deve duplicare, in particolare concentrazione e
+        # genere. Li usiamo soltanto come arricchimento del risultato già
+        # validato dalla famiglia: non influenzano la decisione di appartenenza.
+        if isinstance(matched_product, dict):
+            if not product_concentration(product):
+                matcher_concentration = str(
+                    matched_product.get("concentration")
+                    or matched_product.get("canonical_concentration")
+                    or ""
+                ).strip()
+                if matcher_concentration:
+                    product["concentration"] = matcher_concentration
+                    product["canonical_concentration"] = matcher_concentration
+
+            if not product.get("gender") and matched_product.get("gender"):
+                product["gender"] = matched_product.get("gender")
 
         product["match_method"] = (
             product.get("match_method")
