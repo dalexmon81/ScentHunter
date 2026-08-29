@@ -243,7 +243,7 @@ IGNORED_WORDS = {
     "by",
 }
 
-GLOBAL_SEARCH_TIMEOUT = 120
+GLOBAL_SEARCH_TIMEOUT = 45
 
 
 # ============================================================
@@ -1870,36 +1870,58 @@ def _collapse_family_results(
     query: str,
 ) -> List[Dict[str, Any]]:
     """
-    Per una query che corrisponde a una famiglia del Registry restituisce
-    una sola offerta migliore per ogni variante autorizzata.
+    Preserve every validated store offer while collapsing only true
+    duplicates from the same store.
 
-    Questo impedisce che più store, formati o diciture commerciali della
-    stessa variante gonfino il numero dei risultati. Il numero finale
-    dipende quindi dalle varianti realmente autorizzate dal catalogo,
-    non da un limite arbitrario e non da eccezioni sul singolo profumo.
+    Identity is still catalog-controlled: the same catalog product sold by
+    seven different shops is NOT seven different perfume identities, but the
+    seven shop offers must remain visible because ScentHunter is a price
+    comparison engine.
+
+    Therefore the grouping key is:
+        catalog identity + store + offer identity
+
+    This keeps:
+        Liquid Brun @ Shop A
+        Liquid Brun @ Shop B
+    as two offers, while removing repeated discovery copies of the same
+    product from the same shop.
     """
-    family = _catalog_family_for_query(query)
-    catalog_controlled = (family is not None) or _catalog_query_is_known(query)
-
-    if family is None and not catalog_controlled:
-        return products
+    del query
 
     grouped: Dict[tuple, Dict[str, Any]] = {}
 
     for product in sort_by_price(products):
-        if catalog_controlled:
-            catalog_id = str(product.get("catalog_id") or product.get("product_identity") or product.get("variant_id") or "").strip()
-            key = ("catalog_id", catalog_norm(product.get("canonical_brand") or product.get("brand") or ""), catalog_id) if catalog_id else _result_group_key(product)
+        catalog_id = str(
+            product.get("catalog_id")
+            or product.get("product_identity")
+            or product.get("variant_id")
+            or ""
+        ).strip()
+
+        store = catalog_norm(product.get("store") or "")
+        url = str(product.get("url") or "").strip().lower()
+
+        if catalog_id:
+            # URL is preferred when available because two legitimate offers
+            # from one retailer may have different product pages. If there
+            # is no URL, fall back to the concrete offer identity.
+            offer_key = url or (
+                catalog_norm(product.get("store_product_id") or "")
+                or catalog_norm(product.get("store_variant_id") or "")
+                or catalog_norm(product.get("name") or "")
+            )
+            key = ("catalog_offer", catalog_id, store, offer_key)
         else:
-            key = _result_group_key(product)
+            key = (
+                "generic_offer",
+                store,
+                product_identity_key(product),
+            )
 
         if key not in grouped:
             grouped[key] = product
 
-    # Catalog identity is already resolved and deduplicated above. The
-    # registry order is no longer used as an identity mechanism; it is only
-    # legacy family vocabulary. Returning the grouped catalog identities here
-    # prevents a registry-only alias from dropping valid catalog results.
     return list(grouped.values())
 
 
@@ -1969,7 +1991,15 @@ def run_store(
     output: List[Dict[str, Any]] = []
     seen = set()
 
-    for attempt in attempts:
+    # Performance rule:
+    # the first, exact query is the primary discovery surface. Generic
+    # fallback attempts are used ONLY when that attempt returns no usable
+    # candidates. This prevents every store from being queried repeatedly
+    # when the first query already works, while preserving coverage for
+    # stores that genuinely need a broader query.
+    for attempt_index, attempt in enumerate(attempts):
+        attempt_output: List[Dict[str, Any]] = []
+
         try:
             results = search_fn(attempt) or []
         except Exception as exc:
@@ -1978,31 +2008,37 @@ def run_store(
                 f"attempt={attempt!r} error={type(exc).__name__}: {exc}",
                 flush=True,
             )
-            continue
+            results = []
 
-        if not isinstance(results, list):
-            continue
+        if isinstance(results, list):
+            for item in results:
+                if not isinstance(item, dict):
+                    continue
 
-        for item in results:
-            if not isinstance(item, dict):
-                continue
+                product = dict(item)
+                product.setdefault("store", store)
 
-            product = dict(item)
-            product.setdefault("store", store)
+                product = resolve_actual_price(product)
 
-            product = resolve_actual_price(product)
+                image = product_image(product)
+                if image:
+                    product["image"] = image
 
-            image = product_image(product)
-            if image:
-                product["image"] = image
+                key = product_identity_key(product)
 
-            key = product_identity_key(product)
+                if key in seen:
+                    continue
 
-            if key in seen:
-                continue
+                seen.add(key)
+                attempt_output.append(product)
 
-            seen.add(key)
-            output.append(product)
+        output.extend(attempt_output)
+
+        # Once the exact/primary discovery produced candidates, do not
+        # issue redundant fallback queries. This is generic for every shop
+        # and every perfume.
+        if attempt_output:
+            break
 
     return output
 
