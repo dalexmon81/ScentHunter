@@ -1375,7 +1375,7 @@ def _price_from_structured_html(html: str) -> Optional[float]:
         re.I | re.S,
     )
 
-def walk(value):
+    def walk(value):
         if isinstance(value, dict):
             offers = value.get("offers")
 
@@ -1512,27 +1512,16 @@ def product_identity_key(product: Dict[str, Any]) -> tuple:
         if not name:
             name = norm(source.get("source_name", ""))
 
-        size = product_size_ml(product)
+    size = product_size_ml(product)
     concentration = product_concentration(product)
-    
-    variant = norm(
-        product_field(
-            product,
-            "variant",
-            "canonical_variant",
-            "catalog_variant",
-        )
-    )
-    
+
     return (
         "fallback",
         store,
         name,
-        variant,
         size,
         concentration,
     )
-
 
 
 def unique_results(products: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
@@ -1699,7 +1688,14 @@ def _display_variant_name(
 
     # Il genere è un attributo finale del titolo, non una parte
     # dell'identificativo commerciale visualizzato.
-    
+    variant = re.sub(
+        r"\b(?:for\s+him|for\s+her|men|women|man|woman|"
+        r"male|female|homme|femme|heren|mannen|dames|"
+        r"vrouwen|unisex)\b",
+        " ",
+        variant,
+        flags=re.I,
+    )
 
     return re.sub(r"\s+", " ", variant).strip()
 
@@ -2078,22 +2074,17 @@ def _validate_candidate(
         resolved_identity = None
 
     if isinstance(resolved_identity, dict):
+        # L'identità del Family Registry deve essere applicata all'oggetto
+        # candidato che prosegue nel percorso verso matched_candidates.
+        # Non deve restare confinata a un risultato diagnostico o al matcher.
         product = dict(product)
         product.update(resolved_identity)
 
         product["match_method"] = (
-        product.get("match_method")
-        or "family_registry_alias"
+            product.get("match_method")
+            or "family_registry_alias"
         )
-
-    # Mantieni il nome canonico separato dal nome originale.
-    # Il nome originale può contenere una variante commerciale
-    # realmente distinta, come For Him, For Her, Homme o Femme.
-        product["canonical_variant"] = (
-        product.get("canonical_name")
-        or product.get("catalog_variant")
-        or ""
-        )
+        product["name"] = product["canonical_name"]
 
         return product
 
@@ -2107,11 +2098,10 @@ def _validate_candidates_parallel(
     if not candidates:
         return []
 
-        max_workers = min(
-        8,
+    max_workers = min(
+        32,
         max(1, len(candidates)),
     )
-
 
     with ThreadPoolExecutor(
         max_workers=max_workers,
@@ -2469,42 +2459,38 @@ def _run_search_job(
         ): store
         for store in STORES
     }
-def process_store_candidates(
-    job_id: str,
-    query: str,
-    store: str,
-    store_candidates: Any,
-) -> None:
-    if not isinstance(store_candidates, list):
-        return
 
-    with SEARCH_JOBS_LOCK:
-        job = SEARCH_JOBS.get(job_id)
-
-        if job is None:
+    def process_store_candidates(
+        store: str,
+        store_candidates: Any,
+    ) -> None:
+        if not isinstance(store_candidates, list):
             return
 
-        job["candidates"].extend(store_candidates)
+        with SEARCH_JOBS_LOCK:
+            job = SEARCH_JOBS.get(job_id)
 
-    candidate_pool = list(job["candidates"])
+            if job is None:
+                return
 
-    results = _orchestrate_results(
-        candidate_pool,
-        query,
-    )
+            job["candidates"].extend(
+                store_candidates
+            )
 
-    with SEARCH_JOBS_LOCK:
-        job = SEARCH_JOBS.get(job_id)
+            candidate_pool = list(
+                job["candidates"]
+            )
 
-        if job is not None:
-            job["results"] = results
+        results = _orchestrate_results(
+            candidate_pool,
+            query,
+        )
 
+        with SEARCH_JOBS_LOCK:
+            job = SEARCH_JOBS.get(job_id)
 
-
-        # Non ricalcolare qui l'intero candidate pool.
-        # La validazione completa viene eseguita una sola volta
-        # quando tutti gli store hanno terminato.
-
+            if job is not None:
+                job["results"] = results
 
     try:
         try:
@@ -2562,33 +2548,21 @@ def process_store_candidates(
                             )
 
     finally:
-        with SEARCH_JOBS_LOCK:
-        job = SEARCH_JOBS.get(job_id)
-        candidate_pool = list(job["candidates"]) if job is not None else []
+        for future in futures:
+            if not future.done():
+                future.cancel()
 
-if job is not None:
-    try:
-        final_results = _orchestrate_results(
-            candidate_pool,
-            query,
+        executor.shutdown(
+            wait=False,
+            cancel_futures=True,
         )
-    except Exception as exc:
-        final_results = []
 
         with SEARCH_JOBS_LOCK:
             job = SEARCH_JOBS.get(job_id)
 
             if job is not None:
-                job["errors"]["central_validation"] = (
-                    f"{type(exc).__name__}: {exc}"
-                )
+                job["completed"] = True
 
-    with SEARCH_JOBS_LOCK:
-        job = SEARCH_JOBS.get(job_id)
-
-        if job is not None:
-            job["results"] = final_results
-            job["completed"] = True
 
 @app.get("/search-start")
 def search_start(q: str):
