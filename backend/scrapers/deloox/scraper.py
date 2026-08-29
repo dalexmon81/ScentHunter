@@ -323,6 +323,43 @@ def _candidate_queries(query):
     return out
 
 
+def _looks_like_product_url(url, query):
+    """Generic URL-level product candidate check for Deloox discovery.
+
+    Deloox has used more than one product URL shape over time. Discovery must
+    not depend on a single `/product/` path. We therefore accept a URL when
+    its path contains all query tokens, while excluding known navigation
+    surfaces. The product page parser remains the authoritative validator.
+    """
+    try:
+        path = urlparse(url).path.lower()
+    except Exception:
+        return False
+
+    low = f" {path} "
+    blocked = (
+        "/category/",
+        "/categories/",
+        "/search",
+        "/cerca",
+        "/brand/",
+        "/brands/",
+        "/account/",
+        "/cart/",
+        "/login",
+        "/register",
+    )
+    if any(part in low for part in blocked):
+        return False
+
+    q_tokens = tokens(query)
+    if not q_tokens:
+        return False
+
+    path_tokens = tokens(path)
+    return q_tokens.issubset(path_tokens)
+
+
 def _candidate_product_urls(
     html,
     query,
@@ -358,8 +395,12 @@ def _candidate_product_urls(
         if parsed.netloc.lower() not in {"deloox.com", "www.deloox.com"}:
             return
 
-        if "/product/" not in parsed.path.lower():
-            return
+        # Deloox has multiple product URL shapes. Do not hard-code one
+        # pathname; the final page parser validates the real product name.
+        if not _looks_like_product_url(url, query):
+            haystack = f"{context} {url}"
+            if not matches(haystack, query):
+                return
 
         if url in seen:
             return
@@ -689,8 +730,7 @@ def _sitemap_product_urls(session, query, max_sitemaps=12, max_urls=80):
 
             low = value.lower()
 
-            if "/product/" in low:
-                if query_tokens.issubset(tokens(value)):
+            if _looks_like_product_url(value, query):
                     if value not in seen_products:
                         seen_products.add(value)
                         product_urls.append(value)
@@ -730,6 +770,8 @@ def _discover(session, q):
     )
 
     for discovery_query in discovery_queries:
+        found_on_query = False
+
         for route in search_endpoints:
             endpoint = BASE_URL + route + quote_plus(discovery_query)
             try:
@@ -744,15 +786,25 @@ def _discover(session, q):
             if r.status_code >= 400:
                 continue
 
-            for product_url in _candidate_product_urls(
+            page_urls = _candidate_product_urls(
                 r.text,
                 q,
                 discovery_query=discovery_query,
                 accept_all_products=True,
-            ):
-                add(product_url)
-                if len(urls) >= 24:
-                    return urls[:24]
+            )
+
+            if page_urls:
+                found_on_query = True
+                for product_url in page_urls:
+                    add(product_url)
+                    if len(urls) >= 24:
+                        return urls[:24]
+                # Do not call the other search routes after one route has
+                # produced candidates.
+                break
+
+        if found_on_query:
+            break
 
     # 2. SECONDARY: dedicated Product-line/category pages from the sitemap.
     # Deloox exposes pages such as /category/<id>/<product-line>.html.
@@ -789,15 +841,19 @@ def _discover(session, q):
 
     # 3. SECONDARY: direct product sitemap.  This is still generic and does
     # not depend on a brand/category filter being rendered by Deloox.
-    for product_url in _sitemap_product_urls(
+    sitemap_products = _sitemap_product_urls(
         session,
         q,
         max_sitemaps=2,
         max_urls=12,
-    ):
+    )
+    for product_url in sitemap_products:
         add(product_url)
         if len(urls) >= 24:
             return urls[:24]
+
+    if urls:
+        return urls[:24]
 
     # 4. FALLBACK: category -> brand -> product-line discovery.
     # This is deliberately last: the previous implementation put this first,
