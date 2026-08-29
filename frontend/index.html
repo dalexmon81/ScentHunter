@@ -1279,18 +1279,6 @@ function shGroupData(data){
     // Ultima barriera: nessun "By BRAND" conosciuto deve mai restare nel nome.
     n=n.replace(new RegExp("\\s+by\\s+(?:"+knownBrandPatterns.join("|")+ ")\\s*$","i")," ").trim();
 
-    /*
-     * Alcuni cataloghi usano semplicemente "Parfum" nel titolo anche quando
-     * l'URL della pagina identifica esplicitamente una Eau de Parfum.
-     * Se la concentrazione è stata determinata con questa prova più forte,
-     * "parfum" è un descrittore commerciale e non deve restare nel nome base.
-     * Non facciamo invece alcuna conversione generica di "Parfum" in EDP:
-     * esistono referenze realmente classificate come Parfum.
-     */
-    if(concentrationHint(o)==="Eau de Parfum" && /\bparfum\b/i.test(n)){
-      n=n.replace(/\bparfum\b/gi," ");
-    }
-
     n=n
       .replace(/\blimited\s+edition\s+(?:de\s+)?parfum\b/gi,"Limited Edition")
       .replace(/\bde\s+parfum\s+mixte\b/gi," ")
@@ -1327,20 +1315,6 @@ function shGroupData(data){
     if(/\bextrait(?:\s+de\s+parfum)?\b/.test(raw))return "Extrait de Parfum";
     if(/\beau\s+de\s+parfum\b|\bedp\b/.test(raw))return "Eau de Parfum";
     if(/\beau\s+de\s+cologne\b|\bedc\b/.test(raw))return "Eau de Cologne";
-
-    /*
-     * Prova generica aggiuntiva: alcuni negozi possono usare "parfum" nel
-     * titolo, mentre lo slug/URL della pagina conserva la denominazione
-     * completa "eau-de-parfum". L'URL viene usato solo come evidenza esplicita
-     * e non trasformiamo mai il semplice "parfum" in EDP da solo.
-     * In questo modo le vere referenze Parfum restano distinguibili.
-     */
-    const url=String(o&&(o.url||o.product_url||o.productUrl||o.source_url||o._source_url||o.source?.url)||"").toLowerCase();
-    if(/(?:eau[-_\s]+de[-_\s]+parfum|\bedp\b)/.test(url))return "Eau de Parfum";
-    if(/(?:eau[-_\s]+de[-_\s]+toilette|\bedt\b)/.test(url))return "Eau de Toilette";
-    if(/(?:extrait[-_\s]+de[-_\s]+parfum|\bextrait\b)/.test(url))return "Extrait de Parfum";
-    if(/(?:eau[-_\s]+de[-_\s]+cologne|\bedc\b)/.test(url))return "Eau de Cologne";
-
     return "";
   }
   function concentrationLabel(value){
@@ -1811,6 +1785,66 @@ function shGroupData(data){
       g.display_name=g.brand+" - "+displayCatalogName(g);
     });
   }
+
+  /*
+   * NORMALIZZAZIONE GENERICA DELLA FORMA COMMERCIALE "... Pour".
+   *
+   * Alcuni retailer abbreviano "Pour Femme" nel titolo lasciando soltanto
+   * "Pour". Questa forma non deve diventare una nuova identità e non deve
+   * essere confusa con la variante base: quando, nella stessa ricerca,
+   * esiste già la variante base dello stesso brand e della stessa
+   * concentrazione, il suffisso "Pour" viene completato nella forma
+   * commerciale "Pour Femme".
+   *
+   * La regola è strutturale e non contiene riferimenti a profumi, brand o
+   * negozi specifici. La categoria resta separata dalla variante base.
+   */
+  const normalizeTrailingPourFemme=groups=>{
+    const list=Array.isArray(groups)?groups:[];
+
+    const sameBrand=(a,b)=>{
+      const ab=norm(a?.brand||"");
+      const bb=norm(b?.brand||"");
+      return ab && bb && ab===bb;
+    };
+
+    const sameConcentration=(a,b)=>{
+      const ac=norm(a?.concentration||"");
+      const bc=norm(b?.concentration||"");
+      return ac===bc;
+    };
+
+    const tokens=name=>norm(name||"").split(/\s+/).filter(Boolean);
+
+    list.forEach(group=>{
+      if(!group||!group.offers?.length)return;
+
+      const groupTokens=tokens(group.name||group.canonical_name||"");
+      if(groupTokens.length<2 || groupTokens[groupTokens.length-1]!=="pour")return;
+
+      const baseName=groupTokens.slice(0,-1).join(" " );
+      if(!baseName)return;
+
+      const baseGroup=list.find(candidate=>{
+        if(!candidate||candidate===group||!candidate.offers?.length)return false;
+        if(!sameBrand(group,candidate)||!sameConcentration(group,candidate))return false;
+        return norm(candidate.name||candidate.canonical_name||"")===baseName;
+      });
+
+      if(!baseGroup)return;
+
+      const displayBase=String(baseGroup.name||baseGroup.canonical_name||"").trim();
+      const canonical=(displayBase+" Pour Femme").trim();
+
+      group.name=canonical;
+      group.canonical_name=canonical;
+      group.display_name=group.brand?group.brand+" - "+canonical:canonical;
+    });
+
+    return list;
+  };
+
+  normalizeTrailingPourFemme(groups);
 
   /*
    * EQUIVALENZE GENERICHE TRA TITOLI COMMERCIALI
