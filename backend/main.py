@@ -2747,6 +2747,277 @@ def diagnose_notino(q: str):
         }
 
 
+# ============================================================
+# DIAGNOSTICA PIPELINE REALE
+# ============================================================
+
+@app.get("/diagnostic-search-pipeline")
+def diagnostic_search_pipeline(
+    q: str = "Liquid Brun",
+    timeout: float = 18.0,
+):
+    """
+    Diagnostica la pipeline reale senza modificare la ricerca normale.
+
+    Per ogni store misura:
+      - momento di avvio e fine dello scraper;
+      - durata reale dello scraper;
+      - numero di candidati restituiti;
+      - ordine di completamento;
+      - durata del post-processing cumulativo;
+      - tempi di dedup, pre-ranking, validation e sort finale.
+
+    Il risultato e' JSON ed e' pensato per capire se il ritardo nasce
+    dagli scraper oppure dal post-processing eseguito dopo ogni store.
+    """
+    query = str(q or "").strip()
+    if not query:
+        raise HTTPException(
+            status_code=400,
+            detail="Parametro q mancante",
+        )
+
+    try:
+        per_store_timeout = max(
+            1.0,
+            min(float(timeout), 60.0),
+        )
+    except (TypeError, ValueError):
+        per_store_timeout = 18.0
+
+    started = time.perf_counter()
+    stores = list(STORES)
+    reports: Dict[str, Any] = {}
+    completion_order: List[str] = []
+    timed_out: List[str] = []
+    candidate_pool: List[Dict[str, Any]] = []
+
+    def profile_orchestration(
+        candidates: List[Dict[str, Any]],
+    ) -> Dict[str, Any]:
+        orchestration_started = time.perf_counter()
+
+        t = time.perf_counter()
+        unique_pool = unique_results(candidates)
+        dedup_ms = round((time.perf_counter() - t) * 1000, 2)
+
+        t = time.perf_counter()
+        ranked = _pre_rank_candidates(unique_pool, query)
+        pre_rank_ms = round((time.perf_counter() - t) * 1000, 2)
+
+        t = time.perf_counter()
+        validated = _validate_candidates_parallel(ranked, query)
+        validation_ms = round((time.perf_counter() - t) * 1000, 2)
+
+        t = time.perf_counter()
+        final_results = sort_by_price(unique_results(validated))
+        final_ms = round((time.perf_counter() - t) * 1000, 2)
+
+        return {
+            "input_candidates": len(candidates),
+            "unique_candidates": len(unique_pool),
+            "ranked_candidates": len(ranked),
+            "validated_candidates": len(validated),
+            "final_results": len(final_results),
+            "stages_ms": {
+                "dedup": dedup_ms,
+                "pre_rank": pre_rank_ms,
+                "validation": validation_ms,
+                "final_dedup_and_sort": final_ms,
+                "orchestration_total": round(
+                    (time.perf_counter() - orchestration_started) * 1000,
+                    2,
+                ),
+            },
+        }
+
+    executor = ThreadPoolExecutor(
+        max_workers=len(stores),
+        thread_name_prefix="scent_pipeline_diag",
+    )
+
+    future_started: Dict[Any, float] = {}
+    futures: Dict[Any, str] = {}
+
+    try:
+        for store in stores:
+            future = executor.submit(run_store, store, query)
+            futures[future] = store
+            future_started[future] = time.perf_counter()
+
+        try:
+            for future in as_completed(
+                futures,
+                timeout=per_store_timeout,
+            ):
+                store = futures[future]
+                completion_order.append(store)
+                finished_at_ms = round(
+                    (time.perf_counter() - started) * 1000,
+                    2,
+                )
+                scraper_ms = round(
+                    (time.perf_counter() - future_started[future]) * 1000,
+                    2,
+                )
+
+                try:
+                    store_candidates = future.result()
+                    if not isinstance(store_candidates, list):
+                        store_candidates = []
+
+                    candidate_pool.extend(
+                        item
+                        for item in store_candidates
+                        if isinstance(item, dict)
+                    )
+
+                    orchestration = profile_orchestration(
+                        list(candidate_pool)
+                    )
+                    orchestration_finished_ms = round(
+                        (time.perf_counter() - started) * 1000,
+                        2,
+                    )
+
+                    reports[store] = {
+                        "store": store,
+                        "finished": True,
+                        "scraper_duration_ms": scraper_ms,
+                        "store_finished_at_ms": finished_at_ms,
+                        "store_result_count": len(store_candidates),
+                        "cumulative_candidate_count": len(candidate_pool),
+                        "orchestration": orchestration,
+                        "orchestration_finished_at_ms": orchestration_finished_ms,
+                        "post_store_total_ms": round(
+                            orchestration_finished_ms - finished_at_ms,
+                            2,
+                        ),
+                    }
+                except Exception as exc:
+                    reports[store] = {
+                        "store": store,
+                        "finished": True,
+                        "scraper_duration_ms": scraper_ms,
+                        "store_finished_at_ms": finished_at_ms,
+                        "store_result_count": 0,
+                        "error": {
+                            "type": type(exc).__name__,
+                            "message": str(exc),
+                            "traceback": traceback.format_exc(),
+                        },
+                    }
+
+        except TimeoutError:
+            for future, store in futures.items():
+                if future.done():
+                    if store in reports:
+                        continue
+                    try:
+                        store_candidates = future.result()
+                        if not isinstance(store_candidates, list):
+                            store_candidates = []
+                        candidate_pool.extend(
+                            item
+                            for item in store_candidates
+                            if isinstance(item, dict)
+                        )
+                        finished_at_ms = round(
+                            (time.perf_counter() - started) * 1000,
+                            2,
+                        )
+                        orchestration = profile_orchestration(
+                            list(candidate_pool)
+                        )
+                        reports[store] = {
+                            "store": store,
+                            "finished": True,
+                            "scraper_duration_ms": round(
+                                (time.perf_counter() - future_started[future]) * 1000,
+                                2,
+                            ),
+                            "store_finished_at_ms": finished_at_ms,
+                            "store_result_count": len(store_candidates),
+                            "cumulative_candidate_count": len(candidate_pool),
+                            "orchestration": orchestration,
+                        }
+                    except Exception as exc:
+                        reports[store] = {
+                            "store": store,
+                            "finished": False,
+                            "error": {
+                                "type": type(exc).__name__,
+                                "message": str(exc),
+                            },
+                        }
+                else:
+                    timed_out.append(store)
+                    reports[store] = {
+                        "store": store,
+                        "finished": False,
+                        "timeout": True,
+                        "error": {
+                            "type": "DiagnosticStoreTimeout",
+                            "message": (
+                                f"Store non terminato entro "
+                                f"{per_store_timeout:.1f} secondi."
+                            ),
+                        },
+                    }
+    finally:
+        for future in futures:
+            if not future.done():
+                future.cancel()
+        executor.shutdown(
+            wait=False,
+            cancel_futures=True,
+        )
+
+    ordered = {
+        store: reports.get(
+            store,
+            {
+                "store": store,
+                "finished": False,
+            },
+        )
+        for store in stores
+    }
+
+    total_ms = round(
+        (time.perf_counter() - started) * 1000,
+        2,
+    )
+
+    return {
+        "ok": True,
+        "diagnostic": "search_pipeline_profile",
+        "query": query,
+        "duration_ms": total_ms,
+        "per_store_timeout_seconds": per_store_timeout,
+        "stores_total": len(stores),
+        "stores_finished": completion_order,
+        "stores_timed_out": timed_out,
+        "total_raw_candidates": len(candidate_pool),
+        "stores_with_raw_candidates": [
+            store
+            for store, report in ordered.items()
+            if report.get("store_result_count", 0) > 0
+        ],
+        "stores": ordered,
+        "interpretation": {
+            "scrapers_parallel": True,
+            "measures_scraper_and_post_processing_separately": True,
+            "post_processing_replayed_after_each_completed_store": True,
+            "how_to_read": (
+                "Se scraper_duration_ms e' basso ma post_store_total_ms e' alto, "
+                "il collo di bottiglia e' nel post-processing. Se scraper_duration_ms "
+                "e' alto, il ritardo nasce nello scraper di quello store."
+            ),
+        },
+    }
+
+
 @app.get("/diagnose-notino-search")
 def diagnose_notino_search(q: str):
     query = str(q or "").strip()
