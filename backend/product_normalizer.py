@@ -23,7 +23,14 @@ def normalize_name(name: str) -> str:
     n = unicodedata.normalize('NFKD', n)
     n = re.sub(r'[\u0300-\u036f]', '', n)
     n = re.sub(r"\bl['\u2019]?eau\b", 'eau', n)
-    stopwords = ['eau de parfum', 'eau de toilette', 'edp', 'edt', 'parfum', 'perfume', 'for women', 'for men', 'for her', 'for him']
+    stopwords = [
+        'eau de parfum', 'eau de toilette', 'eau de cologne', 'eau fraîche',
+        'edp', 'edt', 'edc', 'edf',
+        'parfum', 'perfume', 'perfum',
+        'extrait de parfum', 'extrait',
+        'for women', 'for men', 'for her', 'for him', 'pour homme', 'pour femme',
+        'intense', 'extreme', 'absolu', 'absolue', 'elixir',
+    ]
     for sw in stopwords:
         n = n.replace(sw, '')
     for word, num in NUMBER_WORDS.items():
