@@ -237,6 +237,7 @@ IGNORED_WORDS = {
     "by",
 }
 
+# One scraper invocation per store; this timeout is the final safety net.
 GLOBAL_SEARCH_TIMEOUT = 120
 
 
@@ -1954,48 +1955,53 @@ def run_store(
 
     discovery_query = norm(query)
 
-    attempts = build_search_attempts(
-        store,
-        discovery_query,
-    )
+    # IMPORTANT:
+    # The scraper is the discovery engine. Calling it several times with
+    # normalized/compact variants of the same query multiplies HTTP traffic,
+    # increases retailer throttling and makes slow stores lose against the
+    # global search timeout. Discovery must therefore happen exactly once.
+    #
+    # Validation/matching happens later in _orchestrate_results().
+    try:
+        results = search_fn(discovery_query) or []
+    except Exception as exc:
+        print(
+            f"STORE_DISCOVERY_ERROR: store={store} "
+            f"query={discovery_query!r} "
+            f"error={type(exc).__name__}: {exc}",
+            flush=True,
+        )
+        return []
+
+    if not isinstance(results, list):
+        return []
 
     output: List[Dict[str, Any]] = []
     seen = set()
 
-    for attempt in attempts:
-        try:
-            results = search_fn(attempt) or []
-        except Exception as exc:
-            print(
-                f"STORE_DISCOVERY_ERROR: store={store} "
-                f"attempt={attempt!r} error={type(exc).__name__}: {exc}",
-                flush=True,
-            )
+    for item in results:
+        if not isinstance(item, dict):
             continue
 
-        if not isinstance(results, list):
+        product = dict(item)
+        product.setdefault("store", store)
+
+        # These are local field operations only; no additional HTTP request
+        # is performed here. Network discovery belongs exclusively to the
+        # scraper.
+        product = resolve_actual_price(product)
+
+        image = product_image(product)
+        if image:
+            product["image"] = image
+
+        key = product_identity_key(product)
+
+        if key in seen:
             continue
 
-        for item in results:
-            if not isinstance(item, dict):
-                continue
-
-            product = dict(item)
-            product.setdefault("store", store)
-
-            product = resolve_actual_price(product)
-
-            image = product_image(product)
-            if image:
-                product["image"] = image
-
-            key = product_identity_key(product)
-
-            if key in seen:
-                continue
-
-            seen.add(key)
-            output.append(product)
+        seen.add(key)
+        output.append(product)
 
     return output
 
