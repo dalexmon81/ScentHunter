@@ -1375,7 +1375,7 @@ def _price_from_structured_html(html: str) -> Optional[float]:
         re.I | re.S,
     )
 
-    def walk(value):
+def walk(value):
         if isinstance(value, dict):
             offers = value.get("offers")
 
@@ -2563,8 +2563,8 @@ def process_store_candidates(
 
     finally:
         with SEARCH_JOBS_LOCK:
-    job = SEARCH_JOBS.get(job_id)
-    candidate_pool = list(job["candidates"]) if job is not None else []
+        job = SEARCH_JOBS.get(job_id)
+        candidate_pool = list(job["candidates"]) if job is not None else []
 
 if job is not None:
     try:
