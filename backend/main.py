@@ -2470,20 +2470,21 @@ def _run_search_job(
         for store in STORES
     }
 
-    def process_store_candidates(
-    store: str,
-    store_candidates: Any,
+        def process_store_candidates(
+        store: str,
+        store_candidates: Any,
     ) -> None:
-    if not isinstance(store_candidates, list):
-        return
-
-    with SEARCH_JOBS_LOCK:
-        job = SEARCH_JOBS.get(job_id)
-
-        if job is None:
+        if not isinstance(store_candidates, list):
             return
 
-        job["candidates"].extend(store_candidates)
+        with SEARCH_JOBS_LOCK:
+            job = SEARCH_JOBS.get(job_id)
+
+            if job is None:
+                return
+
+            job["candidates"].extend(store_candidates)
+
 
         # Non ricalcolare qui l'intero candidate pool.
         # La validazione completa viene eseguita una sola volta
