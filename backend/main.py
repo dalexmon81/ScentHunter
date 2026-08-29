@@ -1688,14 +1688,7 @@ def _display_variant_name(
 
     # Il genere è un attributo finale del titolo, non una parte
     # dell'identificativo commerciale visualizzato.
-    variant = re.sub(
-        r"\b(?:for\s+him|for\s+her|men|women|man|woman|"
-        r"male|female|homme|femme|heren|mannen|dames|"
-        r"vrouwen|unisex)\b",
-        " ",
-        variant,
-        flags=re.I,
-    )
+    
 
     return re.sub(r"\s+", " ", variant).strip()
 
