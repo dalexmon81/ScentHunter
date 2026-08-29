@@ -175,7 +175,6 @@ def extract_concentration(text: Any) -> str:
     value = normalize(text)
     rules = (
         ("Extrait de Parfum", r"\bextrait(?: de)? parfum\b|\bextrait\b"),
-        ("Parfum Intense", r"\bparfum intense\b"),
         ("Eau de Parfum", r"\beau de parfum\b|\bedp\b"),
         ("Eau de Toilette", r"\beau de toilette\b|\bedt\b"),
         ("Eau de Cologne", r"\beau de cologne\b|\bedc\b"),
@@ -201,6 +200,8 @@ class CatalogProduct:
     family_id: str = ""
     family_name: str = ""
     catalog_variant: str = ""
+    source_status: str = ""
+    verification_sources: Tuple[str, ...] = ()
 
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> "CatalogProduct":
@@ -253,6 +254,12 @@ class CatalogProduct:
                 or data.get("canonical_name")
                 or name
             ).strip(),
+            source_status=str(data.get("source_status") or "").strip(),
+            verification_sources=tuple(
+                str(x).strip()
+                for x in (data.get("verification_sources") or [])
+                if str(x).strip()
+            ),
         )
 
     @property
@@ -495,14 +502,11 @@ class ProductMatcher:
             " ",
             text,
         )
-        text = re.sub(
-            r"\b(?:pour homme|pour femme|pour hommes|pour femmes|"
-            r"for men|for women|for him|for her|"
-            r"homme|uomo|men|man|femme|donna|women|woman|"
-            r"unisex|mixte|unisexe)\b",
-            " ",
-            text,
-        )
+        # IMPORTANT: gender markers are identity-bearing data. They are
+        # deliberately preserved here. A secondary neutral comparison may
+        # remove them, but the primary catalog identity must distinguish
+        # variants such as "Eros" / "Eros Pour Femme" and "9 PM" /
+        # "9 PM Pour Femme".
         text = re.sub(r"\(\s*\)", " ", text)
         return re.sub(r"\s+", " ", text).strip()
 
@@ -532,15 +536,9 @@ class ProductMatcher:
             text,
             flags=re.I,
         )
-        text = re.sub(
-            r"\b(?:pour\s+homme|pour\s+femme|pour\s+hommes|"
-            r"pour\s+femmes|for\s+men|for\s+women|for\s+him|"
-            r"for\s+her|homme|uomo|men|man|femme|donna|women|woman|"
-            r"unisex|mixte|unisexe)\b",
-            " ",
-            text,
-            flags=re.I,
-        )
+        # Keep explicit gender in the canonical display identity. The
+        # frontend will render gender as a separate attribute, but the
+        # identity itself must never collapse male/female variants.
         text = re.sub(r"\(\s*\)", " ", text)
         return re.sub(r"\s+", " ", text).strip(" -:|/")
 
@@ -598,6 +596,110 @@ class ProductMatcher:
             if key
         )
 
+    def _exact_alias_candidates(
+        self,
+        offer: Dict[str, Any],
+    ) -> List[CatalogProduct]:
+        """Return catalog products matching the retailer identity.
+
+        Full normalized aliases are tried first. Only when no full alias
+        matches do we fall back to a cleaned identity that removes size and
+        concentration. Gender is never removed from that fallback key.
+        """
+        brand = self._offer_brand(offer)
+        raw_name = self._offer_name(offer)
+        if not raw_name:
+            return []
+
+        direct_keys = {normalize(raw_name)}
+        brand_tokens = normalize(brand).split()
+        if brand_tokens:
+            brand_stripped = normalize(raw_name)
+            for token in brand_tokens:
+                brand_stripped = re.sub(rf"\b{re.escape(token)}\b", " ", brand_stripped)
+            brand_stripped = re.sub(r"\s+", " ", brand_stripped).strip()
+            if brand_stripped:
+                direct_keys.add(brand_stripped)
+        source = _nested_dict(offer, "source")
+        for value in (source.get("source_name"), source.get("name"), source.get("title")):
+            if value:
+                direct_keys.add(normalize(value))
+
+        direct: Dict[str, CatalogProduct] = {}
+        for product in self.catalog:
+            if not self._brand_matches(brand, product):
+                continue
+            full_keys = {normalize(product.catalog_variant), normalize(product.name)}
+            full_keys.update(product.normalized_aliases)
+            if direct_keys & full_keys:
+                direct[product.catalog_id] = product
+        if direct:
+            return list(direct.values())
+
+        cleaned = self._clean_identity_name(brand, raw_name)
+        if not cleaned:
+            return []
+
+        def catalog_variant_key(value: str, catalog_brand: str) -> str:
+            text = normalize(value)
+            for token in normalize(catalog_brand).split():
+                text = re.sub(rf"\b{re.escape(token)}\b", " ", text)
+            text = re.sub(r"\b\d+(?:[.,]\d+)?\s*(?:ml|cl|l|oz|fl oz)\b", " ", text)
+            return re.sub(r"\s+", " ", text).strip()
+
+        out: Dict[str, CatalogProduct] = {}
+        for product in self.catalog:
+            if not self._brand_matches(brand, product):
+                continue
+            keys = {
+                catalog_variant_key(product.catalog_variant, product.brand),
+                catalog_variant_key(product.name, product.brand),
+            }
+            keys.update(
+                catalog_variant_key(alias, product.brand)
+                for alias in product.aliases
+            )
+            if cleaned in keys:
+                out[product.catalog_id] = product
+        return list(out.values())
+
+    def _query_matches_catalog_product(
+        self,
+        product: CatalogProduct,
+        query: str,
+    ) -> bool:
+        """Check whether a catalog identity belongs to the requested query.
+
+        A query can be a family (e.g. 'Born in Roma' or 'Boss Bottled') or a
+        specific variant. Matching is token/phrase based but only against
+        catalog identity fields; retailer noise cannot create a new identity.
+        """
+        q = normalize(query)
+        if not q:
+            return False
+        brand_q = normalize(product.brand)
+        q_tokens = [t for t in q.split() if t not in {"the"}]
+        fields = [
+            normalize(product.family_name),
+            normalize(product.catalog_variant),
+            normalize(product.name),
+            *product.normalized_aliases,
+        ]
+        # If the query contains the catalog brand, remove it from the query
+        # comparison only. Brand equality is handled separately.
+        for token in normalize(product.brand).split():
+            if token in q_tokens:
+                q_tokens.remove(token)
+        if not q_tokens:
+            return True
+        q_core = " ".join(q_tokens)
+        return any(
+            q_core == field
+            or f" {q_core} " in f" {field} "
+            for field in fields
+            if field
+        )
+
     def _exact_catalog_match(
         self,
         offer: Dict[str, Any],
@@ -611,19 +713,26 @@ class ProductMatcher:
             if hinted_brand:
                 effective_brand = normalize(hinted_brand)
 
-        cleaned = self._clean_identity_name(effective_brand, raw_name)
-        if not cleaned:
-            return None, "none"
+        # First gate: full catalog alias/name identity, preserving gender and
+        # concentration. This prevents neutral-core collisions.
+        exact_aliases = self._exact_alias_candidates(offer)
+        if exact_aliases:
+            candidates = exact_aliases
+        else:
+            cleaned = self._clean_identity_name(effective_brand, raw_name)
+            if not cleaned:
+                return None, "none"
+            candidates = [
+                product
+                for product in self._by_clean_name.get(cleaned, [])
+                if self._brand_matches(effective_brand, product)
+            ]
 
-        candidates = [
-            product
-            for product in self._by_clean_name.get(cleaned, [])
-            if self._brand_matches(effective_brand, product)
-        ]
         if not candidates:
             return None, "none"
 
-        # Generic metadata disambiguation for identical catalog names.
+        # Continue with generic metadata disambiguation.
+                # Generic metadata disambiguation for identical catalog names.
         offer_gender = gender_from_offer(offer)
         if offer_gender:
             filtered = [
@@ -633,7 +742,6 @@ class ProductMatcher:
             ]
             if filtered:
                 candidates = filtered
-
         offer_concentration = (
             str(offer.get("concentration") or "").strip()
             or extract_concentration(raw_name)
@@ -647,11 +755,45 @@ class ProductMatcher:
             if filtered:
                 candidates = filtered
 
-        # De-duplicate the same catalog product reached through multiple aliases.
-        unique: Dict[str, CatalogProduct] = {}
+        if not offer_gender and len(candidates) > 1:
+            # A title without an explicit audience must not be promoted to a
+            # gendered variant when a neutral catalog identity exists.
+            neutral = [product for product in candidates if not product.gender]
+            if neutral:
+                candidates = neutral
+
+        # Collapse duplicate catalog rows that describe the same identity.
+        # Catalog imports can legitimately contain multiple source records for
+        # one product; those records must never become multiple ScentHunter
+        # identities.
+        identity_rows: Dict[Tuple[str, str, str, str], CatalogProduct] = {}
         for product in candidates:
-            unique[product.catalog_id] = product
-        candidates = list(unique.values())
+            identity_key = (
+                product.normalized_brand,
+                normalize(product.catalog_variant or product.name),
+                normalize(product.concentration),
+                normalize(product.gender),
+            )
+            current = identity_rows.get(identity_key)
+            if current is None:
+                identity_rows[identity_key] = product
+                continue
+            current_score = (
+                len(current.verification_sources),
+                1 if current.source_status == "verificato" else 0,
+                len(current.aliases),
+                normalize(current.catalog_id),
+            )
+            new_score = (
+                len(product.verification_sources),
+                1 if product.source_status == "verificato" else 0,
+                len(product.aliases),
+                normalize(product.catalog_id),
+            )
+            if new_score > current_score:
+                identity_rows[identity_key] = product
+
+        candidates = list(identity_rows.values())
 
         candidates.sort(
             key=lambda product: (
@@ -724,37 +866,25 @@ class ProductMatcher:
         concentration: str,
         gender: str = "",
     ) -> str:
-        # Brand, variante, concentrazione e genere sono campi distinti.
-        # Il genere non deve mai restare duplicato dentro il nome della
-        # variante: viene visualizzato una sola volta dopo la concentrazione.
         clean_name = cls._clean_identity_display(brand, name)
-        clean_name = re.sub(
-            r"\b(?:for\s+(?:him|her|men|women)|"
-            r"pour\s+(?:homme|femme|hommes|femmes)|"
-            r"voor\s+(?:mannen|dames|vrouwen)|"
-            r"homme|uomo|men|man|femme|donna|women|woman|"
-            r"male|female|heren|mannen|dames|vrouwen|unisex|mixte|unisexe)\b",
-            " ",
-            clean_name,
-            flags=re.I,
-        )
-        clean_name = re.sub(r"\(\s*\)", " ", clean_name)
-        clean_name = re.sub(r"\s+", " ", clean_name).strip(" -:|/")
-
         parts = []
         if brand:
             parts.append(str(brand).strip())
         if clean_name:
             parts.append(clean_name)
 
-        title = "-".join(parts)
+        title = " - ".join(parts)
         if concentration:
             title = f"{title} {concentration}".strip()
         if gender:
             title = f"{title} {gender}".strip()
         return re.sub(r"\s+", " ", title).strip()
 
-    def match(self, offer: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+    def match(
+        self,
+        offer: Dict[str, Any],
+        query: str = "",
+    ) -> Optional[Dict[str, Any]]:
         if not isinstance(offer, dict):
             return None
 
@@ -775,12 +905,39 @@ class ProductMatcher:
             if product is None:
                 product, method = self._exact_catalog_match(offer)
 
+        if product is not None and query and not self._query_matches_catalog_product(product, query):
+            # The catalog identity is real, but it does not belong to this
+            # search family. Do not let a generic retailer title leak it into
+            # another query.
+            product = None
+            method = "query_mismatch"
+
         if product is not None:
             canonical_brand = product.brand
+            canonical_source = product.catalog_variant or product.name
+            if product.gender:
+                # If the catalog canonical field is neutral but an alias
+                # explicitly identifies the audience, choose the alias that
+                # best represents the retailer title. This avoids arbitrary
+                # aliases such as "Purple Femme" winning over "Pour Femme".
+                gendered_aliases = [
+                    alias for alias in product.aliases
+                    if normalize_gender(alias) == product.gender
+                ]
+                offer_gender = gender_from_offer(offer)
+                if gendered_aliases and not normalize_gender(canonical_source) and offer_gender == product.gender:
+                    raw_tokens = set(normalize(self._offer_name(offer)).split())
+                    def alias_score(value: str) -> Tuple[int, int]:
+                        tokens = set(normalize(value).split())
+                        overlap = len(tokens & raw_tokens)
+                        return (overlap, len(tokens))
+                    canonical_source = max(gendered_aliases, key=alias_score)
             canonical_name = self._clean_identity_display(
                 canonical_brand,
-                product.catalog_variant or product.name,
-            ) or (product.catalog_variant or product.name)
+                canonical_source,
+            ) or canonical_source
+            canonical_name = re.sub(r"\bpour\s+(femme|homme)\b", lambda m: "Pour " + m.group(1).capitalize(), canonical_name, flags=re.I)
+            canonical_name = re.sub(r"\bfor\s+(her|him)\b", lambda m: "For " + m.group(1).capitalize(), canonical_name, flags=re.I)
             concentration = (
                 str(result.get("concentration") or "").strip()
                 or product.concentration
@@ -862,8 +1019,6 @@ class ProductMatcher:
             identity = stable_auto_id(
                 result.get("canonical_brand", ""),
                 result.get("catalog_variant") or result.get("canonical_name", ""),
-                result.get("canonical_concentration")
-                or result.get("concentration", ""),
             )
 
         result["variant_id"] = identity
