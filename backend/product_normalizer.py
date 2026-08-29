@@ -1,16 +1,9 @@
 # backend/product_normalizer.py
-"""
-Normalizzazione e raggruppamento dei nomi dei profumi.
-Estrae brand, variant, type e raggruppa varianti equivalenti.
-"""
 import re
 import unicodedata
 from typing import List, Dict, Any, Tuple, Optional
 
-NUMBER_WORDS = {
-    'one': '1', 'two': '2', 'three': '3', 'four': '4', 'five': '5',
-    'six': '6', 'seven': '7', 'eight': '8', 'nine': '9', 'ten': '10',
-}
+NUMBER_WORDS = {'one': '1', 'two': '2', 'three': '3', 'four': '4', 'five': '5', 'six': '6', 'seven': '7', 'eight': '8', 'nine': '9', 'ten': '10'}
 
 def extract_brand_variant_type(name: str) -> Tuple[Optional[str], str, Optional[str]]:
     if not name:
@@ -26,13 +19,7 @@ def extract_brand_variant_type(name: str) -> Tuple[Optional[str], str, Optional[
         return (None, variant, typ)
 
 def extract_variant_type(name: str) -> Tuple[str, Optional[str]]:
-    type_patterns = [
-        r'\b(eau de parfum|eau de toilette|eau de cologne|eau fraîche)\b',
-        r'\b(extrait de parfum|extrait)\b',
-        r'\b(edp|edt|edc|edf)\b',
-        r'\b(parfum|perfume)\b',
-        r'\b(intense|extreme|absolu|elixir)\b',
-    ]
+    type_patterns = [r'\b(eau de parfum|eau de toilette|eau de cologne|eau fraîche)\b', r'\b(extrait de parfum|extrait)\b', r'\b(edp|edt|edc|edf)\b', r'\b(parfum|perfume)\b', r'\b(intense|extreme|absolu|elixir)\b']
     typ = None
     variant = name
     for pattern in type_patterns:
@@ -52,14 +39,7 @@ def normalize_name(name: str) -> str:
     n = unicodedata.normalize('NFKD', n)
     n = re.sub(r'[\u0300-\u036f]', '', n)
     n = re.sub(r"\bl['\u2019]?eau\b", 'eau', n)
-    stopwords = [
-        'eau de parfum', 'eau de toilette', 'eau de cologne', 'eau fraîche',
-        'edp', 'edt', 'edc', 'edf',
-        'parfum', 'perfume', 'perfum',
-        'extrait de parfum', 'extrait',
-        'for women', 'for men', 'for her', 'for him', 'pour homme', 'pour femme',
-        'intense', 'extreme', 'absolu', 'absolue', 'elixir',
-    ]
+    stopwords = ['eau de parfum', 'eau de toilette', 'eau de cologne', 'eau fraîche', 'edp', 'edt', 'edc', 'edf', 'parfum', 'perfume', 'perfum', 'extrait de parfum', 'extrait', 'for women', 'for men', 'for her', 'for him', 'pour homme', 'pour femme', 'intense', 'extreme', 'absolu', 'absolue', 'elixir']
     for sw in stopwords:
         n = n.replace(sw, '')
     for word, num in NUMBER_WORDS.items():
@@ -80,16 +60,11 @@ def group_results_by_normalized_name(results: List[Dict[str, Any]]) -> List[Dict
         brand, variant, typ = extract_brand_variant_type(name)
         key = normalized
         if key not in grouped:
-            grouped[key] = {
-                'brand': brand,
-                'variant': variant,
-                'type': typ,
-                'name': name,
-                'normalized_name': normalized,
-                'offers': [result]
-            }
+            grouped[key] = {'brand': brand, 'variant': variant, 'type': typ, 'name': name, 'normalized_name': normalized, 'offers': [result]}
         else:
             grouped[key]['offers'].append(result)
+            if brand is None and grouped[key]['brand'] is not None:
+                brand = grouped[key]['brand']
             if len(name) < len(grouped[key]['name']):
                 grouped[key]['name'] = name
                 grouped[key]['brand'] = brand
