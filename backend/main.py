@@ -2668,6 +2668,51 @@ def search(q: str):
     return search_perfume(q)
 
 
+
+@app.get("/diagnostic-liquid-brun")
+def diagnostic_liquid_brun():
+    """
+    Diagnostico isolato dei soli scraper usando Liquid Brun.
+    Non passa dal matcher, grouping o frontend.
+    """
+    import importlib
+
+    try:
+        diagnostic_module = importlib.import_module(
+            "diagnostic_liquid_brun"
+        )
+
+        run_full_diagnostic = getattr(
+            diagnostic_module,
+            "run_full_diagnostic",
+            None,
+        )
+
+        if not callable(run_full_diagnostic):
+            raise RuntimeError(
+                "diagnostic_liquid_brun.py non espone "
+                "run_full_diagnostic()"
+            )
+
+        return run_full_diagnostic(
+            query="Liquid Brun",
+            timeout_per_store=30.0,
+        )
+
+    except Exception as exc:
+        traceback.print_exc()
+
+        return {
+            "ok": False,
+            "query": "Liquid Brun",
+            "error": {
+                "type": type(exc).__name__,
+                "message": str(exc),
+                "traceback": traceback.format_exc(),
+            },
+        }
+
+
 @app.get("/diagnostic-search")
 def diagnostic_search(
     q: str,
@@ -3294,116 +3339,3 @@ def diagnose_notino_search(q: str):
             "error": f"{type(exc).__name__}: {exc}",
             "traceback": traceback.format_exc(),
         }
-
-
-@app.get("/diagnostic-liquid-brun")
-def diagnostic_liquid_brun():
-    """
-    Diagnostic endpoint for the current production problem.
-
-    Runs Liquid Brun independently against every configured scraper and
-    reports where each store stops:
-      loaded -> invoked -> returned -> candidate count / exception.
-
-    This endpoint is diagnostic only and does not pass candidates through
-    the normal matcher/grouping pipeline.
-    """
-    import time
-    import traceback
-
-    diagnostic = {
-        "query": "Liquid Brun",
-        "started_at": time.time(),
-        "stores": {},
-    }
-
-    stores = list(STORE_SCRAPERS.keys())
-
-    for store in stores:
-        row = {
-            "store": store,
-            "loaded": False,
-            "started": False,
-            "completed": False,
-            "duration_ms": None,
-            "raw_candidates": 0,
-            "sample_candidates": [],
-            "error": None,
-        }
-
-        started = time.perf_counter()
-
-        try:
-            module = load_scraper(store)
-            row["loaded"] = True
-
-            search_fn = getattr(module, "search", None)
-            if not callable(search_fn):
-                search_fn = getattr(module, "scrape", None)
-
-            if not callable(search_fn):
-                raise RuntimeError(
-                    f"{store}: nessuna funzione search()/scrape()"
-                )
-
-            row["started"] = True
-
-            result = search_fn("Liquid Brun")
-
-            if isinstance(result, list):
-                row["raw_candidates"] = len(result)
-
-                for item in result[:5]:
-                    if isinstance(item, dict):
-                        row["sample_candidates"].append({
-                            "name": item.get("name"),
-                            "brand": item.get("brand"),
-                            "url": item.get("url"),
-                            "price": item.get("price"),
-                        })
-            else:
-                row["raw_candidates"] = 0
-
-            row["completed"] = True
-
-        except Exception as exc:
-            row["error"] = {
-                "type": type(exc).__name__,
-                "message": str(exc),
-                "traceback": traceback.format_exc(limit=8),
-            }
-
-        finally:
-            row["duration_ms"] = round(
-                (time.perf_counter() - started) * 1000,
-                2,
-            )
-
-        diagnostic["stores"][store] = row
-
-    diagnostic["duration_ms"] = round(
-        (time.time() - diagnostic["started_at"]) * 1000,
-        2,
-    )
-
-    diagnostic["summary"] = {
-        "stores_total": len(stores),
-        "stores_loaded": sum(
-            1 for x in diagnostic["stores"].values()
-            if x["loaded"]
-        ),
-        "stores_completed": sum(
-            1 for x in diagnostic["stores"].values()
-            if x["completed"]
-        ),
-        "stores_with_candidates": sum(
-            1 for x in diagnostic["stores"].values()
-            if x["raw_candidates"] > 0
-        ),
-        "stores_with_errors": sum(
-            1 for x in diagnostic["stores"].values()
-            if x["error"] is not None
-        ),
-    }
-
-    return diagnostic
