@@ -1487,6 +1487,7 @@ def load_scraper(store: str):
 def run_store(
     store: str,
     query: str,
+    on_batch=None,
 ) -> List[Dict[str, Any]]:
     """
     Esegue SOLO la discovery generica dello store.
@@ -1533,6 +1534,8 @@ def run_store(
         if not isinstance(results, list):
             continue
 
+        batch_output: List[Dict[str, Any]] = []
+
         for item in results:
             if not isinstance(item, dict):
                 continue
@@ -1558,6 +1561,20 @@ def run_store(
                 product["image"] = image
 
             output.append(product)
+            batch_output.append(product)
+
+        # Emit each discovery attempt immediately. This keeps the async
+        # search progressive: a fast first attempt can reach the UI without
+        # waiting for the fallback attempts of the same store.
+        if callable(on_batch) and batch_output:
+            try:
+                on_batch(store, list(batch_output))
+            except Exception as exc:
+                print(
+                    f"STORE_BATCH_CALLBACK_ERROR: store={store} "
+                    f"error={type(exc).__name__}: {exc}",
+                    flush=True,
+                )
 
     return output
 
@@ -2125,13 +2142,99 @@ def _run_search_job(
     Esegue la discovery in parallelo e alimenta progressivamente
     il candidate pool centrale.
 
-    Ogni volta che uno store termina:
-        discovery -> candidate pool -> deduplica -> pre-ranking
-        -> validazione centrale parallela -> risultati parziali.
+    Ogni tentativo di discovery viene pubblicato appena disponibile;
+    non è necessario attendere che uno store completi tutti i fallback.
+    La validazione dei lotti è serializzata per evitare di creare un
+    executor separato per ogni store contemporaneamente.
     """
     executor = ThreadPoolExecutor(
         max_workers=len(STORES),
         thread_name_prefix="scent_async_store",
+    )
+
+    process_lock = threading.Lock()
+    processing_futures = []
+
+    def process_store_candidates(
+        store: str,
+        store_candidates: Any,
+    ) -> None:
+        if not isinstance(store_candidates, list) or not store_candidates:
+            return
+
+        # Keep callback processing serialized. Discovery remains fully
+        # parallel, while validation cannot spawn several nested pools at
+        # the same time and overload the Render instance.
+        with process_lock:
+            with SEARCH_JOBS_LOCK:
+                job = SEARCH_JOBS.get(job_id)
+
+                if job is None:
+                    return
+
+                # Only add the genuinely new candidates to the job pool.
+                # This is important because the callback receives the
+                # cumulative output of the store.
+                existing_keys = {
+                    product_identity_key(item)
+                    for item in job["candidates"]
+                    if isinstance(item, dict)
+                }
+
+                new_candidates = []
+
+                for item in store_candidates:
+                    if not isinstance(item, dict):
+                        continue
+
+                    key = product_identity_key(item)
+                    if key in existing_keys:
+                        continue
+
+                    existing_keys.add(key)
+                    new_candidates.append(item)
+
+                if not new_candidates:
+                    return
+
+                job["candidates"].extend(new_candidates)
+                existing_results = list(job["results"])
+
+            ranked_candidates = _pre_rank_candidates(
+                new_candidates,
+                query,
+            )
+
+            new_results = _validate_candidates_parallel(
+                ranked_candidates,
+                query,
+            )
+
+            results = sort_by_price(
+                unique_results(
+                    existing_results + new_results
+                )
+            )
+
+            with SEARCH_JOBS_LOCK:
+                job = SEARCH_JOBS.get(job_id)
+                if job is not None:
+                    job["results"] = results
+
+    def on_batch(store: str, candidates: List[Dict[str, Any]]) -> None:
+        # The store worker must not perform central validation itself.
+        # Queue it on a single lightweight processor so discovery remains
+        # responsive and parallel.
+        future = processing_executor.submit(
+            process_store_candidates,
+            store,
+            candidates,
+        )
+        processing_futures.append(future)
+
+    processing_executor = ThreadPoolExecutor(
+        max_workers=1,
+        thread_name_prefix="scent_async_validate",
     )
 
     futures = {
@@ -2139,60 +2242,10 @@ def _run_search_job(
             run_store,
             store,
             query,
+            on_batch,
         ): store
         for store in STORES
     }
-
-    def process_store_candidates(
-        store: str,
-        store_candidates: Any,
-    ) -> None:
-        if not isinstance(store_candidates, list):
-            return
-
-        # IMPORTANT:
-        # non ricalcolare la validazione dell'intero candidate pool ogni
-        # volta che termina uno store. I candidati già validati non cambiano
-        # quando arriva un altro store. Validiamo quindi solo il nuovo lotto
-        # e poi lo fondiamo con i risultati già ottenuti.
-        with SEARCH_JOBS_LOCK:
-            job = SEARCH_JOBS.get(job_id)
-
-            if job is None:
-                return
-
-            job["candidates"].extend(
-                store_candidates
-            )
-            existing_results = list(
-                job["results"]
-            )
-
-        new_candidates = unique_results(
-            store_candidates
-        )
-
-        ranked_candidates = _pre_rank_candidates(
-            new_candidates,
-            query,
-        )
-
-        new_results = _validate_candidates_parallel(
-            ranked_candidates,
-            query,
-        )
-
-        results = sort_by_price(
-            unique_results(
-                existing_results + new_results
-            )
-        )
-
-        with SEARCH_JOBS_LOCK:
-            job = SEARCH_JOBS.get(job_id)
-
-            if job is not None:
-                job["results"] = results
 
     try:
         try:
@@ -2203,17 +2256,10 @@ def _run_search_job(
                 store = futures[future]
 
                 try:
-                    store_candidates = future.result()
-
-                    process_store_candidates(
-                        store,
-                        store_candidates,
-                    )
-
+                    future.result()
                 except Exception as exc:
                     with SEARCH_JOBS_LOCK:
                         job = SEARCH_JOBS.get(job_id)
-
                         if job is not None:
                             job["errors"][store] = (
                                 f"{type(exc).__name__}: {exc}"
@@ -2221,33 +2267,26 @@ def _run_search_job(
 
         except TimeoutError:
             for future, store in futures.items():
-                if future.done():
-                    try:
-                        store_candidates = future.result()
-
-                        process_store_candidates(
-                            store,
-                            store_candidates,
-                        )
-
-                    except Exception as exc:
-                        with SEARCH_JOBS_LOCK:
-                            job = SEARCH_JOBS.get(job_id)
-
-                            if job is not None:
-                                job["errors"][store] = (
-                                    f"{type(exc).__name__}: {exc}"
-                                )
-
-                else:
+                if not future.done():
                     with SEARCH_JOBS_LOCK:
                         job = SEARCH_JOBS.get(job_id)
-
                         if job is not None:
                             job["errors"][store] = (
                                 "Timeout: ricerca del negozio "
                                 "oltre il limite globale"
                             )
+
+        # All discovery futures are done (or timed out). Wait for the
+        # already queued validation batches before declaring the job complete.
+        for future in list(processing_futures):
+            try:
+                future.result(timeout=GLOBAL_SEARCH_TIMEOUT)
+            except Exception as exc:
+                print(
+                    f"SEARCH_VALIDATION_ERROR: "
+                    f"{type(exc).__name__}: {exc}",
+                    flush=True,
+                )
 
     finally:
         for future in futures:
@@ -2259,9 +2298,13 @@ def _run_search_job(
             cancel_futures=True,
         )
 
+        processing_executor.shutdown(
+            wait=False,
+            cancel_futures=True,
+        )
+
         with SEARCH_JOBS_LOCK:
             job = SEARCH_JOBS.get(job_id)
-
             if job is not None:
                 job["completed"] = True
 
