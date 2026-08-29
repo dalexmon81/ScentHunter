@@ -2308,272 +2308,222 @@ def product(
 
 
 # ============================================================
-# LIQUID BRUN PIPELINE DIAGNOSTIC
+# LIQUID BRUN DIAGNOSTIC — EXACT RUN_STORE PIPELINE
 # ============================================================
 
 @app.get("/diagnostic-liquid-brun")
 def diagnostic_liquid_brun():
     """
-    Diagnostica NON distruttiva della pipeline reale di discovery.
+    Diagnostica della discovery REALE.
 
-    Esegue gli stessi scraper configurati da ScentHunter in parallelo,
-    ma registra separatamente:
-      - import/load
-      - costruzione tentativi
-      - avvio/fine di ogni tentativo
-      - candidati prodotti da ogni tentativo
-      - durata per tentativo e per store
-      - eccezioni
-      - stato HTTP quando il traffico passa da requests
+    Punto fondamentale:
+    usa run_store() della pipeline attuale, senza duplicare la
+    logica di discovery e senza modificare requests/urllib.
 
-    NON usa _orchestrate_results() e NON modifica la ricerca normale:
-    lo scopo è vedere dove il tempo viene realmente consumato.
+    L'unica strumentazione è un wrapper temporaneo della funzione
+    search()/scrape() del singolo modulo, usato per registrare
+    ogni attempt, durata, numero di candidati ed eventuali errori.
+    Il wrapper viene sempre ripristinato prima del ritorno.
+
+    Non esegue matcher/orchestrator/frontend.
     """
     import time
-    import threading
-    from concurrent.futures import ThreadPoolExecutor, as_completed, TimeoutError as FuturesTimeoutError
+    from concurrent.futures import (
+        ThreadPoolExecutor,
+        as_completed,
+        TimeoutError as FuturesTimeoutError,
+    )
 
     query = "Liquid Brun"
-    per_store_timeout = 20.0
-    diagnostic_started = time.perf_counter()
+    per_store_timeout = 18.0
+    started = time.perf_counter()
 
-    local_state = threading.local()
-    patch_lock = threading.Lock()
+    def safe_value(value):
+        if value is None or isinstance(value, (str, int, float, bool)):
+            return value
+        try:
+            return str(value)
+        except Exception:
+            return repr(value)
 
-    original_requests_request = None
-    original_urlopen = None
-
-    http_events = []
-    http_events_lock = threading.Lock()
-
-    def now_ms():
-        return round((time.perf_counter() - diagnostic_started) * 1000, 2)
-
-    def add_http_event(event):
-        with http_events_lock:
-            if len(http_events) < 500:
-                http_events.append(event)
-
-    # Instrumentazione requests: attribuisce la richiesta allo store
-    # che la sta eseguendo senza alterare la risposta.
-    try:
-        import requests
-
-        original_requests_request = requests.sessions.Session.request
-
-        def diagnostic_requests_request(self, method, url, **kwargs):
-            store = getattr(local_state, "store", None)
-            t0 = time.perf_counter()
-
-            try:
-                response = original_requests_request(
-                    self,
-                    method,
-                    url,
-                    **kwargs,
-                )
-                add_http_event({
-                    "t_ms": now_ms(),
-                    "store": store,
-                    "method": str(method),
-                    "url": str(url),
-                    "status": getattr(response, "status_code", None),
-                    "duration_ms": round(
-                        (time.perf_counter() - t0) * 1000,
-                        2,
-                    ),
-                    "error": None,
-                })
-                return response
-
-            except Exception as exc:
-                add_http_event({
-                    "t_ms": now_ms(),
-                    "store": store,
-                    "method": str(method),
-                    "url": str(url),
-                    "status": None,
-                    "duration_ms": round(
-                        (time.perf_counter() - t0) * 1000,
-                        2,
-                    ),
-                    "error": f"{type(exc).__name__}: {exc}",
-                })
-                raise
-
-        requests.sessions.Session.request = diagnostic_requests_request
-
-    except Exception:
-        original_requests_request = None
-
-    def safe_candidate(item):
+    def compact_candidate(item):
         if not isinstance(item, dict):
-            return {"type": type(item).__name__, "value": str(item)}
+            return {
+                "type": type(item).__name__,
+                "value": safe_value(item),
+            }
 
         return {
-            "name": (
+            "name": safe_value(
                 item.get("name")
                 or item.get("title")
                 or item.get("product_name")
             ),
-            "brand": item.get("brand") or item.get("source_brand"),
-            "url": item.get("url"),
-            "price": item.get("price"),
-            "size_ml": (
+            "brand": safe_value(item.get("brand")),
+            "url": safe_value(item.get("url")),
+            "price": safe_value(item.get("price")),
+            "size_ml": safe_value(
                 item.get("size_ml")
                 or item.get("volume_ml")
                 or item.get("format_ml")
             ),
-            "concentration": item.get("concentration"),
-            "store": item.get("store"),
+            "concentration": safe_value(item.get("concentration")),
+            "store": safe_value(item.get("store")),
         }
 
-    def run_diagnostic_store(store):
-        local_state.store = store
+    def diagnostic_store(store):
         store_started = time.perf_counter()
-
         report = {
             "store": store,
             "query": query,
-            "timeline": [],
-            "attempts": [],
             "loaded": False,
             "search_function": None,
-            "raw_candidates_total": 0,
+            "attempts": [],
+            "run_store_raw_total": None,
+            "run_store_duration_ms": None,
             "raw_candidates": [],
             "error": None,
-            "duration_ms": None,
+            "finished": False,
         }
 
+        module = None
+        original_fn = None
+        attr_name = None
+
         try:
-            t0 = time.perf_counter()
             module = load_scraper(store)
             report["loaded"] = True
-            report["timeline"].append({
-                "stage": "load_scraper",
-                "start_ms": round(
-                    (t0 - diagnostic_started) * 1000,
-                    2,
-                ),
-                "end_ms": now_ms(),
-                "duration_ms": round(
-                    (time.perf_counter() - t0) * 1000,
-                    2,
-                ),
-            })
 
-            search_fn = getattr(module, "search", None)
-            if not callable(search_fn):
-                search_fn = getattr(module, "scrape", None)
-
-            if not callable(search_fn):
+            if callable(getattr(module, "search", None)):
+                attr_name = "search"
+            elif callable(getattr(module, "scrape", None)):
+                attr_name = "scrape"
+            else:
                 raise RuntimeError(
                     f"{store}: scraper senza search()/scrape()"
                 )
 
-            report["search_function"] = getattr(
-                search_fn,
-                "__name__",
-                str(search_fn),
-            )
+            original_fn = getattr(module, attr_name)
+            report["search_function"] = attr_name
 
-            discovery_query = norm(query)
+            attempt_index = 0
+            seen_candidates = set()
 
-            t0 = time.perf_counter()
-            attempts = build_search_attempts(
-                store,
-                discovery_query,
-            )
-            report["timeline"].append({
-                "stage": "build_search_attempts",
-                "start_ms": round(
-                    (t0 - diagnostic_started) * 1000,
-                    2,
-                ),
-                "end_ms": now_ms(),
-                "duration_ms": round(
-                    (time.perf_counter() - t0) * 1000,
-                    2,
-                ),
-                "attempt_count": len(attempts),
-                "attempts": list(attempts),
-            })
+            def instrumented_search(attempt, *args, **kwargs):
+                nonlocal attempt_index
 
-            seen = set()
+                idx = attempt_index
+                attempt_index += 1
 
-            for index, attempt in enumerate(attempts):
-                attempt_started = time.perf_counter()
+                t0 = time.perf_counter()
+
                 attempt_report = {
-                    "index": index,
-                    "query": attempt,
-                    "start_ms": now_ms(),
-                    "end_ms": None,
+                    "index": idx,
+                    "query": safe_value(attempt),
+                    "start_ms": round(
+                        (time.perf_counter() - started) * 1000,
+                        2,
+                    ),
                     "duration_ms": None,
-                    "returned_type": None,
+                    "returned": False,
                     "raw_count": 0,
-                    "new_unique_count": 0,
                     "candidates": [],
                     "error": None,
                 }
 
                 try:
-                    results = search_fn(attempt) or []
-                    attempt_report["returned_type"] = type(
-                        results
-                    ).__name__
+                    result = original_fn(
+                        attempt,
+                        *args,
+                        **kwargs,
+                    )
 
-                    if isinstance(results, list):
-                        attempt_report["raw_count"] = len(results)
+                    attempt_report["returned"] = True
 
-                        for item in results:
+                    if isinstance(result, (list, tuple)):
+                        attempt_report["raw_count"] = len(result)
+
+                        for item in result:
                             if not isinstance(item, dict):
                                 continue
 
-                            product = dict(item)
-                            product.setdefault("store", store)
+                            candidate = dict(item)
+                            candidate.setdefault("store", store)
 
                             try:
-                                key = product_identity_key(product)
+                                key = product_identity_key(candidate)
                             except Exception:
                                 key = (
-                                    str(product.get("url") or "")
-                                    or str(
-                                        product.get("name")
-                                        or product.get("title")
+                                    norm(
+                                        candidate.get("url")
                                         or ""
-                                    )
+                                    ),
+                                    norm(
+                                        candidate.get("name")
+                                        or candidate.get("title")
+                                        or ""
+                                    ),
                                 )
 
-                            if key in seen:
+                            if key in seen_candidates:
                                 continue
 
-                            seen.add(key)
-                            attempt_report["new_unique_count"] += 1
+                            seen_candidates.add(key)
 
-                            if len(report["raw_candidates"]) < 50:
-                                report["raw_candidates"].append(
-                                    safe_candidate(product)
-                                )
+                            compact = compact_candidate(candidate)
+
+                            if len(attempt_report["candidates"]) < 20:
+                                attempt_report["candidates"].append(compact)
+
+                            if len(report["raw_candidates"]) < 100:
+                                report["raw_candidates"].append(compact)
+
+                    return result
 
                 except Exception as exc:
                     attempt_report["error"] = {
                         "type": type(exc).__name__,
                         "message": str(exc),
                     }
+                    raise
 
-                attempt_report["end_ms"] = now_ms()
-                attempt_report["duration_ms"] = round(
-                    (time.perf_counter() - attempt_started) * 1000,
+                finally:
+                    attempt_report["duration_ms"] = round(
+                        (time.perf_counter() - t0) * 1000,
+                        2,
+                    )
+                    attempt_report["end_ms"] = round(
+                        (time.perf_counter() - started) * 1000,
+                        2,
+                    )
+                    report["attempts"].append(attempt_report)
+
+            # Instrumentiamo SOLO questo scraper/module.
+            setattr(module, attr_name, instrumented_search)
+
+            try:
+                t0 = time.perf_counter()
+
+                # QUESTA È LA PIPELINE REALE:
+                # non ricreiamo build_search_attempts, dedup o error handling.
+                raw_results = run_store(store, query)
+
+                report["run_store_duration_ms"] = round(
+                    (time.perf_counter() - t0) * 1000,
                     2,
                 )
 
-                report["attempts"].append(attempt_report)
+                report["run_store_raw_total"] = (
+                    len(raw_results)
+                    if isinstance(raw_results, list)
+                    else None
+                )
 
-                # Manteniamo esattamente il comportamento della discovery:
-                # build_search_attempts può fornire più tentativi; non li
-                # alteriamo né introduciamo un early-stop artificiale.
+                report["finished"] = True
 
-            report["raw_candidates_total"] = len(seen)
+            finally:
+                # Ripristino garantito anche in caso di eccezione.
+                setattr(module, attr_name, original_fn)
 
         except Exception as exc:
             report["error"] = {
@@ -2581,25 +2531,30 @@ def diagnostic_liquid_brun():
                 "message": str(exc),
             }
 
-        finally:
-            report["duration_ms"] = round(
-                (time.perf_counter() - store_started) * 1000,
-                2,
-            )
-            local_state.store = None
+            if module is not None and attr_name and original_fn is not None:
+                try:
+                    setattr(module, attr_name, original_fn)
+                except Exception:
+                    pass
+
+        report["duration_ms"] = round(
+            (time.perf_counter() - store_started) * 1000,
+            2,
+        )
+        report["end_ms"] = round(
+            (time.perf_counter() - started) * 1000,
+            2,
+        )
 
         return report
 
     executor = ThreadPoolExecutor(
         max_workers=len(STORES),
-        thread_name_prefix="diagnostic_store",
+        thread_name_prefix="liquid_brun_diag",
     )
 
     futures = {
-        executor.submit(
-            run_diagnostic_store,
-            store,
-        ): store
+        executor.submit(diagnostic_store, store): store
         for store in STORES
     }
 
@@ -2613,13 +2568,15 @@ def diagnostic_liquid_brun():
                 timeout=per_store_timeout,
             ):
                 store = futures[future]
+
                 try:
                     reports[store] = future.result()
+
                 except Exception as exc:
                     reports[store] = {
                         "store": store,
                         "query": query,
-                        "loaded": None,
+                        "finished": False,
                         "error": {
                             "type": type(exc).__name__,
                             "message": str(exc),
@@ -2635,7 +2592,7 @@ def diagnostic_liquid_brun():
                         reports[store] = {
                             "store": store,
                             "query": query,
-                            "loaded": None,
+                            "finished": False,
                             "error": {
                                 "type": type(exc).__name__,
                                 "message": str(exc),
@@ -2646,13 +2603,13 @@ def diagnostic_liquid_brun():
                     reports[store] = {
                         "store": store,
                         "query": query,
-                        "loaded": None,
+                        "finished": False,
                         "timeout": True,
                         "error": {
-                            "type": "PerStoreDiagnosticTimeout",
+                            "type": "DiagnosticStoreTimeout",
                             "message": (
-                                f"Diagnostica oltre "
-                                f"{per_store_timeout:.1f} secondi"
+                                f"Store non terminato entro "
+                                f"{per_store_timeout:.1f} secondi."
                             ),
                         },
                     }
@@ -2662,101 +2619,50 @@ def diagnostic_liquid_brun():
             if not future.done():
                 future.cancel()
 
-        # IMPORTANTISSIMO: non aspettiamo gli scraper bloccati.
+        # Non aspettiamo un worker bloccato.
         executor.shutdown(
             wait=False,
             cancel_futures=True,
         )
 
-        if original_requests_request is not None:
-            try:
-                import requests
-                requests.sessions.Session.request = (
-                    original_requests_request
-                )
-            except Exception:
-                pass
-
-    ordered_reports = {
+    ordered = {
         store: reports.get(
             store,
             {
                 "store": store,
                 "query": query,
+                "finished": False,
                 "error": {
                     "type": "MissingDiagnosticReport",
-                    "message": "Nessun report restituito.",
+                    "message": "Report non disponibile.",
                 },
             },
         )
         for store in STORES
     }
 
-    total_http = len(http_events)
-    http_by_store = {}
-
-    for event in http_events:
-        store = event.get("store")
-        if not store:
-            continue
-        http_by_store.setdefault(
-            store,
-            {
-                "requests": 0,
-                "errors": 0,
-                "statuses": {},
-            },
-        )
-        http_by_store[store]["requests"] += 1
-
-        if event.get("error"):
-            http_by_store[store]["errors"] += 1
-
-        status = event.get("status")
-        if status is not None:
-            status = str(status)
-            http_by_store[store]["statuses"][status] = (
-                http_by_store[store]["statuses"].get(status, 0) + 1
-            )
-
     return {
         "ok": True,
-        "diagnostic": "liquid_brun_real_pipeline",
+        "diagnostic": "liquid_brun_exact_run_store",
         "query": query,
-        "started_at": datetime.now(
-            timezone.utc
-        ).isoformat(),
         "duration_ms": round(
-            (time.perf_counter() - diagnostic_started) * 1000,
+            (time.perf_counter() - started) * 1000,
             2,
         ),
         "per_store_timeout_seconds": per_store_timeout,
-        "stores": ordered_reports,
-        "summary": {
-            "stores_total": len(STORES),
-            "loaded": sum(
-                1
-                for report in ordered_reports.values()
-                if report.get("loaded") is True
-            ),
-            "completed": sum(
-                1
-                for report in ordered_reports.values()
-                if report.get("error", {}).get("type")
-                not in (
-                    "PerStoreDiagnosticTimeout",
-                    "MissingDiagnosticReport",
-                )
-            ),
-            "timeouts": timed_out,
-            "raw_candidates_total": sum(
-                report.get("raw_candidates_total", 0)
-                for report in ordered_reports.values()
-            ),
-            "http_requests_captured": total_http,
-        },
-        "http_by_store": http_by_store,
-        "http_events": http_events,
+        "stores_total": len(STORES),
+        "stores_finished": [
+            store
+            for store, report in ordered.items()
+            if report.get("finished") is True
+        ],
+        "stores_timed_out": timed_out,
+        "stores_with_raw_candidates": [
+            store
+            for store, report in ordered.items()
+            if (report.get("run_store_raw_total") or 0) > 0
+        ],
+        "stores": ordered,
     }
 
 
