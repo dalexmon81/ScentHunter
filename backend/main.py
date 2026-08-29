@@ -1,4 +1,4 @@
-from pathlib import Path
+ pathlib import Path
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
@@ -955,25 +955,29 @@ def _catalog_variant_for_product(
         # Tutte le forme della stessa variante devono ridursi alla stessa
         # chiave identitaria. La specificità serve solo a scegliere fra alias
         # equivalenti, mai fra varianti diverse.
-        variant_keys = {
-            _catalog_gender_neutral_key(form)
-            for form in variant_forms
-            if _catalog_gender_neutral_key(form)
+        canonical_key = _catalog_gender_neutral_key(canonical)
+        alias_keys = {
+            _catalog_gender_neutral_key(alias)
+            for alias in aliases
+            if _catalog_gender_neutral_key(alias)
         }
+        variant_keys = {key for key in (canonical_key, *alias_keys) if key}
 
         if candidate_key not in variant_keys:
             continue
 
         # Only the canonical variant name defines the catalog gender.
-        # An alias may legitimately contain an extra retailer wording such as
-        # "for Her" even when the canonical variant itself is neutral.
         variant_gender = _catalog_gender_class(canonical)
 
-        # Se il catalogo distingue il genere, non promuovere un candidato
-        # esplicito a un genere diverso. Una variante neutra può invece
-        # accettare una dicitura di genere aggiunta dal retailer.
+        # Se il candidato espone un genere esplicito, deve essere compatibile
+        # con quello canonico. Un candidato senza genere può invece usare un
+        # alias AUTOREVOLE del Registry che rappresenta una forma commerciale
+        # abbreviata di una variante gendered: l'alias è già la prova esplicita
+        # che quella forma appartiene a quella variante. Non facciamo questa
+        # inferenza sul solo testo del prodotto.
         if variant_gender != "none":
-            if candidate_gender != variant_gender:
+            alias_match = candidate_key in alias_keys and candidate_key != canonical_key
+            if candidate_gender != variant_gender and not (candidate_gender == "none" and alias_match):
                 continue
         elif candidate_gender == "mixed":
             continue
@@ -1274,14 +1278,14 @@ def matches(product: Dict[str, Any], query: str) -> bool:
         name_for_matching,
     ).strip()
 
+    # I numeri possono essere parte essenziale dell'identità commerciale
+    # (es. "9 PM", "1 Million", "212 VIP"). Non vanno quindi scartati
+    # dal matching generico: eliminarli permette a un prodotto che contiene
+    # soltanto la parola "PM" di passare una ricerca "9 PM".
     query_tokens = [
         token
         for token in query_normalized.split()
         if token not in IGNORED_WORDS
-        and not re.fullmatch(
-            r"\d+(?:[.,]\d+)?",
-            token,
-        )
     ]
 
     generic_tokens = {
@@ -2035,11 +2039,12 @@ def _candidate_relevance_score(
     Non elimina candidati: la validazione centrale decide esclusivamente
     tramite matches().
     """
+    # Anche il pre-ranking deve considerare i numeri identitari: non devono
+    # favorire un falso candidato che condivide solo una parola generica.
     query_tokens = [
         token
         for token in norm(query).split()
         if token not in IGNORED_WORDS
-        and not re.fullmatch(r"\d+(?:[.,]\d+)?", token)
     ]
 
     name = norm(
