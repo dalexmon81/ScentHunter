@@ -2252,8 +2252,7 @@ def search_perfume(query: str) -> Dict[str, Any]:
     )
     # Raggruppa varianti equivalenti di profumi
     results = normalize_and_group(results)
-
-return {
+    return {
         "query": query,
         "count": len(results),
         "results": results,
