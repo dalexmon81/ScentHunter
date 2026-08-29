@@ -1,91 +1,118 @@
-# backend/product_normalizer.py
+"""
+Product Normalizer per ScentHunter
+----------------------------------
+Questo file serve SOLO per raggruppare risultati con lo stesso nome normalizzato.
+NON deve fare estrazione del brand, variante, concentrazione, ecc.
+Quella logica rimane in main.py.
+
+Regole di normalizzazione:
+- Lowercase
+- Rimuove punteggiatura extra
+- Rimuove "eau de", "parfum", "perfume" (solo per raggruppamento)
+- MANTIENE "for him", "for her", "pour homme", "pour femme" (distinguono varianti!)
+- MANTIENE "limited edition", "extrait", ecc. (distinguono varianti!)
+"""
+
 import re
-import unicodedata
-from typing import List, Dict, Any, Tuple, Optional
+from typing import List, Dict, Any
 
-NUMBER_WORDS = {'one': '1', 'two': '2', 'three': '3', 'four': '4', 'five': '5', 'six': '6', 'seven': '7', 'eight': '8', 'nine': '9', 'ten': '10'}
-
-def extract_brand_variant_type(name: str) -> Tuple[Optional[str], str, Optional[str]]:
-    if not name:
-        return (None, "", None)
-    match = re.match(r'^([^\-]+)\s*-\s*(.+)$', name)
-    if match:
-        brand = match.group(1).strip()
-        rest = match.group(2).strip()
-        variant, typ = extract_variant_type(rest)
-        return (brand, variant, typ)
-    else:
-        variant, typ = extract_variant_type(name)
-        return (None, variant, typ)
-
-def extract_variant_type(name: str) -> Tuple[str, Optional[str]]:
-    type_patterns = [r'\b(eau de parfum|eau de toilette|eau de cologne|eau fraîche)\b', r'\b(extrait de parfum|extrait)\b', r'\b(edp|edt|edc|edf)\b', r'\b(parfum|perfume)\b', r'\b(intense|extreme|absolu|elixir)\b']
-    typ = None
-    variant = name
-    for pattern in type_patterns:
-        match = re.search(pattern, name, re.IGNORECASE)
-        if match:
-            typ = match.group(1).strip()
-            variant = re.sub(pattern, '', name, flags=re.IGNORECASE).strip()
-            break
-    variant = re.sub(r'[\-–—]+\s*$', '', variant).strip()
-    return (variant, typ)
 
 def normalize_name(name: str) -> str:
+    """
+    Normalizza il nome del prodotto per il raggruppamento.
+    MANTIENE le informazioni che distinguono le varianti.
+    """
     if not name:
         return ""
-    n = name.lower()
-    n = re.sub(r'[\u00ae\u00a9\u2122\u2014\u2013\u2010\u2011]', '', n)
-    n = unicodedata.normalize('NFKD', n)
-    n = re.sub(r'[\u0300-\u036f]', '', n)
-    n = re.sub(r"\bl['\u2019]?eau\b", 'eau', n)
-    stopwords = ['eau de parfum', 'eau de toilette', 'eau de cologne', 'eau fraîche', 'edp', 'edt', 'edc', 'edf', 'parfum', 'perfume', 'perfum', 'extrait de parfum', 'extrait', 'for women', 'for men', 'for her', 'for him', 'pour homme', 'pour femme', 'intense', 'extreme', 'absolu', 'absolue', 'elixir']
-    for sw in stopwords:
-        n = n.replace(sw, '')
-    for word, num in NUMBER_WORDS.items():
-        n = re.sub(r'\b' + word + r'\b', num, n)
-    n = re.sub(r'(\d)\s+([a-z])', r'\1\2', n)
-    n = re.sub(r'([a-z])\s+(\d)', r'\1\2', n)
-    n = re.sub(r'\s+', ' ', n).strip()
-    n = re.sub(r"[^\w\s]", '', n)
-    return n
+    
+    # Lowercase
+    result = name.lower().strip()
+    
+    # Rimuove punteggiatura extra (ma mantiene trattini e slash)
+    result = re.sub(r'[^\w\s\/-]', ' ', result)
+    
+    # Rimuove solo parole generiche che NON distinguono prodotti
+    # NON rimuoviamo: for him, for her, pour homme, pour femme, limited, edition, extrait
+    generic_words = [
+        'eau', 'de', 'parfum', 'perfume', 'spray', 'edp', 'edt', 'edc',
+        'ml', 'milliliters', 'millilitre', 'ounces', 'oz', 'fl',
+        'the', 'a', 'an', 'and', 'or', 'but', 'in', 'on', 'at', 'to', 'for',
+        'with', 'by', 'from', 'as', 'is', 'was', 'are', 'were', 'been', 'be',
+        'have', 'has', 'had', 'do', 'does', 'did', 'will', 'would', 'could', 'should', 'may', 'might', 'must', 'shall', 'can', 'need', 'dare', 'ought', 'used', 'going'
+    ]
+    
+    words = result.split()
+    filtered_words = [w for w in words if w not in generic_words]
+    result = ' '.join(filtered_words)
+    
+    # Pulizia spazi extra
+    result = re.sub(r'\s+', ' ', result).strip()
+    
+    return result
 
-def group_results_by_normalized_name(results: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
-    grouped = {}
-    for result in results:
-        name = result.get('name', '')
+
+def group_products(products: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    """
+    Raggruppa prodotti con lo stesso nome normalizzato.
+    NON modifica brand, variant, concentration, gender, format.
+    Quella logica rimane in main.py.
+    """
+    if not products:
+        return []
+    
+    # Raggruppa per nome normalizzato
+    groups: Dict[str, List[Dict[str, Any]]] = {}
+    
+    for product in products:
+        name = product.get('name', '')
         normalized = normalize_name(name)
-        if not normalized:
+        
+        if normalized not in groups:
+            groups[normalized] = []
+        
+        groups[normalized].append(product)
+    
+    # Per ogni gruppo, crea un risultato con tutti i prezzi
+    results = []
+    
+    for normalized, group in groups.items():
+        if not group:
             continue
-        brand, variant, typ = extract_brand_variant_type(name)
-        key = normalized
-        if key not in grouped:
-            grouped[key] = {'brand': brand, 'variant': variant, 'type': typ, 'name': name, 'normalized_name': normalized, 'offers': [result]}
-        else:
-            grouped[key]['offers'].append(result)
-            if brand is None and grouped[key]['brand'] is not None:
-                brand = grouped[key]['brand']
-            if len(name) < len(grouped[key]['name']):
-                grouped[key]['name'] = name
-                grouped[key]['brand'] = brand
-                grouped[key]['variant'] = variant
-                grouped[key]['type'] = typ
-    grouped_list = list(grouped.values())
-    grouped_list.sort(key=lambda x: len(x['offers']), reverse=True)
-    return grouped_list
-
-def deduplicate_offers(offers: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
-    seen = set()
-    deduped = []
-    for offer in offers:
-        key = (offer.get('store', ''), offer.get('url', ''))
-        if key not in seen:
-            seen.add(key)
-            deduped.append(offer)
-    return deduped
-
-def normalize_and_group(results: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
-    grouped = group_results_by_normalized_name(results)
-    for product in grouped:
-        product['offers'] = deduplicate_offers(product['offers'])
-    return grouped
+        
+        # Prendi il primo prodotto come base
+        base_product = group[0].copy()
+        
+        # Raccogli tutti i prezzi da tutti i prodotti nel gruppo
+        all_prices = []
+        for product in group:
+            price = product.get('price')
+            shop = product.get('shop')
+            link = product.get('link')
+            shipping = product.get('shipping')
+            
+            if price is not None:
+                all_prices.append({
+                    'price': price,
+                    'shop': shop,
+                    'link': link,
+                    'shipping': shipping
+                })
+        
+        # Ordina per prezzo
+        all_prices.sort(key=lambda x: x['price'] if x['price'] is not None else float('inf'))
+        
+        # Crea il risultato
+        result = {
+            'name': base_product.get('name', ''),
+            'brand': base_product.get('brand', ''),
+            'variant': base_product.get('variant', ''),
+            'concentration': base_product.get('concentration', ''),
+            'gender': base_product.get('gender', ''),
+            'format': base_product.get('format', ''),
+            'prices': all_prices,
+            'min_price': min((p['price'] for p in all_prices if p['price'] is not None), default=None)
+        }
+        
+        results.append(result)
+    
+    return results
