@@ -14,9 +14,11 @@ Design rules:
 from __future__ import annotations
 
 import hashlib
+import json
 import re
 import unicodedata
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Any, Dict, Iterable, List, Optional, Sequence, Set, Tuple
 
 
@@ -337,7 +339,39 @@ class ProductMatcher:
         "available",
     )
 
-    def __init__(self, catalog: Iterable[Dict[str, Any] | CatalogProduct]):
+    def __init__(
+        self,
+        catalog: Iterable[Dict[str, Any] | CatalogProduct],
+        family_registry: Optional[Dict[str, Any] | Iterable[Dict[str, Any]]] = None,
+    ):
+        self.family_registry = self._normalize_family_registry(
+            family_registry
+        )
+        self._family_brand_by_id: Dict[str, str] = {
+            normalize(family.get("family_id")): str(
+                family.get("brand") or ""
+            ).strip()
+            for family in self.family_registry
+            if normalize(family.get("family_id"))
+            and str(family.get("brand") or "").strip()
+        }
+        self._family_variant_by_alias: Dict[str, List[Dict[str, Any]]] = {}
+        for family in self.family_registry:
+            for variant in family.get("variants", []):
+                for alias in variant.get("normalized_aliases", ()):
+                    if alias:
+                        self._family_variant_by_alias.setdefault(
+                            alias, []
+                        ).append(
+                            {
+                                "family_id": family.get("family_id", ""),
+                                "brand": family.get("brand", ""),
+                                "canonical_name": variant.get(
+                                    "canonical_name", ""
+                                ),
+                            }
+                        )
+
         self.catalog = [
             item if isinstance(item, CatalogProduct)
             else CatalogProduct.from_dict(item)
@@ -365,10 +399,15 @@ class ProductMatcher:
             for value in product.mpns:
                 self._by_mpn.setdefault(value, []).append(product)
 
-            if product.brand:
-                brand_n = product.normalized_brand
+            canonical_product_brand = self._canonical_brand_for_product(
+                product
+            )
+            if canonical_product_brand:
+                brand_n = normalize(canonical_product_brand)
                 self._catalog_brands.add(brand_n)
-                self._brand_display_by_normalized[brand_n] = product.brand
+                self._brand_display_by_normalized[brand_n] = (
+                    canonical_product_brand
+                )
 
             cleaned_names: Set[str] = set()
             for value in (
@@ -377,7 +416,10 @@ class ProductMatcher:
                 product.family_name,
                 *product.aliases,
             ):
-                cleaned = self._clean_identity_name(product.brand, value)
+                cleaned = self._clean_identity_name(
+                    canonical_product_brand,
+                    value,
+                )
                 if not cleaned:
                     continue
                 cleaned_names.add(cleaned)
@@ -390,10 +432,350 @@ class ProductMatcher:
                 tokens = cleaned.split()
                 for end in range(1, len(tokens) + 1):
                     prefix = " ".join(tokens[:end])
-                    if product.brand:
+                    if canonical_product_brand:
                         self._brand_by_prefix.setdefault(prefix, set()).add(
-                            product.normalized_brand
+                            normalize(canonical_product_brand)
                         )
+
+    @staticmethod
+    def _normalize_family_registry(
+        registry: Optional[
+            Dict[str, Any] | Iterable[Dict[str, Any]]
+        ],
+    ) -> List[Dict[str, Any]]:
+        if registry is None:
+            path = Path(__file__).resolve().with_name(
+                "family_registry.json"
+            )
+            try:
+                if path.exists():
+                    registry = json.loads(
+                        path.read_text(encoding="utf-8")
+                    )
+            except Exception:
+                registry = None
+
+        if isinstance(registry, dict):
+            families = registry.get("families") or []
+        else:
+            families = list(registry or [])
+
+        output: List[Dict[str, Any]] = []
+        for family in families:
+            if not isinstance(family, dict):
+                continue
+
+            family_id = str(
+                family.get("family_id") or ""
+            ).strip()
+            brand = str(
+                family.get("brand") or ""
+            ).strip()
+            query_aliases = family.get("query_aliases") or family.get(
+                "search_aliases"
+            ) or []
+            if isinstance(query_aliases, str):
+                query_aliases = [query_aliases]
+
+            raw_products = (
+                family.get("products")
+                or family.get("allowed_variants")
+                or family.get("variants")
+                or []
+            )
+            if not isinstance(raw_products, list):
+                continue
+
+            variants: List[Dict[str, Any]] = []
+            for variant in raw_products:
+                if not isinstance(variant, dict):
+                    continue
+
+                canonical = str(
+                    variant.get("canonical_name")
+                    or variant.get("name")
+                    or ""
+                ).strip()
+                if not canonical:
+                    continue
+
+                aliases = variant.get("aliases") or []
+                if isinstance(aliases, str):
+                    aliases = [aliases]
+
+                values: List[str] = []
+                for value in [canonical, *aliases]:
+                    value = str(value or "").strip()
+                    if value and value not in values:
+                        values.append(value)
+
+                variants.append(
+                    {
+                        "canonical_name": canonical,
+                        "normalized_aliases": tuple(
+                            normalize(value)
+                            for value in values
+                            if normalize(value)
+                        ),
+                    }
+                )
+
+            if family_id and variants:
+                output.append(
+                    {
+                        "family_id": family_id,
+                        "brand": brand,
+                        "query_aliases": tuple(
+                            normalize(value)
+                            for value in query_aliases
+                            if normalize(value)
+                        ),
+                        "variants": variants,
+                    }
+                )
+
+        return output
+
+    def _canonical_brand_for_product(
+        self,
+        product: CatalogProduct,
+    ) -> str:
+        if product.brand:
+            return product.brand
+
+        family_brand = self._family_brand_by_id.get(
+            normalize(product.family_id),
+            "",
+        )
+        return family_brand
+
+    @staticmethod
+    def _family_brand_matches(
+        offer_brand: str,
+        family_brand: str,
+    ) -> bool:
+        if not offer_brand or not family_brand:
+            return True
+        return normalize(offer_brand) == normalize(family_brand)
+
+    @staticmethod
+    def _clean_family_candidate(
+        value: Any,
+        brand: str = "",
+    ) -> str:
+        text = normalize(value)
+        if not text:
+            return ""
+
+        for token in normalize(brand).split():
+            text = re.sub(
+                rf"\b{re.escape(token)}\b",
+                " ",
+                text,
+            )
+
+        text = re.sub(
+            r"\b\d{1,4}(?:[.,]\d+)?\s*"
+            r"(?:ml|cl|l|oz|fl\s*oz)\b",
+            " ",
+            text,
+        )
+
+        text = re.sub(
+            r"\b(?:eau de parfum|eau de toilette|"
+            r"eau de cologne|eau fraiche|extrait de parfum|"
+            r"extrait|parfum|edp|edt|edc|spray|vaporisateur)\b",
+            " ",
+            text,
+        )
+
+        text = re.sub(
+            r"\s+",
+            " ",
+            text,
+        ).strip()
+
+        return text
+
+    def _family_variant_for_offer(
+        self,
+        offer: Dict[str, Any],
+    ) -> Optional[Dict[str, Any]]:
+        raw_name = self._offer_name(offer)
+        if not raw_name:
+            return None
+
+        offer_brand = self._offer_brand(offer)
+
+        # Exact alias matching is the authoritative family route.
+        candidate = normalize(raw_name)
+        matches: List[Dict[str, Any]] = []
+
+        for family in self.family_registry:
+            family_brand = str(
+                family.get("brand") or ""
+            ).strip()
+
+            if not self._family_brand_matches(
+                offer_brand,
+                family_brand,
+            ):
+                continue
+
+            family_aliases = family.get("query_aliases", ())
+            family_anchor = (
+                bool(offer_brand and family_brand)
+                and normalize(offer_brand) == normalize(family_brand)
+            ) or any(
+                alias and (
+                    candidate == alias
+                    or f" {alias} " in f" {candidate} "
+                )
+                for alias in family_aliases
+            )
+            if not family_anchor:
+                continue
+
+            for variant in family.get("variants", []):
+                for alias in variant.get("normalized_aliases", ()):
+                    if candidate == alias:
+                        matches.append(
+                            {
+                                "family_id": family.get("family_id", ""),
+                                "brand": family_brand,
+                                "canonical_name": variant.get(
+                                    "canonical_name", ""
+                                ),
+                            }
+                        )
+
+        if len(matches) == 1:
+            return matches[0]
+
+        # Retailer titles commonly add size/concentration/commercial
+        # descriptors around an exact family alias. Strip only those generic
+        # descriptors and retry; never strip variant/audience words here.
+        cleaned = self._clean_family_candidate(
+            raw_name,
+            "",
+        )
+        if not cleaned:
+            return None
+
+        for family in self.family_registry:
+            family_brand = str(
+                family.get("brand") or ""
+            ).strip()
+
+            if not self._family_brand_matches(
+                offer_brand,
+                family_brand,
+            ):
+                continue
+
+            family_aliases = family.get("query_aliases", ())
+            family_anchor = (
+                bool(offer_brand and family_brand)
+                and normalize(offer_brand) == normalize(family_brand)
+            ) or any(
+                alias and (
+                    alias in f" {cleaned} "
+                    or alias in f" {normalize(raw_name)} "
+                )
+                for alias in family_aliases
+            )
+            if not family_anchor:
+                continue
+
+            for variant in family.get("variants", []):
+                family_cleaned = self._clean_family_candidate(
+                    raw_name,
+                    family_brand,
+                )
+                for alias in variant.get("normalized_aliases", ()):
+                    if family_cleaned == alias or cleaned == alias:
+                        matches.append(
+                            {
+                                "family_id": family.get("family_id", ""),
+                                "brand": family_brand,
+                                "canonical_name": variant.get(
+                                    "canonical_name", ""
+                                ),
+                            }
+                        )
+
+        unique = {
+            (
+                normalize(item.get("family_id")),
+                normalize(item.get("canonical_name")),
+            ): item
+            for item in matches
+        }
+        return next(iter(unique.values())) if len(unique) == 1 else None
+
+    def _match_family_registry(
+        self,
+        offer: Dict[str, Any],
+    ) -> Optional[Dict[str, Any]]:
+        variant = self._family_variant_for_offer(offer)
+        if variant is None:
+            return None
+
+        family_id = str(
+            variant.get("family_id") or ""
+        ).strip()
+        canonical_name = str(
+            variant.get("canonical_name") or ""
+        ).strip()
+        canonical_brand = str(
+            variant.get("brand") or ""
+        ).strip()
+
+        if not canonical_name:
+            return None
+
+        # Prefer an existing catalog identity for the family+variant.
+        catalog_id = ""
+        family_name = ""
+        for product in self.catalog:
+            if normalize(product.family_id) != normalize(family_id):
+                continue
+            product_name = product.catalog_variant or product.name
+            if normalize(product_name) == normalize(canonical_name):
+                catalog_id = product.catalog_id
+                family_name = product.family_name
+                if not canonical_brand:
+                    canonical_brand = self._canonical_brand_for_product(
+                        product
+                    )
+                break
+
+        if not catalog_id:
+            catalog_id = stable_auto_id(
+                canonical_brand,
+                f"{family_id}::{canonical_name}",
+            )
+
+        result = dict(offer)
+        result["catalog_id"] = catalog_id
+        result["product_identity"] = catalog_id
+        result["brand"] = canonical_brand
+        result["canonical_brand"] = canonical_brand
+        result["canonical_name"] = canonical_name
+        result["catalog_variant"] = canonical_name
+        result["family_id"] = family_id
+        result["family_name"] = family_name or canonical_name
+        result["canonical_concentration"] = (
+            str(result.get("concentration") or "").strip()
+            or extract_concentration(self._offer_name(offer))
+        )
+        result["gender"] = (
+            gender_from_offer(offer)
+            or ""
+        )
+        result["match_method"] = "family_registry_alias"
+        result["match_score"] = 1.0
+        return result
 
     def _offer_brand(self, offer: Dict[str, Any]) -> str:
         value = first_value(offer, self.BRAND_KEYS)
@@ -413,9 +795,15 @@ class ProductMatcher:
             )
         return value
 
-    @staticmethod
-    def _brand_matches(brand: str, product: CatalogProduct) -> bool:
-        return not brand or brand == product.normalized_brand
+    def _brand_matches(
+        self,
+        brand: str,
+        product: CatalogProduct,
+    ) -> bool:
+        canonical_brand = normalize(
+            self._canonical_brand_for_product(product)
+        )
+        return not brand or brand == canonical_brand
 
     def _catalog_brand_hint(
         self,
@@ -431,8 +819,8 @@ class ProductMatcher:
             return ""
 
         # First try each catalog brand only when the title contains that brand
-        # explicitly. This handles titles such as "French Avenue - Liquid Brun"
-        # without scanning every catalog product.
+        # explicitly. This handles retailer titles where the brand is a
+        # known catalog brand followed by the product name.
         raw_normalized = normalize(raw_name)
         for brand_n, brand_display in self._brand_display_by_normalized.items():
             brand_tokens = brand_n.split()
@@ -446,8 +834,8 @@ class ProductMatcher:
         # Then use the normalized title itself. The important part here is
         # that brand recovery must work from a *known catalog prefix*, not
         # only from a complete catalog product name. Retailers often publish
-        # valid variants that are not present in the catalog yet (for example
-        # "Hawas Atlantis" when the catalog only knows other Hawas variants).
+        # valid variants that are not present in the catalog yet. The shared
+        # family/brand prefix remains safe evidence only when unique.
         # In that case the shared family/brand prefix is still safe evidence
         # when it maps to one unique brand.
         cleaned = self._clean_identity_name("", raw_name)
@@ -727,17 +1115,17 @@ class ProductMatcher:
         # Brand, variante, concentrazione e genere sono campi distinti.
         # Il genere non deve mai restare duplicato dentro il nome della
         # variante: viene visualizzato una sola volta dopo la concentrazione.
-        clean_name = cls._clean_identity_display(brand, name)
-        clean_name = re.sub(
-            r"\b(?:for\s+(?:him|her|men|women)|"
-            r"pour\s+(?:homme|femme|hommes|femmes)|"
-            r"voor\s+(?:mannen|dames|vrouwen)|"
-            r"homme|uomo|men|man|femme|donna|women|woman|"
-            r"male|female|heren|mannen|dames|vrouwen|unisex|mixte|unisexe)\b",
-            " ",
-            clean_name,
-            flags=re.I,
-        )
+        # The canonical variant name is authoritative.  In particular,
+        # audience words such as "For Him" / "For Her" may be part of the
+        # actual variant identity and must never be stripped at display time.
+        clean_name = str(name or "").strip()
+        for token in normalize(brand).split():
+            clean_name = re.sub(
+                rf"\b{re.escape(token)}\b",
+                " ",
+                clean_name,
+                flags=re.I,
+            )
         clean_name = re.sub(r"\(\s*\)", " ", clean_name)
         clean_name = re.sub(r"\s+", " ", clean_name).strip(" -:|/")
 
@@ -773,10 +1161,28 @@ class ProductMatcher:
         else:
             product, method = self._identifier_match(offer)
             if product is None:
+                family_result = self._match_family_registry(offer)
+                if family_result is not None:
+                    result.update(family_result)
+                    result["result_category"] = (
+                        "set" if is_set else "perfume"
+                    )
+                    result["canonical_display_name"] = (
+                        self._canonical_display_title(
+                            result.get("canonical_brand", ""),
+                            result.get("canonical_name", ""),
+                            result.get("canonical_concentration")
+                            or result.get("concentration", ""),
+                            "",
+                        )
+                    )
+                    return result
                 product, method = self._exact_catalog_match(offer)
 
         if product is not None:
-            canonical_brand = product.brand
+            canonical_brand = self._canonical_brand_for_product(
+                product
+            )
             canonical_name = self._clean_identity_display(
                 canonical_brand,
                 product.catalog_variant or product.name,
@@ -884,7 +1290,7 @@ class ProductMatcher:
             result.get("canonical_name", ""),
             result.get("canonical_concentration")
             or result.get("concentration", ""),
-            result.get("gender") or gender_from_offer(offer),
+            "",
         )
 
         return result
