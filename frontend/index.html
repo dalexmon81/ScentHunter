@@ -943,8 +943,9 @@ function shGroupData(data){
   });
   (Array.isArray(data.results)?data.results:[]).forEach(o=>raw.push({
     ...o,
-    canonical_name:o.canonical_name||o.catalog_variant||"",
-    family_id:id.family_id||"",
+    canonical_name:o.canonical_name||o.catalog_variant||o.canonicalName||"",
+    family_id:o.family_id||o.familyId||o._catalog_family_id||"",
+    catalog_variant:o.catalog_variant||o._catalog_canonical_name||o.canonical_name||o.canonicalName||"",
     _source_priority:2,
     _price_source_priority:offerPriceSourcePriority(o)
   }));
