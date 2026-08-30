@@ -372,6 +372,20 @@ def _catalog_match_variant(
         r"\bedc\b",
         r"\bspray\b",
         r"\bvapo(?:rizer)?\b",
+
+        # Marcatori commerciali di genere. Sono rumore editoriale quando
+        # compaiono tra parentesi e non identificano una variante del catalogo.
+        # La lista è volutamente generica e non contiene brand/prodotti/store.
+        r"\(\s*(?:man|men|woman|women|male|female|unisex|"
+        r"for\s+men|for\s+women|pour\s+homme|pour\s+femme|"
+        r"homme|femme|uomo|donna|herr|herren|damen|dam)\s*\)",
+
+        # "For Men/For Women" è un'etichetta commerciale generica.
+        # "For Him/For Her" viene rimosso solo se seguito da altro testo:
+        # così un vero nome come "Hawas for Him" resta identificabile.
+        r"\b(?:man|men|woman|women|male|female|unisex|homme|femme|uomo|donna|herr|herren|damen|dam)\b",
+        r"\bfor\s+(?:men|women|male|female)\b",
+        r"\bfor\s+(?:him|her)\b(?=\s+\S)",
     )
 
     def strip_technical(value: str) -> str:
@@ -3503,10 +3517,3 @@ def diagnostic_http_trace(
                 requests.request = original_requests_request
         finally:
             _DIAGNOSTIC_HTTP_LOCK.release()
-
-# ============================================================
-# CANDIDATE-LEVEL DIAGNOSTIC ENDPOINT
-# ============================================================
-# Loaded explicitly so Railway/Uvicorn registers the diagnostic route.
-# This module does not alter the normal search pipeline.
-import diagnostic_pipeline_endpoint  # noqa: E402,F401
