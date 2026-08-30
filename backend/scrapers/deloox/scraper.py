@@ -8,7 +8,6 @@ Discovery strategy:
 from __future__ import annotations
 
 import json
-import logging
 import re
 from urllib.parse import quote_plus, urljoin, urlparse
 
@@ -17,33 +16,12 @@ from bs4 import BeautifulSoup
 
 STORE = "Deloox"
 BASE_URL = "https://www.deloox.be"
-TIMEOUT = 4
+TIMEOUT = 3
+MAX_PRODUCT_FETCHES = 4
 HEADERS = {
     "User-Agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 Version/17.0 Mobile/15E148 Safari/604.1",
     "Accept-Language": "en-GB,en;q=0.9",
 }
-
-
-log = logging.getLogger(__name__)
-DIAG_PREFIX = "DELOOX_DIAGNOSTIC"
-
-def _diag(message):
-    log.warning("%s: %s", DIAG_PREFIX, message)
-
-def _diag_response(label, response):
-    final_url = clean(getattr(response, "url", ""))
-    status = getattr(response, "status_code", "?")
-    headers = getattr(response, "headers", {}) or {}
-    ctype = clean(headers.get("content-type", ""))
-    body = getattr(response, "text", "") or ""
-    _diag(
-        f"{label} status={status} final_url={final_url!r} "
-        f"content_type={ctype!r} bytes={len(body)}"
-    )
-
-def _diag_exception(label, exc):
-    _diag(f"{label} exception={type(exc).__name__}: {exc}")
-
 
 
 def clean(v):
@@ -223,11 +201,7 @@ def _product(url, html, query):
         clean(h1.get_text(" ", strip=True)) if h1 else ""
     )
 
-    if not name:
-        _diag(f"product_rejected reason=missing_name url={url!r}")
-        return None
-    if not matches(name, query):
-        _diag(f"product_rejected reason=name_mismatch name={name!r} query={query!r} url={url!r}")
+    if not name or not matches(name, query):
         return None
 
     # Deloox product pages expose the product line separately.  Keep it
@@ -392,10 +366,12 @@ def _candidate_product_urls(
             return
 
         # During search discovery we want candidate URLs, not final matches.
+        # Require at least one generic query token in the link context so the
+        # candidate pool remains bounded, but do not require every token.
         # _product() performs the authoritative product-name validation later.
         if not accept_all_products:
             haystack = f"{context} {url}"
-            if not matches(haystack, query):
+            if not (tokens(query) & tokens(haystack)):
                 return
 
         seen.add(url)
@@ -514,16 +490,21 @@ def _category_page_variants(category_url, max_pages=8):
     ]
 
 
-def _discover_from_categories(session, query, max_urls=80):
+def _discover_from_categories(session, query, max_urls=80, max_category_requests=6):
     urls = []
+    target_urls = min(max_urls, 2)
     seen = set()
     seen_category_pages = set()
+    category_requests = 0
 
     for category_url in _category_pages(session):
         for category_page_url in _category_page_variants(
             category_url,
             max_pages=8,
         ):
+            if category_requests >= max_category_requests:
+                return urls[:max_urls]
+            category_requests += 1
             if category_page_url in seen_category_pages:
                 continue
             seen_category_pages.add(category_page_url)
@@ -534,9 +515,7 @@ def _discover_from_categories(session, query, max_urls=80):
                     headers=HEADERS,
                     timeout=TIMEOUT,
                 )
-                _diag_response("_discover_from_categories request url={(category_page_url)!r}" , r)
-            except requests.RequestException as exc:
-                _diag_exception("request", exc)
+            except requests.RequestException:
                 continue
 
             if r.status_code >= 400:
@@ -568,8 +547,7 @@ def _discover_from_categories(session, query, max_urls=80):
                             headers=HEADERS,
                             timeout=TIMEOUT,
                         )
-                    except requests.RequestException as exc:
-                        _diag_exception("request", exc)
+                    except requests.RequestException:
                         continue
 
                     if page.status_code >= 400:
@@ -587,7 +565,7 @@ def _discover_from_categories(session, query, max_urls=80):
                     seen.add(product_url)
                     urls.append(product_url)
 
-                    if len(urls) >= max_urls:
+                    if len(urls) >= target_urls:
                         return urls[:max_urls]
 
     return urls[:max_urls]
@@ -614,8 +592,7 @@ def _sitemap_category_urls(session, query, max_sitemaps=12, max_urls=30):
     def fetch_xml(url):
         try:
             r = session.get(url, headers=HEADERS, timeout=TIMEOUT)
-        except requests.RequestException as exc:
-            _diag_exception("request", exc)
+        except requests.RequestException:
             return None
         if r.status_code >= 400:
             return None
@@ -664,6 +641,12 @@ def _sitemap_category_urls(session, query, max_sitemaps=12, max_urls=30):
 
 
 def _sitemap_product_urls(session, query, max_sitemaps=12, max_urls=80):
+    """Discover relevant Deloox product URLs from sitemaps.
+
+    Sitemap discovery is candidate-oriented but still relevance-aware. It
+    ranks URLs by generic overlap with the query instead of requiring every
+    query token to be present. The actual product page remains authoritative.
+    """
     query_tokens = tokens(query)
     if not query_tokens:
         return []
@@ -677,14 +660,13 @@ def _sitemap_product_urls(session, query, max_sitemaps=12, max_urls=80):
 
     pending = list(sitemap_roots)
     seen_sitemaps = set()
-    product_urls = []
-    seen_products = set()
+    scored = {}
+    order = 0
 
     def fetch_xml(url):
         try:
             r = session.get(url, headers=HEADERS, timeout=TIMEOUT)
-        except requests.RequestException as exc:
-            _diag_exception("request", exc)
+        except requests.RequestException:
             return None
         if r.status_code >= 400:
             return None
@@ -697,10 +679,26 @@ def _sitemap_product_urls(session, query, max_sitemaps=12, max_urls=80):
             return None
         return r.text
 
+    def score_url(value):
+        low = value.lower()
+        if "/produit/" not in low and "/product/" not in low:
+            return None
+
+        url_tokens = tokens(value)
+        overlap = len(query_tokens & url_tokens)
+        if overlap == 0:
+            return None
+
+        # Generic ranking only. No product/brand-specific knowledge.
+        normalized_url = norm(value)
+        normalized_query = norm(query)
+        phrase_bonus = 3 if normalized_query and normalized_query in normalized_url else 0
+        coverage = overlap / max(1, len(query_tokens))
+        return (phrase_bonus, overlap, coverage)
+
     while (
         pending
         and len(seen_sitemaps) < max_sitemaps
-        and len(product_urls) < max_urls
     ):
         sitemap_url = pending.pop(0)
         if sitemap_url in seen_sitemaps:
@@ -721,127 +719,138 @@ def _sitemap_product_urls(session, query, max_sitemaps=12, max_urls=80):
             low = value.lower()
 
             if "/produit/" in low or "/product/" in low:
-                if query_tokens.issubset(tokens(value)):
-                    if value not in seen_products:
-                        seen_products.add(value)
-                        product_urls.append(value)
-                        if len(product_urls) >= max_urls:
-                            break
+                score = score_url(value)
+                if score is not None:
+                    if value not in scored:
+                        scored[value] = (score, order)
+                        order += 1
             elif low.endswith(".xml") or "sitemap" in low:
                 if value not in seen_sitemaps:
                     pending.append(value)
 
-    return product_urls
+    ranked = sorted(
+        scored.items(),
+        key=lambda item: (
+            item[1][0][0],
+            item[1][0][1],
+            item[1][0][2],
+            -item[1][1],
+        ),
+        reverse=True,
+    )
 
+    return [url for url, _meta in ranked[:max_urls]]
 
 def _discover(session, q):
     """Generic Deloox discovery for the current .be site.
 
-    Discovery is based on Deloox's current public URL structure:
-    - product pages under /produit/
-    - category pages under /categorie/
-    - sitemap discovery as the primary product-index source
-    - category crawling only as a bounded fallback
+    Discovery combines several generic sources and deduplicates them:
+    - Deloox search endpoints, when available;
+    - category/Product-line pages;
+    - product sitemaps.
 
-    No perfume, brand, SKU, product URL, or product-specific exception is
-    embedded here. Final validation is always performed by _product().
+    Sources are candidates only. Final product identity is validated by
+    _product(), so no perfume, brand, SKU, or URL-specific exception exists.
     """
-    urls = []
-    _diag(f"discover_start query={q!r}")
+    candidates = []
     seen = set()
 
     def add(url):
-        if url and url not in seen and len(urls) < 24:
+        if url and url not in seen and len(candidates) < 80:
             seen.add(url)
-            urls.append(url)
+            candidates.append(url)
 
-    # 1. PRIMARY: current Deloox product sitemap(s).
-    # This avoids relying on undocumented/changed search endpoints.
-    for product_url in _sitemap_product_urls(
-        session,
-        q,
-        max_sitemaps=8,
-        max_urls=24,
+    # 1. SEARCH ENDPOINTS: query-specific source, so use it first.
+    for endpoint in (
+        BASE_URL + "/en/search?query=" + quote_plus(q),
+        BASE_URL + "/en/search?search=" + quote_plus(q),
+        BASE_URL + "/en/search?q=" + quote_plus(q),
     ):
-        add(product_url)
-        if len(urls) >= 24:
-            _diag(f"discover_return candidates={len(urls)} query={q!r}")
-            return urls[:24]
+        try:
+            r = session.get(
+                endpoint,
+                headers=HEADERS,
+                timeout=TIMEOUT,
+            )
+        except requests.RequestException:
+            continue
 
-    # 2. SECONDARY: current Deloox perfume category pages.
-    for url in _discover_from_categories(
-        session,
-        q,
-        max_urls=24,
-    ):
-        add(url)
-        if len(urls) >= 24:
-            _diag(f"discover_return candidates={len(urls)} query={q!r}")
-            return urls[:24]
+        if r.status_code >= 400:
+            continue
 
-    _diag(f"discover_return candidates={len(urls)} query={q!r}")
-    return urls[:24]
+        for product_url in _candidate_product_urls(
+            r.text,
+            q,
+            accept_all_products=True,
+        ):
+            add(product_url)
+            if len(candidates) >= 80:
+                break
 
+        if len(candidates) >= 80:
+            break
+
+    # 2. CATEGORY PAGES.
+    # Keep the fallback bounded: Deloox can expose a broad category with many
+    # paginated pages, and walking all of them can consume the whole request
+    # budget when the site's search endpoints are blocked. Product-line links
+    # discovered on the first category page are still followed normally.
+    if len(candidates) < 80:
+        for url in _discover_from_categories(
+            session,
+            q,
+            max_urls=40,
+            max_category_requests=6,
+        ):
+            add(url)
+            if len(candidates) >= 80:
+                break
+
+    # 3. SITEMAPS, ranked by generic query relevance.
+    if len(candidates) < 80:
+        for url in _sitemap_product_urls(
+            session,
+            q,
+            max_sitemaps=8,
+            max_urls=40,
+        ):
+            add(url)
+            if len(candidates) >= 80:
+                break
+
+    return candidates[:80]
 
 
 def diagnose_search(session, query):
-    """Deep Deloox discovery diagnostic; does not change normal search."""
+    """Deep Deloox discovery diagnostic using the same generic discovery path.
+
+    The diagnostic intentionally mirrors normal ``search()`` discovery so that
+    its result cannot be misleading because of a separate, slower crawl.
+    It records candidate URLs, validates them through ``_product()``, and then
+    probes the generic search endpoints for HTTP status visibility.
+    """
     query = clean(query)
     report = {
         "query": query,
-        "category_endpoints": [],
-        "filter_urls": [],
+        "discovery_candidates": [],
         "candidate_urls": [],
         "validated_products": [],
-        "search_fallback": [],
+        "search_endpoints": [],
     }
     if not query:
         return report
 
-    seen_candidates = set()
-    for category_url in _category_pages():
-        entry = {"url": category_url, "status": None, "filter_urls": [], "candidate_urls": []}
-        try:
-            r = session.get(category_url, headers=HEADERS, timeout=TIMEOUT)
-            entry["status"] = r.status_code
-        except requests.RequestException as exc:
-            entry["error"] = str(exc)
-            report["category_endpoints"].append(entry)
-            continue
-        report["category_endpoints"].append(entry)
-        if r.status_code >= 400:
-            continue
-        filter_urls = _category_product_line_links(r.text, query)
-        entry["filter_urls"] = filter_urls[:20]
-        report["filter_urls"].extend(filter_urls)
-        pages = [(category_url, False)] + [(url, True) for url in filter_urls]
-        for page_url, filtered in pages:
-            try:
-                page = session.get(page_url, headers=HEADERS, timeout=TIMEOUT)
-            except requests.RequestException as exc:
-                _diag_exception("request", exc)
-                continue
-            if page.status_code >= 400:
-                continue
-            candidates = _candidate_product_urls(page.text, query, accept_all_products=filtered)
-            entry["candidate_urls"].extend(candidates[:40])
-            for url in candidates:
-                if url in seen_candidates:
-                    continue
-                seen_candidates.add(url)
-                report["candidate_urls"].append(url)
-                if len(report["candidate_urls"]) >= 80:
-                    break
-            if len(report["candidate_urls"]) >= 80:
-                break
-        if len(report["candidate_urls"]) >= 80:
-            break
+    # Run exactly the same discovery pipeline used by normal search().
+    discovered = _discover(session, query)
+    report["discovery_candidates"] = len(discovered)
+    report["candidate_urls"] = list(discovered[:40])
 
-    for url in report["candidate_urls"]:
+    # Validation is bounded to the same practical product-fetch limit used by
+    # search(), so the diagnostic cannot turn into an unbounded product crawl.
+    for url in discovered[:4]:
         try:
             r = session.get(url, headers=HEADERS, timeout=TIMEOUT)
         except requests.RequestException as exc:
-            _diag_exception("request", exc)
             continue
         if r.status_code >= 400:
             continue
@@ -849,6 +858,8 @@ def diagnose_search(session, query):
         if item:
             report["validated_products"].append(item)
 
+    # Probe the generic search endpoints last. This is diagnostic visibility
+    # only; a 4xx here must not force the crawler into an expensive loop.
     for endpoint in (
         BASE_URL + "/en/search?query=" + quote_plus(query),
         BASE_URL + "/en/search?search=" + quote_plus(query),
@@ -856,9 +867,16 @@ def diagnose_search(session, query):
     ):
         try:
             r = session.get(endpoint, headers=HEADERS, timeout=TIMEOUT)
-            report["search_fallback"].append({"url": endpoint, "status": r.status_code})
+            report["search_endpoints"].append({
+                "url": endpoint,
+                "status": r.status_code,
+            })
         except requests.RequestException as exc:
-            report["search_fallback"].append({"url": endpoint, "error": str(exc)})
+            report["search_endpoints"].append({
+                "url": endpoint,
+                "error": str(exc),
+            })
+
     return report
 
 def search(query):
@@ -871,11 +889,10 @@ def search(query):
     seen = set()
 
     try:
-        for url in _discover(session, query):
+        for url in _discover(session, query)[:MAX_PRODUCT_FETCHES]:
             try:
                 r = session.get(url, headers=HEADERS, timeout=TIMEOUT)
-            except requests.RequestException as exc:
-                _diag_exception("request", exc)
+            except requests.RequestException:
                 continue
 
             if r.status_code >= 400:
@@ -898,7 +915,6 @@ def search(query):
             seen.add(key)
             results.append(item)
 
-        _diag(f"search_final_results={len(results)}")
         return results
     finally:
         session.close()
