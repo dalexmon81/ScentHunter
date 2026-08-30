@@ -339,6 +339,7 @@ def _candidate_product_urls(
     found = []
     seen = set()
     discovery_query = clean(discovery_query or query)
+    accept_all_products = bool(accept_all_products)
 
     def add(raw_url, context=""):
         if not raw_url:
