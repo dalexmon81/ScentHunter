@@ -1497,35 +1497,57 @@ function shGroupData(data){
       id.key=(norm(id.brand)+"|"+norm(id.name)).replace(/\|+$/g,"");
     });
 
-    // Seconda passata: se un nome coincide con una famiglia già associata a
-    // un brand, ereditiamo quel brand. Non usiamo mai il nome di un prodotto
-    // specifico come eccezione.
-    const nameToBrand=new Map();
+    // Seconda passata: quando più offerte della STESSA identità espongono
+    // brand diversi, un brand noto e canonico ha precedenza su un valore
+    // retailer non riconosciuto. Questo recupera gli errori di etichettatura
+    // del campo brand senza introdurre eccezioni per singoli prodotti.
+    // Se per la stessa identità esistono più brand canonici diversi, non
+    // scegliamo arbitrariamente: l'ambiguità resta intatta.
+    const canonicalBrandByName=new Map();
     raw.forEach((o,i)=>{
       const id=identities[i];
-      if(!id.brand||!id.name)return;
+      if(!id.name)return;
+      const canonical=canonicalKnownBrand(id.brand);
+      if(!canonical)return;
       const n=norm(id.name);
-      const old=nameToBrand.get(n);
-      if(!old || norm(id.brand).length>norm(old).length)nameToBrand.set(n,id.brand);
+      if(!canonicalBrandByName.has(n))canonicalBrandByName.set(n,new Set());
+      canonicalBrandByName.get(n).add(canonical);
     });
 
     raw.forEach((o,i)=>{
       const id=identities[i];
-      if(!id.brand && !isNonPerfumeProduct({
+      if(!id.name || isNonPerfumeProduct({
         brand:id.brand,
         name:id.name,
         offers:[o]
-      })){
-        const inherited=nameToBrand.get(norm(id.name));
-        if(inherited){
-          id.brand=inherited;
-          id.name=catalogCanonicalName(o,inherited);
-          if(id.family_id&&id.catalog_variant){
-            id.key=("catalog|"+norm(id.family_id)+"|"+norm(id.catalog_variant)).replace(/\|+$/g,"");
-          }else{
-            id.key=norm(inherited)+"|"+norm(id.name);
-          }
+      }))return;
+
+      const canonicalBrands=canonicalBrandByName.get(norm(id.name));
+      const inherited=(canonicalBrands&&canonicalBrands.size===1)
+        ? [...canonicalBrands][0]
+        : "";
+
+      // Un valore non canonico (es. un product-line label usato come brand)
+      // viene sostituito solo quando la stessa identità ha una sola prova
+      // canonica del produttore. Un brand canonico già corretto non viene mai
+      // sovrascritto.
+      if(inherited && !canonicalKnownBrand(id.brand)){
+        id.brand=inherited;
+        id.name=catalogCanonicalName(o,inherited);
+      }else if(!id.brand){
+        const candidatesForName=brandHints
+          .filter(b=>matchesBrandAtEdge(id.name,b))
+          .sort((a,b)=>norm(b).length-norm(a).length);
+        if(candidatesForName.length){
+          id.brand=pretty(candidatesForName[0]);
+          id.name=catalogCanonicalName(o,id.brand);
         }
+      }
+
+      if(id.family_id&&id.catalog_variant){
+        id.key=("catalog|"+norm(id.family_id)+"|"+norm(id.catalog_variant)).replace(/\|+$/g,"");
+      }else{
+        id.key=(norm(id.brand)+"|"+norm(id.name)).replace(/\|+$/g,"");
       }
     });
   }
@@ -1823,9 +1845,23 @@ function shGroupData(data){
       if(canonicalKnownBrand(query) && nn.startsWith(qn+" "))candidates.push(query);
     });
 
-    if(!candidates.length)return "";
-    const best=candidates.sort((a,b)=>norm(a).length-norm(b).length)[0];
-    return pretty(best||query);
+    // Una query che coincide con un brand noto è una vera brand query.
+    // Una query che coincide solo con il nome di un prodotto non può invece
+    // trasformare quel nome nel brand della ricerca (es. un campo retailer
+    // che usa il product-line come brand).
+    const queryKnownBrand=canonicalKnownBrand(query);
+    if(queryKnownBrand)return queryKnownBrand;
+
+    // Se la query contiene un brand noto (es. "Brand Prodotto"), usiamo
+    // soltanto l'evidenza canonica presente tra i candidati.
+    const canonicalCandidates=[...new Set(
+      candidates
+        .map(value=>canonicalKnownBrand(value))
+        .filter(Boolean)
+    )];
+    if(canonicalCandidates.length===1)return canonicalCandidates[0];
+
+    return "";
   })();
 
   if(searchBrand){
