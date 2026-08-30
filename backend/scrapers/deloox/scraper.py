@@ -16,8 +16,11 @@ from bs4 import BeautifulSoup
 
 STORE = "Deloox"
 BASE_URL = "https://www.deloox.be"
-TIMEOUT = 3
-MAX_PRODUCT_FETCHES = 4
+TIMEOUT = 2
+MAX_PRODUCT_FETCHES = 2
+DISCOVERY_MAX_CATEGORY_REQUESTS = 3
+SEARCH_CACHE_TTL = 45.0
+_SEARCH_CACHE = {}
 HEADERS = {
     "User-Agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 Version/17.0 Mobile/15E148 Safari/604.1",
     "Accept-Language": "en-GB,en;q=0.9",
@@ -500,7 +503,7 @@ def _discover_from_categories(session, query, max_urls=80, max_category_requests
     for category_url in _category_pages(session):
         for category_page_url in _category_page_variants(
             category_url,
-            max_pages=8,
+            max_pages=3,
         ):
             if category_requests >= max_category_requests:
                 return urls[:max_urls]
@@ -742,36 +745,42 @@ def _sitemap_product_urls(session, query, max_sitemaps=12, max_urls=80):
     return [url for url, _meta in ranked[:max_urls]]
 
 def _discover(session, q):
-    """Generic Deloox discovery for the current .be site.
+    """Generic Deloox discovery with a bounded, reusable candidate cache.
 
-    Discovery combines several generic sources and deduplicates them:
-    - Deloox search endpoints, when available;
-    - category/Product-line pages;
-    - product sitemaps.
-
-    Sources are candidates only. Final product identity is validated by
-    _product(), so no perfume, brand, SKU, or URL-specific exception exists.
+    Search endpoints are tried first. If they do not expose product URLs,
+    discovery falls back to a small number of generic category pages and then
+    sitemaps. No product, brand, SKU, or URL-specific exception is used.
     """
+    q = clean(q)
+    cache_key = norm(q)
+    if not cache_key:
+        return []
+
+    # Main may call the same normalized query more than once. Reuse only
+    # recently discovered candidates so repeated orchestration attempts do not
+    # restart the expensive Deloox crawl.
+    import time
+    cached = _SEARCH_CACHE.get(cache_key)
+    now = time.monotonic()
+    if cached and now - cached[0] < SEARCH_CACHE_TTL:
+        return list(cached[1])
+
     candidates = []
     seen = set()
 
     def add(url):
-        if url and url not in seen and len(candidates) < 80:
+        if url and url not in seen and len(candidates) < 20:
             seen.add(url)
             candidates.append(url)
 
-    # 1. SEARCH ENDPOINTS: query-specific source, so use it first.
+    # 1. Query-specific search sources first.
     for endpoint in (
         BASE_URL + "/en/search?query=" + quote_plus(q),
         BASE_URL + "/en/search?search=" + quote_plus(q),
         BASE_URL + "/en/search?q=" + quote_plus(q),
     ):
         try:
-            r = session.get(
-                endpoint,
-                headers=HEADERS,
-                timeout=TIMEOUT,
-            )
+            r = session.get(endpoint, headers=HEADERS, timeout=TIMEOUT)
         except requests.RequestException:
             continue
 
@@ -784,41 +793,45 @@ def _discover(session, q):
             accept_all_products=True,
         ):
             add(product_url)
-            if len(candidates) >= 80:
+            if len(candidates) >= 20:
                 break
 
-        if len(candidates) >= 80:
+        if candidates:
             break
 
-    # 2. CATEGORY PAGES.
-    # Keep the fallback bounded: Deloox can expose a broad category with many
-    # paginated pages, and walking all of them can consume the whole request
-    # budget when the site's search endpoints are blocked. Product-line links
-    # discovered on the first category page are still followed normally.
-    if len(candidates) < 80:
+    # 2. Small generic category fallback.
+    if not candidates:
         for url in _discover_from_categories(
             session,
             q,
-            max_urls=40,
-            max_category_requests=6,
+            max_urls=8,
+            max_category_requests=DISCOVERY_MAX_CATEGORY_REQUESTS,
         ):
             add(url)
-            if len(candidates) >= 80:
+            if len(candidates) >= 20:
                 break
 
-    # 3. SITEMAPS, ranked by generic query relevance.
-    if len(candidates) < 80:
+    # 3. Sitemap fallback only if both query and category discovery failed.
+    # It is intentionally last because Deloox's sitemap endpoints can be
+    # unavailable and must never consume the whole store timeout.
+    if not candidates:
         for url in _sitemap_product_urls(
             session,
             q,
-            max_sitemaps=8,
-            max_urls=40,
+            max_sitemaps=2,
+            max_urls=8,
         ):
             add(url)
-            if len(candidates) >= 80:
+            if len(candidates) >= 20:
                 break
 
-    return candidates[:80]
+    _SEARCH_CACHE[cache_key] = (now, list(candidates))
+    if len(_SEARCH_CACHE) > 32:
+        oldest = sorted(_SEARCH_CACHE.items(), key=lambda item: item[1][0])[:8]
+        for key, _value in oldest:
+            _SEARCH_CACHE.pop(key, None)
+
+    return candidates
 
 
 def diagnose_search(session, query):
@@ -884,12 +897,20 @@ def search(query):
     if not query:
         return []
 
+    import time
+    cache_key = norm(query)
+    now = time.monotonic()
+    cached = _SEARCH_CACHE.get("__result__:" + cache_key)
+    if cached and now - cached[0] < SEARCH_CACHE_TTL:
+        return [dict(item) for item in cached[1]]
+
     session = requests.Session()
     results = []
     seen = set()
 
     try:
-        for url in _discover(session, query)[:MAX_PRODUCT_FETCHES]:
+        discovered = _discover(session, query)
+        for url in discovered[:MAX_PRODUCT_FETCHES]:
             try:
                 r = session.get(url, headers=HEADERS, timeout=TIMEOUT)
             except requests.RequestException:
@@ -908,13 +929,15 @@ def search(query):
                 sku_value = sku.get("value")
 
             key = (url, sku_value)
-
             if key in seen:
                 continue
 
             seen.add(key)
             results.append(item)
 
+        # Cache only the completed result of this query. This prevents Main's
+        # repeated generic attempts from re-crawling Deloox during one search.
+        _SEARCH_CACHE["__result__:" + cache_key] = (now, [dict(item) for item in results])
         return results
     finally:
         session.close()
