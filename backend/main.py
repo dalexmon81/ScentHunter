@@ -1700,15 +1700,7 @@ def _group_display_name(
     product: Dict[str, Any],
     concentration: str = "",
 ) -> str:
-        raw_name = (
-        product.get("catalog_variant")
-        or product.get("canonical_name")
-        or _group_source_name(product)
-        or product.get("display_name")
-        or product.get("name")
-        or ""
-    )
-
+    raw_name = _group_source_name(product)
     base_name = _display_cleanup(raw_name)
 
     brand = _display_cleanup(_group_brand(product))
@@ -1737,7 +1729,16 @@ def _group_display_name(
             or ""
         )
 
-    
+    label = _display_concentration_label(
+        concentration
+    )
+
+    if label and norm(label) not in norm(base_name):
+        base_name = (
+            f"{base_name} {label}"
+            if base_name
+            else label
+        )
 
     return re.sub(
         r"\s+",
@@ -1792,14 +1793,31 @@ def group_results_for_display(
     grouped: List[Dict[str, Any]] = []
 
     for items in base_groups.values():
-                # EDP, EDT ed Extrait sono offerte della stessa variante.
-        # Non devono creare schede separate.
-        subgroups = {
-            "": items
-        }
+        concentrations = sorted(
+            {
+                product_concentration(item)
+                for item in items
+                if product_concentration(item)
+            }
+        )
+
+        if len(concentrations) <= 1:
+            subgroups = {
+                concentrations[0] if concentrations else "": items
+            }
+        else:
+            # Multiple explicit concentrations are genuinely distinct.
+            # Offers without concentration remain separate rather than
+            # being assigned to the wrong concentration.
+            subgroups: Dict[str, List[Dict[str, Any]]] = {}
+            for item in items:
+                concentration = product_concentration(item)
+                subgroups.setdefault(
+                    concentration,
+                    [],
+                ).append(item)
 
         for concentration, offers in subgroups.items():
-
             offers = sorted(
                 offers,
                 key=_group_offer_sort_key,
@@ -1819,10 +1837,10 @@ def group_results_for_display(
                 "",
             )
 
-                display_name = _group_display_name(
+            display_name = _group_display_name(
                 offers[0],
+                concentration,
             )
-
 
             if not display_name:
                 display_name = str(
