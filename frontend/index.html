@@ -506,7 +506,7 @@ function normalizePerfumeName(v){
     .normalize("NFD")
     .replace(/[\u0300-\u036f]/g,"")
     // NON eliminare "parfum": può essere parte del nome/variante
-    .replace(/\b(eau de parfum|eau de toilette|eau de cologne|extrait de parfum|extract de parfum|extrait|edp|edt|perfume|spray|men|women|for men|for women)\b/g," ")
+    .replace(/\b(eau de parfum|eau de toilette|eau de cologne|extrait de parfum|extract de parfum|extrait|edp|edt|perfume|spray)\b/g," ")
     .replace(/\b\d+\s*ml\b/g," ")
     .replace(/(?<=\d)(?=[a-z])|(?<=[a-z])(?=\d)/g," ")
     .replace(/[^a-z0-9]+/gi," ")
@@ -1243,7 +1243,6 @@ function shGroupData(data){
       .replace(/^(?:eau de parfum|eau de toilette|eau de cologne|extrait de parfum|extract de parfum|extrait|edp|edt|edc|spray)\s*[-–—:]\s*/i,"")
       .replace(/\b(?:women'?s|men'?s|women|men)\s+perfume\b/gi," ")
       .replace(/\b(?:eau de parfum|eau de toilette|eau de cologne|extract de parfum|extrait de parfum|extrait|de parfum|eau de parfum intense|edp|edt|edc|spray)\b/gi," ")
-      .replace(/\b(?:for men|for women|for him|for her|pour homme|homme|femme|men|man|women|woman|unisex)\b/gi," ")
       .replace(/\s+/g," ")
       .trim();
 
@@ -1295,7 +1294,8 @@ function shGroupData(data){
    * CATALOGO: se il backend ha già risolto una variante del Family Registry,
    * canonical_name è il nome del prodotto, non il nome della famiglia.
    * Deve quindi avere precedenza sulla pulizia commerciale generica, che può
-   * eliminare marcatori di variante come For Him / For Her.
+   * preservare marcatori di variante come For Him / For Her quando fanno
+   * parte del nome canonico/commerciale della referenza.
    * Regola generica, senza riferimenti a singoli profumi o prodotti.
    */
   function catalogCanonicalName(o,brand){
@@ -1787,66 +1787,6 @@ function shGroupData(data){
   }
 
   /*
-   * NORMALIZZAZIONE GENERICA DELLA FORMA COMMERCIALE "... Pour".
-   *
-   * Alcuni retailer abbreviano "Pour Femme" nel titolo lasciando soltanto
-   * "Pour". Questa forma non deve diventare una nuova identità e non deve
-   * essere confusa con la variante base: quando, nella stessa ricerca,
-   * esiste già la variante base dello stesso brand e della stessa
-   * concentrazione, il suffisso "Pour" viene completato nella forma
-   * commerciale "Pour Femme".
-   *
-   * La regola è strutturale e non contiene riferimenti a profumi, brand o
-   * negozi specifici. La categoria resta separata dalla variante base.
-   */
-  const normalizeTrailingPourFemme=groups=>{
-    const list=Array.isArray(groups)?groups:[];
-
-    const sameBrand=(a,b)=>{
-      const ab=norm(a?.brand||"");
-      const bb=norm(b?.brand||"");
-      return ab && bb && ab===bb;
-    };
-
-    const sameConcentration=(a,b)=>{
-      const ac=norm(a?.concentration||"");
-      const bc=norm(b?.concentration||"");
-      return ac===bc;
-    };
-
-    const tokens=name=>norm(name||"").split(/\s+/).filter(Boolean);
-
-    list.forEach(group=>{
-      if(!group||!group.offers?.length)return;
-
-      const groupTokens=tokens(group.name||group.canonical_name||"");
-      if(groupTokens.length<2 || groupTokens[groupTokens.length-1]!=="pour")return;
-
-      const baseName=groupTokens.slice(0,-1).join(" " );
-      if(!baseName)return;
-
-      const baseGroup=list.find(candidate=>{
-        if(!candidate||candidate===group||!candidate.offers?.length)return false;
-        if(!sameBrand(group,candidate)||!sameConcentration(group,candidate))return false;
-        return norm(candidate.name||candidate.canonical_name||"")===baseName;
-      });
-
-      if(!baseGroup)return;
-
-      const displayBase=String(baseGroup.name||baseGroup.canonical_name||"").trim();
-      const canonical=(displayBase+" Pour Femme").trim();
-
-      group.name=canonical;
-      group.canonical_name=canonical;
-      group.display_name=group.brand?group.brand+" - "+canonical:canonical;
-    });
-
-    return list;
-  };
-
-  normalizeTrailingPourFemme(groups);
-
-  /*
    * EQUIVALENZE GENERICHE TRA TITOLI COMMERCIALI
    *
    * Alcuni negozi pubblicano la stessa referenza con un titolo incompleto
@@ -1969,67 +1909,12 @@ function shGroupData(data){
           }
 
           /*
-           * Caso 3: suffisso di genere commerciale.
-           *
-           * Alcuni negozi aggiungono al titolo un marcatore generico come
-           * "Uomo", "Donna", "Men", "Women", "Homme" o "Femme", mentre
-           * altri negozi pubblicano la stessa referenza senza quel marcatore.
-           * Non creiamo una seconda categoria solo per questa differenza
-           * editoriale.
-           *
-           * La fusione è consentita soltanto quando, nella stessa ricerca,
-           * esiste già il titolo base e brand/concentrazione/formato sono
-           * compatibili. Se esiste solo la forma con il marcatore, resta
-           * separata: non inventiamo un'identità che non abbiamo osservato.
+           * I marcatori di genere restano parte dell'identità del nome.
+           * Non fondiamo automaticamente una variante maschile/femminile
+           * con una variante senza il marcatore: possono essere referenze
+           * realmente diverse. I marcatori puramente editoriali racchiusi
+           * tra parentesi sono già gestiti nella pulizia del titolo.
            */
-          const genericGender=new Set([
-            "uomo","donna","men","women","man","woman",
-            "homme","femme","male","female"
-          ]);
-
-          const stripTrailingGender=name=>{
-            const tokens=norm(name).split(/\s+/).filter(Boolean);
-            while(tokens.length>1 && genericGender.has(tokens[tokens.length-1])){
-              tokens.pop();
-            }
-            return tokens.join(" ");
-          };
-
-          const aGenderBase=stripTrailingGender(a.name);
-          const bGenderBase=stripTrailingGender(b.name);
-
-          if(
-            aGenderBase &&
-            bGenderBase &&
-            aGenderBase===bGenderBase &&
-            ((aGenderBase===an) !== (bGenderBase===bn))
-          ){
-            const sameConcentration=
-              norm(a.concentration||"")===norm(b.concentration||"");
-
-            const sizeSet=g=>new Set(
-              (g.offers||[]).map(o=>sizeOf(o)||"")
-            );
-            const aSizes=sizeSet(a);
-            const bSizes=sizeSet(b);
-            const sizeCompatible=
-              !aSizes.size ||
-              !bSizes.size ||
-              [...aSizes].some(size=>size && bSizes.has(size));
-
-            if(sameConcentration && sizeCompatible){
-              const target=aGenderBase===an?a:b;
-              const source=target===a?b:a;
-              const targetIndex=list.indexOf(target);
-              const sourceIndex=list.indexOf(source);
-
-              if(targetIndex>=0 && sourceIndex>=0){
-                absorb(targetIndex,sourceIndex);
-                changed=true;
-                break outer;
-              }
-            }
-          }
         }
       }
     }
