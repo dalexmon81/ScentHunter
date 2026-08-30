@@ -3487,6 +3487,465 @@ def diagnostic_http_trace(
         finally:
             _DIAGNOSTIC_HTTP_LOCK.release()
 # ============================================================
+# DIAGNOSTICA FORENSE HAWAS - V3 / PIPELINE REALE
+# ============================================================
+
+def _hawas_v3_snapshot(product: Any) -> Dict[str, Any]:
+    """Snapshot compatto: abbastanza dati per capire dove un candidato sparisce."""
+    if not isinstance(product, dict):
+        return {
+            "valid_dict": False,
+            "python_type": type(product).__name__,
+        }
+    return {
+        "store": product.get("store"),
+        "name": product.get("name"),
+        "brand": product.get("brand") or product.get("source_brand"),
+        "url": product.get("url"),
+        "price": product.get("price"),
+        "size_ml": product.get("size_ml"),
+        "concentration": product.get("concentration"),
+        "store_product_id": identity_value(product, "store_product_id", "product_id", "catalog_id"),
+        "store_variant_id": identity_value(product, "store_variant_id", "variant_id"),
+        "ean": identity_value(product, "gtin", "ean", "ean13", "barcode", "upc"),
+        "sku": identity_value(product, "sku"),
+    }
+
+
+def _hawas_v3_explain_generic(product: Dict[str, Any], query: str) -> Dict[str, Any]:
+    """Spiega _generic_matches() senza cambiare la decisione reale."""
+    query_normalized = norm(query)
+    if not query_normalized:
+        return {"accepted": False, "reason": "empty_query"}
+
+    name = product_field(product, "name", "title", "product_name")
+    brand = product_field(product, "brand", "source_brand")
+    source = product.get("source")
+    if isinstance(source, dict):
+        if not brand:
+            brand = str(source.get("brand") or source.get("source_brand") or "").strip()
+        if not name:
+            name = str(source.get("name") or source.get("title") or "").strip()
+
+    name_normalized = norm(name)
+    if not name_normalized:
+        return {"accepted": False, "reason": "empty_product_name", "name": name}
+
+    query_has_size = bool(re.search(r"(?<!\d)\d+(?:[.,]\d+)?\s*(?:ml|cl)\b", query_normalized))
+    if has_small_size(product) and not query_has_size:
+        return {"accepted": False, "reason": "small_size_without_size_query", "size_ml": product_size_ml(product)}
+
+    for phrase in NON_PERFUME:
+        phrase_normalized = norm(phrase)
+        if phrase_normalized in name_normalized and phrase_normalized not in query_normalized:
+            return {"accepted": False, "reason": "non_perfume_filter", "trigger": phrase}
+
+    name_for_matching = name_normalized
+    name_for_matching = re.sub(r"\b\d+(?:[.,]\d+)?\s*(?:ml|cl)\b", " ", name_for_matching, flags=re.I)
+    name_for_matching = re.sub(
+        r"\b(?:eau\s+de\s+parfum|eau\s+de\s+toilette|eau\s+de\s+cologne|extrait\s+de\s+parfum|edp|edt|edc)\b",
+        " ", name_for_matching, flags=re.I,
+    )
+    name_for_matching = re.sub(r"\s+", " ", name_for_matching).strip()
+
+    query_tokens = [
+        token for token in query_normalized.split()
+        if token not in IGNORED_WORDS
+        and not re.fullmatch(r"\d+(?:[.,]\d+)?", token)
+    ]
+    generic_tokens = {
+        "eau", "de", "parfum", "perfume", "edp", "edt", "edc", "extrait", "spray",
+        "intense", "limited", "edition", "for", "men", "women", "homme", "femme", "unisex",
+    }
+    family_tokens = [token for token in query_tokens if token not in generic_tokens]
+    if not family_tokens:
+        family_tokens = query_tokens
+    if not family_tokens:
+        return {"accepted": False, "reason": "no_query_tokens"}
+
+    name_tokens = name_for_matching.split()
+    family_phrase = " ".join(family_tokens)
+    name_phrase = " ".join(token for token in name_tokens if token not in generic_tokens)
+    if not family_phrase or not name_phrase:
+        return {"accepted": False, "reason": "empty_matching_phrase"}
+
+    padded_name = f" {name_phrase} "
+    padded_family = f" {family_phrase} "
+    if padded_family not in padded_name:
+        return {
+            "accepted": False,
+            "reason": "generic_query_not_in_name",
+            "query_tokens": query_tokens,
+            "family_tokens": family_tokens,
+            "name_for_matching": name_for_matching,
+        }
+
+    return {"accepted": True, "reason": "generic_match"}
+
+
+def _hawas_v3_explain_match(product: Dict[str, Any], query: str) -> Dict[str, Any]:
+    """Diagnostica la stessa matches() reale, restituendo anche la causa."""
+    candidate = dict(product)
+    try:
+        catalog_result = catalog_match(candidate, query)
+    except Exception as exc:
+        return {
+            "accepted": False,
+            "reason": "catalog_match_exception",
+            "error": f"{type(exc).__name__}: {exc}",
+        }
+
+    if catalog_result is not None:
+        if catalog_result.get("_reject"):
+            return {
+                "accepted": False,
+                "reason": "catalog_reject",
+                "catalog_family": _catalog_query_family(query).get("canonical_family_name")
+                if _catalog_query_family(query) else None,
+                "catalog_family_id": _catalog_query_family(query).get("family_id")
+                if _catalog_query_family(query) else None,
+            }
+        return {
+            "accepted": True,
+            "reason": "catalog_accept",
+            "catalog_variant": catalog_result.get("_catalog_canonical_name"),
+            "catalog_family_id": catalog_result.get("_catalog_family_id"),
+        }
+
+    return _hawas_v3_explain_generic(candidate, query)
+
+
+def _hawas_v3_run_store(store: str, query: str) -> Dict[str, Any]:
+    """Replica 1:1 di run_store(), ma con trace completa per ogni attempt."""
+    started = datetime.now(timezone.utc)
+    report: Dict[str, Any] = {
+        "store": store,
+        "module": None,
+        "module_file": None,
+        "search_callable": False,
+        "scrape_callable": False,
+        "callable_used": None,
+        "attempts": [],
+        "raw_total": 0,
+        "valid_raw": 0,
+        "invalid_raw": 0,
+        "after_store_dedup": 0,
+        "store_duplicates": [],
+        "store_results": [],
+        "error": None,
+    }
+
+    try:
+        module = load_scraper(store)
+        report["module"] = getattr(module, "__name__", None)
+        report["module_file"] = getattr(module, "__file__", None)
+
+        search_fn = getattr(module, "search", None)
+        scrape_fn = getattr(module, "scrape", None)
+        report["search_callable"] = callable(search_fn)
+        report["scrape_callable"] = callable(scrape_fn)
+
+        if callable(search_fn):
+            fn = search_fn
+            report["callable_used"] = "search"
+        elif callable(scrape_fn):
+            fn = scrape_fn
+            report["callable_used"] = "scrape"
+        else:
+            raise RuntimeError(f"{store}: scraper senza funzione search()/scrape()")
+
+        discovery_query = norm(query)
+        attempts = build_search_attempts(store, discovery_query)
+        seen = set()
+
+        for attempt_index, attempt in enumerate(attempts):
+            a = {
+                "index": attempt_index,
+                "query": attempt,
+                "returned": False,
+                "raw_count": 0,
+                "invalid_count": 0,
+                "error": None,
+                "candidates": [],
+            }
+            try:
+                results = fn(attempt) or []
+                a["returned"] = True
+                if not isinstance(results, list):
+                    a["error"] = f"returned_{type(results).__name__}_instead_of_list"
+                else:
+                    a["raw_count"] = len(results)
+                    report["raw_total"] += len(results)
+                    for raw_item in results:
+                        if not isinstance(raw_item, dict):
+                            a["invalid_count"] += 1
+                            report["invalid_raw"] += 1
+                            continue
+                        report["valid_raw"] += 1
+                        product = dict(raw_item)
+                        product.setdefault("store", store)
+                        before = dict(product)
+                        product = resolve_actual_price(product)
+                        image = product_image(product)
+                        if image:
+                            product["image"] = image
+                        key = product_identity_key(product)
+                        duplicate = key in seen
+                        if duplicate:
+                            report["store_duplicates"].append({
+                                "attempt": attempt,
+                                "name": product.get("name"),
+                                "url": product.get("url"),
+                                "identity_key": repr(key),
+                            })
+                        else:
+                            seen.add(key)
+                            report["store_results"].append(product)
+                        a["candidates"].append({
+                            "before_run_store": _hawas_v3_snapshot(before),
+                            "after_normalization": _hawas_v3_snapshot(product),
+                            "identity_key": repr(key),
+                            "duplicate_within_store": duplicate,
+                        })
+            except Exception as exc:
+                a["error"] = f"{type(exc).__name__}: {exc}"
+            report["attempts"].append(a)
+
+        report["after_store_dedup"] = len(report["store_results"])
+        return report
+    except Exception as exc:
+        report["error"] = f"{type(exc).__name__}: {exc}"
+        report["traceback"] = traceback.format_exc()
+        return report
+    finally:
+        report["duration_ms"] = round((datetime.now(timezone.utc) - started).total_seconds() * 1000, 2)
+
+
+@app.get("/diagnostic-hawas-pipeline-v3")
+def diagnostic_hawas_pipeline_v3(q: str = "Hawas"):
+    """
+    DIAGNOSTICA FORENSE V3.
+
+    Riproduce la pipeline REALE del main:
+      scraper search()/scrape() -> build_search_attempts -> dedup per store
+      -> unique_results centrale -> pre-ranking -> matches() -> dedup finale.
+
+    Non modifica scraper, catalogo o risultati della ricerca normale.
+    """
+    query = str(q or "").strip()
+    if not query:
+        raise HTTPException(status_code=400, detail="Parametro q mancante")
+
+    started = datetime.now(timezone.utc)
+    reports: Dict[str, Any] = {}
+    per_store_products: List[Dict[str, Any]] = []
+
+    # Gli store sono eseguiti in parallelo, come /search.
+    with ThreadPoolExecutor(max_workers=len(STORES), thread_name_prefix="hawas_diag") as executor:
+        futures = {executor.submit(_hawas_v3_run_store, store, query): store for store in STORES}
+        for future in as_completed(futures):
+            store = futures[future]
+            try:
+                reports[store] = future.result()
+            except Exception as exc:
+                reports[store] = {
+                    "store": store,
+                    "error": f"{type(exc).__name__}: {exc}",
+                    "traceback": traceback.format_exc(),
+                }
+
+    # Ordine stabile identico all'ordine STORES del main.
+    reports = {store: reports.get(store, {"store": store, "error": "missing_report"}) for store in STORES}
+
+    for store in STORES:
+        for product in reports[store].get("store_results", []):
+            item = dict(product)
+            item["_diagnostic_store"] = store
+            per_store_products.append(item)
+
+    # STAGE 1: pool centrale = unique_results(), esattamente come _orchestrate_results().
+    central_unique = unique_results([dict(p) for p in per_store_products])
+    central_seen = set()
+    central_removed = []
+    for product in per_store_products:
+        key = product_identity_key(product)
+        if key in central_seen:
+            central_removed.append({
+                "store": product.get("store"),
+                "name": product.get("name"),
+                "url": product.get("url"),
+                "identity_key": repr(key),
+                "reason": "central_unique_results_duplicate",
+            })
+        else:
+            central_seen.add(key)
+
+    # STAGE 2: pre-ranking è NON distruttivo, ma viene incluso per dimostrare l'ordine reale.
+    ranked = _pre_rank_candidates([dict(p) for p in central_unique], query)
+
+    # STAGE 3: matches() reale, con spiegazione parallela.
+    accepted: List[Dict[str, Any]] = []
+    rejected: List[Dict[str, Any]] = []
+    for index, product in enumerate(ranked):
+        candidate = dict(product)
+        try:
+            actual_decision = matches(candidate, query)
+            explanation = _hawas_v3_explain_match(product, query)
+            # La spiegazione deve sempre coincidere con matches(). Se non coincide,
+            # lo segnaliamo invece di correggere silenziosamente il risultato.
+            consistent = bool(actual_decision) == bool(explanation.get("accepted"))
+            if actual_decision:
+                accepted.append({
+                    "rank": index,
+                    "product": _hawas_v3_snapshot(candidate),
+                    "decision": explanation,
+                    "decision_consistent": consistent,
+                })
+            else:
+                rejected.append({
+                    "rank": index,
+                    "product": _hawas_v3_snapshot(product),
+                    "decision": explanation,
+                    "decision_consistent": consistent,
+                })
+        except Exception as exc:
+            rejected.append({
+                "rank": index,
+                "product": _hawas_v3_snapshot(product),
+                "decision": {
+                    "accepted": False,
+                    "reason": "matches_exception",
+                    "error": f"{type(exc).__name__}: {exc}",
+                },
+                "decision_consistent": False,
+            })
+
+    # STAGE 4: dedup finale, identico a _orchestrate_results().
+    accepted_products = [
+        {**dict(item["product"]), "store": item["product"].get("store")}
+        for item in accepted
+    ]
+    final_unique = unique_results([dict(p) for p in accepted_products])
+    final_seen = set()
+    final_removed = []
+    for product in accepted_products:
+        key = product_identity_key(product)
+        if key in final_seen:
+            final_removed.append({
+                "store": product.get("store"),
+                "name": product.get("name"),
+                "url": product.get("url"),
+                "identity_key": repr(key),
+                "reason": "final_unique_results_duplicate",
+            })
+        else:
+            final_seen.add(key)
+
+    # Per-store summary + lista dei candidati e causa esatta.
+    per_store: Dict[str, Any] = {}
+    accepted_by_store = {}
+    rejected_by_store = {}
+    for item in accepted:
+        accepted_by_store.setdefault(item["product"].get("store"), []).append(item)
+    for item in rejected:
+        rejected_by_store.setdefault(item["product"].get("store"), []).append(item)
+
+    for store in STORES:
+        report = reports[store]
+        store_central = [p for p in central_unique if p.get("store") == store]
+        store_final = [p for p in final_unique if p.get("store") == store]
+        per_store[store] = {
+            "module_file": report.get("module_file"),
+            "search_callable": report.get("search_callable"),
+            "scrape_callable": report.get("scrape_callable"),
+            "callable_used": report.get("callable_used"),
+            "attempts": [
+                {
+                    "index": a.get("index"),
+                    "query": a.get("query"),
+                    "returned": a.get("returned"),
+                    "raw_count": a.get("raw_count"),
+                    "invalid_count": a.get("invalid_count"),
+                    "error": a.get("error"),
+                }
+                for a in report.get("attempts", [])
+            ],
+            "raw_total": report.get("raw_total", 0),
+            "after_store_dedup": report.get("after_store_dedup", 0),
+            "store_duplicates_removed": len(report.get("store_duplicates", [])),
+            "after_central_unique": len(store_central),
+            "accepted_by_matches": len(accepted_by_store.get(store, [])),
+            "rejected_by_matches": len(rejected_by_store.get(store, [])),
+            "final_after_dedup": len(store_final),
+            "error": report.get("error"),
+            "duration_ms": report.get("duration_ms"),
+        }
+
+    # Raggruppamento delle cause di esclusione: è il punto più importante della diagnosi.
+    rejection_reasons: Dict[str, int] = {}
+    for item in rejected:
+        reason = str(item.get("decision", {}).get("reason") or "unknown")
+        rejection_reasons[reason] = rejection_reasons.get(reason, 0) + 1
+
+    duration_ms = round((datetime.now(timezone.utc) - started).total_seconds() * 1000, 2)
+
+    return {
+        "ok": True,
+        "diagnostic": "hawas_8_scrapers_pipeline_v3_exact",
+        "query": query,
+        "duration_ms": duration_ms,
+        "reference": {
+            "expected_cards": 23,
+            "gap_vs_expected": 23 - len(final_unique),
+            "expected_cards_are_reference_only": True,
+        },
+        "pipeline": {
+            "scraper_raw": len(per_store_products) + sum(len(r.get("store_duplicates", [])) for r in reports.values()),
+            "after_per_store_dedup": len(per_store_products),
+            "removed_by_per_store_dedup": sum(len(r.get("store_duplicates", [])) for r in reports.values()),
+            "after_central_unique_results": len(central_unique),
+            "removed_by_central_unique_results": len(central_removed),
+            "after_pre_ranking": len(ranked),
+            "accepted_by_matches": len(accepted),
+            "rejected_by_matches": len(rejected),
+            "rejection_reasons": rejection_reasons,
+            "after_final_unique_results": len(final_unique),
+            "removed_by_final_unique_results": len(final_removed),
+        },
+        "per_store": per_store,
+        "central_duplicates": central_removed,
+        "final_duplicates": final_removed,
+        "accepted": accepted,
+        "rejected": rejected,
+        "final_results": [_hawas_v3_snapshot(p) for p in final_unique],
+        "raw_candidates_by_scraper": {
+            store: {
+                "module_file": reports[store].get("module_file"),
+                "search_callable": reports[store].get("search_callable"),
+                "scrape_callable": reports[store].get("scrape_callable"),
+                "callable_used": reports[store].get("callable_used"),
+                "raw_total": reports[store].get("raw_total", 0),
+                "after_store_dedup": reports[store].get("after_store_dedup", 0),
+                "store_duplicates": reports[store].get("store_duplicates", []),
+                "attempts": reports[store].get("attempts", []),
+                "store_results": [
+                    _hawas_v3_snapshot(p)
+                    for p in reports[store].get("store_results", [])
+                ],
+                "error": reports[store].get("error"),
+                "duration_ms": reports[store].get("duration_ms"),
+            }
+            for store in STORES
+        },
+        "diagnostic_integrity": {
+            "matches_explanation_consistent": all(
+                bool(item.get("decision_consistent")) for item in accepted + rejected
+            ),
+            "note": "La decisione di inclusione è sempre quella restituita dalla matches() reale; le spiegazioni servono solo a indicarne la causa.",
+        },
+    }
+
+# ============================================================
 # DIAGNOSTICA FORENSE HAWAS - TEMPORANEA
 # ============================================================
 
