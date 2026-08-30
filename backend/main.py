@@ -384,12 +384,11 @@ def _catalog_match_variant(
                 flags=re.I,
             )
 
-        # Retailers may prepend the catalog family brand to the product
-        # title (for example "Rasasi Hawas Ice"). The brand is not an
-        # identity token, so remove only the catalog family's own brand
-        # tokens before comparing with the catalog variant aliases. This
-        # remains completely generic and does not depend on a retailer or
-        # on a specific product.
+        # Il brand della famiglia non è un token identitario della variante.
+        # I retailer possono inserirlo nel titolo (es. "Rasasi Hawas Ice"),
+        # mentre il catalogo conserva la variante ("Hawas Ice"). La rimozione
+        # è generica e dipende esclusivamente dal brand della famiglia
+        # catalogata, mai dal negozio o dal prodotto.
         family_brand = _catalog_norm(family.get("brand"))
         if family_brand:
             for token in family_brand.split():
@@ -401,6 +400,7 @@ def _catalog_match_variant(
                 )
 
         return re.sub(r"\s+", " ", text_value).strip()
+
 
     for variant in _catalog_family_products(family):
         for alias in variant["_keys"]:
