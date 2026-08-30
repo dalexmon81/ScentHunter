@@ -3486,3 +3486,483 @@ def diagnostic_http_trace(
                 requests.request = original_requests_request
         finally:
             _DIAGNOSTIC_HTTP_LOCK.release()
+
+
+# ============================================================
+# DIAGNOSTICA MIRATA HAWAS - 8 SCRAPER
+# ============================================================
+#
+# TEMPORANEA / READ-ONLY:
+# Questo endpoint non modifica la pipeline normale.
+# Serve esclusivamente a misurare dove i candidati Hawas vengono persi:
+#
+#   RAW per scraper
+#       -> deduplica locale (come run_store)
+#       -> filtro matches() / catalog_match()
+#       -> deduplica globale
+#       -> risultati finali
+#
+# Non contiene regole speciali per singole varianti/prodotti.
+# ============================================================
+
+def _diagnostic_product_view(product: Any) -> Dict[str, Any]:
+    if not isinstance(product, dict):
+        return {
+            "valid_dict": False,
+            "type": type(product).__name__,
+        }
+
+    source = product.get("source")
+    source_view = None
+    if isinstance(source, dict):
+        source_view = {
+            "name": source.get("name") or source.get("title"),
+            "brand": source.get("brand") or source.get("source_brand"),
+            "url": source.get("url"),
+        }
+
+    return {
+        "valid_dict": True,
+        "store": product.get("store"),
+        "name": product.get("name") or product.get("title") or product.get("product_name"),
+        "brand": product.get("brand") or product.get("source_brand"),
+        "url": product.get("url"),
+        "price": product.get("price"),
+        "size_ml": product_size_ml(product),
+        "concentration": product_concentration(product),
+        "variant_id": product.get("variant_id") or product.get("store_variant_id"),
+        "product_id": product.get("product_id") or product.get("store_product_id"),
+        "catalog_id": product.get("catalog_id"),
+        "gtin": product.get("gtin") or product.get("ean") or product.get("ean13") or product.get("barcode"),
+        "sku": product.get("sku"),
+        "canonical_name": product.get("canonical_name"),
+        "canonical_brand": product.get("canonical_brand"),
+        "family_id": product.get("family_id"),
+        "source": source_view,
+    }
+
+
+def _diagnostic_match_decision(
+    product: Dict[str, Any],
+    query: str,
+) -> Dict[str, Any]:
+    """
+    Esegue ESATTAMENTE la funzione matches() reale su una copia.
+    Prima registra l'identità RAW; dopo registra ciò che matches()
+    ha eventualmente scritto nel prodotto tramite catalog_match().
+    """
+    before = _diagnostic_product_view(product)
+
+    working = dict(product)
+
+    try:
+        accepted = bool(matches(working, query))
+        after = _diagnostic_product_view(working)
+
+        if accepted:
+            reason = "accepted_by_real_matches"
+        else:
+            # Distinzione utile: catalogo che rifiuta oppure generic filter.
+            catalog_probe = None
+            try:
+                probe = dict(product)
+                catalog_probe = catalog_match(probe, query)
+            except Exception as probe_exc:
+                catalog_probe = {
+                    "_diagnostic_error": f"{type(probe_exc).__name__}: {probe_exc}"
+                }
+
+            if isinstance(catalog_probe, dict) and catalog_probe.get("_reject"):
+                reason = "rejected_by_catalog_match"
+            else:
+                reason = "rejected_by_generic_matches"
+
+        return {
+            "accepted": accepted,
+            "reason": reason,
+            "before_matches": before,
+            "after_matches": after,
+        }
+
+    except Exception as exc:
+        return {
+            "accepted": False,
+            "reason": "matches_exception",
+            "error": f"{type(exc).__name__}: {exc}",
+            "before_matches": before,
+            "traceback": traceback.format_exc(),
+        }
+
+
+def _diagnostic_run_one_store(store: str, query: str) -> Dict[str, Any]:
+    started = datetime.now(timezone.utc)
+
+    out: Dict[str, Any] = {
+        "store": store,
+        "module": None,
+        "module_file": None,
+        "search_callable": False,
+        "search_signature": None,
+        "attempts": [],
+        "raw_total": 0,
+        "valid_raw_total": 0,
+        "invalid_raw_total": 0,
+        "after_store_dedup": [],
+        "after_store_dedup_count": 0,
+        "error": None,
+    }
+
+    try:
+        module = load_scraper(store)
+        out["module"] = getattr(module, "__name__", None)
+        out["module_file"] = getattr(module, "__file__", None)
+
+        search_fn = getattr(module, "search", None)
+        if not callable(search_fn):
+            search_fn = getattr(module, "scrape", None)
+
+        out["search_callable"] = callable(search_fn)
+
+        if callable(search_fn):
+            try:
+                out["search_signature"] = str(inspect.signature(search_fn))
+            except Exception:
+                out["search_signature"] = "unavailable"
+
+        if not callable(search_fn):
+            out["error"] = "scraper senza funzione search()/scrape()"
+            return out
+
+        attempts = build_search_attempts(store, norm(query))
+        seen = set()
+        store_unique = []
+
+        for attempt_index, attempt in enumerate(attempts):
+            attempt_info = {
+                "index": attempt_index,
+                "query": attempt,
+                "raw_count": 0,
+                "valid_dict_count": 0,
+                "invalid_item_count": 0,
+                "candidates": [],
+                "error": None,
+            }
+
+            try:
+                results = search_fn(attempt) or []
+
+                if not isinstance(results, list):
+                    attempt_info["error"] = (
+                        f"search() returned {type(results).__name__}, not list"
+                    )
+                    out["attempts"].append(attempt_info)
+                    continue
+
+                attempt_info["raw_count"] = len(results)
+                out["raw_total"] += len(results)
+
+                for raw_index, item in enumerate(results):
+                    if not isinstance(item, dict):
+                        out["invalid_raw_total"] += 1
+                        attempt_info["invalid_item_count"] += 1
+                        attempt_info["candidates"].append({
+                            "raw_index": raw_index,
+                            "valid_dict": False,
+                            "type": type(item).__name__,
+                        })
+                        continue
+
+                    out["valid_raw_total"] += 1
+                    attempt_info["valid_dict_count"] += 1
+
+                    product = dict(item)
+                    product.setdefault("store", store)
+
+                    # Stessa preparazione eseguita da run_store().
+                    try:
+                        product = resolve_actual_price(product)
+                    except Exception as price_exc:
+                        product["_diagnostic_price_error"] = (
+                            f"{type(price_exc).__name__}: {price_exc}"
+                        )
+
+                    image = product_image(product)
+                    if image:
+                        product["image"] = image
+
+                    key = product_identity_key(product)
+                    duplicate_local = key in seen
+
+                    candidate = {
+                        "raw_index": raw_index,
+                        "duplicate_within_store": duplicate_local,
+                        "identity_key": [str(x) for x in key],
+                        "product": _diagnostic_product_view(product),
+                    }
+
+                    if duplicate_local:
+                        candidate["store_dedup_decision"] = "REMOVED"
+                        attempt_info["candidates"].append(candidate)
+                        continue
+
+                    seen.add(key)
+                    store_unique.append(product)
+                    candidate["store_dedup_decision"] = "KEPT"
+                    attempt_info["candidates"].append(candidate)
+
+            except Exception as exc:
+                attempt_info["error"] = f"{type(exc).__name__}: {exc}"
+
+            out["attempts"].append(attempt_info)
+
+        out["after_store_dedup"] = [
+            _diagnostic_product_view(product)
+            for product in store_unique
+        ]
+        out["after_store_dedup_count"] = len(store_unique)
+
+        # Manteniamo anche gli oggetti interni per il livello globale.
+        out["_products_internal"] = store_unique
+
+        return out
+
+    except Exception as exc:
+        out["error"] = f"{type(exc).__name__}: {exc}"
+        out["traceback"] = traceback.format_exc()
+        out["_products_internal"] = []
+        return out
+
+    finally:
+        out["duration_ms"] = round(
+            (datetime.now(timezone.utc) - started).total_seconds() * 1000,
+            2,
+        )
+
+
+@app.get("/diagnostic-hawas-pipeline")
+def diagnostic_hawas_pipeline(q: str = "Hawas"):
+    """
+    Diagnostica chirurgica della pipeline per una query generica.
+
+    Default: Hawas.
+    Non cambia search_perfume() e non cambia alcun risultato normale.
+    """
+    query = str(q or "").strip()
+
+    if not query:
+        return JSONResponse(
+            status_code=400,
+            content={
+                "ok": False,
+                "error": "empty_query",
+            },
+        )
+
+    started = datetime.now(timezone.utc)
+
+    # Esecuzione parallela degli stessi 8 scraper usati dalla pipeline.
+    store_results: Dict[str, Dict[str, Any]] = {}
+
+    executor = ThreadPoolExecutor(
+        max_workers=len(STORES),
+        thread_name_prefix="diagnostic_hawas",
+    )
+
+    futures = {
+        executor.submit(
+            _diagnostic_run_one_store,
+            store,
+            query,
+        ): store
+        for store in STORES
+    }
+
+    try:
+        for future in as_completed(futures):
+            store = futures[future]
+            try:
+                store_results[store] = future.result()
+            except Exception as exc:
+                store_results[store] = {
+                    "store": store,
+                    "error": f"{type(exc).__name__}: {exc}",
+                    "_products_internal": [],
+                }
+    finally:
+        executor.shutdown(
+            wait=True,
+            cancel_futures=True,
+        )
+
+    # Ordine stabile.
+    for store in STORES:
+        store_results.setdefault(
+            store,
+            {
+                "store": store,
+                "error": "store diagnostic missing",
+                "_products_internal": [],
+            },
+        )
+
+    # --------------------------------------------------------
+    # LIVELLO 1: pool dopo deduplica locale, prima di matches()
+    # --------------------------------------------------------
+    candidates_before_validation: List[Dict[str, Any]] = []
+
+    for store in STORES:
+        for product in store_results[store].get("_products_internal", []):
+            candidates_before_validation.append(product)
+
+    # --------------------------------------------------------
+    # LIVELLO 2: stessa unique_results() reale del main.
+    # Tracciamo anche quali prodotti vengono eliminati.
+    # --------------------------------------------------------
+    global_seen = set()
+    global_unique: List[Dict[str, Any]] = []
+    global_duplicates: List[Dict[str, Any]] = []
+
+    for index, product in enumerate(candidates_before_validation):
+        key = product_identity_key(product)
+
+        if key in global_seen:
+            global_duplicates.append({
+                "pool_index": index,
+                "identity_key": [str(x) for x in key],
+                "product": _diagnostic_product_view(product),
+            })
+            continue
+
+        global_seen.add(key)
+        global_unique.append(product)
+
+    # --------------------------------------------------------
+    # LIVELLO 3: matches() reale, ma con traccia individuale.
+    # --------------------------------------------------------
+    validation_trace = []
+    validated: List[Dict[str, Any]] = []
+
+    for index, product in enumerate(global_unique):
+        decision = _diagnostic_match_decision(
+            product,
+            query,
+        )
+
+        trace = {
+            "validation_index": index,
+            "product_before_validation": _diagnostic_product_view(product),
+            "decision": decision,
+        }
+
+        validation_trace.append(trace)
+
+        if decision.get("accepted"):
+            # matches() può aver arricchito/normalizzato il prodotto.
+            working = dict(product)
+            try:
+                if matches(working, query):
+                    validated.append(working)
+                    trace["validated_product"] = _diagnostic_product_view(working)
+            except Exception as exc:
+                trace["second_validation_error"] = (
+                    f"{type(exc).__name__}: {exc}"
+                )
+
+    # --------------------------------------------------------
+    # LIVELLO 4: stessa deduplica finale del main.
+    # --------------------------------------------------------
+    final_unique: List[Dict[str, Any]] = []
+    final_seen = set()
+    final_duplicates: List[Dict[str, Any]] = []
+
+    for index, product in enumerate(validated):
+        key = product_identity_key(product)
+
+        if key in final_seen:
+            final_duplicates.append({
+                "validated_index": index,
+                "identity_key": [str(x) for x in key],
+                "product": _diagnostic_product_view(product),
+            })
+            continue
+
+        final_seen.add(key)
+        final_unique.append(product)
+
+    # --------------------------------------------------------
+    # Riepilogo per scraper.
+    # --------------------------------------------------------
+    per_store = {}
+
+    for store in STORES:
+        info = store_results[store]
+        per_store[store] = {
+            "module": info.get("module"),
+            "module_file": info.get("module_file"),
+            "search_callable": info.get("search_callable"),
+            "search_signature": info.get("search_signature"),
+            "raw_total": info.get("raw_total", 0),
+            "valid_raw_total": info.get("valid_raw_total", 0),
+            "invalid_raw_total": info.get("invalid_raw_total", 0),
+            "after_store_dedup_count": info.get("after_store_dedup_count", 0),
+            "error": info.get("error"),
+            "duration_ms": info.get("duration_ms"),
+            "attempts": info.get("attempts", []),
+        }
+
+    duration_ms = round(
+        (datetime.now(timezone.utc) - started).total_seconds() * 1000,
+        2,
+    )
+
+    return {
+        "ok": True,
+        "diagnostic": "hawas_8_scrapers_exact_pipeline_trace",
+        "query": query,
+        "duration_ms": duration_ms,
+        "stores": STORES,
+
+        "pipeline_counts": {
+            "raw_all_scrapers": sum(
+                int(store_results[s].get("raw_total") or 0)
+                for s in STORES
+            ),
+            "valid_raw_all_scrapers": sum(
+                int(store_results[s].get("valid_raw_total") or 0)
+                for s in STORES
+            ),
+            "after_store_dedup": len(candidates_before_validation),
+            "after_global_dedup_before_matches": len(global_unique),
+            "rejected_or_error_by_matches": sum(
+                1
+                for item in validation_trace
+                if not item["decision"].get("accepted")
+            ),
+            "after_matches": len(validated),
+            "duplicates_removed_after_matches": len(final_duplicates),
+            "final_count": len(final_unique),
+            "expected_cards_reference": 23,
+            "missing_vs_23": 23 - len(final_unique),
+        },
+
+        "per_store": per_store,
+
+        "global_duplicates_before_matches": global_duplicates,
+
+        "validation_trace": validation_trace,
+
+        "final_duplicates_after_matches": final_duplicates,
+
+        "final_products": [
+            _diagnostic_product_view(product)
+            for product in final_unique
+        ],
+
+        "interpretation": {
+            "purpose": (
+                "Individuare il primo punto della pipeline in cui i candidati "
+                "Hawas vengono persi."
+            ),
+            "important": (
+                "Il valore 23 è solo il riferimento atteso fornito dall'utente. "
+                "Non viene usato come filtro né per alterare i risulta
