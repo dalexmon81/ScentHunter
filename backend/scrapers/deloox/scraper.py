@@ -8,6 +8,7 @@ Discovery strategy:
 from __future__ import annotations
 
 import json
+import logging
 import re
 from urllib.parse import quote_plus, urljoin, urlparse
 
@@ -21,6 +22,28 @@ HEADERS = {
     "User-Agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 Version/17.0 Mobile/15E148 Safari/604.1",
     "Accept-Language": "en-GB,en;q=0.9",
 }
+
+
+log = logging.getLogger(__name__)
+DIAG_PREFIX = "DELOOX_DIAGNOSTIC"
+
+def _diag(message):
+    log.warning("%s: %s", DIAG_PREFIX, message)
+
+def _diag_response(label, response):
+    final_url = clean(getattr(response, "url", ""))
+    status = getattr(response, "status_code", "?")
+    headers = getattr(response, "headers", {}) or {}
+    ctype = clean(headers.get("content-type", ""))
+    body = getattr(response, "text", "") or ""
+    _diag(
+        f"{label} status={status} final_url={final_url!r} "
+        f"content_type={ctype!r} bytes={len(body)}"
+    )
+
+def _diag_exception(label, exc):
+    _diag(f"{label} exception={type(exc).__name__}: {exc}")
+
 
 
 def clean(v):
@@ -200,7 +223,11 @@ def _product(url, html, query):
         clean(h1.get_text(" ", strip=True)) if h1 else ""
     )
 
-    if not name or not matches(name, query):
+    if not name:
+        _diag(f"product_rejected reason=missing_name url={url!r}")
+        return None
+    if not matches(name, query):
+        _diag(f"product_rejected reason=name_mismatch name={name!r} query={query!r} url={url!r}")
         return None
 
     # Deloox product pages expose the product line separately.  Keep it
@@ -339,7 +366,6 @@ def _candidate_product_urls(
     found = []
     seen = set()
     discovery_query = clean(discovery_query or query)
-    accept_all_products = bool(accept_all_products)
 
     def add(raw_url, context=""):
         if not raw_url:
@@ -366,12 +392,10 @@ def _candidate_product_urls(
             return
 
         # During search discovery we want candidate URLs, not final matches.
-        # Require at least one generic query token in the link context so the
-        # candidate pool remains bounded, but do not require every token.
         # _product() performs the authoritative product-name validation later.
         if not accept_all_products:
             haystack = f"{context} {url}"
-            if not (tokens(query) & tokens(haystack)):
+            if not matches(haystack, query):
                 return
 
         seen.add(url)
@@ -510,7 +534,9 @@ def _discover_from_categories(session, query, max_urls=80):
                     headers=HEADERS,
                     timeout=TIMEOUT,
                 )
-            except requests.RequestException:
+                _diag_response("_discover_from_categories request url={(category_page_url)!r}" , r)
+            except requests.RequestException as exc:
+                _diag_exception("request", exc)
                 continue
 
             if r.status_code >= 400:
@@ -542,7 +568,8 @@ def _discover_from_categories(session, query, max_urls=80):
                             headers=HEADERS,
                             timeout=TIMEOUT,
                         )
-                    except requests.RequestException:
+                    except requests.RequestException as exc:
+                        _diag_exception("request", exc)
                         continue
 
                     if page.status_code >= 400:
@@ -587,7 +614,8 @@ def _sitemap_category_urls(session, query, max_sitemaps=12, max_urls=30):
     def fetch_xml(url):
         try:
             r = session.get(url, headers=HEADERS, timeout=TIMEOUT)
-        except requests.RequestException:
+        except requests.RequestException as exc:
+            _diag_exception("request", exc)
             return None
         if r.status_code >= 400:
             return None
@@ -636,12 +664,6 @@ def _sitemap_category_urls(session, query, max_sitemaps=12, max_urls=30):
 
 
 def _sitemap_product_urls(session, query, max_sitemaps=12, max_urls=80):
-    """Discover relevant Deloox product URLs from sitemaps.
-
-    Sitemap discovery is candidate-oriented but still relevance-aware. It
-    ranks URLs by generic overlap with the query instead of requiring every
-    query token to be present. The actual product page remains authoritative.
-    """
     query_tokens = tokens(query)
     if not query_tokens:
         return []
@@ -655,13 +677,14 @@ def _sitemap_product_urls(session, query, max_sitemaps=12, max_urls=80):
 
     pending = list(sitemap_roots)
     seen_sitemaps = set()
-    scored = {}
-    order = 0
+    product_urls = []
+    seen_products = set()
 
     def fetch_xml(url):
         try:
             r = session.get(url, headers=HEADERS, timeout=TIMEOUT)
-        except requests.RequestException:
+        except requests.RequestException as exc:
+            _diag_exception("request", exc)
             return None
         if r.status_code >= 400:
             return None
@@ -674,26 +697,10 @@ def _sitemap_product_urls(session, query, max_sitemaps=12, max_urls=80):
             return None
         return r.text
 
-    def score_url(value):
-        low = value.lower()
-        if "/produit/" not in low and "/product/" not in low:
-            return None
-
-        url_tokens = tokens(value)
-        overlap = len(query_tokens & url_tokens)
-        if overlap == 0:
-            return None
-
-        # Generic ranking only. No product/brand-specific knowledge.
-        normalized_url = norm(value)
-        normalized_query = norm(query)
-        phrase_bonus = 3 if normalized_query and normalized_query in normalized_url else 0
-        coverage = overlap / max(1, len(query_tokens))
-        return (phrase_bonus, overlap, coverage)
-
     while (
         pending
         and len(seen_sitemaps) < max_sitemaps
+        and len(product_urls) < max_urls
     ):
         sitemap_url = pending.pop(0)
         if sitemap_url in seen_sitemaps:
@@ -714,101 +721,67 @@ def _sitemap_product_urls(session, query, max_sitemaps=12, max_urls=80):
             low = value.lower()
 
             if "/produit/" in low or "/product/" in low:
-                score = score_url(value)
-                if score is not None:
-                    if value not in scored:
-                        scored[value] = (score, order)
-                        order += 1
+                if query_tokens.issubset(tokens(value)):
+                    if value not in seen_products:
+                        seen_products.add(value)
+                        product_urls.append(value)
+                        if len(product_urls) >= max_urls:
+                            break
             elif low.endswith(".xml") or "sitemap" in low:
                 if value not in seen_sitemaps:
                     pending.append(value)
 
-    ranked = sorted(
-        scored.items(),
-        key=lambda item: (
-            item[1][0][0],
-            item[1][0][1],
-            item[1][0][2],
-            -item[1][1],
-        ),
-        reverse=True,
-    )
+    return product_urls
 
-    return [url for url, _meta in ranked[:max_urls]]
 
 def _discover(session, q):
     """Generic Deloox discovery for the current .be site.
 
-    Discovery combines several generic sources and deduplicates them:
-    - Deloox search endpoints, when available;
-    - category/Product-line pages;
-    - product sitemaps.
+    Discovery is based on Deloox's current public URL structure:
+    - product pages under /produit/
+    - category pages under /categorie/
+    - sitemap discovery as the primary product-index source
+    - category crawling only as a bounded fallback
 
-    Sources are candidates only. Final product identity is validated by
-    _product(), so no perfume, brand, SKU, or URL-specific exception exists.
+    No perfume, brand, SKU, product URL, or product-specific exception is
+    embedded here. Final validation is always performed by _product().
     """
-    candidates = []
+    urls = []
+    _diag(f"discover_start query={q!r}")
     seen = set()
 
     def add(url):
-        if url and url not in seen and len(candidates) < 80:
+        if url and url not in seen and len(urls) < 24:
             seen.add(url)
-            candidates.append(url)
+            urls.append(url)
 
-    # 1. SEARCH ENDPOINTS: query-specific source, so use it first.
-    for endpoint in (
-        BASE_URL + "/en/search?query=" + quote_plus(q),
-        BASE_URL + "/en/search?search=" + quote_plus(q),
-        BASE_URL + "/en/search?q=" + quote_plus(q),
+    # 1. PRIMARY: current Deloox product sitemap(s).
+    # This avoids relying on undocumented/changed search endpoints.
+    for product_url in _sitemap_product_urls(
+        session,
+        q,
+        max_sitemaps=8,
+        max_urls=24,
     ):
-        try:
-            r = session.get(
-                endpoint,
-                headers=HEADERS,
-                timeout=TIMEOUT,
-            )
-        except requests.RequestException:
-            continue
+        add(product_url)
+        if len(urls) >= 24:
+            _diag(f"discover_return candidates={len(urls)} query={q!r}")
+            return urls[:24]
 
-        if r.status_code >= 400:
-            continue
+    # 2. SECONDARY: current Deloox perfume category pages.
+    for url in _discover_from_categories(
+        session,
+        q,
+        max_urls=24,
+    ):
+        add(url)
+        if len(urls) >= 24:
+            _diag(f"discover_return candidates={len(urls)} query={q!r}")
+            return urls[:24]
 
-        for product_url in _candidate_product_urls(
-            r.text,
-            q,
-            accept_all_products=True,
-        ):
-            add(product_url)
-            if len(candidates) >= 80:
-                break
+    _diag(f"discover_return candidates={len(urls)} query={q!r}")
+    return urls[:24]
 
-        if len(candidates) >= 80:
-            break
-
-    # 2. CATEGORY PAGES.
-    if len(candidates) < 80:
-        for url in _discover_from_categories(
-            session,
-            q,
-            max_urls=40,
-        ):
-            add(url)
-            if len(candidates) >= 80:
-                break
-
-    # 3. SITEMAPS, ranked by generic query relevance.
-    if len(candidates) < 80:
-        for url in _sitemap_product_urls(
-            session,
-            q,
-            max_sitemaps=8,
-            max_urls=40,
-        ):
-            add(url)
-            if len(candidates) >= 80:
-                break
-
-    return candidates[:80]
 
 
 def diagnose_search(session, query):
@@ -845,7 +818,8 @@ def diagnose_search(session, query):
         for page_url, filtered in pages:
             try:
                 page = session.get(page_url, headers=HEADERS, timeout=TIMEOUT)
-            except requests.RequestException:
+            except requests.RequestException as exc:
+                _diag_exception("request", exc)
                 continue
             if page.status_code >= 400:
                 continue
@@ -866,7 +840,8 @@ def diagnose_search(session, query):
     for url in report["candidate_urls"]:
         try:
             r = session.get(url, headers=HEADERS, timeout=TIMEOUT)
-        except requests.RequestException:
+        except requests.RequestException as exc:
+            _diag_exception("request", exc)
             continue
         if r.status_code >= 400:
             continue
@@ -899,7 +874,8 @@ def search(query):
         for url in _discover(session, query):
             try:
                 r = session.get(url, headers=HEADERS, timeout=TIMEOUT)
-            except requests.RequestException:
+            except requests.RequestException as exc:
+                _diag_exception("request", exc)
                 continue
 
             if r.status_code >= 400:
@@ -922,6 +898,7 @@ def search(query):
             seen.add(key)
             results.append(item)
 
+        _diag(f"search_final_results={len(results)}")
         return results
     finally:
         session.close()
