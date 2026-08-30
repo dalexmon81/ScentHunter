@@ -11,26 +11,18 @@
       ],
       "products": [
         {
-          "canonical_name": "Hawas For Him",
+          "canonical_name": "Hawas for Him",
           "aliases": [
             "Hawas for Him",
             "Hawas Men",
-            "Hawas For Him",
-            "For Him"
+            "Hawas For Him"
           ]
         },
         {
-          "canonical_name": "Hawas For Her",
+          "canonical_name": "Hawas for Her",
           "aliases": [
-            "Hawas For Her",
-            "Hawas for her",
-            "For Her",
-            "Hawas Women",
-            "Hawas pour femme",
-            "Rasasi Hawas For Her",
-            "Rasasi Hawas for Her",
-            "Rasasi Hawas Women",
-            "Rasasi Hawas Pour Femme"
+            "Hawas for Her",
+            "Hawas For Her"
           ]
         },
         {
@@ -49,8 +41,7 @@
           "canonical_name": "Hawas Kobra",
           "aliases": [
             "Hawas Kobra",
-            "Hawas Cobra",
-            "Cobra"
+            "Hawas Cobra"
           ]
         },
         {
@@ -93,9 +84,7 @@
         {
           "canonical_name": "Hawas Malibu",
           "aliases": [
-            "Hawas Malibu",
-            "Malibu Voor Mannen",
-            "Hawas Malibu Voor Mannen"
+            "Hawas Malibu"
           ]
         },
         {
@@ -161,19 +150,13 @@
           ]
         },
         {
-          "canonical_name": "Hawas Eclat",
+          "canonical_name": "Hawas For Her Éclat",
           "aliases": [
             "Hawas For Her Éclat",
             "Hawas Eclat",
             "Hawas Éclat",
             "Hawas E'clat",
-            "Hawas For Her Eclat",
-            "Hawas E’Clat",
-            "Hawas E'Clat",
-            "Eclat",
-            "Éclat",
-            "E’Clat",
-            "E'Clat"
+            "Hawas For Her Eclat"
           ]
         },
         {
@@ -195,6 +178,20 @@
             "Hawas Majestic"
           ]
         }
+      ],
+      "excluded_products": [
+        "Hawas Al Wisam",
+        "Al Wisam",
+        "Daarej",
+        "Daarej Passion"
+      ],
+      "excluded_aliases": [
+        "Hawas Al Wisam",
+        "Hawas Al Wisam Absolute",
+        "Hawas Al Wisam Day",
+        "Daarej",
+        "Daarej Passion",
+        "Rasasi Daarej"
       ]
     },
     {
@@ -364,93 +361,4 @@
           ]
         }
       ]
-    },
-    {
-      "family_id": "lattafa_asad",
-      "brand": "Lattafa",
-      "query_aliases": [
-        "Asad",
-        "Lattafa Asad"
-      ],
-      "products": [
-        {
-          "canonical_name": "Asad",
-          "aliases": [
-            "Asad",
-            "Lattafa Asad"
-          ],
-          "formats_ml": [
-            100
-          ]
-        },
-        {
-          "canonical_name": "Asad Zanzibar",
-          "aliases": [
-            "Asad Zanzibar",
-            "Lattafa Asad Zanzibar"
-          ],
-          "formats_ml": [
-            100
-          ]
-        },
-        {
-          "canonical_name": "Asad Bourbon",
-          "aliases": [
-            "Asad Bourbon",
-            "Lattafa Asad Bourbon"
-          ],
-          "formats_ml": [
-            100
-          ]
-        },
-        {
-          "canonical_name": "Asad Elixir",
-          "aliases": [
-            "Asad Elixir",
-            "Lattafa Asad Elixir"
-          ],
-          "formats_ml": [
-            100
-          ]
-        }
-      ]
-    },
-    {
-      "family_id": "french_avenue_liquid_brun",
-      "brand": "French Avenue",
-      "query_aliases": [
-        "Liquid Brun",
-        "French Avenue Liquid Brun"
-      ],
-      "products": [
-        {
-          "canonical_name": "Liquid Brun",
-          "aliases": [
-            "Liquid Brun",
-            "French Avenue Liquid Brun",
-            "French Avenue - Liquid Brun",
-            "Liquid Brun Eau de Parfum",
-            "French Avenue Liquid Brun Eau de Parfum"
-          ],
-          "formats_ml": [
-            100
-          ]
-        },
-        {
-          "canonical_name": "Liquid Brun Limited Edition",
-          "aliases": [
-            "Liquid Brun Limited Edition",
-            "French Avenue Liquid Brun Limited Edition",
-            "French Avenue - Liquid Brun Limited Edition",
-            "Liquid Brun Limited Edition Extrait de Parfum",
-            "French Avenue Liquid Brun Limited Edition Extrait de Parfum",
-            "French Avenue - Liquid Brun Limited Edition Extrait de Parfum"
-          ],
-          "formats_ml": [
-            150
-          ]
-        }
-      ]
     }
-  ]
-}
