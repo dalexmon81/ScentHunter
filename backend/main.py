@@ -3503,3 +3503,10 @@ def diagnostic_http_trace(
                 requests.request = original_requests_request
         finally:
             _DIAGNOSTIC_HTTP_LOCK.release()
+
+# ============================================================
+# CANDIDATE-LEVEL DIAGNOSTIC ENDPOINT
+# ============================================================
+# Loaded explicitly so Railway/Uvicorn registers the diagnostic route.
+# This module does not alter the normal search pipeline.
+import diagnostic_pipeline_endpoint  # noqa: E402,F401
