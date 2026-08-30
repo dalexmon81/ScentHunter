@@ -916,7 +916,6 @@ function shGroupData(data){
       raw.push({...o,
         brand:o.brand||g.brand||"",
         name:o.name||g.name||"Profumo",
-        canonical_brand:o.canonical_brand||g.canonical_brand||g.brand||"",
         canonical_name:o.canonical_name||o.catalog_variant||g.canonical_name||g.catalog_variant||"",
         family_id:o.family_id||g.family_id||"",
         size_ml:o.size_ml||o.size||g.size_ml||"",
@@ -944,7 +943,6 @@ function shGroupData(data){
   });
   (Array.isArray(data.results)?data.results:[]).forEach(o=>raw.push({
     ...o,
-    canonical_brand:o.canonical_brand||o.canonicalBrand||"",
     canonical_name:o.canonical_name||o.catalog_variant||o.canonicalName||"",
     family_id:o.family_id||o.familyId||o._catalog_family_id||"",
     catalog_variant:o.catalog_variant||o._catalog_canonical_name||o.canonical_name||o.canonicalName||"",
@@ -1555,23 +1553,7 @@ function shGroupData(data){
   }
 
   const identities=raw.map(o=>{
-    const backendCanonicalBrand=cleanBrandText(
-      o?.canonical_brand
-      ||o?.canonicalBrand
-      ||o?.identity?.canonical_brand
-      ||""
-    );
-    const backendCanonicalName=cleanBrandText(
-      o?.canonical_name
-      ||o?.canonicalName
-      ||o?.identity?.canonical_name
-      ||o?.catalog_variant
-      ||""
-    );
-
-    // Backend canonical identity is authoritative. The frontend must never
-    // replace a resolved canonical brand with retailer/editorial data.
-    const brand=backendCanonicalBrand||findBrand(o);
+    const brand=findBrand(o);
 
     // Quando il backend ha validato una referenza tramite il Family Registry,
     // questi campi sono l'autorità sull'identità. Il titolo commerciale del
@@ -1590,29 +1572,18 @@ function shGroupData(data){
       ||""
     );
 
-    const name=backendCanonicalName
+    const name=catalogVariant
       ? pretty(
           removeTrailingConcentration(
-            backendCanonicalName,
+            catalogVariant,
             o?.canonical_concentration
             ||o?.catalog_concentration
             ||o?.canonicalConcentration
             ||o?.concentration
             ||""
-          ) || backendCanonicalName
+          ) || catalogVariant
         )
-      : (catalogVariant
-        ? pretty(
-            removeTrailingConcentration(
-              catalogVariant,
-              o?.canonical_concentration
-              ||o?.catalog_concentration
-              ||o?.canonicalConcentration
-              ||o?.concentration
-              ||""
-            ) || catalogVariant
-          )
-        : catalogCanonicalName(o,brand));
+      : catalogCanonicalName(o,brand);
 
     const key=familyId&&catalogVariant
       ? ("catalog|"+norm(familyId)+"|"+norm(catalogVariant)).replace(/\|+$/g,"")
@@ -1622,47 +1593,6 @@ function shGroupData(data){
   });
 
   resolveIdentitySet(raw,identities);
-
-  // Re-assert backend canonical identity after the legacy frontend inference
-  // pass. This keeps the frontend presentation-only: once the backend has
-  // resolved an identity, local heuristics cannot change its brand/name.
-  raw.forEach((o,i)=>{
-    const id=identities[i];
-    const canonicalBrand=cleanBrandText(
-      o?.canonical_brand
-      ||o?.canonicalBrand
-      ||o?.identity?.canonical_brand
-      ||""
-    );
-    const canonicalName=cleanBrandText(
-      o?.canonical_name
-      ||o?.canonicalName
-      ||o?.identity?.canonical_name
-      ||""
-    );
-    const familyId=cleanBrandText(
-      o?.family_id
-      ||o?.familyId
-      ||o?._catalog_family_id
-      ||""
-    );
-    const catalogVariant=cleanBrandText(
-      o?.catalog_variant
-      ||o?._catalog_canonical_name
-      ||""
-    );
-
-    if(canonicalBrand)id.brand=canonicalBrand;
-    if(canonicalName)id.name=canonicalName;
-    if(familyId)id.family_id=familyId;
-    if(catalogVariant)id.catalog_variant=catalogVariant;
-
-    if(id.family_id&&id.catalog_variant){
-      id.key=("catalog|"+norm(id.family_id)+"|"+norm(id.catalog_variant)).replace(/\|+$/g,"");
-    }else{
-      id.key=(norm(id.brand)+"|"+norm(id.name)).replace(/\|+$/g,"");
-    }
-  });
 
   /*
    * CONCENTRAZIONE:
@@ -1730,7 +1660,7 @@ function shGroupData(data){
     if(familyId)id.family_id=familyId;
     if(catalogVariant)id.catalog_variant=catalogVariant;
 
-    if(id.concentration && !o?.canonical_name && !o?.canonicalName){
+    if(id.concentration){
       id.name=catalogCanonicalName(o,id.brand);
     }
 
@@ -1947,12 +1877,7 @@ function shGroupData(data){
         return sourceName.startsWith(searchBrandNorm+" ");
       });
 
-      const hasBackendCanonical=Boolean(
-        g.family_id
-        ||g.offers.some(o=>o?.canonical_brand||o?.canonical_name||o?.catalog_variant)
-      );
-
-      if(source && !hasBackendCanonical){
+      if(source){
         const rebuilt=cleanProductName(
           {...source,name:source._source_name||source.name||""},
           searchBrand
@@ -1960,10 +1885,8 @@ function shGroupData(data){
         if(rebuilt&&norm(rebuilt)!==searchBrandNorm)g.name=rebuilt;
       }
 
-      if(!hasBackendCanonical){
-        g.brand=searchBrand;
-        g.display_name=g.brand+" - "+displayCatalogName(g);
-      }
+      g.brand=searchBrand;
+      g.display_name=g.brand+" - "+displayCatalogName(g);
     });
   }
 
