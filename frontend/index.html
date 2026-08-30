@@ -943,9 +943,8 @@ function shGroupData(data){
   });
   (Array.isArray(data.results)?data.results:[]).forEach(o=>raw.push({
     ...o,
-    canonical_name:o.canonical_name||o.catalog_variant||o.canonicalName||"",
-    family_id:o.family_id||o.familyId||o._catalog_family_id||"",
-    catalog_variant:o.catalog_variant||o._catalog_canonical_name||o.canonical_name||o.canonicalName||"",
+    canonical_name:o.canonical_name||o.catalog_variant||"",
+    family_id:o.family_id||"",
     _source_priority:2,
     _price_source_priority:offerPriceSourcePriority(o)
   }));
@@ -1497,98 +1496,45 @@ function shGroupData(data){
       id.key=(norm(id.brand)+"|"+norm(id.name)).replace(/\|+$/g,"");
     });
 
-    // Seconda passata: quando più offerte della STESSA identità espongono
-    // brand diversi, un brand noto e canonico ha precedenza su un valore
-    // retailer non riconosciuto. Questo recupera gli errori di etichettatura
-    // del campo brand senza introdurre eccezioni per singoli prodotti.
-    // Se per la stessa identità esistono più brand canonici diversi, non
-    // scegliamo arbitrariamente: l'ambiguità resta intatta.
-    const canonicalBrandByName=new Map();
+    // Seconda passata: se un nome coincide con una famiglia già associata a
+    // un brand, ereditiamo quel brand. Non usiamo mai il nome di un prodotto
+    // specifico come eccezione.
+    const nameToBrand=new Map();
     raw.forEach((o,i)=>{
       const id=identities[i];
-      if(!id.name)return;
-      const canonical=canonicalKnownBrand(id.brand);
-      if(!canonical)return;
+      if(!id.brand||!id.name)return;
       const n=norm(id.name);
-      if(!canonicalBrandByName.has(n))canonicalBrandByName.set(n,new Set());
-      canonicalBrandByName.get(n).add(canonical);
+      const old=nameToBrand.get(n);
+      if(!old || norm(id.brand).length>norm(old).length)nameToBrand.set(n,id.brand);
     });
 
     raw.forEach((o,i)=>{
       const id=identities[i];
-      if(!id.name || isNonPerfumeProduct({
+      if(!id.brand && !isNonPerfumeProduct({
         brand:id.brand,
         name:id.name,
         offers:[o]
-      }))return;
-
-      const canonicalBrands=canonicalBrandByName.get(norm(id.name));
-      const inherited=(canonicalBrands&&canonicalBrands.size===1)
-        ? [...canonicalBrands][0]
-        : "";
-
-      // Un valore non canonico (es. un product-line label usato come brand)
-      // viene sostituito solo quando la stessa identità ha una sola prova
-      // canonica del produttore. Un brand canonico già corretto non viene mai
-      // sovrascritto.
-      if(inherited && !canonicalKnownBrand(id.brand)){
-        id.brand=inherited;
-        id.name=catalogCanonicalName(o,inherited);
-      }else if(!id.brand){
-        const candidatesForName=brandHints
-          .filter(b=>matchesBrandAtEdge(id.name,b))
-          .sort((a,b)=>norm(b).length-norm(a).length);
-        if(candidatesForName.length){
-          id.brand=pretty(candidatesForName[0]);
-          id.name=catalogCanonicalName(o,id.brand);
+      })){
+        const inherited=nameToBrand.get(norm(id.name));
+        if(inherited){
+          id.brand=inherited;
+          id.name=catalogCanonicalName(o,inherited);
+          if(id.family_id&&id.catalog_variant){
+            id.key=("catalog|"+norm(id.family_id)+"|"+norm(id.catalog_variant)+"|"+norm(id.concentration||"")).replace(/\|+$/g,"");
+          }else{
+            id.key=norm(inherited)+"|"+norm(id.name);
+          }
         }
-      }
-
-      if(id.family_id&&id.catalog_variant){
-        id.key=("catalog|"+norm(id.family_id)+"|"+norm(id.catalog_variant)).replace(/\|+$/g,"");
-      }else{
-        id.key=(norm(id.brand)+"|"+norm(id.name)).replace(/\|+$/g,"");
       }
     });
   }
 
   const identities=raw.map(o=>{
     const brand=findBrand(o);
-
-    // Quando il backend ha validato una referenza tramite il Family Registry,
-    // questi campi sono l'autorità sull'identità. Il titolo commerciale del
-    // singolo negozio non deve poter creare una nuova categoria.
-    const familyId=cleanBrandText(
-      o?.family_id
-      ||o?.familyId
-      ||o?._catalog_family_id
-      ||""
-    );
-    const catalogVariant=cleanBrandText(
-      o?.catalog_variant
-      ||o?._catalog_canonical_name
-      ||o?.canonical_name
-      ||o?.canonicalName
-      ||""
-    );
-
-    const name=catalogVariant
-      ? pretty(
-          removeTrailingConcentration(
-            catalogVariant,
-            o?.canonical_concentration
-            ||o?.catalog_concentration
-            ||o?.canonicalConcentration
-            ||o?.concentration
-            ||""
-          ) || catalogVariant
-        )
-      : catalogCanonicalName(o,brand);
-
-    const key=familyId&&catalogVariant
-      ? ("catalog|"+norm(familyId)+"|"+norm(catalogVariant)).replace(/\|+$/g,"")
-      : (norm(brand)+"|"+norm(name)).replace(/\|+$/g,"");
-
+    const name=catalogCanonicalName(o,brand);
+    const familyId=cleanBrandText(o?.family_id||o?.familyId||"");
+    const catalogVariant=cleanBrandText(o?.catalog_variant||o?.canonical_name||o?.canonicalName||"");
+    const key=(norm(brand)+"|"+norm(name)).replace(/\|+$/g,"");
     return {brand,name,key,family_id:familyId,catalog_variant:catalogVariant};
   });
 
@@ -1606,13 +1552,7 @@ function shGroupData(data){
   raw.forEach((o,i)=>{
     const id=identities[i];
     if(!id.key)return;
-    const hint=String(
-      o?.canonical_concentration
-      ||o?.catalog_concentration
-      ||o?.canonicalConcentration
-      ||concentrationHint(o)
-      ||String(o.concentration||"").trim()
-    ).trim();
+    const hint=concentrationHint(o)||String(o.concentration||"").trim();
     if(!hint)return;
     if(!concentrationByBase.has(id.key))concentrationByBase.set(id.key,new Set());
     concentrationByBase.get(id.key).add(hint);
@@ -1620,13 +1560,7 @@ function shGroupData(data){
 
   raw.forEach((o,i)=>{
     const id=identities[i];
-    const explicit=String(
-      o?.canonical_concentration
-      ||o?.catalog_concentration
-      ||o?.canonicalConcentration
-      ||concentrationHint(o)
-      ||String(o.concentration||"").trim()
-    ).trim();
+    const explicit=concentrationHint(o)||String(o.concentration||"").trim();
     const known=concentrationByBase.get(id.key);
     const inherited=(known&&known.size===1)?[...known][0]:"";
     const concentration=explicit||inherited;
@@ -1645,17 +1579,8 @@ function shGroupData(data){
    */
   raw.forEach((o,i)=>{
     const id=identities[i];
-    const familyId=cleanBrandText(
-      o?.family_id||o?.familyId||o?._catalog_family_id||id.family_id||""
-    );
-    const catalogVariant=cleanBrandText(
-      o?.catalog_variant
-      ||o?._catalog_canonical_name
-      ||o?.canonical_name
-      ||o?.canonicalName
-      ||id.catalog_variant
-      ||""
-    );
+    const familyId=cleanBrandText(o?.family_id||o?.familyId||id.family_id||"");
+    const catalogVariant=cleanBrandText(o?.catalog_variant||o?.canonical_name||o?.canonicalName||id.catalog_variant||"");
 
     if(familyId)id.family_id=familyId;
     if(catalogVariant)id.catalog_variant=catalogVariant;
@@ -1675,9 +1600,7 @@ function shGroupData(data){
      * chiave resta comunque stabile sulla famiglia + variante.
      */
     if(id.family_id&&id.catalog_variant){
-      // L'identità catalogata è primaria: una concentrazione diversa
-      // riportata da un retailer non crea una seconda categoria.
-      id.key=("catalog|"+norm(id.family_id)+"|"+norm(id.catalog_variant)).replace(/\|+$/g,"");
+      id.key=("catalog|"+norm(id.family_id)+"|"+norm(id.catalog_variant)+"|"+norm(id.concentration||"")).replace(/\|+$/g,"");
     }else if(id.concentration){
       id.key=(norm(id.brand)+"|"+norm(id.name)+"|"+norm(id.concentration)).replace(/\|+$/g,"");
     }
@@ -1715,20 +1638,7 @@ function shGroupData(data){
     )?[...knownSizes][0]:"";
     const size=explicitSize||inferredSize;
 
-    // Se l'identità arriva dal catalogo, la variante catalogata è la chiave
-    // primaria. Una concentrazione riportata diversamente da un singolo
-    // negozio non deve creare una nuova categoria per la stessa referenza.
-    // Senza identità catalogata, invece, la concentrazione continua a fare
-    // parte della chiave generica.
-    const catalogConcentration=String(
-      o?.canonical_concentration
-      ||o?.catalog_concentration
-      ||o?.canonicalConcentration
-      ||""
-    ).trim();
-    const concentration=id.family_id&&id.catalog_variant
-      ? (catalogConcentration||id.concentration||o.concentration||"")
-      : (o.concentration||id.concentration||"");
+    const concentration=o.concentration||id.concentration||"";
     const baseDisplayName=concentration
       ? removeTrailingConcentration(id.name, concentration)
       : id.name;
@@ -1845,23 +1755,9 @@ function shGroupData(data){
       if(canonicalKnownBrand(query) && nn.startsWith(qn+" "))candidates.push(query);
     });
 
-    // Una query che coincide con un brand noto è una vera brand query.
-    // Una query che coincide solo con il nome di un prodotto non può invece
-    // trasformare quel nome nel brand della ricerca (es. un campo retailer
-    // che usa il product-line come brand).
-    const queryKnownBrand=canonicalKnownBrand(query);
-    if(queryKnownBrand)return queryKnownBrand;
-
-    // Se la query contiene un brand noto (es. "Brand Prodotto"), usiamo
-    // soltanto l'evidenza canonica presente tra i candidati.
-    const canonicalCandidates=[...new Set(
-      candidates
-        .map(value=>canonicalKnownBrand(value))
-        .filter(Boolean)
-    )];
-    if(canonicalCandidates.length===1)return canonicalCandidates[0];
-
-    return "";
+    if(!candidates.length)return "";
+    const best=candidates.sort((a,b)=>norm(a).length-norm(b).length)[0];
+    return pretty(best||query);
   })();
 
   if(searchBrand){
