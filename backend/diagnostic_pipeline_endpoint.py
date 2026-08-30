@@ -46,6 +46,119 @@ def _compact(p: Dict[str, Any]) -> Dict[str, Any]:
     }
 
 
+def _catalog_diagnostic(p: Dict[str, Any], q: str) -> Dict[str, Any]:
+    """Expose the exact internal catalog rejection point without changing pipeline behavior."""
+    try:
+        family = scent_main._catalog_query_family(q)
+        if family is None:
+            return {"status": "NOT_APPLICABLE", "stage": "query_family"}
+
+        candidates = []
+        for key in ("name", "title", "product_name"):
+            value = p.get(key)
+            if value:
+                candidates.append(str(value))
+
+        source = p.get("source")
+        if isinstance(source, dict):
+            for key in ("name", "title", "source_name"):
+                if source.get(key):
+                    candidates.append(str(source.get(key)))
+
+        title_keys = sorted({
+            scent_main._catalog_norm(value)
+            for value in candidates
+            if scent_main._catalog_norm(value)
+        })
+
+        if not title_keys:
+            return {
+                "status": "REJECT",
+                "stage": "variant_match",
+                "reason": "NO_PRODUCT_TITLE",
+                "title_candidates": candidates,
+                "normalized_title_keys": [],
+            }
+
+        variant = scent_main._catalog_match_variant(p, family)
+        if variant is None:
+            return {
+                "status": "REJECT",
+                "stage": "variant_match",
+                "reason": "VARIANT_NOT_FOUND_IN_CATALOG",
+                "family_id": str(family.get("family_id") or ""),
+                "family_name": str(family.get("canonical_family_name") or family.get("search_name") or ""),
+                "title_candidates": candidates,
+                "normalized_title_keys": title_keys,
+            }
+
+        query_key = scent_main._catalog_norm(q)
+        family_name = family.get("canonical_family_name") or family.get("search_name") or ""
+        family_aliases = family.get("query_aliases")
+        if not isinstance(family_aliases, list):
+            family_aliases = []
+        family_keys = {
+            scent_main._catalog_norm(value)
+            for value in [family_name, *family_aliases]
+            if scent_main._catalog_norm(value)
+        }
+
+        if query_key in family_keys:
+            return {
+                "status": "ACCEPT",
+                "stage": "query_family",
+                "reason": "FAMILY_QUERY_ACCEPTED",
+                "family_id": str(family.get("family_id") or ""),
+                "matched_variant": str(variant.get("canonical_name") or ""),
+            }
+
+        requested = None
+        for candidate in scent_main._catalog_family_products(family):
+            if query_key in candidate.get("_keys", set()):
+                requested = candidate
+                break
+
+        if requested is None:
+            return {
+                "status": "REJECT",
+                "stage": "requested_variant",
+                "reason": "QUERY_VARIANT_NOT_IN_CATALOG",
+                "family_id": str(family.get("family_id") or ""),
+                "query": q,
+                "query_key": query_key,
+                "matched_variant": str(variant.get("canonical_name") or ""),
+            }
+
+        variant_keys = set(variant.get("_keys", set()))
+        requested_keys = set(requested.get("_keys", set()))
+        if variant_keys.isdisjoint(requested_keys):
+            return {
+                "status": "REJECT",
+                "stage": "requested_variant",
+                "reason": "CANDIDATE_VARIANT_DIFFERS_FROM_QUERY",
+                "family_id": str(family.get("family_id") or ""),
+                "query": q,
+                "query_key": query_key,
+                "matched_variant": str(variant.get("canonical_name") or ""),
+                "requested_variant": str(requested.get("canonical_name") or ""),
+            }
+
+        return {
+            "status": "ACCEPT",
+            "stage": "requested_variant",
+            "reason": "REQUESTED_VARIANT_MATCHED",
+            "family_id": str(family.get("family_id") or ""),
+            "matched_variant": str(variant.get("canonical_name") or ""),
+            "requested_variant": str(requested.get("canonical_name") or ""),
+        }
+    except Exception as exc:
+        return {
+            "status": "ERROR",
+            "stage": "catalog_diagnostic",
+            "reason": f"{type(exc).__name__}: {exc}",
+        }
+
+
 def _catalog(p: Dict[str, Any], q: str) -> Dict[str, Any]:
     try:
         result = scent_main.catalog_match(dict(p), q)
@@ -54,7 +167,11 @@ def _catalog(p: Dict[str, Any], q: str) -> Dict[str, Any]:
     if result is None:
         return {"status": "NOT_APPLICABLE"}
     if isinstance(result, dict) and result.get("_reject"):
-        return {"status": "REJECT", "accepted": False}
+        return {
+            "status": "REJECT",
+            "accepted": False,
+            "diagnostic": _catalog_diagnostic(p, q),
+        }
     if isinstance(result, dict):
         return {
             "status": "ACCEPT",
