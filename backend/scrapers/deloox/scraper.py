@@ -364,13 +364,14 @@ def _candidate_product_urls(
         if url in seen:
             return
 
-        # Discovery is candidate-oriented. Do not require every query token
-        # to be present in the URL/link context: the authoritative product
-        # page validation is performed later by _product().
-        #
-        # accept_all_products is retained for diagnostic compatibility and
-        # does not alter the generic discovery rule.
-        del accept_all_products
+        # During search discovery we want candidate URLs, not final matches.
+        # Require at least one generic query token in the link context so the
+        # candidate pool remains bounded, but do not require every token.
+        # _product() performs the authoritative product-name validation later.
+        if not accept_all_products:
+            haystack = f"{context} {url}"
+            if not (tokens(query) & tokens(haystack)):
+                return
 
         seen.add(url)
         found.append(url)
@@ -634,6 +635,12 @@ def _sitemap_category_urls(session, query, max_sitemaps=12, max_urls=30):
 
 
 def _sitemap_product_urls(session, query, max_sitemaps=12, max_urls=80):
+    """Discover relevant Deloox product URLs from sitemaps.
+
+    Sitemap discovery is candidate-oriented but still relevance-aware. It
+    ranks URLs by generic overlap with the query instead of requiring every
+    query token to be present. The actual product page remains authoritative.
+    """
     query_tokens = tokens(query)
     if not query_tokens:
         return []
@@ -647,8 +654,8 @@ def _sitemap_product_urls(session, query, max_sitemaps=12, max_urls=80):
 
     pending = list(sitemap_roots)
     seen_sitemaps = set()
-    product_urls = []
-    seen_products = set()
+    scored = {}
+    order = 0
 
     def fetch_xml(url):
         try:
@@ -666,10 +673,26 @@ def _sitemap_product_urls(session, query, max_sitemaps=12, max_urls=80):
             return None
         return r.text
 
+    def score_url(value):
+        low = value.lower()
+        if "/produit/" not in low and "/product/" not in low:
+            return None
+
+        url_tokens = tokens(value)
+        overlap = len(query_tokens & url_tokens)
+        if overlap == 0:
+            return None
+
+        # Generic ranking only. No product/brand-specific knowledge.
+        normalized_url = norm(value)
+        normalized_query = norm(query)
+        phrase_bonus = 3 if normalized_query and normalized_query in normalized_url else 0
+        coverage = overlap / max(1, len(query_tokens))
+        return (phrase_bonus, overlap, coverage)
+
     while (
         pending
         and len(seen_sitemaps) < max_sitemaps
-        and len(product_urls) < max_urls
     ):
         sitemap_url = pending.pop(0)
         if sitemap_url in seen_sitemaps:
@@ -690,63 +713,48 @@ def _sitemap_product_urls(session, query, max_sitemaps=12, max_urls=80):
             low = value.lower()
 
             if "/produit/" in low or "/product/" in low:
-                if value not in seen_products:
-                    seen_products.add(value)
-                    product_urls.append(value)
-                    if len(product_urls) >= max_urls:
-                        break
+                score = score_url(value)
+                if score is not None:
+                    if value not in scored:
+                        scored[value] = (score, order)
+                        order += 1
             elif low.endswith(".xml") or "sitemap" in low:
                 if value not in seen_sitemaps:
                     pending.append(value)
 
-    return product_urls
+    ranked = sorted(
+        scored.items(),
+        key=lambda item: (
+            item[1][0][0],
+            item[1][0][1],
+            item[1][0][2],
+            -item[1][1],
+        ),
+        reverse=True,
+    )
 
+    return [url for url, _meta in ranked[:max_urls]]
 
 def _discover(session, q):
     """Generic Deloox discovery for the current .be site.
 
-    Discovery is candidate-oriented:
-    - sitemap URLs are collected without assuming that every query token is
-      present in the URL;
-    - fragrance category pages are used as a secondary candidate source;
-    - Deloox search endpoints are used as a final generic fallback;
-    - authoritative product matching is performed only after the product
-      page has been retrieved by _product().
+    Discovery combines several generic sources and deduplicates them:
+    - Deloox search endpoints, when available;
+    - category/Product-line pages;
+    - product sitemaps.
 
-    No perfume, brand, SKU, product URL, or product-specific exception is
-    embedded here.
+    Sources are candidates only. Final product identity is validated by
+    _product(), so no perfume, brand, SKU, or URL-specific exception exists.
     """
-    urls = []
+    candidates = []
     seen = set()
 
     def add(url):
-        if url and url not in seen and len(urls) < 24:
+        if url and url not in seen and len(candidates) < 80:
             seen.add(url)
-            urls.append(url)
+            candidates.append(url)
 
-    # 1. PRIMARY: current Deloox product sitemap(s).
-    for product_url in _sitemap_product_urls(
-        session,
-        q,
-        max_sitemaps=8,
-        max_urls=24,
-    ):
-        add(product_url)
-        if len(urls) >= 24:
-            return urls[:24]
-
-    # 2. SECONDARY: current Deloox perfume category pages.
-    for url in _discover_from_categories(
-        session,
-        q,
-        max_urls=24,
-    ):
-        add(url)
-        if len(urls) >= 24:
-            return urls[:24]
-
-    # 3. GENERIC FALLBACK: Deloox's public search endpoints.
-    # Candidate extraction remains generic; _product() is still authoritative.
+    # 1. SEARCH ENDPOINTS: query-specific source, so use it first.
     for endpoint in (
         BASE_URL + "/en/search?query=" + quote_plus(q),
         BASE_URL + "/en/search?search=" + quote_plus(q),
@@ -770,11 +778,36 @@ def _discover(session, q):
             accept_all_products=True,
         ):
             add(product_url)
-            if len(urls) >= 24:
-                return urls[:24]
+            if len(candidates) >= 80:
+                break
 
-    return urls[:24]
+        if len(candidates) >= 80:
+            break
 
+    # 2. CATEGORY PAGES.
+    if len(candidates) < 80:
+        for url in _discover_from_categories(
+            session,
+            q,
+            max_urls=40,
+        ):
+            add(url)
+            if len(candidates) >= 80:
+                break
+
+    # 3. SITEMAPS, ranked by generic query relevance.
+    if len(candidates) < 80:
+        for url in _sitemap_product_urls(
+            session,
+            q,
+            max_sitemaps=8,
+            max_urls=40,
+        ):
+            add(url)
+            if len(candidates) >= 80:
+                break
+
+    return candidates[:80]
 
 
 def diagnose_search(session, query):
