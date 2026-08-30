@@ -686,6 +686,58 @@ def _load_family_registry() -> List[Dict[str, Any]]:
 FAMILY_REGISTRY = _load_family_registry()
 
 
+def _catalog_title_matches_family_variant(
+    product: Dict[str, Any],
+    family: Dict[str, Any],
+) -> bool:
+    """
+    Check whether the retailer title is an exact authorized family variant.
+
+    This is used only as brand-recovery evidence: an unrecognized retailer
+    brand must not prevent a deterministic catalog identity when the title
+    itself is an exact family alias.
+    """
+    candidate_text = _catalog_clean_text(
+        _catalog_product_text(product)
+    )
+    if not candidate_text:
+        return False
+
+    family_brand = _catalog_clean_text(family.get("brand"))
+    if family_brand:
+        candidate_text = re.sub(
+            rf"\b{re.escape(family_brand)}\b",
+            " ",
+            candidate_text,
+            flags=re.I,
+        )
+        candidate_text = re.sub(
+            r"\s+",
+            " ",
+            candidate_text,
+        ).strip()
+
+    candidate_key = catalog_variant_key(candidate_text)
+    candidate_concentration = _catalog_concentration(
+        _catalog_product_text(product)
+    )
+
+    for variant in family.get("variants", []):
+        for alias in variant.get("aliases", []):
+            alias_clean = _catalog_clean_text(alias)
+            if not alias_clean:
+                continue
+
+            alias_concentration = _catalog_concentration(alias)
+            if alias_concentration and candidate_concentration != alias_concentration:
+                continue
+
+            if candidate_key == catalog_variant_key(alias_clean):
+                return True
+
+    return False
+
+
 def _catalog_brand_matches(
     product: Dict[str, Any],
     family: Dict[str, Any],
@@ -714,9 +766,27 @@ def _catalog_brand_matches(
     if not actual_brand:
         return True
 
-    return (
-        catalog_norm(actual_brand)
-        == expected_brand
+    actual_brand_norm = catalog_norm(actual_brand)
+    if actual_brand_norm == expected_brand:
+        return True
+
+    # A retailer can expose a product-line/marketing label in the brand
+    # field instead of the manufacturer's canonical brand (for example a
+    # product name used as a brand). That field must not block an otherwise
+    # exact Family Registry identity. At the same time, a known catalog brand
+    # belonging to another family is strong contrary evidence and must block
+    # the match.
+    known_registry_brands = {
+        catalog_norm(item.get("brand"))
+        for item in FAMILY_REGISTRY
+        if catalog_norm(item.get("brand"))
+    }
+    if actual_brand_norm in known_registry_brands:
+        return False
+
+    return _catalog_title_matches_family_variant(
+        product,
+        family,
     )
 
 
@@ -961,8 +1031,8 @@ def _catalog_match(
             result["name"] = variant["canonical_name"]
             result["canonical_name"] = variant["canonical_name"]
             result["family_id"] = family.get("family_id", "")
-            if not product_field(result, "brand", "source_brand"):
-                result["brand"] = str(family.get("brand") or "").strip()
+            result["brand"] = str(family.get("brand") or "").strip()
+            result["canonical_brand"] = result["brand"]
             result["family_name"] = (
                 family.get("query_aliases", [""])[0]
                 if family.get("query_aliases")
@@ -982,8 +1052,8 @@ def _catalog_match(
             result["name"] = variant["canonical_name"]
             result["canonical_name"] = variant["canonical_name"]
             result["family_id"] = family.get("family_id", "")
-            if not product_field(result, "brand", "source_brand"):
-                result["brand"] = str(family.get("brand") or "").strip()
+            result["brand"] = str(family.get("brand") or "").strip()
+            result["canonical_brand"] = result["brand"]
             result["family_name"] = (
                 family.get("query_aliases", [""])[0]
                 if family.get("query_aliases")
