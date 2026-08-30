@@ -2582,6 +2582,302 @@ def test_store(
         }
 
 
+
+# ============================================================
+# GENERIC FULL PIPELINE DIAGNOSTIC
+# ============================================================
+
+@app.get("/diagnostic-pipeline")
+def diagnostic_pipeline(q: str):
+    """
+    Traccia ogni candidato della ricerca reale attraverso la pipeline:
+
+        scraper discovery
+        -> raw candidate
+        -> discovery deduplication
+        -> matches()
+        -> Identity Engine / catalog match
+        -> final validation
+        -> final deduplication
+        -> published result
+
+    Non modifica il normale endpoint /search e non contiene conoscenza
+    specifica di alcun prodotto, marca o retailer.
+    """
+    query = str(q or "").strip()
+    if not query:
+        raise HTTPException(status_code=400, detail="Parametro q mancante")
+
+    all_candidates: List[Dict[str, Any]] = []
+    store_counts: Dict[str, Any] = {}
+    errors: Dict[str, str] = {}
+
+    executor = ThreadPoolExecutor(
+        max_workers=len(STORES),
+        thread_name_prefix="scent_diagnostic_store",
+    )
+    futures = {
+        executor.submit(run_store, store, query): store
+        for store in STORES
+    }
+
+    try:
+        try:
+            completed = as_completed(
+                futures,
+                timeout=GLOBAL_SEARCH_TIMEOUT,
+            )
+            for future in completed:
+                store = futures[future]
+                try:
+                    rows = future.result()
+                    if not isinstance(rows, list):
+                        rows = []
+                    all_candidates.extend(rows)
+                    store_counts[store] = {
+                        "raw_candidates": len(rows),
+                        "error": None,
+                    }
+                except Exception as exc:
+                    errors[store] = f"{type(exc).__name__}: {exc}"
+                    store_counts[store] = {
+                        "raw_candidates": 0,
+                        "error": errors[store],
+                    }
+        except TimeoutError:
+            for future, store in futures.items():
+                if future.done():
+                    try:
+                        rows = future.result()
+                        if not isinstance(rows, list):
+                            rows = []
+                        all_candidates.extend(rows)
+                        store_counts[store] = {
+                            "raw_candidates": len(rows),
+                            "error": None,
+                        }
+                    except Exception as exc:
+                        errors[store] = f"{type(exc).__name__}: {exc}"
+                        store_counts[store] = {
+                            "raw_candidates": 0,
+                            "error": errors[store],
+                        }
+                else:
+                    errors[store] = "Timeout: ricerca oltre il limite globale"
+                    store_counts[store] = {
+                        "raw_candidates": 0,
+                        "error": errors[store],
+                    }
+    finally:
+        for future in futures:
+            if not future.done():
+                future.cancel()
+        executor.shutdown(wait=False, cancel_futures=True)
+
+    # Snapshot prima della prima deduplica.
+    raw_candidates = list(all_candidates)
+    discovery_unique = unique_results(raw_candidates)
+
+    # La pipeline reale usa il pre-ranking prima della validazione.
+    ranked_candidates = _pre_rank_candidates(
+        discovery_unique,
+        query,
+    )
+
+    trace: List[Dict[str, Any]] = []
+    validated: List[Dict[str, Any]] = []
+
+    for candidate in ranked_candidates:
+        store = str(candidate.get("store") or candidate.get("retailer") or "").strip()
+        name_raw = str(
+            candidate.get("name")
+            or candidate.get("title")
+            or candidate.get("product_name")
+            or ""
+        ).strip()
+        url = str(candidate.get("url") or "").strip()
+        brand_raw = str(
+            candidate.get("brand")
+            or candidate.get("source_brand")
+            or ""
+        ).strip()
+
+        identity_key = product_identity_key(candidate)
+        matches_ok = False
+        matches_error = None
+        catalog_result = None
+        catalog_error = None
+        accepted = False
+        rejection_reason = None
+        resolved = None
+
+        try:
+            matches_ok = bool(matches(candidate, query))
+        except Exception as exc:
+            matches_error = f"{type(exc).__name__}: {exc}"
+            rejection_reason = "matches_exception"
+
+        if not matches_ok and not matches_error:
+            rejection_reason = "matches_rejected"
+        elif matches_ok:
+            try:
+                resolved = IDENTITY_ENGINE.match(candidate)
+                if isinstance(resolved, dict):
+                    catalog_result = {
+                        "matched": True,
+                        "family_id": resolved.get("family_id"),
+                        "family_name": resolved.get("family_name"),
+                        "canonical_brand": resolved.get("canonical_brand") or resolved.get("brand"),
+                        "canonical_name": resolved.get("canonical_name") or resolved.get("name"),
+                        "catalog_variant": resolved.get("catalog_variant"),
+                    }
+                else:
+                    catalog_result = {"matched": False}
+            except Exception as exc:
+                catalog_error = f"{type(exc).__name__}: {exc}"
+                catalog_result = {"matched": False, "error": catalog_error}
+
+            if isinstance(resolved, dict):
+                try:
+                    retailer_data = {
+                        "brand": brand_raw,
+                        "name": name_raw,
+                        "store": store,
+                        "url": url,
+                    }
+                    resolved["retailer_data"] = retailer_data
+                    canonical_brand = str(
+                        resolved.get("canonical_brand")
+                        or resolved.get("brand")
+                        or ""
+                    ).strip()
+                    canonical_name = str(
+                        resolved.get("canonical_name")
+                        or resolved.get("catalog_variant")
+                        or resolved.get("name")
+                        or ""
+                    ).strip()
+                    if canonical_brand:
+                        resolved["brand"] = canonical_brand
+                    if canonical_name:
+                        resolved["name"] = canonical_name
+                    resolved["canonical_identity"] = (
+                        f"{canonical_brand} - {canonical_name}"
+                        if canonical_brand and canonical_name
+                        else canonical_name or canonical_brand
+                    )
+                    resolved["_diagnostic_final_key"] = list(product_identity_key(resolved))
+                    validated.append(resolved)
+                    accepted = True
+                except Exception as exc:
+                    rejection_reason = f"validation_exception: {type(exc).__name__}: {exc}"
+            else:
+                # Fallback identico a _validate_candidate(): un candidato
+                # non risolto dal catalogo può comunque essere accettato
+                # dalla validazione universale se matches() lo ha approvato.
+                candidate["_diagnostic_final_key"] = list(product_identity_key(candidate))
+                accepted = True
+                validated.append(candidate)
+
+        trace.append({
+            "store": store,
+            "product": name_raw,
+            "raw": {
+                "name": name_raw,
+                "brand": brand_raw,
+                "url": url,
+            },
+            "discovery": {
+                "identity_key": list(identity_key),
+                "present_after_discovery_dedup": True,
+            },
+            "matches": {
+                "result": matches_ok,
+                "error": matches_error,
+            },
+            "catalog": catalog_result,
+            "dedup": {
+                "discovery_key": list(identity_key),
+                "duplicate_at_discovery_stage": False,
+            },
+            "final": {
+                "accepted_by_validation": accepted,
+                "_final_identity_key": (
+                    tuple(resolved.get("_diagnostic_final_key", []))
+                    if isinstance(resolved, dict)
+                    else tuple(candidate.get("_diagnostic_final_key", []))
+                ),
+                "canonical_brand": (
+                    resolved.get("canonical_brand") or resolved.get("brand")
+                    if isinstance(resolved, dict)
+                    else None
+                ),
+                "canonical_name": (
+                    resolved.get("canonical_name") or resolved.get("catalog_variant") or resolved.get("name")
+                    if isinstance(resolved, dict)
+                    else None
+                ),
+            },
+            "reason": rejection_reason,
+        })
+
+    # Second, real final deduplication used by /search.
+    final_results = unique_results(validated)
+    final_keys = {tuple(item.get("_diagnostic_final_key") or product_identity_key(item)) for item in final_results}
+
+    # Mark exactly which validated candidates survive the final dedup.
+    for row, candidate in zip(trace, ranked_candidates):
+        if row["matches"]["result"] and not row["final"]["accepted_by_validation"]:
+            row["final"]["published"] = False
+            continue
+        key = tuple(
+            row["final"].get("_final_identity_key")
+            or product_identity_key(candidate)
+        )
+        published = key in final_keys
+        row["final"]["published"] = published
+        if not published and row["final"]["accepted_by_validation"]:
+            row["reason"] = "final_deduplication"
+
+    return {
+        "ok": True,
+        "query": query,
+        "pipeline": [
+            "scraper_raw_candidates",
+            "discovery_deduplication",
+            "pre_ranking",
+            "matches",
+            "catalog_identity_engine",
+            "validation",
+            "final_deduplication",
+            "published_results",
+        ],
+        "counts": {
+            "raw_candidates": len(raw_candidates),
+            "after_discovery_dedup": len(discovery_unique),
+            "after_pre_ranking": len(ranked_candidates),
+            "matches_true": sum(1 for x in trace if x["matches"]["result"]),
+            "catalog_matched": sum(1 for x in trace if isinstance(x["catalog"], dict) and x["catalog"].get("matched")),
+            "accepted_validation": sum(1 for x in trace if x["final"]["accepted_by_validation"]),
+            "final_published": len(final_results),
+        },
+        "stores": store_counts,
+        "errors": errors,
+        "candidates": trace,
+        "final_results": [
+            {
+                "store": item.get("store"),
+                "name": item.get("name"),
+                "brand": item.get("brand"),
+                "url": item.get("url"),
+                "family_id": item.get("family_id"),
+                "catalog_variant": item.get("catalog_variant"),
+                "canonical_identity": item.get("canonical_identity"),
+            }
+            for item in final_results
+        ],
+    }
+
 # ============================================================
 # SUGGEST
 # ============================================================
