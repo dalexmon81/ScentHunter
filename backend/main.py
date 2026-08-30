@@ -265,7 +265,13 @@ def product_size_ml(product: Dict[str, Any]) -> Optional[float]:
 
 
 def product_concentration(product: Dict[str, Any]) -> str:
-    value = product_field(product, "concentration")
+    # Preserve retailer-observed concentration even after catalog
+    # canonicalization replaces the public product name.
+    value = product_field(
+        product,
+        "retailer_concentration",
+        "concentration",
+    )
     if value:
         return norm(value)
 
@@ -277,7 +283,12 @@ def product_concentration(product: Dict[str, Any]) -> str:
 
     text = " ".join(
         str(product.get(key) or "")
-        for key in ("name", "title", "product_name")
+        for key in (
+            "name",
+            "title",
+            "product_name",
+            "retailer_name",
+        )
     )
     text = norm(text)
 
@@ -1028,6 +1039,20 @@ def _catalog_match(
 
         if query_is_family:
             result = dict(product)
+
+            original_name = product_field(
+                product,
+                "name",
+                "title",
+                "product_name",
+            )
+            original_concentration = product_concentration(product)
+
+            if original_name:
+                result["retailer_name"] = original_name
+            if original_concentration:
+                result["retailer_concentration"] = original_concentration
+
             result["name"] = variant["canonical_name"]
             result["canonical_name"] = variant["canonical_name"]
             result["family_id"] = family.get("family_id", "")
@@ -1049,6 +1074,20 @@ def _catalog_match(
 
         if requested is variant:
             result = dict(product)
+
+            original_name = product_field(
+                product,
+                "name",
+                "title",
+                "product_name",
+            )
+            original_concentration = product_concentration(product)
+
+            if original_name:
+                result["retailer_name"] = original_name
+            if original_concentration:
+                result["retailer_concentration"] = original_concentration
+
             result["name"] = variant["canonical_name"]
             result["canonical_name"] = variant["canonical_name"]
             result["family_id"] = family.get("family_id", "")
@@ -1549,6 +1588,323 @@ def sort_by_price(products: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
 
 
 # ============================================================
+# PRODUCT GROUPING / DISPLAY
+# ============================================================
+
+def _group_source_name(product: Dict[str, Any]) -> str:
+    """Return the strongest observed product name for grouping/display."""
+    for key in (
+        "canonical_name",
+        "catalog_variant",
+        "name",
+        "title",
+        "product_name",
+        "retailer_name",
+    ):
+        value = product.get(key)
+        if value not in (None, ""):
+            return str(nested_value(value)).strip()
+
+    source = product.get("source")
+    if isinstance(source, dict):
+        for key in ("name", "title", "product_name", "source_name"):
+            value = source.get(key)
+            if value not in (None, ""):
+                return str(nested_value(value)).strip()
+
+    return ""
+
+
+def _group_brand(product: Dict[str, Any]) -> str:
+    return product_field(
+        product,
+        "canonical_brand",
+        "brand",
+        "source_brand",
+    )
+
+
+def _product_group_base_key(product: Dict[str, Any]) -> tuple:
+    """
+    Build the cross-store product identity.
+
+    Retailer IDs, SKU/EAN and size identify an offer, not a product card.
+    Catalog identities are preferred; uncatalogued products use normalized
+    observed product text. Concentration is handled separately so a retailer
+    that omits EDP/EDT/Extrait can still join the same variant.
+    """
+    family_id = str(
+        product.get("family_id") or ""
+    ).strip()
+
+    catalog_variant = str(
+        product.get("catalog_variant")
+        or product.get("canonical_name")
+        or ""
+    ).strip()
+
+    if family_id and catalog_variant:
+        return (
+            "catalog",
+            norm(family_id),
+            norm(catalog_variant),
+        )
+
+    brand = _group_brand(product)
+    raw_name = _group_source_name(product)
+    base_name = _display_cleanup(raw_name)
+
+    brand_clean = _display_cleanup(brand)
+    if brand_clean and norm(base_name).startswith(
+        norm(brand_clean) + " "
+    ):
+        base_tokens = base_name.split()
+        brand_tokens = brand_clean.split()
+
+        if [
+            norm(token)
+            for token in base_tokens[:len(brand_tokens)]
+        ] == [
+            norm(token)
+            for token in brand_tokens
+        ]:
+            base_name = " ".join(
+                base_tokens[len(brand_tokens):]
+            ).strip(" -|/")
+
+    return (
+        "generic",
+        norm(brand),
+        norm(base_name),
+    )
+
+
+def _display_concentration_label(value: Any) -> str:
+    concentration = norm(value)
+
+    labels = {
+        "eau de parfum": "Eau de Parfum",
+        "eau de toilette": "Eau de Toilette",
+        "eau de cologne": "Eau de Cologne",
+        "extrait de parfum": "Extrait de Parfum",
+        "parfum": "Parfum",
+    }
+
+    return labels.get(
+        concentration,
+        str(value or "").strip(),
+    )
+
+
+def _group_display_name(
+    product: Dict[str, Any],
+    concentration: str = "",
+) -> str:
+    raw_name = _group_source_name(product)
+    base_name = _display_cleanup(raw_name)
+
+    brand = _display_cleanup(_group_brand(product))
+
+    if brand and norm(base_name).startswith(
+        norm(brand) + " "
+    ):
+        base_tokens = base_name.split()
+        brand_tokens = brand.split()
+
+        if [
+            norm(token)
+            for token in base_tokens[:len(brand_tokens)]
+        ] == [
+            norm(token)
+            for token in brand_tokens
+        ]:
+            base_name = " ".join(
+                base_tokens[len(brand_tokens):]
+            ).strip(" -|/")
+
+    if not base_name:
+        base_name = _display_cleanup(
+            product.get("display_name")
+            or product.get("name")
+            or ""
+        )
+
+    label = _display_concentration_label(
+        concentration
+    )
+
+    if label and norm(label) not in norm(base_name):
+        base_name = (
+            f"{base_name} {label}"
+            if base_name
+            else label
+        )
+
+    return re.sub(
+        r"\s+",
+        " ",
+        base_name,
+    ).strip(" -|/")
+
+
+def _group_offer_sort_key(product: Dict[str, Any]) -> tuple:
+    price = price_num(product.get("price"))
+    if price is None:
+        price = float("inf")
+
+    size = product_size_ml(product)
+    if size is None:
+        size = float("inf")
+
+    return (
+        price,
+        size,
+        norm(product.get("store", "")),
+        norm(_group_source_name(product)),
+        str(product.get("url") or "").lower(),
+    )
+
+
+def group_results_for_display(
+    products: List[Dict[str, Any]],
+) -> List[Dict[str, Any]]:
+    """
+    Collapse offers from all stores into product cards.
+
+    Store, URL, SKU/EAN and ml never create separate cards. Explicit
+    concentration remains part of the displayed identity. If only one
+    concentration is observed for a variant, offers that omit it join the
+    same group.
+    """
+    if not products:
+        return []
+
+    base_groups: Dict[tuple, List[Dict[str, Any]]] = {}
+
+    for product in products:
+        if not isinstance(product, dict):
+            continue
+
+        key = _product_group_base_key(product)
+        base_groups.setdefault(key, []).append(
+            dict(product)
+        )
+
+    grouped: List[Dict[str, Any]] = []
+
+    for items in base_groups.values():
+        concentrations = sorted(
+            {
+                product_concentration(item)
+                for item in items
+                if product_concentration(item)
+            }
+        )
+
+        if len(concentrations) <= 1:
+            subgroups = {
+                concentrations[0] if concentrations else "": items
+            }
+        else:
+            # Multiple explicit concentrations are genuinely distinct.
+            # Offers without concentration remain separate rather than
+            # being assigned to the wrong concentration.
+            subgroups: Dict[str, List[Dict[str, Any]]] = {}
+            for item in items:
+                concentration = product_concentration(item)
+                subgroups.setdefault(
+                    concentration,
+                    [],
+                ).append(item)
+
+        for concentration, offers in subgroups.items():
+            offers = sorted(
+                offers,
+                key=_group_offer_sort_key,
+            )
+
+            if not offers:
+                continue
+
+            best_offer = offers[0]
+
+            image = next(
+                (
+                    product_image(offer)
+                    for offer in offers
+                    if product_image(offer)
+                ),
+                "",
+            )
+
+            display_name = _group_display_name(
+                offers[0],
+                concentration,
+            )
+
+            if not display_name:
+                display_name = str(
+                    offers[0].get("name") or ""
+                ).strip()
+
+            formats = sorted(
+                {
+                    product_size_ml(offer)
+                    for offer in offers
+                    if product_size_ml(offer) is not None
+                }
+            )
+
+            stores = list(
+                dict.fromkeys(
+                    str(offer.get("store") or "").strip()
+                    for offer in offers
+                    if str(offer.get("store") or "").strip()
+                )
+            )
+
+            card = dict(best_offer)
+            card["name"] = display_name
+            card["display_name"] = display_name
+            card["offers"] = offers
+            card["best_offer"] = dict(best_offer)
+            card["best_price"] = best_offer.get("price")
+            card["stores"] = stores
+            card["store_count"] = len(stores)
+            card["formats"] = formats
+            card["format_count"] = len(formats)
+            card["image"] = image or product_image(best_offer)
+
+            if not card.get("brand"):
+                card["brand"] = _group_brand(
+                    offers[0]
+                )
+
+            grouped.append(card)
+
+    return sort_by_price(grouped)
+
+
+def flatten_grouped_results(
+    products: List[Dict[str, Any]],
+) -> List[Dict[str, Any]]:
+    """Return the original retailer offers from grouped product cards."""
+    flattened: List[Dict[str, Any]] = []
+
+    for product in products:
+        offers = product.get("offers")
+
+        if isinstance(offers, list) and offers:
+            for offer in offers:
+                if isinstance(offer, dict):
+                    flattened.append(dict(offer))
+        else:
+            flattened.append(dict(product))
+
+    return unique_results(flattened)
+
+
+# ============================================================
 # SCRAPER
 # ============================================================
 
@@ -1918,7 +2274,7 @@ def _orchestrate_results(
         query,
     )
 
-    return sort_by_price(
+    return group_results_for_display(
         unique_results(validated)
     )
 
@@ -2169,10 +2525,8 @@ def _search_job_snapshot(job_id: str) -> Dict[str, Any]:
                 detail="Job di ricerca non trovato",
             )
 
-        results = sort_by_price(
-            unique_results(
-                list(job["results"])
-            )
+        results = group_results_for_display(
+            list(job["results"])
         )
 
         return {
@@ -2256,10 +2610,8 @@ def _run_search_job(
             query,
         )
 
-        results = sort_by_price(
-            unique_results(
-                existing_results + new_results
-            )
+        results = group_results_for_display(
+            existing_results + new_results
         )
 
         with SEARCH_JOBS_LOCK:
@@ -2746,7 +3098,11 @@ def product(
         Dict[str, Any]
     ] = []
 
-    for product_data in data["results"]:
+    raw_results = flatten_grouped_results(
+        data.get("results", [])
+    )
+
+    for product_data in raw_results:
         value = price_num(
             product_data.get("price")
         )
