@@ -364,12 +364,13 @@ def _candidate_product_urls(
         if url in seen:
             return
 
-        # During search discovery we want candidate URLs, not final matches.
-        # _product() performs the authoritative product-name validation later.
-        if not accept_all_products:
-            haystack = f"{context} {url}"
-            if not matches(haystack, query):
-                return
+        # Discovery is candidate-oriented. Do not require every query token
+        # to be present in the URL/link context: the authoritative product
+        # page validation is performed later by _product().
+        #
+        # accept_all_products is retained for diagnostic compatibility and
+        # does not alter the generic discovery rule.
+        del accept_all_products
 
         seen.add(url)
         found.append(url)
@@ -689,12 +690,11 @@ def _sitemap_product_urls(session, query, max_sitemaps=12, max_urls=80):
             low = value.lower()
 
             if "/produit/" in low or "/product/" in low:
-                if query_tokens.issubset(tokens(value)):
-                    if value not in seen_products:
-                        seen_products.add(value)
-                        product_urls.append(value)
-                        if len(product_urls) >= max_urls:
-                            break
+                if value not in seen_products:
+                    seen_products.add(value)
+                    product_urls.append(value)
+                    if len(product_urls) >= max_urls:
+                        break
             elif low.endswith(".xml") or "sitemap" in low:
                 if value not in seen_sitemaps:
                     pending.append(value)
@@ -705,14 +705,16 @@ def _sitemap_product_urls(session, query, max_sitemaps=12, max_urls=80):
 def _discover(session, q):
     """Generic Deloox discovery for the current .be site.
 
-    Discovery is based on Deloox's current public URL structure:
-    - product pages under /produit/
-    - category pages under /categorie/
-    - sitemap discovery as the primary product-index source
-    - category crawling only as a bounded fallback
+    Discovery is candidate-oriented:
+    - sitemap URLs are collected without assuming that every query token is
+      present in the URL;
+    - fragrance category pages are used as a secondary candidate source;
+    - Deloox search endpoints are used as a final generic fallback;
+    - authoritative product matching is performed only after the product
+      page has been retrieved by _product().
 
     No perfume, brand, SKU, product URL, or product-specific exception is
-    embedded here. Final validation is always performed by _product().
+    embedded here.
     """
     urls = []
     seen = set()
@@ -723,7 +725,6 @@ def _discover(session, q):
             urls.append(url)
 
     # 1. PRIMARY: current Deloox product sitemap(s).
-    # This avoids relying on undocumented/changed search endpoints.
     for product_url in _sitemap_product_urls(
         session,
         q,
@@ -743,6 +744,34 @@ def _discover(session, q):
         add(url)
         if len(urls) >= 24:
             return urls[:24]
+
+    # 3. GENERIC FALLBACK: Deloox's public search endpoints.
+    # Candidate extraction remains generic; _product() is still authoritative.
+    for endpoint in (
+        BASE_URL + "/en/search?query=" + quote_plus(q),
+        BASE_URL + "/en/search?search=" + quote_plus(q),
+        BASE_URL + "/en/search?q=" + quote_plus(q),
+    ):
+        try:
+            r = session.get(
+                endpoint,
+                headers=HEADERS,
+                timeout=TIMEOUT,
+            )
+        except requests.RequestException:
+            continue
+
+        if r.status_code >= 400:
+            continue
+
+        for product_url in _candidate_product_urls(
+            r.text,
+            q,
+            accept_all_products=True,
+        ):
+            add(product_url)
+            if len(urls) >= 24:
+                return urls[:24]
 
     return urls[:24]
 
