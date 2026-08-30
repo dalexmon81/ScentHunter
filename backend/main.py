@@ -18,6 +18,11 @@ from urllib.parse import urlencode
 from urllib.request import Request, urlopen
 from urllib.error import HTTPError, URLError
 
+try:
+    from .product_matcher import ProductMatcher
+except ImportError:
+    from product_matcher import ProductMatcher
+
 
 # ============================================================
 # ScentHunter API
@@ -684,6 +689,90 @@ def _load_family_registry() -> List[Dict[str, Any]]:
 
 
 FAMILY_REGISTRY = _load_family_registry()
+
+
+def _load_identity_catalog() -> List[Dict[str, Any]]:
+    """Load canonical catalog knowledge for the central Identity Engine."""
+    path = os.path.join(BASE_DIR, "product_catalog.json")
+    try:
+        with open(path, "r", encoding="utf-8") as file:
+            payload = json.load(file)
+    except Exception as exc:
+        print(
+            "IDENTITY_CATALOG_LOAD_ERROR:",
+            f"{type(exc).__name__}: {exc}",
+            flush=True,
+        )
+        return []
+
+    if not isinstance(payload, dict):
+        return []
+
+    products = payload.get("products") or []
+    variants = payload.get("variants") or []
+    if not isinstance(products, list):
+        products = []
+    if not isinstance(variants, list):
+        variants = []
+
+    # Catalog V2 keeps identity at product level. Its variant rows may carry
+    # additional aliases/GTIN/MPN/format evidence, but size itself is never
+    # promoted to a new identity. Merge that evidence into the parent product.
+    by_product_id: Dict[str, Dict[str, Any]] = {}
+    for item in products:
+        if not isinstance(item, dict):
+            continue
+        product_id = str(
+            item.get("product_id")
+            or item.get("id")
+            or item.get("catalog_id")
+            or ""
+        ).strip()
+        if product_id:
+            by_product_id[product_id] = dict(item)
+
+    for variant in variants:
+        if not isinstance(variant, dict):
+            continue
+        parent_id = str(
+            variant.get("product_id")
+            or variant.get("catalog_id")
+            or ""
+        ).strip()
+        parent = by_product_id.get(parent_id)
+        if parent is None:
+            continue
+
+        aliases = list(parent.get("aliases") or [])
+        variant_aliases = variant.get("aliases") or []
+        if isinstance(variant_aliases, str):
+            variant_aliases = [variant_aliases]
+        for alias in variant_aliases:
+            alias = str(alias or "").strip()
+            if alias and alias not in aliases:
+                aliases.append(alias)
+        if aliases:
+            parent["aliases"] = aliases
+
+        for target, source in (("gtins", "gtins"), ("mpns", "mpns")):
+            values = list(parent.get(target) or [])
+            incoming = variant.get(source) or []
+            if isinstance(incoming, str):
+                incoming = [incoming]
+            for value in incoming:
+                value = str(value or "").strip()
+                if value and value not in values:
+                    values.append(value)
+            if values:
+                parent[target] = values
+
+    return list(by_product_id.values())
+
+
+IDENTITY_ENGINE = ProductMatcher(
+    _load_identity_catalog(),
+    FAMILY_REGISTRY,
+)
 
 
 def _catalog_title_matches_family_variant(
@@ -1831,16 +1920,58 @@ def _validate_candidate(
     if not matches(product, query):
         return None
 
-    # Quando una famiglia è catalogata, restituisce anche la versione
-    # canonicalizzata del candidato. Per le famiglie non catalogate il
-    # prodotto originale resta invariato.
-    catalog_product = _catalog_match(
-        product,
-        query,
-    )
+    # Identity Engine is now the single canonical authority between scraper
+    # output and the API. Store-specific brand/name fields are preserved only
+    # as provenance/debug data; the public brand/name come from the resolved
+    # canonical identity.
+    try:
+        resolved = IDENTITY_ENGINE.match(product)
+    except Exception as exc:
+        print(
+            "IDENTITY_ENGINE_ERROR:",
+            f"{type(exc).__name__}: {exc}",
+            flush=True,
+        )
+        resolved = None
 
-    if catalog_product is not None:
-        return catalog_product
+    if isinstance(resolved, dict):
+        retailer_data = {
+            "brand": product.get("brand") or product.get("source_brand") or "",
+            "name": product.get("name") or product.get("title") or product.get("product_name") or "",
+            "store": product.get("store") or product.get("retailer") or "",
+            "url": product.get("url") or "",
+        }
+        resolved["retailer_data"] = retailer_data
+        canonical_brand = str(
+            resolved.get("canonical_brand") or resolved.get("brand") or ""
+        ).strip()
+        canonical_name = str(
+            resolved.get("canonical_name")
+            or resolved.get("catalog_variant")
+            or resolved.get("name")
+            or ""
+        ).strip()
+        if canonical_brand:
+            resolved["brand"] = canonical_brand
+        if canonical_name:
+            resolved["name"] = canonical_name
+        resolved["canonical_identity"] = (
+            f"{canonical_brand} - {canonical_name}"
+            if canonical_brand and canonical_name
+            else canonical_name or canonical_brand
+        )
+        return resolved
+
+    # A known catalog/family conflict is a hard rejection. For identities that
+    # are genuinely outside the current catalog, retain the generic discovery
+    # path so the catalog does not artificially limit ScentHunter's searchable
+    # universe. The central engine still has absolute precedence whenever it
+    # can resolve an identity.
+    try:
+        if IDENTITY_ENGINE._known_identity_conflict(product):
+            return None
+    except Exception:
+        pass
 
     return _apply_generic_display_name(
         product,
