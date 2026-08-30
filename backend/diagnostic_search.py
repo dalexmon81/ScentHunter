@@ -275,7 +275,7 @@ def classify_rejection(
 
     if catalog_family is not None:
         try:
-            catalog_match = scent_main._catalog_match(
+            catalog_match = scent_main.catalog_match(
                 item,
                 query,
             )
@@ -740,21 +740,38 @@ def run_store(
         report["deduplicated_candidates"].append(entry)
 
     for entry in report["deduplicated_candidates"]:
-        product = {
-            "store": store,
-            "name": entry.get("name"),
-            "brand": entry.get("brand"),
-            "url": entry.get("url"),
-            "price": entry.get("price"),
-            "available": entry.get("available"),
-            "size_ml": entry.get("size_ml"),
-            "concentration": entry.get("concentration"),
-            "store_product_id": entry.get("store_product_id"),
-            "store_variant_id": entry.get("store_variant_id"),
-            "gtin": entry.get("gtin"),
-            "mpn": entry.get("mpn"),
-            "sku": entry.get("sku"),
-        }
+        # Usa il candidato originale completo. Il matcher centrale può
+        # dipendere da source, identity, attributes e offer; ricostruirlo
+        # dai soli campi riassunti rendeva il diagnostico diverso dalla
+        # pipeline reale.
+        original = None
+        for raw_attempt, raw_index, raw_product in raw_candidates:
+            if (
+                raw_attempt == entry.get("attempt")
+                and raw_index == entry.get("raw_index")
+            ):
+                original = raw_product
+                break
+
+        if isinstance(original, dict):
+            product = dict(original)
+            product.setdefault("store", store)
+        else:
+            product = {
+                "store": store,
+                "name": entry.get("name"),
+                "brand": entry.get("brand"),
+                "url": entry.get("url"),
+                "price": entry.get("price"),
+                "available": entry.get("available"),
+                "size_ml": entry.get("size_ml"),
+                "concentration": entry.get("concentration"),
+                "store_product_id": entry.get("store_product_id"),
+                "store_variant_id": entry.get("store_variant_id"),
+                "gtin": entry.get("gtin"),
+                "mpn": entry.get("mpn"),
+                "sku": entry.get("sku"),
+            }
 
         match_started = time.perf_counter()
         try:
@@ -786,7 +803,7 @@ def run_store(
         if matched:
             catalog_result = None
             try:
-                catalog_result = scent_main._catalog_match(
+                catalog_result = scent_main.catalog_match(
                     product,
                     query,
                 )
