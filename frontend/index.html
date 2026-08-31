@@ -1851,47 +1851,7 @@ function shGroupData(data){
           if(!sameBrand(a,b))continue;
 
           const bn=comparableName(b);
-          if(!bn)continue;
-
-          /*
-           * IDENTITÀ VISIVA ESATTA:
-           * due percorsi diversi della pipeline possono produrre due gruppi
-           * con la stessa dicitura finale (es. un gruppo catalogato e uno
-           * proveniente direttamente da uno scraper). In questo caso non
-           * devono diventare due schede: la dicitura + brand compatibile è
-           * già la stessa identità di visualizzazione.
-           *
-           * Se uno dei due gruppi possiede il brand e l'altro no, manteniamo
-           * quello con il brand come target, così la scheda finale conserva
-           * la forma completa "Brand - Prodotto".
-           */
-          if(an===bn){
-            const aHasBrand=Boolean(norm(a?.brand||""));
-            const bHasBrand=Boolean(norm(b?.brand||""));
-            const targetGroup=aHasBrand&&!bHasBrand?a
-              :(!aHasBrand&&bHasBrand?b:a);
-            const sourceGroup=targetGroup===a?b:a;
-            const targetIndex=list.indexOf(targetGroup);
-            const sourceIndex=list.indexOf(sourceGroup);
-
-            if(targetIndex>=0&&sourceIndex>=0){
-              if(!targetGroup.brand&&sourceGroup.brand)targetGroup.brand=sourceGroup.brand;
-              if(!targetGroup.canonical_name&&sourceGroup.canonical_name){
-                targetGroup.canonical_name=sourceGroup.canonical_name;
-              }
-              if(!targetGroup.family_id&&sourceGroup.family_id){
-                targetGroup.family_id=sourceGroup.family_id;
-              }
-              if(targetGroup.brand){
-                targetGroup.display_name=targetGroup.brand+" - "+displayCatalogName(targetGroup);
-              }else if(sourceGroup.brand){
-                targetGroup.display_name=sourceGroup.brand+" - "+displayCatalogName(targetGroup);
-              }
-              absorb(targetIndex,sourceIndex);
-              changed=true;
-              break outer;
-            }
-          }
+          if(!bn||an===bn)continue;
 
           const aTokens=an.split(/\s+/).filter(Boolean);
           const bTokens=bn.split(/\s+/).filter(Boolean);
@@ -2209,42 +2169,6 @@ function sizeOfOffer(o){
   return m?m[1]:"";
 }
 
-// Evita che uno scroll venga interpretato come tap sulla scheda,
-// senza bloccare i normali tap su iPhone/Safari.
-let cardPointerStartX=0;
-let cardPointerStartY=0;
-let cardPointerMoved=false;
-let cardPointerActive=false;
-
-document.addEventListener("pointerdown",e=>{
-  const card=e.target.closest(".product-choice");
-  if(!card)return;
-  cardPointerActive=true;
-  cardPointerMoved=false;
-  cardPointerStartX=e.clientX;
-  cardPointerStartY=e.clientY;
-},{passive:true,capture:true});
-
-document.addEventListener("pointerup",e=>{
-  if(!cardPointerActive)return;
-  cardPointerMoved=Math.hypot(e.clientX-cardPointerStartX,e.clientY-cardPointerStartY)>12;
-  cardPointerActive=false;
-},{passive:true,capture:true});
-
-document.addEventListener("pointercancel",()=>{
-  cardPointerActive=false;
-  cardPointerMoved=true;
-},{passive:true,capture:true});
-
-document.addEventListener("click",e=>{
-  if(!cardPointerMoved)return;
-  if(e.target.closest(".product-choice")){
-    e.preventDefault();
-    e.stopImmediatePropagation();
-  }
-  cardPointerMoved=false;
-},{capture:true});
-
 function displayCatalogName(g){
   const canonical=String(g?.canonical_name||g?.catalog_variant||g?.name||"").trim();
   return canonical||"Profumo";
@@ -2293,7 +2217,7 @@ function showProducts(groups){
     // la scheda del prodotto presenterà la scelta dei formati.
     const best=g.offers.find(o=>!isOfferOutOfStock(o))||null;
 
-    return `<article class="product-choice" data-product-index="${i}" role="button" tabindex="0">
+    return `<article class="product-choice" data-product-index="${i}" role="button" tabindex="0" onclick="openProduct(${i})">
       <div class="result-image">${img?`<img src="${esc(img)}" alt="${esc(displayPerfumeName(displayCatalogName(g),g.brand,g.concentration))}" onerror="this.outerHTML='🧴'">`:"🧴"}</div>
       <div class="product-choice-main">
         <div class="name">${esc(g.brand ? g.brand+" - "+displayPerfumeName(displayCatalogName(g),g.brand,g.concentration) : displayPerfumeName(displayCatalogName(g),g.brand,g.concentration))}</div>
@@ -2303,42 +2227,6 @@ function showProducts(groups){
     </article>`;
   }).join("");
 }
-
-function handleProductCardActivation(card){
-  if(!card)return;
-  if(card.classList.contains("format-choice")){
-    const gi=Number(card.dataset.formatGroup);
-    const size=card.dataset.formatSize||"";
-    openSize(gi,size);
-    return;
-  }
-  const gi=Number(card.dataset.productIndex);
-  if(Number.isInteger(gi))openProduct(gi);
-}
-
-document.addEventListener("click",e=>{
-  const card=e.target.closest(".product-choice");
-  if(!card)return;
-
-  // I pulsanti/link interni hanno una propria azione.
-  if(e.target.closest("button,a"))return;
-
-  if(cardPointerMoved){
-    cardPointerMoved=false;
-    return;
-  }
-
-  e.preventDefault();
-  handleProductCardActivation(card);
-});
-
-document.addEventListener("keydown",e=>{
-  if(e.key!=="Enter"&&e.key!==" ")return;
-  const card=e.target.closest(".product-choice");
-  if(!card)return;
-  e.preventDefault();
-  handleProductCardActivation(card);
-});
 
 function toggleWishButton(el){
   toggleWish({
