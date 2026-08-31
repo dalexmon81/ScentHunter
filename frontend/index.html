@@ -364,10 +364,12 @@ body{position:relative}
 let isSearching = false;
 const queryInput=document.getElementById("query"),searchButton=document.getElementById("searchButton"),statusBox=document.getElementById("status"),resultsBox=document.getElementById("results"),errorsBox=document.getElementById("errorsBox");
 const INDEX_DIAGNOSTIC_MODE = new URLSearchParams(window.location.search).get("indexdebug") === "1";
+const INDEX_DIAGNOSTIC_MODE = new URLSearchParams(window.location.search).get("indexdebug") === "1";
 let indexDiagnosticBox = null;
-let indexDiagnosticLast = 
- 
+let indexDiagnosticLast = null;
+
 function ensureIndexDiagnosticBox(){
+
   if(!INDEX_DIAGNOSTIC_MODE)return null;
   if(indexDiagnosticBox)return indexDiagnosticBox;
   indexDiagnosticBox=document.createElement("section");
