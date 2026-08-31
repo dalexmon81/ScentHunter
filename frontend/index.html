@@ -367,6 +367,19 @@ const INDEX_DIAGNOSTIC_MODE = new URLSearchParams(window.location.search).get("i
 let indexDiagnosticBox = null;
 let indexDiagnosticLast = null;
 
+/* === FIX CLICK SCHEDE - AGGIUNGI IN FONDO === */
+.product-choice {
+    pointer-events: auto !important;
+    cursor: pointer !important;
+    position: relative !important;
+    z-index: 10 !important;
+}
+
+.product-choice * {
+    pointer-events: auto !important;
+}
+
+ 
 function ensureIndexDiagnosticBox(){
   if(!INDEX_DIAGNOSTIC_MODE)return null;
   if(indexDiagnosticBox)return indexDiagnosticBox;
