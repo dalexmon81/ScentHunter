@@ -2217,7 +2217,7 @@ function showProducts(groups){
     // la scheda del prodotto presenterà la scelta dei formati.
     const best=g.offers.find(o=>!isOfferOutOfStock(o))||null;
 
-    return `<article class="product-choice" data-product-index="${i}" role="button" tabindex="0">
+    return `<article class="product-choice" data-product-index="${i}" role="button" tabindex="0" onclick="openProduct(${i})">
       <div class="result-image">${img?`<img src="${esc(img)}" alt="${esc(displayPerfumeName(displayCatalogName(g),g.brand,g.concentration))}" onerror="this.outerHTML='🧴'">`:"🧴"}</div>
       <div class="product-choice-main">
         <div class="name">${esc(g.brand ? g.brand+" - "+displayPerfumeName(displayCatalogName(g),g.brand,g.concentration) : displayPerfumeName(displayCatalogName(g),g.brand,g.concentration))}</div>
@@ -2239,17 +2239,6 @@ function handleProductCardActivation(card){
   const gi=Number(card.dataset.productIndex);
   if(Number.isInteger(gi))openProduct(gi);
 }
-
-document.addEventListener("click",e=>{
-  const card=e.target.closest(".product-choice");
-  if(!card)return;
-
-  // I pulsanti/link interni hanno una propria azione.
-  if(e.target.closest("button,a"))return;
-
-  e.preventDefault();
-  handleProductCardActivation(card);
-});
 
 document.addEventListener("keydown",e=>{
   if(e.key!=="Enter"&&e.key!==" ")return;
@@ -2370,7 +2359,7 @@ function openProduct(i){
     ${sizes.map(s=>{
       const best=s.best;
       const shopCount=s.offers.length;
-      return `<div class="product-choice format-choice" data-format-group="${i}" data-format-size="${esc(s.size)}" role="button" tabindex="0">
+      return `<div class="product-choice format-choice" data-format-group="${i}" data-format-size="${esc(s.size)}" role="button" tabindex="0" onclick="openSize(${i}, &quot;${esc(s.size)}&quot;)">
         <div class="format-icon">🧴</div>
         <div class="product-choice-main">
           <div class="name">${esc(formatLabel(s.size))}</div>
