@@ -1497,43 +1497,58 @@ def unique_results(products: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
 
 def _logical_result_base_key(product: Dict[str, Any]) -> tuple:
     """
-    Identita' commerciale condivisa tra store diversi.
+    Identita commerciale condivisa tra store diversi.
 
-    A differenza di product_identity_key(), questa chiave NON contiene lo
-    store e quindi puo' unire la stessa referenza proveniente da retailer
-    diversi. La concentrazione viene gestita separatamente perche' alcuni
-    retailer la espongono nel nome mentre altri la omettono.
+    La scheda finale rappresenta la stessa referenza commerciale, non la
+    provenienza del dato. Catalogo e matcher generico devono quindi produrre
+    la stessa chiave quando descrivono lo stesso prodotto. La concentrazione
+    resta fuori da questa chiave e viene gestita separatamente da
+    aggregate_product_results(), cosi EDP/EDT/Extrait restano distinti.
     """
-    family_id = norm(product.get("family_id", ""))
-    variant = norm(
-        product.get("catalog_variant")
-        or product.get("canonical_name")
-        or product.get("name")
-        or product.get("display_name")
-        or product_field(product, "title", "product_name")
-    )
-
-    if family_id and variant:
-        return ("catalog", family_id, variant)
-
     brand = norm(
         product_field(
             product,
-            "brand",
             "canonical_brand",
+            "brand",
             "source_brand",
         )
     )
-    display_name = str(
-        product.get("display_name")
+
+    variant = str(
+        product.get("catalog_variant")
+        or product.get("canonical_name")
+        or product.get("display_name")
         or product.get("name")
         or product.get("title")
         or product.get("product_name")
         or ""
-    )
-    display_name = _display_cleanup(display_name)
+    ).strip()
 
-    return ("generic", brand, norm(display_name))
+    # Formato e concentrazione non sono identita della referenza: vengono
+    # gestiti dopo, nella separazione EDP/EDT/Extrait e nei formati.
+    variant = _display_cleanup(variant)
+
+    # Un titolo generico puo contenere anche il brand (es.
+    # "French Avenue - Liquid Brun Eau de Parfum"). Il catalogo invece
+    # espone gia solo "Liquid Brun". Rimuoviamo quindi il brand iniziale
+    # prima della costruzione della chiave, cosi le due rappresentazioni
+    # diventano identiche.
+    if brand and variant:
+        brand_tokens = brand.split()
+        variant_tokens = norm(variant).split()
+        if variant_tokens[:len(brand_tokens)] == brand_tokens:
+            variant = " ".join(variant.split()[len(brand_tokens):]).strip(" -|/")
+
+    variant_key = norm(variant)
+
+    # Se manca un nome utilizzabile, manteniamo family_id/catalog identity
+    # come fallback. Non viene mai usato quando esiste una referenza leggibile.
+    if not variant_key:
+        family_id = norm(product.get("family_id", ""))
+        catalog_id = norm(product.get("catalog_id", ""))
+        return ("fallback", brand, family_id or catalog_id)
+
+    return ("logical", brand, variant_key)
 
 
 def _offer_identity_key(product: Dict[str, Any]) -> tuple:
