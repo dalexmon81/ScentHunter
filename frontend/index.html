@@ -2169,6 +2169,12 @@ function sizeOfOffer(o){
   return m?m[1]:"";
 }
 
+// Le schede risultato sono attivate tramite event delegation.
+// Non usiamo pointerdown/pointerup per decidere se un tap e\' un click:
+// su iOS/Safari quei segnali possono lasciare lo stato di movimento attivo
+// e bloccare il click successivo. Lo scroll non attiva un click nativo,
+// quindi il click delegato e sufficiente e piu affidabile.
+
 function displayCatalogName(g){
   const canonical=String(g?.canonical_name||g?.catalog_variant||g?.name||"").trim();
   return canonical||"Profumo";
@@ -2217,7 +2223,7 @@ function showProducts(groups){
     // la scheda del prodotto presenterà la scelta dei formati.
     const best=g.offers.find(o=>!isOfferOutOfStock(o))||null;
 
-    return `<article class="product-choice" data-product-index="${i}" role="button" tabindex="0" onclick="openProduct(${i})">
+    return `<article class="product-choice" data-product-index="${i}" role="button" tabindex="0">
       <div class="result-image">${img?`<img src="${esc(img)}" alt="${esc(displayPerfumeName(displayCatalogName(g),g.brand,g.concentration))}" onerror="this.outerHTML='🧴'">`:"🧴"}</div>
       <div class="product-choice-main">
         <div class="name">${esc(g.brand ? g.brand+" - "+displayPerfumeName(displayCatalogName(g),g.brand,g.concentration) : displayPerfumeName(displayCatalogName(g),g.brand,g.concentration))}</div>
@@ -2227,6 +2233,48 @@ function showProducts(groups){
     </article>`;
   }).join("");
 }
+
+function handleProductCardActivation(card){
+  if(!card)return;
+  if(card.classList.contains("format-choice")){
+    const gi=Number(card.dataset.formatGroup);
+    const size=card.dataset.formatSize||"";
+    openSize(gi,size);
+    return;
+  }
+  const gi=Number(card.dataset.productIndex);
+  if(Number.isInteger(gi))openProduct(gi);
+}
+
+document.addEventListener("click",e=>{
+  const card=e.target.closest(".product-choice");
+  if(!card)return;
+
+  // I controlli interni (cuore, link, pulsanti) mantengono la propria azione.
+  if(e.target.closest("button,a"))return;
+
+  const index=card.dataset.productIndex;
+  if(index!==undefined){
+    e.preventDefault();
+    openProduct(Number(index));
+    return;
+  }
+
+  const formatGroup=card.dataset.formatGroup;
+  const formatSize=card.dataset.formatSize;
+  if(formatGroup!==undefined && formatSize!==undefined){
+    e.preventDefault();
+    openSize(Number(formatGroup),formatSize);
+  }
+});
+
+document.addEventListener("keydown",e=>{
+  if(e.key!=="Enter"&&e.key!==" ")return;
+  const card=e.target.closest(".product-choice");
+  if(!card)return;
+  e.preventDefault();
+  handleProductCardActivation(card);
+});
 
 function toggleWishButton(el){
   toggleWish({
