@@ -365,20 +365,7 @@ let isSearching = false;
 const queryInput=document.getElementById("query"),searchButton=document.getElementById("searchButton"),statusBox=document.getElementById("status"),resultsBox=document.getElementById("results"),errorsBox=document.getElementById("errorsBox");
 const INDEX_DIAGNOSTIC_MODE = new URLSearchParams(window.location.search).get("indexdebug") === "1";
 let indexDiagnosticBox = null;
-let indexDiagnosticLast = null;
-
-/* === FIX CLICK SCHEDE - AGGIUNGI IN FONDO === */
-.product-choice {
-    pointer-events: auto !important;
-    cursor: pointer !important;
-    position: relative !important;
-    z-index: 10 !important;
-}
-
-.product-choice * {
-    pointer-events: auto !important;
-}
-
+let indexDiagnosticLast = 
  
 function ensureIndexDiagnosticBox(){
   if(!INDEX_DIAGNOSTIC_MODE)return null;
