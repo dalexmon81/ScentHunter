@@ -1711,6 +1711,116 @@ function shGroupData(data){
   const groups=[...map.values()];
 
   /*
+   * CONSOLIDAMENTO DELL'IDENTITÀ CATALOGATA
+   *
+   * Un'offerta può arrivare dal backend già risolta dal Family Registry,
+   * mentre un'altra offerta dello stesso prodotto può non portare ancora
+   * family_id/catalog_variant. In quel caso le due offerte finiscono in
+   * chiavi tecniche diverse e diventano due schede visive.
+   *
+   * Qui facciamo un ultimo consolidamento GENERICO prima della gestione
+   * commerciale dei titoli. La chiave canonica è: famiglia + variante +
+   * concentrazione (quando entrambe sono esplicite). Non usiamo mai nomi
+   * di profumi, marche o negozi come eccezioni. Varianti diverse della
+   * stessa famiglia restano quindi separate.
+   */
+  const consolidateCatalogGroups=groups=>{
+    const list=Array.isArray(groups)?groups.slice():[];
+
+    const cleanValue=v=>String(v||"").trim();
+    const normalized=v=>norm(cleanValue(v));
+
+    const groupFamilyId=g=>{
+      const direct=cleanValue(g?.family_id||g?.familyId||"");
+      if(direct)return direct;
+      for(const o of (Array.isArray(g?.offers)?g.offers:[])){
+        const value=cleanValue(o?.family_id||o?.familyId||"");
+        if(value)return value;
+      }
+      return "";
+    };
+
+    const groupVariant=g=>{
+      const direct=cleanValue(g?.catalog_variant||g?.canonical_name||"");
+      if(direct)return direct;
+      for(const o of (Array.isArray(g?.offers)?g.offers:[])){
+        const value=cleanValue(o?.catalog_variant||o?.canonical_name||"");
+        if(value)return value;
+      }
+      return cleanValue(g?.name||"");
+    };
+
+    const groupConcentration=g=>{
+      const direct=cleanValue(g?.concentration);
+      if(direct)return normalized(direct);
+      const values=new Set();
+      for(const o of (Array.isArray(g?.offers)?g.offers:[])){
+        const value=cleanValue(o?.concentration)||concentrationHint(o);
+        if(value)values.add(normalized(value));
+      }
+      return values.size===1?[...values][0]:"";
+    };
+
+    const mergeOffers=(target,source)=>{
+      const seen=new Set((target.offers||[]).map(o=>[
+        String(o?.store||"").trim().toLowerCase(),
+        String(o?.url||"").split("?")[0].toLowerCase(),
+        String(o?.size_ml||o?.size||"").trim(),
+        norm(o?.name||"")
+      ].join("|")));
+
+      (source.offers||[]).forEach(o=>{
+        const key=[
+          String(o?.store||"").trim().toLowerCase(),
+          String(o?.url||"").split("?")[0].toLowerCase(),
+          String(o?.size_ml||o?.size||"").trim(),
+          norm(o?.name||"")
+        ].join("|");
+        if(!seen.has(key)){
+          target.offers.push(o);
+          seen.add(key);
+        }
+      });
+    };
+
+    const sameCatalogIdentity=(a,b)=>{
+      const af=normalized(groupFamilyId(a));
+      const bf=normalized(groupFamilyId(b));
+      if(!af||!bf||af!==bf)return false;
+
+      const av=normalized(groupVariant(a));
+      const bv=normalized(groupVariant(b));
+      if(!av||!bv||av!==bv)return false;
+
+      const ac=groupConcentration(a);
+      const bc=groupConcentration(b);
+      return !ac||!bc||ac===bc;
+    };
+
+    for(let i=0;i<list.length;i++){
+      for(let j=i+1;j<list.length;j++){
+        if(!sameCatalogIdentity(list[i],list[j]))continue;
+
+        const target=list[i];
+        const source=list[j];
+        mergeOffers(target,source);
+        if(!target.image&&source.image)target.image=source.image;
+        if(!target.brand&&source.brand)target.brand=source.brand;
+        if(!target.family_id)target.family_id=groupFamilyId(source);
+        if(!target.catalog_variant)target.catalog_variant=groupVariant(source);
+        list.splice(j,1);
+        j--;
+      }
+    }
+
+    return list;
+  };
+
+  const consolidatedGroups=consolidateCatalogGroups(groups);
+  groups.length=0;
+  consolidatedGroups.forEach(g=>groups.push(g));
+
+  /*
    * RICERCA PER BRAND — regola generica.
    *
    * Quando l'utente cerca una marca, alcuni scraper possono restituire il
