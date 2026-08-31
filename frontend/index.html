@@ -139,7 +139,7 @@ body{position:relative}
 </style>
 
 <style>
-.product-choice{margin-top:12px;padding:15px;border:1px solid #303238;border-radius:18px;background:#121416;display:flex;gap:13px;align-items:center;cursor:pointer;touch-action:manipulation;-webkit-tap-highlight-color:transparent;pointer-events:auto}
+.product-choice{margin-top:12px;padding:15px;border:1px solid #303238;border-radius:18px;background:#121416;display:flex;gap:13px;align-items:center;cursor:pointer;touch-action:pan-y;-webkit-tap-highlight-color:transparent}
 .product-choice-main{min-width:0;flex:1}.product-choice .arrow{color:#e7b83f;font-size:28px}
 .detail-back{background:none;color:#e7b83f;padding:0 0 12px;font-size:14px;cursor:pointer}
 .offer-heart{background:none;color:#aaa;font-size:26px;cursor:pointer;padding:0 4px;opacity:1!important;pointer-events:auto!important;touch-action:manipulation}.offer-heart.saved{color:#e7b83f}
@@ -364,12 +364,10 @@ body{position:relative}
 let isSearching = false;
 const queryInput=document.getElementById("query"),searchButton=document.getElementById("searchButton"),statusBox=document.getElementById("status"),resultsBox=document.getElementById("results"),errorsBox=document.getElementById("errorsBox");
 const INDEX_DIAGNOSTIC_MODE = new URLSearchParams(window.location.search).get("indexdebug") === "1";
-const INDEX_DIAGNOSTIC_MODE = new URLSearchParams(window.location.search).get("indexdebug") === "1";
 let indexDiagnosticBox = null;
 let indexDiagnosticLast = null;
 
 function ensureIndexDiagnosticBox(){
-
   if(!INDEX_DIAGNOSTIC_MODE)return null;
   if(indexDiagnosticBox)return indexDiagnosticBox;
   indexDiagnosticBox=document.createElement("section");
@@ -868,7 +866,7 @@ function backend(){
   if (origin.startsWith("http://localhost") || origin.startsWith("http://127.0.0.1")) {
     return "http://localhost:8000";
   }
-  return "https://scenthunter-production.up.railway.app";
+  return origin;
 }
 let currentProductGroups=[];
 
@@ -936,7 +934,6 @@ function shGroupData(data){
     ...o,
     canonical_name:o.canonical_name||o.catalog_variant||"",
     family_id:o.family_id||"",
-    image:o.image||o.image_url||o.imageUrl||o.thumbnail||o.product_image||o.productImage||o.pic||o.picture||o.photo||"",
     _source_priority:2,
     _price_source_priority:offerPriceSourcePriority(o)
   }));
@@ -1318,20 +1315,6 @@ function shGroupData(data){
     return cleanBrandText(value);
   }
 
-  function groupIdentityName(value){
-    const genderTokens=new Set([
-      "uomo","donna","men","women","man","woman","homme","femme"
-    ]);
-    return norm(value)
-      .split(/\s+/)
-      .filter(token=>token && !genderTokens.has(token))
-      .join(" ");
-  }
-
-  function groupIdentityKey(brand,name){
-    return (norm(brand)+"|"+groupIdentityName(name)).replace(/\|+$/g,"");
-  }
-
   function removeTrailingConcentration(name, concentration){
     let n=String(name||"").trim();
     const label=concentrationLabel(concentration);
@@ -1499,7 +1482,7 @@ function shGroupData(data){
         id.name=catalogCanonicalName(o,id.brand);
       }
 
-      id.key=groupIdentityKey(id.brand,id.name);
+      id.key=(norm(id.brand)+"|"+norm(id.name)).replace(/\|+$/g,"");
     });
 
     // Seconda passata: se un nome coincide con una famiglia già associata a
@@ -1525,7 +1508,11 @@ function shGroupData(data){
         if(inherited){
           id.brand=inherited;
           id.name=catalogCanonicalName(o,inherited);
-          id.key=norm(inherited)+"|"+norm(id.name);
+          if(id.family_id&&id.catalog_variant){
+            id.key=("catalog|"+norm(id.family_id)+"|"+norm(id.catalog_variant)+"|"+norm(id.concentration||"")).replace(/\|+$/g,"");
+          }else{
+            id.key=norm(inherited)+"|"+norm(id.name);
+          }
         }
       }
     });
@@ -1534,8 +1521,10 @@ function shGroupData(data){
   const identities=raw.map(o=>{
     const brand=findBrand(o);
     const name=catalogCanonicalName(o,brand);
+    const familyId=cleanBrandText(o?.family_id||o?.familyId||"");
+    const catalogVariant=cleanBrandText(o?.catalog_variant||o?.canonical_name||o?.canonicalName||"");
     const key=(norm(brand)+"|"+norm(name)).replace(/\|+$/g,"");
-    return {brand,name,key};
+    return {brand,name,key,family_id:familyId,catalog_variant:catalogVariant};
   });
 
   resolveIdentitySet(raw,identities);
@@ -1579,12 +1568,30 @@ function shGroupData(data){
    */
   raw.forEach((o,i)=>{
     const id=identities[i];
+    const familyId=cleanBrandText(o?.family_id||o?.familyId||id.family_id||"");
+    const catalogVariant=cleanBrandText(o?.catalog_variant||o?.canonical_name||o?.canonicalName||id.catalog_variant||"");
+
+    if(familyId)id.family_id=familyId;
+    if(catalogVariant)id.catalog_variant=catalogVariant;
+
     if(id.concentration){
       id.name=catalogCanonicalName(o,id.brand);
-      // La concentrazione resta nell'offerta, ma non crea una nuova scheda: la
-      // stessa famiglia/variante viene confrontata insieme anche se uno store
-      // pubblica EDP, EDT o Extrait e un altro usa un titolo diverso.
-      id.key=groupIdentityKey(id.brand,id.name);
+    }
+
+    /*
+     * IDENTITÀ CATALOGO: quando il backend ha già risolto una variante del
+     * Family Registry, family_id + catalog_variant sono l'identità canonica.
+     * Devono avere precedenza sul titolo commerciale dello store: due negozi
+     * possono infatti descrivere la stessa variante con nomi differenti.
+     *
+     * La concentrazione resta nella chiave perché EDP/EDT/Extrait possono
+     * rappresentare referenze realmente diverse. Se non è disponibile, la
+     * chiave resta comunque stabile sulla famiglia + variante.
+     */
+    if(id.family_id&&id.catalog_variant){
+      id.key=("catalog|"+norm(id.family_id)+"|"+norm(id.catalog_variant)+"|"+norm(id.concentration||"")).replace(/\|+$/g,"");
+    }else if(id.concentration){
+      id.key=(norm(id.brand)+"|"+norm(id.name)+"|"+norm(id.concentration)).replace(/\|+$/g,"");
     }
   });
 
@@ -1631,13 +1638,13 @@ function shGroupData(data){
     if(!map.has(id.key)){
       map.set(id.key,{
         brand:id.brand||"",
-        name:id.name,
+        name:displayName,
         canonical_name:id.name,
         family_id:o.family_id||"",
         canonical:norm(displayName),
         display_name:id.brand?id.brand+" - "+displayName:displayName,
         size_ml:"",
-        concentration:"",
+        concentration:concentrationLabel(concentration),
         image:o.image||o.image_url||o.thumbnail||"",
         offers:[]
       });
@@ -1702,14 +1709,6 @@ function shGroupData(data){
   });
 
   const groups=[...map.values()];
-
-  groups.forEach(g=>{
-    if(g.image)return;
-    const withImage=(g.offers||[]).find(o=>o.image||o.image_url||o.thumbnail);
-    if(withImage){
-      g.image=withImage.image||withImage.image_url||withImage.thumbnail||"";
-    }
-  });
 
   /*
    * RICERCA PER BRAND — regola generica.
@@ -1989,68 +1988,19 @@ function shGroupData(data){
     g.image=selected.image||selected.image_url||selected.thumbnail||g.image||"";
   });
 
-  // Mostriamo le referenze di profumo e anche i SET/COFFRET.
-  // I set/cofanetti sono risultati validi e non devono essere eliminati:
-  // vengono classificati separatamente e ordinati dopo i profumi disponibili.
-  // Le vere categorie non-profumo (deodoranti, shower gel, cosmetici, ecc.)
-  // continuano invece a essere escluse.
+  // Mostriamo esclusivamente vere referenze di profumo.
+  // Set/cofanetti, Mystery/Gift Box e altri prodotti non-profumo vengono
+  // esclusi completamente dai risultati, anche quando contengono il nome
+  // di un profumo al loro interno.
   const perfumeGroups=groups.filter(g=>g.offers.length && !isNonPerfumeProduct(g));
 
-  /*
-   * ORDINE GENERALE DEI RISULTATI:
-   *   1. Profumi disponibili
-   *   2. Set / Coffret disponibili
-   *   3. Out of stock
-   *
-   * "Limited Edition" NON è un set: resta una normale variante del profumo.
-   * La classificazione è basata esclusivamente sui dati del risultato e su
-   * marker generici; non contiene eccezioni per brand o prodotti specifici.
-   */
   perfumeGroups.sort((a,b)=>{
-    const aOut=isGroupOutOfStock(a);
-    const bOut=isGroupOutOfStock(b);
-    if(aOut!==bOut)return aOut?1:-1;
-
-    const aSet=isSetOrCoffretGroup(a);
-    const bSet=isSetOrCoffretGroup(b);
-    if(aSet!==bSet)return aSet?1:-1;
-
     const brandCmp=String(a.brand||"").localeCompare(String(b.brand||""),"it",{sensitivity:"base"});
     if(brandCmp!==0)return brandCmp;
     return String(a.name||"").localeCompare(String(b.name||""),"it",{sensitivity:"base",numeric:true});
   });
 
   return perfumeGroups;
-}
-
-function isSetOrCoffretGroup(g){
-  if(!g)return false;
-
-  const clean=v=>String(v||"")
-    .toLowerCase()
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g,"")
-    .replace(/[’‘]/g,"'")
-    .replace(/\s+/g," ")
-    .trim();
-
-  const text=[
-    g.name,g.canonical_name,g.display_name,g.category,g.type,g.product_type,
-    g.productType,g.sub_category,g.subcategory,
-    ...(g.offers||[]).map(o=>[
-      o?.name,o?.category,o?.type,o?.product_type,o?.productType,
-      o?.sub_category,o?.subcategory,o?.result_category
-    ].filter(Boolean).join(" "))
-  ].map(clean).filter(Boolean).join(" ");
-
-  if(!text)return false;
-
-  return /\b(?:set|gift\s*set|coffret|cofanetto|coffret\s+cadeau|bundle|pack|kit|travel\s+set|discovery\s+set|set\s+regalo)\b/.test(text);
-}
-
-function isGroupOutOfStock(g){
-  const offers=Array.isArray(g?.offers)?g.offers:[];
-  return offers.length>0 && offers.every(isOfferOutOfStock);
 }
 
 function isNonPerfumeProduct(g){
@@ -2084,11 +2034,11 @@ function isNonPerfumeProduct(g){
   // Prodotti chiaramente diversi dal profumo.
   const nonPerfume=/(?:\bdeodorant(?:e|s)?\b|\bdeostick\b|\bdeo\s*stick\b|\bdeo\b|\bantiperspirant\b|\banti[- ]?transpirant\b|\bshower\s*(?:gel|cream|foam|oil)\b|\bgel\s+(?:douche|doccia|bain)\b|\bgel\s+doccia\b|\bdoccia\s+gel\b|\bbagno\s+(?:doccia|schiuma)\b|\bbagnoschiuma\b|\bduschgel\b|\bdusch[- ]?(?:gel|schaum|creme|lotion)\b|\bbad[- ]?(?:gel|schaum|foam)\b|\bbody\s+(?:wash|gel|cleanser|cleaning)\b|\bshampoo\b|\bconditioner\b|\bhaarmaske\b|\bhaarshampoo\b|\bbody\s+(?:lotion|cream|creme|milk|butter|moisturizer)\b|\blotion\s+corps\b|\bcreme?\s+corps\b|\bhand\s+(?:cream|creme|lotion)\b|\bface\s+(?:cream|creme|lotion|wash)\b|\bhandcreme\b|\bkorperlotion\b|\bkoerperlotion\b|\bsoap\b|\bsavon\b|\bsapone\b|\bshaving\b|\bafter\s*shave\b|\baftershave\b|\brazor\b|\bdemaquillant\b|\bmake[- ]?up\b|\blipstick\b|\bmascara\b|\btoothpaste\b|\btoothbrush\b)/.test(text);
 
-  // SET e COFFRET sono risultati validi per ScentHunter.
-  // Non vengono esclusi: la funzione di ordinamento li classifica dopo
-  // i profumi disponibili e prima del blocco OUT OF STOCK.
-  // "Limited Edition" non è un marker di set e resta quindi una variante
-  // normale del profumo.
+  // Set/cofanetti e box non sono la singola referenza profumo.
+  // Vanno quindi esclusi sempre, anche quando il testo contiene il nome
+  // di un profumo presente nella confezione.
+  if(isSet)return true;
+
   return nonPerfume;
 }
 
@@ -2171,31 +2121,45 @@ function sizeOfOffer(o){
   return m?m[1]:"";
 }
 
+// Evita che uno scroll venga interpretato come tap sulla scheda,
+// senza bloccare i normali tap su iPhone/Safari.
+let cardPointerStartX=0;
+let cardPointerStartY=0;
+let cardPointerMoved=false;
+let cardPointerActive=false;
+
+document.addEventListener("pointerdown",e=>{
+  const card=e.target.closest(".product-choice");
+  if(!card)return;
+  cardPointerActive=true;
+  cardPointerMoved=false;
+  cardPointerStartX=e.clientX;
+  cardPointerStartY=e.clientY;
+},{passive:true,capture:true});
+
+document.addEventListener("pointerup",e=>{
+  if(!cardPointerActive)return;
+  cardPointerMoved=Math.hypot(e.clientX-cardPointerStartX,e.clientY-cardPointerStartY)>12;
+  cardPointerActive=false;
+},{passive:true,capture:true});
+
+document.addEventListener("pointercancel",()=>{
+  cardPointerActive=false;
+  cardPointerMoved=true;
+},{passive:true,capture:true});
+
+document.addEventListener("click",e=>{
+  if(!cardPointerMoved)return;
+  if(e.target.closest(".product-choice")){
+    e.preventDefault();
+    e.stopImmediatePropagation();
+  }
+  cardPointerMoved=false;
+},{capture:true});
+
 function displayCatalogName(g){
   const canonical=String(g?.canonical_name||g?.catalog_variant||g?.name||"").trim();
   return canonical||"Profumo";
-}
-
-function productImage(g){
-  if(!g)return "";
-  const direct=[
-    g.image,g.image_url,g.imageUrl,g.thumbnail,g.product_image,
-    g.productImage,g.pic,g.picture,g.photo
-  ];
-  for(const v of direct){
-    if(typeof v==="string"&&v.trim())return v.trim();
-  }
-  const offers=Array.isArray(g.offers)?g.offers:[];
-  for(const o of offers){
-    const candidates=[
-      o?.image,o?.image_url,o?.imageUrl,o?.thumbnail,o?.product_image,
-      o?.productImage,o?.pic,o?.picture,o?.photo
-    ];
-    for(const v of candidates){
-      if(typeof v==="string"&&v.trim())return v.trim();
-    }
-  }
-  return "";
 }
 
 function showProducts(groups){
@@ -2211,7 +2175,7 @@ function showProducts(groups){
 
   resultsBox.innerHTML=groups.map((g,i)=>{
     const sizes=getSizeGroups(g);
-    const img=productImage(g);
+    const img=g.image||"";
 
     // Regola generale: la scheda principale apre sempre la scheda del prodotto.
     // Se esiste un solo formato, la scheda del prodotto mostrerà direttamente
@@ -2219,7 +2183,7 @@ function showProducts(groups){
     // la scheda del prodotto presenterà la scelta dei formati.
     const best=g.offers.find(o=>!isOfferOutOfStock(o))||null;
 
-    return `<article class="product-choice" data-product-index="${i}" role="button" tabindex="0" onclick="openProduct(${i})">
+    return `<article class="product-choice" onclick='openProduct(${i})'>
       <div class="result-image">${img?`<img src="${esc(img)}" alt="${esc(displayPerfumeName(displayCatalogName(g),g.brand,g.concentration))}" onerror="this.outerHTML='🧴'">`:"🧴"}</div>
       <div class="product-choice-main">
         <div class="name">${esc(g.brand ? g.brand+" - "+displayPerfumeName(displayCatalogName(g),g.brand,g.concentration) : displayPerfumeName(displayCatalogName(g),g.brand,g.concentration))}</div>
@@ -2229,26 +2193,6 @@ function showProducts(groups){
     </article>`;
   }).join("");
 }
-
-function handleProductCardActivation(card){
-  if(!card)return;
-  if(card.classList.contains("format-choice")){
-    const gi=Number(card.dataset.formatGroup);
-    const size=card.dataset.formatSize||"";
-    openSize(gi,size);
-    return;
-  }
-  const gi=Number(card.dataset.productIndex);
-  if(Number.isInteger(gi))openProduct(gi);
-}
-
-document.addEventListener("keydown",e=>{
-  if(e.key!=="Enter"&&e.key!==" ")return;
-  const card=e.target.closest(".product-choice");
-  if(!card)return;
-  e.preventDefault();
-  handleProductCardActivation(card);
-});
 
 function toggleWishButton(el){
   toggleWish({
@@ -2266,7 +2210,7 @@ function openProduct(i){
   if(!g)return;
 
   const sizes=getSizeGroups(g);
-  const img=productImage(g);
+  const img=g.image||"";
   const saved=getWishlist();
 
   statusBox.textContent="";
@@ -2312,7 +2256,7 @@ function openProduct(i){
           price:isOut?"":shPrice(o),
           shop:o.store||"",
           url:o.url||"",
-          pic:img||productImage(g)||"🧴",
+          pic:img||"🧴",
           outOfStock:isOut
         };
         const on=saved.some(x=>sameWishOffer(x,item));
@@ -2322,7 +2266,6 @@ function openProduct(i){
             <div>
               <div class="offer-store">${!isOut&&n===0?"🥇 ":""}${esc(o.store||"Negozio")}</div>
               ${!isOut&&n===0?'<div class="offer-meta">MIGLIOR PREZZO</div>':""}
-              ${o.concentration?`<div class="offer-meta">${esc(concentrationLabel(o.concentration))}</div>`:""}
               ${isOut?'<div class="offer-outstock">OUT OF STOCK</div>':""}
             </div>
             <div style="display:flex;align-items:center;gap:8px">
@@ -2361,7 +2304,7 @@ function openProduct(i){
     ${sizes.map(s=>{
       const best=s.best;
       const shopCount=s.offers.length;
-      return `<div class="product-choice format-choice" data-format-group="${i}" data-format-size="${esc(s.size)}" role="button" tabindex="0" onclick="openSize(${i}, &quot;${esc(s.size)}&quot;)">
+      return `<div class="product-choice format-choice" onclick='openSize(${i},${JSON.stringify(s.size)})'>
         <div class="format-icon">🧴</div>
         <div class="product-choice-main">
           <div class="name">${esc(formatLabel(s.size))}</div>
@@ -2385,7 +2328,7 @@ function openSize(gi,sizeKey,fromFormats=true){
 
   const offers=selected.offers;
   const saved=getWishlist();
-  const img=productImage(g);
+  const img=g.image||"";
 
   statusBox.textContent="";
   resultsBox.innerHTML=`<article class="comparison">
@@ -2423,7 +2366,7 @@ function openSize(gi,sizeKey,fromFormats=true){
         price:isOut?"":shPrice(o),
         shop:o.store||"",
         url:o.url||"",
-        pic:img||productImage(g)||"🧴",
+        pic:img||"🧴",
         outOfStock:isOut
       };
       const on=saved.some(x=>sameWishOffer(x,item));
@@ -2472,7 +2415,7 @@ function chooseOffer(gi,sizeKey,oi){
     price:isOut?"":shPrice(o),
     shop:o.store||"",
     url:o.url||"",
-    pic:productImage(g)||"🧴",
+    pic:g.image||"🧴",
     outOfStock:isOut
   };
 
@@ -2508,20 +2451,66 @@ async function searchStoresProgressive(query, onPartial) {
       count: 0,
       results: [],
       comparisons: [],
-      errors: {},
+      errors: {}
     };
   }
 
-  const data = await fetchJSONWithTimeout(
-    `${backend()}/search?q=${encodeURIComponent(q)}`,
-    120000
+  const startResponse = await fetch(
+    `/search-start?q=${encodeURIComponent(q)}`,
+    {
+      headers: {
+        Accept: "application/json"
+      }
+    }
   );
 
-  if (typeof onPartial === "function") {
-    onPartial(data, true);
+  if (!startResponse.ok) {
+    throw new Error(`HTTP ${startResponse.status}`);
   }
 
-  return data;
+  const started = await startResponse.json();
+
+  if (!started.job_id) {
+    throw new Error("Il backend non ha restituito job_id");
+  }
+
+  const jobId = encodeURIComponent(started.job_id);
+  const pollInterval = 1000;
+  const maxPollingTime = 150000;
+  const startedAt = Date.now();
+
+  while (true) {
+    const response = await fetch(
+      `/search-status?job_id=${jobId}`,
+      {
+        headers: {
+          Accept: "application/json"
+        }
+      }
+    );
+
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}`);
+    }
+
+    const data = await response.json();
+
+    if (typeof onPartial === "function") {
+      onPartial(data, Boolean(data.completed));
+    }
+
+    if (data.completed) {
+      return data;
+    }
+
+    if (Date.now() - startedAt >= maxPollingTime) {
+      throw new Error("Tempo massimo di ricerca superato");
+    }
+
+    await new Promise(resolve => {
+      setTimeout(resolve, pollInterval);
+    });
+  }
 }
 
 async function searchPerfume(){
