@@ -2508,66 +2508,20 @@ async function searchStoresProgressive(query, onPartial) {
       count: 0,
       results: [],
       comparisons: [],
-      errors: {}
+      errors: {},
     };
   }
 
-  const startResponse = await fetch(
-    `/search-start?q=${encodeURIComponent(q)}`,
-    {
-      headers: {
-        Accept: "application/json"
-      }
-    }
+  const data = await fetchJSONWithTimeout(
+    `${backend()}/search?q=${encodeURIComponent(q)}`,
+    120000
   );
 
-  if (!startResponse.ok) {
-    throw new Error(`HTTP ${startResponse.status}`);
+  if (typeof onPartial === "function") {
+    onPartial(data, true);
   }
 
-  const started = await startResponse.json();
-
-  if (!started.job_id) {
-    throw new Error("Il backend non ha restituito job_id");
-  }
-
-  const jobId = encodeURIComponent(started.job_id);
-  const pollInterval = 1000;
-  const maxPollingTime = 150000;
-  const startedAt = Date.now();
-
-  while (true) {
-    const response = await fetch(
-      `/search-status?job_id=${jobId}`,
-      {
-        headers: {
-          Accept: "application/json"
-        }
-      }
-    );
-
-    if (!response.ok) {
-      throw new Error(`HTTP ${response.status}`);
-    }
-
-    const data = await response.json();
-
-    if (typeof onPartial === "function") {
-      onPartial(data, Boolean(data.completed));
-    }
-
-    if (data.completed) {
-      return data;
-    }
-
-    if (Date.now() - startedAt >= maxPollingTime) {
-      throw new Error("Tempo massimo di ricerca superato");
-    }
-
-    await new Promise(resolve => {
-      setTimeout(resolve, pollInterval);
-    });
-  }
+  return data;
 }
 
 async function searchPerfume(){
