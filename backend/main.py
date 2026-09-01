@@ -232,7 +232,7 @@ IGNORED_WORDS = {
     "by",
 }
 
-GLOBAL_SEARCH_TIMEOUT = 120
+GLOBAL_SEARCH_TIMEOUT = 300
 
 
 # ============================================================
@@ -2034,18 +2034,11 @@ def run_store(
     for attempt in attempts:
         run_attempt(attempt)
 
-    # IMPORTANT:
-    # Non eseguire una richiesta per ogni variante quando la discovery famiglia
-    # ha già restituito risultati. Una famiglia come "Hawas" può contenere
-    # decine di varianti: interrogare ogni variante su ogni negozio trasforma
-    # una ricerca in 20-30 richieste allo stesso dominio e provoca facilmente
-    # 429/403. È proprio il motivo per cui alcuni negozi smettono di rispondere.
-    #
-    # Fallback mirato: se lo store non ha restituito ASSOLUTAMENTE nulla,
-    # proviamo le varianti canoniche per recuperare i casi in cui il motore
-    # interno del negozio non indicizza bene la query famiglia. Se la discovery
-    # famiglia ha già prodotto risultati, ci fermiamo e lasciamo che gli altri
-    # negozi completino il candidate pool.
+    # Fallback generico per le famiglie catalogate: se la ricerca dello store
+    # non restituisce tutte le varianti autorizzate, interroghiamo soltanto
+    # le varianti che risultano ancora mancanti. In questo modo una variante
+    # che il motore di ricerca dello store non mostra nella query famiglia
+    # non viene persa, senza introdurre seed o URL specifici.
     family = _catalog_family_for_query(discovery_query)
     family_query_key = catalog_variant_key(discovery_query)
     is_family_query = bool(
@@ -2053,13 +2046,29 @@ def run_store(
         and family_query_key in family.get("normalized_query_aliases", ())
     )
 
-    if is_family_query and not output:
+    if is_family_query:
+        found_variants = set()
+
+        for product in output:
+            resolved = _catalog_match(
+                product,
+                discovery_query,
+            )
+            if isinstance(resolved, dict):
+                variant_name = catalog_norm(
+                    resolved.get("catalog_variant")
+                    or resolved.get("canonical_name")
+                )
+                if variant_name:
+                    found_variants.add(variant_name)
+
         for variant in family.get("variants", []):
             canonical_name = str(
                 variant.get("canonical_name") or ""
             ).strip()
+            canonical_key = catalog_norm(canonical_name)
 
-            if not canonical_name:
+            if not canonical_name or canonical_key in found_variants:
                 continue
 
             run_attempt(canonical_name)
@@ -2536,6 +2545,9 @@ SEARCH_JOBS_LOCK = threading.Lock()
 
 
 def _search_job_snapshot(job_id: str) -> Dict[str, Any]:
+    # IMPORTANTISSIMO: non eseguire mai la validazione pesante mentre
+    # SEARCH_JOBS_LOCK è occupato. In precedenza il polling frontend poteva
+    # bloccare il thread che stava raccogliendo gli altri negozi.
     with SEARCH_JOBS_LOCK:
         job = SEARCH_JOBS.get(job_id)
 
@@ -2545,16 +2557,11 @@ def _search_job_snapshot(job_id: str) -> Dict[str, Any]:
                 detail="Job di ricerca non trovato",
             )
 
-        results = _prepare_final_results(
-            list(job["results"]),
-            job["query"],
-        )
-
         return {
             "job_id": job_id,
             "query": job["query"],
-            "count": len(results),
-            "results": results,
+            "count": len(job["results"]),
+            "results": list(job["results"]),
             "comparisons": [],
             "errors": dict(job["errors"]),
             "completed": job["completed"],
@@ -2599,30 +2606,38 @@ def _run_search_job(
         if not isinstance(store_candidates, list):
             return
 
-        with SEARCH_JOBS_LOCK:
-            job = SEARCH_JOBS.get(job_id)
-
-            if job is None:
-                return
-
-            job["candidates"].extend(
-                store_candidates
-            )
-
-            candidate_pool = list(
-                job["candidates"]
-            )
-
-        results = _orchestrate_results(
-            candidate_pool,
+        # Validiamo SOLO i candidati appena arrivati da questo negozio.
+        # La versione precedente rivalidava l'intero pool dopo ogni store:
+        # con Hawas il costo cresceva rapidamente e i negozi successivi
+        # restavano in coda anche se avevano già finito il loro scraper.
+        store_results = _orchestrate_results(
+            store_candidates,
             query,
         )
 
         with SEARCH_JOBS_LOCK:
             job = SEARCH_JOBS.get(job_id)
+            if job is None:
+                return
 
-            if job is not None:
-                job["results"] = results
+            job["candidates"].extend(store_candidates)
+            job["candidate_version"] += 1
+            version = job["candidate_version"]
+            previous_results = list(job["results"])
+
+        # Merge fuori dal lock. Nessun polling o altro store viene bloccato.
+        merged = unique_results(
+            previous_results + list(store_results)
+        )
+        merged = _prepare_final_results(
+            merged,
+            query,
+        )
+
+        with SEARCH_JOBS_LOCK:
+            job = SEARCH_JOBS.get(job_id)
+            if job is not None and job["candidate_version"] == version:
+                job["results"] = merged
 
     try:
         try:
@@ -2639,6 +2654,11 @@ def _run_search_job(
                         store,
                         store_candidates,
                     )
+
+                    with SEARCH_JOBS_LOCK:
+                        job = SEARCH_JOBS.get(job_id)
+                        if job is not None and store not in job["completed_stores"]:
+                            job["completed_stores"].append(store)
 
                 except Exception as exc:
                     with SEARCH_JOBS_LOCK:
@@ -2714,6 +2734,8 @@ def search_start(q: str):
             "candidates": [],
             "results": [],
             "errors": {},
+            "completed_stores": [],
+            "candidate_version": 0,
             "completed": False,
         }
 
