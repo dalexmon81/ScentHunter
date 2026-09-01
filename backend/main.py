@@ -1985,6 +1985,11 @@ def load_scraper(store: str):
     )
 
 
+# Numero massimo di richieste scraper contemporanee sull'intero processo.
+# Gli 8 store possono partire insieme, ma il fallback delle varianti non deve
+# trasformare una famiglia grande in decine di richieste simultanee.
+DISCOVERY_SEMAPHORE = threading.BoundedSemaphore(8)
+
 def run_store(
     store: str,
     query: str,
@@ -1992,13 +1997,17 @@ def run_store(
     """
     Esegue la discovery generica dello store.
 
-    Per una query che identifica una famiglia del Family Registry, la prima
-    discovery usa la query dell'utente. Se al termine risultano mancanti una
-    o più varianti autorizzate, viene eseguita una seconda passata usando
-    esclusivamente i nomi canonici delle varianti mancanti.
+    Il primo passaggio usa la query dell'utente. Per le famiglie presenti
+    nel Family Registry, se alcune varianti autorizzate non sono state
+    trovate, vengono interrogate direttamente le sole varianti mancanti.
 
-    Questa è una regola di discovery generale e data-driven: non contiene
-    riferimenti a profumi, brand o negozi specifici.
+    IMPORTANTE: il fallback delle varianti viene eseguito in parallelo con
+    un limite locale e con un semaforo globale. In questo modo una famiglia
+    grande (es. Hawas) non costringe uno store a fare decine di richieste
+    sequenziali, bloccando gli altri store fino al timeout globale.
+
+    La discovery resta completamente data-driven: nessun profumo, brand o
+    negozio è codificato nella logica.
     """
     module = load_scraper(store)
 
@@ -2023,25 +2032,12 @@ def run_store(
     seen = set()
     attempted_queries = set()
 
-    def run_attempt(attempt: str) -> None:
-        attempt_key = norm(attempt)
-        if not attempt_key or attempt_key in attempted_queries:
-            return
-
-        attempted_queries.add(attempt_key)
-
-        try:
-            results = search_fn(attempt) or []
-        except Exception as exc:
-            print(
-                f"STORE_DISCOVERY_ERROR: store={store} "
-                f"attempt={attempt!r} error={type(exc).__name__}: {exc}",
-                flush=True,
-            )
-            return
+    def normalize_products(results: Any) -> List[Dict[str, Any]]:
+        """Normalizza i risultati di una singola chiamata allo scraper."""
+        normalized: List[Dict[str, Any]] = []
 
         if not isinstance(results, list):
-            return
+            return normalized
 
         for item in results:
             if not isinstance(item, dict):
@@ -2056,6 +2052,45 @@ def run_store(
             if image:
                 product["image"] = image
 
+            normalized.append(product)
+
+        return normalized
+
+    def call_search(attempt: str) -> List[Dict[str, Any]]:
+        """Esegue una richiesta allo scraper sotto il limite globale."""
+        attempt_key = norm(attempt)
+        if not attempt_key:
+            return []
+
+        # DISCOVERY_SEMAPHORE limita il numero totale di richieste attive
+        # mentre gli 8 store lavorano contemporaneamente. Evita che il
+        # fallback di una famiglia grande saturi CPU/RAM o provochi 429/403.
+        semaphore = globals().get(
+            "DISCOVERY_SEMAPHORE"
+        )
+
+        try:
+            if semaphore is not None:
+                semaphore.acquire()
+
+            try:
+                results = search_fn(attempt) or []
+            finally:
+                if semaphore is not None:
+                    semaphore.release()
+
+        except Exception as exc:
+            print(
+                f"STORE_DISCOVERY_ERROR: store={store} "
+                f"attempt={attempt!r} error={type(exc).__name__}: {exc}",
+                flush=True,
+            )
+            return []
+
+        return normalize_products(results)
+
+    def merge_products(products: List[Dict[str, Any]]) -> None:
+        for product in products:
             key = product_identity_key(product)
 
             if key in seen:
@@ -2064,15 +2099,22 @@ def run_store(
             seen.add(key)
             output.append(product)
 
-    # Prima passata: discovery normale, invariata per tutte le query.
+    # --------------------------------------------------------
+    # 1) DISCOVERY NORMALE
+    # --------------------------------------------------------
+    # Restano sequenziali all'interno dello store: sono al massimo poche
+    # query di normalizzazione e non devono creare traffico inutile.
     for attempt in attempts:
-        run_attempt(attempt)
+        attempt_key = norm(attempt)
+        if not attempt_key or attempt_key in attempted_queries:
+            continue
 
-    # Fallback generico per le famiglie catalogate: se la ricerca dello store
-    # non restituisce tutte le varianti autorizzate, interroghiamo soltanto
-    # le varianti che risultano ancora mancanti. In questo modo una variante
-    # che il motore di ricerca dello store non mostra nella query famiglia
-    # non viene persa, senza introdurre seed o URL specifici.
+        attempted_queries.add(attempt_key)
+        merge_products(call_search(attempt))
+
+    # --------------------------------------------------------
+    # 2) FALLBACK DELLE VARIANTI MANCANTI
+    # --------------------------------------------------------
     family = _catalog_family_for_query(discovery_query)
     family_query_key = catalog_variant_key(discovery_query)
     is_family_query = bool(
@@ -2096,6 +2138,8 @@ def run_store(
                 if variant_name:
                     found_variants.add(variant_name)
 
+        missing_attempts: List[str] = []
+
         for variant in family.get("variants", []):
             canonical_name = str(
                 variant.get("canonical_name") or ""
@@ -2105,7 +2149,48 @@ def run_store(
             if not canonical_name or canonical_key in found_variants:
                 continue
 
-            run_attempt(canonical_name)
+            attempt_key = norm(canonical_name)
+            if not attempt_key or attempt_key in attempted_queries:
+                continue
+
+            attempted_queries.add(attempt_key)
+            missing_attempts.append(canonical_name)
+
+        # Una famiglia ampia non deve essere cercata in serie. Due richieste
+        # per store sono sufficienti per mantenere un carico controllato; il
+        # semaforo globale impedisce comunque che gli 8 store aprano tutti
+        # contemporaneamente troppe richieste.
+        if missing_attempts:
+            max_workers = min(
+                2,
+                len(missing_attempts),
+            )
+
+            with ThreadPoolExecutor(
+                max_workers=max_workers,
+                thread_name_prefix=f"scent_variant_{store}",
+            ) as variant_executor:
+                futures = {
+                    variant_executor.submit(
+                        call_search,
+                        attempt,
+                    ): attempt
+                    for attempt in missing_attempts
+                }
+
+                # I risultati vengono uniti solo nel thread principale dello
+                # store: `seen` e `output` non sono mai modificati dai worker.
+                for future in as_completed(futures):
+                    attempt = futures[future]
+                    try:
+                        merge_products(future.result())
+                    except Exception as exc:
+                        print(
+                            f"STORE_VARIANT_DISCOVERY_ERROR: store={store} "
+                            f"attempt={attempt!r} "
+                            f"error={type(exc).__name__}: {exc}",
+                            flush=True,
+                        )
 
     return output
 
