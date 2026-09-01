@@ -232,7 +232,7 @@ IGNORED_WORDS = {
     "by",
 }
 
-GLOBAL_SEARCH_TIMEOUT = 300
+GLOBAL_SEARCH_TIMEOUT = 120
 
 
 # ============================================================
@@ -1879,44 +1879,78 @@ def _collapse_family_results(
     query: str,
 ) -> List[Dict[str, Any]]:
     """
-    Per una query che corrisponde a una famiglia del Registry restituisce
-    una sola offerta migliore per ogni variante autorizzata.
+    Raggruppa le offerte per variante canonica senza perdere gli store.
 
-    Questo impedisce che più store, formati o diciture commerciali della
-    stessa variante gonfino il numero dei risultati. Il numero finale
-    dipende quindi dalle varianti realmente autorizzate dal catalogo,
-    non da un limite arbitrario e non da eccezioni sul singolo profumo.
+    Il vecchio comportamento conservava una sola offerta (la più economica)
+    per variante. Durante una ricerca progressiva questo era distruttivo:
+    quando arrivava un altro negozio, l'offerta precedente poteva sparire
+    dal risultato. Ora ogni variante conserva tutte le offerte realmente
+    trovate; il campo principale rappresenta comunque l'offerta migliore per
+    mantenere compatibilità con il formato precedente.
     """
     family = _catalog_family_for_query(query)
 
     if family is None:
         return products
 
-    grouped: Dict[tuple, Dict[str, Any]] = {}
+    grouped: Dict[tuple, List[Dict[str, Any]]] = {}
 
-    for product in sort_by_price(products):
+    for product in products:
         key = _result_group_key(product)
+        grouped.setdefault(key, []).append(dict(product))
 
-        if key not in grouped:
-            grouped[key] = product
-
-    # Il Registry è autoritativo: ordina le varianti secondo l'ordine
-    # dichiarato nel catalogo, mantenendo però soltanto quelle realmente
-    # trovate dagli scraper.
     ordered: List[Dict[str, Any]] = []
+    family_brand_key = catalog_norm(family.get("brand"))
 
     for variant in family.get("variants", []):
-        canonical_key = catalog_norm(
-            variant.get("canonical_name")
-        )
-        for key, product in grouped.items():
+        canonical_key = catalog_norm(variant.get("canonical_name"))
+        matching_offers: List[Dict[str, Any]] = []
+
+        for key, offer_list in grouped.items():
             if (
                 key[0] == "catalog"
-                and key[1] == catalog_norm(family.get("brand"))
+                and key[1] == family_brand_key
                 and key[2] == canonical_key
             ):
-                ordered.append(product)
-                break
+                matching_offers.extend(offer_list)
+
+        if not matching_offers:
+            continue
+
+        # Deduplica a livello di singola offerta, mantenendo URL/store/
+        # formato distinti. Questo è importante perché più varianti Shopify
+        # dello stesso prodotto possono arrivare dallo stesso scraper.
+        unique_offers: List[Dict[str, Any]] = []
+        seen_offer_keys = set()
+
+        for offer in matching_offers:
+            offer_key = (
+                norm(offer.get("store", "")),
+                str(offer.get("url", "") or "").strip().lower(),
+                str(offer.get("size_ml", "") or "").strip(),
+                str(offer.get("price", "") or "").strip(),
+            )
+            if offer_key in seen_offer_keys:
+                continue
+            seen_offer_keys.add(offer_key)
+            unique_offers.append(offer)
+
+        unique_offers = sort_by_price(unique_offers)
+        if not unique_offers:
+            continue
+
+        # L'oggetto rappresentativo resta compatibile con il vecchio schema:
+        # nome/prezzo/store indicano l'offerta migliore, mentre "offers"
+        # contiene l'intero confronto tra i negozi.
+        representative = dict(unique_offers[0])
+        representative["offers"] = unique_offers
+        representative["offer_count"] = len(unique_offers)
+        representative["stores"] = list(dict.fromkeys(
+            str(item.get("store") or "").strip()
+            for item in unique_offers
+            if str(item.get("store") or "").strip()
+        ))
+        ordered.append(representative)
 
     return ordered
 
@@ -2545,9 +2579,6 @@ SEARCH_JOBS_LOCK = threading.Lock()
 
 
 def _search_job_snapshot(job_id: str) -> Dict[str, Any]:
-    # IMPORTANTISSIMO: non eseguire mai la validazione pesante mentre
-    # SEARCH_JOBS_LOCK è occupato. In precedenza il polling frontend poteva
-    # bloccare il thread che stava raccogliendo gli altri negozi.
     with SEARCH_JOBS_LOCK:
         job = SEARCH_JOBS.get(job_id)
 
@@ -2557,11 +2588,16 @@ def _search_job_snapshot(job_id: str) -> Dict[str, Any]:
                 detail="Job di ricerca non trovato",
             )
 
+        results = _prepare_final_results(
+            list(job["results"]),
+            job["query"],
+        )
+
         return {
             "job_id": job_id,
             "query": job["query"],
-            "count": len(job["results"]),
-            "results": list(job["results"]),
+            "count": len(results),
+            "results": results,
             "comparisons": [],
             "errors": dict(job["errors"]),
             "completed": job["completed"],
@@ -2606,38 +2642,30 @@ def _run_search_job(
         if not isinstance(store_candidates, list):
             return
 
-        # Validiamo SOLO i candidati appena arrivati da questo negozio.
-        # La versione precedente rivalidava l'intero pool dopo ogni store:
-        # con Hawas il costo cresceva rapidamente e i negozi successivi
-        # restavano in coda anche se avevano già finito il loro scraper.
-        store_results = _orchestrate_results(
-            store_candidates,
-            query,
-        )
-
         with SEARCH_JOBS_LOCK:
             job = SEARCH_JOBS.get(job_id)
+
             if job is None:
                 return
 
-            job["candidates"].extend(store_candidates)
-            job["candidate_version"] += 1
-            version = job["candidate_version"]
-            previous_results = list(job["results"])
+            job["candidates"].extend(
+                store_candidates
+            )
 
-        # Merge fuori dal lock. Nessun polling o altro store viene bloccato.
-        merged = unique_results(
-            previous_results + list(store_results)
-        )
-        merged = _prepare_final_results(
-            merged,
+            candidate_pool = list(
+                job["candidates"]
+            )
+
+        results = _orchestrate_results(
+            candidate_pool,
             query,
         )
 
         with SEARCH_JOBS_LOCK:
             job = SEARCH_JOBS.get(job_id)
-            if job is not None and job["candidate_version"] == version:
-                job["results"] = merged
+
+            if job is not None:
+                job["results"] = results
 
     try:
         try:
@@ -2654,11 +2682,6 @@ def _run_search_job(
                         store,
                         store_candidates,
                     )
-
-                    with SEARCH_JOBS_LOCK:
-                        job = SEARCH_JOBS.get(job_id)
-                        if job is not None and store not in job["completed_stores"]:
-                            job["completed_stores"].append(store)
 
                 except Exception as exc:
                     with SEARCH_JOBS_LOCK:
@@ -2734,8 +2757,6 @@ def search_start(q: str):
             "candidates": [],
             "results": [],
             "errors": {},
-            "completed_stores": [],
-            "candidate_version": 0,
             "completed": False,
         }
 
@@ -3208,20 +3229,28 @@ def product(
     ] = []
 
     for product_data in data["results"]:
-        value = price_num(
-            product_data.get("price")
-        )
+        nested_offers = product_data.get("offers")
 
-        if value is None:
-            continue
+        if isinstance(nested_offers, list) and nested_offers:
+            source_offers = nested_offers
+        else:
+            source_offers = [product_data]
 
-        offer = dict(product_data)
-        offer["price_value"] = value
-        offer["image"] = product_image(
-            offer
-        )
+        for source_offer in source_offers:
+            value = price_num(
+                source_offer.get("price")
+            )
 
-        offers.append(offer)
+            if value is None:
+                continue
+
+            offer = dict(source_offer)
+            offer["price_value"] = value
+            offer["image"] = product_image(
+                offer
+            )
+
+            offers.append(offer)
 
     offers.sort(
         key=lambda offer: (
