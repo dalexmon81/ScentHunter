@@ -5,16 +5,17 @@ from fastapi.responses import FileResponse
 
 import importlib
 import json
+
+from product_matcher import ProductMatcher
 import os
 import re
 import threading
 import traceback
-import time
 import unicodedata
 import uuid
 from concurrent.futures import ThreadPoolExecutor, as_completed, TimeoutError
 from datetime import datetime, timezone
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Tuple
 from urllib.parse import urlencode
 from urllib.request import Request, urlopen
 from urllib.error import HTTPError, URLError
@@ -55,6 +56,117 @@ STORES = [
 
 BASE_DIR = os.path.dirname(__file__)
 HISTORY_PATH = os.path.join(BASE_DIR, "price_history.json")
+PRODUCT_CATALOG_PATH = os.path.join(BASE_DIR, "product_catalog.json")
+
+
+def _load_product_matcher_catalog() -> List[Dict[str, Any]]:
+    """
+    Adatta il catalogo autorevole ScentHunter v2 allo schema input
+    del ProductMatcher centrale, senza duplicare regole di matching.
+    """
+    try:
+        with open(PRODUCT_CATALOG_PATH, "r", encoding="utf-8") as file:
+            payload = json.load(file)
+    except Exception as exc:
+        print(
+            "PRODUCT_MATCHER_CATALOG_LOAD_ERROR:",
+            f"{type(exc).__name__}: {exc}",
+            flush=True,
+        )
+        return []
+
+    products = payload.get("products", []) if isinstance(payload, dict) else []
+    variants = payload.get("variants", []) if isinstance(payload, dict) else []
+
+    if not isinstance(products, list):
+        return []
+    if not isinstance(variants, list):
+        variants = []
+
+    by_product_id: Dict[str, Dict[str, Any]] = {}
+
+    for variant in variants:
+        if not isinstance(variant, dict):
+            continue
+        product_id = str(variant.get("product_id") or "").strip()
+        if not product_id:
+            continue
+        target = by_product_id.setdefault(
+            product_id,
+            {"formats_ml": [], "gtins": [], "mpns": [], "aliases": []},
+        )
+
+        size = variant.get("size_ml")
+        if size not in (None, ""):
+            try:
+                value = float(size)
+                if value not in target["formats_ml"]:
+                    target["formats_ml"].append(value)
+            except (TypeError, ValueError):
+                pass
+
+        for source_key, target_key in (("gtins", "gtins"), ("mpns", "mpns")):
+            values = variant.get(source_key) or []
+            if isinstance(values, str):
+                values = [values]
+            if isinstance(values, list):
+                for value in values:
+                    value = str(value or "").strip()
+                    if value and value not in target[target_key]:
+                        target[target_key].append(value)
+
+        aliases = variant.get("aliases") or []
+        if isinstance(aliases, str):
+            aliases = [aliases]
+        if isinstance(aliases, list):
+            for alias in aliases:
+                alias = str(alias or "").strip()
+                if alias and alias not in target["aliases"]:
+                    target["aliases"].append(alias)
+
+    catalog: List[Dict[str, Any]] = []
+
+    for product in products:
+        if not isinstance(product, dict):
+            continue
+
+        product_id = str(product.get("product_id") or "").strip()
+        brand = str(product.get("brand_name") or "").strip()
+        name = str(product.get("canonical_name") or "").strip()
+
+        if not product_id or not name:
+            continue
+
+        data = by_product_id.get(
+            product_id,
+            {"formats_ml": [], "gtins": [], "mpns": [], "aliases": []},
+        )
+
+        aliases = list(product.get("aliases") or []) if isinstance(product.get("aliases"), list) else []
+        aliases.extend(data["aliases"])
+        aliases = list(dict.fromkeys(str(x).strip() for x in aliases if str(x).strip()))
+
+        catalog.append({
+            "id": product_id,
+            "brand": brand,
+            "name": name,
+            "canonical_name": name,
+            "catalog_variant": name,
+            "aliases": aliases,
+            "concentration": str(product.get("concentration") or "").strip(),
+            "gender": str(product.get("gender") or "").strip(),
+            "family_id": str(product.get("family_id") or "").strip(),
+            "family_name": str(product.get("family_name") or "").strip(),
+            "formats_ml": data["formats_ml"],
+            "gtins": data["gtins"],
+            "mpns": data["mpns"],
+        })
+
+    return catalog
+
+
+_PRODUCT_MATCHER_CATALOG = _load_product_matcher_catalog()
+_PRODUCT_MATCHER = ProductMatcher(_PRODUCT_MATCHER_CATALOG)
 
 FRONTEND_INDEX = (
     Path(__file__).resolve().parent.parent
@@ -144,24 +256,6 @@ def norm(value: Any) -> str:
         " ",
         value,
     )
-    # Espressioni di genere comuni in più lingue vengono ricondotte a
-    # token semantici stabili. La normalizzazione è generale e non dipende
-    # da alcun prodotto o negozio.
-    gender_phrases = (
-        (r"\bvoor\s+mannen\b", " for men "),
-        (r"\bvoor\s+heren\b", " for men "),
-        (r"\bvoor\s+vrouwen\b", " for women "),
-        (r"\bvoor\s+dames\b", " for women "),
-        (r"\bpour\s+homme[s]?\b", " for men "),
-        (r"\bpour\s+femme[s]?\b", " for women "),
-        (r"\bfur\s+herren\b", " for men "),
-        (r"\bfur\s+damen\b", " for women "),
-        (r"\bper\s+uomo\b", " for men "),
-        (r"\bper\s+donne\b", " for women "),
-    )
-    for pattern, replacement in gender_phrases:
-        value = re.sub(pattern, replacement, value)
-
     value = re.sub(r"[^a-z0-9]+", " ", value)
     return re.sub(r"\s+", " ", value).strip()
 
@@ -301,6 +395,7 @@ def product_concentration(product: Dict[str, Any]) -> str:
 
     for label, pattern in (
         ("extrait de parfum", r"\bextrait(?: de)? parfum\b"),
+        ("parfum intense", r"\bparfum intense\b"),
         ("eau de parfum", r"\beau de parfum\b|\bedp\b"),
         ("eau de toilette", r"\beau de toilette\b|\bedt\b"),
         ("eau de cologne", r"\beau de cologne\b|\bedc\b"),
@@ -331,41 +426,6 @@ def product_availability(product: Dict[str, Any]) -> str:
             return "out of stock"
 
     return "unknown"
-
-
-def normalize_offer_metadata(product: Dict[str, Any]) -> Dict[str, Any]:
-    """Normalizza centralmente i metadati già presenti nel RAW.
-
-    Non inventa identità o disponibilità: copia soltanto valori realmente
-    presenti nei campi principali/annidati e rende disponibile uno stato
-    centrale coerente per il diagnostico e per il frontend.
-    """
-    item = dict(product)
-    availability = product_availability(item)
-    if availability != "unknown":
-        item["availability"] = availability
-
-    # Campi diagnostici non distruttivi: servono a capire quale identità
-    # il RAW sta realmente fornendo al matching centrale.
-    item["_sh_identity"] = {
-        "brand": product_field(item, "brand", "source_brand"),
-        "family": product_field(item, "family", "family_name", "product_line"),
-        "variant": product_field(item, "variant", "variant_name"),
-        "product_id": identity_value(
-            item, "store_product_id", "product_id", "catalog_id"
-        ),
-        "variant_id": identity_value(
-            item, "store_variant_id", "variant_id"
-        ),
-        "gtin": identity_value(
-            item, "gtin", "ean", "ean13", "barcode", "upc"
-        ),
-        "mpn": identity_value(item, "mpn", "manufacturer_part_number"),
-        "size_ml": product_size_ml(item),
-        "concentration": product_concentration(item),
-        "availability": availability,
-    }
-    return item
 
 
 def product_search_text(product: Dict[str, Any]) -> str:
@@ -425,44 +485,40 @@ def has_small_size(product: Dict[str, Any]) -> bool:
     return False
 
 
+
 # ============================================================
-# VALIDAZIONE
+# FAMILY REGISTRY / CATALOGO AUTORITATIVO
 # ============================================================
 
-def _identity_tokens(value: str) -> List[str]:
-    """
-    Estrae token di identità con normalizzazione linguistica generale.
+FAMILY_REGISTRY_PATH = os.path.join(
+    BASE_DIR,
+    "family_registry.json",
+)
 
-    Le forme linguistiche equivalenti per il genere vengono ricondotte a
-    un token comune. Questo non identifica alcun prodotto specifico e non
-    elimina i modificatori di variante.
-    """
-    text = norm(value or "")
 
-    gender_aliases = (
-        ("for him", "gender_male"),
-        ("for men", "gender_male"),
-        ("for man", "gender_male"),
-        ("for male", "gender_male"),
-        ("homme", "gender_male"),
-        ("mannen", "gender_male"),
-        ("mannen", "gender_male"),
-        ("male", "gender_male"),
-        ("for her", "gender_female"),
-        ("for women", "gender_female"),
-        ("for woman", "gender_female"),
-        ("for female", "gender_female"),
-        ("femme", "gender_female"),
-        ("vrouwen", "gender_female"),
-        ("female", "gender_female"),
+def catalog_norm(value: Any) -> str:
+    """Normalize catalog text deterministically, without fuzzy matching."""
+    text = str(value or "").strip().lower()
+    text = unicodedata.normalize("NFKD", text)
+    text = "".join(
+        char
+        for char in text
+        if not unicodedata.combining(char)
     )
-    for alias, canonical in gender_aliases:
-        text = re.sub(
-            rf"\b{re.escape(alias)}\b",
-            canonical,
-            text,
-        )
-    text = re.sub(r"\b(?:voor|pour)\s+(?=gender_(?:male|female)\b)", "", text)
+    # ASCII and typographic apostrophes are explicit equivalents.
+    text = text.replace("’", "").replace("'", "")
+    text = re.sub(r"[^a-z0-9]+", " ", text)
+    return re.sub(r"\s+", " ", text).strip()
+
+
+def _catalog_clean_text(value: Any) -> str:
+    """
+    Rimuove soltanto elementi commerciali non identitari.
+
+    Non rimuove termini di genere: "for him", "for her", "men",
+    "women", "homme", "femme", "voor", ecc. restano significativi.
+    """
+    text = catalog_norm(value)
 
     text = re.sub(
         r"\b\d+(?:[.,]\d+)?\s*(?:ml|cl)\b",
@@ -474,102 +530,330 @@ def _identity_tokens(value: str) -> List[str]:
     text = re.sub(
         r"\b(?:eau\s+de\s+parfum|eau\s+de\s+toilette|"
         r"eau\s+de\s+cologne|eau\s+fraiche|"
-        r"extrait\s+de\s+parfum|"
-        r"edp|edt|edc)\b",
+        r"extrait\s+de\s+parfum|parfum\s+intense|"
+        r"edp|edt|edc|parfum|perfume|"
+        r"spray)\b",
         " ",
         text,
         flags=re.I,
     )
 
-    text = re.sub(r"\b\d+(?:[.,]\d+)?\b", " ", text)
-    text = re.sub(r"[^a-z0-9]+", " ", text, flags=re.I)
-    text = re.sub(r"\s+", " ", text).strip()
+    return re.sub(r"\s+", " ", text).strip()
 
-    technical_words = {
-        "eau",
-        "de",
-        "parfum",
-        "perfume",
-        "edp",
-        "edt",
-        "edc",
-        "extrait",
-        "spray",
-        "ml",
-        "cl",
-        "by",
+
+def catalog_variant_key(value: Any) -> str:
+    return _catalog_clean_text(value)
+
+
+def _catalog_candidate_variant_key(product: Dict[str, Any]) -> str:
+    """
+    Restituisce la chiave identitaria della variante commerciale.
+
+    La chiave elimina soltanto informazioni non appartenenti alla variante:
+    formato, concentrazione e marcatori espliciti di genere. Il confronto
+    con il Family Registry viene poi fatto per uguaglianza, mai per
+    sottostringa: una variante autorizzata "Hawas" non può quindi validare
+    automaticamente "Hawas Al Wisam".
+    """
+    raw_name = (
+        product.get("canonical_name")
+        or product.get("name")
+        or product.get("title")
+        or product.get("product_name")
+        or ""
+    )
+
+    key = catalog_variant_key(raw_name)
+
+    key = re.sub(
+        r"\b\d+(?:[.,]\d+)?\s*(?:ml|cl|l|g|kg|oz)\b",
+        " ",
+        key,
+    )
+    key = re.sub(
+        r"\b(?:eau de parfum|eau de toilette|eau de cologne|"
+        r"eau fraiche|extrait de parfum|parfum intense|parfum|perfume|edp|edt|edc|spray)\b",
+        " ",
+        key,
+    )
+
+    # Genere = attributo separato, mai parte della variante visualizzata.
+    # Sono comprese le principali formulazioni commerciali multilingua.
+    key = re.sub(
+        r"\b(?:for\s+(?:him|her|men|women)|"
+        r"pour\s+(?:homme|femme|hommes|femmes)|"
+        r"voor\s+(?:mannen|dames|vrouwen)|"
+        r"men|women|man|woman|male|female|"
+        r"homme|femme|heren|mannen|dames|vrouwen|uomo|donna|unisex)\b",
+        " ",
+        key,
+        flags=re.I,
+    )
+
+    return re.sub(r"\s+", " ", key).strip()
+
+
+def _catalog_tokens(value: Any) -> List[str]:
+    return _catalog_clean_text(value).split()
+
+
+def _catalog_phrase_equal(left: Any, right: Any) -> bool:
+    return _catalog_clean_text(left) == _catalog_clean_text(right)
+
+
+def _catalog_phrase_in_text(phrase: Any, text: Any) -> bool:
+    phrase_clean = _catalog_clean_text(phrase)
+    text_clean = _catalog_clean_text(text)
+
+    if not phrase_clean or not text_clean:
+        return False
+
+    return (
+        f" {phrase_clean} " in f" {text_clean} "
+    )
+
+
+def _catalog_gender_class(value: Any) -> str:
+    """
+    Restituisce la classe di genere esplicita.
+
+    Una variante senza genere non può essere aliasata automaticamente
+    a una variante che introduce "for him/for her", "men/women", ecc.
+    """
+    tokens = set(_catalog_tokens(value))
+
+    male = {
+        "for", "him", "men", "man",
+        "homme", "heren", "mannen", "male", "uomo",
+    }
+    female = {
+        "for", "her", "women", "woman",
+        "femme", "dames", "vrouwen", "female", "donna",
     }
 
-    return [
-        token
-        for token in text.split()
-        if token not in technical_words
-    ]
+    # "for" da solo non è una classe: serve la parola successiva.
+    male_hit = bool(tokens & {
+        "him", "men", "man", "homme", "heren", "mannen", "male", "uomo",
+    })
+    female_hit = bool(tokens & {
+        "her", "women", "woman", "femme", "dames", "vrouwen", "female", "donna",
+    })
+
+    if male_hit and not female_hit:
+        return "male"
+    if female_hit and not male_hit:
+        return "female"
+    if male_hit and female_hit:
+        return "mixed"
+
+    return "none"
 
 
-def _identity_tokens_from_values(values: List[Any]) -> set:
-    tokens = set()
-    for value in values:
-        if value is None:
+def _load_family_registry() -> List[Dict[str, Any]]:
+    """
+    Carica il catalogo esterno senza inserire conoscenza specifica nel main.
+
+    Sono supportati sia il formato "allowed_variants" sia il formato
+    "products", così il registro resta un semplice file dati.
+    """
+    try:
+        with open(
+            FAMILY_REGISTRY_PATH,
+            "r",
+            encoding="utf-8",
+        ) as file:
+            payload = json.load(file)
+    except Exception as exc:
+        print(
+            "FAMILY_REGISTRY_LOAD_ERROR:",
+            f"{type(exc).__name__}: {exc}",
+            flush=True,
+        )
+        return []
+
+    families = payload.get("families") if isinstance(payload, dict) else None
+    if not isinstance(families, list):
+        return []
+
+    output: List[Dict[str, Any]] = []
+
+    for family in families:
+        if not isinstance(family, dict):
             continue
-        tokens.update(_identity_tokens(str(value)))
-    return tokens
+
+        variants = (
+            family.get("allowed_variants")
+            or family.get("products")
+            or []
+        )
+
+        if not isinstance(variants, list):
+            variants = []
+
+        normalized_variants = []
+
+        for variant in variants:
+            if not isinstance(variant, dict):
+                continue
+
+            canonical_name = str(
+                variant.get("canonical_name")
+                or variant.get("name")
+                or ""
+            ).strip()
+
+            # The registry stores the brand at family level.  Some historical
+            # registry versions also repeated that brand inside
+            # canonical_name (for example "Brand Variant").  Canonical
+            # identity must keep the brand in its own field, so remove only
+            # a leading family-brand prefix from the canonical variant name.
+            # Do not remove gender/variant words: they remain part of the
+            # commercial variant identity.
+            family_brand = str(family.get("brand") or "").strip()
+            if family_brand and canonical_name:
+                canonical_name = re.sub(
+                    rf"^\s*{re.escape(family_brand)}(?:\s*[-:–—]\s*|\s+)",
+                    "",
+                    canonical_name,
+                    flags=re.I,
+                ).strip()
+
+            if not canonical_name:
+                continue
+
+            aliases = variant.get("aliases") or []
+            if isinstance(aliases, str):
+                aliases = [aliases]
+            if not isinstance(aliases, list):
+                aliases = []
+
+            # Il canonical è sempre una forma valida di riferimento.
+            valid_aliases = [canonical_name]
+
+            for alias in aliases:
+                alias = str(alias or "").strip()
+                if not alias:
+                    continue
+
+                # Gli alias dichiarati dal Registry sono equivalenze
+                # esplicite e autorevoli: non vanno filtrati dal main.
+                valid_aliases.append(alias)
+
+            valid_aliases = list(dict.fromkeys(valid_aliases))
+            normalized_variants.append(
+                {
+                    "canonical_name": canonical_name,
+                    "aliases": valid_aliases,
+                    "normalized_aliases": tuple(
+                        catalog_variant_key(alias)
+                        for alias in valid_aliases
+                        if catalog_variant_key(alias)
+                    ),
+                }
+            )
+
+        if not normalized_variants:
+            continue
+
+        query_aliases = (
+            family.get("query_aliases")
+            or family.get("search_aliases")
+            or family.get("search_name")
+            or family.get("canonical_family_name")
+            or []
+        )
+
+        if isinstance(query_aliases, str):
+            query_aliases = [query_aliases]
+
+        if not isinstance(query_aliases, list):
+            query_aliases = []
+
+        output.append(
+            {
+                "family_id": str(
+                    family.get("family_id") or ""
+                ).strip(),
+                "brand": str(
+                    family.get("brand") or ""
+                ).strip(),
+                "query_aliases": [
+                    str(value).strip()
+                    for value in query_aliases
+                    if str(value or "").strip()
+                ],
+                "variants": normalized_variants,
+                "normalized_query_aliases": tuple(
+                    catalog_variant_key(value)
+                    for value in query_aliases
+                    if catalog_variant_key(value)
+                ),
+            }
+        )
+
+    return output
 
 
-def _structured_identity_tokens(product: Dict[str, Any]) -> set:
-    """
-    Estrae l'identità strutturale disponibile nell'offerta.
+FAMILY_REGISTRY = _load_family_registry()
 
-    Quando il RAW contiene family/product_line/variant, questi campi hanno
-    priorità perché descrivono l'identità del prodotto più direttamente del
-    solo titolo commerciale. Il nome resta comunque una prova di supporto.
-    Nessuna famiglia o variante specifica è codificata qui.
-    """
-    values: List[Any] = []
 
-    for key in (
-        "family",
-        "family_name",
-        "product_line",
-        "variant",
-    ):
-        value = product.get(key)
-        if value:
-            values.append(value)
+def _build_family_registry_index(
+    families: List[Dict[str, Any]],
+) -> Dict[str, Dict[str, Any]]:
+    """Build the normalized family-query index once at startup."""
+    index: Dict[str, Dict[str, Any]] = {}
+    for family in families:
+        for alias_key in family.get("normalized_query_aliases", ()):
+            if alias_key:
+                index.setdefault(alias_key, family)
+    return index
 
-    attributes = product.get("attributes")
-    if isinstance(attributes, dict):
-        for key in (
-            "family",
-            "family_name",
-            "product_line",
-            "variant",
-        ):
-            if key in attributes:
-                values.append(nested_value(attributes.get(key)))
+
+FAMILY_REGISTRY_INDEX = _build_family_registry_index(FAMILY_REGISTRY)
+
+
+def _catalog_brand_matches(
+    product: Dict[str, Any],
+    family: Dict[str, Any],
+) -> bool:
+    expected_brand = catalog_norm(
+        family.get("brand")
+    )
+
+    if not expected_brand:
+        return True
+
+    actual_brand = product_field(
+        product,
+        "brand",
+        "source_brand",
+    )
 
     source = product.get("source")
-    if isinstance(source, dict):
-        for key in (
-            "family",
-            "family_name",
-            "product_line",
-            "variant",
-        ):
-            if source.get(key):
-                values.append(source.get(key))
+    if isinstance(source, dict) and not actual_brand:
+        actual_brand = str(
+            source.get("brand")
+            or source.get("source_brand")
+            or ""
+        ).strip()
 
-    return _identity_tokens_from_values(values)
+    if not actual_brand:
+        return True
+
+    return (
+        catalog_norm(actual_brand)
+        == expected_brand
+    )
 
 
-def _name_identity_tokens(product: Dict[str, Any]) -> set:
+def _catalog_product_text(product: Dict[str, Any]) -> str:
     values = [
         product_field(
             product,
             "name",
             "title",
             "product_name",
-        )
+        ),
     ]
 
     source = product.get("source")
@@ -581,111 +865,482 @@ def _name_identity_tokens(product: Dict[str, Any]) -> set:
             ]
         )
 
-    return _identity_tokens_from_values(values)
+    return " ".join(
+        str(value or "")
+        for value in values
+    ).strip()
 
 
-def _brand_identity_tokens(product: Dict[str, Any]) -> set:
-    values = [
-        product_field(product, "brand", "source_brand")
-    ]
-    source = product.get("source")
-    if isinstance(source, dict):
-        values.extend(
-            [source.get("brand"), source.get("source_brand")]
-        )
-    return _identity_tokens_from_values(values)
+def _catalog_gender_neutral_key(value: Any) -> str:
+    """
+    Restituisce la forma identitaria senza marcatori di genere espliciti.
 
+    La rimozione è usata solo come seconda possibilità di confronto:
+    il genere dichiarato dal candidato resta sempre una informazione
+    vincolante quando il catalogo contiene varianti con lo stesso nucleo.
+    """
+    text = _catalog_clean_text(value)
 
-def _query_identity_tokens(query: str) -> set:
-    return set(_identity_tokens(query))
-
-
-def _has_structured_identity(product: Dict[str, Any]) -> bool:
-    return bool(_structured_identity_tokens(product))
-
-
-def _identity_token_set(product: Dict[str, Any]) -> set:
-    """Compatibility helper returning the complete available identity."""
-    return (
-        _name_identity_tokens(product)
-        | _structured_identity_tokens(product)
-        | _brand_identity_tokens(product)
+    text = re.sub(
+        r"\b(?:for\s+(?:him|her|men|women)|"
+        r"pour\s+(?:homme|femme|hommes|femmes)|"
+        r"voor\s+(?:mannen|dames|vrouwen)|"
+        r"(?:men|women|mannen|dames|vrouwen|"
+        r"homme|femme|uomo|donna|male|female))\b",
+        " ",
+        text,
+        flags=re.I,
     )
 
+    return re.sub(r"\s+", " ", text).strip()
+
+
+def _catalog_variant_for_product(
+    product: Dict[str, Any],
+    family: Dict[str, Any],
+) -> Optional[Dict[str, Any]]:
+    """
+    Identifica una sola variante autorizzata del catalogo.
+
+    Il confronto è deterministico: la chiave della variante candidata deve
+    essere identica alla chiave di una forma autorizzata. Non viene usata
+    alcuna inclusione per sottostringa, perché trasformerebbe una famiglia
+    ampia in un contenitore di falsi positivi.
+
+    Il genere viene valutato separatamente. Questo permette, ad esempio,
+    di trattare "Hawas For Him" come la variante "Hawas" + Uomo nel titolo,
+    senza confondere "Hawas" con "Hawas For Her".
+    """
+    if not _catalog_brand_matches(product, family):
+        return None
+
+    candidate_text = _catalog_clean_text(_catalog_product_text(product))
+    if not candidate_text:
+        return None
+
+    brand = _catalog_clean_text(family.get("brand"))
+    if brand:
+        candidate_text = re.sub(
+            rf"\b{re.escape(brand)}\b",
+            " ",
+            candidate_text,
+            flags=re.I,
+        )
+        candidate_text = re.sub(r"\s+", " ", candidate_text).strip()
+
+    candidate_key = _catalog_candidate_variant_key(product)
+    if brand:
+        candidate_key = re.sub(
+            rf"\b{re.escape(brand)}\b",
+            " ",
+            candidate_key,
+            flags=re.I,
+        )
+        candidate_key = re.sub(r"\s+", " ", candidate_key).strip()
+    if not candidate_key:
+        return None
+
+    candidate_gender = _catalog_gender_class(candidate_text)
+    matches: List[Tuple[int, Dict[str, Any]]] = []
+
+    for variant in family.get("variants", []):
+        canonical = str(variant.get("canonical_name") or "").strip()
+        aliases = variant.get("aliases") or []
+        if isinstance(aliases, str):
+            aliases = [aliases]
+
+        variant_forms = [canonical]
+        variant_forms.extend(str(alias or "").strip() for alias in aliases)
+
+        # Tutte le forme della stessa variante devono ridursi alla stessa
+        # chiave identitaria. La specificità serve solo a scegliere fra alias
+        # equivalenti, mai fra varianti diverse.
+        canonical_key = _catalog_gender_neutral_key(canonical)
+        alias_keys = {
+            _catalog_gender_neutral_key(alias)
+            for alias in aliases
+            if _catalog_gender_neutral_key(alias)
+        }
+        variant_keys = {key for key in (canonical_key, *alias_keys) if key}
+
+        if candidate_key not in variant_keys:
+            continue
+
+        # Only the canonical variant name defines the catalog gender.
+        variant_gender = _catalog_gender_class(canonical)
+
+        # Se il candidato espone un genere esplicito, deve essere compatibile
+        # con quello canonico. Un candidato senza genere può invece usare un
+        # alias AUTOREVOLE del Registry che rappresenta una forma commerciale
+        # abbreviata di una variante gendered: l'alias è già la prova esplicita
+        # che quella forma appartiene a quella variante. Non facciamo questa
+        # inferenza sul solo testo del prodotto.
+        if variant_gender != "none":
+            alias_match = candidate_key in alias_keys and candidate_key != canonical_key
+            if candidate_gender != variant_gender and not (candidate_gender == "none" and alias_match):
+                continue
+        elif candidate_gender == "mixed":
+            continue
+
+        specificity = max(
+            len(_catalog_gender_neutral_key(form))
+            for form in variant_forms
+            if _catalog_gender_neutral_key(form)
+        )
+        matches.append((specificity, variant))
+
+    if not matches:
+        return None
+
+    matches.sort(key=lambda item: item[0], reverse=True)
+    best_specificity = matches[0][0]
+    best = [variant for specificity, variant in matches if specificity == best_specificity]
+
+    canonical_names = {str(item.get("canonical_name") or "") for item in best}
+    if len(canonical_names) != 1:
+        return None
+
+    return best[0]
+
+
+def _catalog_family_for_query(
+    query: str,
+) -> Optional[Dict[str, Any]]:
+    query_clean = catalog_variant_key(query)
+
+    if not query_clean:
+        return None
+
+    family = FAMILY_REGISTRY_INDEX.get(query_clean)
+    if family is not None:
+        return family
+
+    # If a cataloged family is present in a longer query, keep the query
+    # under catalog control. An unauthorized appended variant is therefore
+    # rejected instead of falling back to generic matching.
+    padded_query = f" {query_clean} "
+    for alias_key, candidate_family in FAMILY_REGISTRY_INDEX.items():
+        if f" {alias_key} " in padded_query:
+            return candidate_family
+
+    return None
+
+
+def _catalog_requested_variant(
+    query: str,
+    family: Dict[str, Any],
+) -> Optional[Dict[str, Any]]:
+    """Resolve a specific family variant from an explicit query.
+
+    The query uses the same neutral identity rules as a retailer title:
+    brand, format/concentration and gender wording are removed for the
+    variant key, while the explicit gender remains available to disambiguate
+    gendered variants.
+    """
+    query_clean = _catalog_clean_text(query)
+
+    brand = _catalog_clean_text(family.get("brand"))
+    if brand:
+        query_clean = re.sub(
+            rf"\b{re.escape(brand)}\b",
+            " ",
+            query_clean,
+            flags=re.I,
+        )
+        query_clean = re.sub(r"\s+", " ", query_clean).strip()
+
+    query_key = _catalog_candidate_variant_key({"name": query_clean})
+    query_gender = _catalog_gender_class(query_clean)
+    if not query_key:
+        return None
+
+    matches: List[Dict[str, Any]] = []
+
+    for variant in family.get("variants", []):
+        forms = [
+            str(variant.get("canonical_name") or ""),
+            *[
+                str(alias or "")
+                for alias in (variant.get("aliases") or [])
+            ],
+        ]
+        neutral_keys = {
+            _catalog_gender_neutral_key(form)
+            for form in forms
+            if _catalog_gender_neutral_key(form)
+        }
+        if query_key not in neutral_keys:
+            continue
+
+        variant_gender = _catalog_gender_class(str(variant.get("canonical_name") or ""))
+        # When the user explicitly requests a gendered variant, a neutral
+        # variant is not an acceptable substitute. This is what keeps
+        # "9 PM Pour Femme" distinct from plain "9 PM".
+        if query_gender != "none":
+            if variant_gender != query_gender:
+                continue
+        elif variant_gender == "mixed":
+            continue
+
+        matches.append(variant)
+
+    if len(matches) == 1:
+        return matches[0]
+
+    # A completely neutral query can legitimately identify one neutral
+    # variant. It must never be used to guess between two gendered variants.
+    neutral = [
+        variant
+        for variant in matches
+        if _catalog_gender_class(
+            " ".join(
+                [str(variant.get("canonical_name") or "")]
+                + [str(x or "") for x in (variant.get("aliases") or [])]
+            )
+        ) == "none"
+    ]
+    if len(neutral) == 1:
+        return neutral[0]
+
+    return None
+
+
+def _catalog_match(
+    product: Dict[str, Any],
+    query: str,
+) -> Optional[Dict[str, Any]]:
+    """
+    Risolve il candidato esclusivamente contro la famiglia individuata dalla
+    query.
+
+    Regole:
+    - una query che identifica una famiglia autorizza tutte e sole le sue
+      varianti presenti nel Registry;
+    - una query che identifica una variante autorizza soltanto quella
+      variante;
+    - il confronto della variante è per uguaglianza della chiave identitaria,
+      mai per sottostringa;
+    - il genere serve solo a distinguere varianti omonime/genderizzate;
+    - il brand del Registry viene propagato anche quando il retailer non lo
+      espone.
+    """
+    family = _catalog_family_for_query(query)
+    if family is None:
+        return None
+
+    query_key = catalog_variant_key(query)
+    is_family_query = query_key in family.get("normalized_query_aliases", ())
+
+    requested = None if is_family_query else _catalog_requested_variant(
+        query,
+        family,
+    )
+
+    # Una query che contiene il nome della famiglia ma aggiunge una variante
+    # non registrata non deve ricadere nel matching generico.
+    if not is_family_query and requested is None:
+        return None
+
+    variant = _catalog_variant_for_product(product, family)
+    if variant is None:
+        return None
+
+    if requested is not None and variant is not requested:
+        return None
+
+    result = dict(product)
+    canonical_name = str(variant.get("canonical_name") or "").strip()
+    family_brand = str(family.get("brand") or "").strip()
+
+    if not canonical_name:
+        return None
+
+    result["name"] = canonical_name
+    result["canonical_name"] = canonical_name
+
+    if family_brand:
+        result["canonical_brand"] = family_brand
+        result["brand"] = family_brand
+
+    result["family_id"] = family.get("family_id", "")
+    result["family_name"] = (
+        family.get("query_aliases", [""])[0]
+        if family.get("query_aliases")
+        else ""
+    )
+    result["catalog_variant"] = canonical_name
+
+    candidate_gender = _catalog_gender_class(_catalog_product_text(product))
+    if candidate_gender == "male":
+        result["gender"] = "Uomo"
+    elif candidate_gender == "female":
+        result["gender"] = "Donna"
+
+    result["match_method"] = "family_registry_alias"
+    return result
+
+
+# ============================================================
+# VALIDAZIONE
+# ============================================================
 
 def matches(product: Dict[str, Any], query: str) -> bool:
     """
-    Validazione centrale in due livelli:
+    Validazione centrale.
 
-    1) verifica della famiglia/prodotto usando l'identità strutturale quando
-       il RAW la fornisce;
-    2) fallback sul titolo quando i dati strutturali non esistono.
-
-    I modificatori esplicitamente presenti nella query restano significativi.
-    Informazioni aggiuntive dell'offerta non causano uno scarto automatico:
-    una ricerca generica può quindi continuare a recuperare varianti.
-
-    La funzione non contiene riferimenti a prodotti, negozi o famiglie
-    specifiche.
+    Se il catalogo contiene la famiglia richiesta, il catalogo è
+    autoritativo: soltanto le varianti dichiarate possono entrare.
+    Le altre famiglie continuano a usare il matching generico.
     """
     query_normalized = norm(query)
+
     if not query_normalized:
         return False
 
-    name = product_field(product, "name", "title", "product_name")
-    brand = product_field(product, "brand", "source_brand")
+    name = product_field(
+        product,
+        "name",
+        "title",
+        "product_name",
+    )
+
     source = product.get("source")
 
     if isinstance(source, dict):
-        if not brand:
-            brand = str(source.get("brand") or source.get("source_brand") or "").strip()
         if not name:
-            name = str(source.get("name") or source.get("title") or "").strip()
+            name = str(
+                source.get("name")
+                or source.get("title")
+                or ""
+            ).strip()
 
     name_normalized = norm(name)
+
     if not name_normalized:
         return False
 
-    query_has_size = bool(re.search(r"(?<!\d)\d+(?:[.,]\d+)?\s*(?:ml|cl)\b", query_normalized))
+    query_has_size = bool(
+        re.search(
+            r"(?<!\d)\d+(?:[.,]\d+)?\s*(?:ml|cl)\b",
+            query_normalized,
+        )
+    )
+
     if has_small_size(product) and not query_has_size:
         return False
 
     for phrase in NON_PERFUME:
         phrase_normalized = norm(phrase)
-        if phrase_normalized in name_normalized and phrase_normalized not in query_normalized:
+
+        if (
+            phrase_normalized in name_normalized
+            and phrase_normalized not in query_normalized
+        ):
             return False
 
-    query_tokens = _query_identity_tokens(query_normalized)
-    if not query_tokens:
+    # --------------------------------------------------------
+    # CATALOGO AUTORITATIVO
+    # --------------------------------------------------------
+    # Per una famiglia presente nel Registry il catalogo è obbligatorio:
+    # nessun candidato può ricadere nel vecchio matching generico.
+    catalog_family = _catalog_family_for_query(query)
+
+    if catalog_family is not None:
+        return _catalog_match(
+            product,
+            query,
+        ) is not None
+
+    # --------------------------------------------------------
+    # MATCHING GENERICO PER FAMIGLIE NON CATALOGATE
+    # --------------------------------------------------------
+    name_for_matching = name_normalized
+
+    name_for_matching = re.sub(
+        r"\b\d+(?:[.,]\d+)?\s*(?:ml|cl)\b",
+        " ",
+        name_for_matching,
+        flags=re.I,
+    )
+
+    name_for_matching = re.sub(
+        r"\b(?:eau\s+de\s+parfum|eau\s+de\s+toilette|"
+        r"eau\s+de\s+cologne|extrait\s+de\s+parfum|"
+        r"edp|edt|edc)\b",
+        " ",
+        name_for_matching,
+        flags=re.I,
+    )
+
+    name_for_matching = re.sub(
+        r"\s+",
+        " ",
+        name_for_matching,
+    ).strip()
+
+    # I numeri possono essere parte essenziale dell'identità commerciale
+    # (es. "9 PM", "1 Million", "212 VIP"). Non vanno quindi scartati
+    # dal matching generico: eliminarli permette a un prodotto che contiene
+    # soltanto la parola "PM" di passare una ricerca "9 PM".
+    query_tokens = [
+        token
+        for token in query_normalized.split()
+        if token not in IGNORED_WORDS
+    ]
+
+    generic_tokens = {
+        "eau",
+        "de",
+        "parfum",
+        "perfume",
+        "edp",
+        "edt",
+        "edc",
+        "extrait",
+        "spray",
+        # "Intense", "Limited" and "Edition" can be genuine commercial
+        # variant identifiers; do not discard them during generic matching.
+        "for",
+        "men",
+        "women",
+        "homme",
+        "femme",
+        "unisex",
+    }
+
+    family_tokens = [
+        token
+        for token in query_tokens
+        if token not in generic_tokens
+    ]
+
+    if not family_tokens:
+        family_tokens = query_tokens
+
+    if not family_tokens:
         return False
 
-    structured_tokens = _structured_identity_tokens(product)
-    name_tokens = _name_identity_tokens(product)
+    name_tokens = name_for_matching.split()
 
-    # Se esiste una vera identità strutturale, deve essere compatibile con
-    # la query. Il titolo non può da solo sovrascrivere una struttura RAW
-    # che identifica chiaramente un'altra famiglia.
-    if structured_tokens:
-        if query_tokens.issubset(structured_tokens):
-            return True
+    family_phrase = " ".join(family_tokens)
+    name_phrase = " ".join(
+        token
+        for token in name_tokens
+        if token not in generic_tokens
+    )
 
-        # Una parte dell'identità può essere espressa nel campo strutturale
-        # e una parte nel titolo (es. family + variant). Accettiamo il match
-        # solo quando l'unione è completa e almeno un token richiesto è
-        # supportato strutturalmente.
-        combined = structured_tokens | name_tokens
-        structural_overlap = query_tokens & structured_tokens
-        if query_tokens.issubset(combined) and structural_overlap:
-            return True
-
-        # Se la struttura esiste ma non supporta alcun token della query,
-        # il titolo isolato non è sufficiente: evita falsi positivi derivati
-        # da descrizioni commerciali incoerenti.
+    if not family_phrase or not name_phrase:
         return False
 
-    # Fallback per scraper che non espongono metadati strutturali.
-    return query_tokens.issubset(name_tokens | _brand_identity_tokens(product))
+    padded_name = f" {name_phrase} "
+    padded_family = f" {family_phrase} "
 
+    return padded_family in padded_name
+
+
+# ============================================================
+# DISCOVERY GENERICA
+# ============================================================
 
 def build_search_attempts(store: str, query: str) -> List[str]:
     """
@@ -866,14 +1521,7 @@ def product_identity_key(product: Dict[str, Any]) -> tuple:
         return ("variant", store, norm(variant_id))
 
     if product_id:
-        return (
-            "product",
-            store,
-            norm(product_id),
-            norm(product_field(product, "variant", "variant_name")),
-            product_size_ml(product),
-            product_concentration(product),
-        )
+        return ("product", store, norm(product_id), norm(product.get("name", "")))
 
     if gtin:
         return ("gtin", store, norm(gtin))
@@ -976,6 +1624,323 @@ def sort_by_price(products: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
     )
 
 
+def _display_brand(product: Dict[str, Any]) -> str:
+    # Canonical identity wins over retailer/raw fields.  This is especially
+    # important when a retailer title contains only the variant name and the
+    # Family Registry supplies the authoritative brand.
+    return (
+        product_field(
+            product,
+            "canonical_brand",
+            "brand",
+            "source_brand",
+        )
+        or ""
+    ).strip()
+
+
+def _display_raw_name(product: Dict[str, Any]) -> str:
+    return (
+        product.get("canonical_name")
+        or product_field(
+            product,
+            "name",
+            "title",
+            "product_name",
+        )
+        or ""
+    ).strip()
+
+
+def _display_gender(product: Dict[str, Any], raw_name: str) -> str:
+    explicit = product_field(
+        product,
+        "gender",
+        "genere",
+        "sex",
+    )
+
+    source = product.get("source")
+    if isinstance(source, dict) and not explicit:
+        explicit = str(
+            source.get("gender")
+            or source.get("genere")
+            or source.get("sex")
+            or ""
+        ).strip()
+
+    gender = _catalog_gender_class(
+        " ".join(
+            value
+            for value in (explicit, raw_name)
+            if value
+        )
+    )
+
+    if gender == "male":
+        return "Uomo"
+    if gender == "female":
+        return "Donna"
+
+    return ""
+
+
+def _display_variant_name(
+    product: Dict[str, Any],
+    brand: str,
+    raw_name: str,
+) -> str:
+    """
+    Costruisce esclusivamente il nome della variante.
+
+    Formato, concentrazione e genere sono attributi separati e non devono
+    entrare nella variante visualizzata. Il genere viene poi aggiunto dal
+    formatter come "Uomo" o "Donna".
+    """
+    variant = str(raw_name or "").strip()
+
+    if brand:
+        # Rimuove eventuali prefissi di brand ripetuti ("Brand - Brand -
+        # Variante") senza toccare occorrenze del brand che appartengono
+        # realmente al nome commerciale.
+        brand_pattern = re.compile(
+            rf"^\s*{re.escape(str(brand).strip())}\s*(?:[-:–—]\s*)?",
+            flags=re.I,
+        )
+        while True:
+            cleaned = brand_pattern.sub("", variant, count=1)
+            if cleaned == variant:
+                break
+            variant = cleaned
+
+    variant = re.sub(
+        r"\b\d+(?:[.,]\d+)?\s*(?:ml|cl|l|g|kg|oz)\b",
+        " ",
+        variant,
+        flags=re.I,
+    )
+
+    variant = re.sub(
+        r"\b(?:eau\s+de\s+parfum|eau\s+de\s+toilette|"
+        r"eau\s+de\s+cologne|eau\s+fraiche|"
+        r"extrait\s+de\s+parfum|eau\s+de\s+parfum\s+spray|"
+        r"parfum\s+intense|edp|edt|edc|parfum|perfume|spray)\b",
+        " ",
+        variant,
+        flags=re.I,
+    )
+
+    # Se il nome è già canonico/catalogato, le parole di genere possono
+    # essere parte integrante della variante (es. "For Him", "Pour Femme").
+    # Non vanno distrutte: altrimenti due referenze diverse diventano la
+    # stessa variante. Per i nomi RAW, invece, il genere resta un attributo
+    # separato e può essere ripulito dal titolo.
+    is_canonical_variant = bool(
+        product.get("catalog_variant")
+        or product.get("canonical_name")
+    )
+
+    if not is_canonical_variant:
+        variant = re.sub(
+            r"\b(?:for\s+(?:him|her|men|women)|"
+            r"pour\s+(?:homme|femme|hommes|femmes)|"
+            r"voor\s+(?:mannen|dames|vrouwen)|"
+            r"men|women|man|woman|male|female|homme|femme|heren|mannen|"
+            r"dames|vrouwen|uomo|donna|unisex)\b",
+            " ",
+            variant,
+            flags=re.I,
+        )
+
+    # Elimina parentesi vuote e punteggiatura residua generata dalla pulizia.
+    variant = re.sub(r"\(\s*\)", " ", variant)
+    variant = re.sub(r"\s+", " ", variant).strip(" -–—:|/")
+    return re.sub(r"\s+", " ", variant).strip()
+
+
+def _format_result_title(product: Dict[str, Any]) -> str:
+    """
+    Costruisce il titolo visualizzato in modo uniforme per qualunque
+    profumo:
+
+        Brand-Variante [Concentrazione] [Uomo/Donna]
+
+    La variante viene presa dall'identità canonica quando disponibile;
+    in caso contrario viene ricavata dal nome del candidato. Nessuna
+    regola dipende da un marchio o profumo specifico.
+    """
+    brand = _display_brand(product)
+    raw_name = _display_raw_name(product)
+
+    variant = _display_variant_name(
+        product,
+        brand,
+        raw_name,
+    )
+
+    if not variant:
+        variant = raw_name or "Profumo"
+
+    concentration = product_concentration(product)
+    concentration_display = {
+        "eau de parfum": "Eau de Parfum",
+        "eau de toilette": "Eau de Toilette",
+        "eau de cologne": "Eau de Cologne",
+        "extrait de parfum": "Extrait de Parfum",
+        "parfum intense": "Parfum Intense",
+        "parfum": "Parfum",
+    }.get(
+        concentration,
+        concentration.title() if concentration else "",
+    )
+
+    gender = _display_gender(
+        product,
+        raw_name,
+    )
+
+    # If the gender is already embedded in the canonical commercial variant,
+    # do not append a second "Uomo/Donna" token.  The variant remains intact.
+    if re.search(
+        r"\b(?:for\s+him|for\s+her|pour\s+homme|pour\s+femme|"
+        r"men|women|man|woman|male|female|homme|femme|heren|mannen|dames|"
+        r"vrouwen|uomo|donna|unisex)\b",
+        catalog_norm(variant),
+        re.I,
+    ):
+        gender = ""
+
+    parts = []
+    if brand:
+        parts.append(f"{brand}-{variant}")
+    else:
+        parts.append(variant)
+
+    if concentration_display:
+        parts.append(concentration_display)
+    if gender:
+        parts.append(gender)
+
+    return " ".join(parts).strip()
+
+
+def _result_group_key(product: Dict[str, Any]) -> tuple:
+    """
+    Raggruppa le offerte che rappresentano la stessa referenza.
+
+    Per le famiglie catalogate la chiave è la variante canonica. Per le
+    altre famiglie usa brand + nome commerciale ripulito da formato e
+    concentrazione, mantenendo le differenze reali della variante.
+    """
+    brand = catalog_norm(_display_brand(product))
+
+    catalog_variant = catalog_norm(
+        product.get("catalog_variant")
+        or product.get("canonical_name")
+        or ""
+    )
+
+    if catalog_variant:
+        return ("catalog", brand, catalog_variant)
+
+    raw_name = _display_raw_name(product)
+    name_key = catalog_norm(raw_name)
+
+    name_key = re.sub(
+        r"\b\d+(?:[.,]\d+)?\s*(?:ml|cl|l|g|kg|oz)\b",
+        " ",
+        name_key,
+        flags=re.I,
+    )
+    name_key = re.sub(
+        r"\b(?:eau\s+de\s+parfum|eau\s+de\s+toilette|"
+        r"eau\s+de\s+cologne|eau\s+fraiche|"
+        r"extrait\s+de\s+parfum|edp|edt|edc|parfum|perfume|spray)\b",
+        " ",
+        name_key,
+        flags=re.I,
+    )
+
+    if brand:
+        name_key = re.sub(
+            rf"\b{re.escape(brand)}\b",
+            " ",
+            name_key,
+            flags=re.I,
+        )
+
+    name_key = re.sub(r"\s+", " ", name_key).strip()
+
+    return ("generic", brand, name_key)
+
+
+def _collapse_family_results(
+    products: List[Dict[str, Any]],
+    query: str,
+) -> List[Dict[str, Any]]:
+    """
+    Per una query che corrisponde a una famiglia del Registry restituisce
+    una sola offerta migliore per ogni variante autorizzata.
+
+    Questo impedisce che più store, formati o diciture commerciali della
+    stessa variante gonfino il numero dei risultati. Il numero finale
+    dipende quindi dalle varianti realmente autorizzate dal catalogo,
+    non da un limite arbitrario e non da eccezioni sul singolo profumo.
+    """
+    family = _catalog_family_for_query(query)
+
+    if family is None:
+        return products
+
+    grouped: Dict[tuple, Dict[str, Any]] = {}
+
+    for product in sort_by_price(products):
+        key = _result_group_key(product)
+
+        if key not in grouped:
+            grouped[key] = product
+
+    # Il Registry è autoritativo: ordina le varianti secondo l'ordine
+    # dichiarato nel catalogo, mantenendo però soltanto quelle realmente
+    # trovate dagli scraper.
+    ordered: List[Dict[str, Any]] = []
+
+    for variant in family.get("variants", []):
+        canonical_key = catalog_norm(
+            variant.get("canonical_name")
+        )
+        for key, product in grouped.items():
+            if (
+                key[0] == "catalog"
+                and key[1] == catalog_norm(family.get("brand"))
+                and key[2] == canonical_key
+            ):
+                ordered.append(product)
+                break
+
+    return ordered
+
+
+def _prepare_final_results(
+    products: List[Dict[str, Any]],
+    query: str,
+) -> List[Dict[str, Any]]:
+    results = _collapse_family_results(
+        unique_results(products),
+        query,
+    )
+
+    prepared: List[Dict[str, Any]] = []
+
+    for product in results:
+        item = dict(product)
+        item["name"] = _format_result_title(item)
+        item["title"] = item["name"]
+        prepared.append(item)
+
+    return sort_by_price(prepared)
+
+
 # ============================================================
 # SCRAPER
 # ============================================================
@@ -991,13 +1956,15 @@ def run_store(
     query: str,
 ) -> List[Dict[str, Any]]:
     """
-    Esegue SOLO la discovery generica dello store.
+    Esegue la discovery generica dello store.
 
-    Il risultato di questa funzione è un candidate pool grezzo:
-    la validazione centrale viene eseguita dall'orchestratore dopo
-    che tutti gli store hanno avuto la possibilità di contribuire.
+    Per una query che identifica una famiglia del Family Registry, la prima
+    discovery usa la query dell'utente. Se al termine risultano mancanti una
+    o più varianti autorizzate, viene eseguita una seconda passata usando
+    esclusivamente i nomi canonici delle varianti mancanti.
 
-    Nessuna regola di matching viene applicata qui.
+    Questa è una regola di discovery generale e data-driven: non contiene
+    riferimenti a profumi, brand o negozi specifici.
     """
     module = load_scraper(store)
 
@@ -1020,8 +1987,15 @@ def run_store(
 
     output: List[Dict[str, Any]] = []
     seen = set()
+    attempted_queries = set()
 
-    for attempt in attempts:
+    def run_attempt(attempt: str) -> None:
+        attempt_key = norm(attempt)
+        if not attempt_key or attempt_key in attempted_queries:
+            return
+
+        attempted_queries.add(attempt_key)
+
         try:
             results = search_fn(attempt) or []
         except Exception as exc:
@@ -1030,10 +2004,10 @@ def run_store(
                 f"attempt={attempt!r} error={type(exc).__name__}: {exc}",
                 flush=True,
             )
-            continue
+            return
 
         if not isinstance(results, list):
-            continue
+            return
 
         for item in results:
             if not isinstance(item, dict):
@@ -1043,7 +2017,6 @@ def run_store(
             product.setdefault("store", store)
 
             product = resolve_actual_price(product)
-            product = normalize_offer_metadata(product)
 
             image = product_image(product)
             if image:
@@ -1056,6 +2029,49 @@ def run_store(
 
             seen.add(key)
             output.append(product)
+
+    # Prima passata: discovery normale, invariata per tutte le query.
+    for attempt in attempts:
+        run_attempt(attempt)
+
+    # Fallback generico per le famiglie catalogate: se la ricerca dello store
+    # non restituisce tutte le varianti autorizzate, interroghiamo soltanto
+    # le varianti che risultano ancora mancanti. In questo modo una variante
+    # che il motore di ricerca dello store non mostra nella query famiglia
+    # non viene persa, senza introdurre seed o URL specifici.
+    family = _catalog_family_for_query(discovery_query)
+    family_query_key = catalog_variant_key(discovery_query)
+    is_family_query = bool(
+        family
+        and family_query_key in family.get("normalized_query_aliases", ())
+    )
+
+    if is_family_query:
+        found_variants = set()
+
+        for product in output:
+            resolved = _catalog_match(
+                product,
+                discovery_query,
+            )
+            if isinstance(resolved, dict):
+                variant_name = catalog_norm(
+                    resolved.get("catalog_variant")
+                    or resolved.get("canonical_name")
+                )
+                if variant_name:
+                    found_variants.add(variant_name)
+
+        for variant in family.get("variants", []):
+            canonical_name = str(
+                variant.get("canonical_name") or ""
+            ).strip()
+            canonical_key = catalog_norm(canonical_name)
+
+            if not canonical_name or canonical_key in found_variants:
+                continue
+
+            run_attempt(canonical_name)
 
     return output
 
@@ -1075,11 +2091,12 @@ def _candidate_relevance_score(
     Non elimina candidati: la validazione centrale decide esclusivamente
     tramite matches().
     """
+    # Anche il pre-ranking deve considerare i numeri identitari: non devono
+    # favorire un falso candidato che condivide solo una parola generica.
     query_tokens = [
         token
         for token in norm(query).split()
         if token not in IGNORED_WORDS
-        and not re.fullmatch(r"\d+(?:[.,]\d+)?", token)
     ]
 
     name = norm(
@@ -1145,7 +2162,74 @@ def _validate_candidate(
     if not matches(product, query):
         return None
 
-    return product
+    # Il main usa il matcher centrale per la risoluzione dell'identità.
+    # Il query matching/family validation resta quello già esistente sopra;
+    # il matcher riceve il candidato RAW e restituisce la sua identità
+    # canonica dal catalogo autorevole.
+    try:
+        matched_product = _PRODUCT_MATCHER.match(product)
+    except Exception as exc:
+        print(
+            "PRODUCT_MATCHER_RUNTIME_ERROR:",
+            f"{type(exc).__name__}: {exc}",
+            flush=True,
+        )
+        matched_product = None
+
+    if matched_product is None:
+        matched_product = dict(product)
+
+    # Per le famiglie governate dal Family Registry, _catalog_match()
+    # contiene l'identità risolta dalla regola autorevole. Questa identità
+    # deve essere propagata nel candidato finale: non può restare confinata
+    # al risultato intermedio del matcher/diagnostica.
+    try:
+        resolved_identity = _catalog_match(
+            product,
+            query,
+        )
+    except Exception as exc:
+        print(
+            "FAMILY_REGISTRY_RUNTIME_ERROR:",
+            f"{type(exc).__name__}: {exc}",
+            flush=True,
+        )
+        resolved_identity = None
+
+    if isinstance(resolved_identity, dict):
+        # L'identità del Family Registry deve essere applicata all'oggetto
+        # candidato che prosegue nel percorso verso matched_candidates.
+        # Non deve restare confinata a un risultato diagnostico o al matcher.
+        product = dict(product)
+        product.update(resolved_identity)
+
+        # Il matcher centrale può aver recuperato metadati autorevoli che il
+        # Family Registry non deve duplicare, in particolare concentrazione e
+        # genere. Li usiamo soltanto come arricchimento del risultato già
+        # validato dalla famiglia: non influenzano la decisione di appartenenza.
+        if isinstance(matched_product, dict):
+            if not product_concentration(product):
+                matcher_concentration = str(
+                    matched_product.get("concentration")
+                    or matched_product.get("canonical_concentration")
+                    or ""
+                ).strip()
+                if matcher_concentration:
+                    product["concentration"] = matcher_concentration
+                    product["canonical_concentration"] = matcher_concentration
+
+            if not product.get("gender") and matched_product.get("gender"):
+                product["gender"] = matched_product.get("gender")
+
+        product["match_method"] = (
+            product.get("match_method")
+            or "family_registry_alias"
+        )
+        product["name"] = product["canonical_name"]
+
+        return product
+
+    return matched_product
 
 
 def _validate_candidates_parallel(
@@ -1218,8 +2302,9 @@ def _orchestrate_results(
         query,
     )
 
-    return sort_by_price(
-        unique_results(validated)
+    return _prepare_final_results(
+        validated,
+        query,
     )
 
 # ============================================================
@@ -1227,30 +2312,93 @@ def _orchestrate_results(
 # ==================================================
 
 def search_perfume(query: str) -> Dict[str, Any]:
-    """Ricerca completa con esecuzione sequenziale degli 8 store."""
     query = str(query or "").strip()
+
     if not query:
-        return {"query":"", "count":0, "results":[], "comparisons":[], "errors":{}}
+        return {
+            "query": "",
+            "count": 0,
+            "results": [],
+            "comparisons": [],
+            "errors": {},
+        }
+
     all_results: List[Dict[str, Any]] = []
     errors: Dict[str, str] = {}
-    for store in STORES:
-        started_at = time.monotonic()
-        print(f"SEARCH STORE START | {store} | query={query}", flush=True)
-        try:
-            store_results = run_store(store, query)
-            if isinstance(store_results, list):
-                all_results.extend(store_results)
-                count = len(store_results)
-            else:
-                count = 0
-            print(f"SEARCH STORE END | {store} | results={count} | elapsed={time.monotonic()-started_at:.1f}s", flush=True)
-        except Exception as exc:
-            errors[store] = f"{type(exc).__name__}: {exc}"
-            print(f"SEARCH STORE ERROR | {store} | {type(exc).__name__}: {exc}", flush=True)
-            traceback.print_exc()
-    results = _orchestrate_results(all_results, query)
-    return {"query":query, "count":len(results), "results":results, "comparisons":[], "errors":errors}
 
+    executor = ThreadPoolExecutor(
+        max_workers=len(STORES),
+        thread_name_prefix="scent_store",
+    )
+
+    futures = {
+        executor.submit(run_store, store, query): store
+        for store in STORES
+    }
+
+    try:
+        try:
+            completed = as_completed(
+                futures,
+                timeout=GLOBAL_SEARCH_TIMEOUT,
+            )
+
+            for future in completed:
+                store = futures[future]
+
+                try:
+                    store_results = future.result()
+                    if isinstance(store_results, list):
+                        all_results.extend(store_results)
+
+                except Exception as exc:
+                    errors[store] = (
+                        f"{type(exc).__name__}: {exc}"
+                    )
+                    traceback.print_exc()
+
+        except TimeoutError:
+            for future, store in futures.items():
+                if future.done():
+                    try:
+                        store_results = future.result()
+                        if isinstance(store_results, list):
+                            all_results.extend(store_results)
+
+                    except Exception as exc:
+                        errors[store] = (
+                            f"{type(exc).__name__}: {exc}"
+                        )
+                        traceback.print_exc()
+                else:
+                    errors[store] = (
+                        "Timeout: ricerca del negozio oltre il limite globale"
+                    )
+
+    finally:
+        for future, store in futures.items():
+            if not future.done():
+                future.cancel()
+
+        executor.shutdown(
+            wait=False,
+            cancel_futures=True,
+        )
+
+    # ← FIX: usa _orchestrate_results() per applicare matches()
+    results = _orchestrate_results(
+        all_results,
+        query,
+    )
+
+    return {
+        "query": query,
+        "count": len(results),
+        "results": results,
+        "comparisons": [],
+        "errors": errors,
+    }
+    
 # ============================================================
 # PRICE HISTORY
 # ============================================================
@@ -1406,10 +2554,9 @@ def _search_job_snapshot(job_id: str) -> Dict[str, Any]:
                 detail="Job di ricerca non trovato",
             )
 
-        results = sort_by_price(
-            unique_results(
-                list(job["results"])
-            )
+        results = _prepare_final_results(
+            list(job["results"]),
+            job["query"],
         )
 
         return {
@@ -1419,8 +2566,6 @@ def _search_job_snapshot(job_id: str) -> Dict[str, Any]:
             "results": results,
             "comparisons": [],
             "errors": dict(job["errors"]),
-            "store_status": dict(job.get("store_status", {})),
-            "store_diagnostics": dict(job.get("store_diagnostics", {})),
             "completed": job["completed"],
             "status": (
                 "completed"
@@ -1434,171 +2579,130 @@ def _run_search_job(
     job_id: str,
     query: str,
 ) -> None:
-    """Esegue gli store uno alla volta, senza timeout globale concorrente."""
-    try:
-        for store in STORES:
-            with SEARCH_JOBS_LOCK:
-                job = SEARCH_JOBS.get(job_id)
-                if job is None:
-                    return
-                job["store_status"][store] = {"status":"running", "raw_count":0, "final_count":0, "lost_count":0}
-            started_at = time.monotonic()
-            try:
-                store_candidates = run_store(store, query)
-                if not isinstance(store_candidates, list):
-                    store_candidates = []
-                raw_store = [x for x in store_candidates if isinstance(x, dict)]
-                with SEARCH_JOBS_LOCK:
-                    job = SEARCH_JOBS.get(job_id)
-                    if job is None:
-                        return
-                    job["candidates"].extend(raw_store)
-                    candidate_pool = list(job["candidates"])
-                results = _orchestrate_results(candidate_pool, query)
-                store_final = [x for x in results if norm(x.get("store", "")) == norm(store)]
-                def diagnostic_identity(item: Dict[str, Any]) -> Dict[str, Any]:
-                    identity = item.get("_sh_identity") if isinstance(item.get("_sh_identity"), dict) else {}
-                    return {
-                        "name": product_field(item, "name", "title", "product_name"),
-                        "url": str(item.get("url") or ""),
-                        "brand": identity.get("brand", ""), "family": identity.get("family", ""),
-                        "variant": identity.get("variant", ""), "product_id": identity.get("product_id", ""),
-                        "variant_id": identity.get("variant_id", ""), "gtin": identity.get("gtin", ""),
-                        "mpn": identity.get("mpn", ""), "size_ml": identity.get("size_ml"),
-                        "concentration": identity.get("concentration", ""),
-                        "availability": identity.get("availability", "unknown"),
-                        "price": str(item.get("price") or ""),
-                    }
-                diagnostic = {
-                    "status":"completed", "raw_count":len(raw_store), "final_count":len(store_final),
-                    "lost_count":max(0, len(raw_store)-len(store_final)),
-                    "raw_offers":[diagnostic_identity(x) for x in raw_store[:50]],
-                    "final_offers":[diagnostic_identity(x) for x in store_final[:50]],
-                    "elapsed_seconds":round(time.monotonic()-started_at, 2),
-                }
-                with SEARCH_JOBS_LOCK:
-                    job = SEARCH_JOBS.get(job_id)
-                    if job is not None:
-                        job["results"] = results
-                        job["store_diagnostics"][store] = diagnostic
-                        job["store_status"][store] = {
-                            "status":"completed", "raw_count":len(raw_store),
-                            "final_count":len(store_final), "lost_count":max(0,len(raw_store)-len(store_final))
-                        }
-                print(f"ASYNC STORE END | {store} | raw={len(raw_store)} final={len(store_final)} | elapsed={time.monotonic()-started_at:.1f}s", flush=True)
-            except Exception as exc:
-                with SEARCH_JOBS_LOCK:
-                    job = SEARCH_JOBS.get(job_id)
-                    if job is not None:
-                        job["errors"][store] = f"{type(exc).__name__}: {exc}"
-                        job["store_status"][store] = {"status":"error", "raw_count":0, "final_count":0, "lost_count":0}
-                print(f"ASYNC STORE ERROR | {store} | {type(exc).__name__}: {exc}", flush=True)
-                traceback.print_exc()
-        with SEARCH_JOBS_LOCK:
-            job = SEARCH_JOBS.get(job_id)
-            if job is not None:
-                job["completed"] = True
-                job["updated_at"] = datetime.now(timezone.utc).timestamp()
-    except Exception as exc:
-        traceback.print_exc()
-        with SEARCH_JOBS_LOCK:
-            job = SEARCH_JOBS.get(job_id)
-            if job is not None:
-                job["errors"]["_search"] = f"{type(exc).__name__}: {exc}"
-                job["completed"] = True
-                job["updated_at"] = datetime.now(timezone.utc).timestamp()
-
-
-@app.get("/search-diagnostic")
-def search_diagnostic(
-    job_id: Optional[str] = None,
-    q: Optional[str] = None,
-):
     """
-    Restituisce la fotografia diagnostica di un job.
+    Esegue la discovery in parallelo e alimenta progressivamente
+    il candidate pool centrale.
 
-    Modalita supportate:
-      /search-diagnostic?job_id=...
-          legge un job gia esistente senza avviare una nuova ricerca.
-
-      /search-diagnostic?q=Hawas
-          avvia una nuova ricerca diagnostica e attende che tutti gli store
-          terminino, quindi restituisce direttamente il JSON diagnostico.
-
-    La seconda modalita serve per poter usare l'endpoint direttamente da
-    browser/mobile senza dover recuperare manualmente il job_id.
+    Ogni volta che uno store termina:
+        discovery -> candidate pool -> deduplica -> pre-ranking
+        -> validazione centrale parallela -> risultati parziali.
     """
+    executor = ThreadPoolExecutor(
+        max_workers=len(STORES),
+        thread_name_prefix="scent_async_store",
+    )
 
-    if job_id and q:
-        raise HTTPException(
-            status_code=400,
-            detail="Usare job_id oppure q, non entrambi",
-        )
+    futures = {
+        executor.submit(
+            run_store,
+            store,
+            query,
+        ): store
+        for store in STORES
+    }
 
-    if job_id:
+    def process_store_candidates(
+        store: str,
+        store_candidates: Any,
+    ) -> None:
+        if not isinstance(store_candidates, list):
+            return
+
         with SEARCH_JOBS_LOCK:
             job = SEARCH_JOBS.get(job_id)
+
             if job is None:
-                raise HTTPException(
-                    status_code=404,
-                    detail="Job di ricerca non trovato",
-                )
-            return {
-                "job_id": job_id,
-                "query": job["query"],
-                "completed": job["completed"],
-                "store_status": dict(job.get("store_status", {})),
-                "store_diagnostics": dict(job.get("store_diagnostics", {})),
-                "errors": dict(job.get("errors", {})),
-            }
+                return
 
-    query = str(q or "").strip()
-    if not query:
-        raise HTTPException(
-            status_code=400,
-            detail="Specificare job_id oppure q",
-        )
-
-    started = search_start(query)
-    diagnostic_job_id = started["job_id"]
-
-    # La diagnostica diretta attende il completamento dell'intera discovery.
-    # Il timeout e volutamente superiore al budget normale dei singoli store,
-    # cosi uno store lento non viene scambiato per un problema di matching.
-    deadline = time.monotonic() + 150.0
-    while time.monotonic() < deadline:
-        with SEARCH_JOBS_LOCK:
-            job = SEARCH_JOBS.get(diagnostic_job_id)
-            if job is None:
-                raise HTTPException(
-                    status_code=404,
-                    detail="Job diagnostico non trovato",
-                )
-            completed = bool(job.get("completed"))
-
-        if completed:
-            break
-        time.sleep(0.25)
-
-    with SEARCH_JOBS_LOCK:
-        job = SEARCH_JOBS.get(diagnostic_job_id)
-        if job is None:
-            raise HTTPException(
-                status_code=404,
-                detail="Job diagnostico non trovato",
+            job["candidates"].extend(
+                store_candidates
             )
 
-        response = {
-            "job_id": diagnostic_job_id,
-            "query": job["query"],
-            "completed": bool(job["completed"]),
-            "timed_out": not bool(job["completed"]),
-            "store_status": dict(job.get("store_status", {})),
-            "store_diagnostics": dict(job.get("store_diagnostics", {})),
-            "errors": dict(job.get("errors", {})),
-        }
+            candidate_pool = list(
+                job["candidates"]
+            )
 
-    return response
+        results = _orchestrate_results(
+            candidate_pool,
+            query,
+        )
+
+        with SEARCH_JOBS_LOCK:
+            job = SEARCH_JOBS.get(job_id)
+
+            if job is not None:
+                job["results"] = results
+
+    try:
+        try:
+            for future in as_completed(
+                futures,
+                timeout=GLOBAL_SEARCH_TIMEOUT,
+            ):
+                store = futures[future]
+
+                try:
+                    store_candidates = future.result()
+
+                    process_store_candidates(
+                        store,
+                        store_candidates,
+                    )
+
+                except Exception as exc:
+                    with SEARCH_JOBS_LOCK:
+                        job = SEARCH_JOBS.get(job_id)
+
+                        if job is not None:
+                            job["errors"][store] = (
+                                f"{type(exc).__name__}: {exc}"
+                            )
+
+        except TimeoutError:
+            for future, store in futures.items():
+                if future.done():
+                    try:
+                        store_candidates = future.result()
+
+                        process_store_candidates(
+                            store,
+                            store_candidates,
+                        )
+
+                    except Exception as exc:
+                        with SEARCH_JOBS_LOCK:
+                            job = SEARCH_JOBS.get(job_id)
+
+                            if job is not None:
+                                job["errors"][store] = (
+                                    f"{type(exc).__name__}: {exc}"
+                                )
+
+                else:
+                    with SEARCH_JOBS_LOCK:
+                        job = SEARCH_JOBS.get(job_id)
+
+                        if job is not None:
+                            job["errors"][store] = (
+                                "Timeout: ricerca del negozio "
+                                "oltre il limite globale"
+                            )
+
+    finally:
+        for future in futures:
+            if not future.done():
+                future.cancel()
+
+        executor.shutdown(
+            wait=False,
+            cancel_futures=True,
+        )
+
+        with SEARCH_JOBS_LOCK:
+            job = SEARCH_JOBS.get(job_id)
+
+            if job is not None:
+                job["completed"] = True
 
 
 @app.get("/search-start")
@@ -1619,16 +2723,6 @@ def search_start(q: str):
             "candidates": [],
             "results": [],
             "errors": {},
-            "store_status": {
-                store: {
-                    "status": "pending",
-                    "raw_count": 0,
-                    "final_count": 0,
-                    "lost_count": 0,
-                }
-                for store in STORES
-            },
-            "store_diagnostics": {},
             "completed": False,
         }
 
@@ -1647,10 +2741,6 @@ def search_start(q: str):
         "results": [],
         "comparisons": [],
         "errors": {},
-        "store_status": {
-            store: {"status": "pending", "raw_count": 0}
-            for store in STORES
-        },
         "completed": False,
         "status": "searching",
     }
@@ -1664,6 +2754,89 @@ def search_status(job_id: str):
 @app.get("/search")
 def search(q: str):
     return search_perfume(q)
+
+
+@app.get("/diagnostic-search")
+def diagnostic_search(
+    q: str,
+    stores: Optional[str] = None,
+):
+    """
+    Espone il diagnostico generico come endpoint JSON.
+
+    Il diagnostico reale resta in diagnostic_search.py.
+    Questo endpoint lo richiama senza duplicare la logica
+    nel main e senza introdurre regole specifiche per prodotti.
+    """
+    query = str(q or "").strip()
+
+    if not query:
+        raise HTTPException(
+            status_code=400,
+            detail="Parametro q mancante",
+        )
+
+    selected_stores = None
+
+    if stores:
+        selected_stores = [
+            store.strip().lower()
+            for store in stores.split(",")
+            if store.strip()
+        ]
+
+        invalid_stores = [
+            store
+            for store in selected_stores
+            if store not in STORES
+        ]
+
+        if invalid_stores:
+            raise HTTPException(
+                status_code=400,
+                detail=(
+                    "Store non validi: "
+                    + ", ".join(invalid_stores)
+                    + ". Disponibili: "
+                    + ", ".join(STORES)
+                ),
+            )
+
+    try:
+        diagnostic_module = importlib.import_module(
+            "diagnostic_search"
+        )
+
+        run_query = getattr(
+            diagnostic_module,
+            "run_query",
+            None,
+        )
+
+        if not callable(run_query):
+            raise RuntimeError(
+                "diagnostic_search.py non espone run_query()"
+            )
+
+        return run_query(
+            query,
+            stores=selected_stores,
+        )
+
+    except HTTPException:
+        raise
+
+    except Exception as exc:
+        traceback.print_exc()
+
+        return {
+            "query": query,
+            "ok": False,
+            "error": (
+                f"{type(exc).__name__}: {exc}"
+            ),
+            "traceback": traceback.format_exc(),
+        }
 
 
 @app.get("/routing")
@@ -2184,20 +3357,21 @@ def diagnose_notino_search(q: str):
 
     try:
         module = importlib.import_module("scrapers.notino.scraper")
-        debug_fn = getattr(module, "debug_search", None)
+        diagnose_fn = getattr(module, "diagnose", None)
 
-        if not callable(debug_fn):
+        if not callable(diagnose_fn):
             return {
                 "ok": False,
                 "store": "notino",
                 "query": query,
-                "error": "Notino scraper has no debug_search() function",
+                "error": "Notino scraper has no diagnose() function",
             }
 
         return {
             "ok": True,
             "store": "notino",
-            **debug_fn(query),
+            "query": query,
+            "diagnostic": diagnose_fn(query),
         }
 
     except Exception as exc:
