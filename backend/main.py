@@ -2815,6 +2815,185 @@ def product(
     }
 
 
+
+# ============================================================
+# DUPLICATE CARD DIAGNOSTIC
+# ============================================================
+
+def _diagnostic_card_key(product: Dict[str, Any]) -> tuple:
+    """
+    Key diagnostica della scheda UI.
+
+    Priorità:
+      1) identità catalogata family_id + catalog_variant
+      2) canonical_name + brand + concentration
+      3) display/name + brand + concentration
+
+    NON modifica la ricerca: serve esclusivamente a mostrare se due
+    risultati finali che arrivano al frontend rappresentano la stessa
+    identità logica.
+    """
+    family_id = norm(
+        identity_value(product, "family_id")
+    )
+    catalog_variant = norm(
+        identity_value(product, "catalog_variant")
+    )
+
+    if family_id or catalog_variant:
+        return (
+            "catalog",
+            family_id,
+            catalog_variant,
+        )
+
+    canonical_name = norm(
+        product_field(
+            product,
+            "canonical_name",
+        )
+    )
+    brand = norm(
+        product_field(
+            product,
+            "canonical_brand",
+            "brand",
+            "source_brand",
+        )
+    )
+    concentration = norm(
+        product_concentration(product)
+    )
+
+    if canonical_name:
+        return (
+            "canonical",
+            brand,
+            canonical_name,
+            concentration,
+        )
+
+    name = norm(
+        product_field(
+            product,
+            "display_name",
+            "name",
+            "title",
+            "product_name",
+        )
+    )
+
+    return (
+        "fallback",
+        brand,
+        name,
+        concentration,
+    )
+
+
+def _diagnostic_identity_snapshot(product: Dict[str, Any]) -> Dict[str, Any]:
+    return {
+        "store": product.get("store", ""),
+        "name": product_field(
+            product, "name", "title", "product_name"
+        ),
+        "display_name": product.get("display_name", ""),
+        "brand": product_field(
+            product, "brand", "source_brand"
+        ),
+        "canonical_brand": product.get("canonical_brand", ""),
+        "canonical_name": product.get("canonical_name", ""),
+        "family_id": product.get("family_id", ""),
+        "family_name": product.get("family_name", ""),
+        "catalog_variant": product.get("catalog_variant", ""),
+        "concentration": product_concentration(product),
+        "size_ml": product_size_ml(product),
+        "store_variant_id": identity_value(
+            product, "store_variant_id", "variant_id"
+        ),
+        "store_product_id": identity_value(
+            product, "store_product_id", "product_id", "catalog_id"
+        ),
+        "gtin": identity_value(
+            product, "gtin", "ean", "ean13", "barcode", "upc"
+        ),
+        "sku": identity_value(product, "sku"),
+        "product_identity_key": list(product_identity_key(product)),
+        "diagnostic_card_key": list(_diagnostic_card_key(product)),
+        "url": product.get("url", ""),
+        "price": product.get("price", ""),
+    }
+
+
+@app.get("/diagnostic-duplicates")
+def diagnostic_duplicates(q: str):
+    """
+    Diagnostica la ricerca REALE senza modificare alcun risultato.
+
+    Restituisce:
+      - risultati finali realmente prodotti da search_perfume()
+      - chiave di identità usata dalla deduplica backend
+      - chiave logica della scheda UI
+      - gruppi con più risultati che POTREBBERO rappresentare la stessa scheda
+
+    Questo endpoint non viene usato dalla ricerca normale.
+    """
+    query = str(q or "").strip()
+
+    if not query:
+        raise HTTPException(
+            status_code=400,
+            detail="Parametro q mancante",
+        )
+
+    data = search_perfume(query)
+    results = data.get("results", [])
+
+    snapshots = [
+        _diagnostic_identity_snapshot(product)
+        for product in results
+        if isinstance(product, dict)
+    ]
+
+    groups: Dict[str, List[Dict[str, Any]]] = {}
+
+    for item in snapshots:
+        key = repr(tuple(item["diagnostic_card_key"]))
+        groups.setdefault(key, []).append(item)
+
+    duplicate_groups = [
+        {
+            "card_key": key,
+            "count": len(items),
+            "results": items,
+        }
+        for key, items in groups.items()
+        if len(items) > 1
+    ]
+
+    return {
+        "ok": True,
+        "query": query,
+        "final_result_count": len(snapshots),
+        "final_results": snapshots,
+        "duplicate_card_groups": duplicate_groups,
+        "duplicate_card_group_count": len(duplicate_groups),
+        "backend_unique_identity_count": len({
+            repr(tuple(item["product_identity_key"]))
+            for item in snapshots
+        }),
+        "ui_card_identity_count": len(groups),
+        "errors": data.get("errors", {}),
+        "diagnostic_note": (
+            "Se final_result_count e ui_card_identity_count coincidono, "
+            "il backend non sta producendo due risultati con la stessa "
+            "identita logica; il duplicato puo quindi essere creato "
+            "successivamente dal frontend. Se ui_card_identity_count e "
+            "inferiore a final_result_count, il backend sta consegnando "
+            "piu record che rappresentano la stessa scheda logica."
+        ),
+    }
+
 # ============================================================
 # TEMPORARY NOTINO DIAGNOSTIC
 # Remove this entire section after testing.
