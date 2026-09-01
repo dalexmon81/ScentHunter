@@ -1940,7 +1940,7 @@ async function searchStoresProgressive(term,onPartial){
 
  for(let i=0;i<stores.length;i+=concurrency){
   const pair=stores.slice(i,i+concurrency);
-  statusBox.textContent=`Cerco ${term}… ${Math.min(i+concurrency,totalStores)}/${totalStores}`;
+  statusBox.textContent="";
 
   const responses=await Promise.allSettled(pair.map(store=>
    fetchJSONWithTimeout(
@@ -2040,7 +2040,7 @@ async function searchPerfume(){
    const fallbackQueries=buildCatalogFallbackQueries(q);
    for(let i=0;i<fallbackQueries.length;i++){
     const term=fallbackQueries[i];
-    statusBox.textContent=`Provo una ricerca alternativa… ${i+1}/${fallbackQueries.length}`;
+    statusBox.textContent="";
     try{
      const fallbackData=await searchStoresProgressive(term,null);
      if(Array.isArray(fallbackData?.results))data.results.push(...fallbackData.results);
