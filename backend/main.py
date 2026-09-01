@@ -457,6 +457,47 @@ def catalog_variant_key(value: str) -> str:
     return re.sub(r"\s+", " ", text).strip()
 
 
+def _catalog_alias_keys(value: Any) -> List[str]:
+    """
+    Return exact catalog keys plus safe localized gender equivalents.
+
+    This is deliberately generic: it only expands explicit female/male
+    audience markers (for her/for him, femme/homme, dames/hommes, etc.).
+    It never turns a bare family name into a gendered variant.
+    """
+    raw = catalog_variant_key(_catalog_clean_text(value))
+    if not raw:
+        return []
+
+    keys = [raw]
+    replacements = (
+        (" for her ", " dames "),
+        (" for him ", " hommes "),
+        (" for her ", " femme "),
+        (" for him ", " homme "),
+        (" for her ", " women "),
+        (" for him ", " men "),
+        (" pour femme ", " dames "),
+        (" pour homme ", " hommes "),
+        (" pour femme ", " femme "),
+        (" pour homme ", " homme "),
+        (" women ", " dames "),
+        (" woman ", " dame "),
+        (" men ", " hommes "),
+        (" man ", " homme "),
+    )
+
+    padded = f" {raw} "
+    for source, target in replacements:
+        if source in padded:
+            candidate = padded.replace(source, target).strip()
+            candidate = re.sub(r"\s+", " ", candidate)
+            if candidate and candidate not in keys:
+                keys.append(candidate)
+
+    return keys
+
+
 def _catalog_tokens(value: Any) -> List[str]:
     return _catalog_clean_text(value).split()
 
@@ -732,7 +773,7 @@ def _catalog_title_matches_family_variant(
             if alias_concentration and candidate_concentration != alias_concentration:
                 continue
 
-            if candidate_key == catalog_variant_key(alias_clean):
+            if candidate_key in _catalog_alias_keys(alias_clean):
                 return True
 
     return False
@@ -830,9 +871,31 @@ def _catalog_product_is_excluded(
     if not candidate_text:
         return False
 
-    candidate_key = catalog_variant_key(candidate_text)
+    # Exclusions are catalog knowledge, so compare the title with the
+    # family brand removed as well. Retailers commonly prefix the product
+    # with the manufacturer (e.g. "Rasasi - Hawas Al Wisam Absolute").
+    family_brand = _catalog_clean_text(family.get("brand"))
+    candidate_without_brand = candidate_text
+    if family_brand:
+        candidate_without_brand = re.sub(
+            rf"\b{re.escape(family_brand)}\b",
+            " ",
+            candidate_without_brand,
+            flags=re.I,
+        )
+        candidate_without_brand = re.sub(
+            r"\s+",
+            " ",
+            candidate_without_brand,
+        ).strip()
+
+    candidate_keys = {
+        catalog_variant_key(candidate_text),
+        catalog_variant_key(candidate_without_brand),
+    }
+
     return any(
-        candidate_key == catalog_variant_key(_catalog_clean_text(value))
+        catalog_variant_key(_catalog_clean_text(value)) in candidate_keys
         for value in excluded
         if _catalog_clean_text(value)
     )
@@ -903,7 +966,7 @@ def _catalog_variant_for_product(
                 if candidate_concentration != alias_concentration:
                     continue
 
-            if candidate_key == catalog_variant_key(alias_clean):
+            if candidate_key in _catalog_alias_keys(alias_clean):
                 return variant
 
     return None
@@ -1842,6 +1905,15 @@ def _validate_candidate(
     if catalog_product is not None:
         return catalog_product
 
+    # Once a query resolves to an authoritative Family Registry family,
+    # generic matching is not allowed to invent/merge variants that the
+    # registry does not recognize. This is what prevents:
+    #   - Hawas Al Wisam / Daarej from appearing under "Hawas"
+    #   - bare "Hawas Eau de Parfum" from becoming both Him and Her.
+    family = _catalog_family_for_query(query)
+    if family is not None:
+        return None
+
     return _apply_generic_display_name(
         product,
         query,
@@ -1996,19 +2068,24 @@ def _propagate_catalog_identity(
             # variants from being captured by shorter family names.
             best_alias_score = 0
             for alias in dict.fromkeys(alias_values):
-                alias_tokens = _matching_tokens(alias)
-                if not alias_tokens:
+                alias_matches = _catalog_alias_keys(alias)
+                if not alias_matches:
                     continue
 
-                if not _phrase_tokens_in_sequence(
-                    alias_tokens,
-                    candidate_tokens,
-                ):
-                    continue
+                for alias_key in alias_matches:
+                    alias_tokens = _matching_tokens(alias_key)
+                    if not alias_tokens:
+                        continue
 
-                alias_score = len(alias_tokens)
-                if alias_score > best_alias_score:
-                    best_alias_score = alias_score
+                    if not _phrase_tokens_in_sequence(
+                        alias_tokens,
+                        candidate_tokens,
+                    ):
+                        continue
+
+                    alias_score = len(alias_tokens)
+                    if alias_score > best_alias_score:
+                        best_alias_score = alias_score
 
             if best_alias_score == 0:
                 continue
