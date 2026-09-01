@@ -1965,19 +1965,55 @@ def _propagate_catalog_identity(
                 or ""
             ).strip()
 
-            variant_tokens = _matching_tokens(variant)
-            if not variant_tokens:
+            # Use the canonical variant AND every explicit alias registered
+            # for this exact family/variant. Retailers often omit/reorder
+            # "for her", accents, apostrophes, etc.
+            family_id = str(anchor.get("family_id") or "").strip()
+            alias_values: List[str] = [variant]
+
+            if family_id:
+                for family in FAMILY_REGISTRY:
+                    if str(family.get("family_id") or "").strip() != family_id:
+                        continue
+
+                    for registry_variant in family.get("variants", []):
+                        registry_name = str(
+                            registry_variant.get("canonical_name") or ""
+                        ).strip()
+
+                        if norm(registry_name) != norm(variant):
+                            continue
+
+                        for alias in registry_variant.get("aliases", []):
+                            alias = str(alias or "").strip()
+                            if alias:
+                                alias_values.append(alias)
+                        break
+
+                    break
+
+            # The longest matching alias wins. This keeps more specific
+            # variants from being captured by shorter family names.
+            best_alias_score = 0
+            for alias in dict.fromkeys(alias_values):
+                alias_tokens = _matching_tokens(alias)
+                if not alias_tokens:
+                    continue
+
+                if not _phrase_tokens_in_sequence(
+                    alias_tokens,
+                    candidate_tokens,
+                ):
+                    continue
+
+                alias_score = len(alias_tokens)
+                if alias_score > best_alias_score:
+                    best_alias_score = alias_score
+
+            if best_alias_score == 0:
                 continue
 
-            if not _phrase_tokens_in_sequence(
-                variant_tokens,
-                candidate_tokens,
-            ):
-                continue
-
-            # Longest canonical variant wins. This prevents a base variant
-            # from stealing a more specific cataloged variant.
-            score = len(variant_tokens)
+            score = best_alias_score
 
             anchor_concentration = product_concentration(anchor)
             candidate_concentration = product_concentration(product)
@@ -2029,6 +2065,72 @@ def _propagate_catalog_identity(
     return output
 
 
+def _catalog_result_group_key(product: Dict[str, Any]) -> Optional[tuple]:
+    """
+    Canonical identity for the final product card.
+
+    Retailer IDs remain offer-level identifiers; once catalog matching has
+    resolved family_id + catalog_variant, they must not create separate
+    product cards.
+    """
+    family_id = str(product.get("family_id") or "").strip()
+    variant = str(
+        product.get("catalog_variant")
+        or product.get("canonical_name")
+        or ""
+    ).strip()
+
+    if not family_id or not variant:
+        return None
+
+    return (
+        "catalog",
+        norm(family_id),
+        norm(variant),
+    )
+
+
+def _group_catalog_results(
+    products: List[Dict[str, Any]],
+) -> List[Dict[str, Any]]:
+    """
+    One card per canonical catalog variant, preserving all retailer offers.
+
+    The cheapest offer remains the primary top-level offer for backward
+    compatibility. All offers are also exposed in `offers`.
+    """
+    if not products:
+        return []
+
+    groups: Dict[tuple, List[Dict[str, Any]]] = {}
+    uncataloged: List[Dict[str, Any]] = []
+
+    for product in products:
+        key = _catalog_result_group_key(product)
+        if key is None:
+            uncataloged.append(product)
+            continue
+
+        groups.setdefault(key, []).append(product)
+
+    output: List[Dict[str, Any]] = []
+
+    for items in groups.values():
+        offers = unique_results(items)
+        offers = sorted(offers, key=deterministic_result_key)
+
+        if not offers:
+            continue
+
+        primary = dict(offers[0])
+        primary["offers"] = [dict(offer) for offer in offers]
+        primary["offer_count"] = len(offers)
+        output.append(primary)
+
+    output.extend(unique_results(uncataloged))
+    return sort_by_price(output)
+
+
 def _orchestrate_results(
     candidates: List[Dict[str, Any]],
     query: str,
@@ -2059,9 +2161,7 @@ def _orchestrate_results(
         validated,
     )
 
-    return sort_by_price(
-        unique_results(validated)
-    )
+    return _group_catalog_results(validated)
 
 # ============================================================
 # SEARCH CENTRALE
@@ -2401,10 +2501,8 @@ def _run_search_job(
             existing_results + new_results,
         )
 
-        results = sort_by_price(
-            unique_results(
-                combined_results
-            )
+        results = _group_catalog_results(
+            combined_results
         )
 
         with SEARCH_JOBS_LOCK:
