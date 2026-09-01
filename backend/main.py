@@ -2034,11 +2034,18 @@ def run_store(
     for attempt in attempts:
         run_attempt(attempt)
 
-    # Fallback generico per le famiglie catalogate: se la ricerca dello store
-    # non restituisce tutte le varianti autorizzate, interroghiamo soltanto
-    # le varianti che risultano ancora mancanti. In questo modo una variante
-    # che il motore di ricerca dello store non mostra nella query famiglia
-    # non viene persa, senza introdurre seed o URL specifici.
+    # IMPORTANT:
+    # Non eseguire una richiesta per ogni variante quando la discovery famiglia
+    # ha già restituito risultati. Una famiglia come "Hawas" può contenere
+    # decine di varianti: interrogare ogni variante su ogni negozio trasforma
+    # una ricerca in 20-30 richieste allo stesso dominio e provoca facilmente
+    # 429/403. È proprio il motivo per cui alcuni negozi smettono di rispondere.
+    #
+    # Fallback mirato: se lo store non ha restituito ASSOLUTAMENTE nulla,
+    # proviamo le varianti canoniche per recuperare i casi in cui il motore
+    # interno del negozio non indicizza bene la query famiglia. Se la discovery
+    # famiglia ha già prodotto risultati, ci fermiamo e lasciamo che gli altri
+    # negozi completino il candidate pool.
     family = _catalog_family_for_query(discovery_query)
     family_query_key = catalog_variant_key(discovery_query)
     is_family_query = bool(
@@ -2046,29 +2053,13 @@ def run_store(
         and family_query_key in family.get("normalized_query_aliases", ())
     )
 
-    if is_family_query:
-        found_variants = set()
-
-        for product in output:
-            resolved = _catalog_match(
-                product,
-                discovery_query,
-            )
-            if isinstance(resolved, dict):
-                variant_name = catalog_norm(
-                    resolved.get("catalog_variant")
-                    or resolved.get("canonical_name")
-                )
-                if variant_name:
-                    found_variants.add(variant_name)
-
+    if is_family_query and not output:
         for variant in family.get("variants", []):
             canonical_name = str(
                 variant.get("canonical_name") or ""
             ).strip()
-            canonical_key = catalog_norm(canonical_name)
 
-            if not canonical_name or canonical_key in found_variants:
+            if not canonical_name:
                 continue
 
             run_attempt(canonical_name)
