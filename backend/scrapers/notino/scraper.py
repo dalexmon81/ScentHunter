@@ -3213,22 +3213,25 @@ def _reader_product(
         "",
     )
 
-    identity_text = (
-        content
-        + " "
-        + candidate_url
-        + " "
-        + str(
-            candidate.get("name")
-            or ""
-        )
-    )
+    candidate_name = _clean_name(
+    candidate.get("name", "")
+)
 
-    if not _fuzzy_query_match(
-        identity_text,
-        query,
-    )[0]:
-        return None
+if not candidate_name:
+    return None
+
+if not _fuzzy_query_match(
+    candidate_name,
+    query,
+)[0]:
+    return None
+
+if not _validate_candidate_semantics(
+    {"name": candidate_name},
+    query,
+):
+    return None
+
 
     if not _requested_size_is_valid(
         content
