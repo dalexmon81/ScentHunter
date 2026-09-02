@@ -2431,10 +2431,36 @@ def _validate_candidate(
     if not matches(product, query):
         return None
 
-    # Il main usa il matcher centrale per la risoluzione dell'identità.
-    # Il query matching/family validation resta quello già esistente sopra;
-    # il matcher riceve il candidato RAW e restituisce la sua identità
-    # canonica dal catalogo autorevole.
+    # Per una famiglia governata dal Family Registry, il Registry è
+    # AUTORITATIVO. Se non riesce a risolvere il candidato per questa query,
+    # il candidato è un falso positivo e NON può ricadere nel matcher
+    # generico. Questo evita che prodotti semanticamente simili (es. Hawa,
+    # Le Monde est Beau, sample/service, altre varianti) rientrino dopo il
+    # controllo catalogo tramite ProductMatcher.
+    try:
+        catalog_family = _catalog_family_for_query(query)
+    except Exception:
+        catalog_family = None
+
+    if catalog_family is not None:
+        try:
+            resolved_identity = _catalog_match(product, query)
+        except Exception as exc:
+            print(
+                "FAMILY_REGISTRY_RUNTIME_ERROR:",
+                f"{type(exc).__name__}: {exc}",
+                flush=True,
+            )
+            return None
+
+        if not isinstance(resolved_identity, dict):
+            return None
+    else:
+        resolved_identity = None
+
+    # Il matcher centrale viene usato solo dopo il controllo autorevole della
+    # famiglia. Per le famiglie catalogate arricchisce il risultato, ma non
+    # può mai riaprire una corrispondenza rifiutata dal Registry.
     try:
         matched_product = _PRODUCT_MATCHER.match(product)
     except Exception as exc:
@@ -2447,23 +2473,6 @@ def _validate_candidate(
 
     if matched_product is None:
         matched_product = dict(product)
-
-    # Per le famiglie governate dal Family Registry, _catalog_match()
-    # contiene l'identità risolta dalla regola autorevole. Questa identità
-    # deve essere propagata nel candidato finale: non può restare confinata
-    # al risultato intermedio del matcher/diagnostica.
-    try:
-        resolved_identity = _catalog_match(
-            product,
-            query,
-        )
-    except Exception as exc:
-        print(
-            "FAMILY_REGISTRY_RUNTIME_ERROR:",
-            f"{type(exc).__name__}: {exc}",
-            flush=True,
-        )
-        resolved_identity = None
 
     if isinstance(resolved_identity, dict):
         # L'identità del Family Registry deve essere applicata all'oggetto
