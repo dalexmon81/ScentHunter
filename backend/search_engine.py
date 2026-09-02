@@ -1,4 +1,4 @@
-
+"""
 ScentHunter - robust live search orchestration.
 
 This module deliberately sits ABOVE the existing store scrapers.  It does not
