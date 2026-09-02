@@ -731,7 +731,24 @@ function shGroupData(data){
       });
     });
   });
-  (Array.isArray(data.results)?data.results:[]).forEach(o=>raw.push({...o}));
+  (Array.isArray(data.results)?data.results:[]).forEach(g=>{
+    const nested=Array.isArray(g.offers)?g.offers:[];
+    if(nested.length){
+      nested.forEach(o=>raw.push({...o,
+        brand:o.brand||g.brand||"",
+        name:o.name||g.name||"Profumo",
+        size_ml:o.size_ml||o.size||g.size_ml||"",
+        concentration:o.concentration||g.concentration||"",
+        image:o.image||o.image_url||o.thumbnail||g.image||"",
+        _source_name:o.name||g.name||"",
+        _source_brand:o.brand||g.brand||"",
+        _source_url:o.url||"",
+        _source_store:o.store||""
+      }));
+    }else{
+      raw.push({...g});
+    }
+  });
 
   /*
    * La classificazione profumo/non-profumo viene fatta una sola volta
@@ -1932,43 +1949,12 @@ async function getSearchStores(term){
 }
 
 async function searchStoresProgressive(term,onPartial){
- const merged={query:term,comparisons:[],results:[],errors:{}};
- const timeoutMs=15000;
- const concurrency=2;
- const stores=await getSearchStores(term);
- const totalStores=stores.length;
-
- for(let i=0;i<stores.length;i+=concurrency){
-  const pair=stores.slice(i,i+concurrency);
-  statusBox.textContent="";
-
-  const responses=await Promise.allSettled(pair.map(store=>
-   fetchJSONWithTimeout(
-    backend()+"/test-store?store="+encodeURIComponent(store)+"&q="+encodeURIComponent(term),
-    timeoutMs
-   )
-  ));
-
-  responses.forEach((r,k)=>{
-   const store=pair[k];
-   if(r.status!=="fulfilled"){
-    merged.errors[store]=String(r.reason?.message||"timeout");
-    return;
-   }
-   const data=r.value||{};
-   if(Array.isArray(data.results))merged.results.push(...data.results);
-   if(Array.isArray(data.comparisons))merged.comparisons.push(...data.comparisons);
-   if(data.errors&&typeof data.errors==="object")Object.entries(data.errors).forEach(([name,error])=>{
-    if(!merged.errors[name])merged.errors[name]=error;
-   });
-   if(data.error)merged.errors[store]=data.error;
-  });
-
-  if(typeof onPartial==="function")onPartial(merged,false);
- }
-
- if(typeof onPartial==="function")onPartial(merged,true);
- return merged;
+ const data=await fetchJSONWithTimeout(
+  backend()+"/search?q="+encodeURIComponent(term),
+  60000
+ );
+ if(typeof onPartial==="function")onPartial(data||{},true);
+ return data||{query:term,comparisons:[],results:[],errors:{}};
 }
 
 async function searchPerfume(){
