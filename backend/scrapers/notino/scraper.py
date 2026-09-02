@@ -25,7 +25,7 @@ READER_MAX_WORKERS = 8
 PRODUCT_MAX_WORKERS = 8
 DISCOVERY_RETRIES = 2
 
-SCRAPER_VERSION = "notino-FR-generic-discovery-2026-09-02-v25-reader-context"
+SCRAPER_VERSION = "notino-FR-generic-discovery-2026-09-02-v26-context-url"
 
 HEADERS = {
     "User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 "
@@ -869,6 +869,57 @@ def _make_candidate(
     }
 
 
+def _context_product_name(
+    raw: str,
+    start: int,
+    end: int,
+    query: str,
+) -> str:
+    """Find the visible product title on the same Reader line as the URL."""
+    line_start = raw.rfind("\n", 0, start) + 1
+    line_end = raw.find("\n", end)
+    if line_end < 0:
+        line_end = len(raw)
+
+    context = html_lib.unescape(raw[line_start:line_end])
+    context = re.sub(
+        r"(?:https?:)?//[^\s<>)\]\"']+",
+        " ",
+        context,
+        flags=re.I,
+    )
+    context = re.sub(r"<[^>]+>", " ", context)
+
+    fragments = re.split(
+        r"[|]+|\]\s*\[|\)\s*\(",
+        context,
+    )
+
+    best: Optional[Tuple[int, int, str]] = None
+    for fragment in fragments:
+        text = _clean_name(fragment)
+        if not text or len(text) > 700:
+            continue
+
+        matched, hits, fuzzy_hits = _fuzzy_query_match(text, query)
+        if not matched:
+            continue
+
+        score = (
+            sum(hits.values()) * 10
+            + fuzzy_hits * 2
+            + (6 if _extract_price(text) else 0)
+            + (4 if SIZE_RE.search(text) else 0)
+        )
+        score -= max(0, len(text) - 220) // 100
+        item = (score, -len(text), text)
+        if best is None or item[:2] > best[:2]:
+            best = item
+
+    return best[2] if best else ""
+
+
+
 def extract_candidates_from_html(
     html: str,
     query: str,
@@ -933,16 +984,21 @@ def extract_candidates_from_html(
         if not _looks_like_product_url(url):
             continue
 
-        start = max(0, match.start() - 1800)
-        end = min(len(raw_html), match.end() + 1800)
-        context = re.sub(r"<[^>]+>", " ", raw_html[start:end])
-        context = html_lib.unescape(context)
-        context = re.sub(r"\s+", " ", context).strip()
+        context_name = _context_product_name(
+            raw_html,
+            match.start(),
+            match.end(),
+            query,
+        )
+        slug_name = _name_from_product_url(url)
+        candidate_name = context_name or slug_name
+        if not candidate_name:
+            continue
 
         candidate = _make_candidate(
             url,
-            context,
-            context,
+            candidate_name,
+            context_name or candidate_name,
             query,
             "direct-search-raw",
         )
@@ -1258,7 +1314,12 @@ def _reader_candidates(
                 )[0]
                 or _has_non_perfume_marker(name)
             ):
-                name = slug_name
+                name = _context_product_name(
+                raw,
+                match.start(),
+                match.end(),
+                query,
+            ) or slug_name
 
             brand = _brand_from_product_url(url)
 
@@ -1446,7 +1507,13 @@ def _reader_candidates(
             if not slug_name:
                 continue
 
-            name = slug_name
+            context_name = _context_product_name(
+                raw,
+                match.start(),
+                match.end(),
+                query,
+            )
+            name = context_name or slug_name
             brand = _brand_from_product_url(url)
             branded_name = (
                 _clean_name(
