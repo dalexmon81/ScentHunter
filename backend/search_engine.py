@@ -19,6 +19,7 @@ Goals:
 from __future__ import annotations
 
 import concurrent.futures
+import copy
 import time
 import traceback
 from dataclasses import dataclass, field
@@ -404,7 +405,8 @@ class SearchEngine:
         output: List[Dict[str, Any]] = []
 
         for result in results:
-            item = dict(result)
+            # Detach the final object from legacy/matcher nested structures.
+            item = copy.deepcopy(result)
             nested = item.get("offers")
 
             if isinstance(nested, list) and nested:
@@ -422,9 +424,38 @@ class SearchEngine:
                 # offer, not merely the cheapest OOS offer.
                 if offers:
                     best = offers[0]
-                    for field in ("store", "price", "url", "image", "availability", "available", "size_ml", "concentration", "gender"):
+
+                    # Rebuild the representative from the winning offer.
+                    # The legacy grouper may leave top-level metadata (source,
+                    # identity, raw_data, etc.) originating from a different
+                    # merchant than the top-level store/price/url.  That creates
+                    # mixed objects such as "store=Bplatz" with "source=Deloox".
+                    #
+                    # Keep the group-level fields that belong to the canonical
+                    # product, but replace every merchant-owned field with a
+                    # deep copy from the actual best offer.
+                    merchant_fields = {
+                        "store", "shop", "price", "price_num", "url", "image",
+                        "image_url", "thumbnail", "availability", "available",
+                        "stock_status", "stock", "size_ml", "size",
+                        "concentration", "gender", "source", "identity",
+                        "raw_data", "sku", "gtin", "product_id", "variant_id",
+                        "offer", "offer_data", "merchant", "merchant_data",
+                    }
+
+                    for field in merchant_fields:
                         if field in best:
-                            item[field] = best[field]
+                            item[field] = copy.deepcopy(best[field])
+                        else:
+                            # A merchant field left behind by the legacy
+                            # representative is unsafe: it may belong to the
+                            # previous representative rather than the winner.
+                            item.pop(field, None)
+
+                    # The nested offers are the authoritative merchant list.
+                    # Store them independently so later mutations cannot
+                    # cross-contaminate the representative or another group.
+                    item["offers"] = [copy.deepcopy(x) for x in offers]
 
             output.append(item)
 
@@ -433,7 +464,7 @@ class SearchEngine:
             best = nested[0] if isinstance(nested, list) and nested else item
             return offer_key(best if isinstance(best, dict) else item)
 
-        return sorted(output, key=result_key)
+        return [copy.deepcopy(x) for x in sorted(output, key=result_key)]
 
     def _validate_candidates_only(
         self,
