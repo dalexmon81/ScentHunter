@@ -359,8 +359,22 @@ def product_size_ml(product: Dict[str, Any]) -> Optional[float]:
     )
     text += " " + str(source_name or "")
 
+    # Retailers such as Deloox sometimes expose the format only in the
+    # product URL or raw payload while leaving size_ml empty. Include those
+    # sources in the central parser so format identity is not lost.
+    url = product.get("url") or ""
+    if url:
+        text += " " + str(url)
+
+    raw_data = product.get("raw_data")
+    if isinstance(raw_data, dict):
+        for key in ("name", "title", "product_title", "url", "handle"):
+            value = raw_data.get(key)
+            if value not in (None, ""):
+                text += " " + str(value)
+
     match = re.search(
-        r"\b(\d{1,4}(?:[.,]\d+)?)\s*(ml|cl)\b",
+        r"\b(\d{1,4}(?:[.,]\d+)?)\s*[-_/]?\s*(ml|cl)\b",
         text,
         re.I,
     )
@@ -1378,7 +1392,7 @@ def matches(product: Dict[str, Any], query: str) -> bool:
         return False
 
     query_size_match = re.search(
-        r"(?<!\d)(\d+(?:[.,]\d+)?)\s*(ml|cl)\b",
+        r"(?<!\d)(\d+(?:[.,]\d+)?)\s*[-_/]?\s*(ml|cl)\b",
         query_normalized,
         re.I,
     )
@@ -2155,6 +2169,23 @@ def _collapse_family_results(
     return ordered
 
 
+def _repair_mojibake(value: Any) -> Any:
+    """Repair common UTF-8-as-Windows-1252 display corruption recursively."""
+    if isinstance(value, str):
+        if not any(marker in value for marker in ("â", "Ã", "Â", "ð")):
+            return value
+        try:
+            repaired = value.encode("cp1252").decode("utf-8")
+        except (UnicodeEncodeError, UnicodeDecodeError):
+            return value
+        return repaired if repaired != value else value
+    if isinstance(value, list):
+        return [_repair_mojibake(item) for item in value]
+    if isinstance(value, dict):
+        return {key: _repair_mojibake(item) for key, item in value.items()}
+    return value
+
+
 def _prepare_final_results(
     products: List[Dict[str, Any]],
     query: str,
@@ -2170,6 +2201,7 @@ def _prepare_final_results(
         item = dict(product)
         item["name"] = _format_result_title(item)
         item["title"] = item["name"]
+        item = _repair_mojibake(item)
         prepared.append(item)
 
     return sort_by_price(prepared)
