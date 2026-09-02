@@ -25,7 +25,7 @@ READER_MAX_WORKERS = 8
 PRODUCT_MAX_WORKERS = 8
 DISCOVERY_RETRIES = 2
 
-SCRAPER_VERSION = "notino-FR-generic-discovery-2026-09-02-v26-context-url"
+SCRAPER_VERSION = "notino-FR-generic-discovery-2026-09-02-v27-context-sku-validation"
 
 HEADERS = {
     "User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 "
@@ -794,6 +794,10 @@ def _make_candidate(
     if not name:
         return None
 
+    provisional = {"name": name}
+    if not _validate_candidate_semantics(provisional, query):
+        return None
+
     if _has_non_perfume_marker_in_product(
         name,
         url,
@@ -866,39 +870,55 @@ def _make_candidate(
             else True
         ),
         "source": source,
+        "product_id": _extract_product_id(url),
+        "sku": _extract_sku_from_context(card or anchor, 0) if (card or anchor) else None,
     }
 
 
 def _context_product_name(
-    raw: str,
-    start: int,
-    end: int,
+    raw_text: str,
+    url_start: int,
+    url_end: int,
     query: str,
-) -> str:
-    """Find the visible product title on the same Reader line as the URL."""
-    line_start = raw.rfind("\n", 0, start) + 1
-    line_end = raw.find("\n", end)
-    if line_end < 0:
-        line_end = len(raw)
+) -> Optional[str]:
+    """
+    Extract a product name from visible context around a raw product URL.
 
-    context = html_lib.unescape(raw[line_start:line_end])
-    context = re.sub(
-        r"(?:https?:)?//[^\s<>)\]\"']+",
-        " ",
-        context,
-        flags=re.I,
-    )
+    The URL slug is not authoritative on Notino: a product URL may contain
+    a typo or a legacy slug while the visible product title is correct.
+    Prefer the focused text around the URL and use the slug only as fallback.
+    """
+    window_start = max(0, url_start - 200)
+    window_end = min(len(raw_text), url_end + 50)
+    context = raw_text[window_start:window_end]
+
+    url_in_context = raw_text[url_start:url_end]
+    context = context.replace(url_in_context, " [URL] ")
+
+    context = html_lib.unescape(context)
     context = re.sub(r"<[^>]+>", " ", context)
+    context = re.sub(r"\\[|\\]|\*|\#", " ", context)
+    context = re.sub(r"(?:https?:)?//[^\s<>)\]\"']+", " ", context, flags=re.I)
+    context = re.sub(r"\s+", " ", context).strip()
 
-    fragments = re.split(
-        r"[|]+|\]\s*\[|\)\s*\(",
-        context,
-    )
+    fragments = [
+        part.strip(" \t[]()")
+        for part in re.split(r"[\n\r|;]+|\]\s*\[", context)
+        if part.strip(" \t[]()")
+    ]
 
     best: Optional[Tuple[int, int, str]] = None
+
     for fragment in fragments:
         text = _clean_name(fragment)
-        if not text or len(text) > 700:
+        if len(text) < 15 or len(text) > 180:
+            continue
+
+        if re.match(
+            r"^(?:[\d.,]+\s*€|€\s*[\d.,]+|en stock|épuisé|disponibilité|disponibilite)$",
+            text,
+            re.I,
+        ):
             continue
 
         matched, hits, fuzzy_hits = _fuzzy_query_match(text, query)
@@ -910,14 +930,68 @@ def _context_product_name(
             + fuzzy_hits * 2
             + (6 if _extract_price(text) else 0)
             + (4 if SIZE_RE.search(text) else 0)
+            + (2 if re.search(r"\b(?:afnan|rasasi|lattafa)\b", text, re.I) else 0)
         )
-        score -= max(0, len(text) - 220) // 100
+
         item = (score, -len(text), text)
         if best is None or item[:2] > best[:2]:
             best = item
 
-    return best[2] if best else ""
+    return best[2] if best else None
 
+
+def _extract_product_id(url: str) -> Optional[str]:
+    match = re.search(r"/p-(\d+)(?:/|$)", str(url or ""), re.I)
+    return match.group(1) if match else None
+
+
+def _extract_sku_from_context(
+    text: str,
+    url_pos: int,
+    window: int = 300,
+) -> Optional[str]:
+    start = max(0, url_pos - window)
+    end = min(len(text), url_pos + window)
+    context = html_lib.unescape(text[start:end])
+    match = re.search(r"\bAFN\d{5,6}\b", context, re.I)
+    return match.group(0).upper() if match else None
+
+
+def _candidate_gender(value: Any) -> Optional[str]:
+    text = _clean(value).lower()
+    if re.search(r"\b(?:pour\s+femme|femme|femmes|women|woman|feminine|female|donna)\b", text, re.I):
+        return "femme"
+    if re.search(r"\b(?:pour\s+homme|homme|hommes|men|man|masculin|male|uomo)\b", text, re.I):
+        return "homme"
+    if re.search(r"\b(?:mixte|unisex|unisexe)\b", text, re.I):
+        return "mixte"
+    return None
+
+
+def _validate_candidate_semantics(
+    candidate: Dict[str, Any],
+    query: str,
+) -> bool:
+    """Reject obvious semantic mismatches before fuzzy matching."""
+    name = _clean(candidate.get("name", "")).lower()
+    query_norm = _clean(query).lower()
+    if not name or not query_norm:
+        return False
+
+    query_gender = _candidate_gender(query_norm)
+    candidate_gender = _candidate_gender(name)
+
+    if query_gender and candidate_gender and query_gender != candidate_gender:
+        return False
+
+    variant_pattern = r"\b(elixir|rebel|ice|malibu|black|night|limited)\b"
+    query_variants = set(re.findall(variant_pattern, query_norm, re.I))
+    candidate_variants = set(re.findall(variant_pattern, name, re.I))
+
+    if query_variants and candidate_variants and not query_variants.intersection(candidate_variants):
+        return False
+
+    return True
 
 
 def extract_candidates_from_html(
@@ -995,13 +1069,23 @@ def extract_candidates_from_html(
         if not candidate_name:
             continue
 
+        context_card = context_name or candidate_name
         candidate = _make_candidate(
             url,
             candidate_name,
-            context_name or candidate_name,
+            context_card,
             query,
             "direct-search-raw",
         )
+        if candidate:
+            candidate["product_id"] = _extract_product_id(url)
+            candidate["sku"] = _extract_sku_from_context(
+                raw_html,
+                match.start(),
+            )
+            candidate["source"] = (
+                "context" if context_name else "slug"
+            )
 
         if candidate and (
             candidate["url"] not in found
@@ -1377,6 +1461,12 @@ def _reader_candidates(
                 query,
                 "reader-markdown",
             )
+            if candidate:
+                candidate["product_id"] = _extract_product_id(url)
+                candidate["sku"] = _extract_sku_from_context(
+                    raw,
+                    match.start(),
+                )
 
             if candidate and (
                 url not in found
