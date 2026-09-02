@@ -21,6 +21,7 @@ from __future__ import annotations
 import concurrent.futures
 import time
 import traceback
+import re
 from dataclasses import dataclass, field
 from typing import Any, Callable, Dict, List, Optional
 
@@ -439,6 +440,21 @@ class SearchEngine:
 
         return 1
 
+    @staticmethod
+    def _clean_display_price(value: Any) -> Any:
+        """Repair common UTF-8/CP1252 mojibake in merchant display prices."""
+        if not isinstance(value, str):
+            return value
+        text = value.strip()
+        if any(marker in text for marker in ("â‚¬", "Â€", "Ã¢", "â€")):
+            try:
+                text = text.encode("cp1252").decode("utf-8")
+            except (UnicodeEncodeError, UnicodeDecodeError):
+                text = text.replace("â‚¬", "€").replace("Â€", "€").replace("Ã¢â‚¬", "€")
+        text = text.replace("â‚¬", "€").replace("Â€", "€")
+        text = re.sub(r"\s+€", " €", text)
+        return text
+
     def _stable_results(self, results: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
         """Deterministic final ordering, including nested merchant offers."""
 
@@ -481,6 +497,9 @@ class SearchEngine:
 
             if isinstance(nested, list) and nested:
                 offers = [dict(x) for x in nested if isinstance(x, dict)]
+                for offer in offers:
+                    if "price" in offer:
+                        offer["price"] = self._clean_display_price(offer.get("price"))
                 offers.sort(key=offer_key)
                 item["offers"] = offers
                 item["offer_count"] = len(offers)
@@ -498,6 +517,8 @@ class SearchEngine:
                         if field in best:
                             item[field] = best[field]
 
+            if "price" in item:
+                item["price"] = self._clean_display_price(item.get("price"))
             output.append(item)
 
         def result_key(item: Dict[str, Any]) -> tuple:
@@ -552,7 +573,7 @@ class SearchEngine:
         validate = getattr(self.legacy, "_validate_candidates_parallel", None)
         prepare = getattr(self.legacy, "_prepare_final_results", None)
 
-        candidates = list(raw_candidates)
+        candidates = self._filter_requested_format(list(raw_candidates), query)
 
         if pre_rank is not None:
             try:
