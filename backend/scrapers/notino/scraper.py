@@ -1704,34 +1704,11 @@ def _reader_candidates(
             # proves the exact query identity, keep the discovered URL. The
             # product page is still fetched and validated later, so this is
             # discovery-only and does not weaken final product validation.
-            if (
-                candidate is None
-                and strict_context_ok
-            ):
-                candidate = {
-                    "url": url,
-                    "anchor_text": name or query,
-                    "card_text": card_context or nearby_context or name or query,
-                    "name": name or query,
-                    "score": 20,
-                    "token_hits": {
-                        token: True
-                        for token in _query_tokens(query)
-                    },
-                    "contains_all_query_tokens": True,
-                    "requested_size": bool(_requested_sizes(query)),
-                    "size_match_in_search_context": (
-                        not _requested_sizes(query)
-                        or any(
-                            _size_matches(
-                                card_context or nearby_context,
-                                size,
-                            )
-                            for size in _requested_sizes(query)
-                        )
-                    ),
-                    "source": "reader-url-context",
-                }
+            # Eliminato fallback artificiale: se _make_candidate() rifiuta,
+            # il candidato non deve essere creato manualmente.
+            if candidate is None:
+                continue
+
 
             if candidate and (
                 url not in found
@@ -3060,7 +3037,7 @@ def _extract_reader_product_name(
     text: str,
     candidate: Dict[str, Any],
     query: str,
-) -> str:
+   ) -> str:
     raw = (
         html_lib.unescape(
             str(text or "")
@@ -3068,38 +3045,21 @@ def _extract_reader_product_name(
         .replace("\\/", "/")
     )
 
-    candidate_url = candidate.get(
-        "url",
-        "",
-    )
+    candidate_url = candidate.get("url", "")
+    candidate_name = _clean_name(candidate.get("name", ""))
 
-    slug_name = _name_from_product_url(
-        candidate_url
-    )
-    brand = _brand_from_product_url(
-        candidate_url
-    )
-
-    if slug_name:
-        url_name = _clean_name(
-            f"{brand} {slug_name}"
-            if brand
-            else slug_name
+    # 1. Priorità al nome già trovato nella discovery.
+    if (
+        candidate_name
+        and _fuzzy_query_match(candidate_name, query)[0]
+        and not _has_non_perfume_marker_in_product(
+            candidate_name,
+            candidate_url,
         )
+    ):
+        return candidate_name
 
-        if (
-            url_name
-            and _fuzzy_query_match(
-                url_name,
-                query,
-            )[0]
-            and not _has_non_perfume_marker_in_product(
-                url_name,
-                candidate_url,
-            )
-        ):
-            return url_name
-
+    # 2. Cerca titoli strutturati nel testo Reader.
     lines: List[str] = []
 
     for raw_line in raw.splitlines():
@@ -3134,10 +3094,7 @@ def _extract_reader_product_name(
 
         if (
             cleaned
-            and _fuzzy_query_match(
-                cleaned,
-                query,
-            )[0]
+            and _fuzzy_query_match(cleaned, query)[0]
             and not _has_non_perfume_marker_in_product(
                 cleaned,
                 candidate_url,
@@ -3145,6 +3102,7 @@ def _extract_reader_product_name(
         ):
             return cleaned
 
+    # 3. Fallback ai campi del candidate.
     for value in (
         candidate.get("name"),
         candidate.get("anchor_text"),
@@ -3170,7 +3128,27 @@ def _extract_reader_product_name(
         ):
             return cleaned
 
+    # 4. Ultimo fallback allo slug.
+    slug_name = _name_from_product_url(candidate_url)
+    brand = _brand_from_product_url(candidate_url)
+
+    if brand and slug_name:
+        slug_name = _clean_name(
+            f"{brand} {slug_name}"
+        )
+
+    if (
+        slug_name
+        and _fuzzy_query_match(slug_name, query)[0]
+        and not _has_non_perfume_marker_in_product(
+            slug_name,
+            candidate_url,
+        )
+    ):
+        return slug_name
+
     return ""
+
 
 
 
