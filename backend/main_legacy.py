@@ -839,6 +839,71 @@ def _build_family_registry_index(
 FAMILY_REGISTRY_INDEX = _build_family_registry_index(FAMILY_REGISTRY)
 
 
+def _catalog_detected_brand(product: Dict[str, Any]) -> str:
+    """Recover an explicitly published retailer brand from known catalog brands.
+
+    Some adapters leave ``brand`` empty even though the retailer title is
+    formatted as ``Brand - Product``.  For catalog-controlled searches that
+    must not be treated as an unknown brand: a known catalog brand explicitly
+    present in the title is authoritative evidence.
+    """
+    direct = product_field(
+        product,
+        "brand",
+        "manufacturer",
+        "maker",
+        "source_brand",
+    )
+    source = product.get("source")
+    if isinstance(source, dict) and not direct:
+        direct = str(
+            source.get("brand")
+            or source.get("manufacturer")
+            or source.get("maker")
+            or source.get("source_brand")
+            or ""
+        ).strip()
+
+    if direct:
+        return catalog_norm(direct)
+
+    text = catalog_norm(_catalog_product_text(product))
+    if not text:
+        return ""
+
+    known: Dict[str, str] = {}
+    for family in FAMILY_REGISTRY:
+        brand = str(family.get("brand") or "").strip()
+        if brand:
+            known[catalog_norm(brand)] = brand
+
+    # The product catalog is also a source of known brands.  Longest first
+    # prevents a short brand token from stealing a multi-word brand.
+    for item in _PRODUCT_MATCHER_CATALOG:
+        if not isinstance(item, dict):
+            continue
+        brand = str(
+            item.get("brand")
+            or item.get("manufacturer")
+            or item.get("maker")
+            or ""
+        ).strip()
+        if brand:
+            known[catalog_norm(brand)] = brand
+
+    for brand_norm, brand_display in sorted(
+        known.items(),
+        key=lambda pair: len(pair[0]),
+        reverse=True,
+    ):
+        if not brand_norm:
+            continue
+        if re.search(rf"\b{re.escape(brand_norm)}\b", text, flags=re.I):
+            return brand_norm
+
+    return ""
+
+
 def _catalog_brand_matches(
     product: Dict[str, Any],
     family: Dict[str, Any],
@@ -850,27 +915,15 @@ def _catalog_brand_matches(
     if not expected_brand:
         return True
 
-    actual_brand = product_field(
-        product,
-        "brand",
-        "source_brand",
-    )
+    actual_brand = _catalog_detected_brand(product)
 
-    source = product.get("source")
-    if isinstance(source, dict) and not actual_brand:
-        actual_brand = str(
-            source.get("brand")
-            or source.get("source_brand")
-            or ""
-        ).strip()
-
+    # Missing brand is acceptable only when the retailer genuinely did not
+    # publish one.  If a known brand is explicitly present in the candidate
+    # title/source, it becomes a hard constraint.
     if not actual_brand:
         return True
 
-    return (
-        catalog_norm(actual_brand)
-        == expected_brand
-    )
+    return actual_brand == expected_brand
 
 
 def _catalog_product_text(product: Dict[str, Any]) -> str:
@@ -1304,6 +1357,14 @@ def _non_single_product_match(product: Dict[str, Any]) -> Optional[str]:
         "trio",
         "mystery box",
         "gift box",
+        "sample",
+        "samples",
+        "sample service",
+        "campione",
+        "campioncino",
+        "échantillon",
+        "echantillon",
+        "muestra",
         "tester",
         "testeur",
         "shampoo",
@@ -1353,9 +1414,9 @@ def matches(product: Dict[str, Any], query: str) -> bool:
     ScentHunter returns ONLY single perfume references:
     - no cosmetics/body products;
     - no sets, coffrets, bundles, boxes or testers;
-    - samples/minis <= 10 ml are hidden from the base search;
-    - a sample/small format is allowed only when the user explicitly asks
-      for a sample or an explicit small size (e.g. "Hawas Ice 10 ml").
+    - samples, sample services, campioncini and testers are always rejected;
+    - explicit small-size queries are exact, but they do not turn a sample
+      listing into a valid perfume offer.
     """
     query_normalized = norm(query)
 
@@ -1427,9 +1488,7 @@ def matches(product: Dict[str, Any], query: str) -> bool:
         if abs(product_size - query_size_ml) > 0.01:
             return False
 
-    # If the candidate is <=10 ml but the query asks for a normal size, it was
-    # already rejected above. If the query explicitly asks for sample, the
-    # sample marker itself is allowed; testers remain forbidden.
+    # Samples/testers are already rejected by the hard product-type filter.
 
     # --------------------------------------------------------
     # CATALOGO AUTORITATIVO
