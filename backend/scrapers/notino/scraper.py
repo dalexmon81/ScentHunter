@@ -1662,32 +1662,45 @@ def _candidate_lookup_rank(
 ) -> Tuple[int, int, int, int, str]:
     url = candidate.get("url", "")
     url_name = _name_from_product_url(url)
+candidate_name = _product_norm(
+    candidate.get("name", "")
+)
 
-    query_name = _clean(query)
+query_norm = _product_norm(query)
 
-    url_norm = _product_norm(url_name)
-    query_norm = _product_norm(query_name)
+# Priorità al nome visibile del candidato, non allo slug URL.
+name_matched = (
+    bool(candidate_name)
+    and _fuzzy_query_match(
+        candidate.get("name", ""),
+        query,
+    )[0]
+)
 
-    url_matched, _, url_fuzzy_hits = (
-        _fuzzy_query_match(
-            url_name,
-            query,
-        )
+url_norm = _product_norm(url_name)
+url_matched, _, url_fuzzy_hits = (
+    _fuzzy_query_match(
+        url_name,
+        query,
     )
+)
 
-    if url_norm == query_norm and query_norm:
-        identity_rank = 3
-    elif (
-        query_norm
-        and url_norm.startswith(
-            query_norm + " "
-        )
-    ):
-        identity_rank = 2
-    elif url_matched:
-        identity_rank = 1
-    else:
-        identity_rank = 0
+if name_matched:
+    identity_rank = 3
+elif url_norm == query_norm and query_norm:
+    identity_rank = 2
+elif (
+    query_norm
+    and url_norm.startswith(
+        query_norm + " "
+    )
+):
+    identity_rank = 1
+elif url_matched:
+    identity_rank = 0
+else:
+    identity_rank = 0
+
 
     return (
         identity_rank,
