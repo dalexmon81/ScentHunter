@@ -2462,7 +2462,13 @@ def _validate_candidate(
     # famiglia. Per le famiglie catalogate arricchisce il risultato, ma non
     # può mai riaprire una corrispondenza rifiutata dal Registry.
     try:
-        matched_product = _PRODUCT_MATCHER.match(product)
+        # ProductMatcher may enrich/mutate nested dictionaries on the object
+        # it receives. Never let that mutate the original store candidate: the
+        # candidate must retain its own store/source/offer provenance all the
+        # way through final grouping. A shallow copy is not sufficient because
+        # source, identity, attributes and raw_data are nested dictionaries.
+        matcher_input = copy.deepcopy(product)
+        matched_product = _PRODUCT_MATCHER.match(matcher_input)
     except Exception as exc:
         print(
             "PRODUCT_MATCHER_RUNTIME_ERROR:",
