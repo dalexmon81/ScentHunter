@@ -731,7 +731,24 @@ function shGroupData(data){
       });
     });
   });
-  (Array.isArray(data.results)?data.results:[]).forEach(o=>raw.push({...o}));
+  (Array.isArray(data.results)?data.results:[]).forEach(g=>{
+    const nested=Array.isArray(g.offers)?g.offers:[];
+    if(nested.length){
+      nested.forEach(o=>raw.push({...o,
+        brand:o.brand||g.brand||"",
+        name:o.name||g.name||"Profumo",
+        size_ml:o.size_ml||o.size||g.size_ml||"",
+        concentration:o.concentration||g.concentration||"",
+        image:o.image||o.image_url||o.thumbnail||g.image||"",
+        _source_name:o.name||g.name||"",
+        _source_brand:o.brand||g.brand||"",
+        _source_url:o.url||"",
+        _source_store:o.store||""
+      }));
+    }else{
+      raw.push({...g});
+    }
+  });
 
   /*
    * La classificazione profumo/non-profumo viene fatta una sola volta
