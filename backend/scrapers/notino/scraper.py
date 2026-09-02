@@ -25,7 +25,7 @@ READER_MAX_WORKERS = 8
 PRODUCT_MAX_WORKERS = 8
 DISCOVERY_RETRIES = 2
 
-SCRAPER_VERSION = "notino-FR-generic-discovery-2026-09-02-v28-search-card-fallback"
+SCRAPER_VERSION = "notino-FR-generic-discovery-2026-09-02-v29-card-name-reader-stock"
 
 HEADERS = {
     "User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 "
@@ -873,6 +873,60 @@ def _make_candidate(
         "product_id": _extract_product_id(url),
         "sku": _extract_sku_from_context(card or anchor, 0) if (card or anchor) else None,
     }
+
+
+def _clean_visible_card_name(text: str, query: str) -> str:
+    """Extract the visible product title from a noisy Notino Reader card."""
+    raw = html_lib.unescape(str(text or ""))
+    raw = raw.replace("\\/", "/")
+    raw = re.sub(r"https?://[^\s]+", " ", raw, flags=re.I)
+    raw = re.sub(r"!\[[^\]]*\]\([^)]*\)", " ", raw)
+    raw = re.sub(r"\[[^\]]*\]\([^)]*\)", " ", raw)
+    raw = re.sub(r"[\[\]{}*#]", " ", raw)
+    raw = re.sub(r"\s+", " ", raw).strip()
+    if not raw or not query:
+        return ""
+
+    # Keep one-character identity tokens such as the leading "9". The
+    # generic _query_tokens helper intentionally drops them elsewhere.
+    tokens = [
+        token for token in re.findall(r"[a-z0-9]+", _clean(query).lower())
+        if token != "de"
+    ]
+    if not tokens:
+        return ""
+
+    token_pattern = r"\s*[^\s|;()\[\]]*\s*"
+    pattern = r"\b" + token_pattern.join(re.escape(t) for t in tokens) + r"\b"
+    match = re.search(pattern, raw, re.I)
+    if not match:
+        return ""
+
+    start = match.start()
+    # Include the immediately preceding brand token when it is a clean word.
+    prefix = raw[max(0, start - 60):start]
+    brand_match = re.search(
+        r"(?:^|[|:])\s*([A-Za-zÀ-ÿ][A-Za-zÀ-ÿ'’-]{1,40})\s*$",
+        prefix,
+    )
+    if brand_match:
+        start = max(0, start - len(brand_match.group(1)) - 1)
+
+    tail = raw[start:]
+    # A Notino Markdown card commonly repeats the title after an empty
+    # link/image marker. Stop at that card boundary or at price/marketing
+    # metadata so neighbouring products cannot contaminate the title.
+    tail = re.split(
+        r"\s*\(\s*\)\s*|\b(?:avec\s+le\s+code|with\s+code|shoppingdays|cadeaux\s+offerts?)\b|(?:\s+\d{1,4}[.,]\d{2}\s*€)",
+        tail,
+        maxsplit=1,
+        flags=re.I,
+    )[0]
+    tail = _clean_name(tail)
+
+    if not tail or len(tail) > 180 or not _fuzzy_query_match(tail, query)[0]:
+        return ""
+    return tail
 
 
 def _context_product_name(
@@ -3551,7 +3605,10 @@ def _card_result(
         or ""
     )
 
-    name = _clean_name(anchor)
+    name = _clean_visible_card_name(
+        card or anchor,
+        query,
+    ) or _clean_name(anchor)
 
     if not name:
         return None
@@ -4122,6 +4179,32 @@ def _product_detail_job(
                     query,
                 )
                 if card_result:
+                    # Search card is enough to preserve the offer when the
+                    # product page is blocked. When the Reader product page
+                    # is available, however, prefer its structured name/stock
+                    # data so availability is not unnecessarily left as
+                    # unknown. If Reader fails (for example 429), retain the
+                    # already valid search-card result.
+                    try:
+                        reader_response = _reader_request(
+                            session,
+                            candidate.get("url", ""),
+                        )
+                        reader_result = _reader_product(
+                            reader_response.text,
+                            candidate,
+                            query,
+                        )
+                        if reader_result:
+                            return {
+                                "candidate": candidate,
+                                "result": reader_result,
+                                "error": None,
+                                "validation_source": "search-card+reader",
+                            }
+                    except requests.RequestException:
+                        pass
+
                     return {
                         "candidate": candidate,
                         "result": card_result,
