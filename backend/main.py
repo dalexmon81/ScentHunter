@@ -55,9 +55,10 @@ STORES = [
     "notino",
 ]
 
-BASE_DIR = os.path.dirname(__file__)
-HISTORY_PATH = os.path.join(BASE_DIR, "price_history.json")
-PRODUCT_CATALOG_PATH = os.path.join(BASE_DIR, "product_catalog.json")
+BASE_DIR = Path(__file__).resolve().parent
+HISTORY_PATH = BASE_DIR / "price_history.json"
+PRODUCT_CATALOG_PATH = BASE_DIR / "product_catalog.json"
+FAMILY_REGISTRY_PATH = BASE_DIR / "family_registry.json"
 
 
 def _load_product_matcher_catalog() -> List[Dict[str, Any]]:
