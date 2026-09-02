@@ -592,6 +592,17 @@ def _catalog_candidate_variant_key(product: Dict[str, Any]) -> str:
         flags=re.I,
     )
 
+    # Sample is a FORMAT/offer-type marker, not part of the perfume variant
+    # identity. A sample titled "Hawas Ice sample 10 ml" must therefore map
+    # to the same commercial variant "Hawas Ice" when the user explicitly
+    # requests the small format.
+    key = re.sub(
+        r"\b(?:sample|samples|campione|campioncino|echantillon|muestra)\b",
+        " ",
+        key,
+        flags=re.I,
+    )
+
     return re.sub(r"\s+", " ", key).strip()
 
 
@@ -1041,6 +1052,16 @@ def _catalog_requested_variant(
     """
     query_clean = _catalog_clean_text(query)
 
+    # "sample/campione" is a format request, not part of the commercial
+    # variant identity. Remove it before resolving the catalog variant.
+    query_clean = re.sub(
+        r"\b(?:sample|samples|campione|campioncino|echantillon|muestra)\b",
+        " ",
+        query_clean,
+        flags=re.I,
+    )
+    query_clean = re.sub(r"\s+", " ", query_clean).strip()
+
     brand = _catalog_clean_text(family.get("brand"))
     if brand:
         query_clean = re.sub(
@@ -1186,13 +1207,141 @@ def _catalog_match(
 # VALIDAZIONE
 # ============================================================
 
+def _query_requests_sample(query: str) -> bool:
+    """Return True only when the user explicitly asks for a sample."""
+    query_normalized = norm(query)
+    tokens = set(query_normalized.split())
+    markers = {
+        "sample",
+        "samples",
+        "campione",
+        "campioncino",
+        "échantillon",
+        "echantillon",
+        "muestra",
+    }
+    return bool(tokens & {norm(value) for value in markers})
+
+
+def _non_single_product_match(product: Dict[str, Any]) -> Optional[str]:
+    """
+    Identify products that ScentHunter must never return.
+
+    The decision is based on the product identity text, not on the user's
+    query. Therefore typing "Hawas set" can never turn a set into a valid
+    perfume offer.
+    """
+    values: List[str] = []
+
+    for key in (
+        "name",
+        "title",
+        "product_name",
+        "product_line",
+        "variant",
+        "format",
+        "packaging_type",
+        "product_type",
+        "category",
+        "product_category",
+    ):
+        value = product.get(key)
+        if value not in (None, ""):
+            values.append(str(nested_value(value)))
+
+    source = product.get("source")
+    if isinstance(source, dict):
+        for key in (
+            "source_name",
+            "name",
+            "title",
+            "url",
+        ):
+            value = source.get(key)
+            if value not in (None, ""):
+                values.append(str(value))
+
+    url = product.get("url")
+    if url:
+        values.append(str(url))
+
+    text = norm(" ".join(values))
+    if not text:
+        return None
+
+    # These categories are ALWAYS forbidden, even if the user explicitly
+    # types the forbidden word. ScentHunter compares single perfumes only.
+    always_blocked = {
+        "gift set",
+        "set regalo",
+        "set",
+        "discovery set",
+        "fragrance set",
+        "perfume set",
+        "parfum set",
+        "coffret",
+        "coffret cadeau",
+        "cofanetto",
+        "bundle",
+        "pack",
+        "travel set",
+        "kit",
+        "duo",
+        "trio",
+        "mystery box",
+        "gift box",
+        "tester",
+        "testeur",
+        "shampoo",
+        "shower gel",
+        "shower cream",
+        "body wash",
+        "body lotion",
+        "body cream",
+        "body milk",
+        "body butter",
+        "body spray",
+        "deodorant",
+        "deo spray",
+        "aftershave",
+        "after shave",
+        "hair mist",
+        "makeup",
+        "cosmetics",
+        "cosmetic",
+        "skincare",
+        "skin care",
+        "cosmetici",
+        "creme corpo",
+        "crema corpo",
+        "gel doccia",
+        "bagnoschiuma",
+        "deodorante",
+        "coffret",
+        "astuccio",
+        "pochette",
+    }
+
+    for phrase in always_blocked:
+        phrase_normalized = norm(phrase)
+        if phrase_normalized and (
+            f" {phrase_normalized} " in f" {text} "
+        ):
+            return phrase_normalized
+
+    return None
+
+
 def matches(product: Dict[str, Any], query: str) -> bool:
     """
-    Validazione centrale.
+    Central product validation.
 
-    Se il catalogo contiene la famiglia richiesta, il catalogo è
-    autoritativo: soltanto le varianti dichiarate possono entrare.
-    Le altre famiglie continuano a usare il matching generico.
+    ScentHunter returns ONLY single perfume references:
+    - no cosmetics/body products;
+    - no sets, coffrets, bundles, boxes or testers;
+    - samples/minis <= 10 ml are hidden from the base search;
+    - a sample/small format is allowed only when the user explicitly asks
+      for a sample or an explicit small size (e.g. "Hawas Ice 10 ml").
     """
     query_normalized = norm(query)
 
@@ -1208,43 +1357,69 @@ def matches(product: Dict[str, Any], query: str) -> bool:
 
     source = product.get("source")
 
-    if isinstance(source, dict):
-        if not name:
-            name = str(
-                source.get("name")
-                or source.get("title")
-                or ""
-            ).strip()
+    if isinstance(source, dict) and not name:
+        name = str(
+            source.get("name")
+            or source.get("title")
+            or ""
+        ).strip()
 
     name_normalized = norm(name)
 
     if not name_normalized:
         return False
 
-    query_has_size = bool(
-        re.search(
-            r"(?<!\d)\d+(?:[.,]\d+)?\s*(?:ml|cl)\b",
-            query_normalized,
+    # --------------------------------------------------------
+    # HARD PRODUCT-TYPE FILTER
+    # --------------------------------------------------------
+    # This filter is intentionally independent from the query. A user cannot
+    # make a set/body product valid by typing "set", "deodorant", etc.
+    if _non_single_product_match(product) is not None:
+        return False
+
+    query_size_match = re.search(
+        r"(?<!\d)(\d+(?:[.,]\d+)?)\s*(ml|cl)\b",
+        query_normalized,
+        re.I,
+    )
+    query_size_ml: Optional[float] = None
+    if query_size_match:
+        query_size_ml = float(
+            query_size_match.group(1).replace(",", ".")
+        )
+        if query_size_match.group(2).lower() == "cl":
+            query_size_ml *= 10
+
+    query_requests_sample = _query_requests_sample(query)
+    query_requests_small_format = (
+        query_requests_sample
+        or (
+            query_size_ml is not None
+            and query_size_ml <= 10
         )
     )
 
-    if has_small_size(product) and not query_has_size:
-        return False
+    product_size = product_size_ml(product)
 
-    for phrase in NON_PERFUME:
-        phrase_normalized = norm(phrase)
-
-        if (
-            phrase_normalized in name_normalized
-            and phrase_normalized not in query_normalized
-        ):
+    # Base search: no mini/sample <=10 ml.
+    # Explicit small-size/sample search: small format is allowed.
+    if product_size is not None and product_size <= 10:
+        if not query_requests_small_format:
             return False
+
+    # Explicit format request is exact. Never return a 5 ml product for a
+    # 10 ml query, nor a 100 ml bottle for a 10 ml query.
+    if query_size_ml is not None and product_size is not None:
+        if abs(product_size - query_size_ml) > 0.01:
+            return False
+
+    # If the candidate is <=10 ml but the query asks for a normal size, it was
+    # already rejected above. If the query explicitly asks for sample, the
+    # sample marker itself is allowed; testers remain forbidden.
 
     # --------------------------------------------------------
     # CATALOGO AUTORITATIVO
     # --------------------------------------------------------
-    # Per una famiglia presente nel Registry il catalogo è obbligatorio:
-    # nessun candidato può ricadere nel vecchio matching generico.
     catalog_family = _catalog_family_for_query(query)
 
     if catalog_family is not None:
@@ -1280,14 +1455,11 @@ def matches(product: Dict[str, Any], query: str) -> bool:
         name_for_matching,
     ).strip()
 
-    # I numeri possono essere parte essenziale dell'identità commerciale
-    # (es. "9 PM", "1 Million", "212 VIP"). Non vanno quindi scartati
-    # dal matching generico: eliminarli permette a un prodotto che contiene
-    # soltanto la parola "PM" di passare una ricerca "9 PM".
     query_tokens = [
         token
         for token in query_normalized.split()
         if token not in IGNORED_WORDS
+        and token not in {"sample", "samples", "campione", "campioncino"}
     ]
 
     generic_tokens = {
@@ -1300,8 +1472,6 @@ def matches(product: Dict[str, Any], query: str) -> bool:
         "edc",
         "extrait",
         "spray",
-        # "Intense", "Limited" and "Edition" can be genuine commercial
-        # variant identifiers; do not discard them during generic matching.
         "for",
         "men",
         "women",
@@ -1310,10 +1480,18 @@ def matches(product: Dict[str, Any], query: str) -> bool:
         "unisex",
     }
 
+    # A requested size is an attribute, not part of the product identity.
+    query_tokens = [
+        token
+        for token in query_tokens
+        if token not in {"ml", "cl"}
+    ]
+
     family_tokens = [
         token
         for token in query_tokens
         if token not in generic_tokens
+        and not token.replace(".", "", 1).isdigit()
     ]
 
     if not family_tokens:
@@ -1937,7 +2115,27 @@ def _collapse_family_results(
             seen_offer_keys.add(offer_key)
             unique_offers.append(offer)
 
-        unique_offers = sort_by_price(unique_offers)
+        def _offer_sort_key(offer: Dict[str, Any]) -> tuple:
+            availability = product_availability(offer)
+            availability_rank = {
+                "in stock": 0,
+                "in_stock": 0,
+                "available": 0,
+                "out of stock": 2,
+                "out_of_stock": 2,
+                "unknown": 1,
+            }.get(availability, 1)
+            price = price_num(offer.get("price"))
+            if price is None:
+                price = float("inf")
+            return (
+                availability_rank,
+                price,
+                norm(offer.get("store", "")),
+                str(offer.get("url", "") or "").strip().lower(),
+            )
+
+        unique_offers = sorted(unique_offers, key=_offer_sort_key)
         if not unique_offers:
             continue
 
