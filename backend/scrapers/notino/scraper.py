@@ -19,12 +19,13 @@ SEARCH_URL = BASE_URL + "/search.asp"
 SITEMAP_URL = BASE_URL + "/sitemap.xml"
 READER_BASE = "https://r.jina.ai/"
 
-TIMEOUT = 20
-READER_TIMEOUT = 12
+TIMEOUT = 15
+READER_TIMEOUT = 15
 READER_MAX_WORKERS = 8
 PRODUCT_MAX_WORKERS = 8
+DISCOVERY_RETRIES = 2
 
-SCRAPER_VERSION = "notino-FR-generic-discovery-2026-08-25-v21-fast-io"
+SCRAPER_VERSION = "notino-FR-generic-discovery-2026-09-02-v22-resilient"
 
 HEADERS = {
     "User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 "
@@ -656,6 +657,26 @@ def _normalise_reader_url(raw: Any) -> Optional[str]:
         if _looks_like_product_url(normalised)
         else None
     )
+
+
+GENERIC_DISCOVERY_WORDS = {
+    "pour", "femme", "femmes", "for", "woman", "women",
+    "men", "homme", "hommes", "unisex", "unisexe",
+    "eau", "de", "parfum", "parfums", "edp", "edt",
+}
+
+def _discovery_queries(query: str) -> List[str]:
+    raw = _clean(query)
+    if not raw:
+        return []
+    variants = [raw]
+    raw_tokens = re.findall(r"[a-z0-9]+", raw.lower())
+    meaningful = [t for t in raw_tokens if t not in GENERIC_DISCOVERY_WORDS]
+    if len(meaningful) >= 2:
+        identity_query = _clean(" ".join(meaningful))
+        if identity_query.casefold() != raw.casefold():
+            variants.append(identity_query)
+    return variants[:2]
 
 
 def _search_urls(query: str) -> List[str]:
@@ -2476,6 +2497,14 @@ def _search_http_candidates(
     List[Dict[str, Any]],
     Dict[str, Any],
 ]:
+    """
+    Discovery HTTP resiliente.
+
+    Mantiene il parser e tutti i fallback del file reale.
+    La correzione riguarda esclusivamente la discovery:
+    entrambi gli endpoint vengono interrogati, il giro diretto
+    può essere ripetuto e i risultati vengono fusi con Reader/sitemap.
+    """
     own = session is None
 
     if own:
@@ -2487,43 +2516,63 @@ def _search_http_candidates(
     ] = {}
 
     pages: List[
-        Dict[str, Any]
+        Dict[str, Any],
     ] = []
 
     try:
-        for url in _search_urls(query):
-            try:
-                response = _request(
-                    session,
-                    url,
-                )
-            except requests.RequestException as exc:
-                pages.append(
-                    {
+        attempt = 0
+
+        for attempt in range(
+            1,
+            DISCOVERY_RETRIES + 1,
+        ):
+            round_candidates: Dict[
+                str,
+                Dict[str, Any],
+            ] = {}
+
+            round_pages: List[
+                Dict[str, Any],
+            ] = []
+
+            # Interroghiamo entrambi gli endpoint per la query originale e,
+            # quando utile, una formulazione identity-only. La query originale
+            # resta sempre quella usata per la validazione dei candidati.
+            discovery_queries = _discovery_queries(query)
+            for discovery_query in discovery_queries:
+                for url in _search_urls(discovery_query):
+                    try:
+                        response = _request(session, url)
+                    except requests.RequestException as exc:
+                        round_pages.append({
+                            "url": url,
+                            "discovery_query": discovery_query,
+                            "status": getattr(getattr(exc, "response", None), "status_code", None),
+                            "error": f"{type(exc).__name__}: {exc}",
+                            "attempt": attempt,
+                        })
+                        continue
+
+                    found = extract_candidates_from_html(response.text, query)
+
+                    for candidate in found:
+                        old = round_candidates.get(candidate["url"])
+                        if old is None or candidate["score"] > old["score"]:
+                            round_candidates[candidate["url"]] = candidate
+
+                    round_pages.append({
                         "url": url,
-                        "status": getattr(
-                            getattr(
-                                exc,
-                                "response",
-                                None,
-                            ),
-                            "status_code",
-                            None,
-                        ),
-                        "error": (
-                            f"{type(exc).__name__}: "
-                            f"{exc}"
-                        ),
-                    }
-                )
-                continue
+                        "discovery_query": discovery_query,
+                        "final_url": response.url,
+                        "status": response.status_code,
+                        "html_length": len(response.text or ""),
+                        "candidate_count": len(found),
+                        "cloudflare": _is_challenge(response.text),
+                        "source": "direct",
+                        "attempt": attempt,
+                    })
 
-            found = extract_candidates_from_html(
-                response.text,
-                query,
-            )
-
-            for candidate in found:
+            for candidate in round_candidates.values():
                 old = candidates.get(
                     candidate["url"]
                 )
@@ -2537,25 +2586,23 @@ def _search_http_candidates(
                         candidate["url"]
                     ] = candidate
 
-            pages.append(
-                {
-                    "url": url,
-                    "final_url": response.url,
-                    "status": response.status_code,
-                    "html_length": len(
-                        response.text or ""
-                    ),
-                    "candidate_count": len(found),
-                    "cloudflare": _is_challenge(
-                        response.text
-                    ),
-                    "source": "direct",
-                }
+            pages.extend(round_pages)
+
+            exact_count = sum(
+                1
+                for item in candidates.values()
+                if item.get(
+                    "contains_all_query_tokens"
+                )
             )
 
-            if found:
+            # Evitiamo chiamate inutili quando abbiamo già una
+            # discovery sufficientemente forte.
+            if exact_count >= 5:
                 break
 
+        # Reader/sitemap restano sempre attivi come fallback e vengono
+        # fusi con la discovery HTTP.
         reader_candidates, report = (
             _reader_discovery(
                 query,
@@ -2580,10 +2627,14 @@ def _search_http_candidates(
         ordered = sorted(
             candidates.values(),
             key=lambda item: (
-                not item[
-                    "contains_all_query_tokens"
-                ],
-                -item["score"],
+                not bool(
+                    item.get(
+                        "contains_all_query_tokens"
+                    )
+                ),
+                -int(
+                    item.get("score") or 0
+                ),
                 item["url"],
             ),
         )
@@ -2600,8 +2651,11 @@ def _search_http_candidates(
         report["merged_candidate_count"] = len(
             ordered
         )
+        report["direct_discovery_attempts"] = attempt
+        report["discovery_queries"] = _discovery_queries(query)
         report["fallback"] = (
-            "jina-reader+sitemap-merged-concurrent"
+            "direct-both-endpoints+"
+            "jina-reader+sitemap-concurrent"
         )
 
         return ordered, report
