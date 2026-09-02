@@ -31,7 +31,7 @@ PRICE_RE = re.compile(r"(?:€\s*(\d{1,4}[.,]\d{2})|(\d{1,4}[.,]\d{2})\s*€)", 
 SIZE_RE = re.compile(r"\b(\d{1,4}(?:[.,]\d{1,2})?)\s*(ml|cl|dl|l|oz|fl\s*oz|g|kg)\b", re.I)
 RATING_RE = re.compile(r"\b\d[.,]\d\s*\(\s*\d+\s*\)", re.I)
 
-SCRAPER_VERSION = "notino-2.5-2026-09-02-url-bound-card-strict-identity"
+SCRAPER_VERSION = "notino-2.6-2026-09-02-no-context-fallback"
 
 HEADERS = {
     "User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 Chrome/124.0 Safari/537.36",
@@ -556,26 +556,11 @@ def _reader_candidates(text: str, query: str) -> List[Dict[str, Any]]:
                     found[url] = candidate
                 continue
 
-        # SECOND: bounded context fallback for unusual Reader layouts where the
-        # URL is not the closing link of a normal Markdown card. This fallback is
-        # deliberately lower priority and still requires exact query identity.
-        names = _context_names(raw, match.start(), match.end(), query)
-        if not names:
-            continue
-        for name in names:
-            candidate = _candidate_from_evidence(
-                url,
-                name,
-                raw[max(0, match.start() - 500):min(len(raw), match.end() + 250)],
-                query,
-                "reader-context-fallback",
-            )
-            if not candidate:
-                continue
-            old = found.get(url)
-            if old is None or candidate["score"] > old["score"] or len(candidate["name"]) < len(old["name"]):
-                found[url] = candidate
-            break
+        # IMPORTANT: do not fall back to broad Reader context here.
+        # Jina can place several product cards next to each other; borrowing a
+        # neighbouring title can create a false URL -> product association.
+        # If the URL-owned card cannot be parsed, omit that URL rather than
+        # returning a product with an untrusted identity.
 
     return list(found.values())
 
@@ -810,64 +795,6 @@ def scrape(query: str) -> List[Dict[str, Any]]:
     return search(query)
 
 
-def _raw_target_inspection(session: requests.Session, query: str) -> Dict[str, Any]:
-    """Surgical diagnostic: inspect RAW Jina Reader around exact Notino product URLs.
-
-    This is diagnostic-only. It does not alter search candidates or production output.
-    It exists to determine exactly where URL -> card -> product-name association is lost.
-    """
-    variants = _reader_query_variants(query)
-    targets = {
-        "9 AM Pour Femme": "16167383",
-        "9 PM Pour Femme": "16167394",
-    }
-    target_id = targets.get(query.casefold())
-    out: Dict[str, Any] = {
-        "query": query,
-        "reader_variants": variants,
-        "target_product_id": target_id,
-        "variants": [],
-    }
-
-    for variant in variants:
-        for search_url in _search_urls(variant):
-            try:
-                raw = _reader_search(session, search_url) or ""
-            except Exception as exc:
-                out["variants"].append({
-                    "variant": variant,
-                    "search_url": search_url,
-                    "error": f"{type(exc).__name__}: {exc}",
-                })
-                continue
-
-            item: Dict[str, Any] = {
-                "variant": variant,
-                "search_url": search_url,
-                "raw_length": len(raw),
-                "target_occurrences": [],
-            }
-            if target_id:
-                needle = f"/p-{target_id}"
-                starts = [m.start() for m in re.finditer(re.escape(needle), raw, flags=re.I)]
-                for start in starts[:5]:
-                    end = min(len(raw), start + len(needle))
-                    bound_card = _url_bound_card(raw, start, end)
-                    bound_name = _bound_card_name(bound_card, query)
-                    context_names = _context_names(raw, start, end, query)
-                    excerpt = raw[max(0, start - 1800):min(len(raw), end + 1800)]
-                    item["target_occurrences"].append({
-                        "offset": start,
-                        "raw_url": raw[start:min(len(raw), start + 220)],
-                        "raw_excerpt": excerpt,
-                        "url_bound_card": bound_card,
-                        "bound_card_name": bound_name,
-                        "context_names": context_names[:10],
-                    })
-            out["variants"].append(item)
-    return out
-
-
 def diagnose(query: str) -> Dict[str, Any]:
     query = _clean(query)
     if not query:
@@ -875,7 +802,6 @@ def diagnose(query: str) -> Dict[str, Any]:
     session = _new_session()
     try:
         candidates, discovery = _discover(query, session)
-        raw_target_inspection = _raw_target_inspection(session, query)
     finally:
         session.close()
     return {
@@ -886,7 +812,6 @@ def diagnose(query: str) -> Dict[str, Any]:
         "candidate_count": len(candidates),
         "candidates": candidates[:30],
         "discovery": discovery,
-        "raw_target_inspection": raw_target_inspection,
     }
 
 
