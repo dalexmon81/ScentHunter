@@ -1,0 +1,471 @@
+"""
+ScentHunter - robust live search orchestration.
+
+This module deliberately sits ABOVE the existing store scrapers.  It does not
+try to make the eight shops scrape the same way: each scraper remains a store
+adapter.  The uniformity is enforced here, at orchestration / result level.
+
+Goals:
+- query all stores in parallel;
+- keep each store independent;
+- distinguish empty results from technical failures;
+- do not publish a partial product list;
+- keep the raw candidate pool lossless at the orchestration boundary;
+- reuse the current central matcher / validation / final-result preparation;
+- keep final availability ordering: in_stock, unknown, out_of_stock;
+- avoid changing the frontend or Railway contract.
+"""
+
+from __future__ import annotations
+
+import concurrent.futures
+import time
+import traceback
+from dataclasses import dataclass, field
+from typing import Any, Callable, Dict, List, Optional
+
+
+DEFAULT_STORE_TIMEOUT = 40.0
+DEFAULT_GLOBAL_TIMEOUT = 45.0
+
+
+@dataclass
+class StoreRun:
+    store: str
+    status: str = "error"  # ok | empty | timeout | error
+    candidates: List[Dict[str, Any]] = field(default_factory=list)
+    elapsed: float = 0.0
+    error: Optional[str] = None
+
+
+class SearchEngine:
+    """
+    Adapter/orchestrator around the current main.py implementation.
+
+    The legacy module is intentionally injected instead of imported by name so
+    the existing matcher, catalog, registry and store adapters stay untouched.
+    """
+
+    def __init__(
+        self,
+        legacy_module: Any,
+        *,
+        store_timeout: float = DEFAULT_STORE_TIMEOUT,
+        global_timeout: float = DEFAULT_GLOBAL_TIMEOUT,
+    ) -> None:
+        self.legacy = legacy_module
+        self.store_timeout = float(store_timeout)
+        self.global_timeout = float(global_timeout)
+
+        stores = getattr(legacy_module, "STORES", None)
+        if stores:
+            self.stores = list(stores)
+        else:
+            self.stores = [
+                "bplatz",
+                "deloox",
+                "parfumcity",
+                "parfumzentrum",
+                "perfumemarket",
+                "sabina",
+                "orioudh",
+                "notino",
+            ]
+
+    # ------------------------------------------------------------------
+    # Query analysis
+    # ------------------------------------------------------------------
+
+    def analyze_query(self, query: str) -> Dict[str, Any]:
+        raw = (query or "").strip()
+        norm = self.legacy.norm(raw) if hasattr(self.legacy, "norm") else raw.lower()
+
+        size_ml = None
+        try:
+            # Reuse the same size syntax already used by main.py.
+            m = self.legacy.re.search(
+                r"(?<!\d)(\d+(?:[.,]\d+)?)\s*(?:ml|milliliters?)\b",
+                raw,
+                self.legacy.re.I,
+            )
+            if m:
+                size_ml = float(m.group(1).replace(",", "."))
+        except Exception:
+            size_ml = None
+
+        return {
+            "raw": raw,
+            "normalized": norm,
+            "size_ml": size_ml,
+        }
+
+    # ------------------------------------------------------------------
+    # Store execution
+    # ------------------------------------------------------------------
+
+    def _run_one_store(self, store: str, query: str) -> StoreRun:
+        started = time.monotonic()
+
+        try:
+            # run_store is the existing store adapter boundary in main.py.
+            runner = getattr(self.legacy, "run_store", None)
+            if runner is None:
+                raise RuntimeError("main.run_store is not available")
+
+            raw = runner(store, query)
+
+            if raw is None:
+                candidates: List[Dict[str, Any]] = []
+            elif isinstance(raw, list):
+                candidates = raw
+            else:
+                # Be tolerant of adapters returning an iterable.
+                try:
+                    candidates = list(raw)
+                except Exception:
+                    candidates = []
+
+            # IMPORTANT:
+            # No deduplication, identity filtering, availability filtering or
+            # ranking happens here.  The central validation layer receives the
+            # complete adapter output.
+            clean_candidates = [
+                item for item in candidates if isinstance(item, dict)
+            ]
+
+            return StoreRun(
+                store=store,
+                status="ok" if clean_candidates else "empty",
+                candidates=clean_candidates,
+                elapsed=time.monotonic() - started,
+            )
+
+        except Exception as exc:
+            return StoreRun(
+                store=store,
+                status="error",
+                candidates=[],
+                elapsed=time.monotonic() - started,
+                error=f"{type(exc).__name__}: {exc}",
+            )
+
+    def _run_stores(self, query: str) -> Dict[str, Any]:
+        """
+        Execute all store adapters concurrently with two independent limits:
+
+        - every store has its own STORE_TIMEOUT budget;
+        - the whole research phase has a GLOBAL_TIMEOUT ceiling.
+
+        A timed-out Python thread cannot be force-killed safely.  The future is
+        therefore detached from the result set and the executor is shut down
+        without waiting.  A late adapter completion is ignored.
+        """
+        started = time.monotonic()
+        results: Dict[str, StoreRun] = {
+            store: StoreRun(store=store) for store in self.stores
+        }
+
+        executor = concurrent.futures.ThreadPoolExecutor(
+            max_workers=max(1, len(self.stores)),
+            thread_name_prefix="scenthunter-store",
+        )
+
+        futures: Dict[concurrent.futures.Future, str] = {}
+        submitted_at: Dict[concurrent.futures.Future, float] = {}
+
+        for store in self.stores:
+            future = executor.submit(self._run_one_store, store, query)
+            futures[future] = store
+            submitted_at[future] = time.monotonic()
+
+        pending = set(futures)
+        deadline = started + self.global_timeout
+
+        try:
+            while pending and time.monotonic() < deadline:
+                now = time.monotonic()
+
+                # Harvest every future that has already completed.
+                done = {future for future in pending if future.done()}
+                for future in done:
+                    pending.remove(future)
+                    store = futures[future]
+                    try:
+                        results[store] = future.result()
+                    except Exception as exc:
+                        results[store] = StoreRun(
+                            store=store,
+                            status="error",
+                            candidates=[],
+                            elapsed=time.monotonic() - submitted_at[future],
+                            error=f"{type(exc).__name__}: {exc}",
+                        )
+
+                if not pending:
+                    break
+
+                # Enforce the per-store timeout independently.
+                now = time.monotonic()
+                for future in list(pending):
+                    store = futures[future]
+                    if now - submitted_at[future] >= self.store_timeout:
+                        pending.remove(future)
+                        results[store] = StoreRun(
+                            store=store,
+                            status="timeout",
+                            candidates=[],
+                            elapsed=now - submitted_at[future],
+                            error=(
+                                f"store exceeded independent timeout "
+                                f"({self.store_timeout:.0f}s)"
+                            ),
+                        )
+
+                if not pending:
+                    break
+
+                # Short polling interval keeps timeout enforcement precise
+                # without busy-spinning the process.
+                remaining_global = deadline - time.monotonic()
+                time.sleep(min(0.20, max(0.0, remaining_global)))
+
+            # Anything still pending at the global deadline is a timeout.
+            if pending:
+                now = time.monotonic()
+                for future in pending:
+                    store = futures[future]
+                    results[store] = StoreRun(
+                        store=store,
+                        status="timeout",
+                        candidates=[],
+                        elapsed=now - submitted_at[future],
+                        error="global search window expired",
+                    )
+
+        finally:
+            executor.shutdown(wait=False, cancel_futures=True)
+
+        return {
+            "stores": results,
+            "elapsed": time.monotonic() - started,
+        }
+
+    # ------------------------------------------------------------------
+    # Central validation / grouping / ranking
+    # ------------------------------------------------------------------
+
+    @staticmethod
+    def _availability_rank(item: Dict[str, Any]) -> int:
+        value = str(
+            item.get("availability")
+            or item.get("stock_status")
+            or item.get("stock")
+            or ""
+        ).strip().lower()
+
+        if value in {
+            "in_stock",
+            "available",
+            "true",
+            "1",
+            "yes",
+            "in stock",
+        }:
+            return 0
+
+        if value in {
+            "out_of_stock",
+            "oos",
+            "unavailable",
+            "sold_out",
+            "sold out",
+            "false",
+            "0",
+        }:
+            return 2
+
+        return 1
+
+    def _stable_results(self, results: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+        """
+        Final deterministic ordering.
+
+        The existing main.py prepares canonical product results.  We only
+        correct the availability priority here so UNKNOWN is not placed after
+        OUT_OF_STOCK.
+        """
+
+        def price_value(item: Dict[str, Any]) -> float:
+            try:
+                value = item.get("price")
+                if value is None:
+                    value = item.get("price_num")
+                return float(value)
+            except Exception:
+                return float("inf")
+
+        def key(item: Dict[str, Any]) -> tuple:
+            return (
+                self._availability_rank(item),
+                price_value(item),
+                str(item.get("store") or item.get("shop") or ""),
+                str(item.get("url") or ""),
+                str(item.get("title") or ""),
+            )
+
+        return sorted(results, key=key)
+
+    def _validate_and_finalize(
+        self,
+        query: str,
+        raw_candidates: List[Dict[str, Any]],
+    ) -> List[Dict[str, Any]]:
+        """
+        Reuse the current central validation and finalization functions.
+
+        This is intentionally not duplicated here.  The current matcher,
+        family registry, canonical catalog and scraper-specific parsing remain
+        the source of truth until those components are independently replaced.
+        """
+
+        pre_rank = getattr(self.legacy, "_pre_rank_candidates", None)
+        validate = getattr(self.legacy, "_validate_candidates_parallel", None)
+        prepare = getattr(self.legacy, "_prepare_final_results", None)
+
+        candidates = list(raw_candidates)
+
+        if pre_rank is not None:
+            try:
+                candidates = pre_rank(query, candidates)
+            except TypeError:
+                candidates = pre_rank(candidates)
+
+        if validate is not None:
+            try:
+                candidates = validate(query, candidates)
+            except TypeError:
+                candidates = validate(candidates)
+
+        if prepare is not None:
+            try:
+                final = prepare(query, candidates)
+            except TypeError:
+                final = prepare(candidates)
+        else:
+            final = candidates
+
+        if final is None:
+            final = []
+
+        if not isinstance(final, list):
+            final = list(final)
+
+        return self._stable_results(
+            [item for item in final if isinstance(item, dict)]
+        )
+
+    # ------------------------------------------------------------------
+    # Public synchronous API
+    # ------------------------------------------------------------------
+
+    def search(self, query: str) -> List[Dict[str, Any]]:
+        analysis = self.analyze_query(query)
+        text = analysis["raw"]
+
+        if not text:
+            return []
+
+        store_run = self._run_stores(text)
+
+        raw_pool: List[Dict[str, Any]] = []
+        for store in self.stores:
+            raw_pool.extend(store_run["stores"][store].candidates)
+
+        return self._validate_and_finalize(text, raw_pool)
+
+    # ------------------------------------------------------------------
+    # Async job API used by existing /search-start + /search-status routes
+    # ------------------------------------------------------------------
+
+    def run_job(self, job_id: str, query: str) -> None:
+        """
+        Drop-in replacement for the existing background search job.
+
+        Critical behavior:
+        - technical store progress may be recorded;
+        - product results are NOT published progressively;
+        - final results are written exactly once after all stores finish or the
+          global search window expires.
+        """
+        jobs = getattr(self.legacy, "SEARCH_JOBS", None)
+        lock = getattr(self.legacy, "SEARCH_JOBS_LOCK", None)
+
+        if jobs is None:
+            # Fall back to the legacy implementation if the job registry is
+            # unavailable rather than crashing application startup.
+            legacy_runner = getattr(self.legacy, "_run_search_job_legacy", None)
+            if legacy_runner is not None:
+                return legacy_runner(job_id, query)
+            raise RuntimeError("SEARCH_JOBS is not available")
+
+        def update(payload: Dict[str, Any]) -> None:
+            if lock is not None:
+                with lock:
+                    job = jobs.get(job_id)
+                    if job is not None:
+                        job.update(payload)
+            else:
+                job = jobs.get(job_id)
+                if job is not None:
+                    job.update(payload)
+
+        try:
+            update(
+                {
+                    "status": "searching",
+                    "results": [],
+                    "store_status": {
+                        store: {"status": "searching", "count": 0}
+                        for store in self.stores
+                    },
+                }
+            )
+
+            started = time.monotonic()
+            run = self._run_stores(query)
+
+            raw_pool: List[Dict[str, Any]] = []
+            store_status: Dict[str, Any] = {}
+
+            for store in self.stores:
+                result = run["stores"][store]
+                raw_pool.extend(result.candidates)
+                store_status[store] = {
+                    "status": result.status,
+                    "count": len(result.candidates),
+                    "elapsed": round(result.elapsed, 3),
+                    "error": result.error,
+                }
+
+            final_results = self._validate_and_finalize(query, raw_pool)
+
+            # IMPORTANT: this is the first publication of the product list.
+            update(
+                {
+                    "status": "completed",
+                    "results": final_results,
+                    "store_status": store_status,
+                    "elapsed": round(time.monotonic() - started, 3),
+                    "raw_candidate_count": len(raw_pool),
+                }
+            )
+
+        except Exception as exc:
+            update(
+                {
+                    "status": "error",
+                    "results": [],
+                    "error": f"{type(exc).__name__}: {exc}",
+                    "traceback": traceback.format_exc(limit=8),
+                }
+            )
