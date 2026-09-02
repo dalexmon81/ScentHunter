@@ -25,7 +25,7 @@ READER_MAX_WORKERS = 8
 PRODUCT_MAX_WORKERS = 8
 DISCOVERY_RETRIES = 2
 
-SCRAPER_VERSION = "notino-FR-generic-discovery-2026-09-02-v27-context-sku-validation"
+SCRAPER_VERSION = "notino-FR-generic-discovery-2026-09-02-v28-search-card-fallback"
 
 HEADERS = {
     "User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 "
@@ -940,6 +940,46 @@ def _context_product_name(
     return best[2] if best else None
 
 
+
+def _context_product_card(
+    raw_text: str,
+    url_start: int,
+    url_end: int,
+    query: str,
+) -> str:
+    """Return the focused Reader line containing the raw product URL.
+
+    This keeps title/price/stock information from unrelated nearby products
+    out of the candidate card. The URL itself is removed, while the visible
+    product text on the same line is preserved.
+    """
+    line_start = raw_text.rfind("\n", 0, url_start) + 1
+    line_end = raw_text.find("\n", url_end)
+    if line_end < 0:
+        line_end = len(raw_text)
+
+    line = html_lib.unescape(raw_text[line_start:line_end])
+    line = line.replace(raw_text[url_start:url_end], " ")
+    line = re.sub(
+        r"(?:https?:)?//[^\s<>)\]\\\"']+",
+        " ",
+        line,
+        flags=re.I,
+    )
+    line = re.sub(r"<[^>]+>", " ", line)
+    line = re.sub(r"[\[\]*#]", " ", line)
+    line = re.sub(r"\s+", " ", line).strip()
+
+    if not line:
+        return ""
+
+    # Prefer a line that demonstrably contains the query identity. This is
+    # deliberately separate from the slug: Notino URLs are not authoritative.
+    if _fuzzy_query_match(line, query)[0]:
+        return _clean(line)
+
+    return _clean(line)
+
 def _extract_product_id(url: str) -> Optional[str]:
     match = re.search(r"/p-(\d+)(?:/|$)", str(url or ""), re.I)
     return match.group(1) if match else None
@@ -950,11 +990,33 @@ def _extract_sku_from_context(
     url_pos: int,
     window: int = 300,
 ) -> Optional[str]:
+    """Extract a Notino SKU without borrowing it from a nearby product.
+
+    Prefer an SKU on the exact line containing the URL. If that line has no
+    SKU, accept a wider-window SKU only when the window contains exactly one
+    unique SKU, avoiding cross-product contamination on dense search pages.
+    """
+    raw = html_lib.unescape(str(text or ""))
+
+    line_start = raw.rfind("\n", 0, url_pos) + 1
+    line_end = raw.find("\n", url_pos)
+    if line_end < 0:
+        line_end = len(raw)
+
+    line = raw[line_start:line_end]
+    line_matches = re.findall(r"\bAFN\d{5,6}\b", line, re.I)
+    if line_matches:
+        return line_matches[0].upper()
+
     start = max(0, url_pos - window)
-    end = min(len(text), url_pos + window)
-    context = html_lib.unescape(text[start:end])
-    match = re.search(r"\bAFN\d{5,6}\b", context, re.I)
-    return match.group(0).upper() if match else None
+    end = min(len(raw), url_pos + window)
+    context = raw[start:end]
+    matches = [m.upper() for m in re.findall(r"\bAFN\d{5,6}\b", context, re.I)]
+    unique = list(dict.fromkeys(matches))
+    if len(unique) == 1:
+        return unique[0]
+
+    return None
 
 
 def _candidate_gender(value: Any) -> Optional[str]:
@@ -973,57 +1035,139 @@ def _validate_candidate_semantics(
     query: str,
 ) -> bool:
     """Reject obvious semantic mismatches before fuzzy matching."""
-    name = _clean(
-        candidate.get("name", "")
-    ).lower()
-
+    name = _clean(candidate.get("name", "")).lower()
     query_norm = _clean(query).lower()
-
     if not name or not query_norm:
         return False
 
     query_gender = _candidate_gender(query_norm)
     candidate_gender = _candidate_gender(name)
 
-    if (
-        query_gender
-        and candidate_gender
-        and query_gender != candidate_gender
-    ):
+    if query_gender and candidate_gender and query_gender != candidate_gender:
         return False
 
-    variant_pattern = (
-        r"\b(elixir|rebel|ice|malibu|black|"
-        r"night|limited)\b"
-    )
+    variant_pattern = r"\b(elixir|rebel|ice|malibu|black|night|limited)\b"
+    query_variants = set(re.findall(variant_pattern, query_norm, re.I))
+    candidate_variants = set(re.findall(variant_pattern, name, re.I))
 
-    query_variants = set(
-        re.findall(
-            variant_pattern,
-            query_norm,
-            re.I,
-        )
-    )
-
-    candidate_variants = set(
-        re.findall(
-            variant_pattern,
-            name,
-            re.I,
-        )
-    )
-
-    if query_variants:
-        if not query_variants.intersection(
-            candidate_variants
-        ):
-            return False
-    elif candidate_variants:
-        # La query non ha varianti ma il candidate sì → rifiuta
+    if query_variants and candidate_variants and not query_variants.intersection(candidate_variants):
         return False
 
     return True
 
+
+def extract_candidates_from_html(
+    html: str,
+    query: str,
+) -> List[Dict[str, Any]]:
+    soup = BeautifulSoup(
+        html or "",
+        "html.parser",
+    )
+
+    found: Dict[str, Dict[str, Any]] = {}
+
+    for link in soup.find_all(
+        "a",
+        href=True,
+    ):
+        url = (
+            urljoin(
+                BASE_URL,
+                _clean(link.get("href")),
+            )
+            .split("?")[0]
+        )
+
+        if not _looks_like_product_url(url):
+            continue
+
+        candidate = _make_candidate(
+            url,
+            _clean(
+                link.get_text(
+                    " ",
+                    strip=True,
+                )
+            ),
+            _card_text(link),
+            query,
+            "direct-search",
+        )
+
+        if candidate and (
+            candidate["url"] not in found
+            or candidate["score"]
+            > found[candidate["url"]]["score"]
+        ):
+            found[candidate["url"]] = candidate
+
+    # Notino sometimes injects product cards through serialized JSON/JS.
+    # In those responses the product URL is present in the raw HTML but there
+    # is no usable <a> element for BeautifulSoup to inspect. Discover those
+    # canonical /p-<id> URLs too, using nearby raw context as the product-card
+    # identity signal. This is generic and does not hard-code any product.
+    raw_html = html_lib.unescape(html or "").replace("\\/", "/")
+    raw_url_re = re.compile(
+        r"(?:https?:)?//(?:www\.)?notino\.fr/[^\"'<>\s]+/p-\d+(?:/)?"
+        r"|(?:/[^\"'<>\s]+/p-\d+(?:/)?)",
+        re.I,
+    )
+
+    for match in raw_url_re.finditer(raw_html):
+        raw_url = match.group(0)
+        url = urljoin(BASE_URL, raw_url).split("?")[0]
+        if not _looks_like_product_url(url):
+            continue
+
+        context_name = _context_product_name(
+            raw_html,
+            match.start(),
+            match.end(),
+            query,
+        )
+        slug_name = _name_from_product_url(url)
+        candidate_name = context_name or slug_name
+        if not candidate_name:
+            continue
+
+        context_card = _context_product_card(
+            raw_html,
+            match.start(),
+            match.end(),
+            query,
+        ) or context_name or candidate_name
+        candidate = _make_candidate(
+            url,
+            candidate_name,
+            context_card,
+            query,
+            "direct-search-raw",
+        )
+        if candidate:
+            candidate["product_id"] = _extract_product_id(url)
+            candidate["sku"] = _extract_sku_from_context(
+                raw_html,
+                match.start(),
+            )
+            candidate["source"] = (
+                "context" if context_name else "slug"
+            )
+
+        if candidate and (
+            candidate["url"] not in found
+            or candidate["score"] > found[candidate["url"]]["score"]
+        ):
+            found[candidate["url"]] = candidate
+
+    return sorted(
+        found.values(),
+        key=lambda item: (
+            not item["contains_all_query_tokens"],
+            -item["score"],
+            item["url"],
+        ),
+    )
 
 
 def _reader_name_from_context(
@@ -1590,29 +1734,43 @@ def _reader_candidates(
                 min(len(lines), line_index + 9)
             ]
             nearby_context = " ".join(context_lines)
-            strict_context_ok = strict_context_match(
-                nearby_context,
+
+            focused_card = _context_product_card(
+                raw,
+                match.start(),
+                match.end(),
+                query,
+            )
+            focused_strict_ok = strict_context_match(
+                focused_card,
                 query,
             )
 
             if not _fuzzy_query_match(
                 name,
                 query,
-            )[0] and not strict_context_ok:
+            )[0] and not focused_strict_ok:
                 continue
 
-            if strict_context_ok:
+            if focused_strict_ok:
                 context_name = _reader_name_from_context(
                     "\n".join(context_lines),
+                    query,
+                ) or _context_product_name(
+                    raw,
+                    match.start(),
+                    match.end(),
                     query,
                 )
                 if context_name:
                     name = context_name
-
-            card_context = nearby_price_context(
+            nearby_price = nearby_price_context(
                 line_index,
                 url,
             )
+            card_context = focused_card
+            if nearby_price and _extract_price(focused_card) is None:
+                card_context = f"{focused_card} {nearby_price}".strip()
 
             candidate = _make_candidate(
                 url,
@@ -1627,11 +1785,43 @@ def _reader_candidates(
             # proves the exact query identity, keep the discovered URL. The
             # product page is still fetched and validated later, so this is
             # discovery-only and does not weaken final product validation.
-            # Eliminato fallback artificiale: se _make_candidate() rifiuta,
-            # il candidato non deve essere creato manualmente.
-            if candidate is None:
-                continue
-
+            if (
+                candidate is None
+                and focused_strict_ok
+                and _validate_candidate_semantics(
+                    {"name": name},
+                    query,
+                )
+            ):
+                candidate = {
+                    "url": url,
+                    "anchor_text": name or query,
+                    "card_text": card_context or nearby_context or name or query,
+                    "name": name or query,
+                    "score": 20,
+                    "token_hits": {
+                        token: True
+                        for token in _query_tokens(query)
+                    },
+                    "contains_all_query_tokens": True,
+                    "requested_size": bool(_requested_sizes(query)),
+                    "size_match_in_search_context": (
+                        not _requested_sizes(query)
+                        or any(
+                            _size_matches(
+                                card_context or nearby_context,
+                                size,
+                            )
+                            for size in _requested_sizes(query)
+                        )
+                    ),
+                    "source": "reader-url-context",
+                    "product_id": _extract_product_id(url),
+                    "sku": _extract_sku_from_context(
+                        raw,
+                        match.start(),
+                    ),
+                }
 
             if candidate and (
                 url not in found
@@ -1660,82 +1850,81 @@ def _candidate_lookup_rank(
     candidate: Dict[str, Any],
     query: str,
 ) -> Tuple[int, int, int, int, str]:
-    url = candidate.get("url", "")
-    url_name = _name_from_product_url(url)
-candidate_name = _product_norm(
-    candidate.get("name", "")
-)
+    """Rank discovery candidates without trusting the URL slug as identity."""
+    candidate_name = _clean_name(
+        candidate.get("name")
+        or candidate.get("anchor_text")
+        or ""
+    )
+    query_name = _clean(query)
 
-query_norm = _product_norm(query)
+    name_norm = _product_norm(candidate_name)
+    query_norm = _product_norm(query_name)
 
-# Priorità al nome visibile del candidato, non allo slug URL.
-name_matched = (
-    bool(candidate_name)
-    and _fuzzy_query_match(
-        candidate.get("name", ""),
-        query,
-    )[0]
-)
-
-url_norm = _product_norm(url_name)
-url_matched, _, url_fuzzy_hits = (
-    _fuzzy_query_match(
-        url_name,
+    name_matched, _, name_fuzzy_hits = _fuzzy_query_match(
+        candidate_name,
         query,
     )
-)
 
-if name_matched:
-    identity_rank = 3
-elif url_norm == query_norm and query_norm:
-    identity_rank = 2
-elif (
-    query_norm
-    and url_norm.startswith(
-        query_norm + " "
-    )
-):
-    identity_rank = 1
-elif url_matched:
-    identity_rank = 0
-else:
-    identity_rank = 0
+    if name_norm == query_norm and query_norm:
+        identity_rank = 3
+    elif (
+        query_norm
+        and name_norm.startswith(query_norm + " ")
+    ):
+        identity_rank = 2
+    elif name_matched:
+        identity_rank = 1
+    else:
+        identity_rank = 0
 
+    # A discovered Notino product ID/SKU is a stronger locator than a URL
+    # slug. They do not prove a natural-language query by themselves, but they
+    # make candidate ordering/deduplication stable when the slug is misleading.
+    strong_id_bonus = 0
+    if candidate.get("sku"):
+        strong_id_bonus += 2
+    if candidate.get("product_id"):
+        strong_id_bonus += 1
 
     return (
         identity_rank,
-        1 if bool(
-            candidate.get(
-                "contains_all_query_tokens"
-            )
-        ) else 0,
-        int(
-            candidate.get("score") or 0
-        ) + (url_fuzzy_hits * 2),
-        1 if url_norm else 0,
-        url,
+        1 if bool(candidate.get("contains_all_query_tokens")) else 0,
+        int(candidate.get("score") or 0)
+        + (name_fuzzy_hits * 2)
+        + strong_id_bonus,
+        1 if name_norm else 0,
+        str(candidate.get("url") or ""),
     )
 
 
 def _candidate_product_identity(
     candidate: Dict[str, Any],
 ) -> str:
-    url = str(
-        candidate.get("url") or ""
-    )
+    """Build a stable identity using strong IDs before textual identity."""
+    sku = _product_norm(candidate.get("sku") or "")
+    if sku:
+        return f"sku|{sku}"
 
+    product_id = _product_norm(candidate.get("product_id") or "")
+    if product_id:
+        return f"product_id|{product_id}"
+
+    name = _product_norm(
+        candidate.get("name")
+        or candidate.get("anchor_text")
+        or ""
+    )
     brand = _product_norm(
-        _brand_from_product_url(url)
+        _brand_from_product_url(
+            str(candidate.get("url") or "")
+        )
     )
 
-    product = _product_norm(
-        _name_from_product_url(url)
-    )
+    if brand or name:
+        return f"name|{brand}|{name}"
 
-    if brand or product:
-        return f"{brand}|{product}"
-
-    return _product_norm(url)
+    return _product_norm(str(candidate.get("url") or ""))
 
 
 def _rank_candidates_for_product_lookup(
@@ -2973,7 +3162,7 @@ def _extract_reader_product_name(
     text: str,
     candidate: Dict[str, Any],
     query: str,
-   ) -> str:
+) -> str:
     raw = (
         html_lib.unescape(
             str(text or "")
@@ -2981,21 +3170,38 @@ def _extract_reader_product_name(
         .replace("\\/", "/")
     )
 
-    candidate_url = candidate.get("url", "")
-    candidate_name = _clean_name(candidate.get("name", ""))
+    candidate_url = candidate.get(
+        "url",
+        "",
+    )
 
-    # 1. Priorità al nome già trovato nella discovery.
-    if (
-        candidate_name
-        and _fuzzy_query_match(candidate_name, query)[0]
-        and not _has_non_perfume_marker_in_product(
-            candidate_name,
-            candidate_url,
+    slug_name = _name_from_product_url(
+        candidate_url
+    )
+    brand = _brand_from_product_url(
+        candidate_url
+    )
+
+    if slug_name:
+        url_name = _clean_name(
+            f"{brand} {slug_name}"
+            if brand
+            else slug_name
         )
-    ):
-        return candidate_name
 
-    # 2. Cerca titoli strutturati nel testo Reader.
+        if (
+            url_name
+            and _fuzzy_query_match(
+                url_name,
+                query,
+            )[0]
+            and not _has_non_perfume_marker_in_product(
+                url_name,
+                candidate_url,
+            )
+        ):
+            return url_name
+
     lines: List[str] = []
 
     for raw_line in raw.splitlines():
@@ -3030,7 +3236,10 @@ def _extract_reader_product_name(
 
         if (
             cleaned
-            and _fuzzy_query_match(cleaned, query)[0]
+            and _fuzzy_query_match(
+                cleaned,
+                query,
+            )[0]
             and not _has_non_perfume_marker_in_product(
                 cleaned,
                 candidate_url,
@@ -3038,7 +3247,6 @@ def _extract_reader_product_name(
         ):
             return cleaned
 
-    # 3. Fallback ai campi del candidate.
     for value in (
         candidate.get("name"),
         candidate.get("anchor_text"),
@@ -3064,27 +3272,7 @@ def _extract_reader_product_name(
         ):
             return cleaned
 
-    # 4. Ultimo fallback allo slug.
-    slug_name = _name_from_product_url(candidate_url)
-    brand = _brand_from_product_url(candidate_url)
-
-    if brand and slug_name:
-        slug_name = _clean_name(
-            f"{brand} {slug_name}"
-        )
-
-    if (
-        slug_name
-        and _fuzzy_query_match(slug_name, query)[0]
-        and not _has_non_perfume_marker_in_product(
-            slug_name,
-            candidate_url,
-        )
-    ):
-        return slug_name
-
     return ""
-
 
 
 
@@ -3149,25 +3337,22 @@ def _reader_product(
         "",
     )
 
-    candidate_name = _clean_name(
-    candidate.get("name", "")
-)
+    identity_text = (
+        content
+        + " "
+        + candidate_url
+        + " "
+        + str(
+            candidate.get("name")
+            or ""
+        )
+    )
 
-if not candidate_name:
-    return None
-
-if not _fuzzy_query_match(
-    candidate_name,
-    query,
-)[0]:
-    return None
-
-if not _validate_candidate_semantics(
-    {"name": candidate_name},
-    query,
-):
-    return None
-
+    if not _fuzzy_query_match(
+        identity_text,
+        query,
+    )[0]:
+        return None
 
     if not _requested_size_is_valid(
         content
@@ -3916,6 +4101,34 @@ def _product_detail_job(
 
     try:
         try:
+            source = str(candidate.get("source") or "")
+            card_text = _clean(
+                candidate.get("card_text") or ""
+            )
+
+            # Search/Reader cards can already contain the visible title,
+            # price and stock state. If so, prefer that authoritative search
+            # evidence over a second request to the product page. This avoids
+            # losing a valid product when Notino returns 403 or Jina returns
+            # 429 on the product URL. It is generic for every raw-URL card.
+            if source in {
+                "context",
+                "direct-search-raw",
+                "reader-url",
+                "reader-url-context",
+            } and _extract_price(card_text):
+                card_result = _card_result(
+                    candidate,
+                    query,
+                )
+                if card_result:
+                    return {
+                        "candidate": candidate,
+                        "result": card_result,
+                        "error": None,
+                        "validation_source": "search-card",
+                    }
+
             result = _product_details(
                 session,
                 candidate,
