@@ -103,6 +103,140 @@ class SearchEngine:
     # Store execution
     # ------------------------------------------------------------------
 
+    def _query_flags(self, query: str) -> Dict[str, Any]:
+        raw = str(query or "").strip()
+        normalized = self.legacy.norm(raw) if hasattr(self.legacy, "norm") else raw.lower()
+
+        size_ml = None
+        try:
+            m = self.legacy.re.search(
+                r"(?<!\d)(\d+(?:[.,]\d+)?)\s*[-_/]?\s*(ml|cl)\b",
+                normalized,
+                self.legacy.re.I,
+            )
+            if m:
+                size_ml = float(m.group(1).replace(",", "."))
+                if m.group(2).lower() == "cl":
+                    size_ml *= 10.0
+        except Exception:
+            size_ml = None
+
+        sample_tokens = {
+            "sample", "samples", "campione", "campioncino", "echantillon", "muestra"
+        }
+        requests_sample = bool(set(normalized.split()) & sample_tokens)
+
+        base = self.legacy.re.sub(
+            r"\b(?:sample|samples|campione|campioncino|echantillon|muestra)\b",
+            " ", normalized, flags=self.legacy.re.I,
+        )
+        base = self.legacy.re.sub(
+            r"\b\d+(?:[.,]\d+)?\s*(?:ml|cl)\b",
+            " ", base, flags=self.legacy.re.I,
+        )
+        base = self.legacy.re.sub(r"\s+", " ", base).strip()
+
+        return {
+            "raw": raw,
+            "normalized": normalized,
+            "size_ml": size_ml,
+            "requests_sample": requests_sample,
+            "requests_small": requests_sample or (size_ml is not None and size_ml <= 10.0),
+            "base_query": base,
+        }
+
+    def _discovery_queries(self, query: str) -> List[str]:
+        """Broaden only explicit small/sample searches; validation stays authoritative."""
+        flags = self._query_flags(query)
+        raw = flags["raw"]
+        base = flags["base_query"]
+        queries: List[str] = []
+        seen = set()
+
+        def add(value: str) -> None:
+            value = str(value or "").strip()
+            key = self.legacy.norm(value) if hasattr(self.legacy, "norm") else value.lower()
+            if value and key and key not in seen:
+                seen.add(key)
+                queries.append(value)
+
+        add(raw)
+        if flags["requests_small"] and base:
+            add(base)
+            if flags["requests_sample"]:
+                add(f"{base} sample")
+                add(f"{base} 10 ml")
+        return queries
+
+    def _extract_candidate_size_ml(self, item: Dict[str, Any]) -> Optional[float]:
+        try:
+            value = self.legacy.product_size_ml(item)
+            if value is not None:
+                return float(value)
+        except Exception:
+            pass
+
+        values: List[Any] = []
+        for key in (
+            "name", "title", "product_name", "source_name", "canonical_name",
+            "catalog_variant", "size", "format", "volume", "url", "handle",
+        ):
+            values.append(item.get(key))
+
+        attributes = item.get("attributes")
+        if isinstance(attributes, dict):
+            size_attr = attributes.get("size_ml")
+            if isinstance(size_attr, dict):
+                values.append(size_attr.get("value"))
+            else:
+                values.append(size_attr)
+
+        source = item.get("source")
+        if isinstance(source, dict):
+            values.extend(source.get(key) for key in ("source_name", "name", "title", "url"))
+
+        raw_data = item.get("raw_data")
+        if isinstance(raw_data, dict):
+            values.extend(raw_data.get(key) for key in ("name", "title", "product_title", "handle", "url"))
+
+        text = " ".join(str(value or "") for value in values)
+        try:
+            match = self.legacy.re.search(
+                r"(?<!\d)(\d+(?:[.,]\d+)?)\s*[-_/]?\s*(ml|cl)\b",
+                text, self.legacy.re.I,
+            )
+        except Exception:
+            match = None
+        if not match:
+            return None
+        try:
+            value = float(match.group(1).replace(",", "."))
+            return value * 10.0 if match.group(2).lower() == "cl" else value
+        except (TypeError, ValueError):
+            return None
+
+    def _filter_requested_format(self, candidates: List[Dict[str, Any]], query: str) -> List[Dict[str, Any]]:
+        """Enforce exact explicit size/sample semantics after broad discovery."""
+        flags = self._query_flags(query)
+        if not flags["requests_small"]:
+            return candidates
+
+        requested = flags["size_ml"]
+        filtered: List[Dict[str, Any]] = []
+        for item in candidates:
+            size = self._extract_candidate_size_ml(item)
+
+            if flags["requests_sample"] and requested is None:
+                if size is None or size > 10.0:
+                    continue
+
+            if requested is not None:
+                if size is None or abs(size - requested) > 0.01:
+                    continue
+
+            filtered.append(item)
+        return filtered
+
     def _run_one_store(self, store: str, query: str) -> StoreRun:
         started = time.monotonic()
 
@@ -112,23 +246,38 @@ class SearchEngine:
             if runner is None:
                 raise RuntimeError("main.run_store is not available")
 
-            raw = runner(store, query)
+            candidates: List[Dict[str, Any]] = []
+            seen_urls = set()
 
-            if raw is None:
-                candidates: List[Dict[str, Any]] = []
-            elif isinstance(raw, list):
-                candidates = raw
-            else:
-                # Be tolerant of adapters returning an iterable.
-                try:
-                    candidates = list(raw)
-                except Exception:
-                    candidates = []
+            # Explicit small/sample requests get broader discovery attempts,
+            # but they still share the same independent store timeout.
+            for discovery_query in self._discovery_queries(query):
+                raw = runner(store, discovery_query)
 
-            # IMPORTANT:
-            # No deduplication, identity filtering, availability filtering or
-            # ranking happens here.  The central validation layer receives the
-            # complete adapter output.
+                if raw is None:
+                    batch: List[Dict[str, Any]] = []
+                elif isinstance(raw, list):
+                    batch = raw
+                else:
+                    try:
+                        batch = list(raw)
+                    except Exception:
+                        batch = []
+
+                for item in batch:
+                    if not isinstance(item, dict):
+                        continue
+                    # The same store/page can be returned by multiple discovery
+                    # queries. Suppress only exact same-store URL duplicates;
+                    # distinct products/variants remain untouched.
+                    url = str(item.get("url") or "").strip()
+                    if url:
+                        if url in seen_urls:
+                            continue
+                        seen_urls.add(url)
+                    candidates.append(item)
+
+            # No identity/availability/ranking is done here.
             clean_candidates = [
                 item for item in candidates if isinstance(item, dict)
             ]
@@ -227,7 +376,11 @@ class SearchEngine:
                 # Short polling interval keeps timeout enforcement precise
                 # without busy-spinning the process.
                 remaining_global = deadline - time.monotonic()
-                time.sleep(min(0.20, max(0.0, remaining_global)))
+                remaining_store = min(
+                    max(0.0, self.store_timeout - (time.monotonic() - submitted_at[future]))
+                    for future in pending
+                )
+                time.sleep(min(0.05, max(0.0, remaining_global), remaining_store))
 
             # Anything still pending at the global deadline is a timeout.
             if pending:
@@ -363,7 +516,7 @@ class SearchEngine:
         pre_rank = getattr(self.legacy, "_pre_rank_candidates", None)
         validate = getattr(self.legacy, "_validate_candidates_parallel", None)
 
-        candidates = list(raw_candidates)
+        candidates = self._filter_requested_format(list(raw_candidates), query)
         if pre_rank is not None:
             try:
                 candidates = pre_rank(candidates, query)
