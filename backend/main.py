@@ -11,6 +11,7 @@ import os
 import re
 import threading
 import traceback
+import time
 import unicodedata
 import uuid
 from concurrent.futures import ThreadPoolExecutor, as_completed, TimeoutError
@@ -232,7 +233,7 @@ IGNORED_WORDS = {
     "by",
 }
 
-GLOBAL_SEARCH_TIMEOUT = 120
+GLOBAL_SEARCH_TIMEOUT = 90
 
 
 # ============================================================
@@ -1985,34 +1986,25 @@ def load_scraper(store: str):
     )
 
 
-# Numero massimo di richieste scraper contemporanee sull'intero processo.
-# Gli 8 store possono partire insieme, ma il fallback delle varianti non deve
-# trasformare una famiglia grande in decine di richieste simultanee.
-DISCOVERY_SEMAPHORE = threading.BoundedSemaphore(8)
-
 def run_store(
     store: str,
     query: str,
 ) -> List[Dict[str, Any]]:
     """
-    Esegue la discovery generica dello store.
+    Discovery uniforme per qualunque negozio e qualunque query.
 
-    Il primo passaggio usa la query dell'utente. Per le famiglie presenti
-    nel Family Registry, se alcune varianti autorizzate non sono state
-    trovate, vengono interrogate direttamente le sole varianti mancanti.
+    Ogni store riceve una sola piccola sequenza di query generiche costruita
+    dal Query Analyzer. Non vengono generate query per ogni variante di una
+    famiglia: la discovery raccoglie candidati e la validazione centrale
+    decide successivamente quali candidati appartengono davvero al prodotto.
 
-    IMPORTANTE: il fallback delle varianti viene eseguito in parallelo con
-    un limite locale e con un semaforo globale. In questo modo una famiglia
-    grande (es. Hawas) non costringe uno store a fare decine di richieste
-    sequenziali, bloccando gli altri store fino al timeout globale.
-
-    La discovery resta completamente data-driven: nessun profumo, brand o
-    negozio è codificato nella logica.
+    Questo separa nettamente DISCOVERY da IDENTITY MATCH e impedisce che una
+    famiglia con molte varianti trasformi una ricerca in decine di richieste
+    aggiuntive per singolo negozio.
     """
     module = load_scraper(store)
 
     search_fn = getattr(module, "search", None)
-
     if not callable(search_fn):
         search_fn = getattr(module, "scrape", None)
 
@@ -2021,23 +2013,25 @@ def run_store(
             f"{store}: scraper senza funzione search()/scrape()"
         )
 
-    discovery_query = norm(query)
-
-    attempts = build_search_attempts(
-        store,
-        discovery_query,
-    )
+    discovery_query = str(query or "").strip()
+    attempts = build_search_attempts(store, discovery_query)
 
     output: List[Dict[str, Any]] = []
     seen = set()
-    attempted_queries = set()
 
-    def normalize_products(results: Any) -> List[Dict[str, Any]]:
-        """Normalizza i risultati di una singola chiamata allo scraper."""
-        normalized: List[Dict[str, Any]] = []
+    for attempt in attempts:
+        try:
+            results = search_fn(attempt) or []
+        except Exception as exc:
+            print(
+                f"STORE_DISCOVERY_ERROR: store={store} "
+                f"attempt={attempt!r} error={type(exc).__name__}: {exc}",
+                flush=True,
+            )
+            continue
 
         if not isinstance(results, list):
-            return normalized
+            continue
 
         for item in results:
             if not isinstance(item, dict):
@@ -2045,152 +2039,18 @@ def run_store(
 
             product = dict(item)
             product.setdefault("store", store)
-
             product = resolve_actual_price(product)
 
             image = product_image(product)
             if image:
                 product["image"] = image
 
-            normalized.append(product)
-
-        return normalized
-
-    def call_search(attempt: str) -> List[Dict[str, Any]]:
-        """Esegue una richiesta allo scraper sotto il limite globale."""
-        attempt_key = norm(attempt)
-        if not attempt_key:
-            return []
-
-        # DISCOVERY_SEMAPHORE limita il numero totale di richieste attive
-        # mentre gli 8 store lavorano contemporaneamente. Evita che il
-        # fallback di una famiglia grande saturi CPU/RAM o provochi 429/403.
-        semaphore = globals().get(
-            "DISCOVERY_SEMAPHORE"
-        )
-
-        try:
-            if semaphore is not None:
-                semaphore.acquire()
-
-            try:
-                results = search_fn(attempt) or []
-            finally:
-                if semaphore is not None:
-                    semaphore.release()
-
-        except Exception as exc:
-            print(
-                f"STORE_DISCOVERY_ERROR: store={store} "
-                f"attempt={attempt!r} error={type(exc).__name__}: {exc}",
-                flush=True,
-            )
-            return []
-
-        return normalize_products(results)
-
-    def merge_products(products: List[Dict[str, Any]]) -> None:
-        for product in products:
             key = product_identity_key(product)
-
             if key in seen:
                 continue
 
             seen.add(key)
             output.append(product)
-
-    # --------------------------------------------------------
-    # 1) DISCOVERY NORMALE
-    # --------------------------------------------------------
-    # Restano sequenziali all'interno dello store: sono al massimo poche
-    # query di normalizzazione e non devono creare traffico inutile.
-    for attempt in attempts:
-        attempt_key = norm(attempt)
-        if not attempt_key or attempt_key in attempted_queries:
-            continue
-
-        attempted_queries.add(attempt_key)
-        merge_products(call_search(attempt))
-
-    # --------------------------------------------------------
-    # 2) FALLBACK DELLE VARIANTI MANCANTI
-    # --------------------------------------------------------
-    family = _catalog_family_for_query(discovery_query)
-    family_query_key = catalog_variant_key(discovery_query)
-    is_family_query = bool(
-        family
-        and family_query_key in family.get("normalized_query_aliases", ())
-    )
-
-    if is_family_query:
-        found_variants = set()
-
-        for product in output:
-            resolved = _catalog_match(
-                product,
-                discovery_query,
-            )
-            if isinstance(resolved, dict):
-                variant_name = catalog_norm(
-                    resolved.get("catalog_variant")
-                    or resolved.get("canonical_name")
-                )
-                if variant_name:
-                    found_variants.add(variant_name)
-
-        missing_attempts: List[str] = []
-
-        for variant in family.get("variants", []):
-            canonical_name = str(
-                variant.get("canonical_name") or ""
-            ).strip()
-            canonical_key = catalog_norm(canonical_name)
-
-            if not canonical_name or canonical_key in found_variants:
-                continue
-
-            attempt_key = norm(canonical_name)
-            if not attempt_key or attempt_key in attempted_queries:
-                continue
-
-            attempted_queries.add(attempt_key)
-            missing_attempts.append(canonical_name)
-
-        # Una famiglia ampia non deve essere cercata in serie. Due richieste
-        # per store sono sufficienti per mantenere un carico controllato; il
-        # semaforo globale impedisce comunque che gli 8 store aprano tutti
-        # contemporaneamente troppe richieste.
-        if missing_attempts:
-            max_workers = min(
-                2,
-                len(missing_attempts),
-            )
-
-            with ThreadPoolExecutor(
-                max_workers=max_workers,
-                thread_name_prefix=f"scent_variant_{store}",
-            ) as variant_executor:
-                futures = {
-                    variant_executor.submit(
-                        call_search,
-                        attempt,
-                    ): attempt
-                    for attempt in missing_attempts
-                }
-
-                # I risultati vengono uniti solo nel thread principale dello
-                # store: `seen` e `output` non sono mai modificati dai worker.
-                for future in as_completed(futures):
-                    attempt = futures[future]
-                    try:
-                        merge_products(future.result())
-                    except Exception as exc:
-                        print(
-                            f"STORE_VARIANT_DISCOVERY_ERROR: store={store} "
-                            f"attempt={attempt!r} "
-                            f"error={type(exc).__name__}: {exc}",
-                            flush=True,
-                        )
 
     return output
 
@@ -2666,32 +2526,33 @@ SEARCH_JOBS_LOCK = threading.Lock()
 def _search_job_snapshot(job_id: str) -> Dict[str, Any]:
     with SEARCH_JOBS_LOCK:
         job = SEARCH_JOBS.get(job_id)
-
         if job is None:
             raise HTTPException(
                 status_code=404,
                 detail="Job di ricerca non trovato",
             )
+        query = job["query"]
+        raw_results = list(job["results"])
+        errors = dict(job["errors"])
+        completed = bool(job["completed"])
+        store_status = dict(job.get("store_status", {}))
+        diagnostics = dict(job.get("store_diagnostics", {}))
+        phase = job.get("phase", "discovery")
 
-        results = _prepare_final_results(
-            list(job["results"]),
-            job["query"],
-        )
-
-        return {
-            "job_id": job_id,
-            "query": job["query"],
-            "count": len(results),
-            "results": results,
-            "comparisons": [],
-            "errors": dict(job["errors"]),
-            "completed": job["completed"],
-            "status": (
-                "completed"
-                if job["completed"]
-                else "searching"
-            ),
-        }
+    results = _prepare_final_results(raw_results, query)
+    return {
+        "job_id": job_id,
+        "query": query,
+        "count": len(results),
+        "results": results,
+        "comparisons": [],
+        "errors": errors,
+        "store_status": store_status,
+        "store_diagnostics": diagnostics,
+        "phase": phase,
+        "completed": completed,
+        "status": "completed" if completed else "searching",
+    }
 
 
 def _run_search_job(
@@ -2822,6 +2683,8 @@ def _run_search_job(
 
             if job is not None:
                 job["completed"] = True
+                job["phase"] = "completed"
+                job["elapsed"] = round(time.time() - job.get("started_at", time.time()), 3)
 
 
 @app.get("/search-start")
@@ -2843,6 +2706,8 @@ def search_start(q: str):
             "results": [],
             "errors": {},
             "completed": False,
+            "phase": "discovery",
+            "started_at": time.time(),
         }
 
     thread = threading.Thread(
