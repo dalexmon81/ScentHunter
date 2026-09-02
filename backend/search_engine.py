@@ -1,4 +1,4 @@
-"""
+
 ScentHunter - robust live search orchestration.
 
 This module deliberately sits ABOVE the existing store scrapers.  It does not
@@ -287,13 +287,20 @@ class SearchEngine:
         return 1
 
     def _stable_results(self, results: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
-        """
-        Final deterministic ordering.
+        """Deterministic final ordering, including nested merchant offers."""
 
-        The existing main.py prepares canonical product results.  We only
-        correct the availability priority here so UNKNOWN is not placed after
-        OUT_OF_STOCK.
-        """
+        def availability_rank(item: Dict[str, Any]) -> int:
+            value = str(
+                item.get("availability")
+                or item.get("stock_status")
+                or item.get("stock")
+                or ""
+            ).strip().lower()
+            if value in {"in_stock", "available", "true", "1", "yes", "in stock"}:
+                return 0
+            if value in {"out_of_stock", "oos", "unavailable", "sold_out", "sold out", "false", "0"}:
+                return 2
+            return 1
 
         def price_value(item: Dict[str, Any]) -> float:
             try:
@@ -304,16 +311,76 @@ class SearchEngine:
             except Exception:
                 return float("inf")
 
-        def key(item: Dict[str, Any]) -> tuple:
+        def offer_key(item: Dict[str, Any]) -> tuple:
             return (
-                self._availability_rank(item),
+                availability_rank(item),
                 price_value(item),
                 str(item.get("store") or item.get("shop") or ""),
                 str(item.get("url") or ""),
-                str(item.get("title") or ""),
+                str(item.get("title") or item.get("name") or ""),
             )
 
-        return sorted(results, key=key)
+        output: List[Dict[str, Any]] = []
+
+        for result in results:
+            item = dict(result)
+            nested = item.get("offers")
+
+            if isinstance(nested, list) and nested:
+                offers = [dict(x) for x in nested if isinstance(x, dict)]
+                offers.sort(key=offer_key)
+                item["offers"] = offers
+                item["offer_count"] = len(offers)
+                item["stores"] = list(dict.fromkeys(
+                    str(x.get("store") or x.get("shop") or "").strip()
+                    for x in offers
+                    if str(x.get("store") or x.get("shop") or "").strip()
+                ))
+
+                # The top-level representative must be the best AVAILABLE
+                # offer, not merely the cheapest OOS offer.
+                if offers:
+                    best = offers[0]
+                    for field in ("store", "price", "url", "image", "availability", "available", "size_ml", "concentration", "gender"):
+                        if field in best:
+                            item[field] = best[field]
+
+            output.append(item)
+
+        def result_key(item: Dict[str, Any]) -> tuple:
+            nested = item.get("offers")
+            best = nested[0] if isinstance(nested, list) and nested else item
+            return offer_key(best if isinstance(best, dict) else item)
+
+        return sorted(output, key=result_key)
+
+    def _validate_candidates_only(
+        self,
+        query: str,
+        raw_candidates: List[Dict[str, Any]],
+    ) -> List[Dict[str, Any]]:
+        """Run central validation without grouping/preparing the final UI object."""
+        pre_rank = getattr(self.legacy, "_pre_rank_candidates", None)
+        validate = getattr(self.legacy, "_validate_candidates_parallel", None)
+
+        candidates = list(raw_candidates)
+        if pre_rank is not None:
+            try:
+                candidates = pre_rank(candidates, query)
+            except TypeError:
+                candidates = pre_rank(candidates)
+
+        if validate is not None:
+            try:
+                candidates = validate(candidates, query)
+            except TypeError:
+                candidates = validate(candidates)
+
+        if candidates is None:
+            return []
+        if not isinstance(candidates, list):
+            candidates = list(candidates)
+        return [item for item in candidates if isinstance(item, dict)]
 
     def _validate_and_finalize(
         self,
@@ -368,20 +435,38 @@ class SearchEngine:
     # Public synchronous API
     # ------------------------------------------------------------------
 
-    def search(self, query: str) -> List[Dict[str, Any]]:
+    def search(self, query: str) -> Dict[str, Any]:
         analysis = self.analyze_query(query)
         text = analysis["raw"]
 
         if not text:
-            return []
+            return {
+                "query": "",
+                "count": 0,
+                "results": [],
+                "comparisons": [],
+                "errors": {},
+            }
 
         store_run = self._run_stores(text)
 
         raw_pool: List[Dict[str, Any]] = []
+        errors: Dict[str, str] = {}
         for store in self.stores:
-            raw_pool.extend(store_run["stores"][store].candidates)
+            result = store_run["stores"][store]
+            raw_pool.extend(result.candidates)
+            if result.error:
+                errors[store] = result.error
 
-        return self._validate_and_finalize(text, raw_pool)
+        final_results = self._validate_and_finalize(text, raw_pool)
+
+        return {
+            "query": text,
+            "count": len(final_results),
+            "results": final_results,
+            "comparisons": [],
+            "errors": errors,
+        }
 
     # ------------------------------------------------------------------
     # Async job API used by existing /search-start + /search-status routes
@@ -447,16 +532,22 @@ class SearchEngine:
                     "error": result.error,
                 }
 
-            final_results = self._validate_and_finalize(query, raw_pool)
+            # Validate centrally, but keep the validated candidate objects in
+            # the job. The legacy /search-status snapshot calls
+            # _prepare_final_results() exactly once; storing already-prepared
+            # groups here would make that route prepare the same result twice.
+            validated_candidates = self._validate_candidates_only(query, raw_pool)
 
             # IMPORTANT: this is the first publication of the product list.
             update(
                 {
                     "status": "completed",
-                    "results": final_results,
+                    "results": validated_candidates,
                     "store_status": store_status,
                     "elapsed": round(time.monotonic() - started, 3),
                     "raw_candidate_count": len(raw_pool),
+                    "phase": "completed",
+                    "completed": True,
                 }
             )
 
