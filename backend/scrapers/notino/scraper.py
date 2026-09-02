@@ -31,7 +31,7 @@ PRICE_RE = re.compile(r"(?:€\s*(\d{1,4}[.,]\d{2})|(\d{1,4}[.,]\d{2})\s*€)", 
 SIZE_RE = re.compile(r"\b(\d{1,4}(?:[.,]\d{1,2})?)\s*(ml|cl|dl|l|oz|fl\s*oz|g|kg)\b", re.I)
 RATING_RE = re.compile(r"\b\d[.,]\d\s*\(\s*\d+\s*\)", re.I)
 
-SCRAPER_VERSION = "notino-2.2-2026-09-02-product-url-forms"
+SCRAPER_VERSION = "notino-2.5-2026-09-02-url-bound-card-strict-identity"
 
 HEADERS = {
     "User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 Chrome/124.0 Safari/537.36",
@@ -110,11 +110,49 @@ def _requested_size_ok(text: Any, query: str) -> bool:
 
 
 def _query_matches_name(name: str, query: str) -> bool:
+    """Strictly match product identity and explicit gender qualifiers.
+
+    Generic words such as ``pour``/``femme`` are ignored for the base token
+    identity, but an explicitly requested gender phrase remains mandatory.
+    This prevents 9 PM Homme/Rebel/Night Out/Elixir and 9 AM Dive from being
+    accepted for the distinct ``9 PM Pour Femme`` / ``9 AM Pour Femme`` products.
+    """
     name_tokens = set(_tokens(name))
     required = _query_identity_tokens(query)
     if not required or not name_tokens:
         return False
-    return all(token in name_tokens for token in required)
+    if not all(token in name_tokens for token in required):
+        return False
+
+    q = _norm(query)
+    n = _norm(name)
+    # Preserve the user's requested word order as an additional identity check.
+    # This is what separates ``9 AM Pour Femme`` from the different ``9 AM``
+    # product while still allowing the retailer brand to appear before it.
+    q_sequence = q.split()
+    n_sequence = n.split()
+    if q_sequence:
+        for i in range(0, len(n_sequence) - len(q_sequence) + 1):
+            if n_sequence[i:i + len(q_sequence)] == q_sequence:
+                break
+        else:
+            return False
+    if re.search(r"\b(?:pour|for) femme(?:s)?\b", q):
+        if not re.search(r"\b(?:pour|for) femme(?:s)?\b", n):
+            return False
+    if re.search(r"\b(?:pour|for) homme(?:s)?\b", q):
+        if not re.search(r"\b(?:pour|for) homme(?:s)?\b", n):
+            return False
+    if re.search(r"\b(?:pour|for) (?:woman|women)\b", q):
+        if not re.search(r"\b(?:pour|for) (?:woman|women)\b", n):
+            return False
+    if re.search(r"\b(?:pour|for) (?:man|men)\b", q):
+        if not re.search(r"\b(?:pour|for) (?:man|men)\b", n):
+            return False
+    if re.search(r"\b(?:unisex|unisexe)\b", q):
+        if not re.search(r"\b(?:unisex|unisexe)\b", n):
+            return False
+    return True
 
 
 def _query_matches_context(name: str, context: str, query: str) -> bool:
@@ -434,6 +472,63 @@ def _context_names(raw: str, url_start: int, url_end: int, query: str) -> List[s
     return unique
 
 
+def _url_bound_card(raw: str, url_start: int, url_end: int) -> str:
+    """Return the Markdown card immediately owning this URL.
+
+    Jina exposes Notino cards like:
+      [![Image 13: PRODUCT TITLE](image)PRODUCT TITLE ...](PRODUCT_URL)
+
+    The old parser searched a +/- line window and could therefore attach the
+    title of the previous/next product to the current URL. This function binds
+    the title to the exact Markdown link that owns the URL.
+    """
+    before = raw[max(0, url_start - 5000):url_start]
+    marker = before.rfind("](")
+    if marker < 0:
+        return ""
+    absolute_marker = max(0, url_start - 5000) + marker
+    open_bracket = raw.rfind("[", max(0, absolute_marker - 5000), absolute_marker)
+    if open_bracket < 0:
+        return ""
+    if open_bracket > 0 and raw[open_bracket - 1] == "!":
+        open_bracket -= 1
+    card = raw[open_bracket:absolute_marker + 2]
+    # Keep the card bounded. A genuine Notino card is compact; this prevents
+    # accidentally crossing into a neighbouring product when Markdown is noisy.
+    if len(card) > 2500:
+        card = card[-2500:]
+    return _clean(card)
+
+
+def _bound_card_name(card: str, query: str) -> str:
+    """Extract the product title from one URL-owned Markdown card only."""
+    raw = _clean(card)
+    if not raw:
+        return ""
+
+    # The image alt is the most reliable title because Notino repeats the exact
+    # visible product title there. Prefer it over surrounding promo/price text.
+    alt_matches = re.findall(
+        r"!\[\s*(?:Image\s*\d+\s*:\s*)?([^\]]+)\]\(",
+        raw,
+        flags=re.I,
+    )
+    for value in alt_matches:
+        name = _clean_name(value)
+        if name and not _has_non_perfume_marker(name) and _query_matches_name(name, query):
+            return name
+
+    # Next use the visible text immediately following the image URL and before
+    # the product price/rating. This handles cards where the alt text is generic.
+    text = re.sub(r"!\[[^\]]*\]\([^)]*\)", " ", raw)
+    text = re.sub(r"https?://[^\s]+", " ", text, flags=re.I)
+    text = _clean_name(text)
+    if text and _query_matches_name(text, query) and not _has_non_perfume_marker(text):
+        return text
+
+    return ""
+
+
 def _reader_candidates(text: str, query: str) -> List[Dict[str, Any]]:
     found: Dict[str, Dict[str, Any]] = {}
     raw = html_lib.unescape(text or "").replace("\\/", "/")
@@ -443,30 +538,47 @@ def _reader_candidates(text: str, query: str) -> List[Dict[str, Any]]:
         if not _looks_like_product_url(url):
             continue
 
+        # FIRST: bind this URL to its own Markdown card. Never borrow a title
+        # from a neighbouring product merely because it is close in the Reader text.
+        bound_card = _url_bound_card(raw, match.start(), match.end())
+        bound_name = _bound_card_name(bound_card, query)
+        if bound_name:
+            candidate = _candidate_from_evidence(
+                url,
+                bound_name,
+                bound_card,
+                query,
+                "reader-card-bound",
+            )
+            if candidate:
+                old = found.get(url)
+                if old is None or candidate["score"] > old["score"]:
+                    found[url] = candidate
+                continue
+
+        # SECOND: bounded context fallback for unusual Reader layouts where the
+        # URL is not the closing link of a normal Markdown card. This fallback is
+        # deliberately lower priority and still requires exact query identity.
         names = _context_names(raw, match.start(), match.end(), query)
         if not names:
             continue
-
-        # Prefer a visible title over the URL slug. This is critical on Notino:
-        # legacy product URLs can contain a misleading AM/PM slug while the
-        # visible product title is the authoritative identity.
         for name in names:
             candidate = _candidate_from_evidence(
-                url, name,
+                url,
+                name,
                 raw[max(0, match.start() - 500):min(len(raw), match.end() + 250)],
                 query,
-                "reader-context",
+                "reader-context-fallback",
             )
             if not candidate:
                 continue
             old = found.get(url)
             if old is None or candidate["score"] > old["score"] or len(candidate["name"]) < len(old["name"]):
                 found[url] = candidate
-            # Once we have a clean title for this URL, do not let a later
-            # neighbouring fragment replace it with a noisier title.
             break
 
     return list(found.values())
+
 
 def _html_candidates(html: str, query: str) -> List[Dict[str, Any]]:
     soup = BeautifulSoup(html or "", "html.parser")
@@ -698,6 +810,64 @@ def scrape(query: str) -> List[Dict[str, Any]]:
     return search(query)
 
 
+def _raw_target_inspection(session: requests.Session, query: str) -> Dict[str, Any]:
+    """Surgical diagnostic: inspect RAW Jina Reader around exact Notino product URLs.
+
+    This is diagnostic-only. It does not alter search candidates or production output.
+    It exists to determine exactly where URL -> card -> product-name association is lost.
+    """
+    variants = _reader_query_variants(query)
+    targets = {
+        "9 AM Pour Femme": "16167383",
+        "9 PM Pour Femme": "16167394",
+    }
+    target_id = targets.get(query.casefold())
+    out: Dict[str, Any] = {
+        "query": query,
+        "reader_variants": variants,
+        "target_product_id": target_id,
+        "variants": [],
+    }
+
+    for variant in variants:
+        for search_url in _search_urls(variant):
+            try:
+                raw = _reader_search(session, search_url) or ""
+            except Exception as exc:
+                out["variants"].append({
+                    "variant": variant,
+                    "search_url": search_url,
+                    "error": f"{type(exc).__name__}: {exc}",
+                })
+                continue
+
+            item: Dict[str, Any] = {
+                "variant": variant,
+                "search_url": search_url,
+                "raw_length": len(raw),
+                "target_occurrences": [],
+            }
+            if target_id:
+                needle = f"/p-{target_id}"
+                starts = [m.start() for m in re.finditer(re.escape(needle), raw, flags=re.I)]
+                for start in starts[:5]:
+                    end = min(len(raw), start + len(needle))
+                    bound_card = _url_bound_card(raw, start, end)
+                    bound_name = _bound_card_name(bound_card, query)
+                    context_names = _context_names(raw, start, end, query)
+                    excerpt = raw[max(0, start - 1800):min(len(raw), end + 1800)]
+                    item["target_occurrences"].append({
+                        "offset": start,
+                        "raw_url": raw[start:min(len(raw), start + 220)],
+                        "raw_excerpt": excerpt,
+                        "url_bound_card": bound_card,
+                        "bound_card_name": bound_name,
+                        "context_names": context_names[:10],
+                    })
+            out["variants"].append(item)
+    return out
+
+
 def diagnose(query: str) -> Dict[str, Any]:
     query = _clean(query)
     if not query:
@@ -705,6 +875,7 @@ def diagnose(query: str) -> Dict[str, Any]:
     session = _new_session()
     try:
         candidates, discovery = _discover(query, session)
+        raw_target_inspection = _raw_target_inspection(session, query)
     finally:
         session.close()
     return {
@@ -715,6 +886,7 @@ def diagnose(query: str) -> Dict[str, Any]:
         "candidate_count": len(candidates),
         "candidates": candidates[:30],
         "discovery": discovery,
+        "raw_target_inspection": raw_target_inspection,
     }
 
 
