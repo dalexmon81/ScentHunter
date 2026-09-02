@@ -973,134 +973,57 @@ def _validate_candidate_semantics(
     query: str,
 ) -> bool:
     """Reject obvious semantic mismatches before fuzzy matching."""
-    name = _clean(candidate.get("name", "")).lower()
+    name = _clean(
+        candidate.get("name", "")
+    ).lower()
+
     query_norm = _clean(query).lower()
+
     if not name or not query_norm:
         return False
 
     query_gender = _candidate_gender(query_norm)
     candidate_gender = _candidate_gender(name)
 
-    if query_gender and candidate_gender and query_gender != candidate_gender:
+    if (
+        query_gender
+        and candidate_gender
+        and query_gender != candidate_gender
+    ):
         return False
 
-    variant_pattern = r"\b(elixir|rebel|ice|malibu|black|night|limited)\b"
-    query_variants = set(re.findall(variant_pattern, query_norm, re.I))
-    candidate_variants = set(re.findall(variant_pattern, name, re.I))
+    variant_pattern = (
+        r"\b(elixir|rebel|ice|malibu|black|"
+        r"night|limited)\b"
+    )
 
-    if query_variants and candidate_variants and not query_variants.intersection(candidate_variants):
+    query_variants = set(
+        re.findall(
+            variant_pattern,
+            query_norm,
+            re.I,
+        )
+    )
+
+    candidate_variants = set(
+        re.findall(
+            variant_pattern,
+            name,
+            re.I,
+        )
+    )
+
+    if query_variants:
+        if not query_variants.intersection(
+            candidate_variants
+        ):
+            return False
+    elif candidate_variants:
+        # La query non ha varianti ma il candidate sì → rifiuta
         return False
 
     return True
 
-
-def extract_candidates_from_html(
-    html: str,
-    query: str,
-) -> List[Dict[str, Any]]:
-    soup = BeautifulSoup(
-        html or "",
-        "html.parser",
-    )
-
-    found: Dict[str, Dict[str, Any]] = {}
-
-    for link in soup.find_all(
-        "a",
-        href=True,
-    ):
-        url = (
-            urljoin(
-                BASE_URL,
-                _clean(link.get("href")),
-            )
-            .split("?")[0]
-        )
-
-        if not _looks_like_product_url(url):
-            continue
-
-        candidate = _make_candidate(
-            url,
-            _clean(
-                link.get_text(
-                    " ",
-                    strip=True,
-                )
-            ),
-            _card_text(link),
-            query,
-            "direct-search",
-        )
-
-        if candidate and (
-            candidate["url"] not in found
-            or candidate["score"]
-            > found[candidate["url"]]["score"]
-        ):
-            found[candidate["url"]] = candidate
-
-    # Notino sometimes injects product cards through serialized JSON/JS.
-    # In those responses the product URL is present in the raw HTML but there
-    # is no usable <a> element for BeautifulSoup to inspect. Discover those
-    # canonical /p-<id> URLs too, using nearby raw context as the product-card
-    # identity signal. This is generic and does not hard-code any product.
-    raw_html = html_lib.unescape(html or "").replace("\\/", "/")
-    raw_url_re = re.compile(
-        r"(?:https?:)?//(?:www\.)?notino\.fr/[^\"'<>\s]+/p-\d+(?:/)?"
-        r"|(?:/[^\"'<>\s]+/p-\d+(?:/)?)",
-        re.I,
-    )
-
-    for match in raw_url_re.finditer(raw_html):
-        raw_url = match.group(0)
-        url = urljoin(BASE_URL, raw_url).split("?")[0]
-        if not _looks_like_product_url(url):
-            continue
-
-        context_name = _context_product_name(
-            raw_html,
-            match.start(),
-            match.end(),
-            query,
-        )
-        slug_name = _name_from_product_url(url)
-        candidate_name = context_name or slug_name
-        if not candidate_name:
-            continue
-
-        context_card = context_name or candidate_name
-        candidate = _make_candidate(
-            url,
-            candidate_name,
-            context_card,
-            query,
-            "direct-search-raw",
-        )
-        if candidate:
-            candidate["product_id"] = _extract_product_id(url)
-            candidate["sku"] = _extract_sku_from_context(
-                raw_html,
-                match.start(),
-            )
-            candidate["source"] = (
-                "context" if context_name else "slug"
-            )
-
-        if candidate and (
-            candidate["url"] not in found
-            or candidate["score"] > found[candidate["url"]]["score"]
-        ):
-            found[candidate["url"]] = candidate
-
-    return sorted(
-        found.values(),
-        key=lambda item: (
-            not item["contains_all_query_tokens"],
-            -item["score"],
-            item["url"],
-        ),
-    )
 
 
 def _reader_name_from_context(
