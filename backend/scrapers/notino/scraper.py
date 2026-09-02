@@ -31,7 +31,7 @@ PRICE_RE = re.compile(r"(?:€\s*(\d{1,4}[.,]\d{2})|(\d{1,4}[.,]\d{2})\s*€)", 
 SIZE_RE = re.compile(r"\b(\d{1,4}(?:[.,]\d{1,2})?)\s*(ml|cl|dl|l|oz|fl\s*oz|g|kg)\b", re.I)
 RATING_RE = re.compile(r"\b\d[.,]\d\s*\(\s*\d+\s*\)", re.I)
 
-SCRAPER_VERSION = "notino-2.0-2026-09-02"
+SCRAPER_VERSION = "notino-2.2-2026-09-02-product-url-forms"
 
 HEADERS = {
     "User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 Chrome/124.0 Safari/537.36",
@@ -130,7 +130,29 @@ def _has_non_perfume_marker(value: Any) -> bool:
 
 
 def _looks_like_product_url(url: str) -> bool:
-    return bool(PRODUCT_RE.search(url or "")) and "notino.fr" in (url or "").lower()
+    """Recognise both Notino URL generations.
+
+    Some product pages use /p-123456/, while others use a clean product slug
+    without a numeric ID. The slug is never used as primary product identity.
+    """
+    value = _normalise_url(url)
+    if "notino.fr" not in value.lower():
+        return False
+    if PRODUCT_RE.search(value):
+        return True
+    try:
+        parts = [p for p in unquote(urlparse(value).path).split("/") if p]
+    except Exception:
+        return False
+    if len(parts) < 2:
+        return False
+    slug = parts[-1].lower()
+    product_markers = (
+        "eau-de-parfum", "eau-de-toilette", "extrait-de-parfum",
+        "parfum", "pour-femme", "pour-homme", "for-women", "for-men",
+        "edp", "edt", "extrait",
+    )
+    return any(marker in slug for marker in product_markers)
 
 
 def _normalise_url(url: str) -> str:
@@ -349,36 +371,102 @@ def _candidate_from_evidence(url: str, name: str, card: str, query: str, source:
     }
 
 
+def _reader_query_variants(query: str) -> List[str]:
+    """Small, bounded set of Notino discovery formulations."""
+    query = _clean(query)
+    if not query:
+        return []
+    identity = " ".join(_query_identity_tokens(query))
+    variants: List[str] = []
+    for value in (query, identity, " ".join(reversed(_query_identity_tokens(query)))):
+        value = _clean(value)
+        if value and value.casefold() not in {v.casefold() for v in variants}:
+            variants.append(value)
+    return variants[:3]
+
+
+def _context_names(raw: str, url_start: int, url_end: int, query: str) -> List[str]:
+    """Find clean product titles in the small Reader block around one URL."""
+    lines = raw.splitlines()
+    # Map character position to line index without scanning the whole document repeatedly.
+    pos = 0
+    line_index = 0
+    for i, line in enumerate(lines):
+        next_pos = pos + len(line) + 1
+        if pos <= url_start < next_pos:
+            line_index = i
+            break
+        pos = next_pos
+
+    candidates: List[str] = []
+    # Reader Markdown cards are normally compact; keep the window deliberately tight.
+    for i in range(max(0, line_index - 7), min(len(lines), line_index + 4)):
+        line = lines[i].strip()
+        if not line:
+            continue
+        cleaned = _extract_name_from_line(line, query)
+        if cleaned:
+            candidates.append(cleaned)
+        # Also test the whole line after removing the candidate URL. This catches
+        # Notino cards where title and URL are rendered on different Markdown lines.
+        line_without_url = PRODUCT_URL_RE.sub(" ", line)
+        line_without_url = re.sub(r"https?://[^\s]+", " ", line_without_url, flags=re.I)
+        cleaned = _extract_name_from_line(line_without_url, query)
+        if cleaned:
+            candidates.append(cleaned)
+
+    # Last resort: inspect a bounded character window and split on Markdown/card boundaries.
+    window = raw[max(0, url_start - 700):min(len(raw), url_end + 350)]
+    window = PRODUCT_URL_RE.sub(" ", window)
+    for fragment in re.split(r"\n+|\]\s*\[|\|", window):
+        cleaned = _clean_name(fragment)
+        if not cleaned or len(cleaned) > 180:
+            continue
+        if _has_non_perfume_marker(cleaned):
+            continue
+        if _query_matches_name(cleaned, query):
+            candidates.append(cleaned)
+
+    # Shortest matching title is generally the clean product title, while longer
+    # strings tend to contain promo/price/neighbouring-card material.
+    unique = list(dict.fromkeys(candidates))
+    unique.sort(key=lambda x: (len(x), x.casefold()))
+    return unique
+
+
 def _reader_candidates(text: str, query: str) -> List[Dict[str, Any]]:
     found: Dict[str, Dict[str, Any]] = {}
     raw = html_lib.unescape(text or "").replace("\\/", "/")
 
-    # Parse product URLs independently of Markdown structure. Notino URLs can have a misleading slug,
-    # so the slug is never used as the primary identity.
     for match in PRODUCT_URL_RE.finditer(raw):
         url = _normalise_url(match.group(0))
         if not _looks_like_product_url(url):
             continue
-        context = _focused_context(raw, match.start(), match.end())
-        name = _extract_name_from_line(context, query)
-        # Never borrow a title from a neighbouring product/card. A raw URL without
-        # its own visible title is inconclusive and is discarded rather than risking
-        # a false product match.
-        if not name:
+
+        names = _context_names(raw, match.start(), match.end(), query)
+        if not names:
             continue
-        candidate = _candidate_from_evidence(url, name, context, query, "reader-url")
-        if candidate:
+
+        # Prefer a visible title over the URL slug. This is critical on Notino:
+        # legacy product URLs can contain a misleading AM/PM slug while the
+        # visible product title is the authoritative identity.
+        for name in names:
+            candidate = _candidate_from_evidence(
+                url, name,
+                raw[max(0, match.start() - 500):min(len(raw), match.end() + 250)],
+                query,
+                "reader-context",
+            )
+            if not candidate:
+                continue
             old = found.get(url)
             if old is None or candidate["score"] > old["score"] or len(candidate["name"]) < len(old["name"]):
                 found[url] = candidate
-
-    # Absolute Notino product URLs are the authoritative discovery signal.
-    # We intentionally do not scan arbitrary relative paths here: in Jina Markdown
-    # an absolute URL also contains a relative /brand/.../p-ID path, which would
-    # otherwise create duplicate candidates and can attach the wrong card context.
+            # Once we have a clean title for this URL, do not let a later
+            # neighbouring fragment replace it with a noisier title.
+            break
 
     return list(found.values())
-
 
 def _html_candidates(html: str, query: str) -> List[Dict[str, Any]]:
     soup = BeautifulSoup(html or "", "html.parser")
@@ -438,18 +526,21 @@ def _discover(query: str, session: requests.Session) -> Tuple[List[Dict[str, Any
             status = getattr(getattr(exc, "response", None), "status_code", None)
             diagnostics["direct"].append({"url": url, "status": status, "error": type(exc).__name__})
 
-    # 2) Jina Reader, one request at a time to avoid creating a Notino/Jina burst.
-    for url in _search_urls(query):
-        text = _reader_search(session, url)
-        if text is None:
-            diagnostics["reader"].append({"url": url, "status": None, "candidates": 0})
-            continue
-        found = _reader_candidates(text, query)
-        diagnostics["reader"].append({"url": url, "status": 200, "candidates": len(found), "text_length": len(text)})
-        for c in found:
-            old = candidates.get(c["url"])
-            if old is None or c["score"] > old["score"] or len(c["name"]) < len(old["name"]):
-                candidates[c["url"]] = c
+    # 2) Jina Reader. Use a small bounded set of query formulations, sequentially,
+    # so discovery can recover when Notino's search engine ranks the exact phrase poorly.
+    diagnostics["reader_queries"] = _reader_query_variants(query)
+    for discovery_query in _reader_query_variants(query):
+        for url in _search_urls(discovery_query):
+            text = _reader_search(session, url)
+            if text is None:
+                diagnostics["reader"].append({"url": url, "query": discovery_query, "status": None, "candidates": 0})
+                continue
+            found = _reader_candidates(text, query)
+            diagnostics["reader"].append({"url": url, "query": discovery_query, "status": 200, "candidates": len(found), "text_length": len(text)})
+            for c in found:
+                old = candidates.get(c["url"])
+                if old is None or c["score"] > old["score"] or len(c["name"]) < len(old["name"]):
+                    candidates[c["url"]] = c
 
     # 3) Sitemap is an emergency discovery source only. It never overrides a visible search-card name.
     if not candidates:
