@@ -1,4 +1,5 @@
-[build]
+Root Directory:
+/backend
 
-[deploy]
-startCommand = "uvicorn main:app --host 0.0.0.0 --port $PORT"
+Start Command:
+uvicorn main:app --host 0.0.0.0 --port $PORT
