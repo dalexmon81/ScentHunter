@@ -25,7 +25,7 @@ READER_MAX_WORKERS = 8
 PRODUCT_MAX_WORKERS = 8
 DISCOVERY_RETRIES = 2
 
-SCRAPER_VERSION = "notino-FR-generic-discovery-2026-09-02-v22-resilient"
+SCRAPER_VERSION = "notino-FR-generic-discovery-2026-09-02-v25-reader-context"
 
 HEADERS = {
     "User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 "
@@ -1412,6 +1412,22 @@ def _reader_candidates(
 
         return best[2] if best else ""
 
+    def strict_query_tokens(value: Any) -> List[str]:
+        text = SIZE_RE.sub(" ", _clean(value).lower())
+        return [
+            token
+            for token in re.findall(r"[a-z0-9]+", text)
+            if len(token) > 1 or token.isdigit()
+        ]
+
+    def strict_context_match(context: str, requested: str) -> bool:
+        context_tokens = set(strict_query_tokens(context))
+        requested_tokens = strict_query_tokens(requested)
+        return bool(requested_tokens) and all(
+            token in context_tokens
+            for token in requested_tokens
+        )
+
     for pattern in (
         PRODUCT_URL_RE,
         READER_ABSOLUTE_PRODUCT_RE,
@@ -1476,18 +1492,42 @@ def _reader_candidates(
             ):
                 continue
 
-            if not _fuzzy_query_match(
-                name,
-                query,
-            )[0]:
-                continue
-
             line_index = 0
 
             for candidate_index, candidate_line in enumerate(lines):
                 if match.group(0) in candidate_line:
                     line_index = candidate_index
                     break
+
+            # Jina can return a product URL whose slug is not the visible
+            # product name (for example Notino currently exposes a 9 PM
+            # product through a slug containing "9-am"). In that case the
+            # slug alone is not authoritative. Use the nearby Reader text as
+            # the identity signal, while requiring every query token,
+            # including numeric tokens such as "9", to be present.
+            context_lines = lines[
+                max(0, line_index - 8):
+                min(len(lines), line_index + 9)
+            ]
+            nearby_context = " ".join(context_lines)
+            strict_context_ok = strict_context_match(
+                nearby_context,
+                query,
+            )
+
+            if not _fuzzy_query_match(
+                name,
+                query,
+            )[0] and not strict_context_ok:
+                continue
+
+            if strict_context_ok:
+                context_name = _reader_name_from_context(
+                    "\n".join(context_lines),
+                    query,
+                )
+                if context_name:
+                    name = context_name
 
             card_context = nearby_price_context(
                 line_index,
@@ -1497,10 +1537,44 @@ def _reader_candidates(
             candidate = _make_candidate(
                 url,
                 name,
-                card_context or name,
+                card_context or nearby_context or name,
                 query,
                 "reader-url",
             )
+
+            # _make_candidate intentionally uses the URL/name matcher. If
+            # the URL slug is misleading but the surrounding Reader context
+            # proves the exact query identity, keep the discovered URL. The
+            # product page is still fetched and validated later, so this is
+            # discovery-only and does not weaken final product validation.
+            if (
+                candidate is None
+                and strict_context_ok
+            ):
+                candidate = {
+                    "url": url,
+                    "anchor_text": name or query,
+                    "card_text": card_context or nearby_context or name or query,
+                    "name": name or query,
+                    "score": 20,
+                    "token_hits": {
+                        token: True
+                        for token in _query_tokens(query)
+                    },
+                    "contains_all_query_tokens": True,
+                    "requested_size": bool(_requested_sizes(query)),
+                    "size_match_in_search_context": (
+                        not _requested_sizes(query)
+                        or any(
+                            _size_matches(
+                                card_context or nearby_context,
+                                size,
+                            )
+                            for size in _requested_sizes(query)
+                        )
+                    ),
+                    "source": "reader-url-context",
+                }
 
             if candidate and (
                 url not in found
