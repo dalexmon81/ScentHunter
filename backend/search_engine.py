@@ -26,8 +26,10 @@ from dataclasses import dataclass, field
 from typing import Any, Callable, Dict, List, Optional
 
 
-DEFAULT_STORE_TIMEOUT = 40.0
-DEFAULT_GLOBAL_TIMEOUT = 45.0
+DEFAULT_STORE_TIMEOUT = 65.0
+DEFAULT_GLOBAL_TIMEOUT = 85.0
+STORE_RETRIES = 2
+RETRY_DELAYS = (1.25, 3.0)
 
 
 @dataclass
@@ -147,7 +149,16 @@ class SearchEngine:
         }
 
     def _discovery_queries(self, query: str) -> List[str]:
-        """Broaden only explicit small/sample searches; validation stays authoritative."""
+        """
+        Build a small, deterministic discovery set.
+
+        For products/families already known by the Family Registry, the
+        retailer is queried with its real brand as well as the user's text.
+        This is important: a query such as ``Hawas`` is ambiguous to several
+        merchant search engines, while ``Rasasi Hawas`` is not. The central
+        validator remains authoritative, so broader discovery cannot publish
+        false positives.
+        """
         flags = self._query_flags(query)
         raw = flags["raw"]
         base = flags["base_query"]
@@ -161,12 +172,42 @@ class SearchEngine:
                 seen.add(key)
                 queries.append(value)
 
-        add(raw)
+        # Prefer a catalog-qualified query whenever the Family Registry knows
+        # the family. It dramatically improves recall on merchant search
+        # engines that rank by their own fuzzy interpretation of the query.
+        catalog_family = None
+        try:
+            catalog_family = self.legacy._catalog_family_for_query(raw)
+        except Exception:
+            catalog_family = None
+
+        if isinstance(catalog_family, dict):
+            brand = str(catalog_family.get("brand") or "").strip()
+            variant_name = ""
+            try:
+                requested = self.legacy._catalog_requested_variant(raw, catalog_family)
+            except Exception:
+                requested = None
+            if isinstance(requested, dict):
+                variant_name = str(requested.get("canonical_name") or "").strip()
+
+            if brand and variant_name:
+                add(f"{brand} {variant_name}")
+            elif brand and base:
+                add(f"{brand} {base}")
+
+            # Keep the user's exact query as a second discovery channel. For
+            # broad family searches this is what finds alternate variants.
+            add(raw)
+        else:
+            add(raw)
+
         if flags["requests_small"] and base:
             add(base)
             if flags["requests_sample"]:
                 add(f"{base} sample")
                 add(f"{base} 10 ml")
+
         return queries
 
     def _extract_candidate_size_ml(self, item: Dict[str, Any]) -> Optional[float]:
@@ -250,33 +291,63 @@ class SearchEngine:
             candidates: List[Dict[str, Any]] = []
             seen_urls = set()
 
-            # Explicit small/sample requests get broader discovery attempts,
-            # but they still share the same independent store timeout.
-            for discovery_query in self._discovery_queries(query):
-                raw = runner(store, discovery_query)
+            discovery_queries = self._discovery_queries(query)
 
-                if raw is None:
+            def collect_from_result(raw_result: Any) -> int:
+                if raw_result is None:
                     batch: List[Dict[str, Any]] = []
-                elif isinstance(raw, list):
-                    batch = raw
+                elif isinstance(raw_result, list):
+                    batch = raw_result
                 else:
                     try:
-                        batch = list(raw)
+                        batch = list(raw_result)
                     except Exception:
                         batch = []
 
+                added = 0
                 for item in batch:
                     if not isinstance(item, dict):
                         continue
-                    # The same store/page can be returned by multiple discovery
-                    # queries. Suppress only exact same-store URL duplicates;
-                    # distinct products/variants remain untouched.
                     url = str(item.get("url") or "").strip()
                     if url:
                         if url in seen_urls:
                             continue
                         seen_urls.add(url)
                     candidates.append(item)
+                    added += 1
+                return added
+
+            # First pass: every store gets its full discovery strategy.
+            for discovery_query in discovery_queries:
+                try:
+                    collect_from_result(runner(store, discovery_query))
+                except Exception as exc:
+                    print(
+                        f"STORE_SEARCH_ATTEMPT_ERROR: store={store} "
+                        f"query={discovery_query!r} error={type(exc).__name__}: {exc}",
+                        flush=True,
+                    )
+
+            # A zero-result store is not treated as a definitive miss. The
+            # underlying merchant may have returned 429/5xx, transient HTML,
+            # or an empty search response. Retry the complete store strategy
+            # with backoff. Do not retry stores that already returned data: that
+            # would create unnecessary load and increase rate-limit risk.
+            retry_number = 0
+            while not candidates and retry_number < STORE_RETRIES:
+                delay = RETRY_DELAYS[min(retry_number, len(RETRY_DELAYS) - 1)]
+                time.sleep(delay)
+                retry_number += 1
+
+                for discovery_query in discovery_queries:
+                    try:
+                        collect_from_result(runner(store, discovery_query))
+                    except Exception as exc:
+                        print(
+                            f"STORE_RETRY_ERROR: store={store} retry={retry_number} "
+                            f"query={discovery_query!r} error={type(exc).__name__}: {exc}",
+                            flush=True,
+                        )
 
             # No identity/availability/ranking is done here.
             clean_candidates = [
