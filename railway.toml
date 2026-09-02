@@ -1,0 +1,6 @@
+[build]
+builder = "NIXPACKFILE"
+startCommand = "cd backend && python main.py"
+
+[deploy]
+startCommand = "cd backend && python main.py"
