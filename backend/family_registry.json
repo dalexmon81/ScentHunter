@@ -454,6 +454,38 @@
           ]
         }
       ]
+    },
+    {
+      "family_id": "afnan_9_series",
+      "brand": "Afnan",
+      "query_aliases": [
+        "9 AM Pour Femme",
+        "Afnan 9 AM Pour Femme",
+        "9 PM Pour Femme",
+        "Afnan 9 PM Pour Femme"
+      ],
+      "products": [
+        {
+          "canonical_name": "9 AM Pour Femme",
+          "aliases": [
+            "9 AM Pour Femme",
+            "Afnan 9 AM Pour Femme"
+          ],
+          "formats_ml": [
+            100
+          ]
+        },
+        {
+          "canonical_name": "9 PM Pour Femme",
+          "aliases": [
+            "9 PM Pour Femme",
+            "Afnan 9 PM Pour Femme"
+          ],
+          "formats_ml": [
+            100
+          ]
+        }
+      ]
     }
   ]
 }
