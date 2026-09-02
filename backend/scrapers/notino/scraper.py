@@ -915,6 +915,44 @@ def extract_candidates_from_html(
         ):
             found[candidate["url"]] = candidate
 
+    # Notino sometimes injects product cards through serialized JSON/JS.
+    # In those responses the product URL is present in the raw HTML but there
+    # is no usable <a> element for BeautifulSoup to inspect. Discover those
+    # canonical /p-<id> URLs too, using nearby raw context as the product-card
+    # identity signal. This is generic and does not hard-code any product.
+    raw_html = html_lib.unescape(html or "").replace("\\/", "/")
+    raw_url_re = re.compile(
+        r"(?:https?:)?//(?:www\.)?notino\.fr/[^\"'<>\s]+/p-\d+(?:/)?"
+        r"|(?:/[^\"'<>\s]+/p-\d+(?:/)?)",
+        re.I,
+    )
+
+    for match in raw_url_re.finditer(raw_html):
+        raw_url = match.group(0)
+        url = urljoin(BASE_URL, raw_url).split("?")[0]
+        if not _looks_like_product_url(url):
+            continue
+
+        start = max(0, match.start() - 1800)
+        end = min(len(raw_html), match.end() + 1800)
+        context = re.sub(r"<[^>]+>", " ", raw_html[start:end])
+        context = html_lib.unescape(context)
+        context = re.sub(r"\s+", " ", context).strip()
+
+        candidate = _make_candidate(
+            url,
+            context,
+            context,
+            query,
+            "direct-search-raw",
+        )
+
+        if candidate and (
+            candidate["url"] not in found
+            or candidate["score"] > found[candidate["url"]]["score"]
+        ):
+            found[candidate["url"]] = candidate
+
     return sorted(
         found.values(),
         key=lambda item: (
