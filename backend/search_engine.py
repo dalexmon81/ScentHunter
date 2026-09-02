@@ -336,19 +336,19 @@ class SearchEngine:
 
         if pre_rank is not None:
             try:
-                candidates = pre_rank(query, candidates)
+                candidates = pre_rank(candidates, query)
             except TypeError:
                 candidates = pre_rank(candidates)
 
         if validate is not None:
             try:
-                candidates = validate(query, candidates)
+                candidates = validate(candidates, query)
             except TypeError:
                 candidates = validate(candidates)
 
         if prepare is not None:
             try:
-                final = prepare(query, candidates)
+                final = prepare(candidates, query)
             except TypeError:
                 final = prepare(candidates)
         else:
