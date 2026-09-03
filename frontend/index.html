@@ -1560,8 +1560,12 @@ function shGroupData(data){
       if(master){
         g.brand=master.brand||g.brand;
         g.name=master.name||g.name;
+        g.master_formats_ml=Array.isArray(master.formats_ml)
+          ? master.formats_ml.map(Number).filter(Number.isFinite).sort((a,b)=>a-b)
+          : [];
       }
     }
+    if(!Array.isArray(g.master_formats_ml))g.master_formats_ml=[];
 
     g.display_name=g.brand?g.brand+" - "+g.name:g.name;
   });
@@ -1791,7 +1795,7 @@ function toggleWishButton(el){
   });
 }
 
-function openProduct(i){
+async function openProduct(i){
   const g=currentProductGroups[i];
   if(!g)return;
 
@@ -1804,9 +1808,7 @@ function openProduct(i){
 
   statusBox.textContent="";
 
-  // REGOLA GENERALE:
-  // un solo formato = niente terza scheda.
-  // La seconda scheda contiene direttamente formato + negozi + link.
+  // Un solo formato: manteniamo il comportamento approvato.
   if(sizes.length===1){
     const s=sizes[0];
     const offers=s.offers;
@@ -1834,7 +1836,6 @@ function openProduct(i){
       <div class="format-compare-label">CONFRONTA I PREZZI</div>
       <div class="format-compare-value">${offers.length} ${offers.length===1?"negozio":"negozi"}</div>
     </div>
-    <div class="format-compare-arrow" aria-hidden="true"></div>
   </div>
 </div>
       ${offers.map((o,n)=>{
@@ -1878,8 +1879,30 @@ function openProduct(i){
     return;
   }
 
-  // Più formati: seconda scheda = scelta dei formati.
-  // Il passaggio successivo mostra i negozi del formato selezionato.
+  // PIU' FORMATI:
+  // non mostriamo più un prezzo unico o il primo formato trovato.
+  // Usiamo i formati reali del Master Catalog quando disponibili; altrimenti
+  // usiamo esclusivamente i formati numerici realmente emersi dalla ricerca.
+  const realFormats=Array.isArray(g.master_formats_ml)&&g.master_formats_ml.length
+    ? [...new Set(g.master_formats_ml.map(Number).filter(Number.isFinite))].sort((a,b)=>a-b)
+    : sizes.map(s=>Number(s.size)).filter(Number.isFinite).sort((a,b)=>a-b);
+
+  if(!realFormats.length){
+    resultsBox.innerHTML=`<article class="comparison">
+      <button class="detail-back" onclick="clearOpenProduct();showProducts(currentProductGroups)">← Torna ai profumi</button>
+      <div class="comparison-head">
+        <div class="result-image">${img?`<img src="${esc(img)}" alt="${esc(displayPerfumeName(g.name,g.brand))}" onerror="this.outerHTML='🧴'">`:"🧴"}</div>
+        <div class="result-main">
+          <div class="store">${esc(g.brand||"")}</div>
+          <div class="name">${esc(displayPerfumeName(g.name,g.brand))}</div>
+        </div>
+      </div>
+      <div class="wishlist-empty">Formati non disponibili per il confronto.</div>
+    </article>`;
+    document.getElementById("searchOutput").scrollIntoView({behavior:"smooth",block:"start"});
+    return;
+  }
+
   resultsBox.innerHTML=`<article class="comparison">
     <button class="detail-back" onclick="clearOpenProduct();showProducts(currentProductGroups)">← Torna ai profumi</button>
     <div class="comparison-head">
@@ -1889,23 +1912,116 @@ function openProduct(i){
         <div class="name">${esc(displayPerfumeName(g.name,g.brand))}</div>
       </div>
     </div>
-    <div class="bestlabel">SCEGLI IL FORMATO</div>
-    ${sizes.map(s=>{
-      const best=s.best;
-      const shopCount=s.offers.length;
-      return `<div class="product-choice format-choice" onclick='openSize(${i},${JSON.stringify(s.size)})'>
-        <div class="format-icon">🧴</div>
-        <div class="product-choice-main">
-          <div class="name">${esc(formatLabel(s.size))}</div>
-          ${best?`<div class="bestprice">da ${esc(shPrice(best))}</div>`:`<div class="bestprice">OUT OF STOCK</div>`}
-          <div class="offer-meta">${shopCount} ${shopCount===1?"negozio":"negozi"}</div>
-        </div>
-        <div class="arrow">›</div>
-      </div>`;
-    }).join("")}
+    <div class="bestlabel">CONFRONTA I FORMATI</div>
+    <div class="offer-meta" style="margin-bottom:12px">Cerco il prezzo migliore per ogni formato nei negozi disponibili…</div>
+    <div id="formatCompareLoading">
+      ${realFormats.map(size=>`
+        <div class="product-choice" style="cursor:default">
+          <div class="format-icon">🧴</div>
+          <div class="product-choice-main">
+            <div class="name">${esc(formatLabel(String(size)))}</div>
+            <div class="offer-meta">Ricerca prezzi…</div>
+          </div>
+        </div>`).join("")}
+    </div>
   </article>`;
 
   document.getElementById("searchOutput").scrollIntoView({behavior:"smooth",block:"start"});
+
+  try{
+    const productQuery=[g.brand||"",g.name||""].filter(Boolean).join(" ").trim();
+    const response=await fetchJSONWithTimeout(
+      backend()+"/compare-formats?q="+encodeURIComponent(productQuery)+"&formats="+encodeURIComponent(realFormats.join(",")),
+      120000
+    );
+
+    // L'utente potrebbe aver cambiato pagina mentre arrivavano i prezzi.
+    if(currentOpenProductKey!==productGroupKey(g))return;
+
+    const comparisons=Array.isArray(response?.comparisons)?response.comparisons:[];
+    const html=comparisons.map(group=>{
+      const size=Number(group?.size_ml)||0;
+      const offers=Array.isArray(group?.offers)?group.offers:[];
+      const best=group?.best||offers.find(o=>!isOfferOutOfStock(o))||null;
+
+      return `<section class="comparison" style="margin-top:12px">
+        <div class="offer-line">
+          <div>
+            <div class="store">${esc(formatLabel(String(size)))}</div>
+            <div class="name" style="font-size:16px">Miglior prezzo</div>
+          </div>
+          ${best&&!isOfferOutOfStock(best)
+            ?`<div class="bestprice">${esc(shPrice(best))}</div>`
+            :`<div class="bestprice">OUT OF STOCK</div>`}
+        </div>
+
+        ${offers.length
+          ?offers.map((o,n)=>{
+            const isOut=isOfferOutOfStock(o);
+            const item={
+              brand:g.brand||o.brand||"",
+              name:g.name||o.name||"",
+              price:isOut?"":shPrice(o),
+              shop:o.store||"",
+              url:o.url||"",
+              pic:img||"🧴",
+              outOfStock:isOut
+            };
+            const on=getWishlist().some(x=>sameWishOffer(x,item));
+            return `<div class="offer ${!isOut&&best&&String(o.store||"").toLowerCase()===String(best.store||"").toLowerCase()?"best":""}">
+              <div class="offer-line">
+                <div>
+                  <div class="offer-store">${!isOut&&best&&String(o.store||"").toLowerCase()===String(best.store||"").toLowerCase()?"🥇 ":""}${esc(displayStoreName(o.store||"Negozio"))}</div>
+                  ${!isOut&&best&&String(o.store||"").toLowerCase()===String(best.store||"").toLowerCase()?'<div class="offer-meta">MIGLIOR PREZZO PER QUESTO FORMATO</div>':""}
+                  ${isOut?'<div class="offer-outstock">OUT OF STOCK</div>':""}
+                </div>
+                <div style="display:flex;align-items:center;gap:8px">
+                  ${!isOut?`<span class="offer-price">${esc(shPrice(o))}</span>`:""}
+                  <button class="offer-heart ${on?"saved":""}"
+                    data-brand="${esc(item.brand)}"
+                    data-name="${esc(item.name)}"
+                    data-price="${esc(item.price)}"
+                    data-shop="${esc(item.shop)}"
+                    data-url="${esc(item.url)}"
+                    data-pic="${esc(item.pic)}"
+                    >${on?"♥":"♡"}</button>
+                </div>
+              </div>
+              ${(!isOut&&o.url)?`<a class="offer-link" href="${esc(o.url)}" target="_blank" rel="noopener noreferrer">Vai al negozio →</a>`:""}
+            </div>`;
+          }).join("")
+          :`<div class="offer-meta" style="padding:12px 0">Nessun prezzo verificato per questo formato.</div>`}
+      </section>`;
+    }).join("");
+
+    const back=`<button class="detail-back" onclick="clearOpenProduct();showProducts(currentProductGroups)">← Torna ai profumi</button>`;
+    resultsBox.innerHTML=`<article class="comparison">
+      ${back}
+      <div class="comparison-head">
+        <div class="result-image">${img?`<img src="${esc(img)}" alt="${esc(displayPerfumeName(g.name,g.brand))}" onerror="this.outerHTML='🧴'">`:"🧴"}</div>
+        <div class="result-main">
+          <div class="store">${esc(g.brand||"")}</div>
+          <div class="name">${esc(displayPerfumeName(g.name,g.brand))}</div>
+        </div>
+      </div>
+      <div class="bestlabel">CONFRONTA I FORMATI</div>
+      <div class="offer-meta" style="margin-bottom:12px">Prezzo migliore per formato.</div>
+      ${html||`<div class="wishlist-empty">Nessun prezzo verificato.</div>`}
+    </article>`;
+  }catch(e){
+    console.error("Confronto formati",e);
+    resultsBox.innerHTML=`<article class="comparison">
+      <button class="detail-back" onclick="clearOpenProduct();showProducts(currentProductGroups)">← Torna ai profumi</button>
+      <div class="comparison-head">
+        <div class="result-image">${img?`<img src="${esc(img)}" alt="${esc(displayPerfumeName(g.name,g.brand))}" onerror="this.outerHTML='🧴'">`:"🧴"}</div>
+        <div class="result-main">
+          <div class="store">${esc(g.brand||"")}</div>
+          <div class="name">${esc(displayPerfumeName(g.name,g.brand))}</div>
+        </div>
+      </div>
+      <div class="wishlist-empty">Impossibile completare il confronto dei formati.</div>
+    </article>`;
+  }
 }
 
 function openSize(gi,sizeKey,fromFormats=true){
