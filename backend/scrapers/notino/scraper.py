@@ -23,6 +23,7 @@ PRODUCTURLRE = re.compile(
     r"https?://(?:www\.)?notino\.(?:fr|be|de|com)/[^\s)\]>]+",
     re.I,
 )
+PRODUCT_URL_RE = PRODUCTURLRE
 
 RELATIVE_PRODUCT_RE = re.compile(
     r"/(?:[a-z0-9][^\s<>\]\[\)\"']*/)+p-\d+(?:/[^\s<>\]\[\)\"']*)?",
