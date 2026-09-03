@@ -533,12 +533,22 @@ def _reader_candidates(text: str, query: str) -> List[Dict[str, Any]]:
         if not lookslikeproducturl(url):
             continue
 
-        start = max(0, match.start() - 1400)
-        end = min(len(raw), match.end() + 1800)
+                # Use only the local text between this product URL and the next product URL.
+        # This prevents names/prices from neighbouring products being mixed together.
+        next_match = None
+        for other in matches:
+            if other.start() > match.end():
+                next_match = other
+                break
+
+        start = match.start()
+        end = next_match.start() if next_match else min(len(raw), match.end() + 1200)
+
         window = raw[start:end]
         lines = window.splitlines()
 
         candidate_names: List[str] = []
+
         for line in lines:
             name = _extract_name_from_line(line, query)
             if name:
@@ -549,7 +559,9 @@ def _reader_candidates(text: str, query: str) -> List[Dict[str, Any]]:
             target = normaliseurl(md.group(2))
             if target.rstrip("/") != url.rstrip("/"):
                 continue
+
             name = _clean_name(md.group(1))
+
             if name and _query_matches_name(name, query):
                 candidate_names.append(name)
 
@@ -557,15 +569,33 @@ def _reader_candidates(text: str, query: str) -> List[Dict[str, Any]]:
             # The product slug is a legitimate fallback identity when the page
             # exposes only a raw URL; price/stock are still taken from the local window.
             slug_name = _clean_name(_slug_name(url))
+
             if _query_matches_name(slug_name, query):
                 candidate_names.append(slug_name)
 
-        for name in sorted(set(candidate_names), key=lambda item: (len(item), item.casefold()))[:4]:
-            candidate = _candidate_from_evidence(url, name, window, query, "reader")
+        for name in sorted(
+            set(candidate_names),
+            key=lambda item: (len(item), item.casefold())
+        )[:4]:
+
+            candidate = _candidate_from_evidence(
+                url,
+                name,
+                window,
+                query,
+                "reader",
+            )
+
             if not candidate:
                 continue
+
             old = found.get(url)
-            if old is None or candidate["score"] > old["score"] or len(candidate["name"]) < len(old["name"]):
+
+            if (
+                old is None
+                or candidate["score"] > old["score"]
+                or len(candidate["name"]) < len(old["name"])
+            ):
                 found[url] = candidate
                 break
 
