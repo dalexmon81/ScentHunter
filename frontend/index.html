@@ -1843,9 +1843,37 @@ async function openProduct(i){
   // Non lasciamo che il fatto che la ricerca abbia trovato un solo formato
   // faccia saltare il confronto: un negozio può esporre solo la variante
   // predefinita nella ricerca, mentre la scheda prodotto ne contiene 30/50/100.
-  const masterFormats=Array.isArray(g.master_formats_ml)
+  let resolvedMasterFormats=Array.isArray(g.master_formats_ml)
     ? [...new Set(g.master_formats_ml.map(Number).filter(Number.isFinite))].sort((a,b)=>a-b)
     : [];
+
+  // Fallback: se il gruppo non ha ricevuto catalog_id durante il merge,
+  // proviamo comunque a risolvere il prodotto dal nome canonico/alias.
+  // È importante soprattutto per referenze con 2 formati: non dobbiamo
+  // ricadere nella vecchia scheda singola solo perché uno scraper ha
+  // comunicato una sola misura.
+  if(!resolvedMasterFormats.length){
+    const rb=norm(g.brand||"");
+    const rn=norm(g.name||"");
+    let hit=null;
+    for(const m of MASTER_CATALOG){
+      if(rb && norm(m.brand||"")!==rb)continue;
+      const names=[m.name,...(Array.isArray(m.aliases)?m.aliases:[])].map(norm).filter(Boolean);
+      if(names.some(n=>n===rn || rn===n || rn.includes(n) || n.includes(rn))){
+        if(hit && hit.id!==m.id){hit=null;break;}
+        hit=m;
+      }
+    }
+    if(hit && Array.isArray(hit.formats_ml)){
+      resolvedMasterFormats=[...new Set(hit.formats_ml.map(Number).filter(Number.isFinite))].sort((a,b)=>a-b);
+      if(!g.catalog_id)g.catalog_id=hit.id;
+      g.master_formats_ml=resolvedMasterFormats;
+      g.brand=hit.brand||g.brand;
+      g.name=hit.name||g.name;
+    }
+  }
+
+  const masterFormats=resolvedMasterFormats;
 
   // Solo quando il catalogo non conosce più formati e la ricerca ne ha
   // davvero uno soltanto manteniamo il vecchio comportamento diretto.
