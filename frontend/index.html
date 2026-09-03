@@ -1982,7 +1982,7 @@ async function getSearchStores(term){
 async function searchStoresProgressive(term,onPartial){
  const merged={query:term,comparisons:[],results:[],errors:{}};
  const timeoutMs=15000;
- const concurrency=2;
+ const concurrency=4;
  const stores=await getSearchStores(term);
  const totalStores=stores.length;
 
