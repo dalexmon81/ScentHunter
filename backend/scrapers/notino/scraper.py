@@ -547,7 +547,7 @@ def _reader_candidates(text: str, query: str) -> List[Dict[str, Any]]:
         window = raw[start:end]
         lines = window.splitlines()
 
-              candidate_names: List[str] = []
+               candidate_names: List[str] = []
 
         # Jina can place the product URL immediately before the next
         # product card. Therefore arbitrary text after the URL cannot
