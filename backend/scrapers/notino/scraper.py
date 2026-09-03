@@ -23,7 +23,7 @@ READER_TIMEOUT = 30
 RETRY_COUNT = 2
 MAX_CANDIDATES = 48
 ENRICH_WORKERS = 6
-SCRAPER_VERSION = "notino-3.3-2026-09-03-balanced-markdown-card-parser"
+SCRAPER_VERSION = "notino-3.5-2026-09-03-title-authoritative-all-paths"
 
 PRODUCT_RE = re.compile(r"/p-(\d+)(?:/|$)", re.I)
 PRODUCT_URL_RE = re.compile(
@@ -661,17 +661,58 @@ def _html_candidates(html: str, query: str) -> List[Dict[str, Any]]:
                 found[url] = candidate
 
     # 3) Raw product URLs embedded in HTML/JS even when no <a> exists.
+    # Prefer a reliable local title over the URL slug. Notino can expose a
+    # product ID under a misleading slug (notably p-16167394).
     raw_urls = set(PRODUCT_URL_RE.findall(html or ""))
     raw_urls.update(RELATIVE_PRODUCT_RE.findall(html or ""))
     for raw_url in raw_urls:
         url = normaliseurl(raw_url)
         if not lookslikeproducturl(url):
             continue
+
         slug = _clean_name(_slug_name(url))
-        if not slug or not _query_matches_name(slug, query):
-            continue
-        around = _url_context(html or "", raw_url, radius=1800)
-        candidate = _candidate_from_evidence(url, slug, around, query, "embedded-url")
+        around = _url_context(html or "", raw_url, radius=900)
+        around_no_urls = PRODUCT_URL_RE.sub(" ", around)
+        around_no_urls = RELATIVE_PRODUCT_RE.sub(" ", around_no_urls)
+
+        local_names: List[str] = []
+        for value in re.findall(
+            r'!\[\s*(?:Image\s*\d+\s*:\s*)?([^\]]+)\]\(',
+            around_no_urls,
+            flags=re.I,
+        ):
+            cleaned = _clean_name(value)
+            if cleaned and not _has_non_perfume_marker(cleaned):
+                local_names.append(cleaned)
+
+        for fragment in re.split(r'\n+|\]\s*\[|\|', around_no_urls):
+            cleaned = _clean_name(fragment)
+            if not cleaned or len(cleaned) > 180 or _has_non_perfume_marker(cleaned):
+                continue
+            local_names.append(cleaned)
+
+        local_matches = [
+            name for name in dict.fromkeys(local_names)
+            if _query_matches_name(name, query)
+        ]
+
+        if local_matches:
+            name = max(
+                local_matches,
+                key=lambda value: _query_score(
+                    value, query, "", _extract_size(value)
+                ),
+            )
+            candidate = _candidate_from_evidence(
+                url, name, around_no_urls, query, "embedded-url-context"
+            )
+        else:
+            if not slug or not _query_matches_name(slug, query):
+                continue
+            candidate = _candidate_from_evidence(
+                url, slug, slug, query, "embedded-url-slug"
+            )
+
         if candidate:
             old = found.get(url)
             if old is None or candidate["score"] > old["score"]:
@@ -797,7 +838,12 @@ def _reader_markdown_product_links(raw: str) -> List[Tuple[str, str]]:
             label = _reader_anchor_text(label_raw)
             if label:
                 pairs.append((label, url))
-        i = end
+            i = end
+        else:
+            # An outer navigation link may contain a nested product link.
+            # Resume one character after its opening '[' so the nested link
+            # gets its own atomic parse instead of being skipped.
+            i += 1
     return pairs
 
 
@@ -826,7 +872,11 @@ def _reader_markdown_product_cards(raw: str) -> List[Tuple[str, str, str]]:
             label = _reader_anchor_text(label_raw)
             if label:
                 cards.append((label, url, label_raw))
-        i = end
+            i = end
+        else:
+            # Keep looking inside non-product outer links for nested product
+            # anchors, while preserving atomic boundaries for real cards.
+            i += 1
     return cards
 
 
@@ -870,20 +920,67 @@ def _reader_candidates(text: str, query: str) -> List[Dict[str, Any]]:
             if old is None or candidate["score"] > old["score"]:
                 found[url] = candidate
 
-    # 3) Fallback only for product URLs that were not paired with an atomic
-    # Markdown card. Here the slug is the only identity signal available.
+    # 3) Fallback for product URLs that are not paired with an atomic
+    # Markdown card.
+    #
+    # IMPORTANT: the URL slug is NEVER a hard veto here. Notino has real
+    # product pages whose slug and title disagree (for example p-16167394
+    # uses an "9-am" slug while the actual title is "Afnan 9 PM Pour Femme").
+    # Recover a bounded local title first; use the slug only as a last resort.
     matches = list(PRODUCT_URL_RE.finditer(raw)) + list(RELATIVE_PRODUCT_RE.finditer(raw))
     matches.sort(key=lambda match: match.start())
+
     for match in matches:
         url = normaliseurl(match.group(0))
         if not lookslikeproducturl(url) or url.rstrip("/") in paired_urls:
             continue
+
         slug = _clean_name(_slug_name(url))
-        if not slug or not _query_matches_name(slug, query):
-            continue
-        candidate = _candidate_from_evidence(
-            url, slug, slug, query, "reader-url"
-        )
+        context = _url_context(raw, match.group(0), radius=900)
+        context_without_urls = PRODUCT_URL_RE.sub(" ", context)
+        context_without_urls = RELATIVE_PRODUCT_RE.sub(" ", context_without_urls)
+
+        local_names: List[str] = []
+
+        for value in re.findall(
+            r"!\[\s*(?:Image\s*\d+\s*:\s*)?([^\]]+)\]\(",
+            context_without_urls,
+            flags=re.I,
+        ):
+            cleaned = _clean_name(value)
+            if cleaned and not _has_non_perfume_marker(cleaned):
+                local_names.append(cleaned)
+
+        for fragment in re.split(r"\n+|\]\s*\[|\|", context_without_urls):
+            cleaned = _clean_name(fragment)
+            if not cleaned or len(cleaned) > 180 or _has_non_perfume_marker(cleaned):
+                continue
+            local_names.append(cleaned)
+
+        local_matches = [
+            name for name in dict.fromkeys(local_names)
+            if _query_matches_name(name, query)
+        ]
+
+        if local_matches:
+            name = max(
+                local_matches,
+                key=lambda value: _query_score(
+                    value, query, "", _extract_size(value)
+                ),
+            )
+            candidate = _candidate_from_evidence(
+                url, name, context_without_urls, query, "reader-url-context"
+            )
+        else:
+            # Slug is only a discovery fallback. It cannot override a title
+            # recovered from the local product context.
+            if not slug or not _query_matches_name(slug, query):
+                continue
+            candidate = _candidate_from_evidence(
+                url, slug, slug, query, "reader-url-slug"
+            )
+
         if candidate:
             old = found.get(url)
             if old is None or candidate["score"] > old["score"]:
