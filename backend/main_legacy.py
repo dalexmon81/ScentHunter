@@ -2377,15 +2377,12 @@ def run_store(
         try:
             results = search_fn(attempt) or []
         except Exception as exc:
-    print(
-        f"STORE_DISCOVERY_ERROR: store={store} "
-        f"attempt={attempt!r} "
-        f"error={type(exc).__name__}: {exc}",
-        flush=True,
-    )
-    print(traceback.format_exc(), flush=True)
-    continue
-
+            print(
+                f"STORE_DISCOVERY_ERROR: store={store} "
+                f"attempt={attempt!r} error={type(exc).__name__}: {exc}",
+                flush=True,
+            )
+            continue
 
         if not isinstance(results, list):
             continue
@@ -3741,4 +3738,3 @@ def debug_notino_result(q: str):
         }
     except Exception as exc:
         raise HTTPException(status_code=500, detail=repr(exc)) from exc
-
