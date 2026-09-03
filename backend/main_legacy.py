@@ -2488,7 +2488,7 @@ def _pre_rank_candidates(
     )
 
 
-def validatecandidate(
+def _validate_candidate(
     product: Dict[str, Any],
     query: str,
 ) -> Optional[Dict[str, Any]]:
