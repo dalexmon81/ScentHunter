@@ -230,6 +230,7 @@ def lookslikeproducturl(url: str) -> bool:
 
     return any(marker in slug for marker in product_markers)
 
+_looks_like_product_url = lookslikeproducturl
 
 
 def normaliseurl(url: str) -> str:
