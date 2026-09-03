@@ -838,6 +838,28 @@ function shGroupData(data){
 {"id":"SH-0071","brand":"Versace","name":"Eros pour Femme Eau de Toilette","concentration":"Eau de Toilette","formats_ml":[30,50,100],"aliases":["Versace Eros pour Femme Eau De Toilette","Eros pour Femme Eau De Toilette","Eros pour Femme EDT","Versace Eros Pour Femme EDT"],"status":"verificato","notes":"Verificato su Parfum-Zentrum e sito ufficiale Versace; Eau de Toilette, 30/50/100 ml.","verification_sources":["https://www.parfum-zentrum.de/versace-eros-pour-femme-eau-de-toilette-100-ml-woman_z695946/","https://www.versace.com/us/en/women/accessories/fragrances-body-care/eros-pour-femme/eros-pour-femme-edt-100-ml-gold/R750132-R100MLS_RNUL.html"]},
 {"id":"SH-0072","brand":"Versace","name":"Eros pour Femme Eau de Parfum","concentration":"Eau de Parfum","formats_ml":[100],"aliases":["Versace Eros pour Femme Eau De Parfum","Eros pour Femme Eau De Parfum","Eros pour Femme EDP","Versace Eros Pour Femme EDP"],"status":"verificato","notes":"Referenza distinta dalla Eau de Toilette; mantenuta separata per evitare l'unione di prezzi e formati.","verification_sources":["https://www.parfum-zentrum.de/versace_v208/"]},
 {"id":"SH-0046","brand":"Versace","name":"Eros Flame","concentration":"Eau de Parfum","formats_ml":[50,100,200],"aliases":["Versace Eros Flame","Eros Flame EDP","Eros Flame Eau de Parfum"],"status":"verificato","notes":"Verificato sul sito ufficiale Versace; Eau de Parfum, 50/100/200 ml.","verification_sources":["https://www.versace.com/de/de/herren/accessoires/dufte/eros-flame/"]},{"id":"SH-0042","brand":"Yves Saint Laurent","name":"Y Eau de Parfum","concentration":"Eau de Parfum","formats_ml":[40,60,100,200],"aliases":["Y Eau de Parfum","Y EDP","Yves Saint Laurent Y Eau de Parfum","Y EDP 100 ML"],"status":"verificato","notes":"Verificato con fonte prodotto/brand; nome canonico, concentrazione, formato e alias aggiornati.","verification_sources":["https://www.yslbeauty.com/int/fragrance/fragrance-for-him/y/y--eau-de-parfum/3614272050341.html"]},{"id":"SH-0073","brand":"Jean Paul Gaultier","name":"Le Beau","concentration":"Eau de Toilette","formats_ml":[75,125],"aliases":["Jean Paul Gaultier Le Beau","Le Beau Eau de Toilette","Le Beau EDT"],"status":"verificato","notes":"Referenza Le Beau originale; formati 75/125 ml."},{"id":"SH-0074","brand":"Jean Paul Gaultier","name":"Le Beau Le Parfum Intense","concentration":"Eau de Parfum Intense","formats_ml":[75,125],"aliases":["Jean Paul Gaultier Le Beau Le Parfum","Le Beau Le Parfum","Jean Paul Gaultier Le Beau Le Parfum Intense","Le Beau Le Parfum Eau de Parfum Intense","Le Beau Le Parfum Intense Eau de Parfum"],"status":"verificato","notes":"Stessa referenza commerciale: Le Beau Le Parfum / Le Beau Le Parfum Intense. Formati reali 75/125 ml."},{"id":"SH-0075","brand":"Jean Paul Gaultier","name":"Le Beau Paradise Garden","concentration":"Eau de Parfum","formats_ml":[75,125],"aliases":["Jean Paul Gaultier Le Beau Paradise Garden","Le Beau Paradise Garden Eau de Parfum","Le Beau Paradise Garden EDP"],"status":"verificato","notes":"Referenza Le Beau Paradise Garden; formati 75/125 ml."},{"id":"SH-0076","brand":"Jean Paul Gaultier","name":"Le Beau Narcisse","concentration":"Eau de Parfum","formats_ml":[75,125],"aliases":["Jean Paul Gaultier Le Beau Narcisse","Le Beau Narcisse Eau de Parfum","Le Beau Narcisse EDP"],"status":"verificato","notes":"Referenza Le Beau Narcisse; formati 75/125 ml."},{"id":"SH-0077","brand":"Jean Paul Gaultier","name":"Le Beau Flower Edition","concentration":"Eau de Parfum","formats_ml":[125],"aliases":["Jean Paul Gaultier Le Beau Flower Edition","Le Beau Flower Edition Eau de Parfum","Le Beau Flower Edition EDP"],"status":"verificato","notes":"Referenza Le Beau Flower Edition; formato 125 ml."}];
+  // REFERENZA MASTER — Miu Miu Fleur De Lait.
+  // Sabina può restituirla come "Miumiu Fleur De Lait" o con il suffisso
+  // commerciale "Pour Femme". Le tre grafie indicano la stessa referenza.
+  if(!MASTER_CATALOG.some(p=>p.id==="SH-0078")){
+    MASTER_CATALOG.push({
+      id:"SH-0078",
+      brand:"Miu Miu",
+      name:"Fleur De Lait",
+      concentration:"Eau de Parfum",
+      formats_ml:[30,50,100],
+      aliases:[
+        "Miu Miu Fleur De Lait",
+        "Miumiu Fleur De Lait",
+        "Miu Miu Fleur De Lait Pour Femme",
+        "Miumiu Fleur De Lait Pour Femme",
+        "Fleur De Lait Pour Femme"
+      ],
+      status:"verificato",
+      notes:"Referenza Miu Miu Fleur De Lait; Sabina può usare la grafia compatta Miumiu e il suffisso Pour Femme."
+    });
+  }
+
   const MASTER_CATALOG_INDEX = new Map();
 
   MASTER_CATALOG.forEach(p=>{
@@ -1176,8 +1198,17 @@ function shGroupData(data){
     // Primo tentativo: il dato originale dello scraper. Questo permette
     // al catalogo di conservare nomi canonici che la pulizia commerciale
     // potrebbe altrimenti accorciare (es. "Hawas for Him").
-    const rawBrand=cleanBrandText(o.brand);
-    const rawName=cleanBrandText(o.name);
+    let rawBrand=cleanBrandText(o.brand);
+    let rawName=cleanBrandText(o.name);
+
+    // Sabina usa spesso "Miumiu" tutto attaccato. Non deve creare una
+    // seconda identità rispetto a "Miu Miu". La normalizzazione è limitata
+    // a questo brand per non alterare altri nomi commerciali.
+    if(/\bmiumiu\b/i.test(rawBrand) || /\bmiumiu\b/i.test(rawName)){
+      rawBrand=rawBrand.replace(/\bmiumiu/gi,"Miu Miu");
+      rawName=rawName.replace(/\bmiumiu/gi,"Miu Miu");
+    }
+
     const hint=concentrationHint(o);
 
     // Se il nome originale contiene una concentrazione esplicita,
@@ -1808,8 +1839,17 @@ async function openProduct(i){
 
   statusBox.textContent="";
 
-  // Un solo formato: manteniamo il comportamento approvato.
-  if(sizes.length===1){
+  // Il Master Catalog è la fonte di verità sui formati reali.
+  // Non lasciamo che il fatto che la ricerca abbia trovato un solo formato
+  // faccia saltare il confronto: un negozio può esporre solo la variante
+  // predefinita nella ricerca, mentre la scheda prodotto ne contiene 30/50/100.
+  const masterFormats=Array.isArray(g.master_formats_ml)
+    ? [...new Set(g.master_formats_ml.map(Number).filter(Number.isFinite))].sort((a,b)=>a-b)
+    : [];
+
+  // Solo quando il catalogo non conosce più formati e la ricerca ne ha
+  // davvero uno soltanto manteniamo il vecchio comportamento diretto.
+  if(masterFormats.length<=1 && sizes.length===1){
     const s=sizes[0];
     const offers=s.offers;
 
@@ -1883,9 +1923,9 @@ async function openProduct(i){
   // non mostriamo più un prezzo unico o il primo formato trovato.
   // Usiamo i formati reali del Master Catalog quando disponibili; altrimenti
   // usiamo esclusivamente i formati numerici realmente emersi dalla ricerca.
-  const realFormats=Array.isArray(g.master_formats_ml)&&g.master_formats_ml.length
-    ? [...new Set(g.master_formats_ml.map(Number).filter(Number.isFinite))].sort((a,b)=>a-b)
-    : sizes.map(s=>Number(s.size)).filter(Number.isFinite).sort((a,b)=>a-b);
+  const realFormats=masterFormats.length
+    ? masterFormats
+    : [...new Set(sizes.map(s=>Number(s.size)).filter(Number.isFinite))].sort((a,b)=>a-b);
 
   if(!realFormats.length){
     resultsBox.innerHTML=`<article class="comparison">
