@@ -20,7 +20,7 @@ SITEMAP_URL = BASE_URL + "/sitemap.xml"
 TIMEOUT = 15
 READER_TIMEOUT = 25
 RETRY_COUNT = 2
-SCRAPER_VERSION = "notino-3.3-2026-09-03-card-boundary-fix"
+SCRAPER_VERSION = "notino-3.4-2026-09-03-generic-query-fix"
 
 PRODUCT_RE = re.compile(r"/p-(\d+)(?:/|$)", re.I)
 PRODUCT_URL_RE = re.compile(
@@ -155,19 +155,10 @@ def _query_matches_name(name: str, query: str) -> bool:
     if not all(token in name_tokens for token in required):
         return False
 
-    # The explicit query sequence must exist, after alpha/numeric normalization.
-    q_sequence = query_norm.split()
-    n_sequence = name_norm.split()
-    if q_sequence and not any(
-        n_sequence[i:i + len(q_sequence)] == q_sequence
-        for i in range(0, len(n_sequence) - len(q_sequence) + 1)
-    ):
-        # Brand may be omitted from the retailer anchor, so fall back to the
-        # identity-token check only when the explicit query's brand is absent.
-        q_without_brand = [t for t in q_sequence if t not in {"pour", "femme", "homme", "for", "women", "woman", "men", "man"}]
-        if not q_without_brand or not all(token in name_tokens for token in q_without_brand):
-            return False
-
+    # The retailer title can reorder the meaningful identity words, e.g.
+    # "Rue Broca Hooked Intensely" for the query "Hooked Intensely Rue Broca".
+    # The token check above is therefore authoritative for identity; the
+    # gender checks below prevent cross-gender matches.
     q = query_norm
     n = name_norm
     gender_checks = (
@@ -177,8 +168,14 @@ def _query_matches_name(name: str, query: str) -> bool:
         (r"\b(?:pour|for) (?:man|men)\b", r"\b(?:pour|for) (?:man|men)\b"),
         (r"\b(?:unisex|unisexe)\b", r"\b(?:unisex|unisexe)\b"),
     )
-    for query_pattern, name_pattern in gender_checks:
-        if re.search(query_pattern, q) and not re.search(name_pattern, n):
+    # A retailer title may omit the gender qualifier (e.g. "Afnan 9 PM"),
+    # so its absence must not reject an otherwise valid candidate. Reject only
+    # an explicit conflicting gender in the candidate title.
+    if re.search(r"\b(?:pour|for) hommes?\b|\b(?:man|men)\b", q):
+        if re.search(r"\b(?:pour|for) femmes?\b|\b(?:woman|women)\b", n):
+            return False
+    if re.search(r"\b(?:pour|for) femmes?\b|\b(?:woman|women)\b", q):
+        if re.search(r"\b(?:pour|for) hommes?\b|\b(?:man|men)\b", n):
             return False
 
     return True
@@ -200,7 +197,6 @@ def normaliseurl(url: str) -> str:
 
 
 _normalise_url = normaliseurl
-BASEURL = BASE_URL
 
 
 def lookslikeproducturl(url: str) -> bool:
@@ -534,41 +530,41 @@ def _reader_candidates(text: str, query: str) -> List[Dict[str, Any]]:
         if not lookslikeproducturl(url):
             continue
 
-        # Jina Reader places the product card BEFORE its product URL.
-        # The URL therefore terminates the card rather than starting it.
-        # Associate each URL with the text since the previous product URL.
-        previous_match = None
-        for other in reversed(matches):
-            if other.end() <= match.start():
-                previous_match = other
+        # Use only the local text between this product URL and the next product URL.
+        # This prevents names/prices from neighbouring products being mixed together.
+        next_match = None
+        for other in matches:
+            if other.start() > match.end():
+                next_match = other
                 break
 
-        start = previous_match.end() if previous_match else max(0, match.start() - 1800)
-        end = match.end()
+        start = match.start()
+        end = next_match.start() if next_match else min(len(raw), match.end() + 1200)
+
         window = raw[start:end]
         lines = window.splitlines()
 
         candidate_names: List[str] = []
 
-        # First use the card text immediately preceding this URL.
-        for line in lines:
-            name = _extract_name_from_line(line, query)
-            if name:
-                candidate_names.append(name)
+        # Jina can place the product URL immediately before the next
+        # product card. Therefore arbitrary text after the URL cannot
+        # be considered the title of that URL.
 
-        # Also inspect markdown links whose target is exactly this product URL.
+        # Look for an explicit markdown link whose target is this exact URL.
         exact_url = url.rstrip("/")
 
         for md in re.finditer(
             r"\[([^\]]{3,220})\]\((https?://[^)]+|/[^)]+)\)",
-            window,
+            raw,
             flags=re.I,
         ):
             target = normaliseurl(md.group(2)).rstrip("/")
+
             if target != exact_url:
                 continue
 
             name = _clean_name(md.group(1))
+
             if (
                 name
                 and not _has_non_perfume_marker(name)
@@ -576,31 +572,37 @@ def _reader_candidates(text: str, query: str) -> List[Dict[str, Any]]:
             ):
                 candidate_names.append(name)
 
-        # Finally inspect image alt text in the same card window.
-        for image_match in re.finditer(
-            r"!\[\s*(?:Image\s*\d+\s*:\s*)?([^\]]{3,220})\]",
-            window,
-            flags=re.I,
-        ):
-            name = _clean_name(
-                re.sub(
-                    r"^Image(?:\s*\d+)?\s*:\s*",
-                    "",
-                    image_match.group(1),
-                    flags=re.I,
+        # Look for the image alt text belonging to this product URL.
+        url_position = match.start()
+
+        local_before = raw[max(0, url_position - 500):url_position]
+        local_after = raw[match.end():min(len(raw), match.end() + 500)]
+
+        for context in (local_before, local_after):
+            for image_match in re.finditer(
+                r"!\[\s*(?:Image\s*\d+\s*:\s*)?([^\]]{3,220})\]",
+                context,
+                flags=re.I,
+            ):
+                name = _clean_name(
+                    re.sub(
+                        r"^Image(?:\s*\d+)?\s*:\s*",
+                        "",
+                        image_match.group(1),
+                        flags=re.I,
+                    )
                 )
-            )
-            if (
-                name
-                and not _has_non_perfume_marker(name)
-                and _query_matches_name(name, query)
-            ):
-                candidate_names.append(name)
 
-        # Never manufacture a product name from text belonging to another card.
+                if (
+                    name
+                    and not _has_non_perfume_marker(name)
+                    and _query_matches_name(name, query)
+                ):
+                    candidate_names.append(name)
+
+        # Never manufacture a product name from unrelated text.
         if not candidate_names:
             continue
-
         for name in sorted(
             set(candidate_names),
             key=lambda item: (len(item), item.casefold())
@@ -642,8 +644,9 @@ def _reader_product(session: requests.Session, candidate: Dict[str, Any], query:
     for line in [_clean(re.sub(r"^#{1,6}\s*", "", item)) for item in text.splitlines() if _clean(item)][:220]:
         if len(line) > 220 or PRICE_RE.search(line):
             continue
-        if _query_matches_name(line, query) and not _has_non_perfume_marker(line):
-            name = _clean_name(line)
+        clean_line = re.sub(r"^Title\s*:\s*", "", line, flags=re.I)
+        if _query_matches_name(clean_line, query) and not _has_non_perfume_marker(clean_line):
+            name = _clean_name(clean_line)
             break
     if not name:
         name = _clean_name(candidate.get("name") or "")
