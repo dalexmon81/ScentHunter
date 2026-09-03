@@ -2275,70 +2275,6 @@ def load_scraper(store: str):
         f"scrapers.{store}.scraper"
     )
 
-def normalize_store_product(
-    product: Dict[str, Any],
-    store: str,
-) -> Dict[str, Any]:
-    item = dict(product)
-    normalized_store = str(store or item.get("store") or "").strip().lower()
-
-    item["store"] = normalized_store
-
-    if normalized_store != "notino":
-        return item
-
-    source = item.get("source")
-    if not isinstance(source, dict):
-        source = {}
-
-    source.update({
-        "store": "notino",
-        "sourcestore": "notino",
-        "sourcename": "Notino",
-    })
-
-    item["source"] = source
-
-    name = str(
-        item.get("name")
-        or item.get("title")
-        or item.get("productname")
-        or source.get("name")
-        or ""
-    ).strip()
-
-    if name:
-        item.setdefault("canonicalname", name)
-        item.setdefault("catalogvariant", name)
-        item.setdefault("name", name)
-
-    if item.get("sizeml") is None:
-        if item.get("size") is not None:
-            item["sizeml"] = item["size"]
-        else:
-            item["sizeml"] = productsizeml(item)
-
-    if item.get("size") is None and item.get("sizeml") is not None:
-        item["size"] = item["sizeml"]
-
-    concentration = str(
-        item.get("concentration")
-        or item.get("canonicalconcentration")
-        or productconcentration(item)
-        or ""
-    ).strip()
-
-    if concentration:
-        item["concentration"] = concentration
-        item.setdefault("canonicalconcentration", concentration)
-
-    if item.get("available") is not None:
-        item["availability"] = (
-            "in stock" if item["available"] else "out of stock"
-        )
-
-    return item
-
 
 def run_store(
     store: str,
@@ -2391,9 +2327,9 @@ def run_store(
             if not isinstance(item, dict):
                 continue
 
-            product = normalize_store_product(item, store)
-            product = resolveactualprice(product)
-
+            product = dict(item)
+            product.setdefault("store", store)
+            product = resolve_actual_price(product)
 
             image = product_image(product)
             if image:
@@ -2488,52 +2424,96 @@ def _pre_rank_candidates(
     )
 
 
-def validatecandidate(
+def _validate_candidate(
     product: Dict[str, Any],
     query: str,
 ) -> Optional[Dict[str, Any]]:
+    if not matches(product, query):
+        return None
+
+    # Per una famiglia governata dal Family Registry, il Registry è
+    # AUTORITATIVO. Se non riesce a risolvere il candidato per questa query,
+    # il candidato è un falso positivo e NON può ricadere nel matcher
+    # generico. Questo evita che prodotti semanticamente simili (es. Hawa,
+    # Le Monde est Beau, sample/service, altre varianti) rientrino dopo il
+    # controllo catalogo tramite ProductMatcher.
     try:
-        matched = matchesproduct(product, query)
+        catalog_family = _catalog_family_for_query(query)
+    except Exception:
+        catalog_family = None
+
+    if catalog_family is not None:
+        try:
+            resolved_identity = _catalog_match(product, query)
+        except Exception as exc:
+            print(
+                "FAMILY_REGISTRY_RUNTIME_ERROR:",
+                f"{type(exc).__name__}: {exc}",
+                flush=True,
+            )
+            return None
+
+        if not isinstance(resolved_identity, dict):
+            return None
+    else:
+        resolved_identity = None
+
+    # Il matcher centrale viene usato solo dopo il controllo autorevole della
+    # famiglia. Per le famiglie catalogate arricchisce il risultato, ma non
+    # può mai riaprire una corrispondenza rifiutata dal Registry.
+    try:
+        # ProductMatcher may enrich/mutate nested dictionaries on the object
+        # it receives. Never let that mutate the original store candidate: the
+        # candidate must retain its own store/source/offer provenance all the
+        # way through final grouping. A shallow copy is not sufficient because
+        # source, identity, attributes and raw_data are nested dictionaries.
+        matcher_input = copy.deepcopy(product)
+        matched_product = _PRODUCT_MATCHER.match(matcher_input)
     except Exception as exc:
         print(
-            "[CENTRAL VALIDATION ERROR]",
-            {
-                "store": product.get("store"),
-                "query": query,
-                "name": product.get("name"),
-                "brand": product.get("brand"),
-                "canonicalname": product.get("canonicalname"),
-                "catalogvariant": product.get("catalogvariant"),
-                "sizeml": product.get("sizeml"),
-                "concentration": product.get("concentration"),
-                "url": product.get("url"),
-                "error": repr(exc),
-            },
+            "PRODUCT_MATCHER_RUNTIME_ERROR:",
+            f"{type(exc).__name__}: {exc}",
             flush=True,
         )
-        return None
+        matched_product = None
 
-    if not matched:
-        print(
-            "[CENTRAL VALIDATION REJECT]",
-            {
-                "store": product.get("store"),
-                "query": query,
-                "name": product.get("name"),
-                "brand": product.get("brand"),
-                "canonicalname": product.get("canonicalname"),
-                "catalogvariant": product.get("catalogvariant"),
-                "sizeml": product.get("sizeml"),
-                "concentration": product.get("concentration"),
-                "gender": product.get("gender"),
-                "url": product.get("url"),
-            },
-            flush=True,
+    if matched_product is None:
+        matched_product = dict(product)
+
+    if isinstance(resolved_identity, dict):
+        # L'identità del Family Registry deve essere applicata all'oggetto
+        # candidato che prosegue nel percorso verso matched_candidates.
+        # Non deve restare confinata a un risultato diagnostico o al matcher.
+        product = dict(product)
+        product.update(resolved_identity)
+
+        # Il matcher centrale può aver recuperato metadati autorevoli che il
+        # Family Registry non deve duplicare, in particolare concentrazione e
+        # genere. Li usiamo soltanto come arricchimento del risultato già
+        # validato dalla famiglia: non influenzano la decisione di appartenenza.
+        if isinstance(matched_product, dict):
+            if not product_concentration(product):
+                matcher_concentration = str(
+                    matched_product.get("concentration")
+                    or matched_product.get("canonical_concentration")
+                    or ""
+                ).strip()
+                if matcher_concentration:
+                    product["concentration"] = matcher_concentration
+                    product["canonical_concentration"] = matcher_concentration
+
+            if not product.get("gender") and matched_product.get("gender"):
+                product["gender"] = matched_product.get("gender")
+
+        product["match_method"] = (
+            product.get("match_method")
+            or "family_registry_alias"
         )
-        return None
+        product["name"] = product["canonical_name"]
 
-    return product
+        return product
 
+    return matched_product
 
 
 def _validate_candidates_parallel(
@@ -3699,42 +3679,3 @@ def diagnose_notino_search(q: str):
             "error": f"{type(exc).__name__}: {exc}",
             "traceback": traceback.format_exc(),
         }
-
-@app.get("/debug-notino-result", include_in_schema=False)
-def debug_notino_result(q: str):
-    query = str(q or "").strip()
-    if not query:
-        raise HTTPException(status_code=400, detail="Parametro q mancante")
-
-    try:
-        module = importlib.import_module("scrapers.notino.scraper")
-        searchfn = getattr(module, "search", None) or getattr(module, "scrape", None)
-        if not callable(searchfn):
-            raise RuntimeError("Notino scraper senza funzione search/scrape")
-
-        raw = searchfn(query) or []
-        normalized = [normalize_store_product(item, "notino") for item in raw]
-
-        validation = []
-        for item in normalized:
-            try:
-                accepted = bool(matchesproduct(item, query))
-                error = None
-            except Exception as exc:
-                accepted = False
-                error = repr(exc)
-
-            validation.append({
-                "accepted": accepted,
-                "error": error,
-                "product": item,
-            })
-
-        return {
-            "query": query,
-            "raw_count": len(raw),
-            "normalized_count": len(normalized),
-            "validation": validation,
-        }
-    except Exception as exc:
-        raise HTTPException(status_code=500, detail=repr(exc)) from exc
