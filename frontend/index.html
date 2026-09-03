@@ -990,6 +990,20 @@ function shGroupData(data){
     const name=cleanBrandText(o.name);
     const n=norm(name);
 
+    /* 0. Brand multi-parola scritto senza spazi dal retailer:
+     *    "Miumiu Fleur De Lait" -> "Miu Miu"
+     *    "JeanPaulGaultier Le Beau" -> "Jean Paul Gaultier"
+     * La verifica avviene solo contro brand già presenti nella whitelist,
+     * quindi non trasforma arbitrariamente una parola del profumo in brand. */
+    const knownCompactPrefix=KNOWN_BRANDS
+      .filter(b=>{
+        const bn=norm(b);
+        const compact=bn.replace(/\s+/g,"");
+        return bn && compact && n!==bn && n.startsWith(compact+" ");
+      })
+      .sort((a,b)=>norm(b).replace(/\s+/g,"").length-norm(a).replace(/\s+/g,"").length)[0];
+    if(knownCompactPrefix)return knownCompactPrefix;
+
     /* 1. "By BRAND" è la prova più forte. */
     const by=name.match(/\bby\s+([^|,;]+?)\s*$/i);
     if(by){
@@ -1033,15 +1047,31 @@ function shGroupData(data){
     let n=String(text||"").replace(/\s+/g," ").trim();
     const brandNorm=norm(brand);
     if(!brandNorm)return n;
+    const brandCompact=brandNorm.replace(/\s+/g,"");
 
     let guard=0;
     while(guard<5){
       const nn=norm(n);
       if(nn===brandNorm)return "";
-      if(!nn.startsWith(brandNorm+" "))break;
-      const words=brandNorm.split(/\s+/).length;
-      n=n.split(/\s+/).slice(words).join(" ").trim();
-      guard++;
+
+      if(nn.startsWith(brandNorm+" ")){
+        const words=brandNorm.split(/\s+/).length;
+        n=n.split(/\s+/).slice(words).join(" ").trim();
+        guard++;
+        continue;
+      }
+
+      // Forma compatta: "Miumiu Fleur De Lait", "JeanPaulGaultier Le Beau".
+      // Rimuoviamo il primo token soltanto quando coincide ESATTAMENTE con
+      // la forma senza spazi del brand noto.
+      const firstToken=nn.split(/\s+/)[0]||"";
+      if(brandCompact && firstToken===brandCompact){
+        const originalParts=n.split(/\s+/);
+        n=originalParts.slice(1).join(" ").trim();
+        guard++;
+        continue;
+      }
+      break;
     }
     return n;
   }
@@ -1103,24 +1133,18 @@ function shGroupData(data){
     // Togliamo il brand all'inizio. Ripetiamo l'operazione anche se il
     // nome contiene il brand più volte (es. "Miu Miu Miu Miu Miutine").
     if(brand){
-      const escapedBrand=cleanBrandText(brand).replace(/[.*+?^${}()|[\]\\]/g,"\\$&");
-      const brandWords=norm(brand).split(/\s+/).filter(Boolean)
-        .map(w=>w.replace(/[.*+?^${}()|[\]\\]/g,"\\$&")).join("\\s+");
-      for(let pass=0;pass<5;pass++){
-        const before=n;
-        n=n.replace(new RegExp("^\\s*"+escapedBrand+"\\s*[-–—:]?\\s*","i"),"").trim();
-        if(brandWords)n=n.replace(new RegExp("^\\s*"+brandWords+"\\s*[-–—:]?\\s*","i"),"").trim();
-        if(n===before)break;
-      }
+      // Rimuove sia "Miu Miu Fleur..." sia "Miumiu Fleur..." e, in
+      // generale, la forma senza spazi dei brand multi-parola.
+      n=removeBrandFromStart(n,brand);
     }else{
-      // Anche senza campo brand, togliamo un brand noto che compare all'inizio.
+      // Anche senza campo brand, togliamo un brand noto che compare
+      // all'inizio, compresa la forma compatta senza spazi.
       for(const b of KNOWN_BRANDS){
-        const bw=norm(b).split(/\s+/).filter(Boolean)
-          .map(w=>w.replace(/[.*+?^${}()|[\]\\]/g,"\\$&")).join("\\s+");
-        if(bw)n=n.replace(new RegExp("^\\s*"+bw+"\\s*[-–—:]?\\s*","i"),"").trim();
+        const before=n;
+        n=removeBrandFromStart(n,b);
+        if(n!==before)break;
       }
     }
-
     // Alcuni negozi scrivono il brand in coda: "Island Dreams Khadlaj".
     // Se il brand è stato identificato con certezza, rimuoviamo anche quel suffisso.
     if(brand){
@@ -1226,6 +1250,10 @@ function shGroupData(data){
     return {brand,name,key};
   }
 
+  // productIdentity() deve produrre la stessa chiave anche quando un
+  // retailer scrive il brand multi-parola attaccato al nome del profumo.
+  // Questo è volutamente generico: non contiene regole specifiche per
+  // "Fleur De Lait" o per una singola referenza.
   const identities=raw.map(o=>productIdentity(o));
 
   /*
