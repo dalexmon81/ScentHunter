@@ -688,6 +688,20 @@ document.addEventListener("click",e=>{
 });
 
 function esc(v){return String(v??"").replaceAll("&","&amp;").replaceAll("<","&lt;").replaceAll(">","&gt;").replaceAll('"',"&quot;").replaceAll("'","&#039;")}
+function displayStoreName(v){
+  const key=String(v??"").trim().toLowerCase();
+  const names={
+    notino:"Notino",
+    bplatz:"Bplatz",
+    deloox:"Deloox",
+    parfumcity:"ParfumCity",
+    parfumzentrum:"ParfumZentrum",
+    perfumemarket:"PerfumeMarket",
+    sabina:"Sabina",
+    orioudh:"Orioudh"
+  };
+  return names[key]||String(v??"");
+}
 function backend(){
   const origin = window.location.origin;
   if (origin.includes("-3000.app.github.dev")) {
@@ -1708,7 +1722,7 @@ function openProduct(i){
         return `<div class="offer ${!isOut&&n===0?"best":""}">
           <div class="offer-line">
             <div>
-              <div class="offer-store">${!isOut&&n===0?"🥇 ":""}${esc(o.store||"Negozio")}</div>
+              <div class="offer-store">${!isOut&&n===0?"🥇 ":""}${esc(displayStoreName(o.store||"Negozio"))}</div>
               ${!isOut&&n===0?'<div class="offer-meta">MIGLIOR PREZZO</div>':""}
               ${isOut?'<div class="offer-outstock">OUT OF STOCK</div>':""}
             </div>
@@ -1821,7 +1835,7 @@ function openSize(gi,sizeKey,fromFormats=true){
       return `<div class="offer ${!isOut&&n===0?"best":""}">
         <div class="offer-line">
           <div>
-            <div class="offer-store">${!isOut&&n===0?"🥇 ":""}${esc(o.store||"Negozio")}</div>
+            <div class="offer-store">${!isOut&&n===0?"🥇 ":""}${esc(displayStoreName(o.store||"Negozio"))}</div>
             ${!isOut&&n===0?'<div class="offer-meta">MIGLIOR PREZZO</div>':""}
             ${isOut?'<div class="offer-outstock">OUT OF STOCK</div>':""}
           </div>
