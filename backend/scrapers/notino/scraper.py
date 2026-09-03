@@ -24,6 +24,7 @@ PRODUCTURLRE = re.compile(
     re.I,
 )
 PRODUCT_URL_RE = PRODUCTURLRE
+PRODUCTRE = PRODUCT_RE
 
 RELATIVE_PRODUCT_RE = re.compile(
     r"/(?:[a-z0-9][^\s<>\]\[\)\"']*/)+p-\d+(?:/[^\s<>\]\[\)\"']*)?",
