@@ -233,7 +233,7 @@ def lookslikeproducturl(url: str) -> bool:
 
 
 def normaliseurl(url: str) -> str:
-    value = htmllib.unescape(str(url or "")).strip()
+    value = html_lib.unescape(str(url or "")).strip()
 
     if not value:
         return ""
