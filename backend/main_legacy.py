@@ -2392,9 +2392,7 @@ def run_store(
                 continue
 
             product = normalize_store_product(item, store)
-            product = resolveactualpriceproduct(product)
-
-
+            product = resolve_actual_price(product)
 
 
             image = product_image(product)
