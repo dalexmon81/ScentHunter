@@ -249,6 +249,7 @@ def normaliseurl(url: str) -> str:
 
     return value.split("?", 1)[0].split("#", 1)[0].strip()
 
+_normalise_url = normaliseurl
 
 
 def _product_id(url: str) -> Optional[str]:
