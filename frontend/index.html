@@ -990,20 +990,6 @@ function shGroupData(data){
     const name=cleanBrandText(o.name);
     const n=norm(name);
 
-    /* 0. Brand multi-parola scritto senza spazi dal retailer:
-     *    "Miumiu Fleur De Lait" -> "Miu Miu"
-     *    "JeanPaulGaultier Le Beau" -> "Jean Paul Gaultier"
-     * La verifica avviene solo contro brand già presenti nella whitelist,
-     * quindi non trasforma arbitrariamente una parola del profumo in brand. */
-    const knownCompactPrefix=KNOWN_BRANDS
-      .filter(b=>{
-        const bn=norm(b);
-        const compact=bn.replace(/\s+/g,"");
-        return bn && compact && n!==bn && n.startsWith(compact+" ");
-      })
-      .sort((a,b)=>norm(b).replace(/\s+/g,"").length-norm(a).replace(/\s+/g,"").length)[0];
-    if(knownCompactPrefix)return knownCompactPrefix;
-
     /* 1. "By BRAND" è la prova più forte. */
     const by=name.match(/\bby\s+([^|,;]+?)\s*$/i);
     if(by){
@@ -1047,31 +1033,15 @@ function shGroupData(data){
     let n=String(text||"").replace(/\s+/g," ").trim();
     const brandNorm=norm(brand);
     if(!brandNorm)return n;
-    const brandCompact=brandNorm.replace(/\s+/g,"");
 
     let guard=0;
     while(guard<5){
       const nn=norm(n);
       if(nn===brandNorm)return "";
-
-      if(nn.startsWith(brandNorm+" ")){
-        const words=brandNorm.split(/\s+/).length;
-        n=n.split(/\s+/).slice(words).join(" ").trim();
-        guard++;
-        continue;
-      }
-
-      // Forma compatta: "Miumiu Fleur De Lait", "JeanPaulGaultier Le Beau".
-      // Rimuoviamo il primo token soltanto quando coincide ESATTAMENTE con
-      // la forma senza spazi del brand noto.
-      const firstToken=nn.split(/\s+/)[0]||"";
-      if(brandCompact && firstToken===brandCompact){
-        const originalParts=n.split(/\s+/);
-        n=originalParts.slice(1).join(" ").trim();
-        guard++;
-        continue;
-      }
-      break;
+      if(!nn.startsWith(brandNorm+" "))break;
+      const words=brandNorm.split(/\s+/).length;
+      n=n.split(/\s+/).slice(words).join(" ").trim();
+      guard++;
     }
     return n;
   }
@@ -1133,18 +1103,24 @@ function shGroupData(data){
     // Togliamo il brand all'inizio. Ripetiamo l'operazione anche se il
     // nome contiene il brand più volte (es. "Miu Miu Miu Miu Miutine").
     if(brand){
-      // Rimuove sia "Miu Miu Fleur..." sia "Miumiu Fleur..." e, in
-      // generale, la forma senza spazi dei brand multi-parola.
-      n=removeBrandFromStart(n,brand);
-    }else{
-      // Anche senza campo brand, togliamo un brand noto che compare
-      // all'inizio, compresa la forma compatta senza spazi.
-      for(const b of KNOWN_BRANDS){
+      const escapedBrand=cleanBrandText(brand).replace(/[.*+?^${}()|[\]\\]/g,"\\$&");
+      const brandWords=norm(brand).split(/\s+/).filter(Boolean)
+        .map(w=>w.replace(/[.*+?^${}()|[\]\\]/g,"\\$&")).join("\\s+");
+      for(let pass=0;pass<5;pass++){
         const before=n;
-        n=removeBrandFromStart(n,b);
-        if(n!==before)break;
+        n=n.replace(new RegExp("^\\s*"+escapedBrand+"\\s*[-–—:]?\\s*","i"),"").trim();
+        if(brandWords)n=n.replace(new RegExp("^\\s*"+brandWords+"\\s*[-–—:]?\\s*","i"),"").trim();
+        if(n===before)break;
+      }
+    }else{
+      // Anche senza campo brand, togliamo un brand noto che compare all'inizio.
+      for(const b of KNOWN_BRANDS){
+        const bw=norm(b).split(/\s+/).filter(Boolean)
+          .map(w=>w.replace(/[.*+?^${}()|[\]\\]/g,"\\$&")).join("\\s+");
+        if(bw)n=n.replace(new RegExp("^\\s*"+bw+"\\s*[-–—:]?\\s*","i"),"").trim();
       }
     }
+
     // Alcuni negozi scrivono il brand in coda: "Island Dreams Khadlaj".
     // Se il brand è stato identificato con certezza, rimuoviamo anche quel suffisso.
     if(brand){
@@ -1155,6 +1131,19 @@ function shGroupData(data){
 
     // Ultima barriera: nessun "By BRAND" conosciuto deve mai restare nel nome.
     n=n.replace(new RegExp("\\s+by\\s+(?:"+knownBrandPatterns.join("|")+ ")\\s*$","i")," ").trim();
+
+    /*
+     * Alcuni retailer inseriscono il prezzo direttamente nel titolo:
+     * "Fleur De Lait Pour Femme De 63,50€".
+     * Il prezzo è un attributo dell'offerta, MAI parte dell'identità.
+     * Rimuoviamo quindi i prezzi finali in modo generico.
+     */
+    n=n
+      .replace(/\s+(?:da|de|a|à|from|starting\s+at)\s+\d{1,4}(?:[.,]\d{1,2})?\s*(?:€|eur|euro)\s*$/i,"")
+      .replace(/\s+\d{1,4}(?:[.,]\d{1,2})?\s*(?:€|eur|euro)\s*$/i,"")
+      .replace(/\s*[-–—:]\s*\d{1,4}(?:[.,]\d{1,2})?\s*(?:€|eur|euro)\s*$/i,"")
+      .replace(/\s+/g," ")
+      .trim();
 
     n=n
       .replace(/\s*[-–—]\s*/g," ")
@@ -1250,10 +1239,6 @@ function shGroupData(data){
     return {brand,name,key};
   }
 
-  // productIdentity() deve produrre la stessa chiave anche quando un
-  // retailer scrive il brand multi-parola attaccato al nome del profumo.
-  // Questo è volutamente generico: non contiene regole specifiche per
-  // "Fleur De Lait" o per una singola referenza.
   const identities=raw.map(o=>productIdentity(o));
 
   /*
@@ -1364,7 +1349,111 @@ function shGroupData(data){
     }
   });
 
-  const groups=[...map.values()];
+  let groups=[...map.values()];
+
+  /*
+   * MERGE GENERICO DELLE VARIANTI COMMERCIALI.
+   *
+   * Alcuni negozi aggiungono "Pour Femme / For Women / Women" a un nome
+   * che il catalogo tratta come una sola referenza. Non possiamo eliminare
+   * sempre quel suffisso: esistono infatti referenze realmente distinte
+   * (es. "9 PM" e "9 PM Pour Femme").
+   *
+   * Regola: uniamo la forma con suffisso di genere SOLO quando nella stessa
+   * ricerca esiste già la forma base e il catalogo master non contiene una
+   * referenza distinta corrispondente alla forma con genere.
+   *
+   * In questo modo "Fleur De Lait" + "Fleur De Lait Pour Femme" si fondono,
+   * mentre "9 PM" + "9 PM Pour Femme" restano separati se il catalogo li
+   * considera due prodotti distinti.
+   */
+  function commercialBaseName(name){
+    return norm(String(name||""))
+      .replace(/\b(?:pour\s+femme|pour\s+homme|for\s+women|for\s+men|for\s+her|for\s+him|women'?s|men'?s|women|men|femme|homme|woman|man|unisex)\b/g," ")
+      .replace(/\s+/g," ")
+      .trim();
+  }
+
+  function hasDistinctMasterGenderVariant(g){
+    const brandN=norm(g.brand||"");
+    const base=commercialBaseName(g.name||"");
+    if(!brandN||!base)return false;
+
+    const matches=MASTER_CATALOG.filter(p=>{
+      if(norm(p.brand||"")!==brandN)return false;
+      const pn=norm(p.name||"");
+      if(!pn)return false;
+      return commercialBaseName(p.name)===base;
+    });
+
+    return matches.length>1;
+  }
+
+  const groupByBase=new Map();
+  groups.forEach(g=>{
+    const key=norm(g.brand||"")+"|"+commercialBaseName(g.name||"");
+    if(!groupByBase.has(key))groupByBase.set(key,[]);
+    groupByBase.get(key).push(g);
+  });
+
+  const mergedGroups=[];
+  groupByBase.forEach(list=>{
+    if(list.length===1){
+      mergedGroups.push(list[0]);
+      return;
+    }
+
+    const baseGroup=list.find(g=>{
+      const original=norm(g.name||"");
+      return original===commercialBaseName(g.name||"");
+    });
+
+    if(!baseGroup){
+      mergedGroups.push(...list);
+      return;
+    }
+
+    const protectedVariant=list.some(g=>{
+      if(g===baseGroup)return false;
+      const original=norm(g.name||"");
+      if(original===commercialBaseName(g.name||""))return false;
+      return hasDistinctMasterGenderVariant(g);
+    });
+
+    if(protectedVariant){
+      mergedGroups.push(...list);
+      return;
+    }
+
+    const target=baseGroup;
+    list.forEach(g=>{
+      if(g===target)return;
+
+      const seen=new Set(target.offers.map(o=>[
+        String(o.store||"").trim().toLowerCase(),
+        String(o.url||"").split("?")[0].toLowerCase(),
+        sizeOf(o)||"unknown",
+        norm(o.name||"")
+      ].join("|")));
+
+      g.offers.forEach(o=>{
+        const key=[
+          String(o.store||"").trim().toLowerCase(),
+          String(o.url||"").split("?")[0].toLowerCase(),
+          sizeOf(o)||"unknown",
+          norm(o.name||"")
+        ].join("|");
+        if(!seen.has(key)){
+          target.offers.push(o);
+          seen.add(key);
+        }
+      });
+    });
+
+    mergedGroups.push(target);
+  });
+
+  groups=mergedGroups;
 
   groups.forEach(g=>{
     const bySize=new Map();
