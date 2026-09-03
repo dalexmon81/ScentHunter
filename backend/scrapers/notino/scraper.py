@@ -19,10 +19,11 @@ SITEMAP_URL = BASE_URL + "/sitemap.xml"
 TIMEOUT = 15
 READER_TIMEOUT = 18
 PRODUCT_RE = re.compile(r"/p-(\d+)(?:/|$)", re.I)
-PRODUCT_URL_RE = re.compile(
-    r"https?://(?:www\.)?notino\.fr/[^\s<>\]\[\)\"']+",
+PRODUCTURLRE = re.compile(
+    r"https?://(?:www\.)?notino\.(?:fr|be|de|com)/[^\s)\]>]+",
     re.I,
 )
+
 RELATIVE_PRODUCT_RE = re.compile(
     r"/(?:[a-z0-9][^\s<>\]\[\)\"']*/)+p-\d+(?:/[^\s<>\]\[\)\"']*)?",
     re.I,
@@ -230,13 +231,23 @@ def lookslikeproducturl(url: str) -> bool:
 
 
 
-def _normalise_url(url: str) -> str:
-    url = html_lib.unescape(str(url or "")).replace("\\/", "/").strip().strip("<>[]()\"'")
-    if url.startswith("//"):
-        url = "https:" + url
-    elif url.startswith("/"):
-        url = BASE_URL + url
-    return url.split("?", 1)[0].split("#", 1)[0]
+def normaliseurl(url: str) -> str:
+    value = htmllib.unescape(str(url or "")).strip()
+
+    if not value:
+        return ""
+
+    value = value.replace("\\/", "/")
+
+    if value.startswith("//"):
+        value = "https:" + value
+    elif value.startswith("/"):
+        value = BASEURL.rstrip("/") + value
+    elif not re.match(r"https?://", value, re.I):
+        value = "https://" + value
+
+    return value.split("?", 1)[0].split("#", 1)[0].strip()
+
 
 
 def _product_id(url: str) -> Optional[str]:
