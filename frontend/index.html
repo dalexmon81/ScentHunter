@@ -1970,41 +1970,35 @@ async function getSearchStores(term){
 
 async function searchStoresProgressive(term,onPartial){
  const merged={query:term,comparisons:[],results:[],errors:{}};
- const timeoutMs=30000;
+ const timeoutMs=45000;
  const concurrency=4;
- const maxAttempts=2;
  const stores=await getSearchStores(term);
  const totalStores=stores.length;
-
- async function searchOneStore(store){
-  let lastError=null;
-  for(let attempt=1;attempt<=maxAttempts;attempt++){
-   try{
-    const data=await fetchJSONWithTimeout(
-     backend()+"/test-store?store="+encodeURIComponent(store)+"&q="+encodeURIComponent(term),
-     timeoutMs
-    );
-    return {ok:true,data:data||{}};
-   }catch(error){
-    lastError=error;
-    if(attempt<maxAttempts)await new Promise(resolve=>setTimeout(resolve,700));
-   }
-  }
-  return {ok:false,error:lastError};
- }
 
  for(let i=0;i<stores.length;i+=concurrency){
   const pair=stores.slice(i,i+concurrency);
   statusBox.textContent="";
-  const responses=await Promise.all(pair.map(store=>searchOneStore(store)));
+
+  const responses=await Promise.allSettled(pair.map(store=>
+   fetchJSONWithTimeout(
+    backend()+"/test-store?store="+encodeURIComponent(store)+"&q="+encodeURIComponent(term),
+    timeoutMs
+   ).catch(async()=>{
+    await new Promise(resolve=>setTimeout(resolve,350));
+    return fetchJSONWithTimeout(
+     backend()+"/test-store?store="+encodeURIComponent(store)+"&q="+encodeURIComponent(term),
+     timeoutMs
+    );
+   })
+  ));
 
   responses.forEach((r,k)=>{
    const store=pair[k];
-   if(!r.ok){
-    merged.errors[store]=String(r.error?.message||"timeout");
+   if(r.status!=="fulfilled"){
+    merged.errors[store]=String(r.reason?.message||"timeout");
     return;
    }
-   const data=r.data||{};
+   const data=r.value||{};
    if(Array.isArray(data.results))merged.results.push(...data.results);
    if(Array.isArray(data.comparisons))merged.comparisons.push(...data.comparisons);
    if(data.errors&&typeof data.errors==="object")Object.entries(data.errors).forEach(([name,error])=>{
@@ -2019,6 +2013,7 @@ async function searchStoresProgressive(term,onPartial){
  if(typeof onPartial==="function")onPartial(merged,true);
  return merged;
 }
+
 async function searchPerfume(){
  const q=queryInput.value.trim();if(!q){statusBox.textContent="";resultsBox.innerHTML="";errorsBox.innerHTML="";return}
  searchButton.disabled=true;searchButton.classList.add("searching");
