@@ -45,6 +45,164 @@ _legacy._search_job_snapshot = _engine.search_job_snapshot
 app = _legacy.app
 
 
+# ---------------------------------------------------------------------------
+# VALIDATED /test-store PIPELINE
+# ---------------------------------------------------------------------------
+# The progressive frontend calls /test-store directly.  The legacy endpoint
+# returns raw scraper candidates, which means a broad retailer hit such as
+# "Hawas For Him" or "Hawas Pink" can reach the UI even when the requested
+# variant is "Hawas For Her".  The normal /search route already has the central
+# Family Registry validation, so this wrapper gives /test-store the same
+# identity gate while keeping the per-store response shape unchanged.
+
+_original_run_store = _legacy.run_store
+
+
+def _merge_store_candidates(*groups):
+    merged = []
+    seen = set()
+    for group in groups:
+        for item in group or []:
+            if not isinstance(item, dict):
+                continue
+            try:
+                key = _legacy.product_identity_key(item)
+            except Exception:
+                key = (
+                    str(item.get("store") or "").strip().lower(),
+                    str(item.get("url") or "").strip().lower(),
+                    str(item.get("name") or item.get("title") or "").strip().lower(),
+                    str(item.get("size_ml") or item.get("size") or "").strip(),
+                )
+            if key in seen:
+                continue
+            seen.add(key)
+            merged.append(item)
+    return merged
+
+
+def _catalog_discovery_queries(query: str):
+    """Return only authoritative aliases for a specific catalog variant."""
+    try:
+        family = _legacy._catalog_family_for_query(query)
+        if family is None:
+            return []
+        query_key = _legacy.catalog_variant_key(query)
+        if query_key in family.get("normalized_query_aliases", ()):
+            return []
+        requested = _legacy._catalog_requested_variant(query, family)
+        if not isinstance(requested, dict):
+            return []
+
+        canonical = str(requested.get("canonical_name") or "").strip()
+        aliases = [str(x or "").strip() for x in (requested.get("aliases") or [])]
+        # Prefer a retailer-friendly gender alias after the canonical name.
+        # This is especially useful when the shop search endpoint ignores
+        # "for her/for him" wording in a full query.
+        preferred = []
+        for alias in aliases:
+            low = _legacy.norm(alias)
+            if any(token in low.split() for token in ("women", "femme", "dames", "donna")):
+                preferred.append(alias)
+        values = [canonical] + preferred + aliases
+        out = []
+        seen = set()
+        for value in values:
+            value = str(value or "").strip()
+            key = _legacy.norm(value)
+            if not key or key in seen:
+                continue
+            if key == _legacy.norm(query):
+                continue
+            seen.add(key)
+            out.append(value)
+            if len(out) >= 2:
+                break
+        return out
+    except Exception:
+        return []
+
+
+def _validated_store_results(store: str, query: str):
+    first = _original_run_store(store, query) or []
+    validated = _engine._validate_candidates_only(query, first)
+    if validated:
+        return _merge_store_candidates(validated)
+
+    # If discovery found only false variants (common with gendered product
+    # names), retry using the Registry's exact canonical name/aliases.
+    extra_groups = []
+    for discovery_query in _catalog_discovery_queries(query):
+        try:
+            candidates = _original_run_store(store, discovery_query) or []
+            extra_groups.append(candidates)
+            validated = _engine._validate_candidates_only(
+                query,
+                _merge_store_candidates(first, *extra_groups),
+            )
+            if validated:
+                return _merge_store_candidates(validated)
+        except Exception:
+            continue
+
+    return _merge_store_candidates(
+        _engine._validate_candidates_only(
+            query,
+            _merge_store_candidates(first, *extra_groups),
+        )
+    )
+
+
+# Replace the already-registered legacy /test-store route in-place.  This keeps
+# the public URL identical, so the existing frontend does not need a new API.
+for _route in getattr(_legacy.app.router, "routes", []):
+    if getattr(_route, "path", None) == "/test-store":
+        def _validated_test_store(store: str, q: str):
+            store_name = str(store or "").strip().lower()
+            query = str(q or "").strip()
+
+            if store_name not in _legacy.STORES:
+                raise HTTPException(
+                    status_code=400,
+                    detail=(
+                        "Store non valido. Disponibili: "
+                        + ", ".join(_legacy.STORES)
+                    ),
+                )
+            if not query:
+                raise HTTPException(
+                    status_code=400,
+                    detail="Parametro q mancante",
+                )
+
+            try:
+                results = _validated_store_results(store_name, query)
+                return {
+                    "store": store_name,
+                    "query": query,
+                    "count": len(results),
+                    "results": _legacy.sort_by_price(
+                        _legacy.unique_results(results)
+                    ),
+                }
+            except Exception as error:
+                traceback.print_exc()
+                return {
+                    "store": store_name,
+                    "query": query,
+                    "count": 0,
+                    "results": [],
+                    "error": f"{type(error).__name__}: {error}",
+                }
+
+        _route.endpoint = _validated_test_store
+        try:
+            _route.dependant.call = _validated_test_store
+        except Exception:
+            pass
+        break
+
+
 # ===== TEMPORARY READ-ONLY NOTINO DEEP DIAGNOSTIC =====
 JINA_PREFIX = "https://r.jina.ai/"
 NOTINO_BASE = "https://www.notino.fr"
