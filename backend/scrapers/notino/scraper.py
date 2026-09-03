@@ -23,7 +23,7 @@ READER_TIMEOUT = 30
 RETRY_COUNT = 2
 MAX_CANDIDATES = 48
 ENRICH_WORKERS = 6
-SCRAPER_VERSION = "notino-3.2-2026-09-03-markdown-pairing-fix"
+SCRAPER_VERSION = "notino-3.3-2026-09-03-balanced-markdown-card-parser"
 
 PRODUCT_RE = re.compile(r"/p-(\d+)(?:/|$)", re.I)
 PRODUCT_URL_RE = re.compile(
@@ -694,60 +694,163 @@ def _url_context(text: str, needle: str, radius: int = 1800) -> str:
 
 
 def _reader_anchor_text(anchor_text: str) -> str:
-    """Turn a nested Jina Markdown card label into the real product title."""
+    """Clean the label of one atomic Markdown product card.
+
+    Jina can emit nested Markdown inside the label, most commonly an image
+    link.  The important rule is that we clean *only this anchor label* and
+    never borrow text from neighbouring links/cards.
+    """
     value = html_lib.unescape(anchor_text or "")
-    # Remove the nested image link first; otherwise _clean_name sees the promo
-    # prefix and can discard the entire label.
     value = re.sub(r"!\[[^\]]*\]\([^)]*\)", " ", value, flags=re.I)
-    value = re.sub(r"^\s*(?:Cadeaux offerts|Promo Cadeaux offerts|Gifts|Promo)\s*!?", " ", value, flags=re.I)
-    # The label still contains rating/price/promo information. Keep the product
-    # identity and let _clean_name remove the commercial suffixes.
+    value = re.sub(
+        r"^\s*(?:Cadeaux offerts|Promo Cadeaux offerts|Gifts|Promo)\s*!?",
+        " ",
+        value,
+        flags=re.I,
+    )
     value = re.sub(r"\b(?:avec le code|with code)\b.*$", " ", value, flags=re.I)
     return _clean_name(value)
 
 
+def _scan_markdown_link(raw: str, start: int) -> Optional[Tuple[str, str, int]]:
+    """Parse one Markdown link starting at ``start`` with balanced delimiters.
+
+    Regex is deliberately not used here: nested ``[]``/``()`` in Jina output
+    can make a regex pair a product URL with an unrelated navigation fragment.
+    Returns ``(label, destination, end_position)`` or ``None``.
+    """
+    if start < 0 or start >= len(raw) or raw[start] != "[":
+        return None
+
+    i = start + 1
+    depth = 1
+    escaped = False
+    while i < len(raw):
+        ch = raw[i]
+        if escaped:
+            escaped = False
+        elif ch == "\\":
+            escaped = True
+        elif ch == "[":
+            depth += 1
+        elif ch == "]":
+            depth -= 1
+            if depth == 0:
+                break
+        i += 1
+    if i >= len(raw) or depth != 0:
+        return None
+
+    label = raw[start + 1:i]
+    j = i + 1
+    if j >= len(raw) or raw[j] != "(":
+        return None
+
+    j += 1
+    paren_depth = 1
+    escaped = False
+    destination_start = j
+    while j < len(raw):
+        ch = raw[j]
+        if escaped:
+            escaped = False
+        elif ch == "\\":
+            escaped = True
+        elif ch == "(":
+            paren_depth += 1
+        elif ch == ")":
+            paren_depth -= 1
+            if paren_depth == 0:
+                destination = raw[destination_start:j].strip()
+                # Markdown destinations may have a title after whitespace.
+                # We only need the first URL token for Notino product links.
+                destination = destination.split()[0] if destination else ""
+                return label, destination, j + 1
+        j += 1
+    return None
+
+
 def _reader_markdown_product_links(raw: str) -> List[Tuple[str, str]]:
-    """Extract outer Markdown product links without confusing nested image links.
+    """Extract product URL + title from atomic outer Markdown anchors.
 
-    Jina emits Notino cards like:
-      [![Image ...](cdn...)Product name 100 ml 36,00€](https://www.notino.fr/.../p-123/)
-
-    A naive URL scan sees the product URL but may reuse the nearest image alt for
-    several URLs. The product URL itself must therefore be paired with the label
-    of its *outer* Markdown link. The URL-specific regex below intentionally lets
-    the label contain nested `![...](...)` markup.
+    This parser understands nested Markdown instead of using a greedy regex.
+    That distinction matters on Jina output such as navigation links followed
+    immediately by product cards: each product URL is paired only with its own
+    outer label.
     """
     if not raw:
         return []
-    pattern = re.compile(
-        r"\[(?P<label>.*?)\]\((?P<url>https?://(?:www\.)?notino\.(?:fr|be|de|com|it|gr|es|pt|ie|co\.uk)/[^\s)<>]+/p-\d+(?:/[^\s)<>]*)?)\)",
-        re.I | re.S,
-    )
+
     pairs: List[Tuple[str, str]] = []
-    for match in pattern.finditer(raw):
-        url = normaliseurl(match.group("url"))
-        if not lookslikeproducturl(url):
+    i = 0
+    while i < len(raw):
+        if raw[i] != "[":
+            i += 1
             continue
-        label = _reader_anchor_text(match.group("label"))
-        if label:
-            pairs.append((label, url))
+        parsed = _scan_markdown_link(raw, i)
+        if not parsed:
+            i += 1
+            continue
+        label_raw, destination, end = parsed
+        url = normaliseurl(html_lib.unescape(destination).replace("\\/", "/"))
+        if lookslikeproducturl(url):
+            label = _reader_anchor_text(label_raw)
+            if label:
+                pairs.append((label, url))
+        i = end
     return pairs
+
+
+def _reader_markdown_product_cards(raw: str) -> List[Tuple[str, str, str]]:
+    """Return ``(label, url, atomic_label)`` for product anchors.
+
+    Kept separate from the public pair helper so the candidate builder can use
+    the exact label as its evidence and never attach a broad URL neighbourhood.
+    """
+    if not raw:
+        return []
+
+    cards: List[Tuple[str, str, str]] = []
+    i = 0
+    while i < len(raw):
+        if raw[i] != "[":
+            i += 1
+            continue
+        parsed = _scan_markdown_link(raw, i)
+        if not parsed:
+            i += 1
+            continue
+        label_raw, destination, end = parsed
+        url = normaliseurl(html_lib.unescape(destination).replace("\\/", "/"))
+        if lookslikeproducturl(url):
+            label = _reader_anchor_text(label_raw)
+            if label:
+                cards.append((label, url, label_raw))
+        i = end
+    return cards
 
 
 def _reader_candidates(text: str, query: str) -> List[Dict[str, Any]]:
     raw = html_lib.unescape(text or "").replace("\\/", "/")
     found: Dict[str, Dict[str, Any]] = {}
 
-    # 1) Prefer atomic Markdown card pairs. This is the critical Notino path:
-    # the product title and the product URL come from the same outer anchor.
-    # Never associate one image alt with a broad URL neighbourhood.
-    for label, url in _reader_markdown_product_links(raw):
+    # 1) Atomic Markdown cards are the primary reader-discovery source.
+    # The title in the same card is authoritative for identity.  In particular,
+    # do NOT reject a card because its URL slug says "9-am" when the card title
+    # explicitly says "9 PM Pour Femme" (Notino product p-16167394 is a real
+    # example of this URL/title mismatch).
+    markdown_cards = _reader_markdown_product_cards(raw)
+    paired_urls = set()
+    for label, url, label_raw in markdown_cards:
+        paired_urls.add(url.rstrip("/"))
         if not _query_matches_name(label, query):
             continue
-        # Keep only the local card text for price/stock/size evidence.
-        pos = raw.find(url)
-        card = raw[max(0, pos - 1200): min(len(raw), pos + len(url) + 400)] if pos >= 0 else label
-        candidate = _candidate_from_evidence(url, label, card, query, "reader-markdown")
+        # Use only the atomic anchor label as evidence. It contains the product
+        # title, size, price and stock text emitted by Notino/Jina, without
+        # neighbouring navigation or product cards.
+        candidate = _candidate_from_evidence(
+            url, label, label_raw, query, "reader-markdown"
+        )
         if candidate:
             old = found.get(url)
             if old is None or candidate["score"] > old["score"]:
@@ -767,12 +870,10 @@ def _reader_candidates(text: str, query: str) -> List[Dict[str, Any]]:
             if old is None or candidate["score"] > old["score"]:
                 found[url] = candidate
 
-    # 3) Fallback for readers that expose product URLs without Markdown anchors.
-    # Here the URL slug is the only safe identity source; do not borrow a name
-    # from another nearby card.
+    # 3) Fallback only for product URLs that were not paired with an atomic
+    # Markdown card. Here the slug is the only identity signal available.
     matches = list(PRODUCT_URL_RE.finditer(raw)) + list(RELATIVE_PRODUCT_RE.finditer(raw))
     matches.sort(key=lambda match: match.start())
-    paired_urls = {url.rstrip("/") for _label, url in _reader_markdown_product_links(raw)}
     for match in matches:
         url = normaliseurl(match.group(0))
         if not lookslikeproducturl(url) or url.rstrip("/") in paired_urls:
@@ -780,15 +881,15 @@ def _reader_candidates(text: str, query: str) -> List[Dict[str, Any]]:
         slug = _clean_name(_slug_name(url))
         if not slug or not _query_matches_name(slug, query):
             continue
-        around = _url_context(raw, match.group(0), radius=500)
-        candidate = _candidate_from_evidence(url, slug, around, query, "reader-url")
+        candidate = _candidate_from_evidence(
+            url, slug, slug, query, "reader-url"
+        )
         if candidate:
             old = found.get(url)
             if old is None or candidate["score"] > old["score"]:
                 found[url] = candidate
 
     return sorted(found.values(), key=lambda item: (-item["score"], item["url"]))
-
 
 def _reader_product(session: requests.Session, candidate: Dict[str, Any], query: str) -> Optional[Dict[str, Any]]:
     try:
