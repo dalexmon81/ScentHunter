@@ -2316,7 +2316,7 @@ def normalize_store_product(
         if item.get("size") is not None:
             item["sizeml"] = item["size"]
         else:
-            item["sizeml"] = productsizeml(item)
+            item["sizeml"] = product_size_ml(item)
 
     if item.get("size") is None and item.get("sizeml") is not None:
         item["size"] = item["sizeml"]
