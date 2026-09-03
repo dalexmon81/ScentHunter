@@ -2493,7 +2493,7 @@ def _validate_candidate(
     query: str,
 ) -> Optional[Dict[str, Any]]:
     try:
-        matched = matchesproduct(product, query)
+        matched = matches(product, query)
     except Exception as exc:
         print(
             "[CENTRAL VALIDATION ERROR]",
@@ -3718,7 +3718,7 @@ def debug_notino_result(q: str):
         validation = []
         for item in normalized:
             try:
-                accepted = bool(matchesproduct(item, query))
+                accepted = bool(matches(item, query))
                 error = None
             except Exception as exc:
                 accepted = False
