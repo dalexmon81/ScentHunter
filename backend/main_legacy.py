@@ -2377,12 +2377,15 @@ def run_store(
         try:
             results = search_fn(attempt) or []
         except Exception as exc:
-            print(
-                f"STORE_DISCOVERY_ERROR: store={store} "
-                f"attempt={attempt!r} error={type(exc).__name__}: {exc}",
-                flush=True,
-            )
-            continue
+    print(
+        f"STORE_DISCOVERY_ERROR: store={store} "
+        f"attempt={attempt!r} "
+        f"error={type(exc).__name__}: {exc}",
+        flush=True,
+    )
+    print(traceback.format_exc(), flush=True)
+    continue
+
 
         if not isinstance(results, list):
             continue
