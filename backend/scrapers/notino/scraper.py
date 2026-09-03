@@ -640,16 +640,42 @@ def _reader_product(session: requests.Session, candidate: Dict[str, Any], query:
     if not text or not _requested_size_ok(text, query):
         return None
 
-    name = ""
-    for line in [_clean(re.sub(r"^#{1,6}\s*", "", item)) for item in text.splitlines() if _clean(item)][:220]:
-        if len(line) > 220 or PRICE_RE.search(line):
-            continue
-        clean_line = re.sub(r"^Title\s*:\s*", "", line, flags=re.I)
-        if _query_matches_name(clean_line, query) and not _has_non_perfume_marker(clean_line):
-            name = _clean_name(clean_line)
-            break
+    candidate_name = _clean_name(candidate.get("name") or "")
+
+    # The search result already contains the URL/name association. On some
+    # Notino pages Jina exposes navigation/related-product headings before
+    # the real product title (for example a generic "Afnan 9 PM" line for
+    # the Pour Femme page). Never replace a more specific search-card name
+    # with that shorter incidental heading.
+    name = candidate_name if (
+        candidate_name
+        and _query_matches_name(candidate_name, query)
+        and not _has_non_perfume_marker(candidate_name)
+    ) else ""
+
     if not name:
-        name = _clean_name(candidate.get("name") or "")
+        for line in [_clean(re.sub(r"^#{1,6}\s*", "", item)) for item in text.splitlines() if _clean(item)][:220]:
+            if len(line) > 220 or PRICE_RE.search(line):
+                continue
+            clean_line = re.sub(r"^Title\s*:\s*", "", line, flags=re.I)
+            if _query_matches_name(clean_line, query) and not _has_non_perfume_marker(clean_line):
+                name = _clean_name(clean_line)
+                break
+
+    # A candidate is valid only if the product page itself contains evidence
+    # of the requested perfume. This blocks URL/name pairings accidentally
+    # created by the reader search parser (e.g. an Afnan name attached to a
+    # completely unrelated Pampers URL).
+    page_probe = " ".join(
+        _clean(re.sub(r"^#{1,6}\s*", "", item))
+        for item in text.splitlines()
+        if _clean(item)
+    )
+    if not _query_matches_name(page_probe, query):
+        return None
+
+    if not name:
+        name = candidate_name
     if not name or not _query_matches_name(name, query) or _has_non_perfume_marker(name):
         return None
 
