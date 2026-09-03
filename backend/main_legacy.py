@@ -3699,3 +3699,43 @@ def diagnose_notino_search(q: str):
             "error": f"{type(exc).__name__}: {exc}",
             "traceback": traceback.format_exc(),
         }
+
+@app.get("/debug-notino-result", include_in_schema=False)
+def debug_notino_result(q: str):
+    query = str(q or "").strip()
+    if not query:
+        raise HTTPException(status_code=400, detail="Parametro q mancante")
+
+    try:
+        module = importlib.import_module("scrapers.notino.scraper")
+        searchfn = getattr(module, "search", None) or getattr(module, "scrape", None)
+        if not callable(searchfn):
+            raise RuntimeError("Notino scraper senza funzione search/scrape")
+
+        raw = searchfn(query) or []
+        normalized = [normalize_store_product(item, "notino") for item in raw]
+
+        validation = []
+        for item in normalized:
+            try:
+                accepted = bool(matchesproduct(item, query))
+                error = None
+            except Exception as exc:
+                accepted = False
+                error = repr(exc)
+
+            validation.append({
+                "accepted": accepted,
+                "error": error,
+                "product": item,
+            })
+
+        return {
+            "query": query,
+            "raw_count": len(raw),
+            "normalized_count": len(normalized),
+            "validation": validation,
+        }
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=repr(exc)) from exc
+
