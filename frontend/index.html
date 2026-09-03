@@ -715,88 +715,38 @@ function shNum(o){
 }
 function shGroupData(data){
   const raw=[];
-  const comparisonGroups=Array.isArray(data.comparisons)?data.comparisons:[];
 
-  /*
-   * /search e /test-store possono esporre due viste della stessa offerta:
-   *   - comparisons = gruppi gia risolti dal backend, con identita canonica
-   *   - results      = risultati flat dello stesso flusso
-   *
-   * NON dobbiamo trattarle come due serie indipendenti: la stessa offerta
-   * potrebbe altrimenti essere analizzata una seconda volta con il solo nome
-   * commerciale e finire in una seconda scheda.
-   *
-   * Le comparisons restano quindi la fonte primaria. I risultati flat vengono
-   * aggiunti solo quando non sono gia rappresentati, mantenendo comunque
-   * l'identita canonica del gruppo quando questa e disponibile.
-   */
-  const seenOffers=new Set();
-
-  function pushOffer(o,g){
-    const offer={...o};
-    const group=g||{};
-
-    const familyId=group.family_id||offer.family_id||"";
-    const variant=group.catalog_variant||group.canonical_name||offer.catalog_variant||offer.canonical_name||"";
-    const canonicalBrand=group.canonical_brand||group.brand||offer.canonical_brand||offer.brand||"";
-    const canonicalName=group.canonical_name||group.catalog_variant||offer.canonical_name||offer.catalog_variant||group.name||offer.name||"Profumo";
-
-    offer.brand=canonicalBrand;
-    offer.canonical_brand=canonicalBrand;
-    offer.name=canonicalName;
-    offer.canonical_name=group.canonical_name||offer.canonical_name||canonicalName;
-    offer.catalog_variant=variant||offer.catalog_variant||canonicalName;
-    offer.family_id=familyId;
-    offer.family_name=group.family_name||offer.family_name||"";
-    offer.size_ml=offer.size_ml||offer.size||group.size_ml||"";
-    offer.concentration=offer.concentration||group.concentration||"";
-    offer.image=offer.image||offer.image_url||offer.thumbnail||group.image||"";
-
-    offer._source_name=o.name||group.name||"";
-    offer._source_brand=o.brand||group.brand||"";
-    offer._source_url=o.url||"";
-    offer._source_store=o.store||"";
-
-    const store=String(offer.store||"").trim().toLowerCase();
-    const url=String(offer.url||"").split("?")[0].toLowerCase();
-    const productId=String(offer.product_id||offer.store_product_id||"").trim();
-    const size=String(offer.size_ml||offer.size||"").trim().toLowerCase();
-    const identity=normOfferIdentity(offer);
-    const key=url
-      ? ["url",store,url,size].join("|")
-      : productId
-        ? ["id",store,productId,size].join("|")
-        : ["fallback",store,size,identity].join("|");
-    if(seenOffers.has(key))return;
-    seenOffers.add(key);
-    raw.push(offer);
-  }
-
-  function normOfferIdentity(o){
-    const family=String(o.family_id||"").trim().toLowerCase();
-    const variant=String(o.catalog_variant||o.canonical_name||o.name||"")
-      .toLowerCase().replace(/\s+/g," ").trim();
-    const brand=String(o.canonical_brand||o.brand||"")
-      .toLowerCase().replace(/\s+/g," ").trim();
-    return family+"|"+brand+"|"+variant;
-  }
-
-  comparisonGroups.forEach(g=>{
-    (Array.isArray(g.offers)?g.offers:[]).forEach(o=>pushOffer(o,g));
+  (Array.isArray(data.comparisons)?data.comparisons:[]).forEach(g=>{
+    (Array.isArray(g.offers)?g.offers:[]).forEach(o=>{
+      raw.push({...o,
+        brand:o.brand||g.brand||"",
+        name:o.name||g.name||"Profumo",
+        size_ml:o.size_ml||o.size||g.size_ml||"",
+        concentration:o.concentration||g.concentration||"",
+        image:o.image||o.image_url||o.thumbnail||g.image||"",
+        _source_name:o.name||g.name||"",
+        _source_brand:o.brand||g.brand||"",
+        _source_url:o.url||"",
+        _source_store:o.store||""
+      });
+    });
   });
-
-  const flatResults=Array.isArray(data.results)?data.results:[];
-  flatResults.forEach(g=>{
+  (Array.isArray(data.results)?data.results:[]).forEach(g=>{
     const nested=Array.isArray(g.offers)?g.offers:[];
     if(nested.length){
-      nested.forEach(o=>pushOffer(o,g));
+      nested.forEach(o=>raw.push({...o,
+        brand:o.brand||g.brand||"",
+        name:o.name||g.name||"Profumo",
+        size_ml:o.size_ml||o.size||g.size_ml||"",
+        concentration:o.concentration||g.concentration||"",
+        image:o.image||o.image_url||o.thumbnail||g.image||"",
+        _source_name:o.name||g.name||"",
+        _source_brand:o.brand||g.brand||"",
+        _source_url:o.url||"",
+        _source_store:o.store||""
+      }));
     }else{
-      /*
-       * Se comparisons esiste, un risultato flat puo comunque provenire da
-       * un negozio che non ha restituito il gruppo strutturato. Lo conserviamo
-       * solo se non e gia presente, evitando il doppione.
-       */
-      pushOffer(g,null);
+      raw.push({...g});
     }
   });
 
@@ -1179,36 +1129,6 @@ function shGroupData(data){
   }
 
   function productIdentity(o){
-    /*
-     * IDENTITA BACKEND — se il backend ha gia risolto la referenza nel
-     * catalogo centrale, questa e la fonte autorevole. Non dobbiamo
-     * ricalcolare l'identita partendo dal nome commerciale del singolo shop.
-     *
-     * Questo e fondamentale per Notino: la pagina p-16167394 ha uno slug
-     * "9-am..." ma il titolo/prodotto reale e "Afnan 9 PM Pour Femme".
-     */
-    const backendFamily=cleanBrandText(o.family_id);
-    const backendVariant=cleanBrandText(o.catalog_variant||o.canonical_name);
-    const backendBrand=cleanBrandText(o.canonical_brand||o.brand);
-
-    if(backendFamily&&backendVariant){
-      const master=resolveMasterProduct(backendBrand,backendVariant);
-      if(master){
-        return {
-          brand:master.brand||backendBrand,
-          name:master.name||backendVariant,
-          key:norm(master.brand||backendBrand)+"|"+norm(master.name||backendVariant),
-          catalog_id:master.id||""
-        };
-      }
-      return {
-        brand:backendBrand,
-        name:backendVariant,
-        key:norm(backendFamily)+"|"+norm(backendVariant),
-        catalog_id:""
-      };
-    }
-
     // Primo tentativo: il dato originale dello scraper. Questo permette
     // al catalogo di conservare nomi canonici che la pulizia commerciale
     // potrebbe altrimenti accorciare (es. "Hawas for Him").
@@ -2166,3 +2086,157 @@ searchButton.addEventListener("click",searchPerfume);queryInput.addEventListener
 renderWishlist();syncHearts();
 </script>
 </body></html>
+
+
+<!-- SCENTHUNTER FRONTEND DIAGNOSTIC WRAPPER -->
+<script>
+(function(){
+  const params=new URLSearchParams(location.search);
+  if(params.get('debug')!=='1') return;
+
+  const report={
+    started_at:new Date().toISOString(),
+    fetches:[],
+    grouping_calls:[],
+    render_calls:[]
+  };
+  window.__SH_DEBUG_REPORT=report;
+
+  function safe(v){
+    try{return JSON.parse(JSON.stringify(v));}catch(e){return String(v);}
+  }
+  function compactOffer(o){
+    if(!o||typeof o!=='object')return o;
+    return {
+      store:o.store||'',
+      name:o.name||'',
+      canonical_name:o.canonical_name||'',
+      catalog_variant:o.catalog_variant||'',
+      family_id:o.family_id||'',
+      family_name:o.family_name||'',
+      canonical_brand:o.canonical_brand||'',
+      brand:o.brand||'',
+      size_ml:o.size_ml??o.size??'',
+      price:o.price??'',
+      available:o.available,
+      availability:o.availability,
+      url:o.url||'',
+      product_id:o.product_id||o.store_product_id||''
+    };
+  }
+  function summarizeData(data){
+    return {
+      query:data&&data.query||'',
+      count:data&&data.count,
+      offer_count:data&&data.offer_count,
+      results_count:Array.isArray(data&&data.results)?data.results.length:0,
+      comparisons_count:Array.isArray(data&&data.comparisons)?data.comparisons.length:0,
+      results:Array.isArray(data&&data.results)?data.results.map(g=>({
+        store:g&&g.store||'',name:g&&g.name||'',canonical_name:g&&g.canonical_name||'',catalog_variant:g&&g.catalog_variant||'',family_id:g&&g.family_id||'',
+        offers:Array.isArray(g&&g.offers)?g.offers.map(compactOffer):[]
+      })):[],
+      comparisons:Array.isArray(data&&data.comparisons)?data.comparisons.map(g=>({
+        store:g&&g.store||'',name:g&&g.name||'',canonical_name:g&&g.canonical_name||'',catalog_variant:g&&g.catalog_variant||'',family_id:g&&g.family_id||'',
+        offers:Array.isArray(g&&g.offers)?g.offers.map(compactOffer):[]
+      })):[]
+    };
+  }
+
+  function ensurePanel(){
+    let el=document.getElementById('__sh_debug_panel');
+    if(el)return el;
+    el=document.createElement('pre');
+    el.id='__sh_debug_panel';
+    el.style.cssText='position:fixed;left:8px;right:8px;bottom:70px;max-height:55vh;overflow:auto;z-index:2147483647;background:#111;color:#fff;border:2px solid #f5c542;border-radius:12px;padding:12px;font:11px/1.35 monospace;white-space:pre-wrap;box-shadow:0 8px 30px #000';
+    document.body.appendChild(el);
+    return el;
+  }
+  function refreshPanel(){
+    const el=ensurePanel();
+    el.textContent=JSON.stringify(report,null,2);
+  }
+
+  const originalFetch=window.fetch;
+  if(originalFetch){
+    window.fetch=function(){
+      const args=arguments;
+      const url=String(args[0]&&args[0].url||args[0]||'');
+      const started=Date.now();
+      return originalFetch.apply(this,args).then(async response=>{
+        if(/\/search(?:\?|$)|\/test-store(?:\?|$)/i.test(url)){
+          let body=null;
+          try{body=await response.clone().json();}catch(e){}
+          report.fetches.push({
+            url,
+            status:response.status,
+            ms:Date.now()-started,
+            body:body?summarizeData(body):null
+          });
+          refreshPanel();
+        }
+        return response;
+      }).catch(err=>{
+        if(/\/search(?:\?|$)|\/test-store(?:\?|$)/i.test(url)){
+          report.fetches.push({url,error:String(err),ms:Date.now()-started});
+          refreshPanel();
+        }
+        throw err;
+      });
+    };
+  }
+
+  function wrapFunction(name,handler){
+    const original=window[name];
+    if(typeof original!=='function')return false;
+    window[name]=handler(original);
+    return true;
+  }
+
+  wrapFunction('shGroupData',function(original){
+    return function(data){
+      const before=summarizeData(data||{});
+      let groups=[];
+      try{groups=original.apply(this,arguments)||[];}catch(e){
+        report.grouping_calls.push({error:String(e),input:before});
+        refreshPanel();
+        throw e;
+      }
+      report.grouping_calls.push({
+        input:before,
+        output_count:Array.isArray(groups)?groups.length:0,
+        output:Array.isArray(groups)?groups.map(g=>({
+          brand:g&&g.brand||'',name:g&&g.name||'',catalog_id:g&&g.catalog_id||'',canonical:g&&g.canonical||'',
+          offers:Array.isArray(g&&g.offers)?g.offers.map(compactOffer):[]
+        })):[]
+      });
+      refreshPanel();
+      return groups;
+    };
+  });
+
+  wrapFunction('showProducts',function(original){
+    return function(groups){
+      report.render_calls.push({
+        received_count:Array.isArray(groups)?groups.length:0,
+        groups:Array.isArray(groups)?groups.map(g=>({
+          brand:g&&g.brand||'',name:g&&g.name||'',catalog_id:g&&g.catalog_id||'',display_name:g&&g.display_name||'',
+          offers:Array.isArray(g&&g.offers)?g.offers.map(compactOffer):[]
+        })):[]
+      });
+      refreshPanel();
+      return original.apply(this,arguments);
+    };
+  });
+
+  window.addEventListener('error',function(e){
+    report.last_error={message:e.message,source:e.filename,line:e.lineno,col:e.colno};
+    refreshPanel();
+  });
+  window.addEventListener('unhandledrejection',function(e){
+    report.last_rejection=String(e.reason);
+    refreshPanel();
+  });
+
+  setTimeout(refreshPanel,300);
+})();
+</script>
