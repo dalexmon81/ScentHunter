@@ -1965,13 +1965,24 @@ const SEARCH_STORES=[
 ];
 
 async function getSearchStores(term){
+ try{
+  const routing=await fetchJSONWithTimeout(
+   backend()+"/routing?q="+encodeURIComponent(term),
+   8000
+  );
+  const routed=Array.isArray(routing?.stores)
+   ? routing.stores.map(v=>String(v||"").trim().toLowerCase()).filter(Boolean)
+   : [];
+  const valid=[...new Set(routed)].filter(store=>SEARCH_STORES.includes(store));
+  if(valid.length)return valid;
+ }catch(e){}
  return [...SEARCH_STORES];
 }
 
 async function searchStoresProgressive(term,onPartial){
  const merged={query:term,comparisons:[],results:[],errors:{}};
- const timeoutMs=45000;
- const concurrency=4;
+ const timeoutMs=15000;
+ const concurrency=2;
  const stores=await getSearchStores(term);
  const totalStores=stores.length;
 
@@ -1983,13 +1994,7 @@ async function searchStoresProgressive(term,onPartial){
    fetchJSONWithTimeout(
     backend()+"/test-store?store="+encodeURIComponent(store)+"&q="+encodeURIComponent(term),
     timeoutMs
-   ).catch(async()=>{
-    await new Promise(resolve=>setTimeout(resolve,350));
-    return fetchJSONWithTimeout(
-     backend()+"/test-store?store="+encodeURIComponent(store)+"&q="+encodeURIComponent(term),
-     timeoutMs
-    );
-   })
+   )
   ));
 
   responses.forEach((r,k)=>{
