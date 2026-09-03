@@ -2316,7 +2316,7 @@ def normalize_store_product(
         if item.get("size") is not None:
             item["sizeml"] = item["size"]
         else:
-            item["sizeml"] = product_size_ml(item)
+            item["sizeml"] = productsizeml(item)
 
     if item.get("size") is None and item.get("sizeml") is not None:
         item["size"] = item["sizeml"]
@@ -2392,7 +2392,7 @@ def run_store(
                 continue
 
             product = normalize_store_product(item, store)
-            product = resolve_actual_price(product)
+            product = resolveactualprice(product)
 
 
             image = product_image(product)
@@ -2488,7 +2488,7 @@ def _pre_rank_candidates(
     )
 
 
-def _validate_candidate(
+def validatecandidate(
     product: Dict[str, Any],
     query: str,
 ) -> Optional[Dict[str, Any]]:
