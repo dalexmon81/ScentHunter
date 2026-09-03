@@ -1368,8 +1368,22 @@ function shGroupData(data){
    * considera due prodotti distinti.
    */
   function commercialBaseName(name){
-    return norm(String(name||""))
-      .replace(/\b(?:pour\s+femme|pour\s+homme|for\s+women|for\s+men|for\s+her|for\s+him|women'?s|men'?s|women|men|femme|homme|woman|man|unisex)\b/g," ")
+    // Seconda barriera indipendente dalla pulizia precedente del nome.
+    // Un prezzo o un suffisso commerciale residuo non può mai creare
+    // una nuova identità del profumo.
+    let raw=String(name||"")
+      .replace(/\s+/g," ")
+      .trim();
+
+    // Prezzi finali: "De 63,50€", "Da 63.50 EUR", "63,50€", ecc.
+    raw=raw
+      .replace(/\s+(?:da|de|a|à|from|starting\s+at)\s+\d{1,4}(?:[.,]\d{1,2})?\s*(?:€|eur|euro)\s*$/i,"")
+      .replace(/\s+\d{1,4}(?:[.,]\d{1,2})?\s*(?:€|eur|euro)\s*$/i,"")
+      .replace(/\s*[-–—:]\s*\d{1,4}(?:[.,]\d{1,2})?\s*(?:€|eur|euro)\s*$/i,"")
+      .trim();
+
+    return norm(raw)
+      .replace(/\b(?:pour\s+femme|pour\s+homme|for\s+women|for\s+men|for\s+her|for\s+him|women\'?s|men\'?s|women|men|femme|homme|woman|man|unisex)\b/g," ")
       .replace(/\s+/g," ")
       .trim();
   }
