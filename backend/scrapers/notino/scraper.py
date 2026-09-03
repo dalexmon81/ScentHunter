@@ -533,7 +533,7 @@ def _reader_candidates(text: str, query: str) -> List[Dict[str, Any]]:
         if not lookslikeproducturl(url):
             continue
 
-                # Use only the local text between this product URL and the next product URL.
+        # Use only the local text between this product URL and the next product URL.
         # This prevents names/prices from neighbouring products being mixed together.
         next_match = None
         for other in matches:
@@ -547,7 +547,7 @@ def _reader_candidates(text: str, query: str) -> List[Dict[str, Any]]:
         window = raw[start:end]
         lines = window.splitlines()
 
-            candidate_names: List[str] = []
+        candidate_names: List[str] = []
 
         # Jina can place the product URL immediately before the next
         # product card. Therefore arbitrary text after the URL cannot
@@ -606,6 +606,7 @@ def _reader_candidates(text: str, query: str) -> List[Dict[str, Any]]:
         # Never manufacture a product name from unrelated text.
         if not candidate_names:
             continue
+        for name in sorted(
             set(candidate_names),
             key=lambda item: (len(item), item.casefold())
         )[:4]:
