@@ -20,7 +20,7 @@ SITEMAP_URL = BASE_URL + "/sitemap.xml"
 TIMEOUT = 15
 READER_TIMEOUT = 25
 RETRY_COUNT = 2
-SCRAPER_VERSION = "notino-3.4-2026-09-03-generic-query-fix"
+SCRAPER_VERSION = "notino-3.0-2026-09-03-boundary-fix"
 
 PRODUCT_RE = re.compile(r"/p-(\d+)(?:/|$)", re.I)
 PRODUCT_URL_RE = re.compile(
@@ -155,10 +155,19 @@ def _query_matches_name(name: str, query: str) -> bool:
     if not all(token in name_tokens for token in required):
         return False
 
-    # The retailer title can reorder the meaningful identity words, e.g.
-    # "Rue Broca Hooked Intensely" for the query "Hooked Intensely Rue Broca".
-    # The token check above is therefore authoritative for identity; the
-    # gender checks below prevent cross-gender matches.
+    # The explicit query sequence must exist, after alpha/numeric normalization.
+    q_sequence = query_norm.split()
+    n_sequence = name_norm.split()
+    if q_sequence and not any(
+        n_sequence[i:i + len(q_sequence)] == q_sequence
+        for i in range(0, len(n_sequence) - len(q_sequence) + 1)
+    ):
+        # Brand may be omitted from the retailer anchor, so fall back to the
+        # identity-token check only when the explicit query's brand is absent.
+        q_without_brand = [t for t in q_sequence if t not in {"pour", "femme", "homme", "for", "women", "woman", "men", "man"}]
+        if not q_without_brand or not all(token in name_tokens for token in q_without_brand):
+            return False
+
     q = query_norm
     n = name_norm
     gender_checks = (
@@ -168,14 +177,8 @@ def _query_matches_name(name: str, query: str) -> bool:
         (r"\b(?:pour|for) (?:man|men)\b", r"\b(?:pour|for) (?:man|men)\b"),
         (r"\b(?:unisex|unisexe)\b", r"\b(?:unisex|unisexe)\b"),
     )
-    # A retailer title may omit the gender qualifier (e.g. "Afnan 9 PM"),
-    # so its absence must not reject an otherwise valid candidate. Reject only
-    # an explicit conflicting gender in the candidate title.
-    if re.search(r"\b(?:pour|for) hommes?\b|\b(?:man|men)\b", q):
-        if re.search(r"\b(?:pour|for) femmes?\b|\b(?:woman|women)\b", n):
-            return False
-    if re.search(r"\b(?:pour|for) femmes?\b|\b(?:woman|women)\b", q):
-        if re.search(r"\b(?:pour|for) hommes?\b|\b(?:man|men)\b", n):
+    for query_pattern, name_pattern in gender_checks:
+        if re.search(query_pattern, q) and not re.search(name_pattern, n):
             return False
 
     return True
@@ -640,42 +643,15 @@ def _reader_product(session: requests.Session, candidate: Dict[str, Any], query:
     if not text or not _requested_size_ok(text, query):
         return None
 
-    candidate_name = _clean_name(candidate.get("name") or "")
-
-    # The search result already contains the URL/name association. On some
-    # Notino pages Jina exposes navigation/related-product headings before
-    # the real product title (for example a generic "Afnan 9 PM" line for
-    # the Pour Femme page). Never replace a more specific search-card name
-    # with that shorter incidental heading.
-    name = candidate_name if (
-        candidate_name
-        and _query_matches_name(candidate_name, query)
-        and not _has_non_perfume_marker(candidate_name)
-    ) else ""
-
+    name = ""
+    for line in [_clean(re.sub(r"^#{1,6}\s*", "", item)) for item in text.splitlines() if _clean(item)][:220]:
+        if len(line) > 220 or PRICE_RE.search(line):
+            continue
+        if _query_matches_name(line, query) and not _has_non_perfume_marker(line):
+            name = _clean_name(line)
+            break
     if not name:
-        for line in [_clean(re.sub(r"^#{1,6}\s*", "", item)) for item in text.splitlines() if _clean(item)][:220]:
-            if len(line) > 220 or PRICE_RE.search(line):
-                continue
-            clean_line = re.sub(r"^Title\s*:\s*", "", line, flags=re.I)
-            if _query_matches_name(clean_line, query) and not _has_non_perfume_marker(clean_line):
-                name = _clean_name(clean_line)
-                break
-
-    # A candidate is valid only if the product page itself contains evidence
-    # of the requested perfume. This blocks URL/name pairings accidentally
-    # created by the reader search parser (e.g. an Afnan name attached to a
-    # completely unrelated Pampers URL).
-    page_probe = " ".join(
-        _clean(re.sub(r"^#{1,6}\s*", "", item))
-        for item in text.splitlines()
-        if _clean(item)
-    )
-    if not _query_matches_name(page_probe, query):
-        return None
-
-    if not name:
-        name = candidate_name
+        name = _clean_name(candidate.get("name") or "")
     if not name or not _query_matches_name(name, query) or _has_non_perfume_marker(name):
         return None
 
