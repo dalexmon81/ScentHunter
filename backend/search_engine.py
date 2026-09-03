@@ -477,7 +477,7 @@ class SearchEngine:
             else:
                 flat_results.append(dict(group))
 
-        flat_results = self._stable_offers(flat_results)
+        flat_results = self._stable_results(flat_results)
 
         return {
             "query": text,
@@ -527,7 +527,7 @@ class SearchEngine:
             else:
                 flat_results.append(dict(group))
 
-        flat_results = self._stable_offers(flat_results)
+        flat_results = self._stable_results(flat_results)
 
         return {
             "job_id": job_id,
