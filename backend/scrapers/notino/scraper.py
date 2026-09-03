@@ -167,30 +167,67 @@ def _has_non_perfume_marker(value: Any) -> bool:
     return any(_norm(marker) in low for marker in NON_PERFUME_MARKERS)
 
 
-def _looks_like_product_url(url: str) -> bool:
-    """Recognise both Notino URL generations.
+def lookslikeproducturl(url: str) -> bool:
+    value = normaliseurl(url)
 
-    Some product pages use /p-123456/, while others use a clean product slug
-    without a numeric ID. The slug is never used as primary product identity.
-    """
-    value = _normalise_url(url)
-    if "notino.fr" not in value.lower():
+    if not value:
         return False
-    if PRODUCT_RE.search(value):
+
+    parsed = urlparse(value)
+    host = parsed.netloc.lower()
+
+    allowed_hosts = {
+        "www.notino.fr",
+        "notino.fr",
+        "www.notino.be",
+        "notino.be",
+        "www.notino.de",
+        "notino.de",
+        "www.notino.com",
+        "notino.com",
+    }
+
+    if host not in allowed_hosts:
+        return False
+
+    path = unquote(parsed.path or "").lower().strip("/")
+
+    if not path:
+        return False
+
+    if PRODUCTRE.search(value):
         return True
-    try:
-        parts = [p for p in unquote(urlparse(value).path).split("/") if p]
-    except Exception:
-        return False
+
+    parts = [
+        part.strip().lower()
+        for part in path.split("/")
+        if part.strip()
+    ]
+
     if len(parts) < 2:
         return False
-    slug = parts[-1].lower()
+
+    slug = parts[-1]
+
     product_markers = (
-        "eau-de-parfum", "eau-de-toilette", "extrait-de-parfum",
-        "parfum", "pour-femme", "pour-homme", "for-women", "for-men",
-        "edp", "edt", "extrait",
+        "eau-de-parfum",
+        "eau-de-toilette",
+        "eau-de-cologne",
+        "extrait-de-parfum",
+        "parfum",
+        "pour-femme",
+        "pour-homme",
+        "for-women",
+        "for-men",
+        "edp",
+        "edt",
+        "extrait",
+        "perfume",
+        "fragrance",
     )
+
     return any(marker in slug for marker in product_markers)
+
 
 
 def _normalise_url(url: str) -> str:
