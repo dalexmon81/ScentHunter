@@ -38,6 +38,7 @@ _engine = SearchEngine(_legacy)
 # explicitly; assigning only local wrapper globals would NOT change the routes.
 _legacy.search_perfume = _engine.search
 _legacy._run_search_job = _engine.run_job
+_legacy._search_job_snapshot = _engine.search_job_snapshot
 
 
 # Keep the exact FastAPI application object and every existing route.
