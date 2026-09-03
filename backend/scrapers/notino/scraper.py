@@ -507,8 +507,23 @@ def _reader_candidates(text: str, query: str) -> List[Dict[str, Any]]:
     raw = html_lib.unescape(text or "").replace("\\/", "/")
     found: Dict[str, Dict[str, Any]] = {}
 
-    absolute_urls = list(PRODUCT_URL_RE.finditer(raw))
-    relative_urls = list(RELATIVE_PRODUCT_RE.finditer(raw))
+        absolute_urls = list(PRODUCT_URL_RE.finditer(raw))
+
+    abs_spans = [(m.start(), m.end()) for m in absolute_urls]
+
+    relative_urls = []
+
+    for match in RELATIVE_PRODUCT_RE.finditer(raw):
+        start, end = match.start(), match.end()
+
+        if any(
+            start < abs_end and end > abs_start
+            for abs_start, abs_end in abs_spans
+        ):
+            continue
+
+        relative_urls.append(match)
+
     matches = absolute_urls + relative_urls
     matches.sort(key=lambda match: match.start())
 
