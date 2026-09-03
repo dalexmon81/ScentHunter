@@ -1965,17 +1965,6 @@ const SEARCH_STORES=[
 ];
 
 async function getSearchStores(term){
- try{
-  const routing=await fetchJSONWithTimeout(
-   backend()+"/routing?q="+encodeURIComponent(term),
-   8000
-  );
-  const routed=Array.isArray(routing?.stores)
-   ? routing.stores.map(v=>String(v||"").trim().toLowerCase()).filter(Boolean)
-   : [];
-  const valid=[...new Set(routed)].filter(store=>SEARCH_STORES.includes(store));
-  if(valid.length)return valid;
- }catch(e){}
  return [...SEARCH_STORES];
 }
 
