@@ -19,17 +19,14 @@ Goals:
 from __future__ import annotations
 
 import concurrent.futures
-import copy
 import time
 import traceback
 from dataclasses import dataclass, field
 from typing import Any, Callable, Dict, List, Optional
 
 
-DEFAULT_STORE_TIMEOUT = 35.0
-DEFAULT_GLOBAL_TIMEOUT = 80.0
-RETRY_STORE_TIMEOUT = 30.0
-RETRY_GLOBAL_BUDGET = 38.0
+DEFAULT_STORE_TIMEOUT = 40.0
+DEFAULT_GLOBAL_TIMEOUT = 45.0
 
 
 @dataclass
@@ -152,44 +149,43 @@ class SearchEngine:
                 error=f"{type(exc).__name__}: {exc}",
             )
 
-    def _run_store_wave(
-        self,
-        stores: List[str],
-        query: str,
-        timeout: float,
-        global_budget: float,
-    ) -> Dict[str, StoreRun]:
-        """Run one independent parallel wave of store adapters.
-
-        A wave never waits for one slow shop before collecting the others.
-        Timed-out futures are detached; their late result is deliberately
-        ignored by the wave.
+    def _run_stores(self, query: str) -> Dict[str, Any]:
         """
-        if not stores:
-            return {}
+        Execute all store adapters concurrently with two independent limits:
 
+        - every store has its own STORE_TIMEOUT budget;
+        - the whole research phase has a GLOBAL_TIMEOUT ceiling.
+
+        A timed-out Python thread cannot be force-killed safely.  The future is
+        therefore detached from the result set and the executor is shut down
+        without waiting.  A late adapter completion is ignored.
+        """
         started = time.monotonic()
         results: Dict[str, StoreRun] = {
-            store: StoreRun(store=store) for store in stores
+            store: StoreRun(store=store) for store in self.stores
         }
 
         executor = concurrent.futures.ThreadPoolExecutor(
-            max_workers=max(1, len(stores)),
+            max_workers=max(1, len(self.stores)),
             thread_name_prefix="scenthunter-store",
         )
+
         futures: Dict[concurrent.futures.Future, str] = {}
         submitted_at: Dict[concurrent.futures.Future, float] = {}
 
-        for store in stores:
+        for store in self.stores:
             future = executor.submit(self._run_one_store, store, query)
             futures[future] = store
             submitted_at[future] = time.monotonic()
 
         pending = set(futures)
-        deadline = started + min(float(timeout), float(global_budget))
+        deadline = started + self.global_timeout
 
         try:
             while pending and time.monotonic() < deadline:
+                now = time.monotonic()
+
+                # Harvest every future that has already completed.
                 done = {future for future in pending if future.done()}
                 for future in done:
                     pending.remove(future)
@@ -208,25 +204,32 @@ class SearchEngine:
                 if not pending:
                     break
 
+                # Enforce the per-store timeout independently.
                 now = time.monotonic()
                 for future in list(pending):
                     store = futures[future]
-                    if now - submitted_at[future] >= float(timeout):
+                    if now - submitted_at[future] >= self.store_timeout:
                         pending.remove(future)
                         results[store] = StoreRun(
                             store=store,
                             status="timeout",
                             candidates=[],
                             elapsed=now - submitted_at[future],
-                            error=f"store exceeded independent timeout ({timeout:.0f}s)",
+                            error=(
+                                f"store exceeded independent timeout "
+                                f"({self.store_timeout:.0f}s)"
+                            ),
                         )
 
                 if not pending:
                     break
 
-                remaining = deadline - time.monotonic()
-                time.sleep(min(0.20, max(0.0, remaining)))
+                # Short polling interval keeps timeout enforcement precise
+                # without busy-spinning the process.
+                remaining_global = deadline - time.monotonic()
+                time.sleep(min(0.20, max(0.0, remaining_global)))
 
+            # Anything still pending at the global deadline is a timeout.
             if pending:
                 now = time.monotonic()
                 for future in pending:
@@ -236,100 +239,15 @@ class SearchEngine:
                         status="timeout",
                         candidates=[],
                         elapsed=now - submitted_at[future],
-                        error="store wave budget expired",
+                        error="global search window expired",
                     )
+
         finally:
-            for future in pending:
-                future.cancel()
             executor.shutdown(wait=False, cancel_futures=True)
 
-        return results
-
-    def _run_stores(self, query: str) -> Dict[str, Any]:
-        """
-        Execute the eight stores in parallel, then retry only inconclusive
-        stores in a second independent wave.
-
-        The important distinction is that an empty/error/timeout result from
-        one shop is *not* treated as proof that the product is absent there.
-        This is what prevents intermittent scraper misses from becoming
-        intermittent missing shops in the final answer.
-
-        No result is published during either wave.  The caller receives the
-        complete combined candidate pool only after both waves finish.
-        """
-        started = time.monotonic()
-
-        first_wave_budget = min(
-            self.store_timeout,
-            45.0,
-            self.global_timeout,
-        )
-        first = self._run_store_wave(
-            self.stores,
-            query,
-            timeout=first_wave_budget,
-            global_budget=first_wave_budget,
-        )
-
-        # A scraper returning no candidates is inconclusive.  Retry it even
-        # when main_legacy.run_store swallowed an underlying HTTP exception.
-        retry_stores = [
-            store
-            for store in self.stores
-            if first.get(store, StoreRun(store=store)).status
-            in {"empty", "error", "timeout"}
-        ]
-
-        remaining = max(0.0, self.global_timeout - (time.monotonic() - started))
-        second: Dict[str, StoreRun] = {}
-        if retry_stores and remaining > 2.0:
-            retry_budget = min(
-                RETRY_GLOBAL_BUDGET,
-                remaining,
-            )
-            retry_timeout = min(
-                RETRY_STORE_TIMEOUT,
-                retry_budget,
-            )
-            second = self._run_store_wave(
-                retry_stores,
-                query,
-                timeout=retry_timeout,
-                global_budget=retry_budget,
-            )
-
-        # Keep the best outcome per store.  A successful retry replaces an
-        # empty/error first attempt.  If both attempts have candidates, merge
-        # them losslessly so a second discovery path can contribute another
-        # size/shop offer.
-        combined: Dict[str, StoreRun] = {}
-        for store in self.stores:
-            first_result = first.get(store, StoreRun(store=store))
-            retry_result = second.get(store)
-
-            if retry_result is None:
-                combined[store] = first_result
-                continue
-
-            candidates = list(first_result.candidates) + list(retry_result.candidates)
-            if candidates:
-                combined[store] = StoreRun(
-                    store=store,
-                    status="ok",
-                    candidates=candidates,
-                    elapsed=max(first_result.elapsed, retry_result.elapsed),
-                    error=None,
-                )
-            elif retry_result.status == "timeout" and first_result.status == "empty":
-                combined[store] = first_result
-            else:
-                combined[store] = retry_result
-
         return {
-            "stores": combined,
+            "stores": results,
             "elapsed": time.monotonic() - started,
-            "retried_stores": retry_stores,
         }
 
     # ------------------------------------------------------------------
@@ -405,8 +323,7 @@ class SearchEngine:
         output: List[Dict[str, Any]] = []
 
         for result in results:
-            # Detach the final object from legacy/matcher nested structures.
-            item = copy.deepcopy(result)
+            item = dict(result)
             nested = item.get("offers")
 
             if isinstance(nested, list) and nested:
@@ -424,38 +341,9 @@ class SearchEngine:
                 # offer, not merely the cheapest OOS offer.
                 if offers:
                     best = offers[0]
-
-                    # Rebuild the representative from the winning offer.
-                    # The legacy grouper may leave top-level metadata (source,
-                    # identity, raw_data, etc.) originating from a different
-                    # merchant than the top-level store/price/url.  That creates
-                    # mixed objects such as "store=Bplatz" with "source=Deloox".
-                    #
-                    # Keep the group-level fields that belong to the canonical
-                    # product, but replace every merchant-owned field with a
-                    # deep copy from the actual best offer.
-                    merchant_fields = {
-                        "store", "shop", "price", "price_num", "url", "image",
-                        "image_url", "thumbnail", "availability", "available",
-                        "stock_status", "stock", "size_ml", "size",
-                        "concentration", "gender", "source", "identity",
-                        "raw_data", "sku", "gtin", "product_id", "variant_id",
-                        "offer", "offer_data", "merchant", "merchant_data",
-                    }
-
-                    for field in merchant_fields:
+                    for field in ("store", "price", "url", "image", "availability", "available", "size_ml", "concentration", "gender"):
                         if field in best:
-                            item[field] = copy.deepcopy(best[field])
-                        else:
-                            # A merchant field left behind by the legacy
-                            # representative is unsafe: it may belong to the
-                            # previous representative rather than the winner.
-                            item.pop(field, None)
-
-                    # The nested offers are the authoritative merchant list.
-                    # Store them independently so later mutations cannot
-                    # cross-contaminate the representative or another group.
-                    item["offers"] = [copy.deepcopy(x) for x in offers]
+                            item[field] = best[field]
 
             output.append(item)
 
@@ -464,7 +352,7 @@ class SearchEngine:
             best = nested[0] if isinstance(nested, list) and nested else item
             return offer_key(best if isinstance(best, dict) else item)
 
-        return [copy.deepcopy(x) for x in sorted(output, key=result_key)]
+        return sorted(output, key=result_key)
 
     def _validate_candidates_only(
         self,
@@ -572,17 +460,86 @@ class SearchEngine:
 
         final_results = self._validate_and_finalize(text, raw_pool)
 
+        # The central finalizer already returns one canonical product group per
+        # result, including its complete retailer-level ``offers`` list.
+        # Publish those groups in ``comparisons`` for the frontend, while
+        # keeping ``results`` as the flat retailer-offer list for compatibility.
+        grouped_results = [dict(item) for item in final_results if isinstance(item, dict)]
+        flat_results: List[Dict[str, Any]] = []
+        for group in grouped_results:
+            offers = group.get("offers")
+            if isinstance(offers, list) and offers:
+                flat_results.extend(
+                    dict(offer)
+                    for offer in offers
+                    if isinstance(offer, dict)
+                )
+            else:
+                flat_results.append(dict(group))
+
+        flat_results = self._stable_offers(flat_results)
+
         return {
             "query": text,
-            "count": len(final_results),
-            "results": final_results,
-            "comparisons": [],
+            "count": len(grouped_results),
+            "offer_count": len(flat_results),
+            "results": flat_results,
+            "comparisons": grouped_results,
             "errors": errors,
         }
 
     # ------------------------------------------------------------------
     # Async job API used by existing /search-start + /search-status routes
     # ------------------------------------------------------------------
+
+    def search_job_snapshot(self, job_id: str) -> Dict[str, Any]:
+        jobs = getattr(self.legacy, "SEARCH_JOBS", None)
+        lock = getattr(self.legacy, "SEARCH_JOBS_LOCK", None)
+        if jobs is None:
+            raise RuntimeError("SEARCH_JOBS is not available")
+
+        def read_job() -> Dict[str, Any]:
+            job = jobs.get(job_id)
+            if job is None:
+                raise self.legacy.HTTPException(status_code=404, detail="Job di ricerca non trovato")
+            return dict(job)
+
+        if lock is not None:
+            with lock:
+                job = read_job()
+        else:
+            job = read_job()
+
+        prepared = self._validate_and_finalize(
+            job.get("query", ""),
+            list(job.get("results") or []),
+        )
+        grouped_results = [dict(item) for item in prepared if isinstance(item, dict)]
+        flat_results: List[Dict[str, Any]] = []
+        for group in grouped_results:
+            offers = group.get("offers")
+            if isinstance(offers, list) and offers:
+                flat_results.extend(
+                    dict(offer)
+                    for offer in offers
+                    if isinstance(offer, dict)
+                )
+            else:
+                flat_results.append(dict(group))
+
+        flat_results = self._stable_offers(flat_results)
+
+        return {
+            "job_id": job_id,
+            "query": job.get("query", ""),
+            "count": len(grouped_results),
+            "offer_count": len(flat_results),
+            "results": flat_results,
+            "comparisons": grouped_results,
+            "errors": dict(job.get("errors") or {}),
+            "completed": bool(job.get("completed")),
+            "status": "completed" if job.get("completed") else "searching",
+        }
 
     def run_job(self, job_id: str, query: str) -> None:
         """
