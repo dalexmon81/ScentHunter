@@ -20,7 +20,7 @@ SITEMAP_URL = BASE_URL + "/sitemap.xml"
 TIMEOUT = 15
 READER_TIMEOUT = 25
 RETRY_COUNT = 2
-SCRAPER_VERSION = "notino-3.0-2026-09-03-boundary-fix"
+SCRAPER_VERSION = "notino-3.3-2026-09-03-card-boundary-fix"
 
 PRODUCT_RE = re.compile(r"/p-(\d+)(?:/|$)", re.I)
 PRODUCT_URL_RE = re.compile(
@@ -200,6 +200,7 @@ def normaliseurl(url: str) -> str:
 
 
 _normalise_url = normaliseurl
+BASEURL = BASE_URL
 
 
 def lookslikeproducturl(url: str) -> bool:
@@ -533,41 +534,41 @@ def _reader_candidates(text: str, query: str) -> List[Dict[str, Any]]:
         if not lookslikeproducturl(url):
             continue
 
-        # Use only the local text between this product URL and the next product URL.
-        # This prevents names/prices from neighbouring products being mixed together.
-        next_match = None
-        for other in matches:
-            if other.start() > match.end():
-                next_match = other
+        # Jina Reader places the product card BEFORE its product URL.
+        # The URL therefore terminates the card rather than starting it.
+        # Associate each URL with the text since the previous product URL.
+        previous_match = None
+        for other in reversed(matches):
+            if other.end() <= match.start():
+                previous_match = other
                 break
 
-        start = match.start()
-        end = next_match.start() if next_match else min(len(raw), match.end() + 1200)
-
+        start = previous_match.end() if previous_match else max(0, match.start() - 1800)
+        end = match.end()
         window = raw[start:end]
         lines = window.splitlines()
 
         candidate_names: List[str] = []
 
-        # Jina can place the product URL immediately before the next
-        # product card. Therefore arbitrary text after the URL cannot
-        # be considered the title of that URL.
+        # First use the card text immediately preceding this URL.
+        for line in lines:
+            name = _extract_name_from_line(line, query)
+            if name:
+                candidate_names.append(name)
 
-        # Look for an explicit markdown link whose target is this exact URL.
+        # Also inspect markdown links whose target is exactly this product URL.
         exact_url = url.rstrip("/")
 
         for md in re.finditer(
             r"\[([^\]]{3,220})\]\((https?://[^)]+|/[^)]+)\)",
-            raw,
+            window,
             flags=re.I,
         ):
             target = normaliseurl(md.group(2)).rstrip("/")
-
             if target != exact_url:
                 continue
 
             name = _clean_name(md.group(1))
-
             if (
                 name
                 and not _has_non_perfume_marker(name)
@@ -575,37 +576,31 @@ def _reader_candidates(text: str, query: str) -> List[Dict[str, Any]]:
             ):
                 candidate_names.append(name)
 
-        # Look for the image alt text belonging to this product URL.
-        url_position = match.start()
-
-        local_before = raw[max(0, url_position - 500):url_position]
-        local_after = raw[match.end():min(len(raw), match.end() + 500)]
-
-        for context in (local_before, local_after):
-            for image_match in re.finditer(
-                r"!\[\s*(?:Image\s*\d+\s*:\s*)?([^\]]{3,220})\]",
-                context,
-                flags=re.I,
-            ):
-                name = _clean_name(
-                    re.sub(
-                        r"^Image(?:\s*\d+)?\s*:\s*",
-                        "",
-                        image_match.group(1),
-                        flags=re.I,
-                    )
+        # Finally inspect image alt text in the same card window.
+        for image_match in re.finditer(
+            r"!\[\s*(?:Image\s*\d+\s*:\s*)?([^\]]{3,220})\]",
+            window,
+            flags=re.I,
+        ):
+            name = _clean_name(
+                re.sub(
+                    r"^Image(?:\s*\d+)?\s*:\s*",
+                    "",
+                    image_match.group(1),
+                    flags=re.I,
                 )
+            )
+            if (
+                name
+                and not _has_non_perfume_marker(name)
+                and _query_matches_name(name, query)
+            ):
+                candidate_names.append(name)
 
-                if (
-                    name
-                    and not _has_non_perfume_marker(name)
-                    and _query_matches_name(name, query)
-                ):
-                    candidate_names.append(name)
-
-        # Never manufacture a product name from unrelated text.
+        # Never manufacture a product name from text belonging to another card.
         if not candidate_names:
             continue
+
         for name in sorted(
             set(candidate_names),
             key=lambda item: (len(item), item.casefold())
