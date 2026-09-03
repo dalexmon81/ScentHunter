@@ -2494,6 +2494,12 @@ def _validate_candidate(
 ) -> Optional[Dict[str, Any]]:
     try:
         matched = matches(product, query)
+        catalog_family = _catalog_family_for_query(query)
+        matched_product = (
+            _catalog_match(product, query)
+            if catalog_family is not None and matched
+            else None
+        )
     except Exception as exc:
         print(
             "[CENTRAL VALIDATION ERROR]",
@@ -2532,8 +2538,12 @@ def _validate_candidate(
         )
         return None
 
-    return product
+    if catalog_family is not None:
+        if matched_product is None:
+            return None
+        return matched_product
 
+    return product
 
 
 def _validate_candidates_parallel(
