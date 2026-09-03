@@ -29,7 +29,8 @@ _engine = SearchEngine(_legacy)
 # that module namespace. Patch those names there, not only in this wrapper.
 _legacy.search_perfume = _engine.search
 _legacy._run_search_job = _engine.run_job
-
+_legacy._validate_candidate = _legacy._validate_candidate
+_legacy._validate_candidates_parallel = _legacy._validate_candidates_parallel
 app = _legacy.app
 
 
