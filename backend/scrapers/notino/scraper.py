@@ -716,18 +716,45 @@ def _card_result(candidate: Dict[str, Any], query: str) -> Optional[Dict[str, An
     )
 
 
-def _result(name: str, price: str, stock: Optional[bool], url: str, size: Optional[float], concentration: str, gender: str) -> Dict[str, Any]:
+def result(
+    name: str,
+    price: str,
+    stock: Optional[bool],
+    url: str,
+    size: Optional[float],
+    concentration: str,
+    gender: str,
+) -> Dict[str, Any]:
+    availability = (
+        "out of stock"
+        if stock is True
+        else "in stock"
+        if stock is False
+        else "unknown"
+    )
+
     return {
-        "store": STORE,
-        "name": _display_name(name, url),
-        "price": price,
-        "availability": "out of stock" if stock is True else "in stock" if stock is False else "unknown",
-        "available": False if stock is True else True if stock is False else None,
+        "store": "notino",
+        "name": displayname(name, url),
+        "canonicalname": displayname(name, url),
+        "catalogvariant": displayname(name, url),
         "url": url,
-        "size_ml": size,
+        "price": price,
+        "availability": availability,
+        "available": False if stock is True else True if stock is False else None,
+        "sizeml": size,
+        "size": size,
         "concentration": concentration,
+        "canonicalconcentration": concentration,
         "gender": gender,
+        "source": {
+            "store": "notino",
+            "sourcestore": "notino",
+            "sourcename": "Notino",
+            "name": displayname(name, url),
+        },
     }
+
 
 
 def _enrich_one(candidate: Dict[str, Any], query: str) -> Optional[Dict[str, Any]]:
