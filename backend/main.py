@@ -45,164 +45,6 @@ _legacy._search_job_snapshot = _engine.search_job_snapshot
 app = _legacy.app
 
 
-# ---------------------------------------------------------------------------
-# VALIDATED /test-store PIPELINE
-# ---------------------------------------------------------------------------
-# The progressive frontend calls /test-store directly.  The legacy endpoint
-# returns raw scraper candidates, which means a broad retailer hit such as
-# "Hawas For Him" or "Hawas Pink" can reach the UI even when the requested
-# variant is "Hawas For Her".  The normal /search route already has the central
-# Family Registry validation, so this wrapper gives /test-store the same
-# identity gate while keeping the per-store response shape unchanged.
-
-_original_run_store = _legacy.run_store
-
-
-def _merge_store_candidates(*groups):
-    merged = []
-    seen = set()
-    for group in groups:
-        for item in group or []:
-            if not isinstance(item, dict):
-                continue
-            try:
-                key = _legacy.product_identity_key(item)
-            except Exception:
-                key = (
-                    str(item.get("store") or "").strip().lower(),
-                    str(item.get("url") or "").strip().lower(),
-                    str(item.get("name") or item.get("title") or "").strip().lower(),
-                    str(item.get("size_ml") or item.get("size") or "").strip(),
-                )
-            if key in seen:
-                continue
-            seen.add(key)
-            merged.append(item)
-    return merged
-
-
-def _catalog_discovery_queries(query: str):
-    """Return only authoritative aliases for a specific catalog variant."""
-    try:
-        family = _legacy._catalog_family_for_query(query)
-        if family is None:
-            return []
-        query_key = _legacy.catalog_variant_key(query)
-        if query_key in family.get("normalized_query_aliases", ()):
-            return []
-        requested = _legacy._catalog_requested_variant(query, family)
-        if not isinstance(requested, dict):
-            return []
-
-        canonical = str(requested.get("canonical_name") or "").strip()
-        aliases = [str(x or "").strip() for x in (requested.get("aliases") or [])]
-        # Prefer a retailer-friendly gender alias after the canonical name.
-        # This is especially useful when the shop search endpoint ignores
-        # "for her/for him" wording in a full query.
-        preferred = []
-        for alias in aliases:
-            low = _legacy.norm(alias)
-            if any(token in low.split() for token in ("women", "femme", "dames", "donna")):
-                preferred.append(alias)
-        values = [canonical] + preferred + aliases
-        out = []
-        seen = set()
-        for value in values:
-            value = str(value or "").strip()
-            key = _legacy.norm(value)
-            if not key or key in seen:
-                continue
-            if key == _legacy.norm(query):
-                continue
-            seen.add(key)
-            out.append(value)
-            if len(out) >= 2:
-                break
-        return out
-    except Exception:
-        return []
-
-
-def _validated_store_results(store: str, query: str):
-    first = _original_run_store(store, query) or []
-    validated = _engine._validate_candidates_only(query, first)
-    if validated:
-        return _merge_store_candidates(validated)
-
-    # If discovery found only false variants (common with gendered product
-    # names), retry using the Registry's exact canonical name/aliases.
-    extra_groups = []
-    for discovery_query in _catalog_discovery_queries(query):
-        try:
-            candidates = _original_run_store(store, discovery_query) or []
-            extra_groups.append(candidates)
-            validated = _engine._validate_candidates_only(
-                query,
-                _merge_store_candidates(first, *extra_groups),
-            )
-            if validated:
-                return _merge_store_candidates(validated)
-        except Exception:
-            continue
-
-    return _merge_store_candidates(
-        _engine._validate_candidates_only(
-            query,
-            _merge_store_candidates(first, *extra_groups),
-        )
-    )
-
-
-# Replace the already-registered legacy /test-store route in-place.  This keeps
-# the public URL identical, so the existing frontend does not need a new API.
-for _route in getattr(_legacy.app.router, "routes", []):
-    if getattr(_route, "path", None) == "/test-store":
-        def _validated_test_store(store: str, q: str):
-            store_name = str(store or "").strip().lower()
-            query = str(q or "").strip()
-
-            if store_name not in _legacy.STORES:
-                raise HTTPException(
-                    status_code=400,
-                    detail=(
-                        "Store non valido. Disponibili: "
-                        + ", ".join(_legacy.STORES)
-                    ),
-                )
-            if not query:
-                raise HTTPException(
-                    status_code=400,
-                    detail="Parametro q mancante",
-                )
-
-            try:
-                results = _validated_store_results(store_name, query)
-                return {
-                    "store": store_name,
-                    "query": query,
-                    "count": len(results),
-                    "results": _legacy.sort_by_price(
-                        _legacy.unique_results(results)
-                    ),
-                }
-            except Exception as error:
-                traceback.print_exc()
-                return {
-                    "store": store_name,
-                    "query": query,
-                    "count": 0,
-                    "results": [],
-                    "error": f"{type(error).__name__}: {error}",
-                }
-
-        _route.endpoint = _validated_test_store
-        try:
-            _route.dependant.call = _validated_test_store
-        except Exception:
-            pass
-        break
-
-
 # ===== TEMPORARY READ-ONLY NOTINO DEEP DIAGNOSTIC =====
 JINA_PREFIX = "https://r.jina.ai/"
 NOTINO_BASE = "https://www.notino.fr"
@@ -385,4 +227,258 @@ def diagnose_notino_deep(q: str = Query(..., min_length=1)):
         "query": query,
         "discovery_queries": discovery_queries[:2],
         "reports": reports,
+    }
+
+# ===== ON-DEMAND FORMAT PRICE COMPARISON =====
+# Used by the product-detail view when a perfume has multiple real formats.
+# The frontend sends the exact formats already known for that product.
+# IMPORTANT: maximum 2 stores are queried concurrently, matching the main
+# progressive search rule used by ScentHunter.
+FORMAT_STORES = [
+    "bplatz",
+    "deloox",
+    "parfumcity",
+    "parfumzentrum",
+    "perfumemarket",
+    "sabina",
+    "orioudh",
+    "notino",
+]
+
+
+def _format_compare_num(value: Any) -> float:
+    try:
+        if value is None or value == "":
+            return float("inf")
+        return float(str(value).replace(",", "."))
+    except Exception:
+        raw = re.sub(r"[^0-9,.\-]", "", str(value))
+        raw = raw.replace(",", ".")
+        try:
+            return float(raw)
+        except Exception:
+            return float("inf")
+
+
+def _format_compare_size(candidate: Dict[str, Any]) -> int | None:
+    raw = candidate.get("size_ml") or candidate.get("size")
+    if raw is not None:
+        m = re.search(r"(\d{1,4})", str(raw))
+        if m:
+            try:
+                return int(m.group(1))
+            except Exception:
+                pass
+
+    name = str(candidate.get("name") or "")
+    m = re.search(r"\b(\d{1,4})\s*ml\b", name, flags=re.I)
+    if m:
+        try:
+            return int(m.group(1))
+        except Exception:
+            pass
+    return None
+
+
+def _format_compare_is_oos(candidate: Dict[str, Any]) -> bool:
+    if candidate.get("in_stock") is False:
+        return True
+    text = " ".join(
+        str(candidate.get(k) or "")
+        for k in ("availability", "stock", "status", "name")
+    ).casefold()
+    markers = (
+        "out of stock",
+        "out-of-stock",
+        "non disponibile",
+        "nicht verfügbar",
+        "indisponible",
+        "rupture",
+        "agotado",
+        "esaurito",
+    )
+    return any(marker in text for marker in markers)
+
+
+def _format_compare_clean_offer(
+    candidate: Dict[str, Any],
+    store: str,
+    requested_size: int,
+) -> Dict[str, Any]:
+    offer = dict(candidate or {})
+    offer["store"] = str(offer.get("store") or store)
+    offer_size = _format_compare_size(offer)
+    offer["size_ml"] = offer_size if offer_size is not None else requested_size
+    if "price_value" not in offer:
+        offer["price_value"] = _format_compare_num(offer.get("price"))
+    offer["in_stock"] = not _format_compare_is_oos(offer)
+    return offer
+
+
+def _format_compare_query(product: str, size_ml: int) -> str:
+    # Keep the exact product identity and append the explicit format.
+    # This lets size-aware scrapers return the corresponding variant.
+    return f"{product} {size_ml} ml".strip()
+
+
+def _format_compare_store(store: str, product: str, size_ml: int) -> Dict[str, Any]:
+    query = _format_compare_query(product, size_ml)
+    try:
+        raw = _legacy.run_store(store, query)
+    except Exception as exc:
+        return {
+            "store": store,
+            "size_ml": size_ml,
+            "results": [],
+            "error": f"{type(exc).__name__}: {exc}",
+        }
+
+    candidates = raw if isinstance(raw, list) else []
+    # Reuse the central matcher/validator. We do NOT trust a raw scraper hit
+    # merely because it contains a price.
+    try:
+        validated = _engine._validate_candidates_only(query, candidates)
+    except Exception:
+        validated = candidates
+
+    cleaned = []
+    for candidate in (validated or []):
+        if not isinstance(candidate, dict):
+            continue
+
+        explicit_size = _format_compare_size(candidate)
+
+        # Strict size rule:
+        # - explicit wrong size => reject;
+        # - explicit requested size => accept;
+        # - missing size => accept only as an unknown-size candidate. It is
+        #   useful for out-of-stock/product-page-only adapters, but never wins
+        #   over a candidate with an explicit matching size.
+        if explicit_size is not None and explicit_size != size_ml:
+            continue
+
+        offer = _format_compare_clean_offer(candidate, store, size_ml)
+        cleaned.append(offer)
+
+    # One representative offer per store for this format.
+    # Available offers beat OOS; then lower price wins.
+    cleaned.sort(
+        key=lambda o: (
+            _format_compare_is_oos(o),
+            _format_compare_num(o.get("price_value")),
+        )
+    )
+
+    return {
+        "store": store,
+        "size_ml": size_ml,
+        "results": cleaned[:1],
+    }
+
+
+@app.get("/compare-formats")
+def compare_formats(
+    q: str = Query(..., min_length=1),
+    formats: str = Query("", min_length=0),
+):
+    product = str(q or "").strip()
+
+    requested_sizes = []
+    for raw_size in str(formats or "").split(","):
+        m = re.search(r"(\d{1,4})", raw_size)
+        if not m:
+            continue
+        try:
+            value = int(m.group(1))
+        except Exception:
+            continue
+        if value > 0 and value not in requested_sizes:
+            requested_sizes.append(value)
+
+    # No blind default formats here. The caller must send the real formats
+    # known for the product; this prevents inventing 30/50/100 ml variants.
+    requested_sizes.sort()
+
+    if not requested_sizes:
+        return {
+            "ok": True,
+            "query": product,
+            "formats": [],
+            "comparisons": [],
+            "errors": {},
+        }
+
+    comparisons = []
+    errors: Dict[str, str] = {}
+
+    from concurrent.futures import ThreadPoolExecutor, as_completed
+
+    # Exactly 2 stores concurrently.
+    for start in range(0, len(FORMAT_STORES), 2):
+        wave = FORMAT_STORES[start:start + 2]
+
+        with ThreadPoolExecutor(max_workers=2) as pool:
+            future_map = {
+                pool.submit(_format_compare_store, store, product, size): (
+                    store,
+                    size,
+                )
+                for size in requested_sizes
+                for store in wave
+            }
+
+            for future in as_completed(future_map):
+                store, size = future_map[future]
+                try:
+                    result = future.result()
+                except Exception as exc:
+                    errors[f"{store}:{size}"] = (
+                        f"{type(exc).__name__}: {exc}"
+                    )
+                    continue
+
+                if result.get("error"):
+                    errors[f"{store}:{size}"] = result["error"]
+
+                rows = result.get("results") or []
+                if rows:
+                    comparisons.extend(rows)
+
+    # Group the flat offers by requested format.
+    by_size: Dict[int, List[Dict[str, Any]]] = {
+        size: [] for size in requested_sizes
+    }
+    for offer in comparisons:
+        try:
+            size = int(offer.get("size_ml"))
+        except Exception:
+            continue
+        if size in by_size:
+            by_size[size].append(offer)
+
+    formatted_comparisons = []
+    for size in requested_sizes:
+        offers = by_size[size]
+        offers.sort(
+            key=lambda o: (
+                _format_compare_is_oos(o),
+                _format_compare_num(o.get("price_value")),
+            )
+        )
+        best = next(
+            (o for o in offers if not _format_compare_is_oos(o)),
+            None,
+        )
+        formatted_comparisons.append({
+            "size_ml": size,
+            "best": best,
+            "offers": offers,
+        })
+
+    return {
+        "ok": True,
+        "query": product,
+        "formats": requested_sizes,
+        "comparisons": formatted_comparisons,
+        "errors": errors,
     }
