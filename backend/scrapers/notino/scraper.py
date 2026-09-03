@@ -508,22 +508,7 @@ def _reader_candidates(text: str, query: str) -> List[Dict[str, Any]]:
     found: Dict[str, Dict[str, Any]] = {}
 
     absolute_urls = list(PRODUCT_URL_RE.finditer(raw))
-
-    abs_spans = [(m.start(), m.end()) for m in absolute_urls]
-
-    relative_urls = []
-
-    for match in RELATIVE_PRODUCT_RE.finditer(raw):
-        start, end = match.start(), match.end()
-
-        if any(
-            start < abs_end and end > abs_start
-            for abs_start, abs_end in abs_spans
-        ):
-            continue
-
-        relative_urls.append(match)
-
+    relative_urls = list(RELATIVE_PRODUCT_RE.finditer(raw))
     matches = absolute_urls + relative_urls
     matches.sort(key=lambda match: match.start())
 
@@ -533,102 +518,39 @@ def _reader_candidates(text: str, query: str) -> List[Dict[str, Any]]:
         if not lookslikeproducturl(url):
             continue
 
-        # Use only the local text between this product URL and the next product URL.
-        # This prevents names/prices from neighbouring products being mixed together.
-        next_match = None
-        for other in matches:
-            if other.start() > match.end():
-                next_match = other
-                break
-
-        start = match.start()
-        end = next_match.start() if next_match else min(len(raw), match.end() + 1200)
-
+        start = max(0, match.start() - 1400)
+        end = min(len(raw), match.end() + 1800)
         window = raw[start:end]
         lines = window.splitlines()
 
         candidate_names: List[str] = []
-
-        # Jina can place the product URL immediately before the next
-        # product card. Therefore arbitrary text after the URL cannot
-        # be considered the title of that URL.
-
-        # Look for an explicit markdown link whose target is this exact URL.
-        exact_url = url.rstrip("/")
-
-        for md in re.finditer(
-            r"\[([^\]]{3,220})\]\((https?://[^)]+|/[^)]+)\)",
-            raw,
-            flags=re.I,
-        ):
-            target = normaliseurl(md.group(2)).rstrip("/")
-
-            if target != exact_url:
-                continue
-
-            name = _clean_name(md.group(1))
-
-            if (
-                name
-                and not _has_non_perfume_marker(name)
-                and _query_matches_name(name, query)
-            ):
+        for line in lines:
+            name = _extract_name_from_line(line, query)
+            if name:
                 candidate_names.append(name)
 
-        # Look for the image alt text belonging to this product URL.
-        url_position = match.start()
+        # Explicitly inspect markdown link titles tied to the URL.
+        for md in re.finditer(r"\[([^\]]{3,220})\]\(([^)]+)\)", window, flags=re.I):
+            target = normaliseurl(md.group(2))
+            if target.rstrip("/") != url.rstrip("/"):
+                continue
+            name = _clean_name(md.group(1))
+            if name and _query_matches_name(name, query):
+                candidate_names.append(name)
 
-        local_before = raw[max(0, url_position - 500):url_position]
-        local_after = raw[match.end():min(len(raw), match.end() + 500)]
-
-        for context in (local_before, local_after):
-            for image_match in re.finditer(
-                r"!\[\s*(?:Image\s*\d+\s*:\s*)?([^\]]{3,220})\]",
-                context,
-                flags=re.I,
-            ):
-                name = _clean_name(
-                    re.sub(
-                        r"^Image(?:\s*\d+)?\s*:\s*",
-                        "",
-                        image_match.group(1),
-                        flags=re.I,
-                    )
-                )
-
-                if (
-                    name
-                    and not _has_non_perfume_marker(name)
-                    and _query_matches_name(name, query)
-                ):
-                    candidate_names.append(name)
-
-        # Never manufacture a product name from unrelated text.
         if not candidate_names:
-            continue
-        for name in sorted(
-            set(candidate_names),
-            key=lambda item: (len(item), item.casefold())
-        )[:4]:
+            # The product slug is a legitimate fallback identity when the page
+            # exposes only a raw URL; price/stock are still taken from the local window.
+            slug_name = _clean_name(_slug_name(url))
+            if _query_matches_name(slug_name, query):
+                candidate_names.append(slug_name)
 
-            candidate = _candidate_from_evidence(
-                url,
-                name,
-                window,
-                query,
-                "reader",
-            )
-
+        for name in sorted(set(candidate_names), key=lambda item: (len(item), item.casefold()))[:4]:
+            candidate = _candidate_from_evidence(url, name, window, query, "reader")
             if not candidate:
                 continue
-
             old = found.get(url)
-
-            if (
-                old is None
-                or candidate["score"] > old["score"]
-                or len(candidate["name"]) < len(old["name"])
-            ):
+            if old is None or candidate["score"] > old["score"] or len(candidate["name"]) < len(old["name"]):
                 found[url] = candidate
                 break
 
