@@ -23,7 +23,7 @@ READER_TIMEOUT = 30
 RETRY_COUNT = 2
 MAX_CANDIDATES = 48
 ENRICH_WORKERS = 6
-SCRAPER_VERSION = "notino-3.1-2026-09-03-resilient-discovery"
+SCRAPER_VERSION = "notino-3.2-2026-09-03-markdown-pairing-fix"
 
 PRODUCT_RE = re.compile(r"/p-(\d+)(?:/|$)", re.I)
 PRODUCT_URL_RE = re.compile(
@@ -81,7 +81,7 @@ HEADERS = {
     "Pragma": "no-cache",
 }
 READER_HEADERS = {
-    "User-Agent": "ScentHunter/3.1",
+    "User-Agent": "ScentHunter/3.2",
     "Accept": "text/plain,text/markdown,text/html;q=0.9,*/*;q=0.8",
     "Accept-Language": "fr-FR,fr;q=0.9,en;q=0.8",
 }
@@ -237,9 +237,31 @@ def normaliseurl(url: str) -> str:
     if not value:
         return ""
     value = value.replace("\\/", "/")
+
+    # Jina can occasionally expose an absolute Notino URL with the hostname
+    # duplicated inside the path. Never let that leak into the candidate URL.
+    value = re.sub(
+        r"^(https?://(?:www\.)?notino\.[a-z.]+)/(?:www\.)?notino\.[a-z.]+/",
+        r"\1/",
+        value,
+        flags=re.I,
+    )
     if value.startswith("//"):
         value = "https:" + value
-    return urljoin(BASE_URL + "/", value)
+    elif re.match(r"^www\.notino\.[a-z.]+/", value, flags=re.I):
+        value = "https://" + value
+    elif re.match(r"^notino\.[a-z.]+/", value, flags=re.I):
+        value = "https://www." + value
+
+    normalized = urljoin(BASE_URL + "/", value)
+    parsed = urlparse(normalized)
+    host = parsed.netloc.lower().split(":", 1)[0]
+    if host in {"www.notino.fr", "notino.fr"}:
+        path = re.sub(r"^/(?:www\.)?notino\.fr(?=/|$)", "", parsed.path, flags=re.I)
+        if not path.startswith("/"):
+            path = "/" + path
+        normalized = parsed._replace(netloc="www.notino.fr", path=path).geturl()
+    return normalized
 
 
 _normalise_url = normaliseurl
@@ -671,14 +693,67 @@ def _url_context(text: str, needle: str, radius: int = 1800) -> str:
     return text[max(0, pos - radius): min(len(text), pos + len(needle) + radius)]
 
 
+def _reader_anchor_text(anchor_text: str) -> str:
+    """Turn a nested Jina Markdown card label into the real product title."""
+    value = html_lib.unescape(anchor_text or "")
+    # Remove the nested image link first; otherwise _clean_name sees the promo
+    # prefix and can discard the entire label.
+    value = re.sub(r"!\[[^\]]*\]\([^)]*\)", " ", value, flags=re.I)
+    value = re.sub(r"^\s*(?:Cadeaux offerts|Promo Cadeaux offerts|Gifts|Promo)\s*!?", " ", value, flags=re.I)
+    # The label still contains rating/price/promo information. Keep the product
+    # identity and let _clean_name remove the commercial suffixes.
+    value = re.sub(r"\b(?:avec le code|with code)\b.*$", " ", value, flags=re.I)
+    return _clean_name(value)
+
+
+def _reader_markdown_product_links(raw: str) -> List[Tuple[str, str]]:
+    """Extract outer Markdown product links without confusing nested image links.
+
+    Jina emits Notino cards like:
+      [![Image ...](cdn...)Product name 100 ml 36,00€](https://www.notino.fr/.../p-123/)
+
+    A naive URL scan sees the product URL but may reuse the nearest image alt for
+    several URLs. The product URL itself must therefore be paired with the label
+    of its *outer* Markdown link. The URL-specific regex below intentionally lets
+    the label contain nested `![...](...)` markup.
+    """
+    if not raw:
+        return []
+    pattern = re.compile(
+        r"\[(?P<label>.*?)\]\((?P<url>https?://(?:www\.)?notino\.(?:fr|be|de|com|it|gr|es|pt|ie|co\.uk)/[^\s)<>]+/p-\d+(?:/[^\s)<>]*)?)\)",
+        re.I | re.S,
+    )
+    pairs: List[Tuple[str, str]] = []
+    for match in pattern.finditer(raw):
+        url = normaliseurl(match.group("url"))
+        if not lookslikeproducturl(url):
+            continue
+        label = _reader_anchor_text(match.group("label"))
+        if label:
+            pairs.append((label, url))
+    return pairs
+
+
 def _reader_candidates(text: str, query: str) -> List[Dict[str, Any]]:
     raw = html_lib.unescape(text or "").replace("\\/", "/")
     found: Dict[str, Dict[str, Any]] = {}
 
-    matches = list(PRODUCT_URL_RE.finditer(raw)) + list(RELATIVE_PRODUCT_RE.finditer(raw))
-    matches.sort(key=lambda match: match.start())
+    # 1) Prefer atomic Markdown card pairs. This is the critical Notino path:
+    # the product title and the product URL come from the same outer anchor.
+    # Never associate one image alt with a broad URL neighbourhood.
+    for label, url in _reader_markdown_product_links(raw):
+        if not _query_matches_name(label, query):
+            continue
+        # Keep only the local card text for price/stock/size evidence.
+        pos = raw.find(url)
+        card = raw[max(0, pos - 1200): min(len(raw), pos + len(url) + 400)] if pos >= 0 else label
+        candidate = _candidate_from_evidence(url, label, card, query, "reader-markdown")
+        if candidate:
+            old = found.get(url)
+            if old is None or candidate["score"] > old["score"]:
+                found[url] = candidate
 
-    # JSON-LD may survive through Jina in raw HTML form.
+    # 2) JSON-LD may survive through Jina in raw HTML form.
     for record in _structured_product_records(raw):
         name, brand, url, price, size = _structured_record_to_evidence(record)
         if not url:
@@ -688,46 +763,29 @@ def _reader_candidates(text: str, query: str) -> List[Dict[str, Any]]:
             brand=brand, structured_price=price or "", structured_size=size,
         )
         if candidate:
-            found[url] = candidate
+            old = found.get(url)
+            if old is None or candidate["score"] > old["score"]:
+                found[url] = candidate
 
+    # 3) Fallback for readers that expose product URLs without Markdown anchors.
+    # Here the URL slug is the only safe identity source; do not borrow a name
+    # from another nearby card.
+    matches = list(PRODUCT_URL_RE.finditer(raw)) + list(RELATIVE_PRODUCT_RE.finditer(raw))
+    matches.sort(key=lambda match: match.start())
+    paired_urls = {url.rstrip("/") for _label, url in _reader_markdown_product_links(raw)}
     for match in matches:
         url = normaliseurl(match.group(0))
-        if not lookslikeproducturl(url):
+        if not lookslikeproducturl(url) or url.rstrip("/") in paired_urls:
             continue
-        window = raw[max(0, match.start() - 1800): min(len(raw), match.end() + 2200)]
-        names: List[str] = []
-
-        for line in window.splitlines():
-            line = _clean(line)
-            if not line:
-                continue
-            for alt in re.findall(r"!\[[^\]]*\]\((?:[^)]*)\)", line, flags=re.I):
-                alt_text = _clean_name(alt)
-                if alt_text and _query_matches_name(alt_text, query):
-                    names.append(alt_text)
-            for md in re.finditer(r"\[([^\]]{3,240})\]\(([^)]+)\)", line, flags=re.I):
-                target = normaliseurl(md.group(2))
-                if target.rstrip("/") == url.rstrip("/"):
-                    candidate_name = _clean_name(md.group(1))
-                    if candidate_name and _query_matches_name(candidate_name, query):
-                        names.append(candidate_name)
-
-            cleaned_line = _clean_name(re.sub(r"https?://[^\s]+", " ", line, flags=re.I))
-            if cleaned_line and _query_matches_name(cleaned_line, query):
-                names.append(cleaned_line)
-
-        if not names:
-            slug = _clean_name(_slug_name(url))
-            if slug and _query_matches_name(slug, query):
-                names.append(slug)
-
-        if names:
-            best_name = max(names, key=lambda item: _query_score(item, query, url))
-            candidate = _candidate_from_evidence(url, best_name, window, query, "reader")
-            if candidate:
-                old = found.get(url)
-                if old is None or candidate["score"] > old["score"]:
-                    found[url] = candidate
+        slug = _clean_name(_slug_name(url))
+        if not slug or not _query_matches_name(slug, query):
+            continue
+        around = _url_context(raw, match.group(0), radius=500)
+        candidate = _candidate_from_evidence(url, slug, around, query, "reader-url")
+        if candidate:
+            old = found.get(url)
+            if old is None or candidate["score"] > old["score"]:
+                found[url] = candidate
 
     return sorted(found.values(), key=lambda item: (-item["score"], item["url"]))
 
