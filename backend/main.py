@@ -348,13 +348,20 @@ def _format_compare_store(store: str, product: str, size_ml: int) -> Dict[str, A
 
         explicit_size = _format_compare_size(candidate)
 
-        # Strict size rule:
-        # - explicit wrong size => reject;
-        # - explicit requested size => accept;
-        # - missing size => accept only as an unknown-size candidate. It is
-        #   useful for out-of-stock/product-page-only adapters, but never wins
-        #   over a candidate with an explicit matching size.
-        if explicit_size is not None and explicit_size != size_ml:
+        # STRICT FORMAT RULE.
+        # The comparison is specifically per format. We must never take a
+        # generic/first search result and label it 50 ml or 100 ml simply
+        # because the query contained that number.
+        #
+        # - explicit wrong size => reject
+        # - explicit requested size => accept
+        # - missing size => reject (the scraper did not prove the variant)
+        #
+        # This is deliberately conservative: an absent price is preferable
+        # to showing a false price for the wrong bottle size.
+        if explicit_size is None:
+            continue
+        if explicit_size != size_ml:
             continue
 
         offer = _format_compare_clean_offer(candidate, store, size_ml)
@@ -413,36 +420,30 @@ def compare_formats(
 
     from concurrent.futures import ThreadPoolExecutor, as_completed
 
-    # Exactly 2 stores concurrently.
-    for start in range(0, len(FORMAT_STORES), 2):
-        wave = FORMAT_STORES[start:start + 2]
+    # Exactly 2 requests concurrently, regardless of format/store.
+    # This is faster than waiting for a whole pair of stores to finish
+    # before starting the next pair, while preserving the hard limit of 2.
+    with ThreadPoolExecutor(max_workers=2) as pool:
+        future_map = {
+            pool.submit(_format_compare_store, store, product, size): (store, size)
+            for size in requested_sizes
+            for store in FORMAT_STORES
+        }
 
-        with ThreadPoolExecutor(max_workers=2) as pool:
-            future_map = {
-                pool.submit(_format_compare_store, store, product, size): (
-                    store,
-                    size,
-                )
-                for size in requested_sizes
-                for store in wave
-            }
+        for future in as_completed(future_map):
+            store, size = future_map[future]
+            try:
+                result = future.result()
+            except Exception as exc:
+                errors[f"{store}:{size}"] = f"{type(exc).__name__}: {exc}"
+                continue
 
-            for future in as_completed(future_map):
-                store, size = future_map[future]
-                try:
-                    result = future.result()
-                except Exception as exc:
-                    errors[f"{store}:{size}"] = (
-                        f"{type(exc).__name__}: {exc}"
-                    )
-                    continue
+            if result.get("error"):
+                errors[f"{store}:{size}"] = result["error"]
 
-                if result.get("error"):
-                    errors[f"{store}:{size}"] = result["error"]
-
-                rows = result.get("results") or []
-                if rows:
-                    comparisons.extend(rows)
+            rows = result.get("results") or []
+            if rows:
+                comparisons.extend(rows)
 
     # Group the flat offers by requested format.
     by_size: Dict[int, List[Dict[str, Any]]] = {
