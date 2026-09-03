@@ -507,7 +507,7 @@ def _reader_candidates(text: str, query: str) -> List[Dict[str, Any]]:
     raw = html_lib.unescape(text or "").replace("\\/", "/")
     found: Dict[str, Dict[str, Any]] = {}
 
-        absolute_urls = list(PRODUCT_URL_RE.finditer(raw))
+    absolute_urls = list(PRODUCT_URL_RE.finditer(raw))
 
     abs_spans = [(m.start(), m.end()) for m in absolute_urls]
 
