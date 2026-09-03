@@ -2316,7 +2316,7 @@ def normalize_store_product(
         if item.get("size") is not None:
             item["sizeml"] = item["size"]
         else:
-            item["sizeml"] = product_size_ml(item)
+            item["sizeml"] = productsizeml(item)
 
     if item.get("size") is None and item.get("sizeml") is not None:
         item["size"] = item["sizeml"]
@@ -2493,7 +2493,7 @@ def _validate_candidate(
     query: str,
 ) -> Optional[Dict[str, Any]]:
     try:
-        matched = matchesproduct(product, query)
+        matched = matches(product, query)
     except Exception as exc:
         print(
             "[CENTRAL VALIDATION ERROR]",
