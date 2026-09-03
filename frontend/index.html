@@ -847,8 +847,25 @@ function shGroupData(data){
     if(!nameN)return null;
     const fullN=norm(`${brand||""} ${name||""}`);
 
+    /*
+     * Alcuni shop aggiungono al titolo una seconda indicazione di genere.
+     * Caso reale Notino: "Afnan 9 PM Pour Femme pour femme".
+     * Il catalogo conosce la referenza come "9 PM - Pour Femme".
+     *
+     * Non eliminiamo genericamente parole dal nome: riduciamo soltanto una
+     * ripetizione finale della stessa locuzione di genere. In questo modo
+     * 9 PM Pour Femme + "pour femme" torna alla stessa referenza master,
+     * senza avvicinare 9 AM Pour Femme, 9 PM, 9 PM Rebel ecc.
+     */
+    const collapseDuplicateGender=(v)=>String(v||"")
+      .replace(/\b(pour\s+femme|pour\s+homme)\s+\1$/i,"$1")
+      .replace(/\s+/g," ")
+      .trim();
+    const collapsedNameN=collapseDuplicateGender(nameN);
+    const collapsedFullN=collapseDuplicateGender(fullN);
+
     // 1) Match esatto su nome completo, nome canonico o alias.
-    for(const candidate of [fullN,nameN]){
+    for(const candidate of [...new Set([fullN,nameN,collapsedFullN,collapsedNameN].filter(Boolean))]){
       if(!candidate)continue;
       const hit=MASTER_CATALOG_INDEX.get(candidate);
       if(!hit || hit.ambiguous)continue;
@@ -2086,157 +2103,3 @@ searchButton.addEventListener("click",searchPerfume);queryInput.addEventListener
 renderWishlist();syncHearts();
 </script>
 </body></html>
-
-
-<!-- SCENTHUNTER FRONTEND DIAGNOSTIC WRAPPER -->
-<script>
-(function(){
-  const params=new URLSearchParams(location.search);
-  if(params.get('debug')!=='1') return;
-
-  const report={
-    started_at:new Date().toISOString(),
-    fetches:[],
-    grouping_calls:[],
-    render_calls:[]
-  };
-  window.__SH_DEBUG_REPORT=report;
-
-  function safe(v){
-    try{return JSON.parse(JSON.stringify(v));}catch(e){return String(v);}
-  }
-  function compactOffer(o){
-    if(!o||typeof o!=='object')return o;
-    return {
-      store:o.store||'',
-      name:o.name||'',
-      canonical_name:o.canonical_name||'',
-      catalog_variant:o.catalog_variant||'',
-      family_id:o.family_id||'',
-      family_name:o.family_name||'',
-      canonical_brand:o.canonical_brand||'',
-      brand:o.brand||'',
-      size_ml:o.size_ml??o.size??'',
-      price:o.price??'',
-      available:o.available,
-      availability:o.availability,
-      url:o.url||'',
-      product_id:o.product_id||o.store_product_id||''
-    };
-  }
-  function summarizeData(data){
-    return {
-      query:data&&data.query||'',
-      count:data&&data.count,
-      offer_count:data&&data.offer_count,
-      results_count:Array.isArray(data&&data.results)?data.results.length:0,
-      comparisons_count:Array.isArray(data&&data.comparisons)?data.comparisons.length:0,
-      results:Array.isArray(data&&data.results)?data.results.map(g=>({
-        store:g&&g.store||'',name:g&&g.name||'',canonical_name:g&&g.canonical_name||'',catalog_variant:g&&g.catalog_variant||'',family_id:g&&g.family_id||'',
-        offers:Array.isArray(g&&g.offers)?g.offers.map(compactOffer):[]
-      })):[],
-      comparisons:Array.isArray(data&&data.comparisons)?data.comparisons.map(g=>({
-        store:g&&g.store||'',name:g&&g.name||'',canonical_name:g&&g.canonical_name||'',catalog_variant:g&&g.catalog_variant||'',family_id:g&&g.family_id||'',
-        offers:Array.isArray(g&&g.offers)?g.offers.map(compactOffer):[]
-      })):[]
-    };
-  }
-
-  function ensurePanel(){
-    let el=document.getElementById('__sh_debug_panel');
-    if(el)return el;
-    el=document.createElement('pre');
-    el.id='__sh_debug_panel';
-    el.style.cssText='position:fixed;left:8px;right:8px;bottom:70px;max-height:55vh;overflow:auto;z-index:2147483647;background:#111;color:#fff;border:2px solid #f5c542;border-radius:12px;padding:12px;font:11px/1.35 monospace;white-space:pre-wrap;box-shadow:0 8px 30px #000';
-    document.body.appendChild(el);
-    return el;
-  }
-  function refreshPanel(){
-    const el=ensurePanel();
-    el.textContent=JSON.stringify(report,null,2);
-  }
-
-  const originalFetch=window.fetch;
-  if(originalFetch){
-    window.fetch=function(){
-      const args=arguments;
-      const url=String(args[0]&&args[0].url||args[0]||'');
-      const started=Date.now();
-      return originalFetch.apply(this,args).then(async response=>{
-        if(/\/search(?:\?|$)|\/test-store(?:\?|$)/i.test(url)){
-          let body=null;
-          try{body=await response.clone().json();}catch(e){}
-          report.fetches.push({
-            url,
-            status:response.status,
-            ms:Date.now()-started,
-            body:body?summarizeData(body):null
-          });
-          refreshPanel();
-        }
-        return response;
-      }).catch(err=>{
-        if(/\/search(?:\?|$)|\/test-store(?:\?|$)/i.test(url)){
-          report.fetches.push({url,error:String(err),ms:Date.now()-started});
-          refreshPanel();
-        }
-        throw err;
-      });
-    };
-  }
-
-  function wrapFunction(name,handler){
-    const original=window[name];
-    if(typeof original!=='function')return false;
-    window[name]=handler(original);
-    return true;
-  }
-
-  wrapFunction('shGroupData',function(original){
-    return function(data){
-      const before=summarizeData(data||{});
-      let groups=[];
-      try{groups=original.apply(this,arguments)||[];}catch(e){
-        report.grouping_calls.push({error:String(e),input:before});
-        refreshPanel();
-        throw e;
-      }
-      report.grouping_calls.push({
-        input:before,
-        output_count:Array.isArray(groups)?groups.length:0,
-        output:Array.isArray(groups)?groups.map(g=>({
-          brand:g&&g.brand||'',name:g&&g.name||'',catalog_id:g&&g.catalog_id||'',canonical:g&&g.canonical||'',
-          offers:Array.isArray(g&&g.offers)?g.offers.map(compactOffer):[]
-        })):[]
-      });
-      refreshPanel();
-      return groups;
-    };
-  });
-
-  wrapFunction('showProducts',function(original){
-    return function(groups){
-      report.render_calls.push({
-        received_count:Array.isArray(groups)?groups.length:0,
-        groups:Array.isArray(groups)?groups.map(g=>({
-          brand:g&&g.brand||'',name:g&&g.name||'',catalog_id:g&&g.catalog_id||'',display_name:g&&g.display_name||'',
-          offers:Array.isArray(g&&g.offers)?g.offers.map(compactOffer):[]
-        })):[]
-      });
-      refreshPanel();
-      return original.apply(this,arguments);
-    };
-  });
-
-  window.addEventListener('error',function(e){
-    report.last_error={message:e.message,source:e.filename,line:e.lineno,col:e.colno};
-    refreshPanel();
-  });
-  window.addEventListener('unhandledrejection',function(e){
-    report.last_rejection=String(e.reason);
-    refreshPanel();
-  });
-
-  setTimeout(refreshPanel,300);
-})();
-</script>
