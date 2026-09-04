@@ -325,6 +325,7 @@ def product_size_ml(product: Dict[str, Any]) -> Optional[float]:
         or product.get("volume_ml")
         or product.get("format_ml")
     )
+
     explicit = nested_value(explicit)
 
     if explicit not in (None, ""):
@@ -359,9 +360,7 @@ def product_size_ml(product: Dict[str, Any]) -> Optional[float]:
     )
     text += " " + str(source_name or "")
 
-    # Retailers such as Deloox sometimes expose the format only in the
-    # product URL or raw payload while leaving size_ml empty. Include those
-    # sources in the central parser so format identity is not lost.
+    # Include URL e raw_data per estrarre il formato quando size_ml è vuoto.
     url = product.get("url") or ""
     if url:
         text += " " + str(url)
@@ -378,6 +377,7 @@ def product_size_ml(product: Dict[str, Any]) -> Optional[float]:
         text,
         re.I,
     )
+
     if not match:
         return None
 
@@ -390,6 +390,7 @@ def product_size_ml(product: Dict[str, Any]) -> Optional[float]:
         value *= 10
 
     return value
+
 
 
 def product_concentration(product: Dict[str, Any]) -> str:
@@ -1960,6 +1961,7 @@ def _display_variant_name(
             rf"^\s*{re.escape(str(brand).strip())}\s*(?:[-:–—]\s*)?",
             flags=re.I,
         )
+
         while True:
             cleaned = brand_pattern.sub("", variant, count=1)
             if cleaned == variant:
@@ -2006,9 +2008,10 @@ def _display_variant_name(
         )
 
     # Elimina parentesi vuote e punteggiatura residua generata dalla pulizia.
-    variant = re.sub(r"\(\s*\)", " ", variant)
+    variant = re.sub(r"\\(\\s\*\\)", " ", variant)
     variant = re.sub(r"\s+", " ", variant).strip(" -–—:|/")
     return re.sub(r"\s+", " ", variant).strip()
+
 
 
 def _format_result_title(product: Dict[str, Any]) -> str:
