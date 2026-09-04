@@ -730,21 +730,18 @@ class SearchEngine:
     # ------------------------------------------------------------------
 
     def run_job(self, job_id: str, query: str) -> None:
-        """
-        Drop-in replacement for the existing background search job.
+        """Run the background search in waves of two stores and publish progress.
 
-        Critical behavior:
-        - technical store progress may be recorded;
-        - product results are NOT published progressively;
-        - final results are written exactly once after all stores finish or the
-          global search window expires.
+        The frontend uses /search-start + /search-status for live progress.
+        Each wave starts at most two store scrapers. As soon as a store finishes,
+        its candidates are merged into the central job pool and the validated
+        candidate list is published. The legacy snapshot then performs the final
+        grouping for the response.
         """
         jobs = getattr(self.legacy, "SEARCH_JOBS", None)
         lock = getattr(self.legacy, "SEARCH_JOBS_LOCK", None)
 
         if jobs is None:
-            # Fall back to the legacy implementation if the job registry is
-            # unavailable rather than crashing application startup.
             legacy_runner = getattr(self.legacy, "_run_search_job_legacy", None)
             if legacy_runner is not None:
                 return legacy_runner(job_id, query)
@@ -761,59 +758,121 @@ class SearchEngine:
                 if job is not None:
                     job.update(payload)
 
+        def read_job() -> Optional[Dict[str, Any]]:
+            if lock is not None:
+                with lock:
+                    job = jobs.get(job_id)
+                    return dict(job) if job is not None else None
+            job = jobs.get(job_id)
+            return dict(job) if job is not None else None
+
+        started = time.monotonic()
+        raw_pool: List[Dict[str, Any]] = []
+        store_status: Dict[str, Any] = {
+            store: {"status": "pending", "count": 0}
+            for store in self.stores
+        }
+        errors: Dict[str, str] = {}
+
+        update({
+            "completed": False,
+            "phase": "discovery",
+            "status": "searching",
+            "results": [],
+            "candidates": [],
+            "errors": {},
+            "store_status": store_status,
+        })
+
         try:
-            update(
-                {
+            # Explicit waves: never more than two scrapers are active.
+            for wave_start in range(0, len(self.stores), 2):
+                wave = self.stores[wave_start:wave_start + 2]
+                wave_started = time.monotonic()
+
+                update({
+                    "phase": f"stores_{wave_start + 1}_{wave_start + len(wave)}",
                     "status": "searching",
-                    "results": [],
                     "store_status": {
-                        store: {"status": "searching", "count": 0}
-                        for store in self.stores
+                        **store_status,
+                        **{store: {"status": "searching", "count": 0} for store in wave},
                     },
-                }
-            )
+                })
 
-            started = time.monotonic()
-            run = self._run_stores(query)
+                with concurrent.futures.ThreadPoolExecutor(
+                    max_workers=2,
+                    thread_name_prefix="scenthunter-store",
+                ) as executor:
+                    future_map = {
+                        executor.submit(self._run_one_store, store, query): store
+                        for store in wave
+                    }
 
-            raw_pool: List[Dict[str, Any]] = []
-            store_status: Dict[str, Any] = {}
+                    for future in concurrent.futures.as_completed(future_map):
+                        store = future_map[future]
+                        try:
+                            result = future.result()
+                        except Exception as exc:
+                            result = StoreRun(
+                                store=store,
+                                status="error",
+                                candidates=[],
+                                elapsed=time.monotonic() - wave_started,
+                                error=f"{type(exc).__name__}: {exc}",
+                            )
 
-            for store in self.stores:
-                result = run["stores"][store]
-                raw_pool.extend(result.candidates)
-                store_status[store] = {
-                    "status": result.status,
-                    "count": len(result.candidates),
-                    "elapsed": round(result.elapsed, 3),
-                    "error": result.error,
-                }
+                        store_status[store] = {
+                            "status": result.status,
+                            "count": len(result.candidates),
+                            "elapsed": round(result.elapsed, 3),
+                            "error": result.error,
+                        }
+                        if result.error:
+                            errors[store] = result.error
 
-            # Validate centrally, but keep the validated candidate objects in
-            # the job. The legacy /search-status snapshot calls
-            # _prepare_final_results() exactly once; storing already-prepared
-            # groups here would make that route prepare the same result twice.
-            validated_candidates = self._validate_and_finalize(query, raw_pool)
+                        raw_pool.extend(result.candidates)
 
-            # IMPORTANT: this is the first publication of the product list.
-            update(
-                {
-                    "status": "completed",
-                    "results": validated_candidates,
-                    "store_status": store_status,
-                    "elapsed": round(time.monotonic() - started, 3),
-                    "raw_candidate_count": len(raw_pool),
-                    "phase": "completed",
-                    "completed": True,
-                }
-            )
+                        # Publish after every completed store. This is the
+                        # important difference from the old implementation:
+                        # users no longer wait for all eight stores.
+                        validated = self._validate_candidates_only(query, raw_pool)
+                        update({
+                            "results": validated,
+                            "candidates": list(raw_pool),
+                            "errors": dict(errors),
+                            "store_status": dict(store_status),
+                            "phase": f"stores_{wave_start + 1}_{wave_start + len(wave)}",
+                            "status": "searching",
+                            "completed": False,
+                            "elapsed": round(time.monotonic() - started, 3),
+                        })
+
+                if read_job() is None:
+                    return
+
+            # Final publication. Keep raw validated candidates in the job; the
+            # legacy /search-status snapshot performs _prepare_final_results().
+            validated = self._validate_candidates_only(query, raw_pool)
+            update({
+                "results": validated,
+                "candidates": list(raw_pool),
+                "errors": dict(errors),
+                "store_status": dict(store_status),
+                "phase": "completed",
+                "status": "completed",
+                "completed": True,
+                "elapsed": round(time.monotonic() - started, 3),
+                "raw_candidate_count": len(raw_pool),
+            })
 
         except Exception as exc:
-            update(
-                {
-                    "status": "error",
-                    "results": [],
-                    "error": f"{type(exc).__name__}: {exc}",
-                    "traceback": traceback.format_exc(limit=8),
-                }
-            )
+            update({
+                "results": [],
+                "errors": {**errors, "_search": f"{type(exc).__name__}: {exc}"},
+                "status": "error",
+                "completed": True,
+                "phase": "error",
+                "elapsed": round(time.monotonic() - started, 3),
+                "error": f"{type(exc).__name__}: {exc}",
+                "traceback": traceback.format_exc(limit=8),
+            })
