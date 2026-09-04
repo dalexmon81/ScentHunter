@@ -497,16 +497,6 @@ def parse_product_page(response, query):
     size_ml = extract_size_ml(
         name,
     )
-    if size_ml is None:
-        # Deloox uses separate product URLs such as ...-50-ml.html and
-        # ...-100-ml.html. The URL identifies the exact variant when the
-        # product-page title/JSON-LD omits the bottle size.
-        url_size_match = re.search(r"(?:^|[-/])(\d{1,4})-ml(?:\.html)?(?:$|[?#])", response.url, re.I)
-        if url_size_match:
-            try:
-                size_ml = int(url_size_match.group(1))
-            except ValueError:
-                size_ml = None
 
     concentration = extract_concentration(
         name,
