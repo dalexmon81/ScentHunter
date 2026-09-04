@@ -953,6 +953,40 @@ def _select_product_offer(product, final_url, title, size_ml):
     return priced[0] if priced else candidates[0]
 
 
+
+def extract_variant_offers_from_page(soup):
+    """Return explicit size/price pairs exposed by the current product page."""
+    chunks = []
+    for node in soup.find_all(["option", "label", "button", "li", "div", "span"], limit=3000):
+        text = clean(node.get_text(" ", strip=True))
+        if not text:
+            continue
+        if re.search(r"\b\d+(?:[.,]\d+)?\s*ml\b", text, re.I) and re.search(r"\d+[.,]\d{2}\s*(?:€|EUR)", text, re.I):
+            chunks.append(text)
+    page_text = clean(soup.get_text(" ", strip=True))
+    if page_text:
+        chunks.append(page_text)
+
+    variants = []
+    seen = set()
+    for chunk in chunks:
+        for sm in re.finditer(r"\b(\d+(?:[.,]\d+)?)\s*ml\b", chunk, re.I):
+            size = extract_size_ml(sm.group(0))
+            if size is None:
+                continue
+            tail = chunk[sm.end():sm.end()+180]
+            pm = re.search(r"(\d+[.,]\d{2})\s*(?:€|EUR)", tail, re.I)
+            if not pm:
+                continue
+            price = money_to_float(pm.group(1))
+            if price is None:
+                continue
+            key = (float(size), round(price, 2))
+            if key not in seen:
+                seen.add(key)
+                variants.append((size, price))
+    return sorted(variants, key=lambda x: x[0])
+
 def extract_product_page(session, url, query):
     try:
         response = session.get(
@@ -1290,6 +1324,29 @@ def search(query):
             )
 
             if not product:
+                continue
+
+            # Re-read the product page once to expose all explicit Sabina
+            # bottle variants when the page contains a variant selector.
+            variant_products = []
+            try:
+                page_response = session.get(url, headers=HEADERS, timeout=TIMEOUT, allow_redirects=True)
+                if page_response.ok:
+                    page_soup = BeautifulSoup(page_response.text, "html.parser")
+                    for variant_size, variant_price in extract_variant_offers_from_page(page_soup):
+                        variant = dict(product)
+                        variant["size_ml"] = variant_size
+                        variant["name"] = product.get("name") or ""
+                        variant["price"] = f"{variant_price:.2f}".replace(".", ",") + " €"
+                        variant["offer"] = dict(product.get("offer") or {})
+                        variant["offer"]["price"] = variant_price
+                        variant.setdefault("attributes", {})["size_ml"] = {"value": variant_size, "source": "product_page_variant"}
+                        variant_products.append(variant)
+            except requests.RequestException:
+                pass
+            if variant_products:
+                for variant in variant_products:
+                    results.append(variant)
                 continue
 
             product_id = (
