@@ -19770,6 +19770,24 @@
         "https://www.fragrantica.com/designers/Yves-Saint-Laurent.html"
       ],
       "canonical_name": "Y Le Parfum"
+    },
+    {
+      "product_id": "SH-0078",
+      "brand_id": "BR-ab5d37630703",
+      "brand_name": "Miu Miu",
+      "family_name": "Fleur De Lait",
+      "concentration": "Eau de Parfum",
+      "gender": null,
+      "aliases": [
+        "Miu Miu Fleur De Lait",
+        "Miumiu Fleur De Lait",
+        "Fleur De Lait",
+        "Miu Miu Fleur De Lait pour femme"
+      ],
+      "source_status": "verificato",
+      "source_notes": "Referenza Miu Miu Fleur De Lait; formati 30/50/100 ml verificati nel flusso ScentHunter.",
+      "verification_sources": [],
+      "canonical_name": "Fleur De Lait"
     }
   ],
   "variants": [
@@ -22916,6 +22934,48 @@
         "Emporio Armani Stronger With You Oud",
         "Stronger With You Oud EDP",
         "Armani Stronger With You Oud"
+      ],
+      "store_mappings": []
+    },
+    {
+      "variant_id": "VAR-00da0bc0660e37f9",
+      "product_id": "SH-0078",
+      "size_ml": 30,
+      "gtins": [],
+      "mpns": [],
+      "aliases": [
+        "Miu Miu Fleur De Lait",
+        "Miumiu Fleur De Lait",
+        "Fleur De Lait",
+        "Miu Miu Fleur De Lait pour femme"
+      ],
+      "store_mappings": []
+    },
+    {
+      "variant_id": "VAR-ef9d412b79bfd2d7",
+      "product_id": "SH-0078",
+      "size_ml": 50,
+      "gtins": [],
+      "mpns": [],
+      "aliases": [
+        "Miu Miu Fleur De Lait",
+        "Miumiu Fleur De Lait",
+        "Fleur De Lait",
+        "Miu Miu Fleur De Lait pour femme"
+      ],
+      "store_mappings": []
+    },
+    {
+      "variant_id": "VAR-68b4b45553344393",
+      "product_id": "SH-0078",
+      "size_ml": 100,
+      "gtins": [],
+      "mpns": [],
+      "aliases": [
+        "Miu Miu Fleur De Lait",
+        "Miumiu Fleur De Lait",
+        "Fleur De Lait",
+        "Miu Miu Fleur De Lait pour femme"
       ],
       "store_mappings": []
     }
