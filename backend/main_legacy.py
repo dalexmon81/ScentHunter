@@ -5,6 +5,7 @@ from fastapi.responses import FileResponse
 
 import importlib
 import json
+import copy
 
 from product_matcher import ProductMatcher
 import os
@@ -1492,19 +1493,12 @@ def matches(product: Dict[str, Any], query: str) -> bool:
     # Samples/testers are already rejected by the hard product-type filter.
 
     # --------------------------------------------------------
-    # CATALOGO AUTORITATIVO
+    # MATCHING GENERICO
     # --------------------------------------------------------
-    catalog_family = _catalog_family_for_query(query)
-
-    if catalog_family is not None:
-        return _catalog_match(
-            product,
-            query,
-        ) is not None
-
-    # --------------------------------------------------------
-    # MATCHING GENERICO PER FAMIGLIE NON CATALOGATE
-    # --------------------------------------------------------
+    # Il Family Registry NON e' una whitelist globale.
+    # Le famiglie presenti nel Registry vengono governate dalla regola
+    # autorevole in _validate_candidate(); tutte le altre passano dal matcher
+    # generico conservativo qui sotto.
     name_for_matching = name_normalized
 
     name_for_matching = re.sub(
@@ -1586,10 +1580,38 @@ def matches(product: Dict[str, Any], query: str) -> bool:
     if not family_phrase or not name_phrase:
         return False
 
-    padded_name = f" {name_phrase} "
-    padded_family = f" {family_phrase} "
+    # The retailer may repeat or inject the brand into the title
+    # (e.g. "MIU MIU Miumiu Fleur De Lait"). Identity matching must not depend
+    # on the exact adjacency/order of tokens, but every meaningful query token
+    # must still be present in the candidate.
+    name_token_set = set(name_phrase.split())
+    query_token_set = set(family_tokens)
 
-    return padded_family in padded_name
+    if not query_token_set.issubset(name_token_set):
+        return False
+
+    # If both query and candidate expose a known catalog brand, they must agree.
+    # This prevents a same-name product from another brand from passing the
+    # generic fallback merely because its product tokens overlap.
+    query_text = catalog_norm(query)
+    candidate_brand = _catalog_detected_brand(product)
+    if candidate_brand:
+        known_brand_candidates = []
+        for item in _PRODUCT_MATCHER_CATALOG:
+            if not isinstance(item, dict):
+                continue
+            brand = str(item.get("brand") or "").strip()
+            if brand:
+                known_brand_candidates.append(catalog_norm(brand))
+        known_brand_candidates = sorted(set(x for x in known_brand_candidates if x), key=len, reverse=True)
+        query_brand = next(
+            (brand for brand in known_brand_candidates if re.search(rf"\b{re.escape(brand)}\b", query_text)),
+            "",
+        )
+        if query_brand and candidate_brand != query_brand:
+            return False
+
+    return True
 
 
 # ============================================================
@@ -2438,17 +2460,20 @@ def _validate_candidate(
     if not matches(product, query):
         return None
 
-    # Per una famiglia governata dal Family Registry, il Registry è
-    # AUTORITATIVO. Se non riesce a risolvere il candidato per questa query,
-    # il candidato è un falso positivo e NON può ricadere nel matcher
-    # generico. Questo evita che prodotti semanticamente simili (es. Hawa,
-    # Le Monde est Beau, sample/service, altre varianti) rientrino dopo il
-    # controllo catalogo tramite ProductMatcher.
+    # FAMILY REGISTRY = EXCEPTION / SPECIAL-RULE LAYER.
+    # It is authoritative only for families explicitly present in the
+    # registry; absence from the registry must NEVER reject a product.
     try:
         catalog_family = _catalog_family_for_query(query)
-    except Exception:
+    except Exception as exc:
+        print(
+            "FAMILY_REGISTRY_LOOKUP_ERROR:",
+            f"{type(exc).__name__}: {exc}",
+            flush=True,
+        )
         catalog_family = None
 
+    resolved_identity = None
     if catalog_family is not None:
         try:
             resolved_identity = _catalog_match(product, query)
@@ -2460,20 +2485,11 @@ def _validate_candidate(
             )
             return None
 
+        # For a registered family, the special registry rules remain hard.
         if not isinstance(resolved_identity, dict):
             return None
-    else:
-        resolved_identity = None
 
-    # Il matcher centrale viene usato solo dopo il controllo autorevole della
-    # famiglia. Per le famiglie catalogate arricchisce il risultato, ma non
-    # può mai riaprire una corrispondenza rifiutata dal Registry.
     try:
-        # ProductMatcher may enrich/mutate nested dictionaries on the object
-        # it receives. Never let that mutate the original store candidate: the
-        # candidate must retain its own store/source/offer provenance all the
-        # way through final grouping. A shallow copy is not sufficient because
-        # source, identity, attributes and raw_data are nested dictionaries.
         matcher_input = copy.deepcopy(product)
         matched_product = _PRODUCT_MATCHER.match(matcher_input)
     except Exception as exc:
@@ -2488,16 +2504,9 @@ def _validate_candidate(
         matched_product = dict(product)
 
     if isinstance(resolved_identity, dict):
-        # L'identità del Family Registry deve essere applicata all'oggetto
-        # candidato che prosegue nel percorso verso matched_candidates.
-        # Non deve restare confinata a un risultato diagnostico o al matcher.
         product = dict(product)
         product.update(resolved_identity)
 
-        # Il matcher centrale può aver recuperato metadati autorevoli che il
-        # Family Registry non deve duplicare, in particolare concentrazione e
-        # genere. Li usiamo soltanto come arricchimento del risultato già
-        # validato dalla famiglia: non influenzano la decisione di appartenenza.
         if isinstance(matched_product, dict):
             if not product_concentration(product):
                 matcher_concentration = str(
@@ -2512,12 +2521,8 @@ def _validate_candidate(
             if not product.get("gender") and matched_product.get("gender"):
                 product["gender"] = matched_product.get("gender")
 
-        product["match_method"] = (
-            product.get("match_method")
-            or "family_registry_alias"
-        )
+        product["match_method"] = product.get("match_method") or "family_registry_alias"
         product["name"] = product["canonical_name"]
-
         return product
 
     return matched_product
