@@ -230,127 +230,376 @@ def diagnose_notino_deep(q: str = Query(..., min_length=1)):
     }
 
 # ===== ON-DEMAND FORMAT PRICE COMPARISON =====
-# Compare formats from one complete store search per store.
-# The store scraper is responsible for returning every real variant it can
-# prove from the product page.  We never label a generic result as a format
-# merely because the requested query contained that number.
+# Used by the product-detail view when a perfume has multiple real formats.
+# The frontend sends the exact formats already known for that product.
+# IMPORTANT: maximum 2 stores are queried concurrently, matching the main
+# progressive search rule used by ScentHunter.
 FORMAT_STORES = [
-    "bplatz", "deloox", "parfumcity", "parfumzentrum",
-    "perfumemarket", "sabina", "orioudh", "notino",
+    "bplatz",
+    "deloox",
+    "parfumcity",
+    "parfumzentrum",
+    "perfumemarket",
+    "sabina",
+    "orioudh",
+    "notino",
 ]
+
 
 def _format_compare_num(value: Any) -> float:
     try:
         if value is None or value == "":
             return float("inf")
-        raw = str(value).strip().replace("€", "").replace(" ", "")
-        if "," in raw and "." in raw:
-            raw = raw.replace(".", "").replace(",", ".") if raw.rfind(",") > raw.rfind(".") else raw.replace(",", "")
-        else:
-            raw = raw.replace(",", ".")
-        return float(raw)
+        return float(str(value).replace(",", "."))
     except Exception:
-        return float("inf")
+        raw = re.sub(r"[^0-9,.\-]", "", str(value))
+        raw = raw.replace(",", ".")
+        try:
+            return float(raw)
+        except Exception:
+            return float("inf")
+
 
 def _format_compare_size(candidate: Dict[str, Any]) -> int | None:
-    attrs = candidate.get("attributes") if isinstance(candidate.get("attributes"), dict) else {}
-    attr_size = attrs.get("size_ml") if isinstance(attrs.get("size_ml"), dict) else None
-    raw_values = [
-        candidate.get("size_ml"), candidate.get("sizeml"), candidate.get("size"),
-        attr_size.get("value") if attr_size else None,
-        candidate.get("url"), candidate.get("name"),
-    ]
-    for raw in raw_values:
-        if raw is None:
-            continue
-        m = re.search(r"(?<!\d)(\d{1,4})\s*(?:ml|cl)\b", str(raw), re.I)
+    raw = candidate.get("size_ml") or candidate.get("size")
+    if raw is not None:
+        m = re.search(r"(\d{1,4})", str(raw))
         if m:
-            value = int(m.group(1))
-            if re.search(r"cl\b", str(raw)[m.start():m.end()], re.I):
-                value *= 10
-            return value
+            try:
+                return int(m.group(1))
+            except Exception:
+                pass
+
+    name = str(candidate.get("name") or "")
+    m = re.search(r"\b(\d{1,4})\s*ml\b", name, flags=re.I)
+    if m:
+        try:
+            return int(m.group(1))
+        except Exception:
+            pass
     return None
 
-def _format_compare_is_oos(candidate: Dict[str, Any]) -> bool:
-    if candidate.get("in_stock") is False or candidate.get("available") is False:
-        return True
-    text = " ".join(str(candidate.get(k) or "") for k in ("availability", "stock", "status", "name")).casefold()
-    return any(x in text for x in ("out of stock", "out-of-stock", "non disponibile", "nicht verfügbar", "indisponible", "rupture", "agotado", "esaurito"))
 
-def _format_compare_clean_offer(candidate: Dict[str, Any], store: str, size_ml: int) -> Dict[str, Any]:
-    offer = dict(candidate)
-    offer["store"] = str(offer.get("store") or store).lower()
-    offer["size_ml"] = size_ml
-    offer["price_value"] = _format_compare_num(offer.get("price_value", offer.get("price")))
+def _format_compare_is_oos(candidate: Dict[str, Any]) -> bool:
+    if candidate.get("in_stock") is False:
+        return True
+    text = " ".join(
+        str(candidate.get(k) or "")
+        for k in ("availability", "stock", "status", "name")
+    ).casefold()
+    markers = (
+        "out of stock",
+        "out-of-stock",
+        "non disponibile",
+        "nicht verfügbar",
+        "indisponible",
+        "rupture",
+        "agotado",
+        "esaurito",
+    )
+    return any(marker in text for marker in markers)
+
+
+def _format_compare_clean_offer(
+    candidate: Dict[str, Any],
+    store: str,
+    requested_size: int,
+) -> Dict[str, Any]:
+    offer = dict(candidate or {})
+    offer["store"] = str(offer.get("store") or store)
+    offer_size = _format_compare_size(offer)
+    offer["size_ml"] = offer_size if offer_size is not None else requested_size
+    if "price_value" not in offer:
+        offer["price_value"] = _format_compare_num(offer.get("price"))
     offer["in_stock"] = not _format_compare_is_oos(offer)
     return offer
 
-def _format_compare_store(store: str, product: str) -> Dict[str, Any]:
+
+def _format_compare_query(product: str, size_ml: int) -> str:
+    # Keep the exact product identity and append the explicit format.
+    # This lets size-aware scrapers return the corresponding variant.
+    return f"{product} {size_ml} ml".strip()
+
+
+def _format_compare_store(store: str, product: str, size_ml: int) -> Dict[str, Any]:
+    query = _format_compare_query(product, size_ml)
     try:
-        raw = _legacy.run_store(store, product)
+        raw = _legacy.run_store(store, query)
     except Exception as exc:
-        return {"store": store, "results": [], "error": f"{type(exc).__name__}: {exc}"}
+        return {
+            "store": store,
+            "size_ml": size_ml,
+            "results": [],
+            "error": f"{type(exc).__name__}: {exc}",
+        }
+
     candidates = raw if isinstance(raw, list) else []
+    # Reuse the central matcher/validator. We do NOT trust a raw scraper hit
+    # merely because it contains a price.
     try:
-        validated = _engine._validate_candidates_only(product, candidates)
+        validated = _engine._validate_candidates_only(query, candidates)
     except Exception:
         validated = candidates
+
     cleaned = []
-    seen = set()
-    for candidate in validated or []:
+    for candidate in (validated or []):
         if not isinstance(candidate, dict):
             continue
-        size = _format_compare_size(candidate)
-        if size is None:
+
+        explicit_size = _format_compare_size(candidate)
+
+        # STRICT FORMAT RULE.
+        # The comparison is specifically per format. We must never take a
+        # generic/first search result and label it 50 ml or 100 ml simply
+        # because the query contained that number.
+        #
+        # - explicit wrong size => reject
+        # - explicit requested size => accept
+        # - missing size => reject (the scraper did not prove the variant)
+        #
+        # This is deliberately conservative: an absent price is preferable
+        # to showing a false price for the wrong bottle size.
+        if explicit_size is None:
             continue
-        offer = _format_compare_clean_offer(candidate, store, size)
-        key = (offer.get("store"), size, str(offer.get("url") or ""), offer.get("price_value"))
-        if key not in seen:
-            seen.add(key)
-            cleaned.append(offer)
-    cleaned.sort(key=lambda o: (_format_compare_is_oos(o), _format_compare_num(o.get("price_value"))))
-    return {"store": store, "results": cleaned}
+        if explicit_size != size_ml:
+            continue
+
+        offer = _format_compare_clean_offer(candidate, store, size_ml)
+        cleaned.append(offer)
+
+    # One representative offer per store for this format.
+    # Available offers beat OOS; then lower price wins.
+    cleaned.sort(
+        key=lambda o: (
+            _format_compare_is_oos(o),
+            _format_compare_num(o.get("price_value")),
+        )
+    )
+
+    return {
+        "store": store,
+        "size_ml": size_ml,
+        "results": cleaned[:1],
+    }
+
 
 @app.get("/compare-formats")
-def compare_formats(q: str = Query(..., min_length=1), formats: str = Query("", min_length=0)):
+def compare_formats(
+    q: str = Query(..., min_length=1),
+    formats: str = Query("", min_length=0),
+):
     product = str(q or "").strip()
+
     requested_sizes = []
     for raw_size in str(formats or "").split(","):
         m = re.search(r"(\d{1,4})", raw_size)
-        if m:
+        if not m:
+            continue
+        try:
             value = int(m.group(1))
-            if value > 0 and value not in requested_sizes:
-                requested_sizes.append(value)
-    requested_sizes.sort()
-    if not requested_sizes:
-        return {"ok": True, "query": product, "formats": [], "comparisons": [], "errors": {}}
+        except Exception:
+            continue
+        if value > 0 and value not in requested_sizes:
+            requested_sizes.append(value)
 
-    comparisons = {size: [] for size in requested_sizes}
+    # No blind default formats here. The caller must send the real formats
+    # known for the product; this prevents inventing 30/50/100 ml variants.
+    requested_sizes.sort()
+
+    if not requested_sizes:
+        return {
+            "ok": True,
+            "query": product,
+            "formats": [],
+            "comparisons": [],
+            "errors": {},
+        }
+
+    comparisons = []
     errors: Dict[str, str] = {}
+
     from concurrent.futures import ThreadPoolExecutor, as_completed
-    # HARD LIMIT: exactly two stores at a time. One search per store, not one
-    # search per store x format. This is the key performance fix.
+
+    # Exactly 2 requests concurrently, regardless of format/store.
+    # This is faster than waiting for a whole pair of stores to finish
+    # before starting the next pair, while preserving the hard limit of 2.
     with ThreadPoolExecutor(max_workers=2) as pool:
-        futures = {pool.submit(_format_compare_store, store, product): store for store in FORMAT_STORES}
-        for future in as_completed(futures):
-            store = futures[future]
+        future_map = {
+            pool.submit(_format_compare_store, store, product, size): (store, size)
+            for size in requested_sizes
+            for store in FORMAT_STORES
+        }
+
+        for future in as_completed(future_map):
+            store, size = future_map[future]
             try:
                 result = future.result()
             except Exception as exc:
-                errors[store] = f"{type(exc).__name__}: {exc}"
+                errors[f"{store}:{size}"] = f"{type(exc).__name__}: {exc}"
                 continue
+
             if result.get("error"):
-                errors[store] = result["error"]
-            for offer in result.get("results") or []:
-                size = _format_compare_size(offer)
-                if size in comparisons:
-                    comparisons[size].append(offer)
+                errors[f"{store}:{size}"] = result["error"]
 
-    formatted = []
+            rows = result.get("results") or []
+            if rows:
+                comparisons.extend(rows)
+
+    # Group the flat offers by requested format.
+    by_size: Dict[int, List[Dict[str, Any]]] = {
+        size: [] for size in requested_sizes
+    }
+    for offer in comparisons:
+        try:
+            size = int(offer.get("size_ml"))
+        except Exception:
+            continue
+        if size in by_size:
+            by_size[size].append(offer)
+
+    formatted_comparisons = []
     for size in requested_sizes:
-        offers = comparisons[size]
-        offers.sort(key=lambda o: (_format_compare_is_oos(o), _format_compare_num(o.get("price_value"))))
-        best = next((o for o in offers if not _format_compare_is_oos(o)), None)
-        formatted.append({"size_ml": size, "best": best, "offers": offers})
-    return {"ok": True, "query": product, "formats": requested_sizes, "comparisons": formatted, "errors": errors}
+        offers = by_size[size]
+        offers.sort(
+            key=lambda o: (
+                _format_compare_is_oos(o),
+                _format_compare_num(o.get("price_value")),
+            )
+        )
+        best = next(
+            (o for o in offers if not _format_compare_is_oos(o)),
+            None,
+        )
+        formatted_comparisons.append({
+            "size_ml": size,
+            "best": best,
+            "offers": offers,
+        })
 
+    return {
+        "ok": True,
+        "query": product,
+        "formats": requested_sizes,
+        "comparisons": formatted_comparisons,
+        "errors": errors,
+    }
+
+
+# ===== READ-ONLY FORMAT FLOW DIAGNOSTIC =====
+# This endpoint does not alter any existing search route. It executes the same
+# store calls used by /compare-formats and exposes every stage so we can see
+# exactly where a 2-format or 3-format flow fails.
+import time as _diag_time
+from concurrent.futures import ThreadPoolExecutor as _DiagPool, as_completed as _diag_as_completed
+
+@app.get("/diagnose-format-flow")
+def diagnose_format_flow(
+    q: str = Query(..., min_length=1),
+    formats: str = Query(..., min_length=1),
+    budget: int = Query(90, ge=5, le=300),
+):
+    product = str(q or "").strip()
+    sizes = []
+    for token in re.findall(r"\d{1,4}", str(formats or "")):
+        n = int(token)
+        if 1 <= n <= 2000 and n not in sizes:
+            sizes.append(n)
+    sizes.sort()
+
+    started = _diag_time.monotonic()
+    jobs = [(store, size) for size in sizes for store in FORMAT_STORES]
+    rows = []
+
+    def one(store, size):
+        t0 = _diag_time.monotonic()
+        query = _format_compare_query(product, size)
+        out = {
+            "store": store,
+            "requested_size_ml": size,
+            "query": query,
+            "elapsed_ms": None,
+            "raw_count": 0,
+            "validated_count": 0,
+            "explicit_size_counts": {},
+            "accepted_count": 0,
+            "accepted": [],
+            "rejected": [],
+            "error": None,
+        }
+        try:
+            raw = _legacy.run_store(store, query)
+            candidates = raw if isinstance(raw, list) else []
+            out["raw_count"] = len(candidates)
+            try:
+                validated = _engine._validate_candidates_only(query, candidates)
+            except Exception as exc:
+                out["validation_error"] = f"{type(exc).__name__}: {exc}"
+                validated = candidates
+            validated = validated or []
+            out["validated_count"] = len(validated)
+            for c in validated:
+                if not isinstance(c, dict):
+                    continue
+                sz = _format_compare_size(c)
+                key = "missing" if sz is None else str(sz)
+                out["explicit_size_counts"][key] = out["explicit_size_counts"].get(key, 0) + 1
+                item = {
+                    "name": c.get("name"),
+                    "brand": c.get("brand"),
+                    "size_ml": c.get("size_ml"),
+                    "size": c.get("size"),
+                    "price": c.get("price"),
+                    "price_value": c.get("price_value"),
+                    "in_stock": c.get("in_stock"),
+                    "url": c.get("url") or c.get("product_url"),
+                    "sku": c.get("sku"),
+                    "gtin": c.get("gtin") or c.get("ean") or c.get("gtin13"),
+                }
+                if sz == size:
+                    out["accepted"].append(item)
+                else:
+                    reason = "missing_size" if sz is None else f"wrong_size:{sz}"
+                    item["reject_reason"] = reason
+                    out["rejected"].append(item)
+            out["accepted_count"] = len(out["accepted"])
+            out["accepted"] = out["accepted"][:10]
+            out["rejected"] = out["rejected"][:20]
+        except Exception as exc:
+            out["error"] = f"{type(exc).__name__}: {exc}"
+        finally:
+            out["elapsed_ms"] = round((_diag_time.monotonic() - t0) * 1000)
+        return out
+
+    with _DiagPool(max_workers=2) as pool:
+        fmap = {pool.submit(one, store, size): (store, size) for store, size in jobs}
+        for fut in _diag_as_completed(fmap):
+            store, size = fmap[fut]
+            try:
+                rows.append(fut.result())
+            except Exception as exc:
+                rows.append({"store": store, "requested_size_ml": size, "error": f"future:{type(exc).__name__}: {exc}"})
+            if (_diag_time.monotonic() - started) > budget:
+                # Do not cancel already-running work; report the fact that the
+                # requested diagnostic budget was exceeded.
+                break
+
+    rows.sort(key=lambda x: (int(x.get("requested_size_ml") or 0), str(x.get("store") or "")))
+    by_size = {}
+    for row in rows:
+        by_size.setdefault(str(row.get("requested_size_ml")), []).append(row)
+
+    return {
+        "ok": True,
+        "diagnostic": "format_flow_read_only",
+        "query": product,
+        "requested_formats": sizes,
+        "stores": FORMAT_STORES,
+        "max_concurrency": 2,
+        "budget_seconds": budget,
+        "elapsed_total_ms": round((_diag_time.monotonic() - started) * 1000),
+        "completed_jobs": len(rows),
+        "expected_jobs": len(jobs),
+        "budget_exceeded": (_diag_time.monotonic() - started) > budget,
+        "by_format": by_size,
+        "jobs": rows,
+    }
