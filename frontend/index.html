@@ -1674,9 +1674,51 @@ async function fetchFormatComparisons(g, sizes){
 function getMasterFormats(g){
   try{
     if(typeof MASTER_CATALOG==="undefined"||!Array.isArray(MASTER_CATALOG))return [];
-    const master=(g?.catalog_id?MASTER_CATALOG.find(x=>x.id===g.catalog_id):null)||resolveMasterProduct(g?.brand||"",g?.name||"");
-    return [...new Set((master?.formats_ml||[]).map(x=>String(x)).filter(x=>/^\d+(?:\.\d+)?$/.test(x)))].sort((a,b)=>Number(a)-Number(b));
-  }catch(e){return []}
+
+    // 1) Se il backend ha già fornito l'id canonico, è la fonte più sicura.
+    let master=(g?.catalog_id?MASTER_CATALOG.find(x=>x.id===g.catalog_id):null)||null;
+
+    // 2) Prova il resolver esistente sul nome originale.
+    if(!master){
+      master=resolveMasterProduct(g?.brand||"",g?.name||"");
+    }
+
+    // 3) FALLBACK CRITICO: il backend può restituire il titolo già formattato
+    //    (es. "Fleur De Lait Eau de Parfum"). In quel caso il resolver
+    //    storico può non riconoscerlo perché la concentrazione è stata
+    //    aggiunta al nome. Cerchiamo quindi la referenza master eliminando
+    //    SOLO brand + concentrazione/formato, senza usare fuzzy matching.
+    if(!master){
+      const brandN=norm(g?.brand||"");
+      const cleanForMaster=(value)=>{
+        let n=norm(value||"");
+        if(brandN){
+          n=n.replace(new RegExp("^\\s*"+brandN.replace(/[.*+?^${}()|[\]\\]/g,"\\$&")+"\\s*[-–—:]?\\s*","i"),"").trim();
+        }
+        n=n.replace(/\b\d+(?:[.,]\d+)?\s*(?:ml|cl|l|g|kg|oz)\b/gi," ");
+        n=n.replace(/\b(?:eau de parfum|eau de toilette|eau de cologne|eau fraiche|extrait de parfum|parfum intense|edp|edt|edc|parfum|perfume|spray)\b/gi," ");
+        return n.replace(/\s+/g," ").trim();
+      };
+
+      const target=cleanForMaster(g?.name||"");
+      if(target){
+        const hits=MASTER_CATALOG.filter(p=>{
+          if(brandN&&norm(p.brand||"")!==brandN)return false;
+          const forms=[p.name,...(Array.isArray(p.aliases)?p.aliases:[])];
+          return forms.some(form=>cleanForMaster(form)===target);
+        });
+        if(hits.length===1)master=hits[0];
+      }
+    }
+
+    return [...new Set((master?.formats_ml||[])
+      .map(x=>String(x))
+      .filter(x=>/^\d+(?:\.\d+)?$/.test(x)))]
+      .sort((a,b)=>Number(a)-Number(b));
+  }catch(e){
+    console.warn("getMasterFormats",e);
+    return [];
+  }
 }
 
 function formatComparisonFor(g,sizeKey){
@@ -1724,6 +1766,18 @@ async function openProduct(i){
   const img=g.image||"";
   const saved=getWishlist();
   statusBox.textContent="";
+
+  // Nessun formato identificabile: non mostrare mai una scheda vuota.
+  // Manteniamo il comportamento storico mostrando direttamente le offerte.
+  if(sizes.length===0){
+    const offers=(g.offers||[]).slice().sort((a,b)=>{
+      const ao=isOfferOutOfStock(a),bo=isOfferOutOfStock(b);
+      if(ao!==bo)return ao?1:-1;
+      return shNum(a)-shNum(b);
+    });
+    renderSingleFormatComparison(g,img,offers,"",saved);
+    return;
+  }
 
   // UN SOLO FORMATO: resta il comportamento storico, terza scheda evitata.
   if(sizes.length===1){
