@@ -1886,32 +1886,60 @@ async function getSearchStores(term){
 }
 
 async function searchStoresProgressive(term,onPartial){
-  /*
-   * LA RICERCA REALE PASSA DA /search.
-   *
-   * Il vecchio frontend chiamava direttamente /test-store quattro negozi alla
-   * volta. Questo bypassava completamente SearchEngine, la validazione centrale
-   * e il raggruppamento delle varianti/formati.
-   *
-   * /search usa invece il percorso centrale del backend, dove SearchEngine
-   * limita le chiamate a 2 store contemporaneamente e restituisce i risultati
-   * già finalizzati.
-   */
-  const timeoutMs=120000;
-  const url=backend()+"/search?q="+encodeURIComponent(String(term||"").trim());
+  // Ricerca asincrona reale: /search-start avvia il job e /search-status
+  // restituisce i risultati progressivi mentre le coppie di negozi terminano.
+  const query=String(term||"").trim();
+  const empty={query,comparisons:[],results:[],errors:{}};
+  if(!query)return empty;
 
   try{
-    const data=await fetchJSONWithTimeout(url,timeoutMs);
-    if(typeof onPartial==="function")onPartial(data||{query:term,comparisons:[],results:[],errors:{}},true);
-    return data||{query:term,comparisons:[],results:[],errors:{}};
+    const start=await fetchJSONWithTimeout(
+      backend()+"/search-start?q="+encodeURIComponent(query),
+      15000
+    );
+    const jobId=String(start?.job_id||"").trim();
+    if(!jobId)throw new Error("Il backend non ha restituito il job_id");
+
+    const startedAt=Date.now();
+    const maxWait=180000;
+    let lastData=start;
+
+    while(Date.now()-startedAt<maxWait){
+      const status=await fetchJSONWithTimeout(
+        backend()+"/search-status?job_id="+encodeURIComponent(jobId),
+        15000
+      );
+      lastData=status||lastData;
+
+      if(typeof onPartial==="function"){
+        onPartial({
+          query:status?.query||query,
+          count:Number(status?.count||0),
+          results:Array.isArray(status?.results)?status.results:[],
+          comparisons:Array.isArray(status?.comparisons)?status.comparisons:[],
+          errors:status?.errors&&typeof status.errors==="object"?status.errors:{},
+          phase:status?.phase||"searching",
+          completed:Boolean(status?.completed),
+          status:status?.status||"searching"
+        },Boolean(status?.completed));
+      }
+
+      if(status?.status==="completed"||status?.completed===true){
+        return status;
+      }
+      if(status?.status==="error"){
+        return status;
+      }
+
+      // Poll frequently enough that the first completed store pair appears
+      // almost immediately after its scraper returns.
+      await new Promise(resolve=>setTimeout(resolve,700));
+    }
+
+    throw new Error("Timeout ricerca: il backend non ha completato il job");
   }catch(error){
     const message=String(error?.message||error||"Errore ricerca");
-    const failed={
-      query:term,
-      comparisons:[],
-      results:[],
-      errors:{_search:message}
-    };
+    const failed={query,comparisons:[],results:[],errors:{_search:message},completed:true,status:"error"};
     if(typeof onPartial==="function")onPartial(failed,true);
     return failed;
   }
