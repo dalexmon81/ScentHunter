@@ -315,29 +315,25 @@ def _format_compare_clean_offer(
     return offer
 
 
-def _format_compare_query(product: str, size_ml: int) -> str:
-    # Keep the exact product identity and append the explicit format.
-    # This lets size-aware scrapers return the corresponding variant.
-    return f"{product} {size_ml} ml".strip()
+def _format_compare_query(product: str) -> str:
+    return product.strip()
 
 
-def _format_compare_store(store: str, product: str, size_ml: int) -> Dict[str, Any]:
-    query = _format_compare_query(product, size_ml)
+def _format_compare_store(store: str, product: str) -> Dict[str, Any]:
+    """Search each store once and keep every explicitly identified format.
+
+    The old implementation searched store × format, which was both slow and
+    actively harmful for stores whose product page contains all variants but
+    whose search endpoint returns only the currently selected variant.
+    """
     try:
-        raw = _legacy.run_store(store, query)
+        raw = _legacy.run_store(store, _format_compare_query(product))
     except Exception as exc:
-        return {
-            "store": store,
-            "size_ml": size_ml,
-            "results": [],
-            "error": f"{type(exc).__name__}: {exc}",
-        }
+        return {"store": store, "results": [], "error": f"{type(exc).__name__}: {exc}"}
 
     candidates = raw if isinstance(raw, list) else []
-    # Reuse the central matcher/validator. We do NOT trust a raw scraper hit
-    # merely because it contains a price.
     try:
-        validated = _engine._validate_candidates_only(query, candidates)
+        validated = _engine._validate_candidates_only(product, candidates)
     except Exception:
         validated = candidates
 
@@ -345,42 +341,13 @@ def _format_compare_store(store: str, product: str, size_ml: int) -> Dict[str, A
     for candidate in (validated or []):
         if not isinstance(candidate, dict):
             continue
-
         explicit_size = _format_compare_size(candidate)
-
-        # STRICT FORMAT RULE.
-        # The comparison is specifically per format. We must never take a
-        # generic/first search result and label it 50 ml or 100 ml simply
-        # because the query contained that number.
-        #
-        # - explicit wrong size => reject
-        # - explicit requested size => accept
-        # - missing size => reject (the scraper did not prove the variant)
-        #
-        # This is deliberately conservative: an absent price is preferable
-        # to showing a false price for the wrong bottle size.
         if explicit_size is None:
             continue
-        if explicit_size != size_ml:
-            continue
+        cleaned.append(_format_compare_clean_offer(candidate, store, explicit_size))
 
-        offer = _format_compare_clean_offer(candidate, store, size_ml)
-        cleaned.append(offer)
-
-    # One representative offer per store for this format.
-    # Available offers beat OOS; then lower price wins.
-    cleaned.sort(
-        key=lambda o: (
-            _format_compare_is_oos(o),
-            _format_compare_num(o.get("price_value")),
-        )
-    )
-
-    return {
-        "store": store,
-        "size_ml": size_ml,
-        "results": cleaned[:1],
-    }
+    cleaned.sort(key=lambda o: (_format_compare_is_oos(o), _format_compare_num(o.get("price_value"))))
+    return {"store": store, "results": cleaned}
 
 
 @app.get("/compare-formats")
@@ -420,30 +387,23 @@ def compare_formats(
 
     from concurrent.futures import ThreadPoolExecutor, as_completed
 
-    # Exactly 2 requests concurrently, regardless of format/store.
-    # This is faster than waiting for a whole pair of stores to finish
-    # before starting the next pair, while preserving the hard limit of 2.
+    # Exactly two stores are queried concurrently. Each store is queried once;
+    # its scraper is responsible for returning all explicit product variants.
     with ThreadPoolExecutor(max_workers=2) as pool:
         future_map = {
-            pool.submit(_format_compare_store, store, product, size): (store, size)
-            for size in requested_sizes
+            pool.submit(_format_compare_store, store, product): store
             for store in FORMAT_STORES
         }
-
         for future in as_completed(future_map):
-            store, size = future_map[future]
+            store = future_map[future]
             try:
                 result = future.result()
             except Exception as exc:
-                errors[f"{store}:{size}"] = f"{type(exc).__name__}: {exc}"
+                errors[store] = f"{type(exc).__name__}: {exc}"
                 continue
-
             if result.get("error"):
-                errors[f"{store}:{size}"] = result["error"]
-
-            rows = result.get("results") or []
-            if rows:
-                comparisons.extend(rows)
+                errors[store] = result["error"]
+            comparisons.extend(result.get("results") or [])
 
     # Group the flat offers by requested format.
     by_size: Dict[int, List[Dict[str, Any]]] = {
