@@ -58,7 +58,11 @@ if callable(_original_product_identity_key):
 # explicitly; assigning only local wrapper globals would NOT change the routes.
 _legacy.search_perfume = _engine.search
 _legacy._run_search_job = _engine.run_job
-_legacy._search_job_snapshot = _engine.search_job_snapshot
+# The restored SearchEngine does not expose search_job_snapshot().
+# Keep the legacy snapshot function when that optional method is absent.
+_engine_snapshot = getattr(_engine, "search_job_snapshot", None)
+if callable(_engine_snapshot):
+    _legacy._search_job_snapshot = _engine_snapshot
 
 
 # Keep the exact FastAPI application object and every existing route.
