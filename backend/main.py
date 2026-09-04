@@ -483,3 +483,123 @@ def compare_formats(
         "comparisons": formatted_comparisons,
         "errors": errors,
     }
+
+
+# ===== READ-ONLY FORMAT FLOW DIAGNOSTIC =====
+# This endpoint does not alter any existing search route. It executes the same
+# store calls used by /compare-formats and exposes every stage so we can see
+# exactly where a 2-format or 3-format flow fails.
+import time as _diag_time
+from concurrent.futures import ThreadPoolExecutor as _DiagPool, as_completed as _diag_as_completed
+
+@app.get("/diagnose-format-flow")
+def diagnose_format_flow(
+    q: str = Query(..., min_length=1),
+    formats: str = Query(..., min_length=1),
+    budget: int = Query(90, ge=5, le=300),
+):
+    product = str(q or "").strip()
+    sizes = []
+    for token in re.findall(r"\d{1,4}", str(formats or "")):
+        n = int(token)
+        if 1 <= n <= 2000 and n not in sizes:
+            sizes.append(n)
+    sizes.sort()
+
+    started = _diag_time.monotonic()
+    jobs = [(store, size) for size in sizes for store in FORMAT_STORES]
+    rows = []
+
+    def one(store, size):
+        t0 = _diag_time.monotonic()
+        query = _format_compare_query(product, size)
+        out = {
+            "store": store,
+            "requested_size_ml": size,
+            "query": query,
+            "elapsed_ms": None,
+            "raw_count": 0,
+            "validated_count": 0,
+            "explicit_size_counts": {},
+            "accepted_count": 0,
+            "accepted": [],
+            "rejected": [],
+            "error": None,
+        }
+        try:
+            raw = _legacy.run_store(store, query)
+            candidates = raw if isinstance(raw, list) else []
+            out["raw_count"] = len(candidates)
+            try:
+                validated = _engine._validate_candidates_only(query, candidates)
+            except Exception as exc:
+                out["validation_error"] = f"{type(exc).__name__}: {exc}"
+                validated = candidates
+            validated = validated or []
+            out["validated_count"] = len(validated)
+            for c in validated:
+                if not isinstance(c, dict):
+                    continue
+                sz = _format_compare_size(c)
+                key = "missing" if sz is None else str(sz)
+                out["explicit_size_counts"][key] = out["explicit_size_counts"].get(key, 0) + 1
+                item = {
+                    "name": c.get("name"),
+                    "brand": c.get("brand"),
+                    "size_ml": c.get("size_ml"),
+                    "size": c.get("size"),
+                    "price": c.get("price"),
+                    "price_value": c.get("price_value"),
+                    "in_stock": c.get("in_stock"),
+                    "url": c.get("url") or c.get("product_url"),
+                    "sku": c.get("sku"),
+                    "gtin": c.get("gtin") or c.get("ean") or c.get("gtin13"),
+                }
+                if sz == size:
+                    out["accepted"].append(item)
+                else:
+                    reason = "missing_size" if sz is None else f"wrong_size:{sz}"
+                    item["reject_reason"] = reason
+                    out["rejected"].append(item)
+            out["accepted_count"] = len(out["accepted"])
+            out["accepted"] = out["accepted"][:10]
+            out["rejected"] = out["rejected"][:20]
+        except Exception as exc:
+            out["error"] = f"{type(exc).__name__}: {exc}"
+        finally:
+            out["elapsed_ms"] = round((_diag_time.monotonic() - t0) * 1000)
+        return out
+
+    with _DiagPool(max_workers=2) as pool:
+        fmap = {pool.submit(one, store, size): (store, size) for store, size in jobs}
+        for fut in _diag_as_completed(fmap):
+            store, size = fmap[fut]
+            try:
+                rows.append(fut.result())
+            except Exception as exc:
+                rows.append({"store": store, "requested_size_ml": size, "error": f"future:{type(exc).__name__}: {exc}"})
+            if (_diag_time.monotonic() - started) > budget:
+                # Do not cancel already-running work; report the fact that the
+                # requested diagnostic budget was exceeded.
+                break
+
+    rows.sort(key=lambda x: (int(x.get("requested_size_ml") or 0), str(x.get("store") or "")))
+    by_size = {}
+    for row in rows:
+        by_size.setdefault(str(row.get("requested_size_ml")), []).append(row)
+
+    return {
+        "ok": True,
+        "diagnostic": "format_flow_read_only",
+        "query": product,
+        "requested_formats": sizes,
+        "stores": FORMAT_STORES,
+        "max_concurrency": 2,
+        "budget_seconds": budget,
+        "elapsed_total_ms": round((_diag_time.monotonic() - started) * 1000),
+        "completed_jobs": len(rows),
+        "expected_jobs": len(jobs),
+        "budget_exceeded": (_diag_time.monotonic() - started) > budget,
+        "by_format": by_size,
+        "jobs": rows,
+    }
