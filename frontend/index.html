@@ -1733,22 +1733,23 @@ async function openProduct(i){
     return;
   }
 
-  // DUE O TRE FORMATI: seconda scheda = formati + PREZZO PIÙ BASSO.
-  resultsBox.innerHTML=`<article class="comparison"><button class="detail-back" onclick="clearOpenProduct();showProducts(currentProductGroups)">← Torna ai profumi</button><div class="comparison-head"><div class="result-image">${img?`<img src="${esc(img)}" alt="${esc(displayPerfumeName(g.name,g.brand))}" onerror="this.outerHTML='🧴'">`:"🧴"}</div><div class="result-main"><div class="store">${esc(g.brand||"")}</div><div class="name">${esc(displayPerfumeName(g.name,g.brand))}</div></div></div><div class="bestlabel">CONFRONTA I FORMATI</div><div class="offer-meta" style="margin-bottom:12px">Cerco il prezzo più basso per ogni formato...</div><div class="format-loading" aria-hidden="true">⏳</div></article>`;
-  document.getElementById("searchOutput").scrollIntoView({behavior:"smooth",block:"start"});
+  // DUE O TRE FORMATI: la seconda scheda compare SUBITO.
+  // Il confronto completo dei negozi viene aggiornato in background.
+  const localFallback=getSizeGroups(g).filter(s=>s.size).map(s=>({size_ml:s.size,best:s.best,offers:s.offers}));
+  window._formatComparisonsByProduct=window._formatComparisonsByProduct||{};
+  window._formatComparisonsByProduct[currentOpenProductKey]=localFallback;
+  renderFormatChoiceCard(i,g,localFallback,sizes);
 
-  try{
-    const comparisons=await fetchFormatComparisons(g,sizes);
+  const productKeyAtRequest=currentOpenProductKey;
+  fetchFormatComparisons(g,sizes).then(comparisons=>{
+    if(productKeyAtRequest!==currentOpenProductKey)return;
+    const merged=Array.isArray(comparisons)&&comparisons.length?comparisons:localFallback;
     window._formatComparisonsByProduct=window._formatComparisonsByProduct||{};
-    window._formatComparisonsByProduct[currentOpenProductKey]=comparisons;
-    renderFormatChoiceCard(i,g,comparisons,sizes);
-  }catch(error){
+    window._formatComparisonsByProduct[productKeyAtRequest]=merged;
+    renderFormatChoiceCard(i,g,merged,sizes);
+  }).catch(error=>{
     console.warn("Confronto formati",error);
-    const fallback=getSizeGroups(g).filter(s=>s.size).map(s=>({size_ml:s.size,best:s.best,offers:s.offers}));
-    window._formatComparisonsByProduct=window._formatComparisonsByProduct||{};
-    window._formatComparisonsByProduct[currentOpenProductKey]=fallback;
-    renderFormatChoiceCard(i,g,fallback,sizes);
-  }
+  });
 }
 
 function renderSingleFormatComparison(g,img,offers,size,saved){
@@ -1987,7 +1988,13 @@ async function searchPerfume(){
 
    }else{
 
-    showProducts(groups);
+    // Durante la ricerca progressiva non mostrare un falso "Nessun profumo trovato".
+    // Quel messaggio è valido solo quando il job è realmente terminato.
+    if(groups.length || final){
+
+     showProducts(groups);
+
+    }
 
    }
 
