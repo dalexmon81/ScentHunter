@@ -1752,12 +1752,14 @@ def product_identity_key(product: Dict[str, Any]) -> tuple:
         "store_variant_id",
         "variant_id",
     )
+
     product_id = identity_value(
         product,
         "store_product_id",
         "product_id",
         "catalog_id",
     )
+
     gtin = identity_value(
         product,
         "gtin",
@@ -1766,6 +1768,7 @@ def product_identity_key(product: Dict[str, Any]) -> tuple:
         "barcode",
         "upc",
     )
+
     sku = identity_value(
         product,
         "sku",
@@ -1807,6 +1810,7 @@ def product_identity_key(product: Dict[str, Any]) -> tuple:
         size,
         concentration,
     )
+
 
 
 def unique_results(products: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
