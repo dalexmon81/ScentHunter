@@ -793,7 +793,7 @@ class SearchEngine:
             # the job. The legacy /search-status snapshot calls
             # _prepare_final_results() exactly once; storing already-prepared
             # groups here would make that route prepare the same result twice.
-            validated_candidates = self._validate_candidates_only(query, raw_pool)
+            validated_candidates = self._validate_and_finalize(query, raw_pool)
 
             # IMPORTANT: this is the first publication of the product list.
             update(
