@@ -285,22 +285,42 @@ def _format_compare_num(value: Any) -> float:
 
 
 def _format_compare_size(candidate: Dict[str, Any]) -> int | None:
+    """Return the explicit product format using the backend's central parser.
+
+    The legacy backend already handles:
+    - top-level size_ml / volume_ml / format_ml
+    - nested attributes.size_ml / volume_ml / format_ml
+    - explicit ml/cl values in name, title, size and format fields
+    - product URL and raw_data URL/name
+
+    /compare-formats must use that same parser instead of a reduced local
+    parser; otherwise valid variants such as Deloox 50-ml and 100-ml are
+    discarded because their numeric format exists only in the product URL.
+    """
+    try:
+        parsed = _legacy.product_size_ml(candidate)
+    except Exception:
+        parsed = None
+
+    if parsed is not None:
+        try:
+            return int(round(float(parsed)))
+        except (TypeError, ValueError):
+            pass
+
+    # Defensive fallback for candidates that do not expose the legacy helper.
     raw = candidate.get("size_ml") or candidate.get("size")
     if raw is not None:
-        m = re.search(r"(\d{1,4})", str(raw))
+        m = re.search(r"(\d{1,4}(?:[.,]\d+)?)\s*(ml|cl)?", str(raw), flags=re.I)
         if m:
             try:
-                return int(m.group(1))
-            except Exception:
+                value = float(m.group(1).replace(",", "."))
+                if (m.group(2) or "").casefold() == "cl":
+                    value *= 10
+                return int(round(value))
+            except (TypeError, ValueError):
                 pass
 
-    name = str(candidate.get("name") or "")
-    m = re.search(r"\b(\d{1,4})\s*ml\b", name, flags=re.I)
-    if m:
-        try:
-            return int(m.group(1))
-        except Exception:
-            pass
     return None
 
 
@@ -496,7 +516,7 @@ def diagnose_format_flow(
 
     def one(store, size):
         t0 = _diag_time.monotonic()
-        query = _format_compare_query(product, size)
+        query = _format_compare_query(product)
         out = {
             "store": store,
             "requested_size_ml": size,
@@ -515,7 +535,7 @@ def diagnose_format_flow(
             candidates = raw if isinstance(raw, list) else []
             out["raw_count"] = len(candidates)
             try:
-                validated = _engine._validate_candidates_only(query, candidates)
+                validated = _engine._validate_candidates_only(product, candidates)
             except Exception as exc:
                 out["validation_error"] = f"{type(exc).__name__}: {exc}"
                 validated = candidates
