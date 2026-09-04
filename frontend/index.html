@@ -2001,7 +2001,13 @@ async function searchStoresProgressive(term,onPartial){
 }
 
 async function searchPerfume(){
- const q=queryInput.value.trim();if(!q){statusBox.textContent="";resultsBox.innerHTML="";errorsBox.innerHTML="";return}
+ const q=queryInput.value.trim();
+ if(!q){
+  statusBox.textContent="Cerca un profumo per confrontare i prezzi.";
+  resultsBox.innerHTML="";
+  errorsBox.innerHTML="";
+  return;
+ }
  searchButton.disabled=true;searchButton.classList.add("searching");
  let dots=0;
  const updateSearchButton=()=>{dots=(dots+1)%4;searchButton.innerHTML='<span class="search-fixed">CERCO</span><span class="search-dots">'+". ".trim().repeat(0)+". ".trim().repeat(dots)+'</span>'};
@@ -2059,7 +2065,10 @@ async function searchPerfume(){
    // trasformare una ricerca con risultati validi in una ricerca "fallita".
    // Conserviamo gli errori internamente, ma l'utente vede solo i risultati utili.
    errorsBox.innerHTML="";
-   if(final)statusBox.textContent=groups.length?`Ricerca completata: ${groups.length} prodotti trovati.`:"Nessun risultato trovato.";
+   if(final){
+    const hasGroups=Array.isArray(groups)&&groups.length>0;
+    statusBox.textContent=hasGroups?`Ricerca completata: ${groups.length} prodotti trovati.`:"Nessun risultato trovato.";
+   }
   };
 
   // Tutte le ricerche passano dalla stessa pipeline progressiva.
