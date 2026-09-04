@@ -1668,9 +1668,7 @@ async function fetchFormatComparisons(g, sizes){
   const response=await fetch(backend()+"/compare-formats?"+params.toString(),{cache:"no-store",headers:{"Accept":"application/json"}});
   if(!response.ok)throw new Error("Confronto formati HTTP "+response.status);
   const data=await response.json();
-  // /compare-formats returns the real comparison rows here.
-  // `formats` contains only the requested size numbers, not prices/offers.
-  return Array.isArray(data?.comparisons)?data.comparisons:[];
+  return Array.isArray(data?.formats)?data.formats:[];
 }
 
 function getMasterFormats(g){
@@ -1986,4 +1984,48 @@ async function searchPerfume(){
    // trasformare una ricerca con risultati validi in una ricerca "fallita".
    // Conserviamo gli errori internamente, ma l'utente vede solo i risultati utili.
    errorsBox.innerHTML="";
-   if(final)statusBox.text
+   if(final)statusBox.textContent=groups.length?`Ricerca completata: ${groups.length} prodotti trovati.`:"Nessun risultato trovato.";
+  };
+
+  // Tutte le ricerche passano dalla stessa pipeline progressiva.
+  // Massimo 2 negozi alla volta, con aggiornamento dei risultati man mano.
+  data=await searchStoresProgressive(q,renderData);
+
+  // Regola generale di recupero: se la query esatta non produce nulla,
+  // usa automaticamente le referenze del catalogo master per provare il
+  // nome canonico/alias. I fallback vengono eseguiti uno alla volta per
+  // evitare una seconda raffica simultanea di richieste.
+  let groups=shGroupData(data||{});
+  if(!groups.length){
+   const fallbackQueries=buildCatalogFallbackQueries(q);
+   for(let i=0;i<fallbackQueries.length;i++){
+    const term=fallbackQueries[i];
+    statusBox.textContent="";
+    try{
+     const fallbackData=await searchStoresProgressive(term,null);
+     if(Array.isArray(fallbackData?.results))data.results.push(...fallbackData.results);
+     if(Array.isArray(fallbackData?.comparisons))data.comparisons.push(...fallbackData.comparisons);
+     if(fallbackData?.errors&&typeof fallbackData.errors==="object")Object.entries(fallbackData.errors).forEach(([store,error])=>{
+      if(!data.errors[store])data.errors[store]=error;
+     });
+     groups=shGroupData(data||{});
+     renderData(data,i===fallbackQueries.length-1||groups.length>0);
+     if(groups.length)break;
+    }catch(e){
+     console.warn("Fallback ricerca",term,e);
+    }
+   }
+  }
+
+  renderData(data,true);
+ }catch(e){
+  console.error(e);
+  statusBox.textContent=String(e?.message||"Impossibile completare la ricerca.");
+ }
+ finally{clearInterval(dotsTimer);searchButton.disabled=false;searchButton.classList.remove("searching");searchButton.textContent="INIZIA LA RICERCA"}
+}
+
+searchButton.addEventListener("click",searchPerfume);queryInput.addEventListener("keydown",e=>{if(e.key==="Enter"){e.preventDefault();searchPerfume()}});
+renderWishlist();syncHearts();
+</script>
+</body></html>
