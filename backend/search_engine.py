@@ -172,11 +172,8 @@ class SearchEngine:
             store: StoreRun(store=store) for store in stores
         }
 
-        # Railway stability: never run all eight scrapers at once.
-        # Keep the original orchestration/validation logic intact, but cap
-        # scraper concurrency at two stores.
         executor = concurrent.futures.ThreadPoolExecutor(
-            max_workers=min(2, max(1, len(stores))),
+            max_workers=max(1, len(stores)),
             thread_name_prefix="scenthunter-store",
         )
         futures: Dict[concurrent.futures.Future, str] = {}
