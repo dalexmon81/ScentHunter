@@ -2059,12 +2059,8 @@ async function searchPerfume(){
    // trasformare una ricerca con risultati validi in una ricerca "fallita".
    // Conserviamo gli errori internamente, ma l'utente vede solo i risultati utili.
    errorsBox.innerHTML="";
-   if(final) {
-    const hasGroups = Array.isArray(groups) && groups.length > 0;
-    statusBox.textContent = hasGroups
-        ? `Ricerca completata – ${groups.length} ${groups.length === 1 ? "prodotto" : "prodotti"} trovati.`
-        : "Nessun risultato trovato.";
-};
+   if(final)statusBox.textContent=groups.length?`Ricerca completata: ${groups.length} prodotti trovati.`:"Nessun risultato trovato.";
+  };
 
   // Tutte le ricerche passano dalla stessa pipeline progressiva.
   // Massimo 2 negozi alla volta, con aggiornamento dei risultati man mano.
