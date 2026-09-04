@@ -16,6 +16,7 @@ from search_engine import SearchEngine
 import importlib
 import json
 import re
+import time
 from typing import Any, Dict, List
 from urllib.parse import quote_plus
 
@@ -360,6 +361,139 @@ def _format_compare_clean_offer(
 def _format_compare_query(product: str) -> str:
     return product.strip()
 
+
+def _format_compare_normalized_query(value: Any) -> str:
+    text = str(value or "").strip()
+    normalizer = getattr(_legacy, "norm", None)
+    if callable(normalizer):
+        try:
+            return str(normalizer(text) or "").strip()
+        except Exception:
+            pass
+    return re.sub(r"\s+", " ", text.casefold()).strip()
+
+
+def _format_compare_job_snapshot(product: str) -> Dict[str, Any] | None:
+    """
+    Recupera la candidate pool della ricerca principale già eseguita.
+
+    Il dettaglio prodotto non deve rilanciare una seconda ricerca completa sugli
+    otto store se la ricerca appena conclusa ha già interrogato quegli store.
+    """
+    jobs = getattr(_legacy, "SEARCH_JOBS", None)
+    lock = getattr(_legacy, "SEARCH_JOBS_LOCK", None)
+    if not isinstance(jobs, dict):
+        return None
+
+    wanted = _format_compare_normalized_query(product)
+    best = None
+    best_started = -1.0
+
+    def inspect() -> None:
+        nonlocal best, best_started
+        for job_id, job in jobs.items():
+            if not isinstance(job, dict):
+                continue
+            query = _format_compare_normalized_query(job.get("query"))
+            if not query or query != wanted:
+                continue
+            started = float(job.get("started_at") or 0.0)
+            if started >= best_started:
+                best = {
+                    "job_id": str(job_id),
+                    "query": str(job.get("query") or product),
+                    "candidates": list(job.get("candidates") or []),
+                    "results": list(job.get("results") or []),
+                    "errors": dict(job.get("errors") or {}),
+                    "completed": bool(job.get("completed")),
+                    "store_status": dict(job.get("store_status") or {}),
+                    "started_at": started,
+                }
+                best_started = started
+
+    if lock is not None:
+        with lock:
+            inspect()
+    else:
+        inspect()
+
+    return best
+
+
+def _format_compare_wait_for_main_search(
+    product: str,
+    max_wait_seconds: float = 6.5,
+    poll_seconds: float = 0.15,
+) -> Dict[str, Any] | None:
+    """
+    Attende brevemente la ricerca principale se è ancora in corso.
+
+    Non avvia altri scraper durante l'attesa: evita il doppio carico e lascia
+    che la candidate pool già in costruzione diventi la sorgente del confronto.
+    """
+    deadline = time.monotonic() + max(0.0, float(max_wait_seconds))
+    snapshot = _format_compare_job_snapshot(product)
+    while snapshot is not None and not snapshot.get("completed"):
+        if time.monotonic() >= deadline:
+            break
+        time.sleep(max(0.02, float(poll_seconds)))
+        snapshot = _format_compare_job_snapshot(product)
+    return snapshot
+
+
+def _format_compare_store_candidates(
+    store: str,
+    product: str,
+    candidates: List[Dict[str, Any]],
+) -> Dict[str, Any]:
+    """Valida e pulisce candidati già raccolti dalla ricerca principale."""
+    normalized_candidates = []
+    for candidate in candidates:
+        if not isinstance(candidate, dict):
+            continue
+        item = dict(candidate)
+        candidate_store = str(item.get("store") or "").strip().casefold()
+        if candidate_store and candidate_store != store.casefold():
+            continue
+        size = _format_compare_size(item)
+        if size is not None:
+            item["size_ml"] = size
+        normalized_candidates.append(item)
+
+    try:
+        validated = _engine._validate_candidates_only(
+            product,
+            normalized_candidates,
+        )
+    except Exception:
+        validated = normalized_candidates
+
+    cleaned = []
+    for candidate in validated or []:
+        if not isinstance(candidate, dict):
+            continue
+        explicit_size = _format_compare_size(candidate)
+        if explicit_size is None:
+            continue
+        item = dict(candidate)
+        item["size_ml"] = explicit_size
+        cleaned.append(
+            _format_compare_clean_offer(
+                item,
+                store,
+                explicit_size,
+            )
+        )
+
+    cleaned.sort(
+        key=lambda offer: (
+            _format_compare_is_oos(offer),
+            _format_compare_num(offer.get("price_value")),
+        )
+    )
+    return {"store": store, "results": cleaned}
+
+
 def _format_compare_store(
     store: str,
     product: str,
@@ -468,7 +602,7 @@ def compare_formats(
             requested_sizes.append(value)
 
     # No blind default formats here. The caller must send the real formats
-    # known for the product; this prevents inventing 30/50/100 ml variants.
+    # known for the product; this prevents inventing variants.
     requested_sizes.sort()
 
     if not requested_sizes:
@@ -480,29 +614,53 @@ def compare_formats(
             "errors": {},
         }
 
-    comparisons = []
+    comparisons: List[Dict[str, Any]] = []
     errors: Dict[str, str] = {}
 
-    from concurrent.futures import ThreadPoolExecutor, as_completed
+    # PRIMARY PATH: reuse the candidate pool produced by the main search.
+    # This is the critical fix: opening a multi-format product must not launch
+    # a second eight-store search after the user has already searched for it.
+    snapshot = _format_compare_wait_for_main_search(
+        product,
+        max_wait_seconds=6.5,
+    )
 
-    # Exactly two stores are queried concurrently. Each store is queried once;
-    # its scraper is responsible for returning all explicit product variants.
-    with ThreadPoolExecutor(max_workers=2) as pool:
-        future_map = {
-            pool.submit(_format_compare_store, store, product): store
-            for store in FORMAT_STORES
-        }
-
-        for future in as_completed(future_map):
-            store = future_map[future]
-            try:
-                result = future.result()
-            except Exception as exc:
-                errors[store] = f"{type(exc).__name__}: {exc}"
-                continue
-            if result.get("error"):
-                errors[store] = result["error"]
+    if snapshot is not None:
+        candidates = snapshot.get("candidates") or []
+        for store in FORMAT_STORES:
+            result = _format_compare_store_candidates(
+                store,
+                product,
+                candidates,
+            )
             comparisons.extend(result.get("results") or [])
+
+        # Preserve technical errors already reported by the main search, but
+        # do not convert a normal empty store into a fake error.
+        errors.update(snapshot.get("errors") or {})
+
+    else:
+        # FALLBACK PATH: if no main-search job exists (e.g. direct API call),
+        # keep the existing store-by-store behavior. It remains deliberately
+        # capped at two concurrent scrapers to avoid burst/rate-limit pressure.
+        from concurrent.futures import ThreadPoolExecutor, as_completed
+
+        with ThreadPoolExecutor(max_workers=2) as pool:
+            future_map = {
+                pool.submit(_format_compare_store, store, product): store
+                for store in FORMAT_STORES
+            }
+
+            for future in as_completed(future_map):
+                store = future_map[future]
+                try:
+                    result = future.result()
+                except Exception as exc:
+                    errors[store] = f"{type(exc).__name__}: {exc}"
+                    continue
+                if result.get("error"):
+                    errors[store] = result["error"]
+                comparisons.extend(result.get("results") or [])
 
     # Group the flat offers by requested format.
     by_size: Dict[int, List[Dict[str, Any]]] = {
@@ -515,7 +673,6 @@ def compare_formats(
             continue
 
         raw_size = offer.get("size_ml")
-
         if raw_size in (None, ""):
             continue
 
@@ -554,6 +711,9 @@ def compare_formats(
         "formats": requested_sizes,
         "comparisons": formatted_comparisons,
         "errors": errors,
+        "source": "main_search_cache" if snapshot is not None else "direct_store_search",
+        "search_job_id": snapshot.get("job_id") if snapshot is not None else None,
+        "search_completed": snapshot.get("completed") if snapshot is not None else None,
     }
 
 # ===== READ-ONLY FORMAT FLOW DIAGNOSTIC =====
