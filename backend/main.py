@@ -23,7 +23,6 @@ import requests
 from bs4 import BeautifulSoup
 from fastapi import Query
 
-
 # One central search engine, reusing the existing:
 # - ProductMatcher
 # - Family Registry
@@ -31,7 +30,6 @@ from fastapi import Query
 # - eight store adapters
 # - central validation/finalization functions
 _engine = SearchEngine(_legacy)
-
 
 # Keep size variants from the same retailer product URL/product-id distinct.
 # The legacy deduplicator historically keyed product-id results without size,
@@ -52,9 +50,8 @@ if callable(_original_product_identity_key):
 
     _legacy.product_identity_key = _size_aware_product_identity_key
 
-
 # The FastAPI route functions live inside main_legacy.py and therefore resolve
-# their globals in the legacy module's namespace.  Patch that namespace
+# their globals in the legacy module's namespace. Patch that namespace
 # explicitly; assigning only local wrapper globals would NOT change the routes.
 _legacy.search_perfume = _engine.search
 _legacy._run_search_job = _engine.run_job
@@ -64,15 +61,12 @@ _engine_snapshot = getattr(_engine, "search_job_snapshot", None)
 if callable(_engine_snapshot):
     _legacy._search_job_snapshot = _engine_snapshot
 
-
 # Keep the exact FastAPI application object and every existing route.
 app = _legacy.app
-
 
 # ===== TEMPORARY READ-ONLY NOTINO DEEP DIAGNOSTIC =====
 JINA_PREFIX = "https://r.jina.ai/"
 NOTINO_BASE = "https://www.notino.fr"
-
 
 def _snippet(text: str, needle: str, radius: int = 220) -> Dict[str, Any]:
     low = text.casefold()
@@ -87,7 +81,6 @@ def _snippet(text: str, needle: str, radius: int = 220) -> Dict[str, Any]:
         "position": pos,
         "context": text[start:end],
     }
-
 
 def _probe_html(html: str, query: str) -> Dict[str, Any]:
     soup = BeautifulSoup(html, "html.parser")
@@ -104,12 +97,12 @@ def _probe_html(html: str, query: str) -> Dict[str, Any]:
     product_hrefs = [x for x in hrefs if product_href_re.search(x["href"].split("#", 1)[0])]
 
     raw_product_urls = sorted(set(re.findall(
-        r"https?://(?:www\.)?notino\.fr/[^\"'<>\\s]+?/p-\d+/?",
+        r"https?://(?:www\.)?notino\.fr/[^\"'<>\s]+?/p-\d+/?",
         html,
         re.I,
     )))
     relative_product_urls = sorted(set(re.findall(
-        r"(?:href|url|canonical|productUrl|product_url)[\\\"'=: ]+((?:https?:)?//(?:www\\.)?notino\\.fr)?[^\\\"'<>\\s]*?/p-\d+/?",
+        r"(?:href|url|canonical|productUrl|product_url)[\"'=: ]+((?:https?:)?//(?:www\.)?notino\.fr)?[^\"'<>\s]*?/p-\d+/?",
         html,
         re.I,
     )))
@@ -191,7 +184,6 @@ def _probe_html(html: str, query: str) -> Dict[str, Any]:
         "extractor_error": extractor_error,
     }
 
-
 @app.get("/diagnose-notino-deep")
 def diagnose_notino_deep(q: str = Query(..., min_length=1)):
     query = str(q or "").strip()
@@ -269,7 +261,6 @@ FORMAT_STORES = [
     "notino",
 ]
 
-
 def _format_compare_num(value: Any) -> float:
     try:
         if value is None or value == "":
@@ -283,46 +274,32 @@ def _format_compare_num(value: Any) -> float:
         except Exception:
             return float("inf")
 
-
-def _format_compare_size(candidate: Dict[str, Any]) -> int | None:
-    """Return the explicit product format using the backend's central parser.
-
-    The legacy backend already handles:
-    - top-level size_ml / volume_ml / format_ml
-    - nested attributes.size_ml / volume_ml / format_ml
-    - explicit ml/cl values in name, title, size and format fields
-    - product URL and raw_data URL/name
-
-    /compare-formats must use that same parser instead of a reduced local
-    parser; otherwise valid variants such as Deloox 50-ml and 100-ml are
-    discarded because their numeric format exists only in the product URL.
+def _format_compare_size(
+    candidate: Dict[str, Any],
+) -> int | None:
     """
+    Usa esclusivamente l'estrattore centrale del backend.
+    Non duplicare qui la logica size_ml.
+    """
+    extractor = getattr(_legacy, "product_size_ml", None)
+
+    if not callable(extractor):
+        return None
+
     try:
-        parsed = _legacy.product_size_ml(candidate)
+        value = extractor(candidate)
     except Exception:
-        parsed = None
+        return None
 
-    if parsed is not None:
-        try:
-            return int(round(float(parsed)))
-        except (TypeError, ValueError):
-            pass
+    if value in (None, ""):
+        return None
 
-    # Defensive fallback for candidates that do not expose the legacy helper.
-    raw = candidate.get("size_ml") or candidate.get("size")
-    if raw is not None:
-        m = re.search(r"(\d{1,4}(?:[.,]\d+)?)\s*(ml|cl)?", str(raw), flags=re.I)
-        if m:
-            try:
-                value = float(m.group(1).replace(",", "."))
-                if (m.group(2) or "").casefold() == "cl":
-                    value *= 10
-                return int(round(value))
-            except (TypeError, ValueError):
-                pass
+    try:
+        numeric = float(value)
+    except (TypeError, ValueError):
+        return None
 
-    return None
-
+    return int(numeric) if numeric.is_integer() else int(round(numeric))
 
 def _format_compare_is_oos(candidate: Dict[str, Any]) -> bool:
     if candidate.get("in_stock") is False:
@@ -343,56 +320,133 @@ def _format_compare_is_oos(candidate: Dict[str, Any]) -> bool:
     )
     return any(marker in text for marker in markers)
 
-
 def _format_compare_clean_offer(
     candidate: Dict[str, Any],
     store: str,
     requested_size: int,
 ) -> Dict[str, Any]:
     offer = dict(candidate or {})
-    offer["store"] = str(offer.get("store") or store)
-    offer_size = _format_compare_size(offer)
-    offer["size_ml"] = offer_size if offer_size is not None else requested_size
-    if "price_value" not in offer:
-        offer["price_value"] = _format_compare_num(offer.get("price"))
-    offer["in_stock"] = not _format_compare_is_oos(offer)
-    return offer
 
+    offer["store"] = str(
+        offer.get("store") or store
+    )
+
+    offer_size = _format_compare_size(offer)
+
+    if offer_size is None:
+        raise ValueError(
+            "Cannot create format offer without explicit size_ml"
+        )
+
+    if offer_size != requested_size:
+        raise ValueError(
+            f"Offer size {offer_size} does not match "
+            f"requested size {requested_size}"
+        )
+
+    offer["size_ml"] = offer_size
+
+    if "price_value" not in offer:
+        offer["price_value"] = _format_compare_num(
+            offer.get("price")
+        )
+
+    offer["in_stock"] = not _format_compare_is_oos(
+        offer
+    )
+
+    return offer
 
 def _format_compare_query(product: str) -> str:
     return product.strip()
 
-
-def _format_compare_store(store: str, product: str) -> Dict[str, Any]:
-    """Search each store once and keep every explicitly identified format.
-
-    The old implementation searched store × format, which was both slow and
-    actively harmful for stores whose product page contains all variants but
-    whose search endpoint returns only the currently selected variant.
+def _format_compare_store(
+    store: str,
+    product: str,
+) -> Dict[str, Any]:
+    """
+    Cerca una volta nello store, valida i candidati e conserva
+    soltanto le offerte con formato esplicito.
     """
     try:
-        raw = _legacy.run_store(store, _format_compare_query(product))
+        raw = _legacy.run_store(
+            store,
+            _format_compare_query(product),
+        )
     except Exception as exc:
-        return {"store": store, "results": [], "error": f"{type(exc).__name__}: {exc}"}
+        return {
+            "store": store,
+            "results": [],
+            "error": f"{type(exc).__name__}: {exc}",
+        }
 
     candidates = raw if isinstance(raw, list) else []
-    try:
-        validated = _engine._validate_candidates_only(product, candidates)
-    except Exception:
-        validated = candidates
 
-    cleaned = []
-    for candidate in (validated or []):
+    normalized_candidates = []
+
+    for candidate in candidates:
         if not isinstance(candidate, dict):
             continue
+
+        item = dict(candidate)
+
+        # Materializza il valore numerico nel contratto top-level.
+        size = _format_compare_size(item)
+
+        if size is None:
+            continue
+
+        item["size_ml"] = size
+        item["size_source"] = item.get(
+            "size_source",
+            "central_product_size_ml",
+        )
+
+        normalized_candidates.append(item)
+
+    try:
+        validated = _engine._validate_candidates_only(
+            product,
+            normalized_candidates,
+        )
+    except Exception:
+        validated = normalized_candidates
+
+    cleaned = []
+
+    for candidate in validated or []:
+        if not isinstance(candidate, dict):
+            continue
+
         explicit_size = _format_compare_size(candidate)
+
         if explicit_size is None:
             continue
-        cleaned.append(_format_compare_clean_offer(candidate, store, explicit_size))
 
-    cleaned.sort(key=lambda o: (_format_compare_is_oos(o), _format_compare_num(o.get("price_value"))))
-    return {"store": store, "results": cleaned}
+        item = dict(candidate)
+        item["size_ml"] = explicit_size
 
+        cleaned.append(
+            _format_compare_clean_offer(
+                item,
+                store,
+                explicit_size,
+            )
+        )
+
+    cleaned.sort(
+        key=lambda offer: (
+            _format_compare_is_oos(offer),
+            _format_compare_num(
+                offer.get("price_value")
+            ),
+        )
+    )
+
+    return {
+        "store": store,
+        "results": cleaned,
+    }
 
 @app.get("/compare-formats")
 def compare_formats(
@@ -438,6 +492,7 @@ def compare_formats(
             pool.submit(_format_compare_store, store, product): store
             for store in FORMAT_STORES
         }
+
         for future in as_completed(future_map):
             store = future_map[future]
             try:
@@ -451,15 +506,28 @@ def compare_formats(
 
     # Group the flat offers by requested format.
     by_size: Dict[int, List[Dict[str, Any]]] = {
-        size: [] for size in requested_sizes
+        size: []
+        for size in requested_sizes
     }
+
     for offer in comparisons:
-        try:
-            size = int(offer.get("size_ml"))
-        except Exception:
+        if not isinstance(offer, dict):
             continue
-        if size in by_size:
-            by_size[size].append(offer)
+
+        raw_size = offer.get("size_ml")
+
+        if raw_size in (None, ""):
+            continue
+
+        try:
+            size = int(float(raw_size))
+        except (TypeError, ValueError):
+            continue
+
+        if size not in by_size:
+            continue
+
+        by_size[size].append(offer)
 
     formatted_comparisons = []
     for size in requested_sizes:
@@ -487,7 +555,6 @@ def compare_formats(
         "comparisons": formatted_comparisons,
         "errors": errors,
     }
-
 
 # ===== READ-ONLY FORMAT FLOW DIAGNOSTIC =====
 # This endpoint does not alter any existing search route. It executes the same
