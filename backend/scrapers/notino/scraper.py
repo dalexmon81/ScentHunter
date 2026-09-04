@@ -988,41 +988,6 @@ def _reader_candidates(text: str, query: str) -> List[Dict[str, Any]]:
 
     return sorted(found.values(), key=lambda item: (-item["score"], item["url"]))
 
-
-def _extract_variant_offers(text: str) -> List[Tuple[float, str]]:
-    """Extract explicit size/price pairs from a Notino product page.
-
-    Only pairs with a size immediately followed by a nearby EUR price are
-    accepted. This avoids assigning the price of one bottle size to another.
-    """
-    soup = BeautifulSoup(text, "html.parser")
-    chunks: List[str] = []
-    for node in soup.find_all(["option", "label", "button", "li", "div", "span"], limit=2500):
-        value = _clean(node.get_text(" ", strip=True))
-        if value and SIZE_RE.search(value) and PRICE_RE.search(value):
-            chunks.append(value)
-    page_text = _clean(soup.get_text(" ", strip=True))
-    if page_text:
-        chunks.append(page_text)
-
-    found: List[Tuple[float, str]] = []
-    seen = set()
-    for chunk in chunks:
-        for sm in SIZE_RE.finditer(chunk):
-            size = _size_to_ml(float(sm.group(1).replace(",", ".")), sm.group(2))
-            if size <= 0:
-                continue
-            tail = chunk[sm.end():sm.end()+180]
-            pm = PRICE_RE.search(tail)
-            if not pm:
-                continue
-            price = pm.group(0)
-            key = (round(size, 2), _clean(price))
-            if key not in seen:
-                seen.add(key)
-                found.append(key)
-    return sorted(found, key=lambda item: (item[0], _clean(item[1])))
-
 def _reader_product(session: requests.Session, candidate: Dict[str, Any], query: str) -> Optional[Dict[str, Any]]:
     try:
         text = _request(session, READER_BASE + candidate["url"], reader=True).text or ""
@@ -1071,18 +1036,6 @@ def _reader_product(session: requests.Session, candidate: Dict[str, Any], query:
         name = _clean_name(candidate.get("name") or "") or _clean_name(_slug_name(candidate["url"]))
     if not name or not _query_matches_name(name, query) or _has_non_perfume_marker(name):
         return None
-
-    variant_offers = _extract_variant_offers(text)
-    if variant_offers:
-        output = []
-        for variant_size, variant_price in variant_offers:
-            output.append(result(
-                name, variant_price, structured_stock if structured_stock is not None else _stock(text),
-                candidate["url"], variant_size, _extract_concentration(text) or _extract_concentration(name),
-                _gender_marker(text) or _gender_marker(name), brand=structured_brand or candidate.get("brand", "")
-            ))
-        if output:
-            return output
 
     price = structured_price or _extract_price(text) or str(candidate.get("price") or "")
     if not price:
@@ -1164,7 +1117,7 @@ def _card_result(candidate: Dict[str, Any], query: str) -> Optional[Dict[str, An
     )
 
 
-def _enrich_one(candidate: Dict[str, Any], query: str) -> Any:
+def _enrich_one(candidate: Dict[str, Any], query: str) -> Optional[Dict[str, Any]]:
     card = _card_result(candidate, query)
     if card:
         return card
@@ -1180,9 +1133,7 @@ def _dedupe_results(results: Iterable[Dict[str, Any]]) -> List[Dict[str, Any]]:
     for item in results:
         url = normaliseurl(item.get("url", ""))
         pid = _product_id(url)
-        size = item.get("size_ml")
-        size_key = f":size:{size}" if size is not None else ":size:unknown"
-        key = (f"id:{pid}" if pid else f"url:{url.lower()}") + size_key
+        key = f"id:{pid}" if pid else f"url:{url.lower()}"
         old = by_key.get(key)
         if old is None:
             by_key[key] = item
@@ -1300,9 +1251,7 @@ def search(query: str) -> List[Dict[str, Any]]:
                 item = future.result()
             except Exception:
                 item = None
-            if isinstance(item, list):
-                results.extend(item)
-            elif item:
+            if item:
                 results.append(item)
     return _dedupe_results(results)[:MAX_CANDIDATES]
 
