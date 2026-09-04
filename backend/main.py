@@ -33,6 +33,26 @@ from fastapi import Query
 _engine = SearchEngine(_legacy)
 
 
+# Keep size variants from the same retailer product URL/product-id distinct.
+# The legacy deduplicator historically keyed product-id results without size,
+# which collapses 30/50/100 ml variants into the first one seen.
+_original_product_identity_key = getattr(_legacy, "product_identity_key", None)
+if callable(_original_product_identity_key):
+    def _size_aware_product_identity_key(product):
+        key = _original_product_identity_key(product)
+        try:
+            size = _legacy.product_size_ml(product)
+        except Exception:
+            size = None
+        if size is None:
+            return key
+        if isinstance(key, tuple):
+            return (*key, round(float(size), 4))
+        return (key, round(float(size), 4))
+
+    _legacy.product_identity_key = _size_aware_product_identity_key
+
+
 # The FastAPI route functions live inside main_legacy.py and therefore resolve
 # their globals in the legacy module's namespace.  Patch that namespace
 # explicitly; assigning only local wrapper globals would NOT change the routes.
