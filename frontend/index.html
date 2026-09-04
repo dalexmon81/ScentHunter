@@ -1043,8 +1043,16 @@ function shGroupData(data){
     return n;
   }
 
+  function stripCommercialPriceSuffix(v){
+    return String(v||"")
+      .replace(/\s+(?:de|from)\s+\d+(?:[.,]\d{1,2})?\s*(?:€|eur)?\s*(?:donna|femme|woman|women|uomo|homme|man|men)?\s*$/i," ")
+      .replace(/\s+(?:de|from)\s+\d+(?:[.,]\d{1,2})?\s*(?:€|eur)?\s*$/i," ")
+      .replace(/\s+/g," ")
+      .trim();
+  }
+
   function cleanProductName(o,brand){
-    let n=cleanBrandText(o.name||"Profumo")
+    let n=stripCommercialPriceSuffix(cleanBrandText(o.name||"Profumo"))
       .replace(/\b\d{1,4}\s*ml\b/gi," ")
       .replace(/\s+/g," ")
       .trim();
@@ -1165,11 +1173,7 @@ function shGroupData(data){
     // Il prezzo commerciale/gender aggiunto da alcuni risultati Notino
     // non fa parte dell'identità del prodotto e deve essere rimosso
     // PRIMA del match con il catalogo master.
-    const identityName=rawName
-      .replace(/\s+(?:de|from)\s+\d+(?:[.,]\d{1,2})?\s*(?:€|eur)?\s*(?:donna|femme|woman|women|uomo|homme|man|men)?\s*$/i," ")
-      .replace(/\s+(?:de|from)\s+\d+(?:[.,]\d{1,2})?\s*(?:€|eur)?\s*$/i," ")
-      .replace(/\s+/g," ")
-      .trim();
+    const identityName=stripCommercialPriceSuffix(rawName);
     const hint=concentrationHint(o);
 
     // Se il nome originale contiene una concentrazione esplicita,
@@ -1674,7 +1678,14 @@ async function fetchFormatComparisons(g, sizes){
   const list=[...new Set((sizes||[]).map(x=>String(x||"").trim()).filter(Boolean))];
   if(!productName || !list.length)return [];
   const params=new URLSearchParams({q:productName,formats:list.join(",")});
-  const response=await fetch(backend()+"/compare-formats?"+params.toString(),{cache:"no-store",headers:{"Accept":"application/json"}});
+  const controller=new AbortController();
+  const timer=setTimeout(()=>controller.abort(),8000);
+  let response;
+  try{
+    response=await fetch(backend()+"/compare-formats?"+params.toString(),{cache:"no-store",headers:{"Accept":"application/json"},signal:controller.signal});
+  }finally{
+    clearTimeout(timer);
+  }
   if(!response.ok)throw new Error("Confronto formati HTTP "+response.status);
   const data=await response.json();
   return Array.isArray(data?.formats)?data.formats:[];
@@ -1741,21 +1752,27 @@ async function openProduct(i){
     return;
   }
 
-  // DUE O TRE FORMATI: seconda scheda = formati + PREZZO PIÙ BASSO.
-  resultsBox.innerHTML=`<article class="comparison"><button class="detail-back" onclick="clearOpenProduct();showProducts(currentProductGroups)">← Torna ai profumi</button><div class="comparison-head"><div class="result-image">${img?`<img src="${esc(img)}" alt="${esc(displayPerfumeName(g.name,g.brand))}" onerror="this.outerHTML='🧴'">`:"🧴"}</div><div class="result-main"><div class="store">${esc(g.brand||"")}</div><div class="name">${esc(displayPerfumeName(g.name,g.brand))}</div></div></div><div class="bestlabel">CONFRONTA I FORMATI</div><div class="offer-meta" style="margin-bottom:12px">Cerco il prezzo più basso per ogni formato...</div><div class="format-loading" aria-hidden="true">⏳</div></article>`;
-  document.getElementById("searchOutput").scrollIntoView({behavior:"smooth",block:"start"});
+  // DUE O TRE FORMATI: mostriamo SUBITO i formati disponibili.
+  // Il confronto remoto viene aggiornato in background: una fonte lenta o bloccata
+  // non può più lasciare la scheda in "ricerca in corso" all'infinito.
+  const localGroups=getSizeGroups(g);
+  const localComparisons=sizes.map(size=>{
+    const local=localGroups.find(x=>String(x.size)===String(size));
+    return {size_ml:String(size),best:local?.best||null,offers:local?.offers||[]};
+  });
+  window._formatComparisonsByProduct=window._formatComparisonsByProduct||{};
+  window._formatComparisonsByProduct[currentOpenProductKey]=localComparisons;
+  renderFormatChoiceCard(i,g,localComparisons,sizes);
 
   try{
     const comparisons=await fetchFormatComparisons(g,sizes);
-    window._formatComparisonsByProduct=window._formatComparisonsByProduct||{};
-    window._formatComparisonsByProduct[currentOpenProductKey]=comparisons;
-    renderFormatChoiceCard(i,g,comparisons,sizes);
+    if(currentOpenProductKey!==productGroupKey(g))return;
+    const finalComparisons=Array.isArray(comparisons)&&comparisons.length?comparisons:localComparisons;
+    window._formatComparisonsByProduct[currentOpenProductKey]=finalComparisons;
+    renderFormatChoiceCard(i,g,finalComparisons,sizes);
   }catch(error){
     console.warn("Confronto formati",error);
-    const fallback=getSizeGroups(g).filter(s=>s.size).map(s=>({size_ml:s.size,best:s.best,offers:s.offers}));
-    window._formatComparisonsByProduct=window._formatComparisonsByProduct||{};
-    window._formatComparisonsByProduct[currentOpenProductKey]=fallback;
-    renderFormatChoiceCard(i,g,fallback,sizes);
+    // La scheda è già utilizzabile con i dati locali: nessun ulteriore loading.
   }
 }
 
