@@ -140,7 +140,7 @@ body{position:relative}
 
 <style>
 .product-choice{margin-top:12px;padding:15px;border:1px solid #303238;border-radius:18px;background:#121416;display:flex;gap:13px;align-items:center;cursor:pointer;touch-action:pan-y;-webkit-tap-highlight-color:transparent}
-.product-choice-main{min-width:0;flex:1}.product-choice .arrow{color:#e7b83f;font-size:28px}.product-choice.search-locked{cursor:default;opacity:.96}
+.product-choice-main{min-width:0;flex:1}.product-choice .arrow{color:#e7b83f;font-size:28px}
 .detail-back{background:none;color:#e7b83f;padding:0 0 12px;font-size:14px;cursor:pointer}
 .offer-heart{background:none;color:#aaa;font-size:26px;cursor:pointer;padding:0 4px;opacity:1!important;pointer-events:auto!important;touch-action:manipulation}.offer-heart.saved{color:#e7b83f}
 .offer-line{display:flex;justify-content:space-between;align-items:center;gap:10px}
@@ -715,7 +715,7 @@ function backend(){
 let currentProductGroups=[];
 let currentOpenProductKey="";
 let currentOpenSizeKey=null;
-let searchInProgress=false;
+let searchInProgress=false; // Le schede restano cliccabili anche durante la ricerca.
 
 function shPrice(o){
   if(o&&o.price)return String(o.price);
@@ -1654,7 +1654,7 @@ function showProducts(groups){
     // la scheda del prodotto presenterà la scelta dei formati.
     const best=g.offers.find(o=>!isOfferOutOfStock(o))||null;
 
-    return `<article class="product-choice${searchInProgress?" search-locked":""}" onclick='openProduct(${i})'>
+    return `<article class="product-choice" onclick='openProduct(${i})'>
       <div class="result-image">${img?`<img src="${esc(img)}" alt="${esc(displayPerfumeName(g.name,g.brand))}" onerror="this.outerHTML='🧴'">`:"🧴"}</div>
       <div class="product-choice-main">
         <div class="name">${esc(g.brand ? g.brand+" - "+displayPerfumeName(g.name,g.brand) : displayPerfumeName(g.name,g.brand))}</div>
@@ -1808,7 +1808,6 @@ function renderFormatChoiceCard(gi,g,comparisons,sizes){
 }
 
 async function openProduct(i){
-  if(searchInProgress)return;
   const g=currentProductGroups[i];
   if(!g)return;
   currentOpenProductKey=productGroupKey(g);
@@ -1828,9 +1827,19 @@ async function openProduct(i){
     return;
   }
 
-  // DUE O TRE FORMATI: seconda scheda = formati + PREZZO PIÙ BASSO.
-  resultsBox.innerHTML=`<article class="comparison"><button class="detail-back" onclick="clearOpenProduct();showProducts(currentProductGroups)">← Torna ai profumi</button><div class="comparison-head"><div class="result-image">${img?`<img src="${esc(img)}" alt="${esc(displayPerfumeName(g.name,g.brand))}" onerror="this.outerHTML='🧴'">`:"🧴"}</div><div class="result-main"><div class="store">${esc(g.brand||"")}</div><div class="name">${esc(displayPerfumeName(g.name,g.brand))}</div></div></div><div class="bestlabel">CONFRONTA I FORMATI</div><div class="offer-meta" style="margin-bottom:12px">Cerco il prezzo più basso per ogni formato...</div><div class="format-loading" aria-hidden="true">⏳</div></article>`;
-  document.getElementById("searchOutput").scrollIntoView({behavior:"smooth",block:"start"});
+  // DUE O TRE FORMATI: la scheda si apre SUBITO usando i dati già arrivati.
+  // Durante la ricerca questi dati vengono aggiornati a ogni risposta dei negozi,
+  // così l'utente può entrare nel prodotto e vedere le offerte comparire progressivamente.
+  const localComparisons=getSizeGroups(g).filter(x=>x.size).map(s=>({
+    size_ml:String(s.size),best:s.best,offers:s.offers
+  }));
+  window._formatComparisonsByProduct=window._formatComparisonsByProduct||{};
+  window._formatComparisonsByProduct[currentOpenProductKey]=localComparisons;
+  renderFormatChoiceCard(i,g,localComparisons,sizes);
+
+  // Durante la ricerca non aspettiamo /compare-formats: la ricerca principale è la
+  // fonte progressiva. Il confronto secondario viene usato solo a ricerca terminata.
+  if(searchInProgress)return;
 
   try{
     const comparisons=await fetchFormatComparisons(g,sizes);
@@ -1839,20 +1848,15 @@ async function openProduct(i){
       const key=String(size);
       const remote=(comparisons||[]).find(x=>String(x.size_ml||x.size||"")===key)||null;
       const local=localBySize.get(key)||null;
-      // UNION: il remoto puo aggiungere informazioni, ma non puo eliminare
-      // un negozio gia presente nella ricerca principale.
       return mergeFormatComparison(local,remote,key);
     });
-    window._formatComparisonsByProduct=window._formatComparisonsByProduct||{};
+    if(productGroupKey(currentProductGroups[i]||{})!==currentOpenProductKey)return;
     window._formatComparisonsByProduct[currentOpenProductKey]=merged;
-    renderFormatChoiceCard(i,g,merged,sizes);
+    renderFormatChoiceCard(i,currentProductGroups[i]||g,merged,sizes);
   }catch(error){
     console.warn("Confronto formati",error);
-    const fallback=getSizeGroups(g).filter(s=>s.size).map(s=>({size_ml:s.size,best:s.best,offers:s.offers}));
-    window._formatComparisonsByProduct=window._formatComparisonsByProduct||{};
-    window._formatComparisonsByProduct[currentOpenProductKey]=fallback;
-    renderFormatChoiceCard(i,g,fallback,sizes);
   }
+
 }
 
 function renderSingleFormatComparison(g,img,offers,size,saved){
@@ -2154,7 +2158,7 @@ async function searchPerfume(){
   searchButton.disabled=false;
   searchButton.classList.remove("searching");
   searchButton.textContent="INIZIA LA RICERCA";
-  if(currentProductGroups.length)showProducts(currentProductGroups);
+  if(!currentOpenProductKey && currentProductGroups.length)showProducts(currentProductGroups);
  }
 }
 
