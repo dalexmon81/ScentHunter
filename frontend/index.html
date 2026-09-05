@@ -1751,29 +1751,37 @@ async function openProduct(i){
   resultsBox.innerHTML=`<article class="comparison"><button class="detail-back" onclick="clearOpenProduct();showProducts(currentProductGroups)">← Torna ai profumi</button><div class="comparison-head"><div class="result-image">${img?`<img src="${esc(img)}" alt="${esc(displayPerfumeName(g.name,g.brand))}" onerror="this.outerHTML='🧴'">`:"🧴"}</div><div class="result-main"><div class="store">${esc(g.brand||"")}</div><div class="name">${esc(displayPerfumeName(g.name,g.brand))}</div></div></div><div class="bestlabel">CONFRONTA I FORMATI</div><div class="offer-meta" style="margin-bottom:12px">Cerco il prezzo più basso per ogni formato...</div><div class="format-loading" aria-hidden="true">⏳</div></article>`;
   document.getElementById("searchOutput").scrollIntoView({behavior:"smooth",block:"start"});
 
-  try{
-    const comparisons=await fetchFormatComparisons(g,sizes);
-    const localBySize=new Map(getSizeGroups(g).filter(x=>x.size).map(x=>[String(x.size),x]));
-    const merged=sizes.map(size=>{
-      const key=String(size);
-      const remote=(comparisons||[]).find(x=>String(x.size_ml||x.size||"")===key);
-      const local=localBySize.get(key);
-      const remoteOffers=Array.isArray(remote?.offers)?remote.offers:[];
-      if(remoteOffers.length)return remote;
-      if(local?.offers?.length)return {size_ml:key,best:local.best||null,offers:local.offers};
-      return remote||{size_ml:key,best:null,offers:[]};
-    });
-    window._formatComparisonsByProduct=window._formatComparisonsByProduct||{};
-    window._formatComparisonsByProduct[currentOpenProductKey]=merged;
-    renderFormatChoiceCard(i,g,merged,sizes);
-  }catch(error){
-    console.warn("Confronto formati",error);
-    const fallback=getSizeGroups(g).filter(s=>s.size).map(s=>({size_ml:s.size,best:s.best,offers:s.offers}));
-    window._formatComparisonsByProduct=window._formatComparisonsByProduct||{};
-    window._formatComparisonsByProduct[currentOpenProductKey]=fallback;
-    renderFormatChoiceCard(i,g,fallback,sizes);
-  }
+  try {
+  const comparisons = await fetchFormatComparisons(g, sizes);
+
+  const bySize = new Map(
+    (Array.isArray(comparisons) ? comparisons : []).map(item => [
+      String(item.size_ml ?? item.size),
+      item
+    ])
+  );
+
+  const merged = sizes.map(size => {
+    const key = String(size);
+    const remote = bySize.get(key);
+
+    return {
+      size_ml: Number(size),
+      best: remote?.best ?? null,
+      offers: Array.isArray(remote?.offers)
+        ? remote.offers
+        : []
+    };
+  });
+
+  window.formatComparisonsByProduct =
+    window.formatComparisonsByProduct || {};
+
+  window.formatComparisonsByProduct[currentOpenProductKey] = merged;
+
+  renderFormatChoiceCard(i, g, merged, sizes);
 }
+
 
 function renderSingleFormatComparison(g,img,offers,size,saved){
   resultsBox.innerHTML=`<article class="comparison"><button class="detail-back" onclick="clearOpenProduct();showProducts(currentProductGroups)">← Torna ai profumi</button><div class="comparison-head"><div class="result-image">${img?`<img src="${esc(img)}" alt="${esc(displayPerfumeName(g.name,g.brand))}" onerror="this.outerHTML='🧴'">`:"🧴"}</div><div class="result-main"><div class="store">${esc(g.brand||"")}</div><div class="name">${esc(displayPerfumeName(g.name,g.brand))}</div></div></div><div class="format-compare-bar"><div class="format-compare-item"><div class="format-compare-copy"><div class="format-compare-label">FORMATO</div><div class="format-compare-value">${esc(formatLabel(size)||"Formato")}</div></div></div><div class="format-compare-item"><div class="format-compare-copy"><div class="format-compare-label">CONFRONTA I PREZZI</div><div class="format-compare-value">${offers.length} ${offers.length===1?"negozio":"negozi"}</div></div></div></div>${renderOffersHtml(g,img,offers,saved)}</article>`;
