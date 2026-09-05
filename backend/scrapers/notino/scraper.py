@@ -23,7 +23,7 @@ READER_TIMEOUT = 30
 RETRY_COUNT = 2
 MAX_CANDIDATES = 48
 ENRICH_WORKERS = 6
-SCRAPER_VERSION = "notino-3.5-2026-09-03-title-authoritative-all-paths"
+SCRAPER_VERSION = "notino-3.7-2026-09-05-variant-page-authoritative"
 
 PRODUCT_RE = re.compile(r"/p-(\d+)(?:/|$)", re.I)
 PRODUCT_URL_RE = re.compile(
@@ -1067,6 +1067,7 @@ def _extract_product_variant_urls(text: str, base_url: str) -> List[str]:
     return found
 
 
+
 def _reader_product(session: requests.Session, candidate: Dict[str, Any], query: str, _allow_variants: bool = True) -> Optional[Dict[str, Any]]:
     try:
         text = _request(session, READER_BASE + candidate["url"], reader=True).text or ""
@@ -1082,10 +1083,24 @@ def _reader_product(session: requests.Session, candidate: Dict[str, Any], query:
     page_size_conflicts = page_size is not None and _requested_size_conflicts(text, query)
 
     # Notino often links all bottle-size variants from the page of whichever
-    # variant happened to be discovered first. Follow those product URLs and
-    # parse each page independently. Exact size validation remains downstream.
+    # variant happened to be discovered first. The reader representation may
+    # omit those hrefs, however, so also fetch the canonical family URL (the
+    # same product path without /p-<id>/) and inspect it for sibling variants.
     if _allow_variants:
         variant_urls = _extract_product_variant_urls(text, candidate["url"])
+
+        family_url = re.sub(r"/p-\d+/?$", "/", candidate["url"], flags=re.I)
+        family_url = normaliseurl(family_url)
+        if family_url.rstrip("/").casefold() != candidate["url"].rstrip("/").casefold():
+            try:
+                family_text = _request(session, READER_BASE + family_url, reader=True).text or ""
+            except requests.RequestException:
+                family_text = ""
+            if family_text:
+                for url in _extract_product_variant_urls(family_text, family_url):
+                    if url.rstrip("/").casefold() not in {u.rstrip("/").casefold() for u in variant_urls}:
+                        variant_urls.append(url)
+
         sibling_results: List[Dict[str, Any]] = []
         for variant_url in variant_urls:
             if variant_url.rstrip("/").casefold() == candidate["url"].rstrip("/").casefold():
@@ -1239,6 +1254,18 @@ def _card_result(candidate: Dict[str, Any], query: str) -> Optional[Dict[str, An
 
 
 def _enrich_one(candidate: Dict[str, Any], query: str) -> Any:
+    # Search-page candidates built from a broad URL context can contain price
+    # and stock belonging to a neighbouring card. Never let that evidence
+    # short-circuit product-page enrichment. The product URL itself is the
+    # authoritative source for name, size, price and availability.
+    source = str(candidate.get("source") or "")
+    if source in {"embedded-url-context", "reader-url-context"}:
+        session = _new_session()
+        try:
+            return _reader_product(session, candidate, query)
+        finally:
+            session.close()
+
     card = _card_result(candidate, query)
     if card:
         return card
@@ -1247,7 +1274,6 @@ def _enrich_one(candidate: Dict[str, Any], query: str) -> Any:
         return _reader_product(session, candidate, query)
     finally:
         session.close()
-
 
 def _dedupe_results(results: Iterable[Dict[str, Any]]) -> List[Dict[str, Any]]:
     by_key: Dict[str, Dict[str, Any]] = {}
