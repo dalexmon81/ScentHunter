@@ -274,103 +274,32 @@ def _format_compare_num(value: Any) -> float:
         except Exception:
             return float("inf")
 
-def _format_compare_size(candidate: Dict[str, Any]) -> int | None:
-    """Resolve one concrete bottle size conservatively.
-
-    Text containing an explicit bottle size is authoritative. Structured size
-    metadata is accepted only when it does not contradict explicit text.
-    Multiple conflicting textual sizes make the candidate unknown unless the
-    structured value exactly identifies one of those textual sizes.
+def _format_compare_size(
+    candidate: Dict[str, Any],
+) -> int | None:
     """
-    if not isinstance(candidate, dict):
+    Usa esclusivamente l'estrattore centrale del backend.
+    Non duplicare qui la logica size_ml.
+    """
+    extractor = getattr(_legacy, "product_size_ml", None)
+
+    if not callable(extractor):
         return None
 
-    def _num(value: Any) -> float | None:
-        try:
-            return float(str(value).replace(",", ".").strip())
-        except (TypeError, ValueError):
-            return None
-
-    def _nested(value: Any) -> Any:
-        if isinstance(value, dict):
-            return value.get("value")
-        return value
-
-    texts: List[str] = []
-    for key in ("name", "title", "product_name", "size", "format", "volume"):
-        value = candidate.get(key)
-        if value not in (None, ""):
-            texts.append(str(_nested(value)))
-
-    source = candidate.get("source")
-    if isinstance(source, dict):
-        for key in ("name", "title", "size", "format", "volume"):
-            value = source.get(key)
-            if value not in (None, ""):
-                texts.append(str(_nested(value)))
-
-    raw_data = candidate.get("raw_data")
-    if isinstance(raw_data, dict):
-        for key in ("name", "title", "product_name", "size", "format", "volume"):
-            value = raw_data.get(key)
-            if value not in (None, ""):
-                texts.append(str(_nested(value)))
-
-    text_sizes: List[float] = []
-    for text in texts:
-        for match in re.finditer(r"(?<!\d)(\d{1,4}(?:[.,]\d+)?)\s*(ml|cl)\b", text, re.I):
-            value = _num(match.group(1))
-            if value is None:
-                continue
-            if match.group(2).lower() == "cl":
-                value *= 10
-            if value not in text_sizes:
-                text_sizes.append(value)
-
-    structured_values: List[Any] = [
-        candidate.get("size_ml"), candidate.get("volume_ml"),
-        candidate.get("format_ml"), candidate.get("size"),
-        candidate.get("volume"), candidate.get("format"),
-    ]
-    attributes = candidate.get("attributes")
-    if isinstance(attributes, dict):
-        structured_values.extend(
-            attributes.get(key) for key in
-            ("size_ml", "volume_ml", "format_ml", "size", "volume", "format")
-        )
-
-    structured_size: float | None = None
-    for value in structured_values:
-        value = _nested(value)
-        if value in (None, ""):
-            continue
-        if isinstance(value, str):
-            match = re.search(r"(?<!\d)(\d{1,4}(?:[.,]\d+)?)\s*(ml|cl)\b", value, re.I)
-            if match:
-                value = match.group(1)
-                if match.group(2).lower() == "cl":
-                    value = float(value.replace(",", ".")) * 10
-            else:
-                value = _num(value)
-        else:
-            value = _num(value)
-        if value is not None:
-            structured_size = value
-            break
-
-    if len(text_sizes) == 1:
-        return int(text_sizes[0]) if text_sizes[0].is_integer() else int(round(text_sizes[0]))
-
-    if len(text_sizes) > 1:
-        if structured_size is not None:
-            for value in text_sizes:
-                if abs(value - structured_size) <= 0.01:
-                    return int(value) if value.is_integer() else int(round(value))
+    try:
+        value = extractor(candidate)
+    except Exception:
         return None
 
-    if structured_size is None:
+    if value in (None, ""):
         return None
-    return int(structured_size) if structured_size.is_integer() else int(round(structured_size))
+
+    try:
+        numeric = float(value)
+    except (TypeError, ValueError):
+        return None
+
+    return int(numeric) if numeric.is_integer() else int(round(numeric))
 
 def _format_compare_is_oos(candidate: Dict[str, Any]) -> bool:
     if candidate.get("in_stock") is False:
@@ -422,34 +351,18 @@ def _format_compare_clean_offer(
             offer.get("price")
         )
 
-    # Never infer availability from the mere presence of a price. Preserve an
-    # explicit in_stock value; otherwise derive it only from an explicit stock/
-    # availability marker. Unknown stock remains None.
-    if "in_stock" not in offer or offer.get("in_stock") is None:
-        stock_text = " ".join(
-            str(offer.get(k) or "")
-            for k in ("availability", "stock", "status", "stock_status", "availability_status")
-        ).casefold()
-        if any(marker in stock_text for marker in (
-            "out of stock", "out-of-stock", "non disponibile", "nicht verfügbar",
-            "indisponible", "rupture", "agotado", "esaurito", "sold out",
-        )):
-            offer["in_stock"] = False
-        elif any(marker in stock_text for marker in (
-            "in stock", "en stock", "available", "disponibile", "disponible subito",
-            "ajouter au panier", "add to cart",
-        )):
-            offer["in_stock"] = True
-        else:
-            offer["in_stock"] = None
+    offer["in_stock"] = not _format_compare_is_oos(
+        offer
+    )
 
     return offer
 
 def _format_compare_query(product: str, requested_size: int | None = None) -> str:
-    """Build the store discovery query.
+    """Build an explicit store query for one requested bottle size.
 
-    Format comparison uses generic product discovery; the requested size is
-    validated later from explicit parsed product data.
+    A format comparison must not run one generic store search and then pretend
+    that its first result represents every requested size. The size is therefore
+    part of discovery, while acceptance still requires an explicit parsed size.
     """
     base = str(product or "").strip()
     if requested_size is None:
@@ -461,15 +374,13 @@ def _format_compare_store(
     product: str,
     requested_size: int,
 ) -> Dict[str, Any]:
-    """Search one store and accept only the exact requested parsed format.
+    """Search one store for exactly one requested format.
 
-    Discovery is generic so store-level query filters cannot discard a valid
-    product merely because its size is absent from the searchable title.
-    Acceptance still requires an explicit parsed size equal to requested_size.
+    The scraper is never allowed to have a missing size silently assigned to
+    the requested format. A candidate is accepted only when the scraper/backend
+    extracts an explicit size equal to ``requested_size``.
     """
-    # Discovery must stay generic. The requested format is validated only
-    # after the scraper returns explicit product size data.
-    query = _format_compare_query(product, None)
+    query = _format_compare_query(product, requested_size)
 
     try:
         raw = _legacy.run_store(store, query)
@@ -534,16 +445,9 @@ def _format_compare_store(
         except ValueError:
             continue
 
-    def _stock_rank(offer: Dict[str, Any]) -> int:
-        if offer.get("in_stock") is True:
-            return 0
-        if offer.get("in_stock") is False or _format_compare_is_oos(offer):
-            return 2
-        return 1
-
     cleaned.sort(
         key=lambda offer: (
-            _stock_rank(offer),
+            _format_compare_is_oos(offer),
             _format_compare_num(offer.get("price_value")),
         )
     )
@@ -553,62 +457,6 @@ def _format_compare_store(
         "requested_size": requested_size,
         "results": cleaned,
     }
-
-def _format_compare_store_all(
-    store: str,
-    product: str,
-    requested_sizes: List[int],
-) -> Dict[str, Any]:
-    """Discover one store once and classify every returned variant by size."""
-    try:
-        raw = _legacy.run_store(store, _format_compare_query(product, None))
-    except Exception as exc:
-        return {
-            "store": store,
-            "results": [],
-            "error": f"{type(exc).__name__}: {exc}",
-        }
-
-    candidates = raw if isinstance(raw, list) else []
-    normalized = []
-    wanted = set(requested_sizes)
-
-    for candidate in candidates:
-        if not isinstance(candidate, dict):
-            continue
-        item = dict(candidate)
-        size = _format_compare_size(item)
-        if size is None or size not in wanted:
-            continue
-        item["size_ml"] = size
-        item["size_source"] = item.get("size_source", "central_format_parser")
-        normalized.append(item)
-
-    try:
-        validated = _engine._validate_candidates_only(product, normalized)
-    except Exception:
-        validated = normalized
-
-    cleaned = []
-    for candidate in validated or []:
-        if not isinstance(candidate, dict):
-            continue
-        size = _format_compare_size(candidate)
-        if size is None or size not in wanted:
-            continue
-        item = dict(candidate)
-        item["size_ml"] = size
-        try:
-            cleaned.append(_format_compare_clean_offer(item, store, size))
-        except ValueError:
-            continue
-
-    cleaned.sort(key=lambda offer: (
-        _format_compare_is_oos(offer),
-        _format_compare_num(offer.get("price_value")),
-    ))
-
-    return {"store": store, "results": cleaned}
 
 @app.get("/compare-formats")
 def compare_formats(
@@ -647,32 +495,35 @@ def compare_formats(
 
     from concurrent.futures import ThreadPoolExecutor, as_completed
 
-    # One discovery per store, then classify all requested formats from the
-    # returned concrete candidates. The old implementation performed
-    # 8 stores x N formats searches, which created the ~1 minute delay and
-    # multiplied rate-limit pressure without adding validation value.
-    jobs = list(FORMAT_STORES)
+    # True format comparison: every store/format pair is a separate discovery
+    # query. No result with a missing size can be relabelled as another format.
+    jobs = [
+        (store, size)
+        for size in requested_sizes
+        for store in FORMAT_STORES
+    ]
 
-    with ThreadPoolExecutor(max_workers=min(8, len(jobs))) as pool:
+    with ThreadPoolExecutor(max_workers=2) as pool:
         future_map = {
             pool.submit(
-                _format_compare_store_all,
+                _format_compare_store,
                 store,
                 product,
-                requested_sizes,
-            ): store
-            for store in jobs
+                size,
+            ): (store, size)
+            for store, size in jobs
         }
 
         for future in as_completed(future_map):
-            store = future_map[future]
+            store, size = future_map[future]
+            key = f"{store}:{size}"
             try:
                 result = future.result()
             except Exception as exc:
-                errors[store] = f"{type(exc).__name__}: {exc}"
+                errors[key] = f"{type(exc).__name__}: {exc}"
                 continue
             if result.get("error"):
-                errors[store] = result["error"]
+                errors[key] = result["error"]
             comparisons.extend(result.get("results") or [])
 
     # Group the flat offers by requested format.
@@ -845,207 +696,3 @@ def diagnose_format_flow(
         "by_format": by_size,
         "jobs": rows,
     }
-
-# ===== READ-ONLY FORMAT TRACE DIAGNOSTIC =====
-# Deep trace of ONE exact store/format call. This does not alter any live route.
-# It is intentionally sequential: the goal is attribution, not throughput.
-@app.get("/diagnose-format-trace")
-def diagnose_format_trace(
-    q: str = Query(..., min_length=1),
-    size: int = Query(..., ge=1, le=2000),
-    store: str = Query(..., min_length=1),
-):
-    product = str(q or "").strip()
-    store_name = str(store or "").strip().casefold()
-    requested_size = int(size)
-    # Diagnostic must reproduce production discovery: generic query first,
-    # then explicit size validation after scraper return.
-    query = _format_compare_query(product, None)
-    exact_query = _format_compare_query(product, requested_size)
-    started = _diag_time.monotonic()
-
-    def candidate_snapshot(c: Any) -> Dict[str, Any]:
-        if not isinstance(c, dict):
-            return {
-                "type": type(c).__name__,
-                "value": str(c)[:2000],
-            }
-
-        snap = {}
-        # Preserve every field relevant to discovery, matching, size,
-        # availability and navigation. No price or field is invented.
-        for key in (
-            "name", "brand", "title", "size_ml", "size", "format",
-            "volume", "quantity", "price", "price_value", "currency",
-            "in_stock", "availability", "stock", "status",
-            "url", "product_url", "link", "sku", "ean", "gtin", "gtin13",
-            "store", "image", "source", "size_source",
-        ):
-            if key in c:
-                value = c.get(key)
-                if isinstance(value, (str, int, float, bool)) or value is None:
-                    snap[key] = value
-                else:
-                    snap[key] = str(value)[:2000]
-        return snap
-
-    trace = {
-        "ok": True,
-        "diagnostic": "format_trace_read_only_v1",
-        "query": product,
-        "requested_size_ml": requested_size,
-        "store": store_name,
-        "discovery_query": query,
-        "exact_query_reference": exact_query,
-        "timings_ms": {},
-        "stages": {},
-        "final": [],
-        "error": None,
-    }
-
-    try:
-        t0 = _diag_time.monotonic()
-        raw = _legacy.run_store(store_name, query)
-        trace["timings_ms"]["run_store"] = round((_diag_time.monotonic() - t0) * 1000)
-
-        candidates = raw if isinstance(raw, list) else []
-        trace["stages"]["raw"] = {
-            "type": type(raw).__name__,
-            "count": len(candidates),
-            "candidates": [candidate_snapshot(c) for c in candidates[:50]],
-            "truncated": len(candidates) > 50,
-        }
-
-        # Measure the central size extractor BEFORE any format filtering.
-        t0 = _diag_time.monotonic()
-        raw_size_analysis = []
-        for idx, candidate in enumerate(candidates[:50]):
-            if not isinstance(candidate, dict):
-                raw_size_analysis.append({
-                    "index": idx,
-                    "parsed_size_ml": None,
-                    "reason": "non_dict_candidate",
-                    "candidate": candidate_snapshot(candidate),
-                })
-                continue
-            parsed = _format_compare_size(candidate)
-            raw_size_analysis.append({
-                "index": idx,
-                "parsed_size_ml": parsed,
-                "matches_requested_size": parsed == requested_size,
-                "reason": (
-                    "accepted_for_size"
-                    if parsed == requested_size
-                    else ("missing_size" if parsed is None else f"wrong_size:{parsed}")
-                ),
-                "candidate": candidate_snapshot(candidate),
-            })
-        trace["timings_ms"]["size_extraction_raw"] = round(
-            (_diag_time.monotonic() - t0) * 1000
-        )
-        trace["stages"]["size_extraction_before_validation"] = {
-            "requested_size_ml": requested_size,
-            "items": raw_size_analysis,
-        }
-
-        # This reproduces the exact pre-validation filtering used by
-        # /compare-formats, so we can see whether the loss happens here.
-        size_filtered = []
-        for candidate in candidates:
-            if not isinstance(candidate, dict):
-                continue
-            parsed = _format_compare_size(candidate)
-            if parsed is None or parsed != requested_size:
-                continue
-            item = dict(candidate)
-            item["size_ml"] = parsed
-            item["size_source"] = item.get(
-                "size_source",
-                "central_product_size_ml",
-            )
-            size_filtered.append(item)
-
-        trace["stages"]["after_exact_size_filter"] = {
-            "count": len(size_filtered),
-            "candidates": [candidate_snapshot(c) for c in size_filtered[:50]],
-            "dropped_count": max(0, len(candidates) - len(size_filtered)),
-        }
-
-        # Run the same central validator as /compare-formats.
-        t0 = _diag_time.monotonic()
-        try:
-            validated = _engine._validate_candidates_only(
-                product,
-                size_filtered,
-            )
-            validation_error = None
-        except Exception as exc:
-            validation_error = f"{type(exc).__name__}: {exc}"
-            validated = size_filtered
-        trace["timings_ms"]["central_validation"] = round(
-            (_diag_time.monotonic() - t0) * 1000
-        )
-        validated = validated or []
-
-        trace["stages"]["after_central_validation"] = {
-            "count": len(validated),
-            "validation_error": validation_error,
-            "candidates": [candidate_snapshot(c) for c in validated[:50]],
-            "dropped_count": max(0, len(size_filtered) - len(validated)),
-        }
-
-        # Final cleaning is also reproduced exactly.
-        cleaned = []
-        clean_rejected = []
-        for candidate in validated:
-            if not isinstance(candidate, dict):
-                clean_rejected.append({
-                    "reason": "non_dict_after_validation",
-                    "candidate": candidate_snapshot(candidate),
-                })
-                continue
-
-            explicit_size = _format_compare_size(candidate)
-            if explicit_size != requested_size:
-                clean_rejected.append({
-                    "reason": (
-                        "missing_size"
-                        if explicit_size is None
-                        else f"wrong_size:{explicit_size}"
-                    ),
-                    "candidate": candidate_snapshot(candidate),
-                })
-                continue
-
-            item = dict(candidate)
-            item["size_ml"] = explicit_size
-            try:
-                cleaned.append(
-                    _format_compare_clean_offer(
-                        item,
-                        store_name,
-                        requested_size,
-                    )
-                )
-            except Exception as exc:
-                clean_rejected.append({
-                    "reason": f"{type(exc).__name__}: {exc}",
-                    "candidate": candidate_snapshot(candidate),
-                })
-
-        trace["stages"]["final_cleaning"] = {
-            "count": len(cleaned),
-            "rejected_count": len(clean_rejected),
-            "rejected": clean_rejected[:50],
-            "candidates": [candidate_snapshot(c) for c in cleaned[:50]],
-        }
-        trace["final"] = cleaned[:50]
-
-    except Exception as exc:
-        trace["error"] = f"{type(exc).__name__}: {exc}"
-
-    trace["timings_ms"]["total"] = round(
-        (_diag_time.monotonic() - started) * 1000
-    )
-    return trace
-
