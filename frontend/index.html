@@ -1982,112 +1982,71 @@ async function getSearchStores(term){
 }
 
 async function searchStoresProgressive(term,onPartial){
- const merged={query:term,comparisons:[],results:[],errors:{}};
- const timeoutMs=45000;
- const concurrency=4;
- const stores=await getSearchStores(term);
+ const timeoutMs=120000;
+ const pollMs=650;
+ const started=await fetchJSONWithTimeout(
+  backend()+"/search-start?q="+encodeURIComponent(term),
+  15000
+ );
 
- /*
-  * ARCHIVIO PROGRESSIVO IMMUTABILE.
-  *
-  * Una ricerca progressiva non deve mai perdere un'offerta già mostrata.
-  * Il rendering successivo viene ricostruito da shGroupData(); per sicurezza
-  * conserviamo quindi ogni risultato concreto già ricevuto, indicizzato per
-  * negozio + URL + formato + nome. Un batch successivo può aggiungere dati,
-  * ma non può cancellare Deloox (o qualunque altro negozio) già arrivato.
-  */
- const resultArchive=new Map();
- const comparisonArchive=new Map();
+ const jobId=String(started?.job_id||started?.id||"").trim();
+ if(!jobId)throw new Error("Il backend non ha restituito il job_id della ricerca.");
 
- const archiveResult=(store,offer)=>{
-  if(!offer||typeof offer!=="object")return;
+ let lastSnapshot=null;
+ const deadline=Date.now()+timeoutMs;
 
-  // Alcuni endpoint restituiscono un contenitore prodotto con brand/nome/size
-  // a livello padre e le offerte dentro `offers`. Questi metadati devono
-  // seguire l'offerta durante l'archiviazione, altrimenti il raggruppatore
-  // non riesce più a riconoscerla (caso osservato con Deloox).
-  const nested=Array.isArray(offer.offers)?offer.offers:[offer];
-  nested.forEach(o=>{
-   if(!o||typeof o!=="object")return;
+ while(Date.now()<deadline){
+  const snapshot=await fetchJSONWithTimeout(
+   backend()+"/search-status?job_id="+encodeURIComponent(jobId),
+   15000
+  );
 
-   const normalized={
-    ...o,
-    brand:o.brand||offer.brand||"",
-    name:o.name||o.title||o.product_name||offer.name||offer.title||offer.product_name||"",
-    size_ml:o.size_ml||o.size||offer.size_ml||offer.size||offer.attributes?.size_ml?.value||"",
-    concentration:o.concentration||offer.concentration||"",
-    image:o.image||o.image_url||o.thumbnail||offer.image||offer.image_url||offer.thumbnail||"",
-    store:o.store||store||""
+  lastSnapshot=snapshot||{};
+
+  // Il backend è la fonte unica della ricerca: pubblica i risultati
+  // progressivamente mentre esegue i negozi in ondate controllate.
+  if(typeof onPartial==="function"){
+   onPartial({
+    query:term,
+    comparisons:Array.isArray(snapshot?.comparisons)?snapshot.comparisons:[],
+    results:Array.isArray(snapshot?.results)?snapshot.results:[],
+    errors:(snapshot?.errors&&typeof snapshot.errors==="object")?snapshot.errors:{},
+    store_status:(snapshot?.store_status&&typeof snapshot.store_status==="object")?snapshot.store_status:{},
+    completed:Boolean(snapshot?.completed),
+    status:snapshot?.status||"searching"
+   },Boolean(snapshot?.completed));
+  }
+
+  if(snapshot?.completed===true || String(snapshot?.status||"").toLowerCase()==="completed"){
+   return {
+    query:term,
+    comparisons:Array.isArray(snapshot?.comparisons)?snapshot.comparisons:[],
+    results:Array.isArray(snapshot?.results)?snapshot.results:[],
+    errors:(snapshot?.errors&&typeof snapshot.errors==="object")?snapshot.errors:{},
+    store_status:(snapshot?.store_status&&typeof snapshot.store_status==="object")?snapshot.store_status:{},
+    completed:true,
+    status:snapshot?.status||"completed"
    };
+  }
 
-   const offerStore=String(normalized.store||store||"").trim().toLowerCase();
-   const url=String(normalized.url||normalized._source_url||offer.url||offer._source_url||"").split("?")[0].trim().toLowerCase();
-   const size=String(normalized.size_ml||normalized.size||normalized.attributes?.size_ml?.value||"").trim();
-   const name=normalizePerfumeName(normalized.name||normalized.title||normalized.product_name||"");
-   const key=[offerStore,url,size,name].join("|");
-   if(!key.replace(/\|/g,""))return;
-   const old=resultArchive.get(key);
-   if(!old||shNum(normalized)<shNum(old))resultArchive.set(key,normalized);
-  });
- };
-
- const archiveComparison=(group)=>{
-  if(!group||typeof group!=="object")return;
-  const size=String(group.size_ml||group.size||"").trim();
-  const name=normalizePerfumeName(group.name||group.product_name||"");
-  const brand=normalizePerfumeName(group.brand||"");
-  const key=[brand,name,size].join("|");
-  if(!key.replace(/\|/g,""))return;
-  const old=comparisonArchive.get(key);
-  if(!old){comparisonArchive.set(key,{...group,offers:Array.isArray(group.offers)?group.offers.map(o=>({...o})):[]});return;}
-  const offers=[...(Array.isArray(old.offers)?old.offers:[]),...(Array.isArray(group.offers)?group.offers:[])];
-  comparisonArchive.set(key,{...old,...group,offers});
- };
-
- const rebuildMerged=()=>{
-  merged.results=[...resultArchive.values()];
-  merged.comparisons=[...comparisonArchive.values()];
- };
-
- for(let i=0;i<stores.length;i+=concurrency){
-  const pair=stores.slice(i,i+concurrency);
-  statusBox.textContent="";
-
-  const responses=await Promise.allSettled(pair.map(store=>
-   fetchJSONWithTimeout(
-    backend()+"/test-store?store="+encodeURIComponent(store)+"&q="+encodeURIComponent(term),
-    timeoutMs
-   ).catch(async()=>{
-    await new Promise(resolve=>setTimeout(resolve,350));
-    return fetchJSONWithTimeout(
-     backend()+"/test-store?store="+encodeURIComponent(store)+"&q="+encodeURIComponent(term),
-     timeoutMs
-    );
-   })
-  ));
-
-  responses.forEach((r,k)=>{
-   const store=pair[k];
-   if(r.status!=="fulfilled"){
-    merged.errors[store]=String(r.reason?.message||"timeout");
-    return;
-   }
-   const data=r.value||{};
-   if(Array.isArray(data.results))data.results.forEach(item=>archiveResult(store,item));
-   if(Array.isArray(data.comparisons))data.comparisons.forEach(group=>archiveComparison(group));
-   if(data.errors&&typeof data.errors==="object")Object.entries(data.errors).forEach(([name,error])=>{
-    if(!merged.errors[name])merged.errors[name]=error;
-   });
-   if(data.error)merged.errors[store]=data.error;
-  });
-
-  rebuildMerged();
-  if(typeof onPartial==="function")onPartial(merged,false);
+  await new Promise(resolve=>setTimeout(resolve,pollMs));
  }
 
- rebuildMerged();
- if(typeof onPartial==="function")onPartial(merged,true);
- return merged;
+ if(lastSnapshot){
+  const partial={
+   query:term,
+   comparisons:Array.isArray(lastSnapshot?.comparisons)?lastSnapshot.comparisons:[],
+   results:Array.isArray(lastSnapshot?.results)?lastSnapshot.results:[],
+   errors:(lastSnapshot?.errors&&typeof lastSnapshot.errors==="object")?lastSnapshot.errors:{},
+   store_status:(lastSnapshot?.store_status&&typeof lastSnapshot.store_status==="object")?lastSnapshot.store_status:{},
+   completed:Boolean(lastSnapshot?.completed),
+   status:lastSnapshot?.status||"timeout"
+  };
+  if(typeof onPartial==="function")onPartial(partial,true);
+  return partial;
+ }
+
+ throw new Error("Timeout durante la ricerca.");
 }
 
 async function searchPerfume(){
