@@ -2146,30 +2146,19 @@ async function searchStoresProgressive(term,onPartial){
 
   lastSnapshot=snapshot||{};
 
-  // Il backend è la fonte unica della ricerca: esegue 2 negozi per volta.
-  // Il frontend pubblica una coppia solo quando entrambi hanno terminato.
-  /*
-   * Il backend lavora a ONDATE di 2 negozi. Non mostriamo il primo negozio
-   * della coppia mentre il secondo sta ancora lavorando: aspettiamo che la
-   * coppia sia conclusa e poi pubblichiamo insieme i risultati della coppia.
-   * L'ordine visuale quindi è sempre: 1-2, poi 3-4, poi 5-6, poi 7-8.
-   */
+  // Il backend esegue realmente ONDATE da 2 negozi: non partono mai più di
+  // due scraper contemporaneamente.
+  //
+  // IMPORTANTE: non aspettiamo che entrambi i negozi della coppia finiscano
+  // per aggiornare la UI. Se il primo termina prima, i suoi risultati devono
+  // comparire immediatamente. La coppia successiva parte comunque solo dopo
+  // la conclusione dei due scraper correnti: il limite di 2 chiamate resta
+  // quindi garantito dal backend.
   const statusMap=(snapshot?.store_status&&typeof snapshot.store_status==="object")
     ?snapshot.store_status:{};
   const phase=String(snapshot?.phase||"");
-  const phaseMatch=phase.match(/^stores_(\d+)_(\d+)$/);
-  let pairReady=true;
-  if(phaseMatch){
-    const first=Number(phaseMatch[1]);
-    const last=Number(phaseMatch[2]);
-    const pairStores=SEARCH_STORES.slice(first-1,last);
-    pairReady=pairStores.every(store=>{
-      const st=statusMap?.[store]?.status;
-      return st==="ok" || st==="empty" || st==="error" || st==="timeout";
-    });
-  }
 
-  if(typeof onPartial==="function" && (pairReady || snapshot?.completed===true)){
+  if(typeof onPartial==="function"){
    onPartial({
     query:term,
     comparisons:Array.isArray(snapshot?.comparisons)?snapshot.comparisons:[],
