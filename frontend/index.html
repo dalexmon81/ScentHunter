@@ -1763,89 +1763,42 @@ async function fetchFormatComparisons(g,sizes,onPartial){
   const wanted=[...new Set((sizes||[]).map(x=>String(x??"").trim()).filter(x=>/^\d+(?:[.,]\d+)?$/.test(x)))];
   if(!productName||!wanted.length)return [];
 
-  const stores=Array.isArray(SEARCH_STORES)?[...SEARCH_STORES]:[
-    "bplatz","deloox","parfumcity","parfumzentrum",
-    "perfumemarket","sabina","orioudh","notino"
-  ];
-  const bySize=new Map(wanted.map(size=>[String(size),[]]));
-  const errors={};
-  const timeoutMs=45000;
-  const concurrency=2;
+  const initial=wanted.map(size=>({size_ml:String(size),best:null,offers:[]}));
+  if(typeof onPartial==="function")onPartial(initial,false,{});
 
-  const snapshot=()=>wanted.map(size=>{
-    const offers=verifiedOffersForSize(bySize.get(String(size))||[],size);
-    const sorted=[...offers].sort((a,b)=>{
-      const ar=offerStockRank(a),br=offerStockRank(b);
-      if(ar!==br)return ar-br;
-      return shNum(a)-shNum(b);
+  try{
+    const params=new URLSearchParams({
+      q:productName,
+      formats:wanted.join(",")
     });
-    return {
-      size_ml:String(size),
-      best:sorted.find(o=>offerStockRank(o)===0)||null,
-      offers:sorted
-    };
-  });
+    const data=await fetchJSONWithTimeout(
+      backend()+"/compare-formats?"+params.toString(),
+      180000
+    );
 
-  for(let i=0;i<stores.length;i+=concurrency){
-    const batch=stores.slice(i,i+concurrency);
-    const responses=await Promise.allSettled(batch.map(store=>
-      fetchJSONWithTimeout(
-        backend()+"/test-store?store="+encodeURIComponent(store)+"&q="+encodeURIComponent(productName),
-        timeoutMs
-      ).catch(async()=>{
-        await new Promise(resolve=>setTimeout(resolve,350));
-        return fetchJSONWithTimeout(
-          backend()+"/test-store?store="+encodeURIComponent(store)+"&q="+encodeURIComponent(productName),
-          timeoutMs
-        );
-      })
-    ));
-
-    responses.forEach((result,index)=>{
-      const store=batch[index];
-      if(result.status!=="fulfilled"){
-        errors[store]=String(result.reason?.message||"timeout");
-        return;
-      }
-      const data=result.value||{};
-      if(data.error)errors[store]=String(data.error);
-      const raw=Array.isArray(data.results)?data.results:[];
-      raw.forEach(offer=>{
-        if(!offer||typeof offer!=="object")return;
-        const parsed=Number(sizeOfOffer(offer)||0);
-        if(!Number.isFinite(parsed))return;
-        const key=String(Number(parsed).toFixed(4)).replace(/\.0+$/,'').replace(/(\.\d*?)0+$/,'$1');
-        const target=wanted.find(x=>Math.abs(Number(x)-parsed)<0.01);
-        if(!target)return;
-        const list=bySize.get(String(target))||[];
-        const identity=[
-          String(offer.store||store).toLowerCase(),
-          String(offer.url||offer.product_url||"").toLowerCase(),
-          String(offer.name||offer.title||"").toLowerCase(),
-          key
-        ].join("|");
-        if(!list.some(x=>[
-          String(x.store||"").toLowerCase(),
-          String(x.url||x.product_url||"").toLowerCase(),
-          String(x.name||x.title||"").toLowerCase(),
-          String(Number(sizeOfOffer(x)||0).toFixed(4)).replace(/\.0+$/,'').replace(/(\.\d*?)0+$/,'$1')
-        ].join("|")===identity)){
-          const item={...offer};
-          item.store=item.store||store;
-          item.size_ml=parsed;
-          list.push(item);
-          bySize.set(String(target),list);
-        }
+    const rows=Array.isArray(data?.comparisons)?data.comparisons:[];
+    const result=wanted.map(size=>{
+      const row=rows.find(x=>Number(x?.size_ml||x?.size)===Number(size));
+      const offers=verifiedOffersForSize(row?.offers,size).sort((a,b)=>{
+        const ar=offerStockRank(a),br=offerStockRank(b);
+        if(ar!==br)return ar-br;
+        return shNum(a)-shNum(b);
       });
+      return {
+        size_ml:String(size),
+        best:offers.find(o=>offerStockRank(o)===0)||null,
+        offers
+      };
     });
 
-    if(typeof onPartial==="function")onPartial(snapshot(),false,errors);
+    if(typeof onPartial==="function")onPartial(result,true,data?.errors||{});
+    return result;
+  }catch(error){
+    const errors={_compare_formats:String(error?.message||error||"errore")};
+    if(typeof onPartial==="function")onPartial(initial,true,errors);
+    return initial;
   }
-
-  if(typeof onPartial==="function")onPartial(snapshot(),true,errors);
-  return snapshot();
 }
-
 function getMasterFormats(g){
   try{
     const formats=Array.isArray(g?.formats_ml)?g.formats_ml:[];
@@ -1951,8 +1904,8 @@ async function openProduct(i){
   // UNICO MOTORE PER 1, 2, 3, N FORMATI.
   // La differenza è solo di presentazione: con un solo formato mostriamo
   // subito FORMATO + NEGOZI; con più formati mostriamo subito le righe formato.
-  // In entrambi i casi i negozi vengono interrogati dallo stesso /test-store,
-  // progressivamente e con la stessa validazione della ricerca principale.
+  // Il confronto formati usa il motore centrale /compare-formats: una discovery
+  // per negozio, validazione centrale e separazione rigorosa 30/50/100 ml.
   const local=sizes.map(size=>verifiedLocalComparison(g,size));
   window._formatComparisonsByProduct=window._formatComparisonsByProduct||{};
   window._formatComparisonsByProduct[currentOpenProductKey]=local;
