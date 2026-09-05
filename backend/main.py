@@ -1048,3 +1048,4 @@ def diagnose_format_trace(
         (_diag_time.monotonic() - started) * 1000
     )
     return trace
+
