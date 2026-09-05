@@ -1625,6 +1625,8 @@ document.addEventListener("click",e=>{
 },{capture:true});
 
 function productGroupKey(g){
+  const catalogId=String(g?.catalog_id||"").trim();
+  if(catalogId)return `catalog:${catalogId}`;
   return normalizePerfumeName(`${g?.brand||""}|${g?.name||""}`).toLowerCase().trim();
 }
 
@@ -1647,13 +1649,19 @@ function archiveProgressiveGroups(groups){
     if(!pkey)return;
 
     const previous=progressiveProductArchive.get(pkey)||{};
+    const catalogId=String(g.catalog_id||previous.catalog_id||"").trim();
+    const master=catalogId?MASTER_CATALOG.find(p=>p.id===catalogId):null;
+    const masterFormats=Array.isArray(master?.formats_ml)?master.formats_ml.slice():[];
+
     progressiveProductArchive.set(pkey,{
       ...previous,
       brand:g.brand||previous.brand||"",
       name:g.name||previous.name||"",
       image:g.image||previous.image||"",
-      formats_ml:Array.from(new Set([...(previous.formats_ml||[]),...(g.formats_ml||[])])),
-      catalog_id:g.catalog_id||previous.catalog_id||"",
+      // Il formato NON viene mai ricavato dalle offerte archiviate.
+      // Se esiste una referenza master, i formati ammessi sono esclusivamente quelli master.
+      formats_ml:master?masterFormats:Array.from(new Set([...(previous.formats_ml||[]),...(g.formats_ml||[])])),
+      catalog_id:catalogId,
       family_id:g.family_id||previous.family_id||"",
       catalog_variant:g.catalog_variant||previous.catalog_variant||""
     });
@@ -1661,22 +1669,16 @@ function archiveProgressiveGroups(groups){
     const offers=Array.isArray(g.offers)?g.offers:[];
     const offerMap=progressiveOfferArchive.get(pkey)||new Map();
     offers.forEach(o=>{
+      // Un'offerta con catalog_id diverso non può entrare nell'archivio di questo prodotto.
+      if(catalogId && o?.catalog_id && String(o.catalog_id).trim()!==catalogId)return;
       const key=progressiveOfferKey(o,g);
       if(!key)return;
       const existing=offerMap.get(key);
-      // Se la stessa offerta viene ripubblicata, preferiamo la versione più
-      // completa/disponibile, senza mai cancellare ciò che era già arrivato.
       if(!existing){
         offerMap.set(key,{...o});
         return;
       }
-      const existingOut=isOfferOutOfStock(existing);
-      const nextOut=isOfferOutOfStock(o);
-      if(existingOut && !nextOut){
-        offerMap.set(key,{...existing,...o});
-      }else{
-        offerMap.set(key,{...existing,...o});
-      }
+      offerMap.set(key,{...existing,...o});
     });
     progressiveOfferArchive.set(pkey,offerMap);
   });
@@ -1684,11 +1686,9 @@ function archiveProgressiveGroups(groups){
 
 function applyProgressiveArchive(groups){
   /*
-   * MONOTONIC SEARCH:
-   * uno snapshot successivo non può cancellare un prodotto già pubblicato.
-   * Prima uniamo i gruppi correnti con TUTTO l'archivio progressivo, poi
-   * ricostruiamo anche i gruppi che il backend non ripete nello snapshot più
-   * recente. Questo evita il bug: "visto durante la ricerca -> sparito alla fine".
+   * Manteniamo il comportamento progressivo: un prodotto già ricevuto non
+   * deve sparire da uno snapshot successivo. Ma l'archivio è STRICT: non può
+   * creare nuovi formati e non può trasferire offerte tra catalog_id diversi.
    */
   const currentMap=new Map();
 
@@ -1708,12 +1708,15 @@ function applyProgressiveArchive(groups){
   allKeys.forEach(pkey=>{
     const g=currentMap.get(pkey)||{};
     const meta=progressiveProductArchive.get(pkey)||{};
+    const catalogId=String(g.catalog_id||meta.catalog_id||"").trim();
+    const master=catalogId?MASTER_CATALOG.find(p=>p.id===catalogId):null;
     const offerMap=progressiveOfferArchive.get(pkey)||new Map();
     const archived=[...offerMap.values()];
     const local=Array.isArray(g.offers)?g.offers:[];
     const mergedByKey=new Map();
 
     [...archived,...local].forEach(o=>{
+      if(catalogId && o?.catalog_id && String(o.catalog_id).trim()!==catalogId)return;
       const key=progressiveOfferKey(o,{...meta,...g});
       if(!key)return;
       const old=mergedByKey.get(key);
@@ -1721,28 +1724,25 @@ function applyProgressiveArchive(groups){
         mergedByKey.set(key,{...o});
         return;
       }
-      const oldOut=isOfferOutOfStock(old), newOut=isOfferOutOfStock(o);
-      if(oldOut&&!newOut)mergedByKey.set(key,{...old,...o});
-      else mergedByKey.set(key,{...old,...o});
+      mergedByKey.set(key,{...old,...o});
     });
 
-    const mergedOffers=[...mergedByKey.values()];
-    const formats=Array.from(new Set([
-      ...(meta.formats_ml||[]),
-      ...(g.formats_ml||[]),
-      ...mergedOffers.map(o=>sizeOfOffer(o)).filter(Boolean)
-    ]));
+    // Per una referenza master, i formati sono SEMPRE quelli del catalogo.
+    // Mai aggiungere 90/150/200 ml solo perché un'offerta li contiene.
+    const safeFormats=master
+      ?(Array.isArray(master.formats_ml)?master.formats_ml.slice():[])
+      :Array.from(new Set([...(meta.formats_ml||[]),...(g.formats_ml||[])]));
 
     output.push({
       ...g,
       brand:g.brand||meta.brand||"",
       name:g.name||meta.name||"",
       image:g.image||meta.image||"",
-      formats_ml:formats,
+      formats_ml:safeFormats,
       catalog_id:g.catalog_id||meta.catalog_id||"",
       family_id:g.family_id||meta.family_id||"",
       catalog_variant:g.catalog_variant||meta.catalog_variant||"",
-      offers:mergedOffers
+      offers:[...mergedByKey.values()]
     });
   });
 
