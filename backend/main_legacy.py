@@ -320,126 +320,77 @@ def identity_value(product: Dict[str, Any], *keys: str) -> str:
 
 
 def product_size_ml(product: Dict[str, Any]) -> Optional[float]:
-    """Resolve the concrete package size in ml without guessing.
+    explicit = (
+        product.get("size_ml")
+        or product.get("volume_ml")
+        or product.get("format_ml")
+    )
 
-    Authority order:
-    1. Explicit package-size text attached to the concrete product/offer.
-    2. If that text contains multiple sizes, a structured size is accepted only
-       when it agrees with one of them.
-    3. Structured size_ml/volume_ml/format_ml is used only when no textual size
-       exists.
-    4. URLs are a last-resort textual source and never override a concrete name.
+    explicit = nested_value(explicit)
 
-    Missing/conflicting size is returned as None. Price, stock and availability
-    are never used to infer a bottle size.
-    """
-    product = product or {}
-
-    def _numeric(value: Any) -> Optional[float]:
-        value = nested_value(value)
-        if value in (None, ""):
-            return None
+    if explicit not in (None, ""):
         try:
-            return float(str(value).replace(",", ".").strip())
+            return float(str(explicit).replace(",", "."))
         except (TypeError, ValueError):
-            return None
+            pass
 
-    explicit: Optional[float] = None
-    for key in ("size_ml", "volume_ml", "format_ml"):
-        value = _numeric(product.get(key))
-        if value is not None:
-            explicit = value
-            break
-
-    # Structured nested size fields are accepted as explicit data.
-    for container_key in ("attributes", "raw_data"):
-        container = product.get(container_key)
-        if isinstance(container, dict) and explicit is None:
-            for key in ("size_ml", "volume_ml", "format_ml"):
-                value = _numeric(container.get(key))
-                if value is not None:
-                    explicit = value
-                    break
-
-    def _collect_sizes(parts: list[str]) -> list[float]:
-        sizes: list[float] = []
-        pattern = re.compile(r"\b(\d{1,4}(?:[.,]\d+)?)\s*(ml|cl|dl|l)\b", re.I)
-        for text in parts:
-            for match in pattern.finditer(text):
+    attributes = product.get("attributes")
+    if isinstance(attributes, dict):
+        for key in ("size_ml", "volume_ml", "format_ml"):
+            value = nested_value(attributes.get(key))
+            if value not in (None, ""):
                 try:
-                    number = float(match.group(1).replace(",", "."))
+                    return float(str(value).replace(",", "."))
                 except (TypeError, ValueError):
-                    continue
-                unit = match.group(2).lower()
-                if unit == "cl":
-                    number *= 10
-                elif unit == "dl":
-                    number *= 100
-                elif unit == "l":
-                    number *= 1000
-                sizes.append(number)
-        return sorted({round(x, 4) for x in sizes})
-
-    # Concrete product text first. Do NOT mix the URL into this pass: a URL may
-    # contain an unrelated numeric token while the product title is definitive.
-    primary_parts: list[str] = []
-    for key in ("name", "title", "product_name", "size", "format", "volume"):
-        value = product.get(key)
-        if value not in (None, ""):
-            primary_parts.append(str(value))
-
-    for container_key in ("attributes", "raw_data"):
-        container = product.get(container_key)
-        if isinstance(container, dict):
-            for key in ("name", "title", "product_name", "product_title", "size", "format", "volume"):
-                value = container.get(key)
-                if value not in (None, ""):
-                    primary_parts.append(str(value))
+                    pass
 
     source = product.get("source")
-    if isinstance(source, dict):
-        for key in ("name", "title", "product_name", "size", "format", "volume"):
-            value = source.get(key)
+    source_name = source.get("source_name") if isinstance(source, dict) else ""
+
+    text = " ".join(
+        str(product.get(key) or "")
+        for key in (
+            "name",
+            "title",
+            "product_name",
+            "size",
+            "format",
+            "volume",
+        )
+    )
+    text += " " + str(source_name or "")
+
+    # Include URL e raw_data per estrarre il formato quando size_ml è vuoto.
+    url = product.get("url") or ""
+    if url:
+        text += " " + str(url)
+
+    raw_data = product.get("raw_data")
+    if isinstance(raw_data, dict):
+        for key in ("name", "title", "product_title", "url", "handle"):
+            value = raw_data.get(key)
             if value not in (None, ""):
-                primary_parts.append(str(value))
+                text += " " + str(value)
 
-    primary_sizes = _collect_sizes(primary_parts)
-    if len(primary_sizes) == 1:
-        return primary_sizes[0]
+    match = re.search(
+        r"\b(\d{1,4}(?:[.,]\d+)?)\s*[-_/]?\s*(ml|cl)\b",
+        text,
+        re.I,
+    )
 
-    if len(primary_sizes) > 1:
-        if explicit is not None and any(abs(x - explicit) <= 0.01 for x in primary_sizes):
-            return explicit
+    if not match:
         return None
 
-    # Only now use a concrete URL as a fallback size source.
-    url_parts: list[str] = []
-    for key in ("url", "product_url"):
-        value = product.get(key)
-        if value not in (None, ""):
-            url_parts.append(str(value))
-    for container_key in ("attributes", "raw_data"):
-        container = product.get(container_key)
-        if isinstance(container, dict):
-            for key in ("url", "product_url"):
-                value = container.get(key)
-                if value not in (None, ""):
-                    url_parts.append(str(value))
-    if isinstance(source, dict):
-        for key in ("url", "product_url"):
-            value = source.get(key)
-            if value not in (None, ""):
-                url_parts.append(str(value))
-
-    url_sizes = _collect_sizes(url_parts)
-    if len(url_sizes) == 1:
-        return url_sizes[0]
-    if len(url_sizes) > 1:
-        if explicit is not None and any(abs(x - explicit) <= 0.01 for x in url_sizes):
-            return explicit
+    try:
+        value = float(match.group(1).replace(",", "."))
+    except ValueError:
         return None
 
-    return explicit
+    if match.group(2).lower() == "cl":
+        value *= 10
+
+    return value
+
 
 
 def product_concentration(product: Dict[str, Any]) -> str:
@@ -889,6 +840,71 @@ def _build_family_registry_index(
 FAMILY_REGISTRY_INDEX = _build_family_registry_index(FAMILY_REGISTRY)
 
 
+def _catalog_detected_brand(product: Dict[str, Any]) -> str:
+    """Recover an explicitly published retailer brand from known catalog brands.
+
+    Some adapters leave ``brand`` empty even though the retailer title is
+    formatted as ``Brand - Product``.  For catalog-controlled searches that
+    must not be treated as an unknown brand: a known catalog brand explicitly
+    present in the title is authoritative evidence.
+    """
+    direct = product_field(
+        product,
+        "brand",
+        "manufacturer",
+        "maker",
+        "source_brand",
+    )
+    source = product.get("source")
+    if isinstance(source, dict) and not direct:
+        direct = str(
+            source.get("brand")
+            or source.get("manufacturer")
+            or source.get("maker")
+            or source.get("source_brand")
+            or ""
+        ).strip()
+
+    if direct:
+        return catalog_norm(direct)
+
+    text = catalog_norm(_catalog_product_text(product))
+    if not text:
+        return ""
+
+    known: Dict[str, str] = {}
+    for family in FAMILY_REGISTRY:
+        brand = str(family.get("brand") or "").strip()
+        if brand:
+            known[catalog_norm(brand)] = brand
+
+    # The product catalog is also a source of known brands.  Longest first
+    # prevents a short brand token from stealing a multi-word brand.
+    for item in _PRODUCT_MATCHER_CATALOG:
+        if not isinstance(item, dict):
+            continue
+        brand = str(
+            item.get("brand")
+            or item.get("manufacturer")
+            or item.get("maker")
+            or ""
+        ).strip()
+        if brand:
+            known[catalog_norm(brand)] = brand
+
+    for brand_norm, brand_display in sorted(
+        known.items(),
+        key=lambda pair: len(pair[0]),
+        reverse=True,
+    ):
+        if not brand_norm:
+            continue
+        if re.search(rf"\b{re.escape(brand_norm)}\b", text, flags=re.I):
+            return brand_norm
+
+    return ""
+
+
 def _catalog_brand_matches(
     product: Dict[str, Any],
     family: Dict[str, Any],
@@ -900,27 +916,15 @@ def _catalog_brand_matches(
     if not expected_brand:
         return True
 
-    actual_brand = product_field(
-        product,
-        "brand",
-        "source_brand",
-    )
+    actual_brand = _catalog_detected_brand(product)
 
-    source = product.get("source")
-    if isinstance(source, dict) and not actual_brand:
-        actual_brand = str(
-            source.get("brand")
-            or source.get("source_brand")
-            or ""
-        ).strip()
-
+    # Missing brand is acceptable only when the retailer genuinely did not
+    # publish one.  If a known brand is explicitly present in the candidate
+    # title/source, it becomes a hard constraint.
     if not actual_brand:
         return True
 
-    return (
-        catalog_norm(actual_brand)
-        == expected_brand
-    )
+    return actual_brand == expected_brand
 
 
 def _catalog_product_text(product: Dict[str, Any]) -> str:
@@ -1354,6 +1358,14 @@ def _non_single_product_match(product: Dict[str, Any]) -> Optional[str]:
         "trio",
         "mystery box",
         "gift box",
+        "sample",
+        "samples",
+        "sample service",
+        "campione",
+        "campioncino",
+        "échantillon",
+        "echantillon",
+        "muestra",
         "tester",
         "testeur",
         "shampoo",
@@ -1403,9 +1415,9 @@ def matches(product: Dict[str, Any], query: str) -> bool:
     ScentHunter returns ONLY single perfume references:
     - no cosmetics/body products;
     - no sets, coffrets, bundles, boxes or testers;
-    - samples/minis <= 10 ml are hidden from the base search;
-    - a sample/small format is allowed only when the user explicitly asks
-      for a sample or an explicit small size (e.g. "Hawas Ice 10 ml").
+    - samples, sample services, campioncini and testers are always rejected;
+    - explicit small-size queries are exact, but they do not turn a sample
+      listing into a valid perfume offer.
     """
     query_normalized = norm(query)
 
@@ -1442,7 +1454,7 @@ def matches(product: Dict[str, Any], query: str) -> bool:
         return False
 
     query_size_match = re.search(
-        r"(?<!\d)(\d+(?:[.,]\d+)?)\s*(ml|cl)\b",
+        r"(?<!\d)(\d+(?:[.,]\d+)?)\s*[-_/]?\s*(ml|cl)\b",
         query_normalized,
         re.I,
     )
@@ -1477,9 +1489,7 @@ def matches(product: Dict[str, Any], query: str) -> bool:
         if abs(product_size - query_size_ml) > 0.01:
             return False
 
-    # If the candidate is <=10 ml but the query asks for a normal size, it was
-    # already rejected above. If the query explicitly asks for sample, the
-    # sample marker itself is allowed; testers remain forbidden.
+    # Samples/testers are already rejected by the hard product-type filter.
 
     # --------------------------------------------------------
     # CATALOGO AUTORITATIVO
@@ -1742,12 +1752,14 @@ def product_identity_key(product: Dict[str, Any]) -> tuple:
         "store_variant_id",
         "variant_id",
     )
+
     product_id = identity_value(
         product,
         "store_product_id",
         "product_id",
         "catalog_id",
     )
+
     gtin = identity_value(
         product,
         "gtin",
@@ -1756,6 +1768,7 @@ def product_identity_key(product: Dict[str, Any]) -> tuple:
         "barcode",
         "upc",
     )
+
     sku = identity_value(
         product,
         "sku",
@@ -1797,6 +1810,7 @@ def product_identity_key(product: Dict[str, Any]) -> tuple:
         size,
         concentration,
     )
+
 
 
 def unique_results(products: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
@@ -1951,6 +1965,7 @@ def _display_variant_name(
             rf"^\s*{re.escape(str(brand).strip())}\s*(?:[-:–—]\s*)?",
             flags=re.I,
         )
+
         while True:
             cleaned = brand_pattern.sub("", variant, count=1)
             if cleaned == variant:
@@ -1997,9 +2012,10 @@ def _display_variant_name(
         )
 
     # Elimina parentesi vuote e punteggiatura residua generata dalla pulizia.
-    variant = re.sub(r"\(\s*\)", " ", variant)
+    variant = re.sub(r"\\(\\s\*\\)", " ", variant)
     variant = re.sub(r"\s+", " ", variant).strip(" -–—:|/")
     return re.sub(r"\s+", " ", variant).strip()
+
 
 
 def _format_result_title(product: Dict[str, Any]) -> str:
@@ -2219,6 +2235,23 @@ def _collapse_family_results(
     return ordered
 
 
+def _repair_mojibake(value: Any) -> Any:
+    """Repair common UTF-8-as-Windows-1252 display corruption recursively."""
+    if isinstance(value, str):
+        if not any(marker in value for marker in ("â", "Ã", "Â", "ð")):
+            return value
+        try:
+            repaired = value.encode("cp1252").decode("utf-8")
+        except (UnicodeEncodeError, UnicodeDecodeError):
+            return value
+        return repaired if repaired != value else value
+    if isinstance(value, list):
+        return [_repair_mojibake(item) for item in value]
+    if isinstance(value, dict):
+        return {key: _repair_mojibake(item) for key, item in value.items()}
+    return value
+
+
 def _prepare_final_results(
     products: List[Dict[str, Any]],
     query: str,
@@ -2234,6 +2267,7 @@ def _prepare_final_results(
         item = dict(product)
         item["name"] = _format_result_title(item)
         item["title"] = item["name"]
+        item = _repair_mojibake(item)
         prepared.append(item)
 
     return sort_by_price(prepared)
@@ -2404,12 +2438,44 @@ def _validate_candidate(
     if not matches(product, query):
         return None
 
-    # Il main usa il matcher centrale per la risoluzione dell'identità.
-    # Il query matching/family validation resta quello già esistente sopra;
-    # il matcher riceve il candidato RAW e restituisce la sua identità
-    # canonica dal catalogo autorevole.
+    # Per una famiglia governata dal Family Registry, il Registry è
+    # AUTORITATIVO. Se non riesce a risolvere il candidato per questa query,
+    # il candidato è un falso positivo e NON può ricadere nel matcher
+    # generico. Questo evita che prodotti semanticamente simili (es. Hawa,
+    # Le Monde est Beau, sample/service, altre varianti) rientrino dopo il
+    # controllo catalogo tramite ProductMatcher.
     try:
-        matched_product = _PRODUCT_MATCHER.match(product)
+        catalog_family = _catalog_family_for_query(query)
+    except Exception:
+        catalog_family = None
+
+    if catalog_family is not None:
+        try:
+            resolved_identity = _catalog_match(product, query)
+        except Exception as exc:
+            print(
+                "FAMILY_REGISTRY_RUNTIME_ERROR:",
+                f"{type(exc).__name__}: {exc}",
+                flush=True,
+            )
+            return None
+
+        if not isinstance(resolved_identity, dict):
+            return None
+    else:
+        resolved_identity = None
+
+    # Il matcher centrale viene usato solo dopo il controllo autorevole della
+    # famiglia. Per le famiglie catalogate arricchisce il risultato, ma non
+    # può mai riaprire una corrispondenza rifiutata dal Registry.
+    try:
+        # ProductMatcher may enrich/mutate nested dictionaries on the object
+        # it receives. Never let that mutate the original store candidate: the
+        # candidate must retain its own store/source/offer provenance all the
+        # way through final grouping. A shallow copy is not sufficient because
+        # source, identity, attributes and raw_data are nested dictionaries.
+        matcher_input = copy.deepcopy(product)
+        matched_product = _PRODUCT_MATCHER.match(matcher_input)
     except Exception as exc:
         print(
             "PRODUCT_MATCHER_RUNTIME_ERROR:",
@@ -2420,23 +2486,6 @@ def _validate_candidate(
 
     if matched_product is None:
         matched_product = dict(product)
-
-    # Per le famiglie governate dal Family Registry, _catalog_match()
-    # contiene l'identità risolta dalla regola autorevole. Questa identità
-    # deve essere propagata nel candidato finale: non può restare confinata
-    # al risultato intermedio del matcher/diagnostica.
-    try:
-        resolved_identity = _catalog_match(
-            product,
-            query,
-        )
-    except Exception as exc:
-        print(
-            "FAMILY_REGISTRY_RUNTIME_ERROR:",
-            f"{type(exc).__name__}: {exc}",
-            flush=True,
-        )
-        resolved_identity = None
 
     if isinstance(resolved_identity, dict):
         # L'identità del Family Registry deve essere applicata all'oggetto
