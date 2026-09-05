@@ -497,93 +497,89 @@ def _format_compare_store_candidates(
     )
     return {"store": store, "results": cleaned}
 
-
 def _format_compare_store(
     store: str,
     product: str,
     requested_sizes: List[int],
 ) -> Dict[str, Any]:
-    """
-    Cerca una volta nello store, valida i candidati e conserva
-    soltanto le offerte con formato esplicito.
-    """
-    try:
-        raw_results = []
+    cleaned: List[Dict[str, Any]] = []
+    store_errors: List[str] = []
 
-for requested_size in requested_sizes:
-    query = _format_compare_query(product, requested_size)
+    for requested_size in requested_sizes:
+        query = _format_compare_query(product, requested_size)
 
-    try:
-        raw = _legacy.run_store(store, query)
-    except Exception as exc:
-        continue
-        
-        normalized_candidates.append(item)
-
-    for candidate in candidates:
-        if not isinstance(candidate, dict):
-            continue
-
-        item = dict(candidate)
-
-        # Materializza il valore numerico nel contratto top-level.
-        size = _format_compare_size(item)
-
-        if size is None:
-            continue
-
-        item["size_ml"] = size
-        item["size_source"] = item.get(
-            "size_source",
-            "central_product_size_ml",
-        )
-
-        normalized_candidates.append(item)
-
-    try:
-        validated = _engine._validate_candidates_only(
-    product,
-    normalized_candidates,
-        )
-
-    except Exception:
-        validated = normalized_candidates
-
-    cleaned = []
-
-    for candidate in validated or []:
-        if not isinstance(candidate, dict):
-            continue
-
-        explicit_size = _format_compare_size(candidate)
-
-        if explicit_size is None:
-            continue
-
-        item = dict(candidate)
-        item["size_ml"] = explicit_size
-
-        cleaned.append(
-            _format_compare_clean_offer(
-                item,
-                store,
-                explicit_size,
+        try:
+            raw = _legacy.run_store(store, query)
+        except Exception as exc:
+            store_errors.append(
+                f"{requested_size} ml: {type(exc).__name__}: {exc}"
             )
-        )
+            continue
+
+        candidates = raw if isinstance(raw, list) else []
+        normalized_candidates: List[Dict[str, Any]] = []
+
+        for candidate in candidates:
+            if not isinstance(candidate, dict):
+                continue
+
+            item = dict(candidate)
+            detected_size = _format_compare_size(item)
+
+            if detected_size != requested_size:
+                continue
+
+            item["size_ml"] = detected_size
+            item["size_source"] = item.get(
+                "size_source",
+                "central_product_size_ml",
+            )
+            normalized_candidates.append(item)
+
+        try:
+            validated = _engine._validate_candidates_only(
+                product,
+                normalized_candidates,
+            )
+        except Exception:
+            validated = normalized_candidates
+
+        for candidate in validated or []:
+            if not isinstance(candidate, dict):
+                continue
+
+            detected_size = _format_compare_size(candidate)
+
+            if detected_size != requested_size:
+                continue
+
+            item = dict(candidate)
+            item["size_ml"] = detected_size
+
+            try:
+                offer = _format_compare_clean_offer(
+                    item,
+                    store,
+                    requested_size,
+                )
+            except ValueError:
+                continue
+
+            cleaned.append(offer)
 
     cleaned.sort(
         key=lambda offer: (
             _format_compare_is_oos(offer),
-            _format_compare_num(
-                offer.get("price_value")
-            ),
+            _format_compare_num(offer.get("price_value")),
         )
     )
 
     return {
         "store": store,
         "results": cleaned,
+        "error": " | ".join(store_errors) if store_errors else None,
     }
+
 
 @app.get("/compare-formats")
 def compare_formats(
