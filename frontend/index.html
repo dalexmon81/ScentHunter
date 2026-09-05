@@ -1675,7 +1675,7 @@ async function fetchFormatComparisons(g, sizes){
   if(!productName || !list.length)return [];
   const params=new URLSearchParams({q:productName,formats:list.join(",")});
   const controller=new AbortController();
-  const timer=setTimeout(()=>controller.abort(),8000);
+  const timer=setTimeout(()=>controller.abort(),120000);
   try{
     const response=await fetch(backend()+"/compare-formats?"+params.toString(),{cache:"no-store",headers:{"Accept":"application/json"},signal:controller.signal});
     if(!response.ok)throw new Error("Confronto formati HTTP "+response.status);
