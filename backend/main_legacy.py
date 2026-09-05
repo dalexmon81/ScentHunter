@@ -5,7 +5,6 @@ from fastapi.responses import FileResponse
 
 import importlib
 import json
-import copy
 
 from product_matcher import ProductMatcher
 import os
@@ -239,53 +238,35 @@ GLOBAL_SEARCH_TIMEOUT = 90
 
 
 # ============================================================
-# DIAGNOSTICA DELOOX — LIQUID BRUN
+# TEMPORARY DELOOX / LIQUID BRUN FORENSIC TRACE V5
+# Read-only diagnostic: no search/business logic is changed.
 # ============================================================
-DELOOX_TRACE_MARKER = "SCENTHUNTER_DELOOX_TRACE_MAIN_LEGACY_V2"
+DELOOX_TRACE_MARKER = "SCENTHUNTER_DELOOX_TRACE_MAIN_LEGACY_V5"
 DELOOX_TRACE_QUERY = "liquid brun"
 DELOOX_TRACE_STORE = "deloox"
 
 def _deloox_trace_enabled(query: Any, store: Optional[str] = None) -> bool:
     if norm(str(query or "")) != DELOOX_TRACE_QUERY:
         return False
-    if store is not None and str(store or "").strip().lower() != DELOOX_TRACE_STORE:
+    if store is not None and str(store or "").strip().casefold() != DELOOX_TRACE_STORE:
         return False
     return True
 
 def _deloox_trace_item(item: Any) -> Dict[str, Any]:
     if not isinstance(item, dict):
-        return {"type": type(item).__name__, "value": str(item)}
+        return {"type": type(item).__name__, "value": repr(item)[:500]}
     source = item.get("source") if isinstance(item.get("source"), dict) else {}
-    offer = item.get("offer") if isinstance(item.get("offer"), dict) else {}
-    return {
-        "store": str(item.get("store") or source.get("source_name") or "").strip(),
-        "name": item.get("name") or item.get("title") or item.get("product_name") or "",
-        "brand": item.get("brand") or item.get("source_brand") or source.get("brand") or "",
-        "size_ml": item.get("size_ml") or item.get("volume_ml") or item.get("format_ml") or "",
-        "price": item.get("price") or offer.get("price") or "",
-        "availability": item.get("availability") or offer.get("availability") or item.get("available"),
-        "url": item.get("url") or offer.get("url") or "",
-        "canonical_name": item.get("canonical_name") or "",
-        "family_id": item.get("family_id") or "",
-        "catalog_variant": item.get("catalog_variant") or "",
-    }
+    return {k: item.get(k) for k in ("store","name","brand","size_ml","price","availability","url","canonical_name","family_id","catalog_variant") if k in item} | ({"source_name": source.get("source_name")} if source else {})
 
 def _deloox_trace_items(items: Any) -> List[Dict[str, Any]]:
-    if not isinstance(items, list):
-        return []
-    return [_deloox_trace_item(x) for x in items if isinstance(x, dict)]
+    if not isinstance(items, list): return []
+    return [_deloox_trace_item(x) for x in items if isinstance(x, dict) and (str(x.get("store") or "").casefold()==DELOOX_TRACE_STORE or "deloox" in str(x.get("url") or "").casefold())]
 
-def _deloox_trace_emit(stage: str, query: str, items: Any = None, extra: Optional[Dict[str, Any]] = None) -> None:
-    payload = {
-        "marker": DELOOX_TRACE_MARKER,
-        "stage": stage,
-        "query": query,
-        "deloox_count": sum(1 for x in (items or []) if isinstance(x, dict) and (str(x.get("store") or "").lower() == DELOOX_TRACE_STORE or str((x.get("source") or {}).get("source_name") if isinstance(x.get("source"), dict) else "").lower() == DELOOX_TRACE_STORE)),
-        "deloox_items": _deloox_trace_items(items),
-    }
-    if extra:
-        payload.update(extra)
-    print(DELOOX_TRACE_MARKER, json.dumps(payload, ensure_ascii=False, default=str), flush=True)
+def _deloox_trace_emit(stage: str, query: Any, items: Any = None, extra: Optional[Dict[str, Any]] = None) -> None:
+    if not _deloox_trace_enabled(query): return
+    payload={"marker":DELOOX_TRACE_MARKER,"stage":stage,"query":str(query or ""),"deloox_count":len(_deloox_trace_items(items)),"deloox_items":_deloox_trace_items(items)}
+    if extra: payload.update(extra)
+    print(DELOOX_TRACE_MARKER + " " + json.dumps(payload, ensure_ascii=False, default=str), flush=True)
 
 # ============================================================
 # NORMALIZZAZIONE
@@ -1280,19 +1261,13 @@ def _catalog_match(
     # Una query che contiene il nome della famiglia ma aggiunge una variante
     # non registrata non deve ricadere nel matching generico.
     if not is_family_query and requested is None:
-        if _deloox_trace_enabled(query, product.get("store") or ((product.get("source") or {}).get("source_name") if isinstance(product.get("source"), dict) else None)):
-            _deloox_trace_emit("CATALOG_REJECT_NO_REQUESTED_VARIANT", query, [product], {"reason": "requested_variant_not_found"})
         return None
 
     variant = _catalog_variant_for_product(product, family)
     if variant is None:
-        if _deloox_trace_enabled(query, product.get("store") or ((product.get("source") or {}).get("source_name") if isinstance(product.get("source"), dict) else None)):
-            _deloox_trace_emit("CATALOG_REJECT_NO_VARIANT", query, [product], {"reason": "product_variant_not_resolved"})
         return None
 
     if requested is not None and variant is not requested:
-        if _deloox_trace_enabled(query, product.get("store") or ((product.get("source") or {}).get("source_name") if isinstance(product.get("source"), dict) else None)):
-            _deloox_trace_emit("CATALOG_REJECT_VARIANT_MISMATCH", query, [product], {"reason": "requested_variant_mismatch", "requested": requested.get("canonical_name") if isinstance(requested, dict) else None, "resolved": variant.get("canonical_name") if isinstance(variant, dict) else None})
         return None
 
     result = dict(product)
@@ -2312,14 +2287,15 @@ def _prepare_final_results(
     products: List[Dict[str, Any]],
     query: str,
 ) -> List[Dict[str, Any]]:
+    unique = unique_results(products)
     if _deloox_trace_enabled(query):
-        _deloox_trace_emit("STAGE_3_PREPARE_INPUT", query, products, {"input_count": len(products) if isinstance(products, list) else None})
+        _deloox_trace_emit("STAGE_3A_PREPARE_AFTER_UNIQUE", query, unique, {"input_count": len(products), "unique_count": len(unique)})
     results = _collapse_family_results(
-        unique_results(products),
+        unique,
         query,
     )
     if _deloox_trace_enabled(query):
-        _deloox_trace_emit("STAGE_4_PREPARE_AFTER_COLLAPSE", query, results, {"output_count": len(results)})
+        _deloox_trace_emit("STAGE_3B_PREPARE_AFTER_COLLAPSE", query, results, {"output_count": len(results)})
 
     prepared: List[Dict[str, Any]] = []
 
@@ -2330,7 +2306,10 @@ def _prepare_final_results(
         item = _repair_mojibake(item)
         prepared.append(item)
 
-    return sort_by_price(prepared)
+    final = sort_by_price(prepared)
+    if _deloox_trace_enabled(query):
+        _deloox_trace_emit("STAGE_4_PREPARE_FINAL_SORT", query, final, {"final_count": len(final)})
+    return final
 
 
 # ============================================================
@@ -2496,55 +2475,95 @@ def _validate_candidate(
     query: str,
 ) -> Optional[Dict[str, Any]]:
     trace = _deloox_trace_enabled(query, product.get("store") or ((product.get("source") or {}).get("source_name") if isinstance(product.get("source"), dict) else None))
+    if trace:
+        _deloox_trace_emit("VALIDATION_INPUT", query, [product], {"matches_checked": True})
     if not matches(product, query):
         if trace:
-            _deloox_trace_emit("VALIDATION_REJECT_MATCHES", query, [product], {"reason": "matches_false"})
+            _deloox_trace_emit("VALIDATION_REJECT_MATCHES", query, [product], {"reason":"matches_false"})
         return None
 
+    # Per una famiglia governata dal Family Registry, il Registry è
+    # AUTORITATIVO. Se non riesce a risolvere il candidato per questa query,
+    # il candidato è un falso positivo e NON può ricadere nel matcher
+    # generico. Questo evita che prodotti semanticamente simili (es. Hawa,
+    # Le Monde est Beau, sample/service, altre varianti) rientrino dopo il
+    # controllo catalogo tramite ProductMatcher.
     try:
         catalog_family = _catalog_family_for_query(query)
-    except Exception as exc:
+    except Exception:
         catalog_family = None
-        if trace:
-            _deloox_trace_emit("CATALOG_FAMILY_ERROR", query, [product], {"error": f"{type(exc).__name__}: {exc}"})
 
     if catalog_family is not None:
         try:
             resolved_identity = _catalog_match(product, query)
         except Exception as exc:
-            print("FAMILY_REGISTRY_RUNTIME_ERROR:", f"{type(exc).__name__}: {exc}", flush=True)
-            if trace:
-                _deloox_trace_emit("VALIDATION_REJECT_CATALOG_EXCEPTION", query, [product], {"error": f"{type(exc).__name__}: {exc}"})
+            print(
+                "FAMILY_REGISTRY_RUNTIME_ERROR:",
+                f"{type(exc).__name__}: {exc}",
+                flush=True,
+            )
             return None
+
         if not isinstance(resolved_identity, dict):
-            if trace:
-                _deloox_trace_emit("VALIDATION_REJECT_CATALOG", query, [product], {"reason": "catalog_match_none"})
             return None
     else:
         resolved_identity = None
 
+    # Il matcher centrale viene usato solo dopo il controllo autorevole della
+    # famiglia. Per le famiglie catalogate arricchisce il risultato, ma non
+    # può mai riaprire una corrispondenza rifiutata dal Registry.
     try:
+        # ProductMatcher may enrich/mutate nested dictionaries on the object
+        # it receives. Never let that mutate the original store candidate: the
+        # candidate must retain its own store/source/offer provenance all the
+        # way through final grouping. A shallow copy is not sufficient because
+        # source, identity, attributes and raw_data are nested dictionaries.
         matcher_input = copy.deepcopy(product)
         matched_product = _PRODUCT_MATCHER.match(matcher_input)
     except Exception as exc:
-        print("PRODUCT_MATCHER_RUNTIME_ERROR:", f"{type(exc).__name__}: {exc}", flush=True)
+        print(
+            "PRODUCT_MATCHER_RUNTIME_ERROR:",
+            f"{type(exc).__name__}: {exc}",
+            flush=True,
+        )
         matched_product = None
-        if trace:
-            _deloox_trace_emit("MATCHER_EXCEPTION", query, [product], {"error": f"{type(exc).__name__}: {exc}"})
 
     if matched_product is None:
         matched_product = dict(product)
 
     if isinstance(resolved_identity, dict):
+        # L'identità del Family Registry deve essere applicata all'oggetto
+        # candidato che prosegue nel percorso verso matched_candidates.
+        # Non deve restare confinata a un risultato diagnostico o al matcher.
         product = dict(product)
         product.update(resolved_identity)
+
+        # Il matcher centrale può aver recuperato metadati autorevoli che il
+        # Family Registry non deve duplicare, in particolare concentrazione e
+        # genere. Li usiamo soltanto come arricchimento del risultato già
+        # validato dalla famiglia: non influenzano la decisione di appartenenza.
+        if isinstance(matched_product, dict):
+            if not product_concentration(product):
+                matcher_concentration = str(
+                    matched_product.get("concentration")
+                    or matched_product.get("canonical_concentration")
+                    or ""
+                ).strip()
+                if matcher_concentration:
+                    product["concentration"] = matcher_concentration
+                    product["canonical_concentration"] = matcher_concentration
+
+            if not product.get("gender") and matched_product.get("gender"):
+                product["gender"] = matched_product.get("gender")
+
+        product["match_method"] = (
+            product.get("match_method")
+            or "family_registry_alias"
+        )
         product["name"] = product["canonical_name"]
-        if trace:
-            _deloox_trace_emit("VALIDATION_ACCEPT", query, [product], {"catalog": True, "matcher": matched_product is not None})
+
         return product
 
-    if trace:
-        _deloox_trace_emit("VALIDATION_ACCEPT", query, [matched_product], {"catalog": False, "matcher": matched_product is not None})
     return matched_product
 
 
@@ -2607,8 +2626,6 @@ def _orchestrate_results(
         -> ranking finale
     """
     candidate_pool = unique_results(candidates)
-    if _deloox_trace_enabled(query):
-        _deloox_trace_emit("STAGE_2_MERGED_BEFORE_VALIDATION", query, candidate_pool, {"input_count": len(candidates), "unique_count": len(candidate_pool)})
 
     ranked_candidates = _pre_rank_candidates(
         candidate_pool,
@@ -2878,9 +2895,11 @@ def _search_job_snapshot(job_id: str) -> Dict[str, Any]:
         diagnostics = dict(job.get("store_diagnostics", {}))
         phase = job.get("phase", "discovery")
 
+    if _deloox_trace_enabled(query):
+        _deloox_trace_emit("STAGE_5A_SEARCH_STATUS_INPUT", query, raw_results, {"raw_count": len(raw_results), "completed": completed})
     results = _prepare_final_results(raw_results, query)
     if _deloox_trace_enabled(query):
-        _deloox_trace_emit("STAGE_5_SEARCH_STATUS_FINAL", query, results, {"raw_count": len(raw_results), "final_count": len(results), "completed": completed})
+        _deloox_trace_emit("STAGE_5B_SEARCH_STATUS_OUTPUT", query, results, {"final_count": len(results), "completed": completed})
     return {
         "job_id": job_id,
         "query": query,
@@ -2943,8 +2962,6 @@ def _run_search_job(
                 job["candidates"]
             )
 
-        if _deloox_trace_enabled(query):
-            _deloox_trace_emit("STAGE_2_BATCH_MERGE", query, candidate_pool, {"store_completed": store, "candidate_pool_count": len(candidate_pool)})
         results = _orchestrate_results(
             candidate_pool,
             query,
@@ -3202,8 +3219,6 @@ def test_store(
             store,
             query,
         )
-        if _deloox_trace_enabled(query, store):
-            _deloox_trace_emit("STAGE_1_TEST_STORE_RAW", query, results, {"store": store, "count": len(results)})
 
         return {
             "store": store,
