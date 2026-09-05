@@ -74,6 +74,162 @@ class SearchEngine:
                 "orioudh",
                 "notino",
             ]
+    # ------------------------------------------------------------------
+    # Temporary Deloox / Liquid Brun forensic trace
+    # ------------------------------------------------------------------
+
+    _DELOOX_TRACE_MARKER = "SCENTHUNTER_DELOOX_TRACE_V2"
+    _DELOOX_TRACE_QUERY = "liquid brun"
+    _DELOOX_TRACE_STORE = "deloox"
+
+    @classmethod
+    def _deloox_trace_enabled(cls, query: Any, store: Any = "deloox") -> bool:
+        try:
+            normalized = str(query or "").strip().lower()
+            normalized = re.sub(r"[^a-z0-9]+", " ", normalized)
+            normalized = re.sub(r"\s+", " ", normalized).strip()
+            return normalized == cls._DELOOX_TRACE_QUERY and str(store or "").strip().lower() == cls._DELOOX_TRACE_STORE
+        except Exception:
+            return False
+
+    @staticmethod
+    def _deloox_trace_value(value: Any) -> Any:
+        if value is None or isinstance(value, (str, int, float, bool)):
+            return value
+        if isinstance(value, dict):
+            return {str(k): SearchEngine._deloox_trace_value(v) for k, v in value.items()}
+        if isinstance(value, (list, tuple, set)):
+            return [SearchEngine._deloox_trace_value(v) for v in value]
+        return str(value)
+
+    def _deloox_trace_offer(self, item: Any) -> Dict[str, Any]:
+        if not isinstance(item, dict):
+            return {"type": type(item).__name__, "value": self._deloox_trace_value(item)}
+        keys = (
+            "store", "shop", "name", "title", "product_name", "brand",
+            "source_brand", "canonical_brand", "canonical_name", "catalog_variant",
+            "catalog_id", "product_id", "product_identity", "family_id", "family_name",
+            "size_ml", "volume_ml", "format_ml", "size", "format", "volume",
+            "price", "price_num", "price_value", "in_stock", "available",
+            "availability", "stock", "stock_status", "url", "gtin", "mpn",
+            "match_method", "identity", "source",
+        )
+        payload = {k: self._deloox_trace_value(item.get(k)) for k in keys if k in item}
+        payload["all_keys"] = sorted(str(k) for k in item.keys())
+        try:
+            payload["derived_size_ml"] = self._extract_candidate_size_ml(item)
+        except Exception:
+            payload["derived_size_ml"] = None
+        return payload
+
+    def _deloox_trace_candidates(self, candidates: Any) -> Dict[str, Any]:
+        if not isinstance(candidates, list):
+            try:
+                candidates = list(candidates or [])
+            except Exception:
+                candidates = []
+        deloox = []
+        for item in candidates:
+            if not isinstance(item, dict):
+                continue
+            store = str(item.get("store") or item.get("shop") or "").strip().lower()
+            url = str(item.get("url") or "").strip().lower()
+            if store == "deloox" or "deloox" in url:
+                deloox.append(self._deloox_trace_offer(item))
+        return {"total": len(candidates), "deloox_count": len(deloox), "deloox": deloox}
+
+    @staticmethod
+    def _deloox_trace_identity(item: Any) -> str:
+        if not isinstance(item, dict):
+            return "non_dict:" + repr(item)
+        for key in ("url", "product_id", "catalog_id", "gtin", "mpn"):
+            value = item.get(key)
+            if value not in (None, ""):
+                return f"{key}:{value}"
+        return f"name:{item.get('store') or item.get('shop') or ''}|{item.get('name') or item.get('title') or item.get('product_name') or item.get('canonical_name') or ''}|{item.get('size_ml')}"
+
+    def _deloox_trace_diff(self, before: Any, after: Any) -> Dict[str, Any]:
+        def only_deloox(value: Any) -> List[Dict[str, Any]]:
+            if not isinstance(value, list):
+                try:
+                    value = list(value or [])
+                except Exception:
+                    value = []
+            return [
+                x for x in value if isinstance(x, dict) and (
+                    str(x.get("store") or x.get("shop") or "").strip().lower() == "deloox"
+                    or "deloox" in str(x.get("url") or "").strip().lower()
+                )
+            ]
+        b, a = only_deloox(before), only_deloox(after)
+        bm = {self._deloox_trace_identity(x): x for x in b}
+        am = {self._deloox_trace_identity(x): x for x in a}
+        return {
+            "before_deloox_count": len(b),
+            "after_deloox_count": len(a),
+            "removed_count": len(set(bm) - set(am)),
+            "added_count": len(set(am) - set(bm)),
+            "removed": [self._deloox_trace_offer(bm[k]) for k in bm.keys() - am.keys()],
+            "added": [self._deloox_trace_offer(am[k]) for k in am.keys() - bm.keys()],
+        }
+
+    def _deloox_trace_log(self, stage: str, query: str, *, job_id: Optional[str] = None, store: Optional[str] = None, payload: Optional[Dict[str, Any]] = None) -> None:
+        if not self._deloox_trace_enabled(query, store or "deloox"):
+            return
+        import json
+        record = {
+            "marker": self._DELOOX_TRACE_MARKER,
+            "stage": stage,
+            "job_id": job_id,
+            "query": str(query or ""),
+            "store": store or "deloox",
+        }
+        if payload:
+            record.update(payload)
+        print(self._DELOOX_TRACE_MARKER + " " + json.dumps(record, ensure_ascii=False, default=str, sort_keys=True), flush=True)
+
+    def _deloox_prepare_with_trace(self, prepare: Callable[..., Any], candidates: List[Dict[str, Any]], query: str, *, job_id: Optional[str] = None) -> Any:
+        # No shGroupData() exists in the current repository. The actual final
+        # grouping boundary is _prepare_final_results(), so we trace that exact function.
+        if not self._deloox_trace_enabled(query):
+            try:
+                return prepare(candidates, query)
+            except TypeError:
+                return prepare(candidates)
+
+        self._deloox_trace_log(
+            "3_grouping_input_prepare_final_results",
+            query,
+            job_id=job_id,
+            payload={
+                "function": getattr(prepare, "__name__", str(prepare)),
+                "input": self._deloox_trace_candidates(candidates),
+            },
+        )
+        try:
+            final = prepare(candidates, query)
+        except TypeError:
+            final = prepare(candidates)
+
+        final_list = final if isinstance(final, list) else list(final or [])
+        nested = []
+        for result in final_list:
+            if isinstance(result, dict) and isinstance(result.get("offers"), list):
+                nested.extend(x for x in result["offers"] if isinstance(x, dict))
+
+        self._deloox_trace_log(
+            "4_grouping_output_prepare_final_results",
+            query,
+            job_id=job_id,
+            payload={
+                "output_top_level": self._deloox_trace_candidates(final_list),
+                "output_nested_offers": self._deloox_trace_candidates(nested),
+                "diff_top_level": self._deloox_trace_diff(candidates, final_list),
+                "diff_nested_offers": self._deloox_trace_diff(candidates, nested),
+            },
+        )
+        return final
+
 
     # ------------------------------------------------------------------
     # Query analysis
@@ -329,7 +485,20 @@ class SearchEngine:
             # First pass: every store gets its full discovery strategy.
             for discovery_query in discovery_queries:
                 try:
-                    collect_from_result(runner(store, discovery_query))
+                    raw_result = runner(store, discovery_query)
+                    if self._deloox_trace_enabled(query, store):
+                        raw_batch = raw_result if isinstance(raw_result, list) else list(raw_result or [])
+                        self._deloox_trace_log(
+                            "1_test_store_equivalent_raw_response",
+                            query,
+                            store=store,
+                            payload={
+                                "discovery_query": discovery_query,
+                                "response_type": type(raw_result).__name__,
+                                "raw_response": self._deloox_trace_candidates(raw_batch),
+                            },
+                        )
+                    collect_from_result(raw_result)
                 except Exception as exc:
                     print(
                         f"STORE_SEARCH_ATTEMPT_ERROR: store={store} "
@@ -350,7 +519,20 @@ class SearchEngine:
 
                 for discovery_query in discovery_queries:
                     try:
-                        collect_from_result(runner(store, discovery_query))
+                        raw_result = runner(store, discovery_query)
+                        if self._deloox_trace_enabled(query, store):
+                            raw_batch = raw_result if isinstance(raw_result, list) else list(raw_result or [])
+                            self._deloox_trace_log(
+                                "1_test_store_equivalent_raw_response",
+                                query,
+                                store=store,
+                                payload={
+                                    "discovery_query": discovery_query,
+                                    "response_type": type(raw_result).__name__,
+                                    "raw_response": self._deloox_trace_candidates(raw_batch),
+                                },
+                            )
+                        collect_from_result(raw_result)
                     except Exception as exc:
                         print(
                             f"STORE_RETRY_ERROR: store={store} retry={retry_number} "
@@ -362,6 +544,18 @@ class SearchEngine:
             clean_candidates = [
                 item for item in candidates if isinstance(item, dict)
             ]
+
+            if self._deloox_trace_enabled(query, store):
+                self._deloox_trace_log(
+                    "1b_deloox_store_run_complete",
+                    query,
+                    store=store,
+                    payload={
+                        "discovery_queries": discovery_queries,
+                        "retry_count": retry_number,
+                        "candidates_after_collection": self._deloox_trace_candidates(clean_candidates),
+                    },
+                )
 
             return StoreRun(
                 store=store,
@@ -621,17 +815,47 @@ class SearchEngine:
         validate = getattr(self.legacy, "_validate_candidates_parallel", None)
 
         candidates = self._filter_requested_format(list(raw_candidates), query)
+        if self._deloox_trace_enabled(query):
+            self._deloox_trace_log(
+                "2a_validation_input_after_format_filter",
+                query,
+                payload={
+                    "input": self._deloox_trace_candidates(raw_candidates),
+                    "output": self._deloox_trace_candidates(candidates),
+                    "diff": self._deloox_trace_diff(raw_candidates, candidates),
+                },
+            )
         if pre_rank is not None:
+            before_pre_rank = list(candidates)
             try:
                 candidates = pre_rank(candidates, query)
             except TypeError:
                 candidates = pre_rank(candidates)
+            if self._deloox_trace_enabled(query):
+                self._deloox_trace_log(
+                    "2b_after_pre_rank",
+                    query,
+                    payload={
+                        "output": self._deloox_trace_candidates(candidates),
+                        "diff": self._deloox_trace_diff(before_pre_rank, candidates),
+                    },
+                )
 
         if validate is not None:
+            before_validate = list(candidates)
             try:
                 candidates = validate(candidates, query)
             except TypeError:
                 candidates = validate(candidates)
+            if self._deloox_trace_enabled(query):
+                self._deloox_trace_log(
+                    "2c_after_central_validate",
+                    query,
+                    payload={
+                        "output": self._deloox_trace_candidates(candidates),
+                        "diff": self._deloox_trace_diff(before_validate, candidates),
+                    },
+                )
 
         if candidates is None:
             return []
@@ -658,23 +882,55 @@ class SearchEngine:
 
         candidates = self._filter_requested_format(list(raw_candidates), query)
 
+        if self._deloox_trace_enabled(query):
+            self._deloox_trace_log(
+                "3a_final_path_after_format_filter",
+                query,
+                payload={
+                    "input": self._deloox_trace_candidates(raw_candidates),
+                    "output": self._deloox_trace_candidates(candidates),
+                    "diff": self._deloox_trace_diff(raw_candidates, candidates),
+                },
+            )
+
         if pre_rank is not None:
+            before_pre_rank = list(candidates)
             try:
                 candidates = pre_rank(candidates, query)
             except TypeError:
                 candidates = pre_rank(candidates)
+            if self._deloox_trace_enabled(query):
+                self._deloox_trace_log(
+                    "3b_final_path_after_pre_rank",
+                    query,
+                    payload={
+                        "output": self._deloox_trace_candidates(candidates),
+                        "diff": self._deloox_trace_diff(before_pre_rank, candidates),
+                    },
+                )
 
         if validate is not None:
+            before_validate = list(candidates)
             try:
                 candidates = validate(candidates, query)
             except TypeError:
                 candidates = validate(candidates)
+            if self._deloox_trace_enabled(query):
+                self._deloox_trace_log(
+                    "3c_final_path_after_central_validate",
+                    query,
+                    payload={
+                        "output": self._deloox_trace_candidates(candidates),
+                        "diff": self._deloox_trace_diff(before_validate, candidates),
+                    },
+                )
 
         if prepare is not None:
-            try:
-                final = prepare(candidates, query)
-            except TypeError:
-                final = prepare(candidates)
+            final = self._deloox_prepare_with_trace(
+                prepare,
+                candidates,
+                query,
+            )
         else:
             final = candidates
 
@@ -832,10 +1088,36 @@ class SearchEngine:
 
                         raw_pool.extend(result.candidates)
 
+                        if self._deloox_trace_enabled(query):
+                            self._deloox_trace_log(
+                                "2_merged_after_store_batch",
+                                query,
+                                job_id=job_id,
+                                store=store,
+                                payload={
+                                    "completed_store": store,
+                                    "store_result": self._deloox_trace_candidates(result.candidates),
+                                    "raw_pool": self._deloox_trace_candidates(raw_pool),
+                                },
+                            )
+
                         # Publish after every completed store. This is the
                         # important difference from the old implementation:
                         # users no longer wait for all eight stores.
                         validated = self._validate_candidates_only(query, raw_pool)
+                        if self._deloox_trace_enabled(query):
+                            self._deloox_trace_log(
+                                "2b_merged_batch_published_results",
+                                query,
+                                job_id=job_id,
+                                store=store,
+                                payload={
+                                    "results": self._deloox_trace_candidates(validated),
+                                    "comparisons": [],
+                                    "raw_pool": self._deloox_trace_candidates(raw_pool),
+                                    "diff_raw_to_results": self._deloox_trace_diff(raw_pool, validated),
+                                },
+                            )
                         update({
                             "results": validated,
                             "candidates": list(raw_pool),
@@ -853,6 +1135,18 @@ class SearchEngine:
             # Final publication. Keep raw validated candidates in the job; the
             # legacy /search-status snapshot performs _prepare_final_results().
             validated = self._validate_candidates_only(query, raw_pool)
+            if self._deloox_trace_enabled(query):
+                self._deloox_trace_log(
+                    "2c_final_merged_before_snapshot",
+                    query,
+                    job_id=job_id,
+                    payload={
+                        "raw_pool": self._deloox_trace_candidates(raw_pool),
+                        "results": self._deloox_trace_candidates(validated),
+                        "comparisons": [],
+                        "diff_raw_to_results": self._deloox_trace_diff(raw_pool, validated),
+                    },
+                )
             update({
                 "results": validated,
                 "candidates": list(raw_pool),
