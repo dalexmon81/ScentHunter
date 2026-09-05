@@ -710,7 +710,10 @@ def diagnose_format_trace(
     product = str(q or "").strip()
     store_name = str(store or "").strip().casefold()
     requested_size = int(size)
-    query = _format_compare_query(product, requested_size)
+    # Diagnostic must reproduce production discovery: generic query first,
+    # then explicit size validation after scraper return.
+    query = _format_compare_query(product, None)
+    exact_query = _format_compare_query(product, requested_size)
     started = _diag_time.monotonic()
 
     def candidate_snapshot(c: Any) -> Dict[str, Any]:
@@ -744,7 +747,8 @@ def diagnose_format_trace(
         "query": product,
         "requested_size_ml": requested_size,
         "store": store_name,
-        "exact_query": query,
+        "discovery_query": query,
+        "exact_query_reference": exact_query,
         "timings_ms": {},
         "stages": {},
         "final": [],
