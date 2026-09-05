@@ -2018,21 +2018,6 @@ async function searchPerfume(){
   const renderData=(partialData,final=false)=>{
    let groups=shGroupData(partialData||{});
 
-   /*
-    * Non sostituiamo mai un gruppo già mostrato con una versione parziale
-    * che abbia meno offerte. Il gruppo progressivo viene unito per identità
-    * e le offerte vengono conservate per negozio/formato.
-    */
-   if(Array.isArray(currentProductGroups)&&currentProductGroups.length){
-    const previousByKey=new Map(currentProductGroups.map(g=>[productGroupKey(g),g]));
-    groups=groups.map(g=>{
-      const previous=previousByKey.get(productGroupKey(g));
-      if(!previous)return g;
-      const mergedOffers=[...(Array.isArray(previous.offers)?previous.offers:[]),...(Array.isArray(g.offers)?g.offers:[])];
-      return {...previous,...g,offers:mergedOffers};
-    });
-   }
-
    currentProductGroups=groups;
 
    if(currentOpenProductKey){
