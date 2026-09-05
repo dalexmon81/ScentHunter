@@ -277,29 +277,83 @@ def _format_compare_num(value: Any) -> float:
 def _format_compare_size(
     candidate: Dict[str, Any],
 ) -> int | None:
+    """Resolve the candidate's real package size with conflict protection.
+
+    A scraper may expose a stale/inherited size_ml while the actual product
+    title/URL contains another explicit size. Text attached to the concrete
+    offer is authoritative when it contains exactly one package size.
+    Conflicting textual sizes are treated as unknown unless the explicit
+    structured size agrees with one of them.
     """
-    Usa esclusivamente l'estrattore centrale del backend.
-    Non duplicare qui la logica size_ml.
-    """
-    extractor = getattr(_legacy, "product_size_ml", None)
+    candidate = candidate or {}
 
-    if not callable(extractor):
+    explicit = None
+    for key in ("size_ml", "volume_ml", "format_ml"):
+        value = candidate.get(key)
+        if value in (None, ""):
+            continue
+        try:
+            explicit = float(str(value).replace(",", "."))
+            break
+        except (TypeError, ValueError):
+            continue
+
+    text_parts = []
+    for key in (
+        "name", "title", "product_name", "size", "format", "volume",
+        "url", "product_url",
+    ):
+        value = candidate.get(key)
+        if value not in (None, ""):
+            text_parts.append(str(value))
+
+    source = candidate.get("source")
+    if isinstance(source, dict):
+        for key in ("name", "title", "url", "product_url"):
+            value = source.get(key)
+            if value not in (None, ""):
+                text_parts.append(str(value))
+
+    raw_data = candidate.get("raw_data")
+    if isinstance(raw_data, dict):
+        for key in ("name", "title", "product_title", "size", "format", "volume", "url", "product_url"):
+            value = raw_data.get(key)
+            if value not in (None, ""):
+                text_parts.append(str(value))
+
+    text_sizes = []
+    pattern = re.compile(r"\b(\d{1,4}(?:[.,]\d+)?)\s*(ml|cl|dl|l)\b", re.I)
+    for text in text_parts:
+        for match in pattern.finditer(text):
+            try:
+                number = float(match.group(1).replace(",", "."))
+            except (TypeError, ValueError):
+                continue
+            unit = match.group(2).lower()
+            if unit == "cl":
+                number *= 10
+            elif unit == "dl":
+                number *= 100
+            elif unit == "l":
+                number *= 1000
+            text_sizes.append(number)
+
+    unique_text_sizes = sorted({round(x, 4) for x in text_sizes})
+
+    if len(unique_text_sizes) == 1:
+        return int(unique_text_sizes[0]) if unique_text_sizes[0].is_integer() else int(round(unique_text_sizes[0]))
+
+    if len(unique_text_sizes) > 1:
+        if explicit is not None:
+            for value in unique_text_sizes:
+                if abs(value - explicit) <= 0.01:
+                    return int(value) if value.is_integer() else int(round(value))
         return None
 
-    try:
-        value = extractor(candidate)
-    except Exception:
-        return None
+    if explicit is not None:
+        return int(explicit) if explicit.is_integer() else int(round(explicit))
 
-    if value in (None, ""):
-        return None
-
-    try:
-        numeric = float(value)
-    except (TypeError, ValueError):
-        return None
-
-    return int(numeric) if numeric.is_integer() else int(round(numeric))
+    return None
 
 def _format_compare_is_oos(candidate: Dict[str, Any]) -> bool:
     if candidate.get("in_stock") is False:
@@ -459,6 +513,62 @@ def _format_compare_store(
         "results": cleaned,
     }
 
+def _format_compare_store_all(
+    store: str,
+    product: str,
+    requested_sizes: List[int],
+) -> Dict[str, Any]:
+    """Discover one store once and classify every returned variant by size."""
+    try:
+        raw = _legacy.run_store(store, _format_compare_query(product, None))
+    except Exception as exc:
+        return {
+            "store": store,
+            "results": [],
+            "error": f"{type(exc).__name__}: {exc}",
+        }
+
+    candidates = raw if isinstance(raw, list) else []
+    normalized = []
+    wanted = set(requested_sizes)
+
+    for candidate in candidates:
+        if not isinstance(candidate, dict):
+            continue
+        item = dict(candidate)
+        size = _format_compare_size(item)
+        if size is None or size not in wanted:
+            continue
+        item["size_ml"] = size
+        item["size_source"] = item.get("size_source", "central_format_parser")
+        normalized.append(item)
+
+    try:
+        validated = _engine._validate_candidates_only(product, normalized)
+    except Exception:
+        validated = normalized
+
+    cleaned = []
+    for candidate in validated or []:
+        if not isinstance(candidate, dict):
+            continue
+        size = _format_compare_size(candidate)
+        if size is None or size not in wanted:
+            continue
+        item = dict(candidate)
+        item["size_ml"] = size
+        try:
+            cleaned.append(_format_compare_clean_offer(item, store, size))
+        except ValueError:
+            continue
+
+    cleaned.sort(key=lambda offer: (
+        _format_compare_is_oos(offer),
+        _format_compare_num(offer.get("price_value")),
+    ))
+
+    return {"store": store, "results": cleaned}
+
 @app.get("/compare-formats")
 def compare_formats(
     q: str = Query(..., min_length=1),
@@ -496,35 +606,32 @@ def compare_formats(
 
     from concurrent.futures import ThreadPoolExecutor, as_completed
 
-    # True format comparison: every store/format pair is a separate discovery
-    # query. No result with a missing size can be relabelled as another format.
-    jobs = [
-        (store, size)
-        for size in requested_sizes
-        for store in FORMAT_STORES
-    ]
+    # One discovery per store, then classify all requested formats from the
+    # returned concrete candidates. The old implementation performed
+    # 8 stores x N formats searches, which created the ~1 minute delay and
+    # multiplied rate-limit pressure without adding validation value.
+    jobs = list(FORMAT_STORES)
 
     with ThreadPoolExecutor(max_workers=2) as pool:
         future_map = {
             pool.submit(
-                _format_compare_store,
+                _format_compare_store_all,
                 store,
                 product,
-                size,
-            ): (store, size)
-            for store, size in jobs
+                requested_sizes,
+            ): store
+            for store in jobs
         }
 
         for future in as_completed(future_map):
-            store, size = future_map[future]
-            key = f"{store}:{size}"
+            store = future_map[future]
             try:
                 result = future.result()
             except Exception as exc:
-                errors[key] = f"{type(exc).__name__}: {exc}"
+                errors[store] = f"{type(exc).__name__}: {exc}"
                 continue
             if result.get("error"):
-                errors[key] = result["error"]
+                errors[store] = result["error"]
             comparisons.extend(result.get("results") or [])
 
     # Group the flat offers by requested format.
