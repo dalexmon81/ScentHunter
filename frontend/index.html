@@ -1589,7 +1589,7 @@ function getSizeGroups(g){
     return {
       size,
       offers,
-      best:offers.find(o=>!isOfferOutOfStock(o))||null
+      best:offers.find(o=>offerStockRank(o)===0)||null
     };
   }).sort((a,b)=>{
     const an=a.size?Number(a.size):Infinity;
@@ -1734,7 +1734,7 @@ function showProducts(groups){
     // Se esiste un solo formato, la scheda del prodotto mostrerà direttamente
     // formato + negozi, evitando un terzo passaggio. Con più formati, invece,
     // la scheda del prodotto presenterà la scelta dei formati.
-    const best=g.offers.find(o=>!isOfferOutOfStock(o))||null;
+    const best=g.offers.find(o=>offerStockRank(o)===0)||null;
 
     return `<article class="product-choice" onclick='openProduct(${i})'>
       <div class="result-image">${img?`<img src="${esc(img)}" alt="${esc(displayPerfumeName(g.name,g.brand))}" onerror="this.outerHTML='🧴'">`:"🧴"}</div>
@@ -1878,7 +1878,7 @@ function verifiedComparisonForSize(row,size){
   });
   return {
     size_ml:key,
-    best:sorted.find(o=>!isOfferOutOfStock(o))||null,
+    best:sorted.find(o=>offerStockRank(o)===0)||null,
     offers:sorted
   };
 }
@@ -1908,7 +1908,7 @@ function renderFormatChoiceCard(gi,g,comparisons,sizes,loading=false){
     ${sizes.map(size=>{
       const row=bySize.get(String(size));
       const offers=verifiedOffersForSize(row?.offers,size);
-      const best=offers.find(o=>!isOfferOutOfStock(o))||null;
+      const best=offers.find(o=>offerStockRank(o)===0)||null;
       const available=!!best&&Number(sizeOfOffer(best))===Number(size);
       let priceText="Nessun prezzo disponibile";
       if(available)priceText=`da ${shPrice(best)}`;
@@ -2003,7 +2003,7 @@ function renderUnifiedFormatComparison(g,img,comparisons,sizes,saved){
   const sections=(sizes||[]).map(size=>{
     const row=bySize.get(String(size))||{size_ml:size,offers:[],best:null};
     const offers=verifiedOffersForSize(row.offers,size);
-    const best=offers.find(o=>!isOfferOutOfStock(o))||null;
+    const best=offers.find(o=>offerStockRank(o)===0)||null;
     return `<section class="comparison" style="margin-top:12px">
       <div class="format-compare-bar">
         <div class="format-compare-item">
