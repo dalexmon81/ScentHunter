@@ -696,3 +696,202 @@ def diagnose_format_flow(
         "by_format": by_size,
         "jobs": rows,
     }
+
+# ===== READ-ONLY FORMAT TRACE DIAGNOSTIC =====
+# Deep trace of ONE exact store/format call. This does not alter any live route.
+# It is intentionally sequential: the goal is attribution, not throughput.
+@app.get("/diagnose-format-trace")
+def diagnose_format_trace(
+    q: str = Query(..., min_length=1),
+    size: int = Query(..., ge=1, le=2000),
+    store: str = Query(..., min_length=1),
+):
+    product = str(q or "").strip()
+    store_name = str(store or "").strip().casefold()
+    requested_size = int(size)
+    query = _format_compare_query(product, requested_size)
+    started = _diag_time.monotonic()
+
+    def candidate_snapshot(c: Any) -> Dict[str, Any]:
+        if not isinstance(c, dict):
+            return {
+                "type": type(c).__name__,
+                "value": str(c)[:2000],
+            }
+
+        snap = {}
+        # Preserve every field relevant to discovery, matching, size,
+        # availability and navigation. No price or field is invented.
+        for key in (
+            "name", "brand", "title", "size_ml", "size", "format",
+            "volume", "quantity", "price", "price_value", "currency",
+            "in_stock", "availability", "stock", "status",
+            "url", "product_url", "link", "sku", "ean", "gtin", "gtin13",
+            "store", "image", "source", "size_source",
+        ):
+            if key in c:
+                value = c.get(key)
+                if isinstance(value, (str, int, float, bool)) or value is None:
+                    snap[key] = value
+                else:
+                    snap[key] = str(value)[:2000]
+        return snap
+
+    trace = {
+        "ok": True,
+        "diagnostic": "format_trace_read_only_v1",
+        "query": product,
+        "requested_size_ml": requested_size,
+        "store": store_name,
+        "exact_query": query,
+        "timings_ms": {},
+        "stages": {},
+        "final": [],
+        "error": None,
+    }
+
+    try:
+        t0 = _diag_time.monotonic()
+        raw = _legacy.run_store(store_name, query)
+        trace["timings_ms"]["run_store"] = round((_diag_time.monotonic() - t0) * 1000)
+
+        candidates = raw if isinstance(raw, list) else []
+        trace["stages"]["raw"] = {
+            "type": type(raw).__name__,
+            "count": len(candidates),
+            "candidates": [candidate_snapshot(c) for c in candidates[:50]],
+            "truncated": len(candidates) > 50,
+        }
+
+        # Measure the central size extractor BEFORE any format filtering.
+        t0 = _diag_time.monotonic()
+        raw_size_analysis = []
+        for idx, candidate in enumerate(candidates[:50]):
+            if not isinstance(candidate, dict):
+                raw_size_analysis.append({
+                    "index": idx,
+                    "parsed_size_ml": None,
+                    "reason": "non_dict_candidate",
+                    "candidate": candidate_snapshot(candidate),
+                })
+                continue
+            parsed = _format_compare_size(candidate)
+            raw_size_analysis.append({
+                "index": idx,
+                "parsed_size_ml": parsed,
+                "matches_requested_size": parsed == requested_size,
+                "reason": (
+                    "accepted_for_size"
+                    if parsed == requested_size
+                    else ("missing_size" if parsed is None else f"wrong_size:{parsed}")
+                ),
+                "candidate": candidate_snapshot(candidate),
+            })
+        trace["timings_ms"]["size_extraction_raw"] = round(
+            (_diag_time.monotonic() - t0) * 1000
+        )
+        trace["stages"]["size_extraction_before_validation"] = {
+            "requested_size_ml": requested_size,
+            "items": raw_size_analysis,
+        }
+
+        # This reproduces the exact pre-validation filtering used by
+        # /compare-formats, so we can see whether the loss happens here.
+        size_filtered = []
+        for candidate in candidates:
+            if not isinstance(candidate, dict):
+                continue
+            parsed = _format_compare_size(candidate)
+            if parsed is None or parsed != requested_size:
+                continue
+            item = dict(candidate)
+            item["size_ml"] = parsed
+            item["size_source"] = item.get(
+                "size_source",
+                "central_product_size_ml",
+            )
+            size_filtered.append(item)
+
+        trace["stages"]["after_exact_size_filter"] = {
+            "count": len(size_filtered),
+            "candidates": [candidate_snapshot(c) for c in size_filtered[:50]],
+            "dropped_count": max(0, len(candidates) - len(size_filtered)),
+        }
+
+        # Run the same central validator as /compare-formats.
+        t0 = _diag_time.monotonic()
+        try:
+            validated = _engine._validate_candidates_only(
+                product,
+                size_filtered,
+            )
+            validation_error = None
+        except Exception as exc:
+            validation_error = f"{type(exc).__name__}: {exc}"
+            validated = size_filtered
+        trace["timings_ms"]["central_validation"] = round(
+            (_diag_time.monotonic() - t0) * 1000
+        )
+        validated = validated or []
+
+        trace["stages"]["after_central_validation"] = {
+            "count": len(validated),
+            "validation_error": validation_error,
+            "candidates": [candidate_snapshot(c) for c in validated[:50]],
+            "dropped_count": max(0, len(size_filtered) - len(validated)),
+        }
+
+        # Final cleaning is also reproduced exactly.
+        cleaned = []
+        clean_rejected = []
+        for candidate in validated:
+            if not isinstance(candidate, dict):
+                clean_rejected.append({
+                    "reason": "non_dict_after_validation",
+                    "candidate": candidate_snapshot(candidate),
+                })
+                continue
+
+            explicit_size = _format_compare_size(candidate)
+            if explicit_size != requested_size:
+                clean_rejected.append({
+                    "reason": (
+                        "missing_size"
+                        if explicit_size is None
+                        else f"wrong_size:{explicit_size}"
+                    ),
+                    "candidate": candidate_snapshot(candidate),
+                })
+                continue
+
+            item = dict(candidate)
+            item["size_ml"] = explicit_size
+            try:
+                cleaned.append(
+                    _format_compare_clean_offer(
+                        item,
+                        store_name,
+                        requested_size,
+                    )
+                )
+            except Exception as exc:
+                clean_rejected.append({
+                    "reason": f"{type(exc).__name__}: {exc}",
+                    "candidate": candidate_snapshot(candidate),
+                })
+
+        trace["stages"]["final_cleaning"] = {
+            "count": len(cleaned),
+            "rejected_count": len(clean_rejected),
+            "rejected": clean_rejected[:50],
+            "candidates": [candidate_snapshot(c) for c in cleaned[:50]],
+        }
+        trace["final"] = cleaned[:50]
+
+    except Exception as exc:
+        trace["error"] = f"{type(exc).__name__}: {exc}"
+
+    trace["timings_ms"]["total"] = round(
+        (_diag_time.monotonic() - started) * 1000
+    )
+    return trace
