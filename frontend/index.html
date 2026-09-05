@@ -1740,6 +1740,29 @@ function applyProgressiveArchive(groups){
       ?(Array.isArray(master.formats_ml)?master.formats_ml.slice():[])
       :Array.from(new Set([...(meta.formats_ml||[]),...(g.formats_ml||[])]));
 
+    // Una sola offerta per negozio e formato. L'archivio progressivo può
+    // ricevere la stessa offerta con URL/nome leggermente diversi tra snapshot;
+    // non dobbiamo mai mostrarla due volte. Manteniamo la migliore offerta
+    // disponibile per ogni coppia negozio+formato.
+    const oneOfferPerStoreSize=new Map();
+    [...mergedByKey.values()].forEach(o=>{
+      const store=String(o?.store||o?._source_store||"").trim().toLowerCase();
+      const size=String(sizeOfOffer(o)||o?.size_ml||o?.size||"unknown").trim();
+      const key=`${store}|${size}`;
+      const old=oneOfferPerStoreSize.get(key);
+      if(!old){
+        oneOfferPerStoreSize.set(key,o);
+        return;
+      }
+      const oldOut=isOfferOutOfStock(old);
+      const newOut=isOfferOutOfStock(o);
+      if(oldOut&&!newOut){
+        oneOfferPerStoreSize.set(key,o);
+      }else if(oldOut===newOut&&shNum(o)<shNum(old)){
+        oneOfferPerStoreSize.set(key,o);
+      }
+    });
+
     output.push({
       ...g,
       brand:g.brand||meta.brand||"",
@@ -1749,7 +1772,7 @@ function applyProgressiveArchive(groups){
       catalog_id:g.catalog_id||meta.catalog_id||"",
       family_id:g.family_id||meta.family_id||"",
       catalog_variant:g.catalog_variant||meta.catalog_variant||"",
-      offers:[...mergedByKey.values()]
+      offers:[...oneOfferPerStoreSize.values()]
     });
   });
 
