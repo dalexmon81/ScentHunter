@@ -1763,42 +1763,77 @@ async function fetchFormatComparisons(g,sizes,onPartial){
   const wanted=[...new Set((sizes||[]).map(x=>String(x??"").trim()).filter(x=>/^\d+(?:[.,]\d+)?$/.test(x)))];
   if(!productName||!wanted.length)return [];
 
-  const initial=wanted.map(size=>({size_ml:String(size),best:null,offers:[]}));
-  if(typeof onPartial==="function")onPartial(initial,false,{});
+  // Per i formati multipli NON aspettiamo un confronto monolitico.
+  // Ogni negozio viene interrogato subito e, appena risponde, i suoi
+  // risultati vengono aggiunti alla schermata. La size viene sempre
+  // ricontrollata localmente prima di poter entrare nel formato.
+  const stores=Array.isArray(SEARCH_STORES)?[...SEARCH_STORES]:[
+    "bplatz","deloox","parfumcity","parfumzentrum",
+    "perfumemarket","sabina","orioudh","notino"
+  ];
+  const bySize=new Map(wanted.map(size=>[String(size),[]]));
+  const errors={};
 
-  try{
-    const params=new URLSearchParams({
-      q:productName,
-      formats:wanted.join(",")
+  const snapshot=()=>wanted.map(size=>{
+    const offers=verifiedOffersForSize(bySize.get(String(size))||[],size);
+    const sorted=[...offers].sort((a,b)=>{
+      const ar=offerStockRank(a),br=offerStockRank(b);
+      if(ar!==br)return ar-br;
+      return shNum(a)-shNum(b);
     });
-    const data=await fetchJSONWithTimeout(
-      backend()+"/compare-formats?"+params.toString(),
-      180000
-    );
+    return {
+      size_ml:String(size),
+      best:sorted.find(o=>offerStockRank(o)===0)||null,
+      offers:sorted
+    };
+  });
 
-    const rows=Array.isArray(data?.comparisons)?data.comparisons:[];
-    const result=wanted.map(size=>{
-      const row=rows.find(x=>Number(x?.size_ml||x?.size)===Number(size));
-      const offers=verifiedOffersForSize(row?.offers,size).sort((a,b)=>{
-        const ar=offerStockRank(a),br=offerStockRank(b);
-        if(ar!==br)return ar-br;
-        return shNum(a)-shNum(b);
+  if(typeof onPartial==="function")onPartial(snapshot(),false,errors);
+
+  // Tutti gli store partono insieme: niente coda 2+2+2+2 che può lasciare
+  // l'utente fermo per minuti. Il risultato di ogni store viene pubblicato
+  // appena arriva.
+  await Promise.all(stores.map(async store=>{
+    try{
+      const data=await fetchJSONWithTimeout(
+        backend()+"/test-store?store="+encodeURIComponent(store)+"&q="+encodeURIComponent(productName),
+        45000
+      );
+      if(data?.error)errors[store]=String(data.error);
+
+      const raw=Array.isArray(data?.results)?data.results:[];
+      raw.forEach(offer=>{
+        if(!offer||typeof offer!=="object")return;
+        const parsed=Number(sizeOfOffer(offer)||0);
+        if(!Number.isFinite(parsed))return;
+        const target=wanted.find(size=>Math.abs(Number(size)-parsed)<0.01);
+        if(!target)return;
+
+        const copy={...offer,size_ml:parsed};
+        const bucket=bySize.get(String(target));
+        if(!bucket)return;
+
+        const duplicate=bucket.some(existing=>{
+          const eu=String(existing.url||"");
+          const cu=String(copy.url||"");
+          const ep=shNum(existing);
+          const cp=shNum(copy);
+          return eu&&cu&&eu===cu&&Math.abs(ep-cp)<0.01;
+        });
+        if(!duplicate)bucket.push(copy);
       });
-      return {
-        size_ml:String(size),
-        best:offers.find(o=>offerStockRank(o)===0)||null,
-        offers
-      };
-    });
+    }catch(error){
+      errors[store]=String(error?.message||error||"timeout");
+    }
 
-    if(typeof onPartial==="function")onPartial(result,true,data?.errors||{});
-    return result;
-  }catch(error){
-    const errors={_compare_formats:String(error?.message||error||"errore")};
-    if(typeof onPartial==="function")onPartial(initial,true,errors);
-    return initial;
-  }
+    if(typeof onPartial==="function")onPartial(snapshot(),false,errors);
+  }));
+
+  const result=snapshot();
+  if(typeof onPartial==="function")onPartial(result,true,errors);
+  return result;
 }
+
 function getMasterFormats(g){
   try{
     const formats=Array.isArray(g?.formats_ml)?g.formats_ml:[];
