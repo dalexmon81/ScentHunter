@@ -140,7 +140,7 @@ body{position:relative}
 
 <style>
 .product-choice{margin-top:12px;padding:15px;border:1px solid #303238;border-radius:18px;background:#121416;display:flex;gap:13px;align-items:center;cursor:pointer;touch-action:pan-y;-webkit-tap-highlight-color:transparent}
-.product-choice-main{min-width:0;flex:1}.product-choice .arrow{color:#e7b83f;font-size:28px}
+.product-choice-main{min-width:0;flex:1}.product-choice .arrow{color:#e7b83f;font-size:28px}.product-choice.search-locked{cursor:default;opacity:.96}
 .detail-back{background:none;color:#e7b83f;padding:0 0 12px;font-size:14px;cursor:pointer}
 .offer-heart{background:none;color:#aaa;font-size:26px;cursor:pointer;padding:0 4px;opacity:1!important;pointer-events:auto!important;touch-action:manipulation}.offer-heart.saved{color:#e7b83f}
 .offer-line{display:flex;justify-content:space-between;align-items:center;gap:10px}
@@ -715,6 +715,7 @@ function backend(){
 let currentProductGroups=[];
 let currentOpenProductKey="";
 let currentOpenSizeKey=null;
+let searchInProgress=false;
 
 function shPrice(o){
   if(o&&o.price)return String(o.price);
@@ -1633,9 +1634,15 @@ function clearOpenProduct(){
 function showProducts(groups){
   currentProductGroups=groups;
   clearOpenProduct();
-  statusBox.textContent=groups.length
-    ?groups.length+(groups.length===1?" profumo trovato.":" profumi trovati.")
-    :"Nessun profumo trovato.";
+  if(searchInProgress){
+    statusBox.textContent=groups.length
+      ?groups.length+(groups.length===1?" profumo trovato.":" profumi trovati.")
+      :"";
+  }else{
+    statusBox.textContent=groups.length
+      ?groups.length+(groups.length===1?" profumo trovato.":" profumi trovati.")
+      :"Nessun profumo trovato.";
+  }
 
   resultsBox.innerHTML=groups.map((g,i)=>{
     const sizes=getSizeGroups(g);
@@ -1647,7 +1654,7 @@ function showProducts(groups){
     // la scheda del prodotto presenterà la scelta dei formati.
     const best=g.offers.find(o=>!isOfferOutOfStock(o))||null;
 
-    return `<article class="product-choice" onclick='openProduct(${i})'>
+    return `<article class="product-choice${searchInProgress?" search-locked":""}" onclick='openProduct(${i})'>
       <div class="result-image">${img?`<img src="${esc(img)}" alt="${esc(displayPerfumeName(g.name,g.brand))}" onerror="this.outerHTML='🧴'">`:"🧴"}</div>
       <div class="product-choice-main">
         <div class="name">${esc(g.brand ? g.brand+" - "+displayPerfumeName(g.name,g.brand) : displayPerfumeName(g.name,g.brand))}</div>
@@ -1801,6 +1808,7 @@ function renderFormatChoiceCard(gi,g,comparisons,sizes){
 }
 
 async function openProduct(i){
+  if(searchInProgress)return;
   const g=currentProductGroups[i];
   if(!g)return;
   currentOpenProductKey=productGroupKey(g);
@@ -2051,6 +2059,8 @@ async function searchStoresProgressive(term,onPartial){
 
 async function searchPerfume(){
  const q=queryInput.value.trim();if(!q){statusBox.textContent="";resultsBox.innerHTML="";errorsBox.innerHTML="";return}
+ searchInProgress=true;
+ currentProductGroups=[];
  searchButton.disabled=true;searchButton.classList.add("searching");
  let dots=0;
  const updateSearchButton=()=>{dots=(dots+1)%4;searchButton.innerHTML='<span class="search-fixed">CERCO</span><span class="search-dots">'+". ".trim().repeat(0)+". ".trim().repeat(dots)+'</span>'};
@@ -2138,7 +2148,14 @@ async function searchPerfume(){
   console.error(e);
   statusBox.textContent=String(e?.message||"Impossibile completare la ricerca.");
  }
- finally{clearInterval(dotsTimer);searchButton.disabled=false;searchButton.classList.remove("searching");searchButton.textContent="INIZIA LA RICERCA"}
+ finally{
+  searchInProgress=false;
+  clearInterval(dotsTimer);
+  searchButton.disabled=false;
+  searchButton.classList.remove("searching");
+  searchButton.textContent="INIZIA LA RICERCA";
+  if(currentProductGroups.length)showProducts(currentProductGroups);
+ }
 }
 
 window.searchPerfume=searchPerfume;
