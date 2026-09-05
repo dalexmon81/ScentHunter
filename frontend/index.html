@@ -1713,7 +1713,16 @@ function renderFormatChoiceCard(gi,g,comparisons,sizes){
       const best=row?.best||null;
       const offers=Array.isArray(row?.offers)?row.offers:[];
       const available=best&&!isOfferOutOfStock(best);
-      return `<div class="product-choice format-choice" onclick='openSize(${gi},${JSON.stringify(String(size))},true)'>
+      return `
+        <div
+          class="product-choice format-choice"
+          role="button"
+          tabindex="0"
+          data-format-size="${esc(String(size))}"
+          onclick="openSize(${gi}, ${JSON.stringify(String(size))}, true)"
+          onkeydown="if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); openSize(${gi}, ${JSON.stringify(String(size))}, true); }"
+        >
+        
         <div class="format-icon">🧴</div>
         <div class="product-choice-main">
           <div class="name">${esc(formatLabel(String(size)))}</div>
@@ -1798,11 +1807,23 @@ function renderOffersHtml(g,img,offers,saved){
 function openSize(gi,sizeKey,fromFormats=true){
   const g=currentProductGroups[gi]; if(!g)return;
   currentOpenProductKey=productGroupKey(g); currentOpenSizeKey=String(sizeKey||"");
-  const cached=formatComparisonFor(g,sizeKey);
-  const fallback=getSizeGroups(g).find(s=>s.size===String(sizeKey));
-  const cachedOffers=Array.isArray(cached?.offers)?cached.offers:[];
-  const selected=(cached && cachedOffers.length)?{size:String(cached.size_ml||cached.size||sizeKey),offers:cachedOffers,best:cached.best||null}:fallback;
-  if(!selected)return;
+  const cached = formatComparisonFor(g, sizeKey);
+ 
+  const selected = cached
+    ? {
+        size_ml: Number(cached.size_ml ?? cached.size ?? sizeKey),
+        offers: Array.isArray(cached.offers)
+          ? cached.offers
+          : [],
+        best: cached.best ?? null
+      }
+    : {
+        size_ml: Number(sizeKey),
+        offers: [],
+        best: null
+      };
+
+  
   const offers=selected.offers||[]; const saved=getWishlist(); const img=g.image||"";
   statusBox.textContent="";
   resultsBox.innerHTML=`<article class="comparison"><button class="detail-back" onclick="openProduct(${gi})">← Torna ai formati</button><div class="comparison-head"><div class="result-image">${img?`<img src="${esc(img)}" alt="${esc(displayPerfumeName(g.name,g.brand))}" onerror="this.outerHTML='🧴'">`:"🧴"}</div><div class="result-main"><div class="store">${esc(g.brand||"")}</div><div class="name">${esc(displayPerfumeName(g.name,g.brand))}</div><div class="offer-meta">${esc(formatLabel(String(selected.size)))}</div></div></div><div class="format-compare-bar"><div class="format-compare-item"><div class="format-compare-copy"><div class="format-compare-label">FORMATO</div><div class="format-compare-value">${esc(formatLabel(String(selected.size)))}</div></div></div><div class="format-compare-item"><div class="format-compare-copy"><div class="format-compare-label">CONFRONTA I PREZZI</div><div class="format-compare-value">${offers.length} ${offers.length===1?"negozio":"negozi"}</div></div></div></div>${renderOffersHtml(g,img,offers,saved)}</article>`;
