@@ -716,6 +716,8 @@ let currentProductGroups=[];
 let currentOpenProductKey="";
 let currentOpenSizeKey=null;
 let searchInProgress=false; // Le schede restano cliccabili anche durante la ricerca.
+let progressiveOfferArchive=new Map(); // Conserva ogni negozio già ricevuto tra gli snapshot.
+let progressiveProductArchive=new Map(); // Conserva nome/brand/immagine/formati già visti.
 
 function shPrice(o){
   if(o&&o.price)return String(o.price);
@@ -1631,6 +1633,91 @@ function clearOpenProduct(){
   currentOpenSizeKey=null;
 }
 
+function progressiveOfferKey(o,g){
+  const store=String(o?.store||o?._source_store||"").trim().toLowerCase();
+  const url=String(o?.url||o?._source_url||"").trim().toLowerCase();
+  const size=String(sizeOfOffer(o)||o?.size_ml||o?.size||"").trim();
+  const name=normalizePerfumeName(o?.name||g?.name||"").toLowerCase();
+  return `${store}|${url}|${size}|${name}`;
+}
+
+function archiveProgressiveGroups(groups){
+  (Array.isArray(groups)?groups:[]).forEach(g=>{
+    const pkey=productGroupKey(g);
+    if(!pkey)return;
+
+    const previous=progressiveProductArchive.get(pkey)||{};
+    progressiveProductArchive.set(pkey,{
+      ...previous,
+      brand:g.brand||previous.brand||"",
+      name:g.name||previous.name||"",
+      image:g.image||previous.image||"",
+      formats_ml:Array.from(new Set([...(previous.formats_ml||[]),...(g.formats_ml||[])])),
+      catalog_id:g.catalog_id||previous.catalog_id||"",
+      family_id:g.family_id||previous.family_id||"",
+      catalog_variant:g.catalog_variant||previous.catalog_variant||""
+    });
+
+    const offers=Array.isArray(g.offers)?g.offers:[];
+    const offerMap=progressiveOfferArchive.get(pkey)||new Map();
+    offers.forEach(o=>{
+      const key=progressiveOfferKey(o,g);
+      if(!key)return;
+      const existing=offerMap.get(key);
+      // Se la stessa offerta viene ripubblicata, preferiamo la versione più
+      // completa/disponibile, senza mai cancellare ciò che era già arrivato.
+      if(!existing){
+        offerMap.set(key,{...o});
+        return;
+      }
+      const existingOut=isOfferOutOfStock(existing);
+      const nextOut=isOfferOutOfStock(o);
+      if(existingOut && !nextOut){
+        offerMap.set(key,{...existing,...o});
+      }else{
+        offerMap.set(key,{...existing,...o});
+      }
+    });
+    progressiveOfferArchive.set(pkey,offerMap);
+  });
+}
+
+function applyProgressiveArchive(groups){
+  return (Array.isArray(groups)?groups:[]).map(g=>{
+    const pkey=productGroupKey(g);
+    const meta=progressiveProductArchive.get(pkey)||{};
+    const offerMap=progressiveOfferArchive.get(pkey)||new Map();
+    const archived=[...offerMap.values()];
+    const local=[...(Array.isArray(g.offers)?g.offers:[])];
+    const mergedByKey=new Map();
+    [...local,...archived].forEach(o=>{
+      const key=progressiveOfferKey(o,g);
+      if(!key)return;
+      const old=mergedByKey.get(key);
+      if(!old){mergedByKey.set(key,o);return;}
+      const oldOut=isOfferOutOfStock(old), newOut=isOfferOutOfStock(o);
+      if(oldOut&&!newOut)mergedByKey.set(key,{...old,...o});
+      else mergedByKey.set(key,{...old,...o});
+    });
+    return {
+      ...g,
+      brand:g.brand||meta.brand||"",
+      name:g.name||meta.name||"",
+      image:g.image||meta.image||"",
+      formats_ml:Array.from(new Set([...(meta.formats_ml||[]),...(g.formats_ml||[])])),
+      catalog_id:g.catalog_id||meta.catalog_id||"",
+      family_id:g.family_id||meta.family_id||"",
+      catalog_variant:g.catalog_variant||meta.catalog_variant||"",
+      offers:[...mergedByKey.values()]
+    };
+  });
+}
+
+function resetProgressiveArchive(){
+  progressiveOfferArchive=new Map();
+  progressiveProductArchive=new Map();
+}
+
 function showProducts(groups){
   currentProductGroups=groups;
   clearOpenProduct();
@@ -1812,6 +1899,7 @@ async function openProduct(i){
   if(!g)return;
   currentOpenProductKey=productGroupKey(g);
   currentOpenSizeKey=null;
+
   const detected=getSizeGroups(g).map(s=>s.size).filter(Boolean);
   const masterFormats=getMasterFormats(g);
   const sizes=[...new Set(masterFormats.length?masterFormats:detected)].sort((a,b)=>Number(a)-Number(b));
@@ -1819,17 +1907,25 @@ async function openProduct(i){
   const saved=getWishlist();
   statusBox.textContent="";
 
-  // UN SOLO FORMATO: resta il comportamento storico, terza scheda evitata.
+  // Se il catalogo conosce un solo formato ma uno scraper non ha scritto
+  // esplicitamente size_ml, le sue offerte appartengono comunque a quel
+  // formato: non dobbiamo trasformarle in una scheda con 0 negozi.
   if(sizes.length===1){
-    const selected=getSizeGroups(g).find(s=>s.size===sizes[0]);
-    const offers=selected?.offers||[];
+    const selected=getSizeGroups(g).find(s=>s.size===String(sizes[0]));
+    let offers=selected?.offers||[];
+    if(!offers.length && Array.isArray(g.offers)&&g.offers.length){
+      offers=g.offers.map(o=>{
+        const copy={...o};
+        if(!sizeOfOffer(copy))copy.size_ml=String(sizes[0]);
+        return copy;
+      });
+    }
     renderSingleFormatComparison(g,img,offers,sizes[0],saved);
     return;
   }
 
-  // DUE O TRE FORMATI: la scheda si apre SUBITO usando i dati già arrivati.
-  // Durante la ricerca questi dati vengono aggiornati a ogni risposta dei negozi,
-  // così l'utente può entrare nel prodotto e vedere le offerte comparire progressivamente.
+  // Più formati: la scheda si apre immediatamente con tutto ciò che è già
+  // arrivato. I nuovi snapshot la aggiorneranno senza chiudere la scheda.
   const localComparisons=getSizeGroups(g).filter(x=>x.size).map(s=>({
     size_ml:String(s.size),best:s.best,offers:s.offers
   }));
@@ -1837,8 +1933,8 @@ async function openProduct(i){
   window._formatComparisonsByProduct[currentOpenProductKey]=localComparisons;
   renderFormatChoiceCard(i,g,localComparisons,sizes);
 
-  // Durante la ricerca non aspettiamo /compare-formats: la ricerca principale è la
-  // fonte progressiva. Il confronto secondario viene usato solo a ricerca terminata.
+  // /compare-formats resta un arricchimento finale e non deve ritardare la
+  // visualizzazione progressiva della ricerca principale.
   if(searchInProgress)return;
 
   try{
@@ -1856,7 +1952,6 @@ async function openProduct(i){
   }catch(error){
     console.warn("Confronto formati",error);
   }
-
 }
 
 function renderSingleFormatComparison(g,img,offers,size,saved){
@@ -1995,7 +2090,7 @@ async function getSearchStores(term){
 
 async function searchStoresProgressive(term,onPartial){
  const timeoutMs=120000;
- const pollMs=650;
+ const pollMs=150;
  const started=await fetchJSONWithTimeout(
   backend()+"/search-start?q="+encodeURIComponent(term),
   15000
@@ -2064,6 +2159,7 @@ async function searchStoresProgressive(term,onPartial){
 async function searchPerfume(){
  const q=queryInput.value.trim();if(!q){statusBox.textContent="";resultsBox.innerHTML="";errorsBox.innerHTML="";return}
  searchInProgress=true;
+ resetProgressiveArchive();
  currentProductGroups=[];
  searchButton.disabled=true;searchButton.classList.add("searching");
  let dots=0;
@@ -2076,6 +2172,8 @@ async function searchPerfume(){
   let data;
   const renderData=(partialData,final=false)=>{
    let groups=shGroupData(partialData||{});
+   archiveProgressiveGroups(groups);
+   groups=applyProgressiveArchive(groups);
 
    currentProductGroups=groups;
 
@@ -2126,6 +2224,8 @@ async function searchPerfume(){
   // nome canonico/alias. I fallback vengono eseguiti uno alla volta per
   // evitare una seconda raffica simultanea di richieste.
   let groups=shGroupData(data||{});
+  archiveProgressiveGroups(groups);
+  groups=applyProgressiveArchive(groups);
   if(!groups.length){
    const fallbackQueries=buildCatalogFallbackQueries(q);
    for(let i=0;i<fallbackQueries.length;i++){
@@ -2139,6 +2239,8 @@ async function searchPerfume(){
       if(!data.errors[store])data.errors[store]=error;
      });
      groups=shGroupData(data||{});
+     archiveProgressiveGroups(groups);
+     groups=applyProgressiveArchive(groups);
      renderData(data,i===fallbackQueries.length-1||groups.length>0);
      if(groups.length)break;
     }catch(e){
