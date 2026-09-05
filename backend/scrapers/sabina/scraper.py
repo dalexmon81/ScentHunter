@@ -510,97 +510,6 @@ def extract_price_from_html(soup):
 
     return None, None
 
-def extract_variant_offers_from_product_page(soup):
-    """Extract explicit size/price pairs exposed by Sabina's variant UI.
-
-    Sabina keeps 30/50/100 ml variants on the same product URL. The selected
-    size is not enough for a comparison: the page visibly exposes each size
-    followed by its own price. We read only product-specific containers and
-    pair each size with the first currency price immediately following it.
-
-    No price is inferred from another size and no availability is inferred
-    from the existence of a price.
-    """
-    selectors = (
-        ".product-variants",
-        ".product-combination",
-        ".product-information",
-        ".product-detail",
-        ".product-actions",
-        ".product-container",
-        "main",
-        "#main",
-    )
-
-    amount_re = re.compile(
-        r"(?<![\d.,])"
-        r"([0-9]{1,4}(?:[.,][0-9]{1,2})?)\s*"
-        r"(?:€|eur|\$|usd|£|gbp)"
-        r"|"
-        r"(?:€|eur|\$|usd|£|gbp)\s*"
-        r"([0-9]{1,4}(?:[.,][0-9]{1,2})?)",
-        re.I,
-    )
-    size_re = re.compile(
-        r"(?<![\d.,])([0-9]{1,4}(?:[.,][0-9]+)?)\s*"
-        r"(?:ml|millilitros?|milliliters?)\b",
-        re.I,
-    )
-
-    best = {}
-    seen_nodes = set()
-
-    for selector in selectors:
-        for node in soup.select(selector):
-            if id(node) in seen_nodes:
-                continue
-            seen_nodes.add(id(node))
-
-            text = clean(node.get_text(" ", strip=True))
-            if not text:
-                continue
-
-            sizes = list(size_re.finditer(text))
-            if len(sizes) < 2:
-                continue
-
-            for index, size_match in enumerate(sizes):
-                raw_size = size_match.group(1)
-                try:
-                    numeric_size = float(raw_size.replace(",", "."))
-                except (TypeError, ValueError):
-                    continue
-                size_ml = int(numeric_size) if numeric_size.is_integer() else numeric_size
-
-                start = size_match.end()
-                end = sizes[index + 1].start() if index + 1 < len(sizes) else min(len(text), start + 180)
-                fragment = text[start:end]
-
-                price_match = amount_re.search(fragment)
-                if not price_match:
-                    continue
-
-                raw_price = price_match.group(1) or price_match.group(2)
-                price = money_to_float(raw_price)
-                if price is None:
-                    continue
-
-                # Reject percentage/discount-like numbers accidentally caught
-                # between a size and the next size. A bottle price is a normal
-                # retail amount; zero/negative values are never valid here.
-                if price <= 0:
-                    continue
-
-                best.setdefault(size_ml, {
-                    "size_ml": size_ml,
-                    "price": price,
-                    "currency": "EUR",
-                    "source": "sabina_product_variant",
-                })
-
-    return [best[size] for size in sorted(best)]
-
-
 def extract_size_ml_from_product_page(soup, title=""):
     """
     Read the selected product size from product-specific content.
@@ -1044,6 +953,88 @@ def _select_product_offer(product, final_url, title, size_ml):
     return priced[0] if priced else candidates[0]
 
 
+
+def extract_variant_offers_from_page(soup):
+    """Return explicit size/price pairs exposed by the current product page.
+
+    The Sabina page prints the variants as separate UI entries.  We deliberately
+    accept a DOM node only when it contains exactly one bottle size and one
+    euro price.  This prevents the ``100 ml`` inside ``€/100ml`` from being
+    paired with the preceding 50 ml price.
+    """
+    variants = []
+    seen = set()
+
+    nodes = soup.find_all(
+        ["option", "label", "button", "li", "div", "span"],
+        limit=4000,
+    )
+
+    for node in nodes:
+        text = clean(node.get_text(" ", strip=True))
+        if not text:
+            continue
+
+        # Remove unit-price fragments such as "202,27 € / 100ml" before
+        # extracting the bottle size.
+        variant_text = re.sub(
+            r"\d+[.,]\d{2}\s*(?:€|EUR)\s*/\s*\d+(?:[.,]\d+)?\s*ml\b",
+            " ",
+            text,
+            flags=re.I,
+        )
+
+        sizes = []
+        for match in re.finditer(r"(?<![/\d])(\d+(?:[.,]\d+)?)\s*ml\b", variant_text, re.I):
+            size = extract_size_ml(match.group(0))
+            if size is not None:
+                sizes.append(size)
+
+        prices = []
+        for match in re.finditer(r"(\d+[.,]\d{2})\s*(?:€|EUR)", variant_text, re.I):
+            price = money_to_float(match.group(1))
+            if price is not None:
+                prices.append(price)
+
+        # One concrete variant entry: exactly one size and at least one price.
+        # If a DOM node contains multiple sizes, it is a container for the
+        # selector and is intentionally ignored.
+        if len(sizes) != 1 or not prices:
+            continue
+
+        size = sizes[0]
+        price = prices[0]
+        key = (float(size), round(float(price), 2))
+        if key in seen:
+            continue
+        seen.add(key)
+        variants.append((size, price))
+
+    # Fallback for pages where the variant selector is rendered as plain text:
+    # use short text fragments separated by common list delimiters, never the
+    # entire page text.  This keeps unrelated recommended-product prices out.
+    if not variants:
+        page_text = clean(soup.get_text(" ", strip=True))
+        fragments = re.split(r"\s*[•·|]\s*|(?<=€)\s+", page_text)
+        for fragment in fragments:
+            sizes = [
+                extract_size_ml(m.group(0))
+                for m in re.finditer(r"(?<![/\d])(\d+(?:[.,]\d+)?)\s*ml\b", fragment, re.I)
+            ]
+            sizes = [x for x in sizes if x is not None]
+            prices = [
+                money_to_float(m.group(1))
+                for m in re.finditer(r"(\d+[.,]\d{2})\s*(?:€|EUR)", fragment, re.I)
+            ]
+            prices = [x for x in prices if x is not None]
+            if len(sizes) == 1 and prices:
+                key = (float(sizes[0]), round(float(prices[0]), 2))
+                if key not in seen:
+                    seen.add(key)
+                    variants.append((sizes[0], prices[0]))
+
+    return sorted(variants, key=lambda x: (float(x[0]), float(x[1])))
+
 def extract_product_page(session, url, query):
     try:
         response = session.get(
@@ -1201,11 +1192,8 @@ def extract_product_page(session, url, query):
         page_text,
     )
 
-    variant_offers = extract_variant_offers_from_product_page(soup)
-
     return {
         "store": STORE,
-        "_variant_offers": variant_offers,
 
         "source": {
             "url": final_url,
@@ -1359,63 +1347,6 @@ def extract_product_page(session, url, query):
         ),
     }
 
-def expand_product_variants(product):
-    """Return one Sabina result per explicitly priced bottle size."""
-    if not isinstance(product, dict):
-        return []
-
-    # Re-fetching is deliberately avoided here: this helper receives the
-    # already parsed product. Variant extraction is performed in the page
-    # parser below and stored in the private field.
-    variants = product.pop("_variant_offers", None)
-    if not variants:
-        return [product]
-
-    base_size = (
-        product.get("attributes", {})
-        .get("size_ml", {})
-        .get("value")
-        if isinstance(product.get("attributes"), dict)
-        else None
-    )
-    base_availability = product.get("offer", {}).get("availability", "unknown")
-    results = []
-
-    for variant in variants:
-        item = json.loads(json.dumps(product, ensure_ascii=False))
-        size = variant["size_ml"]
-        price = variant["price"]
-
-        item["attributes"]["size_ml"] = {
-            "value": size,
-            "source": "product_variant_text",
-        }
-        item["offer"]["price"] = price
-        item["offer"]["currency"] = variant.get("currency", "EUR")
-
-        # Only the selected page variant has authoritative purchase evidence.
-        # Other variants keep unknown availability rather than being inferred
-        # from their price.
-        if base_size is not None and float(size) == float(base_size):
-            item["offer"]["availability"] = base_availability
-        else:
-            item["offer"]["availability"] = "unknown"
-
-        item["provenance"]["price"] = "sabina_product_variant"
-        item["provenance"]["size_ml"] = "product_variant_text"
-
-        item["price"] = price
-        item["size_ml"] = size
-        item["available"] = (
-            True if item["offer"]["availability"] == "in_stock"
-            else False if item["offer"]["availability"] == "out_of_stock"
-            else None
-        )
-        results.append(item)
-
-    return results or [product]
-
-
 def search(query):
     query = clean(query)
 
@@ -1443,24 +1374,42 @@ def search(query):
             if not product:
                 continue
 
-            expanded_products = expand_product_variants(product)
+            # Re-read the product page once to expose all explicit Sabina
+            # bottle variants when the page contains a variant selector.
+            variant_products = []
+            try:
+                page_response = session.get(url, headers=HEADERS, timeout=TIMEOUT, allow_redirects=True)
+                if page_response.ok:
+                    page_soup = BeautifulSoup(page_response.text, "html.parser")
+                    for variant_size, variant_price in extract_variant_offers_from_page(page_soup):
+                        variant = dict(product)
+                        variant["size_ml"] = variant_size
+                        variant["name"] = product.get("name") or ""
+                        variant["price"] = f"{variant_price:.2f}".replace(".", ",") + " €"
+                        variant["offer"] = dict(product.get("offer") or {})
+                        variant["offer"]["price"] = variant_price
+                        variant.setdefault("attributes", {})["size_ml"] = {"value": variant_size, "source": "product_page_variant"}
+                        variant_products.append(variant)
+            except requests.RequestException:
+                pass
+            if variant_products:
+                for variant in variant_products:
+                    results.append(variant)
+                continue
 
-            for expanded in expanded_products:
-                product_id = (
-                    expanded.get("identity", {})
-                    .get("store_product_id", {})
-                    .get("value")
-                )
+            product_id = (
+                product.get("identity", {})
+                .get("store_product_id", {})
+                .get("value")
+            )
 
-                key = (product_id, expanded.get("attributes", {})
-                    .get("size_ml", {})
-                    .get("value") if isinstance(expanded.get("attributes"), dict) else None)
+            key = product_id or product.get("url")
 
-                if key in seen:
-                    continue
+            if key in seen:
+                continue
 
-                seen.add(key)
-                results.append(expanded)
+            seen.add(key)
+            results.append(product)
 
         return results
 
