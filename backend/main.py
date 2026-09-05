@@ -274,86 +274,103 @@ def _format_compare_num(value: Any) -> float:
         except Exception:
             return float("inf")
 
-def _format_compare_size(
-    candidate: Dict[str, Any],
-) -> int | None:
-    """Resolve the candidate's real package size with conflict protection.
+def _format_compare_size(candidate: Dict[str, Any]) -> int | None:
+    """Resolve one concrete bottle size conservatively.
 
-    A scraper may expose a stale/inherited size_ml while the actual product
-    title/URL contains another explicit size. Text attached to the concrete
-    offer is authoritative when it contains exactly one package size.
-    Conflicting textual sizes are treated as unknown unless the explicit
-    structured size agrees with one of them.
+    Text containing an explicit bottle size is authoritative. Structured size
+    metadata is accepted only when it does not contradict explicit text.
+    Multiple conflicting textual sizes make the candidate unknown unless the
+    structured value exactly identifies one of those textual sizes.
     """
-    candidate = candidate or {}
+    if not isinstance(candidate, dict):
+        return None
 
-    explicit = None
-    for key in ("size_ml", "volume_ml", "format_ml"):
-        value = candidate.get(key)
-        if value in (None, ""):
-            continue
+    def _num(value: Any) -> float | None:
         try:
-            explicit = float(str(value).replace(",", "."))
-            break
+            return float(str(value).replace(",", ".").strip())
         except (TypeError, ValueError):
-            continue
+            return None
 
-    text_parts = []
-    for key in (
-        "name", "title", "product_name", "size", "format", "volume",
-        "url", "product_url",
-    ):
+    def _nested(value: Any) -> Any:
+        if isinstance(value, dict):
+            return value.get("value")
+        return value
+
+    texts: List[str] = []
+    for key in ("name", "title", "product_name", "size", "format", "volume"):
         value = candidate.get(key)
         if value not in (None, ""):
-            text_parts.append(str(value))
+            texts.append(str(_nested(value)))
 
     source = candidate.get("source")
     if isinstance(source, dict):
-        for key in ("name", "title", "url", "product_url"):
+        for key in ("name", "title", "size", "format", "volume"):
             value = source.get(key)
             if value not in (None, ""):
-                text_parts.append(str(value))
+                texts.append(str(_nested(value)))
 
     raw_data = candidate.get("raw_data")
     if isinstance(raw_data, dict):
-        for key in ("name", "title", "product_title", "size", "format", "volume", "url", "product_url"):
+        for key in ("name", "title", "product_name", "size", "format", "volume"):
             value = raw_data.get(key)
             if value not in (None, ""):
-                text_parts.append(str(value))
+                texts.append(str(_nested(value)))
 
-    text_sizes = []
-    pattern = re.compile(r"\b(\d{1,4}(?:[.,]\d+)?)\s*(ml|cl|dl|l)\b", re.I)
-    for text in text_parts:
-        for match in pattern.finditer(text):
-            try:
-                number = float(match.group(1).replace(",", "."))
-            except (TypeError, ValueError):
+    text_sizes: List[float] = []
+    for text in texts:
+        for match in re.finditer(r"(?<!\d)(\d{1,4}(?:[.,]\d+)?)\s*(ml|cl)\b", text, re.I):
+            value = _num(match.group(1))
+            if value is None:
                 continue
-            unit = match.group(2).lower()
-            if unit == "cl":
-                number *= 10
-            elif unit == "dl":
-                number *= 100
-            elif unit == "l":
-                number *= 1000
-            text_sizes.append(number)
+            if match.group(2).lower() == "cl":
+                value *= 10
+            if value not in text_sizes:
+                text_sizes.append(value)
 
-    unique_text_sizes = sorted({round(x, 4) for x in text_sizes})
+    structured_values: List[Any] = [
+        candidate.get("size_ml"), candidate.get("volume_ml"),
+        candidate.get("format_ml"), candidate.get("size"),
+        candidate.get("volume"), candidate.get("format"),
+    ]
+    attributes = candidate.get("attributes")
+    if isinstance(attributes, dict):
+        structured_values.extend(
+            attributes.get(key) for key in
+            ("size_ml", "volume_ml", "format_ml", "size", "volume", "format")
+        )
 
-    if len(unique_text_sizes) == 1:
-        return int(unique_text_sizes[0]) if unique_text_sizes[0].is_integer() else int(round(unique_text_sizes[0]))
+    structured_size: float | None = None
+    for value in structured_values:
+        value = _nested(value)
+        if value in (None, ""):
+            continue
+        if isinstance(value, str):
+            match = re.search(r"(?<!\d)(\d{1,4}(?:[.,]\d+)?)\s*(ml|cl)\b", value, re.I)
+            if match:
+                value = match.group(1)
+                if match.group(2).lower() == "cl":
+                    value = float(value.replace(",", ".")) * 10
+            else:
+                value = _num(value)
+        else:
+            value = _num(value)
+        if value is not None:
+            structured_size = value
+            break
 
-    if len(unique_text_sizes) > 1:
-        if explicit is not None:
-            for value in unique_text_sizes:
-                if abs(value - explicit) <= 0.01:
+    if len(text_sizes) == 1:
+        return int(text_sizes[0]) if text_sizes[0].is_integer() else int(round(text_sizes[0]))
+
+    if len(text_sizes) > 1:
+        if structured_size is not None:
+            for value in text_sizes:
+                if abs(value - structured_size) <= 0.01:
                     return int(value) if value.is_integer() else int(round(value))
         return None
 
-    if explicit is not None:
-        return int(explicit) if explicit.is_integer() else int(round(explicit))
-
-    return None
+    if structured_size is None:
+        return None
+    return int(structured_size) if structured_size.is_integer() else int(round(structured_size))
 
 def _format_compare_is_oos(candidate: Dict[str, Any]) -> bool:
     if candidate.get("in_stock") is False:
@@ -405,9 +422,26 @@ def _format_compare_clean_offer(
             offer.get("price")
         )
 
-    offer["in_stock"] = not _format_compare_is_oos(
-        offer
-    )
+    # Never infer availability from the mere presence of a price. Preserve an
+    # explicit in_stock value; otherwise derive it only from an explicit stock/
+    # availability marker. Unknown stock remains None.
+    if "in_stock" not in offer or offer.get("in_stock") is None:
+        stock_text = " ".join(
+            str(offer.get(k) or "")
+            for k in ("availability", "stock", "status", "stock_status", "availability_status")
+        ).casefold()
+        if any(marker in stock_text for marker in (
+            "out of stock", "out-of-stock", "non disponibile", "nicht verfügbar",
+            "indisponible", "rupture", "agotado", "esaurito", "sold out",
+        )):
+            offer["in_stock"] = False
+        elif any(marker in stock_text for marker in (
+            "in stock", "en stock", "available", "disponibile", "disponible subito",
+            "ajouter au panier", "add to cart",
+        )):
+            offer["in_stock"] = True
+        else:
+            offer["in_stock"] = None
 
     return offer
 
@@ -500,9 +534,16 @@ def _format_compare_store(
         except ValueError:
             continue
 
+    def _stock_rank(offer: Dict[str, Any]) -> int:
+        if offer.get("in_stock") is True:
+            return 0
+        if offer.get("in_stock") is False or _format_compare_is_oos(offer):
+            return 2
+        return 1
+
     cleaned.sort(
         key=lambda offer: (
-            _format_compare_is_oos(offer),
+            _stock_rank(offer),
             _format_compare_num(offer.get("price_value")),
         )
     )
@@ -612,7 +653,7 @@ def compare_formats(
     # multiplied rate-limit pressure without adding validation value.
     jobs = list(FORMAT_STORES)
 
-    with ThreadPoolExecutor(max_workers=2) as pool:
+    with ThreadPoolExecutor(max_workers=min(8, len(jobs))) as pool:
         future_map = {
             pool.submit(
                 _format_compare_store_all,
@@ -1007,4 +1048,3 @@ def diagnose_format_trace(
         (_diag_time.monotonic() - started) * 1000
     )
     return trace
-
