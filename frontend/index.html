@@ -1712,7 +1712,9 @@ function renderFormatChoiceCard(gi,g,comparisons,sizes){
       const row=bySize.get(String(size));
       const best=row?.best||null;
       const offers=Array.isArray(row?.offers)?row.offers:[];
-      const available=best&&!isOfferOutOfStock(best);
+      const available = best && !isOfferOutOfStock(best);
+      const hasOffers = offers.length > 0;
+
       return `
         <div
           class="product-choice format-choice"
@@ -1726,9 +1728,16 @@ function renderFormatChoiceCard(gi,g,comparisons,sizes){
         <div class="format-icon">🧴</div>
         <div class="product-choice-main">
           <div class="name">${esc(formatLabel(String(size)))}</div>
-          <div class="bestprice">${available?`da ${esc(shPrice(best))}`:`Nessun prezzo disponibile`}</div>
-          ${offers.length?`<div class="offer-meta">${offers.length} ${offers.length===1?"negozio":"negozi"}</div>`:""}
-        </div>
+          <div class="best-price">
+            ${
+             available
+               ? `da ${esc(shPrice(best))}`
+               : hasOffers
+                 ? "Vedi offerte"
+                 : "Nessun prezzo disponibile"
+            }
+          </div>
+
         <div class="arrow">›</div>
       </div>`;
     }).join("")}
