@@ -358,11 +358,10 @@ def _format_compare_clean_offer(
     return offer
 
 def _format_compare_query(product: str, requested_size: int | None = None) -> str:
-    """Build an explicit store query for one requested bottle size.
+    """Build the store discovery query.
 
-    A format comparison must not run one generic store search and then pretend
-    that its first result represents every requested size. The size is therefore
-    part of discovery, while acceptance still requires an explicit parsed size.
+    Format comparison uses generic product discovery; the requested size is
+    validated later from explicit parsed product data.
     """
     base = str(product or "").strip()
     if requested_size is None:
@@ -374,13 +373,15 @@ def _format_compare_store(
     product: str,
     requested_size: int,
 ) -> Dict[str, Any]:
-    """Search one store for exactly one requested format.
+    """Search one store and accept only the exact requested parsed format.
 
-    The scraper is never allowed to have a missing size silently assigned to
-    the requested format. A candidate is accepted only when the scraper/backend
-    extracts an explicit size equal to ``requested_size``.
+    Discovery is generic so store-level query filters cannot discard a valid
+    product merely because its size is absent from the searchable title.
+    Acceptance still requires an explicit parsed size equal to requested_size.
     """
-    query = _format_compare_query(product, requested_size)
+    # Discovery must stay generic. The requested format is validated only
+    # after the scraper returns explicit product size data.
+    query = _format_compare_query(product, None)
 
     try:
         raw = _legacy.run_store(store, query)
