@@ -510,6 +510,97 @@ def extract_price_from_html(soup):
 
     return None, None
 
+def extract_variant_offers_from_product_page(soup):
+    """Extract explicit size/price pairs exposed by Sabina's variant UI.
+
+    Sabina keeps 30/50/100 ml variants on the same product URL. The selected
+    size is not enough for a comparison: the page visibly exposes each size
+    followed by its own price. We read only product-specific containers and
+    pair each size with the first currency price immediately following it.
+
+    No price is inferred from another size and no availability is inferred
+    from the existence of a price.
+    """
+    selectors = (
+        ".product-variants",
+        ".product-combination",
+        ".product-information",
+        ".product-detail",
+        ".product-actions",
+        ".product-container",
+        "main",
+        "#main",
+    )
+
+    amount_re = re.compile(
+        r"(?<![\d.,])"
+        r"([0-9]{1,4}(?:[.,][0-9]{1,2})?)\s*"
+        r"(?:€|eur|\$|usd|£|gbp)"
+        r"|"
+        r"(?:€|eur|\$|usd|£|gbp)\s*"
+        r"([0-9]{1,4}(?:[.,][0-9]{1,2})?)",
+        re.I,
+    )
+    size_re = re.compile(
+        r"(?<![\d.,])([0-9]{1,4}(?:[.,][0-9]+)?)\s*"
+        r"(?:ml|millilitros?|milliliters?)\b",
+        re.I,
+    )
+
+    best = {}
+    seen_nodes = set()
+
+    for selector in selectors:
+        for node in soup.select(selector):
+            if id(node) in seen_nodes:
+                continue
+            seen_nodes.add(id(node))
+
+            text = clean(node.get_text(" ", strip=True))
+            if not text:
+                continue
+
+            sizes = list(size_re.finditer(text))
+            if len(sizes) < 2:
+                continue
+
+            for index, size_match in enumerate(sizes):
+                raw_size = size_match.group(1)
+                try:
+                    numeric_size = float(raw_size.replace(",", "."))
+                except (TypeError, ValueError):
+                    continue
+                size_ml = int(numeric_size) if numeric_size.is_integer() else numeric_size
+
+                start = size_match.end()
+                end = sizes[index + 1].start() if index + 1 < len(sizes) else min(len(text), start + 180)
+                fragment = text[start:end]
+
+                price_match = amount_re.search(fragment)
+                if not price_match:
+                    continue
+
+                raw_price = price_match.group(1) or price_match.group(2)
+                price = money_to_float(raw_price)
+                if price is None:
+                    continue
+
+                # Reject percentage/discount-like numbers accidentally caught
+                # between a size and the next size. A bottle price is a normal
+                # retail amount; zero/negative values are never valid here.
+                if price <= 0:
+                    continue
+
+                best.setdefault(size_ml, {
+                    "size_ml": size_ml,
+                    "price": price,
+                    "currency": "EUR",
+                    "source": "sabina_product_variant",
+                })
+
+    return [best[size] for size in sorted(best)]
+
+
 def extract_size_ml_from_product_page(soup, title=""):
     """
     Read the selected product size from product-specific content.
@@ -1110,8 +1201,11 @@ def extract_product_page(session, url, query):
         page_text,
     )
 
+    variant_offers = extract_variant_offers_from_product_page(soup)
+
     return {
         "store": STORE,
+        "_variant_offers": variant_offers,
 
         "source": {
             "url": final_url,
@@ -1265,6 +1359,63 @@ def extract_product_page(session, url, query):
         ),
     }
 
+def expand_product_variants(product):
+    """Return one Sabina result per explicitly priced bottle size."""
+    if not isinstance(product, dict):
+        return []
+
+    # Re-fetching is deliberately avoided here: this helper receives the
+    # already parsed product. Variant extraction is performed in the page
+    # parser below and stored in the private field.
+    variants = product.pop("_variant_offers", None)
+    if not variants:
+        return [product]
+
+    base_size = (
+        product.get("attributes", {})
+        .get("size_ml", {})
+        .get("value")
+        if isinstance(product.get("attributes"), dict)
+        else None
+    )
+    base_availability = product.get("offer", {}).get("availability", "unknown")
+    results = []
+
+    for variant in variants:
+        item = json.loads(json.dumps(product, ensure_ascii=False))
+        size = variant["size_ml"]
+        price = variant["price"]
+
+        item["attributes"]["size_ml"] = {
+            "value": size,
+            "source": "product_variant_text",
+        }
+        item["offer"]["price"] = price
+        item["offer"]["currency"] = variant.get("currency", "EUR")
+
+        # Only the selected page variant has authoritative purchase evidence.
+        # Other variants keep unknown availability rather than being inferred
+        # from their price.
+        if base_size is not None and float(size) == float(base_size):
+            item["offer"]["availability"] = base_availability
+        else:
+            item["offer"]["availability"] = "unknown"
+
+        item["provenance"]["price"] = "sabina_product_variant"
+        item["provenance"]["size_ml"] = "product_variant_text"
+
+        item["price"] = price
+        item["size_ml"] = size
+        item["available"] = (
+            True if item["offer"]["availability"] == "in_stock"
+            else False if item["offer"]["availability"] == "out_of_stock"
+            else None
+        )
+        results.append(item)
+
+    return results or [product]
+
+
 def search(query):
     query = clean(query)
 
@@ -1292,19 +1443,24 @@ def search(query):
             if not product:
                 continue
 
-            product_id = (
-                product.get("identity", {})
-                .get("store_product_id", {})
-                .get("value")
-            )
+            expanded_products = expand_product_variants(product)
 
-            key = product_id or product.get("url")
+            for expanded in expanded_products:
+                product_id = (
+                    expanded.get("identity", {})
+                    .get("store_product_id", {})
+                    .get("value")
+                )
 
-            if key in seen:
-                continue
+                key = (product_id, expanded.get("attributes", {})
+                    .get("size_ml", {})
+                    .get("value") if isinstance(expanded.get("attributes"), dict) else None)
 
-            seen.add(key)
-            results.append(product)
+                if key in seen:
+                    continue
+
+                seen.add(key)
+                results.append(expanded)
 
         return results
 
