@@ -1669,22 +1669,62 @@ function toggleWishButton(el){
   });
 }
 
-async function fetchFormatComparisons(g, sizes){
-  const productName=(g?.brand?`${g.brand} ${g.name||""}`:(g?.name||"")).trim();
-  const list=[...new Set((sizes||[]).map(x=>String(x||"").trim()).filter(Boolean))];
-  if(!productName || !list.length)return [];
-  const params=new URLSearchParams({q:productName,formats:list.join(",")});
-  const controller=new AbortController();
-  const timer=setTimeout(()=>controller.abort(),90000);
-  try{
-    const response=await fetch(backend()+"/compare-formats?"+params.toString(),{cache:"no-store",headers:{"Accept":"application/json"},signal:controller.signal});
-    if(!response.ok)throw new Error("Confronto formati HTTP "+response.status);
-    const data=await response.json();
-    return Array.isArray(data?.comparisons)?data.comparisons:(Array.isArray(data?.formats)?data.formats:[]);
-  }finally{
+async function fetchFormatComparisons(g, sizes) {
+  const productName = g?.brand
+    ? `${g.brand} ${g.name}`.trim()
+    : String(g?.name || "").trim();
+
+  const list = [
+    ...new Set(
+      (Array.isArray(sizes) ? sizes : [])
+        .map((size) => String(size).trim())
+        .filter(Boolean)
+    )
+  ];
+
+  if (!productName || !list.length) {
+    return [];
+  }
+
+  const params = new URLSearchParams({
+    q: productName,
+    formats: list.join(",")
+  });
+
+  const controller = new AbortController();
+
+  const timer = setTimeout(() => {
+    controller.abort();
+  }, 90000);
+
+  try {
+    const response = await fetch(
+      `${backend()}/compare-formats?${params.toString()}`,
+      {
+        cache: "no-store",
+        headers: {
+          Accept: "application/json"
+        },
+        signal: controller.signal
+      }
+    );
+
+    if (!response.ok) {
+      throw new Error(
+        `Confronto formati HTTP ${response.status}`
+      );
+    }
+
+    const data = await response.json();
+
+    return Array.isArray(data?.comparisons)
+      ? data.comparisons
+      : [];
+  } finally {
     clearTimeout(timer);
   }
 }
+
 
 function getMasterFormats(g){
   try{
