@@ -1930,12 +1930,27 @@ async function searchStoresProgressive(term,onPartial){
 
  const archiveResult=(store,offer)=>{
   if(!offer||typeof offer!=="object")return;
+
+  // Alcuni endpoint restituiscono un contenitore prodotto con brand/nome/size
+  // a livello padre e le offerte dentro `offers`. Questi metadati devono
+  // seguire l'offerta durante l'archiviazione, altrimenti il raggruppatore
+  // non riesce più a riconoscerla (caso osservato con Deloox).
   const nested=Array.isArray(offer.offers)?offer.offers:[offer];
   nested.forEach(o=>{
    if(!o||typeof o!=="object")return;
-   const normalized={...o};
+
+   const normalized={
+    ...o,
+    brand:o.brand||offer.brand||"",
+    name:o.name||o.title||o.product_name||offer.name||offer.title||offer.product_name||"",
+    size_ml:o.size_ml||o.size||offer.size_ml||offer.size||offer.attributes?.size_ml?.value||"",
+    concentration:o.concentration||offer.concentration||"",
+    image:o.image||o.image_url||o.thumbnail||offer.image||offer.image_url||offer.thumbnail||"",
+    store:o.store||store||""
+   };
+
    const offerStore=String(normalized.store||store||"").trim().toLowerCase();
-   const url=String(normalized.url||normalized._source_url||"").split("?")[0].trim().toLowerCase();
+   const url=String(normalized.url||normalized._source_url||offer.url||offer._source_url||"").split("?")[0].trim().toLowerCase();
    const size=String(normalized.size_ml||normalized.size||normalized.attributes?.size_ml?.value||"").trim();
    const name=normalizePerfumeName(normalized.name||normalized.title||normalized.product_name||"");
    const key=[offerStore,url,size,name].join("|");
