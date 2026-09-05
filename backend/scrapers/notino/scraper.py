@@ -23,7 +23,7 @@ READER_TIMEOUT = 30
 RETRY_COUNT = 2
 MAX_CANDIDATES = 48
 ENRICH_WORKERS = 6
-SCRAPER_VERSION = "notino-3.6-2026-09-05-product-page-authoritative"
+SCRAPER_VERSION = "notino-3.5-2026-09-03-title-authoritative-all-paths"
 
 PRODUCT_RE = re.compile(r"/p-(\d+)(?:/|$)", re.I)
 PRODUCT_URL_RE = re.compile(
@@ -1023,7 +1023,51 @@ def _extract_variant_offers(text: str) -> List[Tuple[float, str]]:
                 found.append(key)
     return sorted(found, key=lambda item: (item[0], _clean(item[1])))
 
-def _reader_product(session: requests.Session, candidate: Dict[str, Any], query: str) -> Optional[Dict[str, Any]]:
+def _extract_product_variant_urls(text: str, base_url: str) -> List[str]:
+    """Find sibling Notino product-variant URLs exposed on a product page.
+
+    Notino commonly represents bottle sizes as separate /p-<id>/ pages while
+    linking those variants from the same product page. The search result may
+    discover only one of them, so variant discovery must happen from the
+    authoritative product page before applying the requested-size filter.
+    """
+    found: List[str] = []
+    seen = set()
+    soup = BeautifulSoup(text or "", "html.parser")
+
+    # First inspect actual hrefs. This keeps URL ownership precise and avoids
+    # pairing a product id with neighbouring card text.
+    for anchor in soup.find_all("a", href=True):
+        url = normaliseurl(urljoin(base_url, str(anchor.get("href") or "")))
+        if not lookslikeproducturl(url):
+            continue
+        key = url.rstrip("/").casefold()
+        if key not in seen:
+            seen.add(key)
+            found.append(url)
+
+    # Jina/Notino can also expose variant links inside JSON or script blobs.
+    for raw_url in PRODUCT_URL_RE.findall(text or ""):
+        url = normaliseurl(raw_url)
+        if not lookslikeproducturl(url):
+            continue
+        key = url.rstrip("/").casefold()
+        if key not in seen:
+            seen.add(key)
+            found.append(url)
+    for raw_url in RELATIVE_PRODUCT_RE.findall(text or ""):
+        url = normaliseurl(urljoin(base_url, raw_url))
+        if not lookslikeproducturl(url):
+            continue
+        key = url.rstrip("/").casefold()
+        if key not in seen:
+            seen.add(key)
+            found.append(url)
+
+    return found
+
+
+def _reader_product(session: requests.Session, candidate: Dict[str, Any], query: str, _allow_variants: bool = True) -> Optional[Dict[str, Any]]:
     try:
         text = _request(session, READER_BASE + candidate["url"], reader=True).text or ""
     except requests.RequestException:
@@ -1031,11 +1075,35 @@ def _reader_product(session: requests.Session, candidate: Dict[str, Any], query:
     if not text:
         return None
 
-    # Never require the requested size to appear on the product page. Only an
-    # explicitly parsed conflicting size is a rejection.
+    # A discovered product page can be a sibling size rather than the exact
+    # requested variant. Do NOT reject it yet: its page can contain links to
+    # the exact sibling variant that the search engine failed to discover.
     page_size = _extract_size(text)
-    if page_size is not None and _requested_size_conflicts(text, query):
-        return None
+    page_size_conflicts = page_size is not None and _requested_size_conflicts(text, query)
+
+    # Notino often links all bottle-size variants from the page of whichever
+    # variant happened to be discovered first. Follow those product URLs and
+    # parse each page independently. Exact size validation remains downstream.
+    if _allow_variants:
+        variant_urls = _extract_product_variant_urls(text, candidate["url"])
+        sibling_results: List[Dict[str, Any]] = []
+        for variant_url in variant_urls:
+            if variant_url.rstrip("/").casefold() == candidate["url"].rstrip("/").casefold():
+                continue
+            variant_candidate = dict(candidate)
+            variant_candidate["url"] = variant_url
+            variant_candidate["name"] = candidate.get("name") or _slug_name(variant_url)
+            variant_candidate["source"] = "product-variant-url"
+            try:
+                variant_result = _reader_product(session, variant_candidate, query, _allow_variants=False)
+            except Exception:
+                variant_result = None
+            if isinstance(variant_result, list):
+                sibling_results.extend(variant_result)
+            elif isinstance(variant_result, dict):
+                sibling_results.append(variant_result)
+        if sibling_results:
+            return sibling_results
 
     records = _structured_product_records(text)
     structured_name = ""
@@ -1070,6 +1138,12 @@ def _reader_product(session: requests.Session, candidate: Dict[str, Any], query:
     if not name:
         name = _clean_name(candidate.get("name") or "") or _clean_name(_slug_name(candidate["url"]))
     if not name or not _query_matches_name(name, query) or _has_non_perfume_marker(name):
+        return None
+
+    # If this page itself is an explicitly different size and no sibling page
+    # produced the requested variant, reject it here. Missing size remains
+    # unknown and is handled by the central matcher.
+    if page_size_conflicts:
         return None
 
     variant_offers = _extract_variant_offers(text)
@@ -1165,18 +1239,6 @@ def _card_result(candidate: Dict[str, Any], query: str) -> Optional[Dict[str, An
 
 
 def _enrich_one(candidate: Dict[str, Any], query: str) -> Any:
-    # Search-page candidates built from a broad URL context can contain price
-    # and stock belonging to a neighbouring card.  Never let that evidence
-    # short-circuit product-page enrichment.  The product URL itself is the
-    # authoritative source for name, size, price and availability.
-    source = str(candidate.get("source") or "")
-    if source in {"embedded-url-context", "reader-url-context"}:
-        session = _new_session()
-        try:
-            return _reader_product(session, candidate, query)
-        finally:
-            session.close()
-
     card = _card_result(candidate, query)
     if card:
         return card
