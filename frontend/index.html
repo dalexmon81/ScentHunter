@@ -1853,11 +1853,18 @@ function renderOffersHtml(g,img,offers,saved){
   }).join("");
 }
 
-function openSize(gi,sizeKey,fromFormats=true){
-  const g=currentProductGroups[gi]; if(!g)return;
-  currentOpenProductKey=productGroupKey(g); currentOpenSizeKey=String(sizeKey||"");
+function openSize(gi, sizeKey, fromFormat = true) {
+  const g = currentProductGroups[gi];
+
+  if (!g) {
+    return;
+  }
+
+  currentOpenProductKey = productGroupKey(g);
+  currentOpenSizeKey = String(sizeKey);
+
   const cached = formatComparisonFor(g, sizeKey);
- 
+
   const selected = cached
     ? {
         size_ml: Number(cached.size_ml ?? cached.size ?? sizeKey),
@@ -1872,12 +1879,68 @@ function openSize(gi,sizeKey,fromFormats=true){
         best: null
       };
 
-  
-  const offers=selected.offers||[]; const saved=getWishlist(); const img=g.image||"";
-  statusBox.textContent="";
-  resultsBox.innerHTML=`<article class="comparison"><button class="detail-back" onclick="openProduct(${gi})">← Torna ai formati</button><div class="comparison-head"><div class="result-image">${img?`<img src="${esc(img)}" alt="${esc(displayPerfumeName(g.name,g.brand))}" onerror="this.outerHTML='🧴'">`:"🧴"}</div><div class="result-main"><div class="store">${esc(g.brand||"")}</div><div class="name">${esc(displayPerfumeName(g.name,g.brand))}</div><div class="offer-meta">${esc(formatLabel(String(selected.size)))}</div></div></div><div class="format-compare-bar"><div class="format-compare-item"><div class="format-compare-copy"><div class="format-compare-label">FORMATO</div><div class="format-compare-value">${esc(formatLabel(String(selected.size)))}</div></div></div><div class="format-compare-item"><div class="format-compare-copy"><div class="format-compare-label">CONFRONTA I PREZZI</div><div class="format-compare-value">${offers.length} ${offers.length===1?"negozio":"negozi"}</div></div></div></div>${renderOffersHtml(g,img,offers,saved)}</article>`;
-  document.getElementById("searchOutput").scrollIntoView({behavior:"smooth",block:"start"});
+  const offers = selected.offers;
+  const saved = getWishlist();
+  const img = g.image;
+
+  statusBox.textContent = "";
+
+  resultsBox.innerHTML = `
+    <article class="comparison">
+      <button
+        class="detail-back"
+        type="button"
+        onclick="openProduct(${gi})"
+      >
+        ← Torna ai formati
+      </button>
+
+      <div class="comparison-head">
+        <div class="result-image">
+          ${
+            img
+              ? `<img src="${esc(img)}" alt="${esc(displayPerfumeName(g.name, g.brand))}">`
+              : `<div></div>`
+          }
+        </div>
+
+        <div class="result-main">
+          <div class="store">${esc(g.brand || "")}</div>
+          <div class="name">${esc(displayPerfumeName(g.name, g.brand))}</div>
+          <div class="offer-meta">${esc(formatLabel(String(selected.size_ml)))}</div>
+        </div>
+      </div>
+
+      <div class="format-compare-bar">
+        <div class="format-compare-item">
+          <div class="format-compare-copy">
+            <div class="format-compare-label">FORMATO</div>
+            <div class="format-compare-value">
+              ${esc(formatLabel(String(selected.size_ml)))}
+            </div>
+          </div>
+        </div>
+
+        <div class="format-compare-item">
+          <div class="format-compare-copy">
+            <div class="format-compare-label">CONFRONTA I PREZZI</div>
+            <div class="format-compare-value">
+              ${offers.length} ${offers.length === 1 ? "negozio" : "negozi"}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      ${renderOffersHtml(g, img, offers, saved)}
+    </article>
+  `;
+
+  document.getElementById("searchOutput").scrollIntoView({
+    behavior: "smooth",
+    block: "start"
+  });
 }
+
 
 function chooseOffer(gi,sizeKey,oi){
   const g=currentProductGroups[gi];
