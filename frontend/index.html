@@ -1727,43 +1727,7 @@ function renderFormatChoiceCard(gi,g,comparisons,sizes){
   document.getElementById("searchOutput").scrollIntoView({behavior:"smooth",block:"start"});
 }
 
-function renderMultiFormatComparison(i,g,img,sizes,saved){
-  const groups=getSizeGroups(g);
-  const bySize=new Map(groups.filter(x=>x.size).map(x=>[String(x.size),x]));
-  const sections=sizes.map(size=>{
-    const selected=bySize.get(String(size));
-    const offers=Array.isArray(selected?.offers)?selected.offers:[];
-    return `<section class="comparison" style="margin-top:12px">
-      <div class="format-compare-bar">
-        <div class="format-compare-item">
-          <div class="format-compare-copy">
-            <div class="format-compare-label">FORMATO</div>
-            <div class="format-compare-value">${esc(formatLabel(String(size)))}</div>
-          </div>
-        </div>
-        <div class="format-compare-item">
-          <div class="format-compare-copy">
-            <div class="format-compare-label">CONFRONTA I PREZZI</div>
-            <div class="format-compare-value">${offers.length} ${offers.length===1?"negozio":"negozi"}</div>
-          </div>
-        </div>
-      </div>
-      ${offers.length?renderOffersHtml(g,img,offers,saved):'<div class="offer-meta" style="padding:13px 0">Nessun negozio disponibile per questo formato.</div>'}
-    </section>`;
-  }).join("");
-
-  resultsBox.innerHTML=`<article class="comparison">
-    <button class="detail-back" onclick="clearOpenProduct();showProducts(currentProductGroups)">← Torna ai profumi</button>
-    <div class="comparison-head">
-      <div class="result-image">${img?`<img src="${esc(img)}" alt="${esc(displayPerfumeName(g.name,g.brand))}" onerror="this.outerHTML='🧴'">`:"🧴"}</div>
-      <div class="result-main"><div class="store">${esc(g.brand||"")}</div><div class="name">${esc(displayPerfumeName(g.name,g.brand))}</div></div>
-    </div>
-    ${sections}
-  </article>`;
-  document.getElementById("searchOutput").scrollIntoView({behavior:"smooth",block:"start"});
-}
-
-function openProduct(i){
+async function openProduct(i){
   const g=currentProductGroups[i];
   if(!g)return;
   currentOpenProductKey=productGroupKey(g);
@@ -1775,7 +1739,7 @@ function openProduct(i){
   const saved=getWishlist();
   statusBox.textContent="";
 
-  // UN SOLO FORMATO: comportamento storico, invariato.
+  // UN SOLO FORMATO: resta il comportamento storico, terza scheda evitata.
   if(sizes.length===1){
     const selected=getSizeGroups(g).find(s=>s.size===sizes[0]);
     const offers=selected?.offers||[];
@@ -1783,11 +1747,32 @@ function openProduct(i){
     return;
   }
 
-  // PIÙ FORMATI: nessun secondo giro di ricerca.
-  // Usiamo esclusivamente le offerte già restituite dalla ricerca principale,
-  // già associate dal backend al rispettivo formato. Così i risultati dei siti
-  // compaiono subito e non possono essere bloccati da un secondo endpoint.
-  renderMultiFormatComparison(i,g,img,sizes,saved);
+  // DUE O TRE FORMATI: seconda scheda = formati + PREZZO PIÙ BASSO.
+  resultsBox.innerHTML=`<article class="comparison"><button class="detail-back" onclick="clearOpenProduct();showProducts(currentProductGroups)">← Torna ai profumi</button><div class="comparison-head"><div class="result-image">${img?`<img src="${esc(img)}" alt="${esc(displayPerfumeName(g.name,g.brand))}" onerror="this.outerHTML='🧴'">`:"🧴"}</div><div class="result-main"><div class="store">${esc(g.brand||"")}</div><div class="name">${esc(displayPerfumeName(g.name,g.brand))}</div></div></div><div class="bestlabel">CONFRONTA I FORMATI</div><div class="offer-meta" style="margin-bottom:12px">Cerco il prezzo più basso per ogni formato...</div><div class="format-loading" aria-hidden="true">⏳</div></article>`;
+  document.getElementById("searchOutput").scrollIntoView({behavior:"smooth",block:"start"});
+
+  try{
+    const comparisons=await fetchFormatComparisons(g,sizes);
+    const localBySize=new Map(getSizeGroups(g).filter(x=>x.size).map(x=>[String(x.size),x]));
+    const merged=sizes.map(size=>{
+      const key=String(size);
+      const remote=(comparisons||[]).find(x=>String(x.size_ml||x.size||"")===key);
+      const local=localBySize.get(key);
+      const remoteOffers=Array.isArray(remote?.offers)?remote.offers:[];
+      if(remoteOffers.length)return remote;
+      if(local?.offers?.length)return {size_ml:key,best:local.best||null,offers:local.offers};
+      return remote||{size_ml:key,best:null,offers:[]};
+    });
+    window._formatComparisonsByProduct=window._formatComparisonsByProduct||{};
+    window._formatComparisonsByProduct[currentOpenProductKey]=merged;
+    renderFormatChoiceCard(i,g,merged,sizes);
+  }catch(error){
+    console.warn("Confronto formati",error);
+    const fallback=getSizeGroups(g).filter(s=>s.size).map(s=>({size_ml:s.size,best:s.best,offers:s.offers}));
+    window._formatComparisonsByProduct=window._formatComparisonsByProduct||{};
+    window._formatComparisonsByProduct[currentOpenProductKey]=fallback;
+    renderFormatChoiceCard(i,g,fallback,sizes);
+  }
 }
 
 function renderSingleFormatComparison(g,img,offers,size,saved){
@@ -1928,9 +1913,55 @@ async function getSearchStores(term){
 async function searchStoresProgressive(term,onPartial){
  const merged={query:term,comparisons:[],results:[],errors:{}};
  const timeoutMs=45000;
- const concurrency=2;
+ const concurrency=4;
  const stores=await getSearchStores(term);
- const totalStores=stores.length;
+
+ /*
+  * ARCHIVIO PROGRESSIVO IMMUTABILE.
+  *
+  * Una ricerca progressiva non deve mai perdere un'offerta già mostrata.
+  * Il rendering successivo viene ricostruito da shGroupData(); per sicurezza
+  * conserviamo quindi ogni risultato concreto già ricevuto, indicizzato per
+  * negozio + URL + formato + nome. Un batch successivo può aggiungere dati,
+  * ma non può cancellare Deloox (o qualunque altro negozio) già arrivato.
+  */
+ const resultArchive=new Map();
+ const comparisonArchive=new Map();
+
+ const archiveResult=(store,offer)=>{
+  if(!offer||typeof offer!=="object")return;
+  const nested=Array.isArray(offer.offers)?offer.offers:[offer];
+  nested.forEach(o=>{
+   if(!o||typeof o!=="object")return;
+   const normalized={...o};
+   const offerStore=String(normalized.store||store||"").trim().toLowerCase();
+   const url=String(normalized.url||normalized._source_url||"").split("?")[0].trim().toLowerCase();
+   const size=String(normalized.size_ml||normalized.size||normalized.attributes?.size_ml?.value||"").trim();
+   const name=normalizePerfumeName(normalized.name||normalized.title||normalized.product_name||"");
+   const key=[offerStore,url,size,name].join("|");
+   if(!key.replace(/\|/g,""))return;
+   const old=resultArchive.get(key);
+   if(!old||shNum(normalized)<shNum(old))resultArchive.set(key,normalized);
+  });
+ };
+
+ const archiveComparison=(group)=>{
+  if(!group||typeof group!=="object")return;
+  const size=String(group.size_ml||group.size||"").trim();
+  const name=normalizePerfumeName(group.name||group.product_name||"");
+  const brand=normalizePerfumeName(group.brand||"");
+  const key=[brand,name,size].join("|");
+  if(!key.replace(/\|/g,""))return;
+  const old=comparisonArchive.get(key);
+  if(!old){comparisonArchive.set(key,{...group,offers:Array.isArray(group.offers)?group.offers.map(o=>({...o})):[]});return;}
+  const offers=[...(Array.isArray(old.offers)?old.offers:[]),...(Array.isArray(group.offers)?group.offers:[])];
+  comparisonArchive.set(key,{...old,...group,offers});
+ };
+
+ const rebuildMerged=()=>{
+  merged.results=[...resultArchive.values()];
+  merged.comparisons=[...comparisonArchive.values()];
+ };
 
  for(let i=0;i<stores.length;i+=concurrency){
   const pair=stores.slice(i,i+concurrency);
@@ -1956,17 +1987,19 @@ async function searchStoresProgressive(term,onPartial){
     return;
    }
    const data=r.value||{};
-   if(Array.isArray(data.results))merged.results.push(...data.results);
-   if(Array.isArray(data.comparisons))merged.comparisons.push(...data.comparisons);
+   if(Array.isArray(data.results))data.results.forEach(item=>archiveResult(store,item));
+   if(Array.isArray(data.comparisons))data.comparisons.forEach(group=>archiveComparison(group));
    if(data.errors&&typeof data.errors==="object")Object.entries(data.errors).forEach(([name,error])=>{
     if(!merged.errors[name])merged.errors[name]=error;
    });
    if(data.error)merged.errors[store]=data.error;
   });
 
+  rebuildMerged();
   if(typeof onPartial==="function")onPartial(merged,false);
  }
 
+ rebuildMerged();
  if(typeof onPartial==="function")onPartial(merged,true);
  return merged;
 }
@@ -1985,7 +2018,20 @@ async function searchPerfume(){
   const renderData=(partialData,final=false)=>{
    let groups=shGroupData(partialData||{});
 
-   
+   /*
+    * Non sostituiamo mai un gruppo già mostrato con una versione parziale
+    * che abbia meno offerte. Il gruppo progressivo viene unito per identità
+    * e le offerte vengono conservate per negozio/formato.
+    */
+   if(Array.isArray(currentProductGroups)&&currentProductGroups.length){
+    const previousByKey=new Map(currentProductGroups.map(g=>[productGroupKey(g),g]));
+    groups=groups.map(g=>{
+      const previous=previousByKey.get(productGroupKey(g));
+      if(!previous)return g;
+      const mergedOffers=[...(Array.isArray(previous.offers)?previous.offers:[]),...(Array.isArray(g.offers)?g.offers:[])];
+      return {...previous,...g,offers:mergedOffers};
+    });
+   }
 
    currentProductGroups=groups;
 
