@@ -358,8 +358,12 @@ def _format_compare_clean_offer(
 
     return offer
 
-def _format_compare_query(product: str) -> str:
-    return product.strip()
+def _format_compare_query(
+    product: str,
+    requested_size: int,
+) -> str:
+    return f"{product.strip()} {requested_size} ml"
+
 
 
 def _format_compare_normalized_query(value: Any) -> str:
@@ -497,26 +501,24 @@ def _format_compare_store_candidates(
 def _format_compare_store(
     store: str,
     product: str,
+    requested_sizes: List[int],
 ) -> Dict[str, Any]:
     """
     Cerca una volta nello store, valida i candidati e conserva
     soltanto le offerte con formato esplicito.
     """
     try:
-        raw = _legacy.run_store(
-            store,
-            _format_compare_query(product),
-        )
+        raw_results = []
+
+for requested_size in requested_sizes:
+    query = _format_compare_query(product, requested_size)
+
+    try:
+        raw = _legacy.run_store(store, query)
     except Exception as exc:
-        return {
-            "store": store,
-            "results": [],
-            "error": f"{type(exc).__name__}: {exc}",
-        }
-
-    candidates = raw if isinstance(raw, list) else []
-
-    normalized_candidates = []
+        continue
+        
+        normalized_candidates.append(item)
 
     for candidate in candidates:
         if not isinstance(candidate, dict):
@@ -540,9 +542,10 @@ def _format_compare_store(
 
     try:
         validated = _engine._validate_candidates_only(
-            product,
-            normalized_candidates,
+    product,
+    normalized_candidates,
         )
+
     except Exception:
         validated = normalized_candidates
 
@@ -647,9 +650,15 @@ def compare_formats(
 
         with ThreadPoolExecutor(max_workers=2) as pool:
             future_map = {
-                pool.submit(_format_compare_store, store, product): store
+                pool.submit(
+                    _format_compare_store,
+                    store,
+                    product,
+                    requested_sizes,
+                ): store
                 for store in FORMAT_STORES
-            }
+             }
+
 
             for future in as_completed(future_map):
                 store = future_map[future]
@@ -743,7 +752,8 @@ def diagnose_format_flow(
 
     def one(store, size):
         t0 = _diag_time.monotonic()
-        query = _format_compare_query(product)
+        query = _format_compare_query(product, size)
+
         out = {
             "store": store,
             "requested_size_ml": size,
