@@ -1675,7 +1675,7 @@ async function fetchFormatComparisons(g, sizes){
   if(!productName || !list.length)return [];
   const params=new URLSearchParams({q:productName,formats:list.join(",")});
   const controller=new AbortController();
-  const timer=setTimeout(()=>controller.abort(),120000);
+  const timer=setTimeout(()=>controller.abort(),8000);
   try{
     const response=await fetch(backend()+"/compare-formats?"+params.toString(),{cache:"no-store",headers:{"Accept":"application/json"},signal:controller.signal});
     if(!response.ok)throw new Error("Confronto formati HTTP "+response.status);
@@ -1747,32 +1747,40 @@ async function openProduct(i){
     return;
   }
 
-  // DUE O TRE FORMATI: seconda scheda = formati + PREZZO PIÙ BASSO.
-  resultsBox.innerHTML=`<article class="comparison"><button class="detail-back" onclick="clearOpenProduct();showProducts(currentProductGroups)">← Torna ai profumi</button><div class="comparison-head"><div class="result-image">${img?`<img src="${esc(img)}" alt="${esc(displayPerfumeName(g.name,g.brand))}" onerror="this.outerHTML='🧴'">`:"🧴"}</div><div class="result-main"><div class="store">${esc(g.brand||"")}</div><div class="name">${esc(displayPerfumeName(g.name,g.brand))}</div></div></div><div class="bestlabel">CONFRONTA I FORMATI</div><div class="offer-meta" style="margin-bottom:12px">Cerco il prezzo più basso per ogni formato...</div><div class="format-loading" aria-hidden="true">⏳</div></article>`;
-  document.getElementById("searchOutput").scrollIntoView({behavior:"smooth",block:"start"});
+  // DUE O TRE FORMATI: mostra IMMEDIATAMENTE i formati già rilevati.
+  // Il confronto remoto dei prezzi continua in background e aggiorna la scheda
+  // quando arriva, senza bloccare l'apertura del prodotto.
+  const localBySize=new Map(getSizeGroups(g).filter(x=>x.size).map(x=>[String(x.size),x]));
+  const initialComparisons=sizes.map(size=>{
+    const local=localBySize.get(String(size));
+    return local?.offers?.length
+      ? {size_ml:String(size),best:local.best||null,offers:local.offers}
+      : {size_ml:String(size),best:null,offers:[]};
+  });
 
-  try{
-    const comparisons=await fetchFormatComparisons(g,sizes);
-    const localBySize=new Map(getSizeGroups(g).filter(x=>x.size).map(x=>[String(x.size),x]));
+  window._formatComparisonsByProduct=window._formatComparisonsByProduct||{};
+  window._formatComparisonsByProduct[currentOpenProductKey]=initialComparisons;
+  renderFormatChoiceCard(i,g,initialComparisons,sizes);
+
+  // Aggiornamento prezzi/offerte in background: non impedisce di vedere subito
+  // i formati e non mostra alcuna schermata di ricerca nella scheda prodotto.
+  fetchFormatComparisons(g,sizes).then(comparisons=>{
+    if(currentOpenProductKey!==productGroupKey(g))return;
+    const remoteBySize=new Map((comparisons||[]).map(x=>[String(x.size_ml||x.size||""),x]));
     const merged=sizes.map(size=>{
       const key=String(size);
-      const remote=(comparisons||[]).find(x=>String(x.size_ml||x.size||"")===key);
+      const remote=remoteBySize.get(key);
       const local=localBySize.get(key);
       const remoteOffers=Array.isArray(remote?.offers)?remote.offers:[];
       if(remoteOffers.length)return remote;
       if(local?.offers?.length)return {size_ml:key,best:local.best||null,offers:local.offers};
       return remote||{size_ml:key,best:null,offers:[]};
     });
-    window._formatComparisonsByProduct=window._formatComparisonsByProduct||{};
     window._formatComparisonsByProduct[currentOpenProductKey]=merged;
     renderFormatChoiceCard(i,g,merged,sizes);
-  }catch(error){
-    console.warn("Confronto formati",error);
-    const fallback=getSizeGroups(g).filter(s=>s.size).map(s=>({size_ml:s.size,best:s.best,offers:s.offers}));
-    window._formatComparisonsByProduct=window._formatComparisonsByProduct||{};
-    window._formatComparisonsByProduct[currentOpenProductKey]=fallback;
-    renderFormatChoiceCard(i,g,fallback,sizes);
-  }
+  }).catch(error=>{
+    console.warn("Confronto formati in background",error);
+  });
 }
 
 function renderSingleFormatComparison(g,img,offers,size,saved){
