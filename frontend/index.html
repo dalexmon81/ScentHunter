@@ -1698,6 +1698,79 @@ function formatComparisonFor(g,sizeKey){
   return cache.find(x=>String(x.size_ml||x.size||"")===String(sizeKey))||null;
 }
 
+/*
+ * Il confronto /compare-formats e la ricerca principale sono due fonti
+ * indipendenti. Il confronto puo restituire solo una parte dei negozi gia
+ * trovati nella ricerca principale: NON deve quindi sostituire le offerte
+ * locali. Le uniamo e manteniamo una sola offerta per negozio/formato.
+ */
+function mergeFormatOffers(localOffers,remoteOffers,sizeKey){
+  const all=[];
+  const targetSize=String(sizeKey||"");
+
+  const pushOffer=(source)=>{
+    (Array.isArray(source)?source:[]).forEach(raw=>{
+      if(!raw || typeof raw!=="object")return;
+      const o={...raw};
+      const rawSize=sizeOfOffer(o)||o.size_ml||o.size||"";
+      if(!rawSize && targetSize)o.size_ml=targetSize;
+      all.push(o);
+    });
+  };
+
+  // La ricerca principale e la fonte di verita per i negozi gia trovati.
+  pushOffer(localOffers);
+  // /compare-formats puo aggiungere negozi/metadati, ma mai cancellare i locali.
+  pushOffer(remoteOffers);
+
+  const byStore=new Map();
+  const noStore=[];
+
+  all.forEach(o=>{
+    const store=String(o.store||o._source_store||"").trim().toLowerCase();
+    const size=String(sizeOfOffer(o)||o.size_ml||o.size||targetSize||"").trim();
+    const key=store?`${store}|${size}`:"";
+
+    if(!key){
+      noStore.push(o);
+      return;
+    }
+
+    const prev=byStore.get(key);
+    if(!prev){
+      byStore.set(key,o);
+      return;
+    }
+
+    const prevOut=isOfferOutOfStock(prev);
+    const nextOut=isOfferOutOfStock(o);
+    if(prevOut!==nextOut){
+      if(!nextOut)byStore.set(key,o);
+      return;
+    }
+
+    const prevNum=shNum(prev);
+    const nextNum=shNum(o);
+    if(nextNum<prevNum)byStore.set(key,o);
+  });
+
+  const offers=[...byStore.values(),...noStore];
+  offers.sort((a,b)=>{
+    const ao=isOfferOutOfStock(a),bo=isOfferOutOfStock(b);
+    if(ao!==bo)return ao?1:-1;
+    return shNum(a)-shNum(b);
+  });
+
+  const best=offers.find(o=>!isOfferOutOfStock(o))||null;
+  return {size_ml:targetSize,best,offers};
+}
+
+function mergeFormatComparison(local,remote,sizeKey){
+  const localOffers=Array.isArray(local?.offers)?local.offers:[];
+  const remoteOffers=Array.isArray(remote?.offers)?remote.offers:[];
+  return mergeFormatOffers(localOffers,remoteOffers,sizeKey);
+}
+
 function renderFormatChoiceCard(gi,g,comparisons,sizes){
   const img=g.image||"";
   const bySize=new Map((comparisons||[]).map(x=>[String(x.size_ml||x.size||""),x]));
@@ -1756,12 +1829,11 @@ async function openProduct(i){
     const localBySize=new Map(getSizeGroups(g).filter(x=>x.size).map(x=>[String(x.size),x]));
     const merged=sizes.map(size=>{
       const key=String(size);
-      const remote=(comparisons||[]).find(x=>String(x.size_ml||x.size||"")===key);
-      const local=localBySize.get(key);
-      const remoteOffers=Array.isArray(remote?.offers)?remote.offers:[];
-      if(remoteOffers.length)return remote;
-      if(local?.offers?.length)return {size_ml:key,best:local.best||null,offers:local.offers};
-      return remote||{size_ml:key,best:null,offers:[]};
+      const remote=(comparisons||[]).find(x=>String(x.size_ml||x.size||"")===key)||null;
+      const local=localBySize.get(key)||null;
+      // UNION: il remoto puo aggiungere informazioni, ma non puo eliminare
+      // un negozio gia presente nella ricerca principale.
+      return mergeFormatComparison(local,remote,key);
     });
     window._formatComparisonsByProduct=window._formatComparisonsByProduct||{};
     window._formatComparisonsByProduct[currentOpenProductKey]=merged;
@@ -1792,9 +1864,8 @@ function openSize(gi,sizeKey,fromFormats=true){
   currentOpenProductKey=productGroupKey(g); currentOpenSizeKey=String(sizeKey||"");
   const cached=formatComparisonFor(g,sizeKey);
   const fallback=getSizeGroups(g).find(s=>s.size===String(sizeKey));
-  const cachedOffers=Array.isArray(cached?.offers)?cached.offers:[];
-  const selected=(cached && cachedOffers.length)?{size:String(cached.size_ml||cached.size||sizeKey),offers:cachedOffers,best:cached.best||null}:fallback;
-  if(!selected)return;
+  const selected=mergeFormatComparison(fallback,cached,String(sizeKey));
+  if(!selected || !selected.offers.length)return;
   const offers=selected.offers||[]; const saved=getWishlist(); const img=g.image||"";
   statusBox.textContent="";
   resultsBox.innerHTML=`<article class="comparison"><button class="detail-back" onclick="openProduct(${gi})">← Torna ai formati</button><div class="comparison-head"><div class="result-image">${img?`<img src="${esc(img)}" alt="${esc(displayPerfumeName(g.name,g.brand))}" onerror="this.outerHTML='🧴'">`:"🧴"}</div><div class="result-main"><div class="store">${esc(g.brand||"")}</div><div class="name">${esc(displayPerfumeName(g.name,g.brand))}</div><div class="offer-meta">${esc(formatLabel(String(selected.size)))}</div></div></div><div class="format-compare-bar"><div class="format-compare-item"><div class="format-compare-copy"><div class="format-compare-label">FORMATO</div><div class="format-compare-value">${esc(formatLabel(String(selected.size)))}</div></div></div><div class="format-compare-item"><div class="format-compare-copy"><div class="format-compare-label">CONFRONTA I PREZZI</div><div class="format-compare-value">${offers.length} ${offers.length===1?"negozio":"negozi"}</div></div></div></div>${renderOffersHtml(g,img,offers,saved)}</article>`;
