@@ -1683,34 +1683,70 @@ function archiveProgressiveGroups(groups){
 }
 
 function applyProgressiveArchive(groups){
-  return (Array.isArray(groups)?groups:[]).map(g=>{
+  /*
+   * MONOTONIC SEARCH:
+   * uno snapshot successivo non può cancellare un prodotto già pubblicato.
+   * Prima uniamo i gruppi correnti con TUTTO l'archivio progressivo, poi
+   * ricostruiamo anche i gruppi che il backend non ripete nello snapshot più
+   * recente. Questo evita il bug: "visto durante la ricerca -> sparito alla fine".
+   */
+  const currentMap=new Map();
+
+  (Array.isArray(groups)?groups:[]).forEach(g=>{
     const pkey=productGroupKey(g);
+    if(pkey)currentMap.set(pkey,g);
+  });
+
+  const allKeys=new Set([
+    ...currentMap.keys(),
+    ...progressiveProductArchive.keys(),
+    ...progressiveOfferArchive.keys()
+  ]);
+
+  const output=[];
+
+  allKeys.forEach(pkey=>{
+    const g=currentMap.get(pkey)||{};
     const meta=progressiveProductArchive.get(pkey)||{};
     const offerMap=progressiveOfferArchive.get(pkey)||new Map();
     const archived=[...offerMap.values()];
-    const local=[...(Array.isArray(g.offers)?g.offers:[])];
+    const local=Array.isArray(g.offers)?g.offers:[];
     const mergedByKey=new Map();
-    [...local,...archived].forEach(o=>{
-      const key=progressiveOfferKey(o,g);
+
+    [...archived,...local].forEach(o=>{
+      const key=progressiveOfferKey(o,{...meta,...g});
       if(!key)return;
       const old=mergedByKey.get(key);
-      if(!old){mergedByKey.set(key,o);return;}
+      if(!old){
+        mergedByKey.set(key,{...o});
+        return;
+      }
       const oldOut=isOfferOutOfStock(old), newOut=isOfferOutOfStock(o);
       if(oldOut&&!newOut)mergedByKey.set(key,{...old,...o});
       else mergedByKey.set(key,{...old,...o});
     });
-    return {
+
+    const mergedOffers=[...mergedByKey.values()];
+    const formats=Array.from(new Set([
+      ...(meta.formats_ml||[]),
+      ...(g.formats_ml||[]),
+      ...mergedOffers.map(o=>sizeOfOffer(o)).filter(Boolean)
+    ]));
+
+    output.push({
       ...g,
       brand:g.brand||meta.brand||"",
       name:g.name||meta.name||"",
       image:g.image||meta.image||"",
-      formats_ml:Array.from(new Set([...(meta.formats_ml||[]),...(g.formats_ml||[])])),
+      formats_ml:formats,
       catalog_id:g.catalog_id||meta.catalog_id||"",
       family_id:g.family_id||meta.family_id||"",
       catalog_variant:g.catalog_variant||meta.catalog_variant||"",
-      offers:[...mergedByKey.values()]
-    };
+      offers:mergedOffers
+    });
   });
+
+  return output;
 }
 
 function resetProgressiveArchive(){
@@ -2110,15 +2146,37 @@ async function searchStoresProgressive(term,onPartial){
 
   lastSnapshot=snapshot||{};
 
-  // Il backend è la fonte unica della ricerca: pubblica i risultati
-  // progressivamente mentre esegue i negozi in ondate controllate.
-  if(typeof onPartial==="function"){
+  // Il backend è la fonte unica della ricerca: esegue 2 negozi per volta.
+  // Il frontend pubblica una coppia solo quando entrambi hanno terminato.
+  /*
+   * Il backend lavora a ONDATE di 2 negozi. Non mostriamo il primo negozio
+   * della coppia mentre il secondo sta ancora lavorando: aspettiamo che la
+   * coppia sia conclusa e poi pubblichiamo insieme i risultati della coppia.
+   * L'ordine visuale quindi è sempre: 1-2, poi 3-4, poi 5-6, poi 7-8.
+   */
+  const statusMap=(snapshot?.store_status&&typeof snapshot.store_status==="object")
+    ?snapshot.store_status:{};
+  const phase=String(snapshot?.phase||"");
+  const phaseMatch=phase.match(/^stores_(\d+)_(\d+)$/);
+  let pairReady=true;
+  if(phaseMatch){
+    const first=Number(phaseMatch[1]);
+    const last=Number(phaseMatch[2]);
+    const pairStores=SEARCH_STORES.slice(first-1,last);
+    pairReady=pairStores.every(store=>{
+      const st=statusMap?.[store]?.status;
+      return st==="ok" || st==="empty" || st==="error" || st==="timeout";
+    });
+  }
+
+  if(typeof onPartial==="function" && (pairReady || snapshot?.completed===true)){
    onPartial({
     query:term,
     comparisons:Array.isArray(snapshot?.comparisons)?snapshot.comparisons:[],
     results:Array.isArray(snapshot?.results)?snapshot.results:[],
     errors:(snapshot?.errors&&typeof snapshot.errors==="object")?snapshot.errors:{},
-    store_status:(snapshot?.store_status&&typeof snapshot.store_status==="object")?snapshot.store_status:{},
+    store_status:statusMap,
+    phase,
     completed:Boolean(snapshot?.completed),
     status:snapshot?.status||"searching"
    },Boolean(snapshot?.completed));
