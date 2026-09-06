@@ -1995,7 +1995,6 @@ async function openProduct(i){
       }
     );
   }
-
   return remote;
 }
 
@@ -2012,17 +2011,19 @@ if(local?.offers?.length){
       }
     );
   }
-
   return {
-    sizeml:key,
-    best:local.best,
+    size_ml:key,
+    best:local.best||null,
     offers:local.offers
   };
 }
-size_ml:key,best:local.best||null,offers:local.offers};
-      return remote||{size_ml:key,best:null,offers:[]};
-    });
-    window._formatComparisonsByProduct=window._formatComparisonsByProduct||{};
+
+return remote||{
+  size_ml:key,
+  best:null,
+  offers:[]
+};
+
     window._formatComparisonsByProduct[currentOpenProductKey]=merged;
     renderFormatChoiceCard(i,g,merged,sizes);
   }catch(error){
