@@ -87,7 +87,7 @@ def norm(value):
 def same_host(url):
     try:
         host = urlparse(url).netloc.lower()
-        return host == "deloox.nl" or host.endswith(".deloox.nl")
+        return host == "deloox.be" or host.endswith(".deloox.be")
     except Exception:
         return False
 
