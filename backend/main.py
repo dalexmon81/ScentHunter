@@ -696,3 +696,8 @@ def diagnose_format_flow(
         "by_format": by_size,
         "jobs": rows,
     }
+
+@app.get("/diagnose-deloox-disappearance")
+def diagnose_deloox_disappearance(q: str = Query("liquid brun", min_length=1)):
+    from diagnostic_search import run_deloox_disappearance
+    return run_deloox_disappearance(str(q or "").strip())
