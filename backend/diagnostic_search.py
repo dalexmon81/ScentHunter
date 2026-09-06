@@ -1,94 +1,139 @@
 """
-ScentHunter - Deloox progressive disappearance diagnostic.
+ScentHunter - production-faithful pipeline diagnostic.
 
-READ-ONLY diagnostic. It does not alter normal search behavior.
+This diagnostic is deliberately different from the old deep diagnostic:
+- runs the SAME SearchEngine store execution used by /search;
+- validates candidates EXACTLY ONCE;
+- prepares final results from that already-validated list;
+- never calls validation twice;
+- reports every candidate by store + URL/product id;
+- explicitly classifies where an offer disappeared:
+  1) scraper/discovery: never entered raw pool
+  2) central validation: entered raw pool but was rejected
+  3) final preparation/grouping: validated but absent from final offers
+  4) final output: present in final offers
 
-It reproduces the production SearchEngine.run_job pattern:
-- stores are processed in waves of two;
-- after each completed store the accumulated raw pool is revalidated;
-- the validated pool is passed through the same final preparation;
-- every progressive final snapshot is recorded;
-- Deloox is compared between consecutive snapshots.
-
-Endpoint:
-    /diagnose-deloox-disappearance?q=liquid%20brun
+It is diagnostic-only and does not modify production search behavior.
 """
-
 from __future__ import annotations
 
-import concurrent.futures
-import time
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
+import re
+
+import main_legacy as legacy
+from search_engine import SearchEngine
+
+ENGINE = SearchEngine(legacy)
 
 
-def _identity(item: Dict[str, Any]) -> str:
-    """Stable identity for detecting disappearance between snapshots."""
-    store = str(item.get("store") or "").strip().casefold()
-    url = str(item.get("url") or "").strip().casefold()
-    if store or url:
-        return f"store={store}|url={url}"
+def _safe(value: Any) -> Any:
+    if value is None or isinstance(value, (str, int, float, bool)):
+        return value
+    if isinstance(value, list):
+        return [_safe(x) for x in value[:100]]
+    if isinstance(value, dict):
+        keep = {
+            "name", "title", "product_name", "brand", "brand_name",
+            "store", "shop", "url", "source", "source_name",
+            "product_id", "id", "sku", "ean", "gtin", "mpn",
+            "price", "price_num", "currency", "size_ml", "size",
+            "format", "concentration", "gender", "availability",
+            "available", "stock", "stock_status", "in_stock",
+            "canonical_name", "canonical_id", "family_id", "family_name",
+            "match_method", "catalog_id", "catalog_variant",
+            "identity", "offers", "raw_name", "raw_title",
+            "card_text", "evidence", "source_url", "raw_data",
+            "attributes", "offer", "provenance",
+        }
+        return {k: _safe(v) for k, v in value.items() if k in keep}
+    return str(value)
 
-    product_id = str(item.get("product_id") or "").strip().casefold()
-    sku = str(item.get("sku") or "").strip().casefold()
-    size = item.get("size_ml")
-    name = str(
-        item.get("canonical_name")
-        or item.get("name")
-        or item.get("title")
+
+def _store(item: Dict[str, Any]) -> str:
+    return str(item.get("store") or item.get("shop") or "").strip()
+
+
+def _url(item: Dict[str, Any]) -> str:
+    source = item.get("source")
+    if isinstance(source, dict):
+        return str(
+            item.get("url")
+            or item.get("source_url")
+            or source.get("url")
+            or ""
+        ).strip()
+    return str(item.get("url") or item.get("source_url") or "").strip()
+
+
+def _product_id(item: Dict[str, Any]) -> str:
+    identity = item.get("identity")
+    if isinstance(identity, dict):
+        value = identity.get("store_product_id")
+        if isinstance(value, dict):
+            value = value.get("value")
+        if value not in (None, ""):
+            return str(value).strip()
+
+    return str(
+        item.get("product_id")
+        or item.get("canonical_id")
+        or item.get("id")
         or ""
-    ).strip().casefold()
-
-    return f"store={store}|product_id={product_id}|sku={sku}|size={size}|name={name}"
+    ).strip()
 
 
-def _is_deloox(item: Dict[str, Any]) -> bool:
-    return str(item.get("store") or "").strip().casefold() == "deloox"
+def _sku(item: Dict[str, Any]) -> str:
+    identity = item.get("identity")
+    if isinstance(identity, dict):
+        value = identity.get("sku")
+        if isinstance(value, dict):
+            value = value.get("value")
+        if value not in (None, ""):
+            return str(value).strip()
+    return str(item.get("sku") or "").strip()
 
 
-def _deloox_from_final(results: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+def _name(item: Dict[str, Any]) -> str:
+    source = item.get("source")
+    source_name = source.get("source_name") if isinstance(source, dict) else ""
+    return str(
+        item.get("name")
+        or item.get("title")
+        or item.get("product_name")
+        or source_name
+        or ""
+    ).strip()
+
+
+def _fingerprint(item: Dict[str, Any]) -> Dict[str, Any]:
     """
-    Extract Deloox offers from the exact final-result shape.
+    Stable evidence identity.
 
-    The finalizer can place offers inside a representative product's
-    ``offers`` list, so inspect both top-level products and nested offers.
+    Store + URL is the strongest link for this diagnostic. Product id/sku are
+    retained as secondary evidence, but never replace the URL when present.
     """
-    found: List[Dict[str, Any]] = []
-    seen = set()
-
-    def add(item: Any) -> None:
-        if not isinstance(item, dict):
-            return
-        if not _is_deloox(item):
-            return
-        key = _identity(item)
-        if key in seen:
-            return
-        seen.add(key)
-        found.append(item)
-
-    for result in results or []:
-        add(result)
-
-        offers = result.get("offers")
-        if isinstance(offers, list):
-            for offer in offers:
-                add(offer)
-
-    return found
+    return {
+        "store": _store(item),
+        "url": _url(item),
+        "product_id": _product_id(item),
+        "sku": _sku(item),
+        "name": _name(item),
+        "canonical_name": str(item.get("canonical_name") or "").strip(),
+    }
 
 
 def _short(item: Dict[str, Any]) -> Dict[str, Any]:
     return {
-        "store": item.get("store"),
-        "name": item.get("name"),
-        "canonical_name": item.get("canonical_name"),
-        "url": item.get("url"),
-        "product_id": item.get("product_id"),
-        "sku": item.get("sku"),
-        "size_ml": item.get("size_ml"),
+        "store": _store(item),
+        "url": _url(item),
+        "product_id": _product_id(item),
+        "sku": _sku(item),
+        "name": _name(item),
         "price": item.get("price"),
-        "available": item.get("available"),
         "availability": item.get("availability"),
+        "available": item.get("available"),
+        "size_ml": item.get("size_ml"),
+        "canonical_name": item.get("canonical_name"),
         "family_id": item.get("family_id"),
         "family_name": item.get("family_name"),
         "catalog_variant": item.get("catalog_variant"),
@@ -96,204 +141,269 @@ def _short(item: Dict[str, Any]) -> Dict[str, Any]:
     }
 
 
-def _prepare(legacy: Any, engine: Any, validated: List[Dict[str, Any]], query: str) -> List[Dict[str, Any]]:
-    """Run the same final preparation used by the production status path."""
-    prepare = getattr(legacy, "_prepare_final_results", None)
-    if callable(prepare):
-        try:
-            final = prepare(validated, query)
-        except TypeError:
-            final = prepare(validated)
-    else:
-        final = validated
-
-    if final is None:
-        final = []
-    elif not isinstance(final, list):
-        final = list(final)
-
-    stable = getattr(engine, "_stable_results", None)
-    if callable(stable):
-        final = stable([x for x in final if isinstance(x, dict)])
-    else:
-        final = [x for x in final if isinstance(x, dict)]
-
-    return final
+def _offer_fingerprints(final_results: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    out = []
+    for result in final_results:
+        offers = result.get("offers")
+        if isinstance(offers, list) and offers:
+            for offer in offers:
+                if isinstance(offer, dict):
+                    out.append(_fingerprint(offer))
+        else:
+            out.append(_fingerprint(result))
+    return out
 
 
-def _stage(
-    legacy: Any,
-    engine: Any,
-    query: str,
-    raw_pool: List[Dict[str, Any]],
+def _contains_same_offer(candidate: Dict[str, Any], validated: List[Dict[str, Any]]) -> bool:
+    """
+    Link raw -> validated without using the candidate name as identity.
+
+    URL+store is preferred. If URL is absent, use store+product id or store+SKU.
+    """
+    c_store = _store(candidate).lower()
+    c_url = _url(candidate).lower()
+    c_pid = _product_id(candidate)
+    c_sku = _sku(candidate)
+
+    for item in validated:
+        if _store(item).lower() != c_store:
+            continue
+
+        i_url = _url(item).lower()
+        i_pid = _product_id(item)
+        i_sku = _sku(item)
+
+        if c_url and i_url and c_url == i_url:
+            return True
+        if c_pid and i_pid and c_pid == i_pid:
+            return True
+        if c_sku and i_sku and c_sku == i_sku:
+            return True
+
+    return False
+
+
+def _validated_to_final_map(
+    validated: List[Dict[str, Any]],
+    final_results: List[Dict[str, Any]],
 ) -> Dict[str, Any]:
-    """Create one exact progressive validation/finalization snapshot."""
-    validated = engine._validate_candidates_only(query, raw_pool)
-    if validated is None:
-        validated = []
-    validated = [x for x in validated if isinstance(x, dict)]
+    final_offers = _offer_fingerprints(final_results)
 
-    final = _prepare(legacy, engine, validated, query)
+    def present(item: Dict[str, Any]) -> bool:
+        store = _store(item).lower()
+        url = _url(item).lower()
+        pid = _product_id(item)
+        sku = _sku(item)
 
-    raw_deloox = [x for x in raw_pool if _is_deloox(x)]
-    validated_deloox = [x for x in validated if _is_deloox(x)]
-    final_deloox = _deloox_from_final(final)
-
-    raw_keys = {_identity(x) for x in raw_deloox}
-    validated_keys = {_identity(x) for x in validated_deloox}
-    final_keys = {_identity(x) for x in final_deloox}
+        for offer in final_offers:
+            if str(offer.get("store") or "").lower() != store:
+                continue
+            if url and str(offer.get("url") or "").lower() == url:
+                return True
+            if pid and str(offer.get("product_id") or "") == pid:
+                return True
+            if sku and str(offer.get("sku") or "") == sku:
+                return True
+        return False
 
     return {
-        "raw_deloox_count": len(raw_deloox),
-        "validated_deloox_count": len(validated_deloox),
-        "final_deloox_count": len(final_deloox),
-        "raw_to_validation_lost": sorted(raw_keys - validated_keys),
-        "validation_to_final_lost": sorted(validated_keys - final_keys),
-        "raw_deloox": [_short(x) for x in raw_deloox],
-        "validated_deloox": [_short(x) for x in validated_deloox],
-        "final_deloox": [_short(x) for x in final_deloox],
-        "final_result_count": len(final),
+        "validated_present_in_final": [
+            _short(item) for item in validated if present(item)
+        ],
+        "validated_missing_from_final": [
+            _short(item) for item in validated if not present(item)
+        ],
     }
 
 
-def run_query(query: str = "liquid brun") -> Dict[str, Any]:
+def _infer_rejection_reason(
+    item: Dict[str, Any],
+    query: str,
+) -> Dict[str, Any]:
     """
-    Run the progressive diagnostic against the production SearchEngine
-    implementation loaded by main.py.
-    """
-    query = str(query or "").strip()
-    if not query:
-        query = "liquid brun"
+    Best-effort deterministic clues, NOT a fake claim about the matcher.
 
-    started = time.monotonic()
+    The actual matcher remains authoritative. These checks tell us what to
+    inspect next when a raw candidate disappears.
+    """
+    text = " ".join(
+        str(item.get(k) or "")
+        for k in ("name", "title", "product_name", "canonical_name")
+    )
+    source = item.get("source")
+    if isinstance(source, dict):
+        text += " " + str(source.get("source_name") or "")
+        text += " " + str(source.get("source_brand") or "")
+
+    norm = getattr(legacy, "norm", lambda x: str(x).lower())
+    q = norm(query)
+    t = norm(text)
+
+    clues: List[str] = []
+    if q and not all(token in t for token in q.split() if token):
+        clues.append("query_tokens_not_all_in_candidate_text")
 
     try:
-        # main.py has already loaded main_legacy and constructed _engine.
-        import main as production
+        if getattr(legacy, "has_small_size", lambda x: False)(item):
+            clues.append("small_size_or_sample_signal")
+    except Exception:
+        pass
 
-        legacy = production._legacy
-        engine = production._engine
+    try:
+        non_single = getattr(legacy, "_non_single_product_match", None)
+        if non_single is not None and non_single(item, query):
+            clues.append("non_single_product_or_excluded_type")
+    except Exception:
+        pass
 
-        original_stores = list(engine.stores)
-        stores = list(original_stores)
+    return {
+        "clues": clues,
+        "note": "These are diagnostic clues only; they are not substituted for the real matcher decision.",
+    }
 
+
+def run_query(
+    query: str,
+    stores: Optional[List[str]] = None,
+) -> Dict[str, Any]:
+    query = str(query or "").strip()
+    if not query:
+        return {"ok": False, "error": "Parametro q mancante", "query": query}
+
+    original_stores = ENGINE.stores
+    if stores:
+        ENGINE.stores = list(stores)
+
+    try:
+        analysis = ENGINE.analyze_query(query)
+
+        # EXACTLY the same store execution as production /search.
+        run = ENGINE._run_stores(analysis["raw"])
+
+        raw_by_store: Dict[str, List[Dict[str, Any]]] = {}
+        store_report: Dict[str, Any] = {}
         raw_pool: List[Dict[str, Any]] = []
-        snapshots: List[Dict[str, Any]] = []
-        disappearance_events: List[Dict[str, Any]] = []
-        previous_final_keys: set[str] = set()
 
-        # Match SearchEngine.run_job exactly: two stores per wave.
-        for wave_start in range(0, len(stores), 2):
-            wave = stores[wave_start : wave_start + 2]
+        for store in ENGINE.stores:
+            result = run["stores"][store]
+            raw = [x for x in result.candidates if isinstance(x, dict)]
+            raw_by_store[store] = raw
+            raw_pool.extend(raw)
+            store_report[store] = {
+                "status": result.status,
+                "candidate_count": len(raw),
+                "elapsed_seconds": round(result.elapsed, 3),
+                "error": result.error,
+                "candidates": [_short(x) for x in raw],
+            }
 
-            with concurrent.futures.ThreadPoolExecutor(
-                max_workers=2,
-                thread_name_prefix="deloox-diagnostic",
-            ) as executor:
-                future_map = {
-                    executor.submit(engine._run_one_store, store, query): store
-                    for store in wave
-                }
+        # EXACTLY ONCE: this is the production central validation stage.
+        validated = ENGINE._validate_candidates_only(
+            analysis["raw"],
+            raw_pool,
+        )
 
-                for future in concurrent.futures.as_completed(future_map):
-                    store = future_map[future]
-
-                    try:
-                        result = future.result()
-                    except Exception as exc:
-                        snapshots.append({
-                            "after_store": store,
-                            "store_status": "exception",
-                            "store_error": f"{type(exc).__name__}: {exc}",
-                            "stage": _stage(legacy, engine, query, raw_pool),
-                        })
-                        continue
-
-                    candidates = list(result.candidates or [])
-                    raw_pool.extend(
-                        x for x in candidates if isinstance(x, dict)
-                    )
-
-                    stage = _stage(legacy, engine, query, raw_pool)
-
-                    current_final_keys = {
-                        _identity(x) for x in stage["final_deloox"]
-                    }
-
-                    if previous_final_keys:
-                        vanished = sorted(
-                            previous_final_keys - current_final_keys
-                        )
-                        appeared = sorted(
-                            current_final_keys - previous_final_keys
-                        )
-
-                        if vanished:
-                            disappearance_events.append({
-                                "after_store": store,
-                                "vanished_keys": vanished,
-                                "appeared_keys": appeared,
-                                "previous_final_deloox": [
-                                    x for x in snapshots[-1]["stage"]["final_deloox"]
-                                ],
-                                "current_final_deloox": [
-                                    x for x in stage["final_deloox"]
-                                ],
-                            })
-
-                    previous_final_keys = current_final_keys
-
-                    snapshots.append({
-                        "after_store": store,
-                        "store_status": result.status,
-                        "store_elapsed_seconds": round(result.elapsed, 3),
-                        "store_error": result.error,
-                        "store_candidate_count": len(candidates),
-                        "accumulated_raw_candidate_count": len(raw_pool),
-                        "stage": stage,
-                    })
-
-        # A final independent stage is useful to prove whether the last
-        # progressive snapshot agrees with a final re-run on the same pool.
-        final_stage = _stage(legacy, engine, query, raw_pool)
-
-        final_keys = {
-            _identity(x) for x in final_stage["final_deloox"]
-        }
-
-        if not snapshots:
-            conclusion = "no_snapshots"
-        elif disappearance_events:
-            conclusion = "deloox_disappears_between_progressive_backend_snapshots"
-        elif final_stage["final_deloox_count"] == 0:
-            conclusion = "deloox_missing_from_final_backend_payload"
+        # Do NOT call _validate_and_finalize here because that would validate
+        # the same raw pool a second time. Prepare directly from the validated
+        # list, exactly matching the second half of production.
+        prepare = getattr(legacy, "_prepare_final_results", None)
+        if prepare is not None:
+            try:
+                final_results = prepare(validated, analysis["raw"])
+            except TypeError:
+                final_results = prepare(validated)
         else:
-            conclusion = "backend_keeps_deloox_through_progressive_final_snapshots"
+            final_results = validated
+
+        if final_results is None:
+            final_results = []
+        if not isinstance(final_results, list):
+            final_results = list(final_results)
+
+        final_results = ENGINE._stable_results(
+            [x for x in final_results if isinstance(x, dict)]
+        )
+
+        # Build precise stage classification.
+        raw_that_validated: Dict[str, List[Dict[str, Any]]] = {}
+        raw_rejected: Dict[str, List[Dict[str, Any]]] = {}
+
+        for store in ENGINE.stores:
+            raw_that_validated[store] = []
+            raw_rejected[store] = []
+
+            for item in raw_by_store[store]:
+                if _contains_same_offer(item, validated):
+                    raw_that_validated[store].append(item)
+                else:
+                    raw_rejected[store].append(item)
+
+        final_map = _validated_to_final_map(validated, final_results)
 
         return {
             "ok": True,
-            "diagnostic_type": "deloox_progressive_backend_v1",
-            "query": query,
-            "conclusion": conclusion,
-            "definition": {
-                "RAW": "candidate is present in accumulated raw store output",
-                "VALIDATED": "candidate survives central validation",
-                "FINAL": "Deloox offer is present in the exact final-result preparation",
-                "DISAPPEARANCE": "a Deloox final identity present in one snapshot is absent in the next",
+            "diagnostic_type": "production_faithful_single_pass",
+            "query": analysis,
+            "conclusion": {
+                "definition": {
+                    "DISCOVERY": "candidate entered raw store output",
+                    "VALIDATION": "candidate survived central matcher exactly once",
+                    "FINAL_PREPARATION": "validated candidate became an offer in final result",
+                    "FINAL_OUTPUT": "offer is present in the exact final /search-equivalent payload",
+                },
+                "store_summary": {
+                    store: {
+                        "raw": len(raw_by_store[store]),
+                        "validated": len(raw_that_validated[store]),
+                        "rejected": len(raw_rejected[store]),
+                        "final_offers": sum(
+                            1 for x in _offer_fingerprints(final_results)
+                            if str(x.get("store") or "").lower() == store.lower()
+                        ),
+                        "status": store_report[store]["status"],
+                    }
+                    for store in ENGINE.stores
+                },
             },
-            "stores": stores,
-            "elapsed_seconds": round(time.monotonic() - started, 3),
-            "raw_candidate_count": len(raw_pool),
-            "snapshots": snapshots,
-            "disappearance_events": disappearance_events,
-            "final_recheck": final_stage,
-            "final_recheck_deloox_keys": sorted(final_keys),
+            "research": {
+                "elapsed_seconds": round(run["elapsed"], 3),
+                "store_count": len(ENGINE.stores),
+                "retried_stores": run.get("retried_stores", []),
+                "raw_candidate_count": len(raw_pool),
+                "validated_candidate_count": len(validated),
+                "final_result_count": len(final_results),
+            },
+            "stores": store_report,
+            "pipeline": {
+                "raw_candidates_by_store": {
+                    store: [_safe(x) for x in raw_by_store[store]]
+                    for store in ENGINE.stores
+                },
+                "validated_candidates_by_store": {
+                    store: [_safe(x) for x in raw_that_validated[store]]
+                    for store in ENGINE.stores
+                },
+                "rejected_candidates_by_store": {
+                    store: [
+                        {
+                            **_short(x),
+                            "rejection_clues": _infer_rejection_reason(x, query),
+                        }
+                        for x in raw_rejected[store]
+                    ]
+                    for store in ENGINE.stores
+                },
+                "validated_missing_from_final": final_map["validated_missing_from_final"],
+                "validated_present_in_final": final_map["validated_present_in_final"],
+                "final_results": [_safe(x) for x in final_results],
+            },
         }
 
     except Exception as exc:
         return {
             "ok": False,
-            "diagnostic_type": "deloox_progressive_backend_v1",
             "query": query,
             "error": f"{type(exc).__name__}: {exc}",
         }
+    finally:
+        ENGINE.stores = original_stores
