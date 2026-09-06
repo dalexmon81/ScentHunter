@@ -300,16 +300,25 @@ def _format_compare_size(candidate: Dict[str, Any]) -> int | None:
     return int(numeric) if numeric.is_integer() else int(round(numeric))
 
 
-def _format_compare_is_oos(candidate: Dict[str, Any]) -> bool:
+def _format_compare_stock_state(candidate: Dict[str, Any]) -> str:
+    """Return the normalized stock state without inventing availability."""
+    if candidate.get("in_stock") is True:
+        return "in_stock"
     if candidate.get("in_stock") is False:
-        return True
+        return "out_of_stock"
+
+    available = candidate.get("available")
+    if available is True:
+        return "in_stock"
+    if available is False:
+        return "out_of_stock"
 
     text = " ".join(
         str(candidate.get(k) or "")
-        for k in ("availability", "stock", "status", "name")
+        for k in ("availability", "stock", "status")
     ).casefold()
 
-    markers = (
+    out_markers = (
         "out of stock",
         "out-of-stock",
         "non disponibile",
@@ -318,8 +327,29 @@ def _format_compare_is_oos(candidate: Dict[str, Any]) -> bool:
         "rupture",
         "agotado",
         "esaurito",
+        "unavailable",
     )
-    return any(marker in text for marker in markers)
+    if any(marker in text for marker in out_markers):
+        return "out_of_stock"
+
+    in_markers = (
+        "in stock",
+        "in-stock",
+        "disponibile",
+        "disponible",
+        "available",
+        "en stock",
+        "auf lager",
+        "disponible ahora",
+    )
+    if any(marker in text for marker in in_markers):
+        return "in_stock"
+
+    return "unknown"
+
+
+def _format_compare_is_oos(candidate: Dict[str, Any]) -> bool:
+    return _format_compare_stock_state(candidate) == "out_of_stock"
 
 
 def _format_compare_clean_offer(
@@ -367,7 +397,12 @@ def _format_compare_store(
     product: str,
     requested_size: int,
 ) -> Dict[str, Any]:
-    query = _format_compare_query(product, requested_size)
+    # Do NOT put the bottle size into the retailer search query.
+    # The forensic diagnostic proved that several adapters return 0 results
+    # for "liquid brun 100 ml" even though the same adapters return the real
+    # 100 ml candidates for the base query "liquid brun".
+    # Discovery stays broad; explicit size extraction below is authoritative.
+    query = _format_compare_query(product)
 
     try:
         raw = _legacy.run_store(store, query)
@@ -593,10 +628,11 @@ def diagnose_format_flow(
     def one(store, size):
         t0 = _diag_time.monotonic()
 
-        # IMPORTANT: this diagnostic now executes the exact same sized query
-        # as /compare-formats. The previous diagnostic accidentally omitted
-        # the requested size, so it was not testing the real format path.
-        query = _format_compare_query(product, size)
+        # IMPORTANT: format diagnosis must use the same broad discovery query
+        # as production. The requested size is enforced after scraping from
+        # the candidate's explicit parsed size. Putting "100 ml" into the
+        # retailer query makes several adapters return zero results.
+        query = _format_compare_query(product)
 
         out = {
             "store": store,
