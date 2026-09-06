@@ -2113,7 +2113,6 @@ async function searchPerfume(){
 
 window.searchPerfume=searchPerfume;
 searchButton.addEventListener("click",searchPerfume);
-searchButton.addEventListener("touchend",e=>{e.preventDefault();if(!searchButton.disabled)searchPerfume()},{passive:false});
 queryInput.addEventListener("keydown",e=>{if(e.key==="Enter"){e.preventDefault();searchPerfume()}});
 renderWishlist();syncHearts();
 </script>
