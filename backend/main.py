@@ -140,21 +140,30 @@ _legacy._search_job_snapshot = _search_job_snapshot_from_full_pool
 # /search-status consumes validated_candidates directly.
 
 def _monotonic_result_key(item: Dict[str, Any]):
+    """Identity of ONE retailer offer, never of the perfume family.
+
+    A product identity is intentionally not enough here: Liquid Brun at
+    Deloox and Liquid Brun at ParfumCity are two different offers and must
+    both survive the incremental merge.
+    """
+    store = str(item.get("store") or item.get("shop") or "").strip().casefold()
+    url = str(item.get("url") or item.get("product_url") or "").strip().casefold()
+
     try:
-        key = _legacy.product_identity_key(item)
+        identity = _legacy.product_identity_key(item)
     except Exception:
-        key = (
-            str(item.get("store") or item.get("shop") or "").strip().casefold(),
-            str(item.get("url") or "").strip().casefold(),
+        identity = (
             str(item.get("name") or item.get("title") or "").strip().casefold(),
+            str(item.get("brand") or item.get("source_brand") or "").strip().casefold(),
         )
+
     try:
         size = _engine._extract_candidate_size_ml(item)
     except Exception:
         size = None
-    if size is not None:
-        return (key, round(float(size), 4))
-    return key
+
+    size_key = round(float(size), 4) if size is not None else None
+    return (store, url, identity, size_key)
 
 
 def _merge_monotonic_validated(existing: List[Dict[str, Any]],
@@ -267,13 +276,25 @@ def _monotonic_run_search_job(job_id: str, query: str) -> None:
                     if result.error:
                         errors[store] = result.error
 
-                    # Validate the complete discovery pool, but NEVER replace
-                    # the previously validated pool with this pass. Only add
-                    # newly validated offers.
-                    current_validated = _engine._validate_candidates_only(
-                        query,
-                        list(raw_pool),
-                    )
+                    # Validate ONLY this store's candidates.
+                    # Re-validating the complete cross-store pool here is the
+                    # exact pattern that can make a previously valid retailer
+                    # disappear when another retailer arrives with a similar
+                    # product identity. Each store is authoritative for its
+                    # own offers; the merge below is offer-level.
+                    try:
+                        current_validated = _engine._validate_candidates_only(
+                            query,
+                            list(candidates),
+                        )
+                    except Exception as exc:
+                        print(
+                            "STORE_VALIDATION_ERROR:",
+                            f"store={store} {type(exc).__name__}: {exc}",
+                            flush=True,
+                        )
+                        current_validated = []
+
                     validated_pool = _merge_monotonic_validated(
                         validated_pool,
                         current_validated,
@@ -326,30 +347,75 @@ def _monotonic_run_search_job(job_id: str, query: str) -> None:
 
 _legacy._run_search_job = _monotonic_run_search_job
 
-# ParfumCity: the adapter itself returns the correct 100 ml Liquid Brun,
-# while the legacy run_store path can discard it before SearchEngine sees it.
-# Keep the other seven stores on their existing path and bypass only this
-# adapter through its own search() implementation. The central SearchEngine
-# still performs the normal validation/deduplication afterwards.
+# Direct Shopify adapters for stores where the legacy adapter can lose the
+# product during discovery. They are SUPPLEMENTS, never replacements: the
+# legacy path stays authoritative for all stores, and direct candidates are
+# merged by retailer + URL + size. This also lets a fresh Shopify stock flag
+# correct a stale legacy OUT OF STOCK flag for the same product URL.
 _original_run_store = _legacy.run_store
+_DIRECT_SUPPLEMENT_STORES = {"parfumcity", "orioudh"}
 
-def _run_store_preserving_parfumcity(store: str, query: str):
-    if str(store or "").strip().casefold() == "parfumcity":
+def _run_store_with_direct_supplements(store: str, query: str):
+    primary = []
+    try:
+        raw_primary = _original_run_store(store, query)
+        if isinstance(raw_primary, list):
+            primary = list(raw_primary)
+        elif raw_primary is not None:
+            primary = list(raw_primary)
+    except Exception as exc:
+        print(
+            "LEGACY_STORE_SEARCH_ERROR:",
+            f"store={store} {type(exc).__name__}: {exc}",
+            flush=True,
+        )
+
+    store_key = str(store or "").strip().casefold()
+    if store_key not in _DIRECT_SUPPLEMENT_STORES:
+        return primary
+
+    try:
+        module = importlib.import_module(f"scrapers.{store_key}.scraper")
+        search_fn = getattr(module, "search", None)
+        if not callable(search_fn):
+            return primary
+        direct = search_fn(str(query or "").strip()) or []
+    except Exception as exc:
+        print(
+            "DIRECT_STORE_SUPPLEMENT_ERROR:",
+            f"store={store_key} {type(exc).__name__}: {exc}",
+            flush=True,
+        )
+        return primary
+
+    merged = []
+    seen = set()
+
+    def add(item):
+        if not isinstance(item, dict):
+            return
+        url = str(item.get("url") or item.get("product_url") or "").strip().casefold()
         try:
-            module = importlib.import_module("scrapers.parfumcity.scraper")
-            search_fn = getattr(module, "search", None)
-            if callable(search_fn):
-                return search_fn(str(query or "").strip()) or []
-        except Exception as exc:
-            print(
-                "PARFUMCITY_DIRECT_SEARCH_ERROR:",
-                f"{type(exc).__name__}: {exc}",
-                flush=True,
-            )
-            # Preserve the old fallback if the direct adapter cannot load.
-    return _original_run_store(store, query)
+            size = _engine._extract_candidate_size_ml(item)
+        except Exception:
+            size = None
+        key = (url, round(float(size), 4) if size is not None else None)
+        if key in seen:
+            return
+        seen.add(key)
+        merged.append(item)
 
-_legacy.run_store = _run_store_preserving_parfumcity
+    # Direct first: it reads the live Shopify product JSON and therefore has
+    # the freshest price/stock flag. The legacy result is used as fallback
+    # only when the direct adapter did not return that exact URL+size.
+    for item in direct:
+        add(item)
+    for item in primary:
+        add(item)
+
+    return merged
+
+_legacy.run_store = _run_store_with_direct_supplements
 
 JINA_PREFIX = "https://r.jina.ai/"
 NOTINO_BASE = "https://www.notino.fr"
