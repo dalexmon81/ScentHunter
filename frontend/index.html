@@ -1905,6 +1905,17 @@ function formatComparisonFor(g,sizeKey){
 function renderFormatChoiceCard(gi,g,comparisons,sizes){
   const img=g.image||"";
   const bySize=new Map((comparisons||[]).map(x=>[String(x.size_ml||x.size||""),x]));
+ if(window.__SH_DELOOX_LOG__){
+  window.__SH_DELOOX_LOG__(
+    "15. renderFormatChoiceCard BEFORE INNERHTML",
+    {
+      group:g,
+      comparisons:comparisons||[],
+      sizes:sizes||[]
+    }
+  );
+}
+
   resultsBox.innerHTML=`<article class="comparison">
     <button class="detail-back" onclick="clearOpenProduct();showProducts(currentProductGroups)">← Torna ai profumi</button>
     <div class="comparison-head">
@@ -1995,6 +2006,16 @@ function renderSingleFormatComparison(g,img,offers,size,saved){
     offers:offers||[]
   });
 }
+if(window.__SH_DELOOX_LOG__){
+  window.__SH_DELOOX_LOG__(
+    "16. renderSingleFormatComparison BEFORE INNERHTML",
+    {
+      group:g,
+      size:size,
+      offers:offers||[]
+    }
+  );
+}
 
   resultsBox.innerHTML=`<article class="comparison"><button class="detail-back" onclick="clearOpenProduct();showProducts(currentProductGroups)">← Torna ai profumi</button><div class="comparison-head"><div class="result-image">${img?`<img src="${esc(img)}" alt="${esc(displayPerfumeName(g.name,g.brand))}" onerror="this.outerHTML='🧴'">`:"🧴"}</div><div class="result-main"><div class="store">${esc(g.brand||"")}</div><div class="name">${esc(displayPerfumeName(g.name,g.brand))}</div></div></div><div class="format-compare-bar"><div class="format-compare-item"><div class="format-compare-copy"><div class="format-compare-label">FORMATO</div><div class="format-compare-value">${esc(formatLabel(size)||"Formato")}</div></div></div><div class="format-compare-item"><div class="format-compare-copy"><div class="format-compare-label">CONFRONTA I PREZZI</div><div class="format-compare-value">${offers.length} ${offers.length===1?"negozio":"negozi"}</div></div></div></div>${renderOffersHtml(g,img,offers,saved)}</article>`;
   document.getElementById("searchOutput").scrollIntoView({behavior:"smooth",block:"start"});
@@ -2006,6 +2027,16 @@ function renderOffersHtml(g,img,offers,saved){
     group:g,
     offers:offers||[]
   });
+}
+if(window.__SH_DELOOX_LOG__){
+  window.__SH_DELOOX_LOG__(
+    "17. renderOffersHtml BEFORE RETURN",
+    {
+      group:g,
+      offers:offers||[],
+      renderedOfferCount:(offers||[]).length
+    }
+  );
 }
 
   return (offers||[]).map((o,n)=>{
