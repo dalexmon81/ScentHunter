@@ -1,5 +1,5 @@
 """
-ScentHunter progressive disappearance diagnostic.
+ScentHunter progressive disappearance diagnostic (2 waves x 4 stores).
 
 This file DOES NOT change production search logic.
 It reproduces the exact progressive wave/validation/final-preparation path
@@ -179,8 +179,9 @@ def run_query(query: str, stores: List[str] | None = None) -> Dict[str, Any]:
     store_reports: Dict[str, Any] = {}
     waves: List[Dict[str, Any]] = []
 
-    for wave_start in range(0, len(selected_stores), 2):
-        wave = selected_stores[wave_start:wave_start + 2]
+    wave_size = 4
+    for wave_start in range(0, len(selected_stores), wave_size):
+        wave = selected_stores[wave_start:wave_start + wave_size]
 
         wave_report: Dict[str, Any] = {
             "wave": wave_start // 2 + 1,
@@ -396,7 +397,7 @@ def run_query(query: str, stores: List[str] | None = None) -> Dict[str, Any]:
 
     return {
         "ok": True,
-        "diagnostic_type": "progressive_wave_exact_production_path_v1",
+        "diagnostic_type": "progressive_wave_exact_production_path_2x4_v2",
         "query": query,
         "stores": selected_stores,
         "elapsed_seconds": round(time.monotonic() - started, 3),
