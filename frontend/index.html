@@ -1175,6 +1175,24 @@ function shGroupData(data){
       .trim();
     const hint=concentrationHint(o);
 
+    // LIQUID BRUN: la variante Limited Edition è una referenza distinta.
+    // Va classificata prima del match master generico, perché "Liquid Brun"
+    // è contenuto nel nome "Liquid Brun Limited Edition".
+    const lb=liquidBrunFamily(o);
+    if(lb){
+      const detectedBrand=findBrand(o);
+      const masterLiquid=resolveMasterProduct(detectedBrand,pretty(lb));
+      if(masterLiquid){
+        return {
+          brand:masterLiquid.brand||detectedBrand,
+          name:masterLiquid.name||pretty(lb),
+          key:norm(masterLiquid.brand||detectedBrand)+"|"+norm(masterLiquid.name||pretty(lb)),
+          catalog_id:masterLiquid.id||""
+        };
+      }
+      return {brand:detectedBrand,name:pretty(lb),key:norm(detectedBrand)+"|"+lb};
+    }
+
     // Se il nome originale contiene una concentrazione esplicita,
     // preferiamo la referenza master con la stessa concentrazione.
     // Questo evita che "Eau de Toilette" venga confusa con "Eau de Parfum"
@@ -1201,20 +1219,6 @@ function shGroupData(data){
       };
     }
 
-    const lb=liquidBrunFamily(o);
-    if(lb){
-      const detectedBrand=findBrand(o);
-      const masterLiquid=resolveMasterProduct(detectedBrand,pretty(lb));
-      if(masterLiquid){
-        return {
-          brand:masterLiquid.brand||detectedBrand,
-          name:masterLiquid.name||pretty(lb),
-          key:norm(masterLiquid.brand||detectedBrand)+"|"+norm(masterLiquid.name||pretty(lb)),
-          catalog_id:masterLiquid.id||""
-        };
-      }
-      return {brand:detectedBrand,name:pretty(lb),key:norm(detectedBrand)+"|"+lb};
-    }
     const brand=findBrand(o);
     let name=cleanProductName(o,brand);
 
@@ -2129,7 +2133,7 @@ async function searchStoresProgressive(term,onPartial){
  const pollMs=150;
  const started=await fetchJSONWithTimeout(
   backend()+"/search-start?q="+encodeURIComponent(term),
-  15000
+  120000
  );
 
  const jobId=String(started?.job_id||started?.id||"").trim();
@@ -2141,7 +2145,7 @@ async function searchStoresProgressive(term,onPartial){
  while(Date.now()<deadline){
   const snapshot=await fetchJSONWithTimeout(
    backend()+"/search-status?job_id="+encodeURIComponent(jobId),
-   15000
+   30000
   );
 
   lastSnapshot=snapshot||{};
