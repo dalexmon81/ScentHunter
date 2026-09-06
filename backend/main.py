@@ -14,6 +14,8 @@ from main_legacy import *
 from search_engine import SearchEngine
 
 import importlib
+import concurrent.futures
+import time
 import json
 import math
 import re
@@ -90,7 +92,14 @@ def _search_job_snapshot_from_full_pool(job_id: str):
         phase = job.get("phase", "discovery")
 
     try:
-        validated = _engine._validate_candidates_only(query, raw_candidates)
+        # Use the monotonic validated pool produced by the background job.
+        # Re-validating the whole raw pool here can make a store disappear if
+        # a later scraper response for the same family is interpreted
+        # differently. The job already validated each candidate when it was
+        # discovered; that validated set is the source of truth for /search-status.
+        validated = list(job.get("validated_candidates") or [])
+        if not validated:
+            validated = _engine._validate_candidates_only(query, raw_candidates)
         results = _legacy._prepare_final_results(validated, query)
     except Exception as exc:
         print(
@@ -115,6 +124,207 @@ def _search_job_snapshot_from_full_pool(job_id: str):
     }
 
 _legacy._search_job_snapshot = _search_job_snapshot_from_full_pool
+
+# ---------------------------------------------------------------------------
+# MONOTONIC BACKGROUND SEARCH
+# ---------------------------------------------------------------------------
+# The stock SearchEngine job re-validates the complete raw pool at every
+# publication. That is logically clean but operationally unsafe for live
+# merchant adapters: a candidate that was valid in an earlier wave can be
+# rejected by a later pass, so a shop visibly appears and then disappears.
+#
+# We keep two monotonic pools instead:
+#   raw_candidates       = everything discovered so far
+#   validated_candidates = everything that has passed validation at least once
+# A validated offer is never removed during the same search job.
+# /search-status consumes validated_candidates directly.
+
+def _monotonic_result_key(item: Dict[str, Any]):
+    try:
+        key = _legacy.product_identity_key(item)
+    except Exception:
+        key = (
+            str(item.get("store") or item.get("shop") or "").strip().casefold(),
+            str(item.get("url") or "").strip().casefold(),
+            str(item.get("name") or item.get("title") or "").strip().casefold(),
+        )
+    try:
+        size = _engine._extract_candidate_size_ml(item)
+    except Exception:
+        size = None
+    if size is not None:
+        return (key, round(float(size), 4))
+    return key
+
+
+def _merge_monotonic_validated(existing: List[Dict[str, Any]],
+                               new_items: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    merged = list(existing or [])
+    seen = {_monotonic_result_key(item) for item in merged if isinstance(item, dict)}
+    for item in new_items or []:
+        if not isinstance(item, dict):
+            continue
+        key = _monotonic_result_key(item)
+        if key in seen:
+            continue
+        seen.add(key)
+        merged.append(dict(item))
+    return merged
+
+
+def _monotonic_run_search_job(job_id: str, query: str) -> None:
+    jobs = getattr(_legacy, "SEARCH_JOBS", None)
+    lock = getattr(_legacy, "SEARCH_JOBS_LOCK", None)
+    if jobs is None:
+        raise RuntimeError("SEARCH_JOBS is not available")
+
+    def update(payload: Dict[str, Any]) -> None:
+        if lock is not None:
+            with lock:
+                job = jobs.get(job_id)
+                if job is not None:
+                    job.update(payload)
+        else:
+            job = jobs.get(job_id)
+            if job is not None:
+                job.update(payload)
+
+    def exists() -> bool:
+        if lock is not None:
+            with lock:
+                return jobs.get(job_id) is not None
+        return jobs.get(job_id) is not None
+
+    started = time.monotonic()
+    raw_pool: List[Dict[str, Any]] = []
+    validated_pool: List[Dict[str, Any]] = []
+    store_status: Dict[str, Any] = {
+        store: {"status": "pending", "count": 0}
+        for store in _engine.stores
+    }
+    errors: Dict[str, str] = {}
+
+    update({
+        "completed": False,
+        "phase": "discovery",
+        "status": "searching",
+        "results": [],
+        "candidates": [],
+        "validated_candidates": [],
+        "errors": {},
+        "store_status": store_status,
+    })
+
+    try:
+        # Keep two active adapters at a time. This preserves the rate-limit
+        # protection already used by the project, while the validated pool
+        # guarantees that completed offers remain visible.
+        for wave_start in range(0, len(_engine.stores), 2):
+            wave = _engine.stores[wave_start:wave_start + 2]
+
+            update({
+                "phase": f"stores_{wave_start + 1}_{wave_start + len(wave)}",
+                "status": "searching",
+                "store_status": {
+                    **store_status,
+                    **{store: {"status": "searching", "count": 0} for store in wave},
+                },
+            })
+
+            with concurrent.futures.ThreadPoolExecutor(
+                max_workers=2,
+                thread_name_prefix="scenthunter-store",
+            ) as executor:
+                future_map = {
+                    executor.submit(_engine._run_one_store, store, query): store
+                    for store in wave
+                }
+
+                for future in concurrent.futures.as_completed(future_map):
+                    store = future_map[future]
+                    try:
+                        result = future.result()
+                    except Exception as exc:
+                        result = type("StoreRunFallback", (), {})()
+                        result.store = store
+                        result.status = "error"
+                        result.candidates = []
+                        result.elapsed = time.monotonic() - started
+                        result.error = f"{type(exc).__name__}: {exc}"
+
+                    candidates = [
+                        item for item in (result.candidates or [])
+                        if isinstance(item, dict)
+                    ]
+                    raw_pool.extend(candidates)
+
+                    store_status[store] = {
+                        "status": result.status,
+                        "count": len(candidates),
+                        "elapsed": round(float(result.elapsed), 3),
+                        "error": result.error,
+                    }
+                    if result.error:
+                        errors[store] = result.error
+
+                    # Validate the complete discovery pool, but NEVER replace
+                    # the previously validated pool with this pass. Only add
+                    # newly validated offers.
+                    current_validated = _engine._validate_candidates_only(
+                        query,
+                        list(raw_pool),
+                    )
+                    validated_pool = _merge_monotonic_validated(
+                        validated_pool,
+                        current_validated,
+                    )
+
+                    update({
+                        "results": list(validated_pool),
+                        "candidates": list(raw_pool),
+                        "validated_candidates": list(validated_pool),
+                        "errors": dict(errors),
+                        "store_status": dict(store_status),
+                        "phase": f"stores_{wave_start + 1}_{wave_start + len(wave)}",
+                        "status": "searching",
+                        "completed": False,
+                        "elapsed": round(time.monotonic() - started, 3),
+                    })
+
+            if not exists():
+                return
+
+        # Final publication uses the monotonic validated pool. No second
+        # destructive validation pass is performed.
+        update({
+            "results": list(validated_pool),
+            "candidates": list(raw_pool),
+            "validated_candidates": list(validated_pool),
+            "errors": dict(errors),
+            "store_status": dict(store_status),
+            "phase": "completed",
+            "status": "completed",
+            "completed": True,
+            "elapsed": round(time.monotonic() - started, 3),
+            "raw_candidate_count": len(raw_pool),
+            "validated_candidate_count": len(validated_pool),
+        })
+
+    except Exception as exc:
+        update({
+            "results": list(validated_pool),
+            "candidates": list(raw_pool),
+            "validated_candidates": list(validated_pool),
+            "errors": {**errors, "_search": f"{type(exc).__name__}: {exc}"},
+            "status": "error",
+            "completed": True,
+            "phase": "error",
+            "elapsed": round(time.monotonic() - started, 3),
+            "error": f"{type(exc).__name__}: {exc}",
+        })
+
+
+_legacy._run_search_job = _monotonic_run_search_job
 
 # ParfumCity: the adapter itself returns the correct 100 ml Liquid Brun,
 # while the legacy run_store path can discard it before SearchEngine sees it.
