@@ -1740,29 +1740,6 @@ function applyProgressiveArchive(groups){
       ?(Array.isArray(master.formats_ml)?master.formats_ml.slice():[])
       :Array.from(new Set([...(meta.formats_ml||[]),...(g.formats_ml||[])]));
 
-    // Una sola offerta per negozio e formato. L'archivio progressivo può
-    // ricevere la stessa offerta con URL/nome leggermente diversi tra snapshot;
-    // non dobbiamo mai mostrarla due volte. Manteniamo la migliore offerta
-    // disponibile per ogni coppia negozio+formato.
-    const oneOfferPerStoreSize=new Map();
-    [...mergedByKey.values()].forEach(o=>{
-      const store=String(o?.store||o?._source_store||"").trim().toLowerCase();
-      const size=String(sizeOfOffer(o)||o?.size_ml||o?.size||"unknown").trim();
-      const key=`${store}|${size}`;
-      const old=oneOfferPerStoreSize.get(key);
-      if(!old){
-        oneOfferPerStoreSize.set(key,o);
-        return;
-      }
-      const oldOut=isOfferOutOfStock(old);
-      const newOut=isOfferOutOfStock(o);
-      if(oldOut&&!newOut){
-        oneOfferPerStoreSize.set(key,o);
-      }else if(oldOut===newOut&&shNum(o)<shNum(old)){
-        oneOfferPerStoreSize.set(key,o);
-      }
-    });
-
     output.push({
       ...g,
       brand:g.brand||meta.brand||"",
@@ -1772,7 +1749,7 @@ function applyProgressiveArchive(groups){
       catalog_id:g.catalog_id||meta.catalog_id||"",
       family_id:g.family_id||meta.family_id||"",
       catalog_variant:g.catalog_variant||meta.catalog_variant||"",
-      offers:[...oneOfferPerStoreSize.values()]
+      offers:[...mergedByKey.values()]
     });
   });
 
@@ -2026,7 +2003,46 @@ function renderSingleFormatComparison(g,img,offers,size,saved){
 }
 
 function renderOffersHtml(g,img,offers,saved){
-  return (offers||[]).map((o,n)=>{
+  /*
+   * ULTIMA PROTEZIONE UI CONTRO I DOPPIONI:
+   * nella scheda di un formato non mostriamo mai due righe dello stesso
+   * negozio. La chiave è SOLO il negozio, perché siamo già dentro un
+   * singolo prodotto/formato. Se arrivano due record dello stesso shop,
+   * scegliamo il migliore: prima disponibile, poi prezzo più basso; a parità
+   * manteniamo il primo record.
+   */
+  const uniqueOffers=[];
+  const seenStores=new Map();
+  (offers||[]).forEach(o=>{
+    const storeKey=String(o?.store||o?._source_store||"Negozio").trim().toLowerCase();
+    const current=seenStores.get(storeKey);
+    if(!current){
+      seenStores.set(storeKey,o);
+      uniqueOffers.push(o);
+      return;
+    }
+    const currentOut=isOfferOutOfStock(current);
+    const nextOut=isOfferOutOfStock(o);
+    let replace=false;
+    if(currentOut!==nextOut) replace=!nextOut;
+    else if(!nextOut){
+      const cp=shNum(current), np=shNum(o);
+      if(Number.isFinite(np) && (!Number.isFinite(cp) || np<cp))replace=true;
+    }
+    if(replace){
+      const idx=uniqueOffers.indexOf(current);
+      if(idx>=0)uniqueOffers[idx]=o;
+      seenStores.set(storeKey,o);
+    }
+  });
+
+  uniqueOffers.sort((a,b)=>{
+    const ao=isOfferOutOfStock(a),bo=isOfferOutOfStock(b);
+    if(ao!==bo)return ao?1:-1;
+    return shNum(a)-shNum(b);
+  });
+
+  return uniqueOffers.map((o,n)=>{
     const isOut=isOfferOutOfStock(o); const item={brand:g.brand||o.brand||"",name:g.name||o.name||"",price:isOut?"":shPrice(o),shop:o.store||"",url:o.url||"",pic:img||"🧴",outOfStock:isOut}; const on=saved.some(x=>sameWishOffer(x,item));
     return `<div class="offer ${!isOut&&n===0?"best":""}"><div class="offer-line"><div><div class="offer-store">${!isOut&&n===0?"🥇 ":""}${esc(displayStoreName(o.store||"Negozio"))}</div>${!isOut&&n===0?'<div class="offer-meta">MIGLIOR PREZZO</div>':""}${isOut?'<div class="offer-outstock">OUT OF STOCK</div>':""}</div><div style="display:flex;align-items:center;gap:8px">${!isOut?`<span class="offer-price">${esc(shPrice(o))}</span>`:""}<button class="offer-heart ${on?"saved":""}" data-brand="${esc(item.brand)}" data-name="${esc(item.name)}" data-price="${esc(item.price)}" data-shop="${esc(item.shop)}" data-url="${esc(item.url)}" data-pic="${esc(item.pic)}">${on?"♥":"♡"}</button></div></div>${(!isOut&&o.url)?`<a class="offer-link" href="${esc(o.url)}" target="_blank" rel="noopener noreferrer">Vai al negozio →</a>`:""}</div>`;
   }).join("");
