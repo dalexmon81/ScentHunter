@@ -18,6 +18,8 @@ It is diagnostic-only and does not modify production search behavior.
 from __future__ import annotations
 
 from typing import Any, Dict, List, Optional
+import re
+
 import main_legacy as legacy
 from search_engine import SearchEngine
 
@@ -249,7 +251,7 @@ def _infer_rejection_reason(
 
     try:
         non_single = getattr(legacy, "_non_single_product_match", None)
-        if non_single is not None and non_single(item):
+        if non_single is not None and non_single(item, query):
             clues.append("non_single_product_or_excluded_type")
     except Exception:
         pass
