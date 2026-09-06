@@ -73,6 +73,7 @@ def _search_job_snapshot_from_full_pool(job_id: str):
                 raise HTTPException(status_code=404, detail="Job di ricerca non trovato")
             query = str(job.get("query") or "")
             raw_candidates = list(job.get("candidates") or [])
+            validated_candidates = list(job.get("validated_candidates") or [])
             errors = dict(job.get("errors") or {})
             completed = bool(job.get("completed"))
             store_status = dict(job.get("store_status") or {})
@@ -85,6 +86,7 @@ def _search_job_snapshot_from_full_pool(job_id: str):
             raise HTTPException(status_code=404, detail="Job di ricerca non trovato")
         query = str(job.get("query") or "")
         raw_candidates = list(job.get("candidates") or [])
+        validated_candidates = list(job.get("validated_candidates") or [])
         errors = dict(job.get("errors") or {})
         completed = bool(job.get("completed"))
         store_status = dict(job.get("store_status") or {})
@@ -97,7 +99,7 @@ def _search_job_snapshot_from_full_pool(job_id: str):
         # a later scraper response for the same family is interpreted
         # differently. The job already validated each candidate when it was
         # discovered; that validated set is the source of truth for /search-status.
-        validated = list(job.get("validated_candidates") or [])
+        validated = list(validated_candidates)
         if not validated:
             validated = _engine._validate_candidates_only(query, raw_candidates)
         results = _legacy._prepare_final_results(validated, query)
@@ -225,11 +227,11 @@ def _monotonic_run_search_job(job_id: str, query: str) -> None:
     })
 
     try:
-        # Keep two active adapters at a time. This preserves the rate-limit
-        # protection already used by the project, while the validated pool
+        # Run the production search as two waves of four stores. This matches the
+        # actual ScentHunter production search path while the validated pool
         # guarantees that completed offers remain visible.
-        for wave_start in range(0, len(_engine.stores), 2):
-            wave = _engine.stores[wave_start:wave_start + 2]
+        for wave_start in range(0, len(_engine.stores), 4):
+            wave = _engine.stores[wave_start:wave_start + 4]
 
             update({
                 "phase": f"stores_{wave_start + 1}_{wave_start + len(wave)}",
@@ -241,7 +243,7 @@ def _monotonic_run_search_job(job_id: str, query: str) -> None:
             })
 
             with concurrent.futures.ThreadPoolExecutor(
-                max_workers=2,
+                max_workers=4,
                 thread_name_prefix="scenthunter-store",
             ) as executor:
                 future_map = {
@@ -1371,3 +1373,180 @@ def diagnose_deloox_disappearance(
             "query": str(q or "").strip(),
             "error": f"{type(exc).__name__}: {exc}",
         }
+
+# ---------------------------------------------------------------------------
+# FINAL LIVE /search ORCHESTRATION
+# ---------------------------------------------------------------------------
+# The frontend calls /search once and waits for ONE final JSON response.
+# Therefore the async /search-status machinery above is not the path used by
+# the live UI.  The authoritative fix is here: execute every store, retry
+# stores that return no candidates, validate each store independently, merge
+# without deleting earlier offers, and prepare the final result only once.
+# ---------------------------------------------------------------------------
+
+def _stable_live_search(query: str) -> Dict[str, Any]:
+    started = time.monotonic()
+    text = str(query or "").strip()
+    if not text:
+        return {"query": text, "count": 0, "results": [], "errors": {}}
+
+    stores = list(_engine.stores)
+    all_validated: List[Dict[str, Any]] = []
+    all_raw: List[Dict[str, Any]] = []
+    errors: Dict[str, str] = {}
+    store_reports: Dict[str, Any] = {}
+    lock = concurrent.futures.thread.Lock() if hasattr(concurrent.futures.thread, "Lock") else None
+
+    # Offer-level identity. Store is mandatory so Deloox/Sabina/etc. can
+    # never collide with the same perfume from another merchant.
+    def offer_key(item: Dict[str, Any]):
+        store = str(item.get("store") or item.get("shop") or "").strip().casefold()
+        url = str(item.get("url") or item.get("product_url") or "").strip().casefold().split("?", 1)[0]
+        try:
+            size = _engine._extract_candidate_size_ml(item)
+        except Exception:
+            size = None
+        try:
+            identity = _legacy.product_identity_key(item)
+        except Exception:
+            identity = (
+                str(item.get("brand") or "").strip().casefold(),
+                str(item.get("name") or item.get("title") or "").strip().casefold(),
+            )
+        return (store, url, identity, round(float(size), 4) if size is not None else None)
+
+    def merge(existing: List[Dict[str, Any]], new_items: List[Dict[str, Any]]):
+        out = list(existing)
+        seen = {offer_key(x) for x in out if isinstance(x, dict)}
+        for item in new_items or []:
+            if not isinstance(item, dict):
+                continue
+            key = offer_key(item)
+            if key in seen:
+                continue
+            seen.add(key)
+            out.append(dict(item))
+        return out
+
+    def run_store(store: str):
+        store_started = time.monotonic()
+        attempts = []
+        best_candidates: List[Dict[str, Any]] = []
+        last_error = None
+        final_status = "empty"
+
+        # Two complete attempts are enough to recover transient empty/429/403
+        # discovery responses without allowing one broken merchant to consume
+        # the whole request budget.
+        for attempt in range(1, 3):
+            try:
+                result = _engine._run_one_store(store, text)
+                candidates = [x for x in (result.candidates or []) if isinstance(x, dict)]
+                status = str(result.status or ("ok" if candidates else "empty"))
+                error = result.error
+                attempts.append({
+                    "attempt": attempt,
+                    "status": status,
+                    "count": len(candidates),
+                    "error": error,
+                })
+                if candidates:
+                    best_candidates = candidates
+                    final_status = "ok"
+                    last_error = None
+                    break
+                last_error = error
+                final_status = status
+            except Exception as exc:
+                last_error = f"{type(exc).__name__}: {exc}"
+                final_status = "error"
+                attempts.append({
+                    "attempt": attempt,
+                    "status": "error",
+                    "count": 0,
+                    "error": last_error,
+                })
+
+        elapsed = round(time.monotonic() - store_started, 3)
+        return store, best_candidates, {
+            "status": final_status,
+            "count": len(best_candidates),
+            "elapsed": elapsed,
+            "attempts": attempts,
+            "error": last_error,
+        }
+
+    # Four stores at a time: this matches the intended 2 waves x 4-store
+    # production model while keeping a bounded number of browser/http jobs.
+    for wave_start in range(0, len(stores), 4):
+        wave = stores[wave_start:wave_start + 4]
+        with concurrent.futures.ThreadPoolExecutor(
+            max_workers=len(wave),
+            thread_name_prefix="scenthunter-live",
+        ) as executor:
+            futures = {executor.submit(run_store, store): store for store in wave}
+            for future in concurrent.futures.as_completed(futures):
+                store = futures[future]
+                try:
+                    store_name, candidates, report = future.result()
+                except Exception as exc:
+                    store_name = store
+                    candidates = []
+                    report = {
+                        "status": "error",
+                        "count": 0,
+                        "elapsed": 0,
+                        "attempts": [],
+                        "error": f"{type(exc).__name__}: {exc}",
+                    }
+
+                store_reports[store_name] = report
+                all_raw = merge(all_raw, candidates)
+
+                try:
+                    validated = _engine._validate_candidates_only(text, list(candidates))
+                except Exception as exc:
+                    validated = []
+                    report["validation_error"] = f"{type(exc).__name__}: {exc}"
+
+                all_validated = merge(all_validated, validated)
+                if report.get("error") and not candidates:
+                    errors[store_name] = str(report["error"])
+
+        # If the complete first wave is already taking too long, do not start
+        # an unbounded third/fourth wave. The two-wave contract is intentional.
+        if time.monotonic() - started > 175:
+            for remaining in stores[wave_start + 4:]:
+                store_reports.setdefault(remaining, {
+                    "status": "timeout",
+                    "count": 0,
+                    "elapsed": round(time.monotonic() - started, 3),
+                    "attempts": [],
+                    "error": "Global search budget exceeded",
+                })
+            break
+
+    try:
+        results = _legacy._prepare_final_results(list(all_validated), text)
+    except Exception as exc:
+        print("LIVE_SEARCH_FINALIZATION_ERROR:", repr(exc), flush=True)
+        results = []
+        errors["_finalization"] = f"{type(exc).__name__}: {exc}"
+
+    return {
+        "query": text,
+        "count": len(results),
+        "results": results,
+        "comparisons": [],
+        "errors": errors,
+        "store_status": store_reports,
+        "raw_candidate_count": len(all_raw),
+        "validated_candidate_count": len(all_validated),
+        "elapsed": round(time.monotonic() - started, 3),
+    }
+
+
+# IMPORTANT: this assignment is deliberately LAST.  main_legacy.search()
+# resolves search_perfume from its own module globals at request time, so the
+# frontend /search endpoint now uses the stable all-store path above.
+_legacy.search_perfume = _stable_live_search
