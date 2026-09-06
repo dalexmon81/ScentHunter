@@ -50,6 +50,72 @@ if callable(_engine_snapshot):
 
 app = _legacy.app
 
+# IMPORTANT: the live /search-status endpoint must prepare the UI from the
+# complete raw candidate pool, not from the last incremental validated slice.
+# The previous snapshot consumed job["results"], which is intentionally
+# rewritten after every store completes; depending on completion order this
+# could make already-visible shops disappear from the final result.
+# job["candidates"] is the monotonic source of truth for the current search.
+def _search_job_snapshot_from_full_pool(job_id: str):
+    lock = getattr(_legacy, "SEARCH_JOBS_LOCK", None)
+    jobs = getattr(_legacy, "SEARCH_JOBS", None)
+
+    if jobs is None:
+        raise Exception("SEARCH_JOBS is not available")
+
+    if lock is not None:
+        with lock:
+            job = jobs.get(job_id)
+            if job is None:
+                from fastapi import HTTPException
+                raise HTTPException(status_code=404, detail="Job di ricerca non trovato")
+            query = str(job.get("query") or "")
+            raw_candidates = list(job.get("candidates") or [])
+            errors = dict(job.get("errors") or {})
+            completed = bool(job.get("completed"))
+            store_status = dict(job.get("store_status") or {})
+            diagnostics = dict(job.get("store_diagnostics") or {})
+            phase = job.get("phase", "discovery")
+    else:
+        job = jobs.get(job_id)
+        if job is None:
+            from fastapi import HTTPException
+            raise HTTPException(status_code=404, detail="Job di ricerca non trovato")
+        query = str(job.get("query") or "")
+        raw_candidates = list(job.get("candidates") or [])
+        errors = dict(job.get("errors") or {})
+        completed = bool(job.get("completed"))
+        store_status = dict(job.get("store_status") or {})
+        diagnostics = dict(job.get("store_diagnostics") or {})
+        phase = job.get("phase", "discovery")
+
+    try:
+        validated = _engine._validate_candidates_only(query, raw_candidates)
+        results = _legacy._prepare_final_results(validated, query)
+    except Exception as exc:
+        print(
+            "SEARCH_STATUS_FINALIZATION_ERROR:",
+            f"{type(exc).__name__}: {exc}",
+            flush=True,
+        )
+        results = []
+
+    return {
+        "job_id": job_id,
+        "query": query,
+        "count": len(results),
+        "results": results,
+        "comparisons": [],
+        "errors": errors,
+        "store_status": store_status,
+        "store_diagnostics": diagnostics,
+        "phase": phase,
+        "completed": completed,
+        "status": "completed" if completed else "searching",
+    }
+
+_legacy._search_job_snapshot = _search_job_snapshot_from_full_pool
+
 # ParfumCity: the adapter itself returns the correct 100 ml Liquid Brun,
 # while the legacy run_store path can discard it before SearchEngine sees it.
 # Keep the other seven stores on their existing path and bypass only this
