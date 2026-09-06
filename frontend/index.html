@@ -1912,42 +1912,31 @@ async function getSearchStores(term){
 
 async function searchStoresProgressive(term,onPartial){
  const merged={query:term,comparisons:[],results:[],errors:{}};
- const timeoutMs=45000;
- const concurrency=4;
- const stores=await getSearchStores(term);
+ const pollMs=500;
+ const maxWaitMs=180000;
+ const startTimeoutMs=15000;
+ const statusTimeoutMs=20000;
 
  /*
-  * ARCHIVIO PROGRESSIVO IMMUTABILE.
+  * La ricerca frontend deve usare la STESSA pipeline della ricerca normale
+  * del backend: /search-start -> /search-status.
   *
-  * Una ricerca progressiva non deve mai perdere un'offerta già mostrata.
-  * Il rendering successivo viene ricostruito da shGroupData(); per sicurezza
-  * conserviamo quindi ogni risultato concreto già ricevuto, indicizzato per
-  * negozio + URL + formato + nome. Un batch successivo può aggiungere dati,
-  * ma non può cancellare Deloox (o qualunque altro negozio) già arrivato.
+  * Non interroghiamo piu' /test-store uno per uno. Quella strada crea otto
+  * richieste indipendenti e rende il rendering dipendente da timeout, ordine
+  * e carico delle singole chiamate. Il backend invece mantiene un unico
+  * candidate pool e pubblica progressivamente lo stesso job.
+  *
+  * In piu', archiviamo le offerte gia' ricevute. L'archivio usa URL + store
+  * come identita' primaria, quindi un cambio di nome tra snapshot non puo'
+  * cancellare o duplicare un'offerta gia' vista.
   */
  const resultArchive=new Map();
  const comparisonArchive=new Map();
 
- /*
-  * IDENTITÀ IMMUTABILE DELL'OFFERTA.
-  *
-  * Il nome NON può far parte della chiave quando esiste un URL: lo stesso
-  * prodotto Deloox può infatti arrivare in più snapshot con nomi diversi
-  * (nome scraper -> nome validato -> nome finale). Se usassimo anche il nome
-  * nella chiave, creeremmo tre record distinti per la stessa offerta.
-  *
-  * Regola:
-  *   1) negozio + URL canonico, se l'URL esiste;
-  *   2) negozio + product/id/sku + formato, se manca l'URL;
-  *   3) negozio + formato + nome normalizzato, solo come ultima possibilità.
-  *
-  * In questo modo un'offerta già ricevuta non può sparire né duplicarsi solo
-  * perché il backend ha migliorato il nome durante la ricerca.
-  */
  const stableArchiveKey=(store,offer)=>{
-  const offerStore=String(store||offer?.store||"").trim().toLowerCase();
+  const offerStore=String(store||offer?.store||offer?._source_store||"").trim().toLowerCase();
   const url=String(offer?.url||offer?._source_url||offer?.product_url||offer?.productUrl||"")
-    .split("?")[0].split("#")[0].trim().toLowerCase();
+   .split("?")[0].split("#")[0].trim().toLowerCase();
   if(offerStore&&url)return offerStore+"|url|"+url;
 
   const id=String(offer?.product_id||offer?.productId||offer?.id||offer?.sku||offer?.product_sku||"").trim().toLowerCase();
@@ -1960,55 +1949,48 @@ async function searchStoresProgressive(term,onPartial){
  };
 
  const mergeArchivedOffer=(old,incoming)=>{
-  if(!old)return incoming;
-
-  // Non perdiamo mai metadati già ricevuti; se il nuovo snapshot è più ricco,
-  // li completa. Il prezzo migliore resta quello mostrabile.
-  const merged={...old};
+  if(!old)return {...incoming};
+  const mergedOffer={...old};
   Object.entries(incoming||{}).forEach(([key,value])=>{
-   if(value!==undefined&&value!==null&&value!=="" && (merged[key]===undefined||merged[key]===null||merged[key]==="")){
-    merged[key]=value;
+   if(value!==undefined&&value!==null&&value!=="" &&
+      (mergedOffer[key]===undefined||mergedOffer[key]===null||mergedOffer[key]==="")){
+    mergedOffer[key]=value;
    }
   });
 
-  // Il backend può cambiare nome/brand tra gli snapshot: il valore più recente
-  // e più informativo deve poter aggiornare quello precedente.
-  if(incoming.name)merged.name=incoming.name;
-  if(incoming.brand)merged.brand=incoming.brand;
-  if(incoming.concentration)merged.concentration=incoming.concentration;
-  if(incoming.image||incoming.image_url||incoming.thumbnail){
-   merged.image=incoming.image||incoming.image_url||incoming.thumbnail;
-  }
-  if(incoming.size_ml||incoming.size)merged.size_ml=incoming.size_ml||incoming.size;
-  if(incoming.url)merged.url=incoming.url;
-  if(incoming._source_url)merged._source_url=incoming._source_url;
-  if(incoming.store)merged.store=incoming.store;
+  /* I dati identificativi piu' recenti possono migliorare il record, ma non
+     possono mai azzerare un valore gia' ricevuto. */
+  ["name","brand","concentration","image","image_url","thumbnail","size_ml","size","url","_source_url","store"].forEach(key=>{
+   if(incoming?.[key]!==undefined&&incoming?.[key]!==null&&incoming?.[key]!==""){
+    mergedOffer[key]=incoming[key];
+   }
+  });
 
-  if(shNum(incoming)<shNum(old)){
-   return {...merged,...incoming};
-  }
-  return merged;
+  if(shNum(incoming)<shNum(old))return {...mergedOffer,...incoming};
+  return mergedOffer;
  };
 
- const archiveResult=(store,offer)=>{
-  if(!offer||typeof offer!=="object")return;
+ const archiveResult=(store,entry)=>{
+  if(!entry||typeof entry!=="object")return;
 
-  // Alcuni endpoint restituiscono un contenitore prodotto con brand/nome/size
-  // a livello padre e le offerte dentro `offers`. Questi metadati devono
-  // seguire l'offerta durante l'archiviazione, altrimenti il raggruppatore
-  // non riesce più a riconoscerla (caso osservato con Deloox).
-  const nested=Array.isArray(offer.offers)?offer.offers:[offer];
+  /* /search-status normalmente restituisce gruppi con offers, ma accettiamo
+     anche risultati piatti. In entrambi i casi ereditiamo i metadati del
+     contenitore, cosi' store/url/brand/nome non vanno persi. */
+  const nested=Array.isArray(entry.offers)&&entry.offers.length
+   ?entry.offers
+   :[entry];
+
   nested.forEach(o=>{
    if(!o||typeof o!=="object")return;
-
    const normalized={
     ...o,
-    brand:o.brand||offer.brand||"",
-    name:o.name||o.title||o.product_name||offer.name||offer.title||offer.product_name||"",
-    size_ml:o.size_ml||o.size||offer.size_ml||offer.size||offer.attributes?.size_ml?.value||"",
-    concentration:o.concentration||offer.concentration||"",
-    image:o.image||o.image_url||o.thumbnail||offer.image||offer.image_url||offer.thumbnail||"",
-    store:o.store||store||""
+    brand:o.brand||entry.brand||"",
+    name:o.name||o.title||o.product_name||entry.name||entry.title||entry.product_name||"",
+    size_ml:o.size_ml||o.size||entry.size_ml||entry.size||entry.attributes?.size_ml?.value||"",
+    concentration:o.concentration||entry.concentration||"",
+    image:o.image||o.image_url||o.thumbnail||entry.image||entry.image_url||entry.thumbnail||"",
+    url:o.url||o._source_url||entry.url||entry._source_url||entry.product_url||entry.productUrl||"",
+    store:o.store||entry.store||store||""
    };
 
    const key=stableArchiveKey(store,normalized);
@@ -2024,9 +2006,25 @@ async function searchStoresProgressive(term,onPartial){
   const brand=normalizePerfumeName(group.brand||"");
   const key=[brand,name,size].join("|");
   if(!key.replace(/\|/g,""))return;
+  const incomingOffers=Array.isArray(group.offers)?group.offers.map(o=>({...o})):[];
   const old=comparisonArchive.get(key);
-  if(!old){comparisonArchive.set(key,{...group,offers:Array.isArray(group.offers)?group.offers.map(o=>({...o})):[]});return;}
-  const offers=[...(Array.isArray(old.offers)?old.offers:[]),...(Array.isArray(group.offers)?group.offers:[])];
+  if(!old){
+   comparisonArchive.set(key,{...group,offers:incomingOffers});
+   return;
+  }
+
+  const offers=[...(Array.isArray(old.offers)?old.offers:[])];
+  incomingOffers.forEach(incoming=>{
+   const store=String(incoming?.store||"").trim().toLowerCase();
+   const url=String(incoming?.url||incoming?._source_url||"").split("?")[0].split("#")[0].trim().toLowerCase();
+   const idx=offers.findIndex(o=>{
+    const os=String(o?.store||"").trim().toLowerCase();
+    const ou=String(o?.url||o?._source_url||"").split("?")[0].split("#")[0].trim().toLowerCase();
+    return store===os&&url===ou;
+   });
+   if(idx<0)offers.push(incoming);
+   else offers[idx]={...offers[idx],...incoming};
+  });
   comparisonArchive.set(key,{...old,...group,offers});
  };
 
@@ -2035,45 +2033,72 @@ async function searchStoresProgressive(term,onPartial){
   merged.comparisons=[...comparisonArchive.values()];
  };
 
- for(let i=0;i<stores.length;i+=concurrency){
-  const pair=stores.slice(i,i+concurrency);
-  statusBox.textContent="";
-
-  const responses=await Promise.allSettled(pair.map(store=>
-   fetchJSONWithTimeout(
-    backend()+"/test-store?store="+encodeURIComponent(store)+"&q="+encodeURIComponent(term),
-    timeoutMs
-   ).catch(async()=>{
-    await new Promise(resolve=>setTimeout(resolve,350));
-    return fetchJSONWithTimeout(
-     backend()+"/test-store?store="+encodeURIComponent(store)+"&q="+encodeURIComponent(term),
-     timeoutMs
-    );
-   })
-  ));
-
-  responses.forEach((r,k)=>{
-   const store=pair[k];
-   if(r.status!=="fulfilled"){
-    merged.errors[store]=String(r.reason?.message||"timeout");
-    return;
-   }
-   const data=r.value||{};
-   if(Array.isArray(data.results))data.results.forEach(item=>archiveResult(store,item));
-   if(Array.isArray(data.comparisons))data.comparisons.forEach(group=>archiveComparison(group));
-   if(data.errors&&typeof data.errors==="object")Object.entries(data.errors).forEach(([name,error])=>{
-    if(!merged.errors[name])merged.errors[name]=error;
+ const publish=(data,final=false)=>{
+  const snapshot=data||{};
+  if(Array.isArray(snapshot.results))snapshot.results.forEach(item=>archiveResult(item?.store||"",item));
+  if(Array.isArray(snapshot.comparisons))snapshot.comparisons.forEach(group=>archiveComparison(group));
+  if(snapshot.errors&&typeof snapshot.errors==="object"){
+   Object.entries(snapshot.errors).forEach(([store,error])=>{
+    if(!merged.errors[store])merged.errors[store]=error;
    });
-   if(data.error)merged.errors[store]=data.error;
-  });
-
+  }
   rebuildMerged();
-  if(typeof onPartial==="function")onPartial(merged,false);
- }
+  if(typeof onPartial==="function")onPartial(merged,final);
+ };
 
- rebuildMerged();
- if(typeof onPartial==="function")onPartial(merged,true);
- return merged;
+ /* Avvia UN SOLO job backend. */
+ const started=await fetchJSONWithTimeout(
+  backend()+"/search-start?q="+encodeURIComponent(term),
+  startTimeoutMs
+ );
+ const jobId=String(started?.job_id||"").trim();
+ if(!jobId)throw new Error("Il backend non ha restituito un job di ricerca.");
+
+ /* Pubblica subito l'eventuale snapshot iniziale. */
+ publish(started,false);
+
+ const startedAt=Date.now();
+ let lastSnapshot="";
+ let lastData=started;
+
+ while(true){
+  if(Date.now()-startedAt>maxWaitMs){
+   throw new Error("Timeout della ricerca.");
+  }
+
+  await new Promise(resolve=>setTimeout(resolve,pollMs));
+
+  let data;
+  try{
+   data=await fetchJSONWithTimeout(
+    backend()+"/search-status?job_id="+encodeURIComponent(jobId),
+    statusTimeoutMs
+   );
+  }catch(error){
+   /* Un singolo errore di polling non deve cancellare quello che abbiamo gia'
+      mostrato. Ritentiamo al giro successivo finche' resta dentro il limite. */
+   console.warn("Polling ricerca",error);
+   continue;
+  }
+
+  lastData=data||lastData;
+  publish(data,false);
+
+  /* Evitiamo eventuali ridisegni inutili quando il backend restituisce lo
+     stesso snapshot piu' volte, ma senza mai modificare l'archivio. */
+  const signature=JSON.stringify({
+   completed:!!data?.completed,
+   phase:data?.phase||"",
+   count:Number(data?.count||0),
+   stores:data?.store_status||{}
+  });
+  lastSnapshot=signature;
+
+  if(data?.completed){
+   publish(data,true);
+   return merged;
+  }
+ }
 }
 
 async function searchPerfume(){
