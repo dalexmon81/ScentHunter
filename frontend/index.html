@@ -551,7 +551,7 @@ body{position:relative}
   createBox();
   console.log('[DELOOX DIAGNOSTIC V3] Installato con successo.');
 })();
- 
+<script>
 let isSearching = false;
 const queryInput=document.getElementById("query"),searchButton=document.getElementById("searchButton"),statusBox=document.getElementById("status"),resultsBox=document.getElementById("results"),errorsBox=document.getElementById("errorsBox");
 
@@ -1905,17 +1905,6 @@ function formatComparisonFor(g,sizeKey){
 function renderFormatChoiceCard(gi,g,comparisons,sizes){
   const img=g.image||"";
   const bySize=new Map((comparisons||[]).map(x=>[String(x.size_ml||x.size||""),x]));
- if(window.__SH_DELOOX_LOG__){
-  window.__SH_DELOOX_LOG__(
-    "15. renderFormatChoiceCard BEFORE INNERHTML",
-    {
-      group:g,
-      comparisons:comparisons||[],
-      sizes:sizes||[]
-    }
-  );
-}
-
   resultsBox.innerHTML=`<article class="comparison">
     <button class="detail-back" onclick="clearOpenProduct();showProducts(currentProductGroups)">← Torna ai profumi</button>
     <div class="comparison-head">
@@ -1945,14 +1934,6 @@ function renderFormatChoiceCard(gi,g,comparisons,sizes){
 async function openProduct(i){
   const g=currentProductGroups[i];
   if(!g)return;
- if(window.__SH_DELOOX_LOG__){
-  window.__SH_DELOOX_LOG__("12. openProduct GROUP INPUT", {
-    index:i,
-    group:g,
-    offers:g.offers||[]
-  });
-}
-
   currentOpenProductKey=productGroupKey(g);
   currentOpenSizeKey=null;
   const detected=getSizeGroups(g).map(s=>s.size).filter(Boolean);
@@ -1977,111 +1958,18 @@ async function openProduct(i){
   try{
     const comparisons=await fetchFormatComparisons(g,sizes);
     const localBySize=new Map(getSizeGroups(g).filter(x=>x.size).map(x=>[String(x.size),x]));
-    const remoteOffers=Array.isArray(remote?.offers)
-  ? remote.offers
-  : [];
-
-const localOffers=Array.isArray(local?.offers)
-  ? local.offers
-  : [];
-
-/*
- * Non sostituire mai le offerte locali con quelle di compare-formats:
- * la ricerca progressiva locale può contenere retailer validi, incluso
- * Deloox, che l'endpoint remoto non restituisce.
- *
- * Prima conserviamo tutte le offerte locali; poi aggiungiamo solo le
- * offerte remote realmente nuove.
- */
-const offerKey=o=>{
-  const store=String(o?.store||o?.shop||"")
-    .trim()
-    .toLowerCase();
-
-  const url=String(o?.url||o?._source_url||o?.source_url||"")
-    .split("?")[0]
-    .trim()
-    .toLowerCase();
-
-  const price=String(o?.price_value??o?.price??"")
-    .trim()
-    .toLowerCase();
-
-  const size=String(o?.size_ml||o?.size||key)
-    .trim()
-    .toLowerCase();
-
-  return url
-    ? store+"|"+url
-    : store+"|"+price+"|"+size;
-};
-
-const offers=[];
-const seenOffers=new Set();
-
-[...localOffers,...remoteOffers].forEach(o=>{
-  if(!o || typeof o!=="object")return;
-
-  const offer={
-    ...o,
-    store:o.store||o.shop||"",
-    size_ml:o.size_ml||o.size||key
-  };
-
-  const id=offerKey(offer);
-
-  if(!seenOffers.has(id)){
-    seenOffers.add(id);
-    offers.push(offer);
-  }
-});
-
-/* Mantiene lo stesso ordinamento dell'interfaccia:
-   disponibili prima, poi prezzo crescente. */
-offers.sort((a,b)=>{
-  const ao=isOfferOutOfStock(a);
-  const bo=isOfferOutOfStock(b);
-
-  if(ao!==bo)return ao?1:-1;
-
-  return shNum(a)-shNum(b);
-});
-
-const best=offers.find(o=>!isOfferOutOfStock(o))||offers[0]||null;
-
-return {
-  size_ml:key,
-  best:best,
-  offers:offers
-};
-
-  }
-
-  return remote||{
-    size_ml:key,
-    best:null,
-    offers:[]
-  };
-});
-
-window._formatComparisonsByProduct=
-  window._formatComparisonsByProduct||{};
-
-window._formatComparisonsByProduct[currentOpenProductKey]=merged;
-
-if(window.__SH_DELOOX_LOG__){
-  window.__SH_DELOOX_LOG__(
-    "21. FORMAT COMPARISONS FINAL MERGED",
-    {
-      group:g,
-      merged:merged,
-      sizes:sizes
-    }
-  );
-}
-
-renderFormatChoiceCard(i,g,merged,sizes);
-
+    const merged=sizes.map(size=>{
+      const key=String(size);
+      const remote=(comparisons||[]).find(x=>String(x.size_ml||x.size||"")===key);
+      const local=localBySize.get(key);
+      const remoteOffers=Array.isArray(remote?.offers)?remote.offers:[];
+      if(remoteOffers.length)return remote;
+      if(local?.offers?.length)return {size_ml:key,best:local.best||null,offers:local.offers};
+      return remote||{size_ml:key,best:null,offers:[]};
+    });
+    window._formatComparisonsByProduct=window._formatComparisonsByProduct||{};
+    window._formatComparisonsByProduct[currentOpenProductKey]=merged;
+    renderFormatChoiceCard(i,g,merged,sizes);
   }catch(error){
     console.warn("Confronto formati",error);
     const fallback=getSizeGroups(g).filter(s=>s.size).map(s=>({size_ml:s.size,best:s.best,offers:s.offers}));
@@ -2092,46 +1980,11 @@ renderFormatChoiceCard(i,g,merged,sizes);
 }
 
 function renderSingleFormatComparison(g,img,offers,size,saved){
- if(window.__SH_DELOOX_LOG__){
-  window.__SH_DELOOX_LOG__("13. renderSingleFormatComparison OFFERS", {
-    group:g,
-    size:size,
-    offers:offers||[]
-  });
-}
-if(window.__SH_DELOOX_LOG__){
-  window.__SH_DELOOX_LOG__(
-    "16. renderSingleFormatComparison BEFORE INNERHTML",
-    {
-      group:g,
-      size:size,
-      offers:offers||[]
-    }
-  );
-}
-
   resultsBox.innerHTML=`<article class="comparison"><button class="detail-back" onclick="clearOpenProduct();showProducts(currentProductGroups)">← Torna ai profumi</button><div class="comparison-head"><div class="result-image">${img?`<img src="${esc(img)}" alt="${esc(displayPerfumeName(g.name,g.brand))}" onerror="this.outerHTML='🧴'">`:"🧴"}</div><div class="result-main"><div class="store">${esc(g.brand||"")}</div><div class="name">${esc(displayPerfumeName(g.name,g.brand))}</div></div></div><div class="format-compare-bar"><div class="format-compare-item"><div class="format-compare-copy"><div class="format-compare-label">FORMATO</div><div class="format-compare-value">${esc(formatLabel(size)||"Formato")}</div></div></div><div class="format-compare-item"><div class="format-compare-copy"><div class="format-compare-label">CONFRONTA I PREZZI</div><div class="format-compare-value">${offers.length} ${offers.length===1?"negozio":"negozi"}</div></div></div></div>${renderOffersHtml(g,img,offers,saved)}</article>`;
   document.getElementById("searchOutput").scrollIntoView({behavior:"smooth",block:"start"});
 }
 
 function renderOffersHtml(g,img,offers,saved){
- if(window.__SH_DELOOX_LOG__){
-  window.__SH_DELOOX_LOG__("14. renderOffersHtml FINAL OFFERS", {
-    group:g,
-    offers:offers||[]
-  });
-}
-if(window.__SH_DELOOX_LOG__){
-  window.__SH_DELOOX_LOG__(
-    "17. renderOffersHtml BEFORE RETURN",
-    {
-      group:g,
-      offers:offers||[],
-      renderedOfferCount:(offers||[]).length
-    }
-  );
-}
-
   return (offers||[]).map((o,n)=>{
     const isOut=isOfferOutOfStock(o); const item={brand:g.brand||o.brand||"",name:g.name||o.name||"",price:isOut?"":shPrice(o),shop:o.store||"",url:o.url||"",pic:img||"🧴",outOfStock:isOut}; const on=saved.some(x=>sameWishOffer(x,item));
     return `<div class="offer ${!isOut&&n===0?"best":""}"><div class="offer-line"><div><div class="offer-store">${!isOut&&n===0?"🥇 ":""}${esc(displayStoreName(o.store||"Negozio"))}</div>${!isOut&&n===0?'<div class="offer-meta">MIGLIOR PREZZO</div>':""}${isOut?'<div class="offer-outstock">OUT OF STOCK</div>':""}</div><div style="display:flex;align-items:center;gap:8px">${!isOut?`<span class="offer-price">${esc(shPrice(o))}</span>`:""}<button class="offer-heart ${on?"saved":""}" data-brand="${esc(item.brand)}" data-name="${esc(item.name)}" data-price="${esc(item.price)}" data-shop="${esc(item.shop)}" data-url="${esc(item.url)}" data-pic="${esc(item.pic)}">${on?"♥":"♡"}</button></div></div>${(!isOut&&o.url)?`<a class="offer-link" href="${esc(o.url)}" target="_blank" rel="noopener noreferrer">Vai al negozio →</a>`:""}</div>`;
