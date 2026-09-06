@@ -1175,24 +1175,6 @@ function shGroupData(data){
       .trim();
     const hint=concentrationHint(o);
 
-    // LIQUID BRUN: la variante Limited Edition è una referenza distinta.
-    // Va classificata prima del match master generico, perché "Liquid Brun"
-    // è contenuto nel nome "Liquid Brun Limited Edition".
-    const lb=liquidBrunFamily(o);
-    if(lb){
-      const detectedBrand=findBrand(o);
-      const masterLiquid=resolveMasterProduct(detectedBrand,pretty(lb));
-      if(masterLiquid){
-        return {
-          brand:masterLiquid.brand||detectedBrand,
-          name:masterLiquid.name||pretty(lb),
-          key:norm(masterLiquid.brand||detectedBrand)+"|"+norm(masterLiquid.name||pretty(lb)),
-          catalog_id:masterLiquid.id||""
-        };
-      }
-      return {brand:detectedBrand,name:pretty(lb),key:norm(detectedBrand)+"|"+lb};
-    }
-
     // Se il nome originale contiene una concentrazione esplicita,
     // preferiamo la referenza master con la stessa concentrazione.
     // Questo evita che "Eau de Toilette" venga confusa con "Eau de Parfum"
@@ -1219,6 +1201,20 @@ function shGroupData(data){
       };
     }
 
+    const lb=liquidBrunFamily(o);
+    if(lb){
+      const detectedBrand=findBrand(o);
+      const masterLiquid=resolveMasterProduct(detectedBrand,pretty(lb));
+      if(masterLiquid){
+        return {
+          brand:masterLiquid.brand||detectedBrand,
+          name:masterLiquid.name||pretty(lb),
+          key:norm(masterLiquid.brand||detectedBrand)+"|"+norm(masterLiquid.name||pretty(lb)),
+          catalog_id:masterLiquid.id||""
+        };
+      }
+      return {brand:detectedBrand,name:pretty(lb),key:norm(detectedBrand)+"|"+lb};
+    }
     const brand=findBrand(o);
     let name=cleanProductName(o,brand);
 
@@ -1731,23 +1727,11 @@ function applyProgressiveArchive(groups){
     });
 
     const mergedOffers=[...mergedByKey.values()];
-    // Se il prodotto appartiene al catalogo master, i formati master sono
-    // la sola fonte di verita. Una misura anomala comunicata da un singolo
-    // negozio non deve diventare un nuovo formato del prodotto.
-    let formats=[];
-    const master=meta.catalog_id
-      ?MASTER_CATALOG.find(p=>p.id===meta.catalog_id)
-      :null;
-    if(master&&Array.isArray(master.formats_ml)){
-      formats=Array.from(new Set(master.formats_ml.map(x=>String(x)).filter(x=>/^\d+(?:\.\d+)?$/.test(x))))
-        .sort((a,b)=>Number(a)-Number(b));
-    }else{
-      formats=Array.from(new Set([
-        ...(meta.formats_ml||[]),
-        ...(g.formats_ml||[]),
-        ...mergedOffers.map(o=>sizeOfOffer(o)).filter(Boolean)
-      ]));
-    }
+    const formats=Array.from(new Set([
+      ...(meta.formats_ml||[]),
+      ...(g.formats_ml||[]),
+      ...mergedOffers.map(o=>sizeOfOffer(o)).filter(Boolean)
+    ]));
 
     output.push({
       ...g,
@@ -1919,10 +1903,7 @@ function mergeFormatComparison(local,remote,sizeKey){
 
 function renderFormatChoiceCard(gi,g,comparisons,sizes){
   const img=g.image||"";
-  const bySize=new Map((comparisons||[])
-    .map(x=>({row:x,size:String(x?.size_ml??x?.size??"").trim()}))
-    .filter(x=>x.size)
-    .map(x=>[x.size,x.row]));
+  const bySize=new Map((comparisons||[]).map(x=>[String(x.size_ml||x.size||""),x]));
   resultsBox.innerHTML=`<article class="comparison">
     <button class="detail-back" onclick="clearOpenProduct();showProducts(currentProductGroups)">← Torna ai profumi</button>
     <div class="comparison-head">
@@ -2072,7 +2053,12 @@ async function fetchJSONWithTimeout(url,ms=90000){
  const controller=new AbortController();
  const timer=setTimeout(()=>controller.abort(),ms);
  try{
-  const response=await fetch(url,{signal:controller.signal,headers:{"Accept":"application/json"}});
+  const cacheBuster=(url.includes("?")?"&":"?")+"_ts="+Date.now()+"_r="+Math.random().toString(36).slice(2);
+  const response=await fetch(url+cacheBuster,{
+   signal:controller.signal,
+   cache:"no-store",
+   headers:{"Accept":"application/json","Cache-Control":"no-cache"}
+  });
   if(!response.ok)throw new Error("HTTP "+response.status);
   return await response.json();
  }finally{clearTimeout(timer)}
@@ -2144,11 +2130,11 @@ async function getSearchStores(term){
 }
 
 async function searchStoresProgressive(term,onPartial){
- const timeoutMs=300000;
+ const timeoutMs=120000;
  const pollMs=150;
  const started=await fetchJSONWithTimeout(
   backend()+"/search-start?q="+encodeURIComponent(term),
-  120000
+  60000
  );
 
  const jobId=String(started?.job_id||started?.id||"").trim();
@@ -2160,7 +2146,7 @@ async function searchStoresProgressive(term,onPartial){
  while(Date.now()<deadline){
   const snapshot=await fetchJSONWithTimeout(
    backend()+"/search-status?job_id="+encodeURIComponent(jobId),
-   30000
+   60000
   );
 
   lastSnapshot=snapshot||{};
