@@ -628,11 +628,8 @@ def diagnose_format_flow(
     def one(store, size):
         t0 = _diag_time.monotonic()
 
-        # IMPORTANT: format diagnosis must use the same broad discovery query
-        # as production. The requested size is enforced after scraping from
-        # the candidate's explicit parsed size. Putting "100 ml" into the
-        # retailer query makes several adapters return zero results.
-        query = _format_compare_query(product)
+        # Use the same explicit size query as production /compare-formats.
+        query = _format_compare_query(product, size)
 
         out = {
             "store": store,
