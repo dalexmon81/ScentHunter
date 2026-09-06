@@ -699,5 +699,25 @@ def diagnose_format_flow(
 
 @app.get("/diagnose-deloox-disappearance")
 def diagnose_deloox_disappearance(q: str = Query("liquid brun", min_length=1)):
-    from diagnostic_search import run_deloox_disappearance
-    return run_deloox_disappearance(str(q or "").strip())
+    # Diagnostic endpoint only: never let an import/runtime diagnostic failure
+    # become an opaque Railway 500. Return the exact exception so we can fix
+    # the diagnostic without touching normal search behavior.
+    try:
+        from diagnostic_search import run_query
+    except Exception as exc:
+        return {
+            "ok": False,
+            "diagnostic_stage": "import",
+            "query": str(q or "").strip(),
+            "error": f"{type(exc).__name__}: {exc}",
+        }
+
+    try:
+        return run_query(str(q or "").strip())
+    except Exception as exc:
+        return {
+            "ok": False,
+            "diagnostic_stage": "execution",
+            "query": str(q or "").strip(),
+            "error": f"{type(exc).__name__}: {exc}",
+        }
