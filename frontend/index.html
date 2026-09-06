@@ -1978,54 +1978,75 @@ async function openProduct(i){
     const comparisons=await fetchFormatComparisons(g,sizes);
     const localBySize=new Map(getSizeGroups(g).filter(x=>x.size).map(x=>[String(x.size),x]));
     const merged=sizes.map(size=>{
-      const key=String(size);
-      const remote=(comparisons||[]).find(x=>String(x.size_ml||x.size||"")===key);
-      const local=localBySize.get(key);
-      const remoteOffers=Array.isArray(remote?.offers)?remote.offers:[];
-      if(remoteOffers.length){
-  if(window.__SH_DELOOX_LOG__){
-    window.__SH_DELOOX_LOG__(
-      "19. FORMAT MERGE REMOTE SELECTED",
-      {
-        size:key,
-        remote:remote,
-        local:local,
-        remoteOfferCount:remoteOffers.length,
-        remoteOffers:remoteOffers
-      }
-    );
-  }
-  return remote;
-}
+  const key=String(size);
+  const remote=(comparisons||[]).find(
+    x=>String(x.size_ml||x.size||"")===key
+  );
+  const local=localBySize.get(key);
+  const remoteOffers=Array.isArray(remote?.offers)?remote.offers:[];
 
-if(local?.offers?.length){
-  if(window.__SH_DELOOX_LOG__){
-    window.__SH_DELOOX_LOG__(
-      "20. FORMAT MERGE LOCAL SELECTED",
-      {
-        size:key,
-        remote:remote,
-        local:local,
-        localOfferCount:local.offers.length,
-        localOffers:local.offers
-      }
-    );
+  if(remoteOffers.length){
+    if(window.__SH_DELOOX_LOG__){
+      window.__SH_DELOOX_LOG__(
+        "19. FORMAT MERGE REMOTE SELECTED",
+        {
+          size:key,
+          remote:remote,
+          local:local,
+          remoteOfferCount:remoteOffers.length,
+          remoteOffers:remoteOffers
+        }
+      );
+    }
+    return remote;
   }
-  return {
+
+  if(local?.offers?.length){
+    if(window.__SH_DELOOX_LOG__){
+      window.__SH_DELOOX_LOG__(
+        "20. FORMAT MERGE LOCAL SELECTED",
+        {
+          size:key,
+          remote:remote,
+          local:local,
+          localOfferCount:local.offers.length,
+          localOffers:local.offers
+        }
+      );
+    }
+
+    return {
+      size_ml:key,
+      best:local.best||null,
+      offers:local.offers
+    };
+  }
+
+  return remote||{
     size_ml:key,
-    best:local.best||null,
-    offers:local.offers
+    best:null,
+    offers:[]
   };
+});
+
+window._formatComparisonsByProduct=
+  window._formatComparisonsByProduct||{};
+
+window._formatComparisonsByProduct[currentOpenProductKey]=merged;
+
+if(window.__SH_DELOOX_LOG__){
+  window.__SH_DELOOX_LOG__(
+    "21. FORMAT COMPARISONS FINAL MERGED",
+    {
+      group:g,
+      merged:merged,
+      sizes:sizes
+    }
+  );
 }
 
-return remote||{
-  size_ml:key,
-  best:null,
-  offers:[]
-};
+renderFormatChoiceCard(i,g,merged,sizes);
 
-    window._formatComparisonsByProduct[currentOpenProductKey]=merged;
-    renderFormatChoiceCard(i,g,merged,sizes);
   }catch(error){
     console.warn("Confronto formati",error);
     const fallback=getSizeGroups(g).filter(s=>s.size).map(s=>({size_ml:s.size,best:s.best,offers:s.offers}));
