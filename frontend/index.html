@@ -354,98 +354,18 @@ body{position:relative}
 <div class="navitem"><b class="navicon"><svg viewBox="0 0 24 24"><circle cx="12" cy="7" r="3"/><path d="M7 21v-3a5 5 0 0 1 10 0v3H7z"/></svg></b>Profilo</div>
 </nav>
 <script>
-/* ============================================================
- * SCENTHUNTER DIAGNOSTIC — DELOOX TRACE
- * ADDITIVE ONLY: traces Liquid Brun / Deloox through every
- * relevant frontend stage. No filtering or application logic.
- * ============================================================ */
+/* SCENTHUNTER — DIAGNOSTICO DELOOX PRECISE V2 — instrumentation only */
 (function(){
-  const ON = true;
-  const TARGET_IDS = new Set(["1355229","1385920"]);
-  const TARGET = "liquid brun";
-
-  function dbg(stage, payload){
-    if(!ON) return;
-    const out = {
-      time:new Date().toISOString(),
-      stage,
-      payload
-    };
-    try{ console.log("[SH-DELOOX-DIAG]", out); }catch(e){}
-    try{
-      window.__SH_DELOOX_DIAG__ = window.__SH_DELOOX_DIAG__ || [];
-      window.__SH_DELOOX_DIAG__.push(out);
-      const box=document.getElementById("sh-deloox-diagnostic");
-      if(box){
-        box.textContent=JSON.stringify(window.__SH_DELOOX_DIAG__,null,2);
-        box.scrollTop=box.scrollHeight;
-      }
-    }catch(e){}
-  }
-
-  function isTarget(o, parent){
-    if(!o || typeof o!=="object") return false;
-    const x={...o,...(parent||{})};
-    const store=String(x.store||"").toLowerCase();
-    const name=String(x.name||x.title||x.product_name||"").toLowerCase();
-    const url=String(x.url||x._source_url||"");
-    const id=(url.match(/product\/(\d+)/i)||[])[1] || "";
-    return store==="deloox" && (name.includes(TARGET) || TARGET_IDS.has(id) || TARGET_IDS.has(String(x.catalog_id||"")));
-  }
-
-  function snap(o,parent){
-    if(!o || typeof o!=="object") return null;
-    const x={...o};
-    const url=String(x.url||x._source_url||parent?.url||"");
-    const id=(url.match(/product\/(\d+)/i)||[])[1] || "";
-    return {
-      id,
-      store:x.store||parent?.store||"",
-      brand:x.brand||parent?.brand||"",
-      name:x.name||x.title||x.product_name||parent?.name||"",
-      size_ml:x.size_ml??x.size??x.attributes?.size_ml?.value??"",
-      concentration:x.concentration||"",
-      price:x.price??x.price_value??"",
-      available:x.available,
-      availability:x.availability,
-      catalog_id:x.catalog_id||"",
-      url:x.url||x._source_url||parent?.url||""
-    };
-  }
-
-  function scan(stage, data){
-    const hits=[];
-    const walk=(o,parent)=>{
-      if(!o || typeof o!=="object") return;
-      if(Array.isArray(o)){
-        o.forEach(v=>walk(v,parent));
-        return;
-      }
-      if(isTarget(o,parent)) hits.push(snap(o,parent));
-      if(Array.isArray(o.offers)) o.offers.forEach(v=>walk(v,o));
-    };
-    walk(data,null);
-    dbg(stage,{count:hits.length,hits});
-  }
-
-  function install(){
-    if(document.getElementById("sh-deloox-diagnostic")) return;
-    const box=document.createElement("pre");
-    box.id="sh-deloox-diagnostic";
-    box.style.cssText="position:fixed;left:6px;right:6px;bottom:6px;max-height:45vh;overflow:auto;z-index:2147483647;background:#050505;color:#00ff66;border:2px solid #00ff66;border-radius:8px;padding:8px;font:10px/1.3 monospace;white-space:pre-wrap;";
-    box.textContent="SH DELOOX DIAGNOSTIC — waiting...";
-    document.body.appendChild(box);
-    dbg("INIT",{target:"Liquid Brun",target_ids:[...TARGET_IDS]});
-  }
-  if(document.readyState==="loading") document.addEventListener("DOMContentLoaded",install);
-  else install();
-
-  window.__SH_DELOOX_SCAN__ = scan;
-  window.__SH_DELOOX_SNAPSHOT__ = snap;
+ const IDS=new Set(['1355229','1385920']); const logs=[];
+ function flat(v,parent){if(!v||typeof v!=='object')return null;const x=Object.assign({},parent||{},v);return {id:String(x.catalog_id||x.product_id||x.id||''),store:String(x.store||''),brand:String(x.brand||''),name:String(x.name||x.title||x.product_name||''),size:String(x.size_ml||x.size||x.attributes?.size_ml?.value||''),price:x.price_value??x.price??null,url:String(x.url||x._source_url||'')}}
+ function target(v,parent){const x=flat(v,parent);if(!x)return false;return IDS.has(x.id)||(x.store.toLowerCase()==='deloox'&&/liquid brun/i.test(x.name))}
+ function walk(v,stage,parent,seen){if(!v||typeof v!=='object'||seen.has(v))return;seen.add(v);if(target(v,parent))logs.push(stage+' :: '+JSON.stringify(flat(v,parent)));if(Array.isArray(v))v.forEach(x=>walk(x,stage,parent,seen));else Object.keys(v).forEach(k=>walk(v[k],stage,v,seen))}
+ function log(stage,data){walk(data,stage,null,new WeakSet());render()}
+ function render(){const b=document.getElementById('sh-deloox-diagnostic');if(b)b.textContent='SCENTHUNTER DELOOX DIAGNOSTIC V2\n'+(logs.length?logs.join('\n'):'Nessun target rilevato finora.')}
+ function install(){if(document.getElementById('sh-deloox-diagnostic'))return;const b=document.createElement('pre');b.id='sh-deloox-diagnostic';b.style.cssText='position:fixed;left:6px;right:6px;bottom:6px;max-height:48vh;overflow:auto;z-index:2147483647;background:#050505;color:#00ff66;border:2px solid #00ff66;border-radius:8px;padding:8px;font:10px/1.3 monospace;white-space:pre-wrap;box-sizing:border-box';document.body.appendChild(b);logs.push('INIT — targets 1355229 / 1385920');render()}
+ window.__SH_DELOOX_LOG__=log; window.__SH_DELOOX_LOGS__=logs; install();
 })();
-
 </script>
-<script>
 let isSearching = false;
 const queryInput=document.getElementById("query"),searchButton=document.getElementById("searchButton"),statusBox=document.getElementById("status"),resultsBox=document.getElementById("results"),errorsBox=document.getElementById("errorsBox");
 
@@ -820,7 +740,8 @@ function shNum(o){
   return p===null?Infinity:p;
 }
 function shGroupData(data){
- try{window.__SH_DELOOX_SCAN__&&window.__SH_DELOOX_SCAN__('shGroupData RAW INPUT',data);}catch(e){}
+ if(window.__SH_DELOOX_LOG__)window.__SH_DELOOX_LOG__("shGroupData RAW INPUT",data);
+ if(window.__SH_DELOOX_DBG__) window.__SH_DELOOX_DBG__("shGroupData INPUT",data);
   const raw=[];
 
   (Array.isArray(data.comparisons)?data.comparisons:[]).forEach(g=>{
@@ -1250,6 +1171,7 @@ function shGroupData(data){
   }
 
   function productIdentity(o){
+ if(window.__SH_DELOOX_LOG__)window.__SH_DELOOX_LOG__("productIdentity INPUT",o);
     // Primo tentativo: il dato originale dello scraper. Questo permette
     // al catalogo di conservare nomi canonici che la pulizia commerciale
     // potrebbe altrimenti accorciare (es. "Hawas for Him").
@@ -1552,8 +1474,10 @@ function shGroupData(data){
     return String(a.name||"").localeCompare(String(b.name||""),"it",{sensitivity:"base",numeric:true});
   });
 
-  try{window.__SH_DELOOX_SCAN__&&window.__SH_DELOOX_SCAN__('shGroupData FINAL OUTPUT',groups);}catch(e){}
- return groups.filter(g=>g.offers.length);
+  if(window.__SH_DELOOX_DBG__) window.__SH_DELOOX_DBG__("shGroupData FINAL GROUPS",groups);
+ const __shFinalGroups=groups.filter(g=>g.offers.length);
+if(window.__SH_DELOOX_LOG__)window.__SH_DELOOX_LOG__("shGroupData FINAL OUTPUT",{results:__shFinalGroups});
+return __shFinalGroups;
 }
 
 function isNonPerfumeProduct(g){
@@ -2005,6 +1929,7 @@ async function getSearchStores(term){
 }
 
 async function searchStoresProgressive(term,onPartial){
+ if(window.__SH_DELOOX_DBG__) window.__SH_DELOOX_DBG__("searchStoresProgressive INPUT",{query:term,stores:SEARCH_STORES});
  const merged={query:term,comparisons:[],results:[],errors:{}};
  const timeoutMs=45000;
  const concurrency=4;
@@ -2023,7 +1948,6 @@ async function searchStoresProgressive(term,onPartial){
  const comparisonArchive=new Map();
 
  const archiveResult=(store,offer)=>{
-  try{if(String(store).toLowerCase()==='deloox')window.__SH_DELOOX_SCAN__&&window.__SH_DELOOX_SCAN__('archiveResult BEFORE',offer);}catch(e){}
   if(!offer||typeof offer!=="object")return;
 
   // Alcuni endpoint restituiscono un contenitore prodotto con brand/nome/size
@@ -2043,6 +1967,7 @@ async function searchStoresProgressive(term,onPartial){
     image:o.image||o.image_url||o.thumbnail||offer.image||offer.image_url||offer.thumbnail||"",
     store:o.store||store||""
    };
+   if(window.__SH_DELOOX_LOG__)window.__SH_DELOOX_LOG__("archiveResult NORMALIZED",normalized);
 
    const offerStore=String(normalized.store||store||"").trim().toLowerCase();
    const url=String(normalized.url||normalized._source_url||offer.url||offer._source_url||"").split("?")[0].trim().toLowerCase();
@@ -2052,6 +1977,7 @@ async function searchStoresProgressive(term,onPartial){
    if(!key.replace(/\|/g,""))return;
    const old=resultArchive.get(key);
    if(!old||shNum(normalized)<shNum(old))resultArchive.set(key,normalized);
+   if(window.__SH_DELOOX_LOG__)window.__SH_DELOOX_LOG__("resultArchive AFTER SET",resultArchive.get(key));
   });
  };
 
@@ -2097,6 +2023,7 @@ async function searchStoresProgressive(term,onPartial){
     return;
    }
    const data=r.value||{};
+   if(window.__SH_DELOOX_LOG__)window.__SH_DELOOX_LOG__("/test-store RESPONSE "+store,data);
    if(Array.isArray(data.results))data.results.forEach(item=>archiveResult(store,item));
    if(Array.isArray(data.comparisons))data.comparisons.forEach(group=>archiveComparison(group));
    if(data.errors&&typeof data.errors==="object")Object.entries(data.errors).forEach(([name,error])=>{
@@ -2106,10 +2033,13 @@ async function searchStoresProgressive(term,onPartial){
   });
 
   rebuildMerged();
+  if(window.__SH_DELOOX_LOG__)window.__SH_DELOOX_LOG__("merged BEFORE onPartial",merged);
+  if(window.__SH_DELOOX_DBG__) window.__SH_DELOOX_DBG__("searchStoresProgressive MERGED BEFORE PARTIAL",merged);
   if(typeof onPartial==="function")onPartial(merged,false);
  }
 
  rebuildMerged();
+ if(window.__SH_DELOOX_DBG__) window.__SH_DELOOX_DBG__("searchStoresProgressive FINAL",merged);
  if(typeof onPartial==="function")onPartial(merged,true);
  return merged;
 }
@@ -2126,9 +2056,9 @@ async function searchPerfume(){
  try{
   let data;
   const renderData=(partialData,final=false)=>{
-   try{window.__SH_DELOOX_SCAN__&&window.__SH_DELOOX_SCAN__('renderData INPUT '+(final?'FINAL':'PARTIAL'),partialData);}catch(e){}
+   if(window.__SH_DELOOX_LOG__)window.__SH_DELOOX_LOG__("renderData INPUT final="+final,partialData);
+   if(window.__SH_DELOOX_DBG__) window.__SH_DELOOX_DBG__("renderData INPUT final="+final,partialData);
    let groups=shGroupData(partialData||{});
-   try{window.__SH_DELOOX_SCAN__&&window.__SH_DELOOX_SCAN__('renderData AFTER shGroupData',groups);}catch(e){}
 
    currentProductGroups=groups;
 
@@ -2178,9 +2108,7 @@ async function searchPerfume(){
   // usa automaticamente le referenze del catalogo master per provare il
   // nome canonico/alias. I fallback vengono eseguiti uno alla volta per
   // evitare una seconda raffica simultanea di richieste.
-  try{window.__SH_DELOOX_SCAN__&&window.__SH_DELOOX_SCAN__('FINAL data BEFORE shGroupData',data);}catch(e){}
   let groups=shGroupData(data||{});
-  try{window.__SH_DELOOX_SCAN__&&window.__SH_DELOOX_SCAN__('FINAL groups AFTER shGroupData',groups);}catch(e){}
   if(!groups.length){
    const fallbackQueries=buildCatalogFallbackQueries(q);
    for(let i=0;i<fallbackQueries.length;i++){
