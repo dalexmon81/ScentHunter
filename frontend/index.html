@@ -2229,6 +2229,8 @@ async function searchPerfume(){
  try{
   let data;
   const renderData=(partialData,final=false)=>{
+   const appScroll=document.querySelector(".app");
+   const savedScrollTop=appScroll?appScroll.scrollTop:0;
    let groups=shGroupData(partialData||{});
    archiveProgressiveGroups(groups);
    groups=applyProgressiveArchive(groups);
@@ -2261,6 +2263,11 @@ async function searchPerfume(){
 
     showProducts(groups);
 
+   }
+
+   if(searchInProgress&&appScroll){
+    appScroll.scrollTop=savedScrollTop;
+    requestAnimationFrame(()=>{if(searchInProgress)appScroll.scrollTop=savedScrollTop;});
    }
 
    updateBestPricesFromGroups(groups);
