@@ -8,7 +8,7 @@ from bs4 import BeautifulSoup
 
 
 STORE = "Deloox"
-BASE_URL = "https://www.deloox.nl"
+BASE_URL = "https://www.deloox.be"
 SEARCH_PATH = "/zoeken.html"
 TIMEOUT = 20
 
@@ -26,7 +26,7 @@ HEADERS = {
 }
 
 PRODUCT_RE = re.compile(
-    r"/product/(\d+)/",
+    r"/(?:product|produit)/(\d+)/",
     re.I,
 )
 
@@ -87,7 +87,7 @@ def norm(value):
 def same_host(url):
     try:
         host = urlparse(url).netloc.lower()
-        return host == "deloox.nl" or host.endswith(".deloox.nl")
+        return host == "deloox.be" or host.endswith(".deloox.be")
     except Exception:
         return False
 
@@ -643,13 +643,18 @@ def search(query):
     session = requests.Session()
 
     try:
-        # The site's own search form is /zoeken.html?q=...
+        # Deloox Belgium can expose the search route in the local language.
+        # Try the Dutch route first, then the French route.
         # We deliberately do not crawl categories or generic internal links.
-        response = fetch(
-            session,
-            urljoin(BASE_URL, SEARCH_PATH),
-            params={"q": query},
-        )
+        response = None
+        for search_path in (SEARCH_PATH, "/recherche.html"):
+            response = fetch(
+                session,
+                urljoin(BASE_URL, search_path),
+                params={"q": query},
+            )
+            if response is not None:
+                break
 
         if response is None:
             return []
