@@ -353,18 +353,204 @@ body{position:relative}
 <div class="navitem"><b class="navicon"><svg viewBox="0 0 24 24"><path d="M4 3v18M7 3v18M11 3v18M13 3v18M17 3v18M20 3v18"/></svg></b>Confronta</div>
 <div class="navitem"><b class="navicon"><svg viewBox="0 0 24 24"><circle cx="12" cy="7" r="3"/><path d="M7 21v-3a5 5 0 0 1 10 0v3H7z"/></svg></b>Profilo</div>
 </nav>
-<script>
-/* SCENTHUNTER — DIAGNOSTICO DELOOX PRECISE V2 — instrumentation only */
+ <script>
+/* SCENTHUNTER — DIAGNOSTICO DELOOX V3 — instrumentation only */
 (function(){
- const IDS=new Set(['1355229','1385920']); const logs=[];
- function flat(v,parent){if(!v||typeof v!=='object')return null;const x=Object.assign({},parent||{},v);return {id:String(x.catalog_id||x.product_id||x.id||''),store:String(x.store||''),brand:String(x.brand||''),name:String(x.name||x.title||x.product_name||''),size:String(x.size_ml||x.size||x.attributes?.size_ml?.value||''),price:x.price_value??x.price??null,url:String(x.url||x._source_url||'')}}
- function target(v,parent){const x=flat(v,parent);if(!x)return false;return IDS.has(x.id)||(x.store.toLowerCase()==='deloox'&&/liquid brun/i.test(x.name))}
- function walk(v,stage,parent,seen){if(!v||typeof v!=='object'||seen.has(v))return;seen.add(v);if(target(v,parent))logs.push(stage+' :: '+JSON.stringify(flat(v,parent)));if(Array.isArray(v))v.forEach(x=>walk(x,stage,parent,seen));else Object.keys(v).forEach(k=>walk(v[k],stage,v,seen))}
- function log(stage,data){walk(data,stage,null,new WeakSet());render()}
- function render(){const b=document.getElementById('sh-deloox-diagnostic');if(b)b.textContent='SCENTHUNTER DELOOX DIAGNOSTIC V2\n'+(logs.length?logs.join('\n'):'Nessun target rilevato finora.')}
- function install(){if(document.getElementById('sh-deloox-diagnostic'))return;const b=document.createElement('pre');b.id='sh-deloox-diagnostic';b.style.cssText='position:fixed;left:6px;right:6px;bottom:6px;max-height:48vh;overflow:auto;z-index:2147483647;background:#050505;color:#00ff66;border:2px solid #00ff66;border-radius:8px;padding:8px;font:10px/1.3 monospace;white-space:pre-wrap;box-sizing:border-box';document.body.appendChild(b);logs.push('INIT — targets 1355229 / 1385920');render()}
- window.__SH_DELOOX_LOG__=log; window.__SH_DELOOX_LOGS__=logs; install();
+  const TARGET_IDS = new Set([1355229, 1385920]);
+  const TARGET_STORE = 'deloox';
+  const BOX_ID = 'sh-deloox-diagnostic-v3';
+  const MAX_LOG_ENTRIES = 300;
+  const logs = [];
+  const seenKeys = new Map();
+
+  function esc(v) {
+    return String(v ?? '').replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;').replaceAll('"', '&quot;').replaceAll("'", '&#039;');
+  }
+
+  function extractProductInfo(obj, depth = 0) {
+    if (!obj || typeof obj !== 'object' || depth > 10) return null;
+    let id = obj.catalogIdx?.productId ?? obj.productId ?? obj.id ?? obj.productid;
+    if (typeof id === 'string') id = parseInt(id, 10);
+    let url = obj.url ?? obj.sourceurl ?? obj.productUrl ?? obj.link ?? obj.href;
+    if (url && typeof url === 'string') url = url.split('?')[0].trim();
+    let store = obj.store ?? obj.shop ?? obj.sourcestore ?? obj.retailer;
+    if (store && typeof store === 'string') store = store.trim().toLowerCase();
+    let name = obj.name ?? obj.title ?? obj.productname ?? obj.sourcename ?? obj.displayName;
+    let brand = obj.brand ?? obj.sourcebrand ?? obj.manufacturer;
+    let size = obj.sizeml ?? obj.size ?? obj.attributes?.sizeml?.value ?? obj.format;
+    return { id: typeof id === 'number' ? id : null, url, store, name, brand, size, raw: obj };
+  }
+
+  function isTarget(obj) {
+    const info = extractProductInfo(obj);
+    if (!info) return false;
+    if (info.id && TARGET_IDS.has(info.id)) return true;
+    if (info.store === TARGET_STORE && info.url) {
+      const urlLower = info.url.toLowerCase();
+      if (urlLower.includes('liquid') || urlLower.includes('brun') || urlLower.includes('french') || urlLower.includes('avenue')) return true;
+    }
+    return false;
+  }
+
+  function findTargetsInObject(obj, path = '', results = []) {
+    if (!obj || typeof obj !== 'object') return results;
+    if (isTarget(obj)) {
+      const info = extractProductInfo(obj);
+      results.push({ path: path || 'root', ...info, status: 'PRESENT' });
+    }
+    if (Array.isArray(obj)) {
+      obj.forEach((item, idx) => findTargetsInObject(item, path + '[' + idx + ']', results));
+    } else {
+      Object.entries(obj).forEach(([key, value]) => {
+        if (key === 'raw' || key === 'parent' || key === 'seen') return;
+        findTargetsInObject(value, path ? path + '.' + key : key, results);
+      });
+    }
+    return results;
+  }
+
+  function logEntry(stage, data, context = {}) {
+    const targets = findTargetsInObject(data);
+    if (targets.length > 0) {
+      const entry = { stage, timestamp: new Date().toLocaleTimeString('it-IT'), targets, context, dataSummary: summarizeData(data) };
+      logs.push(entry);
+      const dedupKey = stage + '-' + targets.map(t => t.id || t.url).join(',');
+      if (!seenKeys.has(dedupKey)) seenKeys.set(dedupKey, true);
+      if (logs.length > MAX_LOG_ENTRIES) logs.shift();
+      render();
+    }
+  }
+
+  function summarizeData(data) {
+    if (!data) return 'null';
+    if (Array.isArray(data)) return 'Array[' + data.length + ']';
+    if (typeof data === 'object') {
+      const keys = Object.keys(data);
+      return keys.length > 5 ? 'Object{' + keys.length + ' keys}' : 'Object{' + keys.join(', ') + '}';
+    }
+    return String(data).substring(0, 50);
+  }
+
+  function render() {
+    const box = document.getElementById(BOX_ID);
+    if (!box) return;
+    if (logs.length === 0) {
+      box.textContent = 'SCENTHUNTER DELOOX DIAGNOSTIC V3\n\nNessun target rilevato finora.\n\nIn attesa di ricerca "Liquid Brun"...';
+      return;
+    }
+    const lines = ['SCENTHUNTER DELOOX DIAGNOSTIC V3', '='.repeat(50), 'Targets: ID ' + Array.from(TARGET_IDS).join(', ') + ' | Store: ' + TARGET_STORE, 'Log entries: ' + logs.length, '='.repeat(50), ''];
+    logs.forEach(function(entry) {
+      lines.push('[' + entry.timestamp + '] ' + entry.stage);
+      lines.push('-'.repeat(50));
+      entry.targets.forEach(function(t, tIdx) {
+        const idStr = t.id ? 'ID:' + t.id : 'ID:?';
+        const storeStr = t.store ? 'Store:' + t.store : 'Store:?';
+        const urlShort = t.url ? (t.url.length > 50 ? t.url.substring(0, 50) + '...' : t.url) : 'URL:?';
+        const nameShort = t.name ? (t.name.length > 40 ? t.name.substring(0, 40) + '...' : t.name) : 'Name:?';
+        lines.push('  ' + (tIdx + 1) + '. ' + idStr + ' | ' + storeStr + ' | ' + t.status);
+        lines.push('     Name: ' + nameShort);
+        lines.push('     URL:  ' + urlShort);
+        lines.push('     Path: ' + t.path);
+      });
+      if (entry.context && Object.keys(entry.context).length > 0) lines.push('  Context: ' + JSON.stringify(entry.context));
+      lines.push('  Data: ' + entry.dataSummary);
+      lines.push('');
+    });
+    box.textContent = lines.join('\n');
+    box.scrollTop = box.scrollHeight;
+  }
+
+  function createBox() {
+    if (document.getElementById(BOX_ID)) return;
+    const box = document.createElement('pre');
+    box.id = BOX_ID;
+    box.style.cssText = 'position: fixed; left: 6px; right: 6px; bottom: 6px; max-height: 48vh; overflow: auto; z-index: 2147483647; background: #050505; color: #00ff66; border: 2px solid #00ff66; border-radius: 8px; padding: 8px; font: 10px/1.3 monospace; white-space: pre-wrap; box-sizing: border-box;';
+    document.body.appendChild(box);
+    logs.push({ stage: 'INIT', timestamp: new Date().toLocaleTimeString('it-IT'), targets: [{ id: null, status: 'INITIALIZED', name: 'Targets: ' + Array.from(TARGET_IDS).join(', '), store: TARGET_STORE, url: null, path: 'root' }], context: {}, dataSummary: 'Diagnostic box created' });
+    render();
+    console.log('[DELOOX DIAGNOSTIC V3] Box installato. In attesa di ricerca...');
+  }
+
+  // Hook 1: Intercetta fetch per /test-store?store=deloox
+  const originalFetch = window.fetch;
+  window.fetch = function(...args) {
+    const url = args[0];
+    if (typeof url === 'string' && url.includes('/test-store') && url.toLowerCase().includes('deloox')) {
+      const promise = originalFetch.apply(this, args);
+      promise.then(function(response) {
+        const clone = response.clone();
+        clone.json().then(function(data) {
+          logEntry('1. /test-store RESPONSE (Deloox)', data, { url: url, status: response.status, ok: response.ok });
+        }).catch(function() {});
+      }).catch(function() {});
+      return promise;
+    }
+    return originalFetch.apply(this, args);
+  };
+
+  // Hook 2-3: archiveResult e resultArchive
+  if (typeof window.archiveResult === 'function') {
+    const originalArchiveResult = window.archiveResult;
+    window.archiveResult = function(store, offer) {
+      const info = extractProductInfo(offer);
+      logEntry('2. archiveResult INPUT', { store: store, offer: { id: info?.id, url: info?.url, name: info?.name, store: info?.store } }, { store: store, offerId: info?.id });
+      const result = originalArchiveResult.call(this, store, offer);
+      logEntry('3. resultArchive AFTER SET', { archivedOffer: { id: info?.id, url: info?.url, store: info?.store } }, { key: store + '-' + (info?.url || 'unknown') });
+      return result;
+    };
+  }
+
+  // Hook 5-10: shGroupData
+  if (typeof window.shGroupData === 'function') {
+    const originalShGroupData = window.shGroupData;
+    window.shGroupData = function(data) {
+      logEntry('5. shGroupData RAW INPUT', { dataKeys: data ? Object.keys(data).join(', ') : 'null', resultsCount: data?.results?.length, comparisonsCount: data?.comparisons?.length, delooxInInput: (data?.results || []).filter(function(r) { const info = extractProductInfo(r); return info?.store === TARGET_STORE || (info?.id && TARGET_IDS.has(info.id)); }).length }, { inputType: data ? typeof data : 'null' });
+      const result = originalShGroupData.call(this, data);
+      const delooxInOutput = [];
+      if (Array.isArray(result)) {
+        result.forEach(function(g, gIdx) {
+          if (Array.isArray(g?.offers)) {
+            g.offers.forEach(function(o, oIdx) {
+              const info = extractProductInfo(o);
+              if (info?.store === TARGET_STORE || (info?.id && TARGET_IDS.has(info.id))) {
+                delooxInOutput.push({ groupIndex: gIdx, offerIndex: oIdx, brand: g?.brand, name: g?.name });
+                Object.keys(info).forEach(function(k) { delooxInOutput[delooxInOutput.length - 1][k] = info[k]; });
+              }
+            });
+          }
+        });
+      }
+      logEntry('6-10. shGroupData FINAL OUTPUT', { groupsCount: result?.length || 0, delooxOffersFound: delooxInOutput.length, delooxOffers: delooxInOutput }, { outputGroups: result?.length, note: 'Controlla se offerte Deloox sono state filtrate, deduplicate o raggruppate' });
+      return result;
+    };
+  }
+
+  // Hook 11: showProducts
+  if (typeof window.showProducts === 'function') {
+    const originalShowProducts = window.showProducts;
+    window.showProducts = function(groups) {
+      const delooxGroups = [];
+      if (Array.isArray(groups)) {
+        groups.forEach(function(g, gIdx) {
+          const delooxOffers = (g?.offers || []).filter(function(o) {
+            const info = extractProductInfo(o);
+            return info?.store === TARGET_STORE || (info?.id && TARGET_IDS.has(info.id));
+          });
+          if (delooxOffers.length > 0) {
+            delooxGroups.push({ index: gIdx, brand: g?.brand, name: g?.name, delooxOffersCount: delooxOffers.length, delooxOffers: delooxOffers.map(function(o, oIdx) { return Object.assign({ offerIndex: oIdx }, extractProductInfo(o)); }) });
+          }
+        });
+      }
+      logEntry('11. showProducts INPUT', { groupsCount: groups?.length || 0, delooxGroupsFound: delooxGroups.length, delooxGroups: delooxGroups }, { totalGroups: groups?.length, note: 'Ultimo passaggio prima del rendering' });
+      return originalShowProducts.call(this, groups);
+    };
+  }
+
+  // Installazione
+  createBox();
+  console.log('[DELOOX DIAGNOSTIC V3] Installato con successo.');
 })();
+<script>
 let isSearching = false;
 const queryInput=document.getElementById("query"),searchButton=document.getElementById("searchButton"),statusBox=document.getElementById("status"),resultsBox=document.getElementById("results"),errorsBox=document.getElementById("errorsBox");
 
