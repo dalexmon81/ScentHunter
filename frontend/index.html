@@ -1977,49 +1977,84 @@ async function openProduct(i){
   try{
     const comparisons=await fetchFormatComparisons(g,sizes);
     const localBySize=new Map(getSizeGroups(g).filter(x=>x.size).map(x=>[String(x.size),x]));
-    const merged=sizes.map(size=>{
-  const key=String(size);
-  const remote=(comparisons||[]).find(
-    x=>String(x.size_ml||x.size||"")===key
-  );
-  const local=localBySize.get(key);
-  const remoteOffers=Array.isArray(remote?.offers)?remote.offers:[];
+    const remoteOffers=Array.isArray(remote?.offers)
+  ? remote.offers
+  : [];
 
-  if(remoteOffers.length){
-    if(window.__SH_DELOOX_LOG__){
-      window.__SH_DELOOX_LOG__(
-        "19. FORMAT MERGE REMOTE SELECTED",
-        {
-          size:key,
-          remote:remote,
-          local:local,
-          remoteOfferCount:remoteOffers.length,
-          remoteOffers:remoteOffers
-        }
-      );
-    }
-    return remote;
+const localOffers=Array.isArray(local?.offers)
+  ? local.offers
+  : [];
+
+/*
+ * Non sostituire mai le offerte locali con quelle di compare-formats:
+ * la ricerca progressiva locale può contenere retailer validi, incluso
+ * Deloox, che l'endpoint remoto non restituisce.
+ *
+ * Prima conserviamo tutte le offerte locali; poi aggiungiamo solo le
+ * offerte remote realmente nuove.
+ */
+const offerKey=o=>{
+  const store=String(o?.store||o?.shop||"")
+    .trim()
+    .toLowerCase();
+
+  const url=String(o?.url||o?._source_url||o?.source_url||"")
+    .split("?")[0]
+    .trim()
+    .toLowerCase();
+
+  const price=String(o?.price_value??o?.price??"")
+    .trim()
+    .toLowerCase();
+
+  const size=String(o?.size_ml||o?.size||key)
+    .trim()
+    .toLowerCase();
+
+  return url
+    ? store+"|"+url
+    : store+"|"+price+"|"+size;
+};
+
+const offers=[];
+const seenOffers=new Set();
+
+[...localOffers,...remoteOffers].forEach(o=>{
+  if(!o || typeof o!=="object")return;
+
+  const offer={
+    ...o,
+    store:o.store||o.shop||"",
+    size_ml:o.size_ml||o.size||key
+  };
+
+  const id=offerKey(offer);
+
+  if(!seenOffers.has(id)){
+    seenOffers.add(id);
+    offers.push(offer);
   }
+});
 
-  if(local?.offers?.length){
-    if(window.__SH_DELOOX_LOG__){
-      window.__SH_DELOOX_LOG__(
-        "20. FORMAT MERGE LOCAL SELECTED",
-        {
-          size:key,
-          remote:remote,
-          local:local,
-          localOfferCount:local.offers.length,
-          localOffers:local.offers
-        }
-      );
-    }
+/* Mantiene lo stesso ordinamento dell'interfaccia:
+   disponibili prima, poi prezzo crescente. */
+offers.sort((a,b)=>{
+  const ao=isOfferOutOfStock(a);
+  const bo=isOfferOutOfStock(b);
 
-    return {
-      size_ml:key,
-      best:local.best||null,
-      offers:local.offers
-    };
+  if(ao!==bo)return ao?1:-1;
+
+  return shNum(a)-shNum(b);
+});
+
+const best=offers.find(o=>!isOfferOutOfStock(o))||offers[0]||null;
+
+return {
+  size_ml:key,
+  best:best,
+  offers:offers
+};
+
   }
 
   return remote||{
