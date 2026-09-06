@@ -353,40 +353,199 @@ _legacy._run_search_job = _monotonic_run_search_job
 # merged by retailer + URL + size. This also lets a fresh Shopify stock flag
 # correct a stale legacy OUT OF STOCK flag for the same product URL.
 _original_run_store = _legacy.run_store
-_DIRECT_SUPPLEMENT_STORES = {"parfumcity", "orioudh"}
+_DIRECT_SUPPLEMENT_STORES = {"parfumcity", "perfumemarket", "bplatz", "orioudh"}
+
+_SHOPIFY_DIRECT_BASES = {
+    "parfumcity": "https://www.parfumcity.nl",
+    "perfumemarket": "https://www.perfumemarket.nl",
+    "bplatz": "https://bplatz.de",
+    "orioudh": "https://orioudh.com",
+}
+
+
+def _shopify_fallback_match(text: str, query: str) -> bool:
+    def norm_tokens(value: str):
+        value = re.sub(r"[^a-z0-9]+", " ", str(value or "").casefold())
+        return {x for x in value.split() if len(x) > 1 and x not in {"ml", "cl"}}
+    q = norm_tokens(query)
+    return bool(q) and q.issubset(norm_tokens(text))
+
+
+def _jina_read(url: str, timeout: int = 20) -> str:
+    reader = "https://r.jina.ai/http://" + url.split("://", 1)[-1]
+    try:
+        response = requests.get(
+            reader,
+            headers={"User-Agent": "ScentHunter/1.0"},
+            timeout=timeout,
+        )
+        if response.ok:
+            return response.text or ""
+    except Exception:
+        pass
+    return ""
+
+
+def _shopify_jina_urls(store: str, query: str) -> List[str]:
+    base = _SHOPIFY_DIRECT_BASES.get(store)
+    if not base:
+        return []
+    q = quote_plus(str(query or "").strip())
+    search_urls = (
+        f"{base}/search?q={q}&type=product",
+        f"{base}/nl/search?q={q}&type=product",
+        f"{base}/en/search?q={q}&type=product",
+    )
+    domain = re.escape(base.split("//", 1)[-1])
+    found: List[str] = []
+    seen = set()
+    for search_url in search_urls:
+        text = _jina_read(search_url, timeout=18)
+        if not text:
+            continue
+        patterns = [
+            rf"https?://(?:www\\.)?{domain}/[^\\s)\\]\\\"]*/products/[^\\s)\\]\\\"]+",
+            r"(?:https?://)?[^\\s)\\]\\\"]*/products/[^\\s)\\]\\\"]+",
+        ]
+        for pattern in patterns:
+            for raw in re.findall(pattern, text, re.I):
+                raw = raw.rstrip(".,;\\\")'\\]")
+                if not raw.startswith("http"):
+                    raw = base.rstrip("/") + "/" + raw.lstrip("/")
+                raw = raw.split("?", 1)[0].split("#", 1)[0].rstrip("/")
+                if "/products/" not in raw:
+                    continue
+                if not _shopify_fallback_match(raw, query):
+                    continue
+                if raw not in seen:
+                    seen.add(raw)
+                    found.append(raw)
+    return found[:20]
+
+
+def _shopify_json_fallback(store: str, query: str) -> List[Dict[str, Any]]:
+    urls = _shopify_jina_urls(store, query)
+    if not urls:
+        return []
+    out: List[Dict[str, Any]] = []
+    for url in urls:
+        try:
+            response = requests.get(
+                url.rstrip("/") + ".js",
+                headers={
+                    "User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 Chrome/131 Safari/537.36",
+                    "Accept": "application/json,text/plain,*/*",
+                },
+                timeout=12,
+            )
+            if not response.ok:
+                continue
+            data = response.json()
+        except Exception:
+            continue
+        if not isinstance(data, dict):
+            continue
+        title = str(data.get("title") or "").strip()
+        vendor = str(data.get("vendor") or "").strip()
+        if not title or not _shopify_fallback_match(f"{title} {vendor} {url}", query):
+            continue
+        variants = data.get("variants") or []
+        for variant in variants:
+            if not isinstance(variant, dict):
+                continue
+            raw_price = variant.get("price")
+            try:
+                price = float(raw_price)
+                if price >= 100:
+                    price /= 100.0
+            except (TypeError, ValueError):
+                continue
+            vtitle = str(variant.get("title") or "").strip()
+            size_match = re.search(r"(?<!\\d)(\\d+(?:[.,]\\d+)?)\\s*(ml|cl)\\b", f"{vtitle} {title}", re.I)
+            size = None
+            if size_match:
+                size = float(size_match.group(1).replace(",", "."))
+                if size_match.group(2).casefold() == "cl":
+                    size *= 10
+                if size.is_integer():
+                    size = int(size)
+            available = variant.get("available")
+            stock = "in_stock" if available is True else "out_of_stock" if available is False else "unknown"
+            name = title if not vtitle or vtitle.casefold() == "default title" else f"{title} {vtitle}"
+            out.append({
+                "store": store,
+                "name": name,
+                "brand": vendor or None,
+                "canonical_name": title,
+                "size_ml": size,
+                "extracted_size_ml": size,
+                "price": f"{price:.2f}".replace(".", ",") + " €",
+                "available": available,
+                "in_stock": available,
+                "availability": stock,
+                "url": url,
+                "product_id": data.get("id"),
+                "sku": variant.get("sku"),
+                "source": {"source_name": name, "source_brand": vendor or None, "url": url, "image": data.get("featured_image")},
+                "offer": {"price": price, "currency": "EUR", "availability": stock},
+                "attributes": {"size_ml": {"value": size, "source": "shopify_variant"} if size is not None else None},
+            })
+    return out
+
 
 def _run_store_with_direct_supplements(store: str, query: str):
-    primary = []
-    try:
-        raw_primary = _original_run_store(store, query)
-        if isinstance(raw_primary, list):
-            primary = list(raw_primary)
-        elif raw_primary is not None:
-            primary = list(raw_primary)
-    except Exception as exc:
-        print(
-            "LEGACY_STORE_SEARCH_ERROR:",
-            f"store={store} {type(exc).__name__}: {exc}",
-            flush=True,
-        )
-
     store_key = str(store or "").strip().casefold()
     if store_key not in _DIRECT_SUPPLEMENT_STORES:
-        return primary
+        try:
+            raw_primary = _original_run_store(store, query)
+            return list(raw_primary or [])
+        except Exception as exc:
+            print(
+                "LEGACY_STORE_SEARCH_ERROR:",
+                f"store={store_key} {type(exc).__name__}: {exc}",
+                flush=True,
+            )
+            return []
 
-    try:
-        module = importlib.import_module(f"scrapers.{store_key}.scraper")
-        search_fn = getattr(module, "search", None)
-        if not callable(search_fn):
-            return primary
-        direct = search_fn(str(query or "").strip()) or []
-    except Exception as exc:
-        print(
-            "DIRECT_STORE_SUPPLEMENT_ERROR:",
-            f"store={store_key} {type(exc).__name__}: {exc}",
-            flush=True,
-        )
-        return primary
+    # The Shopify stores are discovered directly first. This is deliberate:
+    # the old PerfumeMarket adapter can spend ~90 seconds walking fallback
+    # sitemaps before returning an empty list. That blocks the whole search
+    # even though the live product is present.
+    direct = []
+    # PerfumeMarket's legacy Shopify crawler is the known ~90s failure point.
+    # Skip it entirely and use bounded live URL discovery instead.
+    if store_key == "perfumemarket":
+        direct = _shopify_json_fallback(store_key, str(query or "").strip())
+    else:
+        try:
+            module = importlib.import_module(f"scrapers.{store_key}.scraper")
+            search_fn = getattr(module, "search", None)
+            if callable(search_fn):
+                direct = search_fn(str(query or "").strip()) or []
+        except Exception as exc:
+            print(
+                "DIRECT_STORE_SEARCH_ERROR:",
+                f"store={store_key} {type(exc).__name__}: {exc}",
+                flush=True,
+            )
+
+        if not direct:
+            direct = _shopify_json_fallback(store_key, str(query or "").strip())
+
+    # Only after direct discovery has failed do we allow the legacy adapter a
+    # bounded fallback for ParfumCity/Bplatz/Orioudh. PerfumeMarket's old
+    # sitemap path is intentionally never allowed to block the live search.
+    if not direct and store_key != "perfumemarket":
+        try:
+            raw_primary = _original_run_store(store_key, query)
+            direct = list(raw_primary or [])
+        except Exception as exc:
+            print(
+                "LEGACY_STORE_SEARCH_ERROR:",
+                f"store={store_key} {type(exc).__name__}: {exc}",
+                flush=True,
+            )
+    primary = list(direct or [])
 
     merged = []
     seen = set()
@@ -416,6 +575,35 @@ def _run_store_with_direct_supplements(store: str, query: str):
     return merged
 
 _legacy.run_store = _run_store_with_direct_supplements
+
+# SearchEngine resolves the store adapter through the legacy module. Keep the
+# method explicit as well so direct supplements are used regardless of whether
+# the engine cached the callable during initialization.
+_original_engine_run_one_store = _engine._run_one_store
+
+def _engine_run_one_store_with_supplements(store: str, query: str):
+    store_key = str(store or "").strip().casefold()
+    if store_key in _DIRECT_SUPPLEMENT_STORES:
+        try:
+            candidates = _run_store_with_direct_supplements(store_key, query)
+            return type("StoreRun", (), {
+                "store": store_key,
+                "status": "ok" if candidates else "empty",
+                "candidates": candidates,
+                "elapsed": 0.0,
+                "error": None,
+            })()
+        except Exception as exc:
+            return type("StoreRun", (), {
+                "store": store_key,
+                "status": "error",
+                "candidates": [],
+                "elapsed": 0.0,
+                "error": f"{type(exc).__name__}: {exc}",
+            })()
+    return _original_engine_run_one_store(store, query)
+
+_engine._run_one_store = _engine_run_one_store_with_supplements
 
 JINA_PREFIX = "https://r.jina.ai/"
 NOTINO_BASE = "https://www.notino.fr"
