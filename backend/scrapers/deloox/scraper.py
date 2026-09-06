@@ -8,7 +8,7 @@ from bs4 import BeautifulSoup
 
 
 STORE = "Deloox"
-BASE_URL = "https://www.deloox.nl"
+BASE_URL = "https://www.deloox.be"
 SEARCH_PATH = "/zoeken.html"
 TIMEOUT = 20
 
