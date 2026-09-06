@@ -14,11 +14,13 @@ It specifically answers:
 - was it present after each progressive wave?
 - did _prepare_final_results remove it?
 - which exact store/URL/size caused the disappearance?
+- which of all 8 stores entered raw, passed validation, and reached the final result?
 """
 
 from __future__ import annotations
 
 import time
+import concurrent.futures
 from typing import Any, Dict, List
 
 import main_legacy as legacy
@@ -132,22 +134,21 @@ def _store_summary(items: List[Dict[str, Any]]) -> Dict[str, int]:
     return counts
 
 
-def _deloox_items(items: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+def _store_items(items: List[Dict[str, Any]], store: str) -> List[Dict[str, Any]]:
+    target = str(store or "").strip().casefold()
     return [
         _safe_item(item)
         for item in items
-        if _store_of(item) == "deloox"
-        or "deloox" in str(item.get("url") or "").casefold()
+        if _store_of(item) == target
+        or target in str(item.get("url") or "").casefold()
     ]
 
 
-def _orioudh_items(items: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
-    return [
-        _safe_item(item)
-        for item in items
-        if _store_of(item) == "orioudh"
-        or "orioudh" in str(item.get("url") or "").casefold()
-    ]
+def _all_store_items(items: List[Dict[str, Any]]) -> Dict[str, List[Dict[str, Any]]]:
+    return {
+        store: _store_items(items, store)
+        for store in STORES
+    }
 
 
 def _run_store_exact(store: str, query: str) -> Any:
@@ -200,12 +201,9 @@ def run_query(query: str, stores: List[str] | None = None) -> Dict[str, Any]:
             "validated_store_counts_after_wave": None,
             "final_after_wave": None,
             "final_store_counts_after_wave": None,
-            "deloox_raw_after_wave": None,
-            "deloox_validated_after_wave": None,
-            "deloox_final_after_wave": None,
-            "orioudh_raw_after_wave": None,
-            "orioudh_validated_after_wave": None,
-            "orioudh_final_after_wave": None,
+            "raw_by_store_after_wave": None,
+            "validated_by_store_after_wave": None,
+            "final_by_store_after_wave": None,
         }
 
         def run_one(store: str):
@@ -306,22 +304,17 @@ def run_query(query: str, stores: List[str] | None = None) -> Dict[str, Any]:
         )
         wave_report["finalization_error"] = finalization_error
 
-        wave_report["deloox_raw_after_wave"] = _deloox_items(raw_pool)
-        wave_report["deloox_validated_after_wave"] = _deloox_items(
+        final_offer_pool = _final_offer_list(final_after_wave)
+
+        wave_report["raw_by_store_after_wave"] = _all_store_items(raw_pool)
+        wave_report["validated_by_store_after_wave"] = _all_store_items(
             validated_pool
         )
-        wave_report["deloox_final_after_wave"] = _deloox_items(
-            _final_offer_list(final_after_wave)
+        wave_report["final_by_store_after_wave"] = _all_store_items(
+            final_offer_pool
         )
 
-        wave_report["orioudh_raw_after_wave"] = _orioudh_items(raw_pool)
-        wave_report["orioudh_validated_after_wave"] = _orioudh_items(
-            validated_pool
-        )
-        wave_report["orioudh_final_after_wave"] = _orioudh_items(
-            _final_offer_list(final_after_wave)
-        )
-
+        # Every store is checked, not just Deloox/Orioudh.
         wave_report["validated_missing_from_final"] = [
             _safe_item(item)
             for item in validated_pool
@@ -363,8 +356,9 @@ def run_query(query: str, stores: List[str] | None = None) -> Dict[str, Any]:
                 "vanished_stores": vanished,
                 "previous_final_stores": sorted(previous_final_stores),
                 "current_final_stores": sorted(current_final_stores),
-                "deloox_validated": wave.get("deloox_validated_after_wave"),
-                "deloox_final": wave.get("deloox_final_after_wave"),
+                "raw_by_store": wave.get("raw_by_store_after_wave"),
+                "validated_by_store": wave.get("validated_by_store_after_wave"),
+                "final_by_store": wave.get("final_by_store_after_wave"),
                 "validated_missing_from_final": wave.get(
                     "validated_missing_from_final"
                 ),
@@ -374,7 +368,7 @@ def run_query(query: str, stores: List[str] | None = None) -> Dict[str, Any]:
 
     return {
         "ok": True,
-        "diagnostic_type": "progressive_wave_exact_production_path_2x4_v2",
+        "diagnostic_type": "progressive_wave_exact_production_path_2x4_all8_v3",
         "query": query,
         "stores": selected_stores,
         "elapsed_seconds": round(time.monotonic() - started, 3),
@@ -384,8 +378,7 @@ def run_query(query: str, stores: List[str] | None = None) -> Dict[str, Any]:
             "final_result_count": len(final_results),
             "final_store_counts": _store_summary(final_offers),
             "final_offers": final_offers,
-            "deloox": _deloox_items(final_offers),
-            "orioudh": _orioudh_items(final_offers),
+            "final_by_store": _all_store_items(final_offers),
             "finalization_error": finalization_error,
         },
         "disappearance_events": disappearances,
