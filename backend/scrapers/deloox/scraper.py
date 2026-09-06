@@ -469,127 +469,6 @@ def fetch(session, url, params=None):
         return None
 
 
-
-def _variant_price_from_text(text):
-    if not text:
-        return None
-    # Never use unit-price values such as "208,80 € / 100ml".
-    text = re.sub(
-        r"\b\d{1,4}(?:[.,]\d{1,2})?\s*€?\s*/\s*100\s*ml\b",
-        " ",
-        text,
-        flags=re.I,
-    )
-    match = re.search(
-        r"(?:€\s*)?([0-9]{1,4}(?:[.,][0-9]{1,2})?)\s*€?",
-        text,
-        re.I,
-    )
-    if not match:
-        return None
-    raw = match.group(1)
-    try:
-        value = float(raw.replace(".", "").replace(",", "."))
-    except ValueError:
-        return None
-    return round(value, 2) if 0 < value < 10000 else None
-
-
-def extract_variant_offers_from_product_page(soup, json_ld=None):
-    """Return only explicit Deloox size/price pairs from the product UI."""
-    best = {}
-
-    def add(size, price, source):
-        if size is None or price is None:
-            return
-        key = float(size)
-        if key not in best:
-            best[key] = {
-                "size_ml": int(key) if key.is_integer() else key,
-                "price": price,
-                "currency": "EUR",
-                "source": source,
-            }
-
-    # JSON-LD is the strongest source when each offer identifies its size.
-    if isinstance(json_ld, dict):
-        offers = json_ld.get("offers")
-        if isinstance(offers, dict):
-            offers = [offers]
-        if isinstance(offers, list):
-            for offer in offers:
-                if not isinstance(offer, dict):
-                    continue
-                identity = " ".join(
-                    str(offer.get(key) or "")
-                    for key in ("name", "description", "sku", "url")
-                )
-                size = extract_size_ml(identity)
-                price = _variant_price_from_text(
-                    str(offer.get("price") or "")
-                )
-                if size is not None and price is not None:
-                    add(size, price, "deloox_jsonld_variant")
-
-    # Deloox variant controls commonly expose one size and its own price in
-    # the same DOM node. Do not pair sizes/prices across a large container.
-    selectors = (
-        "[data-size][data-price]",
-        "[data-variant-size][data-price]",
-        "[data-volume][data-price]",
-        "option",
-        "button",
-        "label",
-        "li",
-    )
-    for selector in selectors:
-        for node in soup.select(selector):
-            attrs = " ".join(
-                str(node.get(key) or "")
-                for key in (
-                    "data-size",
-                    "data-variant-size",
-                    "data-volume",
-                    "data-price",
-                    "value",
-                )
-            )
-            text = clean(node.get_text(" ", strip=True))
-            combined = clean(f"{attrs} {text}")
-            combined = re.sub(
-                r"[0-9]{1,4}(?:[.,][0-9]{1,2})?\s*€?\s*/\s*100\s*ml\b",
-                " ",
-                combined,
-                flags=re.I,
-            )
-            sizes = re.findall(
-                r"(?<![\d.,])(\d+(?:[.,]\d+)?)\s*ml\b",
-                combined,
-                re.I,
-            )
-            unique_sizes = {
-                float(value.replace(",", "."))
-                for value in sizes
-            }
-            if len(unique_sizes) != 1:
-                continue
-            size = unique_sizes.pop()
-            size = int(size) if size.is_integer() else size
-
-            price = None
-            for attr in ("data-price",):
-                if node.get(attr):
-                    price = _variant_price_from_text(node.get(attr))
-                    if price is not None:
-                        break
-            if price is None:
-                price = _variant_price_from_text(text)
-            if price is not None:
-                add(size, price, "deloox_dom_variant")
-
-    return [best[key] for key in sorted(best)]
-
-
 def parse_product_page(response, query):
     soup = BeautifulSoup(
         response.text,
@@ -630,41 +509,10 @@ def parse_product_page(response, query):
         text,
     )
 
-    variant_offers = extract_variant_offers_from_product_page(
-        soup,
-        json_ld,
-    )
-
-    requested_size = explicit_size(query)
-    if requested_size is not None and variant_offers:
-        variant_offers = [
-            variant for variant in variant_offers
-            if float(variant["size_ml"]) == float(requested_size)
-        ]
-        if not variant_offers:
-            return None
-
     price = extract_price(
         soup,
         json_ld,
     )
-
-    # When the page exposes explicit variants, the generic page price is not
-    # authoritative for a multi-size comparison. Use only the matching pair.
-    if variant_offers:
-        if requested_size is not None:
-            price = variant_offers[0]["price"]
-            size_ml = variant_offers[0]["size_ml"]
-        elif size_ml is not None:
-            matching = [
-                v for v in variant_offers
-                if float(v["size_ml"]) == float(size_ml)
-            ]
-            if matching:
-                price = matching[0]["price"]
-        elif len(variant_offers) == 1:
-            size_ml = variant_offers[0]["size_ml"]
-            price = variant_offers[0]["price"]
 
     availability = "unknown"
 
@@ -772,7 +620,6 @@ def parse_product_page(response, query):
             "concentration": concentration,
             "gender": gender,
         },
-        "_variant_offers": variant_offers,
 
         # Backward-compatible fields used by the current backend/frontend.
         "name": name,
@@ -785,46 +632,6 @@ def parse_product_page(response, query):
         "image": image,
         "available": availability == "in_stock",
     }
-
-
-
-def expand_product_variants(product):
-    """Expand a Deloox product only from explicit size/price pairs."""
-    variants = product.pop("_variant_offers", None)
-    if not variants:
-        return [product]
-
-    results = []
-    base_availability = product.get("offer", {}).get("availability", "unknown")
-    for variant in variants:
-        item = json.loads(json.dumps(product, ensure_ascii=False))
-        size = variant["size_ml"]
-        price = variant["price"]
-
-        item["attributes"]["size_ml"] = {
-            "value": size,
-            "source": "deloox_product_variant",
-        }
-        item["offer"]["price"] = price
-        item["offer"]["currency"] = variant.get("currency", "EUR")
-        item["offer"]["availability"] = (
-            base_availability
-            if product.get("attributes", {}).get("size_ml", {}).get("value") == size
-            else "unknown"
-        )
-        item["provenance"]["price_source"] = "deloox_product_variant"
-        item["provenance"]["size_source"] = "deloox_product_variant"
-        item["price"] = (
-            f"{price:.2f}".replace(".", ",") + " €"
-        )
-        item["size_ml"] = size
-        item["available"] = (
-            True if item["offer"]["availability"] == "in_stock"
-            else False if item["offer"]["availability"] == "out_of_stock"
-            else None
-        )
-        results.append(item)
-    return results
 
 
 def search(query):
@@ -886,22 +693,16 @@ def search(query):
             if product is None:
                 continue
 
-            for expanded in expand_product_variants(product):
-                key = (
-                    expanded["url"].lower(),
-                    norm(expanded["name"]),
-                    expanded.get("attributes", {})
-                    .get("size_ml", {})
-                    .get("value")
-                    if isinstance(expanded.get("attributes"), dict)
-                    else None,
-                )
+            key = (
+                product["url"].lower(),
+                norm(product["name"]),
+            )
 
-                if key in seen:
-                    continue
+            if key in seen:
+                continue
 
-                seen.add(key)
-                results.append(expanded)
+            seen.add(key)
+            results.append(product)
 
         return results
 
