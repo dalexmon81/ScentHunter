@@ -1928,6 +1928,68 @@ async function searchStoresProgressive(term,onPartial){
  const resultArchive=new Map();
  const comparisonArchive=new Map();
 
+ /*
+  * IDENTITÀ IMMUTABILE DELL'OFFERTA.
+  *
+  * Il nome NON può far parte della chiave quando esiste un URL: lo stesso
+  * prodotto Deloox può infatti arrivare in più snapshot con nomi diversi
+  * (nome scraper -> nome validato -> nome finale). Se usassimo anche il nome
+  * nella chiave, creeremmo tre record distinti per la stessa offerta.
+  *
+  * Regola:
+  *   1) negozio + URL canonico, se l'URL esiste;
+  *   2) negozio + product/id/sku + formato, se manca l'URL;
+  *   3) negozio + formato + nome normalizzato, solo come ultima possibilità.
+  *
+  * In questo modo un'offerta già ricevuta non può sparire né duplicarsi solo
+  * perché il backend ha migliorato il nome durante la ricerca.
+  */
+ const stableArchiveKey=(store,offer)=>{
+  const offerStore=String(store||offer?.store||"").trim().toLowerCase();
+  const url=String(offer?.url||offer?._source_url||offer?.product_url||offer?.productUrl||"")
+    .split("?")[0].split("#")[0].trim().toLowerCase();
+  if(offerStore&&url)return offerStore+"|url|"+url;
+
+  const id=String(offer?.product_id||offer?.productId||offer?.id||offer?.sku||offer?.product_sku||"").trim().toLowerCase();
+  const size=String(offer?.size_ml||offer?.size||offer?.attributes?.size_ml?.value||"").trim().toLowerCase();
+  if(offerStore&&id)return offerStore+"|id|"+id+"|size|"+size;
+
+  const name=normalizePerfumeName(offer?.name||offer?.title||offer?.product_name||"");
+  if(offerStore&&name)return offerStore+"|name|"+name+"|size|"+size;
+  return "";
+ };
+
+ const mergeArchivedOffer=(old,incoming)=>{
+  if(!old)return incoming;
+
+  // Non perdiamo mai metadati già ricevuti; se il nuovo snapshot è più ricco,
+  // li completa. Il prezzo migliore resta quello mostrabile.
+  const merged={...old};
+  Object.entries(incoming||{}).forEach(([key,value])=>{
+   if(value!==undefined&&value!==null&&value!=="" && (merged[key]===undefined||merged[key]===null||merged[key]==="")){
+    merged[key]=value;
+   }
+  });
+
+  // Il backend può cambiare nome/brand tra gli snapshot: il valore più recente
+  // e più informativo deve poter aggiornare quello precedente.
+  if(incoming.name)merged.name=incoming.name;
+  if(incoming.brand)merged.brand=incoming.brand;
+  if(incoming.concentration)merged.concentration=incoming.concentration;
+  if(incoming.image||incoming.image_url||incoming.thumbnail){
+   merged.image=incoming.image||incoming.image_url||incoming.thumbnail;
+  }
+  if(incoming.size_ml||incoming.size)merged.size_ml=incoming.size_ml||incoming.size;
+  if(incoming.url)merged.url=incoming.url;
+  if(incoming._source_url)merged._source_url=incoming._source_url;
+  if(incoming.store)merged.store=incoming.store;
+
+  if(shNum(incoming)<shNum(old)){
+   return {...merged,...incoming};
+  }
+  return merged;
+ };
+
  const archiveResult=(store,offer)=>{
   if(!offer||typeof offer!=="object")return;
 
@@ -1949,14 +2011,9 @@ async function searchStoresProgressive(term,onPartial){
     store:o.store||store||""
    };
 
-   const offerStore=String(normalized.store||store||"").trim().toLowerCase();
-   const url=String(normalized.url||normalized._source_url||offer.url||offer._source_url||"").split("?")[0].trim().toLowerCase();
-   const size=String(normalized.size_ml||normalized.size||normalized.attributes?.size_ml?.value||"").trim();
-   const name=normalizePerfumeName(normalized.name||normalized.title||normalized.product_name||"");
-   const key=[offerStore,url,size,name].join("|");
-   if(!key.replace(/\|/g,""))return;
-   const old=resultArchive.get(key);
-   if(!old||shNum(normalized)<shNum(old))resultArchive.set(key,normalized);
+   const key=stableArchiveKey(store,normalized);
+   if(!key)return;
+   resultArchive.set(key,mergeArchivedOffer(resultArchive.get(key),normalized));
   });
  };
 
