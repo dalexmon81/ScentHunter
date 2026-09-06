@@ -54,11 +54,23 @@ def concentration(*values):
 
 def price(v):
     if v in (None,""): return None
+    # Shopify product JSON normally exposes integer prices in cents.
+    if isinstance(v, (int, float)) and not isinstance(v, bool):
+        n=float(v)
+        if n.is_integer() and abs(n) >= 100:
+            n /= 100.0
+        return round(n, 2)
     s=clean(v).replace("€","").strip()
     m=re.search(r"\d+(?:[.,]\d{1,2})?", s)
     if not m: return None
-    try: return round(float(m.group(0).replace(",", ".")),2)
-    except ValueError: return None
+    raw=m.group(0)
+    try:
+        n=float(raw.replace(",","."))
+        if re.fullmatch(r"\d+", raw) and n >= 100:
+            n /= 100.0
+        return round(n,2)
+    except ValueError:
+        return None
 
 def _get(session,url,params=None):
     try:
