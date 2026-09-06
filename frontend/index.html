@@ -2171,89 +2171,53 @@ async function getSearchStores(term){
 }
 
 async function searchStoresProgressive(term,onPartial){
- const timeoutMs=120000;
- const pollMs=150;
- const started=await fetchJSONWithTimeout(
-  backend()+"/search-start?q="+encodeURIComponent(term),
-  15000
- );
+ const merged={query:term,comparisons:[],results:[],errors:{}};
+ const timeoutMs=45000;
+ const concurrency=4;
+ const stores=await getSearchStores(term);
+ const totalStores=stores.length;
 
- const jobId=String(started?.job_id||started?.id||"").trim();
- if(!jobId)throw new Error("Il backend non ha restituito il job_id della ricerca.");
+ for(let i=0;i<stores.length;i+=concurrency){
+  const pair=stores.slice(i,i+concurrency);
+  statusBox.textContent="";
 
- let lastSnapshot=null;
- const deadline=Date.now()+timeoutMs;
+  const responses=await Promise.allSettled(pair.map(store=>
+   fetchJSONWithTimeout(
+    backend()+"/test-store?store="+encodeURIComponent(store)+"&q="+encodeURIComponent(term),
+    timeoutMs
+   ).catch(async()=>{
+    await new Promise(resolve=>setTimeout(resolve,350));
+    return fetchJSONWithTimeout(
+     backend()+"/test-store?store="+encodeURIComponent(store)+"&q="+encodeURIComponent(term),
+     timeoutMs
+    );
+   })
+  ));
 
- while(Date.now()<deadline){
-  const snapshot=await fetchJSONWithTimeout(
-   backend()+"/search-status?job_id="+encodeURIComponent(jobId),
-   15000
-  );
+  responses.forEach((r,k)=>{
+   const store=pair[k];
+   if(r.status!=="fulfilled"){
+    merged.errors[store]=String(r.reason?.message||"timeout");
+    return;
+   }
+   const data=r.value||{};
+   if(Array.isArray(data.results))merged.results.push(...data.results);
+   if(Array.isArray(data.comparisons))merged.comparisons.push(...data.comparisons);
+   if(data.errors&&typeof data.errors==="object")Object.entries(data.errors).forEach(([name,error])=>{
+    if(!merged.errors[name])merged.errors[name]=error;
+   });
+   if(data.error)merged.errors[store]=data.error;
+  });
 
-  lastSnapshot=snapshot||{};
-
-  // Il backend esegue realmente ONDATE da 2 negozi: non partono mai più di
-  // due scraper contemporaneamente.
-  //
-  // IMPORTANTE: non aspettiamo che entrambi i negozi della coppia finiscano
-  // per aggiornare la UI. Se il primo termina prima, i suoi risultati devono
-  // comparire immediatamente. La coppia successiva parte comunque solo dopo
-  // la conclusione dei due scraper correnti: il limite di 2 chiamate resta
-  // quindi garantito dal backend.
-  const statusMap=(snapshot?.store_status&&typeof snapshot.store_status==="object")
-    ?snapshot.store_status:{};
-  const phase=String(snapshot?.phase||"");
-
-  if(typeof onPartial==="function"){
-   onPartial({
-    query:term,
-    comparisons:Array.isArray(snapshot?.comparisons)?snapshot.comparisons:[],
-    results:Array.isArray(snapshot?.results)?snapshot.results:[],
-    errors:(snapshot?.errors&&typeof snapshot.errors==="object")?snapshot.errors:{},
-    store_status:statusMap,
-    phase,
-    completed:Boolean(snapshot?.completed),
-    status:snapshot?.status||"searching"
-   },Boolean(snapshot?.completed));
-  }
-
-  if(snapshot?.completed===true || String(snapshot?.status||"").toLowerCase()==="completed"){
-   return {
-    query:term,
-    comparisons:Array.isArray(snapshot?.comparisons)?snapshot.comparisons:[],
-    results:Array.isArray(snapshot?.results)?snapshot.results:[],
-    errors:(snapshot?.errors&&typeof snapshot.errors==="object")?snapshot.errors:{},
-    store_status:(snapshot?.store_status&&typeof snapshot.store_status==="object")?snapshot.store_status:{},
-    completed:true,
-    status:snapshot?.status||"completed"
-   };
-  }
-
-  await new Promise(resolve=>setTimeout(resolve,pollMs));
+  if(typeof onPartial==="function")onPartial(merged,false);
  }
 
- if(lastSnapshot){
-  const partial={
-   query:term,
-   comparisons:Array.isArray(lastSnapshot?.comparisons)?lastSnapshot.comparisons:[],
-   results:Array.isArray(lastSnapshot?.results)?lastSnapshot.results:[],
-   errors:(lastSnapshot?.errors&&typeof lastSnapshot.errors==="object")?lastSnapshot.errors:{},
-   store_status:(lastSnapshot?.store_status&&typeof lastSnapshot.store_status==="object")?lastSnapshot.store_status:{},
-   completed:Boolean(lastSnapshot?.completed),
-   status:lastSnapshot?.status||"timeout"
-  };
-  if(typeof onPartial==="function")onPartial(partial,true);
-  return partial;
- }
-
- throw new Error("Timeout durante la ricerca.");
+ if(typeof onPartial==="function")onPartial(merged,true);
+ return merged;
 }
 
 async function searchPerfume(){
  const q=queryInput.value.trim();if(!q){statusBox.textContent="";resultsBox.innerHTML="";errorsBox.innerHTML="";return}
- searchInProgress=true;
- resetProgressiveArchive();
- currentProductGroups=[];
  searchButton.disabled=true;searchButton.classList.add("searching");
  let dots=0;
  const updateSearchButton=()=>{dots=(dots+1)%4;searchButton.innerHTML='<span class="search-fixed">CERCO</span><span class="search-dots">'+". ".trim().repeat(0)+". ".trim().repeat(dots)+'</span>'};
@@ -2265,8 +2229,8 @@ async function searchPerfume(){
   let data;
   const renderData=(partialData,final=false)=>{
    let groups=shGroupData(partialData||{});
-   archiveProgressiveGroups(groups);
-   groups=applyProgressiveArchive(groups);
+
+   
 
    currentProductGroups=groups;
 
@@ -2317,8 +2281,6 @@ async function searchPerfume(){
   // nome canonico/alias. I fallback vengono eseguiti uno alla volta per
   // evitare una seconda raffica simultanea di richieste.
   let groups=shGroupData(data||{});
-  archiveProgressiveGroups(groups);
-  groups=applyProgressiveArchive(groups);
   if(!groups.length){
    const fallbackQueries=buildCatalogFallbackQueries(q);
    for(let i=0;i<fallbackQueries.length;i++){
@@ -2332,8 +2294,6 @@ async function searchPerfume(){
       if(!data.errors[store])data.errors[store]=error;
      });
      groups=shGroupData(data||{});
-     archiveProgressiveGroups(groups);
-     groups=applyProgressiveArchive(groups);
      renderData(data,i===fallbackQueries.length-1||groups.length>0);
      if(groups.length)break;
     }catch(e){
@@ -2347,17 +2307,9 @@ async function searchPerfume(){
   console.error(e);
   statusBox.textContent=String(e?.message||"Impossibile completare la ricerca.");
  }
- finally{
-  searchInProgress=false;
-  clearInterval(dotsTimer);
-  searchButton.disabled=false;
-  searchButton.classList.remove("searching");
-  searchButton.textContent="INIZIA LA RICERCA";
-  if(!currentOpenProductKey && currentProductGroups.length)showProducts(currentProductGroups);
- }
+ finally{clearInterval(dotsTimer);searchButton.disabled=false;searchButton.classList.remove("searching");searchButton.textContent="INIZIA LA RICERCA"}
 }
 
-window.searchPerfume=searchPerfume;
 searchButton.addEventListener("click",searchPerfume);
 searchButton.addEventListener("touchend",e=>{e.preventDefault();if(!searchButton.disabled)searchPerfume()},{passive:false});
 queryInput.addEventListener("keydown",e=>{if(e.key==="Enter"){e.preventDefault();searchPerfume()}});
