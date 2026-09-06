@@ -15,6 +15,7 @@ from search_engine import SearchEngine
 
 import importlib
 import json
+import math
 import re
 from typing import Any, Dict, List
 from urllib.parse import quote_plus
@@ -23,17 +24,8 @@ import requests
 from bs4 import BeautifulSoup
 from fastapi import Query
 
-# One central search engine, reusing the existing:
-# - ProductMatcher
-# - Family Registry
-# - product catalog
-# - eight store adapters
-# - central validation/finalization functions
 _engine = SearchEngine(_legacy)
 
-# Keep size variants from the same retailer product URL/product-id distinct.
-# The legacy deduplicator historically keyed product-id results without size,
-# which collapses 30/50/100 ml variants into the first one seen.
 _original_product_identity_key = getattr(_legacy, "product_identity_key", None)
 if callable(_original_product_identity_key):
     def _size_aware_product_identity_key(product):
@@ -50,23 +42,17 @@ if callable(_original_product_identity_key):
 
     _legacy.product_identity_key = _size_aware_product_identity_key
 
-# The FastAPI route functions live inside main_legacy.py and therefore resolve
-# their globals in the legacy module's namespace. Patch that namespace
-# explicitly; assigning only local wrapper globals would NOT change the routes.
 _legacy.search_perfume = _engine.search
 _legacy._run_search_job = _engine.run_job
-# The restored SearchEngine does not expose search_job_snapshot().
-# Keep the legacy snapshot function when that optional method is absent.
 _engine_snapshot = getattr(_engine, "search_job_snapshot", None)
 if callable(_engine_snapshot):
     _legacy._search_job_snapshot = _engine_snapshot
 
-# Keep the exact FastAPI application object and every existing route.
 app = _legacy.app
 
-# ===== TEMPORARY READ-ONLY NOTINO DEEP DIAGNOSTIC =====
 JINA_PREFIX = "https://r.jina.ai/"
 NOTINO_BASE = "https://www.notino.fr"
+
 
 def _snippet(text: str, needle: str, radius: int = 220) -> Dict[str, Any]:
     low = text.casefold()
@@ -82,6 +68,7 @@ def _snippet(text: str, needle: str, radius: int = 220) -> Dict[str, Any]:
         "context": text[start:end],
     }
 
+
 def _probe_html(html: str, query: str) -> Dict[str, Any]:
     soup = BeautifulSoup(html, "html.parser")
     hrefs = []
@@ -94,15 +81,18 @@ def _probe_html(html: str, query: str) -> Dict[str, Any]:
             })
 
     product_href_re = re.compile(r"/p-\d+/?(?:[?#].*)?$", re.I)
-    product_hrefs = [x for x in hrefs if product_href_re.search(x["href"].split("#", 1)[0])]
+    product_hrefs = [
+        x for x in hrefs
+        if product_href_re.search(x["href"].split("#", 1)[0])
+    ]
 
     raw_product_urls = sorted(set(re.findall(
-        r"https?://(?:www\.)?notino\.fr/[^\"'<>\s]+?/p-\d+/?",
+        r"https?://(?:www\.)?notino\.fr/[^\"'<> \s]+?/p-\d+/?",
         html,
         re.I,
     )))
     relative_product_urls = sorted(set(re.findall(
-        r"(?:href|url|canonical|productUrl|product_url)[\"'=: ]+((?:https?:)?//(?:www\.)?notino\.fr)?[^\"'<>\s]*?/p-\d+/?",
+        r"(?:href|url|canonical|productUrl|product_url)[\"'=: ]+((?:https?:)?//(?:www\.)?notino\.fr)?[^\"'<> \s]*?/p-\d+/?",
         html,
         re.I,
     )))
@@ -123,7 +113,9 @@ def _probe_html(html: str, query: str) -> Dict[str, Any]:
                 stack.extend(item)
             elif isinstance(item, dict):
                 typ = item.get("@type")
-                if typ == "Product" or (isinstance(typ, list) and "Product" in typ):
+                if typ == "Product" or (
+                    isinstance(typ, list) and "Product" in typ
+                ):
                     jsonld_products.append({
                         "name": item.get("name"),
                         "brand": item.get("brand"),
@@ -137,15 +129,8 @@ def _probe_html(html: str, query: str) -> Dict[str, Any]:
 
     text = soup.get_text(" ", strip=True)
     needles = [
-        query,
-        "9 PM",
-        "Afnan",
-        "AFN00282",
-        "16167394",
-        "9-am",
-        "/p-",
-        "100 ml",
-        "36,00",
+        query, "9 PM", "Afnan", "AFN00282", "16167394",
+        "9-am", "/p-", "100 ml", "36,00",
     ]
 
     try:
@@ -183,6 +168,7 @@ def _probe_html(html: str, query: str) -> Dict[str, Any]:
         "extractor": extractor_result,
         "extractor_error": extractor_error,
     }
+
 
 @app.get("/diagnose-notino-deep")
 def diagnose_notino_deep(q: str = Query(..., min_length=1)):
@@ -223,7 +209,9 @@ def diagnose_notino_deep(q: str = Query(..., min_length=1)):
             "reader_url": reader_url,
         }
         try:
-            response = session.get(reader_url, timeout=30, allow_redirects=True)
+            response = session.get(
+                reader_url, timeout=30, allow_redirects=True
+            )
             report.update({
                 "status": response.status_code,
                 "final_url": response.url,
@@ -245,11 +233,7 @@ def diagnose_notino_deep(q: str = Query(..., min_length=1)):
         "reports": reports,
     }
 
-# ===== ON-DEMAND FORMAT PRICE COMPARISON =====
-# Used by the product-detail view when a perfume has multiple real formats.
-# The frontend sends the exact formats already known for that product.
-# IMPORTANT: maximum 2 stores are queried concurrently, matching the main
-# progressive search rule used by ScentHunter.
+
 FORMAT_STORES = [
     "bplatz",
     "deloox",
@@ -261,28 +245,39 @@ FORMAT_STORES = [
     "notino",
 ]
 
-def _format_compare_num(value: Any) -> float:
+
+def _format_compare_num(value: Any) -> float | None:
+    """
+    Return a JSON-safe numeric price for sorting.
+
+    Never return +/-inf or NaN because those values can make Starlette/FastAPI
+    reject an otherwise valid JSON response with HTTP 500.
+    """
+    if value is None or value == "":
+        return None
+
     try:
-        if value is None or value == "":
-            return float("inf")
-        return float(str(value).replace(",", "."))
+        number = float(str(value).replace(",", "."))
     except Exception:
         raw = re.sub(r"[^0-9,.\-]", "", str(value))
         raw = raw.replace(",", ".")
         try:
-            return float(raw)
+            number = float(raw)
         except Exception:
-            return float("inf")
+            return None
 
-def _format_compare_size(
-    candidate: Dict[str, Any],
-) -> int | None:
-    """
-    Usa esclusivamente l'estrattore centrale del backend.
-    Non duplicare qui la logica size_ml.
-    """
+    if not math.isfinite(number):
+        return None
+    return number
+
+
+def _format_compare_sort_price(value: Any) -> float:
+    number = _format_compare_num(value)
+    return number if number is not None else float("inf")
+
+
+def _format_compare_size(candidate: Dict[str, Any]) -> int | None:
     extractor = getattr(_legacy, "product_size_ml", None)
-
     if not callable(extractor):
         return None
 
@@ -299,15 +294,21 @@ def _format_compare_size(
     except (TypeError, ValueError):
         return None
 
+    if not math.isfinite(numeric) or numeric <= 0:
+        return None
+
     return int(numeric) if numeric.is_integer() else int(round(numeric))
+
 
 def _format_compare_is_oos(candidate: Dict[str, Any]) -> bool:
     if candidate.get("in_stock") is False:
         return True
+
     text = " ".join(
         str(candidate.get(k) or "")
         for k in ("availability", "stock", "status", "name")
     ).casefold()
+
     markers = (
         "out of stock",
         "out-of-stock",
@@ -320,66 +321,52 @@ def _format_compare_is_oos(candidate: Dict[str, Any]) -> bool:
     )
     return any(marker in text for marker in markers)
 
+
 def _format_compare_clean_offer(
     candidate: Dict[str, Any],
     store: str,
     requested_size: int,
 ) -> Dict[str, Any]:
     offer = dict(candidate or {})
-
-    offer["store"] = str(
-        offer.get("store") or store
-    )
+    offer["store"] = str(offer.get("store") or store)
 
     offer_size = _format_compare_size(offer)
-
     if offer_size is None:
-        raise ValueError(
-            "Cannot create format offer without explicit size_ml"
-        )
-
+        raise ValueError("Cannot create format offer without explicit size_ml")
     if offer_size != requested_size:
         raise ValueError(
-            f"Offer size {offer_size} does not match "
-            f"requested size {requested_size}"
+            f"Offer size {offer_size} does not match requested size "
+            f"{requested_size}"
         )
 
     offer["size_ml"] = offer_size
 
-    if "price_value" not in offer:
-        offer["price_value"] = _format_compare_num(
-            offer.get("price")
-        )
+    # Keep price_value JSON-safe. Missing/unparseable prices are represented
+    # by null rather than Infinity.
+    price_value = _format_compare_num(offer.get("price_value"))
+    if price_value is None:
+        price_value = _format_compare_num(offer.get("price"))
+    offer["price_value"] = price_value
 
-    offer["in_stock"] = not _format_compare_is_oos(
-        offer
-    )
-
+    offer["in_stock"] = not _format_compare_is_oos(offer)
     return offer
 
-def _format_compare_query(product: str, requested_size: int | None = None) -> str:
-    """Build an explicit store query for one requested bottle size.
 
-    A format comparison must not run one generic store search and then pretend
-    that its first result represents every requested size. The size is therefore
-    part of discovery, while acceptance still requires an explicit parsed size.
-    """
+def _format_compare_query(
+    product: str,
+    requested_size: int | None = None,
+) -> str:
     base = str(product or "").strip()
     if requested_size is None:
         return base
     return f"{base} {int(requested_size)} ml"
+
 
 def _format_compare_store(
     store: str,
     product: str,
     requested_size: int,
 ) -> Dict[str, Any]:
-    """Search one store for exactly one requested format.
-
-    The scraper is never allowed to have a missing size silently assigned to
-    the requested format. A candidate is accepted only when the scraper/backend
-    extracts an explicit size equal to ``requested_size``.
-    """
     query = _format_compare_query(product, requested_size)
 
     try:
@@ -402,7 +389,6 @@ def _format_compare_store(
         item = dict(candidate)
         size = _format_compare_size(item)
 
-        # Critical safety rule: missing size is NOT the requested size.
         if size is None or size != requested_size:
             continue
 
@@ -422,7 +408,6 @@ def _format_compare_store(
         validated = normalized_candidates
 
     cleaned = []
-
     for candidate in validated or []:
         if not isinstance(candidate, dict):
             continue
@@ -437,9 +422,7 @@ def _format_compare_store(
         try:
             cleaned.append(
                 _format_compare_clean_offer(
-                    item,
-                    store,
-                    requested_size,
+                    item, store, requested_size
                 )
             )
         except ValueError:
@@ -448,7 +431,7 @@ def _format_compare_store(
     cleaned.sort(
         key=lambda offer: (
             _format_compare_is_oos(offer),
-            _format_compare_num(offer.get("price_value")),
+            _format_compare_sort_price(offer.get("price_value")),
         )
     )
 
@@ -457,6 +440,7 @@ def _format_compare_store(
         "requested_size": requested_size,
         "results": cleaned,
     }
+
 
 @app.get("/compare-formats")
 def compare_formats(
@@ -477,8 +461,6 @@ def compare_formats(
         if value > 0 and value not in requested_sizes:
             requested_sizes.append(value)
 
-    # No blind default formats here. The caller must send the real formats
-    # known for the product; this prevents inventing 30/50/100 ml variants.
     requested_sizes.sort()
 
     if not requested_sizes:
@@ -495,8 +477,6 @@ def compare_formats(
 
     from concurrent.futures import ThreadPoolExecutor, as_completed
 
-    # True format comparison: every store/format pair is a separate discovery
-    # query. No result with a missing size can be relabelled as another format.
     jobs = [
         (store, size)
         for size in requested_sizes
@@ -522,14 +502,14 @@ def compare_formats(
             except Exception as exc:
                 errors[key] = f"{type(exc).__name__}: {exc}"
                 continue
+
             if result.get("error"):
                 errors[key] = result["error"]
+
             comparisons.extend(result.get("results") or [])
 
-    # Group the flat offers by requested format.
     by_size: Dict[int, List[Dict[str, Any]]] = {
-        size: []
-        for size in requested_sizes
+        size: [] for size in requested_sizes
     }
 
     for offer in comparisons:
@@ -537,7 +517,6 @@ def compare_formats(
             continue
 
         raw_size = offer.get("size_ml")
-
         if raw_size in (None, ""):
             continue
 
@@ -557,13 +536,15 @@ def compare_formats(
         offers.sort(
             key=lambda o: (
                 _format_compare_is_oos(o),
-                _format_compare_num(o.get("price_value")),
+                _format_compare_sort_price(o.get("price_value")),
             )
         )
+
         best = next(
             (o for o in offers if not _format_compare_is_oos(o)),
             None,
         )
+
         formatted_comparisons.append({
             "size_ml": size,
             "best": best,
@@ -578,12 +559,13 @@ def compare_formats(
         "errors": errors,
     }
 
-# ===== READ-ONLY FORMAT FLOW DIAGNOSTIC =====
-# This endpoint does not alter any existing search route. It executes the same
-# store calls used by /compare-formats and exposes every stage so we can see
-# exactly where a 2-format or 3-format flow fails.
+
 import time as _diag_time
-from concurrent.futures import ThreadPoolExecutor as _DiagPool, as_completed as _diag_as_completed
+from concurrent.futures import (
+    ThreadPoolExecutor as _DiagPool,
+    as_completed as _diag_as_completed,
+)
+
 
 @app.get("/diagnose-format-flow")
 def diagnose_format_flow(
@@ -593,19 +575,29 @@ def diagnose_format_flow(
 ):
     product = str(q or "").strip()
     sizes = []
+
     for token in re.findall(r"\d{1,4}", str(formats or "")):
         n = int(token)
         if 1 <= n <= 2000 and n not in sizes:
             sizes.append(n)
-    sizes.sort()
 
+    sizes.sort()
     started = _diag_time.monotonic()
-    jobs = [(store, size) for size in sizes for store in FORMAT_STORES]
+    jobs = [
+        (store, size)
+        for size in sizes
+        for store in FORMAT_STORES
+    ]
     rows = []
 
     def one(store, size):
         t0 = _diag_time.monotonic()
-        query = _format_compare_query(product)
+
+        # IMPORTANT: this diagnostic now executes the exact same sized query
+        # as /compare-formats. The previous diagnostic accidentally omitted
+        # the requested size, so it was not testing the real format path.
+        query = _format_compare_query(product, size)
+
         out = {
             "store": store,
             "requested_size_ml": size,
@@ -619,23 +611,35 @@ def diagnose_format_flow(
             "rejected": [],
             "error": None,
         }
+
         try:
             raw = _legacy.run_store(store, query)
             candidates = raw if isinstance(raw, list) else []
             out["raw_count"] = len(candidates)
+
             try:
-                validated = _engine._validate_candidates_only(product, candidates)
+                validated = _engine._validate_candidates_only(
+                    product, candidates
+                )
             except Exception as exc:
-                out["validation_error"] = f"{type(exc).__name__}: {exc}"
+                out["validation_error"] = (
+                    f"{type(exc).__name__}: {exc}"
+                )
                 validated = candidates
+
             validated = validated or []
             out["validated_count"] = len(validated)
+
             for c in validated:
                 if not isinstance(c, dict):
                     continue
+
                 sz = _format_compare_size(c)
                 key = "missing" if sz is None else str(sz)
-                out["explicit_size_counts"][key] = out["explicit_size_counts"].get(key, 0) + 1
+                out["explicit_size_counts"][key] = (
+                    out["explicit_size_counts"].get(key, 0) + 1
+                )
+
                 item = {
                     "name": c.get("name"),
                     "brand": c.get("brand"),
@@ -646,62 +650,98 @@ def diagnose_format_flow(
                     "in_stock": c.get("in_stock"),
                     "url": c.get("url") or c.get("product_url"),
                     "sku": c.get("sku"),
-                    "gtin": c.get("gtin") or c.get("ean") or c.get("gtin13"),
+                    "gtin": (
+                        c.get("gtin")
+                        or c.get("ean")
+                        or c.get("gtin13")
+                    ),
                 }
+
                 if sz == size:
                     out["accepted"].append(item)
                 else:
-                    reason = "missing_size" if sz is None else f"wrong_size:{sz}"
+                    reason = (
+                        "missing_size"
+                        if sz is None
+                        else f"wrong_size:{sz}"
+                    )
                     item["reject_reason"] = reason
                     out["rejected"].append(item)
+
             out["accepted_count"] = len(out["accepted"])
             out["accepted"] = out["accepted"][:10]
             out["rejected"] = out["rejected"][:20]
+
         except Exception as exc:
             out["error"] = f"{type(exc).__name__}: {exc}"
         finally:
-            out["elapsed_ms"] = round((_diag_time.monotonic() - t0) * 1000)
+            out["elapsed_ms"] = round(
+                (_diag_time.monotonic() - t0) * 1000
+            )
+
         return out
 
     with _DiagPool(max_workers=2) as pool:
-        fmap = {pool.submit(one, store, size): (store, size) for store, size in jobs}
+        fmap = {
+            pool.submit(one, store, size): (store, size)
+            for store, size in jobs
+        }
+
         for fut in _diag_as_completed(fmap):
             store, size = fmap[fut]
             try:
                 rows.append(fut.result())
             except Exception as exc:
-                rows.append({"store": store, "requested_size_ml": size, "error": f"future:{type(exc).__name__}: {exc}"})
+                rows.append({
+                    "store": store,
+                    "requested_size_ml": size,
+                    "error": (
+                        f"future:{type(exc).__name__}: {exc}"
+                    ),
+                })
+
             if (_diag_time.monotonic() - started) > budget:
-                # Do not cancel already-running work; report the fact that the
-                # requested diagnostic budget was exceeded.
                 break
 
-    rows.sort(key=lambda x: (int(x.get("requested_size_ml") or 0), str(x.get("store") or "")))
+    rows.sort(
+        key=lambda x: (
+            int(x.get("requested_size_ml") or 0),
+            str(x.get("store") or ""),
+        )
+    )
+
     by_size = {}
     for row in rows:
-        by_size.setdefault(str(row.get("requested_size_ml")), []).append(row)
+        by_size.setdefault(
+            str(row.get("requested_size_ml")),
+            []
+        ).append(row)
 
     return {
         "ok": True,
-        "diagnostic": "format_flow_read_only",
+        "diagnostic": "format_flow_read_only_v2",
         "query": product,
         "requested_formats": sizes,
         "stores": FORMAT_STORES,
         "max_concurrency": 2,
         "budget_seconds": budget,
-        "elapsed_total_ms": round((_diag_time.monotonic() - started) * 1000),
+        "elapsed_total_ms": round(
+            (_diag_time.monotonic() - started) * 1000
+        ),
         "completed_jobs": len(rows),
         "expected_jobs": len(jobs),
-        "budget_exceeded": (_diag_time.monotonic() - started) > budget,
+        "budget_exceeded": (
+            (_diag_time.monotonic() - started) > budget
+        ),
         "by_format": by_size,
         "jobs": rows,
     }
 
+
 @app.get("/diagnose-deloox-disappearance")
-def diagnose_deloox_disappearance(q: str = Query("liquid brun", min_length=1)):
-    # Diagnostic endpoint only: never let an import/runtime diagnostic failure
-    # become an opaque Railway 500. Return the exact exception so we can fix
-    # the diagnostic without touching normal search behavior.
+def diagnose_deloox_disappearance(
+    q: str = Query("liquid brun", min_length=1)
+):
     try:
         from diagnostic_search import run_query
     except Exception as exc:
