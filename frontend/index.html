@@ -108,7 +108,7 @@ body{position:relative}
 .result-top,.comparison-top{display:flex;justify-content:space-between;gap:10px;align-items:flex-start}
 .wish-result{background:none;color:#aaa;font-size:25px;padding:0 2px;line-height:1}
 .result,.comparison{box-shadow:0 10px 28px rgba(0,0,0,.18)}
-.comparison{border-color:#365443;background:linear-gradient(145deg,#121815,#0d100f);touch-action:pan-y;-webkit-overflow-scrolling:touch}
+.comparison{border-color:#365443;background:linear-gradient(145deg,#121815,#0d100f)}
 .comparison-head{display:flex;gap:14px;align-items:center;margin:8px 0 14px}
 .result-head{display:flex;gap:13px;align-items:center;margin-top:8px}
 .result-image{width:72px;height:82px;flex:0 0 72px;border-radius:15px;border:1px solid #30343a;background:#0b0d0e;display:flex;align-items:center;justify-content:center;overflow:hidden;font-size:38px}
@@ -1174,7 +1174,6 @@ function shGroupData(data){
       .replace(/\s+/g," ")
       .trim();
     const hint=concentrationHint(o);
-    const lb=liquidBrunFamily(o);
 
     // Se il nome originale contiene una concentrazione esplicita,
     // preferiamo la referenza master con la stessa concentrazione.
@@ -1192,8 +1191,7 @@ function shGroupData(data){
       });
       if(candidates.length===1)directMaster=candidates[0];
     }
-    if(!directMaster && !lb)directMaster=resolveMasterProduct(rawBrand,identityName);
-    if(!directMaster && lb)directMaster=resolveMasterProduct(rawBrand,pretty(lb));
+    if(!directMaster)directMaster=resolveMasterProduct(rawBrand,identityName);
     if(directMaster){
       return {
         brand:directMaster.brand||rawBrand,
@@ -1203,6 +1201,7 @@ function shGroupData(data){
       };
     }
 
+    const lb=liquidBrunFamily(o);
     if(lb){
       const detectedBrand=findBrand(o);
       const masterLiquid=resolveMasterProduct(detectedBrand,pretty(lb));
@@ -1636,9 +1635,10 @@ function clearOpenProduct(){
 
 function progressiveOfferKey(o,g){
   const store=String(o?.store||o?._source_store||"").trim().toLowerCase();
+  const url=String(o?.url||o?._source_url||"").trim().toLowerCase();
   const size=String(sizeOfOffer(o)||o?.size_ml||o?.size||"").trim();
   const name=normalizePerfumeName(o?.name||g?.name||"").toLowerCase();
-  return `${store}|${size}|${name}`;
+  return `${store}|${url}|${size}|${name}`;
 }
 
 function archiveProgressiveGroups(groups){
@@ -1927,7 +1927,7 @@ function renderFormatChoiceCard(gi,g,comparisons,sizes){
       </div>`;
     }).join("")}
   </article>`;
-  if(!searchInProgress)document.getElementById("searchOutput").scrollIntoView({behavior:"smooth",block:"start"});
+  document.getElementById("searchOutput").scrollIntoView({behavior:"smooth",block:"start"});
 }
 
 async function openProduct(i){
@@ -1992,7 +1992,7 @@ async function openProduct(i){
 
 function renderSingleFormatComparison(g,img,offers,size,saved){
   resultsBox.innerHTML=`<article class="comparison"><button class="detail-back" onclick="clearOpenProduct();showProducts(currentProductGroups)">← Torna ai profumi</button><div class="comparison-head"><div class="result-image">${img?`<img src="${esc(img)}" alt="${esc(displayPerfumeName(g.name,g.brand))}" onerror="this.outerHTML='🧴'">`:"🧴"}</div><div class="result-main"><div class="store">${esc(g.brand||"")}</div><div class="name">${esc(displayPerfumeName(g.name,g.brand))}</div></div></div><div class="format-compare-bar"><div class="format-compare-item"><div class="format-compare-copy"><div class="format-compare-label">FORMATO</div><div class="format-compare-value">${esc(formatLabel(size)||"Formato")}</div></div></div><div class="format-compare-item"><div class="format-compare-copy"><div class="format-compare-label">CONFRONTA I PREZZI</div><div class="format-compare-value">${offers.length} ${offers.length===1?"negozio":"negozi"}</div></div></div></div>${renderOffersHtml(g,img,offers,saved)}</article>`;
-  if(!searchInProgress)document.getElementById("searchOutput").scrollIntoView({behavior:"smooth",block:"start"});
+  document.getElementById("searchOutput").scrollIntoView({behavior:"smooth",block:"start"});
 }
 
 function renderOffersHtml(g,img,offers,saved){
@@ -2012,7 +2012,7 @@ function openSize(gi,sizeKey,fromFormats=true){
   const offers=selected.offers||[]; const saved=getWishlist(); const img=g.image||"";
   statusBox.textContent="";
   resultsBox.innerHTML=`<article class="comparison"><button class="detail-back" onclick="openProduct(${gi})">← Torna ai formati</button><div class="comparison-head"><div class="result-image">${img?`<img src="${esc(img)}" alt="${esc(displayPerfumeName(g.name,g.brand))}" onerror="this.outerHTML='🧴'">`:"🧴"}</div><div class="result-main"><div class="store">${esc(g.brand||"")}</div><div class="name">${esc(displayPerfumeName(g.name,g.brand))}</div><div class="offer-meta">${esc(formatLabel(String(selected.size)))}</div></div></div><div class="format-compare-bar"><div class="format-compare-item"><div class="format-compare-copy"><div class="format-compare-label">FORMATO</div><div class="format-compare-value">${esc(formatLabel(String(selected.size)))}</div></div></div><div class="format-compare-item"><div class="format-compare-copy"><div class="format-compare-label">CONFRONTA I PREZZI</div><div class="format-compare-value">${offers.length} ${offers.length===1?"negozio":"negozi"}</div></div></div></div>${renderOffersHtml(g,img,offers,saved)}</article>`;
-  if(!searchInProgress)document.getElementById("searchOutput").scrollIntoView({behavior:"smooth",block:"start"});
+  document.getElementById("searchOutput").scrollIntoView({behavior:"smooth",block:"start"});
 }
 
 function chooseOffer(gi,sizeKey,oi){
@@ -2229,8 +2229,6 @@ async function searchPerfume(){
  try{
   let data;
   const renderData=(partialData,final=false)=>{
-   const appScroll=document.querySelector(".app");
-   const savedScrollTop=appScroll?appScroll.scrollTop:0;
    let groups=shGroupData(partialData||{});
    archiveProgressiveGroups(groups);
    groups=applyProgressiveArchive(groups);
@@ -2263,11 +2261,6 @@ async function searchPerfume(){
 
     showProducts(groups);
 
-   }
-
-   if(searchInProgress&&appScroll){
-    appScroll.scrollTop=savedScrollTop;
-    requestAnimationFrame(()=>{if(searchInProgress)appScroll.scrollTop=savedScrollTop;});
    }
 
    updateBestPricesFromGroups(groups);
