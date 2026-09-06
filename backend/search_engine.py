@@ -22,7 +22,6 @@ import concurrent.futures
 import time
 import traceback
 import re
-import json
 from dataclasses import dataclass, field
 from typing import Any, Callable, Dict, List, Optional
 
@@ -31,106 +30,6 @@ DEFAULT_STORE_TIMEOUT = 65.0
 DEFAULT_GLOBAL_TIMEOUT = 145.0
 STORE_RETRIES = 2
 RETRY_DELAYS = (1.25, 3.0)
-
-
-# ============================================================
-# TEMPORARY DELOOX / LIQUID BRUN FORENSIC TRACE
-# ============================================================
-# Read-only diagnostic. It must never alter candidates or search behavior.
-# It is deliberately narrow so Railway logs stay usable.
-DELOOX_TRACE_MARKER = "SCENTHUNTER_DELOOX_TRACE_V3"
-DELOOX_TRACE_QUERY = "liquid brun"
-DELOOX_TRACE_STORE = "deloox"
-
-def _trace_enabled(query: Any, store: Optional[str] = None) -> bool:
-    q = str(query or "").strip().casefold()
-    if q != DELOOX_TRACE_QUERY:
-        return False
-    if store is None:
-        return True
-    return str(store or "").strip().casefold() == DELOOX_TRACE_STORE
-
-def _trace_size(item: Dict[str, Any]) -> Any:
-    for key in ("size_ml", "volume_ml", "format_ml", "size", "format", "volume"):
-        value = item.get(key)
-        if value not in (None, ""):
-            return value
-    return None
-
-def _trace_item(item: Dict[str, Any]) -> Dict[str, Any]:
-    if not isinstance(item, dict):
-        return {"type": type(item).__name__, "value": repr(item)[:500]}
-    keys = (
-        "store", "shop", "name", "title", "product_name", "brand",
-        "source_brand", "canonical_brand", "canonical_name",
-        "catalog_variant", "catalog_id", "product_id", "product_identity",
-        "family_id", "family_name", "size_ml", "size", "format", "volume",
-        "price", "price_num", "price_value", "in_stock", "available",
-        "availability", "stock", "stock_status", "match_method",
-        "identity", "url", "gtin", "mpn",
-    )
-    out = {}
-    for key in keys:
-        if key in item:
-            value = item.get(key)
-            try:
-                json.dumps(value, ensure_ascii=False)
-                out[key] = value
-            except Exception:
-                out[key] = repr(value)[:1000]
-    return out
-
-def _trace_items(items: Any) -> List[Dict[str, Any]]:
-    if not isinstance(items, list):
-        return []
-    selected = []
-    for item in items:
-        if not isinstance(item, dict):
-            continue
-        store = str(item.get("store") or item.get("shop") or "").strip().casefold()
-        url = str(item.get("url") or "").casefold()
-        if store == DELOOX_TRACE_STORE or "deloox" in url:
-            selected.append(_trace_item(item))
-    return selected
-
-def _trace_nested_offers(items: Any) -> List[Dict[str, Any]]:
-    if not isinstance(items, list):
-        return []
-    selected = []
-    for item in items:
-        if not isinstance(item, dict):
-            continue
-        offers = item.get("offers")
-        if not isinstance(offers, list):
-            continue
-        for offer in offers:
-            if not isinstance(offer, dict):
-                continue
-            store = str(offer.get("store") or offer.get("shop") or "").strip().casefold()
-            url = str(offer.get("url") or "").casefold()
-            if store == DELOOX_TRACE_STORE or "deloox" in url:
-                selected.append(_trace_item(offer))
-    return selected
-
-def _trace_signature(item: Dict[str, Any]) -> str:
-    return "|".join(str(item.get(k) or "").strip().casefold() for k in (
-        "store", "shop", "product_id", "url", "catalog_id", "name", "title", "size_ml"
-    ))
-
-def _trace_emit(stage: str, query: Any, *, job_id: Any = None, **extra: Any) -> None:
-    if not _trace_enabled(query):
-        return
-    payload = {
-        "marker": DELOOX_TRACE_MARKER,
-        "stage": stage,
-        "query": str(query or ""),
-        "job_id": job_id,
-        **extra,
-    }
-    try:
-        print(DELOOX_TRACE_MARKER + " " + json.dumps(payload, ensure_ascii=False, default=str), flush=True)
-    except Exception as exc:
-        print(DELOOX_TRACE_MARKER + " TRACE_SERIALIZATION_ERROR " + repr(exc), flush=True)
 
 
 @dataclass
@@ -160,7 +59,6 @@ class SearchEngine:
         self.legacy = legacy_module
         self.store_timeout = float(store_timeout)
         self.global_timeout = float(global_timeout)
-        print(DELOOX_TRACE_MARKER + " LOADED search_engine.py", flush=True)
 
         stores = getattr(legacy_module, "STORES", None)
         if stores:
@@ -405,16 +303,6 @@ class SearchEngine:
                         batch = list(raw_result)
                     except Exception:
                         batch = []
-
-                if _trace_enabled(query, store):
-                    _trace_emit(
-                        "1_after_run_store_raw_response", query,
-                        store=store,
-                        discovery_query=discovery_query,
-                        raw_type=type(raw_result).__name__,
-                        raw_count=len(batch),
-                        deloox=_trace_items(batch),
-                    )
 
                 added = 0
                 for item in batch:
@@ -782,15 +670,6 @@ class SearchEngine:
             except TypeError:
                 candidates = validate(candidates)
 
-        if _trace_enabled(query):
-            _trace_emit(
-                "3_before_prepare_final_results", query,
-                validated_count=len(candidates or []),
-                deloox=_trace_items(candidates),
-                deloox_count=len(_trace_items(candidates)),
-                deloox_nested_offers=_trace_nested_offers(candidates),
-            )
-
         if prepare is not None:
             try:
                 final = prepare(candidates, query)
@@ -805,29 +684,9 @@ class SearchEngine:
         if not isinstance(final, list):
             final = list(final)
 
-        if _trace_enabled(query):
-            _trace_emit(
-                "4_after_prepare_final_results", query,
-                final_count=len(final),
-                deloox=_trace_items(final),
-                deloox_count=len(_trace_items(final)),
-                deloox_nested_offers=_trace_nested_offers(final),
-            )
-
-        stable = self._stable_results(
+        return self._stable_results(
             [item for item in final if isinstance(item, dict)]
         )
-
-        if _trace_enabled(query):
-            _trace_emit(
-                "5_after_stable_results_final_output", query,
-                final_count=len(stable),
-                deloox=_trace_items(stable),
-                deloox_count=len(_trace_items(stable)),
-                deloox_nested_offers=_trace_nested_offers(stable),
-            )
-
-        return stable
 
     # ------------------------------------------------------------------
     # Public synchronous API
@@ -971,22 +830,7 @@ class SearchEngine:
                         if result.error:
                             errors[store] = result.error
 
-                        before_merge = list(raw_pool)
                         raw_pool.extend(result.candidates)
-
-                        if _trace_enabled(query):
-                            before_d = _trace_items(before_merge)
-                            after_d = _trace_items(raw_pool)
-                            _trace_emit(
-                                "2_after_batch_merge", query, job_id=job_id,
-                                completed_store=store,
-                                store_status=result.status,
-                                store_candidate_count=len(result.candidates),
-                                raw_pool_count=len(raw_pool),
-                                deloox_count=len(after_d),
-                                deloox=after_d,
-                                delta_deloox=[x for x in after_d if _trace_signature(x) not in {_trace_signature(y) for y in before_d}],
-                            )
 
                         # Publish after every completed store. This is the
                         # important difference from the old implementation:
