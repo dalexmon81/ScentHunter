@@ -85,7 +85,7 @@ html,body{min-height:100%;overflow-x:hidden}
 .app{padding-bottom:calc(125px + env(safe-area-inset-bottom))!important}
 
 /* iPhone/Safari: viewport stabile + contenuto scrollabile */
-html,body{height:100%;height:100dvh;overflow-x:hidden!important}
+html,body{height:100%;height:100dvh;overflow:hidden!important}
 body{position:relative}
 .app{width:100%!important;max-width:760px!important;height:100%;height:100dvh;min-height:0!important;overflow-x:hidden!important;overflow-y:auto;-webkit-overflow-scrolling:touch;padding-bottom:calc(125px + env(safe-area-inset-bottom))!important}
 .nav{position:fixed!important;left:0!important;right:0!important;bottom:0!important;top:auto!important;transform:none!important;width:100%!important;max-width:760px!important;margin:0 auto!important;z-index:2147483647!important}
@@ -1143,19 +1143,20 @@ function shGroupData(data){
   function liquidBrunFamily(o){
     const rawName=String(o.name||"").toLowerCase();
     const brand=String(o.brand||"").toLowerCase();
-    const s=(brand+" "+rawName).replace(/[^a-z0-9]+/gi," ").replace(/\s+/g," ").trim();
+    const s=(brand+" "+rawName+" "+String(o.concentration||"").toLowerCase()).replace(/[^a-z0-9]+/gi," ").replace(/\s+/g," ").trim();
     if(!/liquid\s+brun/.test(s))return "";
     if(/mystery\s+box/.test(s))return "mystery box liquid brun";
     if(/limited\s+edition/.test(s))return "liquid brun limited edition";
+    if(/extrait(?:\s+de\s+parfum)?/.test(s)||/\b150\s*ml\b/.test(s))return "liquid brun limited edition";
     return "liquid brun";
   }
 
   function concentrationHint(o){
     const raw=String(o&&((o.name||"")+" "+(o.concentration||""))||"").toLowerCase();
-    if(/\beau\s+de\s+toilette\b|\bedt\b/.test(raw))return "Eau de Toilette";
-    if(/\beau\s+de\s+parfum\b|\bedp\b/.test(raw))return "Eau de Parfum";
-    if(/\bextrait(?:\s+de\s+parfum)?\b/.test(raw))return "Extrait de Parfum";
-    if(/\beau\s+de\s+cologne\b|\bedc\b/.test(raw))return "Eau de Cologne";
+    if(/\\beau\\s+de\\s+toilette\\b|\\bedt\\b/.test(raw))return "Eau de Toilette";
+    if(/\\beau\\s+de\\s+parfum\\b|\\bedp\\b/.test(raw))return "Eau de Parfum";
+    if(/\\bextrait(?:\\s+de\\s+parfum)?\\b/.test(raw))return "Extrait de Parfum";
+    if(/\\beau\\s+de\\s+cologne\\b|\\bedc\\b/.test(raw))return "Eau de Cologne";
     return "";
   }
 
@@ -1635,10 +1636,8 @@ function clearOpenProduct(){
 
 function progressiveOfferKey(o,g){
   const store=String(o?.store||o?._source_store||"").trim().toLowerCase();
-  const url=String(o?.url||o?._source_url||"").trim().toLowerCase();
-  const size=String(sizeOfOffer(o)||o?.size_ml||o?.size||"").trim();
-  const name=normalizePerfumeName(o?.name||g?.name||"").toLowerCase();
-  return `${store}|${url}|${size}|${name}`;
+  const size=String(sizeOfOffer(o)||o?.size_ml||o?.size||"").trim()||"unknown";
+  return `${store}|${size}`;
 }
 
 function archiveProgressiveGroups(groups){
@@ -1661,9 +1660,7 @@ function archiveProgressiveGroups(groups){
     const offers=Array.isArray(g.offers)?g.offers:[];
     const offerMap=progressiveOfferArchive.get(pkey)||new Map();
     offers.forEach(o=>{
-      const storeKey=String(o?.store||o?._source_store||"").trim().toLowerCase();
-      const sizeKey=String(sizeOfOffer(o)||o?.size_ml||o?.size||"").trim();
-      const key=storeKey&&sizeKey?`${storeKey}|${sizeKey}`:progressiveOfferKey(o,g);
+      const key=progressiveOfferKey(o,g);
       if(!key)return;
       const existing=offerMap.get(key);
       // Se la stessa offerta viene ripubblicata, preferiamo la versione più
@@ -1929,7 +1926,7 @@ function renderFormatChoiceCard(gi,g,comparisons,sizes){
       </div>`;
     }).join("")}
   </article>`;
-  document.getElementById("searchOutput").scrollIntoView({behavior:"smooth",block:"start"});
+  document.querySelector(".app")?.scrollTo({top:Math.max(0,document.getElementById("searchOutput").offsetTop-12),behavior:"smooth"});
 }
 
 async function openProduct(i){
@@ -1994,7 +1991,7 @@ async function openProduct(i){
 
 function renderSingleFormatComparison(g,img,offers,size,saved){
   resultsBox.innerHTML=`<article class="comparison"><button class="detail-back" onclick="clearOpenProduct();showProducts(currentProductGroups)">← Torna ai profumi</button><div class="comparison-head"><div class="result-image">${img?`<img src="${esc(img)}" alt="${esc(displayPerfumeName(g.name,g.brand))}" onerror="this.outerHTML='🧴'">`:"🧴"}</div><div class="result-main"><div class="store">${esc(g.brand||"")}</div><div class="name">${esc(displayPerfumeName(g.name,g.brand))}</div></div></div><div class="format-compare-bar"><div class="format-compare-item"><div class="format-compare-copy"><div class="format-compare-label">FORMATO</div><div class="format-compare-value">${esc(formatLabel(size)||"Formato")}</div></div></div><div class="format-compare-item"><div class="format-compare-copy"><div class="format-compare-label">CONFRONTA I PREZZI</div><div class="format-compare-value">${offers.length} ${offers.length===1?"negozio":"negozi"}</div></div></div></div>${renderOffersHtml(g,img,offers,saved)}</article>`;
-  document.getElementById("searchOutput").scrollIntoView({behavior:"smooth",block:"start"});
+  document.querySelector(".app")?.scrollTo({top:Math.max(0,document.getElementById("searchOutput").offsetTop-12),behavior:"smooth"});
 }
 
 function renderOffersHtml(g,img,offers,saved){
@@ -2014,7 +2011,7 @@ function openSize(gi,sizeKey,fromFormats=true){
   const offers=selected.offers||[]; const saved=getWishlist(); const img=g.image||"";
   statusBox.textContent="";
   resultsBox.innerHTML=`<article class="comparison"><button class="detail-back" onclick="openProduct(${gi})">← Torna ai formati</button><div class="comparison-head"><div class="result-image">${img?`<img src="${esc(img)}" alt="${esc(displayPerfumeName(g.name,g.brand))}" onerror="this.outerHTML='🧴'">`:"🧴"}</div><div class="result-main"><div class="store">${esc(g.brand||"")}</div><div class="name">${esc(displayPerfumeName(g.name,g.brand))}</div><div class="offer-meta">${esc(formatLabel(String(selected.size)))}</div></div></div><div class="format-compare-bar"><div class="format-compare-item"><div class="format-compare-copy"><div class="format-compare-label">FORMATO</div><div class="format-compare-value">${esc(formatLabel(String(selected.size)))}</div></div></div><div class="format-compare-item"><div class="format-compare-copy"><div class="format-compare-label">CONFRONTA I PREZZI</div><div class="format-compare-value">${offers.length} ${offers.length===1?"negozio":"negozi"}</div></div></div></div>${renderOffersHtml(g,img,offers,saved)}</article>`;
-  document.getElementById("searchOutput").scrollIntoView({behavior:"smooth",block:"start"});
+  document.querySelector(".app")?.scrollTo({top:Math.max(0,document.getElementById("searchOutput").offsetTop-12),behavior:"smooth"});
 }
 
 function chooseOffer(gi,sizeKey,oi){
@@ -2286,10 +2283,24 @@ async function searchPerfume(){
   let groups=shGroupData(data||{});
   archiveProgressiveGroups(groups);
   groups=applyProgressiveArchive(groups);
-  if(!groups.length){
-   const fallbackQueries=buildCatalogFallbackQueries(q);
-   for(let i=0;i<fallbackQueries.length;i++){
-    const term=fallbackQueries[i];
+  const fallbackQueries=buildCatalogFallbackQueries(q);
+  const normalizedQuery=normalizePerfumeName(q).toLowerCase().trim();
+  const catalogMatches=typeof MASTER_CATALOG!=="undefined"&&Array.isArray(MASTER_CATALOG)
+   ?MASTER_CATALOG.filter(item=>{
+      const names=[item.name,...(Array.isArray(item.aliases)?item.aliases:[])].map(x=>normalizePerfumeName(x).toLowerCase().trim());
+      return names.some(name=>name===normalizedQuery||name.includes(normalizedQuery)||normalizedQuery.includes(name));
+    })
+   :[];
+  const foundCatalogIds=new Set(groups.map(g=>String(g.catalog_id||"")).filter(Boolean));
+  const missingVariantQueries=catalogMatches
+   .filter(item=>!foundCatalogIds.has(String(item.id||"")))
+   .map(item=>String(item.name||"").trim())
+   .filter(Boolean);
+  const needsVariantFallback=catalogMatches.length>1 && missingVariantQueries.length>0;
+  const fallbackQueue=needsVariantFallback?missingVariantQueries:fallbackQueries;
+  if(!groups.length || needsVariantFallback){
+   for(let i=0;i<fallbackQueue.length;i++){
+    const term=fallbackQueue[i];
     statusBox.textContent="";
     try{
      const fallbackData=await searchStoresProgressive(term,null);
@@ -2301,8 +2312,11 @@ async function searchPerfume(){
      groups=shGroupData(data||{});
      archiveProgressiveGroups(groups);
      groups=applyProgressiveArchive(groups);
-     renderData(data,i===fallbackQueries.length-1||groups.length>0);
-     if(groups.length)break;
+     renderData(data,i===fallbackQueue.length-1||groups.length>0);
+     if(needsVariantFallback){
+      const remaining=catalogMatches.some(item=>!groups.some(g=>String(g.catalog_id||"")===String(item.id||"")));
+      if(!remaining)break;
+     }else if(groups.length)break;
     }catch(e){
      console.warn("Fallback ricerca",term,e);
     }
