@@ -179,13 +179,22 @@ def run_query(query: str, stores: List[str] | None = None) -> Dict[str, Any]:
     store_reports: Dict[str, Any] = {}
     waves: List[Dict[str, Any]] = []
 
+    # PRODUCTION FLOW: exactly 2 waves x 4 stores.
+    # The four stores in a wave run concurrently.  Validation/merge happens
+    # as each future completes, but the diagnostic publishes ONE snapshot only
+    # after all four stores of the wave have completed.
     wave_size = 4
+
     for wave_start in range(0, len(selected_stores), wave_size):
         wave = selected_stores[wave_start:wave_start + wave_size]
+        wave_number = wave_start // wave_size + 1
 
         wave_report: Dict[str, Any] = {
-            "wave": wave_start // 2 + 1,
-            "stores": wave,
+            "wave": wave_number,
+            "stores": list(wave),
+            "execution": "parallel",
+            "max_workers": len(wave),
+            "store_completion_order": [],
             "store_results": [],
             "validated_pool_count_after_wave": None,
             "validated_store_counts_after_wave": None,
@@ -199,36 +208,25 @@ def run_query(query: str, stores: List[str] | None = None) -> Dict[str, Any]:
             "orioudh_final_after_wave": None,
         }
 
-        for store in wave:
+        def run_one(store: str):
             t0 = time.monotonic()
-
             try:
                 result = _run_store_exact(store, query)
-
                 candidates = [
                     item
                     for item in (getattr(result, "candidates", None) or [])
                     if isinstance(item, dict)
                 ]
 
-                raw_pool.extend(candidates)
-
                 try:
                     validated = ENGINE._validate_candidates_only(
                         query,
                         list(candidates),
                     )
+                    validation_error = None
                 except Exception as exc:
                     validated = []
                     validation_error = f"{type(exc).__name__}: {exc}"
-                else:
-                    validation_error = None
-
-                # EXACT production merge key.
-                validated_pool = production._merge_monotonic_validated(
-                    validated_pool,
-                    validated,
-                )
 
                 report = {
                     "store": store,
@@ -244,6 +242,7 @@ def run_query(query: str, stores: List[str] | None = None) -> Dict[str, Any]:
                     "raw_candidates": [_safe_item(x) for x in candidates],
                     "validated_candidates": [_safe_item(x) for x in validated],
                 }
+                return store, candidates, validated, report
 
             except Exception as exc:
                 report = {
@@ -257,67 +256,43 @@ def run_query(query: str, stores: List[str] | None = None) -> Dict[str, Any]:
                     "raw_candidates": [],
                     "validated_candidates": [],
                 }
+                return store, [], [], report
 
-            store_reports.setdefault(store, []).append(report)
-            wave_report["store_results"].append(report)
+        # Run all four stores concurrently, exactly like the production
+        # wave model. Do not serialize the stores.
+        with concurrent.futures.ThreadPoolExecutor(
+            max_workers=len(wave),
+            thread_name_prefix="scenthunter-diagnostic",
+        ) as executor:
+            future_map = {
+                executor.submit(run_one, store): store
+                for store in wave
+            }
 
-            # Snapshot final preparation immediately after THIS store.
-            try:
-                final_after_store = legacy._prepare_final_results(
-                    list(validated_pool),
-                    query,
+            for future in concurrent.futures.as_completed(future_map):
+                store = future_map[future]
+                store_name, candidates, validated, report = future.result()
+
+                raw_pool.extend(candidates)
+                validated_pool = production._merge_monotonic_validated(
+                    validated_pool,
+                    validated,
                 )
-            except Exception as exc:
-                final_after_store = []
-                finalization_error = f"{type(exc).__name__}: {exc}"
-            else:
-                finalization_error = None
 
-            report["validated_pool_count_after_store"] = len(validated_pool)
-            report["validated_store_counts_after_store"] = _store_summary(
-                validated_pool
-            )
-            report["final_count_after_store"] = len(final_after_store)
-            report["final_store_counts_after_store"] = _store_summary(
-                _final_offer_list(final_after_store)
-            )
-            report["finalization_error_after_store"] = finalization_error
-            report["deloox_validated_after_store"] = _deloox_items(
-                validated_pool
-            )
-            report["deloox_final_after_store"] = _deloox_items(
-                _final_offer_list(final_after_store)
-            )
-            report["orioudh_validated_after_store"] = _orioudh_items(
-                validated_pool
-            )
-            report["orioudh_final_after_store"] = _orioudh_items(
-                _final_offer_list(final_after_store)
-            )
+                store_reports.setdefault(store_name, []).append(report)
+                wave_report["store_results"].append(report)
+                wave_report["store_completion_order"].append(store_name)
 
-            # If an offer exists in the validated pool but not in final output,
-            # this is the exact point where final preparation loses it.
-            missing_from_final = []
-
-            for validated_item in validated_pool:
-                if not _offer_in_final(validated_item, final_after_store):
-                    missing_from_final.append(_safe_item(validated_item))
-
-            report["validated_missing_from_final_after_store"] = (
-                missing_from_final
-            )
-
-        # End-of-wave snapshot.
+        # IMPORTANT: one and only one final snapshot for this wave.
         try:
             final_after_wave = legacy._prepare_final_results(
                 list(validated_pool),
                 query,
             )
+            finalization_error = None
         except Exception as exc:
             final_after_wave = []
-            wave_report["finalization_error"] = (
-                f"{type(exc).__name__}: {exc}"
-            )
+            finalization_error = f"{type(exc).__name__}: {exc}"
 
         wave_report["validated_pool_count_after_wave"] = len(validated_pool)
         wave_report["validated_store_counts_after_wave"] = _store_summary(
@@ -329,6 +304,8 @@ def run_query(query: str, stores: List[str] | None = None) -> Dict[str, Any]:
         wave_report["final_store_counts_after_wave"] = _store_summary(
             _final_offer_list(final_after_wave)
         )
+        wave_report["finalization_error"] = finalization_error
+
         wave_report["deloox_raw_after_wave"] = _deloox_items(raw_pool)
         wave_report["deloox_validated_after_wave"] = _deloox_items(
             validated_pool
@@ -336,6 +313,7 @@ def run_query(query: str, stores: List[str] | None = None) -> Dict[str, Any]:
         wave_report["deloox_final_after_wave"] = _deloox_items(
             _final_offer_list(final_after_wave)
         )
+
         wave_report["orioudh_raw_after_wave"] = _orioudh_items(raw_pool)
         wave_report["orioudh_validated_after_wave"] = _orioudh_items(
             validated_pool
@@ -344,12 +322,11 @@ def run_query(query: str, stores: List[str] | None = None) -> Dict[str, Any]:
             _final_offer_list(final_after_wave)
         )
 
-        missing_from_final = [
+        wave_report["validated_missing_from_final"] = [
             _safe_item(item)
             for item in validated_pool
             if not _offer_in_final(item, final_after_wave)
         ]
-        wave_report["validated_missing_from_final"] = missing_from_final
 
         waves.append(wave_report)
 
