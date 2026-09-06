@@ -277,14 +277,26 @@ def _format_compare_sort_price(value: Any) -> float:
 
 
 def _format_compare_size(candidate: Dict[str, Any]) -> int | None:
-    extractor = getattr(_legacy, "product_size_ml", None)
-    if not callable(extractor):
-        return None
+    """Extract an explicit bottle size from both legacy and structured offers."""
+    value = None
 
-    try:
-        value = extractor(candidate)
-    except Exception:
-        return None
+    extractor = getattr(_legacy, "product_size_ml", None)
+    if callable(extractor):
+        try:
+            value = extractor(candidate)
+        except Exception:
+            value = None
+
+    # The newer Shopify adapters expose size inside attributes/raw_data.
+    # The legacy extractor only checks top-level fields, so use the SearchEngine
+    # extractor as a lossless fallback before rejecting an otherwise valid offer.
+    if value in (None, ""):
+        engine_extractor = getattr(_engine, "_extract_candidate_size_ml", None)
+        if callable(engine_extractor):
+            try:
+                value = engine_extractor(candidate)
+            except Exception:
+                value = None
 
     if value in (None, ""):
         return None
@@ -378,7 +390,14 @@ def _format_compare_clean_offer(
         price_value = _format_compare_num(offer.get("price"))
     offer["price_value"] = price_value
 
-    offer["in_stock"] = not _format_compare_is_oos(offer)
+    stock_state = _format_compare_stock_state(offer)
+    offer["availability"] = stock_state
+    if stock_state == "in_stock":
+        offer["in_stock"] = True
+    elif stock_state == "out_of_stock":
+        offer["in_stock"] = False
+    else:
+        offer["in_stock"] = None
     return offer
 
 
@@ -628,8 +647,11 @@ def diagnose_format_flow(
     def one(store, size):
         t0 = _diag_time.monotonic()
 
-        # Use the same explicit size query as production /compare-formats.
-        query = _format_compare_query(product, size)
+        # Diagnostic discovery must stay broad too. The requested size is
+        # filtered after discovery; several retailer search engines return
+        # zero results when "100 ml" is appended to the query even though
+        # the 100 ml product is present for the base query.
+        query = _format_compare_query(product)
 
         out = {
             "store": store,
@@ -676,7 +698,7 @@ def diagnose_format_flow(
                 item = {
                     "name": c.get("name"),
                     "brand": c.get("brand"),
-                    "size_ml": c.get("size_ml"),
+                    "size_ml": sz,
                     "size": c.get("size"),
                     "price": c.get("price"),
                     "price_value": c.get("price_value"),
