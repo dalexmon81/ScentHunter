@@ -1982,8 +1982,44 @@ async function openProduct(i){
       const remote=(comparisons||[]).find(x=>String(x.size_ml||x.size||"")===key);
       const local=localBySize.get(key);
       const remoteOffers=Array.isArray(remote?.offers)?remote.offers:[];
-      if(remoteOffers.length)return remote;
-      if(local?.offers?.length)return {size_ml:key,best:local.best||null,offers:local.offers};
+      if(remoteOffers.length){
+  if(window.__SH_DELOOX_LOG__){
+    window.__SH_DELOOX_LOG__(
+      "19. FORMAT MERGE REMOTE SELECTED",
+      {
+        size:key,
+        remote:remote,
+        local:local,
+        remoteOfferCount:remoteOffers.length,
+        remoteOffers:remoteOffers
+      }
+    );
+  }
+
+  return remote;
+}
+
+if(local?.offers?.length){
+  if(window.__SH_DELOOX_LOG__){
+    window.__SH_DELOOX_LOG__(
+      "20. FORMAT MERGE LOCAL SELECTED",
+      {
+        size:key,
+        remote:remote,
+        local:local,
+        localOfferCount:local.offers.length,
+        localOffers:local.offers
+      }
+    );
+  }
+
+  return {
+    sizeml:key,
+    best:local.best,
+    offers:local.offers
+  };
+}
+size_ml:key,best:local.best||null,offers:local.offers};
       return remote||{size_ml:key,best:null,offers:[]};
     });
     window._formatComparisonsByProduct=window._formatComparisonsByProduct||{};
