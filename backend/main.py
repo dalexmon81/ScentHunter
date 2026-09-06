@@ -50,6 +50,31 @@ if callable(_engine_snapshot):
 
 app = _legacy.app
 
+# ParfumCity: the adapter itself returns the correct 100 ml Liquid Brun,
+# while the legacy run_store path can discard it before SearchEngine sees it.
+# Keep the other seven stores on their existing path and bypass only this
+# adapter through its own search() implementation. The central SearchEngine
+# still performs the normal validation/deduplication afterwards.
+_original_run_store = _legacy.run_store
+
+def _run_store_preserving_parfumcity(store: str, query: str):
+    if str(store or "").strip().casefold() == "parfumcity":
+        try:
+            module = importlib.import_module("scrapers.parfumcity.scraper")
+            search_fn = getattr(module, "search", None)
+            if callable(search_fn):
+                return search_fn(str(query or "").strip()) or []
+        except Exception as exc:
+            print(
+                "PARFUMCITY_DIRECT_SEARCH_ERROR:",
+                f"{type(exc).__name__}: {exc}",
+                flush=True,
+            )
+            # Preserve the old fallback if the direct adapter cannot load.
+    return _original_run_store(store, query)
+
+_legacy.run_store = _run_store_preserving_parfumcity
+
 JINA_PREFIX = "https://r.jina.ai/"
 NOTINO_BASE = "https://www.notino.fr"
 
@@ -816,161 +841,3 @@ def diagnose_deloox_disappearance(
             "query": str(q or "").strip(),
             "error": f"{type(exc).__name__}: {exc}",
         }
-
-
-@app.get("/diagnose-store-scraper")
-def diagnose_store_scraper(
-    store: str = Query(..., min_length=1),
-    q: str = Query(..., min_length=1),
-):
-    """
-    Read-only forensic diagnostic for one store adapter.
-
-    It intentionally bypasses the central matcher and reports each stage:
-    module import -> discovery URLs -> product JSON -> scraper search output.
-    This isolates whether a missing shop is lost inside the adapter or later
-    in central validation.
-    """
-    store_name = str(store or "").strip().casefold()
-    product_query = str(q or "").strip()
-
-    if store_name not in FORMAT_STORES:
-        return {
-            "ok": False,
-            "error": f"Unsupported store: {store_name}",
-            "allowed_stores": FORMAT_STORES,
-        }
-
-    started = _diag_time.monotonic()
-    out = {
-        "ok": True,
-        "store": store_name,
-        "query": product_query,
-        "elapsed_ms": None,
-        "module": None,
-        "module_import_error": None,
-        "search_callable": None,
-        "discovery": {
-            "available": False,
-            "count": 0,
-            "urls": [],
-            "error": None,
-        },
-        "product_json": [],
-        "search_output": {
-            "count": 0,
-            "items": [],
-            "error": None,
-        },
-    }
-
-    try:
-        module = importlib.import_module(f"scrapers.{store_name}.scraper")
-        out["module"] = getattr(module, "__file__", None)
-
-        search_fn = getattr(module, "search", None)
-        if not callable(search_fn):
-            search_fn = getattr(module, "scrape", None)
-        out["search_callable"] = callable(search_fn)
-
-        # Inspect the adapter's own discovery function when available.
-        discover_fn = getattr(module, "_discover", None)
-        if callable(discover_fn):
-            try:
-                session_factory = requests.Session
-                session = session_factory()
-                try:
-                    urls = discover_fn(session, product_query) or []
-                finally:
-                    session.close()
-
-                urls = [str(url) for url in urls if url]
-                out["discovery"]["available"] = True
-                out["discovery"]["count"] = len(urls)
-                out["discovery"]["urls"] = urls[:30]
-
-                product_json_fn = getattr(module, "_product_json", None)
-                if callable(product_json_fn):
-                    for url in urls[:20]:
-                        row = {
-                            "url": url,
-                            "json_ok": False,
-                            "title": None,
-                            "vendor": None,
-                            "variant_count": 0,
-                            "variants": [],
-                            "error": None,
-                        }
-                        try:
-                            session = requests.Session()
-                            try:
-                                data = product_json_fn(session, url)
-                            finally:
-                                session.close()
-
-                            if isinstance(data, dict):
-                                row["json_ok"] = True
-                                row["title"] = data.get("title")
-                                row["vendor"] = data.get("vendor")
-                                variants = data.get("variants") or []
-                                row["variant_count"] = len(variants)
-                                for variant in variants[:20]:
-                                    if not isinstance(variant, dict):
-                                        continue
-                                    row["variants"].append({
-                                        "id": variant.get("id"),
-                                        "title": variant.get("title"),
-                                        "price": variant.get("price"),
-                                        "available": variant.get("available"),
-                                        "sku": variant.get("sku"),
-                                    })
-                        except Exception as exc:
-                            row["error"] = f"{type(exc).__name__}: {exc}"
-                        out["product_json"].append(row)
-            except Exception as exc:
-                out["discovery"]["error"] = f"{type(exc).__name__}: {exc}"
-
-        if callable(search_fn):
-            try:
-                result = search_fn(product_query) or []
-                items = result if isinstance(result, list) else list(result)
-                out["search_output"]["count"] = len(items)
-
-                for item in items[:30]:
-                    if not isinstance(item, dict):
-                        out["search_output"]["items"].append({
-                            "type": type(item).__name__,
-                            "value": repr(item)[:500],
-                        })
-                        continue
-
-                    attrs = item.get("attributes")
-                    attrs = attrs if isinstance(attrs, dict) else {}
-                    size_attr = attrs.get("size_ml")
-                    if isinstance(size_attr, dict):
-                        size_attr = size_attr.get("value")
-
-                    source = item.get("source")
-                    source = source if isinstance(source, dict) else {}
-
-                    out["search_output"]["items"].append({
-                        "name": item.get("name"),
-                        "brand": item.get("brand"),
-                        "source_brand": source.get("source_brand"),
-                        "size_ml": item.get("size_ml") or size_attr,
-                        "price": item.get("price"),
-                        "available": item.get("available"),
-                        "url": item.get("url") or source.get("url"),
-                        "sku": item.get("sku"),
-                        "store": item.get("store"),
-                    })
-            except Exception as exc:
-                out["search_output"]["error"] = f"{type(exc).__name__}: {exc}"
-
-    except Exception as exc:
-        out["ok"] = False
-        out["module_import_error"] = f"{type(exc).__name__}: {exc}"
-    finally:
-        out["elapsed_ms"] = round((_diag_time.monotonic() - started) * 1000)
-
-    return out
