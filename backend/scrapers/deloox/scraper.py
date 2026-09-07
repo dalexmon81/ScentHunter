@@ -17,8 +17,8 @@ from bs4 import BeautifulSoup
 
 STORE = "Deloox"
 BASE_URL = "https://www.deloox.be"
-TIMEOUT = 1.5
-DISCOVERY_DEADLINE = 5.5
+TIMEOUT = 3.0
+DISCOVERY_DEADLINE = 7.0
 HEADERS = {
     "User-Agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 Version/17.0 Mobile/15E148 Safari/604.1",
     "Accept-Language": "en-GB,en;q=0.9",
@@ -945,16 +945,25 @@ def _discover(session, q):
     # catalogue pages cannot consume the entire discovery budget.
     if {"liquid", "brun"}.issubset(tokens(q)):
         seed = BASE_URL + "/categorie/1121322/french-avenue-parfum.html"
-        try:
-            remaining = max(0.8, min(TIMEOUT, deadline - time.monotonic()))
-            if remaining > 0:
-                r = session.get(seed, headers=HEADERS, timeout=remaining)
+        # This page is large (~6 MB). The previous 1.5 s read timeout made
+        # discovery inherently intermittent: sometimes the page arrived just
+        # inside the window, sometimes the request was cut before the product
+        # cards could be parsed. Give this single, highly relevant page a
+        # bounded 3 s attempt and one short retry only if the first attempt
+        # fails. No broad pagination is reintroduced.
+        for attempt in range(2):
+            remaining = deadline - time.monotonic()
+            if remaining <= 0:
+                break
+            timeout = min(3.0 if attempt == 0 else 2.5, remaining)
+            try:
+                r = session.get(seed, headers=HEADERS, timeout=max(1.0, timeout))
                 if r.status_code < 400:
                     candidates = _candidate_product_urls(r.text, q)
                     if candidates:
                         return candidates[:8]
-        except requests.RequestException:
-            pass
+            except requests.RequestException:
+                continue
 
     # This path is already generic: it looks for Product Line/category links
     # whose visible label or slug matches the user's query, then parses only
@@ -1054,13 +1063,25 @@ def search(query):
     from concurrent.futures import ThreadPoolExecutor, as_completed
 
     def fetch_one(url):
-        try:
-            r = requests.get(url, headers=HEADERS, timeout=TIMEOUT)
-        except requests.RequestException:
+        # Product pages can occasionally have a slow first response even when
+        # discovery succeeded. Retry once locally so a transient Deloox HTTP
+        # read timeout does not erase an otherwise valid offer.
+        for attempt in range(2):
+            try:
+                r = requests.get(url, headers=HEADERS, timeout=TIMEOUT)
+            except requests.RequestException:
+                if attempt == 0:
+                    continue
+                return None
+            if r.status_code >= 400:
+                return None
+            item = _product(url, r.text, query)
+            if item:
+                return item
+            if attempt == 0:
+                continue
             return None
-        if r.status_code >= 400:
-            return None
-        return _product(url, r.text, query)
+        return None
 
     results = []
     seen = set()
