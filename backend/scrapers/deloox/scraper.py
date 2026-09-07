@@ -788,15 +788,11 @@ def _sitemap_product_urls(session, query, max_sitemaps=12, max_urls=80):
 def _discover(session, q):
     """Fast, bounded Deloox discovery.
 
-    The previous fallback chain was too aggressive: a single search could walk
-    search endpoints, categories, catalog filters, category pagination and
-    sitemaps before returning. That made Deloox capable of holding the whole
-    ScentHunter store task open for a long time.
-
-    Normal path: one real Deloox search page. Only if that produces nothing do
-    we inspect one category root and at most one matching product-line page.
-    The product parser remains the authority for identity/size/availability.
+    Hard budget prevents discovery fallbacks from keeping the whole store task
+    open. Product parsing remains authoritative for identity, size and stock.
     """
+    started = time.monotonic()
+    deadline = started + 7.5
     urls = []
     seen = set()
 
@@ -809,56 +805,94 @@ def _discover(session, q):
                     return True
         return False
 
-    # PRIMARY: one search request. Deloox BE currently exposes the localized
-    # /en/search surface; the generic /search route is the only fallback.
+    def remaining_timeout(default=TIMEOUT):
+        return max(0.8, min(default, deadline - time.monotonic()))
+
+    # PRIMARY: current Belgian localized search, then generic search.
     endpoints = (
         BASE_URL + "/en/search?q=" + quote_plus(q),
         BASE_URL + "/search?q=" + quote_plus(q),
     )
+
     for endpoint in endpoints:
+        if time.monotonic() >= deadline:
+            return urls[:8]
         try:
-            r = session.get(endpoint, headers=HEADERS, timeout=TIMEOUT)
+            r = session.get(
+                endpoint,
+                headers=HEADERS,
+                timeout=remaining_timeout(),
+            )
         except requests.RequestException:
             continue
+
         if r.status_code >= 400:
+            r.close()
             continue
+
         candidates = _candidate_product_urls(r.text, q)
+        r.close()
+
         if candidates:
             add_many(candidates)
             return urls[:8]
 
-    # SINGLE bounded fallback: one category root, then only the first matching
-    # Product Line page. No pagination, catalog crawl or sitemap crawl here.
+    if time.monotonic() >= deadline:
+        return urls[:8]
+
+    # ONE bounded category fallback.
     try:
         roots = list(_category_pages(session))[:1]
     except Exception:
         roots = []
 
     for root in roots:
+        if time.monotonic() >= deadline:
+            break
         try:
-            r = session.get(root, headers=HEADERS, timeout=TIMEOUT)
+            r = session.get(
+                root,
+                headers=HEADERS,
+                timeout=remaining_timeout(),
+            )
         except requests.RequestException:
             continue
+
         if r.status_code >= 400:
+            r.close()
             continue
 
-        candidates = _candidate_product_urls(r.text, q)
+        html = r.text
+        r.close()
+
+        candidates = _candidate_product_urls(html, q)
         if candidates:
             add_many(candidates)
             return urls[:8]
 
         try:
-            matching = _category_product_line_links(r.text, q)[:1]
+            matching = _category_product_line_links(html, q)[:1]
         except Exception:
             matching = []
+
         for line_url in matching:
+            if time.monotonic() >= deadline:
+                break
             try:
-                page = session.get(line_url, headers=HEADERS, timeout=TIMEOUT)
+                page = session.get(
+                    line_url,
+                    headers=HEADERS,
+                    timeout=remaining_timeout(),
+                )
             except requests.RequestException:
                 continue
+
             if page.status_code >= 400:
+                page.close()
                 continue
+
             candidates = _candidate_product_urls(page.text, q)
+            page.close()
             if candidates:
                 add_many(candidates)
                 return urls[:8]
