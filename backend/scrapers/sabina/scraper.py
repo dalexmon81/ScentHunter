@@ -1,6 +1,5 @@
 import re
 import json
-from xml.etree import ElementTree as ET
 import html as html_lib
 from urllib.parse import quote_plus, urljoin
 
@@ -9,7 +8,7 @@ from bs4 import BeautifulSoup
 
 STORE = "Sabina"
 BASE = "https://www.sabina.com"
-TIMEOUT = 4
+TIMEOUT = 3
 
 HEADERS = {
     "User-Agent": (
@@ -460,88 +459,14 @@ def _get(session, url, **kwargs):
     r.raise_for_status()
     return r
 
-def _sitemap_product_urls(session, query, max_sitemaps=10, max_urls=40):
-    """Generic Sabina sitemap fallback when the onsite search is empty/blocked."""
-    q_tokens = [x for x in re.findall(r"[a-z0-9]+", _clean(query).lower()) if len(x) >= 3]
-    if not q_tokens:
-        return []
-
-    roots = [
-        BASE + "/robots.txt",
-        BASE + "/sitemap.xml",
-        BASE + "/sitemap_index.xml",
-    ]
-    pending = []
-    seen_sitemaps = set()
-    found = []
-    seen_urls = set()
-
-    for root in roots:
-        try:
-            r = _get(session, root)
-        except Exception:
-            continue
-        if r is None:
-            continue
-        body = r.text or ""
-        r.close()
-        if root.endswith("robots.txt"):
-            pending.extend(re.findall(r"(?im)^\s*Sitemap:\s*(\S+)", body))
-        elif root.endswith(".xml"):
-            pending.append(root)
-
-    while pending and len(seen_sitemaps) < max_sitemaps and len(found) < max_urls:
-        sitemap_url = pending.pop(0)
-        if sitemap_url in seen_sitemaps:
-            continue
-        seen_sitemaps.add(sitemap_url)
-        try:
-            r = _get(session, sitemap_url)
-        except Exception:
-            continue
-        if r is None:
-            continue
-        body = r.text or ""
-        r.close()
-        if not body.lstrip().startswith("<"):
-            continue
-        try:
-            root = ET.fromstring(body)
-        except Exception:
-            continue
-        locs = [el.text.strip() for el in root.iter() if el.tag.lower().endswith("loc") and el.text]
-        for loc in locs:
-            low = loc.lower()
-            if low.endswith(".xml") or "sitemap" in low:
-                if loc not in seen_sitemaps:
-                    pending.append(loc)
-                continue
-            slug_text = re.sub(r"[^a-z0-9]+", " ", low)
-            if not all(token in slug_text for token in q_tokens):
-                continue
-            if not _looks_like_product_url(loc):
-                continue
-            clean_url = loc.split("#", 1)[0].split("?", 1)[0]
-            if clean_url not in seen_urls:
-                seen_urls.add(clean_url)
-                found.append(clean_url)
-                if len(found) >= max_urls:
-                    break
-
-    return found
-
-
 def search(query):
     """
-    Ricerca Sabina.
-    Strategia:
-      A) ricerca attuale
-      B) ricerca legacy reale di Sabina
-      C) endpoint ecelastic del sito
-      D) pagina HTML ottenuta dopo inizializzazione sessione
+    Ricerca Sabina con cascata strettamente bounded.
 
-    Ritorna sempre:
-      [{"store":"Sabina","name":"...","price":"00,00 €","url":"..."}]
+    Regola: una ricerca deve tentare prima la ricerca attuale; solo se non
+    produce candidati passa a UN fallback legacy e poi a UN solo endpoint AJAX.
+    Evitiamo la vecchia cascata 6+ richieste seriali che poteva tenere aperto
+    lo scraper per 10-20 secondi.
     """
     query = _clean(query)
     if not query:
@@ -549,145 +474,90 @@ def search(query):
 
     s = requests.Session()
     s.headers.update(HEADERS)
-    results = []
-
-    # Crea cookie/sessione come un browser normale.
-    try:
-        _get(s, BASE + "/it/")
-    except Exception:
-        pass
-
-    # Sabina può non restituire nulla quando il formato (es. 125 ml)
-    # è incluso nella query, anche se il prodotto esiste e la scheda contiene
-    # quella variante. Prima proviamo la query completa, poi la stessa query
-    # senza il formato; il formato verrà selezionato dalla pagina prodotto.
-    queries = [query]
-    query_without_size = _clean(
-        re.sub(r"(?<!\d)\d{2,4}\s*ml\b", " ", query, flags=re.I)
-    )
-    if query_without_size and query_without_size.casefold() != query.casefold():
-        queries.append(query_without_size)
-
-    urls = []
-    for search_query in queries:
-        urls.extend([
-            BASE + "/it/ricerca?search_query=" + quote_plus(search_query),
-            BASE + "/it/ricerca_old?s=" + quote_plus(search_query),
-            BASE + "/it/ricerca_old?search_query=" + quote_plus(search_query),
-        ])
 
     try:
-        for url in urls:
+        query_without_size = _clean(
+            re.sub(r"(?<!\d)\d{2,4}\s*ml\b", " ", query, flags=re.I)
+        )
+
+        # 1) Ricerca attuale: una sola richiesta.
+        primary_urls = [
+            BASE + "/it/ricerca?search_query=" + quote_plus(query),
+        ]
+        if query_without_size and query_without_size.casefold() != query.casefold():
+            primary_urls.append(
+                BASE + "/it/ricerca?search_query=" + quote_plus(query_without_size)
+            )
+
+        for url in primary_urls:
             try:
                 r = _get(s, url)
-
-                # 403/429 significa che Sabina ci sta bloccando:
-                # non passiamo subito a un'altra ricerca equivalente.
                 if r is None:
                     break
-
                 html = r.text
                 r.close()
 
                 parsed = _parse_html(html, query)
-                results.extend(parsed)
-
-                if results:
-                    return _enrich_product_sizes(s, _dedupe(results, query), query)
+                if parsed:
+                    return _enrich_product_sizes(
+                        s, _dedupe(parsed, query), query
+                    )
             except Exception:
                 continue
 
-        # Endpoint ecelastic: manteniamo i payload/metodi originali,
-        # ma interrompiamo subito in caso di 403/429.
+        # 2) Un solo fallback legacy.
+        legacy_url = BASE + "/it/ricerca_old?s=" + quote_plus(query)
+        try:
+            r = _get(s, legacy_url)
+            if r is not None:
+                html = r.text
+                r.close()
+                parsed = _parse_html(html, query)
+                if parsed:
+                    return _enrich_product_sizes(
+                        s, _dedupe(parsed, query), query
+                    )
+        except Exception:
+            pass
+
+        # 3) Un solo GET AJAX. Se Sabina risponde 403/429, ci fermiamo:
+        # ulteriori tentativi equivalenti aggiungono solo latenza.
         ajax_url = BASE + "/modules/ecelastic/ajax.php"
-        payloads = [
-            {
-                "q": query,
-                "query": query,
-                "search_query": query,
-                "id_lang": 5,
-                "id_country": 10,
-                "id_currency": 1,
-            },
-            {
-                "s": query,
-                "search_query": query,
-                "id_lang": 5,
-                "id_country": 10,
-                "id_currency": 1,
-            },
-            {
-                "query": query,
-                "id_lang": 5,
-                "id_country": 10,
-                "id_currency": 1,
-            },
-        ]
+        payload = {
+            "q": query,
+            "query": query,
+            "search_query": query,
+            "id_lang": 5,
+            "id_country": 10,
+            "id_currency": 1,
+        }
 
-        for payload in payloads:
-            for method in ("get", "post"):
+        try:
+            r = s.get(
+                ajax_url,
+                params=payload,
+                headers=HEADERS,
+                timeout=TIMEOUT,
+            )
+            if r.status_code in (403, 429):
+                r.close()
+                return []
+            if r.ok and r.text.strip():
+                response_text = r.text
+                r.close()
                 try:
-                    fn = getattr(s, method)
-
-                    if method == "get":
-                        r = fn(
-                            ajax_url,
-                            params=payload,
-                            headers=HEADERS,
-                            timeout=TIMEOUT,
-                        )
-                    else:
-                        r = fn(
-                            ajax_url,
-                            data=payload,
-                            headers={
-                                **HEADERS,
-                                "X-Requested-With": "XMLHttpRequest",
-                            },
-                            timeout=TIMEOUT,
-                        )
-
-                    if r.status_code in (403, 429):
-                        print(f"SABINA AJAX BLOCKED: HTTP {r.status_code}")
-                        r.close()
-                        return []
-
-                    if not r.ok or not r.text.strip():
-                        r.close()
-                        continue
-
-                    response_text = r.text
-                    r.close()
-
-                    try:
-                        data = json.loads(response_text)
-                        rows = _walk_json(data, query)
-                    except Exception:
-                        rows = _parse_html(response_text, query)
-
-                    if rows:
-                        return _enrich_product_sizes(s, _dedupe(rows, query), query)
-
+                    data = json.loads(response_text)
+                    rows = _walk_json(data, query)
                 except Exception:
-                    continue
-
-        # Final generic fallback: sitemap/robots discovery. This is used only
-        # after the normal search and AJAX surfaces return no product.
-        sitemap_urls = _sitemap_product_urls(s, query)
-        if sitemap_urls:
-            sitemap_rows = []
-            for product_url in sitemap_urls:
-                try:
-                    page = _get(s, product_url)
-                    if page is None:
-                        continue
-                    html = page.text
-                    page.close()
-                    sitemap_rows.extend(_parse_html(html, query))
-                except Exception:
-                    continue
-            if sitemap_rows:
-                return _enrich_product_sizes(s, _dedupe(sitemap_rows, query), query)
+                    rows = _parse_html(response_text, query)
+                if rows:
+                    return _enrich_product_sizes(
+                        s, _dedupe(rows, query), query
+                    )
+            else:
+                r.close()
+        except Exception:
+            pass
 
         return []
 
