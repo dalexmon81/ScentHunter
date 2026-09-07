@@ -703,3 +703,242 @@ def diagnose_format_flow(
 def diagnose_all_stores(q: str = Query(..., min_length=1)):
     """Run the real 8-store SearchEngine diagnostic without changing search results."""
     return _engine.diagnostic_search(str(q).strip())
+
+# ===== DEEP STORE SCRAPER DIAGNOSTIC (READ-ONLY) =====
+# Purpose: expose the exact discovery/fetch/parse stage where a store loses a
+# product. This endpoint does not modify normal search behaviour.
+@app.get("/diagnostic-scraper-deep")
+def diagnostic_scraper_deep(
+    q: str = Query(..., min_length=1),
+    store: str = Query(..., min_length=1),
+):
+    import importlib as _deep_importlib
+    import time as _deep_time
+    import requests as _deep_requests
+
+    query = str(q or "").strip()
+    store_key = str(store or "").strip().lower()
+    allowed = {
+        "deloox": "scrapers.deloox.scraper",
+        "sabina": "scrapers.sabina.scraper",
+    }
+    if store_key not in allowed:
+        return {
+            "ok": False,
+            "diagnostic": "scraper_deep_v1",
+            "error": "unsupported_store",
+            "allowed_stores": sorted(allowed),
+        }
+
+    started = _deep_time.monotonic()
+    try:
+        module = _deep_importlib.import_module(allowed[store_key])
+    except Exception as exc:
+        return {
+            "ok": False,
+            "diagnostic": "scraper_deep_v1",
+            "store": store_key,
+            "query": query,
+            "stage": "module_load",
+            "error": f"{type(exc).__name__}: {exc}",
+        }
+
+    base = str(getattr(module, "BASE_URL", ""))
+    headers = dict(getattr(module, "HEADERS", {}) or {})
+    timeout = getattr(module, "TIMEOUT", None)
+
+    class _LoggedSession(_deep_requests.Session):
+        def __init__(self):
+            super().__init__()
+            self.calls = []
+
+        def get(self, url, **kwargs):
+            t0 = _deep_time.monotonic()
+            try:
+                response = super().get(url, **kwargs)
+                entry = {
+                    "url": str(url),
+                    "final_url": str(getattr(response, "url", "") or ""),
+                    "status": response.status_code,
+                    "bytes": len(response.content or b""),
+                    "elapsed_ms": round((_deep_time.monotonic() - t0) * 1000),
+                    "content_type": response.headers.get("content-type"),
+                }
+                self.calls.append(entry)
+                return response
+            except Exception as exc:
+                self.calls.append({
+                    "url": str(url),
+                    "status": None,
+                    "bytes": 0,
+                    "elapsed_ms": round((_deep_time.monotonic() - t0) * 1000),
+                    "error": f"{type(exc).__name__}: {exc}",
+                })
+                raise
+
+    session = _LoggedSession()
+    if headers:
+        session.headers.update(headers)
+
+    result = {
+        "ok": True,
+        "diagnostic": "scraper_deep_v1",
+        "store": store_key,
+        "query": query,
+        "module": module.__name__,
+        "base_url": base,
+        "configured_timeout": timeout,
+        "stages": {},
+        "http_calls": session.calls,
+    }
+
+    try:
+        if store_key == "deloox":
+            # Run the exact discovery function used by search(), then manually
+            # run its authoritative product parser on every discovered URL.
+            t0 = _deep_time.monotonic()
+            discover = getattr(module, "_discover", None)
+            if not callable(discover):
+                raise RuntimeError("_discover_not_found")
+            urls = discover(session, query) or []
+            result["stages"]["discovery"] = {
+                "elapsed_ms": round((_deep_time.monotonic() - t0) * 1000),
+                "candidate_url_count": len(urls),
+                "candidate_urls": list(urls)[:30],
+            }
+
+            parsed = []
+            rejected = []
+            parser = getattr(module, "_product", None)
+            if callable(parser):
+                for url in list(urls)[:30]:
+                    t1 = _deep_time.monotonic()
+                    try:
+                        r = session.get(url, headers=headers, timeout=timeout or 4)
+                        status = r.status_code
+                        body = r.text if status < 400 else ""
+                        bytes_count = len(r.content or b"")
+                        r.close()
+                        if status >= 400:
+                            rejected.append({"url": url, "reason": f"http_{status}", "bytes": bytes_count})
+                            continue
+                        item = parser(url, body, query)
+                        if item is None:
+                            rejected.append({
+                                "url": url,
+                                "reason": "parser_returned_none",
+                                "bytes": bytes_count,
+                                "html_contains_query": query.casefold() in body.casefold(),
+                            })
+                        else:
+                            parsed.append({
+                                "url": url,
+                                "name": item.get("name"),
+                                "size_ml": (item.get("attributes") or {}).get("size_ml"),
+                                "price": item.get("price"),
+                                "available": item.get("available"),
+                                "gtin": (item.get("identity") or {}).get("gtin"),
+                                "sku": (item.get("identity") or {}).get("sku"),
+                            })
+                    except Exception as exc:
+                        rejected.append({"url": url, "reason": f"{type(exc).__name__}: {exc}"})
+            result["stages"]["product_parse"] = {
+                "parsed_count": len(parsed),
+                "parsed": parsed[:30],
+                "rejected_count": len(rejected),
+                "rejected": rejected[:30],
+            }
+
+        else:
+            # Sabina exposes sitemap discovery as a separate function. We run
+            # it first, then execute the same _get + _parse_html sequence used
+            # by search(), preserving the exact production parser.
+            sitemap = getattr(module, "_sitemap_product_candidates", None)
+            parser = getattr(module, "_parse_html", None)
+            getter = getattr(module, "_get", None)
+            if not callable(sitemap):
+                raise RuntimeError("_sitemap_product_candidates_not_found")
+
+            t0 = _deep_time.monotonic()
+            urls = sitemap(session, query) or []
+            result["stages"]["sitemap_discovery"] = {
+                "elapsed_ms": round((_deep_time.monotonic() - t0) * 1000),
+                "candidate_url_count": len(urls),
+                "candidate_urls": list(urls)[:30],
+            }
+
+            parsed = []
+            rejected = []
+            if callable(parser):
+                for url in list(urls)[:30]:
+                    try:
+                        if callable(getter):
+                            r = getter(session, url)
+                        else:
+                            r = session.get(url, headers=headers, timeout=timeout or 4, allow_redirects=True)
+                        if r is None:
+                            rejected.append({"url": url, "reason": "getter_returned_none"})
+                            continue
+                        status = getattr(r, "status_code", None)
+                        body = getattr(r, "text", "") or ""
+                        bytes_count = len(getattr(r, "content", b"") or b"")
+                        try:
+                            r.close()
+                        except Exception:
+                            pass
+                        if status is not None and status >= 400:
+                            rejected.append({"url": url, "reason": f"http_{status}", "bytes": bytes_count})
+                            continue
+                        rows = parser(body, query) or []
+                        if rows:
+                            parsed.extend(rows[:30])
+                        else:
+                            rejected.append({
+                                "url": url,
+                                "reason": "parser_returned_zero",
+                                "bytes": bytes_count,
+                                "html_contains_query": query.casefold() in body.casefold(),
+                            })
+                    except Exception as exc:
+                        rejected.append({"url": url, "reason": f"{type(exc).__name__}: {exc}"})
+
+            compact = []
+            for item in parsed[:30]:
+                if not isinstance(item, dict):
+                    continue
+                compact.append({
+                    "name": item.get("name"),
+                    "brand": item.get("brand"),
+                    "size_ml": item.get("size_ml"),
+                    "size": item.get("size"),
+                    "price": item.get("price"),
+                    "in_stock": item.get("in_stock"),
+                    "url": item.get("url") or item.get("product_url"),
+                    "sku": item.get("sku"),
+                    "gtin": item.get("gtin") or item.get("ean") or item.get("gtin13"),
+                })
+            result["stages"]["product_parse"] = {
+                "parsed_count": len(parsed),
+                "parsed": compact,
+                "rejected_count": len(rejected),
+                "rejected": rejected[:30],
+            }
+
+        result["http_calls"] = session.calls
+        result["summary"] = {
+            "http_call_count": len(session.calls),
+            "successful_http_calls": sum(1 for x in session.calls if x.get("status") and x.get("status") < 400),
+            "http_errors": sum(1 for x in session.calls if x.get("status") is None or x.get("status", 0) >= 400),
+            "total_elapsed_ms": round((_deep_time.monotonic() - started) * 1000),
+        }
+        return result
+    except Exception as exc:
+        result["error"] = f"{type(exc).__name__}: {exc}"
+        result["summary"] = {
+            "http_call_count": len(session.calls),
+            "total_elapsed_ms": round((_deep_time.monotonic() - started) * 1000),
+        }
+        result["http_calls"] = session.calls
+        return result
+    finally:
+        session.close()
