@@ -23,7 +23,7 @@ HEADERS = {
 
 PRICE_RE = re.compile(r"(?<!\d)(\d{1,4}(?:[.,]\d{2}))\s*€")
 PRODUCT_URL_RE = re.compile(
-    r"^https?://(?:www\.)?sabina\.com/it/(?!"
+    r"^https?://(?:www\.)?sabina\.com/(?:it|fr|en|es|pt|nl|de|pl|da|sv|tw)/(?!"
     r"(?:content|ricerca|ricerca_old|marchi|negozi|contatto|faq|"
     r"carrello|ordine|stato-ordine|il-mio-conto|module)/)"
 )
