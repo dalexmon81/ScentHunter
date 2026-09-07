@@ -1693,6 +1693,16 @@ function getMasterFormats(g){
   }catch(e){return []}
 }
 
+function getObservedFormats(g){
+  try{
+    return [...new Set(
+      getSizeGroups(g)
+        .map(s=>String(s?.size||"").trim())
+        .filter(x=>/^\d+(?:\.\d+)?$/.test(x))
+    )].sort((a,b)=>Number(a)-Number(b));
+  }catch(e){return []}
+}
+
 function formatComparisonFor(g,sizeKey){
   const cache=window._formatComparisonsByProduct?.[productGroupKey(g)]||[];
   return cache.find(x=>String(x.size_ml||x.size||"")===String(sizeKey))||null;
@@ -1732,9 +1742,21 @@ async function openProduct(i){
   if(!g)return;
   currentOpenProductKey=productGroupKey(g);
   currentOpenSizeKey=null;
-  const detected=getSizeGroups(g).map(s=>s.size).filter(Boolean);
+  /*
+   * FORMATI GENERICI:
+   * - i formati realmente trovati nelle offerte sono sempre la fonte primaria;
+   * - i formati del MASTER_CATALOG sono solo un'integrazione/fallback per
+   *   referenze già catalogate, mai un requisito per far funzionare il prodotto;
+   * - non si inserisce una referenza nuova nel frontend solo per darle i formati.
+   *
+   * In questo modo un profumo non presente nel catalogo continua a funzionare
+   * usando i size_ml restituiti dagli scraper, mentre per una referenza già
+   * verificata possiamo anche interrogare i formati catalogati che non sono
+   * comparsi nella prima ricerca.
+   */
+  const detected=getObservedFormats(g);
   const masterFormats=getMasterFormats(g);
-  const sizes=[...new Set(masterFormats.length?masterFormats:detected)].sort((a,b)=>Number(a)-Number(b));
+  const sizes=[...new Set([...detected,...masterFormats])].sort((a,b)=>Number(a)-Number(b));
   const img=g.image||"";
   const saved=getWishlist();
   statusBox.textContent="";
