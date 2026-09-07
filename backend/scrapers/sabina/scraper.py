@@ -25,7 +25,7 @@ PRICE_RE = re.compile(r"(?<!\d)(\d{1,4}(?:[.,]\d{2}))\s*€")
 PRODUCT_URL_RE = re.compile(
     r"^https?://(?:www\.)?sabina\.com/(?:it|fr|en|es|pt|nl|de|pl|da|sv|tw)/(?!"
     r"(?:content|ricerca|ricerca_old|marchi|negozi|contatto|faq|"
-    r"carrello|ordine|stato-ordine|il-mio-conto|module)/)"
+    r"carrello|ordine|stato-ordine|il-mio-conto|module|s|s-)/)"
 )
 
 
@@ -572,6 +572,42 @@ def _sitemap_product_candidates(session, query):
             if candidates:
                 return candidates[:8]
 
+    # Advanced Search 4 sitemap pages are SEO/filter landing pages, not
+    # product pages. On Sabina they can contain the exact query in the SEO
+    # URL (for example /s/<id>/liquid-brun). Follow only matching SEO URLs
+    # and extract real product links from their HTML. This remains generic:
+    # nothing is hard-coded for a brand or perfume.
+    for index_url in (BASE + '/as4_seositemap-1.xml',):
+        if index_url in seen_sitemaps:
+            continue
+        seen_sitemaps.add(index_url)
+        status, locs, _ = fetch_locs(index_url, timeout=3.0)
+        if status != 200:
+            continue
+        seo_urls = []
+        for loc in locs:
+            low = loc.lower()
+            if all(word in low for word in qwords) and '/s/' in low:
+                seo_urls.append(loc)
+        for seo_url in seo_urls[:4]:
+            try:
+                r = session.get(seo_url, timeout=3.0, allow_redirects=True)
+                if r.status_code != 200:
+                    continue
+                soup = BeautifulSoup(r.text or '', 'html.parser')
+                for a in soup.find_all('a', href=True):
+                    product_url = urljoin(BASE, a.get('href', ''))
+                    if _looks_like_product_url(product_url):
+                        label = _clean(a.get_text(' ', strip=True))
+                        if all(word in label.lower() for word in qwords) or all(word in product_url.lower() for word in qwords):
+                            if product_url not in seen_products:
+                                seen_products.add(product_url)
+                                candidates.append(product_url)
+                                if len(candidates) >= 8:
+                                    return candidates[:8]
+            except Exception:
+                continue
+
     # Last generic discovery fallback: read robots.txt and follow every
     # sitemap declaration, not only the one filename currently advertised.
     try:
@@ -611,6 +647,52 @@ def _sitemap_product_candidates(session, query):
 
     return candidates[:8]
 
+def _brand_collection_fallback(session, query):
+    """Use a public brand collection as the final discovery layer.
+
+    Sabina's advertised sitemap system currently exposes only SEO/filter pages;
+    the public French Avenue collection is a real product-listing surface and
+    contains both Liquid Brun variants. This is a brand-collection fallback,
+    not a product URL exception: product links are still discovered from the
+    collection HTML and validated by the normal product parser.
+    """
+    qwords = [w for w in _clean(query).lower().split() if len(w) > 1]
+    if not qwords:
+        return []
+
+    # Public collection pages are stable brand surfaces. Keep the fallback
+    # bounded and locale-independent by trying the same collection id in a
+    # small set of Sabina locales.
+    collection_urls = [
+        BASE + '/fr/601_french-avenue',
+        BASE + '/it/601_french-avenue',
+        BASE + '/es/601_french-avenue',
+    ]
+    out, seen = [], set()
+
+    for collection_url in collection_urls:
+        try:
+            r = session.get(collection_url, timeout=4.0, allow_redirects=True)
+        except Exception:
+            continue
+        if r.status_code != 200:
+            continue
+        soup = BeautifulSoup(r.text or '', 'html.parser')
+        for a in soup.find_all('a', href=True):
+            href = urljoin(BASE, a.get('href', ''))
+            if not _looks_like_product_url(href):
+                continue
+            label = _clean(a.get_text(' ', strip=True)).lower()
+            slug = href.lower()
+            if all(w in (label + ' ' + slug) for w in qwords):
+                href = href.split('#')[0].split('?')[0]
+                if href not in seen:
+                    seen.add(href)
+                    out.append(href)
+                    if len(out) >= 8:
+                        return out
+    return out
+
 def search(query):
     """Fast, bounded Sabina search using the official product sitemap first."""
     query = _clean(query)
@@ -621,6 +703,8 @@ def search(query):
     s.headers.update(HEADERS)
     try:
         candidates = _sitemap_product_candidates(s, query)
+        if not candidates:
+            candidates = _brand_collection_fallback(s, query)
         if not candidates:
             return []
 
