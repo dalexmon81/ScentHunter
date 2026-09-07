@@ -942,3 +942,334 @@ def diagnostic_scraper_deep(
         return result
     finally:
         session.close()
+
+# ===== FORENSIC SCRAPER TRACE V2 (READ-ONLY) =====
+# This endpoint does NOT change scraper/search behaviour. It instruments the
+# existing scraper functions in-memory for one request and reports exactly
+# where a query/result disappears: HTTP -> raw HTML -> candidate extraction ->
+# query matching -> product parser -> final candidate rows.
+@app.get("/diagnostic-scraper-trace")
+def diagnostic_scraper_trace(
+    q: str = Query(..., min_length=1),
+    store: str = Query(..., min_length=1),
+):
+    import importlib as _trace_importlib
+    import time as _trace_time
+    import traceback as _trace_tb
+    import requests as _trace_requests
+
+    query = str(q or "").strip()
+    store_key = str(store or "").strip().lower()
+    allowed = {
+        "deloox": "scrapers.deloox.scraper",
+        "sabina": "scrapers.sabina.scraper",
+    }
+    if store_key not in allowed:
+        return {"ok": False, "diagnostic": "scraper_trace_v2", "error": "unsupported_store", "allowed_stores": sorted(allowed)}
+
+    started = _trace_time.monotonic()
+    try:
+        module = _trace_importlib.import_module(allowed[store_key])
+    except Exception as exc:
+        return {"ok": False, "diagnostic": "scraper_trace_v2", "stage": "module_load", "error": f"{type(exc).__name__}: {exc}"}
+
+    base = str(getattr(module, "BASE_URL", ""))
+    headers = dict(getattr(module, "HEADERS", {}) or {})
+    timeout = getattr(module, "TIMEOUT", None)
+
+    class _TraceSession(_trace_requests.Session):
+        def __init__(self):
+            super().__init__()
+            self.calls = []
+
+        def get(self, url, **kwargs):
+            t0 = _trace_time.monotonic()
+            try:
+                r = super().get(url, **kwargs)
+                body = r.text or ""
+                low = body.casefold()
+                self.calls.append({
+                    "url": str(url),
+                    "final_url": str(getattr(r, "url", "") or ""),
+                    "status": r.status_code,
+                    "bytes": len(r.content or b""),
+                    "elapsed_ms": round((_trace_time.monotonic() - t0) * 1000),
+                    "content_type": r.headers.get("content-type"),
+                    "query_found_raw_html": query.casefold() in low,
+                    "query_token_hits": {tok: tok.casefold() in low for tok in _trace_re_tokens(query)},
+                })
+                return r
+            except Exception as exc:
+                self.calls.append({
+                    "url": str(url), "status": None, "bytes": 0,
+                    "elapsed_ms": round((_trace_time.monotonic() - t0) * 1000),
+                    "error": f"{type(exc).__name__}: {exc}",
+                })
+                raise
+
+    def _trace_re_tokens(text):
+        return [x for x in re.findall(r"[a-z0-9]+", text.casefold()) if len(x) >= 3]
+
+    def _short(v, n=500):
+        s = re.sub(r"\s+", " ", str(v or "")).strip()
+        return s[:n]
+
+    def _restore(patches):
+        for obj, name, original in reversed(patches):
+            try:
+                setattr(obj, name, original)
+            except Exception:
+                pass
+
+    trace = {
+        "ok": True,
+        "diagnostic": "scraper_trace_v2",
+        "store": store_key,
+        "query": query,
+        "module": module.__name__,
+        "base_url": base,
+        "configured_timeout": timeout,
+        "query_tokens": _trace_re_tokens(query),
+        "stages": {},
+        "http_calls": [],
+        "function_trace": [],
+    }
+    session = _TraceSession()
+    if headers:
+        session.headers.update(headers)
+
+    patches = []
+
+    def _patch(obj, name, wrapper):
+        original = getattr(obj, name, None)
+        if callable(original):
+            patches.append((obj, name, original))
+            setattr(obj, name, wrapper(original))
+            return original
+        return None
+
+    try:
+        # ---- Deloox: instrument EVERY discovery sub-stage ----
+        if store_key == "deloox":
+            def wrap_candidate(original):
+                def wrapped(html, query_arg=None):
+                    before = _trace_time.monotonic()
+                    result = original(html, query_arg)
+                    urls = list(result or [])
+                    query_low = str(query_arg or query).casefold()
+                    # Independent evidence from the same HTML, without changing
+                    # the production parser: all hrefs whose visible href/text
+                    # contains at least one meaningful query token.
+                    soup = BeautifulSoup(html or "", "html.parser")
+                    evidence = []
+                    toks = _trace_re_tokens(query_low)
+                    for a in soup.find_all("a", href=True):
+                        href = str(a.get("href") or "")
+                        text = a.get_text(" ", strip=True)
+                        hay = (href + " " + text).casefold()
+                        hits = [t for t in toks if t in hay]
+                        if hits:
+                            evidence.append({"href": href[:500], "text": _short(text, 240), "token_hits": hits})
+                    entry = {
+                        "function": "_candidate_product_urls",
+                        "input_html_bytes": len(html or ""),
+                        "query": query_arg,
+                        "production_output_count": len(urls),
+                        "production_output": urls[:100],
+                        "independent_token_evidence_count": len(evidence),
+                        "independent_token_evidence": evidence[:100],
+                        "elapsed_ms": round((_trace_time.monotonic() - before) * 1000),
+                    }
+                    trace["function_trace"].append(entry)
+                    return result
+                return wrapped
+            _patch(module, "_candidate_product_urls", wrap_candidate)
+
+            for fname in ["_category_product_line_links", "_find_catalog_filter_url", "_discover_from_categories", "_sitemap_product_urls"]:
+                def make_wrap(name):
+                    def factory(original):
+                        def wrapped(*args, **kwargs):
+                            t0 = _trace_time.monotonic()
+                            try:
+                                result = original(*args, **kwargs)
+                                out = list(result or []) if isinstance(result, (list, tuple, set)) else result
+                                trace["function_trace"].append({
+                                    "function": name,
+                                    "returned_type": type(result).__name__,
+                                    "returned_count": len(out) if isinstance(out, (list, tuple, set)) else None,
+                                    "returned": out[:100] if isinstance(out, list) else _short(out, 1000),
+                                    "elapsed_ms": round((_trace_time.monotonic() - t0) * 1000),
+                                })
+                                return result
+                            except Exception as exc:
+                                trace["function_trace"].append({
+                                    "function": name,
+                                    "error": f"{type(exc).__name__}: {exc}",
+                                    "traceback": _short(_trace_tb.format_exc(), 1200),
+                                    "elapsed_ms": round((_trace_time.monotonic() - t0) * 1000),
+                                })
+                                raise
+                        return wrapped
+                    return factory
+                _patch(module, fname, make_wrap(fname))
+
+            discover = getattr(module, "_discover", None)
+            if not callable(discover):
+                raise RuntimeError("_discover_not_found")
+            t0 = _trace_time.monotonic()
+            urls = discover(session, query) or []
+            trace["stages"]["discovery"] = {
+                "elapsed_ms": round((_trace_time.monotonic() - t0) * 1000),
+                "candidate_url_count": len(urls),
+                "candidate_urls": list(urls)[:100],
+            }
+
+            # Now trace the exact parser decision for every discovered URL.
+            parser = getattr(module, "_product", None)
+            parsed, rejected = [], []
+            if callable(parser):
+                for url in list(urls)[:50]:
+                    try:
+                        r = session.get(url, headers=headers, timeout=timeout or 4)
+                        body = r.text or ""
+                        status = r.status_code
+                        if status >= 400:
+                            rejected.append({"url": url, "stage": "product_http", "reason": f"http_{status}"})
+                            continue
+                        item = parser(url, body, query)
+                        if item is None:
+                            rejected.append({
+                                "url": url,
+                                "stage": "product_parser",
+                                "reason": "parser_returned_none",
+                                "html_contains_query": query.casefold() in body.casefold(),
+                                "query_token_hits": {tok: tok.casefold() in body.casefold() for tok in _trace_re_tokens(query)},
+                            })
+                        else:
+                            parsed.append({"url": url, "item": item})
+                    except Exception as exc:
+                        rejected.append({"url": url, "stage": "product_parser_exception", "reason": f"{type(exc).__name__}: {exc}"})
+            trace["stages"]["product_parse"] = {
+                "parsed_count": len(parsed),
+                "parsed": parsed[:30],
+                "rejected_count": len(rejected),
+                "rejected": rejected[:50],
+            }
+
+        # ---- Sabina: instrument sitemap XML and HTML parser boundaries ----
+        else:
+            def wrap_xml(original):
+                def wrapped(text):
+                    result = original(text)
+                    locs = list(result or [])
+                    toks = _trace_re_tokens(query)
+                    matching = [u for u in locs if any(t in str(u).casefold() for t in toks)]
+                    trace["function_trace"].append({
+                        "function": "_xml_locs",
+                        "input_bytes": len(text or ""),
+                        "loc_count": len(locs),
+                        "query_token_matching_loc_count": len(matching),
+                        "query_token_matching_locs": matching[:100],
+                        "sample_locs": locs[:30],
+                    })
+                    return result
+                return wrapped
+            _patch(module, "_xml_locs", wrap_xml)
+
+            for fname in ["_extract_variants_from_html", "_parse_html", "_enrich_product_sizes", "_dedupe"]:
+                def make_sab_wrap(name):
+                    def factory(original):
+                        def wrapped(*args, **kwargs):
+                            t0 = _trace_time.monotonic()
+                            try:
+                                result = original(*args, **kwargs)
+                                if isinstance(result, (list, tuple, set)):
+                                    compact = list(result)
+                                    trace["function_trace"].append({
+                                        "function": name,
+                                        "returned_count": len(compact),
+                                        "returned_sample": compact[:20],
+                                        "elapsed_ms": round((_trace_time.monotonic() - t0) * 1000),
+                                    })
+                                else:
+                                    trace["function_trace"].append({
+                                        "function": name,
+                                        "returned_type": type(result).__name__,
+                                        "returned": result,
+                                        "elapsed_ms": round((_trace_time.monotonic() - t0) * 1000),
+                                    })
+                                return result
+                            except Exception as exc:
+                                trace["function_trace"].append({"function": name, "error": f"{type(exc).__name__}: {exc}", "traceback": _short(_trace_tb.format_exc(), 1200)})
+                                raise
+                        return wrapped
+                    return factory
+                _patch(module, fname, make_sab_wrap(fname))
+
+            sitemap = getattr(module, "_sitemap_product_candidates", None)
+            if not callable(sitemap):
+                raise RuntimeError("_sitemap_product_candidates_not_found")
+            t0 = _trace_time.monotonic()
+            urls = sitemap(session, query) or []
+            trace["stages"]["sitemap_discovery"] = {
+                "elapsed_ms": round((_trace_time.monotonic() - t0) * 1000),
+                "candidate_url_count": len(urls),
+                "candidate_urls": list(urls)[:100],
+            }
+
+            parser = getattr(module, "_parse_html", None)
+            getter = getattr(module, "_get", None)
+            parsed, rejected = [], []
+            if callable(parser):
+                for url in list(urls)[:50]:
+                    try:
+                        r = getter(session, url) if callable(getter) else session.get(url, headers=headers, timeout=timeout or 3, allow_redirects=True)
+                        if r is None:
+                            rejected.append({"url": url, "stage": "product_http", "reason": "getter_returned_none"})
+                            continue
+                        body = getattr(r, "text", "") or ""
+                        status = getattr(r, "status_code", None)
+                        if status is not None and status >= 400:
+                            rejected.append({"url": url, "stage": "product_http", "reason": f"http_{status}"})
+                            continue
+                        rows = parser(body, query) or []
+                        if rows:
+                            parsed.extend(rows[:50])
+                        else:
+                            rejected.append({
+                                "url": url,
+                                "stage": "product_parser",
+                                "reason": "parser_returned_zero",
+                                "html_contains_query": query.casefold() in body.casefold(),
+                                "query_token_hits": {tok: tok.casefold() in body.casefold() for tok in _trace_re_tokens(query)},
+                            })
+                    except Exception as exc:
+                        rejected.append({"url": url, "stage": "product_parser_exception", "reason": f"{type(exc).__name__}: {exc}"})
+
+            trace["stages"]["product_parse"] = {
+                "parsed_count": len(parsed),
+                "parsed": parsed[:50],
+                "rejected_count": len(rejected),
+                "rejected": rejected[:50],
+            }
+
+        trace["http_calls"] = session.calls
+        trace["summary"] = {
+            "http_call_count": len(session.calls),
+            "successful_http_calls": sum(1 for x in session.calls if x.get("status") and x.get("status") < 400),
+            "http_errors": sum(1 for x in session.calls if x.get("status") is None or x.get("status", 0) >= 400),
+            "total_elapsed_ms": round((_trace_time.monotonic() - started) * 1000),
+        }
+        return trace
+    except Exception as exc:
+        trace["error"] = f"{type(exc).__name__}: {exc}"
+        trace["traceback"] = _short(_trace_tb.format_exc(), 2000)
+        trace["http_calls"] = session.calls
+        trace["summary"] = {"http_call_count": len(session.calls), "total_elapsed_ms": round((_trace_time.monotonic() - started) * 1000)}
+        return trace
+    finally:
+        _restore(patches)
+        try:
+            session.close()
+        except Exception:
+            pass
