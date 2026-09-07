@@ -632,6 +632,108 @@ def _pagination_urls(page_url, max_pages=8):
         yield f"{base}?page={page}"
 
 
+
+def _filter_target_urls(html, query):
+    """Recover category/filter targets represented as labels, forms or data attrs.
+
+    Deloox's broad catalogue can render a Product Line such as "Liquid Brun"
+    as a filter control rather than as a normal category <a>. The old discovery
+    only accepted /categorie/... links, so the filter was visible in the HTML
+    but never followed. This helper converts the matching control into a real
+    URL when the page exposes either a direct URL or a GET form/value pair.
+    """
+    soup = BeautifulSoup(html, "html.parser")
+    q = norm(query)
+    qt = tokens(query)
+    if not q or not qt:
+        return []
+
+    out, seen = [], set()
+
+    def add(raw):
+        if not raw:
+            return
+        raw = clean(str(raw)).replace("\\/", "/")
+        if raw.startswith(("javascript:", "mailto:", "#")):
+            return
+        u = urljoin(BASE_URL, raw).split("#")[0]
+        try:
+            parsed = urlparse(u)
+        except Exception:
+            return
+        if parsed.netloc.lower() not in {"deloox.be", "www.deloox.be"}:
+            return
+        path = parsed.path.lower()
+        if "/category/" not in path and "/categorie/" not in path:
+            return
+        if u not in seen:
+            seen.add(u)
+            out.append(u)
+
+    def attrs_urls(node):
+        for key, value in getattr(node, "attrs", {}).items():
+            if key.lower() in {"action", "method", "class", "id", "name", "value"}:
+                continue
+            if isinstance(value, (list, tuple)):
+                value = " ".join(map(str, value))
+            if not isinstance(value, str):
+                continue
+            low = value.lower()
+            if "category" in low or "categorie" in low:
+                add(value)
+
+    # Exact/near-exact text nodes for the requested Product Line.
+    targets = []
+    for node in soup.find_all(["a", "label", "span", "div", "li", "option"]):
+        text = norm(node.get_text(" ", strip=True))
+        if not text:
+            continue
+        tt = tokens(text)
+        if qt.issubset(tt) and len(text) <= max(80, len(q) + 35):
+            targets.append(node)
+
+    for node in targets[:30]:
+        # Direct and ancestor data attributes / hrefs.
+        cur = node
+        for _ in range(5):
+            if cur is None:
+                break
+            attrs_urls(cur)
+            for attr in ("href", "data-href", "data-url", "data-link", "data-target", "data-filter-url", "value"):
+                value = cur.get(attr)
+                if isinstance(value, str) and ("category" in value.lower() or "categorie" in value.lower()):
+                    add(value)
+            cur = cur.parent
+
+        # GET form fallback: build the action URL from the matching control's
+        # name/value. This is generic and does not assume a parameter name.
+        form = node.find_parent("form")
+        if form:
+            action = form.get("action") or ""
+            method = (form.get("method") or "get").lower()
+            if method == "get" and action:
+                from urllib.parse import urlencode
+                params = {}
+                for inp in form.find_all(["input", "select"]):
+                    name = inp.get("name")
+                    if not name:
+                        continue
+                    if inp.name == "input":
+                        typ = (inp.get("type") or "text").lower()
+                        if typ in {"submit", "button", "reset"}:
+                            continue
+                        value = inp.get("value")
+                    else:
+                        selected = inp.find("option", selected=True) or inp.find("option")
+                        value = selected.get("value") if selected else None
+                    if value is not None:
+                        params[str(name)] = str(value)
+                # Prefer the control that visibly contains the query.
+                if params:
+                    add(urljoin(BASE_URL, action) + "?" + urlencode(params))
+
+    return out
+
 def _discover_from_categories(session, query, max_urls=120, deadline=None):
     """Discover products through Deloox's category/filter hierarchy.
 
@@ -717,7 +819,10 @@ def _discover_from_categories(session, query, max_urls=120, deadline=None):
         if add_products(html):
             return urls[:max_urls]
 
-        for cat_url in category_candidates(html)[:3]:
+        # Product Line filters can be rendered as labels/forms rather than
+        # category anchors. Try those targets before generic category links.
+        filter_targets = _filter_target_urls(html, query)
+        for cat_url in (filter_targets + category_candidates(html))[:4]:
             if deadline is not None and time.monotonic() >= deadline:
                 break
             try:
