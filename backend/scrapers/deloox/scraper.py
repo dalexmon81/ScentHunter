@@ -360,7 +360,11 @@ def _candidate_product_urls(html, query=None):
     if exact:
         return exact[:80]
 
-    return [url for url, _meta in ordered[:80]]
+    # Never feed unrelated products into the parser just because a broad
+    # category page exposed numeric product URLs. If the query is not present
+    # in the discovery context, return no candidate and let the caller continue
+    # with the next bounded discovery page.
+    return []
 
 
 def _category_product_line_links(html, query):
@@ -787,166 +791,83 @@ def _sitemap_product_urls(session, query, max_sitemaps=2, max_urls=8, request_ti
 
 
 def _discover(session, q):
-    """Fast, bounded Deloox discovery.
+    """Bounded, query-faithful Deloox discovery.
 
-    Hard budget prevents discovery fallbacks from keeping the whole store task
-    open. Product parsing remains authoritative for identity, size and stock.
+    Deloox search/sitemap endpoints currently return 404. The reliable public
+    surface is the category catalogue. We therefore crawl a bounded number of
+    category pages in parallel and stop as soon as the requested product name
+    is actually present in a product-card context. No product-specific URL is
+    hard-coded here.
     """
+    from concurrent.futures import ThreadPoolExecutor, as_completed
+
     started = time.monotonic()
     deadline = started + 7.5
-    urls = []
     seen = set()
+    found = []
 
     def add_many(items, limit=8):
         for url in items:
             if url not in seen:
                 seen.add(url)
-                urls.append(url)
-                if len(urls) >= limit:
+                found.append(url)
+                if len(found) >= limit:
                     return True
         return False
 
-    def remaining_timeout(default=TIMEOUT):
-        return max(0.8, min(default, deadline - time.monotonic()))
-
-    # PRIMARY: current Belgian localized search, then generic search.
-    endpoints = (
-        BASE_URL + "/en/search?q=" + quote_plus(q),
-        BASE_URL + "/search?q=" + quote_plus(q),
-    )
-
-    for endpoint in endpoints:
-        if time.monotonic() >= deadline:
-            return urls[:8]
+    def fetch(url):
         try:
-            r = session.get(
-                endpoint,
-                headers=HEADERS,
-                timeout=remaining_timeout(),
-            )
-        except requests.RequestException:
-            continue
-
-        if r.status_code >= 400:
+            r = session.get(url, headers=HEADERS, timeout=min(TIMEOUT, max(1.0, deadline-time.monotonic())))
+            status = r.status_code
+            text = r.text if status < 400 else ""
             r.close()
-            continue
-
-        candidates = _candidate_product_urls(r.text, q)
-        r.close()
-
-        if candidates:
-            add_many(candidates)
-            return urls[:8]
-
-    if time.monotonic() >= deadline:
-        return urls[:8]
-
-    # SECONDARY: use Deloox's product sitemap directly. This path already
-    # exists in the adapter and is generic: the query is matched against the
-    # canonical product URL, then _product() performs authoritative validation.
-    # Keep it tightly bounded so sitemap discovery cannot become the new bottleneck.
-    try:
-        sitemap_urls = _sitemap_product_urls(
-            session,
-            q,
-            max_sitemaps=2,
-            max_urls=8,
-            request_timeout=min(1.8, max(0.8, deadline - time.monotonic())),
-        )
-        if sitemap_urls:
-            add_many(sitemap_urls)
-            return urls[:8]
-    except Exception:
-        pass
-
-    if time.monotonic() >= deadline:
-        return urls[:8]
-
-    # TERTIARY: use Deloox catalogue/filter discovery before falling back to a
-    # broad category. This is generic: the live catalogue may expose a
-    # Product-line category/filter whose label or slug exactly matches q.
-    try:
-        filter_url = _find_catalog_filter_url(session, q)
-    except Exception:
-        filter_url = None
-
-    if filter_url and time.monotonic() < deadline:
-        try:
-            page = session.get(
-                filter_url,
-                headers=HEADERS,
-                timeout=remaining_timeout(),
-            )
+            return url, status, text
         except requests.RequestException:
-            page = None
-        if page is not None:
-            if page.status_code < 400:
-                candidates = _candidate_product_urls(page.text, q)
-                if candidates:
-                    add_many(candidates)
-                    page.close()
-                    return urls[:8]
-            page.close()
+            return url, 0, ""
 
-    # ONE bounded category fallback.
-    try:
-        roots = list(_category_pages(session))[:1]
-    except Exception:
-        roots = []
+    # One known-good public catalogue entry point, then bounded pagination.
+    root = BASE_URL + "/categorie/1075732/parfum-homme.html"
+    pages = [root] + [f"{root}?page={n}" for n in range(2, 13)]
 
-    for root in roots:
-        if time.monotonic() >= deadline:
-            break
-        try:
-            r = session.get(
-                root,
-                headers=HEADERS,
-                timeout=remaining_timeout(),
-            )
-        except requests.RequestException:
-            continue
-
-        if r.status_code >= 400:
-            r.close()
-            continue
-
-        html = r.text
-        r.close()
-
-        candidates = _candidate_product_urls(html, q)
-        if candidates:
-            add_many(candidates)
-            return urls[:8]
-
-        try:
-            matching = _category_product_line_links(html, q)[:1]
-        except Exception:
-            matching = []
-
-        for line_url in matching:
+    # Fetch several catalogue pages concurrently. This avoids the old 11–15 s
+    # serial crawl while still giving the query a real chance to be found.
+    with ThreadPoolExecutor(max_workers=4) as ex:
+        futures = [ex.submit(fetch, u) for u in pages]
+        for fut in as_completed(futures):
             if time.monotonic() >= deadline:
                 break
-            try:
-                page = session.get(
-                    line_url,
-                    headers=HEADERS,
-                    timeout=remaining_timeout(),
-                )
-            except requests.RequestException:
+            _url, status, html = fut.result()
+            if status >= 400 or not html:
                 continue
-
-            if page.status_code >= 400:
-                page.close()
-                continue
-
-            candidates = _candidate_product_urls(page.text, q)
-            page.close()
+            candidates = _candidate_product_urls(html, q)
             if candidates:
                 add_many(candidates)
-                return urls[:8]
+                if found:
+                    return found[:8]
 
-    return urls[:8]
+    # If the men's catalogue did not contain it, make one bounded pass through
+    # the other fragrance catalogue roots. We only keep pages whose own HTML
+    # contains the requested query, so unrelated products can never leak out.
+    other_roots = [
+        BASE_URL + "/categorie/1075639/parfums-femme.html",
+        BASE_URL + "/categorie/1075660/parfum-femme.html",
+        BASE_URL + "/categorie/1025540/tendances.html",
+    ]
+    with ThreadPoolExecutor(max_workers=3) as ex:
+        futures = [ex.submit(fetch, u) for u in other_roots]
+        for fut in as_completed(futures):
+            if time.monotonic() >= deadline:
+                break
+            _url, status, html = fut.result()
+            if status >= 400 or not html:
+                continue
+            candidates = _candidate_product_urls(html, q)
+            if candidates:
+                add_many(candidates)
+                if found:
+                    return found[:8]
 
+    return found[:8]
 def diagnostic_discovery(query):
     session = requests.Session()
     out = {"query": query, "stages": []}
