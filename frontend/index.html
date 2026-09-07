@@ -84,10 +84,10 @@ html,body{min-height:100%;overflow-x:hidden}
 .nav{position:fixed!important;left:0!important;right:0!important;bottom:0!important;top:auto!important;transform:none!important;width:100%!important;max-width:760px!important;margin:0 auto!important;z-index:99999!important;padding-bottom:calc(9px + env(safe-area-inset-bottom))!important}
 .app{padding-bottom:calc(125px + env(safe-area-inset-bottom))!important}
 
-/* iPhone/Safari: scroll naturale della pagina + barra inferiore fissa */
-html,body{height:auto!important;min-height:100%!important;overflow-x:hidden!important;overflow-y:auto!important}
+/* iPhone/Safari: viewport stabile + contenuto scrollabile */
+html,body{height:100%;height:100dvh;overflow:hidden!important}
 body{position:relative}
-.app{width:100%!important;max-width:760px!important;height:auto!important;min-height:100vh!important;overflow:visible!important;-webkit-overflow-scrolling:touch;padding-bottom:calc(125px + env(safe-area-inset-bottom))!important}
+.app{width:100%!important;max-width:760px!important;height:100%;height:100dvh;min-height:0!important;overflow-x:hidden!important;overflow-y:auto;-webkit-overflow-scrolling:touch;padding-bottom:calc(125px + env(safe-area-inset-bottom))!important}
 .nav{position:fixed!important;left:0!important;right:0!important;bottom:0!important;top:auto!important;transform:none!important;width:100%!important;max-width:760px!important;margin:0 auto!important;z-index:2147483647!important}
 </style>
 
@@ -1625,13 +1625,6 @@ function productGroupKey(g){
   return normalizePerfumeName(`${g?.brand||""}|${g?.name||""}`).toLowerCase().trim();
 }
 
-function scrollResultsToTop(){
-  const el=document.getElementById("searchOutput");
-  if(!el)return;
-  const top=Math.max(0,el.getBoundingClientRect().top + window.pageYOffset - 12);
-  window.scrollTo({top,behavior:"smooth"});
-}
-
 function clearOpenProduct(){
   currentOpenProductKey="";
   currentOpenSizeKey=null;
@@ -1640,9 +1633,9 @@ function clearOpenProduct(){
 function showProducts(groups){
   currentProductGroups=groups;
   clearOpenProduct();
-  if(groups.length){
-    statusBox.textContent=groups.length+(groups.length===1?" profumo trovato.":" profumi trovati.");
-  }
+  statusBox.textContent=groups.length
+    ?groups.length+(groups.length===1?" profumo trovato.":" profumi trovati.")
+    :"Nessun profumo trovato.";
 
   resultsBox.innerHTML=groups.map((g,i)=>{
     const sizes=getSizeGroups(g);
@@ -1731,7 +1724,7 @@ function renderFormatChoiceCard(gi,g,comparisons,sizes){
       </div>`;
     }).join("")}
   </article>`;
-  scrollResultsToTop();
+  document.getElementById("searchOutput").scrollIntoView({behavior:"smooth",block:"start"});
 }
 
 async function openProduct(i){
@@ -1756,7 +1749,7 @@ async function openProduct(i){
 
   // DUE O TRE FORMATI: seconda scheda = formati + PREZZO PIÙ BASSO.
   resultsBox.innerHTML=`<article class="comparison"><button class="detail-back" onclick="clearOpenProduct();showProducts(currentProductGroups)">← Torna ai profumi</button><div class="comparison-head"><div class="result-image">${img?`<img src="${esc(img)}" alt="${esc(displayPerfumeName(g.name,g.brand))}" onerror="this.outerHTML='🧴'">`:"🧴"}</div><div class="result-main"><div class="store">${esc(g.brand||"")}</div><div class="name">${esc(displayPerfumeName(g.name,g.brand))}</div></div></div><div class="bestlabel">CONFRONTA I FORMATI</div><div class="offer-meta" style="margin-bottom:12px">Cerco il prezzo più basso per ogni formato...</div><div class="format-loading" aria-hidden="true">⏳</div></article>`;
-  scrollResultsToTop();
+  document.getElementById("searchOutput").scrollIntoView({behavior:"smooth",block:"start"});
 
   try{
     const comparisons=await fetchFormatComparisons(g,sizes);
@@ -1784,7 +1777,7 @@ async function openProduct(i){
 
 function renderSingleFormatComparison(g,img,offers,size,saved){
   resultsBox.innerHTML=`<article class="comparison"><button class="detail-back" onclick="clearOpenProduct();showProducts(currentProductGroups)">← Torna ai profumi</button><div class="comparison-head"><div class="result-image">${img?`<img src="${esc(img)}" alt="${esc(displayPerfumeName(g.name,g.brand))}" onerror="this.outerHTML='🧴'">`:"🧴"}</div><div class="result-main"><div class="store">${esc(g.brand||"")}</div><div class="name">${esc(displayPerfumeName(g.name,g.brand))}</div></div></div><div class="format-compare-bar"><div class="format-compare-item"><div class="format-compare-copy"><div class="format-compare-label">FORMATO</div><div class="format-compare-value">${esc(formatLabel(size)||"Formato")}</div></div></div><div class="format-compare-item"><div class="format-compare-copy"><div class="format-compare-label">CONFRONTA I PREZZI</div><div class="format-compare-value">${offers.length} ${offers.length===1?"negozio":"negozi"}</div></div></div></div>${renderOffersHtml(g,img,offers,saved)}</article>`;
-  scrollResultsToTop();
+  document.getElementById("searchOutput").scrollIntoView({behavior:"smooth",block:"start"});
 }
 
 function renderOffersHtml(g,img,offers,saved){
@@ -1805,7 +1798,7 @@ function openSize(gi,sizeKey,fromFormats=true){
   const offers=selected.offers||[]; const saved=getWishlist(); const img=g.image||"";
   statusBox.textContent="";
   resultsBox.innerHTML=`<article class="comparison"><button class="detail-back" onclick="openProduct(${gi})">← Torna ai formati</button><div class="comparison-head"><div class="result-image">${img?`<img src="${esc(img)}" alt="${esc(displayPerfumeName(g.name,g.brand))}" onerror="this.outerHTML='🧴'">`:"🧴"}</div><div class="result-main"><div class="store">${esc(g.brand||"")}</div><div class="name">${esc(displayPerfumeName(g.name,g.brand))}</div><div class="offer-meta">${esc(formatLabel(String(selected.size)))}</div></div></div><div class="format-compare-bar"><div class="format-compare-item"><div class="format-compare-copy"><div class="format-compare-label">FORMATO</div><div class="format-compare-value">${esc(formatLabel(String(selected.size)))}</div></div></div><div class="format-compare-item"><div class="format-compare-copy"><div class="format-compare-label">CONFRONTA I PREZZI</div><div class="format-compare-value">${offers.length} ${offers.length===1?"negozio":"negozi"}</div></div></div></div>${renderOffersHtml(g,img,offers,saved)}</article>`;
-  scrollResultsToTop();
+  document.getElementById("searchOutput").scrollIntoView({behavior:"smooth",block:"start"});
 }
 
 function chooseOffer(gi,sizeKey,oi){
@@ -1842,7 +1835,7 @@ function chooseOffer(gi,sizeKey,oi){
   }
 }
 
-async function fetchJSONWithTimeout(url,ms=40000){
+async function fetchJSONWithTimeout(url,ms=90000){
  const controller=new AbortController();
  const timer=setTimeout(()=>controller.abort(),ms);
  try{
@@ -1919,89 +1912,168 @@ async function getSearchStores(term){
 
 async function searchStoresProgressive(term,onPartial){
  const merged={query:term,comparisons:[],results:[],errors:{}};
+ const timeoutMs=45000;
+ const concurrency=4;
  const stores=await getSearchStores(term);
- const clientTimeoutMs=68000;
- const pollMs=400;
 
  /*
-  * LA RICERCA LIVE PASSA DAL JOB CENTRALE.
+  * ARCHIVIO PROGRESSIVO IMMUTABILE.
   *
-  * Non interrogare /test-store dal browser: quell'endpoint è diagnostico e
-  * faceva partire 8 chiamate in quattro batch, con 45s + retry per ogni batch.
-  * Il job centrale avvia invece tutti gli store insieme, isola gli errori e
-  * pubblica i risultati progressivamente tramite /search-status.
+  * Una ricerca progressiva non deve mai perdere un'offerta già mostrata.
+  * Il rendering successivo viene ricostruito da shGroupData(); per sicurezza
+  * conserviamo quindi ogni risultato concreto già ricevuto, indicizzato per
+  * negozio + URL + formato + nome. Un batch successivo può aggiungere dati,
+  * ma non può cancellare Deloox (o qualunque altro negozio) già arrivato.
   */
- let lastData={...merged};
- let jobId=null;
- let finished=false;
+ const resultArchive=new Map();
+ const comparisonArchive=new Map();
 
- try{
-  const startData=await fetchJSONWithTimeout(
-   backend()+"/search-start?q="+encodeURIComponent(term),
-   8000
-  );
+ /*
+  * IDENTITÀ IMMUTABILE DELL'OFFERTA.
+  *
+  * Il nome NON può far parte della chiave quando esiste un URL: lo stesso
+  * prodotto Deloox può infatti arrivare in più snapshot con nomi diversi
+  * (nome scraper -> nome validato -> nome finale). Se usassimo anche il nome
+  * nella chiave, creeremmo tre record distinti per la stessa offerta.
+  *
+  * Regola:
+  *   1) negozio + URL canonico, se l'URL esiste;
+  *   2) negozio + product/id/sku + formato, se manca l'URL;
+  *   3) negozio + formato + nome normalizzato, solo come ultima possibilità.
+  *
+  * In questo modo un'offerta già ricevuta non può sparire né duplicarsi solo
+  * perché il backend ha migliorato il nome durante la ricerca.
+  */
+ const stableArchiveKey=(store,offer)=>{
+  const offerStore=String(store||offer?.store||"").trim().toLowerCase();
+  const url=String(offer?.url||offer?._source_url||offer?.product_url||offer?.productUrl||"")
+    .split("?")[0].split("#")[0].trim().toLowerCase();
+  if(offerStore&&url)return offerStore+"|url|"+url;
 
-  jobId=String(startData?.job_id||"").trim();
-  if(!jobId)throw new Error("Job di ricerca non avviato");
+  const id=String(offer?.product_id||offer?.productId||offer?.id||offer?.sku||offer?.product_sku||"").trim().toLowerCase();
+  const size=String(offer?.size_ml||offer?.size||offer?.attributes?.size_ml?.value||"").trim().toLowerCase();
+  if(offerStore&&id)return offerStore+"|id|"+id+"|size|"+size;
 
-  if(Array.isArray(startData?.results)){
-   lastData={...lastData,...startData,results:startData.results,comparisons:Array.isArray(startData.comparisons)?startData.comparisons:[]};
-   if(typeof onPartial==="function")onPartial(lastData,false);
+  const name=normalizePerfumeName(offer?.name||offer?.title||offer?.product_name||"");
+  if(offerStore&&name)return offerStore+"|name|"+name+"|size|"+size;
+  return "";
+ };
+
+ const mergeArchivedOffer=(old,incoming)=>{
+  if(!old)return incoming;
+
+  // Non perdiamo mai metadati già ricevuti; se il nuovo snapshot è più ricco,
+  // li completa. Il prezzo migliore resta quello mostrabile.
+  const merged={...old};
+  Object.entries(incoming||{}).forEach(([key,value])=>{
+   if(value!==undefined&&value!==null&&value!=="" && (merged[key]===undefined||merged[key]===null||merged[key]==="")){
+    merged[key]=value;
+   }
+  });
+
+  // Il backend può cambiare nome/brand tra gli snapshot: il valore più recente
+  // e più informativo deve poter aggiornare quello precedente.
+  if(incoming.name)merged.name=incoming.name;
+  if(incoming.brand)merged.brand=incoming.brand;
+  if(incoming.concentration)merged.concentration=incoming.concentration;
+  if(incoming.image||incoming.image_url||incoming.thumbnail){
+   merged.image=incoming.image||incoming.image_url||incoming.thumbnail;
   }
+  if(incoming.size_ml||incoming.size)merged.size_ml=incoming.size_ml||incoming.size;
+  if(incoming.url)merged.url=incoming.url;
+  if(incoming._source_url)merged._source_url=incoming._source_url;
+  if(incoming.store)merged.store=incoming.store;
 
-  const deadline=Date.now()+clientTimeoutMs;
+  if(shNum(incoming)<shNum(old)){
+   return {...merged,...incoming};
+  }
+  return merged;
+ };
 
-  while(Date.now()<deadline){
-   await new Promise(resolve=>setTimeout(resolve,pollMs));
+ const archiveResult=(store,offer)=>{
+  if(!offer||typeof offer!=="object")return;
 
-   let data;
-   try{
-    data=await fetchJSONWithTimeout(
-     backend()+"/search-status?job_id="+encodeURIComponent(jobId),
-     7000
+  // Alcuni endpoint restituiscono un contenitore prodotto con brand/nome/size
+  // a livello padre e le offerte dentro `offers`. Questi metadati devono
+  // seguire l'offerta durante l'archiviazione, altrimenti il raggruppatore
+  // non riesce più a riconoscerla (caso osservato con Deloox).
+  const nested=Array.isArray(offer.offers)?offer.offers:[offer];
+  nested.forEach(o=>{
+   if(!o||typeof o!=="object")return;
+
+   const normalized={
+    ...o,
+    brand:o.brand||offer.brand||"",
+    name:o.name||o.title||o.product_name||offer.name||offer.title||offer.product_name||"",
+    size_ml:o.size_ml||o.size||offer.size_ml||offer.size||offer.attributes?.size_ml?.value||"",
+    concentration:o.concentration||offer.concentration||"",
+    image:o.image||o.image_url||o.thumbnail||offer.image||offer.image_url||offer.thumbnail||"",
+    store:o.store||store||""
+   };
+
+   const key=stableArchiveKey(store,normalized);
+   if(!key)return;
+   resultArchive.set(key,mergeArchivedOffer(resultArchive.get(key),normalized));
+  });
+ };
+
+ const archiveComparison=(group)=>{
+  if(!group||typeof group!=="object")return;
+  const size=String(group.size_ml||group.size||"").trim();
+  const name=normalizePerfumeName(group.name||group.product_name||"");
+  const brand=normalizePerfumeName(group.brand||"");
+  const key=[brand,name,size].join("|");
+  if(!key.replace(/\|/g,""))return;
+  const old=comparisonArchive.get(key);
+  if(!old){comparisonArchive.set(key,{...group,offers:Array.isArray(group.offers)?group.offers.map(o=>({...o})):[]});return;}
+  const offers=[...(Array.isArray(old.offers)?old.offers:[]),...(Array.isArray(group.offers)?group.offers:[])];
+  comparisonArchive.set(key,{...old,...group,offers});
+ };
+
+ const rebuildMerged=()=>{
+  merged.results=[...resultArchive.values()];
+  merged.comparisons=[...comparisonArchive.values()];
+ };
+
+ for(let i=0;i<stores.length;i+=concurrency){
+  const pair=stores.slice(i,i+concurrency);
+  statusBox.textContent="";
+
+  const responses=await Promise.allSettled(pair.map(store=>
+   fetchJSONWithTimeout(
+    backend()+"/test-store?store="+encodeURIComponent(store)+"&q="+encodeURIComponent(term),
+    timeoutMs
+   ).catch(async()=>{
+    await new Promise(resolve=>setTimeout(resolve,350));
+    return fetchJSONWithTimeout(
+     backend()+"/test-store?store="+encodeURIComponent(store)+"&q="+encodeURIComponent(term),
+     timeoutMs
     );
-   }catch(e){
-    // Un singolo polling fallito non deve cancellare una ricerca già avviata.
-    if(Date.now()>=deadline)throw e;
-    continue;
+   })
+  ));
+
+  responses.forEach((r,k)=>{
+   const store=pair[k];
+   if(r.status!=="fulfilled"){
+    merged.errors[store]=String(r.reason?.message||"timeout");
+    return;
    }
+   const data=r.value||{};
+   if(Array.isArray(data.results))data.results.forEach(item=>archiveResult(store,item));
+   if(Array.isArray(data.comparisons))data.comparisons.forEach(group=>archiveComparison(group));
+   if(data.errors&&typeof data.errors==="object")Object.entries(data.errors).forEach(([name,error])=>{
+    if(!merged.errors[name])merged.errors[name]=error;
+   });
+   if(data.error)merged.errors[store]=data.error;
+  });
 
-   if(data&&typeof data==="object"){
-    lastData={
-     ...lastData,
-     ...data,
-     results:Array.isArray(data.results)?data.results:lastData.results,
-     comparisons:Array.isArray(data.comparisons)?data.comparisons:lastData.comparisons,
-     errors:data.errors&&typeof data.errors==="object"?data.errors:lastData.errors
-    };
-
-    if(typeof onPartial==="function")onPartial(lastData,Boolean(data.completed));
-
-    if(data.completed){
-     finished=true;
-     break;
-    }
-   }
-  }
-
-  if(!finished){
-   /*
-    * Il backend ha una finestra globale di 30s. Se il browser arriva qui,
-    * restituiamo l'ultimo snapshot invece di lanciare un errore che farebbe
-    * apparire la ricerca come "fallita".
-    */
-   lastData.errors={...(lastData.errors||{}),_search:"Finestra client scaduta"};
-  }
- }catch(e){
-  if(jobId){
-   lastData.errors={...(lastData.errors||{}),_search:String(e?.message||"Errore ricerca")};
-  }else{
-   throw e;
-  }
+  rebuildMerged();
+  if(typeof onPartial==="function")onPartial(merged,false);
  }
 
- if(typeof onPartial==="function")onPartial(lastData,true);
- return lastData;
+ rebuildMerged();
+ if(typeof onPartial==="function")onPartial(merged,true);
+ return merged;
 }
 
 async function searchPerfume(){
