@@ -514,12 +514,24 @@ def _sitemap_product_candidates(session, query):
 
     # Official advertised sitemap first, then common PrestaShop sitemap entry
     # points. Keep this bounded; one broken sitemap must not stall the store.
+    # Sabina exposes a PrestaShop multi-language installation. The advertised
+    # master sitemap currently responds with an empty 121-byte document, so
+    # also probe the standard per-language gsitemap files used by PrestaShop.
+    # These are generic filenames, not product/brand-specific URLs.
     index_urls = [
         BASE + '/sitemap_index_shop_1.xml',
+        BASE + '/1_index_sitemap.xml',
         BASE + '/sitemap.xml',
         BASE + '/sitemap_index.xml',
         BASE + '/sitemap-index.xml',
-        BASE + '/1_index_sitemap.xml',
+    ] + [
+        BASE + f'/{shop}_' + lang + '_0_sitemap.xml'
+        for shop in ('1',)
+        for lang in ('it','fr','en','es','pt','nl','de','pl','da','sv','tw')
+    ] + [
+        BASE + '/as4_seositemap.xml',
+        BASE + '/as4_seositemap-1.xml',
+        BASE + '/as4_seositemap-2.xml',
     ]
 
     for index_url in index_urls:
