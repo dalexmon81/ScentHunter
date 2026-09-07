@@ -225,6 +225,9 @@ class SearchEngine:
             return 0
         if value in {"out_of_stock", "oos", "unavailable", "sold_out", "sold out", "false", "0"}:
             return 2
+        available = item.get("available")
+        if isinstance(available, bool):
+            return 0 if available else 2
         return 1
 
     @staticmethod
@@ -252,6 +255,9 @@ class SearchEngine:
             offers = item.get("offers")
             if isinstance(offers, list) and offers:
                 clean = [dict(x) for x in offers if isinstance(x, dict)]
+                for offer in clean:
+                    if not offer.get("availability") and isinstance(offer.get("available"), bool):
+                        offer["availability"] = "in_stock" if offer["available"] else "out_of_stock"
                 clean.sort(key=offer_key)
                 item["offers"] = clean
                 item["offer_count"] = len(clean)
