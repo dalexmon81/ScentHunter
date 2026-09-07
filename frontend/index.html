@@ -1,3 +1,4 @@
+<!-- ScentHunter INDEX FINAL V4 - family search serialized to prevent backend saturation -->
 <!DOCTYPE html>
 <html lang="it">
 <head>
@@ -11,7 +12,7 @@
 .search-card{padding:0;margin:0 0 18px;border:0;background:none}
 input{width:100%;border:1px solid #34363a;outline:0;border-radius:18px;padding:17px 18px 17px 48px;background:linear-gradient(135deg,#181a1d,#101113);color:white;font-size:17px}
 .searchwrap{position:relative} .searchicon{position:absolute;left:17px;top:13px;font-size:24px;z-index:2}
-button{border:0;font-weight:800} #searchButton{display:block!important} #status{display:none!important}
+button{border:0;font-weight:800} #searchButton{display:block!important}
 .hero{border:1px solid #234638;border-radius:22px;padding:25px 20px;background:radial-gradient(circle at 85% 45%,#173c2d 0,#0b1c16 24%,#07100d 58%,#060808 100%);min-height:205px;position:relative;overflow:hidden}
 .hero h2{font-size:22px;margin:0 0 12px;max-width:64%;line-height:1.1} .hero p{font-size:16px;line-height:1.45;margin:0 0 18px;max-width:58%}
 .herobtn{display:inline-block;background:linear-gradient(#f4ca5d,#d99c22);color:#111;padding:13px 20px;border-radius:30px;font-size:14px;font-weight:900}
@@ -22,7 +23,7 @@ button{border:0;font-weight:800} #searchButton{display:block!important} #status{
 .pic{height:95px;display:flex;align-items:center;justify-content:center;font-size:55px} .brand{font-size:12px;color:#ddd} .pname{font-size:12px;font-weight:700;line-height:1.25;min-height:30px} .dprice{color:#52ce76;font-size:18px;font-weight:900;margin-top:5px} .shop{font-size:11px;color:#aaa;margin-top:4px}
 .cats{margin-top:28px} .catrow{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin-top:12px} .cat{border:1px solid #34363a;border-radius:16px;background:#111315;text-align:center;padding:13px 3px 10px;font-size:10px} .cat b{display:block;font-size:25px;color:#e5ad36;margin-bottom:7px}
 .smart{margin-top:26px;border:1px solid #303236;border-radius:20px;background:linear-gradient(120deg,#111416,#080a0b);padding:20px;display:flex;align-items:center;gap:18px} .smarticon{font-size:47px;color:#e4ae37} .smart strong{color:#e7b83f;font-size:20px} .smart p{margin:5px 0 0;line-height:1.35}
-#searchOutput{margin-bottom:18px} #status{margin:14px 5px 10px;color:#b6b6bd;font-size:16px;line-height:1.4} .result,.comparison{margin-top:12px;padding:17px;border:1px solid #303238;border-radius:18px;background:#121416}
+#searchOutput{margin-bottom:18px} #status{margin:14px 5px 10px;color:#fff;font-size:16px;line-height:1.4} #status{display:block!important;min-height:22px} .result,.comparison{margin-top:12px;padding:17px;border:1px solid #303238;border-radius:18px;background:#121416}
 .store,.badge{color:#e7b83f;font-size:12px;font-weight:900;text-transform:uppercase} .name{margin-top:7px;font-size:18px;font-weight:750} .price,.offer-price{font-weight:900;color:#55ce78} .result a,.offer a{display:inline-block;margin-top:10px;color:#e7b83f;text-decoration:none;font-weight:700}
 .offer{padding:12px 0;border-top:1px solid #303238} .offer-row{display:flex;justify-content:space-between;gap:12px} .offer-store{font-weight:800} .saving{margin:9px 0;color:#8ee6ad;font-weight:800} #errorsBox{margin:20px 5px;color:#85858d;font-size:13px}
 .nav{position:fixed;z-index:20;bottom:0;left:50%;transform:translateX(-50%);width:min(100%,760px);padding:9px 12px calc(9px + env(safe-area-inset-bottom));background:rgba(7,8,9,.96);border-top:1px solid #25272a;display:grid;grid-template-columns:repeat(5,1fr);backdrop-filter:blur(15px)} .navitem{text-align:center;color:#98999c;font-size:10px} .navitem b{display:block;font-size:27px;line-height:29px;margin-bottom:3px;font-weight:400} .navitem.active{color:#e7b83f}
@@ -55,7 +56,6 @@ button{border:0;font-weight:800} #searchButton{display:block!important} #status{
 .hero-actions .herobtn{width:100%;margin:0;padding:15px 18px;border-radius:18px}
 .hero.hero-search .bottle{right:8px!important;top:25px!important;bottom:auto!important;width:140px;height:135px}
 #searchOutput{scroll-margin-top:12px}
-#status{display:block!important}
 @media(max-width:390px){
  .hero.hero-search{min-height:320px;padding:24px 16px 18px}
  .hero.hero-search .bottle{width:118px;height:118px;right:4px!important;top:28px!important}
@@ -142,24 +142,10 @@ body{position:relative}
 .product-choice{margin-top:12px;padding:15px;border:1px solid #303238;border-radius:18px;background:#121416;display:flex;gap:13px;align-items:center;cursor:pointer;touch-action:pan-y;-webkit-tap-highlight-color:transparent}
 .product-choice-main{min-width:0;flex:1}.product-choice .arrow{color:#e7b83f;font-size:28px}
 .detail-back{background:none;color:#e7b83f;padding:0 0 12px;font-size:14px;cursor:pointer}
-.offer-heart{background:none;color:#aaa;font-size:26px;cursor:pointer;padding:0 4px;opacity:1!important;pointer-events:auto!important;touch-action:manipulation}.offer-heart.saved{color:#e7b83f}
+.offer-heart{background:none;color:#aaa;font-size:26px;cursor:pointer;padding:0 4px}.offer-heart.saved{color:#e7b83f}
 .offer-line{display:flex;justify-content:space-between;align-items:center;gap:10px}
  
  .format-icon{width:52px;height:60px;flex:0 0 52px;border:1px solid #30343a;border-radius:14px;background:#0b0d0e;display:flex;align-items:center;justify-content:center;font-size:28px}
-/* INFO BAR APPROVATA — formato + confronto prezzi, compatta e simmetrica */
-.format-compare-bar{width:100%;height:55px;min-height:55px;border:1px solid #30343a;border-radius:14px;background:linear-gradient(145deg,#101313,#0b0d0d);display:grid;grid-template-columns:1fr 1fr;align-items:center;overflow:hidden;margin:0;padding:7px 9px}
-.format-compare-item{height:100%;display:flex;align-items:center;min-width:0;position:relative;padding:0 8px}
-.format-compare-item:first-child{border-right:1px solid #30343a}
-.format-compare-icon{width:30px;height:30px;flex:0 0 30px;border-radius:50%;background:#06301f;display:flex;align-items:center;justify-content:center;margin-right:8px}
-.format-compare-icon svg{width:17px;height:17px;fill:none;stroke:currentColor;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
-.format-compare-item:first-child .format-compare-icon{color:#f0c33c}
-.format-compare-item:nth-child(2) .format-compare-icon{color:#e7b83f}
-.format-compare-copy{min-width:0;display:flex;flex-direction:column;justify-content:center;line-height:1}
-.format-compare-label{font-size:10px;color:#aaa;font-weight:850;letter-spacing:.15px;white-space:nowrap;overflow:hidden;text-overflow:clip}
-.format-compare-value{font-size:18px;color:#f5f5f3;font-weight:950;letter-spacing:-.35px;white-space:nowrap;margin-top:4px}
-.format-compare-arrow{margin-left:auto;flex:0 0 auto;color:#39c86a;font-size:20px;line-height:1;font-weight:900;padding-left:4px;transform:translateY(1px)}
-@media(max-width:390px){.format-compare-bar{height:55px;min-height:55px;padding:7px 7px}.format-compare-item{padding:0 6px}.format-compare-icon{width:30px;height:30px;flex-basis:30px;margin-right:7px}.format-compare-label{font-size:9.5px}.format-compare-value{font-size:17px}.format-compare-arrow{font-size:19px}}
-
 
 </style>
 
@@ -298,7 +284,7 @@ body{position:relative}
 .home-search-field input::placeholder{color:#9b9da0;opacity:1}
 .home-search-icon{position:absolute;left:14px;top:50%;transform:translateY(-50%);width:23px;height:23px;z-index:2;color:#a5a7aa;pointer-events:none}
 .home-search-icon svg{width:100%;height:100%;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round}
-.home-search-button{position:absolute;left:6.0%;top:86.4%;width:48.6%;height:6.5%;z-index:10!important;pointer-events:auto!important;border:0;border-radius:18px;background:linear-gradient(#f4ca5d,#d99c22);color:#111;font-size:clamp(12px,2.0vw,17px);font-weight:900;letter-spacing:.1px;cursor:pointer;box-shadow:none}
+.home-search-button{position:absolute;left:6.0%;top:86.4%;width:48.6%;height:6.5%;pointer-events:auto;border:0;border-radius:18px;background:linear-gradient(#f4ca5d,#d99c22);color:#111;font-size:clamp(12px,2.0vw,17px);font-weight:900;letter-spacing:.1px;cursor:pointer;box-shadow:none}
 .home-search-button:disabled{opacity:1!important;cursor:default}
 .home-search-button.searching{letter-spacing:.1px}
 .home-search-button.searching .search-fixed{display:inline-block}
@@ -311,6 +297,7 @@ body{position:relative}
  .home-search-button{left:6.0%;width:48.6%;top:86.35%;height:6.55%;border-radius:14px;font-size:11px}
 }
 </style>
+<meta name="scenthunter-index-version" content="FINAL-V3-FAST-FAMILY-SEARCH">
 </head>
 <body>
 <main class="app">
@@ -374,19 +361,6 @@ function normalizePerfumeName(v){
     .replace(/\b\d+\s*ml\b/g," ")
     .replace(/[^a-z0-9]+/gi," ")
     .replace(/\s+/g," ").trim();
-}
-function displayPerfumeName(name,brand){
-  const b=normalizePerfumeName(brand||"");
-  let n=String(name||"").replace(/\s+/g," ").trim();
-  if(b!=="valentino" || !/\bborn\s+in\s+roma\b/i.test(n))return n;
-
-  let gender="";
-  n=n.replace(/\b(uomo|donna)\b/gi,m=>{
-    if(!gender)gender=m;
-    return " ";
-  }).replace(/\s+/g," ").trim();
-
-  return gender ? (n+" "+gender).trim() : n;
 }
 function perfumeKey(x){
   return normalizePerfumeName(x.name||"");
@@ -660,22 +634,8 @@ function syncHearts(){
   });
 }
 document.addEventListener("click",e=>{
-  const h=e.target.closest(".heart[data-name],.wish-result[data-name],.offer-heart[data-name]");
-  if(h){
-    e.preventDefault();
-    e.stopPropagation();
-    toggleWish({
-      brand:h.dataset.brand||"",
-      name:h.dataset.name||"",
-      price:h.dataset.price||"",
-      shop:h.dataset.shop||"",
-      url:h.dataset.url||"",
-      pic:h.dataset.pic||"🧴",
-      outOfStock:h.classList.contains("offer-heart") && h.dataset.price===""
-    });
-    syncHearts();
-    return;
-  }
+  const h=e.target.closest(".heart[data-name],.wish-result[data-name]");
+  if(h){toggleWish({brand:h.dataset.brand||"",name:h.dataset.name||"",price:h.dataset.price||"",shop:h.dataset.shop||"",url:h.dataset.url||"",pic:h.dataset.pic||"🧴"});return}
   const r=e.target.closest("[data-remove]");if(r){removeWish(r.dataset.remove);return}
   const nav=e.target.closest(".navitem[data-view]");
   if(nav){
@@ -688,20 +648,6 @@ document.addEventListener("click",e=>{
 });
 
 function esc(v){return String(v??"").replaceAll("&","&amp;").replaceAll("<","&lt;").replaceAll(">","&gt;").replaceAll('"',"&quot;").replaceAll("'","&#039;")}
-function displayStoreName(v){
-  const key=String(v??"").trim().toLowerCase();
-  const names={
-    notino:"Notino",
-    bplatz:"Bplatz",
-    deloox:"Deloox",
-    parfumcity:"ParfumCity",
-    parfumzentrum:"ParfumZentrum",
-    perfumemarket:"PerfumeMarket",
-    sabina:"Sabina",
-    orioudh:"Orioudh"
-  };
-  return names[key]||String(v??"");
-}
 function backend(){
   const origin = window.location.origin;
   if (origin.includes("-3000.app.github.dev")) {
@@ -713,8 +659,6 @@ function backend(){
   return origin;
 }
 let currentProductGroups=[];
-let currentOpenProductKey="";
-let currentOpenSizeKey=null;
 
 function shPrice(o){
   if(o&&o.price)return String(o.price);
@@ -737,32 +681,11 @@ function shGroupData(data){
         name:o.name||g.name||"Profumo",
         size_ml:o.size_ml||o.size||g.size_ml||"",
         concentration:o.concentration||g.concentration||"",
-        image:o.image||o.image_url||o.thumbnail||g.image||"",
-        _source_name:o.name||g.name||"",
-        _source_brand:o.brand||g.brand||"",
-        _source_url:o.url||"",
-        _source_store:o.store||""
+        image:o.image||o.image_url||o.thumbnail||g.image||""
       });
     });
   });
-  (Array.isArray(data.results)?data.results:[]).forEach(g=>{
-    const nested=Array.isArray(g.offers)?g.offers:[];
-    if(nested.length){
-      nested.forEach(o=>raw.push({...o,
-        brand:o.brand||g.brand||"",
-        name:o.name||g.name||"Profumo",
-        size_ml:o.size_ml||o.size||g.size_ml||"",
-        concentration:o.concentration||g.concentration||"",
-        image:o.image||o.image_url||o.thumbnail||g.image||"",
-        _source_name:o.name||g.name||"",
-        _source_brand:o.brand||g.brand||"",
-        _source_url:o.url||"",
-        _source_store:o.store||""
-      }));
-    }else{
-      raw.push({...g});
-    }
-  });
+  (Array.isArray(data.results)?data.results:[]).forEach(o=>raw.push({...o}));
 
   /*
    * La classificazione profumo/non-profumo viene fatta una sola volta
@@ -834,7 +757,10 @@ function shGroupData(data){
    * Fonte di verità per nome/brand delle referenze già verificate.
    * Interviene solo su match esatti del nome canonico o di alias espliciti.
    * ============================================================ */
-  const MASTER_CATALOG = [{"id":"SH-0022","brand":"Afnan","name":"9 PM","concentration":"Eau de Parfum","formats_ml":[100],"aliases":["Afnan - 9 PM","Afnan 9 PM"],"status":"verificato","notes":"Verificato tramite fonte esterna; mantenere questa referenza come nome canonico del catalogo.","verification_sources":["https://fr.afnan.com/en/products/9-pm"]},{"id":"SH-0024","brand":"Afnan","name":"9 PM Elixir","concentration":"Extrait de Parfum","formats_ml":[100],"aliases":["Afnan - 9 PM Elixir","Afnan 9 PM Elixir","9 PM Elixir Parfum Intense","Afnan - 9 PM Elixir Parfum Intense","Afnan 9 PM Elixir Parfum Intense","Afnan - 9PM Elixir","Afnan 9PM Elixir"],"status":"verificato","notes":"Verificato tramite fonte esterna; mantenere questa referenza come nome canonico del catalogo.","verification_sources":["https://fr.afnan.com/products/9-pm-elixir"]},{"id":"SH-0025","brand":"Afnan","name":"9 PM Night Out","concentration":"Extrait de Parfum","formats_ml":[100],"aliases":["Afnan - 9 PM Night Out","Afnan 9 PM Night Out","Afnan - 9PM Night Out","Afnan 9PM Night Out"],"status":"verificato","notes":"Verificato tramite fonte esterna; mantenere questa referenza come nome canonico del catalogo.","verification_sources":["https://sk.afnan.com/products/9pm-night-out"]},{"id":"SH-0023","brand":"Afnan","name":"9 PM Rebel","concentration":"Eau de Parfum","formats_ml":[100],"aliases":["Afnan - 9 PM Rebel","Afnan 9 PM Rebel","Afnan - 9PM Rebel","Afnan 9PM Rebel"],"status":"verificato","notes":"Verificato tramite fonte esterna; mantenere questa referenza come nome canonico del catalogo.","verification_sources":["https://be.afnan.com/products/9-pm-rebel"]},{"id":"SH-0067","brand":"Afnan","name":"9 PM - Pour Femme","concentration":"Eau de Parfum","formats_ml":[100],"aliases":["Afnan - 9 PM Pour Femme","Afnan 9 PM Pour Femme","9 PM Pour Femme","9PM Pour Femme","9pm Purple Femme","Afnan 9pm Purple Femme"],"status":"verificato","notes":"Verificato tramite fonte ufficiale Afnan; nome canonico, formato e alias aggiornati.","verification_sources":["https://fr.afnan.com/en/products/9-pm-pour-femme"]},{"id":"SH-0068","brand":"Afnan","name":"9 AM","concentration":"Eau de Parfum","formats_ml":[100],"aliases":["Afnan - 9 AM","Afnan 9 AM","9AM"],"status":"verificato","notes":"Verificato tramite fonte ufficiale Afnan; nome canonico, formato e alias aggiornati.","verification_sources":["https://fr.afnan.com/en/products/9-am"]},{"id":"SH-0069","brand":"Afnan","name":"9 AM Dive","concentration":"Eau de Parfum","formats_ml":[100],"aliases":["Afnan - 9 AM Dive","Afnan 9 AM Dive","9AM Dive"],"status":"verificato","notes":"Verificato tramite fonte ufficiale Afnan; nome canonico, formato e alias aggiornati.","verification_sources":["https://fr.afnan.com/en/products/9-am-dive"]},{"id":"SH-0070","brand":"Afnan","name":"9 AM - Pour Femme","concentration":"Eau de Parfum","formats_ml":[100],"aliases":["Afnan - 9 AM Pour Femme","Afnan 9 AM Pour Femme","9 AM Pour Femme","9AM Pour Femme"],"status":"verificato","notes":"Verificato tramite fonte ufficiale Afnan; nome canonico, formato e alias aggiornati.","verification_sources":["https://fr.afnan.com/en/products/9-am-pour-femme"]},{"id":"SH-0026","brand":"Afnan","name":"Supremacy Collector's Edition","concentration":"Eau de Parfum","formats_ml":[100],"aliases":["Afnan - Supremacy Collector's Edition","Afnan Supremacy Collector's Edition"],"status":"verificato","notes":"Verificato tramite fonte esterna; mantenere questa referenza come nome canonico del catalogo.","verification_sources":["https://it.afnan.com/en/products/supremacy-collectors-edition"]},{"id":"SH-0027","brand":"Afnan","name":"Supremacy in Heaven","concentration":"Eau de Parfum","formats_ml":[100],"aliases":["Afnan - Supremacy in Heaven","Afnan Supremacy in Heaven"],"status":"verificato","notes":"Verificato tramite fonte esterna; mantenere questa referenza come nome canonico del catalogo.","verification_sources":["https://fr.afnan.com/products/supremacy-in-heaven"]},{"id":"SH-0035","brand":"Afnan","name":"Turathi Blue","concentration":"Eau de Parfum","formats_ml":[90],"aliases":["Afnan Turathi Blue","Turathi Blue Pour Homme","Turathi Blue EDP","Turathi Blue 90 ML"],"status":"verificato","notes":"Verificato con fonte prodotto/brand; nome canonico, concentrazione, formato e alias aggiornati.","verification_sources":["https://fr.afnan.com/products/turathi-blue-homme"]},{"id":"SH-0060","brand":"Afnan","name":"Turathi Brown","concentration":"Eau de Parfum","formats_ml":[90],"aliases":["Afnan Turathi Brown","Turathi Brown Pour Homme","Turathi Brown EDP","Turathi Brown 90 ML"],"status":"verificato","notes":"Verificato con fonte prodotto/brand; nome canonico, concentrazione, formato e alias aggiornati.","verification_sources":["https://egypt.afnan.com/products/turathi-brown-homme"]},{"id":"SH-0061","brand":"Afnan","name":"Turathi Electric","concentration":"Eau de Parfum","formats_ml":[90],"aliases":["Afnan Turathi Electric","Turathi Electric EDP","Turathi Electric 90 ML"],"status":"verificato","notes":"Verificato con fonte prodotto/brand; nome canonico, concentrazione, formato e alias aggiornati.","verification_sources":["https://fr.afnan.com/products/turathi-electric"]},{"id":"SH-0059","brand":"Afnan","name":"Turathi Red","concentration":"Eau de Parfum","formats_ml":[90],"aliases":["Afnan Turathi Red","Turathi Red Pour Femme","Turathi Red EDP","Turathi Red 90 ML"],"status":"verificato","notes":"Verificato con fonte prodotto/brand; nome canonico, concentrazione, formato e alias aggiornati.","verification_sources":["https://afnan.com/products/turathi-red-femme"]},{"id":"SH-0033","brand":"Ahmed Al Maghribi","name":"Kaaf","concentration":"Eau de Parfum","formats_ml":[100],"aliases":["Ahmed Al Maghribi Kaaf","Kaaf by Ahmed Al Maghribi","Kaaf EDP"],"status":"verificato","notes":"Verificato con fonte prodotto/brand; nome canonico, formati e alias aggiornati.","verification_sources":["https://ae.ahmedalmaghribi.com/en/shop/perfumes/occidental-fragrance/kaaf"]},{"id":"SH-0017","brand":"Armaf","name":"Club de Nuit Intense Man","concentration":"Eau de Parfum","formats_ml":[30,105,250],"aliases":["Armaf Club de Nuit Intense Man","Club de Nuit Intense Man By Armaf","Armaf - Club de Nuit Intense Man"],"status":"verificato","notes":"Nome già incontrato nello storico ScentHunter; formato/alias da verificare prima dell'integrazione."},{"id":"SH-0018","brand":"Armaf","name":"Club de Nuit Precieux","concentration":"Eau de Parfum","formats_ml":[105],"aliases":["Armaf Club de Nuit Precieux","Club de Nuit Precieux","Armaf - Club de Nuit Precieux"],"status":"verificato","notes":"Verificato con fonte ufficiale o rivenditore autorizzato/affidabile."},{"id":"SH-0021","brand":"Armaf","name":"Odyssey Artisto Red","concentration":"","formats_ml":[100],"aliases":["Armaf Odyssey Artisto Red","Odyssey Artisto Red By Armaf","Odyssey Artisto Red 100ml"],"status":"verificato","notes":"Verificato con fonte prodotto/brand; nome canonico, formati e alias aggiornati.","verification_sources":["https://armafperfume.us/products/odyssey-artisto"]},{"id":"SH-0019","brand":"Armaf","name":"Odyssey Mandarin Sky","concentration":"Eau de Parfum","formats_ml":[100],"aliases":["Armaf - Odyssey Mandarin Sky","Armaf Odyssey Mandarin Sky"],"status":"verificato","notes":"Verificato tramite fonte esterna; mantenere questa referenza come nome canonico del catalogo.","verification_sources":["https://www.douglas.be/fr/p/5011971086"]},{"id":"SH-0020","brand":"Armaf","name":"Odyssey Spectra","concentration":"Eau de Parfum","formats_ml":[60,100,200],"aliases":["Armaf Odyssey Spectra","Odyssey Spectra By Armaf","Armaf - Odyssey Spectra"],"status":"verificato","notes":"Nome già incontrato nello storico ScentHunter; formato/alias da verificare prima dell'integrazione."},{"id":"SH-0014","brand":"Azzaro","name":"Forever Wanted Elixir","concentration":"Parfum","formats_ml":[50,100],"aliases":[],"status":"verificato","notes":"Verificato tramite fonte esterna; mantenere questa referenza come nome canonico del catalogo.","verification_sources":["https://www.iciparisxl.lu/azzaro/forever-wanted-elixir/parfum-bois-pour-homme/p/BP_1370389"]},{"id":"SH-0011","brand":"Azzaro","name":"The Most Wanted","concentration":"Eau de Parfum Intense","formats_ml":[50,100],"aliases":["Azzaro The Most Wanted","Azzaro The Most Wanted Eau de Parfum Intense","The Most Wanted Eau de Parfum Intense"],"status":"verificato","notes":"Verificato con fonte ufficiale o rivenditore autorizzato/affidabile."},{"id":"SH-0012","brand":"Azzaro","name":"The Most Wanted Parfum","concentration":"Parfum Intense","formats_ml":[50,100,150],"aliases":["Azzaro The Most Wanted Parfum","Azzaro The Most Wanted Parfum Intense","The Most Wanted Parfum Intense"],"status":"verificato","notes":"Verificato con fonte ufficiale o rivenditore autorizzato/affidabile."},{"id":"SH-0013","brand":"Azzaro","name":"Wanted by Night","concentration":"Eau de Parfum","formats_ml":[50,100,150],"aliases":["Azzaro Wanted by Night","Azzaro Wanted By Night Eau de Parfum","Wanted by Night Eau de Parfum"],"status":"verificato","notes":"Verificato con fonte ufficiale o rivenditore autorizzato/affidabile."},{"id":"SH-0041","brand":"Chanel","name":"Bleu de Chanel","concentration":"Eau de Parfum","formats_ml":[50,100],"aliases":["Bleu de Chanel Eau de Parfum","Bleu de Chanel EDP","Chanel Bleu de Chanel Eau de Parfum"],"status":"verificato","notes":"Nome già incontrato nello storico ScentHunter; formato/alias da verificare prima dell'integrazione."},{"id":"SH-0037","brand":"Creed","name":"Aventus","concentration":"Eau de Parfum","formats_ml":[30,50,100,240,490],"aliases":["Creed Aventus","Aventus By Creed"],"status":"verificato","notes":"Nome già incontrato nello storico ScentHunter; formato/alias da verificare prima dell'integrazione."},{"id":"SH-0038","brand":"Creed","name":"Green Irish Tweed","concentration":"Eau de Parfum","formats_ml":[50,100,240,490],"aliases":["Creed Green Irish Tweed","Green Irish Tweed By Creed"],"status":"verificato","notes":"Nome già incontrato nello storico ScentHunter; formato/alias da verificare prima dell'integrazione."},{"id":"SH-0039","brand":"Dior","name":"Sauvage","concentration":"Eau de Toilette","formats_ml":[30,60,100,200],"aliases":["Dior Sauvage","Dior Sauvage Eau de Toilette","Sauvage Eau de Toilette"],"status":"verificato","notes":"Verificato con fonte ufficiale o rivenditore autorizzato/affidabile."},{"id":"SH-0040","brand":"Dior","name":"Sauvage Elixir","concentration":"Elixir","formats_ml":[60,100,150],"aliases":["Dior Sauvage Elixir","Sauvage Elixir","Sauvage Elixir Parfum"],"status":"verificato","notes":"Verificato con fonte ufficiale o rivenditore autorizzato/affidabile."},{"id":"SH-0032","brand":"Dumont","name":"Nitro Red","concentration":"","formats_ml":[100],"aliases":["Dumont Nitro Red","Nitro Red 100 ML","Nitro Red by Dumont"],"status":"verificato","notes":"Verificato sul sito ufficiale Dumont; formato 100 ml. La fonte non indica una concentrazione specifica.","verification_sources":["https://www.dumontparis.com/product/nitro-red/"]},{"id":"SH-0030","brand":"French Avenue","name":"Liquid Brun","concentration":"Eau de Parfum","formats_ml":[100],"aliases":["French Avenue Liquid Brun","Liquid Brun","Liquid Brun Eau de Parfum","Liquid Brun 100 ML"],"status":"verificato","notes":"Verificato sul sito ufficiale French Avenue; Eau de Parfum, 100 ml.","verification_sources":["https://www.french-avenue-parfum.com/produit/eau-de-parfum-liquid-brun/"]},{"id":"SH-0031","brand":"French Avenue","name":"Liquid Brun Limited Edition","concentration":"Extrait de Parfum","formats_ml":[150],"aliases":["French Avenue Liquid Brun Limited Edition","Liquid Brun Limited Edition 150ml","Liquid Brun Limited Edition Extrait de Parfum"],"status":"verificato","notes":"Verificato con fonte prodotto/brand; nome canonico, concentrazione, formato e alias aggiornati.","verification_sources":["https://www.french-avenue-parfum.com/produit/liquid-brun-limited-edition-french-avenue/"]},{"id":"SH-0043","brand":"Giorgio Armani","name":"Acqua di Gio Profondo","concentration":"","formats_ml":[75,125],"aliases":["Acqua di Gio Profondo","Acqua di Giò Profondo","Acqua di Gio Profondo Eau de Parfum","Giorgio Armani Acqua di Gio Profondo"],"status":"verificato","notes":"Verificato con fonte prodotto/brand; formati e grafia canonica aggiornati."},{"id":"SH-0044","brand":"Giorgio Armani","name":"Stronger With You Intensely","concentration":"","formats_ml":[30,50,100],"aliases":["Emporio Armani Stronger With You Intensely","Stronger With You Intensely","Armani Stronger With You Intensely","Stronger With You Intensely Eau de Parfum"],"status":"verificato","notes":"Verificato con fonte prodotto/brand; formati e grafia canonica aggiornati."},{"id":"SH-0051","brand":"Givenchy","name":"Gentleman Reserve Privee","concentration":"Eau de Parfum","formats_ml":[60,100],"aliases":["Givenchy Gentleman Réserve Privée","Givenchy Gentleman Reserve Privee","Gentleman Réserve Privée Eau de Parfum"],"status":"verificato","notes":"Verificato con fonte prodotto/brand; nome canonico, formati e alias aggiornati.","verification_sources":["https://www.givenchybeauty.com/int/en/p/gentleman-reserve-privee-F10100159.html"]},{"id":"SH-0050","brand":"Givenchy","name":"Gentleman Society","concentration":"Eau de Parfum","formats_ml":[40,60,100,200],"aliases":["Givenchy Gentleman Society","Gentleman Society Eau de Parfum","Gentleman Society EDP"],"status":"verificato","notes":"Nome già incontrato nello storico ScentHunter; formato/alias da verificare prima dell'integrazione."},{"id":"SH-0016","brand":"Jean Paul Gaultier","name":"Le Male Elixir","concentration":"Parfum","formats_ml":[75,125,200],"aliases":[],"status":"verificato","notes":"Verificato tramite fonte esterna; mantenere questa referenza come nome canonico del catalogo.","verification_sources":["https://www.jeanpaulgaultier.com/eu/fr/p/gamme-le-male/le-male-elixir-parfum-000000000065189083"]},{"id":"SH-0015","brand":"Jean Paul Gaultier","name":"Le Male Le Parfum","concentration":"Eau de Parfum Intense","formats_ml":[75,125,200],"aliases":["Jean Paul Gaultier Le Male Le Parfum","Le Male Le Parfum Eau de Parfum","Le Male Le Parfum Eau de Parfum Intense"],"status":"verificato","notes":"Verificato con fonte ufficiale o rivenditore autorizzato/affidabile."},{"id":"SH-0054","brand":"Khadlaj","name":"Island","concentration":"Extrait de Parfum","formats_ml":[100],"aliases":["Khadlaj Island","Island By Khadlaj","Island Extrait de Parfum","Island 100 ML","Khadlaj Island Parfum"],"status":"verificato","notes":"Verificato con fonte prodotto/brand; nome canonico, concentrazione, formato e alias aggiornati.","catalog_note":"Referenza confermata: Khadlaj Island. Le diciture Island, Island Parfum e Island Extrait de Parfum sono trattate come lo stesso profumo. Set/cofanetti esclusi.","verification_sources":["https://khadlaj-perfumes.com/collections/top-selling/products/island-100-ml-extrait-de-parfum-spray-for-men-and-women"]},{"id":"SH-0055","brand":"Khadlaj","name":"Island Dreams","concentration":"Extrait de Parfum","formats_ml":[100],"aliases":["Khadlaj Island Dreams","Island Dreams By Khadlaj","Island Dreams Extrait de Parfum","Island Dreams 100 ML"],"status":"verificato","notes":"Verificato con fonte prodotto/brand; nome canonico, concentrazione, formato e alias aggiornati.","verification_sources":["https://www.notino.be/khadlaj/island-dreams-extrait-de-parfum-mixte/"]},{"id":"SH-0056","brand":"Khadlaj","name":"Island Vanilla Dunes","concentration":"Extrait de Parfum","formats_ml":[100],"aliases":["Khadlaj Island Vanilla Dunes","Island Vanilla Dunes By Khadlaj","Island Vanilla Dunes Extrait de Parfum","Island Vanilla Dunes 100 ML"],"status":"verificato","notes":"Verificato con fonte prodotto/brand; nome canonico, concentrazione, formato e alias aggiornati.","verification_sources":["https://khadlaj-perfumes.com/products/khadlaj-island-vanilla-dunes-100-ml-extrait-de-parfum-spray-for-men"]},{"id":"SH-0053","brand":"Lancôme","name":"Idôle","concentration":"","formats_ml":[25,50,100],"aliases":["Lancôme Idôle","Lancome Idole","Lancôme Idôle Eau de Parfum","Idole Eau de Parfum"],"status":"verificato","notes":"Verificato con fonte prodotto/brand; formati e grafia canonica aggiornati."},{"id":"SH-0052","brand":"Lancôme","name":"La Vie Est Belle","concentration":"","formats_ml":[30,50,75,100,150],"aliases":["Lancôme La Vie Est Belle","Lancome La Vie Est Belle","La Vie Est Belle Eau de Parfum","La Vie Est Belle EDP"],"status":"verificato","notes":"Verificato con fonte prodotto/brand; formati e grafia canonica aggiornati."},{"id":"SH-0065","brand":"Lattafa","name":"Art of Universe","concentration":"Eau de Parfum","formats_ml":[100],"aliases":["Lattafa Art of Universe","Lattafa Pride Art of Universe","Art of Universe EDP","Art of Universe 100 ML"],"status":"verificato","notes":"Verificato con fonte prodotto/brand; nome canonico, concentrazione, formato e alias aggiornati.","verification_sources":["https://www.shop-apotheke.com/beauty/upmCLHFTK/art-of-universe-eau-de-parfum.htm"]},{"id":"SH-0028","brand":"Lattafa","name":"Asad Bourbon","concentration":"Eau de Parfum","formats_ml":[100],"aliases":["Lattafa - Asad Bourbon","Lattafa Asad Bourbon"],"status":"verificato","notes":"Verificato tramite fonte esterna; mantenere questa referenza come nome canonico del catalogo.","verification_sources":["https://www.elpais.com/escaparate/belleza/perfumes-arabes-hombre.html"]},{"id":"SH-0029","brand":"Lattafa","name":"Nebras","concentration":"","formats_ml":[100],"aliases":["Lattafa Nebras","Nebras Lattafa","Lattafa - Nebras"],"status":"verificato","notes":"Verificato con fonte prodotto/brand; formati e grafia canonica aggiornati."},{"id":"SH-0036","brand":"Maison Alhambra","name":"Jean Lowe Immortal","concentration":"Eau de Parfum","formats_ml":[100],"aliases":["Jean Lowe Immortel","Jean Lowe Immortal","Maison Alhambra Jean Lowe Immortal","Jean Lowe Immortal Eau de Parfum"],"status":"verificato","notes":"Verificato con fonte prodotto/brand; nome canonico, formati e alias aggiornati.","verification_sources":["https://maisonvalentry.com/collections/maison-alhambra/products/immortel"]},{"id":"SH-0078","brand":"Miu Miu","name":"Fleur De Lait","concentration":"Eau de Parfum","formats_ml":[30,50,100],"aliases":["Miu Miu Fleur De Lait","Miumiu Fleur De Lait","Miu Miu Fleur De Lait Pour Femme","Miumiu Fleur De Lait Pour Femme"],"status":"verificato","notes":"Referenza Miu Miu Fleur De Lait; formati 30/50/100 ml."},{"id":"SH-0080","brand":"Miu Miu","name":"L'Eau De Muguet","concentration":"Eau de Parfum","formats_ml":[30,50,100],"aliases":["Miu Miu L'Eau De Muguet","Miu Miu L Eau De Muguet","L'Eau De Muguet Miu Miu","Miu Miu L'Eau De Muguet Pour Femme","Miu Miu L'Eau De Muguet Eau de Parfum"],"status":"verificato","notes":"Referenza Miu Miu L'Eau De Muguet; formati 30/50/100 ml."},{"id":"SH-0079","brand":"Miu Miu","name":"L'Eau Bleue","concentration":"Eau de Parfum","formats_ml":[30,50,100],"aliases":["Miu Miu L'Eau Bleue","Miu Miu L Eau Bleue","L'Eau Bleue Miu Miu","Miu Miu L'Eau Bleue Pour Femme","Miu Miu L'Eau Bleue Eau de Parfum"],"status":"verificato","notes":"Referenza Miu Miu L'Eau Bleue; formati 30/50/100 ml."},{"id":"SH-0058","brand":"Miu Miu","name":"L'Eau Rosée","concentration":"","formats_ml":[30,50,100],"aliases":["Miu Miu L'Eau Rosée","Miu Miu Eau Rosée","Miu Miu L Eau Rosee","L'Eau Rosee Miu Miu","Miu Miu L'Eau Rosée Pour Femme","Miu Miu L Eau Rosee Pour Femme"],"status":"verificato","notes":"Verificato con fonte prodotto/brand; formati e grafia canonica aggiornati."},{"id":"SH-0057","brand":"Miu Miu","name":"Miutine","concentration":"","formats_ml":[30,50,100],"aliases":["Miu Miu Miutine","Miutine Miu Miu","Miutine Eau de Parfum","Miu Miu Miutine Pour Femme","Miutine Pour Femme Miu Miu","Miutine Pour Femme"],"status":"verificato","notes":"Verificato con fonte prodotto/brand; formati e grafia canonica aggiornati."},{"id":"SH-0048","brand":"Prada","name":"Luna Rossa Carbon","concentration":"Eau de Toilette","formats_ml":[50,100],"aliases":["Prada Luna Rossa Carbon","Luna Rossa Carbon EDT","Prada Luna Rossa Carbon EDT"],"status":"verificato","notes":"Nome già incontrato nello storico ScentHunter; formato/alias da verificare prima dell'integrazione."},{"id":"SH-0049","brand":"Prada","name":"Luna Rossa Ocean","concentration":"Eau de Toilette","formats_ml":[50,100],"aliases":["Prada Luna Rossa Ocean","Luna Rossa Ocean EDT","Prada Luna Rossa Ocean EDT"],"status":"verificato","notes":"Nome già incontrato nello storico ScentHunter; formato/alias da verificare prima dell'integrazione."},{"id":"SH-0005","brand":"Rasasi","name":"Hawas Black","concentration":"Eau de Parfum","formats_ml":[100],"aliases":["Hawas Black","Hawas Black 100 ML","Hawas Black EDP","Rasasi Hawas Black"],"status":"verificato","notes":"Verificato tramite fonte esterna; mantenere questa referenza come nome canonico del catalogo.","verification_sources":["https://www.notino.be/rasasi/hawas-black-eau-de-parfum-pour-homme/"]},{"id":"SH-0004","brand":"Rasasi","name":"Hawas Fire","concentration":"Eau de Parfum","formats_ml":[100],"aliases":["Hawas Fire","Hawas Fire 100 ML","Hawas Fire Eau de Parfum","Rasasi Hawas Fire"],"status":"verificato","notes":"Nome già incontrato nello storico ScentHunter; formato/alias da verificare prima dell'integrazione."},{"id":"SH-0001","brand":"Rasasi","name":"Hawas for Him","concentration":"Eau de Parfum","formats_ml":[100],"aliases":["Hawas Men","Hawas for Him","Hawas for Him 100 ML","Rasasi Hawas for Him"],"status":"verificato","notes":"Verificato tramite fonte esterna; mantenere questa referenza come nome canonico del catalogo.","verification_sources":["https://imrasasi.com/products/hawas-men-100-ml","https://www.notino.be/rasasi/hawas-for-men-eau-de-parfum-pour-homme/"]},{"id":"SH-0002","brand":"Rasasi","name":"Hawas Ice","concentration":"Eau de Parfum","formats_ml":[100],"aliases":["Hawas Ice","Hawas Ice 100 ML","Hawas Ice EDP","Rasasi Hawas Ice"],"status":"verificato","notes":"Nome già incontrato nello storico ScentHunter; formato/alias da verificare prima dell'integrazione."},{"id":"SH-0003","brand":"Rasasi","name":"Hawas Kobra","concentration":"Eau de Parfum","formats_ml":[100],"aliases":["Hawas Kobra","Hawas Kobra 100 ML","Hawas Kobra Eau de Parfum","Rasasi Hawas Kobra"],"status":"verificato","notes":"Nome già incontrato nello storico ScentHunter; formato/alias da verificare prima dell'integrazione."},{"id":"SH-0066","brand":"Rayhaan","name":"Aquatica","concentration":"Eau de Parfum","formats_ml":[100],"aliases":["Rayhaan Aquatica","Rayhaan Aquatica EDP","Aquatica Rayhaan","Rayhaan Aquatica 100 ML"],"status":"verificato","notes":"Verificato con fonte prodotto/brand; nome canonico, concentrazione, formato e alias aggiornati.","verification_sources":["https://rayhaanperfumes.com/products/rayhaan-aquatica?variant=44716035440687"]},{"id":"SH-0064","brand":"Rayhaan","name":"Valhalla","concentration":"Eau de Parfum","formats_ml":[100],"aliases":["Rayhaan Valhalla","Rayhaan Valhalla EDP","Valhalla Rayhaan","Rayhaan Valhalla 100 ML"],"status":"verificato","notes":"Verificato con fonte prodotto/brand; nome canonico, concentrazione, formato e alias aggiornati.","verification_sources":["https://www.bol.com/nl/nl/p/rayhaan-valhalla-eau-de-parfum-100ml/9300000237610063/"]},{"id":"SH-0063","brand":"Rayhaan","name":"Wolf","concentration":"Eau de Parfum","formats_ml":[100],"aliases":["Rayhaan Wolf","Rayhaan Wolf EDP","Wolf Rayhaan","Rayhaan Wolf 100 ML"],"status":"verificato","notes":"Verificato con fonte prodotto/brand; nome canonico, concentrazione, formato e alias aggiornati.","verification_sources":["https://www.bol.com/be/nl/p/rayhaan-wolf-eau-de-parfum-100ml/9300000286370662"]},{"id":"SH-0062","brand":"Royal Blend","name":"Sequoia","concentration":"Extrait de Parfum","formats_ml":[100],"aliases":["Royal Blend Sequoia","French Avenue Royal Blend Sequoia","Royal Blend Sequoia Extrait de Parfum"],"status":"verificato","notes":"Verificato con fonte prodotto/brand; nome canonico, formati e alias aggiornati.","verification_sources":["https://maisonvalentry.com/products/royal-blend-sequoia"]},{"id":"SH-0034","brand":"Rue Broca","name":"Theoreme Homme","concentration":"Eau de Parfum","formats_ml":[90],"aliases":["Rue Broca Theoreme Homme","Theoreme Homme Eau de Parfum","Theoreme Homme 90 ml"],"status":"verificato","notes":"Verificato con fonte prodotto/brand; nome canonico, formati e alias aggiornati.","verification_sources":["https://www.notino.be/afnan/theoreme-homme-eau-de-parfum-pour-homme/"]},{"id":"SH-0006","brand":"Valentino","name":"Born in Roma Uomo","concentration":"Eau de Toilette","formats_ml":[50,100,150],"aliases":["Born In Roma For Him","Born In Roma Uomo 100 ML","Born In Roma Uomo Eau de Toilette","Born in Roma Uomo","Valentino Born in Roma Uomo"],"status":"verificato","notes":"Nome già incontrato nello storico ScentHunter; formato/alias da verificare prima dell'integrazione."},{"id":"SH-0008","brand":"Valentino","name":"Born in Roma Uomo Extradose","concentration":"Eau de Parfum","formats_ml":[50,100],"aliases":["Born In Roma Extradose","Born In Roma Uomo Extradose 100 ML","Born in Roma Uomo Extradose","Valentino - Born in Roma Uomo Extradose","Valentino Born in Roma Uomo Extradose"],"status":"verificato","notes":"Verificato tramite fonte esterna; mantenere questa referenza come nome canonico del catalogo.","verification_sources":["https://www.iciparisxl.lu/valentino/born-in-roma-uomo-extradose-/parfum-pour-homme/p/BP_1351615"]},{"id":"SH-0007","brand":"Valentino","name":"Born in Roma Uomo Intense","concentration":"Eau de Parfum","formats_ml":[50,100],"aliases":["Born In Roma Uomo Intense 100 ML","Born in Roma Uomo Eau de Parfum Intense","Born in Roma Uomo Intense","Valentino - Born in Roma Uomo Intense","Valentino Born in Roma Uomo Intense"],"status":"verificato","notes":"Verificato tramite fonte esterna; mantenere questa referenza come nome canonico del catalogo.","verification_sources":["https://www.valentino-beauty.com/it_IT/profumi/fragranze-maschili/born-in-roma-uomo/born-in-roma-uomo-eau-de-parfum-intense/MPL01907.html"]},{"id":"SH-0009","brand":"Valentino","name":"Born in Roma Yellow Dream Uomo","concentration":"Eau de Toilette","formats_ml":[50],"aliases":["Born In Roma Yellow Dream For Him","Born in Roma Uomo Yellow Dream","Born in Roma Uomo Yellow Dream 50 ML","Valentino Born in Roma Uomo Yellow Dream"],"status":"verificato","notes":"Nome già incontrato nello storico ScentHunter; formato/alias da verificare prima dell'integrazione."},{"id":"SH-0010","brand":"Valentino","name":"Uomo Born in Roma Coral Fantasy","concentration":"Eau de Toilette","formats_ml":[50,100],"aliases":["Born In Roma Coral Fantasy For Him","Born in Roma Uomo Coral Fantasy","Born in Roma Uomo Coral Fantasy 100 ML","Valentino - Uomo Born in Roma Coral Fantasy","Valentino Born in Roma Uomo Coral Fantasy","Valentino Uomo Born in Roma Coral Fantasy"],"status":"verificato","notes":"Verificato tramite fonte esterna; mantenere questa referenza come nome canonico del catalogo.","verification_sources":["https://www.valentino-beauty.de/en_GB/fragrances/men-s-fragrance/born-in-roma-uomo-coral-fantasy/MPL01750.html"]},{"id":"SH-0047","brand":"Versace","name":"Dylan Blue","concentration":"Eau de Toilette","formats_ml":[50,100,200],"aliases":["Versace Dylan Blue","Dylan Blue Pour Homme","Dylan Blue Pour Homme EDT"],"status":"verificato","notes":"Verificato con fonte prodotto/brand; nome canonico, formati e alias aggiornati.","verification_sources":["https://www.versace.com/dk/en/men/accessories/fragrances-body-care/dylan-blue-pour-homme/"]},{"id":"SH-0045","brand":"Versace","name":"Eros","concentration":"Eau de Toilette","formats_ml":[50,100,200],"aliases":["Versace Eros","Eros Pour Homme","Eros Eau de Toilette","Eros EDT"],"status":"verificato","notes":"Verificato sul sito ufficiale Versace; Eau de Toilette, 50/100/200 ml.","verification_sources":["https://www.versace.com/fr/fr/homme/accessoires/parfums-et-soins-du-corps/eros/eau-de-toilette-eros-50%C2%A0ml/R740008-R050MLS_RTU_TU_RNUL__.html"]},{"id":"SH-0071","brand":"Versace","name":"Eros pour Femme Eau de Toilette","concentration":"Eau de Toilette","formats_ml":[30,50,100],"aliases":["Versace Eros pour Femme Eau De Toilette","Eros pour Femme Eau De Toilette","Eros pour Femme EDT","Versace Eros Pour Femme EDT"],"status":"verificato","notes":"Verificato su Parfum-Zentrum e sito ufficiale Versace; Eau de Toilette, 30/50/100 ml.","verification_sources":["https://www.parfum-zentrum.de/versace-eros-pour-femme-eau-de-toilette-100-ml-woman_z695946/","https://www.versace.com/us/en/women/accessories/fragrances-body-care/eros-pour-femme/eros-pour-femme-edt-100-ml-gold/R750132-R100MLS_RNUL.html"]},{"id":"SH-0072","brand":"Versace","name":"Eros pour Femme Eau de Parfum","concentration":"Eau de Parfum","formats_ml":[100],"aliases":["Versace Eros pour Femme Eau De Parfum","Eros pour Femme Eau De Parfum","Eros pour Femme EDP","Versace Eros Pour Femme EDP"],"status":"verificato","notes":"Referenza distinta dalla Eau de Toilette; mantenuta separata per evitare l'unione di prezzi e formati.","verification_sources":["https://www.parfum-zentrum.de/versace_v208/"]},{"id":"SH-0046","brand":"Versace","name":"Eros Flame","concentration":"Eau de Parfum","formats_ml":[50,100,200],"aliases":["Versace Eros Flame","Eros Flame EDP","Eros Flame Eau de Parfum"],"status":"verificato","notes":"Verificato sul sito ufficiale Versace; Eau de Parfum, 50/100/200 ml.","verification_sources":["https://www.versace.com/de/de/herren/accessoires/dufte/eros-flame/"]},{"id":"SH-0042","brand":"Yves Saint Laurent","name":"Y Eau de Parfum","concentration":"Eau de Parfum","formats_ml":[40,60,100,200],"aliases":["Y Eau de Parfum","Y EDP","Yves Saint Laurent Y Eau de Parfum","Y EDP 100 ML"],"status":"verificato","notes":"Verificato con fonte prodotto/brand; nome canonico, concentrazione, formato e alias aggiornati.","verification_sources":["https://www.yslbeauty.com/int/fragrance/fragrance-for-him/y/y--eau-de-parfum/3614272050341.html"]},{"id":"SH-0073","brand":"Jean Paul Gaultier","name":"Le Beau","concentration":"Eau de Toilette","formats_ml":[75,125],"aliases":["Jean Paul Gaultier Le Beau","Le Beau Eau de Toilette","Le Beau EDT"],"status":"verificato","notes":"Referenza Le Beau originale; formati 75/125 ml."},{"id":"SH-0074","brand":"Jean Paul Gaultier","name":"Le Beau Le Parfum Intense","concentration":"Eau de Parfum Intense","formats_ml":[75,125],"aliases":["Jean Paul Gaultier Le Beau Le Parfum","Le Beau Le Parfum","Jean Paul Gaultier Le Beau Le Parfum Intense","Le Beau Le Parfum Eau de Parfum Intense","Le Beau Le Parfum Intense Eau de Parfum"],"status":"verificato","notes":"Stessa referenza commerciale: Le Beau Le Parfum / Le Beau Le Parfum Intense. Formati reali 75/125 ml."},{"id":"SH-0075","brand":"Jean Paul Gaultier","name":"Le Beau Paradise Garden","concentration":"Eau de Parfum","formats_ml":[75,125],"aliases":["Jean Paul Gaultier Le Beau Paradise Garden","Le Beau Paradise Garden Eau de Parfum","Le Beau Paradise Garden EDP"],"status":"verificato","notes":"Referenza Le Beau Paradise Garden; formati 75/125 ml."},{"id":"SH-0076","brand":"Jean Paul Gaultier","name":"Le Beau Narcisse","concentration":"Eau de Parfum","formats_ml":[75,125],"aliases":["Jean Paul Gaultier Le Beau Narcisse","Le Beau Narcisse Eau de Parfum","Le Beau Narcisse EDP"],"status":"verificato","notes":"Referenza Le Beau Narcisse; formati 75/125 ml."},{"id":"SH-0077","brand":"Jean Paul Gaultier","name":"Le Beau Flower Edition","concentration":"Eau de Parfum","formats_ml":[125],"aliases":["Jean Paul Gaultier Le Beau Flower Edition","Le Beau Flower Edition Eau de Parfum","Le Beau Flower Edition EDP"],"status":"verificato","notes":"Referenza Le Beau Flower Edition; formato 125 ml."}];
+  const MASTER_CATALOG = [{"id":"SH-0022","brand":"Afnan","name":"9 PM","concentration":"Eau de Parfum","formats_ml":[100],"aliases":["Afnan - 9 PM","Afnan 9 PM"],"status":"verificato","notes":"Verificato tramite fonte esterna; mantenere questa referenza come nome canonico del catalogo.","verification_sources":["https://fr.afnan.com/en/products/9-pm"]},{"id":"SH-0024","brand":"Afnan","name":"9 PM Elixir","concentration":"Extrait de Parfum","formats_ml":[100],"aliases":["Afnan - 9 PM Elixir","Afnan 9 PM Elixir","9 PM Elixir Parfum Intense","Afnan - 9 PM Elixir Parfum Intense","Afnan 9 PM Elixir Parfum Intense","Afnan - 9PM Elixir","Afnan 9PM Elixir"],"status":"verificato","notes":"Verificato tramite fonte esterna; mantenere questa referenza come nome canonico del catalogo.","verification_sources":["https://fr.afnan.com/products/9-pm-elixir"]},{"id":"SH-0025","brand":"Afnan","name":"9 PM Night Out","concentration":"Extrait de Parfum","formats_ml":[100],"aliases":["Afnan - 9 PM Night Out","Afnan 9 PM Night Out","Afnan - 9PM Night Out","Afnan 9PM Night Out"],"status":"verificato","notes":"Verificato tramite fonte esterna; mantenere questa referenza come nome canonico del catalogo.","verification_sources":["https://sk.afnan.com/products/9pm-night-out"]},{"id":"SH-0023","brand":"Afnan","name":"9 PM Rebel","concentration":"Eau de Parfum","formats_ml":[100],"aliases":["Afnan - 9 PM Rebel","Afnan 9 PM Rebel","Afnan - 9PM Rebel","Afnan 9PM Rebel"],"status":"verificato","notes":"Verificato tramite fonte esterna; mantenere questa referenza come nome canonico del catalogo.","verification_sources":["https://be.afnan.com/products/9-pm-rebel"]},{"id":"SH-0067","brand":"Afnan","name":"9 PM - Pour Femme","concentration":"Eau de Parfum","formats_ml":[100],"aliases":["Afnan - 9 PM Pour Femme","Afnan 9 PM Pour Femme","9 PM Pour Femme","9PM Pour Femme","9pm Purple Femme","Afnan 9pm Purple Femme"],"status":"verificato","notes":"Verificato tramite fonte ufficiale Afnan; nome canonico, formato e alias aggiornati.","verification_sources":["https://fr.afnan.com/en/products/9-pm-pour-femme"]},{"id":"SH-0068","brand":"Afnan","name":"9 AM","concentration":"Eau de Parfum","formats_ml":[100],"aliases":["Afnan - 9 AM","Afnan 9 AM","9AM"],"status":"verificato","notes":"Verificato tramite fonte ufficiale Afnan; nome canonico, formato e alias aggiornati.","verification_sources":["https://fr.afnan.com/en/products/9-am"]},{"id":"SH-0069","brand":"Afnan","name":"9 AM Dive","concentration":"Eau de Parfum","formats_ml":[100],"aliases":["Afnan - 9 AM Dive","Afnan 9 AM Dive","9AM Dive"],"status":"verificato","notes":"Verificato tramite fonte ufficiale Afnan; nome canonico, formato e alias aggiornati.","verification_sources":["https://fr.afnan.com/en/products/9-am-dive"]},{"id":"SH-0070","brand":"Afnan","name":"9 AM - Pour Femme","concentration":"Eau de Parfum","formats_ml":[100],"aliases":["Afnan - 9 AM Pour Femme","Afnan 9 AM Pour Femme","9 AM Pour Femme","9AM Pour Femme"],"status":"verificato","notes":"Verificato tramite fonte ufficiale Afnan; nome canonico, formato e alias aggiornati.","verification_sources":["https://fr.afnan.com/en/products/9-am-pour-femme"]},{"id":"SH-0026","brand":"Afnan","name":"Supremacy Collector's Edition","concentration":"Eau de Parfum","formats_ml":[100],"aliases":["Afnan - Supremacy Collector's Edition","Afnan Supremacy Collector's Edition"],"status":"verificato","notes":"Verificato tramite fonte esterna; mantenere questa referenza come nome canonico del catalogo.","verification_sources":["https://it.afnan.com/en/products/supremacy-collectors-edition"]},{"id":"SH-0027","brand":"Afnan","name":"Supremacy in Heaven","concentration":"Eau de Parfum","formats_ml":[100],"aliases":["Afnan - Supremacy in Heaven","Afnan Supremacy in Heaven"],"status":"verificato","notes":"Verificato tramite fonte esterna; mantenere questa referenza come nome canonico del catalogo.","verification_sources":["https://fr.afnan.com/products/supremacy-in-heaven"]},{"id":"SH-0035","brand":"Afnan","name":"Turathi Blue","concentration":"Eau de Parfum","formats_ml":[90],"aliases":["Afnan Turathi Blue","Turathi Blue Pour Homme","Turathi Blue EDP","Turathi Blue 90 ML"],"status":"verificato","notes":"Verificato con fonte prodotto/brand; nome canonico, concentrazione, formato e alias aggiornati.","verification_sources":["https://fr.afnan.com/products/turathi-blue-homme"]},{"id":"SH-0060","brand":"Afnan","name":"Turathi Brown","concentration":"Eau de Parfum","formats_ml":[90],"aliases":["Afnan Turathi Brown","Turathi Brown Pour Homme","Turathi Brown EDP","Turathi Brown 90 ML"],"status":"verificato","notes":"Verificato con fonte prodotto/brand; nome canonico, concentrazione, formato e alias aggiornati.","verification_sources":["https://egypt.afnan.com/products/turathi-brown-homme"]},{"id":"SH-0061","brand":"Afnan","name":"Turathi Electric","concentration":"Eau de Parfum","formats_ml":[90],"aliases":["Afnan Turathi Electric","Turathi Electric EDP","Turathi Electric 90 ML"],"status":"verificato","notes":"Verificato con fonte prodotto/brand; nome canonico, concentrazione, formato e alias aggiornati.","verification_sources":["https://fr.afnan.com/products/turathi-electric"]},{"id":"SH-0059","brand":"Afnan","name":"Turathi Red","concentration":"Eau de Parfum","formats_ml":[90],"aliases":["Afnan Turathi Red","Turathi Red Pour Femme","Turathi Red EDP","Turathi Red 90 ML"],"status":"verificato","notes":"Verificato con fonte prodotto/brand; nome canonico, concentrazione, formato e alias aggiornati.","verification_sources":["https://afnan.com/products/turathi-red-femme"]},{"id":"SH-0033","brand":"Ahmed Al Maghribi","name":"Kaaf","concentration":"Eau de Parfum","formats_ml":[100],"aliases":["Ahmed Al Maghribi Kaaf","Kaaf by Ahmed Al Maghribi","Kaaf EDP"],"status":"verificato","notes":"Verificato con fonte prodotto/brand; nome canonico, formati e alias aggiornati.","verification_sources":["https://ae.ahmedalmaghribi.com/en/shop/perfumes/occidental-fragrance/kaaf"]},{"id":"SH-0017","brand":"Armaf","name":"Club de Nuit Intense Man","concentration":"Eau de Parfum","formats_ml":[30,105,250],"aliases":["Armaf Club de Nuit Intense Man","Club de Nuit Intense Man By Armaf","Armaf - Club de Nuit Intense Man"],"status":"verificato","notes":"Nome già incontrato nello storico ScentHunter; formato/alias da verificare prima dell'integrazione."},{"id":"SH-0018","brand":"Armaf","name":"Club de Nuit Precieux","concentration":"Eau de Parfum","formats_ml":[105],"aliases":["Armaf Club de Nuit Precieux","Club de Nuit Precieux","Armaf - Club de Nuit Precieux"],"status":"verificato","notes":"Verificato con fonte ufficiale o rivenditore autorizzato/affidabile."},{"id":"SH-0021","brand":"Armaf","name":"Odyssey Artisto Red","concentration":"","formats_ml":[100],"aliases":["Armaf Odyssey Artisto Red","Odyssey Artisto Red By Armaf","Odyssey Artisto Red 100ml"],"status":"verificato","notes":"Verificato con fonte prodotto/brand; nome canonico, formati e alias aggiornati.","verification_sources":["https://armafperfume.us/products/odyssey-artisto"]},{"id":"SH-0019","brand":"Armaf","name":"Odyssey Mandarin Sky","concentration":"Eau de Parfum","formats_ml":[100],"aliases":["Armaf - Odyssey Mandarin Sky","Armaf Odyssey Mandarin Sky"],"status":"verificato","notes":"Verificato tramite fonte esterna; mantenere questa referenza come nome canonico del catalogo.","verification_sources":["https://www.douglas.be/fr/p/5011971086"]},{"id":"SH-0020","brand":"Armaf","name":"Odyssey Spectra","concentration":"Eau de Parfum","formats_ml":[60,100,200],"aliases":["Armaf Odyssey Spectra","Odyssey Spectra By Armaf","Armaf - Odyssey Spectra"],"status":"verificato","notes":"Nome già incontrato nello storico ScentHunter; formato/alias da verificare prima dell'integrazione."},{"id":"SH-0014","brand":"Azzaro","name":"Forever Wanted Elixir","concentration":"Parfum","formats_ml":[50,100],"aliases":[],"status":"verificato","notes":"Verificato tramite fonte esterna; mantenere questa referenza come nome canonico del catalogo.","verification_sources":["https://www.iciparisxl.lu/azzaro/forever-wanted-elixir/parfum-bois-pour-homme/p/BP_1370389"]},{"id":"SH-0011","brand":"Azzaro","name":"The Most Wanted","concentration":"Eau de Parfum Intense","formats_ml":[50,100],"aliases":["Azzaro The Most Wanted","Azzaro The Most Wanted Eau de Parfum Intense","The Most Wanted Eau de Parfum Intense"],"status":"verificato","notes":"Verificato con fonte ufficiale o rivenditore autorizzato/affidabile."},{"id":"SH-0012","brand":"Azzaro","name":"The Most Wanted Parfum","concentration":"Parfum Intense","formats_ml":[50,100,150],"aliases":["Azzaro The Most Wanted Parfum","Azzaro The Most Wanted Parfum Intense","The Most Wanted Parfum Intense"],"status":"verificato","notes":"Verificato con fonte ufficiale o rivenditore autorizzato/affidabile."},{"id":"SH-0013","brand":"Azzaro","name":"Wanted by Night","concentration":"Eau de Parfum","formats_ml":[50,100,150],"aliases":["Azzaro Wanted by Night","Azzaro Wanted By Night Eau de Parfum","Wanted by Night Eau de Parfum"],"status":"verificato","notes":"Verificato con fonte ufficiale o rivenditore autorizzato/affidabile."},{"id":"SH-0041","brand":"Chanel","name":"Bleu de Chanel","concentration":"Eau de Parfum","formats_ml":[50,100],"aliases":["Bleu de Chanel Eau de Parfum","Bleu de Chanel EDP","Chanel Bleu de Chanel Eau de Parfum"],"status":"verificato","notes":"Nome già incontrato nello storico ScentHunter; formato/alias da verificare prima dell'integrazione."},{"id":"SH-0037","brand":"Creed","name":"Aventus","concentration":"Eau de Parfum","formats_ml":[30,50,100,240,490],"aliases":["Creed Aventus","Aventus By Creed"],"status":"verificato","notes":"Nome già incontrato nello storico ScentHunter; formato/alias da verificare prima dell'integrazione."},{"id":"SH-0038","brand":"Creed","name":"Green Irish Tweed","concentration":"Eau de Parfum","formats_ml":[50,100,240,490],"aliases":["Creed Green Irish Tweed","Green Irish Tweed By Creed"],"status":"verificato","notes":"Nome già incontrato nello storico ScentHunter; formato/alias da verificare prima dell'integrazione."},{"id":"SH-0039","brand":"Dior","name":"Sauvage","concentration":"Eau de Toilette","formats_ml":[30,60,100,200],"aliases":["Dior Sauvage","Dior Sauvage Eau de Toilette","Sauvage Eau de Toilette"],"status":"verificato","notes":"Verificato con fonte ufficiale o rivenditore autorizzato/affidabile."},{"id":"SH-0040","brand":"Dior","name":"Sauvage Elixir","concentration":"Elixir","formats_ml":[60,100,150],"aliases":["Dior Sauvage Elixir","Sauvage Elixir","Sauvage Elixir Parfum"],"status":"verificato","notes":"Verificato con fonte ufficiale o rivenditore autorizzato/affidabile."},{"id":"SH-0032","brand":"Dumont","name":"Nitro Red","concentration":"","formats_ml":[100],"aliases":["Dumont Nitro Red","Nitro Red 100 ML","Nitro Red by Dumont"],"status":"verificato","notes":"Verificato sul sito ufficiale Dumont; formato 100 ml. La fonte non indica una concentrazione specifica.","verification_sources":["https://www.dumontparis.com/product/nitro-red/"]},{"id":"SH-0030","brand":"French Avenue","name":"Liquid Brun","concentration":"Eau de Parfum","formats_ml":[100],"aliases":["French Avenue Liquid Brun","Liquid Brun","Liquid Brun Eau de Parfum","Liquid Brun 100 ML"],"status":"verificato","notes":"Verificato sul sito ufficiale French Avenue; Eau de Parfum, 100 ml.","verification_sources":["https://www.french-avenue-parfum.com/produit/eau-de-parfum-liquid-brun/"]},{"id":"SH-0031","brand":"French Avenue","name":"Liquid Brun Limited Edition","concentration":"Extrait de Parfum","formats_ml":[150],"aliases":["French Avenue Liquid Brun Limited Edition","Liquid Brun Limited Edition 150ml","Liquid Brun Limited Edition Extrait de Parfum"],"status":"verificato","notes":"Verificato con fonte prodotto/brand; nome canonico, concentrazione, formato e alias aggiornati.","verification_sources":["https://www.french-avenue-parfum.com/produit/liquid-brun-limited-edition-french-avenue/"]},{"id":"SH-0043","brand":"Giorgio Armani","name":"Acqua di Gio Profondo","concentration":"","formats_ml":[75,125],"aliases":["Acqua di Gio Profondo","Acqua di Giò Profondo","Acqua di Gio Profondo Eau de Parfum","Giorgio Armani Acqua di Gio Profondo"],"status":"verificato","notes":"Verificato con fonte prodotto/brand; formati e grafia canonica aggiornati."},{"id":"SH-0044","brand":"Giorgio Armani","name":"Stronger With You Intensely","concentration":"","formats_ml":[30,50,100],"aliases":["Emporio Armani Stronger With You Intensely","Stronger With You Intensely","Armani Stronger With You Intensely","Stronger With You Intensely Eau de Parfum"],"status":"verificato","notes":"Verificato con fonte prodotto/brand; formati e grafia canonica aggiornati."},{"id":"SH-0051","brand":"Givenchy","name":"Gentleman Reserve Privee","concentration":"Eau de Parfum","formats_ml":[60,100],"aliases":["Givenchy Gentleman Réserve Privée","Givenchy Gentleman Reserve Privee","Gentleman Réserve Privée Eau de Parfum"],"status":"verificato","notes":"Verificato con fonte prodotto/brand; nome canonico, formati e alias aggiornati.","verification_sources":["https://www.givenchybeauty.com/int/en/p/gentleman-reserve-privee-F10100159.html"]},{"id":"SH-0050","brand":"Givenchy","name":"Gentleman Society","concentration":"Eau de Parfum","formats_ml":[40,60,100,200],"aliases":["Givenchy Gentleman Society","Gentleman Society Eau de Parfum","Gentleman Society EDP"],"status":"verificato","notes":"Nome già incontrato nello storico ScentHunter; formato/alias da verificare prima dell'integrazione."},{"id":"SH-0016","brand":"Jean Paul Gaultier","name":"Le Male Elixir","concentration":"Parfum","formats_ml":[75,125,200],"aliases":[],"status":"verificato","notes":"Verificato tramite fonte esterna; mantenere questa referenza come nome canonico del catalogo.","verification_sources":["https://www.jeanpaulgaultier.com/eu/fr/p/gamme-le-male/le-male-elixir-parfum-000000000065189083"]},{"id":"SH-0015","brand":"Jean Paul Gaultier","name":"Le Male Le Parfum","concentration":"Eau de Parfum Intense","formats_ml":[75,125,200],"aliases":["Jean Paul Gaultier Le Male Le Parfum","Le Male Le Parfum Eau de Parfum","Le Male Le Parfum Eau de Parfum Intense"],"status":"verificato","notes":"Verificato con fonte ufficiale o rivenditore autorizzato/affidabile."},{"id":"SH-0054","brand":"Khadlaj","name":"Island","concentration":"Extrait de Parfum","formats_ml":[100],"aliases":["Khadlaj Island","Island By Khadlaj","Island Extrait de Parfum","Island 100 ML","Khadlaj Island Parfum"],"status":"verificato","notes":"Verificato con fonte prodotto/brand; nome canonico, concentrazione, formato e alias aggiornati.","catalog_note":"Referenza confermata: Khadlaj Island. Le diciture Island, Island Parfum e Island Extrait de Parfum sono trattate come lo stesso profumo. Set/cofanetti esclusi.","verification_sources":["https://khadlaj-perfumes.com/collections/top-selling/products/island-100-ml-extrait-de-parfum-spray-for-men-and-women"]},{"id":"SH-0055","brand":"Khadlaj","name":"Island Dreams","concentration":"Extrait de Parfum","formats_ml":[100],"aliases":["Khadlaj Island Dreams","Island Dreams By Khadlaj","Island Dreams Extrait de Parfum","Island Dreams 100 ML"],"status":"verificato","notes":"Verificato con fonte prodotto/brand; nome canonico, concentrazione, formato e alias aggiornati.","verification_sources":["https://www.notino.be/khadlaj/island-dreams-extrait-de-parfum-mixte/"]},{"id":"SH-0056","brand":"Khadlaj","name":"Island Vanilla Dunes","concentration":"Extrait de Parfum","formats_ml":[100],"aliases":["Khadlaj Island Vanilla Dunes","Island Vanilla Dunes By Khadlaj","Island Vanilla Dunes Extrait de Parfum","Island Vanilla Dunes 100 ML"],"status":"verificato","notes":"Verificato con fonte prodotto/brand; nome canonico, concentrazione, formato e alias aggiornati.","verification_sources":["https://khadlaj-perfumes.com/products/khadlaj-island-vanilla-dunes-100-ml-extrait-de-parfum-spray-for-men"]},{"id":"SH-0053","brand":"Lancôme","name":"Idôle","concentration":"","formats_ml":[25,50,100],"aliases":["Lancôme Idôle","Lancome Idole","Lancôme Idôle Eau de Parfum","Idole Eau de Parfum"],"status":"verificato","notes":"Verificato con fonte prodotto/brand; formati e grafia canonica aggiornati."},{"id":"SH-0052","brand":"Lancôme","name":"La Vie Est Belle","concentration":"","formats_ml":[30,50,75,100,150],"aliases":["Lancôme La Vie Est Belle","Lancome La Vie Est Belle","La Vie Est Belle Eau de Parfum","La Vie Est Belle EDP"],"status":"verificato","notes":"Verificato con fonte prodotto/brand; formati e grafia canonica aggiornati."},{"id":"SH-0065","brand":"Lattafa","name":"Art of Universe","concentration":"Eau de Parfum","formats_ml":[100],"aliases":["Lattafa Art of Universe","Lattafa Pride Art of Universe","Art of Universe EDP","Art of Universe 100 ML"],"status":"verificato","notes":"Verificato con fonte prodotto/brand; nome canonico, concentrazione, formato e alias aggiornati.","verification_sources":["https://www.shop-apotheke.com/beauty/upmCLHFTK/art-of-universe-eau-de-parfum.htm"]},{"id":"SH-0028","brand":"Lattafa","name":"Asad Bourbon","concentration":"Eau de Parfum","formats_ml":[100],"aliases":["Lattafa - Asad Bourbon","Lattafa Asad Bourbon"],"status":"verificato","notes":"Verificato tramite fonte esterna; mantenere questa referenza come nome canonico del catalogo.","verification_sources":["https://www.elpais.com/escaparate/belleza/perfumes-arabes-hombre.html"]},{"id":"SH-0029","brand":"Lattafa","name":"Nebras","concentration":"","formats_ml":[100],"aliases":["Lattafa Nebras","Nebras Lattafa","Lattafa - Nebras"],"status":"verificato","notes":"Verificato con fonte prodotto/brand; formati e grafia canonica aggiornati."},{"id":"SH-0036","brand":"Maison Alhambra","name":"Jean Lowe Immortal","concentration":"Eau de Parfum","formats_ml":[100],"aliases":["Jean Lowe Immortel","Jean Lowe Immortal","Maison Alhambra Jean Lowe Immortal","Jean Lowe Immortal Eau de Parfum"],"status":"verificato","notes":"Verificato con fonte prodotto/brand; nome canonico, formati e alias aggiornati.","verification_sources":["https://maisonvalentry.com/collections/maison-alhambra/products/immortel"]},{"id":"SH-0058","brand":"Miu Miu","name":"L'Eau Rosée","concentration":"","formats_ml":[30,50,100],"aliases":["Miu Miu L'Eau Rosée","Miu Miu Eau Rosée","Miu Miu L Eau Rosee","L'Eau Rosee Miu Miu"],"status":"verificato","notes":"Verificato con fonte prodotto/brand; formati e grafia canonica aggiornati."},{"id":"SH-0057","brand":"Miu Miu","name":"Miutine","concentration":"","formats_ml":[30,50,100],"aliases":["Miu Miu Miutine","Miutine Miu Miu","Miutine Eau de Parfum"],"status":"verificato","notes":"Verificato con fonte prodotto/brand; formati e grafia canonica aggiornati."},{"id":"SH-0048","brand":"Prada","name":"Luna Rossa Carbon","concentration":"Eau de Toilette","formats_ml":[50,100],"aliases":["Prada Luna Rossa Carbon","Luna Rossa Carbon EDT","Prada Luna Rossa Carbon EDT"],"status":"verificato","notes":"Nome già incontrato nello storico ScentHunter; formato/alias da verificare prima dell'integrazione."},{"id":"SH-0049","brand":"Prada","name":"Luna Rossa Ocean","concentration":"Eau de Toilette","formats_ml":[50,100],"aliases":["Prada Luna Rossa Ocean","Luna Rossa Ocean EDT","Prada Luna Rossa Ocean EDT"],"status":"verificato","notes":"Nome già incontrato nello storico ScentHunter; formato/alias da verificare prima dell'integrazione."},{"id":"SH-0005","brand":"Rasasi","name":"Hawas Black","concentration":"Eau de Parfum","formats_ml":[100],"aliases":["Hawas Black","Hawas Black 100 ML","Hawas Black EDP","Rasasi Hawas Black"],"status":"verificato","notes":"Verificato tramite fonte esterna; mantenere questa referenza come nome canonico del catalogo.","verification_sources":["https://www.notino.be/rasasi/hawas-black-eau-de-parfum-pour-homme/"]},{"id":"SH-0004","brand":"Rasasi","name":"Hawas Fire","concentration":"Eau de Parfum","formats_ml":[100],"aliases":["Hawas Fire","Hawas Fire 100 ML","Hawas Fire Eau de Parfum","Rasasi Hawas Fire"],"status":"verificato","notes":"Nome già incontrato nello storico ScentHunter; formato/alias da verificare prima dell'integrazione."},{"id":"SH-0001","brand":"Rasasi","name":"Hawas for Him","concentration":"Eau de Parfum","formats_ml":[100],"aliases":["Hawas Men","Hawas for Him","Hawas for Him 100 ML","Rasasi Hawas for Him"],"status":"verificato","notes":"Verificato tramite fonte esterna; mantenere questa referenza come nome canonico del catalogo.","verification_sources":["https://imrasasi.com/products/hawas-men-100-ml","https://www.notino.be/rasasi/hawas-for-men-eau-de-parfum-pour-homme/"]},{"id":"SH-0002","brand":"Rasasi","name":"Hawas Ice","concentration":"Eau de Parfum","formats_ml":[100],"aliases":["Hawas Ice","Hawas Ice 100 ML","Hawas Ice EDP","Rasasi Hawas Ice"],"status":"verificato","notes":"Nome già incontrato nello storico ScentHunter; formato/alias da verificare prima dell'integrazione."},{"id":"SH-0003","brand":"Rasasi","name":"Hawas Kobra","concentration":"Eau de Parfum","formats_ml":[100],"aliases":["Hawas Kobra","Hawas Kobra 100 ML","Hawas Kobra Eau de Parfum","Rasasi Hawas Kobra"],"status":"verificato","notes":"Nome già incontrato nello storico ScentHunter; formato/alias da verificare prima dell'integrazione."},{"id":"SH-0066","brand":"Rayhaan","name":"Aquatica","concentration":"Eau de Parfum","formats_ml":[100],"aliases":["Rayhaan Aquatica","Rayhaan Aquatica EDP","Aquatica Rayhaan","Rayhaan Aquatica 100 ML"],"status":"verificato","notes":"Verificato con fonte prodotto/brand; nome canonico, concentrazione, formato e alias aggiornati.","verification_sources":["https://rayhaanperfumes.com/products/rayhaan-aquatica?variant=44716035440687"]},{"id":"SH-0064","brand":"Rayhaan","name":"Valhalla","concentration":"Eau de Parfum","formats_ml":[100],"aliases":["Rayhaan Valhalla","Rayhaan Valhalla EDP","Valhalla Rayhaan","Rayhaan Valhalla 100 ML"],"status":"verificato","notes":"Verificato con fonte prodotto/brand; nome canonico, concentrazione, formato e alias aggiornati.","verification_sources":["https://www.bol.com/nl/nl/p/rayhaan-valhalla-eau-de-parfum-100ml/9300000237610063/"]},{"id":"SH-0063","brand":"Rayhaan","name":"Wolf","concentration":"Eau de Parfum","formats_ml":[100],"aliases":["Rayhaan Wolf","Rayhaan Wolf EDP","Wolf Rayhaan","Rayhaan Wolf 100 ML"],"status":"verificato","notes":"Verificato con fonte prodotto/brand; nome canonico, concentrazione, formato e alias aggiornati.","verification_sources":["https://www.bol.com/be/nl/p/rayhaan-wolf-eau-de-parfum-100ml/9300000286370662"]},{"id":"SH-0062","brand":"Royal Blend","name":"Sequoia","concentration":"Extrait de Parfum","formats_ml":[100],"aliases":["Royal Blend Sequoia","French Avenue Royal Blend Sequoia","Royal Blend Sequoia Extrait de Parfum"],"status":"verificato","notes":"Verificato con fonte prodotto/brand; nome canonico, formati e alias aggiornati.","verification_sources":["https://maisonvalentry.com/products/royal-blend-sequoia"]},{"id":"SH-0034","brand":"Rue Broca","name":"Theoreme Homme","concentration":"Eau de Parfum","formats_ml":[90],"aliases":["Rue Broca Theoreme Homme","Theoreme Homme Eau de Parfum","Theoreme Homme 90 ml"],"status":"verificato","notes":"Verificato con fonte prodotto/brand; nome canonico, formati e alias aggiornati.","verification_sources":["https://www.notino.be/afnan/theoreme-homme-eau-de-parfum-pour-homme/"]},{"id":"SH-0006","brand":"Valentino","name":"Born in Roma Uomo","concentration":"Eau de Toilette","formats_ml":[50,100,150],"aliases":["Born In Roma For Him","Born In Roma Uomo 100 ML","Born In Roma Uomo Eau de Toilette","Born in Roma Uomo","Valentino Born in Roma Uomo"],"status":"verificato","notes":"Nome già incontrato nello storico ScentHunter; formato/alias da verificare prima dell'integrazione."},{"id":"SH-0008","brand":"Valentino","name":"Born in Roma Uomo Extradose","concentration":"Eau de Parfum","formats_ml":[50,100],"aliases":["Born In Roma Extradose","Born In Roma Uomo Extradose 100 ML","Born in Roma Uomo Extradose","Valentino - Born in Roma Uomo Extradose","Valentino Born in Roma Uomo Extradose"],"status":"verificato","notes":"Verificato tramite fonte esterna; mantenere questa referenza come nome canonico del catalogo.","verification_sources":["https://www.iciparisxl.lu/valentino/born-in-roma-uomo-extradose-/parfum-pour-homme/p/BP_1351615"]},{"id":"SH-0007","brand":"Valentino","name":"Born in Roma Uomo Intense","concentration":"Eau de Parfum","formats_ml":[50,100],"aliases":["Born In Roma Uomo Intense 100 ML","Born in Roma Uomo Eau de Parfum Intense","Born in Roma Uomo Intense","Valentino - Born in Roma Uomo Intense","Valentino Born in Roma Uomo Intense"],"status":"verificato","notes":"Verificato tramite fonte esterna; mantenere questa referenza come nome canonico del catalogo.","verification_sources":["https://www.valentino-beauty.com/it_IT/profumi/fragranze-maschili/born-in-roma-uomo/born-in-roma-uomo-eau-de-parfum-intense/MPL01907.html"]},{"id":"SH-0009","brand":"Valentino","name":"Born in Roma Yellow Dream Uomo","concentration":"Eau de Toilette","formats_ml":[50],"aliases":["Born In Roma Yellow Dream For Him","Born in Roma Uomo Yellow Dream","Born in Roma Uomo Yellow Dream 50 ML","Valentino Born in Roma Uomo Yellow Dream"],"status":"verificato","notes":"Nome già incontrato nello storico ScentHunter; formato/alias da verificare prima dell'integrazione."},{"id":"SH-0010","brand":"Valentino","name":"Uomo Born in Roma Coral Fantasy","concentration":"Eau de Toilette","formats_ml":[50,100],"aliases":["Born In Roma Coral Fantasy For Him","Born in Roma Uomo Coral Fantasy","Born in Roma Uomo Coral Fantasy 100 ML","Valentino - Uomo Born in Roma Coral Fantasy","Valentino Born in Roma Uomo Coral Fantasy","Valentino Uomo Born in Roma Coral Fantasy"],"status":"verificato","notes":"Verificato tramite fonte esterna; mantenere questa referenza come nome canonico del catalogo.","verification_sources":["https://www.valentino-beauty.de/en_GB/fragrances/men-s-fragrance/born-in-roma-uomo-coral-fantasy/MPL01750.html"]},{"id":"SH-0047","brand":"Versace","name":"Dylan Blue","concentration":"Eau de Toilette","formats_ml":[50,100,200],"aliases":["Versace Dylan Blue","Dylan Blue Pour Homme","Dylan Blue Pour Homme EDT"],"status":"verificato","notes":"Verificato con fonte prodotto/brand; nome canonico, formati e alias aggiornati.","verification_sources":["https://www.versace.com/dk/en/men/accessories/fragrances-body-care/dylan-blue-pour-homme/"]},{"id":"SH-0045","brand":"Versace","name":"Eros","concentration":"Eau de Toilette","formats_ml":[50,100,200],"aliases":["Versace Eros","Eros Pour Homme","Eros Eau de Toilette","Eros EDT"],"status":"verificato","notes":"Verificato sul sito ufficiale Versace; Eau de Toilette, 50/100/200 ml.","verification_sources":["https://www.versace.com/fr/fr/homme/accessoires/parfums-et-soins-du-corps/eros/eau-de-toilette-eros-50%C2%A0ml/R740008-R050MLS_RTU_TU_RNUL__.html"]},
+{"id":"SH-0071","brand":"Versace","name":"Eros pour Femme Eau de Toilette","concentration":"Eau de Toilette","formats_ml":[30,50,100],"aliases":["Versace Eros pour Femme Eau De Toilette","Eros pour Femme Eau De Toilette","Eros pour Femme EDT","Versace Eros Pour Femme EDT"],"status":"verificato","notes":"Verificato su Parfum-Zentrum e sito ufficiale Versace; Eau de Toilette, 30/50/100 ml.","verification_sources":["https://www.parfum-zentrum.de/versace-eros-pour-femme-eau-de-toilette-100-ml-woman_z695946/","https://www.versace.com/us/en/women/accessories/fragrances-body-care/eros-pour-femme/eros-pour-femme-edt-100-ml-gold/R750132-R100MLS_RNUL.html"]},
+{"id":"SH-0072","brand":"Versace","name":"Eros pour Femme Eau de Parfum","concentration":"Eau de Parfum","formats_ml":[100],"aliases":["Versace Eros pour Femme Eau De Parfum","Eros pour Femme Eau De Parfum","Eros pour Femme EDP","Versace Eros Pour Femme EDP"],"status":"verificato","notes":"Referenza distinta dalla Eau de Toilette; mantenuta separata per evitare l'unione di prezzi e formati.","verification_sources":["https://www.parfum-zentrum.de/versace_v208/"]},
+{"id":"SH-0046","brand":"Versace","name":"Eros Flame","concentration":"Eau de Parfum","formats_ml":[50,100,200],"aliases":["Versace Eros Flame","Eros Flame EDP","Eros Flame Eau de Parfum"],"status":"verificato","notes":"Verificato sul sito ufficiale Versace; Eau de Parfum, 50/100/200 ml.","verification_sources":["https://www.versace.com/de/de/herren/accessoires/dufte/eros-flame/"]},{"id":"SH-0042","brand":"Yves Saint Laurent","name":"Y Eau de Parfum","concentration":"Eau de Parfum","formats_ml":[40,60,100,200],"aliases":["Y Eau de Parfum","Y EDP","Yves Saint Laurent Y Eau de Parfum","Y EDP 100 ML"],"status":"verificato","notes":"Verificato con fonte prodotto/brand; nome canonico, concentrazione, formato e alias aggiornati.","verification_sources":["https://www.yslbeauty.com/int/fragrance/fragrance-for-him/y/y--eau-de-parfum/3614272050341.html"]},{"id":"SH-0073","brand":"Jean Paul Gaultier","name":"Le Beau","concentration":"Eau de Toilette","formats_ml":[75,125],"aliases":["Jean Paul Gaultier - Le Beau","Jean Paul Gaultier Le Beau","Le Beau Eau de Toilette","Le Beau EDT"],"status":"verificato","notes":"Referenza canonica Le Beau; formati verificati 75/125 ml."},{"id":"SH-0074","brand":"Jean Paul Gaultier","name":"Le Beau Le Parfum Intense","concentration":"Eau de Parfum Intense","formats_ml":[75,125],"aliases":["Jean Paul Gaultier - Le Beau Le Parfum","Jean Paul Gaultier Le Beau Le Parfum","Le Beau Le Parfum","Le Beau Le Parfum Eau de Parfum Intense","Le Beau Le Parfum Intense","Jean Paul Gaultier Le Beau Le Parfum Intense"],"status":"verificato","notes":"Le Beau Le Parfum e Le Beau Le Parfum Intense sono la stessa referenza canonica; formati verificati 75/125 ml."},{"id":"SH-0075","brand":"Jean Paul Gaultier","name":"Le Beau Paradise Garden","concentration":"Eau de Parfum","formats_ml":[75,125],"aliases":["Jean Paul Gaultier - Le Beau Paradise Garden","Jean Paul Gaultier Le Beau Paradise Garden","Le Beau Paradise Garden Eau de Parfum"],"status":"verificato","notes":"Referenza canonica Le Beau Paradise Garden; formati verificati 75/125 ml."},{"id":"SH-0076","brand":"Jean Paul Gaultier","name":"Le Beau Narcisse","concentration":"Eau de Parfum","formats_ml":[75,125],"aliases":["Jean Paul Gaultier - Le Beau Narcisse","Jean Paul Gaultier Le Beau Narcisse","Le Beau Narcisse Eau de Parfum"],"status":"verificato","notes":"Referenza canonica Le Beau Narcisse; formati verificati 75/125 ml."},{"id":"SH-0077","brand":"Jean Paul Gaultier","name":"Le Beau Flower Edition","concentration":"Eau de Parfum","formats_ml":[125],"aliases":["Jean Paul Gaultier - Le Beau Flower Edition","Jean Paul Gaultier Le Beau Flower Edition","Le Beau Flower Edition Eau de Parfum"],"status":"verificato","notes":"Referenza canonica Le Beau Flower Edition; formato verificato 125 ml."}];
   const MASTER_CATALOG_INDEX = new Map();
 
   MASTER_CATALOG.forEach(p=>{
@@ -858,25 +784,8 @@ function shGroupData(data){
     if(!nameN)return null;
     const fullN=norm(`${brand||""} ${name||""}`);
 
-    /*
-     * Alcuni shop aggiungono al titolo una seconda indicazione di genere.
-     * Caso reale Notino: "Afnan 9 PM Pour Femme pour femme".
-     * Il catalogo conosce la referenza come "9 PM - Pour Femme".
-     *
-     * Non eliminiamo genericamente parole dal nome: riduciamo soltanto una
-     * ripetizione finale della stessa locuzione di genere. In questo modo
-     * 9 PM Pour Femme + "pour femme" torna alla stessa referenza master,
-     * senza avvicinare 9 AM Pour Femme, 9 PM, 9 PM Rebel ecc.
-     */
-    const collapseDuplicateGender=(v)=>String(v||"")
-      .replace(/\b(pour\s+femme|pour\s+homme)\s+\1$/i,"$1")
-      .replace(/\s+/g," ")
-      .trim();
-    const collapsedNameN=collapseDuplicateGender(nameN);
-    const collapsedFullN=collapseDuplicateGender(fullN);
-
     // 1) Match esatto su nome completo, nome canonico o alias.
-    for(const candidate of [...new Set([fullN,nameN,collapsedFullN,collapsedNameN].filter(Boolean))]){
+    for(const candidate of [fullN,nameN]){
       if(!candidate)continue;
       const hit=MASTER_CATALOG_INDEX.get(candidate);
       if(!hit || hit.ambiguous)continue;
@@ -1162,14 +1071,6 @@ function shGroupData(data){
     // potrebbe altrimenti accorciare (es. "Hawas for Him").
     const rawBrand=cleanBrandText(o.brand);
     const rawName=cleanBrandText(o.name);
-    // Il prezzo commerciale/gender aggiunto da alcuni risultati Notino
-    // non fa parte dell'identità del prodotto e deve essere rimosso
-    // PRIMA del match con il catalogo master.
-    const identityName=rawName
-      .replace(/\s+(?:de|from)\s+\d+(?:[.,]\d{1,2})?\s*(?:€|eur)?\s*(?:donna|femme|woman|women|uomo|homme|man|men)?\s*$/i," ")
-      .replace(/\s+(?:de|from)\s+\d+(?:[.,]\d{1,2})?\s*(?:€|eur)?\s*$/i," ")
-      .replace(/\s+/g," ")
-      .trim();
     const hint=concentrationHint(o);
 
     // Se il nome originale contiene una concentrazione esplicita,
@@ -1179,7 +1080,7 @@ function shGroupData(data){
     let directMaster=null;
     if(hint){
       const rb=norm(rawBrand);
-      const rn=norm(identityName);
+      const rn=norm(rawName);
       const candidates=MASTER_CATALOG.filter(p=>{
         if(norm(p.concentration||"")!==norm(hint))return false;
         if(rb && norm(p.brand||"")!==rb)return false;
@@ -1188,7 +1089,7 @@ function shGroupData(data){
       });
       if(candidates.length===1)directMaster=candidates[0];
     }
-    if(!directMaster)directMaster=resolveMasterProduct(rawBrand,identityName);
+    if(!directMaster)directMaster=resolveMasterProduct(rawBrand,rawName);
     if(directMaster){
       return {
         brand:directMaster.brand||rawBrand,
@@ -1299,10 +1200,6 @@ function shGroupData(data){
         canonical:norm(id.name),
         display_name:id.brand?id.brand+" - "+id.name:id.name,
         catalog_id:id.catalog_id||"",
-        formats_ml:(()=>{
-          const master=id.catalog_id?MASTER_CATALOG.find(p=>p.id===id.catalog_id):null;
-          return Array.isArray(master?.formats_ml)?master.formats_ml.slice():[];
-        })(),
         size_ml:"",
         concentration:o.concentration||"",
         image:o.image||o.image_url||o.thumbnail||"",
@@ -1316,10 +1213,6 @@ function shGroupData(data){
     if(!g.image)g.image=o.image||o.image_url||o.thumbnail||"";
 
     const normalizedOffer={...o};
-    normalizedOffer._source_name=o._source_name||o.name||"";
-    normalizedOffer._source_brand=o._source_brand||o.brand||"";
-    normalizedOffer._source_url=o._source_url||o.url||"";
-    normalizedOffer._source_store=o._source_store||o.store||"";
     if(id.brand)normalizedOffer.brand=id.brand;
     if(id.name)normalizedOffer.name=id.name;
     if(id.catalog_id)normalizedOffer.catalog_id=id.catalog_id;
@@ -1373,52 +1266,26 @@ function shGroupData(data){
     g.offers=cleanOffers;
 
     /*
-     * LE BEAU — controllo stretto delle offerte.
-     *
-     * Gli scraper possono restituire una pagina/prodotto sbagliato sotto una
-     * ricerca corretta (es. Deloox: Le Beau -> Le Male EDT;
-     * Parfum-Zentrum: Le Beau -> Narcisse).
-     * Prima di mostrare un link manteniamo quindi il nome ORIGINALE dello
-     * scraper e verifichiamo che corrisponda davvero alla variante richiesta.
-     *
-     * Inoltre limitiamo i negozi ai retailer che risultano avere realmente
-     * quella referenza e rispettiamo i formati noti della singola variante.
+     * PARFUMZENTRUM: accettiamo l'offerta solo se il formato è esplicito
+     * e compatibile con la referenza master. Gli altri negozi restano
+     * invariati perché alcuni scraper possono non restituire gli ml.
      */
-    const LE_BEAU_RULES={
-      "SH-0073":{stores:["deloox","sabina","parfumzentrum","perfumemarket","notino"],sizes:["75","125"],match:s=>{
-        const n=norm(s);
-        return /\ble\s+beau\b/.test(n) && !/\ble\s+parfum\b|\bintense\b|\bparadise\s+garden\b|\bnarcisse\b|\bflower\s+edition\b|\ble\s+male\b/.test(n);
-      }},
-      "SH-0074":{stores:["deloox","sabina","perfumemarket","notino"],sizes:["75","125"],match:s=>{
-        const n=norm(s);
-        return /\ble\s+beau\b/.test(n) && /\ble\s+parfum\b|\bintense\b/.test(n) && !/\bparadise\s+garden\b|\bnarcisse\b|\bflower\s+edition\b|\ble\s+male\b/.test(n);
-      }},
-      "SH-0075":{stores:["deloox","sabina","notino"],sizes:["75","125"],match:s=>{
-        const n=norm(s);
-        return /\ble\s+beau\b/.test(n) && /\bparadise\s+garden\b/.test(n) && !/\ble\s+male\b/.test(n);
-      }},
-      "SH-0076":{stores:["deloox","sabina"],sizes:["75","125"],match:s=>{
-        const n=norm(s);
-        return /\ble\s+beau\b/.test(n) && /\bnarcisse\b/.test(n) && !/\ble\s+male\b/.test(n);
-      }},
-      "SH-0077":{stores:["deloox"],sizes:["125"],match:s=>{
-        const n=norm(s);
-        return /\ble\s+beau\b/.test(n) && /\bflower\s+edition\b/.test(n) && !/\ble\s+male\b/.test(n);
-      }}
-    };
-
-    const leBeauRule=g.catalog_id?LE_BEAU_RULES[g.catalog_id]:null;
     g.offers=g.offers.filter(o=>{
-      if(!leBeauRule)return true;
       const store=String(o.store||'').trim().toLowerCase();
-      if(!leBeauRule.stores.includes(store))return false;
-
-      const sourceName=String(o._source_name||o.name||'').trim();
-      if(!leBeauRule.match(sourceName))return false;
-
       const s=sizeOf(o);
-      if(s && !leBeauRule.sizes.includes(String(s)))return false;
-      if(!s && leBeauRule.sizes.length===1)o.size_ml=leBeauRule.sizes[0];
+
+      // Se il catalogo master conosce i formati reali della referenza,
+      // un formato numerico diverso non viene mai mostrato. Vale per tutti i negozi.
+      if(g.catalog_id){
+        const master=MASTER_CATALOG.find(p=>p.id===g.catalog_id);
+        if(master&&Array.isArray(master.formats_ml)&&master.formats_ml.length && s){
+          const known=master.formats_ml.map(v=>String(v));
+          if(!known.includes(String(s)))return false;
+        }
+      }
+
+      // Parfumzentrum deve sempre comunicare esplicitamente il formato.
+      if(store==='parfumzentrum' && !s)return false;
       return true;
     });
 
@@ -1536,30 +1403,6 @@ function getSizeGroups(g){
     map.get(size).push(o);
   });
 
-  /*
-   * REGOLA FORMATO UNICO:
-   * se tutte le offerte appartengono allo stesso formato reale e uno
-   * scraper non ha riportato il formato per una o più offerte, non creiamo
-   * un falso secondo formato "vuoto".
-   *
-   * Esempio reale:
-   *   Liquid Brun 100 ml -> 5 negozi
-   *   Orioudh -> 1 negozio OUT OF STOCK, formato non dichiarato
-   *
-   * In presenza di un solo formato numerico noto, le offerte senza formato
-   * vengono quindi accorpate a quel formato. In questo modo restano nella
-   * stessa scheda dei negozi, con il relativo stato OUT OF STOCK/link.
-   *
-   * Se esistono due o più formati numerici reali, invece, le offerte senza
-   * formato restano separate: non possiamo sapere a quale formato appartengano.
-   */
-  const knownSizes=[...map.keys()].filter(Boolean);
-  if(knownSizes.length===1 && map.has("")){
-    const onlySize=knownSizes[0];
-    map.set(onlySize,[...(map.get(onlySize)||[]),...(map.get("")||[])]);
-    map.delete("");
-  }
-
   return [...map.entries()].map(([size,offers])=>{
     offers.sort((a,b)=>{
       const ao=isOfferOutOfStock(a),bo=isOfferOutOfStock(b);
@@ -1621,18 +1464,8 @@ document.addEventListener("click",e=>{
   cardPointerMoved=false;
 },{capture:true});
 
-function productGroupKey(g){
-  return normalizePerfumeName(`${g?.brand||""}|${g?.name||""}`).toLowerCase().trim();
-}
-
-function clearOpenProduct(){
-  currentOpenProductKey="";
-  currentOpenSizeKey=null;
-}
-
 function showProducts(groups){
   currentProductGroups=groups;
-  clearOpenProduct();
   statusBox.textContent=groups.length
     ?groups.length+(groups.length===1?" profumo trovato.":" profumi trovati.")
     :"Nessun profumo trovato.";
@@ -1641,16 +1474,32 @@ function showProducts(groups){
     const sizes=getSizeGroups(g);
     const img=g.image||"";
 
-    // Regola generale: la scheda principale apre sempre la scheda del prodotto.
-    // Se esiste un solo formato, la scheda del prodotto mostrerà direttamente
-    // formato + negozi, evitando un terzo passaggio. Con più formati, invece,
-    // la scheda del prodotto presenterà la scelta dei formati.
+    // Un solo formato: la prima scheda è già la scheda cliccabile
+    // che deve rimanere visibile anche tornando indietro dal confronto.
+    if(sizes.length===1){
+      const s=sizes[0];
+      const best=s.best;
+      const shopCount=s.offers.length;
+
+      return `<article class="product-choice" onclick='openSize(${i},${JSON.stringify(s.size)},false)'>
+        <div class="result-image">${img?`<img src="${esc(img)}" alt="${esc(g.name)}" onerror="this.outerHTML='🧴'">`:"🧴"}</div>
+        <div class="product-choice-main">
+          <div class="name">${esc(g.brand ? g.brand+" - "+g.name : g.name)}</div>
+          ${s.size?`<div class="offer-meta">${esc(formatLabel(s.size))}</div>`:""}
+          ${best?`<div class="bestprice">da ${esc(shPrice(best))}</div>`:`<div class="bestprice">OUT OF STOCK</div>`}
+          <div class="offer-meta">${shopCount} ${shopCount===1?"negozio":"negozi"}</div>
+        </div>
+        <div class="arrow">›</div>
+      </article>`;
+    }
+
+    // Più formati: comportamento originale, con passaggio alla scelta formato.
     const best=g.offers.find(o=>!isOfferOutOfStock(o))||null;
 
     return `<article class="product-choice" onclick='openProduct(${i})'>
-      <div class="result-image">${img?`<img src="${esc(img)}" alt="${esc(displayPerfumeName(g.name,g.brand))}" onerror="this.outerHTML='🧴'">`:"🧴"}</div>
+      <div class="result-image">${img?`<img src="${esc(img)}" alt="${esc(g.name)}" onerror="this.outerHTML='🧴'">`:"🧴"}</div>
       <div class="product-choice-main">
-        <div class="name">${esc(g.brand ? g.brand+" - "+displayPerfumeName(g.name,g.brand) : displayPerfumeName(g.name,g.brand))}</div>
+        <div class="name">${esc(g.brand ? g.brand+" - "+g.name : g.name)}</div>
         ${best?`<div class="bestprice">da ${esc(shPrice(best))}</div>`:`<div class="bestprice">OUT OF STOCK</div>`}
       </div>
       <div class="arrow">›</div>
@@ -1669,135 +1518,102 @@ function toggleWishButton(el){
   });
 }
 
-async function fetchFormatComparisons(g, sizes){
-  const productName=(g?.brand?`${g.brand} ${g.name||""}`:(g?.name||"")).trim();
-  const list=[...new Set((sizes||[]).map(x=>String(x||"").trim()).filter(Boolean))];
-  if(!productName || !list.length)return [];
-  const params=new URLSearchParams({q:productName,formats:list.join(",")});
-  const controller=new AbortController();
-  const timer=setTimeout(()=>controller.abort(),8000);
-  try{
-    const response=await fetch(backend()+"/compare-formats?"+params.toString(),{cache:"no-store",headers:{"Accept":"application/json"},signal:controller.signal});
-    if(!response.ok)throw new Error("Confronto formati HTTP "+response.status);
-    const data=await response.json();
-    return Array.isArray(data?.comparisons)?data.comparisons:(Array.isArray(data?.formats)?data.formats:[]);
-  }finally{
-    clearTimeout(timer);
-  }
-}
+function openProduct(i){
+  const g=currentProductGroups[i];
+  if(!g)return;
 
-function getMasterFormats(g){
-  try{
-    const formats=Array.isArray(g?.formats_ml)?g.formats_ml:[];
-    return [...new Set(formats.map(x=>String(x)).filter(x=>/^\d+(?:\.\d+)?$/.test(x)))].sort((a,b)=>Number(a)-Number(b));
-  }catch(e){return []}
-}
-
-function formatComparisonFor(g,sizeKey){
-  const cache=window._formatComparisonsByProduct?.[productGroupKey(g)]||[];
-  return cache.find(x=>String(x.size_ml||x.size||"")===String(sizeKey))||null;
-}
-
-function renderFormatChoiceCard(gi,g,comparisons,sizes){
+  const sizes=getSizeGroups(g);
   const img=g.image||"";
-  const bySize=new Map((comparisons||[]).map(x=>[String(x.size_ml||x.size||""),x]));
+
+  statusBox.textContent="";
   resultsBox.innerHTML=`<article class="comparison">
-    <button class="detail-back" onclick="clearOpenProduct();showProducts(currentProductGroups)">← Torna ai profumi</button>
+    <button class="detail-back" onclick="showProducts(currentProductGroups)">← Torna ai profumi</button>
     <div class="comparison-head">
-      <div class="result-image">${img?`<img src="${esc(img)}" alt="${esc(displayPerfumeName(g.name,g.brand))}" onerror="this.outerHTML='🧴'">`:"🧴"}</div>
-      <div class="result-main"><div class="store">${esc(g.brand||"")}</div><div class="name">${esc(displayPerfumeName(g.name,g.brand))}</div></div>
+      <div class="result-image">${img?`<img src="${esc(img)}" alt="${esc(g.name)}" onerror="this.outerHTML='🧴'">`:"🧴"}</div>
+      <div class="result-main">
+        <div class="store">${esc(g.brand||"")}</div>
+        <div class="name">${esc(g.name)}</div>
+      </div>
     </div>
-    <div class="bestlabel">CONFRONTA I FORMATI</div>
-    ${sizes.map(size=>{
-      const row=bySize.get(String(size));
-      const best=row?.best||null;
-      const offers=Array.isArray(row?.offers)?row.offers:[];
-      const available=best&&!isOfferOutOfStock(best);
-      return `<div class="product-choice format-choice" onclick='openSize(${gi},${JSON.stringify(String(size))},true)'>
+    <div class="bestlabel">SCEGLI IL FORMATO</div>
+    ${sizes.map(s=>{
+      const best=s.best;
+      const shopCount=s.offers.length;
+      return `<div class="product-choice format-choice" onclick='openSize(${i},${JSON.stringify(s.size)})'>
         <div class="format-icon">🧴</div>
         <div class="product-choice-main">
-          <div class="name">${esc(formatLabel(String(size)))}</div>
-          <div class="bestprice">${available?`da ${esc(shPrice(best))}`:`Nessun prezzo disponibile`}</div>
-          ${offers.length?`<div class="offer-meta">${offers.length} ${offers.length===1?"negozio":"negozi"}</div>`:""}
+          <div class="name">${esc(formatLabel(s.size))}</div>
+          ${best?`<div class="bestprice">da ${esc(shPrice(best))}</div>`:`<div class="bestprice">OUT OF STOCK</div>`}
+          <div class="offer-meta">${shopCount} ${shopCount===1?"negozio":"negozi"}</div>
         </div>
         <div class="arrow">›</div>
       </div>`;
     }).join("")}
   </article>`;
+
   document.getElementById("searchOutput").scrollIntoView({behavior:"smooth",block:"start"});
-}
-
-async function openProduct(i){
-  const g=currentProductGroups[i];
-  if(!g)return;
-  currentOpenProductKey=productGroupKey(g);
-  currentOpenSizeKey=null;
-  const detected=getSizeGroups(g).map(s=>s.size).filter(Boolean);
-  const masterFormats=getMasterFormats(g);
-  const sizes=[...new Set(masterFormats.length?masterFormats:detected)].sort((a,b)=>Number(a)-Number(b));
-  const img=g.image||"";
-  const saved=getWishlist();
-  statusBox.textContent="";
-
-  // UN SOLO FORMATO: resta il comportamento storico, terza scheda evitata.
-  if(sizes.length===1){
-    const selected=getSizeGroups(g).find(s=>s.size===sizes[0]);
-    const offers=selected?.offers||[];
-    renderSingleFormatComparison(g,img,offers,sizes[0],saved);
-    return;
-  }
-
-  // DUE O TRE FORMATI: seconda scheda = formati + PREZZO PIÙ BASSO.
-  resultsBox.innerHTML=`<article class="comparison"><button class="detail-back" onclick="clearOpenProduct();showProducts(currentProductGroups)">← Torna ai profumi</button><div class="comparison-head"><div class="result-image">${img?`<img src="${esc(img)}" alt="${esc(displayPerfumeName(g.name,g.brand))}" onerror="this.outerHTML='🧴'">`:"🧴"}</div><div class="result-main"><div class="store">${esc(g.brand||"")}</div><div class="name">${esc(displayPerfumeName(g.name,g.brand))}</div></div></div><div class="bestlabel">CONFRONTA I FORMATI</div><div class="offer-meta" style="margin-bottom:12px">Cerco il prezzo più basso per ogni formato...</div><div class="format-loading" aria-hidden="true">⏳</div></article>`;
-  document.getElementById("searchOutput").scrollIntoView({behavior:"smooth",block:"start"});
-
-  try{
-    const comparisons=await fetchFormatComparisons(g,sizes);
-    const localBySize=new Map(getSizeGroups(g).filter(x=>x.size).map(x=>[String(x.size),x]));
-    const merged=sizes.map(size=>{
-      const key=String(size);
-      const remote=(comparisons||[]).find(x=>String(x.size_ml||x.size||"")===key);
-      const local=localBySize.get(key);
-      const remoteOffers=Array.isArray(remote?.offers)?remote.offers:[];
-      if(remoteOffers.length)return remote;
-      if(local?.offers?.length)return {size_ml:key,best:local.best||null,offers:local.offers};
-      return remote||{size_ml:key,best:null,offers:[]};
-    });
-    window._formatComparisonsByProduct=window._formatComparisonsByProduct||{};
-    window._formatComparisonsByProduct[currentOpenProductKey]=merged;
-    renderFormatChoiceCard(i,g,merged,sizes);
-  }catch(error){
-    console.warn("Confronto formati",error);
-    const fallback=getSizeGroups(g).filter(s=>s.size).map(s=>({size_ml:s.size,best:s.best,offers:s.offers}));
-    window._formatComparisonsByProduct=window._formatComparisonsByProduct||{};
-    window._formatComparisonsByProduct[currentOpenProductKey]=fallback;
-    renderFormatChoiceCard(i,g,fallback,sizes);
-  }
-}
-
-function renderSingleFormatComparison(g,img,offers,size,saved){
-  resultsBox.innerHTML=`<article class="comparison"><button class="detail-back" onclick="clearOpenProduct();showProducts(currentProductGroups)">← Torna ai profumi</button><div class="comparison-head"><div class="result-image">${img?`<img src="${esc(img)}" alt="${esc(displayPerfumeName(g.name,g.brand))}" onerror="this.outerHTML='🧴'">`:"🧴"}</div><div class="result-main"><div class="store">${esc(g.brand||"")}</div><div class="name">${esc(displayPerfumeName(g.name,g.brand))}</div></div></div><div class="format-compare-bar"><div class="format-compare-item"><div class="format-compare-copy"><div class="format-compare-label">FORMATO</div><div class="format-compare-value">${esc(formatLabel(size)||"Formato")}</div></div></div><div class="format-compare-item"><div class="format-compare-copy"><div class="format-compare-label">CONFRONTA I PREZZI</div><div class="format-compare-value">${offers.length} ${offers.length===1?"negozio":"negozi"}</div></div></div></div>${renderOffersHtml(g,img,offers,saved)}</article>`;
-  document.getElementById("searchOutput").scrollIntoView({behavior:"smooth",block:"start"});
-}
-
-function renderOffersHtml(g,img,offers,saved){
-  return (offers||[]).map((o,n)=>{
-    const isOut=isOfferOutOfStock(o); const item={brand:g.brand||o.brand||"",name:g.name||o.name||"",price:isOut?"":shPrice(o),shop:o.store||"",url:o.url||"",pic:img||"🧴",outOfStock:isOut}; const on=saved.some(x=>sameWishOffer(x,item));
-    return `<div class="offer ${!isOut&&n===0?"best":""}"><div class="offer-line"><div><div class="offer-store">${!isOut&&n===0?"🥇 ":""}${esc(displayStoreName(o.store||"Negozio"))}</div>${!isOut&&n===0?'<div class="offer-meta">MIGLIOR PREZZO</div>':""}${isOut?'<div class="offer-outstock">OUT OF STOCK</div>':""}</div><div style="display:flex;align-items:center;gap:8px">${!isOut?`<span class="offer-price">${esc(shPrice(o))}</span>`:""}<button class="offer-heart ${on?"saved":""}" data-brand="${esc(item.brand)}" data-name="${esc(item.name)}" data-price="${esc(item.price)}" data-shop="${esc(item.shop)}" data-url="${esc(item.url)}" data-pic="${esc(item.pic)}">${on?"♥":"♡"}</button></div></div>${(!isOut&&o.url)?`<a class="offer-link" href="${esc(o.url)}" target="_blank" rel="noopener noreferrer">Vai al negozio →</a>`:""}</div>`;
-  }).join("");
 }
 
 function openSize(gi,sizeKey,fromFormats=true){
-  const g=currentProductGroups[gi]; if(!g)return;
-  currentOpenProductKey=productGroupKey(g); currentOpenSizeKey=String(sizeKey||"");
-  const cached=formatComparisonFor(g,sizeKey);
-  const fallback=getSizeGroups(g).find(s=>s.size===String(sizeKey));
-  const cachedOffers=Array.isArray(cached?.offers)?cached.offers:[];
-  const selected=(cached && cachedOffers.length)?{size:String(cached.size_ml||cached.size||sizeKey),offers:cachedOffers,best:cached.best||null}:fallback;
+  const g=currentProductGroups[gi];
+  if(!g)return;
+
+  const selected=getSizeGroups(g).find(s=>s.size===sizeKey);
   if(!selected)return;
-  const offers=selected.offers||[]; const saved=getWishlist(); const img=g.image||"";
+
+  const offers=selected.offers;
+  const saved=getWishlist();
+  const img=g.image||"";
+
   statusBox.textContent="";
-  resultsBox.innerHTML=`<article class="comparison"><button class="detail-back" onclick="openProduct(${gi})">← Torna ai formati</button><div class="comparison-head"><div class="result-image">${img?`<img src="${esc(img)}" alt="${esc(displayPerfumeName(g.name,g.brand))}" onerror="this.outerHTML='🧴'">`:"🧴"}</div><div class="result-main"><div class="store">${esc(g.brand||"")}</div><div class="name">${esc(displayPerfumeName(g.name,g.brand))}</div><div class="offer-meta">${esc(formatLabel(String(selected.size)))}</div></div></div><div class="format-compare-bar"><div class="format-compare-item"><div class="format-compare-copy"><div class="format-compare-label">FORMATO</div><div class="format-compare-value">${esc(formatLabel(String(selected.size)))}</div></div></div><div class="format-compare-item"><div class="format-compare-copy"><div class="format-compare-label">CONFRONTA I PREZZI</div><div class="format-compare-value">${offers.length} ${offers.length===1?"negozio":"negozi"}</div></div></div></div>${renderOffersHtml(g,img,offers,saved)}</article>`;
+  resultsBox.innerHTML=`<article class="comparison">
+    <button class="detail-back" onclick="${fromFormats?`openProduct(${gi})`:`showProducts(currentProductGroups)`}">${fromFormats?'← Torna ai formati':'← Torna ai profumi'}</button>
+    <div class="comparison-head">
+      <div class="result-image">${img?`<img src="${esc(img)}" alt="${esc(g.name)}" onerror="this.outerHTML='🧴'">`:"🧴"}</div>
+      <div class="result-main">
+        <div class="store">${esc(g.brand||"")}</div>
+        <div class="name">${esc(g.name)}</div>
+        ${sizeKey?`<div class="offer-meta">${esc(formatLabel(sizeKey))}</div>`:""}
+      </div>
+    </div>
+    <div class="bestlabel">CONFRONTA I PREZZI · ${offers.length} ${offers.length===1?"NEGOZIO":"NEGOZI"}</div>
+    ${offers.map((o,n)=>{
+      const isOut=isOfferOutOfStock(o);
+      const item={
+        brand:g.brand||o.brand||"",
+        name:g.name||o.name||"",
+        price:isOut?"":shPrice(o),
+        shop:o.store||"",
+        url:o.url||"",
+        pic:img||"🧴",
+        outOfStock:isOut
+      };
+      const on=saved.some(x=>sameWishOffer(x,item));
+
+      return `<div class="offer ${!isOut&&n===0?"best":""}">
+        <div class="offer-line">
+          <div>
+            <div class="offer-store">${!isOut&&n===0?"🥇 ":""}${esc(o.store||"Negozio")}</div>
+            ${!isOut&&n===0?'<div class="offer-meta">MIGLIOR PREZZO</div>':""}
+            ${isOut?'<div class="offer-outstock">OUT OF STOCK</div>':""}
+          </div>
+          <div style="display:flex;align-items:center;gap:8px">
+            ${!isOut?`<span class="offer-price">${esc(shPrice(o))}</span>`:""}
+            <button class="offer-heart ${on?"saved":""}"
+              data-brand="${esc(item.brand)}"
+              data-name="${esc(item.name)}"
+              data-price="${esc(item.price)}"
+              data-shop="${esc(item.shop)}"
+              data-url="${esc(item.url)}"
+              data-pic="${esc(item.pic)}"
+              onclick="event.stopPropagation();chooseOffer(${gi},${JSON.stringify(sizeKey)},${n})">${on?"♥":"♡"}</button>
+          </div>
+        </div>
+        ${(!isOut&&o.url)?`<a class="offer-link" href="${esc(o.url)}" target="_blank" rel="noopener noreferrer">Vai al negozio →</a>`:""}
+      </div>`;
+    }).join("")}
+  </article>`;
+
   document.getElementById("searchOutput").scrollIntoView({behavior:"smooth",block:"start"});
 }
 
@@ -1835,7 +1651,7 @@ function chooseOffer(gi,sizeKey,oi){
   }
 }
 
-async function fetchJSONWithTimeout(url,ms=90000){
+async function fetchJSONWithTimeout(url,ms=20000){
  const controller=new AbortController();
  const timer=setTimeout(()=>controller.abort(),ms);
  try{
@@ -1845,332 +1661,289 @@ async function fetchJSONWithTimeout(url,ms=90000){
  }finally{clearTimeout(timer)}
 }
 
-function buildCatalogFallbackQueries(query){
-  const raw=String(query||"").trim();
-  if(!raw||typeof MASTER_CATALOG==="undefined"||!Array.isArray(MASTER_CATALOG))return [];
-
-  const normalizeQuery=v=>normalizePerfumeName(v||"").toLowerCase().trim();
-  const ignored=new Set(["eau","de","parfum","perfume","edp","edt","extrait","spray","ml","for","by"]);
-  const qTokens=new Set(normalizeQuery(raw).split(" ").filter(Boolean).filter(x=>!ignored.has(x)));
-  if(!qTokens.size)return [];
-
-  const ranked=[];
-  MASTER_CATALOG.forEach(item=>{
-    const brand=String(item.brand||"").trim();
-    const name=String(item.name||"").trim();
-    const aliases=Array.isArray(item.aliases)?item.aliases:[];
-    const hay=normalizeQuery([brand,name,...aliases].join(" "));
-    const tokens=new Set(hay.split(" ").filter(Boolean));
-    const overlap=[...qTokens].filter(t=>tokens.has(t)).length;
-    if(!overlap)return;
-
-    const coverage=overlap/qTokens.size;
-    const exactName=normalizeQuery(raw)===normalizeQuery(name)?1:0;
-    const nameContains=normalizeQuery(name).includes(normalizeQuery(raw))?1:0;
-    ranked.push({item,score:[exactName,nameContains,coverage,overlap,-name.length]});
-  });
-
-  ranked.sort((a,b)=>{
-    for(let i=0;i<a.score.length;i++){
-      if(a.score[i]!==b.score[i])return b.score[i]-a.score[i];
-    }
-    return 0;
-  });
-
-  const out=[];
-  const seen=new Set();
-  const add=value=>{
-    const v=String(value||"").trim();
-    const key=normalizeQuery(v);
-    if(!key||seen.has(key)||key===normalizeQuery(raw))return;
-    seen.add(key);
-    out.push(v);
+function familySearchPlan(query){
+ const n=normalizePerfumeName(query||"").toLowerCase().trim();
+ if(/\ble\s+beau\b/i.test(n)){
+  return {
+   family:"le-beau",
+   // Una sola ricerca "Le Beau" non è sufficiente: alcuni negozi
+   // restituiscono solo la referenza base. Cerchiamo quindi tutte le
+   // referenze della famiglia IN PARALLELO e renderizziamo una sola volta.
+   terms:[
+    "Le Beau",
+    "Le Beau Le Parfum",
+    "Le Beau Le Parfum Intense",
+    "Le Beau Paradise Garden",
+    "Le Beau Narcisse",
+    "Le Beau Flower Edition"
+   ],
+   allowed:[
+    {id:"SH-0073",names:["le beau"]},
+    {id:"SH-0074",names:["le beau le parfum","le beau le parfum intense"]},
+    {id:"SH-0075",names:["le beau paradise garden"]},
+    {id:"SH-0076",names:["le beau narcisse"]},
+    {id:"SH-0077",names:["le beau flower edition"]}
+   ]
   };
-
-  // Prima il nome canonico senza brand: molti motori degli store gestiscono
-  // meglio "Born in Roma Uomo" di "Valentino Born in Roma Uomo".
-  ranked.slice(0,6).forEach(({item})=>{
-    add(item.name);
-    const aliases=Array.isArray(item.aliases)?item.aliases:[];
-    aliases.forEach(alias=>{
-      if(out.length<4)add(alias);
-    });
-    if(out.length<4 && item.brand && item.name)add(item.brand+" "+item.name);
-  });
-
-  return out.slice(0,4);
-}
-
-const SEARCH_STORES=[
- "bplatz","deloox","parfumcity","parfumzentrum",
- "perfumemarket","sabina","orioudh","notino"
-];
-
-async function getSearchStores(term){
- return [...SEARCH_STORES];
-}
-
-async function searchStoresProgressive(term,onPartial){
- const merged={query:term,comparisons:[],results:[],errors:{}};
- const timeoutMs=45000;
- const concurrency=4;
- const stores=await getSearchStores(term);
-
- /*
-  * ARCHIVIO PROGRESSIVO IMMUTABILE.
-  *
-  * Una ricerca progressiva non deve mai perdere un'offerta già mostrata.
-  * Il rendering successivo viene ricostruito da shGroupData(); per sicurezza
-  * conserviamo quindi ogni risultato concreto già ricevuto, indicizzato per
-  * negozio + URL + formato + nome. Un batch successivo può aggiungere dati,
-  * ma non può cancellare Deloox (o qualunque altro negozio) già arrivato.
-  */
- const resultArchive=new Map();
- const comparisonArchive=new Map();
-
- /*
-  * IDENTITÀ IMMUTABILE DELL'OFFERTA.
-  *
-  * Il nome NON può far parte della chiave quando esiste un URL: lo stesso
-  * prodotto Deloox può infatti arrivare in più snapshot con nomi diversi
-  * (nome scraper -> nome validato -> nome finale). Se usassimo anche il nome
-  * nella chiave, creeremmo tre record distinti per la stessa offerta.
-  *
-  * Regola:
-  *   1) negozio + URL canonico, se l'URL esiste;
-  *   2) negozio + product/id/sku + formato, se manca l'URL;
-  *   3) negozio + formato + nome normalizzato, solo come ultima possibilità.
-  *
-  * In questo modo un'offerta già ricevuta non può sparire né duplicarsi solo
-  * perché il backend ha migliorato il nome durante la ricerca.
-  */
- const stableArchiveKey=(store,offer)=>{
-  const offerStore=String(store||offer?.store||"").trim().toLowerCase();
-  const url=String(offer?.url||offer?._source_url||offer?.product_url||offer?.productUrl||"")
-    .split("?")[0].split("#")[0].trim().toLowerCase();
-  if(offerStore&&url)return offerStore+"|url|"+url;
-
-  const id=String(offer?.product_id||offer?.productId||offer?.id||offer?.sku||offer?.product_sku||"").trim().toLowerCase();
-  const size=String(offer?.size_ml||offer?.size||offer?.attributes?.size_ml?.value||"").trim().toLowerCase();
-  if(offerStore&&id)return offerStore+"|id|"+id+"|size|"+size;
-
-  const name=normalizePerfumeName(offer?.name||offer?.title||offer?.product_name||"");
-  if(offerStore&&name)return offerStore+"|name|"+name+"|size|"+size;
-  return "";
- };
-
- const mergeArchivedOffer=(old,incoming)=>{
-  if(!old)return incoming;
-
-  // Non perdiamo mai metadati già ricevuti; se il nuovo snapshot è più ricco,
-  // li completa. Il prezzo migliore resta quello mostrabile.
-  const merged={...old};
-  Object.entries(incoming||{}).forEach(([key,value])=>{
-   if(value!==undefined&&value!==null&&value!=="" && (merged[key]===undefined||merged[key]===null||merged[key]==="")){
-    merged[key]=value;
-   }
-  });
-
-  // Il backend può cambiare nome/brand tra gli snapshot: il valore più recente
-  // e più informativo deve poter aggiornare quello precedente.
-  if(incoming.name)merged.name=incoming.name;
-  if(incoming.brand)merged.brand=incoming.brand;
-  if(incoming.concentration)merged.concentration=incoming.concentration;
-  if(incoming.image||incoming.image_url||incoming.thumbnail){
-   merged.image=incoming.image||incoming.image_url||incoming.thumbnail;
-  }
-  if(incoming.size_ml||incoming.size)merged.size_ml=incoming.size_ml||incoming.size;
-  if(incoming.url)merged.url=incoming.url;
-  if(incoming._source_url)merged._source_url=incoming._source_url;
-  if(incoming.store)merged.store=incoming.store;
-
-  if(shNum(incoming)<shNum(old)){
-   return {...merged,...incoming};
-  }
-  return merged;
- };
-
- const archiveResult=(store,offer)=>{
-  if(!offer||typeof offer!=="object")return;
-
-  // Alcuni endpoint restituiscono un contenitore prodotto con brand/nome/size
-  // a livello padre e le offerte dentro `offers`. Questi metadati devono
-  // seguire l'offerta durante l'archiviazione, altrimenti il raggruppatore
-  // non riesce più a riconoscerla (caso osservato con Deloox).
-  const nested=Array.isArray(offer.offers)?offer.offers:[offer];
-  nested.forEach(o=>{
-   if(!o||typeof o!=="object")return;
-
-   const normalized={
-    ...o,
-    brand:o.brand||offer.brand||"",
-    name:o.name||o.title||o.product_name||offer.name||offer.title||offer.product_name||"",
-    size_ml:o.size_ml||o.size||offer.size_ml||offer.size||offer.attributes?.size_ml?.value||"",
-    concentration:o.concentration||offer.concentration||"",
-    image:o.image||o.image_url||o.thumbnail||offer.image||offer.image_url||offer.thumbnail||"",
-    store:o.store||store||""
-   };
-
-   const key=stableArchiveKey(store,normalized);
-   if(!key)return;
-   resultArchive.set(key,mergeArchivedOffer(resultArchive.get(key),normalized));
-  });
- };
-
- const archiveComparison=(group)=>{
-  if(!group||typeof group!=="object")return;
-  const size=String(group.size_ml||group.size||"").trim();
-  const name=normalizePerfumeName(group.name||group.product_name||"");
-  const brand=normalizePerfumeName(group.brand||"");
-  const key=[brand,name,size].join("|");
-  if(!key.replace(/\|/g,""))return;
-  const old=comparisonArchive.get(key);
-  if(!old){comparisonArchive.set(key,{...group,offers:Array.isArray(group.offers)?group.offers.map(o=>({...o})):[]});return;}
-  const offers=[...(Array.isArray(old.offers)?old.offers:[]),...(Array.isArray(group.offers)?group.offers:[])];
-  comparisonArchive.set(key,{...old,...group,offers});
- };
-
- const rebuildMerged=()=>{
-  merged.results=[...resultArchive.values()];
-  merged.comparisons=[...comparisonArchive.values()];
- };
-
- for(let i=0;i<stores.length;i+=concurrency){
-  const pair=stores.slice(i,i+concurrency);
-  statusBox.textContent="";
-
-  const responses=await Promise.allSettled(pair.map(store=>
-   fetchJSONWithTimeout(
-    backend()+"/test-store?store="+encodeURIComponent(store)+"&q="+encodeURIComponent(term),
-    timeoutMs
-   ).catch(async()=>{
-    await new Promise(resolve=>setTimeout(resolve,350));
-    return fetchJSONWithTimeout(
-     backend()+"/test-store?store="+encodeURIComponent(store)+"&q="+encodeURIComponent(term),
-     timeoutMs
-    );
-   })
-  ));
-
-  responses.forEach((r,k)=>{
-   const store=pair[k];
-   if(r.status!=="fulfilled"){
-    merged.errors[store]=String(r.reason?.message||"timeout");
-    return;
-   }
-   const data=r.value||{};
-   if(Array.isArray(data.results))data.results.forEach(item=>archiveResult(store,item));
-   if(Array.isArray(data.comparisons))data.comparisons.forEach(group=>archiveComparison(group));
-   if(data.errors&&typeof data.errors==="object")Object.entries(data.errors).forEach(([name,error])=>{
-    if(!merged.errors[name])merged.errors[name]=error;
-   });
-   if(data.error)merged.errors[store]=data.error;
-  });
-
-  rebuildMerged();
-  if(typeof onPartial==="function")onPartial(merged,false);
  }
+ return null;
+}
 
- rebuildMerged();
- if(typeof onPartial==="function")onPartial(merged,true);
- return merged;
+function filterFamilyGroups(groups,plan){
+ if(!plan||!plan.allowed)return groups;
+ const allowedIds=new Set(plan.allowed.map(x=>String(x.id||"")));
+ return groups.filter(g=>{
+  // Prima scelta: ID master, che è il modo più sicuro per non confondere
+  // referenze della stessa linea.
+  if(g.catalog_id && allowedIds.has(String(g.catalog_id)))return true;
+
+  const brand=normalizePerfumeName(g.brand||"").toLowerCase();
+  if(brand!=="jean paul gaultier")return false;
+  const n=normalizePerfumeName(g.name||"").toLowerCase();
+  return plan.allowed.some(x=>x.names.some(name=>
+    normalizePerfumeName(name).toLowerCase()===n
+  ));
+ });
+}
+
+function familyPresentIds(groups,plan){
+ if(!plan||!plan.allowed)return new Set();
+ const ids=new Set();
+ groups.forEach(g=>{
+  const n=normalizePerfumeName(g.name||"");
+  const hit=plan.allowed.find(x=>x.names.includes(n));
+  if(hit)ids.add(hit.id);
+ });
+ return ids;
+}
+
+function mergeSearchData(base,extra){
+ return {
+  comparisons:[...(base?.comparisons||[]),...(extra?.comparisons||[])],
+  results:[...(base?.results||[]),...(extra?.results||[])],
+  errors:{...(base?.errors||{}),...(extra?.errors||{})}
+ };
+}
+
+async function searchJobProgressive(term,requestId,onData,planLabel=""){
+  const startData=await fetchJSONWithTimeout(
+    backend()+"/search-start?q="+encodeURIComponent(term),
+    7000
+  );
+
+  const jobId=String(startData?.job_id||"").trim();
+  if(!jobId)throw new Error("Il backend non ha restituito un job di ricerca.");
+
+  let lastSignature="";
+  let lastData=startData;
+  const pollStarted=Date.now();
+  const pollTimeout=40000;
+
+  while(window.__shSearchRequest===requestId){
+    let data;
+    try{
+      data=await fetchJSONWithTimeout(
+        backend()+"/search-status?job_id="+encodeURIComponent(jobId),
+        7000
+      );
+    }catch(error){
+      console.warn("ScentHunter search-status poll failed:",error);
+      await new Promise(resolve=>setTimeout(resolve,300));
+      continue;
+    }
+
+    if(window.__shSearchRequest!==requestId)return lastData;
+    lastData=data;
+
+    const resultCount=Array.isArray(data?.results)?data.results.length:0;
+    const completedStores=Number(data?.completed_stores||0);
+    const totalStores=Number(data?.total_stores||8);
+    const completed=Boolean(data?.completed) || String(data?.status||"").toLowerCase()==="completed";
+
+    const signature=JSON.stringify({
+      results:data.results||[],
+      comparisons:data.comparisons||[],
+      errors:data.errors||{},
+      completed,
+      completedStores
+    });
+
+    if(signature!==lastSignature){
+      lastSignature=signature;
+      onData(data,false);
+    }
+
+    if(!completed){
+      if(resultCount>0){
+        statusBox.textContent=planLabel
+          ?`${planLabel} · ${resultCount} risultati (${completedStores}/${totalStores})`
+          :`${resultCount} risultati · ${completedStores}/${totalStores} negozi`;
+      }else if(completedStores>0){
+        statusBox.textContent=planLabel
+          ?`${planLabel} · ${completedStores}/${totalStores} negozi`
+          :`Cerco ${term}… ${completedStores}/${totalStores} negozi`;
+      }
+    }
+
+    if(completed)break;
+    if(Date.now()-pollStarted>pollTimeout)break;
+    await new Promise(resolve=>setTimeout(resolve,250));
+  }
+
+  if(lastData && window.__shSearchRequest===requestId){
+    onData(lastData,true);
+  }
+  return lastData;
 }
 
 async function searchPerfume(){
- const q=queryInput.value.trim();if(!q){statusBox.textContent="";resultsBox.innerHTML="";errorsBox.innerHTML="";return}
- searchButton.disabled=true;searchButton.classList.add("searching");
- let dots=0;
- const updateSearchButton=()=>{dots=(dots+1)%4;searchButton.innerHTML='<span class="search-fixed">CERCO</span><span class="search-dots">'+". ".trim().repeat(0)+". ".trim().repeat(dots)+'</span>'};
- updateSearchButton();
- const dotsTimer=setInterval(updateSearchButton,500);
- statusBox.textContent="";resultsBox.innerHTML="";errorsBox.innerHTML="";
- clearOpenProduct();
- try{
-  let data;
-  const renderData=(partialData,final=false)=>{
-   let groups=shGroupData(partialData||{});
+  const q=queryInput.value.trim();
+  if(!q){statusBox.textContent="";resultsBox.innerHTML="";errorsBox.innerHTML="";return}
 
-   currentProductGroups=groups;
-
-   if(currentOpenProductKey){
-
-    const gi=groups.findIndex(g=>productGroupKey(g)===currentOpenProductKey);
-
-    if(gi>=0){
-
-     if(currentOpenSizeKey!==null){
-
-      const sg=getSizeGroups(groups[gi]).find(x=>x.size===currentOpenSizeKey);
-
-      if(sg) openSize(gi,currentOpenSizeKey,false);
-
-      else openProduct(gi);
-
-     }else{
-
-      openProduct(gi);
-
-     }
-
-    }
-
-   }else{
-
-    showProducts(groups);
-
-   }
-
-   updateBestPricesFromGroups(groups);
-   refreshWishlistFromResults(groups.flatMap(g=>g.offers.map(o=>({name:g.name||"",brand:g.brand||"",price:shPrice(o),price_value:o.price_value,store:o.store||"",url:o.url||""}))));
-
-   // I timeout delle singole fonti non devono comparire nella pagina e non devono
-   // trasformare una ricerca con risultati validi in una ricerca "fallita".
-   // Conserviamo gli errori internamente, ma l'utente vede solo i risultati utili.
-   errorsBox.innerHTML="";
-   if(final)statusBox.textContent=groups.length?`Ricerca completata: ${groups.length} prodotti trovati.`:"Nessun risultato trovato.";
+  searchButton.disabled=true;
+  searchButton.classList.add("searching");
+  let dots=0;
+  const updateSearchButton=()=>{
+    dots=(dots+1)%4;
+    searchButton.innerHTML='<span class="search-fixed">CERCO</span><span class="search-dots">'+". ".trim().repeat(dots)+'</span>';
   };
+  updateSearchButton();
+  const dotsTimer=setInterval(updateSearchButton,500);
 
-  // Tutte le ricerche passano dalla stessa pipeline progressiva.
-  // Massimo 2 negozi alla volta, con aggiornamento dei risultati man mano.
-  data=await searchStoresProgressive(q,renderData);
+  statusBox.textContent="";
+  resultsBox.innerHTML="";
+  errorsBox.innerHTML="";
 
-  // Regola generale di recupero: se la query esatta non produce nulla,
-  // usa automaticamente le referenze del catalogo master per provare il
-  // nome canonico/alias. I fallback vengono eseguiti uno alla volta per
-  // evitare una seconda raffica simultanea di richieste.
-  let groups=shGroupData(data||{});
-  if(!groups.length){
-   const fallbackQueries=buildCatalogFallbackQueries(q);
-   for(let i=0;i<fallbackQueries.length;i++){
-    const term=fallbackQueries[i];
-    statusBox.textContent="";
-    try{
-     const fallbackData=await searchStoresProgressive(term,null);
-     if(Array.isArray(fallbackData?.results))data.results.push(...fallbackData.results);
-     if(Array.isArray(fallbackData?.comparisons))data.comparisons.push(...fallbackData.comparisons);
-     if(fallbackData?.errors&&typeof fallbackData.errors==="object")Object.entries(fallbackData.errors).forEach(([store,error])=>{
-      if(!data.errors[store])data.errors[store]=error;
-     });
-     groups=shGroupData(data||{});
-     renderData(data,i===fallbackQueries.length-1||groups.length>0);
-     if(groups.length)break;
-    }catch(e){
-     console.warn("Fallback ricerca",term,e);
+  const requestId=Date.now()+Math.random();
+  window.__shSearchRequest=requestId;
+
+  try{
+    const plan=familySearchPlan(q);
+    const terms=plan?.terms?.length?plan.terms:[q];
+    let familyMerged={comparisons:[],results:[],errors:{}};
+    let anyResult=false;
+
+    for(let i=0;i<terms.length;i++){
+      if(window.__shSearchRequest!==requestId)break;
+
+      const term=terms[i];
+      const label=plan?`Cerco ${q}… (${i+1}/${terms.length})`:"";
+      let termLatest={comparisons:[],results:[],errors:{}};
+
+      const renderData=(data,final)=>{
+        if(window.__shSearchRequest!==requestId)return;
+
+        termLatest={
+          comparisons:Array.isArray(data?.comparisons)?data.comparisons:[],
+          results:Array.isArray(data?.results)?data.results:[],
+          errors:data?.errors&&typeof data.errors==="object"?data.errors:{}
+        };
+
+        const combined=plan
+          ?mergeSearchData(familyMerged,termLatest)
+          :termLatest;
+
+        let groups=[];
+        try{
+          groups=shGroupData(combined);
+          if(!Array.isArray(groups))groups=[];
+          groups=groups.filter(g=>g&&typeof g==="object").map(g=>({
+            ...g,
+            brand:String(g.brand||""),
+            name:String(g.name||"Profumo"),
+            offers:Array.isArray(g.offers)?g.offers.filter(o=>o&&typeof o==="object"):[]
+          }));
+          if(plan)groups=filterFamilyGroups(groups,plan);
+        }catch(error){
+          console.error("ScentHunter progressive result processing error:",error);
+          return;
+        }
+
+        if(groups.length)anyResult=true;
+
+        try{
+          showProducts(groups);
+        }catch(error){
+          console.error("ScentHunter progressive render error:",error);
+          resultsBox.innerHTML=groups.map((g,i)=>{
+            const offers=Array.isArray(g.offers)?g.offers:[];
+            const available=offers.filter(o=>!isOfferOutOfStock(o));
+            const best=available.sort((a,b)=>shNum(a)-shNum(b))[0]||null;
+            return `<article class="result" data-fallback-index="${i}">
+              <div class="store">${esc(g.brand||"")}</div>
+              <div class="name">${esc(g.name||"Profumo")}</div>
+              ${best?`<div class="bestprice">da ${esc(shPrice(best))}</div>`:`<div class="offer-meta">OUT OF STOCK</div>`}
+              <div class="offer-meta">${offers.length} ${offers.length===1?"negozio":"negozi"}</div>
+            </article>`;
+          }).join("");
+        }
+
+        currentProductGroups=groups;
+
+        if(final){
+          statusBox.textContent=groups.length
+            ?`Risultati per "${q}"`
+            :`Nessun risultato trovato per "${q}".`;
+        }else if(groups.length){
+          statusBox.textContent=plan
+            ?`${label} · ${groups.length} risultati`
+            :`${groups.length} risultati in arrivo…`;
+        }
+
+        try{updateBestPricesFromGroups(groups);}catch(error){console.warn("Wishlist price update skipped:",error)}
+        try{
+          refreshWishlistFromResults(groups.flatMap(g=>(g.offers||[]).map(o=>({
+            name:g.name||"",brand:g.brand||"",price:shPrice(o),
+            price_value:o.price_value,store:o.store||"",url:o.url||""
+          }))));
+        }catch(error){console.warn("Wishlist refresh skipped:",error)}
+
+        errorsBox.innerHTML="";
+        if(final && termLatest.errors && Object.keys(termLatest.errors).length){
+          const errorRows=Object.entries(termLatest.errors)
+            .map(([store,error])=>`<div style="margin-top:7px"><strong>${esc(store)}</strong>: ${esc(String(error||"Errore non specificato"))}</div>`)
+            .join("");
+          errorsBox.innerHTML=`<div>Alcuni negozi non hanno risposto.</div>${errorRows}`;
+        }
+      };
+
+      const data=await searchJobProgressive(term,requestId,renderData,label);
+      if(data?.results?.length)anyResult=true;
+
+      if(window.__shSearchRequest!==requestId)break;
+
+      if(plan){
+        // Unisci SOLO l'ultimo snapshot completo di questo termine. Non
+        // accumuliamo ogni poll, evitando duplicazioni artificiali.
+        familyMerged=mergeSearchData(familyMerged,termLatest);
+      }
+
+      if(i<terms.length-1 && anyResult){
+        statusBox.textContent=`${label} · continuo la ricerca…`;
+      }
     }
-   }
-  }
 
-  renderData(data,true);
- }catch(e){
-  console.error(e);
-  statusBox.textContent=String(e?.message||"Impossibile completare la ricerca.");
- }
- finally{clearInterval(dotsTimer);searchButton.disabled=false;searchButton.classList.remove("searching");searchButton.textContent="INIZIA LA RICERCA"}
+    if(window.__shSearchRequest!==requestId)return;
+    if(!anyResult){
+      statusBox.textContent=`Nessun risultato trovato per "${q}".`;
+    }
+  }catch(e){
+    console.error("ScentHunter search unexpected error:",e);
+    if(window.__shSearchRequest===requestId){
+      statusBox.textContent=`Errore imprevisto durante la ricerca di "${q}".`;
+      errorsBox.innerHTML=`<div>La richiesta è terminata, ma ScentHunter ha incontrato un errore interno.</div>`;
+    }
+  }finally{
+    clearInterval(dotsTimer);
+    if(window.__shSearchRequest===requestId){
+      searchButton.disabled=false;
+      searchButton.classList.remove("searching");
+      searchButton.textContent="INIZIA LA RICERCA";
+    }
+  }
 }
 
-window.searchPerfume=searchPerfume;
-searchButton.addEventListener("click",searchPerfume);
-queryInput.addEventListener("keydown",e=>{if(e.key==="Enter"){e.preventDefault();searchPerfume()}});
+searchButton.addEventListener("click",searchPerfume);queryInput.addEventListener("keydown",e=>{if(e.key==="Enter"){e.preventDefault();searchPerfume()}});
 renderWishlist();syncHearts();
 </script>
 </body></html>
