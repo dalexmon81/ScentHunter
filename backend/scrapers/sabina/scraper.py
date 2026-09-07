@@ -482,7 +482,9 @@ def search(query):
 
         # 1) Ricerca attuale: una sola richiesta.
         primary_urls = [
-            BASE + "/it/ricerca?search_query=" + quote_plus(query),
+            # Current Sabina/PrestaShop search route. The previous bounded
+            # version used only search_query=, which can return an empty shell.
+            BASE + "/it/ricerca?controller=search&s=" + quote_plus(query),
         ]
         if query_without_size and query_without_size.casefold() != query.casefold():
             primary_urls.append(
