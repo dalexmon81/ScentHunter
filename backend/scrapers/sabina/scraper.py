@@ -143,14 +143,26 @@ def _extract_variants_from_html(text):
         # Limitiamo la ricerca del prezzo al blocco immediatamente successivo
         # alla misura, evitando prezzi di raccomandazioni/reviews lontane.
         window = visible[size_match.start():size_match.end() + 260]
-        price_match = re.search(
-            r"(?:prix|price|precio|preço|prezzo)?\s*(?:normal[^€$£]{0,40})?"
+        # Sabina mostra normalmente due prezzi consecutivi:
+        # "Prezzo normale: 62,95 €" e "Prezzo: 37,95 €".
+        # Il primo è il listino, non il prezzo dell'offerta.
+        current_price_match = re.search(
+            r"(?:prix|price|precio|preço|prezzo)\s*:\s*"
             r"(\d{1,4}(?:[.,]\d{2}))\s*[€$£]",
             window,
             re.I,
         )
-        if price_match:
-            add_variant(size, price_match.group(1) + " €")
+        if current_price_match:
+            add_variant(size, current_price_match.group(1) + " €")
+        else:
+            # Fallback stretto: se la pagina usa solo un prezzo senza
+            # etichetta, usa il primo prezzo disponibile dopo la misura.
+            price_match = re.search(
+                r"(\d{1,4}(?:[.,]\d{2}))\s*[€$£]",
+                window,
+            )
+            if price_match:
+                add_variant(size, price_match.group(1) + " €")
 
     # 2) Se la pagina usa un input/option per la misura, leggiamo solo il
     # controllo e il suo contenitore immediato. Mai l'intero parent tree.
@@ -300,7 +312,17 @@ def _dedupe(rows, query):
         if not name or not url or not price:
             continue
 
-        hay = name.lower()
+        # Never associate the normal Liquid Brun card with the Limited
+        # Edition URL (or vice versa). Sabina exposes both products in the
+        # same French Avenue collection and the two links can sit adjacent.
+        name_low = name.lower()
+        url_low = str(url).lower()
+        name_limited = "limited edition" in name_low
+        url_limited = "limited-edition" in url_low or "limited_edition" in url_low
+        if name_limited != url_limited:
+            continue
+
+        hay = name_low
         if words and not all(w in hay for w in words):
             continue
 
