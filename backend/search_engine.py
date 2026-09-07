@@ -423,6 +423,66 @@ class SearchEngine:
             },
         }
 
+    def search_job_snapshot(self, job_id: str) -> Dict[str, Any]:
+        """Return the live progressive job state without re-running finalization.
+
+        ``main_legacy._search_job_snapshot`` historically re-applied its own
+        finalizer to ``job["results"]``. The progressive SearchEngine already
+        stores canonical final groups at every publication step, so reprocessing
+        them would add latency and could distort partial results.
+        """
+        jobs = getattr(self.legacy, "SEARCH_JOBS", None)
+        lock = getattr(self.legacy, "SEARCH_JOBS_LOCK", None)
+        if jobs is None:
+            raise RuntimeError("SEARCH_JOBS is not available")
+
+        if lock is not None:
+            with lock:
+                job = jobs.get(str(job_id or "").strip())
+                if job is None:
+                    from fastapi import HTTPException
+                    raise HTTPException(status_code=404, detail="Job di ricerca non trovato")
+                snapshot = dict(job)
+        else:
+            job = jobs.get(str(job_id or "").strip())
+            if job is None:
+                from fastapi import HTTPException
+                raise HTTPException(status_code=404, detail="Job di ricerca non trovato")
+            snapshot = dict(job)
+
+        results = snapshot.get("results")
+        if not isinstance(results, list):
+            results = []
+
+        store_status = snapshot.get("store_status")
+        if not isinstance(store_status, dict):
+            store_status = {}
+
+        completed_stores = sum(
+            1 for info in store_status.values()
+            if isinstance(info, dict)
+            and info.get("status") not in ("pending", "searching")
+        )
+
+        completed = bool(snapshot.get("completed"))
+        return {
+            "job_id": str(job_id),
+            "query": str(snapshot.get("query") or ""),
+            "count": len(results),
+            "results": list(results),
+            "comparisons": list(snapshot.get("comparisons") or []),
+            "errors": dict(snapshot.get("errors") or {}),
+            "store_status": dict(store_status),
+            "completed_stores": completed_stores,
+            "total_stores": len(self.stores),
+            "partial_result_count": len(results),
+            "phase": snapshot.get("phase", "discovery"),
+            "completed": completed,
+            "status": "completed" if completed else "searching",
+            "elapsed": snapshot.get("elapsed", 0),
+            "diagnostic": snapshot.get("diagnostic", {}),
+        }
+
     def run_job(self, job_id: str, query: str) -> None:
         jobs = getattr(self.legacy, "SEARCH_JOBS", None)
         lock = getattr(self.legacy, "SEARCH_JOBS_LOCK", None)
@@ -497,17 +557,40 @@ class SearchEngine:
                     raw_pool.extend(result.candidates)
                     if result.error:
                         errors[store] = result.error
-                    # Progress only. No partial product results are published.
+
+                    # PROGRESSIVE PUBLISH: appena termina un negozio, trasformiamo
+                    # il candidate pool disponibile negli stessi risultati canonici
+                    # usati dalla ricerca finale. Il frontend può quindi mostrare
+                    # subito i primi risultati senza aspettare gli 8 store.
+                    partial_raw = self._dedupe_raw(list(raw_pool))
+                    partial_results = []
+                    if partial_raw:
+                        try:
+                            partial_results = self._finalize(query, partial_raw)
+                        except Exception as partial_exc:
+                            # Un problema nella finalizzazione parziale non deve
+                            # bloccare la ricerca: la finalizzazione completa verrà
+                            # comunque eseguita alla fine.
+                            phase_timings.setdefault("partial_finalize_errors", []).append(
+                                f"{type(partial_exc).__name__}: {partial_exc}"
+                            )
+
+                    completed_stores = sum(
+                        1 for x in store_status.values()
+                        if x["status"] != "pending" and x["status"] != "searching"
+                    )
+
                     update({
                         "completed": False,
                         "phase": "collecting",
                         "status": "searching",
-                        "results": [],
-                        "candidates": [],
+                        "results": list(partial_results),
+                        "candidates": list(partial_raw),
                         "errors": dict(errors),
                         "store_status": dict(store_status),
-                        "completed_stores": sum(1 for x in store_status.values() if x["status"] != "pending" and x["status"] != "searching"),
+                        "completed_stores": completed_stores,
                         "total_stores": len(self.stores),
+                        "partial_result_count": len(partial_results),
                         "elapsed": round(time.monotonic() - started, 3),
                     })
 
