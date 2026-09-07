@@ -91,33 +91,17 @@ class SearchEngine:
             out.append(item)
         return out
 
-    def _store_query(self, query: str) -> str:
-        """Qualify one retailer query with the catalog brand, without extra calls."""
-        raw = str(query or "").strip()
-        if not raw:
-            return raw
-        try:
-            family = self.legacy._catalog_family_for_query(raw)
-        except Exception:
-            family = None
-        if not isinstance(family, dict):
-            return raw
-        brand = str(family.get("brand") or "").strip()
-        if not brand:
-            return raw
-        norm = self.legacy.norm if hasattr(self.legacy, "norm") else lambda x: str(x).casefold()
-        if norm(brand) in norm(raw).split():
-            return raw
-        return f"{brand} {raw}".strip()
-
     def _run_one_store(self, store: str, query: str) -> StoreRun:
         started = time.monotonic()
         try:
             runner = getattr(self.legacy, "run_store", None)
             if not callable(runner):
                 raise RuntimeError("main.run_store is not available")
-            store_query = self._store_query(query)
-            raw = runner(store, store_query)
+            # Main legacy owns retailer-specific query expansion through
+            # build_search_attempts(). Do not rewrite the user's query here:
+            # adding the catalog brand centrally can break retailer search
+            # endpoints that already expect the exact product phrase.
+            raw = runner(store, query)
             if raw is None:
                 candidates = []
             elif isinstance(raw, list):
@@ -569,4 +553,3 @@ class SearchEngine:
                     wait=False,
                     cancel_futures=True,
                 )
-
