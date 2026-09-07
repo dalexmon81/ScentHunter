@@ -7,7 +7,7 @@ from bs4 import BeautifulSoup
 
 STORE = "Orioudh"
 BASE_URL = "https://orioudh.com"
-TIMEOUT = 15
+TIMEOUT = 5
 HEADERS = {
     "User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36",
     "Accept": "text/html,application/xhtml+xml,application/json;q=0.9,*/*;q=0.8",
@@ -107,7 +107,7 @@ def _urls_from_sitemap(session, q, limit=80):
         if not r:
             return []
         sitemaps = re.findall(r"(?im)^\s*sitemap:\s*(\S+)", r.text or "")
-        queue = sitemaps[:10]
+        queue = sitemaps[:3]
         while queue and len(urls) < limit:
             sm = queue.pop(0)
             x = _get(session, sm)
@@ -165,8 +165,8 @@ def _urls_from_shopify_catalog(session, q, limit=120):
         BASE_URL + "/collections/all/products.json",
     ]
 
-    for endpoint in endpoints:
-        for page in range(1, 11):
+    for endpoint in endpoints[:1]:
+        for page in range(1, 4):
             r = _get(session, endpoint, {"limit": 250, "page": page})
             if not r:
                 break
@@ -188,6 +188,14 @@ def _urls_from_shopify_catalog(session, q, limit=120):
 
 
 def _discover(session, q):
+    """Fast, bounded Shopify discovery.
+
+    The old implementation tried several query variants, then HTML search,
+    then a multi-page public catalogue and finally sitemaps. That is far too
+    expensive for a normal comparison search. Shopify's suggest endpoint is
+    the primary search surface and is explicitly asked to include unavailable
+    products, which is important because Out of Stock must remain visible.
+    """
     urls = []
     seen = set()
 
@@ -195,53 +203,37 @@ def _discover(session, q):
         if not u:
             return
         u = urljoin(BASE_URL, str(u)).split("?")[0].split("#")[0].rstrip("/")
+        # Canonicalize host so www/non-www cannot create duplicate offers.
+        u = re.sub(r"^https?://www\.orioudh\.com", BASE_URL, u, flags=re.I)
         if "/products/" in u and u not in seen:
             seen.add(u)
             urls.append(u)
 
-    search_queries = [q]
-    toks = query_tokens(q)
-    if toks:
-        search_queries.append(" ".join(toks))
-        for t in toks:
-            search_queries.append(t)
+    # PRIMARY: one Shopify predictive-search request. Keep the full query so
+    # both Liquid Brun variants can be returned together.
+    r = _get(session, BASE_URL + "/search/suggest.json", {
+        "q": q,
+        "resources[type]": "product",
+        "resources[limit]": 20,
+        "resources[options][unavailable_products]": "show",
+    })
+    if r:
+        try:
+            data = r.json()
+            products = ((data.get("resources") or {}).get("results") or {}).get("products") or []
+            for product in products:
+                if not isinstance(product, dict):
+                    continue
+                u = product.get("url") or product.get("product_url")
+                if matches(f"{product.get('title','')} {product.get('vendor','')} {u or ''}", q):
+                    add(u)
+        except (ValueError, TypeError):
+            pass
 
-    for sq in search_queries:
-        r = _get(session, BASE_URL + "/search/suggest.json", {
-            "q": sq,
-            "resources[type]": "product",
-            "resources[limit]": 50,
-            "resources[options][unavailable_products]": "show",
-        })
-        if r:
-            try:
-                data = r.json()
-                products = ((data.get("resources") or {}).get("results") or {}).get("products") or []
-                for p in products:
-                    if isinstance(p, dict):
-                        u = p.get("url") or p.get("product_url")
-                        if matches(f"{p.get('title','')} {p.get('vendor','')} {u or ''}", q):
-                            add(u)
-            except (ValueError, TypeError):
-                pass
+    if urls:
+        return urls[:8]
 
-        r = _get(session, BASE_URL + "/search.json", {
-            "q": sq,
-            "type": "product",
-            "limit": 50,
-        })
-        if r:
-            try:
-                for p in r.json().get("products") or []:
-                    if isinstance(p, dict):
-                        u = p.get("url") or p.get("handle")
-                        if u and not str(u).startswith("/products/") and p.get("handle"):
-                            u = "/products/" + p["handle"]
-                        if matches(f"{p.get('title','')} {p.get('vendor','')} {u or ''}", q):
-                            add(u)
-            except (ValueError, TypeError):
-                pass
-
+    # ONE fallback: Shopify's normal search page. No catalogue/sitemap crawl.
     r = _get(session, BASE_URL + "/search", {"q": q, "type": "product"})
     if r:
         soup = BeautifulSoup(r.text, "html.parser")
@@ -250,17 +242,10 @@ def _discover(session, q):
             text = f"{a.get('title','')} {a.get_text(' ',strip=True)} {u or ''}"
             if matches(text, q):
                 add(u)
+                if len(urls) >= 8:
+                    break
 
-    # Important fallback: use the public Shopify catalogue before sitemap.
-    # This fixes cases where search/suggest endpoints return zero candidates.
-    for u in _urls_from_shopify_catalog(session, q):
-        add(u)
-
-    for u in _urls_from_sitemap(session, q):
-        add(u)
-
-    return urls[:120]
-
+    return urls[:8]
 
 def _product_json(session, url):
     r = _get(session, url.rstrip("/") + ".js")
@@ -349,33 +334,71 @@ def search(query):
     if not CURRENT_QUERY:
         return []
 
+    # Discover first, with at most two HTTP requests.
     session = requests.Session()
     try:
-        out = []
-        seen = set()
-        for url in _discover(session, CURRENT_QUERY):
-            data = _product_json(session, url)
-            if not data:
-                continue
-            variants = data.get("variants") or []
-            for v in variants:
-                if not isinstance(v, dict):
-                    continue
-                item = _item(data, v, url)
-                if not item:
-                    continue
-                key = (
-                    item["url"],
-                    (item["identity"]["store_variant_id"] or {}).get("value"),
-                )
-                if key in seen:
-                    continue
-                seen.add(key)
-                out.append(item)
-        return out
+        discovered = _discover(session, CURRENT_QUERY)[:8]
     finally:
         session.close()
 
+    if not discovered:
+        return []
+
+    from concurrent.futures import ThreadPoolExecutor, as_completed
+
+    def fetch_one(url):
+        try:
+            r = requests.get(
+                url.rstrip("/") + ".js",
+                headers=HEADERS,
+                timeout=TIMEOUT,
+            )
+        except requests.RequestException:
+            return None
+        if not r.ok:
+            return None
+        try:
+            data = r.json()
+        except (ValueError, TypeError):
+            return None
+        return data if isinstance(data, dict) else None
+
+    out = []
+    seen = set()
+    with ThreadPoolExecutor(max_workers=min(4, len(discovered))) as pool:
+        futures = {
+            pool.submit(fetch_one, url): url for url in discovered
+        }
+        for future in as_completed(futures):
+            url = futures[future]
+            data = future.result()
+            if not data:
+                continue
+            variants = data.get("variants") or []
+            for variant in variants:
+                if not isinstance(variant, dict):
+                    continue
+                item = _item(data, variant, url)
+                if not item:
+                    continue
+                variant_id = (item["identity"].get("store_variant_id") or {}).get("value")
+                # URL + variant id is the real Shopify offer identity. Also
+                # canonicalize the URL to prevent www/non-www duplicates.
+                canonical_url = re.sub(
+                    r"^https?://www\.orioudh\.com",
+                    BASE_URL,
+                    item["url"].rstrip("/"),
+                    flags=re.I,
+                )
+                key = (canonical_url, variant_id)
+                if key in seen:
+                    continue
+                seen.add(key)
+                item["url"] = canonical_url
+                item["source"]["url"] = canonical_url
+                out.append(item)
+
+    return out
 
 def scrape(query):
     return search(query)
