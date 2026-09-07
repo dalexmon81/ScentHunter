@@ -312,40 +312,14 @@ class SearchEngine:
         }
 
     def diagnostic_search(self, query: str) -> Dict[str, Any]:
-        """Forensic read-only diagnostic of the REAL search pipeline.
-
-        This intentionally measures every phase separately so we can distinguish:
-        - retailer execution time;
-        - orchestration/waiting time;
-        - raw deduplication;
-        - candidate validation;
-        - final grouping/ranking.
-        It never changes search results or job state.
-        """
         text = self.analyze_query(query)["raw"]
         if not text:
-            return {
-                "ok": True,
-                "diagnostic": "search-forensics-v1",
-                "query": "",
-                "timings": {},
-                "stores": {},
-                "raw_candidates": [],
-                "validated_candidates": [],
-                "errors": {},
-            }
-
+            return {"ok": True, "query": "", "stores": {}, "raw_candidates": [], "validated_candidates": [], "errors": {}}
         started = time.monotonic()
-        timings: Dict[str, float] = {}
+        store_run = self._run_stores(text)
+        raw_pool: List[Dict[str, Any]] = []
         stores: Dict[str, Any] = {}
         errors: Dict[str, str] = {}
-
-        t0 = time.monotonic()
-        store_run = self._run_stores(text)
-        timings["stores_wall_time"] = round(time.monotonic() - t0, 3)
-        timings["orchestrator_total_store_phase"] = round(store_run.get("elapsed", 0.0), 3)
-
-        raw_pool: List[Dict[str, Any]] = []
         for store in self.stores:
             result = store_run["stores"][store]
             raw_pool.extend(result.candidates)
@@ -358,129 +332,19 @@ class SearchEngine:
             }
             if result.error:
                 errors[store] = result.error
-
-        t0 = time.monotonic()
-        before_dedupe = len(raw_pool)
         raw_pool = self._dedupe_raw(raw_pool)
-        timings["dedupe"] = round(time.monotonic() - t0, 3)
-
-        t0 = time.monotonic()
         validated = self._validate_candidates_only(text, raw_pool)
-        timings["validation"] = round(time.monotonic() - t0, 3)
-
-        t0 = time.monotonic()
-        prepare = getattr(self.legacy, "_prepare_final_results", None)
-        if callable(prepare):
-            try:
-                prepared = prepare(validated, text)
-            except TypeError:
-                prepared = prepare(validated)
-        else:
-            prepared = validated
-        if prepared is None:
-            prepared = []
-        if not isinstance(prepared, list):
-            prepared = list(prepared)
-        prepared = [x for x in prepared if isinstance(x, dict)]
-        timings["final_prepare"] = round(time.monotonic() - t0, 3)
-
-        t0 = time.monotonic()
-        final = self._stable_results(prepared)
-        timings["stable_sort"] = round(time.monotonic() - t0, 3)
-        timings["total"] = round(time.monotonic() - started, 3)
-
-        slowest_store = max(
-            stores.items(),
-            key=lambda pair: float(pair[1].get("elapsed") or 0.0),
-            default=(None, {"elapsed": 0}),
-        )
-        timed_out = [
-            name for name, info in stores.items()
-            if info.get("status") == "timeout"
-        ]
-
         return {
             "ok": True,
-            "diagnostic": "search-forensics-v1",
             "query": text,
-            "timings": timings,
+            "elapsed": round(time.monotonic() - started, 3),
             "store_count": len(self.stores),
             "stores": stores,
-            "slowest_store": slowest_store[0],
-            "slowest_store_seconds": slowest_store[1].get("elapsed", 0),
-            "timed_out_stores": timed_out,
-            "raw_candidate_count_before_dedupe": before_dedupe,
             "raw_candidate_count": len(raw_pool),
             "validated_candidate_count": len(validated),
-            "final_result_count": len(final),
             "raw_candidates": [dict(x) for x in raw_pool],
             "validated_candidates": [dict(x) for x in validated],
             "errors": errors,
-            "interpretation": {
-                "store_bottleneck": bool(timed_out) or timings["stores_wall_time"] >= 10.0,
-                "validation_bottleneck": timings["validation"] >= 2.0,
-                "finalization_bottleneck": (timings["final_prepare"] + timings["stable_sort"]) >= 2.0,
-            },
-        }
-
-    def search_job_snapshot(self, job_id: str) -> Dict[str, Any]:
-        """Return the live progressive job state without re-running finalization.
-
-        ``main_legacy._search_job_snapshot`` historically re-applied its own
-        finalizer to ``job["results"]``. The progressive SearchEngine already
-        stores canonical final groups at every publication step, so reprocessing
-        them would add latency and could distort partial results.
-        """
-        jobs = getattr(self.legacy, "SEARCH_JOBS", None)
-        lock = getattr(self.legacy, "SEARCH_JOBS_LOCK", None)
-        if jobs is None:
-            raise RuntimeError("SEARCH_JOBS is not available")
-
-        if lock is not None:
-            with lock:
-                job = jobs.get(str(job_id or "").strip())
-                if job is None:
-                    from fastapi import HTTPException
-                    raise HTTPException(status_code=404, detail="Job di ricerca non trovato")
-                snapshot = dict(job)
-        else:
-            job = jobs.get(str(job_id or "").strip())
-            if job is None:
-                from fastapi import HTTPException
-                raise HTTPException(status_code=404, detail="Job di ricerca non trovato")
-            snapshot = dict(job)
-
-        results = snapshot.get("results")
-        if not isinstance(results, list):
-            results = []
-
-        store_status = snapshot.get("store_status")
-        if not isinstance(store_status, dict):
-            store_status = {}
-
-        completed_stores = sum(
-            1 for info in store_status.values()
-            if isinstance(info, dict)
-            and info.get("status") not in ("pending", "searching")
-        )
-
-        completed = bool(snapshot.get("completed"))
-        return {
-            "job_id": str(job_id),
-            "query": str(snapshot.get("query") or ""),
-            "count": len(results),
-            "results": list(results),
-            "comparisons": list(snapshot.get("comparisons") or []),
-            "errors": dict(snapshot.get("errors") or {}),
-            "store_status": dict(store_status),
-            "completed_stores": completed_stores,
-            "total_stores": len(self.stores),
-            "partial_result_count": len(results),
-            "phase": snapshot.get("phase", "discovery"),
-            "completed": completed,
-            "status": "completed" if completed else "searching",
-            "elapsed": snapshot.get("elapsed", 0),
-            "diagnostic": snapshot.get("diagnostic", {}),
         }
 
     def run_job(self, job_id: str, query: str) -> None:
@@ -493,7 +357,6 @@ class SearchEngine:
             raise RuntimeError("SEARCH_JOBS is not available")
 
         def update(payload: Dict[str, Any]) -> None:
-            phase_timings["job_update_count"] = int(phase_timings.get("job_update_count", 0)) + 1
             if lock is not None:
                 with lock:
                     job = jobs.get(job_id)
@@ -505,12 +368,6 @@ class SearchEngine:
                     job.update(payload)
 
         started = time.monotonic()
-        phase_started = started
-        phase_timings: Dict[str, Any] = {
-            "job_started_monotonic": started,
-            "store_execution": {},
-            "job_update_count": 0,
-        }
         store_status = {store: {"status": "pending", "count": 0} for store in self.stores}
         update({
             "completed": False,
@@ -549,48 +406,24 @@ class SearchEngine:
                         "elapsed": round(result.elapsed, 3),
                         "error": result.error,
                     }
-                    phase_timings["store_execution"][store] = {
-                        "status": result.status,
-                        "elapsed": round(result.elapsed, 3),
-                        "count": len(result.candidates),
-                    }
                     raw_pool.extend(result.candidates)
                     if result.error:
                         errors[store] = result.error
-
-                    # PROGRESSIVE PUBLISH: appena termina un negozio, trasformiamo
-                    # il candidate pool disponibile negli stessi risultati canonici
-                    # usati dalla ricerca finale. Il frontend può quindi mostrare
-                    # subito i primi risultati senza aspettare gli 8 store.
-                    partial_raw = self._dedupe_raw(list(raw_pool))
-                    partial_results = []
-                    if partial_raw:
-                        try:
-                            partial_results = self._finalize(query, partial_raw)
-                        except Exception as partial_exc:
-                            # Un problema nella finalizzazione parziale non deve
-                            # bloccare la ricerca: la finalizzazione completa verrà
-                            # comunque eseguita alla fine.
-                            phase_timings.setdefault("partial_finalize_errors", []).append(
-                                f"{type(partial_exc).__name__}: {partial_exc}"
-                            )
-
-                    completed_stores = sum(
-                        1 for x in store_status.values()
-                        if x["status"] != "pending" and x["status"] != "searching"
-                    )
-
+                    # Publish the stores that are already ready. A slow retailer
+                    # must never hide results already found by faster retailers.
+                    current_pool = self._dedupe_raw(list(raw_pool))
+                    partial = self._finalize(query, current_pool) if current_pool else []
                     update({
                         "completed": False,
                         "phase": "collecting",
                         "status": "searching",
-                        "results": list(partial_results),
-                        "candidates": list(partial_raw),
+                        "results": partial,
+                        "candidates": list(current_pool),
                         "errors": dict(errors),
                         "store_status": dict(store_status),
-                        "completed_stores": completed_stores,
+                        "completed_stores": sum(1 for x in store_status.values() if x["status"] != "pending" and x["status"] != "searching"),
                         "total_stores": len(self.stores),
-                        "partial_result_count": len(partial_results),
+                        "result_count": len(partial),
                         "elapsed": round(time.monotonic() - started, 3),
                     })
 
@@ -606,42 +439,8 @@ class SearchEngine:
                     errors[store] = store_status[store]["error"]
 
             executor.shutdown(wait=False, cancel_futures=True)
-
-            phase_timings["store_phase_wall_time"] = round(time.monotonic() - phase_started, 3)
-
-            t0 = time.monotonic()
-            raw_before_dedupe = len(raw_pool)
             raw_pool = self._dedupe_raw(raw_pool)
-            phase_timings["dedupe"] = round(time.monotonic() - t0, 3)
-            phase_timings["raw_candidates_before_dedupe"] = raw_before_dedupe
-            phase_timings["raw_candidates"] = len(raw_pool)
-
-            t0 = time.monotonic()
-            validated = self._validate_candidates_only(query, raw_pool)
-            phase_timings["validation"] = round(time.monotonic() - t0, 3)
-            phase_timings["validated_candidates"] = len(validated)
-
-            t0 = time.monotonic()
-            prepare = getattr(self.legacy, "_prepare_final_results", None)
-            if callable(prepare):
-                try:
-                    prepared = prepare(validated, query)
-                except TypeError:
-                    prepared = prepare(validated)
-            else:
-                prepared = validated
-            if prepared is None:
-                prepared = []
-            if not isinstance(prepared, list):
-                prepared = list(prepared)
-            prepared = [x for x in prepared if isinstance(x, dict)]
-            phase_timings["final_prepare"] = round(time.monotonic() - t0, 3)
-
-            t0 = time.monotonic()
-            final = self._stable_results(prepared)
-            phase_timings["stable_sort"] = round(time.monotonic() - t0, 3)
-            phase_timings["total_before_final_update"] = round(time.monotonic() - started, 3)
-
+            final = self._finalize(query, raw_pool)
             update({
                 "results": final,
                 "candidates": list(raw_pool),
@@ -653,10 +452,6 @@ class SearchEngine:
                 "elapsed": round(time.monotonic() - started, 3),
                 "raw_candidate_count": len(raw_pool),
                 "result_count": len(final),
-                "diagnostic": {
-                    **phase_timings,
-                    "total": round(time.monotonic() - started, 3),
-                },
             })
         except Exception as exc:
             update({
@@ -665,8 +460,4 @@ class SearchEngine:
                 "elapsed": round(time.monotonic() - started, 3),
                 "error": f"{type(exc).__name__}: {exc}",
                 "traceback": traceback.format_exc(limit=8),
-                "diagnostic": {
-                    **phase_timings,
-                    "total": round(time.monotonic() - started, 3),
-                },
             })
