@@ -17,7 +17,7 @@ from bs4 import BeautifulSoup
 
 STORE = "Deloox"
 BASE_URL = "https://www.deloox.be"
-TIMEOUT = 10
+TIMEOUT = 4
 HEADERS = {
     "User-Agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 Version/17.0 Mobile/15E148 Safari/604.1",
     "Accept-Language": "en-GB,en;q=0.9",
@@ -549,7 +549,7 @@ def _category_pages(session):
     )
 
 
-def _sitemap_category_urls(session, query, max_sitemaps=16, max_urls=50):
+def _sitemap_category_urls(session, query, max_sitemaps=3, max_urls=20):
     """Find relevant Deloox category/Product Line URLs generically."""
     q_tokens = tokens(query)
     if not q_tokens:
@@ -656,6 +656,7 @@ def _discover_from_categories(session, query, max_urls=120):
 
     roots = list(_category_pages(session))
     roots.extend(_targeted_category_seed_urls(query))
+    roots = roots[:2]
 
     for root in roots:
         try:
@@ -672,7 +673,7 @@ def _discover_from_categories(session, query, max_urls=120):
         # First find only category/Product Line links that actually match q.
         matching_lines = _category_product_line_links(r.text, query)
 
-        for line_url in matching_lines:
+        for line_url in matching_lines[:2]:
             candidates = [line_url]
             # Check only the first pagination page for a matching line.
             candidates.append(next(_pagination_urls(line_url, max_pages=1)))
@@ -785,120 +786,84 @@ def _sitemap_product_urls(session, query, max_sitemaps=12, max_urls=80):
 
 
 def _discover(session, q):
-    """Generic Deloox discovery. Search first, then category/catalog fallbacks.
+    """Fast, bounded Deloox discovery.
 
-    Deloox's current search route can return the useful product cards quickly,
-    while broad category crawling can require many HTTP requests. Discovery
-    therefore starts with the search surface and only falls back to the slower
-    catalogue/category/sitemap paths when search yields no candidates.
+    The previous fallback chain was too aggressive: a single search could walk
+    search endpoints, categories, catalog filters, category pagination and
+    sitemaps before returning. That made Deloox capable of holding the whole
+    ScentHunter store task open for a long time.
+
+    Normal path: one real Deloox search page. Only if that produces nothing do
+    we inspect one category root and at most one matching product-line page.
+    The product parser remains the authority for identity/size/availability.
     """
     urls = []
     seen = set()
 
-    def add_many(items):
+    def add_many(items, limit=8):
         for url in items:
             if url not in seen:
                 seen.add(url)
                 urls.append(url)
-                if len(urls) >= 80:
+                if len(urls) >= limit:
                     return True
         return False
 
-    # 1) PRIMARY: Deloox search routes.
-    # The current /en/search?q=... route is known to return a real HTML result
-    # page. Try it first; the other parameter variants are compatibility
-    # fallbacks for older Deloox deployments.
-    endpoints = [
+    # PRIMARY: one search request. Deloox BE currently exposes the localized
+    # /en/search surface; the generic /search route is the only fallback.
+    endpoints = (
         BASE_URL + "/en/search?q=" + quote_plus(q),
-        BASE_URL + "/en/search?query=" + quote_plus(q),
-        BASE_URL + "/en/search?search=" + quote_plus(q),
-        BASE_URL + "/en?search=" + quote_plus(q),
         BASE_URL + "/search?q=" + quote_plus(q),
-        BASE_URL + "/search?query=" + quote_plus(q),
-    ]
-
+    )
     for endpoint in endpoints:
         try:
             r = session.get(endpoint, headers=HEADERS, timeout=TIMEOUT)
         except requests.RequestException:
             continue
+        if r.status_code >= 400:
+            continue
+        candidates = _candidate_product_urls(r.text, q)
+        if candidates:
+            add_many(candidates)
+            return urls[:8]
 
+    # SINGLE bounded fallback: one category root, then only the first matching
+    # Product Line page. No pagination, catalog crawl or sitemap crawl here.
+    try:
+        roots = list(_category_pages(session))[:1]
+    except Exception:
+        roots = []
+
+    for root in roots:
+        try:
+            r = session.get(root, headers=HEADERS, timeout=TIMEOUT)
+        except requests.RequestException:
+            continue
         if r.status_code >= 400:
             continue
 
         candidates = _candidate_product_urls(r.text, q)
         if candidates:
             add_many(candidates)
-            return urls[:80]
+            return urls[:8]
 
-    # 2) SECONDARY: broad categories and matching Product Line links.
-    # This is slower, so it is used only when the search surface did not expose
-    # usable product candidates.
-    category_candidates = _discover_from_categories(session, q, max_urls=80)
-    if category_candidates:
-        add_many(category_candidates)
-        return urls[:80]
-
-    # 3) GENERIC catalogue/Product Line discovery.
-    catalog_category = _find_catalog_filter_url(session, q)
-    if catalog_category:
         try:
-            page = session.get(catalog_category, headers=HEADERS, timeout=TIMEOUT)
-        except requests.RequestException:
-            page = None
-
-        if page is not None and page.status_code < 400:
-            catalog_candidates = _candidate_product_urls(page.text, q)
-            if catalog_candidates:
-                add_many(catalog_candidates)
-                return urls[:80]
-
-    # 4) GENERIC Product Line/category discovery from Deloox sitemaps.
-    for category_url in _sitemap_category_urls(
-        session, q, max_sitemaps=16, max_urls=50
-    ):
-        try:
-            page = session.get(category_url, headers=HEADERS, timeout=TIMEOUT)
-        except requests.RequestException:
-            continue
-
-        if page.status_code >= 400:
-            continue
-
-        category_candidates = _candidate_product_urls(page.text, q)
-        if category_candidates:
-            add_many(category_candidates)
-            return urls[:80]
-
-        # Keep pagination bounded. It is a fallback, not the primary path.
-        for page_url in _pagination_urls(category_url, max_pages=8):
+            matching = _category_product_line_links(r.text, q)[:1]
+        except Exception:
+            matching = []
+        for line_url in matching:
             try:
-                page2 = session.get(
-                    page_url,
-                    headers=HEADERS,
-                    timeout=TIMEOUT,
-                )
+                page = session.get(line_url, headers=HEADERS, timeout=TIMEOUT)
             except requests.RequestException:
                 continue
-
-            if page2.status_code >= 400:
+            if page.status_code >= 400:
                 continue
+            candidates = _candidate_product_urls(page.text, q)
+            if candidates:
+                add_many(candidates)
+                return urls[:8]
 
-            page_candidates = _candidate_product_urls(page2.text, q)
-            if page_candidates:
-                add_many(page_candidates)
-                return urls[:80]
-
-    # 5) LAST RESORT: product sitemap.
-    sitemap_candidates = _sitemap_product_urls(
-        session,
-        q,
-        max_sitemaps=16,
-        max_urls=80,
-    )
-    if sitemap_candidates:
-        add_many(sitemap_candidates)
-    return urls[:80]
+    return urls[:8]
 
 def diagnostic_discovery(query):
     session = requests.Session()
@@ -954,41 +919,48 @@ def search(query):
     if not query:
         return []
 
+    discovered = []
     session = requests.Session()
+    try:
+        discovered = _discover(session, query)[:8]
+    finally:
+        session.close()
+
+    if not discovered:
+        return []
+
+    # Product pages are independent. Fetch a small bounded set concurrently so
+    # one slow/invalid Deloox product cannot serialize all candidates.
+    from concurrent.futures import ThreadPoolExecutor, as_completed
+
+    def fetch_one(url):
+        try:
+            r = requests.get(url, headers=HEADERS, timeout=TIMEOUT)
+        except requests.RequestException:
+            return None
+        if r.status_code >= 400:
+            return None
+        return _product(url, r.text, query)
+
     results = []
     seen = set()
-
-    try:
-        for url in _discover(session, query):
-            try:
-                r = session.get(url, headers=HEADERS, timeout=TIMEOUT)
-            except requests.RequestException:
-                continue
-
-            if r.status_code >= 400:
-                continue
-
-            item = _product(url, r.text, query)
+    with ThreadPoolExecutor(max_workers=min(4, len(discovered))) as pool:
+        futures = [pool.submit(fetch_one, url) for url in discovered]
+        for future in as_completed(futures):
+            item = future.result()
             if not item:
                 continue
-
             sku_value = None
             sku = item["identity"].get("sku")
             if sku:
                 sku_value = sku.get("value")
-
-            key = (url, sku_value)
-
+            key = (item["url"].rstrip("/"), sku_value)
             if key in seen:
                 continue
-
             seen.add(key)
             results.append(item)
 
-        return results
-    finally:
-        session.close()
-
+    return results
 
 def scrape(query):
     return search(query)
