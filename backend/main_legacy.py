@@ -1237,6 +1237,25 @@ def _catalog_match(
     if requested is not None and variant is not requested:
         return None
 
+    # Formato e identità sono attributi distinti, ma quando il Registry
+    # dichiara un solo formato verificato per una variante, un'offerta che
+    # espone esplicitamente un formato diverso non può appartenere a quella
+    # variante. Con più formati verificati, invece, il formato resta un
+    # attributo dell'offerta e non restringe l'identità.
+    verified_formats = []
+    for raw_size in (variant.get("formats_ml") or []):
+        try:
+            value = float(str(raw_size).replace(",", "."))
+        except (TypeError, ValueError):
+            continue
+        if value > 0 and not any(abs(existing - value) < 0.01 for existing in verified_formats):
+            verified_formats.append(value)
+
+    candidate_size = product_size_ml(product)
+    if len(verified_formats) == 1 and candidate_size is not None:
+        if abs(candidate_size - verified_formats[0]) >= 0.01:
+            return None
+
     result = dict(product)
     canonical_name = str(variant.get("canonical_name") or "").strip()
     family_brand = str(family.get("brand") or "").strip()
@@ -2209,6 +2228,41 @@ def _collapse_family_results(
         # nome/prezzo/store indicano l'offerta migliore, mentre "offers"
         # contiene l'intero confronto tra i negozi.
         representative = dict(unique_offers[0])
+
+        # Espone al livello prodotto tutti i formati realmente osservati.
+        # Se il Registry verifica ulteriori formati per la variante, li
+        # aggiungiamo senza inventare formati non presenti né verificati.
+        observed_formats = []
+        for offer in unique_offers:
+            size = product_size_ml(offer)
+            if size is not None and size > 0:
+                if not any(abs(existing - size) < 0.01 for existing in observed_formats):
+                    observed_formats.append(size)
+
+        catalog_formats = []
+        for variant_data in family.get("variants", []):
+            if catalog_norm(variant_data.get("canonical_name")) != canonical_key:
+                continue
+            for raw_size in (variant_data.get("formats_ml") or []):
+                try:
+                    size = float(str(raw_size).replace(",", "."))
+                except (TypeError, ValueError):
+                    continue
+                if size > 0 and not any(abs(existing - size) < 0.01 for existing in catalog_formats):
+                    catalog_formats.append(size)
+            break
+
+        formats_ml = sorted(observed_formats)
+        for size in catalog_formats:
+            if not any(abs(existing - size) < 0.01 for existing in formats_ml):
+                formats_ml.append(size)
+        formats_ml.sort()
+        if formats_ml:
+            representative["formats_ml"] = [
+                int(size) if float(size).is_integer() else size
+                for size in formats_ml
+            ]
+
         representative["offers"] = unique_offers
         representative["offer_count"] = len(unique_offers)
         representative["stores"] = list(dict.fromkeys(
