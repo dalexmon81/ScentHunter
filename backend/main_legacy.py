@@ -238,37 +238,6 @@ GLOBAL_SEARCH_TIMEOUT = 90
 
 
 # ============================================================
-# TEMPORARY DELOOX / LIQUID BRUN FORENSIC TRACE V5
-# Read-only diagnostic: no search/business logic is changed.
-# ============================================================
-DELOOX_TRACE_MARKER = "SCENTHUNTER_DELOOX_TRACE_MAIN_LEGACY_V5"
-DELOOX_TRACE_QUERY = "liquid brun"
-DELOOX_TRACE_STORE = "deloox"
-
-def _deloox_trace_enabled(query: Any, store: Optional[str] = None) -> bool:
-    if norm(str(query or "")) != DELOOX_TRACE_QUERY:
-        return False
-    if store is not None and str(store or "").strip().casefold() != DELOOX_TRACE_STORE:
-        return False
-    return True
-
-def _deloox_trace_item(item: Any) -> Dict[str, Any]:
-    if not isinstance(item, dict):
-        return {"type": type(item).__name__, "value": repr(item)[:500]}
-    source = item.get("source") if isinstance(item.get("source"), dict) else {}
-    return {k: item.get(k) for k in ("store","name","brand","size_ml","price","availability","url","canonical_name","family_id","catalog_variant") if k in item} | ({"source_name": source.get("source_name")} if source else {})
-
-def _deloox_trace_items(items: Any) -> List[Dict[str, Any]]:
-    if not isinstance(items, list): return []
-    return [_deloox_trace_item(x) for x in items if isinstance(x, dict) and (str(x.get("store") or "").casefold()==DELOOX_TRACE_STORE or "deloox" in str(x.get("url") or "").casefold())]
-
-def _deloox_trace_emit(stage: str, query: Any, items: Any = None, extra: Optional[Dict[str, Any]] = None) -> None:
-    if not _deloox_trace_enabled(query): return
-    payload={"marker":DELOOX_TRACE_MARKER,"stage":stage,"query":str(query or ""),"deloox_count":len(_deloox_trace_items(items)),"deloox_items":_deloox_trace_items(items)}
-    if extra: payload.update(extra)
-    print(DELOOX_TRACE_MARKER + " " + json.dumps(payload, ensure_ascii=False, default=str), flush=True)
-
-# ============================================================
 # NORMALIZZAZIONE
 # ============================================================
 
@@ -356,7 +325,6 @@ def product_size_ml(product: Dict[str, Any]) -> Optional[float]:
         or product.get("volume_ml")
         or product.get("format_ml")
     )
-
     explicit = nested_value(explicit)
 
     if explicit not in (None, ""):
@@ -391,24 +359,11 @@ def product_size_ml(product: Dict[str, Any]) -> Optional[float]:
     )
     text += " " + str(source_name or "")
 
-    # Include URL e raw_data per estrarre il formato quando size_ml è vuoto.
-    url = product.get("url") or ""
-    if url:
-        text += " " + str(url)
-
-    raw_data = product.get("raw_data")
-    if isinstance(raw_data, dict):
-        for key in ("name", "title", "product_title", "url", "handle"):
-            value = raw_data.get(key)
-            if value not in (None, ""):
-                text += " " + str(value)
-
     match = re.search(
-        r"\b(\d{1,4}(?:[.,]\d+)?)\s*[-_/]?\s*(ml|cl)\b",
+        r"\b(\d{1,4}(?:[.,]\d+)?)\s*(ml|cl)\b",
         text,
         re.I,
     )
-
     if not match:
         return None
 
@@ -421,7 +376,6 @@ def product_size_ml(product: Dict[str, Any]) -> Optional[float]:
         value *= 10
 
     return value
-
 
 
 def product_concentration(product: Dict[str, Any]) -> str:
@@ -643,7 +597,7 @@ def _catalog_candidate_variant_key(product: Dict[str, Any]) -> str:
     # to the same commercial variant "Hawas Ice" when the user explicitly
     # requests the small format.
     key = re.sub(
-        r"\b(?:sample|samples|campione|campioncino|echantillon|muestra)\b",
+        r"\b(?:sample|samples|campione|campioncino|echantillon|muestra|unisex|mixte|mixed)\b",
         " ",
         key,
         flags=re.I,
@@ -799,10 +753,28 @@ def _load_family_registry() -> List[Dict[str, Any]]:
                 valid_aliases.append(alias)
 
             valid_aliases = list(dict.fromkeys(valid_aliases))
+
+            identity_values = []
+            for identity_key in ("gtins", "ean", "eans", "ean13", "barcodes", "barcode", "upcs", "upc"):
+                raw_values = variant.get(identity_key) or []
+                if isinstance(raw_values, str):
+                    raw_values = [raw_values]
+                if isinstance(raw_values, (list, tuple, set)):
+                    for identity_value in raw_values:
+                        value = str(identity_value or "").strip()
+                        if value and value not in identity_values:
+                            identity_values.append(value)
+
             normalized_variants.append(
                 {
                     "canonical_name": canonical_name,
                     "aliases": valid_aliases,
+                    "gtins": tuple(identity_values),
+                    "formats_ml": tuple(
+                        float(value)
+                        for value in (variant.get("formats_ml") or [])
+                        if str(value).strip()
+                    ),
                     "normalized_aliases": tuple(
                         catalog_variant_key(alias)
                         for alias in valid_aliases
@@ -871,71 +843,6 @@ def _build_family_registry_index(
 FAMILY_REGISTRY_INDEX = _build_family_registry_index(FAMILY_REGISTRY)
 
 
-def _catalog_detected_brand(product: Dict[str, Any]) -> str:
-    """Recover an explicitly published retailer brand from known catalog brands.
-
-    Some adapters leave ``brand`` empty even though the retailer title is
-    formatted as ``Brand - Product``.  For catalog-controlled searches that
-    must not be treated as an unknown brand: a known catalog brand explicitly
-    present in the title is authoritative evidence.
-    """
-    direct = product_field(
-        product,
-        "brand",
-        "manufacturer",
-        "maker",
-        "source_brand",
-    )
-    source = product.get("source")
-    if isinstance(source, dict) and not direct:
-        direct = str(
-            source.get("brand")
-            or source.get("manufacturer")
-            or source.get("maker")
-            or source.get("source_brand")
-            or ""
-        ).strip()
-
-    if direct:
-        return catalog_norm(direct)
-
-    text = catalog_norm(_catalog_product_text(product))
-    if not text:
-        return ""
-
-    known: Dict[str, str] = {}
-    for family in FAMILY_REGISTRY:
-        brand = str(family.get("brand") or "").strip()
-        if brand:
-            known[catalog_norm(brand)] = brand
-
-    # The product catalog is also a source of known brands.  Longest first
-    # prevents a short brand token from stealing a multi-word brand.
-    for item in _PRODUCT_MATCHER_CATALOG:
-        if not isinstance(item, dict):
-            continue
-        brand = str(
-            item.get("brand")
-            or item.get("manufacturer")
-            or item.get("maker")
-            or ""
-        ).strip()
-        if brand:
-            known[catalog_norm(brand)] = brand
-
-    for brand_norm, brand_display in sorted(
-        known.items(),
-        key=lambda pair: len(pair[0]),
-        reverse=True,
-    ):
-        if not brand_norm:
-            continue
-        if re.search(rf"\b{re.escape(brand_norm)}\b", text, flags=re.I):
-            return brand_norm
-
-    return ""
-
-
 def _catalog_brand_matches(
     product: Dict[str, Any],
     family: Dict[str, Any],
@@ -947,15 +854,27 @@ def _catalog_brand_matches(
     if not expected_brand:
         return True
 
-    actual_brand = _catalog_detected_brand(product)
+    actual_brand = product_field(
+        product,
+        "brand",
+        "source_brand",
+    )
 
-    # Missing brand is acceptable only when the retailer genuinely did not
-    # publish one.  If a known brand is explicitly present in the candidate
-    # title/source, it becomes a hard constraint.
+    source = product.get("source")
+    if isinstance(source, dict) and not actual_brand:
+        actual_brand = str(
+            source.get("brand")
+            or source.get("source_brand")
+            or ""
+        ).strip()
+
     if not actual_brand:
         return True
 
-    return actual_brand == expected_brand
+    return (
+        catalog_norm(actual_brand)
+        == expected_brand
+    )
 
 
 def _catalog_product_text(product: Dict[str, Any]) -> str:
@@ -1051,6 +970,54 @@ def _catalog_variant_for_product(
         candidate_key = re.sub(r"\s+", " ", candidate_key).strip()
     if not candidate_key:
         return None
+
+    # Strong identity: retailer GTIN/EAN is authoritative when the Family
+    # Registry explicitly binds that code to a variant. This handles retailer
+    # titles that omit the commercial perfume name (for example a Shopify
+    # title such as "Limited Edition French Avenue 150ML").
+    candidate_gtin = identity_value(
+        product,
+        "gtin",
+        "ean",
+        "ean13",
+        "barcode",
+        "upc",
+    )
+    # Some retailers expose the barcode only in their SKU field. Use it as a
+    # strong identity signal only when the SKU is purely numeric and therefore
+    # looks like a standard GTIN/EAN, and only against codes explicitly bound
+    # to a registry variant.
+    if not candidate_gtin:
+        sku_candidate = identity_value(product, "sku")
+        if re.fullmatch(r"\d{8,14}", sku_candidate):
+            candidate_gtin = sku_candidate
+    candidate_gtin = re.sub(r"\D", "", candidate_gtin)
+    candidate_size = product_size_ml(product)
+
+    if candidate_gtin:
+        gtin_matches = []
+        for variant in family.get("variants", []):
+            variant_gtins = {
+                re.sub(r"\D", "", str(value))
+                for value in (variant.get("gtins") or ())
+                if re.sub(r"\D", "", str(value))
+            }
+            if candidate_gtin not in variant_gtins:
+                continue
+            formats = []
+            for value in (variant.get("formats_ml") or ()):
+                try:
+                    formats.append(float(value))
+                except (TypeError, ValueError):
+                    pass
+            if candidate_size is not None and formats and not any(
+                abs(candidate_size - value) <= 0.01 for value in formats
+            ):
+                continue
+            gtin_matches.append(variant)
+
+        if len(gtin_matches) == 1:
+            return gtin_matches[0]
 
     candidate_gender = _catalog_gender_class(candidate_text)
     matches: List[Tuple[int, Dict[str, Any]]] = []
@@ -1154,7 +1121,7 @@ def _catalog_requested_variant(
     # "sample/campione" is a format request, not part of the commercial
     # variant identity. Remove it before resolving the catalog variant.
     query_clean = re.sub(
-        r"\b(?:sample|samples|campione|campioncino|echantillon|muestra)\b",
+        r"\b(?:sample|samples|campione|campioncino|echantillon|muestra|unisex|mixte|mixed)\b",
         " ",
         query_clean,
         flags=re.I,
@@ -1389,14 +1356,6 @@ def _non_single_product_match(product: Dict[str, Any]) -> Optional[str]:
         "trio",
         "mystery box",
         "gift box",
-        "sample",
-        "samples",
-        "sample service",
-        "campione",
-        "campioncino",
-        "échantillon",
-        "echantillon",
-        "muestra",
         "tester",
         "testeur",
         "shampoo",
@@ -1446,9 +1405,9 @@ def matches(product: Dict[str, Any], query: str) -> bool:
     ScentHunter returns ONLY single perfume references:
     - no cosmetics/body products;
     - no sets, coffrets, bundles, boxes or testers;
-    - samples, sample services, campioncini and testers are always rejected;
-    - explicit small-size queries are exact, but they do not turn a sample
-      listing into a valid perfume offer.
+    - samples/minis <= 10 ml are hidden from the base search;
+    - a sample/small format is allowed only when the user explicitly asks
+      for a sample or an explicit small size (e.g. "Hawas Ice 10 ml").
     """
     query_normalized = norm(query)
 
@@ -1485,7 +1444,7 @@ def matches(product: Dict[str, Any], query: str) -> bool:
         return False
 
     query_size_match = re.search(
-        r"(?<!\d)(\d+(?:[.,]\d+)?)\s*[-_/]?\s*(ml|cl)\b",
+        r"(?<!\d)(\d+(?:[.,]\d+)?)\s*(ml|cl)\b",
         query_normalized,
         re.I,
     )
@@ -1520,7 +1479,9 @@ def matches(product: Dict[str, Any], query: str) -> bool:
         if abs(product_size - query_size_ml) > 0.01:
             return False
 
-    # Samples/testers are already rejected by the hard product-type filter.
+    # If the candidate is <=10 ml but the query asks for a normal size, it was
+    # already rejected above. If the query explicitly asks for sample, the
+    # sample marker itself is allowed; testers remain forbidden.
 
     # --------------------------------------------------------
     # CATALOGO AUTORITATIVO
@@ -1783,14 +1744,12 @@ def product_identity_key(product: Dict[str, Any]) -> tuple:
         "store_variant_id",
         "variant_id",
     )
-
     product_id = identity_value(
         product,
         "store_product_id",
         "product_id",
         "catalog_id",
     )
-
     gtin = identity_value(
         product,
         "gtin",
@@ -1799,7 +1758,6 @@ def product_identity_key(product: Dict[str, Any]) -> tuple:
         "barcode",
         "upc",
     )
-
     sku = identity_value(
         product,
         "sku",
@@ -1841,7 +1799,6 @@ def product_identity_key(product: Dict[str, Any]) -> tuple:
         size,
         concentration,
     )
-
 
 
 def unique_results(products: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
@@ -1996,7 +1953,6 @@ def _display_variant_name(
             rf"^\s*{re.escape(str(brand).strip())}\s*(?:[-:–—]\s*)?",
             flags=re.I,
         )
-
         while True:
             cleaned = brand_pattern.sub("", variant, count=1)
             if cleaned == variant:
@@ -2043,10 +1999,9 @@ def _display_variant_name(
         )
 
     # Elimina parentesi vuote e punteggiatura residua generata dalla pulizia.
-    variant = re.sub(r"\\(\\s\*\\)", " ", variant)
+    variant = re.sub(r"\(\s*\)", " ", variant)
     variant = re.sub(r"\s+", " ", variant).strip(" -–—:|/")
     return re.sub(r"\s+", " ", variant).strip()
-
 
 
 def _format_result_title(product: Dict[str, Any]) -> str:
@@ -2266,36 +2221,14 @@ def _collapse_family_results(
     return ordered
 
 
-def _repair_mojibake(value: Any) -> Any:
-    """Repair common UTF-8-as-Windows-1252 display corruption recursively."""
-    if isinstance(value, str):
-        if not any(marker in value for marker in ("â", "Ã", "Â", "ð")):
-            return value
-        try:
-            repaired = value.encode("cp1252").decode("utf-8")
-        except (UnicodeEncodeError, UnicodeDecodeError):
-            return value
-        return repaired if repaired != value else value
-    if isinstance(value, list):
-        return [_repair_mojibake(item) for item in value]
-    if isinstance(value, dict):
-        return {key: _repair_mojibake(item) for key, item in value.items()}
-    return value
-
-
 def _prepare_final_results(
     products: List[Dict[str, Any]],
     query: str,
 ) -> List[Dict[str, Any]]:
-    unique = unique_results(products)
-    if _deloox_trace_enabled(query):
-        _deloox_trace_emit("STAGE_3A_PREPARE_AFTER_UNIQUE", query, unique, {"input_count": len(products), "unique_count": len(unique)})
     results = _collapse_family_results(
-        unique,
+        unique_results(products),
         query,
     )
-    if _deloox_trace_enabled(query):
-        _deloox_trace_emit("STAGE_3B_PREPARE_AFTER_COLLAPSE", query, results, {"output_count": len(results)})
 
     prepared: List[Dict[str, Any]] = []
 
@@ -2303,13 +2236,9 @@ def _prepare_final_results(
         item = dict(product)
         item["name"] = _format_result_title(item)
         item["title"] = item["name"]
-        item = _repair_mojibake(item)
         prepared.append(item)
 
-    final = sort_by_price(prepared)
-    if _deloox_trace_enabled(query):
-        _deloox_trace_emit("STAGE_4_PREPARE_FINAL_SORT", query, final, {"final_count": len(final)})
-    return final
+    return sort_by_price(prepared)
 
 
 # ============================================================
@@ -2474,52 +2403,15 @@ def _validate_candidate(
     product: Dict[str, Any],
     query: str,
 ) -> Optional[Dict[str, Any]]:
-    trace = _deloox_trace_enabled(query, product.get("store") or ((product.get("source") or {}).get("source_name") if isinstance(product.get("source"), dict) else None))
-    if trace:
-        _deloox_trace_emit("VALIDATION_INPUT", query, [product], {"matches_checked": True})
     if not matches(product, query):
-        if trace:
-            _deloox_trace_emit("VALIDATION_REJECT_MATCHES", query, [product], {"reason":"matches_false"})
         return None
 
-    # Per una famiglia governata dal Family Registry, il Registry è
-    # AUTORITATIVO. Se non riesce a risolvere il candidato per questa query,
-    # il candidato è un falso positivo e NON può ricadere nel matcher
-    # generico. Questo evita che prodotti semanticamente simili (es. Hawa,
-    # Le Monde est Beau, sample/service, altre varianti) rientrino dopo il
-    # controllo catalogo tramite ProductMatcher.
+    # Il main usa il matcher centrale per la risoluzione dell'identità.
+    # Il query matching/family validation resta quello già esistente sopra;
+    # il matcher riceve il candidato RAW e restituisce la sua identità
+    # canonica dal catalogo autorevole.
     try:
-        catalog_family = _catalog_family_for_query(query)
-    except Exception:
-        catalog_family = None
-
-    if catalog_family is not None:
-        try:
-            resolved_identity = _catalog_match(product, query)
-        except Exception as exc:
-            print(
-                "FAMILY_REGISTRY_RUNTIME_ERROR:",
-                f"{type(exc).__name__}: {exc}",
-                flush=True,
-            )
-            return None
-
-        if not isinstance(resolved_identity, dict):
-            return None
-    else:
-        resolved_identity = None
-
-    # Il matcher centrale viene usato solo dopo il controllo autorevole della
-    # famiglia. Per le famiglie catalogate arricchisce il risultato, ma non
-    # può mai riaprire una corrispondenza rifiutata dal Registry.
-    try:
-        # ProductMatcher may enrich/mutate nested dictionaries on the object
-        # it receives. Never let that mutate the original store candidate: the
-        # candidate must retain its own store/source/offer provenance all the
-        # way through final grouping. A shallow copy is not sufficient because
-        # source, identity, attributes and raw_data are nested dictionaries.
-        matcher_input = copy.deepcopy(product)
-        matched_product = _PRODUCT_MATCHER.match(matcher_input)
+        matched_product = _PRODUCT_MATCHER.match(product)
     except Exception as exc:
         print(
             "PRODUCT_MATCHER_RUNTIME_ERROR:",
@@ -2530,6 +2422,23 @@ def _validate_candidate(
 
     if matched_product is None:
         matched_product = dict(product)
+
+    # Per le famiglie governate dal Family Registry, _catalog_match()
+    # contiene l'identità risolta dalla regola autorevole. Questa identità
+    # deve essere propagata nel candidato finale: non può restare confinata
+    # al risultato intermedio del matcher/diagnostica.
+    try:
+        resolved_identity = _catalog_match(
+            product,
+            query,
+        )
+    except Exception as exc:
+        print(
+            "FAMILY_REGISTRY_RUNTIME_ERROR:",
+            f"{type(exc).__name__}: {exc}",
+            flush=True,
+        )
+        resolved_identity = None
 
     if isinstance(resolved_identity, dict):
         # L'identità del Family Registry deve essere applicata all'oggetto
@@ -2895,11 +2804,7 @@ def _search_job_snapshot(job_id: str) -> Dict[str, Any]:
         diagnostics = dict(job.get("store_diagnostics", {}))
         phase = job.get("phase", "discovery")
 
-    if _deloox_trace_enabled(query):
-        _deloox_trace_emit("STAGE_5A_SEARCH_STATUS_INPUT", query, raw_results, {"raw_count": len(raw_results), "completed": completed})
     results = _prepare_final_results(raw_results, query)
-    if _deloox_trace_enabled(query):
-        _deloox_trace_emit("STAGE_5B_SEARCH_STATUS_OUTPUT", query, results, {"final_count": len(results), "completed": completed})
     return {
         "job_id": job_id,
         "query": query,
