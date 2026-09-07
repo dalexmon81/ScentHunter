@@ -542,9 +542,12 @@ def _category_pages(session):
     # Broad Deloox entry points. Pagination and Product Line links are followed
     # so a family is not limited to the first visible result.
     return (
+        # Liquid Brun is a men's fragrance; the men's root must be checked
+        # before the women's roots because discovery is intentionally bounded
+        # to the first root.
+        BASE_URL + "/categorie/1075750/parfum-homme.html",
         BASE_URL + "/categorie/1075639/parfums-femme.html",
         BASE_URL + "/categorie/1075660/parfum-femme.html",
-        BASE_URL + "/categorie/1075750/parfum-homme.html",
         BASE_URL + "/categorie/1025540/tendances.html",
     )
 
