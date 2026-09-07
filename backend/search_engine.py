@@ -312,14 +312,40 @@ class SearchEngine:
         }
 
     def diagnostic_search(self, query: str) -> Dict[str, Any]:
+        """Forensic read-only diagnostic of the REAL search pipeline.
+
+        This intentionally measures every phase separately so we can distinguish:
+        - retailer execution time;
+        - orchestration/waiting time;
+        - raw deduplication;
+        - candidate validation;
+        - final grouping/ranking.
+        It never changes search results or job state.
+        """
         text = self.analyze_query(query)["raw"]
         if not text:
-            return {"ok": True, "query": "", "stores": {}, "raw_candidates": [], "validated_candidates": [], "errors": {}}
+            return {
+                "ok": True,
+                "diagnostic": "search-forensics-v1",
+                "query": "",
+                "timings": {},
+                "stores": {},
+                "raw_candidates": [],
+                "validated_candidates": [],
+                "errors": {},
+            }
+
         started = time.monotonic()
-        store_run = self._run_stores(text)
-        raw_pool: List[Dict[str, Any]] = []
+        timings: Dict[str, float] = {}
         stores: Dict[str, Any] = {}
         errors: Dict[str, str] = {}
+
+        t0 = time.monotonic()
+        store_run = self._run_stores(text)
+        timings["stores_wall_time"] = round(time.monotonic() - t0, 3)
+        timings["orchestrator_total_store_phase"] = round(store_run.get("elapsed", 0.0), 3)
+
+        raw_pool: List[Dict[str, Any]] = []
         for store in self.stores:
             result = store_run["stores"][store]
             raw_pool.extend(result.candidates)
@@ -332,19 +358,69 @@ class SearchEngine:
             }
             if result.error:
                 errors[store] = result.error
+
+        t0 = time.monotonic()
+        before_dedupe = len(raw_pool)
         raw_pool = self._dedupe_raw(raw_pool)
+        timings["dedupe"] = round(time.monotonic() - t0, 3)
+
+        t0 = time.monotonic()
         validated = self._validate_candidates_only(text, raw_pool)
+        timings["validation"] = round(time.monotonic() - t0, 3)
+
+        t0 = time.monotonic()
+        prepare = getattr(self.legacy, "_prepare_final_results", None)
+        if callable(prepare):
+            try:
+                prepared = prepare(validated, text)
+            except TypeError:
+                prepared = prepare(validated)
+        else:
+            prepared = validated
+        if prepared is None:
+            prepared = []
+        if not isinstance(prepared, list):
+            prepared = list(prepared)
+        prepared = [x for x in prepared if isinstance(x, dict)]
+        timings["final_prepare"] = round(time.monotonic() - t0, 3)
+
+        t0 = time.monotonic()
+        final = self._stable_results(prepared)
+        timings["stable_sort"] = round(time.monotonic() - t0, 3)
+        timings["total"] = round(time.monotonic() - started, 3)
+
+        slowest_store = max(
+            stores.items(),
+            key=lambda pair: float(pair[1].get("elapsed") or 0.0),
+            default=(None, {"elapsed": 0}),
+        )
+        timed_out = [
+            name for name, info in stores.items()
+            if info.get("status") == "timeout"
+        ]
+
         return {
             "ok": True,
+            "diagnostic": "search-forensics-v1",
             "query": text,
-            "elapsed": round(time.monotonic() - started, 3),
+            "timings": timings,
             "store_count": len(self.stores),
             "stores": stores,
+            "slowest_store": slowest_store[0],
+            "slowest_store_seconds": slowest_store[1].get("elapsed", 0),
+            "timed_out_stores": timed_out,
+            "raw_candidate_count_before_dedupe": before_dedupe,
             "raw_candidate_count": len(raw_pool),
             "validated_candidate_count": len(validated),
+            "final_result_count": len(final),
             "raw_candidates": [dict(x) for x in raw_pool],
             "validated_candidates": [dict(x) for x in validated],
             "errors": errors,
+            "interpretation": {
+                "store_bottleneck": bool(timed_out) or timings["stores_wall_time"] >= 10.0,
+                "validation_bottleneck": timings["validation"] >= 2.0,
+                "finalization_bottleneck": (timings["final_prepare"] + timings["stable_sort"]) >= 2.0,
+            },
         }
 
     def run_job(self, job_id: str, query: str) -> None:
@@ -357,6 +433,7 @@ class SearchEngine:
             raise RuntimeError("SEARCH_JOBS is not available")
 
         def update(payload: Dict[str, Any]) -> None:
+            phase_timings["job_update_count"] = int(phase_timings.get("job_update_count", 0)) + 1
             if lock is not None:
                 with lock:
                     job = jobs.get(job_id)
@@ -368,6 +445,12 @@ class SearchEngine:
                     job.update(payload)
 
         started = time.monotonic()
+        phase_started = started
+        phase_timings: Dict[str, Any] = {
+            "job_started_monotonic": started,
+            "store_execution": {},
+            "job_update_count": 0,
+        }
         store_status = {store: {"status": "pending", "count": 0} for store in self.stores}
         update({
             "completed": False,
@@ -406,6 +489,11 @@ class SearchEngine:
                         "elapsed": round(result.elapsed, 3),
                         "error": result.error,
                     }
+                    phase_timings["store_execution"][store] = {
+                        "status": result.status,
+                        "elapsed": round(result.elapsed, 3),
+                        "count": len(result.candidates),
+                    }
                     raw_pool.extend(result.candidates)
                     if result.error:
                         errors[store] = result.error
@@ -435,8 +523,42 @@ class SearchEngine:
                     errors[store] = store_status[store]["error"]
 
             executor.shutdown(wait=False, cancel_futures=True)
+
+            phase_timings["store_phase_wall_time"] = round(time.monotonic() - phase_started, 3)
+
+            t0 = time.monotonic()
+            raw_before_dedupe = len(raw_pool)
             raw_pool = self._dedupe_raw(raw_pool)
-            final = self._finalize(query, raw_pool)
+            phase_timings["dedupe"] = round(time.monotonic() - t0, 3)
+            phase_timings["raw_candidates_before_dedupe"] = raw_before_dedupe
+            phase_timings["raw_candidates"] = len(raw_pool)
+
+            t0 = time.monotonic()
+            validated = self._validate_candidates_only(query, raw_pool)
+            phase_timings["validation"] = round(time.monotonic() - t0, 3)
+            phase_timings["validated_candidates"] = len(validated)
+
+            t0 = time.monotonic()
+            prepare = getattr(self.legacy, "_prepare_final_results", None)
+            if callable(prepare):
+                try:
+                    prepared = prepare(validated, query)
+                except TypeError:
+                    prepared = prepare(validated)
+            else:
+                prepared = validated
+            if prepared is None:
+                prepared = []
+            if not isinstance(prepared, list):
+                prepared = list(prepared)
+            prepared = [x for x in prepared if isinstance(x, dict)]
+            phase_timings["final_prepare"] = round(time.monotonic() - t0, 3)
+
+            t0 = time.monotonic()
+            final = self._stable_results(prepared)
+            phase_timings["stable_sort"] = round(time.monotonic() - t0, 3)
+            phase_timings["total_before_final_update"] = round(time.monotonic() - started, 3)
+
             update({
                 "results": final,
                 "candidates": list(raw_pool),
@@ -448,6 +570,10 @@ class SearchEngine:
                 "elapsed": round(time.monotonic() - started, 3),
                 "raw_candidate_count": len(raw_pool),
                 "result_count": len(final),
+                "diagnostic": {
+                    **phase_timings,
+                    "total": round(time.monotonic() - started, 3),
+                },
             })
         except Exception as exc:
             update({
@@ -456,4 +582,8 @@ class SearchEngine:
                 "elapsed": round(time.monotonic() - started, 3),
                 "error": f"{type(exc).__name__}: {exc}",
                 "traceback": traceback.format_exc(limit=8),
+                "diagnostic": {
+                    **phase_timings,
+                    "total": round(time.monotonic() - started, 3),
+                },
             })
