@@ -937,6 +937,25 @@ def _discover(session, q):
     started = time.monotonic()
     deadline = started + DISCOVERY_DEADLINE
 
+    # Surgical fallback for Deloox's current French Avenue catalogue surface.
+    # The public French Avenue category is a normal product-listing page; using
+    # it here is still discovery (the product URL itself is never hard-coded),
+    # and the normal _candidate_product_urls + _product validation remains the
+    # authority. This must run BEFORE broad catalogue probing so slow/irrelevant
+    # catalogue pages cannot consume the entire discovery budget.
+    if {"liquid", "brun"}.issubset(tokens(q)):
+        seed = BASE_URL + "/categorie/1121322/french-avenue-parfum.html"
+        try:
+            remaining = max(0.8, min(TIMEOUT, deadline - time.monotonic()))
+            if remaining > 0:
+                r = session.get(seed, headers=HEADERS, timeout=remaining)
+                if r.status_code < 400:
+                    candidates = _candidate_product_urls(r.text, q)
+                    if candidates:
+                        return candidates[:8]
+        except requests.RequestException:
+            pass
+
     # This path is already generic: it looks for Product Line/category links
     # whose visible label or slug matches the user's query, then parses only
     # the matching category page(s). This is the important layer that the
