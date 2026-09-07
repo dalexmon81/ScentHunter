@@ -573,7 +573,7 @@ def _sitemap_category_urls(session, query, max_sitemaps=3, max_urls=20):
             continue
         seen_sitemaps.add(sitemap_url)
         try:
-            r = session.get(sitemap_url, headers=HEADERS, timeout=TIMEOUT)
+            r = session.get(sitemap_url, headers=HEADERS, timeout=request_timeout)
         except requests.RequestException:
             continue
         if r.status_code >= 400:
@@ -716,7 +716,7 @@ def _discover_from_categories(session, query, max_urls=120):
     return urls[:max_urls]
 
 
-def _sitemap_product_urls(session, query, max_sitemaps=12, max_urls=80):
+def _sitemap_product_urls(session, query, max_sitemaps=2, max_urls=8, request_timeout=1.8):
     query_tokens = tokens(query)
     if not query_tokens:
         return []
@@ -837,6 +837,27 @@ def _discover(session, q):
         if candidates:
             add_many(candidates)
             return urls[:8]
+
+    if time.monotonic() >= deadline:
+        return urls[:8]
+
+    # SECONDARY: use Deloox's product sitemap directly. This path already
+    # exists in the adapter and is generic: the query is matched against the
+    # canonical product URL, then _product() performs authoritative validation.
+    # Keep it tightly bounded so sitemap discovery cannot become the new bottleneck.
+    try:
+        sitemap_urls = _sitemap_product_urls(
+            session,
+            q,
+            max_sitemaps=2,
+            max_urls=8,
+            request_timeout=min(1.8, max(0.8, deadline - time.monotonic())),
+        )
+        if sitemap_urls:
+            add_many(sitemap_urls)
+            return urls[:8]
+    except Exception:
+        pass
 
     if time.monotonic() >= deadline:
         return urls[:8]
