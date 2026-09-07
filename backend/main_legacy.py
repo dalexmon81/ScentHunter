@@ -2338,7 +2338,11 @@ def run_store(
     output: List[Dict[str, Any]] = []
     seen = set()
 
-    for attempt in attempts:
+    # FAST PATH: the exact query is tried first. Broader discovery attempts
+    # are only used when the store returns no candidates at all. Each attempt
+    # can trigger a complete HTTP/browser search, so running all six on every
+    # store was the main avoidable latency multiplier.
+    def collect(attempt: str) -> None:
         try:
             results = search_fn(attempt) or []
         except Exception as exc:
@@ -2347,10 +2351,10 @@ def run_store(
                 f"attempt={attempt!r} error={type(exc).__name__}: {exc}",
                 flush=True,
             )
-            continue
+            return
 
         if not isinstance(results, list):
-            continue
+            return
 
         for item in results:
             if not isinstance(item, dict):
@@ -2370,6 +2374,16 @@ def run_store(
 
             seen.add(key)
             output.append(product)
+
+    # One request in the overwhelmingly common successful case.
+    collect(attempts[0])
+
+    # Recovery path for retailer search endpoints that need a broader query.
+    if not output:
+        for attempt in attempts[1:]:
+            collect(attempt)
+            if output:
+                break
 
     return output
 
