@@ -16,7 +16,7 @@ import time
 from bs4 import BeautifulSoup
 
 STORE = "Deloox"
-BASE_URL = "https://www.deloox.com"
+BASE_URL = "https://www.deloox.be"
 TIMEOUT = 10
 HEADERS = {
     "User-Agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 Version/17.0 Mobile/15E148 Safari/604.1",
@@ -304,7 +304,7 @@ def _candidate_product_urls(html, query=None):
             parsed = urlparse(url)
         except Exception:
             return
-        if parsed.netloc.lower() not in {"deloox.com", "www.deloox.com"}:
+        if parsed.netloc.lower() not in {"deloox.be", "www.deloox.be"}:
             return
         if "/product/" not in parsed.path.lower():
             return
@@ -386,7 +386,7 @@ def _category_product_line_links(html, query):
         except Exception:
             return
 
-        if parsed.netloc.lower() not in {"deloox.com", "www.deloox.com"}:
+        if parsed.netloc.lower() not in {"deloox.be", "www.deloox.be"}:
             return
         if "/category/" not in parsed.path.lower():
             return
@@ -468,7 +468,7 @@ def _catalog_filter_links(session):
         except Exception:
             return
 
-        if parsed.netloc.lower() not in {"deloox.com", "www.deloox.com"}:
+        if parsed.netloc.lower() not in {"deloox.be", "www.deloox.be"}:
             return
         if "/category/" not in parsed.path.lower():
             return
@@ -595,7 +595,7 @@ def _sitemap_category_urls(session, query, max_sitemaps=16, max_urls=50):
                 continue
 
             parsed = urlparse(value)
-            if parsed.netloc.lower() not in {"deloox.com", "www.deloox.com"}:
+            if parsed.netloc.lower() not in {"deloox.be", "www.deloox.be"}:
                 continue
             path = parsed.path.lower()
             if "/category/" not in path or not path.endswith(".html"):
