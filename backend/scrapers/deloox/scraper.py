@@ -17,7 +17,7 @@ from bs4 import BeautifulSoup
 
 STORE = "Deloox"
 BASE_URL = "https://www.deloox.be"
-TIMEOUT = 4
+TIMEOUT = 10
 HEADERS = {
     "User-Agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 Version/17.0 Mobile/15E148 Safari/604.1",
     "Accept-Language": "en-GB,en;q=0.9",
@@ -549,7 +549,7 @@ def _category_pages(session):
     )
 
 
-def _sitemap_category_urls(session, query, max_sitemaps=3, max_urls=20):
+def _sitemap_category_urls(session, query, max_sitemaps=16, max_urls=50):
     """Find relevant Deloox category/Product Line URLs generically."""
     q_tokens = tokens(query)
     if not q_tokens:
@@ -656,7 +656,6 @@ def _discover_from_categories(session, query, max_urls=120):
 
     roots = list(_category_pages(session))
     roots.extend(_targeted_category_seed_urls(query))
-    roots = roots[:2]
 
     for root in roots:
         try:
@@ -673,7 +672,7 @@ def _discover_from_categories(session, query, max_urls=120):
         # First find only category/Product Line links that actually match q.
         matching_lines = _category_product_line_links(r.text, query)
 
-        for line_url in matching_lines[:2]:
+        for line_url in matching_lines:
             candidates = [line_url]
             # Check only the first pagination page for a matching line.
             candidates.append(next(_pagination_urls(line_url, max_pages=1)))
@@ -812,17 +811,15 @@ def _discover(session, q):
     endpoints = [
         BASE_URL + "/en/search?q=" + quote_plus(q),
         BASE_URL + "/en/search?query=" + quote_plus(q),
+        BASE_URL + "/en/search?search=" + quote_plus(q),
+        BASE_URL + "/en?search=" + quote_plus(q),
         BASE_URL + "/search?q=" + quote_plus(q),
+        BASE_URL + "/search?query=" + quote_plus(q),
     ]
 
-    discovery_deadline = time.monotonic() + 15.0
-
     for endpoint in endpoints:
-        remaining = discovery_deadline - time.monotonic()
-        if remaining <= 0.2:
-            break
         try:
-            r = session.get(endpoint, headers=HEADERS, timeout=min(TIMEOUT, max(0.5, remaining)))
+            r = session.get(endpoint, headers=HEADERS, timeout=TIMEOUT)
         except requests.RequestException:
             continue
 
@@ -835,17 +832,14 @@ def _discover(session, q):
             return urls[:80]
 
     # 2) SECONDARY: broad categories and matching Product Line links.
-    # Keep this bounded: the normal search must never turn into a long crawl.
-    if time.monotonic() >= discovery_deadline:
-        return urls[:80]
-    category_candidates = _discover_from_categories(session, q, max_urls=20)
+    # This is slower, so it is used only when the search surface did not expose
+    # usable product candidates.
+    category_candidates = _discover_from_categories(session, q, max_urls=80)
     if category_candidates:
         add_many(category_candidates)
         return urls[:80]
 
     # 3) GENERIC catalogue/Product Line discovery.
-    if time.monotonic() >= discovery_deadline:
-        return urls[:80]
     catalog_category = _find_catalog_filter_url(session, q)
     if catalog_category:
         try:
@@ -860,10 +854,8 @@ def _discover(session, q):
                 return urls[:80]
 
     # 4) GENERIC Product Line/category discovery from Deloox sitemaps.
-    if time.monotonic() >= discovery_deadline:
-        return urls[:80]
     for category_url in _sitemap_category_urls(
-        session, q, max_sitemaps=3, max_urls=20
+        session, q, max_sitemaps=16, max_urls=50
     ):
         try:
             page = session.get(category_url, headers=HEADERS, timeout=TIMEOUT)
@@ -898,13 +890,11 @@ def _discover(session, q):
                 return urls[:80]
 
     # 5) LAST RESORT: product sitemap.
-    if time.monotonic() >= discovery_deadline:
-        return urls[:80]
     sitemap_candidates = _sitemap_product_urls(
         session,
         q,
-        max_sitemaps=3,
-        max_urls=30,
+        max_sitemaps=16,
+        max_urls=80,
     )
     if sitemap_candidates:
         add_many(sitemap_candidates)
