@@ -8,7 +8,8 @@ from bs4 import BeautifulSoup
 
 STORE = "Sabina"
 BASE = "https://www.sabina.com"
-TIMEOUT = 3
+TIMEOUT = 1.5
+SEARCH_DEADLINE = 5.5
 
 HEADERS = {
     "User-Agent": (
@@ -664,9 +665,7 @@ def _brand_collection_fallback(session, query):
     # bounded and locale-independent by trying the same collection id in a
     # small set of Sabina locales.
     collection_urls = [
-        BASE + '/fr/601_french-avenue',
         BASE + '/it/601_french-avenue',
-        BASE + '/es/601_french-avenue',
     ]
     out, seen = [], set()
 
@@ -702,9 +701,11 @@ def search(query):
     s = requests.Session()
     s.headers.update(HEADERS)
     try:
-        candidates = _sitemap_product_candidates(s, query)
+        # Fast public collection path first. The sitemap tree can contain many
+        # dead/SEO-only branches and must never delay a valid product lookup.
+        candidates = _brand_collection_fallback(s, query)
         if not candidates:
-            candidates = _brand_collection_fallback(s, query)
+            candidates = _sitemap_product_candidates(s, query)
         if not candidates:
             return []
 
