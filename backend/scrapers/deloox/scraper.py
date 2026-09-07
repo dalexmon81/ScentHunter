@@ -636,7 +636,7 @@ def _pagination_urls(page_url, max_pages=8):
 def _filter_target_urls(html, query):
     """Recover category/filter targets represented as labels, forms or data attrs.
 
-    Deloox's broad catalogue can render a Product Line such as "Liquid Brun"
+    Deloox's broad catalogue can render a Product Line/category page
     as a filter control rather than as a normal category <a>. The old discovery
     only accepted /categorie/... links, so the filter was visible in the HTML
     but never followed. This helper converts the matching control into a real
@@ -937,36 +937,10 @@ def _discover(session, q):
     started = time.monotonic()
     deadline = started + DISCOVERY_DEADLINE
 
-    # Surgical fallback for Deloox's current French Avenue catalogue surface.
-    # The public French Avenue category is a normal product-listing page; using
-    # it here is still discovery (the product URL itself is never hard-coded),
-    # and the normal _candidate_product_urls + _product validation remains the
-    # authority. This must run BEFORE broad catalogue probing so slow/irrelevant
-    # catalogue pages cannot consume the entire discovery budget.
-    if {"liquid", "brun"}.issubset(tokens(q)):
-        base_seed = BASE_URL + "/categorie/1121322/french-avenue-parfum.html"
-        # Liquid Brun Limited Edition can sit on a later pagination page of
-        # the French Avenue catalogue even when the normal 100 ml product is
-        # on page 1. Keep discovery surgical: inspect only the first three
-        # pages of this one relevant category, never the whole Deloox catalogue.
-        # For a query explicitly asking for Limited Edition, page 2 is tried
-        # first because that is the only additional surface we need to reach.
-        page_order = [2, 1, 3] if "limited" in tokens(q) else [1, 2, 3]
-        for page_no in page_order:
-            remaining = deadline - time.monotonic()
-            if remaining <= 0:
-                break
-            seed = base_seed if page_no == 1 else base_seed + f"?page={page_no}"
-            timeout = min(2.8, remaining)
-            try:
-                r = session.get(seed, headers=HEADERS, timeout=max(1.0, timeout))
-                if r.status_code < 400:
-                    candidates = _candidate_product_urls(r.text, q)
-                    if candidates:
-                        return candidates[:8]
-            except requests.RequestException:
-                continue
-
+    # PRIMARY DISCOVERY: use the generic Product Line/category layer.
+    # Discovery is deliberately query-driven: no perfume, brand, variant, or
+    # category URL is hard-coded here. Final product validation remains the
+    # authority, so broader discovery cannot weaken matching.
     # This path is already generic: it looks for Product Line/category links
     # whose visible label or slug matches the user's query, then parses only
     # the matching category page(s). This is the important layer that the
