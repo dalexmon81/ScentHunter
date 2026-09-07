@@ -29,6 +29,186 @@ from fastapi import Query
 # - product catalog
 # - eight store adapters
 # - central validation/finalization functions
+
+# ---------------------------------------------------------------------------
+# FAMILY-REGISTRY VALIDATION GUARD
+# ---------------------------------------------------------------------------
+# The legacy validator is still the main authority.  For catalog-controlled
+# families, however, a candidate that is explicitly compatible with one of
+# the registered variants must not be lost because of a secondary legacy
+# matching condition.  This guard is deliberately narrow:
+#   - it applies only when the query belongs to a Family Registry family;
+#   - the explicit brand, when present, must still agree with the family;
+#   - the candidate name must contain an authorized variant alias;
+#   - no generic/fuzzy matching is introduced.
+_original_legacy_matches = getattr(_legacy, "matches", None)
+
+
+def _family_registry_authoritative_match(product, query):
+    if not callable(_original_legacy_matches):
+        return False
+
+    try:
+        if _original_legacy_matches(product, query):
+            return True
+    except Exception as exc:
+        print(
+            "LEGACY_MATCH_RUNTIME_ERROR:",
+            f"{type(exc).__name__}: {exc}",
+            flush=True,
+        )
+
+    try:
+        family_for_query = _legacy._catalog_family_for_query(query)
+    except Exception:
+        family_for_query = None
+
+    if not isinstance(family_for_query, dict):
+        return False
+
+    # Preserve the existing non-perfume/set protections.
+    try:
+        name = _legacy.product_field(
+            product,
+            "name",
+            "title",
+            "product_name",
+        )
+        source = product.get("source")
+        if isinstance(source, dict) and not name:
+            name = str(
+                source.get("name")
+                or source.get("title")
+                or ""
+            ).strip()
+
+        name_normalized = _legacy.norm(name)
+        if not name_normalized:
+            return False
+
+        if _legacy.has_small_size(product):
+            query_normalized = _legacy.norm(query)
+            query_has_size = bool(
+                re.search(
+                    r"(?<!\d)\d+(?:[.,]\d+)?\s*(?:ml|cl)\b",
+                    query_normalized,
+                )
+            )
+            if not query_has_size:
+                return False
+
+        is_set = False
+        is_set_fn = getattr(_legacy, "_is_set_or_coffret", None)
+        if callable(is_set_fn):
+            try:
+                is_set = bool(is_set_fn(product))
+            except Exception:
+                is_set = False
+
+        if not is_set:
+            for phrase in getattr(_legacy, "NON_PERFUME", set()):
+                phrase_normalized = _legacy.norm(phrase)
+                if (
+                    phrase_normalized
+                    and phrase_normalized in name_normalized
+                    and phrase_normalized not in _legacy.norm(query)
+                ):
+                    return False
+
+        # If the retailer exposes a brand, it must not contradict the
+        # authoritative family brand. Missing brand remains acceptable.
+        brand_check = getattr(_legacy, "_catalog_brand_matches", None)
+        if callable(brand_check):
+            if not brand_check(product, family_for_query):
+                return False
+
+        candidate_key_fn = getattr(
+            _legacy,
+            "_catalog_candidate_variant_key",
+            None,
+        )
+        variant_key_fn = getattr(
+            _legacy,
+            "catalog_variant_key",
+            None,
+        )
+        gender_fn = getattr(
+            _legacy,
+            "_catalog_gender_class",
+            None,
+        )
+
+        if not callable(candidate_key_fn) or not callable(variant_key_fn):
+            return False
+
+        candidate_key = variant_key_fn(candidate_key_fn(product))
+        if not candidate_key:
+            return False
+
+        candidate_gender = (
+            gender_fn(name)
+            if callable(gender_fn)
+            else "none"
+        )
+
+        for variant in family_for_query.get("variants", []):
+            if not isinstance(variant, dict):
+                continue
+
+            aliases = [
+                variant.get("canonical_name", ""),
+                *(variant.get("aliases") or []),
+            ]
+
+            alias_keys = {
+                variant_key_fn(alias)
+                for alias in aliases
+                if variant_key_fn(alias)
+            }
+
+            # Exact or whole-phrase inclusion only.  This is intentionally
+            # not fuzzy matching.
+            if not any(
+                alias_key == candidate_key
+                or f" {alias_key} " in f" {candidate_key} "
+                for alias_key in alias_keys
+            ):
+                continue
+
+            if callable(gender_fn):
+                variant_gender = gender_fn(
+                    " ".join(
+                        str(x or "")
+                        for x in aliases
+                    )
+                )
+
+                # A neutral candidate cannot be promoted to a gendered
+                # catalog variant.  An explicit gender remains a constraint.
+                if candidate_gender == "none":
+                    if variant_gender != "none":
+                        continue
+                elif variant_gender not in {
+                    "none",
+                    candidate_gender,
+                }:
+                    continue
+
+            return True
+
+    except Exception as exc:
+        print(
+            "FAMILY_REGISTRY_GUARD_ERROR:",
+            f"{type(exc).__name__}: {exc}",
+            flush=True,
+        )
+
+    return False
+
+
+if callable(_original_legacy_matches):
+    _legacy.matches = _family_registry_authoritative_match
+
 _engine = SearchEngine(_legacy)
 
 # Keep size variants from the same retailer product URL/product-id distinct.
