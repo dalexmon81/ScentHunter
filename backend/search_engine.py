@@ -498,80 +498,102 @@ class SearchEngine:
             )
 
     def _run_stores(self, query: str) -> Dict[str, Any]:
-        """
-        Execute all store adapters concurrently with two independent limits:
+        """Execute all store adapters with real per-store and global timeouts.
 
-        - every store has its own STORE_TIMEOUT budget;
-        - the whole research phase has a GLOBAL_TIMEOUT ceiling.
-
-        A timed-out Python thread cannot be force-killed safely.  The future is
-        therefore detached from the result set and the executor is shut down
-        without waiting.  A late adapter completion is ignored.
+        Important: the executor has only two workers, so futures can sit queued.
+        A store timeout therefore starts when that store's worker actually begins,
+        never when the future is submitted. Cancelled futures are also handled
+        explicitly so a CancelledError can never turn into a secondary KeyError.
         """
         started = time.monotonic()
         results: Dict[str, StoreRun] = {
             store: StoreRun(store=store) for store in self.stores
         }
+        deadline = started + self.global_timeout
 
-        # HARD LIMIT: never run more than two store scrapers at once.
-        # This protects retailers from burst/rate-limit pressure and keeps the
-        # search behavior aligned with the format-comparison endpoint.
         executor = concurrent.futures.ThreadPoolExecutor(
             max_workers=min(2, max(1, len(self.stores))),
             thread_name_prefix="scenthunter-store",
         )
 
         futures: Dict[concurrent.futures.Future, str] = {}
-        submitted_at: Dict[concurrent.futures.Future, float] = {}
+        started_at: Dict[concurrent.futures.Future, Optional[float]] = {}
 
-        def run_store_timed(store_name: str) -> StoreRun:
-            # The executor has only two workers, so futures may wait in its
-            # queue.  The per-store timeout must start when the scraper starts,
-            # not when its future is submitted.
-            started_at = time.monotonic()
-            return self._run_one_store(store_name, query, _started_at=started_at)
-
-        for store in self.stores:
-            future = executor.submit(run_store_timed, store)
-            futures[future] = store
-
-        pending = set(futures)
-        deadline = started + self.global_timeout
+        def run_store_timed(store_name: str, future_holder: List[Any]) -> StoreRun:
+            # This callback runs inside the worker, so this is the real start of
+            # the store's timeout budget rather than queue/submission time.
+            actual_start = time.monotonic()
+            future = future_holder[0]
+            started_at[future] = actual_start
+            return self._run_one_store(store_name, query, _started_at=actual_start)
 
         try:
-            while pending and time.monotonic() < deadline:
-                now = time.monotonic()
+            # Submit all stores. Only two can execute at once; the remaining
+            # futures stay queued and have no per-store timeout until they start.
+            for store in self.stores:
+                holder: List[Any] = [None]
+                future = executor.submit(run_store_timed, store, holder)
+                holder[0] = future
+                futures[future] = store
+                started_at[future] = None
 
-                # Harvest every future that has already completed.
+            pending = set(futures)
+
+            while pending:
+                now = time.monotonic()
+                if now >= deadline:
+                    break
+
+                # Harvest every completed future, including cancelled futures.
                 done = {future for future in pending if future.done()}
                 for future in done:
                     pending.remove(future)
                     store = futures[future]
                     try:
-                        results[store] = future.result()
+                        if future.cancelled():
+                            results[store] = StoreRun(
+                                store=store,
+                                status="timeout",
+                                candidates=[],
+                                elapsed=0.0,
+                                error="store future was cancelled",
+                            )
+                        else:
+                            results[store] = future.result()
                     except Exception as exc:
+                        actual_start = started_at.get(future)
+                        elapsed = (
+                            time.monotonic() - actual_start
+                            if actual_start is not None
+                            else 0.0
+                        )
                         results[store] = StoreRun(
                             store=store,
                             status="error",
                             candidates=[],
-                            elapsed=time.monotonic() - submitted_at[future],
+                            elapsed=elapsed,
                             error=f"{type(exc).__name__}: {exc}",
                         )
 
                 if not pending:
                     break
 
-                # Enforce the per-store timeout independently.
                 now = time.monotonic()
+
+                # Enforce the independent timeout only for stores whose worker
+                # has actually started. Queued futures are allowed to wait.
                 for future in list(pending):
-                    store = futures[future]
-                    if now - submitted_at[future] >= self.store_timeout:
+                    actual_start = started_at.get(future)
+                    if actual_start is None:
+                        continue
+                    if now - actual_start >= self.store_timeout:
                         pending.remove(future)
+                        store = futures[future]
                         results[store] = StoreRun(
                             store=store,
                             status="timeout",
                             candidates=[],
-                            elapsed=now - submitted_at[future],
+                            elapsed=now - actual_start,
                             error=(
                                 f"store exceeded independent timeout "
                                 f"({self.store_timeout:.0f}s)"
@@ -581,25 +603,33 @@ class SearchEngine:
                 if not pending:
                     break
 
-                # Short polling interval keeps timeout enforcement precise
-                # without busy-spinning the process.
-                remaining_global = deadline - time.monotonic()
-                remaining_store = min(
-                    max(0.0, self.store_timeout - (time.monotonic() - submitted_at[future]))
-                    for future in pending
+                remaining_global = max(0.0, deadline - time.monotonic())
+                active_remaining = [
+                    max(0.0, self.store_timeout - (time.monotonic() - started_at[f]))
+                    for f in pending
+                    if started_at.get(f) is not None
+                ]
+                sleep_for = min(
+                    0.05,
+                    remaining_global,
+                    min(active_remaining) if active_remaining else 0.05,
                 )
-                time.sleep(min(0.05, max(0.0, remaining_global), remaining_store))
+                if sleep_for > 0:
+                    time.sleep(sleep_for)
 
-            # Anything still pending at the global deadline is a timeout.
+            # Anything still pending at the global deadline is detached from the
+            # result set. Running threads cannot be force-killed safely; queued
+            # futures are cancelled by executor.shutdown below.
             if pending:
                 now = time.monotonic()
                 for future in pending:
                     store = futures[future]
+                    actual_start = started_at.get(future)
                     results[store] = StoreRun(
                         store=store,
                         status="timeout",
                         candidates=[],
-                        elapsed=now - submitted_at[future],
+                        elapsed=(now - actual_start) if actual_start is not None else 0.0,
                         error="global search window expired",
                     )
 
