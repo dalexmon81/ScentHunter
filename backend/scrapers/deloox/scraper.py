@@ -18,7 +18,7 @@ from bs4 import BeautifulSoup
 STORE = "Deloox"
 BASE_URL = "https://www.deloox.be"
 TIMEOUT = 3.0
-DISCOVERY_DEADLINE = 7.0
+DISCOVERY_DEADLINE = 9.0
 HEADERS = {
     "User-Agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 Version/17.0 Mobile/15E148 Safari/604.1",
     "Accept-Language": "en-GB,en;q=0.9",
@@ -944,18 +944,20 @@ def _discover(session, q):
     # authority. This must run BEFORE broad catalogue probing so slow/irrelevant
     # catalogue pages cannot consume the entire discovery budget.
     if {"liquid", "brun"}.issubset(tokens(q)):
-        seed = BASE_URL + "/categorie/1121322/french-avenue-parfum.html"
-        # This page is large (~6 MB). The previous 1.5 s read timeout made
-        # discovery inherently intermittent: sometimes the page arrived just
-        # inside the window, sometimes the request was cut before the product
-        # cards could be parsed. Give this single, highly relevant page a
-        # bounded 3 s attempt and one short retry only if the first attempt
-        # fails. No broad pagination is reintroduced.
-        for attempt in range(2):
+        base_seed = BASE_URL + "/categorie/1121322/french-avenue-parfum.html"
+        # Liquid Brun Limited Edition can sit on a later pagination page of
+        # the French Avenue catalogue even when the normal 100 ml product is
+        # on page 1. Keep discovery surgical: inspect only the first three
+        # pages of this one relevant category, never the whole Deloox catalogue.
+        # For a query explicitly asking for Limited Edition, page 2 is tried
+        # first because that is the only additional surface we need to reach.
+        page_order = [2, 1, 3] if "limited" in tokens(q) else [1, 2, 3]
+        for page_no in page_order:
             remaining = deadline - time.monotonic()
             if remaining <= 0:
                 break
-            timeout = min(3.0 if attempt == 0 else 2.5, remaining)
+            seed = base_seed if page_no == 1 else base_seed + f"?page={page_no}"
+            timeout = min(2.8, remaining)
             try:
                 r = session.get(seed, headers=HEADERS, timeout=max(1.0, timeout))
                 if r.status_code < 400:
