@@ -17,7 +17,8 @@ from bs4 import BeautifulSoup
 
 STORE = "Deloox"
 BASE_URL = "https://www.deloox.be"
-TIMEOUT = 4
+TIMEOUT = 1.5
+DISCOVERY_DEADLINE = 5.5
 HEADERS = {
     "User-Agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 Version/17.0 Mobile/15E148 Safari/604.1",
     "Accept-Language": "en-GB,en;q=0.9",
@@ -631,7 +632,7 @@ def _pagination_urls(page_url, max_pages=8):
         yield f"{base}?page={page}"
 
 
-def _discover_from_categories(session, query, max_urls=120):
+def _discover_from_categories(session, query, max_urls=120, deadline=None):
     """Discover products through Deloox's category/filter hierarchy.
 
     Deloox can contain the searched product text in a broad catalogue page while
@@ -701,8 +702,13 @@ def _discover_from_categories(session, query, max_urls=120):
 
     roots = list(_category_pages(session))[:2]
     for root in roots:
+        if deadline is not None and time.monotonic() >= deadline:
+            break
         try:
-            r = session.get(root, headers=HEADERS, timeout=TIMEOUT)
+            remaining = TIMEOUT if deadline is None else max(0.5, min(TIMEOUT, deadline - time.monotonic()))
+            if deadline is not None and remaining <= 0:
+                break
+            r = session.get(root, headers=HEADERS, timeout=remaining)
         except requests.RequestException:
             continue
         if r.status_code >= 400:
@@ -711,9 +717,14 @@ def _discover_from_categories(session, query, max_urls=120):
         if add_products(html):
             return urls[:max_urls]
 
-        for cat_url in category_candidates(html)[:5]:
+        for cat_url in category_candidates(html)[:3]:
+            if deadline is not None and time.monotonic() >= deadline:
+                break
             try:
-                page = session.get(cat_url, headers=HEADERS, timeout=TIMEOUT)
+                remaining = TIMEOUT if deadline is None else max(0.5, min(TIMEOUT, deadline - time.monotonic()))
+                if deadline is not None and remaining <= 0:
+                    break
+                page = session.get(cat_url, headers=HEADERS, timeout=remaining)
             except requests.RequestException:
                 continue
             if page.status_code >= 400:
@@ -722,11 +733,16 @@ def _discover_from_categories(session, query, max_urls=120):
                 return urls[:max_urls]
 
             # Follow only category links that are still query-relevant.
-            for nested in category_candidates(page.text)[:2]:
+            for nested in category_candidates(page.text)[:1]:
                 if nested == cat_url:
                     continue
+                if deadline is not None and time.monotonic() >= deadline:
+                    break
                 try:
-                    child = session.get(nested, headers=HEADERS, timeout=TIMEOUT)
+                    remaining = TIMEOUT if deadline is None else max(0.5, min(TIMEOUT, deadline - time.monotonic()))
+                    if deadline is not None and remaining <= 0:
+                        break
+                    child = session.get(nested, headers=HEADERS, timeout=remaining)
                 except requests.RequestException:
                     continue
                 if child.status_code < 400 and add_products(child.text):
@@ -814,14 +830,14 @@ def _discover(session, q):
     No product-specific URL is hard-coded.
     """
     started = time.monotonic()
-    deadline = started + 9.0
+    deadline = started + DISCOVERY_DEADLINE
 
     # This path is already generic: it looks for Product Line/category links
     # whose visible label or slug matches the user's query, then parses only
     # the matching category page(s). This is the important layer that the
     # previous parallel broad-pagination implementation bypassed.
     try:
-        results = _discover_from_categories(session, q, max_urls=8)
+        results = _discover_from_categories(session, q, max_urls=8, deadline=deadline)
         if results:
             return results[:8]
     except Exception:
