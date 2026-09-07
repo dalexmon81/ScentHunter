@@ -632,37 +632,74 @@ def _pagination_urls(page_url, max_pages=8):
 
 
 def _discover_from_categories(session, query, max_urls=120):
-    """Discover products from Deloox category roots without blind crawling.
+    """Discover products through Deloox's category/filter hierarchy.
 
-    The previous version paginated every broad category (and every discovered
-    category link) before moving on. That can create dozens of HTTP requests
-    for a single search and makes the normal search appear to hang.
-
-    The generic strategy is:
-    1. Request each broad root once.
-    2. Check that page for direct product candidates.
-    3. Extract only Product Line/category links whose label or slug matches
-       the actual query.
-    4. Visit only those matching category pages and their first pagination
-       pages. No product-specific seed or exception is used.
+    Deloox can contain the searched product text in a broad catalogue page while
+    the actual product link is hidden behind a category/filter relation. We first
+    rank category URLs by proximity to the query text in the raw HTML, then visit
+    only the strongest matching category pages. No product-specific URL is used.
     """
-    urls = []
-    seen = set()
-    visited = set()
+    urls, seen = [], set()
 
     def add_products(html):
-        for product_url in _candidate_product_urls(html, query):
-            if product_url not in seen:
-                seen.add(product_url)
-                urls.append(product_url)
+        for u in _candidate_product_urls(html, query):
+            if u not in seen:
+                seen.add(u)
+                urls.append(u)
                 if len(urls) >= max_urls:
                     return True
         return False
 
-    roots = list(_category_pages(session))
-    roots.extend(_targeted_category_seed_urls(query))
-    roots = roots[:2]
+    def category_candidates(html):
+        soup = BeautifulSoup(html, "html.parser")
+        q = norm(query)
+        qt = tokens(query)
+        scored = {}
 
+        def consider(raw, label="", proximity=999999):
+            if not raw:
+                return
+            u = urljoin(BASE_URL, clean(raw).replace('\\/', '/')).split('#')[0]
+            try:
+                parsed = urlparse(u)
+            except Exception:
+                return
+            if parsed.netloc.lower() not in {"deloox.be", "www.deloox.be"}:
+                return
+            path = parsed.path.lower()
+            if "/category/" not in path and "/categorie/" not in path:
+                return
+            slug = path.rsplit('/', 1)[-1].removesuffix('.html')
+            hay = norm(f"{label} {slug}")
+            hits = sum(1 for t in qt if t in hay)
+            # A category with both query tokens is strongest. Otherwise use
+            # proximity to the literal query in the page as the signal.
+            score = (hits * 1000) - min(proximity, 500)
+            prev = scored.get(u)
+            if prev is None or score > prev[0]:
+                scored[u] = (score, proximity, label)
+
+        for a in soup.find_all('a', href=True):
+            label = a.get_text(' ', strip=True)
+            consider(a.get('href'), label)
+
+        # Generic raw-HTML proximity: the query can be present in JSON/text
+        # while the useful category URL is nearby but not an <a> with matching
+        # visible text. This is the key gap in the old discovery implementation.
+        raw = html.replace('\\/', '/')
+        cat_re = re.compile(r'https?://(?:www\\.)?deloox\\.be/(?:[^"\'<>\\s]*/)?(?:category|categorie)/\\d+/[^"\'<>\\s]+?\\.html|/(?:en/|fr/|it/|nl/|de/)?(?:category|categorie)/\\d+/[^"\'<>\\s]+?\\.html', re.I)
+        positions = [m.start() for m in re.finditer(re.escape(q), norm(raw), re.I)] if q else []
+        allcats = list(cat_re.finditer(raw))
+        for m in allcats:
+            near = min((abs(m.start()-pos) for pos in positions), default=999999)
+            # Keep a generous local window: serialized product/filter data can
+            # place the relation several KB away from the visible query text.
+            if near <= 30000:
+                consider(m.group(0), raw[max(0,m.start()-800):m.end()+800], near)
+
+        return [u for u, _ in sorted(scored.items(), key=lambda kv: (-kv[1][0], kv[1][1], kv[0]))]
+
+    roots = list(_category_pages(session))[:2]
     for root in roots:
         try:
             r = session.get(root, headers=HEADERS, timeout=TIMEOUT)
@@ -670,52 +707,30 @@ def _discover_from_categories(session, query, max_urls=120):
             continue
         if r.status_code >= 400:
             continue
-
-        if add_products(r.text):
+        html = r.text
+        if add_products(html):
             return urls[:max_urls]
 
-        # IMPORTANT: do not paginate the broad root blindly.
-        # First find only category/Product Line links that actually match q.
-        matching_lines = _category_product_line_links(r.text, query)
+        for cat_url in category_candidates(html)[:5]:
+            try:
+                page = session.get(cat_url, headers=HEADERS, timeout=TIMEOUT)
+            except requests.RequestException:
+                continue
+            if page.status_code >= 400:
+                continue
+            if add_products(page.text):
+                return urls[:max_urls]
 
-        for line_url in matching_lines[:2]:
-            candidates = [line_url]
-            # Check only the first pagination page for a matching line.
-            candidates.append(next(_pagination_urls(line_url, max_pages=1)))
-
-            for page_url in candidates:
-                if page_url in visited:
+            # Follow only category links that are still query-relevant.
+            for nested in category_candidates(page.text)[:2]:
+                if nested == cat_url:
                     continue
-                visited.add(page_url)
-
                 try:
-                    page = session.get(page_url, headers=HEADERS, timeout=TIMEOUT)
+                    child = session.get(nested, headers=HEADERS, timeout=TIMEOUT)
                 except requests.RequestException:
                     continue
-                if page.status_code >= 400:
-                    continue
-
-                if add_products(page.text):
+                if child.status_code < 400 and add_products(child.text):
                     return urls[:max_urls]
-
-                # A matching Product Line can expose a localized/alternate
-                # category URL on its own page. Follow only those exact matches.
-                for nested_line in _category_product_line_links(page.text, query):
-                    if nested_line in visited:
-                        continue
-                    visited.add(nested_line)
-                    try:
-                        nested = session.get(
-                            nested_line,
-                            headers=HEADERS,
-                            timeout=TIMEOUT,
-                        )
-                    except requests.RequestException:
-                        continue
-                    if nested.status_code >= 400:
-                        continue
-                    if add_products(nested.text):
-                        return urls[:max_urls]
 
     return urls[:max_urls]
 
@@ -793,81 +808,43 @@ def _sitemap_product_urls(session, query, max_sitemaps=2, max_urls=8, request_ti
 def _discover(session, q):
     """Bounded, query-faithful Deloox discovery.
 
-    Deloox search/sitemap endpoints currently return 404. The reliable public
-    surface is the category catalogue. We therefore crawl a bounded number of
-    category pages in parallel and stop as soon as the requested product name
-    is actually present in a product-card context. No product-specific URL is
-    hard-coded here.
+    The live Deloox catalogue exposes the requested perfume through its
+    Product-line/category filter layer. Broad pagination is both slow and
+    unreliable, so use the existing generic category-link discovery first.
+    No product-specific URL is hard-coded.
     """
-    from concurrent.futures import ThreadPoolExecutor, as_completed
-
     started = time.monotonic()
-    deadline = started + 7.5
-    seen = set()
-    found = []
+    deadline = started + 9.0
 
-    def add_many(items, limit=8):
-        for url in items:
-            if url not in seen:
-                seen.add(url)
-                found.append(url)
-                if len(found) >= limit:
-                    return True
-        return False
+    # This path is already generic: it looks for Product Line/category links
+    # whose visible label or slug matches the user's query, then parses only
+    # the matching category page(s). This is the important layer that the
+    # previous parallel broad-pagination implementation bypassed.
+    try:
+        results = _discover_from_categories(session, q, max_urls=8)
+        if results:
+            return results[:8]
+    except Exception:
+        pass
 
-    def fetch(url):
+    # Small fallback: inspect the four public fragrance roots once. This is
+    # deliberately bounded and only accepts product URLs when the surrounding
+    # card contains the requested query.
+    for root in _category_pages(session):
+        if time.monotonic() >= deadline:
+            break
         try:
-            r = session.get(url, headers=HEADERS, timeout=min(TIMEOUT, max(1.0, deadline-time.monotonic())))
-            status = r.status_code
-            text = r.text if status < 400 else ""
-            r.close()
-            return url, status, text
+            remaining = max(1.0, min(TIMEOUT, deadline - time.monotonic()))
+            r = session.get(root, headers=HEADERS, timeout=remaining)
+            if r.status_code >= 400:
+                continue
+            candidates = _candidate_product_urls(r.text, q)
+            if candidates:
+                return candidates[:8]
         except requests.RequestException:
-            return url, 0, ""
+            continue
 
-    # One known-good public catalogue entry point, then bounded pagination.
-    root = BASE_URL + "/categorie/1075732/parfum-homme.html"
-    pages = [root] + [f"{root}?page={n}" for n in range(2, 13)]
-
-    # Fetch several catalogue pages concurrently. This avoids the old 11–15 s
-    # serial crawl while still giving the query a real chance to be found.
-    with ThreadPoolExecutor(max_workers=4) as ex:
-        futures = [ex.submit(fetch, u) for u in pages]
-        for fut in as_completed(futures):
-            if time.monotonic() >= deadline:
-                break
-            _url, status, html = fut.result()
-            if status >= 400 or not html:
-                continue
-            candidates = _candidate_product_urls(html, q)
-            if candidates:
-                add_many(candidates)
-                if found:
-                    return found[:8]
-
-    # If the men's catalogue did not contain it, make one bounded pass through
-    # the other fragrance catalogue roots. We only keep pages whose own HTML
-    # contains the requested query, so unrelated products can never leak out.
-    other_roots = [
-        BASE_URL + "/categorie/1075639/parfums-femme.html",
-        BASE_URL + "/categorie/1075660/parfum-femme.html",
-        BASE_URL + "/categorie/1025540/tendances.html",
-    ]
-    with ThreadPoolExecutor(max_workers=3) as ex:
-        futures = [ex.submit(fetch, u) for u in other_roots]
-        for fut in as_completed(futures):
-            if time.monotonic() >= deadline:
-                break
-            _url, status, html = fut.result()
-            if status >= 400 or not html:
-                continue
-            candidates = _candidate_product_urls(html, q)
-            if candidates:
-                add_many(candidates)
-                if found:
-                    return found[:8]
-
-    return found[:8]
+    return []
 def diagnostic_discovery(query):
     session = requests.Session()
     out = {"query": query, "stages": []}
