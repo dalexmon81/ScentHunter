@@ -1,437 +1,1113 @@
 """
-ScentHunter progressive disappearance diagnostic (2 waves x 4 stores).
+ScentHunter - robust live search orchestration.
 
-This file DOES NOT change production search logic.
-It reproduces the exact progressive wave/validation/final-preparation path
-used by backend/main.py and reports the state after every store completion.
+This module deliberately sits ABOVE the existing store scrapers.  It does not
+try to make the eight shops scrape the same way: each scraper remains a store
+adapter.  The uniformity is enforced here, at orchestration / result level.
 
-Endpoint already present in main.py:
-    /diagnose-deloox-disappearance?q=liquid%20brun
-
-It specifically answers:
-- did the store enter raw discovery?
-- did validation accept it?
-- was it present after each progressive wave?
-- did _prepare_final_results remove it?
-- which exact store/URL/size caused the disappearance?
+Goals:
+- query all stores in parallel;
+- keep each store independent;
+- distinguish empty results from technical failures;
+- do not publish a partial product list;
+- keep the raw candidate pool lossless at the orchestration boundary;
+- reuse the current central matcher / validation / final-result preparation;
+- keep final availability ordering: in_stock, unknown, out_of_stock;
+- avoid changing the frontend or Railway contract.
 """
 
 from __future__ import annotations
 
+import concurrent.futures
 import time
-from typing import Any, Dict, List
-
-import main_legacy as legacy
-import main as production
-from search_engine import SearchEngine
-
-
-ENGINE = production._engine
-STORES = list(ENGINE.stores)
+import traceback
+import re
+import json
+from dataclasses import dataclass, field
+from typing import Any, Callable, Dict, List, Optional
 
 
-def _safe_item(item: Any) -> Dict[str, Any]:
+DEFAULT_STORE_TIMEOUT = 65.0
+DEFAULT_GLOBAL_TIMEOUT = 145.0
+STORE_RETRIES = 2
+RETRY_DELAYS = (1.25, 3.0)
+
+
+# ============================================================
+# TEMPORARY DELOOX / LIQUID BRUN FORENSIC TRACE
+# ============================================================
+# Read-only diagnostic. It must never alter candidates or search behavior.
+# It is deliberately narrow so Railway logs stay usable.
+DELOOX_TRACE_MARKER = "SCENTHUNTER_DELOOX_TRACE_V3"
+DELOOX_TRACE_QUERY = "liquid brun"
+DELOOX_TRACE_STORE = "deloox"
+
+def _trace_enabled(query: Any, store: Optional[str] = None) -> bool:
+    q = str(query or "").strip().casefold()
+    if q != DELOOX_TRACE_QUERY:
+        return False
+    if store is None:
+        return True
+    return str(store or "").strip().casefold() == DELOOX_TRACE_STORE
+
+def _trace_size(item: Dict[str, Any]) -> Any:
+    for key in ("size_ml", "volume_ml", "format_ml", "size", "format", "volume"):
+        value = item.get(key)
+        if value not in (None, ""):
+            return value
+    return None
+
+def _trace_item(item: Dict[str, Any]) -> Dict[str, Any]:
     if not isinstance(item, dict):
         return {"type": type(item).__name__, "value": repr(item)[:500]}
+    keys = (
+        "store", "shop", "name", "title", "product_name", "brand",
+        "source_brand", "canonical_brand", "canonical_name",
+        "catalog_variant", "catalog_id", "product_id", "product_identity",
+        "family_id", "family_name", "size_ml", "size", "format", "volume",
+        "price", "price_num", "price_value", "in_stock", "available",
+        "availability", "stock", "stock_status", "match_method",
+        "identity", "url", "gtin", "mpn",
+    )
+    out = {}
+    for key in keys:
+        if key in item:
+            value = item.get(key)
+            try:
+                json.dumps(value, ensure_ascii=False)
+                out[key] = value
+            except Exception:
+                out[key] = repr(value)[:1000]
+    return out
 
-    source = item.get("source")
-    source_name = source.get("source_name") if isinstance(source, dict) else None
+def _trace_items(items: Any) -> List[Dict[str, Any]]:
+    if not isinstance(items, list):
+        return []
+    selected = []
+    for item in items:
+        if not isinstance(item, dict):
+            continue
+        store = str(item.get("store") or item.get("shop") or "").strip().casefold()
+        url = str(item.get("url") or "").casefold()
+        if store == DELOOX_TRACE_STORE or "deloox" in url:
+            selected.append(_trace_item(item))
+    return selected
 
-    size = None
-    try:
-        size = ENGINE._extract_candidate_size_ml(item)
-    except Exception:
-        pass
-
-    return {
-        "store": item.get("store") or item.get("shop") or source_name,
-        "name": item.get("name") or item.get("title") or item.get("product_name"),
-        "brand": item.get("brand") or item.get("source_brand"),
-        "canonical_name": item.get("canonical_name"),
-        "catalog_variant": item.get("catalog_variant"),
-        "family_id": item.get("family_id"),
-        "size_ml": item.get("size_ml", size),
-        "extracted_size_ml": size,
-        "price": item.get("price"),
-        "price_value": item.get("price_value"),
-        "availability": item.get("availability"),
-        "available": item.get("available"),
-        "in_stock": item.get("in_stock"),
-        "url": item.get("url") or item.get("product_url"),
-        "product_id": item.get("product_id") or item.get("store_product_id"),
-        "sku": item.get("sku"),
-    }
-
-
-def _store_of(item: Dict[str, Any]) -> str:
-    return str(
-        item.get("store")
-        or item.get("shop")
-        or (
-            item.get("source", {}).get("source_name")
-            if isinstance(item.get("source"), dict)
-            else ""
-        )
-        or ""
-    ).strip().casefold()
-
-
-def _offer_in_final(item: Dict[str, Any], final_results: List[Dict[str, Any]]) -> bool:
-    store = _store_of(item)
-    url = str(item.get("url") or item.get("product_url") or "").strip().casefold()
-    pid = str(item.get("product_id") or item.get("store_product_id") or "").strip()
-    sku = str(item.get("sku") or "").strip()
-
-    for result in final_results:
-        offers = result.get("offers") if isinstance(result, dict) else None
-        pool = offers if isinstance(offers, list) and offers else [result]
-
-        for offer in pool:
+def _trace_nested_offers(items: Any) -> List[Dict[str, Any]]:
+    if not isinstance(items, list):
+        return []
+    selected = []
+    for item in items:
+        if not isinstance(item, dict):
+            continue
+        offers = item.get("offers")
+        if not isinstance(offers, list):
+            continue
+        for offer in offers:
             if not isinstance(offer, dict):
                 continue
-            if _store_of(offer) != store:
-                continue
+            store = str(offer.get("store") or offer.get("shop") or "").strip().casefold()
+            url = str(offer.get("url") or "").casefold()
+            if store == DELOOX_TRACE_STORE or "deloox" in url:
+                selected.append(_trace_item(offer))
+    return selected
 
-            offer_url = str(
-                offer.get("url") or offer.get("product_url") or ""
-            ).strip().casefold()
-            offer_pid = str(
-                offer.get("product_id") or offer.get("store_product_id") or ""
-            ).strip()
-            offer_sku = str(offer.get("sku") or "").strip()
+def _trace_signature(item: Dict[str, Any]) -> str:
+    return "|".join(str(item.get(k) or "").strip().casefold() for k in (
+        "store", "shop", "product_id", "url", "catalog_id", "name", "title", "size_ml"
+    ))
 
-            if url and offer_url == url:
-                return True
-            if pid and offer_pid == pid:
-                return True
-            if sku and offer_sku == sku:
-                return True
-
-    return False
-
-
-def _final_offer_list(final_results: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
-    output = []
-
-    for result in final_results:
-        offers = result.get("offers") if isinstance(result, dict) else None
-        pool = offers if isinstance(offers, list) and offers else [result]
-
-        for offer in pool:
-            if isinstance(offer, dict):
-                output.append(_safe_item(offer))
-
-    return output
-
-
-def _store_summary(items: List[Dict[str, Any]]) -> Dict[str, int]:
-    counts: Dict[str, int] = {}
-    for item in items:
-        store = _store_of(item) or "unknown"
-        counts[store] = counts.get(store, 0) + 1
-    return counts
-
-
-def _deloox_items(items: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
-    return [
-        _safe_item(item)
-        for item in items
-        if _store_of(item) == "deloox"
-        or "deloox" in str(item.get("url") or "").casefold()
-    ]
-
-
-def _orioudh_items(items: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
-    return [
-        _safe_item(item)
-        for item in items
-        if _store_of(item) == "orioudh"
-        or "orioudh" in str(item.get("url") or "").casefold()
-    ]
-
-
-def _run_store_exact(store: str, query: str) -> Any:
-    """Use exactly the production SearchEngine store runner."""
-    return ENGINE._run_one_store(store, query)
-
-
-def _validate_compatible(query: str, candidates: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
-    """
-    Validate candidates against the deployed SearchEngine API.
-
-    Some deployed ScentHunter revisions expose _validate_candidates_only(),
-    while older compatible revisions expose only _validate_batch().  The
-    diagnostic must work with both and must never assume a method that is not
-    present.
-    """
-    validate_only = getattr(ENGINE, "_validate_candidates_only", None)
-    if callable(validate_only):
-        result = validate_only(query, list(candidates))
-        return [x for x in (result or []) if isinstance(x, dict)]
-
-    validate_batch = getattr(ENGINE, "_validate_batch", None)
-    if callable(validate_batch):
-        result = validate_batch(query, list(candidates))
-        if isinstance(result, tuple):
-            result = result[0]
-        return [x for x in (result or []) if isinstance(x, dict)]
-
-    raise AttributeError(
-        "SearchEngine espone né _validate_candidates_only né _validate_batch"
-    )
-
-
-def run_query(query: str, stores: List[str] | None = None) -> Dict[str, Any]:
-    query = str(query or "").strip()
-    if not query:
-        return {
-            "ok": False,
-            "error": "Parametro q mancante",
-            "query": query,
-        }
-
-    selected_stores = list(stores or STORES)
-
-    started = time.monotonic()
-    raw_pool: List[Dict[str, Any]] = []
-    validated_pool: List[Dict[str, Any]] = []
-
-    store_reports: Dict[str, Any] = {}
-    waves: List[Dict[str, Any]] = []
-
-    wave_size = 4
-    for wave_start in range(0, len(selected_stores), wave_size):
-        wave = selected_stores[wave_start:wave_start + wave_size]
-
-        wave_report: Dict[str, Any] = {
-            "wave": wave_start // 2 + 1,
-            "stores": wave,
-            "store_results": [],
-            "validated_pool_count_after_wave": None,
-            "validated_store_counts_after_wave": None,
-            "final_after_wave": None,
-            "final_store_counts_after_wave": None,
-            "deloox_raw_after_wave": None,
-            "deloox_validated_after_wave": None,
-            "deloox_final_after_wave": None,
-            "orioudh_raw_after_wave": None,
-            "orioudh_validated_after_wave": None,
-            "orioudh_final_after_wave": None,
-        }
-
-        for store in wave:
-            t0 = time.monotonic()
-
-            try:
-                result = _run_store_exact(store, query)
-
-                candidates = [
-                    item
-                    for item in (getattr(result, "candidates", None) or [])
-                    if isinstance(item, dict)
-                ]
-
-                raw_pool.extend(candidates)
-
-                try:
-                    validated = _validate_compatible(
-                        query,
-                        list(candidates),
-                    )
-                except Exception as exc:
-                    validated = []
-                    validation_error = f"{type(exc).__name__}: {exc}"
-                else:
-                    validation_error = None
-
-                # EXACT production merge key.
-                validated_pool = production._merge_monotonic_validated(
-                    validated_pool,
-                    validated,
-                )
-
-                report = {
-                    "store": store,
-                    "status": getattr(result, "status", None),
-                    "candidate_count": len(candidates),
-                    "validated_count": len(validated),
-                    "elapsed_seconds": round(
-                        float(getattr(result, "elapsed", time.monotonic() - t0)),
-                        3,
-                    ),
-                    "error": getattr(result, "error", None),
-                    "validation_error": validation_error,
-                    "raw_candidates": [_safe_item(x) for x in candidates],
-                    "validated_candidates": [_safe_item(x) for x in validated],
-                }
-
-            except Exception as exc:
-                report = {
-                    "store": store,
-                    "status": "exception",
-                    "candidate_count": 0,
-                    "validated_count": 0,
-                    "elapsed_seconds": round(time.monotonic() - t0, 3),
-                    "error": f"{type(exc).__name__}: {exc}",
-                    "validation_error": None,
-                    "raw_candidates": [],
-                    "validated_candidates": [],
-                }
-
-            store_reports.setdefault(store, []).append(report)
-            wave_report["store_results"].append(report)
-
-            # Snapshot final preparation immediately after THIS store.
-            try:
-                final_after_store = legacy._prepare_final_results(
-                    list(validated_pool),
-                    query,
-                )
-            except Exception as exc:
-                final_after_store = []
-                finalization_error = f"{type(exc).__name__}: {exc}"
-            else:
-                finalization_error = None
-
-            report["validated_pool_count_after_store"] = len(validated_pool)
-            report["validated_store_counts_after_store"] = _store_summary(
-                validated_pool
-            )
-            report["final_count_after_store"] = len(final_after_store)
-            report["final_store_counts_after_store"] = _store_summary(
-                _final_offer_list(final_after_store)
-            )
-            report["finalization_error_after_store"] = finalization_error
-            report["deloox_validated_after_store"] = _deloox_items(
-                validated_pool
-            )
-            report["deloox_final_after_store"] = _deloox_items(
-                _final_offer_list(final_after_store)
-            )
-            report["orioudh_validated_after_store"] = _orioudh_items(
-                validated_pool
-            )
-            report["orioudh_final_after_store"] = _orioudh_items(
-                _final_offer_list(final_after_store)
-            )
-
-            # If an offer exists in the validated pool but not in final output,
-            # this is the exact point where final preparation loses it.
-            missing_from_final = []
-
-            for validated_item in validated_pool:
-                if not _offer_in_final(validated_item, final_after_store):
-                    missing_from_final.append(_safe_item(validated_item))
-
-            report["validated_missing_from_final_after_store"] = (
-                missing_from_final
-            )
-
-        # End-of-wave snapshot.
-        try:
-            final_after_wave = legacy._prepare_final_results(
-                list(validated_pool),
-                query,
-            )
-        except Exception as exc:
-            final_after_wave = []
-            wave_report["finalization_error"] = (
-                f"{type(exc).__name__}: {exc}"
-            )
-
-        wave_report["validated_pool_count_after_wave"] = len(validated_pool)
-        wave_report["validated_store_counts_after_wave"] = _store_summary(
-            validated_pool
-        )
-        wave_report["final_after_wave"] = [
-            _safe_item(x) for x in final_after_wave
-        ]
-        wave_report["final_store_counts_after_wave"] = _store_summary(
-            _final_offer_list(final_after_wave)
-        )
-        wave_report["deloox_raw_after_wave"] = _deloox_items(raw_pool)
-        wave_report["deloox_validated_after_wave"] = _deloox_items(
-            validated_pool
-        )
-        wave_report["deloox_final_after_wave"] = _deloox_items(
-            _final_offer_list(final_after_wave)
-        )
-        wave_report["orioudh_raw_after_wave"] = _orioudh_items(raw_pool)
-        wave_report["orioudh_validated_after_wave"] = _orioudh_items(
-            validated_pool
-        )
-        wave_report["orioudh_final_after_wave"] = _orioudh_items(
-            _final_offer_list(final_after_wave)
-        )
-
-        missing_from_final = [
-            _safe_item(item)
-            for item in validated_pool
-            if not _offer_in_final(item, final_after_wave)
-        ]
-        wave_report["validated_missing_from_final"] = missing_from_final
-
-        waves.append(wave_report)
-
-    # Final exact state.
+def _trace_emit(stage: str, query: Any, *, job_id: Any = None, **extra: Any) -> None:
+    if not _trace_enabled(query):
+        return
+    payload = {
+        "marker": DELOOX_TRACE_MARKER,
+        "stage": stage,
+        "query": str(query or ""),
+        "job_id": job_id,
+        **extra,
+    }
     try:
-        final_results = legacy._prepare_final_results(
-            list(validated_pool),
-            query,
-        )
-        finalization_error = None
+        print(DELOOX_TRACE_MARKER + " " + json.dumps(payload, ensure_ascii=False, default=str), flush=True)
     except Exception as exc:
-        final_results = []
-        finalization_error = f"{type(exc).__name__}: {exc}"
+        print(DELOOX_TRACE_MARKER + " TRACE_SERIALIZATION_ERROR " + repr(exc), flush=True)
 
-    final_offers = _final_offer_list(final_results)
 
-    # Explicit diagnosis of the disappearing-store problem.
-    disappearances = []
+@dataclass
+class StoreRun:
+    store: str
+    status: str = "error"  # ok | empty | timeout | error
+    candidates: List[Dict[str, Any]] = field(default_factory=list)
+    elapsed: float = 0.0
+    error: Optional[str] = None
 
-    previous_final_stores = set()
 
-    for wave in waves:
-        current_final_stores = {
-            str(x.get("store") or "").strip().casefold()
-            for x in _final_offer_list(wave.get("final_after_wave") or [])
-            if str(x.get("store") or "").strip()
+class SearchEngine:
+    """
+    Adapter/orchestrator around the current main.py implementation.
+
+    The legacy module is intentionally injected instead of imported by name so
+    the existing matcher, catalog, registry and store adapters stay untouched.
+    """
+
+    def __init__(
+        self,
+        legacy_module: Any,
+        *,
+        store_timeout: float = DEFAULT_STORE_TIMEOUT,
+        global_timeout: float = DEFAULT_GLOBAL_TIMEOUT,
+    ) -> None:
+        self.legacy = legacy_module
+        self.store_timeout = float(store_timeout)
+        self.global_timeout = float(global_timeout)
+        print(DELOOX_TRACE_MARKER + " LOADED search_engine.py", flush=True)
+
+        stores = getattr(legacy_module, "STORES", None)
+        if stores:
+            self.stores = list(stores)
+        else:
+            self.stores = [
+                "bplatz",
+                "deloox",
+                "parfumcity",
+                "parfumzentrum",
+                "perfumemarket",
+                "sabina",
+                "orioudh",
+                "notino",
+            ]
+
+    # ------------------------------------------------------------------
+    # Query analysis
+    # ------------------------------------------------------------------
+
+    def analyze_query(self, query: str) -> Dict[str, Any]:
+        raw = (query or "").strip()
+        norm = self.legacy.norm(raw) if hasattr(self.legacy, "norm") else raw.lower()
+
+        size_ml = None
+        try:
+            # Reuse the same size syntax already used by main.py.
+            m = self.legacy.re.search(
+                r"(?<!\d)(\d+(?:[.,]\d+)?)\s*(?:ml|milliliters?)\b",
+                raw,
+                self.legacy.re.I,
+            )
+            if m:
+                size_ml = float(m.group(1).replace(",", "."))
+        except Exception:
+            size_ml = None
+
+        return {
+            "raw": raw,
+            "normalized": norm,
+            "size_ml": size_ml,
         }
 
-        vanished = sorted(previous_final_stores - current_final_stores)
+    # ------------------------------------------------------------------
+    # Store execution
+    # ------------------------------------------------------------------
 
-        if vanished:
-            disappearances.append({
-                "after_wave": wave.get("wave"),
-                "vanished_stores": vanished,
-                "previous_final_stores": sorted(previous_final_stores),
-                "current_final_stores": sorted(current_final_stores),
-                "deloox_validated": wave.get("deloox_validated_after_wave"),
-                "deloox_final": wave.get("deloox_final_after_wave"),
-                "validated_missing_from_final": wave.get(
-                    "validated_missing_from_final"
-                ),
+    def _query_flags(self, query: str) -> Dict[str, Any]:
+        raw = str(query or "").strip()
+        normalized = self.legacy.norm(raw) if hasattr(self.legacy, "norm") else raw.lower()
+
+        size_ml = None
+        try:
+            m = self.legacy.re.search(
+                r"(?<!\d)(\d+(?:[.,]\d+)?)\s*[-_/]?\s*(ml|cl)\b",
+                normalized,
+                self.legacy.re.I,
+            )
+            if m:
+                size_ml = float(m.group(1).replace(",", "."))
+                if m.group(2).lower() == "cl":
+                    size_ml *= 10.0
+        except Exception:
+            size_ml = None
+
+        sample_tokens = {
+            "sample", "samples", "campione", "campioncino", "echantillon", "muestra"
+        }
+        requests_sample = bool(set(normalized.split()) & sample_tokens)
+
+        base = self.legacy.re.sub(
+            r"\b(?:sample|samples|campione|campioncino|echantillon|muestra)\b",
+            " ", normalized, flags=self.legacy.re.I,
+        )
+        base = self.legacy.re.sub(
+            r"\b\d+(?:[.,]\d+)?\s*(?:ml|cl)\b",
+            " ", base, flags=self.legacy.re.I,
+        )
+        base = self.legacy.re.sub(r"\s+", " ", base).strip()
+
+        return {
+            "raw": raw,
+            "normalized": normalized,
+            "size_ml": size_ml,
+            "requests_sample": requests_sample,
+            "requests_small": requests_sample or (size_ml is not None and size_ml <= 10.0),
+            "base_query": base,
+        }
+
+    def _discovery_queries(self, query: str) -> List[str]:
+        """
+        Build a small, deterministic discovery set.
+
+        For products/families already known by the Family Registry, the
+        retailer is queried with its real brand as well as the user's text.
+        This is important: a query such as ``Hawas`` is ambiguous to several
+        merchant search engines, while ``Rasasi Hawas`` is not. The central
+        validator remains authoritative, so broader discovery cannot publish
+        false positives.
+        """
+        flags = self._query_flags(query)
+        raw = flags["raw"]
+        base = flags["base_query"]
+        queries: List[str] = []
+        seen = set()
+
+        def add(value: str) -> None:
+            value = str(value or "").strip()
+            key = self.legacy.norm(value) if hasattr(self.legacy, "norm") else value.lower()
+            if value and key and key not in seen:
+                seen.add(key)
+                queries.append(value)
+
+        # Prefer a catalog-qualified query whenever the Family Registry knows
+        # the family. It dramatically improves recall on merchant search
+        # engines that rank by their own fuzzy interpretation of the query.
+        catalog_family = None
+        try:
+            catalog_family = self.legacy._catalog_family_for_query(raw)
+        except Exception:
+            catalog_family = None
+
+        if isinstance(catalog_family, dict):
+            brand = str(catalog_family.get("brand") or "").strip()
+            variant_name = ""
+            try:
+                requested = self.legacy._catalog_requested_variant(raw, catalog_family)
+            except Exception:
+                requested = None
+            if isinstance(requested, dict):
+                variant_name = str(requested.get("canonical_name") or "").strip()
+
+            if brand and variant_name:
+                add(f"{brand} {variant_name}")
+            elif brand and base:
+                add(f"{brand} {base}")
+
+            # Keep the user's exact query as a second discovery channel. For
+            # broad family searches this is what finds alternate variants.
+            add(raw)
+        else:
+            add(raw)
+
+        if flags["requests_small"] and base:
+            add(base)
+            if flags["requests_sample"]:
+                add(f"{base} sample")
+                add(f"{base} 10 ml")
+
+        return queries
+
+    def _extract_candidate_size_ml(self, item: Dict[str, Any]) -> Optional[float]:
+        try:
+            value = self.legacy.product_size_ml(item)
+            if value is not None:
+                return float(value)
+        except Exception:
+            pass
+
+        values: List[Any] = []
+        for key in (
+            "name", "title", "product_name", "source_name", "canonical_name",
+            "catalog_variant", "size", "format", "volume", "url", "handle",
+        ):
+            values.append(item.get(key))
+
+        attributes = item.get("attributes")
+        if isinstance(attributes, dict):
+            size_attr = attributes.get("size_ml")
+            if isinstance(size_attr, dict):
+                values.append(size_attr.get("value"))
+            else:
+                values.append(size_attr)
+
+        source = item.get("source")
+        if isinstance(source, dict):
+            values.extend(source.get(key) for key in ("source_name", "name", "title", "url"))
+
+        raw_data = item.get("raw_data")
+        if isinstance(raw_data, dict):
+            values.extend(raw_data.get(key) for key in ("name", "title", "product_title", "handle", "url"))
+
+        text = " ".join(str(value or "") for value in values)
+        try:
+            match = self.legacy.re.search(
+                r"(?<!\d)(\d+(?:[.,]\d+)?)\s*[-_/]?\s*(ml|cl)\b",
+                text, self.legacy.re.I,
+            )
+        except Exception:
+            match = None
+        if not match:
+            return None
+        try:
+            value = float(match.group(1).replace(",", "."))
+            return value * 10.0 if match.group(2).lower() == "cl" else value
+        except (TypeError, ValueError):
+            return None
+
+    def _filter_requested_format(self, candidates: List[Dict[str, Any]], query: str) -> List[Dict[str, Any]]:
+        """Enforce exact explicit size/sample semantics after broad discovery."""
+        flags = self._query_flags(query)
+        if not flags["requests_small"]:
+            return candidates
+
+        requested = flags["size_ml"]
+        filtered: List[Dict[str, Any]] = []
+        for item in candidates:
+            size = self._extract_candidate_size_ml(item)
+
+            if flags["requests_sample"] and requested is None:
+                if size is None or size > 10.0:
+                    continue
+
+            if requested is not None:
+                if size is None or abs(size - requested) > 0.01:
+                    continue
+
+            filtered.append(item)
+        return filtered
+
+    def _run_one_store(
+        self,
+        store: str,
+        query: str,
+        *,
+        _started_at: Optional[float] = None,
+    ) -> StoreRun:
+        started = time.monotonic()
+
+        try:
+            # run_store is the existing store adapter boundary in main.py.
+            runner = getattr(self.legacy, "run_store", None)
+            if runner is None:
+                raise RuntimeError("main.run_store is not available")
+
+            candidates: List[Dict[str, Any]] = []
+            seen_urls = set()
+
+            discovery_queries = self._discovery_queries(query)
+
+            def collect_from_result(raw_result: Any) -> int:
+                if raw_result is None:
+                    batch: List[Dict[str, Any]] = []
+                elif isinstance(raw_result, list):
+                    batch = raw_result
+                else:
+                    try:
+                        batch = list(raw_result)
+                    except Exception:
+                        batch = []
+
+                if _trace_enabled(query, store):
+                    _trace_emit(
+                        "1_after_run_store_raw_response", query,
+                        store=store,
+                        discovery_query=discovery_query,
+                        raw_type=type(raw_result).__name__,
+                        raw_count=len(batch),
+                        deloox=_trace_items(batch),
+                    )
+
+                added = 0
+                for item in batch:
+                    if not isinstance(item, dict):
+                        continue
+                    url = str(item.get("url") or "").strip()
+                    if url:
+                        # A single product URL can legitimately expose several
+                        # bottle sizes (e.g. 30/50/100 ml). Keep each explicit
+                        # size, while still removing a true duplicate of the
+                        # same URL + size.
+                        size = self._extract_candidate_size_ml(item)
+                        url_key = (
+                            url.casefold(),
+                            round(float(size), 4) if size is not None else None,
+                        )
+                        if url_key in seen_urls:
+                            continue
+                        seen_urls.add(url_key)
+                    candidates.append(item)
+                    added += 1
+                return added
+
+            # First pass: every store gets its full discovery strategy.
+            for discovery_query in discovery_queries:
+                try:
+                    collect_from_result(runner(store, discovery_query))
+                except Exception as exc:
+                    print(
+                        f"STORE_SEARCH_ATTEMPT_ERROR: store={store} "
+                        f"query={discovery_query!r} error={type(exc).__name__}: {exc}",
+                        flush=True,
+                    )
+
+            # A zero-result store is not treated as a definitive miss. The
+            # underlying merchant may have returned 429/5xx, transient HTML,
+            # or an empty search response. Retry the complete store strategy
+            # with backoff. Do not retry stores that already returned data: that
+            # would create unnecessary load and increase rate-limit risk.
+            retry_number = 0
+            while not candidates and retry_number < STORE_RETRIES:
+                delay = RETRY_DELAYS[min(retry_number, len(RETRY_DELAYS) - 1)]
+                time.sleep(delay)
+                retry_number += 1
+
+                for discovery_query in discovery_queries:
+                    try:
+                        collect_from_result(runner(store, discovery_query))
+                    except Exception as exc:
+                        print(
+                            f"STORE_RETRY_ERROR: store={store} retry={retry_number} "
+                            f"query={discovery_query!r} error={type(exc).__name__}: {exc}",
+                            flush=True,
+                        )
+
+            # No identity/availability/ranking is done here.
+            clean_candidates = [
+                item for item in candidates if isinstance(item, dict)
+            ]
+
+            return StoreRun(
+                store=store,
+                status="ok" if clean_candidates else "empty",
+                candidates=clean_candidates,
+                elapsed=time.monotonic() - started,
+            )
+
+        except Exception as exc:
+            return StoreRun(
+                store=store,
+                status="error",
+                candidates=[],
+                elapsed=time.monotonic() - started,
+                error=f"{type(exc).__name__}: {exc}",
+            )
+
+    def _run_stores(self, query: str) -> Dict[str, Any]:
+        """
+        Execute all store adapters concurrently with two independent limits:
+
+        - every store has its own STORE_TIMEOUT budget;
+        - the whole research phase has a GLOBAL_TIMEOUT ceiling.
+
+        A timed-out Python thread cannot be force-killed safely.  The future is
+        therefore detached from the result set and the executor is shut down
+        without waiting.  A late adapter completion is ignored.
+        """
+        started = time.monotonic()
+        results: Dict[str, StoreRun] = {
+            store: StoreRun(store=store) for store in self.stores
+        }
+
+        # HARD LIMIT: never run more than two store scrapers at once.
+        # This protects retailers from burst/rate-limit pressure and keeps the
+        # search behavior aligned with the format-comparison endpoint.
+        executor = concurrent.futures.ThreadPoolExecutor(
+            max_workers=min(2, max(1, len(self.stores))),
+            thread_name_prefix="scenthunter-store",
+        )
+
+        futures: Dict[concurrent.futures.Future, str] = {}
+        submitted_at: Dict[concurrent.futures.Future, float] = {}
+
+        def run_store_timed(store_name: str) -> StoreRun:
+            # The executor has only two workers, so futures may wait in its
+            # queue.  The per-store timeout must start when the scraper starts,
+            # not when its future is submitted.
+            started_at = time.monotonic()
+            return self._run_one_store(store_name, query, _started_at=started_at)
+
+        for store in self.stores:
+            future = executor.submit(run_store_timed, store)
+            futures[future] = store
+
+        pending = set(futures)
+        deadline = started + self.global_timeout
+
+        try:
+            while pending and time.monotonic() < deadline:
+                now = time.monotonic()
+
+                # Harvest every future that has already completed.
+                done = {future for future in pending if future.done()}
+                for future in done:
+                    pending.remove(future)
+                    store = futures[future]
+                    try:
+                        results[store] = future.result()
+                    except Exception as exc:
+                        results[store] = StoreRun(
+                            store=store,
+                            status="error",
+                            candidates=[],
+                            elapsed=time.monotonic() - submitted_at[future],
+                            error=f"{type(exc).__name__}: {exc}",
+                        )
+
+                if not pending:
+                    break
+
+                # Enforce the per-store timeout independently.
+                now = time.monotonic()
+                for future in list(pending):
+                    store = futures[future]
+                    if now - submitted_at[future] >= self.store_timeout:
+                        pending.remove(future)
+                        results[store] = StoreRun(
+                            store=store,
+                            status="timeout",
+                            candidates=[],
+                            elapsed=now - submitted_at[future],
+                            error=(
+                                f"store exceeded independent timeout "
+                                f"({self.store_timeout:.0f}s)"
+                            ),
+                        )
+
+                if not pending:
+                    break
+
+                # Short polling interval keeps timeout enforcement precise
+                # without busy-spinning the process.
+                remaining_global = deadline - time.monotonic()
+                remaining_store = min(
+                    max(0.0, self.store_timeout - (time.monotonic() - submitted_at[future]))
+                    for future in pending
+                )
+                time.sleep(min(0.05, max(0.0, remaining_global), remaining_store))
+
+            # Anything still pending at the global deadline is a timeout.
+            if pending:
+                now = time.monotonic()
+                for future in pending:
+                    store = futures[future]
+                    results[store] = StoreRun(
+                        store=store,
+                        status="timeout",
+                        candidates=[],
+                        elapsed=now - submitted_at[future],
+                        error="global search window expired",
+                    )
+
+        finally:
+            executor.shutdown(wait=False, cancel_futures=True)
+
+        return {
+            "stores": results,
+            "elapsed": time.monotonic() - started,
+        }
+
+    # ------------------------------------------------------------------
+    # Central validation / grouping / ranking
+    # ------------------------------------------------------------------
+
+    @staticmethod
+    def _availability_rank(item: Dict[str, Any]) -> int:
+        value = str(
+            item.get("availability")
+            or item.get("stock_status")
+            or item.get("stock")
+            or ""
+        ).strip().lower()
+
+        if value in {
+            "in_stock",
+            "available",
+            "true",
+            "1",
+            "yes",
+            "in stock",
+        }:
+            return 0
+
+        if value in {
+            "out_of_stock",
+            "oos",
+            "unavailable",
+            "sold_out",
+            "sold out",
+            "false",
+            "0",
+        }:
+            return 2
+
+        return 1
+
+    @staticmethod
+    def _clean_display_price(value: Any) -> Any:
+        """Repair common UTF-8/CP1252 mojibake in merchant display prices."""
+        if not isinstance(value, str):
+            return value
+        text = value.strip()
+        if any(marker in text for marker in ("â‚¬", "Â€", "Ã¢", "â€")):
+            try:
+                text = text.encode("cp1252").decode("utf-8")
+            except (UnicodeEncodeError, UnicodeDecodeError):
+                text = text.replace("â‚¬", "€").replace("Â€", "€").replace("Ã¢â‚¬", "€")
+        text = text.replace("â‚¬", "€").replace("Â€", "€")
+        text = re.sub(r"\s+€", " €", text)
+        return text
+
+    def _stable_results(self, results: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+        """Deterministic final ordering, including nested merchant offers."""
+
+        def availability_rank(item: Dict[str, Any]) -> int:
+            value = str(
+                item.get("availability")
+                or item.get("stock_status")
+                or item.get("stock")
+                or ""
+            ).strip().lower()
+            if value in {"in_stock", "available", "true", "1", "yes", "in stock"}:
+                return 0
+            if value in {"out_of_stock", "oos", "unavailable", "sold_out", "sold out", "false", "0"}:
+                return 2
+            return 1
+
+        def price_value(item: Dict[str, Any]) -> float:
+            try:
+                value = item.get("price")
+                if value is None:
+                    value = item.get("price_num")
+                return float(value)
+            except Exception:
+                return float("inf")
+
+        def offer_key(item: Dict[str, Any]) -> tuple:
+            return (
+                availability_rank(item),
+                price_value(item),
+                str(item.get("store") or item.get("shop") or ""),
+                str(item.get("url") or ""),
+                str(item.get("title") or item.get("name") or ""),
+            )
+
+        output: List[Dict[str, Any]] = []
+
+        for result in results:
+            item = dict(result)
+            nested = item.get("offers")
+
+            if isinstance(nested, list) and nested:
+                offers = [dict(x) for x in nested if isinstance(x, dict)]
+                for offer in offers:
+                    if "price" in offer:
+                        offer["price"] = self._clean_display_price(offer.get("price"))
+                offers.sort(key=offer_key)
+                item["offers"] = offers
+                item["offer_count"] = len(offers)
+                item["stores"] = list(dict.fromkeys(
+                    str(x.get("store") or x.get("shop") or "").strip()
+                    for x in offers
+                    if str(x.get("store") or x.get("shop") or "").strip()
+                ))
+
+                # The top-level representative must be the best AVAILABLE
+                # offer, not merely the cheapest OOS offer.
+                if offers:
+                    best = offers[0]
+                    for field in ("store", "price", "url", "image", "availability", "available", "size_ml", "concentration", "gender"):
+                        if field in best:
+                            item[field] = best[field]
+
+            if "price" in item:
+                item["price"] = self._clean_display_price(item.get("price"))
+            output.append(item)
+
+        def result_key(item: Dict[str, Any]) -> tuple:
+            nested = item.get("offers")
+            best = nested[0] if isinstance(nested, list) and nested else item
+            return offer_key(best if isinstance(best, dict) else item)
+
+        return sorted(output, key=result_key)
+
+    def _validate_candidates_only(
+        self,
+        query: str,
+        raw_candidates: List[Dict[str, Any]],
+    ) -> List[Dict[str, Any]]:
+        """Run central validation without grouping/preparing the final UI object."""
+        pre_rank = getattr(self.legacy, "_pre_rank_candidates", None)
+        validate = getattr(self.legacy, "_validate_candidates_parallel", None)
+
+        candidates = self._filter_requested_format(list(raw_candidates), query)
+        if pre_rank is not None:
+            try:
+                candidates = pre_rank(candidates, query)
+            except TypeError:
+                candidates = pre_rank(candidates)
+
+        if validate is not None:
+            try:
+                candidates = validate(candidates, query)
+            except TypeError:
+                candidates = validate(candidates)
+
+        if candidates is None:
+            return []
+        if not isinstance(candidates, list):
+            candidates = list(candidates)
+        return [item for item in candidates if isinstance(item, dict)]
+
+    def _validate_compatible(
+        self,
+        query: str,
+        candidates: List[Dict[str, Any]],
+    ) -> List[Dict[str, Any]]:
+        """Compatibility entry point for the diagnostic endpoint.
+
+        Older deployed diagnostic code used a differently named validation
+        helper.  Keep one stable public-ish bridge here so the diagnostic can
+        run against this SearchEngine without importing or constructing a
+        second SearchEngine instance.
+        """
+        return self._validate_candidates_only(query, list(candidates or []))
+
+    def _validate_and_finalize(
+        self,
+        query: str,
+        raw_candidates: List[Dict[str, Any]],
+    ) -> List[Dict[str, Any]]:
+        """
+        Reuse the current central validation and finalization functions.
+
+        This is intentionally not duplicated here.  The current matcher,
+        family registry, canonical catalog and scraper-specific parsing remain
+        the source of truth until those components are independently replaced.
+        """
+
+        pre_rank = getattr(self.legacy, "_pre_rank_candidates", None)
+        validate = getattr(self.legacy, "_validate_candidates_parallel", None)
+        prepare = getattr(self.legacy, "_prepare_final_results", None)
+
+        candidates = self._filter_requested_format(list(raw_candidates), query)
+
+        if pre_rank is not None:
+            try:
+                candidates = pre_rank(candidates, query)
+            except TypeError:
+                candidates = pre_rank(candidates)
+
+        if validate is not None:
+            try:
+                candidates = validate(candidates, query)
+            except TypeError:
+                candidates = validate(candidates)
+
+        if _trace_enabled(query):
+            _trace_emit(
+                "3_before_prepare_final_results", query,
+                validated_count=len(candidates or []),
+                deloox=_trace_items(candidates),
+                deloox_count=len(_trace_items(candidates)),
+                deloox_nested_offers=_trace_nested_offers(candidates),
+            )
+
+        if prepare is not None:
+            try:
+                final = prepare(candidates, query)
+            except TypeError:
+                final = prepare(candidates)
+        else:
+            final = candidates
+
+        if final is None:
+            final = []
+
+        if not isinstance(final, list):
+            final = list(final)
+
+        if _trace_enabled(query):
+            _trace_emit(
+                "4_after_prepare_final_results", query,
+                final_count=len(final),
+                deloox=_trace_items(final),
+                deloox_count=len(_trace_items(final)),
+                deloox_nested_offers=_trace_nested_offers(final),
+            )
+
+        stable = self._stable_results(
+            [item for item in final if isinstance(item, dict)]
+        )
+
+        if _trace_enabled(query):
+            _trace_emit(
+                "5_after_stable_results_final_output", query,
+                final_count=len(stable),
+                deloox=_trace_items(stable),
+                deloox_count=len(_trace_items(stable)),
+                deloox_nested_offers=_trace_nested_offers(stable),
+            )
+
+        return stable
+
+    # ------------------------------------------------------------------
+    # Public synchronous API
+    # ------------------------------------------------------------------
+
+    def search(self, query: str) -> Dict[str, Any]:
+        analysis = self.analyze_query(query)
+        text = analysis["raw"]
+
+        if not text:
+            return {
+                "query": "",
+                "count": 0,
+                "results": [],
+                "comparisons": [],
+                "errors": {},
+            }
+
+        store_run = self._run_stores(text)
+
+        raw_pool: List[Dict[str, Any]] = []
+        errors: Dict[str, str] = {}
+        for store in self.stores:
+            result = store_run["stores"][store]
+            raw_pool.extend(result.candidates)
+            if result.error:
+                errors[store] = result.error
+
+        final_results = self._validate_and_finalize(text, raw_pool)
+
+        return {
+            "query": text,
+            "count": len(final_results),
+            "results": final_results,
+            "comparisons": [],
+            "errors": errors,
+        }
+
+    def diagnostic_search(self, query: str) -> Dict[str, Any]:
+        """Run one deterministic diagnostic pass and expose every store stage.
+
+        This intentionally does NOT call _prepare_final_results(), because the
+        purpose of the diagnostic is to prove where a store/candidate is lost.
+        It returns raw per-store candidates plus the cumulative validated pool.
+        """
+        analysis = self.analyze_query(query)
+        text = analysis["raw"]
+        if not text:
+            return {
+                "ok": True,
+                "query": "",
+                "stores": {},
+                "raw_candidates": [],
+                "validated_candidates": [],
+                "errors": {},
+            }
+
+        started = time.monotonic()
+        store_run = self._run_stores(text)
+        raw_pool: List[Dict[str, Any]] = []
+        stores: Dict[str, Any] = {}
+        errors: Dict[str, str] = {}
+
+        for store in self.stores:
+            result = store_run["stores"][store]
+            raw_pool.extend(result.candidates)
+            stores[store] = {
+                "status": result.status,
+                "count": len(result.candidates),
+                "elapsed": round(result.elapsed, 3),
+                "error": result.error,
+                "candidates": [dict(x) for x in result.candidates if isinstance(x, dict)],
+            }
+            if result.error:
+                errors[store] = result.error
+
+        validated = self._validate_candidates_only(text, raw_pool)
+
+        return {
+            "ok": True,
+            "query": text,
+            "elapsed": round(time.monotonic() - started, 3),
+            "store_count": len(self.stores),
+            "stores": stores,
+            "raw_candidate_count": len(raw_pool),
+            "validated_candidate_count": len(validated),
+            "raw_candidates": [dict(x) for x in raw_pool if isinstance(x, dict)],
+            "validated_candidates": [dict(x) for x in validated if isinstance(x, dict)],
+            "errors": errors,
+        }
+
+    # ------------------------------------------------------------------
+    # Async job API used by existing /search-start + /search-status routes
+    # ------------------------------------------------------------------
+
+    def run_job(self, job_id: str, query: str) -> None:
+        """Run the background search in waves of two stores and publish progress.
+
+        The frontend uses /search-start + /search-status for live progress.
+        Each wave starts at most two store scrapers. As soon as a store finishes,
+        its candidates are merged into the central job pool and the validated
+        candidate list is published. The legacy snapshot then performs the final
+        grouping for the response.
+        """
+        jobs = getattr(self.legacy, "SEARCH_JOBS", None)
+        lock = getattr(self.legacy, "SEARCH_JOBS_LOCK", None)
+
+        if jobs is None:
+            legacy_runner = getattr(self.legacy, "_run_search_job_legacy", None)
+            if legacy_runner is not None:
+                return legacy_runner(job_id, query)
+            raise RuntimeError("SEARCH_JOBS is not available")
+
+        def update(payload: Dict[str, Any]) -> None:
+            if lock is not None:
+                with lock:
+                    job = jobs.get(job_id)
+                    if job is not None:
+                        job.update(payload)
+            else:
+                job = jobs.get(job_id)
+                if job is not None:
+                    job.update(payload)
+
+        def read_job() -> Optional[Dict[str, Any]]:
+            if lock is not None:
+                with lock:
+                    job = jobs.get(job_id)
+                    return dict(job) if job is not None else None
+            job = jobs.get(job_id)
+            return dict(job) if job is not None else None
+
+        started = time.monotonic()
+        raw_pool: List[Dict[str, Any]] = []
+        store_status: Dict[str, Any] = {
+            store: {"status": "pending", "count": 0}
+            for store in self.stores
+        }
+        errors: Dict[str, str] = {}
+
+        update({
+            "completed": False,
+            "phase": "discovery",
+            "status": "searching",
+            "results": [],
+            "candidates": [],
+            "errors": {},
+            "store_status": store_status,
+        })
+
+        try:
+            # Explicit waves: never more than two scrapers are active.
+            for wave_start in range(0, len(self.stores), 2):
+                wave = self.stores[wave_start:wave_start + 2]
+                wave_started = time.monotonic()
+
+                update({
+                    "phase": f"stores_{wave_start + 1}_{wave_start + len(wave)}",
+                    "status": "searching",
+                    "store_status": {
+                        **store_status,
+                        **{store: {"status": "searching", "count": 0} for store in wave},
+                    },
+                })
+
+                with concurrent.futures.ThreadPoolExecutor(
+                    max_workers=2,
+                    thread_name_prefix="scenthunter-store",
+                ) as executor:
+                    future_map = {
+                        executor.submit(self._run_one_store, store, query): store
+                        for store in wave
+                    }
+
+                    for future in concurrent.futures.as_completed(future_map):
+                        store = future_map[future]
+                        try:
+                            result = future.result()
+                        except Exception as exc:
+                            result = StoreRun(
+                                store=store,
+                                status="error",
+                                candidates=[],
+                                elapsed=time.monotonic() - wave_started,
+                                error=f"{type(exc).__name__}: {exc}",
+                            )
+
+                        store_status[store] = {
+                            "status": result.status,
+                            "count": len(result.candidates),
+                            "elapsed": round(result.elapsed, 3),
+                            "error": result.error,
+                        }
+                        if result.error:
+                            errors[store] = result.error
+
+                        before_merge = list(raw_pool)
+                        raw_pool.extend(result.candidates)
+
+                        if _trace_enabled(query):
+                            before_d = _trace_items(before_merge)
+                            after_d = _trace_items(raw_pool)
+                            _trace_emit(
+                                "2_after_batch_merge", query, job_id=job_id,
+                                completed_store=store,
+                                store_status=result.status,
+                                store_candidate_count=len(result.candidates),
+                                raw_pool_count=len(raw_pool),
+                                deloox_count=len(after_d),
+                                deloox=after_d,
+                                delta_deloox=[x for x in after_d if _trace_signature(x) not in {_trace_signature(y) for y in before_d}],
+                            )
+
+                        # Publish after every completed store. This is the
+                        # important difference from the old implementation:
+                        # users no longer wait for all eight stores.
+                        validated = self._validate_candidates_only(query, raw_pool)
+                        update({
+                            "results": validated,
+                            "candidates": list(raw_pool),
+                            "errors": dict(errors),
+                            "store_status": dict(store_status),
+                            "phase": f"stores_{wave_start + 1}_{wave_start + len(wave)}",
+                            "status": "searching",
+                            "completed": False,
+                            "elapsed": round(time.monotonic() - started, 3),
+                        })
+
+                if read_job() is None:
+                    return
+
+            # Final publication. Keep raw validated candidates in the job; the
+            # legacy /search-status snapshot performs _prepare_final_results().
+            validated = self._validate_candidates_only(query, raw_pool)
+            update({
+                "results": validated,
+                "candidates": list(raw_pool),
+                "errors": dict(errors),
+                "store_status": dict(store_status),
+                "phase": "completed",
+                "status": "completed",
+                "completed": True,
+                "elapsed": round(time.monotonic() - started, 3),
+                "raw_candidate_count": len(raw_pool),
             })
 
-        previous_final_stores = current_final_stores
-
-    return {
-        "ok": True,
-        "diagnostic_type": "progressive_wave_exact_production_path_2x4_v2",
-        "query": query,
-        "stores": selected_stores,
-        "elapsed_seconds": round(time.monotonic() - started, 3),
-        "final": {
-            "validated_pool_count": len(validated_pool),
-            "validated_store_counts": _store_summary(validated_pool),
-            "final_result_count": len(final_results),
-            "final_store_counts": _store_summary(final_offers),
-            "final_offers": final_offers,
-            "deloox": _deloox_items(final_offers),
-            "orioudh": _orioudh_items(final_offers),
-            "finalization_error": finalization_error,
-        },
-        "disappearance_events": disappearances,
-        "waves": waves,
-        "store_reports": store_reports,
-    }
+        except Exception as exc:
+            update({
+                "results": [],
+                "errors": {**errors, "_search": f"{type(exc).__name__}: {exc}"},
+                "status": "error",
+                "completed": True,
+                "phase": "error",
+                "elapsed": round(time.monotonic() - started, 3),
+                "error": f"{type(exc).__name__}: {exc}",
+                "traceback": traceback.format_exc(limit=8),
+            })
