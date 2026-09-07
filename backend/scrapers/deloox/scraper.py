@@ -862,6 +862,32 @@ def _discover(session, q):
     if time.monotonic() >= deadline:
         return urls[:8]
 
+    # TERTIARY: use Deloox catalogue/filter discovery before falling back to a
+    # broad category. This is generic: the live catalogue may expose a
+    # Product-line category/filter whose label or slug exactly matches q.
+    try:
+        filter_url = _find_catalog_filter_url(session, q)
+    except Exception:
+        filter_url = None
+
+    if filter_url and time.monotonic() < deadline:
+        try:
+            page = session.get(
+                filter_url,
+                headers=HEADERS,
+                timeout=remaining_timeout(),
+            )
+        except requests.RequestException:
+            page = None
+        if page is not None:
+            if page.status_code < 400:
+                candidates = _candidate_product_urls(page.text, q)
+                if candidates:
+                    add_many(candidates)
+                    page.close()
+                    return urls[:8]
+            page.close()
+
     # ONE bounded category fallback.
     try:
         roots = list(_category_pages(session))[:1]
