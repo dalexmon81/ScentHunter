@@ -649,15 +649,197 @@ class SearchEngine:
 
         return [dict(x) for x in batch if isinstance(x, dict)]
 
+    def _legacy_group_key(self, item: Dict[str, Any]) -> Any:
+        """
+        Return the legacy product-family grouping key when available.
+
+        The key is used only for lossless reconciliation after legacy final
+        preparation. It never decides whether a candidate is valid.
+        """
+        fn = getattr(self.legacy, "_result_group_key", None)
+        if callable(fn):
+            try:
+                return fn(item)
+            except Exception:
+                pass
+
+        store = self._store_name(item)
+        brand = self._norm(
+            item.get("canonical_brand")
+            or item.get("brand")
+            or item.get("source_brand")
+            or ""
+        )
+        variant = self._norm(
+            item.get("catalog_variant")
+            or item.get("canonical_name")
+            or item.get("product_name")
+            or item.get("title")
+            or item.get("name")
+            or ""
+        )
+        return ("fallback", store, brand, variant)
+
+    def _offer_identity(self, item: Dict[str, Any]) -> Tuple[str, str, str]:
+        """
+        Identity for one retailer offer.
+
+        Store is mandatory in the key. URL/product-id/name collisions between
+        different retailers therefore cannot make one offer replace another.
+        """
+        store = self._store_name(item)
+        size = self._size_ml(item)
+        size_key = f"{size:.4f}" if size is not None else ""
+
+        product_id = str(
+            item.get("store_variant_id")
+            or item.get("variant_id")
+            or item.get("store_product_id")
+            or item.get("product_id")
+            or item.get("catalog_id")
+            or item.get("gtin")
+            or item.get("ean")
+            or item.get("ean13")
+            or item.get("sku")
+            or ""
+        ).strip().casefold()
+
+        url = str(item.get("url") or "").strip().casefold()
+        return (store, product_id or url, size_key)
+
+    def _reconcile_prepared(
+        self,
+        prepared: List[Dict[str, Any]],
+        candidates: List[Dict[str, Any]],
+    ) -> List[Dict[str, Any]]:
+        """
+        Make final preparation genuinely lossless.
+
+        Legacy preparation groups a family into one result with an ``offers``
+        array. A simple "is this store represented?" check is insufficient:
+        the legacy function can return a result that contains some stores but
+        silently omit another offer from the same family.
+
+        We therefore reconcile at OFFER level:
+          1. every prepared offer is retained;
+          2. every accepted candidate must occur in an offer list;
+          3. missing candidates are merged into the matching prepared family;
+          4. only if no family can be matched is a standalone result appended.
+
+        No validation is performed here.
+        """
+        output = [dict(item) for item in prepared if isinstance(item, dict)]
+
+        # Ensure every prepared product has a mutable offers list when it
+        # represents a grouped family.
+        family_index: Dict[Any, Dict[str, Any]] = {}
+        offer_keys = set()
+
+        for product in output:
+            offers = product.get("offers")
+
+            if isinstance(offers, list):
+                cleaned_offers = [
+                    dict(offer)
+                    for offer in offers
+                    if isinstance(offer, dict)
+                ]
+                product["offers"] = cleaned_offers
+                product["offer_count"] = len(cleaned_offers)
+
+                for offer in cleaned_offers:
+                    offer_keys.add(self._offer_identity(offer))
+
+            key = self._legacy_group_key(product)
+            family_index.setdefault(key, product)
+
+        for candidate in candidates:
+            if not isinstance(candidate, dict):
+                continue
+
+            candidate = dict(candidate)
+            key = self._offer_identity(candidate)
+
+            if key in offer_keys:
+                continue
+
+            family_key = self._legacy_group_key(candidate)
+            target = family_index.get(family_key)
+
+            if target is None:
+                # Try the strongest catalog identity available before falling
+                # back to a standalone result.
+                target = None
+                candidate_variant = self._norm(
+                    candidate.get("catalog_variant")
+                    or candidate.get("canonical_name")
+                    or ""
+                )
+                candidate_brand = self._norm(
+                    candidate.get("canonical_brand")
+                    or candidate.get("brand")
+                    or ""
+                )
+
+                if candidate_variant:
+                    for existing in output:
+                        existing_variant = self._norm(
+                            existing.get("catalog_variant")
+                            or existing.get("canonical_name")
+                            or ""
+                        )
+                        existing_brand = self._norm(
+                            existing.get("canonical_brand")
+                            or existing.get("brand")
+                            or ""
+                        )
+                        if (
+                            candidate_variant == existing_variant
+                            and (
+                                not candidate_brand
+                                or not existing_brand
+                                or candidate_brand == existing_brand
+                            )
+                        ):
+                            target = existing
+                            break
+
+            if target is not None:
+                offers = target.get("offers")
+                if not isinstance(offers, list):
+                    # The representative itself is the first offer.
+                    representative = dict(target)
+                    representative.pop("offers", None)
+                    representative.pop("offer_count", None)
+                    offers = [representative]
+                    target["offers"] = offers
+
+                offers.append(candidate)
+                target["offer_count"] = len(offers)
+                target["stores"] = list(dict.fromkeys(
+                    str(offer.get("store") or "").strip()
+                    for offer in offers
+                    if str(offer.get("store") or "").strip()
+                ))
+                offer_keys.add(key)
+                continue
+
+            # No prepared family exists: keep the accepted candidate rather
+            # than losing it. It will be rendered as a normal result.
+            output.append(candidate)
+            family_index[family_key] = candidate
+            offer_keys.add(key)
+
+        return output
+
     def _prepare_final(self, query: str, candidates: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
         """
         Final preparation is allowed to group offers, but it is NOT allowed to
-        perform a new candidate validation pass.
-
-        If the legacy prepare function itself returns fewer candidates, the
-        lossless fallback below restores missing store candidates whenever they
-        are not represented in the prepared output.
+        validate or silently discard an accepted candidate.
         """
+        if not candidates:
+            return []
+
         prepare = getattr(self.legacy, "_prepare_final_results", None)
 
         if not callable(prepare):
@@ -687,44 +869,52 @@ class SearchEngine:
             if isinstance(x, dict)
         ]
 
-        # Lossless store reconciliation.
-        #
-        # The old failure mode was:
-        #   candidate A exists
-        #   later finalization produces B
-        #   A disappears
-        #
-        # Here we explicitly compare stores. If a validated store candidate is
-        # not represented in the prepared result, we retain the original.
-        represented_stores = set()
+        # IMPORTANT: reconcile individual offers, not merely store presence.
+        reconciled = self._reconcile_prepared(
+            prepared,
+            candidates,
+        )
 
-        for item in prepared:
-            store = self._store_name(item)
-            if store:
-                represented_stores.add(store)
-
+        # Sort offers inside grouped results while preserving every offer.
+        for item in reconciled:
             offers = item.get("offers")
             if isinstance(offers, list):
-                for offer in offers:
-                    if isinstance(offer, dict):
-                        offer_store = self._store_name(offer)
-                        if offer_store:
-                            represented_stores.add(offer_store)
+                offers = [
+                    dict(offer)
+                    for offer in offers
+                    if isinstance(offer, dict)
+                ]
+                offers.sort(
+                    key=lambda offer: (
+                        self._availability_rank(offer),
+                        self._price_value(offer),
+                        self._store_name(offer),
+                        str(offer.get("url") or ""),
+                    )
+                )
+                item["offers"] = offers
+                item["offer_count"] = len(offers)
+                item["stores"] = list(dict.fromkeys(
+                    str(offer.get("store") or "").strip()
+                    for offer in offers
+                    if str(offer.get("store") or "").strip()
+                ))
 
-        restored = list(prepared)
+                # Representative fields must always come from the best offer.
+                if offers:
+                    representative = offers[0]
+                    for field in (
+                        "store", "shop", "source", "price", "price_value",
+                        "availability", "in_stock", "url", "image",
+                        "size_ml", "canonical_name", "catalog_variant",
+                        "canonical_brand", "brand", "name", "title",
+                    ):
+                        if field in representative and representative[field] not in (
+                            None, "", [], {}
+                        ):
+                            item[field] = representative[field]
 
-        for candidate in candidates:
-            store = self._store_name(candidate)
-            if not store:
-                continue
-
-            if store in represented_stores:
-                continue
-
-            restored.append(dict(candidate))
-            represented_stores.add(store)
-
-        return self._stable_results(restored)
+        return self._stable_results(reconciled)
 
     # ---------------------------------------------------------------
     # Synchronous search
@@ -745,8 +935,14 @@ class SearchEngine:
         run = self._run_stores(text)
 
         raw_pool: List[Dict[str, Any]] = []
+        accepted_pool: List[Dict[str, Any]] = []
         errors: Dict[str, str] = {}
+        accepted_keys = set()
 
+        # Keep synchronous /search semantically identical to the progressive
+        # job path: validate each store's new candidates once, then merge them
+        # monotonically. This prevents a later store from changing the validity
+        # of an offer that was already accepted.
         for store in self.stores:
             result: StoreRun = run["stores"][store]
             self._merge_unique(raw_pool, result.candidates, store)
@@ -754,9 +950,33 @@ class SearchEngine:
             if result.error:
                 errors[store] = result.error
 
-        # One validation pass for the complete raw set.
-        validated = self._validate_batch(text, raw_pool)
-        final = self._prepare_final(text, validated)
+            batch = []
+            for candidate in result.candidates:
+                if not isinstance(candidate, dict):
+                    continue
+                item = dict(candidate)
+                if not item.get("store") and not item.get("shop"):
+                    item["store"] = store
+                key = self._candidate_key(item, store)
+                if key in accepted_keys:
+                    continue
+                batch.append(item)
+
+            validated = self._validate_batch(text, batch)
+
+            for candidate in validated:
+                if not isinstance(candidate, dict):
+                    continue
+                item = dict(candidate)
+                if not item.get("store") and not item.get("shop"):
+                    item["store"] = store
+                key = self._candidate_key(item, store)
+                if key in accepted_keys:
+                    continue
+                accepted_keys.add(key)
+                accepted_pool.append(item)
+
+        final = self._prepare_final(text, accepted_pool)
 
         return {
             "query": text,
