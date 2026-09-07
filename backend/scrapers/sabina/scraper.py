@@ -1,5 +1,6 @@
 import re
 import json
+from xml.etree import ElementTree as ET
 import html as html_lib
 from urllib.parse import quote_plus, urljoin
 
@@ -459,6 +460,77 @@ def _get(session, url, **kwargs):
     r.raise_for_status()
     return r
 
+def _sitemap_product_urls(session, query, max_sitemaps=10, max_urls=40):
+    """Generic Sabina sitemap fallback when the onsite search is empty/blocked."""
+    q_tokens = [x for x in re.findall(r"[a-z0-9]+", _clean(query).lower()) if len(x) >= 3]
+    if not q_tokens:
+        return []
+
+    roots = [
+        BASE + "/robots.txt",
+        BASE + "/sitemap.xml",
+        BASE + "/sitemap_index.xml",
+    ]
+    pending = []
+    seen_sitemaps = set()
+    found = []
+    seen_urls = set()
+
+    for root in roots:
+        try:
+            r = _get(session, root)
+        except Exception:
+            continue
+        if r is None:
+            continue
+        body = r.text or ""
+        r.close()
+        if root.endswith("robots.txt"):
+            pending.extend(re.findall(r"(?im)^\s*Sitemap:\s*(\S+)", body))
+        elif root.endswith(".xml"):
+            pending.append(root)
+
+    while pending and len(seen_sitemaps) < max_sitemaps and len(found) < max_urls:
+        sitemap_url = pending.pop(0)
+        if sitemap_url in seen_sitemaps:
+            continue
+        seen_sitemaps.add(sitemap_url)
+        try:
+            r = _get(session, sitemap_url)
+        except Exception:
+            continue
+        if r is None:
+            continue
+        body = r.text or ""
+        r.close()
+        if not body.lstrip().startswith("<"):
+            continue
+        try:
+            root = ET.fromstring(body)
+        except Exception:
+            continue
+        locs = [el.text.strip() for el in root.iter() if el.tag.lower().endswith("loc") and el.text]
+        for loc in locs:
+            low = loc.lower()
+            if low.endswith(".xml") or "sitemap" in low:
+                if loc not in seen_sitemaps:
+                    pending.append(loc)
+                continue
+            slug_text = re.sub(r"[^a-z0-9]+", " ", low)
+            if not all(token in slug_text for token in q_tokens):
+                continue
+            if not _looks_like_product_url(loc):
+                continue
+            clean_url = loc.split("#", 1)[0].split("?", 1)[0]
+            if clean_url not in seen_urls:
+                seen_urls.add(clean_url)
+                found.append(clean_url)
+                if len(found) >= max_urls:
+                    break
+
+    return found
+
+
 def search(query):
     """
     Ricerca Sabina.
@@ -598,6 +670,24 @@ def search(query):
 
                 except Exception:
                     continue
+
+        # Final generic fallback: sitemap/robots discovery. This is used only
+        # after the normal search and AJAX surfaces return no product.
+        sitemap_urls = _sitemap_product_urls(s, query)
+        if sitemap_urls:
+            sitemap_rows = []
+            for product_url in sitemap_urls:
+                try:
+                    page = _get(s, product_url)
+                    if page is None:
+                        continue
+                    html = page.text
+                    page.close()
+                    sitemap_rows.extend(_parse_html(html, query))
+                except Exception:
+                    continue
+            if sitemap_rows:
+                return _enrich_product_sizes(s, _dedupe(sitemap_rows, query), query)
 
         return []
 
