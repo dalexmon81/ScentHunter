@@ -19,8 +19,8 @@ import traceback
 from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional
 
-DEFAULT_STORE_TIMEOUT = 20.0
-DEFAULT_GLOBAL_TIMEOUT = 25.0
+DEFAULT_STORE_TIMEOUT = 45.0
+DEFAULT_GLOBAL_TIMEOUT = 60.0
 
 
 @dataclass
@@ -523,23 +523,27 @@ class SearchEngine:
 
             def publish() -> None:
                 current_pool = self._dedupe_raw(list(raw_pool))
+                # Publish the same progressive behavior as the original
+                # SearchEngine: as soon as ANY store finishes, expose the
+                # validated/merged results already available. Never wait for
+                # the slowest retailer before showing the first products.
+                partial = self._finalize(query, current_pool) if current_pool else []
                 completed_stores = sum(
                     1
                     for value in store_status.values()
                     if value.get("status") not in {"pending", "searching"}
                 )
-                partial_results = self._finalize(query, current_pool) if current_pool else []
                 update({
                     "completed": False,
                     "phase": "collecting",
                     "status": "searching",
-                    "results": partial_results,
+                    "results": partial,
                     "candidates": list(current_pool),
                     "errors": dict(errors),
                     "store_status": dict(store_status),
                     "completed_stores": completed_stores,
                     "total_stores": len(self.stores),
-                    "result_count": len(partial_results),
+                    "result_count": len(partial),
                     "elapsed": round(time.monotonic() - started, 3),
                 })
 
@@ -676,4 +680,3 @@ class SearchEngine:
                     wait=False,
                     cancel_futures=True,
                 )
-
