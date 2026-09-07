@@ -7,7 +7,7 @@ from bs4 import BeautifulSoup
 
 STORE = "Orioudh"
 BASE_URL = "https://orioudh.com"
-TIMEOUT = 15
+TIMEOUT = 5
 HEADERS = {
     "User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36",
     "Accept": "text/html,application/xhtml+xml,application/json;q=0.9,*/*;q=0.8",
@@ -107,7 +107,7 @@ def _urls_from_sitemap(session, q, limit=80):
         if not r:
             return []
         sitemaps = re.findall(r"(?im)^\s*sitemap:\s*(\S+)", r.text or "")
-        queue = sitemaps[:10]
+        queue = sitemaps[:3]
         while queue and len(urls) < limit:
             sm = queue.pop(0)
             x = _get(session, sm)
@@ -165,8 +165,8 @@ def _urls_from_shopify_catalog(session, q, limit=120):
         BASE_URL + "/collections/all/products.json",
     ]
 
-    for endpoint in endpoints:
-        for page in range(1, 11):
+    for endpoint in endpoints[:1]:
+        for page in range(1, 4):
             r = _get(session, endpoint, {"limit": 250, "page": page})
             if not r:
                 break
