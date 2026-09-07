@@ -478,103 +478,126 @@ def _xml_locs(text):
 
 
 def _sitemap_product_candidates(session, query):
-    """Bounded generic discovery through Sabina's official product sitemap.
+    """Bounded generic discovery through Sabina's public sitemap system.
 
-    The sitemap itself is the discovery mechanism: no individual perfume URL,
-    brand, or product is hard-coded. The request budget is deliberately small
-    so one slow sitemap cannot consume the store's full 18-second orchestrator
-    timeout.
+    Sabina currently returns a very small sitemap index from the advertised
+    sitemap URL. We therefore accept product URLs directly from any sitemap
+    document and probe a short list of standard sitemap entry points before
+    falling back to robots.txt. No perfume URL, brand, or product is hard-coded.
     """
-    qwords = _clean(query).lower().split()
+    qwords = [w for w in _clean(query).lower().split() if len(w) > 1]
     if not qwords:
         return []
 
-    # Sabina publishes this sitemap in robots.txt. Try it directly first so
-    # the normal path costs one request instead of a robots + sitemap chain.
-    index_urls = [BASE + "/sitemap_index_shop_1.xml"]
+    candidates = []
+    seen_sitemaps = set()
+    seen_products = set()
+
+    def add_product(url):
+        if not _looks_like_product_url(url):
+            return
+        slug = url.lower().rsplit('/', 1)[-1]
+        hits = sum(1 for word in qwords if word in slug)
+        if hits == len(qwords) and url not in seen_products:
+            seen_products.add(url)
+            candidates.append(url)
+
+    def fetch_locs(url, timeout=3.0):
+        try:
+            r = session.get(url, timeout=timeout, allow_redirects=True)
+            status = r.status_code
+            text = r.text if status == 200 else ''
+            r.close()
+            return status, _xml_locs(text), text
+        except Exception:
+            return 0, [], ''
+
+    # Official advertised sitemap first, then common PrestaShop sitemap entry
+    # points. Keep this bounded; one broken sitemap must not stall the store.
+    index_urls = [
+        BASE + '/sitemap_index_shop_1.xml',
+        BASE + '/sitemap.xml',
+        BASE + '/sitemap_index.xml',
+        BASE + '/sitemap-index.xml',
+        BASE + '/1_index_sitemap.xml',
+    ]
+
+    for index_url in index_urls:
+        if index_url in seen_sitemaps or len(candidates) >= 8:
+            continue
+        seen_sitemaps.add(index_url)
+        status, locs, raw = fetch_locs(index_url, timeout=3.0)
+        if status != 200:
+            continue
+
+        # Some sitemap documents are plain urlsets, not sitemap indexes.
+        for loc in locs:
+            add_product(loc)
+        if candidates:
+            return candidates[:8]
+
+        # Otherwise queue child XML sitemaps. Prefer product-named maps but do
+        # not require that naming convention.
+        child_maps = [
+            u for u in locs
+            if u.lower().endswith('.xml')
+            and ('product' in u.lower() or 'shop' in u.lower())
+        ]
+        if not child_maps:
+            child_maps = [u for u in locs if u.lower().endswith('.xml')]
+
+        for child in child_maps[:6]:
+            if child in seen_sitemaps or len(candidates) >= 8:
+                continue
+            seen_sitemaps.add(child)
+            cstatus, clocs, _ = fetch_locs(child, timeout=3.0)
+            if cstatus != 200:
+                continue
+            for loc in clocs:
+                add_product(loc)
+                if len(candidates) >= 8:
+                    break
+            if candidates:
+                return candidates[:8]
+
+    # Last generic discovery fallback: read robots.txt and follow every
+    # sitemap declaration, not only the one filename currently advertised.
     try:
-        r = session.get(index_urls[0], timeout=3.5, allow_redirects=True)
-        if r.status_code == 200 and r.text:
-            index_text = r.text
-        else:
-            index_text = ""
+        r = session.get(BASE + '/robots.txt', timeout=2.0, allow_redirects=True)
+        robots = r.text if r.status_code == 200 else ''
         r.close()
     except Exception:
-        index_text = ""
+        robots = ''
 
-    # If the direct sitemap fails, discover the official sitemap from robots.
-    if not index_text:
-        try:
-            r = session.get(BASE + "/robots.txt", timeout=2.0, allow_redirects=True)
-            if r.status_code == 200:
-                for line in r.text.splitlines():
-                    if line.strip().lower().startswith("sitemap:"):
-                        u = line.split(":", 1)[1].strip()
-                        if "sitemap_index_shop_" in u.lower():
-                            index_urls = [u]
-                            break
-            r.close()
-        except Exception:
-            pass
-        if not index_urls:
-            return []
-        try:
-            r = session.get(index_urls[0], timeout=3.5, allow_redirects=True)
-            index_text = r.text if r.status_code == 200 else ""
-            r.close()
-        except Exception:
-            index_text = ""
+    for line in robots.splitlines():
+        if not line.strip().lower().startswith('sitemap:'):
+            continue
+        url = line.split(':', 1)[1].strip()
+        if not url or url in seen_sitemaps:
+            continue
+        seen_sitemaps.add(url)
+        status, locs, _ = fetch_locs(url, timeout=3.0)
+        if status != 200:
+            continue
+        for loc in locs:
+            add_product(loc)
+        if candidates:
+            return candidates[:8]
+        for child in [u for u in locs if u.lower().endswith('.xml')][:6]:
+            if child in seen_sitemaps:
+                continue
+            seen_sitemaps.add(child)
+            cstatus, clocs, _ = fetch_locs(child, timeout=3.0)
+            if cstatus != 200:
+                continue
+            for loc in clocs:
+                add_product(loc)
+                if len(candidates) >= 8:
+                    break
+            if candidates:
+                return candidates[:8]
 
-    if not index_text:
-        return []
-
-    locs = _xml_locs(index_text)
-    # Prefer child sitemaps that are explicitly product sitemaps. If the site
-    # uses generic names, keep a very small fallback set.
-    product_maps = [u for u in locs if "product" in u.lower() and u.lower().endswith(".xml")]
-    if not product_maps:
-        product_maps = [u for u in locs if u.lower().endswith(".xml")][:4]
-    else:
-        product_maps = product_maps[:4]
-
-    if not product_maps:
-        return []
-
-    from concurrent.futures import ThreadPoolExecutor, as_completed
-
-    def fetch(url):
-        try:
-            rr = session.get(url, timeout=3.5, allow_redirects=True)
-            if rr.status_code == 200:
-                text = rr.text
-            else:
-                text = ""
-            rr.close()
-            return _xml_locs(text)
-        except Exception:
-            return []
-
-    urls = []
-    seen = set()
-    with ThreadPoolExecutor(max_workers=min(4, len(product_maps))) as ex:
-        futures = [ex.submit(fetch, u) for u in product_maps]
-        for fut in as_completed(futures):
-            try:
-                for u in fut.result():
-                    low = u.lower()
-                    if not _looks_like_product_url(u):
-                        continue
-                    slug = low.rsplit("/", 1)[-1]
-                    hits = sum(1 for w in qwords if w in slug)
-                    if hits == len(qwords) and u not in seen:
-                        seen.add(u)
-                        urls.append(u)
-            except Exception:
-                pass
-
-    # Exact slug matches only. This prevents unrelated products from entering
-    # the expensive product-page verification phase.
-    return urls[:8]
+    return candidates[:8]
 
 def search(query):
     """Fast, bounded Sabina search using the official product sitemap first."""
