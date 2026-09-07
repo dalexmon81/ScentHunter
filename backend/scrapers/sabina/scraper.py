@@ -423,8 +423,42 @@ def _parse_html(text, query):
                 break
 
         text_block = _clean(container.get_text(" ", strip=True))
-        pm = PRICE_RE.search(text_block)
-        if not pm:
+
+        # Sabina product cards often contain BOTH the crossed/list price and
+        # the current sale price, e.g. "Prezzo normale: 62,95 € Prezzo: 37,95 €".
+        # PRICE_RE alone therefore picks the wrong number. Prefer an explicitly
+        # labelled current price; if the card has only the two raw prices, use
+        # the lower valid product price (never a unit price such as €/100ml).
+        def _card_price(block):
+            current = re.search(
+                r"(?:prezzo|price|prix|precio|preço|preis)\s*:\s*"
+                r"(\d{1,4}(?:[.,]\d{2}))\s*€",
+                block,
+                re.I,
+            )
+            if current:
+                return current.group(1) + " €"
+
+            values = []
+            for m in PRICE_RE.finditer(block):
+                suffix = block[m.end():m.end()+20].lower()
+                prefix = block[max(0, m.start()-45):m.start()].lower()
+                if re.match(r"\s*/\s*\d+\s*ml", suffix):
+                    continue
+                if re.search(r"(?:/\s*\d+\s*ml|per\s*\d+\s*ml|par\s*\d+\s*ml|pour\s*\d+\s*ml)\s*$", prefix):
+                    continue
+                try:
+                    value = float(m.group(1).replace(",", "."))
+                except ValueError:
+                    continue
+                values.append((value, m.group(1)))
+            if not values:
+                return None
+            values.sort(key=lambda x: x[0])
+            return values[0][1] + " €"
+
+        card_price = _card_price(text_block)
+        if not card_price:
             continue
 
         # Preferenza: titolo strutturato della card; poi title/aria-label;
@@ -458,7 +492,7 @@ def _parse_html(text, query):
         rows.append({
             "store": STORE,
             "name": name,
-            "price": pm.group(1) + " €",
+            "price": card_price,
             "url": url,
         })
 
