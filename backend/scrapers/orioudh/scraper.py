@@ -261,6 +261,15 @@ def _product_json(session, url):
 def _item(product, variant, url):
     name = clean(product.get("title"))
     vname = clean(variant.get("title"))
+
+    # Gift/mystery boxes are separate products, not perfume bottle offers.
+    # The Liquid Brun search currently returns Orioudh's mystery box because
+    # its description contains the perfume name; exclude it before grouping so
+    # it cannot be misclassified as a second Liquid Brun offer.
+    product_type = clean(product.get("product_type"))
+    haystack = norm(f"{name} {vname} {product_type}")
+    if re.search(r"\bmystery\s+box\b|\bgift\s+set\b", haystack):
+        return None
     source_name = name if not vname or vname == "Default Title" else f"{name} {vname}"
 
     if not matches(f"{name} {product.get('vendor','')} {url}", CURRENT_QUERY):
