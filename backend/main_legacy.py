@@ -869,10 +869,33 @@ def _catalog_brand_matches(
     if not actual_brand:
         return True
 
-    return (
-        catalog_norm(actual_brand)
-        == expected_brand
-    )
+    actual_brand_norm = catalog_norm(actual_brand)
+    if actual_brand_norm == expected_brand:
+        return True
+
+    # Alcuni retailer restituiscono il proprio nome nel campo `brand`
+    # invece del marchio reale (es. brand="ParfumCity", store="ParfumCity").
+    # In questo caso il campo brand non è affidabile e lasciamo che sia
+    # l'identità del prodotto/nome a determinare il match del catalogo.
+    retailer_names = {
+        catalog_norm(product.get("store")),
+        catalog_norm(product.get("_source_store")),
+    }
+    retailer_names.discard("")
+    if actual_brand_norm in retailer_names:
+        return True
+
+    source = product.get("source")
+    if isinstance(source, dict):
+        retailer_names.update({
+            catalog_norm(source.get("store")),
+            catalog_norm(source.get("_source_store")),
+        })
+        retailer_names.discard("")
+        if actual_brand_norm in retailer_names:
+            return True
+
+    return False
 
 
 def _catalog_product_text(product: Dict[str, Any]) -> str:
@@ -959,6 +982,15 @@ def _catalog_variant_for_product(
 
     candidate_key = _catalog_candidate_variant_key(product)
     if brand:
+        # Gestisce titoli retailer come "Liquid Brun by French Avenue":
+        # il connettore appartiene alla formulazione commerciale, non
+        # all'identità della variante del catalogo.
+        candidate_key = re.sub(
+            rf"\b(?:by|de|from|par|von|van|da|di)\s+{re.escape(brand)}\b",
+            " ",
+            candidate_key,
+            flags=re.I,
+        )
         candidate_key = re.sub(
             rf"\b{re.escape(brand)}\b",
             " ",
