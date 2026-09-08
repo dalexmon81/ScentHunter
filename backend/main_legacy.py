@@ -2486,8 +2486,34 @@ def _validate_candidate(
     product: Dict[str, Any],
     query: str,
 ) -> Optional[Dict[str, Any]]:
+    candidate_store = str(product.get("store") or "").strip()
+    candidate_name = str(
+        product.get("name")
+        or product.get("title")
+        or product.get("product_name")
+        or ""
+    ).strip()
+    candidate_size = product_size_ml(product)
+
     if not matches(product, query):
+        print(
+            "CENTRAL_VALIDATION_REJECT: "
+            f"store={candidate_store} "
+            f"name={candidate_name!r} "
+            f"size={candidate_size!r} "
+            f"query={query!r}",
+            flush=True,
+        )
         return None
+
+    print(
+        "CENTRAL_VALIDATION_ACCEPT: "
+        f"store={candidate_store} "
+        f"name={candidate_name!r} "
+        f"size={candidate_size!r} "
+        f"query={query!r}",
+        flush=True,
+    )
 
     # Il main usa il matcher centrale per la risoluzione dell'identità.
     # Il query matching/family validation resta quello già esistente sopra;
