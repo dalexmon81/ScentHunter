@@ -23,6 +23,12 @@ HEADERS = {
 }
 
 
+def _diag(stage, **fields):
+    parts = [f"{k}={fields[k]!r}" for k in fields]
+    suffix = " " + " ".join(parts) if parts else ""
+    print(f"DELOOX_DIAG: {stage}{suffix}", flush=True)
+
+
 def clean(v):
     return re.sub(r"\s+", " ", str(v or "")).strip()
 
@@ -278,6 +284,8 @@ def _candidate_product_urls(html, query):
     soup = BeautifulSoup(html, "html.parser")
     found = []
     seen = set()
+    anchor_count = 0
+    raw_count = 0
 
     def add(raw_url, context=""):
         if not raw_url:
@@ -312,7 +320,11 @@ def _candidate_product_urls(html, query):
             found.append(url)
 
     for a in soup.find_all("a", href=True):
+        anchor_count += 1
+        before = len(found)
         add(a.get("href"), a.get_text(" ", strip=True))
+        if len(found) > before:
+            raw_count += 1
 
     patterns = [
         r'https?://(?:www\.)?deloox\.be/[^"\'>\s]+/product/[^"\'>\s]+',
@@ -322,6 +334,7 @@ def _candidate_product_urls(html, query):
         for raw in re.findall(pattern, html, re.I):
             add(raw)
 
+    _diag("candidate_urls", anchors=anchor_count, accepted=raw_count, total=len(found), query=query)
     return found
 
 
@@ -388,6 +401,7 @@ def _category_product_line_links(html, query):
                 match = "".join(match)
             add(match)
 
+    _diag("category_links", accepted=len(links), query=query)
     return links
 
 
@@ -437,13 +451,16 @@ def _discover_from_categories(session, query, max_urls=120):
 
     roots = list(_category_pages(session))
     roots.extend(_targeted_category_seed_urls(query))
+    _diag("category_roots", count=len(roots), roots=roots, query=query)
 
     for root in roots:
         page_candidates = [root]
         try:
             r = session.get(root, headers=HEADERS, timeout=TIMEOUT)
-        except requests.RequestException:
+        except requests.RequestException as exc:
+            _diag("root_fetch_error", url=root, error=repr(exc))
             continue
+        _diag("root_fetch", url=root, status=r.status_code, bytes=len(r.text or ""))
         if r.status_code >= 400:
             continue
 
@@ -451,39 +468,49 @@ def _discover_from_categories(session, query, max_urls=120):
             return urls[:max_urls]
 
         # Discover Product Line/category links whose visible label matches the query.
-        page_candidates.extend(_category_product_line_links(r.text, query))
+        line_links = _category_product_line_links(r.text, query)
+        _diag("root_line_links", root=root, count=len(line_links), links=line_links[:20])
+        page_candidates.extend(line_links)
 
         expanded = []
         for page_url in page_candidates:
             expanded.extend(_pagination_urls(page_url, max_pages=8))
 
+        _diag("expanded_pages", root=root, count=len(expanded))
         for page_url in expanded:
             if page_url in visited:
                 continue
             visited.add(page_url)
             try:
                 page = session.get(page_url, headers=HEADERS, timeout=TIMEOUT)
-            except requests.RequestException:
+            except requests.RequestException as exc:
+                _diag("page_fetch_error", url=page_url, error=repr(exc))
                 continue
+            _diag("page_fetch", url=page_url, status=page.status_code, bytes=len(page.text or ""))
             if page.status_code >= 400:
                 continue
             if add_products(page.text):
                 return urls[:max_urls]
             # A later page may expose the exact Product Line link.
-            for line_url in _category_product_line_links(page.text, query):
+            line_links = _category_product_line_links(page.text, query)
+            _diag("page_line_links", page=page_url, count=len(line_links), links=line_links[:20])
+            for line_url in line_links:
                 for lp in _pagination_urls(line_url, max_pages=8):
                     if lp in visited:
                         continue
                     visited.add(lp)
                     try:
                         line_page = session.get(lp, headers=HEADERS, timeout=TIMEOUT)
-                    except requests.RequestException:
+                    except requests.RequestException as exc:
+                        _diag("line_fetch_error", url=lp, error=repr(exc))
                         continue
+                    _diag("line_fetch", url=lp, status=line_page.status_code, bytes=len(line_page.text or ""))
                     if line_page.status_code >= 400:
                         continue
                     if add_products(line_page.text):
                         return urls[:max_urls]
 
+    _diag("category_discovery_done", count=len(urls), urls=urls[:20], query=query)
     return urls[:max_urls]
 
 
@@ -531,6 +558,7 @@ def _sitemap_product_urls(session, query, max_sitemaps=12, max_urls=80):
         seen_sitemaps.add(sitemap_url)
 
         xml = fetch_xml(sitemap_url)
+        _diag("sitemap_product_fetch", url=sitemap_url, ok=bool(xml), pending=len(pending))
         if not xml:
             continue
 
@@ -581,8 +609,10 @@ def _sitemap_category_urls(session, query, max_sitemaps=12, max_urls=30):
         seen_sitemaps.add(sitemap_url)
         try:
             r = session.get(sitemap_url, headers=HEADERS, timeout=TIMEOUT)
-        except requests.RequestException:
+        except requests.RequestException as exc:
+            _diag("sitemap_category_error", url=sitemap_url, error=repr(exc))
             continue
+        _diag("sitemap_category_fetch", url=sitemap_url, status=r.status_code, bytes=len(r.text or ""))
         if r.status_code >= 400:
             continue
 
@@ -608,6 +638,7 @@ def _sitemap_category_urls(session, query, max_sitemaps=12, max_urls=30):
                 if value not in seen_sitemaps:
                     pending.append(value)
 
+    _diag("sitemap_category_done", count=len(category_urls), urls=category_urls[:30], query=query)
     return category_urls[:max_urls]
 
 
@@ -615,9 +646,12 @@ def _discover(session, q):
     """Discover Deloox.be product pages generically for the requested query."""
     urls = []
     seen = set()
+    _diag("discover_start", query=q, base_url=BASE_URL)
 
     # PRIMARY: current category / Product-line structure.
-    for url in _discover_from_categories(session, q, max_urls=80):
+    category_products = _discover_from_categories(session, q, max_urls=80)
+    _diag("discover_primary", count=len(category_products), urls=category_products[:20])
+    for url in category_products:
         if url not in seen:
             seen.add(url)
             urls.append(url)
@@ -625,9 +659,11 @@ def _discover(session, q):
             return urls[:80]
 
     # SECONDARY: Product-line/category pages exposed by Deloox.be sitemaps.
-    for category_url in _sitemap_category_urls(
+    sitemap_categories = _sitemap_category_urls(
         session, q, max_sitemaps=12, max_urls=30
-    ):
+    )
+    _diag("discover_sitemap_categories", count=len(sitemap_categories), urls=sitemap_categories[:30])
+    for category_url in sitemap_categories:
         try:
             page = session.get(category_url, headers=HEADERS, timeout=TIMEOUT)
         except requests.RequestException:
@@ -655,11 +691,15 @@ def _discover(session, q):
     for endpoint in endpoints:
         try:
             r = session.get(endpoint, headers=HEADERS, timeout=TIMEOUT)
-        except requests.RequestException:
+        except requests.RequestException as exc:
+            _diag("search_endpoint_error", endpoint=endpoint, error=repr(exc))
             continue
+        _diag("search_endpoint", endpoint=endpoint, status=r.status_code, bytes=len(r.text or ""))
         if r.status_code >= 400:
             continue
-        for url in _candidate_product_urls(r.text, q):
+        endpoint_products = _candidate_product_urls(r.text, q)
+        _diag("search_endpoint_products", endpoint=endpoint, count=len(endpoint_products), urls=endpoint_products[:20])
+        for url in endpoint_products:
             if url not in seen:
                 seen.add(url)
                 urls.append(url)
@@ -674,6 +714,7 @@ def _discover(session, q):
         if len(urls) >= 80:
             break
 
+    _diag("discover_done", count=len(urls), urls=urls[:80], query=q)
     return urls[:80]
 
 def search(query):
