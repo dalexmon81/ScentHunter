@@ -412,6 +412,15 @@ def _pagination_urls(page_url, max_pages=8):
         yield f"{base}?page={page}"
 
 
+def _targeted_category_seed_urls(query):
+    """Return no product-specific category seeds.
+
+    Discovery remains fully generic: matching Product Line/category URLs are
+    discovered from Deloox.be itself by _category_product_line_links().
+    """
+    return []
+
+
 def _discover_from_categories(session, query, max_urls=120):
     urls = []
     seen = set()
