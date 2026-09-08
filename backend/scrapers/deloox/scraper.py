@@ -281,92 +281,85 @@ def _product(url, html, query):
 
 
 def _candidate_product_urls(html, query):
-    """Extract Deloox product URLs from anchors, JSON and JS."""
-    soup = BeautifulSoup(html, "html.parser")
+    """Extract matching Deloox.be product URLs from anchors and raw HTML.
+
+    Deloox category pages are very large and product cards may keep the title
+    outside the <a> element (or serialize the href in JSON/JS).  Therefore we
+    use two generic paths:
+      1) normal anchor extraction with local anchor text;
+      2) raw product-URL extraction, accepting the URL when the query tokens
+         occur in a tight surrounding HTML window.
+    No product, brand, price or URL is hardcoded here.
+    """
+    text = str(html or "")
     found = []
     seen = set()
-    anchor_count = 0
-    raw_count = 0
+    q_tokens = tokens(query)
+
+    def normalize_url(raw_url):
+        raw_url = str(raw_url or "").strip()
+        if not raw_url:
+            return ""
+        for _ in range(3):
+            raw_url = (raw_url
+                       .replace("\\/", "/")
+                       .replace("\\u002F", "/")
+                       .replace("\\u002f", "/"))
+        raw_url = htmllib.unescape(raw_url)
+        return urljoin(BASE_URL, raw_url).split("#")[0].split("?")[0]
 
     def add(raw_url, context=""):
-        if not raw_url:
+        url = normalize_url(raw_url)
+        if not url:
             return
-
-        raw_url = clean(raw_url).replace("\\/", "/")
-        if raw_url.startswith(("javascript:", "mailto:", "#")):
-            return
-
-        url = urljoin(BASE_URL, raw_url).split("#")[0].split("?")[0]
-
         try:
             parsed = urlparse(url)
         except Exception:
             return
-
         if parsed.netloc.lower() not in {"deloox.be", "www.deloox.be"}:
             return
-
         if not re.search(r"/(?:product|produit)/", parsed.path, re.I):
             return
-
         if url in seen:
             return
 
-        # Search/category pages often put the product title in nearby text.
-        # Accept the URL if either the URL slug or surrounding card text
-        # contains the query tokens.
         haystack = f"{context} {url}"
-        if matches(haystack, query):
-            seen.add(url)
-            found.append(url)
+        if not q_tokens.issubset(tokens(haystack)):
+            return
+        seen.add(url)
+        found.append(url)
 
-    for a in soup.find_all("a", href=True):
-        anchor_count += 1
-        before = len(found)
-        add(a.get("href"), a.get_text(" ", strip=True))
-        if len(found) > before:
-            raw_count += 1
+    # Normal DOM links.  This remains useful when the product title is inside
+    # the clickable element itself.
+    try:
+        soup = BeautifulSoup(text, "html.parser")
+        for a in soup.find_all("a", href=True):
+            add(a.get("href"), a.get_text(" ", strip=True))
+    except Exception:
+        pass
 
-    # Deloox product cards can keep the product URL outside href (for
-    # example in data-* attributes or serialized state). Scan every element
-    # attribute as well as the raw document, and support the live Belgian
-    # /produit/ path. This is deliberately generic: query matching is still
-    # performed against the URL slug/context, and the product page itself is
-    # validated again by _product().
-    attr_hits = 0
-    for tag in soup.find_all(True):
-        for value in tag.attrs.values():
-            values = value if isinstance(value, (list, tuple)) else [value]
-            for raw_value in values:
-                if not isinstance(raw_value, str):
-                    continue
-                for raw in re.findall(
-                    r'(?:(?:https?:)?//(?:www\.)?deloox\.be)?'
-                    r'/(?:en/|fr/|nl/|it/)?(?:produit|product)/\d+/[^"\'<>\\\s]+',
-                    raw_value,
-                    re.I,
-                ):
-                    attr_hits += 1
-                    add(raw)
+    # Raw HTML/JSON/JS path.  First normalize common serialization escapes.
+    raw = text
+    for _ in range(3):
+        raw = (raw.replace("\\/", "/")
+                  .replace("\\u002F", "/")
+                  .replace("\\u002f", "/"))
+    raw = htmllib.unescape(raw)
 
-    raw_html = html.replace('\\/', '/')
-    patterns = [
-        r'https?://(?:www\.)?deloox\.be/(?:en/|fr/|nl/|it/)?(?:produit|product)/\d+/[^"\'<>\\\s]+',
-        r'(?:(?:/)(?:en/|fr/|nl/|it/)?(?:produit|product)/\d+/[^"\'<>\\\s]+)',
-    ]
-    for pattern in patterns:
-        for raw in re.findall(pattern, raw_html, re.I):
-            add(raw)
-
-    _diag(
-        "candidate_urls",
-        anchors=anchor_count,
-        accepted=raw_count,
-        attr_hits=attr_hits,
-        total=len(found),
-        sample=found[:10],
-        query=query,
+    product_patterns = (
+        r'https?://(?:www\.)?deloox\.be/(?:en/|it/|nl/|fr/)?(?:product|produit)/\d+/[^"\'<>\s]+',
+        r'(?<![A-Za-z0-9])/(?:en/|it/|nl/|fr/)?(?:product|produit)/\d+/[^"\'<>\s]+',
+        r'(?<![A-Za-z0-9])/(?:en/|it/|nl/|fr/)?(?:product|produit)/\d+(?:/[^"\'<>\s]+)?',
     )
+
+    for pattern in product_patterns:
+        for match in re.finditer(pattern, raw, re.I):
+            candidate = match.group(0)
+            lo = max(0, match.start() - 1800)
+            hi = min(len(raw), match.end() + 1800)
+            context = raw[lo:hi]
+            add(candidate, context)
+
     return found
 
 
