@@ -326,15 +326,46 @@ def _candidate_product_urls(html, query):
         if len(found) > before:
             raw_count += 1
 
+    # Deloox product cards can keep the product URL outside href (for
+    # example in data-* attributes or serialized state). Scan every element
+    # attribute as well as the raw document, and support the live Belgian
+    # /produit/ path. This is deliberately generic: query matching is still
+    # performed against the URL slug/context, and the product page itself is
+    # validated again by _product().
+    attr_hits = 0
+    for tag in soup.find_all(True):
+        for value in tag.attrs.values():
+            values = value if isinstance(value, (list, tuple)) else [value]
+            for raw_value in values:
+                if not isinstance(raw_value, str):
+                    continue
+                for raw in re.findall(
+                    r'(?:(?:https?:)?//(?:www\.)?deloox\.be)?'
+                    r'/(?:en/|fr/|nl/|it/)?(?:produit|product)/\d+/[^"\'<>\\\s]+',
+                    raw_value,
+                    re.I,
+                ):
+                    attr_hits += 1
+                    add(raw)
+
+    raw_html = html.replace('\\/', '/')
     patterns = [
-        r'https?://(?:www\.)?deloox\.be/[^"\'>\s]+/product/[^"\'>\s]+',
-        r'["\']((?:/)?(?:en/)?product/[^"\']+)["\']',
+        r'https?://(?:www\.)?deloox\.be/(?:en/|fr/|nl/|it/)?(?:produit|product)/\d+/[^"\'<>\\\s]+',
+        r'(?:(?:/)(?:en/|fr/|nl/|it/)?(?:produit|product)/\d+/[^"\'<>\\\s]+)',
     ]
     for pattern in patterns:
-        for raw in re.findall(pattern, html, re.I):
+        for raw in re.findall(pattern, raw_html, re.I):
             add(raw)
 
-    _diag("candidate_urls", anchors=anchor_count, accepted=raw_count, total=len(found), query=query)
+    _diag(
+        "candidate_urls",
+        anchors=anchor_count,
+        accepted=raw_count,
+        attr_hits=attr_hits,
+        total=len(found),
+        sample=found[:10],
+        query=query,
+    )
     return found
 
 
