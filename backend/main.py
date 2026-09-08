@@ -1273,208 +1273,66 @@ def diagnostic_scraper_trace(
             session.close()
         except Exception:
             pass
-
-@app.get("/diagnostic-deloox-click")
-async def diagnostic_deloox_click(q: str = "Liquid Brun"):
-    """
-    Read-only Deloox diagnostic:
-    opens the real category page with Playwright, finds the Product Line
-    filter matching q, clicks it, and captures the network requests caused
-    by that click. This is diagnostic only and does not change production
-    search behavior.
-    """
-    import time as _diag_time
-    result = {
-        "ok": False,
-        "diagnostic": "deloox_filter_click_v1",
-        "query": q,
-        "base_url": "https://www.deloox.be",
-        "category_url": "https://www.deloox.be/categorie/1075732/parfum-homme.html",
-        "playwright": None,
-        "filter": None,
-        "requests_after_click": [],
-        "responses_after_click": [],
-        "error": None,
-    }
-
-    started = _diag_time.monotonic()
+@app.get("/diagnostic-deloox-js")
+async def diagnostic_deloox_js(q: str = "Liquid Brun"):
+    """Bounded diagnostic: inspect Deloox JS assets for the Product Line filter handler."""
+    import time as _t
+    import requests as _requests
+    from bs4 import BeautifulSoup as _BS
+    started=_t.monotonic()
+    out={"ok":False,"diagnostic":"deloox_filter_js_v1","query":q,
+         "page":"https://www.deloox.be/categorie/1075732/parfum-homme.html",
+         "scripts":[],"matches":[],"error":None}
+    headers={"User-Agent":"Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 Chrome/131 Safari/537.36"}
     try:
-        from playwright.async_api import async_playwright
-    except Exception as exc:
-        result["error"] = {
-            "type": "playwright_import_error",
-            "message": str(exc),
-        }
-        result["elapsed_ms"] = round((_diag_time.monotonic() - started) * 1000)
-        return result
-
-    async with async_playwright() as p:
-        browser = None
-        try:
-            browser = await p.chromium.launch(
-                headless=True,
-                args=[
-                    "--no-sandbox",
-                    "--disable-dev-shm-usage",
-                    "--disable-gpu",
-                ],
-            )
-            result["playwright"] = "chromium_launched"
-
-            page = await browser.new_page(
-                viewport={"width": 1440, "height": 1000},
-                user_agent=(
-                    "Mozilla/5.0 (X11; Linux x86_64) "
-                    "AppleWebKit/537.36 (KHTML, like Gecko) "
-                    "Chrome/131.0.0.0 Safari/537.36"
-                ),
-            )
-
-            captured_requests = []
-            captured_responses = []
-
-            async def on_request(req):
-                try:
-                    captured_requests.append({
-                        "method": req.method,
-                        "url": req.url,
-                        "resource_type": req.resource_type,
-                        "post_data": (req.post_data or "")[:4000],
-                    })
-                except Exception:
-                    pass
-
-            async def on_response(resp):
-                try:
-                    if resp.request.resource_type in {
-                        "xhr", "fetch", "document"
-                    }:
-                        captured_responses.append({
-                            "status": resp.status,
-                            "url": resp.url,
-                            "method": resp.request.method,
-                            "resource_type": resp.request.resource_type,
-                        })
-                except Exception:
-                    pass
-
-            page.on("request", on_request)
-            page.on("response", on_response)
-
-            await page.goto(
-                result["category_url"],
-                wait_until="domcontentloaded",
-                timeout=15000,
-            )
-
-            # Wait briefly for the filter list to be populated.
-            await page.wait_for_timeout(1200)
-
-            # Find the exact Product Line filter by visible title/text.
-            filter_locator = page.locator(
-                'li[data-prpid="12"][data-pvalue-id]'
-            ).filter(
-                has_text=re.compile(r"^\s*" + re.escape(q) + r"\s*$", re.I)
-            )
-
-            count = await filter_locator.count()
-
-            if count == 0:
-                # Fallback: title attribute is exact and is more reliable
-                # than rendered text for this site's filter markup.
-                filter_locator = page.locator(
-                    'li[data-prpid="12"][data-pvalue-id][title]'
-                ).filter(
-                    has=page.locator(
-                        'span.c-text'
-                    )
-                )
-                # Narrow it through JS so we can inspect the actual title.
-                matches = await page.locator(
-                    'li[data-prpid="12"][data-pvalue-id][title]'
-                ).evaluate_all(
-                    """(els, wanted) => els
-                      .filter(e => (e.getAttribute('title') || '').trim().toLowerCase()
-                        === wanted.trim().toLowerCase())
-                      .slice(0, 3)
-                      .map(e => ({
-                        title: e.getAttribute('title'),
-                        pvalue_id: e.getAttribute('data-pvalue-id'),
-                        prpid: e.getAttribute('data-prpid'),
-                        data_track: e.getAttribute('data-track'),
-                        text: (e.innerText || '').trim().slice(0, 200)
-                      }))""",
-                    q,
-                )
-                if matches:
-                    info = matches[0]
-                    filter_locator = page.locator(
-                        f'li[data-prpid="12"][data-pvalue-id="{info["pvalue_id"]}"]'
-                    )
-                    count = await filter_locator.count()
-
-            if count == 0:
-                result["filter"] = {
-                    "found": False,
-                    "message": "Exact Product Line filter not found in rendered DOM.",
-                }
-                result["error"] = {
-                    "type": "filter_not_found",
-                    "message": f'No Product Line filter matched "{q}".',
-                }
-                return result
-
-            info = await filter_locator.first.evaluate(
-                """e => ({
-                    title: e.getAttribute('title'),
-                    pvalue_id: e.getAttribute('data-pvalue-id'),
-                    prpid: e.getAttribute('data-prpid'),
-                    data_track: e.getAttribute('data-track'),
-                    onclick: e.getAttribute('onclick'),
-                    text: (e.innerText || '').trim().slice(0, 300),
-                    outer_html: e.outerHTML.slice(0, 5000)
-                })"""
-            )
-            result["filter"] = {"found": True, **info}
-
-            before_count = len(captured_requests)
-
-            await filter_locator.first.scroll_into_view_if_needed()
-            await page.wait_for_timeout(300)
-
-            # The site may use JS click handlers; force the click on the
-            # actual filter element and then allow the resulting XHR/navigation.
-            await filter_locator.first.click(force=True, timeout=5000)
-            await page.wait_for_timeout(5000)
-
-            result["requests_after_click"] = captured_requests[before_count:][:100]
-            result["responses_after_click"] = captured_responses[:100]
-            result["final_url"] = page.url
-
-            # Also report any newly rendered product/category links after the click.
-            result["product_links_after_click"] = await page.locator(
-                'a[href*="/produit/"]'
-            ).evaluate_all(
-                """els => els.slice(0, 100).map(a => ({
-                    href: a.href,
-                    text: (a.innerText || a.getAttribute('title') || '').trim().slice(0, 250)
-                }))"""
-            )
-
-            result["ok"] = True
-            return result
-
-        except Exception as exc:
-            result["error"] = {
-                "type": type(exc).__name__,
-                "message": str(exc)[:4000],
-            }
-            return result
-        finally:
-            if browser is not None:
-                try:
-                    await browser.close()
-                except Exception:
-                    pass
-            result["elapsed_ms"] = round((_diag_time.monotonic() - started) * 1000)
+        r=_requests.get(out["page"],headers=headers,timeout=8)
+        out["page_status"]=r.status_code
+        if r.status_code != 200:
+            out["error"]={"type":"page_http_error","status":r.status_code}
+            return out
+        soup=_BS(r.text,"html.parser")
+        urls=[]
+        for s in soup.find_all("script",src=True):
+            u=s.get("src","").strip()
+            if u.startswith("//"): u="https:"+u
+            elif u.startswith("/"): u="https://www.deloox.be"+u
+            if u.startswith("https://www.deloox.be/") and u not in urls:
+                urls.append(u)
+        # Prefer likely application/catalog/filter assets, but retain all names for traceability.
+        ranked=[]
+        keys=("filter","catalog","category","product","listing","app","main","bundle","shop","desktop","common")
+        for u in urls:
+            name=u.rsplit("/",1)[-1].lower()
+            score=sum(2 for k in keys if k in name)
+            ranked.append((score,u))
+        ranked.sort(reverse=True)
+        selected=[u for _,u in ranked[:8]]
+        out["scripts"]=[{"url":u,"selected":u in selected} for u in urls[:80]]
+        needles=["data-pvalue-id","data-filter-id","data-track","filters:","pvalue-id","filter_ligne-de-produits","filter-id","/api/","ajax"]
+        for u in selected:
+            try:
+                sr=_requests.get(u,headers=headers,timeout=4)
+                rec={"url":u,"status":sr.status_code,"bytes":len(sr.content)}
+                if sr.status_code==200:
+                    txt=sr.text
+                    hits=[]
+                    low=txt.lower()
+                    for needle in needles:
+                        pos=low.find(needle.lower())
+                        if pos>=0:
+                            a=max(0,pos-700); b=min(len(txt),pos+1800)
+                            hits.append({"needle":needle,"snippet":txt[a:b]})
+                    if hits:
+                        rec["hits"]=hits[:8]
+                        out["matches"].append(rec)
+            except Exception as e:
+                rec["error"]=str(e)[:300]
+        out["ok"]=True
+        out["selected_script_count"]=len(selected)
+        return out
+    except Exception as e:
+        out["error"]={"type":type(e).__name__,"message":str(e)[:1000]}
+        return out
+    finally:
+        out["elapsed_ms"]=round((_t.monotonic()-started)*1000)
 
