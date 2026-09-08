@@ -1164,7 +1164,27 @@ def diagnostic_scraper_trace(
 
             discover = getattr(module, "_discover", None)
             if not callable(discover):
-                raise RuntimeError("_discover_not_found")
+                available_private_callables = sorted(
+                    name for name in dir(module)
+                    if name.startswith("_") and callable(getattr(module, name, None))
+                )[:200]
+                trace["ok"] = False
+                trace["stage"] = "module_introspection"
+                trace["error"] = "_discover_not_found_in_loaded_module"
+                trace["module_introspection"] = {
+                    "available_private_callables": available_private_callables,
+                    "has_discover": False,
+                    "has_candidate_product_urls": callable(getattr(module, "_candidate_product_urls", None)),
+                    "has_category_product_line_links": callable(getattr(module, "_category_product_line_links", None)),
+                    "has_discover_from_categories": callable(getattr(module, "_discover_from_categories", None)),
+                    "has_product": callable(getattr(module, "_product", None)),
+                }
+                trace["http_calls"] = session.calls
+                trace["summary"] = {
+                    "http_call_count": len(session.calls),
+                    "total_elapsed_ms": round((_trace_time.monotonic() - started) * 1000),
+                }
+                return trace
             t0 = _trace_time.monotonic()
             urls = discover(session, query) or []
             trace["stages"]["discovery"] = {
