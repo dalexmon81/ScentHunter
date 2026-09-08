@@ -363,7 +363,7 @@ def _category_product_line_links(html, query):
 
         if parsed.netloc.lower() not in {"deloox.be", "www.deloox.be"}:
             return
-        if "/category/" not in parsed.path.lower():
+        if not re.search(r"/(?:category|categoria|categorie)/", parsed.path, re.I):
             return
 
         # Prefer an exact match on the category slug, but also accept a
@@ -392,8 +392,8 @@ def _category_product_line_links(html, query):
     raw = html.replace("\\\\/", "/")
     patterns = [
         r'(?:(?:"|\'))((?:https?:)?//(?:www\.)?deloox\.be)?'
-        r'(/(?:en/|it/|nl/)?category/\d+/[^"\'<>\s]+\.html)',
-        r'(?:(?:"|\'))((?:/)?(?:en/|it/|nl/)?category/\d+/[^"\'<>\s]+\.html)(?:(?:"|\'))',
+        r'(/(?:en/|it/|nl/|fr/)?(?:category|categoria|categorie)/\d+/[^"\'<>\s]+\.html)',
+        r'(?:(?:"|\'))((?:/)?(?:en/|it/|nl/|fr/)?(?:category|categoria|categorie)/\d+/[^"\'<>\s]+\.html)(?:(?:"|\'))',
     ]
     for pattern in patterns:
         for match in re.findall(pattern, raw, re.I):
@@ -406,21 +406,21 @@ def _category_product_line_links(html, query):
 
 
 def _category_pages(session):
-    # Broad Deloox entry points. Pagination and Product Line links are followed
-    # so a family is not limited to the first visible result.
+    """Current generic fragrance catalog roots on Deloox.be.
+
+    The old /category/... roots are obsolete on deloox.be and return 404.
+    The live Belgian site exposes its catalog under /categorie/... .
+    These are generic catalog roots, not product-specific seeds.
+    """
     return (
-        # Current Deloox fragrance roots.
-        BASE_URL + "/category/1000054/mens-fragrances.html",
-        BASE_URL + "/category/1075639/womens-fragrances.html",
-        # Legacy roots kept as fallback.
-        BASE_URL + "/category/1075660/womens-perfume.html",
-        BASE_URL + "/category/1075750/mens-perfume.html",
-        BASE_URL + "/category/1025540/trending.html",
+        BASE_URL + "/categorie/1075732/parfum-homme.html",
+        BASE_URL + "/categorie/1000063/parfum-femme.html",
+        BASE_URL + "/categorie/1075918/parfum-mixte.html",
     )
 
 
 
-def _pagination_urls(page_url, max_pages=8):
+def _pagination_urls(page_url, max_pages=100):
     base = page_url.split("?")[0]
     for page in range(1, max_pages + 1):
         yield f"{base}?page={page}"
@@ -474,7 +474,7 @@ def _discover_from_categories(session, query, max_urls=120):
 
         expanded = []
         for page_url in page_candidates:
-            expanded.extend(_pagination_urls(page_url, max_pages=8))
+            expanded.extend(_pagination_urls(page_url, max_pages=100))
 
         _diag("expanded_pages", root=root, count=len(expanded))
         for page_url in expanded:
@@ -495,7 +495,7 @@ def _discover_from_categories(session, query, max_urls=120):
             line_links = _category_product_line_links(page.text, query)
             _diag("page_line_links", page=page_url, count=len(line_links), links=line_links[:20])
             for line_url in line_links:
-                for lp in _pagination_urls(line_url, max_pages=8):
+                for lp in _pagination_urls(line_url, max_pages=100):
                     if lp in visited:
                         continue
                     visited.add(lp)
