@@ -1273,3 +1273,127 @@ def diagnostic_scraper_trace(
             session.close()
         except Exception:
             pass
+
+# ===== READ-ONLY DELOOX DIAGNOSTIC =====
+# This route is intentionally inside the real main.py so Railway exposes it.
+# It does not modify the Deloox scraper or the normal search flow.
+
+@app.get("/diagnose-deloox")
+def diagnose_deloox(q: str = Query(..., min_length=1, description="Perfume to diagnose on Deloox.be")):
+    import traceback as _d_traceback
+    import time as _d_time
+    from urllib.parse import urlparse as _d_urlparse
+
+    query = str(q or "").strip()
+    report = {
+        "ok": True,
+        "diagnostic": "Deloox live scraper diagnostic",
+        "query": query,
+        "canonical_domain": "https://www.deloox.be",
+        "stage": "start",
+    }
+
+    try:
+        # Resolve the exact scraper used by the production application.
+        report["stage"] = "resolve_scraper"
+        scraper = None
+        resolver = getattr(_legacy, "load_scraper", None)
+        resolver_error = None
+
+        if callable(resolver):
+            try:
+                scraper = resolver("Deloox")
+                report["resolver"] = "main_legacy.load_scraper"
+            except Exception as exc:
+                resolver_error = f"{type(exc).__name__}: {exc}"
+
+        if scraper is None:
+            import_candidates = [
+                "scrapers.deloox.scraper",
+                "scrapers.deloox",
+                "deloox_scraper",
+                "scraper_deloox",
+            ]
+            for module_name in import_candidates:
+                try:
+                    scraper = importlib.import_module(module_name)
+                    report["resolver"] = module_name
+                    break
+                except Exception as exc:
+                    resolver_error = f"{module_name}: {type(exc).__name__}: {exc}"
+
+        if scraper is None:
+            report["ok"] = False
+            report["stage"] = "resolve_scraper_failed"
+            report["error"] = "Deloox scraper could not be imported/resolved"
+            report["resolver_error"] = resolver_error
+            return report
+
+        report["scraper_module"] = getattr(scraper, "__file__", None)
+        report["base_url"] = getattr(scraper, "BASE_URL", None)
+        report["has_search"] = callable(getattr(scraper, "search", None))
+        report["has_diagnose_search"] = callable(getattr(scraper, "diagnose_search", None))
+        report["stage"] = "scraper_resolved"
+
+        # If the scraper already has its own diagnostic, execute that exact
+        # diagnostic. Otherwise run a strictly read-only HTTP probe against
+        # the canonical Belgian domain.
+        diagnose_fn = getattr(scraper, "diagnose_search", None)
+        if callable(diagnose_fn):
+            report["stage"] = "run_scraper_diagnose_search"
+            started = _d_time.perf_counter()
+            try:
+                requests_module = getattr(scraper, "requests", None)
+                if requests_module is not None and hasattr(requests_module, "Session"):
+                    session = requests_module.Session()
+                    try:
+                        diagnostic = diagnose_fn(session, query)
+                    finally:
+                        session.close()
+                else:
+                    diagnostic = diagnose_fn(query)
+                report["diagnostic_result"] = diagnostic
+                report["stage"] = "done"
+                report["elapsed_s"] = round(_d_time.perf_counter() - started, 3)
+                return report
+            except Exception as exc:
+                report["stage"] = "scraper_diagnose_error"
+                report["error"] = f"{type(exc).__name__}: {exc}"
+                report["traceback"] = _d_traceback.format_exc()
+                return report
+
+        # Fallback diagnostic: inspect the exact scraper's callable discovery
+        # helpers without changing any scraper state.
+        report["stage"] = "fallback_inspection"
+        report["functions"] = {
+            name: callable(getattr(scraper, name, None))
+            for name in (
+                "_discover",
+                "_discover_from_categories",
+                "_candidate_product_urls",
+                "_category_product_line_links",
+                "_category_pages",
+                "_sitemap_category_urls",
+                "_sitemap_product_candidates",
+                "_parse_html",
+                "_get",
+            )
+        }
+
+        base = str(getattr(scraper, "BASE_URL", "") or "").rstrip("/")
+        report["base_netloc"] = _d_urlparse(base).netloc.lower() if base else None
+        report["domain_check"] = {
+            "is_deloox_be": _d_urlparse(base).netloc.lower() in {"deloox.be", "www.deloox.be"},
+            "contains_deloox_com": "deloox.com" in str(base).lower(),
+            "contains_deloox_nl": "deloox.nl" in str(base).lower(),
+        }
+        report["note"] = "The installed scraper has no diagnose_search(); only read-only structure was inspected."
+        report["stage"] = "done"
+        return report
+
+    except Exception as exc:
+        report["ok"] = False
+        report["stage"] = "fatal_error"
+        report["error"] = f"{type(exc).__name__}: {exc}"
+        report["traceback"] = _d_traceback.format_exc()
+        return report
