@@ -557,6 +557,60 @@ def _sitemap_product_urls(session, query, max_sitemaps=12, max_urls=80):
     return product_urls
 
 
+def _sitemap_category_urls(session, query, max_sitemaps=12, max_urls=30):
+    """Discover relevant Deloox.be category/Product-line pages from sitemaps."""
+    query_tokens = tokens(query)
+    if not query_tokens:
+        return []
+
+    sitemap_roots = (
+        BASE_URL + "/sitemap.xml",
+        BASE_URL + "/sitemap_index.xml",
+        BASE_URL + "/sitemap-index.xml",
+        BASE_URL + "/en/sitemap.xml",
+    )
+    pending = list(sitemap_roots)
+    seen_sitemaps = set()
+    category_urls = []
+    seen_categories = set()
+
+    while pending and len(seen_sitemaps) < max_sitemaps and len(category_urls) < max_urls:
+        sitemap_url = pending.pop(0)
+        if sitemap_url in seen_sitemaps:
+            continue
+        seen_sitemaps.add(sitemap_url)
+        try:
+            r = session.get(sitemap_url, headers=HEADERS, timeout=TIMEOUT)
+        except requests.RequestException:
+            continue
+        if r.status_code >= 400:
+            continue
+
+        body = (r.text or "").lstrip()
+        ctype = (r.headers.get("content-type") or "").lower()
+        if "xml" not in ctype and not body.startswith(("<?xml", "<urlset", "<sitemapindex")):
+            continue
+
+        soup = BeautifulSoup(r.text, "xml")
+        for loc in soup.find_all("loc"):
+            value = clean(loc.get_text())
+            if not value:
+                continue
+            low = value.lower()
+            if re.search(r"/(?:category|categoria|categorie)/", low) and low.endswith(".html"):
+                slug = low.rsplit("/", 1)[-1][:-5]
+                if query_tokens.issubset(tokens(slug)) and value not in seen_categories:
+                    seen_categories.add(value)
+                    category_urls.append(value)
+                    if len(category_urls) >= max_urls:
+                        break
+            elif low.endswith(".xml") or "sitemap" in low:
+                if value not in seen_sitemaps:
+                    pending.append(value)
+
+    return category_urls[:max_urls]
+
+
 def _discover(session, q):
     """Discover Deloox.be product pages generically for the requested query."""
     urls = []
