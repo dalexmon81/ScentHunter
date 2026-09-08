@@ -1275,7 +1275,7 @@ def diagnostic_scraper_trace(
             pass
 
 
-@app.route("/debug/deloox-module")
+@app.get("/debug/deloox-module")
 def debug_deloox_module():
     import importlib
     import hashlib
@@ -1306,8 +1306,13 @@ def debug_deloox_module():
     private_callables = [name for name in callables if name.startswith("_")]
 
     # Controlla presenza funzioni specifiche
-    expected_funcs = ["_discover", "_discover_from_categories", "_candidate_product_urls", 
-                      "_category_product_line_links", "_product"]
+    expected_funcs = [
+        "_discover",
+        "_discover_from_categories",
+        "_candidate_product_urls",
+        "_category_product_line_links",
+        "_product",
+    ]
     func_presence = {f: hasattr(module, f) for f in expected_funcs}
 
     return {
@@ -1315,10 +1320,10 @@ def debug_deloox_module():
         "file_path": file_path,
         "spec_origin": spec_origin_path,
         "sha256": sha256,
-        "line_count": line_path,
+        "line_count": line_count,
         "all_callables": callables,
         "private_callables": private_callables,
         "expected_functions": func_presence,
-        "content_preview": content[:2000] if content else None,  # Prime 2000 char
+        "content_preview": content[:2000] if content else None,
     }
 
