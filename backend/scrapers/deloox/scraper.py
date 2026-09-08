@@ -371,141 +371,92 @@ def _candidate_product_urls(html, query):
 
 
 def _category_product_line_links(html, query):
-    """Find matching Deloox.be Product Line category URLs.
+    """Find matching Deloox.be Product Line category URLs, fast.
 
-    Deloox's filter markup is not stable: depending on the response it can
-    contain normal hrefs, relative URLs, escaped JSON URLs, or URLs embedded
-    in data attributes/scripts.  We therefore normalize the document first
-    and extract every Deloox.be category URL, then match the category slug.
+    The live category pages are very large (multi-megabyte).  Do not build a
+    BeautifulSoup tree or walk every DOM attribute just to discover a single
+    Product Line link.  Scan the raw response first, then use a small amount
+    of rendered-text context only when needed.
     """
-    soup = BeautifulSoup(html, "html.parser")
+    text = str(html or "")
     links = []
     seen = set()
     q_tokens = tokens(query)
 
-    def add(raw_url, label=""):
+    def normalize_url(raw_url):
         raw_url = str(raw_url or "").strip()
         if not raw_url:
-            return
-
-        # Repeatedly unescape the slash forms used by HTML/JSON/JS.
+            return ""
         for _ in range(3):
-            raw_url = (
-                raw_url
-                .replace("\\/", "/")
-                .replace("\\u002F", "/")
-                .replace("\\u002f", "/")
-            )
+            raw_url = (raw_url
+                       .replace("\\/", "/")
+                       .replace("\\u002F", "/")
+                       .replace("\\u002f", "/"))
         raw_url = htmllib.unescape(raw_url)
+        return urljoin(BASE_URL, raw_url).split("#")[0].split("?")[0]
 
-        url = urljoin(BASE_URL, raw_url).split("#")[0].split("?")[0]
+    def add(raw_url, label=""):
+        url = normalize_url(raw_url)
+        if not url:
+            return
         try:
             parsed = urlparse(url)
         except Exception:
             return
-
         if parsed.netloc.lower() not in {"deloox.be", "www.deloox.be"}:
             return
         if not re.search(r"/(?:category|categoria|categorie)/", parsed.path, re.I):
             return
-
-        slug_text = parsed.path.rsplit("/", 1)[-1]
-        if slug_text.lower().endswith(".html"):
-            slug_text = slug_text[:-5]
-
-        if not (
-            q_tokens.issubset(tokens(slug_text))
-            or q_tokens.issubset(tokens(label))
-        ):
+        slug = parsed.path.rsplit("/", 1)[-1]
+        if slug.lower().endswith(".html"):
+            slug = slug[:-5]
+        if not (q_tokens.issubset(tokens(slug)) or q_tokens.issubset(tokens(label))):
             return
+        if url not in seen:
+            seen.add(url)
+            links.append(url)
 
-        if url in seen:
-            return
-        seen.add(url)
-        links.append(url)
-
-    # 1) Normal anchors and every data-* / href attribute.
-    for tag in soup.find_all(True):
-        label = tag.get_text(" ", strip=True)
-        for attr_name, value in tag.attrs.items():
-            values = value if isinstance(value, (list, tuple)) else [value]
-            for value_item in values:
-                if not isinstance(value_item, str):
-                    continue
-                add(value_item, label)
-        if tag.name == "a" and tag.get("href"):
-            add(tag.get("href"), label)
-
-    # 2) Raw document.  Do NOT require quotes around the URL: Deloox can
-    # serialize these URLs inside JS/JSON with escaped slashes.
-    raw = html
+    # Raw URL extraction is the cheap path and handles JSON/JS serialization.
+    raw = text
     for _ in range(3):
-        raw = (
-            raw
-            .replace("\\/", "/")
-            .replace("\\u002F", "/")
-            .replace("\\u002f", "/")
-        )
+        raw = (raw.replace("\\/", "/")
+                  .replace("\\u002F", "/")
+                  .replace("\\u002f", "/"))
     raw = htmllib.unescape(raw)
 
-    patterns = [
-        r'https?://(?:www\.)?deloox\.be/(?:'
-        r'en/|it/|nl/|fr/)?(?:category|categoria|categorie)/\d+/[^"\'<>\s]+?\.html',
-        r'(?<![A-Za-z0-9])/(?:'
-        r'en/|it/|nl/|fr/)?(?:category|categoria|categorie)/\d+/[^"\'<>\s]+?\.html',
-    ]
+    patterns = (
+        r'https?://(?:www\.)?deloox\.be/(?:en/|it/|nl/|fr/)?(?:category|categoria|categorie)/\d+/[^"\'<>\s]+?\.html',
+        r'(?<![A-Za-z0-9])/(?:en/|it/|nl/|fr/)?(?:category|categoria|categorie)/\d+/[^"\'<>\s]+?\.html',
+    )
+    raw_category_count = 0
     for pattern in patterns:
         for raw_url in re.findall(pattern, raw, re.I):
+            raw_category_count += 1
             add(raw_url)
 
-    # 3) Some Deloox responses expose the Product Line filter as data/JSON
-    # rather than as a literal /categorie/<id>/<slug>.html URL.  In that
-    # response shape the previous URL-only extraction legitimately finds
-    # nothing even though the page visibly contains the requested Product
-    # Line.  Recover the category id generically from the local context of
-    # the requested label, then construct the normal Belgian category URL.
+    # If the exact Product Line URL is not serialized, recover its category id
+    # from a tight window around the requested label.  This avoids reparsing a
+    # 6 MB page with BeautifulSoup and is intentionally generic.
+    candidate_ids = []
     if not links and q_tokens:
-        def slugify(value):
-            import unicodedata
-            value = unicodedata.normalize("NFKD", str(value or ""))
-            value = "".join(ch for ch in value if not unicodedata.combining(ch))
-            value = re.sub(r"[^a-zA-Z0-9]+", "-", value).strip("-").lower()
-            return value
-
-        normalized_raw = raw
         q_norm = norm(query)
-        q_compact = re.sub(r"\s+", " ", q_norm).strip()
-        contexts = []
-
-        # Search both the raw response and rendered text.  The rendered text
-        # catches filter labels that are present as DOM text but whose URL is
-        # generated by JavaScript.
-        raw_lc = normalized_raw.lower()
+        raw_norm = norm(raw)
         start = 0
+        contexts = []
         while True:
-            pos = raw_lc.find(q_compact, start)
+            pos = raw_norm.find(q_norm, start)
             if pos < 0:
                 break
-            contexts.append(normalized_raw[max(0, pos - 2500): pos + 2500])
-            start = pos + max(1, len(q_compact))
-            if len(contexts) >= 20:
+            contexts.append(raw[max(0, pos - 4000):pos + 4000])
+            start = pos + max(1, len(q_norm))
+            if len(contexts) >= 8:
                 break
 
-        rendered = soup.get_text(" ", strip=True)
-        rendered_norm = norm(rendered)
-        if q_compact and q_compact in rendered_norm:
-            # Use the first visible occurrence as an additional broad context.
-            rp = rendered_norm.find(q_compact)
-            contexts.append(rendered[max(0, rp - 2500): rp + 2500])
-
-        candidate_ids = []
         id_patterns = (
-            r"(?:category|categorie|product.?line|line)[^0-9]{0,80}(?:id|value)?[^0-9]{0,20}(\d{4,9})",
-            r"(?:id|value)[^0-9]{0,20}(\d{4,9})[^A-Za-z]{0,80}(?:category|categorie|product.?line|line)",
-            r"(?:categoryId|category_id|productLineId|product_line_id)\s*[=:]\s*[\"']?(\d{4,9})",
-            r"[\"'](?:categoryId|category_id|productLineId|product_line_id)[\"']?\s*:\s*(\d{4,9})",
-            r"[\"']id[\"']?\s*:\s*(\d{4,9})",
-            r"(?:data-category-id|data-product-line-id)\s*=\s*[\"']?(\d{4,9})",
+            r'(?:categoryId|category_id|productLineId|product_line_id)["\']?\s*[:=]\s*["\']?(\d{4,9})',
+            r'(?:data-category-id|data-product-line-id)\s*=\s*["\']?(\d{4,9})',
+            r'(?:category|categorie|product.?line)[^0-9]{0,80}(\d{4,9})',
+            r'(\d{4,9})[^A-Za-z]{0,80}(?:category|categorie|product.?line)',
         )
         for context in contexts:
             for pattern in id_patterns:
@@ -513,27 +464,14 @@ def _category_product_line_links(html, query):
                     if value not in candidate_ids:
                         candidate_ids.append(value)
 
-        slug = slugify(query)
+        slug = re.sub(r"[^a-zA-Z0-9]+", "-", query).strip("-").lower()
         for category_id in candidate_ids[:20]:
-            candidate = f"{BASE_URL}/categorie/{category_id}/{slug}.html"
-            if candidate in seen:
-                continue
-            # Do not accept a guessed id blindly: the caller will fetch the
-            # category, but the URL is structurally valid only after the
-            # response itself confirms the requested Product Line.
-            links.append(candidate)
-            seen.add(candidate)
-            break
+            add(f"{BASE_URL}/categorie/{category_id}/{slug}.html", query)
+            if links:
+                break
 
-        _diag(
-            "category_context_fallback",
-            query=query,
-            candidate_ids=candidate_ids[:20],
-            slug=slug,
-            links=links[:20],
-        )
-
-    _diag("category_links", accepted=len(links), query=query, links=links[:20])
+    _diag("category_links", accepted=len(links), raw_hits=raw_category_count,
+          candidate_ids=candidate_ids[:20], query=query, links=links[:20])
     return links
 
 def _category_pages(session):
@@ -551,7 +489,7 @@ def _category_pages(session):
 
 
 
-def _pagination_urls(page_url, max_pages=100):
+def _pagination_urls(page_url, max_pages=3):
     base = page_url.split("?")[0]
     for page in range(1, max_pages + 1):
         yield f"{base}?page={page}"
@@ -585,7 +523,6 @@ def _discover_from_categories(session, query, max_urls=120):
     _diag("category_roots", count=len(roots), roots=roots, query=query)
 
     for root in roots:
-        page_candidates = [root]
         try:
             r = session.get(root, headers=HEADERS, timeout=TIMEOUT)
         except requests.RequestException as exc:
@@ -595,55 +532,40 @@ def _discover_from_categories(session, query, max_urls=120):
         if r.status_code >= 400:
             continue
 
+        # First inspect the root itself.  This is the only root-page parse.
         if add_products(r.text):
             return urls[:max_urls]
 
-        # Discover Product Line/category links whose visible label matches the query.
+        # Discover the exact Product Line page.  If none is found, do NOT
+        # crawl the root's pagination: the old 100-page expansion was the
+        # source of the multi-minute diagnostic/search hang.
         line_links = _category_product_line_links(r.text, query)
         _diag("root_line_links", root=root, count=len(line_links), links=line_links[:20])
-        page_candidates.extend(line_links)
 
-        expanded = []
-        for page_url in page_candidates:
-            expanded.extend(_pagination_urls(page_url, max_pages=100))
+        for line_url in line_links:
+            if line_url in visited:
+                continue
+            visited.add(line_url)
 
-        _diag("expanded_pages", root=root, count=len(expanded))
-        for page_url in expanded:
-            if page_url in visited:
-                continue
-            visited.add(page_url)
-            try:
-                page = session.get(page_url, headers=HEADERS, timeout=TIMEOUT)
-            except requests.RequestException as exc:
-                _diag("page_fetch_error", url=page_url, error=repr(exc))
-                continue
-            _diag("page_fetch", url=page_url, status=page.status_code, bytes=len(page.text or ""))
-            if page.status_code >= 400:
-                continue
-            if add_products(page.text):
-                return urls[:max_urls]
-            # A later page may expose the exact Product Line link.
-            line_links = _category_product_line_links(page.text, query)
-            _diag("page_line_links", page=page_url, count=len(line_links), links=line_links[:20])
-            for line_url in line_links:
-                for lp in _pagination_urls(line_url, max_pages=100):
-                    if lp in visited:
-                        continue
-                    visited.add(lp)
-                    try:
-                        line_page = session.get(lp, headers=HEADERS, timeout=TIMEOUT)
-                    except requests.RequestException as exc:
-                        _diag("line_fetch_error", url=lp, error=repr(exc))
-                        continue
-                    _diag("line_fetch", url=lp, status=line_page.status_code, bytes=len(line_page.text or ""))
-                    if line_page.status_code >= 400:
-                        continue
-                    if add_products(line_page.text):
-                        return urls[:max_urls]
+            # Fetch the exact Product Line page first, then at most 3 pages of
+            # that targeted result if necessary.
+            for page_url in _pagination_urls(line_url, max_pages=3):
+                if page_url in visited:
+                    continue
+                visited.add(page_url)
+                try:
+                    page = session.get(page_url, headers=HEADERS, timeout=TIMEOUT)
+                except requests.RequestException as exc:
+                    _diag("page_fetch_error", url=page_url, error=repr(exc))
+                    continue
+                _diag("page_fetch", url=page_url, status=page.status_code, bytes=len(page.text or ""))
+                if page.status_code >= 400:
+                    continue
+                if add_products(page.text):
+                    return urls[:max_urls]
 
     _diag("category_discovery_done", count=len(urls), urls=urls[:20], query=query)
     return urls[:max_urls]
-
 
 def _sitemap_product_urls(session, query, max_sitemaps=12, max_urls=80):
     query_tokens = tokens(query)
