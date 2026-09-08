@@ -275,7 +275,7 @@ def _product(url, html, query):
     }
 
 
-def _candidate_product_urls(html, query=None):
+def _candidate_product_urls(html, query=None, accept_all_products=False):
     """Extract only product URLs with a LOCAL match to the query.
 
     Deloox can serialize many product URLs inside one large script. The URL
@@ -316,7 +316,11 @@ def _candidate_product_urls(html, query=None):
         if url in seen:
             return
 
-        if not matches(f"{context} {url}", query):
+        # Search-result pages are already scoped by Deloox. Collect their product
+        # URLs during discovery and let _product() perform the authoritative
+        # name/query validation. Category/sitemap discovery keeps the stricter
+        # local match unless explicitly opened in search mode.
+        if not accept_all_products and not matches(f"{context} {url}", query):
             return
 
         seen.add(url)
@@ -842,28 +846,42 @@ def _discover(session, q):
     # The current /en/search?q=... route is known to return a real HTML result
     # page. Try it first; the other parameter variants are compatibility
     # fallbacks for older Deloox deployments.
-    endpoints = [
-        BASE_URL + "/en/search?q=" + quote_plus(q),
-        BASE_URL + "/en/search?query=" + quote_plus(q),
-        BASE_URL + "/en/search?search=" + quote_plus(q),
-        BASE_URL + "/en?search=" + quote_plus(q),
-        BASE_URL + "/search?q=" + quote_plus(q),
-        BASE_URL + "/search?query=" + quote_plus(q),
-    ]
+    discovery_queries = [q]
+    parts = q.split()
+    removable = {"parfum", "perfume", "eau", "de", "toilette", "edt", "edp", "extrait", "extract"}
+    broad = " ".join(p for p in parts if p.lower() not in removable).strip()
+    if broad and norm(broad) != norm(q):
+        discovery_queries.append(broad)
 
-    for endpoint in endpoints:
-        try:
-            r = session.get(endpoint, headers=HEADERS, timeout=TIMEOUT)
-        except requests.RequestException:
-            continue
+    endpoints = (
+        "/en/search?q=",
+        "/en/search?query=",
+        "/en/search?search=",
+        "/en?search=",
+        "/search?q=",
+        "/search?query=",
+    )
 
-        if r.status_code >= 400:
-            continue
+    for discovery_query in discovery_queries:
+        for route in endpoints:
+            endpoint = BASE_URL + route + quote_plus(discovery_query)
+            try:
+                r = session.get(endpoint, headers=HEADERS, timeout=TIMEOUT)
+            except requests.RequestException:
+                continue
 
-        candidates = _candidate_product_urls(r.text, q)
-        if candidates:
-            add_many(candidates)
-            return urls[:80]
+            if r.status_code >= 400:
+                continue
+
+            # Do not require the query to be adjacent to the product URL here.
+            # Search results can serialize numeric product URLs separately from
+            # their visible title. Final validation still happens in _product().
+            candidates = _candidate_product_urls(
+                r.text, q, accept_all_products=True
+            )
+            if candidates:
+                add_many(candidates)
+                return urls[:80]
 
     # 2) SECONDARY: broad categories and matching Product Line links.
     # This is slower, so it is used only when the search surface did not expose
