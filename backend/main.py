@@ -1369,3 +1369,68 @@ def diagnostic_scraper_trace(
             session.close()
         except Exception:
             pass
+
+
+# ===== TEMPORARY LIGHTWEIGHT DELOOX FILTER DIAGNOSTIC =====
+_DELOOX_LIGHT_BASE = "https://www.deloox.be"
+
+@app.get("/diagnostic-deloox-filter-lite")
+def diagnostic_deloox_filter_lite(q: str = Query("Liquid Brun", min_length=1, max_length=120)):
+    """One bounded Deloox request only. Never runs the search engine or scraper discovery."""
+    import time as _lite_time
+    from urllib.parse import urljoin as _lite_urljoin
+
+    started = _lite_time.monotonic()
+    url = _DELOOX_LIGHT_BASE + "/categorie/1075732/parfum-homme.html"
+    headers = {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/128.0 Safari/537.36",
+        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+        "Accept-Language": "nl-BE,nl;q=0.9,en;q=0.8",
+    }
+    out = {"ok": False, "query": q, "url": url, "timeout_seconds": 8}
+    try:
+        r = requests.get(url, headers=headers, timeout=(4, 8), allow_redirects=True)
+        body = r.text or ""
+        low = body.casefold()
+        out.update({
+            "ok": True,
+            "status": r.status_code,
+            "final_url": r.url,
+            "elapsed_ms": round((_lite_time.monotonic() - started) * 1000),
+            "bytes": len(r.content),
+            "query_found": q.casefold() in low,
+            "token_hits": {t: t.casefold() in low for t in re.findall(r"[a-z0-9]+", q.casefold())},
+            "filter_marker_counts": {
+                "data-pvalue-id=512883": low.count('data-pvalue-id="512883"'),
+                "data-prpid=12": low.count('data-prpid="12"'),
+                "filters:12-512883": low.count("filters:12-512883"),
+                "category-1122039": low.count("1122039"),
+                "product-1355229": low.count("1355229"),
+                "product_links": low.count("/produit/"),
+            },
+            "matching_contexts": [],
+            "nearby_urls": [],
+        })
+        needles = [q, "512883", "filters:12-512883", "1122039", "1355229"]
+        contexts = []
+        seen = set()
+        for needle in needles:
+            pos = low.find(needle.casefold())
+            if pos >= 0 and pos not in seen:
+                seen.add(pos)
+                a = max(0, pos - 1200); b = min(len(body), pos + len(needle) + 1800)
+                contexts.append({"needle": needle, "offset": pos, "text": body[a:b]})
+        out["matching_contexts"] = contexts[:6]
+        urls = set()
+        for raw in re.findall(r'https?://(?:www\.)?deloox\.be/[^"\'<>\s]+', body, flags=re.I):
+            urls.add(raw.replace("\\/", "/").rstrip(".,);]"))
+        for raw in re.findall(r'(?:href|action|url|endpoint|src)\s*[:=]\\s*["\']([^"\']+)', body, flags=re.I):
+            if raw.startswith("/"):
+                urls.add(_lite_urljoin(_DELOOX_LIGHT_BASE, raw))
+            elif "deloox.be" in raw:
+                urls.add(raw.replace("\\/", "/"))
+        out["nearby_urls"] = sorted(u for u in urls if any(x in u.casefold() for x in ("filter", "ajax", "categorie", "search", "product", "1122039")))[:100]
+        out["elapsed_ms"] = round((_lite_time.monotonic() - started) * 1000)
+    except Exception as exc:
+        out.update({"error": f"{type(exc).__name__}: {exc}", "elapsed_ms": round((_lite_time.monotonic() - started) * 1000)})
+    return out
