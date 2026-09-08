@@ -420,7 +420,7 @@ def _category_product_line_links(html, query):
 
     # Deloox can expose filter/category links inside JSON, data attributes,
     # escaped URLs, or scripts without an <a> element.
-    raw = html.replace("\\\\/", "/")
+    raw = html.replace("\\/", "/")
     patterns = [
         r'(?:(?:"|\'))((?:https?:)?//(?:www\.)?deloox\.be)?'
         r'(/(?:en/|it/|nl/|fr/)?(?:category|categoria|categorie)/\d+/[^"\'<>\s]+\.html)',
