@@ -786,18 +786,6 @@ def diagnostic_scraper_deep(
         "store": store_key,
         "query": query,
         "module": module.__name__,
-        "module_file": module_file,
-        "module_origin": module_origin,
-        "module_source_sha256": module_source_sha256,
-        "module_source_lines": module_source_lines,
-        "module_source_error": module_source_error,
-        "module_source_contains": {
-            "_discover": "_discover" in module_source_text,
-            "_candidate_product_urls": "_candidate_product_urls" in module_source_text,
-            "_category_product_line_links": "_category_product_line_links" in module_source_text,
-            "_discover_from_categories": "_discover_from_categories" in module_source_text,
-            "_product": "_product" in module_source_text,
-        },
         "base_url": base,
         "configured_timeout": timeout,
         "stages": {},
@@ -811,27 +799,7 @@ def diagnostic_scraper_deep(
             t0 = _deep_time.monotonic()
             discover = getattr(module, "_discover", None)
             if not callable(discover):
-                available_private_callables = sorted(
-                    name for name in dir(module)
-                    if name.startswith("_") and callable(getattr(module, name, None))
-                )[:200]
-                trace["ok"] = False
-                trace["stage"] = "module_introspection"
-                trace["error"] = "_discover_not_found_in_loaded_module"
-                trace["module_introspection"] = {
-                    "available_private_callables": available_private_callables,
-                    "has_discover": False,
-                    "has_candidate_product_urls": callable(getattr(module, "_candidate_product_urls", None)),
-                    "has_category_product_line_links": callable(getattr(module, "_category_product_line_links", None)),
-                    "has_discover_from_categories": callable(getattr(module, "_discover_from_categories", None)),
-                    "has_product": callable(getattr(module, "_product", None)),
-                }
-                trace["http_calls"] = session.calls
-                trace["summary"] = {
-                    "http_call_count": len(session.calls),
-                    "total_elapsed_ms": round((_trace_time.monotonic() - started) * 1000),
-                }
-                return trace
+                raise RuntimeError("_discover_not_found")
             urls = discover(session, query) or []
             result["stages"]["discovery"] = {
                 "elapsed_ms": round((_deep_time.monotonic() - t0) * 1000),
@@ -1005,23 +973,6 @@ def diagnostic_scraper_trace(
     except Exception as exc:
         return {"ok": False, "diagnostic": "scraper_trace_v2", "stage": "module_load", "error": f"{type(exc).__name__}: {exc}"}
 
-    # Module provenance: read-only diagnostics of the ACTUAL module loaded by Python.
-    module_file = str(getattr(module, "__file__", "") or "")
-    module_origin = str(getattr(getattr(module, "__spec__", None), "origin", "") or "")
-    module_source_sha256 = None
-    module_source_lines = None
-    module_source_error = None
-    module_source_text = ""
-    try:
-        if module_file:
-            with open(module_file, "rb") as _mf:
-                _raw_module = _mf.read()
-            module_source_sha256 = hashlib.sha256(_raw_module).hexdigest()
-            module_source_lines = _raw_module.count(b"\\n") + 1
-            module_source_text = _raw_module.decode("utf-8", errors="replace")
-    except Exception as _exc:
-        module_source_error = f"{type(_exc).__name__}: {_exc}"
-
     base = str(getattr(module, "BASE_URL", ""))
     headers = dict(getattr(module, "HEADERS", {}) or {})
     timeout = getattr(module, "TIMEOUT", None)
@@ -1164,27 +1115,7 @@ def diagnostic_scraper_trace(
 
             discover = getattr(module, "_discover", None)
             if not callable(discover):
-                available_private_callables = sorted(
-                    name for name in dir(module)
-                    if name.startswith("_") and callable(getattr(module, name, None))
-                )[:200]
-                trace["ok"] = False
-                trace["stage"] = "module_introspection"
-                trace["error"] = "_discover_not_found_in_loaded_module"
-                trace["module_introspection"] = {
-                    "available_private_callables": available_private_callables,
-                    "has_discover": False,
-                    "has_candidate_product_urls": callable(getattr(module, "_candidate_product_urls", None)),
-                    "has_category_product_line_links": callable(getattr(module, "_category_product_line_links", None)),
-                    "has_discover_from_categories": callable(getattr(module, "_discover_from_categories", None)),
-                    "has_product": callable(getattr(module, "_product", None)),
-                }
-                trace["http_calls"] = session.calls
-                trace["summary"] = {
-                    "http_call_count": len(session.calls),
-                    "total_elapsed_ms": round((_trace_time.monotonic() - started) * 1000),
-                }
-                return trace
+                raise RuntimeError("_discover_not_found")
             t0 = _trace_time.monotonic()
             urls = discover(session, query) or []
             trace["stages"]["discovery"] = {
@@ -1342,3 +1273,52 @@ def diagnostic_scraper_trace(
             session.close()
         except Exception:
             pass
+
+
+@app.route("/debug/deloox-module")
+def debug_deloox_module():
+    import importlib
+    import hashlib
+    import inspect
+    import os
+
+    module = importlib.import_module("scrapers.deloox.scraper")
+
+    # Percorso assoluto del file
+    file_path = getattr(module, "__file__", None)
+    spec_origin = getattr(module, "__spec__", None)
+    spec_origin_path = getattr(spec_origin, "origin", None) if spec_origin else None
+
+    # Contenuto del file
+    try:
+        with open(file_path, "r", encoding="utf-8") as f:
+            content = f.read()
+        sha256 = hashlib.sha256(content.encode("utf-8")).hexdigest()
+        line_count = len(content.splitlines())
+    except Exception as e:
+        content = None
+        sha256 = f"ERROR: {e}"
+        line_count = None
+
+    # Funzioni disponibili
+    all_members = inspect.getmembers(module)
+    callables = [name for name, obj in all_members if callable(obj) and not name.startswith("__")]
+    private_callables = [name for name in callables if name.startswith("_")]
+
+    # Controlla presenza funzioni specifiche
+    expected_funcs = ["_discover", "_discover_from_categories", "_candidate_product_urls", 
+                      "_category_product_line_links", "_product"]
+    func_presence = {f: hasattr(module, f) for f in expected_funcs}
+
+    return {
+        "module_name": module.__name__,
+        "file_path": file_path,
+        "spec_origin": spec_origin_path,
+        "sha256": sha256,
+        "line_count": line_path,
+        "all_callables": callables,
+        "private_callables": private_callables,
+        "expected_functions": func_presence,
+        "content_preview": content[:2000] if content else None,  # Prime 2000 char
+    }
+
