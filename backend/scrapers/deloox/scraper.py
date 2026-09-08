@@ -581,6 +581,159 @@ def _category_product_line_links(html, query):
     return links
 
 
+
+def _product_line_filter_ids(html, query):
+    """Recover the Product Line filter value assigned by Deloox itself.
+
+    The live category page exposes the selected Product Line as:
+    <li data-prpid="12" data-pvalue-id="..." title="...">.
+    This is more reliable than trying to infer a category id from the label.
+    """
+    soup = BeautifulSoup(str(html or ""), "html.parser")
+    q_tokens = tokens(query)
+    found = []
+    seen = set()
+    for node in soup.select('li[data-prpid][data-pvalue-id]'):
+        label = clean(node.get("title") or node.get_text(" ", strip=True))
+        if not label or not q_tokens.issubset(tokens(label)):
+            continue
+        prpid = clean(node.get("data-prpid"))
+        pvalue = clean(node.get("data-pvalue-id"))
+        if not prpid or not pvalue:
+            continue
+        key = (prpid, pvalue, norm(label))
+        if key in seen:
+            continue
+        seen.add(key)
+        found.append({"filter_id": prpid, "value_id": pvalue, "label": label})
+    return found[:5]
+
+
+def _filter_category_urls(root_url, html, query):
+    """Try Deloox's common filter-query encodings for the exact Product Line.
+
+    Deloox currently renders the Product Line filter in HTML but does not expose
+    the resulting URL as a normal anchor. We therefore recover the site's own
+    filter/value ids and probe a very small, bounded set of URL encodings.
+    """
+    filters = _product_line_filter_ids(html, query)
+    urls = []
+    seen = set()
+    base = root_url.split("?", 1)[0]
+    for item in filters:
+        fid = item["filter_id"]
+        vid = item["value_id"]
+        candidates = (
+            f"{base}?filter={fid}-{vid}",
+            f"{base}?filters={fid}-{vid}",
+            f"{base}?filters[{fid}]={vid}",
+            f"{base}?filter[{fid}]={vid}",
+            f"{base}?filter={fid}%3A{vid}",
+        )
+        for url in candidates:
+            if url not in seen:
+                seen.add(url)
+                urls.append(url)
+    return filters, urls[:5]
+
+
+def _extract_urls_from_search_payload(payload, query, max_results=40):
+    """Extract Deloox product/category URLs from JSON or HTML returned by /api/search."""
+    results = []
+    seen = set()
+    q_tokens = tokens(query)
+
+    def add(raw, context=""):
+        raw = clean(htmllib.unescape(str(raw or "")))
+        if not raw:
+            return
+        raw = raw.replace("\\/", "/").replace("\\u002F", "/").replace("\\u002f", "/")
+        url = urljoin(BASE_URL, raw).split("#")[0].split("?")[0]
+        try:
+            parsed = urlparse(url)
+        except Exception:
+            return
+        if parsed.netloc.lower() not in {"deloox.be", "www.deloox.be"}:
+            return
+        if not re.search(r"/(?:product|produit|category|categoria|categorie)/", parsed.path, re.I):
+            return
+        if url in seen:
+            return
+        # Product URLs can be numeric and need not contain the query. Category
+        # URLs are accepted only when their label/slug carries the query.
+        if re.search(r"/(?:category|categoria|categorie)/", parsed.path, re.I):
+            if q_tokens and not q_tokens.issubset(tokens(f"{parsed.path} {context}")):
+                return
+        seen.add(url)
+        results.append(url)
+
+    if isinstance(payload, str):
+        try:
+            soup = BeautifulSoup(payload, "html.parser")
+            for a in soup.find_all("a", href=True):
+                add(a.get("href"), a.get_text(" ", strip=True))
+        except Exception:
+            pass
+        raw = payload.replace("\\/", "/").replace("\\u002F", "/").replace("\\u002f", "/")
+        for m in re.finditer(r"https?://(?:www\.)?deloox\.be/(?:[^\"'<>\s]+)", raw, re.I):
+            add(m.group(0))
+        return results[:max_results]
+
+    def walk(obj, context=""):
+        if len(results) >= max_results:
+            return
+        if isinstance(obj, dict):
+            local = " ".join(str(v) for v in obj.values() if isinstance(v, (str, int, float)))
+            for k, v in obj.items():
+                if isinstance(v, str) and any(x in k.lower() for x in ("url", "href", "link", "slug")):
+                    add(v, f"{context} {local}")
+                elif isinstance(v, (dict, list)):
+                    walk(v, f"{context} {local}")
+        elif isinstance(obj, list):
+            for item in obj:
+                walk(item, context)
+        elif isinstance(obj, str) and ("/product" in obj.lower() or "/produit" in obj.lower() or "/categorie" in obj.lower()):
+            add(obj, context)
+
+    walk(payload)
+    return results[:max_results]
+
+
+def _search_api_discovery(session, query, max_urls=80):
+    """Use Deloox's own search endpoint as a bounded fallback.
+
+    The page explicitly advertises /api/search through the search input's
+    data-url. It is not assumed to be the product-line API; we only accept
+    actual Deloox product/category URLs returned by it.
+    """
+    endpoint = BASE_URL + "/api/search"
+    payloads = (
+        {"q": query},
+        {"query": query},
+        {"search": query},
+    )
+    found = []
+    seen = set()
+    for payload in payloads:
+        try:
+            r = session.get(endpoint, params=payload, headers=HEADERS, timeout=5)
+        except requests.RequestException:
+            continue
+        if r.status_code >= 400:
+            continue
+        body = r.text or ""
+        try:
+            data = r.json()
+        except Exception:
+            data = body
+        for url in _extract_urls_from_search_payload(data, query, max_results=max_urls):
+            if url not in seen:
+                seen.add(url)
+                found.append(url)
+        if len(found) >= max_urls:
+            break
+    return found[:max_urls]
+
 def _category_pages(session):
     """Current generic fragrance catalog roots on Deloox.be.
 
@@ -650,6 +803,33 @@ def _discover_from_categories(session, query, max_urls=120):
         # source of the multi-minute diagnostic/search hang.
         line_links = _category_product_line_links(r.text, query)
         _diag("root_line_links", root=root, count=len(line_links), links=line_links[:20])
+
+        # The live page exposes the Product Line filter as data-prpid/value-id
+        # but not as an anchor. Probe Deloox's bounded filter URL encodings.
+        filter_info, filter_urls = _filter_category_urls(root, r.text, query)
+        _diag("root_filter_ids", root=root, filters=filter_info, probe_urls=filter_urls)
+        for filter_url in filter_urls:
+            if filter_url in visited:
+                continue
+            visited.add(filter_url)
+            try:
+                filtered = session.get(filter_url, headers=HEADERS, timeout=5)
+            except requests.RequestException as exc:
+                _diag("filter_fetch_error", url=filter_url, error=repr(exc))
+                continue
+            _diag("filter_fetch", url=filter_url, status=filtered.status_code, bytes=len(filtered.text or ""), final_url=filtered.url)
+            if filtered.status_code >= 400:
+                continue
+            filter_products = _candidate_product_urls(filtered.text, query, require_query=False, max_results=max_urls)
+            if filter_products:
+                for product_url in filter_products:
+                    if product_url not in seen:
+                        seen.add(product_url)
+                        urls.append(product_url)
+                        if len(urls) >= max_urls:
+                            return urls[:max_urls]
+                if urls:
+                    return urls[:max_urls]
 
         for line_url in line_links:
             if line_url in visited:
@@ -826,7 +1006,31 @@ def _discover(session, q):
         if len(urls) >= 80:
             return urls[:80]
 
-    # SECONDARY: Product-line/category pages exposed by Deloox.be sitemaps.
+    # SECONDARY: Deloox's own search endpoint, if it exposes product/category URLs.
+    api_products = _search_api_discovery(session, q, max_urls=80)
+    _diag("discover_api_fallback", count=len(api_products), urls=api_products[:20])
+    for url in api_products:
+        if re.search(r"/(?:product|produit)/", url, re.I):
+            if url not in seen:
+                seen.add(url)
+                urls.append(url)
+                if len(urls) >= 80:
+                    return urls[:80]
+        else:
+            try:
+                page = session.get(url, headers=HEADERS, timeout=5)
+            except requests.RequestException:
+                continue
+            if page.status_code >= 400:
+                continue
+            for product_url in _candidate_product_urls(page.text, q, require_query=False, max_results=80):
+                if product_url not in seen:
+                    seen.add(product_url)
+                    urls.append(product_url)
+                    if len(urls) >= 80:
+                        return urls[:80]
+
+    # TERTIARY: Product-line/category pages exposed by Deloox.be sitemaps.
     sitemap_categories = _sitemap_category_urls(
         session, q, max_sitemaps=12, max_urls=30
     )
@@ -845,7 +1049,7 @@ def _discover(session, q):
                 if len(urls) >= 80:
                     return urls[:80]
 
-    # TERTIARY: localized search endpoints, retained as fallback.
+    # QUATERNARY: localized search endpoints, retained as fallback.
     endpoints = [
         BASE_URL + "/en/search?query=" + quote_plus(q),
         BASE_URL + "/en/search?search=" + quote_plus(q),
