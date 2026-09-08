@@ -3701,9 +3701,3 @@ def diagnose_notino_search(q: str):
 
     except Exception as exc:
         return {
-            "ok": False,
-            "store": "notino",
-            "query": query,
-            "error": f"{type(exc).__name__}: {exc}",
-            "traceback": traceback.format_exc(),
-        }
