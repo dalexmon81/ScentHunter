@@ -2896,7 +2896,18 @@ def _search_job_snapshot(job_id: str) -> Dict[str, Any]:
     # Riapplicarvi _prepare_final_results() ricollassa il gruppo usando
     # soltanto il negozio rappresentativo e fa sparire gli altri retailer.
     # Il vecchio runner legacy invece continua a pubblicare candidati grezzi.
-    if job.get("results_are_final"):
+    # SearchEngine normalmente marca questi payload con results_are_final=True.
+    # Per compatibilità con eventuali versioni già deployate del SearchEngine,
+    # riconosciamo comunque un payload già raggruppato: se contiene offerte
+    # annidate, NON deve essere rifinalizzato, altrimenti _prepare_final_results()
+    # può ridurlo nuovamente alla sola offerta rappresentativa.
+    already_grouped = any(
+        isinstance(item, dict)
+        and isinstance(item.get("offers"), list)
+        and bool(item.get("offers"))
+        for item in raw_results
+    )
+    if job.get("results_are_final") or already_grouped:
         results = raw_results
     else:
         results = _prepare_final_results(raw_results, query)
