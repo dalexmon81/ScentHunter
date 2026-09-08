@@ -64,6 +64,102 @@ if callable(_engine_snapshot):
 # Keep the exact FastAPI application object and every existing route.
 app = _legacy.app
 
+# ===== TEMPORARY READ-ONLY DELOOX FILTER DIAGNOSTIC =====
+DELOOX_DIAG_BASE = "https://www.deloox.be"
+DELOOX_DIAG_CATEGORIES = [
+    "/categorie/1075732/parfum-homme.html",
+    "/categorie/1000063/parfum-femme.html",
+    "/categorie/1075918/parfum-mixte.html",
+]
+
+def _deloox_diag_extract_urls(text: str) -> List[str]:
+    out = set()
+    for u in re.findall(r"https?://(?:www\\.)?deloox\\.be/[^\"\'<>\\s]+", text, flags=re.I):
+        out.add(u.replace("\\/", "/").rstrip(".,);]"))
+    for u in re.findall(r"(?:href|url|action|endpoint|src)\s*[:=]\s*[\"\']([^\"\']+)", text, flags=re.I):
+        if u.startswith("/"):
+            out.add(DELOOX_DIAG_BASE + u)
+        elif "deloox.be" in u:
+            out.add(u.replace("\\/", "/"))
+    return sorted(out)
+
+def _deloox_diag_contexts(text: str, needles: List[str], radius: int = 1800, limit: int = 8) -> List[Dict[str, Any]]:
+    low = text.casefold()
+    found = []
+    seen = set()
+    for needle in needles:
+        start = 0
+        nl = needle.casefold()
+        while len(found) < limit:
+            pos = low.find(nl, start)
+            if pos < 0:
+                break
+            key = (pos, needle)
+            if key not in seen:
+                seen.add(key)
+                a = max(0, pos - radius); b = min(len(text), pos + len(needle) + radius)
+                ctx = text[a:b]
+                found.append({"needle": needle, "position": pos, "context": ctx, "urls": _deloox_diag_extract_urls(ctx)[:30]})
+            start = pos + max(1, len(needle))
+    return found
+
+@app.get("/diagnostic-deloox-filter")
+def diagnostic_deloox_filter(q: str = Query("Liquid Brun")):
+    result: Dict[str, Any] = {
+        "ok": True, "diagnostic": "deloox_filter_v1", "query": q,
+        "base_url": DELOOX_DIAG_BASE, "pages": [], "global_script_matches": []
+    }
+    session = requests.Session()
+    session.headers.update({"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/131 Safari/537.36", "Accept-Language": "nl-BE,nl;q=0.9,en;q=0.8"})
+    all_html = []
+    try:
+        for path in DELOOX_DIAG_CATEGORIES:
+            url = DELOOX_DIAG_BASE + path
+            try:
+                r = session.get(url, timeout=20)
+                html = r.text or ""
+                all_html.append(html)
+                soup = BeautifulSoup(html, "html.parser")
+                scripts = []
+                for sc in soup.find_all("script", src=True):
+                    src = str(sc.get("src") or "").strip()
+                    if src.startswith("/"): src = DELOOX_DIAG_BASE + src
+                    scripts.append(src)
+                filter_nodes = []
+                for tag in soup.find_all(attrs={"data-pvalue-id": True}):
+                    txt = tag.get_text(" ", strip=True)
+                    if q.casefold() in txt.casefold() or any(t in txt.casefold() for t in q.casefold().split()):
+                        filter_nodes.append({"tag": tag.name, "text": txt[:300], "data_pvalue_id": tag.get("data-pvalue-id"), "data_prpid": tag.get("data-prpid"), "data_index": tag.get("data-index"), "data_track": tag.get("data-track"), "outer": str(tag)[:1800]})
+                result["pages"].append({
+                    "url": url, "status": r.status_code, "bytes": len(r.content),
+                    "query_found": q.casefold() in html.casefold(),
+                    "known_liquid_brun_filter": _deloox_diag_contexts(html, ["Liquid Brun", "data-pvalue-id=\"512883\"", "filters:12-512883", "data-prpid=\"12\""], 1400, 6),
+                    "known_category": _deloox_diag_contexts(html, ["1122039", "1355229", "/categorie/1122039/liquid-brun.html"], 1400, 6),
+                    "filter_nodes": filter_nodes[:12],
+                    "product_url_count": html.lower().count("/produit/"),
+                    "scripts": scripts[:80],
+                    "interesting_urls": [u for u in _deloox_diag_extract_urls(html) if any(k in u.casefold() for k in ["filter", "ajax", "categorie", "search", "api", "produit"])][:120]
+                })
+            except Exception as exc:
+                result["pages"].append({"url": url, "error": f"{type(exc).__name__}: {exc}"})
+        joined = "\n".join(all_html)
+        result["global_script_matches"] = _deloox_diag_contexts(joined, ["filters:12-512883", "data-pvalue-id", "pvalue-id", "prpid", "ajax", "/api/", "filterUrl", "filter_url", "applyFilter"], 2200, 20)
+        # Extract inline script snippets that mention the exact filter identifiers.
+        soup = BeautifulSoup(all_html[0] if all_html else "", "html.parser")
+        inline = []
+        for sc in soup.find_all("script"):
+            txt = sc.string or sc.get_text() or ""
+            if any(n.casefold() in txt.casefold() for n in ["512883", "filters:12-", "pvalue-id", "prpid"]):
+                inline.append({"bytes": len(txt), "contexts": _deloox_diag_contexts(txt, ["512883", "filters:12-", "pvalue-id", "prpid"], 2600, 10), "src": sc.get("src")})
+        result["inline_scripts"] = inline[:20]
+        return result
+    except Exception as exc:
+        result["ok"] = False; result["error"] = f"{type(exc).__name__}: {exc}"
+        return result
+    finally:
+        session.close()
+
+
 # ===== TEMPORARY READ-ONLY NOTINO DEEP DIAGNOSTIC =====
 JINA_PREFIX = "https://r.jina.ai/"
 NOTINO_BASE = "https://www.notino.fr"
@@ -1273,128 +1369,3 @@ def diagnostic_scraper_trace(
             session.close()
         except Exception:
             pass
-
-
-# ===== READ-ONLY DELOOX RAW HTML DIAGNOSTIC =====
-# Temporary endpoint used only to inspect the exact live Deloox.be markup.
-# It does not modify the normal search flow or any scraper behaviour.
-@app.get("/diagnostic-deloox-html")
-def diagnostic_deloox_html(q: str = Query(..., min_length=1)):
-    import time as _html_time
-
-    query = str(q or "").strip()
-    base_url = "https://www.deloox.be"
-    category_urls = [
-        f"{base_url}/categorie/1075732/parfum-homme.html",
-        f"{base_url}/categorie/1000063/parfum-femme.html",
-        f"{base_url}/categorie/1075918/parfum-mixte.html",
-    ]
-
-    needles = [
-        query,
-        "1355229",
-        "French Avenue",
-        "Liquid Brun",
-        "/produit/",
-    ]
-
-    def _snippet(text: str, needle: str, radius: int = 1200):
-        low = text.casefold()
-        positions = []
-        start_at = 0
-        needle_low = needle.casefold()
-        while len(positions) < 5:
-            pos = low.find(needle_low, start_at)
-            if pos < 0:
-                break
-            positions.append({
-                "position": pos,
-                "context": text[max(0, pos-radius):min(len(text), pos+len(needle)+radius)],
-            })
-            start_at = pos + max(1, len(needle))
-        return {
-            "needle": needle,
-            "count": len(positions),
-            "matches": positions,
-        }
-
-    reports = []
-    session = requests.Session()
-    session.headers.update({
-        "User-Agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 Version/17.0 Mobile/15E148 Safari/604.1",
-        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
-        "Accept-Language": "fr-FR,fr;q=0.9,en;q=0.8",
-        "Cache-Control": "no-cache",
-    })
-
-    try:
-        for url in category_urls:
-            started = _html_time.monotonic()
-            report = {
-                "url": url,
-                "status": None,
-                "final_url": None,
-                "bytes": 0,
-                "elapsed_ms": None,
-                "content_type": None,
-                "query_found": False,
-                "needles": [],
-                "product_href_count": 0,
-                "product_hrefs": [],
-                "product_href_samples": [],
-                "error": None,
-            }
-            try:
-                response = session.get(url, timeout=15, allow_redirects=True)
-                body = response.text or ""
-                report.update({
-                    "status": response.status_code,
-                    "final_url": str(response.url or ""),
-                    "bytes": len(response.content or b""),
-                    "content_type": response.headers.get("content-type"),
-                    "query_found": query.casefold() in body.casefold(),
-                    "elapsed_ms": round((_html_time.monotonic() - started) * 1000),
-                })
-
-                soup = BeautifulSoup(body, "html.parser")
-                hrefs = []
-                for a in soup.find_all("a", href=True):
-                    href = str(a.get("href") or "").strip()
-                    if not href:
-                        continue
-                    text = a.get_text(" ", strip=True)
-                    if "/produit/" in href.casefold():
-                        hrefs.append({
-                            "href": href[:1000],
-                            "text": text[:500],
-                        })
-
-                report["product_href_count"] = len(hrefs)
-                report["product_hrefs"] = hrefs[:100]
-                report["product_href_samples"] = hrefs[:20]
-                report["needles"] = [_snippet(body, needle) for needle in needles]
-
-                # Also inspect raw URL-like strings because product links may
-                # live in JSON/JS rather than normal <a href> attributes.
-                raw_urls = sorted(set(__import__("re").findall(
-                    r"(?:https?:)?//(?:www\.)?deloox\.be/[^\"'<>\\s]+/produit/[^\"'<>\\s]+",
-                    body,
-                    __import__("re").I,
-                )))
-                report["raw_product_url_count"] = len(raw_urls)
-                report["raw_product_urls"] = raw_urls[:100]
-            except Exception as exc:
-                report["elapsed_ms"] = round((_html_time.monotonic() - started) * 1000)
-                report["error"] = f"{type(exc).__name__}: {exc}"
-            reports.append(report)
-    finally:
-        session.close()
-
-    return {
-        "ok": True,
-        "diagnostic": "deloox_raw_html_v1",
-        "query": query,
-        "base_url": base_url,
-        "category_urls": category_urls,
-        "reports": reports,
-    }
