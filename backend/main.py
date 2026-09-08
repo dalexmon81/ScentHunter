@@ -1275,55 +1275,126 @@ def diagnostic_scraper_trace(
             pass
 
 
-@app.get("/debug/deloox-module")
-def debug_deloox_module():
-    import importlib
-    import hashlib
-    import inspect
-    import os
+# ===== READ-ONLY DELOOX RAW HTML DIAGNOSTIC =====
+# Temporary endpoint used only to inspect the exact live Deloox.be markup.
+# It does not modify the normal search flow or any scraper behaviour.
+@app.get("/diagnostic-deloox-html")
+def diagnostic_deloox_html(q: str = Query(..., min_length=1)):
+    import time as _html_time
 
-    module = importlib.import_module("scrapers.deloox.scraper")
-
-    # Percorso assoluto del file
-    file_path = getattr(module, "__file__", None)
-    spec_origin = getattr(module, "__spec__", None)
-    spec_origin_path = getattr(spec_origin, "origin", None) if spec_origin else None
-
-    # Contenuto del file
-    try:
-        with open(file_path, "r", encoding="utf-8") as f:
-            content = f.read()
-        sha256 = hashlib.sha256(content.encode("utf-8")).hexdigest()
-        line_count = len(content.splitlines())
-    except Exception as e:
-        content = None
-        sha256 = f"ERROR: {e}"
-        line_count = None
-
-    # Funzioni disponibili
-    all_members = inspect.getmembers(module)
-    callables = [name for name, obj in all_members if callable(obj) and not name.startswith("__")]
-    private_callables = [name for name in callables if name.startswith("_")]
-
-    # Controlla presenza funzioni specifiche
-    expected_funcs = [
-        "_discover",
-        "_discover_from_categories",
-        "_candidate_product_urls",
-        "_category_product_line_links",
-        "_product",
+    query = str(q or "").strip()
+    base_url = "https://www.deloox.be"
+    category_urls = [
+        f"{base_url}/categorie/1075732/parfum-homme.html",
+        f"{base_url}/categorie/1000063/parfum-femme.html",
+        f"{base_url}/categorie/1075918/parfum-mixte.html",
     ]
-    func_presence = {f: hasattr(module, f) for f in expected_funcs}
+
+    needles = [
+        query,
+        "1355229",
+        "French Avenue",
+        "Liquid Brun",
+        "/produit/",
+    ]
+
+    def _snippet(text: str, needle: str, radius: int = 1200):
+        low = text.casefold()
+        positions = []
+        start_at = 0
+        needle_low = needle.casefold()
+        while len(positions) < 5:
+            pos = low.find(needle_low, start_at)
+            if pos < 0:
+                break
+            positions.append({
+                "position": pos,
+                "context": text[max(0, pos-radius):min(len(text), pos+len(needle)+radius)],
+            })
+            start_at = pos + max(1, len(needle))
+        return {
+            "needle": needle,
+            "count": len(positions),
+            "matches": positions,
+        }
+
+    reports = []
+    session = requests.Session()
+    session.headers.update({
+        "User-Agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 Version/17.0 Mobile/15E148 Safari/604.1",
+        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+        "Accept-Language": "fr-FR,fr;q=0.9,en;q=0.8",
+        "Cache-Control": "no-cache",
+    })
+
+    try:
+        for url in category_urls:
+            started = _html_time.monotonic()
+            report = {
+                "url": url,
+                "status": None,
+                "final_url": None,
+                "bytes": 0,
+                "elapsed_ms": None,
+                "content_type": None,
+                "query_found": False,
+                "needles": [],
+                "product_href_count": 0,
+                "product_hrefs": [],
+                "product_href_samples": [],
+                "error": None,
+            }
+            try:
+                response = session.get(url, timeout=15, allow_redirects=True)
+                body = response.text or ""
+                report.update({
+                    "status": response.status_code,
+                    "final_url": str(response.url or ""),
+                    "bytes": len(response.content or b""),
+                    "content_type": response.headers.get("content-type"),
+                    "query_found": query.casefold() in body.casefold(),
+                    "elapsed_ms": round((_html_time.monotonic() - started) * 1000),
+                })
+
+                soup = BeautifulSoup(body, "html.parser")
+                hrefs = []
+                for a in soup.find_all("a", href=True):
+                    href = str(a.get("href") or "").strip()
+                    if not href:
+                        continue
+                    text = a.get_text(" ", strip=True)
+                    if "/produit/" in href.casefold():
+                        hrefs.append({
+                            "href": href[:1000],
+                            "text": text[:500],
+                        })
+
+                report["product_href_count"] = len(hrefs)
+                report["product_hrefs"] = hrefs[:100]
+                report["product_href_samples"] = hrefs[:20]
+                report["needles"] = [_snippet(body, needle) for needle in needles]
+
+                # Also inspect raw URL-like strings because product links may
+                # live in JSON/JS rather than normal <a href> attributes.
+                raw_urls = sorted(set(__import__("re").findall(
+                    r"(?:https?:)?//(?:www\.)?deloox\.be/[^\"'<>\\s]+/produit/[^\"'<>\\s]+",
+                    body,
+                    __import__("re").I,
+                )))
+                report["raw_product_url_count"] = len(raw_urls)
+                report["raw_product_urls"] = raw_urls[:100]
+            except Exception as exc:
+                report["elapsed_ms"] = round((_html_time.monotonic() - started) * 1000)
+                report["error"] = f"{type(exc).__name__}: {exc}"
+            reports.append(report)
+    finally:
+        session.close()
 
     return {
-        "module_name": module.__name__,
-        "file_path": file_path,
-        "spec_origin": spec_origin_path,
-        "sha256": sha256,
-        "line_count": line_count,
-        "all_callables": callables,
-        "private_callables": private_callables,
-        "expected_functions": func_presence,
-        "content_preview": content[:2000] if content else None,
+        "ok": True,
+        "diagnostic": "deloox_raw_html_v1",
+        "query": query,
+        "base_url": base_url,
+        "category_urls": category_urls,
+        "reports": reports,
     }
-
