@@ -18,6 +18,7 @@ from __future__ import annotations
 import json
 import html as htmllib
 import re
+import concurrent.futures
 from urllib.parse import quote_plus, urljoin, urlparse
 
 import requests
@@ -1105,80 +1106,29 @@ def _product_line_filter_ids(html, query):
     return found[:5]
 
 
-def _filter_category_urls(
-    root_url,
-    html,
-    query,
-):
-    """Build bounded generic Product Line filter probes.
+def _filter_category_urls(root_url, html, query):
+    """Build only a tiny, deterministic set of Product Line filter probes.
 
-    The filter ID/value pair is discovered from Deloox itself.
-
-    No perfume, category ID or product ID is hardcoded.
-
-    Several common encodings are probed because the filter control is rendered
-    in HTML but the canonical Product Line URL is not necessarily an anchor.
-    The caller validates the resulting page and also checks response.url after
-    redirects.
+    The old implementation generated twenty URLs per filter value. That made
+    Deloox discovery spend several seconds on requests that were very unlikely
+    to be useful. We keep four generic encodings as a bounded fallback.
     """
-    filters = _product_line_filter_ids(
-        html,
-        query,
-    )
-
-    urls = []
-    seen = set()
-
-    base = root_url.split(
-        "?",
-        1,
-    )[0]
-
-    for item in filters:
-        fid = item["filter_id"]
-        vid = item["value_id"]
-
-        # These are deliberately generic representations of the same
-        # filter/value relationship.
+    filters = _product_line_filter_ids(html, query)
+    urls, seen = [], set()
+    base = root_url.split("?", 1)[0]
+    for item in filters[:1]:
+        fid, vid = item["filter_id"], item["value_id"]
         candidates = (
             f"{base}?filter={fid}-{vid}",
             f"{base}?filters={fid}-{vid}",
-            f"{base}?filter={fid}_{vid}",
-            f"{base}?filters={fid}_{vid}",
-            f"{base}?filter={fid}:{vid}",
-            f"{base}?filters={fid}:{vid}",
-            f"{base}?filter={fid}={vid}",
-            f"{base}?filters={fid}={vid}",
             f"{base}?filter[{fid}]={vid}",
             f"{base}?filters[{fid}]={vid}",
-            f"{base}?filter%5B{fid}%5D={vid}",
-            f"{base}?filters%5B{fid}%5D={vid}",
-            f"{base}?filter[{fid}][]={vid}",
-            f"{base}?filters[{fid}][]={vid}",
-            f"{base}?filter%5B{fid}%5D%5B%5D={vid}",
-            f"{base}?filters%5B{fid}%5D%5B%5D={vid}",
-            f"{base}?filter={fid}%3A{vid}",
-            f"{base}?filters={fid}%3A{vid}",
-            f"{base}?filter={fid}%3D{vid}",
-            f"{base}?filters={fid}%3D{vid}",
         )
-
         for url in candidates:
-            if url in seen:
-                continue
-
-            seen.add(url)
-            urls.append(url)
-
-    _diag(
-        "filter_probe_candidates",
-        query=query,
-        filters=filters,
-        count=len(urls),
-        sample=urls[:20],
-    )
-
-    return filters, urls[:20]
+            if url not in seen:
+                seen.add(url); urls.append(url)
+    _diag("filter_probe_candidates", query=query, filters=filters[:1], count=len(urls), sample=urls)
+    return filters[:1], urls
 
 
 def _extract_urls_from_search_payload(
@@ -1498,259 +1448,74 @@ def _page_contains_product_line(
     return False
 
 
-def _discover_from_categories(
-    session,
-    query,
-    max_urls=120,
-):
-    urls = []
-    seen = set()
-    visited = set()
+def _discover_from_categories(session, query, max_urls=120):
+    """Fast primary Deloox discovery.
 
-    def add_products(
-        html,
-        require_query=True,
-    ):
-        for product_url in _candidate_product_urls(
-            html,
-            query,
-            require_query=require_query,
-            max_results=max_urls,
-        ):
-            if product_url not in seen:
-                seen.add(product_url)
-                urls.append(product_url)
+    Category roots are fetched in parallel. We first consume direct Product
+    Line links, then probe at most four filter URLs. Slow secondary discovery
+    is intentionally left to _discover() and never runs before this fast path
+    has been exhausted.
+    """
+    roots=[]; seen_roots=set()
+    for root in list(_category_pages(session)) + list(_targeted_category_seed_urls(query)):
+        root=str(root or '').strip()
+        if root and root not in seen_roots:
+            seen_roots.add(root); roots.append(root)
+    _diag('category_roots', count=len(roots), roots=roots, query=query)
 
-                if len(urls) >= max_urls:
-                    return True
-
-        return False
-
-    roots = list(
-        _category_pages(session)
-    )
-
-    roots.extend(
-        _targeted_category_seed_urls(query)
-    )
-
-    _diag(
-        "category_roots",
-        count=len(roots),
-        roots=roots,
-        query=query,
-    )
-
-    for root in roots:
+    def fetch_root(root):
         try:
-            r = session.get(
-                root,
-                headers=HEADERS,
-                timeout=TIMEOUT,
-            )
+            r=session.get(root, headers=HEADERS, timeout=(2.5,5), allow_redirects=True)
+            return root, r
         except requests.RequestException as exc:
-            _diag(
-                "root_fetch_error",
-                url=root,
-                error=repr(exc),
-            )
-            continue
+            _diag('root_fetch_error', url=root, error=repr(exc)); return root, None
 
-        _diag(
-            "root_fetch",
-            url=root,
-            status=r.status_code,
-            bytes=len(r.text or ""),
-        )
+    fetched=[]
+    with concurrent.futures.ThreadPoolExecutor(max_workers=min(3,len(roots) or 1)) as ex:
+        for root,r in ex.map(fetch_root, roots[:3]):
+            if r is not None:
+                _diag('root_fetch', url=root, status=r.status_code, bytes=len(r.text or ''), final_url=getattr(r,'url',root))
+                if r.status_code < 400:
+                    fetched.append((root,r))
 
-        if r.status_code >= 400:
-            continue
-
-        # Generic root product discovery.
-        if add_products(
-            r.text,
-            require_query=True,
-        ):
-            return urls[:max_urls]
-
-        # Direct Product Line URL discovery.
-        line_links = _category_product_line_links(
-            r.text,
-            query,
-        )
-
-        _diag(
-            "root_line_links",
-            root=root,
-            count=len(line_links),
-            links=line_links[:20],
-        )
-
-        # Filter metadata discovery.
-        filter_info, filter_urls = _filter_category_urls(
-            root,
-            r.text,
-            query,
-        )
-
-        _diag(
-            "root_filter_ids",
-            root=root,
-            filters=filter_info,
-            probe_urls=filter_urls,
-        )
-
-        # First: probe generic filter URL encodings.
-        for filter_url in filter_urls:
-            if filter_url in visited:
-                continue
-
-            visited.add(filter_url)
-
+    def collect_from_page(root, html):
+        found=[]; local=set()
+        for u in _candidate_product_urls(html, query, require_query=True, max_results=max_urls):
+            if u not in local: local.add(u); found.append(u)
+        line_links=_category_product_line_links(html, query)
+        _diag('root_line_links', root=root, count=len(line_links), links=line_links[:10])
+        for line in line_links[:2]:
             try:
-                filtered = session.get(
-                    filter_url,
-                    headers=HEADERS,
-                    timeout=5,
-                    allow_redirects=True,
-                )
-            except requests.RequestException as exc:
-                _diag(
-                    "filter_fetch_error",
-                    url=filter_url,
-                    error=repr(exc),
-                )
+                page=session.get(line, headers=HEADERS, timeout=(2.5,5), allow_redirects=True)
+            except requests.RequestException:
                 continue
-
-            final_url = (
-                filtered.url
-                or filter_url
-            )
-
-            _diag(
-                "filter_fetch",
-                url=filter_url,
-                status=filtered.status_code,
-                bytes=len(filtered.text or ""),
-                final_url=final_url,
-            )
-
-            if filtered.status_code >= 400:
+            if page.status_code >= 400: continue
+            for u in _candidate_product_urls(page.text, query, require_query=False, max_results=max_urls):
+                if u not in local: local.add(u); found.append(u)
+                if len(found)>=max_urls: return found
+        _, probes=_filter_category_urls(root, html, query)
+        for probe in probes:
+            try:
+                page=session.get(probe, headers=HEADERS, timeout=(2,3.5), allow_redirects=True)
+            except requests.RequestException:
                 continue
+            if page.status_code>=400: continue
+            final_url=page.url or probe
+            if _is_category_url(final_url) and _category_url_matches_query(final_url,query):
+                line_html=page.text
+            else:
+                line_html=page.text
+            for u in _candidate_product_urls(line_html, query, require_query=False, max_results=max_urls):
+                if u not in local: local.add(u); found.append(u)
+                if len(found)>=max_urls: return found
+        return found
 
-            # If Deloox redirected the filter request to a real Product Line
-            # page, keep the final URL as a direct discovery candidate.
-            if (
-                _is_category_url(final_url)
-                and _category_url_matches_query(
-                    final_url,
-                    query,
-                )
-            ):
-                if final_url not in visited:
-                    line_links.append(
-                        final_url
-                    )
-
-                _diag(
-                    "filter_redirect_category",
-                    source=filter_url,
-                    final_url=final_url,
-                )
-
-            filter_products = _candidate_product_urls(
-                filtered.text,
-                query,
-                require_query=False,
-                max_results=max_urls,
-            )
-
-            if filter_products:
-                for product_url in filter_products:
-                    if product_url not in seen:
-                        seen.add(product_url)
-                        urls.append(product_url)
-
-                        if len(urls) >= max_urls:
-                            return urls[:max_urls]
-
-                if urls:
-                    return urls[:max_urls]
-
-        # Second: direct Product Line URLs.
-        deduped_line_links = []
-        line_seen = set()
-
-        for line_url in line_links:
-            if line_url in line_seen:
-                continue
-
-            line_seen.add(line_url)
-            deduped_line_links.append(line_url)
-
-        for line_url in deduped_line_links:
-            if line_url in visited:
-                continue
-
-            visited.add(line_url)
-
-            # Exact Product Line page first.
-            for page_url in _pagination_urls(
-                line_url,
-                max_pages=3,
-            ):
-                if page_url in visited:
-                    continue
-
-                visited.add(page_url)
-
-                try:
-                    page = session.get(
-                        page_url,
-                        headers=HEADERS,
-                        timeout=TIMEOUT,
-                        allow_redirects=True,
-                    )
-                except requests.RequestException as exc:
-                    _diag(
-                        "page_fetch_error",
-                        url=page_url,
-                        error=repr(exc),
-                    )
-                    continue
-
-                _diag(
-                    "page_fetch",
-                    url=page_url,
-                    status=page.status_code,
-                    bytes=len(page.text or ""),
-                    final_url=page.url,
-                )
-
-                if page.status_code >= 400:
-                    continue
-
-                for product_url in _candidate_product_urls(
-                    page.text,
-                    query,
-                    require_query=False,
-                    max_results=max_urls,
-                ):
-                    if product_url not in seen:
-                        seen.add(product_url)
-                        urls.append(product_url)
-
-                        if len(urls) >= max_urls:
-                            return urls[:max_urls]
-
-    _diag(
-        "category_discovery_done",
-        count=len(urls),
-        urls=urls[:20],
-        query=query,
-    )
-
-    return urls[:max_urls]
+    all_urls=[]; seen=set()
+    for root,r in fetched:
+        for u in collect_from_page(root,r.text or ''):
+            if u not in seen: seen.add(u); all_urls.append(u)
+            if len(all_urls)>=max_urls: return all_urls[:max_urls]
+    return all_urls[:max_urls]
 
 
 def _sitemap_product_urls(
@@ -2012,285 +1777,74 @@ def _sitemap_category_urls(
 
 
 def _discover(session, q):
-    """Discover Deloox.be product pages generically."""
-    urls = []
-    seen = set()
+    """Discover Deloox.be product pages with a fast primary path."""
+    urls=[]; seen=set()
+    _diag('discover_start', query=q, base_url=BASE_URL)
 
-    _diag(
-        "discover_start",
-        query=q,
-        base_url=BASE_URL,
-    )
+    primary=_discover_from_categories(session,q,max_urls=80)
+    _diag('discover_primary', count=len(primary), urls=primary[:20])
+    for u in primary:
+        if u not in seen: seen.add(u); urls.append(u)
+    if urls: return urls[:80]
 
-    # PRIMARY:
-    # current category / Product Line structure.
-    category_products = _discover_from_categories(
-        session,
-        q,
-        max_urls=80,
-    )
-
-    _diag(
-        "discover_primary",
-        count=len(category_products),
-        urls=category_products[:20],
-    )
-
-    for url in category_products:
-        if url not in seen:
-            seen.add(url)
-            urls.append(url)
-
-        if len(urls) >= 80:
-            return urls[:80]
-
-    # SECONDARY:
-    # Deloox own search endpoint.
-    api_products = _search_api_discovery(
-        session,
-        q,
-        max_urls=80,
-    )
-
-    _diag(
-        "discover_api_fallback",
-        count=len(api_products),
-        urls=api_products[:20],
-    )
-
-    for url in api_products:
-        if re.search(
-            r"/(?:product|produit)/",
-            url,
-            re.I,
-        ):
-            if url not in seen:
-                seen.add(url)
-                urls.append(url)
-
-                if len(urls) >= 80:
-                    return urls[:80]
-
-        else:
+    # One bounded own-search fallback. Do not run a long cascade here.
+    try:
+        api=_search_api_discovery(session,q,max_urls=40)
+    except Exception as exc:
+        _diag('discover_api_fallback_error', error=repr(exc)); api=[]
+    for u in api:
+        if re.search(r'/(?:product|produit)/',u,re.I):
+            if u not in seen: seen.add(u); urls.append(u)
+        elif len(urls)<80:
             try:
-                page = session.get(
-                    url,
-                    headers=HEADERS,
-                    timeout=5,
-                    allow_redirects=True,
-                )
-            except requests.RequestException:
-                continue
+                page=session.get(u,headers=HEADERS,timeout=(2.5,4),allow_redirects=True)
+            except requests.RequestException: continue
+            if page.status_code<400:
+                for pu in _candidate_product_urls(page.text,q,require_query=False,max_results=80):
+                    if pu not in seen: seen.add(pu); urls.append(pu)
+                    if len(urls)>=80: break
+        if len(urls)>=80: return urls[:80]
 
-            if page.status_code >= 400:
-                continue
-
-            for product_url in _candidate_product_urls(
-                page.text,
-                q,
-                require_query=False,
-                max_results=80,
-            ):
-                if product_url not in seen:
-                    seen.add(product_url)
-                    urls.append(product_url)
-
-                    if len(urls) >= 80:
-                        return urls[:80]
-
-    # TERTIARY:
-    # Product Line/category pages from sitemaps.
-    sitemap_categories = _sitemap_category_urls(
-        session,
-        q,
-        max_sitemaps=12,
-        max_urls=30,
-    )
-
-    _diag(
-        "discover_sitemap_categories",
-        count=len(sitemap_categories),
-        urls=sitemap_categories[:30],
-    )
-
-    for category_url in sitemap_categories:
-        try:
-            page = session.get(
-                category_url,
-                headers=HEADERS,
-                timeout=TIMEOUT,
-                allow_redirects=True,
-            )
-        except requests.RequestException:
-            continue
-
-        if page.status_code >= 400:
-            continue
-
-        for product_url in _candidate_product_urls(
-            page.text,
-            q,
-            require_query=False,
-            max_results=80,
-        ):
-            if product_url not in seen:
-                seen.add(product_url)
-                urls.append(product_url)
-
-                if len(urls) >= 80:
-                    return urls[:80]
-
-    # QUATERNARY:
-    # localized search endpoints.
-    endpoints = [
-        BASE_URL + "/en/search?query=" + quote_plus(q),
-        BASE_URL + "/en/search?search=" + quote_plus(q),
-        BASE_URL + "/en?search=" + quote_plus(q),
-        BASE_URL + "/en/search?q=" + quote_plus(q),
-        BASE_URL + "/nl/zoeken?query=" + quote_plus(q),
-        BASE_URL + "/nl/zoeken?q=" + quote_plus(q),
-        BASE_URL + "/fr/recherche?query=" + quote_plus(q),
-        BASE_URL + "/fr/recherche?q=" + quote_plus(q),
-    ]
-
-    for endpoint in endpoints:
-        try:
-            r = session.get(
-                endpoint,
-                headers=HEADERS,
-                timeout=TIMEOUT,
-                allow_redirects=True,
-            )
-        except requests.RequestException as exc:
-            _diag(
-                "search_endpoint_error",
-                endpoint=endpoint,
-                error=repr(exc),
-            )
-            continue
-
-        _diag(
-            "search_endpoint",
-            endpoint=endpoint,
-            status=r.status_code,
-            bytes=len(r.text or ""),
-        )
-
-        if r.status_code >= 400:
-            continue
-
-        endpoint_products = _candidate_product_urls(
-            r.text,
-            q,
-        )
-
-        _diag(
-            "search_endpoint_products",
-            endpoint=endpoint,
-            count=len(endpoint_products),
-            urls=endpoint_products[:20],
-        )
-
-        for url in endpoint_products:
-            if url not in seen:
-                seen.add(url)
-                urls.append(url)
-
-        if len(urls) >= 80:
-            return urls[:80]
-
-    # LAST RESORT:
-    # product sitemap discovery.
-    for url in _sitemap_product_urls(
-        session,
-        q,
-        max_sitemaps=12,
-        max_urls=80,
-    ):
-        if url not in seen:
-            seen.add(url)
-            urls.append(url)
-
-        if len(urls) >= 80:
-            break
-
-    _diag(
-        "discover_done",
-        count=len(urls),
-        urls=urls[:80],
-        query=q,
-    )
-
+    # Sitemap remains last resort and is strictly bounded.
+    try:
+        for u in _sitemap_product_urls(session,q,max_sitemaps=3,max_urls=40):
+            if u not in seen: seen.add(u); urls.append(u)
+            if len(urls)>=80: break
+    except Exception as exc:
+        _diag('discover_sitemap_error', error=repr(exc))
+    _diag('discover_done', count=len(urls), urls=urls[:80], query=q)
     return urls[:80]
 
 
 def search(query):
-    query = clean(query)
-
-    if not query:
-        return []
-
-    session = requests.Session()
-
-    results = []
-    seen = set()
-
+    query=clean(query)
+    if not query: return []
+    session=requests.Session()
+    results=[]; seen=set()
     try:
-        for url in _discover(
-            session,
-            query,
-        ):
+        urls=_discover(session,query)
+        def fetch_one(url):
             try:
-                r = session.get(
-                    url,
-                    headers=HEADERS,
-                    timeout=TIMEOUT,
-                    allow_redirects=True,
-                )
+                r=session.get(url,headers=HEADERS,timeout=(2.5,6),allow_redirects=True)
+                if r.status_code>=400: return None
+                final_url=r.url or url
+                return final_url,_product(final_url,r.text,query)
             except requests.RequestException:
-                continue
-
-            if r.status_code >= 400:
-                continue
-
-            final_url = (
-                r.url
-                or url
-            )
-
-            item = _product(
-                final_url,
-                r.text,
-                query,
-            )
-
-            if not item:
-                continue
-
-            sku_value = None
-
-            sku = item["identity"].get(
-                "sku"
-            )
-
-            if sku:
-                sku_value = sku.get(
-                    "value"
-                )
-
-            key = (
-                final_url,
-                sku_value,
-            )
-
-            if key in seen:
-                continue
-
-            seen.add(key)
-            results.append(item)
-
+                return None
+            except Exception:
+                return None
+        with concurrent.futures.ThreadPoolExecutor(max_workers=min(6,max(1,len(urls)))) as ex:
+            for pair in ex.map(fetch_one, urls[:80]):
+                if not pair: continue
+                final_url,item=pair
+                if not item: continue
+                sku_value=None
+                sku=item.get('identity',{}).get('sku') if isinstance(item.get('identity'),dict) else None
+                if isinstance(sku,dict): sku_value=sku.get('value')
+                key=(final_url,sku_value)
+                if key in seen: continue
+                seen.add(key); results.append(item)
         return results
-
     finally:
         session.close()
 
