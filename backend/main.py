@@ -743,6 +743,28 @@ def diagnostic_scraper_deep(
             "error": f"{type(exc).__name__}: {exc}",
         }
 
+    # Module identity / provenance diagnostics.  This is deliberately collected
+    # before any discovery call so that a stale/wrong Railway module cannot be
+    # mistaken for a scraper discovery failure.
+    module_file = str(getattr(module, "__file__", "") or "")
+    module_spec = getattr(module, "__spec__", None)
+    module_origin = str(getattr(module_spec, "origin", "") or "") if module_spec else ""
+    module_source = ""
+    module_source_sha256 = None
+    module_source_lines = None
+    module_source_error = None
+    if module_file:
+        try:
+            _module_path = __import__("pathlib").Path(module_file)
+            if _module_path.exists() and _module_path.is_file():
+                module_source = _module_path.read_text(encoding="utf-8", errors="replace")
+                module_source_sha256 = __import__("hashlib").sha256(
+                    module_source.encode("utf-8", errors="replace")
+                ).hexdigest()
+                module_source_lines = len(module_source.splitlines())
+        except Exception as _exc:
+            module_source_error = f"{type(_exc).__name__}: {_exc}"
+
     base = str(getattr(module, "BASE_URL", ""))
     headers = dict(getattr(module, "HEADERS", {}) or {})
     timeout = getattr(module, "TIMEOUT", None)
@@ -799,7 +821,33 @@ def diagnostic_scraper_deep(
             t0 = _deep_time.monotonic()
             discover = getattr(module, "_discover", None)
             if not callable(discover):
-                raise RuntimeError("_discover_not_found")
+                # Never hide the real cause behind a generic _discover_not_found.
+                # Return the loaded module's provenance and available callables.
+                available = sorted(
+                    name for name in dir(module)
+                    if name.startswith("_") and callable(getattr(module, name, None))
+                )
+                trace["stage"] = "module_introspection"
+                trace["module_introspection"] = {
+                    "module_file": module_file,
+                    "module_origin": module_origin,
+                    "module_source_sha256": module_source_sha256,
+                    "module_source_lines": module_source_lines,
+                    "required_functions_present": {
+                        name: callable(getattr(module, name, None))
+                        for name in [
+                            "_discover",
+                            "_discover_from_categories",
+                            "_candidate_product_urls",
+                            "_category_product_line_links",
+                            "_find_catalog_filter_url",
+                            "_sitemap_product_urls",
+                            "_product",
+                        ]
+                    },
+                    "available_private_callables": available[:300],
+                }
+                raise RuntimeError("_discover_not_found_in_loaded_module")
             urls = discover(session, query) or []
             result["stages"]["discovery"] = {
                 "elapsed_ms": round((_deep_time.monotonic() - t0) * 1000),
@@ -965,13 +1013,13 @@ def diagnostic_scraper_trace(
         "sabina": "scrapers.sabina.scraper",
     }
     if store_key not in allowed:
-        return {"ok": False, "diagnostic": "scraper_trace_v2", "error": "unsupported_store", "allowed_stores": sorted(allowed)}
+        return {"ok": False, "diagnostic": "scraper_trace_v3_module_identity", "error": "unsupported_store", "allowed_stores": sorted(allowed)}
 
     started = _trace_time.monotonic()
     try:
         module = _trace_importlib.import_module(allowed[store_key])
     except Exception as exc:
-        return {"ok": False, "diagnostic": "scraper_trace_v2", "stage": "module_load", "error": f"{type(exc).__name__}: {exc}"}
+        return {"ok": False, "diagnostic": "scraper_trace_v3_module_identity", "stage": "module_load", "error": f"{type(exc).__name__}: {exc}"}
 
     base = str(getattr(module, "BASE_URL", ""))
     headers = dict(getattr(module, "HEADERS", {}) or {})
@@ -1023,12 +1071,32 @@ def diagnostic_scraper_trace(
 
     trace = {
         "ok": True,
-        "diagnostic": "scraper_trace_v2",
+        "diagnostic": "scraper_trace_v3_module_identity",
         "store": store_key,
         "query": query,
         "module": module.__name__,
-        "base_url": base,
-        "configured_timeout": timeout,
+        "module_file": module_file,
+        "module_origin": module_origin,
+        "module_source_sha256": module_source_sha256,
+        "module_source_lines": module_source_lines,
+        "module_source_error": module_source_error,
+        "module_functions": {
+            name: callable(getattr(module, name, None))
+            for name in [
+                "_discover",
+                "_discover_from_categories",
+                "_candidate_product_urls",
+                "_category_product_line_links",
+                "_find_catalog_filter_url",
+                "_sitemap_product_urls",
+                "_product",
+                "search",
+            ]
+        },
+        "module_constants": {
+            "BASE_URL": base,
+            "TIMEOUT": timeout,
+        },
         "query_tokens": _trace_re_tokens(query),
         "stages": {},
         "http_calls": [],
@@ -1273,253 +1341,3 @@ def diagnostic_scraper_trace(
             session.close()
         except Exception:
             pass
-
-# ===== READ-ONLY DELOOX LIVE PIPELINE DIAGNOSTIC =====
-# Executes the real installed Deloox discovery pipeline and then the real
-# product parser. No normal search route or scraper source file is changed.
-
-@app.get("/diagnose-deloox")
-def diagnose_deloox(q: str = Query(..., min_length=1, description="Perfume to diagnose on Deloox.be")):
-    import importlib as _d_importlib
-    import time as _d_time
-    import traceback as _d_traceback
-    import requests as _d_requests
-    from urllib.parse import urlparse as _d_urlparse
-
-    query = str(q or "").strip()
-    started = _d_time.perf_counter()
-    report = {
-        "ok": True,
-        "diagnostic": "Deloox live pipeline diagnostic v2",
-        "query": query,
-        "canonical_domain": "https://www.deloox.be",
-        "stage": "start",
-        "scraper": {},
-        "http_calls": [],
-        "function_trace": [],
-        "stages": {},
-    }
-
-    scraper = None
-    patches = []
-
-    def _short(value, limit=1200):
-        text = re.sub(r"\s+", " ", str(value or "")).strip()
-        return text[:limit]
-
-    def _tokens(value):
-        return [x for x in re.findall(r"[a-z0-9]+", str(value or "").casefold()) if len(x) >= 3]
-
-    class _LoggedSession(_d_requests.Session):
-        def __init__(self):
-            super().__init__()
-            self.calls = []
-
-        def get(self, url, **kwargs):
-            t0 = _d_time.perf_counter()
-            try:
-                response = super().get(url, **kwargs)
-                body = response.text or ""
-                low = body.casefold()
-                entry = {
-                    "url": str(url),
-                    "final_url": str(getattr(response, "url", "") or ""),
-                    "status": response.status_code,
-                    "bytes": len(response.content or b""),
-                    "elapsed_ms": round((_d_time.perf_counter() - t0) * 1000),
-                    "content_type": response.headers.get("content-type"),
-                    "query_found_raw_html": query.casefold() in low,
-                    "query_token_hits": {token: token in low for token in _tokens(query)},
-                }
-                self.calls.append(entry)
-                return response
-            except Exception as exc:
-                self.calls.append({
-                    "url": str(url),
-                    "status": None,
-                    "bytes": 0,
-                    "elapsed_ms": round((_d_time.perf_counter() - t0) * 1000),
-                    "error": f"{type(exc).__name__}: {exc}",
-                })
-                raise
-
-    def _patch(obj, name):
-        original = getattr(obj, name, None)
-        if not callable(original):
-            return False
-
-        def wrapped(*args, **kwargs):
-            t0 = _d_time.perf_counter()
-            try:
-                result = original(*args, **kwargs)
-                if isinstance(result, (list, tuple, set)):
-                    values = list(result)
-                    entry = {
-                        "function": name,
-                        "returned_type": type(result).__name__,
-                        "returned_count": len(values),
-                        "returned": values[:120],
-                        "elapsed_ms": round((_d_time.perf_counter() - t0) * 1000),
-                    }
-                    # For HTML-driven helpers, independently record query evidence
-                    # from the exact HTML passed to the function.
-                    if args and isinstance(args[0], str) and len(args[0]) > 1000:
-                        html = args[0]
-                        low = html.casefold()
-                        entry["input_html_bytes"] = len(html)
-                        entry["query_found_raw_html"] = query.casefold() in low
-                        entry["query_token_hits"] = {token: token in low for token in _tokens(query)}
-                    report["function_trace"].append(entry)
-                else:
-                    report["function_trace"].append({
-                        "function": name,
-                        "returned_type": type(result).__name__,
-                        "returned": _short(result),
-                        "elapsed_ms": round((_d_time.perf_counter() - t0) * 1000),
-                    })
-                return result
-            except Exception as exc:
-                report["function_trace"].append({
-                    "function": name,
-                    "error": f"{type(exc).__name__}: {exc}",
-                    "traceback": _short(_d_traceback.format_exc(), 2500),
-                    "elapsed_ms": round((_d_time.perf_counter() - t0) * 1000),
-                })
-                raise
-
-        patches.append((obj, name, original))
-        setattr(obj, name, wrapped)
-        return True
-
-    try:
-        report["stage"] = "resolve_scraper"
-        resolver = getattr(_legacy, "load_scraper", None)
-        if callable(resolver):
-            try:
-                scraper = resolver("Deloox")
-                report["resolver"] = "main_legacy.load_scraper"
-            except Exception as exc:
-                report["resolver_error"] = f"{type(exc).__name__}: {exc}"
-
-        if scraper is None:
-            scraper = _d_importlib.import_module("scrapers.deloox.scraper")
-            report["resolver"] = "scrapers.deloox.scraper"
-
-        base = str(getattr(scraper, "BASE_URL", "") or "").rstrip("/")
-        report["scraper"] = {
-            "module": getattr(scraper, "__file__", None),
-            "base_url": base,
-            "base_netloc": _d_urlparse(base).netloc.lower() if base else None,
-            "has_search": callable(getattr(scraper, "search", None)),
-            "has_discover": callable(getattr(scraper, "_discover", None)),
-            "has_product_parser": callable(getattr(scraper, "_product", None)),
-            "has_category_discovery": callable(getattr(scraper, "_discover_from_categories", None)),
-            "domain_is_canonical": _d_urlparse(base).netloc.lower() in {"deloox.be", "www.deloox.be"},
-        }
-
-        discover = getattr(scraper, "_discover", None)
-        parser = getattr(scraper, "_product", None)
-        if not callable(discover):
-            raise RuntimeError("_discover_not_found_in_installed_scraper")
-        if not callable(parser):
-            raise RuntimeError("_product_not_found_in_installed_scraper")
-
-        # Instrument the exact discovery helpers used by _discover().
-        for fname in (
-            "_candidate_product_urls",
-            "_category_product_line_links",
-            "_discover_from_categories",
-            "_find_catalog_filter_url",
-            "_sitemap_category_urls",
-            "_sitemap_product_urls",
-        ):
-            _patch(scraper, fname)
-
-        session = _LoggedSession()
-        headers = dict(getattr(scraper, "HEADERS", {}) or {})
-        if headers:
-            session.headers.update(headers)
-        timeout = getattr(scraper, "TIMEOUT", 10)
-
-        report["stage"] = "live_discovery"
-        t0 = _d_time.perf_counter()
-        urls = discover(session, query) or []
-        urls = list(urls)
-        report["stages"]["discovery"] = {
-            "elapsed_ms": round((_d_time.perf_counter() - t0) * 1000),
-            "candidate_url_count": len(urls),
-            "candidate_urls": urls[:120],
-        }
-
-        # Parse every discovered URL, using the exact production _product().
-        report["stage"] = "live_product_parsing"
-        parsed = []
-        rejected = []
-        for index, url in enumerate(urls[:60], start=1):
-            item_report = {"index": index, "url": url}
-            try:
-                t1 = _d_time.perf_counter()
-                response = session.get(url, headers=headers, timeout=timeout or 10, allow_redirects=True)
-                body = response.text or ""
-                item_report.update({
-                    "http_status": response.status_code,
-                    "http_bytes": len(response.content or b""),
-                    "http_elapsed_ms": round((_d_time.perf_counter() - t1) * 1000),
-                    "html_contains_query": query.casefold() in body.casefold(),
-                    "query_token_hits": {token: token in body.casefold() for token in _tokens(query)},
-                })
-                if response.status_code >= 400:
-                    item_report["reject_stage"] = "product_http"
-                    item_report["reject_reason"] = f"http_{response.status_code}"
-                    rejected.append(item_report)
-                    continue
-                parsed_item = parser(url, body, query)
-                if parsed_item is None:
-                    item_report["reject_stage"] = "product_parser"
-                    item_report["reject_reason"] = "parser_returned_none"
-                    rejected.append(item_report)
-                else:
-                    parsed.append({"url": url, "item": parsed_item})
-            except Exception as exc:
-                item_report["reject_stage"] = "product_parser_exception"
-                item_report["reject_reason"] = f"{type(exc).__name__}: {exc}"
-                item_report["traceback"] = _short(_d_traceback.format_exc(), 1800)
-                rejected.append(item_report)
-
-        report["stages"]["product_parsing"] = {
-            "attempted_urls": min(len(urls), 60),
-            "parsed_count": len(parsed),
-            "parsed": parsed[:30],
-            "rejected_count": len(rejected),
-            "rejected": rejected[:60],
-        }
-
-        report["http_calls"] = session.calls
-        report["summary"] = {
-            "http_call_count": len(session.calls),
-            "successful_http_calls": sum(1 for call in session.calls if call.get("status") and call.get("status") < 400),
-            "http_errors": sum(1 for call in session.calls if call.get("status") is None or call.get("status", 0) >= 400),
-            "candidate_url_count": len(urls),
-            "parsed_count": len(parsed),
-            "rejected_count": len(rejected),
-            "total_elapsed_ms": round((_d_time.perf_counter() - started) * 1000),
-        }
-        report["stage"] = "done"
-        session.close()
-        return report
-
-    except Exception as exc:
-        report["ok"] = False
-        report["stage"] = "fatal_error"
-        report["error"] = f"{type(exc).__name__}: {exc}"
-        report["traceback"] = _d_traceback.format_exc()
-        report["summary"] = {
-            "total_elapsed_ms": round((_d_time.perf_counter() - started) * 1000),
-        }
-        return report
-    finally:
-        for obj, name, original in reversed(patches):
-            try:
-                setattr(obj, name, original)
-            except Exception:
-                pass
