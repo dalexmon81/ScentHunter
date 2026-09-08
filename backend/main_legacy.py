@@ -170,11 +170,9 @@ def _load_product_matcher_catalog() -> List[Dict[str, Any]]:
 _PRODUCT_MATCHER_CATALOG = _load_product_matcher_catalog()
 _PRODUCT_MATCHER = ProductMatcher(_PRODUCT_MATCHER_CATALOG)
 
-FRONTEND_INDEX = (
-    Path(__file__).resolve().parent.parent
-    / "frontend"
-    / "index.html"
-)
+FRONTEND_DIR = Path(__file__).resolve().parent.parent / "frontend"
+FRONTEND_INDEX = FRONTEND_DIR / "index.html"
+FRONTEND_INDEX_TXT = FRONTEND_DIR / "index.txt"
 
 NON_PERFUME = {
     # Confezioni / prodotti multipli: non sono una singola referenza profumo.
@@ -2829,14 +2827,19 @@ def update_price_history(
     include_in_schema=False,
 )
 def root():
-    if not FRONTEND_INDEX.exists():
+    # Deploy-safe: the project files are delivered as index.txt in ChatGPT,
+    # while a normal production deploy may rename it to index.html. Support
+    # both without changing the frontend content.
+    frontend = FRONTEND_INDEX if FRONTEND_INDEX.exists() else FRONTEND_INDEX_TXT
+    if not frontend.exists():
         raise HTTPException(
             status_code=500,
-            detail="frontend/index.html non trovato",
+            detail="frontend/index.html o frontend/index.txt non trovato",
         )
 
     return FileResponse(
-        FRONTEND_INDEX
+        frontend,
+        media_type="text/html; charset=utf-8",
     )
 
 
@@ -2872,7 +2875,14 @@ def _search_job_snapshot(job_id: str) -> Dict[str, Any]:
         diagnostics = dict(job.get("store_diagnostics", {}))
         phase = job.get("phase", "discovery")
 
-    results = _prepare_final_results(raw_results, query)
+    # SearchEngine pubblica già risultati finali (gruppi con offers).
+    # Riapplicarvi _prepare_final_results() ricollassa il gruppo usando
+    # soltanto il negozio rappresentativo e fa sparire gli altri retailer.
+    # Il vecchio runner legacy invece continua a pubblicare candidati grezzi.
+    if job.get("results_are_final"):
+        results = raw_results
+    else:
+        results = _prepare_final_results(raw_results, query)
     return {
         "job_id": job_id,
         "query": query,
