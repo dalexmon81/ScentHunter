@@ -13,6 +13,7 @@ from urllib.parse import quote_plus, urljoin, urlparse
 
 import requests
 import time
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from bs4 import BeautifulSoup
 
 STORE = "Deloox"
