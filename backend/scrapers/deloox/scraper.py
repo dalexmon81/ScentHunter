@@ -378,9 +378,9 @@ def _category_product_line_links(html, query):
     # escaped URLs, or scripts without an <a> element.
     raw = html.replace("\\\\/", "/")
     patterns = [
-        r'(?:"|\\\')((?:https?:)?//(?:www\\.)?deloox\\.com)?'
-        r'(/(?:en/|it/|nl/)?category/\\d+/[^"\\\'<>\\s]+\\.html)',
-        r'(?:"|\\\')((?:/)?(?:en/|it/|nl/)?category/\\d+/[^"\\\'<>\\s]+\\.html)(?:"|\\\')',
+        r'(?:(?:"|\'))((?:https?:)?//(?:www\.)?deloox\.be)?'
+        r'(/(?:en/|it/|nl/)?category/\d+/[^"\'<>\s]+\.html)',
+        r'(?:(?:"|\'))((?:/)?(?:en/|it/|nl/)?category/\d+/[^"\'<>\s]+\.html)(?:(?:"|\'))',
     ]
     for pattern in patterns:
         for match in re.findall(pattern, raw, re.I):
