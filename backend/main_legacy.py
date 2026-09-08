@@ -2528,12 +2528,59 @@ def _validate_candidate(
     candidate_size = product_size_ml(product)
 
     if not matches(product, query):
+        reject_reasons = []
+        blocked = _non_single_product_match(product)
+        if blocked:
+            reject_reasons.append(f"non_single_product={blocked!r}")
+
+        qsize_match = re.search(
+            r"(?<!\\d)(\\d+(?:[.,]\\d+)?)\\s*(ml|cl)\\b",
+            norm(query),
+            re.I,
+        )
+        qsize = None
+        if qsize_match:
+            qsize = float(qsize_match.group(1).replace(",", "."))
+            if qsize_match.group(2).lower() == "cl":
+                qsize *= 10
+        if candidate_size is not None and candidate_size <= 10 and qsize not in (None,) and qsize > 10:
+            reject_reasons.append("small_format")
+        if qsize is not None and candidate_size is not None and abs(candidate_size - qsize) > 0.01:
+            reject_reasons.append(f"query_size_mismatch={qsize}")
+
+        family = _catalog_family_for_query(query)
+        if family is not None:
+            cm = _catalog_match(product, query)
+            if cm is None:
+                reject_reasons.append(
+                    "catalog_match_failed"
+                )
+                reject_reasons.append(
+                    "brand="
+                    + repr(product.get("brand") or product.get("source_brand") or "")
+                )
+                reject_reasons.append(
+                    "source_brand="
+                    + repr((product.get("source") or {}).get("brand") if isinstance(product.get("source"), dict) else "")
+                )
+                reject_reasons.append(
+                    "url="
+                    + repr(str(product.get("url") or "")[:220])
+                )
+                reject_reasons.append(
+                    "category="
+                    + repr(product.get("category") or product.get("product_category") or product.get("product_type") or "")
+                )
+        elif not reject_reasons:
+            reject_reasons.append("generic_name_match_failed")
+
         print(
             "CENTRAL_VALIDATION_REJECT: "
             f"store={candidate_store} "
             f"name={candidate_name!r} "
             f"size={candidate_size!r} "
-            f"query={query!r}",
+            f"query={query!r} "
+            f"reason={' | '.join(reject_reasons) or 'unknown'}",
             flush=True,
         )
         return None
