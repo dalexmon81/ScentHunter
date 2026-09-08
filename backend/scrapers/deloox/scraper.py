@@ -433,17 +433,22 @@ def _category_product_line_links(html, query):
     candidate_ids = []
     if not links and q_tokens:
         q_norm = norm(query)
-        raw_norm = norm(raw)
-        start = 0
+        # IMPORTANT: positions in norm(raw) do not map to positions in raw
+        # because norm() removes punctuation/markup.  The previous version
+        # used normalized offsets to slice the original HTML, so the fallback
+        # inspected the wrong parts of the page and candidate_ids stayed empty.
+        # Locate the query directly in the original HTML using a punctuation-
+        # tolerant regex, then take the surrounding raw window.
+        query_parts = [re.escape(x) for x in q_norm.split() if x]
         contexts = []
-        while True:
-            pos = raw_norm.find(q_norm, start)
-            if pos < 0:
-                break
-            contexts.append(raw[max(0, pos - 4000):pos + 4000])
-            start = pos + max(1, len(q_norm))
-            if len(contexts) >= 8:
-                break
+        if query_parts:
+            query_re = re.compile(r"[^A-Za-z0-9]+".join(query_parts), re.I)
+            for match in query_re.finditer(raw):
+                lo = max(0, match.start() - 5000)
+                hi = min(len(raw), match.end() + 5000)
+                contexts.append(raw[lo:hi])
+                if len(contexts) >= 12:
+                    break
 
         id_patterns = (
             r'(?:categoryId|category_id|productLineId|product_line_id)["\']?\s*[:=]\s*["\']?(\d{4,9})',
