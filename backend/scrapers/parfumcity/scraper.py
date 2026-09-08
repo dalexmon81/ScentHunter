@@ -207,7 +207,11 @@ def _item(product,variant,url):
         "offer":{"price":p,"currency":"EUR","availability":stock},
         "provenance":{"source_page":url,"product_source":"shopify_product_json","variant_source":"shopify_product_json"},
         "raw_data":{"product":product,"variant":variant},
-        "name":name,"price":f"{p:.2f}".replace(".",",")+" €","url":url,"available":available
+        # Espone il marchio anche al livello top-level: il backend centrale
+        # usa questo campo come identità primaria quando il retailer Shopify
+        # non lo espone nel formato standard. Non cambia il matching del nome.
+        "name":name,"brand":clean(product.get("vendor")) or None,
+        "price":f"{p:.2f}".replace(".",",")+" €","url":url,"available":available
     }
 
 CURRENT_QUERY=""
