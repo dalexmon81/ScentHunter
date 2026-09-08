@@ -64,102 +64,6 @@ if callable(_engine_snapshot):
 # Keep the exact FastAPI application object and every existing route.
 app = _legacy.app
 
-# ===== TEMPORARY READ-ONLY DELOOX FILTER DIAGNOSTIC =====
-DELOOX_DIAG_BASE = "https://www.deloox.be"
-DELOOX_DIAG_CATEGORIES = [
-    "/categorie/1075732/parfum-homme.html",
-    "/categorie/1000063/parfum-femme.html",
-    "/categorie/1075918/parfum-mixte.html",
-]
-
-def _deloox_diag_extract_urls(text: str) -> List[str]:
-    out = set()
-    for u in re.findall(r"https?://(?:www\\.)?deloox\\.be/[^\"\'<>\\s]+", text, flags=re.I):
-        out.add(u.replace("\\/", "/").rstrip(".,);]"))
-    for u in re.findall(r"(?:href|url|action|endpoint|src)\s*[:=]\s*[\"\']([^\"\']+)", text, flags=re.I):
-        if u.startswith("/"):
-            out.add(DELOOX_DIAG_BASE + u)
-        elif "deloox.be" in u:
-            out.add(u.replace("\\/", "/"))
-    return sorted(out)
-
-def _deloox_diag_contexts(text: str, needles: List[str], radius: int = 1800, limit: int = 8) -> List[Dict[str, Any]]:
-    low = text.casefold()
-    found = []
-    seen = set()
-    for needle in needles:
-        start = 0
-        nl = needle.casefold()
-        while len(found) < limit:
-            pos = low.find(nl, start)
-            if pos < 0:
-                break
-            key = (pos, needle)
-            if key not in seen:
-                seen.add(key)
-                a = max(0, pos - radius); b = min(len(text), pos + len(needle) + radius)
-                ctx = text[a:b]
-                found.append({"needle": needle, "position": pos, "context": ctx, "urls": _deloox_diag_extract_urls(ctx)[:30]})
-            start = pos + max(1, len(needle))
-    return found
-
-@app.get("/diagnostic-deloox-filter")
-def diagnostic_deloox_filter(q: str = Query("Liquid Brun")):
-    result: Dict[str, Any] = {
-        "ok": True, "diagnostic": "deloox_filter_v1", "query": q,
-        "base_url": DELOOX_DIAG_BASE, "pages": [], "global_script_matches": []
-    }
-    session = requests.Session()
-    session.headers.update({"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/131 Safari/537.36", "Accept-Language": "nl-BE,nl;q=0.9,en;q=0.8"})
-    all_html = []
-    try:
-        for path in DELOOX_DIAG_CATEGORIES:
-            url = DELOOX_DIAG_BASE + path
-            try:
-                r = session.get(url, timeout=20)
-                html = r.text or ""
-                all_html.append(html)
-                soup = BeautifulSoup(html, "html.parser")
-                scripts = []
-                for sc in soup.find_all("script", src=True):
-                    src = str(sc.get("src") or "").strip()
-                    if src.startswith("/"): src = DELOOX_DIAG_BASE + src
-                    scripts.append(src)
-                filter_nodes = []
-                for tag in soup.find_all(attrs={"data-pvalue-id": True}):
-                    txt = tag.get_text(" ", strip=True)
-                    if q.casefold() in txt.casefold() or any(t in txt.casefold() for t in q.casefold().split()):
-                        filter_nodes.append({"tag": tag.name, "text": txt[:300], "data_pvalue_id": tag.get("data-pvalue-id"), "data_prpid": tag.get("data-prpid"), "data_index": tag.get("data-index"), "data_track": tag.get("data-track"), "outer": str(tag)[:1800]})
-                result["pages"].append({
-                    "url": url, "status": r.status_code, "bytes": len(r.content),
-                    "query_found": q.casefold() in html.casefold(),
-                    "known_liquid_brun_filter": _deloox_diag_contexts(html, ["Liquid Brun", "data-pvalue-id=\"512883\"", "filters:12-512883", "data-prpid=\"12\""], 1400, 6),
-                    "known_category": _deloox_diag_contexts(html, ["1122039", "1355229", "/categorie/1122039/liquid-brun.html"], 1400, 6),
-                    "filter_nodes": filter_nodes[:12],
-                    "product_url_count": html.lower().count("/produit/"),
-                    "scripts": scripts[:80],
-                    "interesting_urls": [u for u in _deloox_diag_extract_urls(html) if any(k in u.casefold() for k in ["filter", "ajax", "categorie", "search", "api", "produit"])][:120]
-                })
-            except Exception as exc:
-                result["pages"].append({"url": url, "error": f"{type(exc).__name__}: {exc}"})
-        joined = "\n".join(all_html)
-        result["global_script_matches"] = _deloox_diag_contexts(joined, ["filters:12-512883", "data-pvalue-id", "pvalue-id", "prpid", "ajax", "/api/", "filterUrl", "filter_url", "applyFilter"], 2200, 20)
-        # Extract inline script snippets that mention the exact filter identifiers.
-        soup = BeautifulSoup(all_html[0] if all_html else "", "html.parser")
-        inline = []
-        for sc in soup.find_all("script"):
-            txt = sc.string or sc.get_text() or ""
-            if any(n.casefold() in txt.casefold() for n in ["512883", "filters:12-", "pvalue-id", "prpid"]):
-                inline.append({"bytes": len(txt), "contexts": _deloox_diag_contexts(txt, ["512883", "filters:12-", "pvalue-id", "prpid"], 2600, 10), "src": sc.get("src")})
-        result["inline_scripts"] = inline[:20]
-        return result
-    except Exception as exc:
-        result["ok"] = False; result["error"] = f"{type(exc).__name__}: {exc}"
-        return result
-    finally:
-        session.close()
-
-
 # ===== TEMPORARY READ-ONLY NOTINO DEEP DIAGNOSTIC =====
 JINA_PREFIX = "https://r.jina.ai/"
 NOTINO_BASE = "https://www.notino.fr"
@@ -1370,48 +1274,207 @@ def diagnostic_scraper_trace(
         except Exception:
             pass
 
+@app.get("/diagnostic-deloox-click")
+async def diagnostic_deloox_click(q: str = "Liquid Brun"):
+    """
+    Read-only Deloox diagnostic:
+    opens the real category page with Playwright, finds the Product Line
+    filter matching q, clicks it, and captures the network requests caused
+    by that click. This is diagnostic only and does not change production
+    search behavior.
+    """
+    import time as _diag_time
+    result = {
+        "ok": False,
+        "diagnostic": "deloox_filter_click_v1",
+        "query": q,
+        "base_url": "https://www.deloox.be",
+        "category_url": "https://www.deloox.be/categorie/1075732/parfum-homme.html",
+        "playwright": None,
+        "filter": None,
+        "requests_after_click": [],
+        "responses_after_click": [],
+        "error": None,
+    }
 
-@app.get("/diagnostic-deloox-api")
-def diagnostic_deloox_api(q: str = Query(..., min_length=1, max_length=120)):
-    """Read-only Deloox filter/API diagnostic. One category request only."""
-    import time as _t
-    import requests as _req
-    from bs4 import BeautifulSoup as _BS
-    started = _t.monotonic()
-    url = "https://www.deloox.be/categorie/1075732/parfum-homme.html"
-    out = {"ok": False, "query": q, "url": url, "timeout_seconds": 8}
+    started = _diag_time.monotonic()
     try:
-        r = _req.get(url, timeout=8, headers={
-            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/131 Safari/537.36",
-            "Accept-Language": "fr-BE,fr;q=0.9,en;q=0.8"
-        })
-        html = r.text or ""
-        out.update({"status": r.status_code, "final_url": str(r.url), "bytes": len(r.content),
-                    "elapsed_ms": round((_t.monotonic()-started)*1000)})
-        needles = ["512883", "filters:12-512883", "data-prpid=\"12\"", "/api/search", "api/search", "ajax", "pvalue-id", "prpid", "filter"]
-        contexts=[]
-        for needle in needles:
-            pos=html.lower().find(needle.lower())
-            if pos>=0:
-                contexts.append({"needle":needle,"offset":pos,"text":html[max(0,pos-1800):pos+3500]})
-        soup=_BS(html,"html.parser")
-        scripts=[]
-        for tag in soup.find_all("script"):
-            src=tag.get("src")
-            txt=tag.string or tag.get_text() or ""
-            low=(txt+" "+(src or "")).lower()
-            if any(x in low for x in ["api/search","ajax","pvalue","prpid","filter","product-list","catalog"]):
-                scripts.append({"src":src,"inline_bytes":len(txt),"preview":txt[:1200] if txt else ""})
-        script_srcs=[t.get("src") for t in soup.find_all("script") if t.get("src")]
-        apiish=sorted(set(re.findall(r'https?://[^\"\'\s<>]+|/[A-Za-z0-9_./-]*(?:api|ajax|search|filter)[A-Za-z0-9_./?=&%-]*', html, re.I)))[:300]
-        # Pull data attributes around the exact filter item.
-        item=None
-        li=soup.find("li", attrs={"data-pvalue-id":"512883"})
-        if li:
-            item={k:v for k,v in li.attrs.items() if k in ["data-pvalue-id","data-prpid","data-track","title","onclick","data-index"]}
-        out.update({"filter_item":item,"contexts":contexts,"relevant_scripts":scripts[:30],"script_src_count":len(script_srcs),"apiish_urls":apiish,
-                    "query_present":q.lower() in html.lower(),"total_elapsed_ms":round((_t.monotonic()-started)*1000),"ok":True})
-        return out
-    except Exception as e:
-        out.update({"error":f"{type(e).__name__}: {e}","total_elapsed_ms":round((_t.monotonic()-started)*1000)})
-        return out
+        from playwright.async_api import async_playwright
+    except Exception as exc:
+        result["error"] = {
+            "type": "playwright_import_error",
+            "message": str(exc),
+        }
+        result["elapsed_ms"] = round((_diag_time.monotonic() - started) * 1000)
+        return result
+
+    async with async_playwright() as p:
+        browser = None
+        try:
+            browser = await p.chromium.launch(
+                headless=True,
+                args=[
+                    "--no-sandbox",
+                    "--disable-dev-shm-usage",
+                    "--disable-gpu",
+                ],
+            )
+            result["playwright"] = "chromium_launched"
+
+            page = await browser.new_page(
+                viewport={"width": 1440, "height": 1000},
+                user_agent=(
+                    "Mozilla/5.0 (X11; Linux x86_64) "
+                    "AppleWebKit/537.36 (KHTML, like Gecko) "
+                    "Chrome/131.0.0.0 Safari/537.36"
+                ),
+            )
+
+            captured_requests = []
+            captured_responses = []
+
+            async def on_request(req):
+                try:
+                    captured_requests.append({
+                        "method": req.method,
+                        "url": req.url,
+                        "resource_type": req.resource_type,
+                        "post_data": (req.post_data or "")[:4000],
+                    })
+                except Exception:
+                    pass
+
+            async def on_response(resp):
+                try:
+                    if resp.request.resource_type in {
+                        "xhr", "fetch", "document"
+                    }:
+                        captured_responses.append({
+                            "status": resp.status,
+                            "url": resp.url,
+                            "method": resp.request.method,
+                            "resource_type": resp.request.resource_type,
+                        })
+                except Exception:
+                    pass
+
+            page.on("request", on_request)
+            page.on("response", on_response)
+
+            await page.goto(
+                result["category_url"],
+                wait_until="domcontentloaded",
+                timeout=15000,
+            )
+
+            # Wait briefly for the filter list to be populated.
+            await page.wait_for_timeout(1200)
+
+            # Find the exact Product Line filter by visible title/text.
+            filter_locator = page.locator(
+                'li[data-prpid="12"][data-pvalue-id]'
+            ).filter(
+                has_text=re.compile(r"^\s*" + re.escape(q) + r"\s*$", re.I)
+            )
+
+            count = await filter_locator.count()
+
+            if count == 0:
+                # Fallback: title attribute is exact and is more reliable
+                # than rendered text for this site's filter markup.
+                filter_locator = page.locator(
+                    'li[data-prpid="12"][data-pvalue-id][title]'
+                ).filter(
+                    has=page.locator(
+                        'span.c-text'
+                    )
+                )
+                # Narrow it through JS so we can inspect the actual title.
+                matches = await page.locator(
+                    'li[data-prpid="12"][data-pvalue-id][title]'
+                ).evaluate_all(
+                    """(els, wanted) => els
+                      .filter(e => (e.getAttribute('title') || '').trim().toLowerCase()
+                        === wanted.trim().toLowerCase())
+                      .slice(0, 3)
+                      .map(e => ({
+                        title: e.getAttribute('title'),
+                        pvalue_id: e.getAttribute('data-pvalue-id'),
+                        prpid: e.getAttribute('data-prpid'),
+                        data_track: e.getAttribute('data-track'),
+                        text: (e.innerText || '').trim().slice(0, 200)
+                      }))""",
+                    q,
+                )
+                if matches:
+                    info = matches[0]
+                    filter_locator = page.locator(
+                        f'li[data-prpid="12"][data-pvalue-id="{info["pvalue_id"]}"]'
+                    )
+                    count = await filter_locator.count()
+
+            if count == 0:
+                result["filter"] = {
+                    "found": False,
+                    "message": "Exact Product Line filter not found in rendered DOM.",
+                }
+                result["error"] = {
+                    "type": "filter_not_found",
+                    "message": f'No Product Line filter matched "{q}".',
+                }
+                return result
+
+            info = await filter_locator.first.evaluate(
+                """e => ({
+                    title: e.getAttribute('title'),
+                    pvalue_id: e.getAttribute('data-pvalue-id'),
+                    prpid: e.getAttribute('data-prpid'),
+                    data_track: e.getAttribute('data-track'),
+                    onclick: e.getAttribute('onclick'),
+                    text: (e.innerText || '').trim().slice(0, 300),
+                    outer_html: e.outerHTML.slice(0, 5000)
+                })"""
+            )
+            result["filter"] = {"found": True, **info}
+
+            before_count = len(captured_requests)
+
+            await filter_locator.first.scroll_into_view_if_needed()
+            await page.wait_for_timeout(300)
+
+            # The site may use JS click handlers; force the click on the
+            # actual filter element and then allow the resulting XHR/navigation.
+            await filter_locator.first.click(force=True, timeout=5000)
+            await page.wait_for_timeout(5000)
+
+            result["requests_after_click"] = captured_requests[before_count:][:100]
+            result["responses_after_click"] = captured_responses[:100]
+            result["final_url"] = page.url
+
+            # Also report any newly rendered product/category links after the click.
+            result["product_links_after_click"] = await page.locator(
+                'a[href*="/produit/"]'
+            ).evaluate_all(
+                """els => els.slice(0, 100).map(a => ({
+                    href: a.href,
+                    text: (a.innerText || a.getAttribute('title') || '').trim().slice(0, 250)
+                }))"""
+            )
+
+            result["ok"] = True
+            return result
+
+        except Exception as exc:
+            result["error"] = {
+                "type": type(exc).__name__,
+                "message": str(exc)[:4000],
+            }
+            return result
+        finally:
+            if browser is not None:
+                try:
+                    await browser.close()
+                except Exception:
+                    pass
+            result["elapsed_ms"] = round((_diag_time.monotonic() - started) * 1000)
+
