@@ -1274,121 +1274,238 @@ def diagnostic_scraper_trace(
         except Exception:
             pass
 
-# ===== READ-ONLY DELOOX DIAGNOSTIC =====
-# This route is intentionally inside the real main.py so Railway exposes it.
-# It does not modify the Deloox scraper or the normal search flow.
+# ===== READ-ONLY DELOOX LIVE PIPELINE DIAGNOSTIC =====
+# Executes the real installed Deloox discovery pipeline and then the real
+# product parser. No normal search route or scraper source file is changed.
 
 @app.get("/diagnose-deloox")
 def diagnose_deloox(q: str = Query(..., min_length=1, description="Perfume to diagnose on Deloox.be")):
-    import traceback as _d_traceback
+    import importlib as _d_importlib
     import time as _d_time
+    import traceback as _d_traceback
+    import requests as _d_requests
     from urllib.parse import urlparse as _d_urlparse
 
     query = str(q or "").strip()
+    started = _d_time.perf_counter()
     report = {
         "ok": True,
-        "diagnostic": "Deloox live scraper diagnostic",
+        "diagnostic": "Deloox live pipeline diagnostic v2",
         "query": query,
         "canonical_domain": "https://www.deloox.be",
         "stage": "start",
+        "scraper": {},
+        "http_calls": [],
+        "function_trace": [],
+        "stages": {},
     }
 
-    try:
-        # Resolve the exact scraper used by the production application.
-        report["stage"] = "resolve_scraper"
-        scraper = None
-        resolver = getattr(_legacy, "load_scraper", None)
-        resolver_error = None
+    scraper = None
+    patches = []
 
+    def _short(value, limit=1200):
+        text = re.sub(r"\s+", " ", str(value or "")).strip()
+        return text[:limit]
+
+    def _tokens(value):
+        return [x for x in re.findall(r"[a-z0-9]+", str(value or "").casefold()) if len(x) >= 3]
+
+    class _LoggedSession(_d_requests.Session):
+        def __init__(self):
+            super().__init__()
+            self.calls = []
+
+        def get(self, url, **kwargs):
+            t0 = _d_time.perf_counter()
+            try:
+                response = super().get(url, **kwargs)
+                body = response.text or ""
+                low = body.casefold()
+                entry = {
+                    "url": str(url),
+                    "final_url": str(getattr(response, "url", "") or ""),
+                    "status": response.status_code,
+                    "bytes": len(response.content or b""),
+                    "elapsed_ms": round((_d_time.perf_counter() - t0) * 1000),
+                    "content_type": response.headers.get("content-type"),
+                    "query_found_raw_html": query.casefold() in low,
+                    "query_token_hits": {token: token in low for token in _tokens(query)},
+                }
+                self.calls.append(entry)
+                return response
+            except Exception as exc:
+                self.calls.append({
+                    "url": str(url),
+                    "status": None,
+                    "bytes": 0,
+                    "elapsed_ms": round((_d_time.perf_counter() - t0) * 1000),
+                    "error": f"{type(exc).__name__}: {exc}",
+                })
+                raise
+
+    def _patch(obj, name):
+        original = getattr(obj, name, None)
+        if not callable(original):
+            return False
+
+        def wrapped(*args, **kwargs):
+            t0 = _d_time.perf_counter()
+            try:
+                result = original(*args, **kwargs)
+                if isinstance(result, (list, tuple, set)):
+                    values = list(result)
+                    entry = {
+                        "function": name,
+                        "returned_type": type(result).__name__,
+                        "returned_count": len(values),
+                        "returned": values[:120],
+                        "elapsed_ms": round((_d_time.perf_counter() - t0) * 1000),
+                    }
+                    # For HTML-driven helpers, independently record query evidence
+                    # from the exact HTML passed to the function.
+                    if args and isinstance(args[0], str) and len(args[0]) > 1000:
+                        html = args[0]
+                        low = html.casefold()
+                        entry["input_html_bytes"] = len(html)
+                        entry["query_found_raw_html"] = query.casefold() in low
+                        entry["query_token_hits"] = {token: token in low for token in _tokens(query)}
+                    report["function_trace"].append(entry)
+                else:
+                    report["function_trace"].append({
+                        "function": name,
+                        "returned_type": type(result).__name__,
+                        "returned": _short(result),
+                        "elapsed_ms": round((_d_time.perf_counter() - t0) * 1000),
+                    })
+                return result
+            except Exception as exc:
+                report["function_trace"].append({
+                    "function": name,
+                    "error": f"{type(exc).__name__}: {exc}",
+                    "traceback": _short(_d_traceback.format_exc(), 2500),
+                    "elapsed_ms": round((_d_time.perf_counter() - t0) * 1000),
+                })
+                raise
+
+        patches.append((obj, name, original))
+        setattr(obj, name, wrapped)
+        return True
+
+    try:
+        report["stage"] = "resolve_scraper"
+        resolver = getattr(_legacy, "load_scraper", None)
         if callable(resolver):
             try:
                 scraper = resolver("Deloox")
                 report["resolver"] = "main_legacy.load_scraper"
             except Exception as exc:
-                resolver_error = f"{type(exc).__name__}: {exc}"
+                report["resolver_error"] = f"{type(exc).__name__}: {exc}"
 
         if scraper is None:
-            import_candidates = [
-                "scrapers.deloox.scraper",
-                "scrapers.deloox",
-                "deloox_scraper",
-                "scraper_deloox",
-            ]
-            for module_name in import_candidates:
-                try:
-                    scraper = importlib.import_module(module_name)
-                    report["resolver"] = module_name
-                    break
-                except Exception as exc:
-                    resolver_error = f"{module_name}: {type(exc).__name__}: {exc}"
-
-        if scraper is None:
-            report["ok"] = False
-            report["stage"] = "resolve_scraper_failed"
-            report["error"] = "Deloox scraper could not be imported/resolved"
-            report["resolver_error"] = resolver_error
-            return report
-
-        report["scraper_module"] = getattr(scraper, "__file__", None)
-        report["base_url"] = getattr(scraper, "BASE_URL", None)
-        report["has_search"] = callable(getattr(scraper, "search", None))
-        report["has_diagnose_search"] = callable(getattr(scraper, "diagnose_search", None))
-        report["stage"] = "scraper_resolved"
-
-        # If the scraper already has its own diagnostic, execute that exact
-        # diagnostic. Otherwise run a strictly read-only HTTP probe against
-        # the canonical Belgian domain.
-        diagnose_fn = getattr(scraper, "diagnose_search", None)
-        if callable(diagnose_fn):
-            report["stage"] = "run_scraper_diagnose_search"
-            started = _d_time.perf_counter()
-            try:
-                requests_module = getattr(scraper, "requests", None)
-                if requests_module is not None and hasattr(requests_module, "Session"):
-                    session = requests_module.Session()
-                    try:
-                        diagnostic = diagnose_fn(session, query)
-                    finally:
-                        session.close()
-                else:
-                    diagnostic = diagnose_fn(query)
-                report["diagnostic_result"] = diagnostic
-                report["stage"] = "done"
-                report["elapsed_s"] = round(_d_time.perf_counter() - started, 3)
-                return report
-            except Exception as exc:
-                report["stage"] = "scraper_diagnose_error"
-                report["error"] = f"{type(exc).__name__}: {exc}"
-                report["traceback"] = _d_traceback.format_exc()
-                return report
-
-        # Fallback diagnostic: inspect the exact scraper's callable discovery
-        # helpers without changing any scraper state.
-        report["stage"] = "fallback_inspection"
-        report["functions"] = {
-            name: callable(getattr(scraper, name, None))
-            for name in (
-                "_discover",
-                "_discover_from_categories",
-                "_candidate_product_urls",
-                "_category_product_line_links",
-                "_category_pages",
-                "_sitemap_category_urls",
-                "_sitemap_product_candidates",
-                "_parse_html",
-                "_get",
-            )
-        }
+            scraper = _d_importlib.import_module("scrapers.deloox.scraper")
+            report["resolver"] = "scrapers.deloox.scraper"
 
         base = str(getattr(scraper, "BASE_URL", "") or "").rstrip("/")
-        report["base_netloc"] = _d_urlparse(base).netloc.lower() if base else None
-        report["domain_check"] = {
-            "is_deloox_be": _d_urlparse(base).netloc.lower() in {"deloox.be", "www.deloox.be"},
-            "contains_deloox_com": "deloox.com" in str(base).lower(),
-            "contains_deloox_nl": "deloox.nl" in str(base).lower(),
+        report["scraper"] = {
+            "module": getattr(scraper, "__file__", None),
+            "base_url": base,
+            "base_netloc": _d_urlparse(base).netloc.lower() if base else None,
+            "has_search": callable(getattr(scraper, "search", None)),
+            "has_discover": callable(getattr(scraper, "_discover", None)),
+            "has_product_parser": callable(getattr(scraper, "_product", None)),
+            "has_category_discovery": callable(getattr(scraper, "_discover_from_categories", None)),
+            "domain_is_canonical": _d_urlparse(base).netloc.lower() in {"deloox.be", "www.deloox.be"},
         }
-        report["note"] = "The installed scraper has no diagnose_search(); only read-only structure was inspected."
+
+        discover = getattr(scraper, "_discover", None)
+        parser = getattr(scraper, "_product", None)
+        if not callable(discover):
+            raise RuntimeError("_discover_not_found_in_installed_scraper")
+        if not callable(parser):
+            raise RuntimeError("_product_not_found_in_installed_scraper")
+
+        # Instrument the exact discovery helpers used by _discover().
+        for fname in (
+            "_candidate_product_urls",
+            "_category_product_line_links",
+            "_discover_from_categories",
+            "_find_catalog_filter_url",
+            "_sitemap_category_urls",
+            "_sitemap_product_urls",
+        ):
+            _patch(scraper, fname)
+
+        session = _LoggedSession()
+        headers = dict(getattr(scraper, "HEADERS", {}) or {})
+        if headers:
+            session.headers.update(headers)
+        timeout = getattr(scraper, "TIMEOUT", 10)
+
+        report["stage"] = "live_discovery"
+        t0 = _d_time.perf_counter()
+        urls = discover(session, query) or []
+        urls = list(urls)
+        report["stages"]["discovery"] = {
+            "elapsed_ms": round((_d_time.perf_counter() - t0) * 1000),
+            "candidate_url_count": len(urls),
+            "candidate_urls": urls[:120],
+        }
+
+        # Parse every discovered URL, using the exact production _product().
+        report["stage"] = "live_product_parsing"
+        parsed = []
+        rejected = []
+        for index, url in enumerate(urls[:60], start=1):
+            item_report = {"index": index, "url": url}
+            try:
+                t1 = _d_time.perf_counter()
+                response = session.get(url, headers=headers, timeout=timeout or 10, allow_redirects=True)
+                body = response.text or ""
+                item_report.update({
+                    "http_status": response.status_code,
+                    "http_bytes": len(response.content or b""),
+                    "http_elapsed_ms": round((_d_time.perf_counter() - t1) * 1000),
+                    "html_contains_query": query.casefold() in body.casefold(),
+                    "query_token_hits": {token: token in body.casefold() for token in _tokens(query)},
+                })
+                if response.status_code >= 400:
+                    item_report["reject_stage"] = "product_http"
+                    item_report["reject_reason"] = f"http_{response.status_code}"
+                    rejected.append(item_report)
+                    continue
+                parsed_item = parser(url, body, query)
+                if parsed_item is None:
+                    item_report["reject_stage"] = "product_parser"
+                    item_report["reject_reason"] = "parser_returned_none"
+                    rejected.append(item_report)
+                else:
+                    parsed.append({"url": url, "item": parsed_item})
+            except Exception as exc:
+                item_report["reject_stage"] = "product_parser_exception"
+                item_report["reject_reason"] = f"{type(exc).__name__}: {exc}"
+                item_report["traceback"] = _short(_d_traceback.format_exc(), 1800)
+                rejected.append(item_report)
+
+        report["stages"]["product_parsing"] = {
+            "attempted_urls": min(len(urls), 60),
+            "parsed_count": len(parsed),
+            "parsed": parsed[:30],
+            "rejected_count": len(rejected),
+            "rejected": rejected[:60],
+        }
+
+        report["http_calls"] = session.calls
+        report["summary"] = {
+            "http_call_count": len(session.calls),
+            "successful_http_calls": sum(1 for call in session.calls if call.get("status") and call.get("status") < 400),
+            "http_errors": sum(1 for call in session.calls if call.get("status") is None or call.get("status", 0) >= 400),
+            "candidate_url_count": len(urls),
+            "parsed_count": len(parsed),
+            "rejected_count": len(rejected),
+            "total_elapsed_ms": round((_d_time.perf_counter() - started) * 1000),
+        }
         report["stage"] = "done"
+        session.close()
         return report
 
     except Exception as exc:
@@ -1396,4 +1513,13 @@ def diagnose_deloox(q: str = Query(..., min_length=1, description="Perfume to di
         report["stage"] = "fatal_error"
         report["error"] = f"{type(exc).__name__}: {exc}"
         report["traceback"] = _d_traceback.format_exc()
+        report["summary"] = {
+            "total_elapsed_ms": round((_d_time.perf_counter() - started) * 1000),
+        }
         return report
+    finally:
+        for obj, name, original in reversed(patches):
+            try:
+                setattr(obj, name, original)
+            except Exception:
+                pass
