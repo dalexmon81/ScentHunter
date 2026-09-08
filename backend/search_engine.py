@@ -19,8 +19,8 @@ import traceback
 from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional
 
-DEFAULT_STORE_TIMEOUT = 45.0
-DEFAULT_GLOBAL_TIMEOUT = 60.0
+DEFAULT_STORE_TIMEOUT = 12.0
+DEFAULT_GLOBAL_TIMEOUT = 25.0
 
 
 @dataclass
@@ -91,17 +91,33 @@ class SearchEngine:
             out.append(item)
         return out
 
+    def _store_query(self, query: str) -> str:
+        """Qualify one retailer query with the catalog brand, without extra calls."""
+        raw = str(query or "").strip()
+        if not raw:
+            return raw
+        try:
+            family = self.legacy._catalog_family_for_query(raw)
+        except Exception:
+            family = None
+        if not isinstance(family, dict):
+            return raw
+        brand = str(family.get("brand") or "").strip()
+        if not brand:
+            return raw
+        norm = self.legacy.norm if hasattr(self.legacy, "norm") else lambda x: str(x).casefold()
+        if norm(brand) in norm(raw).split():
+            return raw
+        return f"{brand} {raw}".strip()
+
     def _run_one_store(self, store: str, query: str) -> StoreRun:
         started = time.monotonic()
         try:
             runner = getattr(self.legacy, "run_store", None)
             if not callable(runner):
                 raise RuntimeError("main.run_store is not available")
-            # Main legacy owns retailer-specific query expansion through
-            # build_search_attempts(). Do not rewrite the user's query here:
-            # adding the catalog brand centrally can break retailer search
-            # endpoints that already expect the exact product phrase.
-            raw = runner(store, query)
+            store_query = self._store_query(query)
+            raw = runner(store, store_query)
             if raw is None:
                 candidates = []
             elif isinstance(raw, list):
@@ -257,130 +273,8 @@ class SearchEngine:
         output.sort(key=lambda x: offer_key(x.get("offers", [x])[0] if isinstance(x.get("offers"), list) and x.get("offers") else x))
         return output
 
-    def _catalog_variant_formats(self, product: Dict[str, Any], query: str) -> List[float]:
-        """Return only formats explicitly verified for a resolved catalog variant.
-
-        Size is an offer attribute, not product identity.  We only use a
-        catalog format list as a consistency guard when the candidate itself
-        exposes an explicit size.  No size is ever inferred from price/name
-        absence, and uncatalogued products are left untouched.
-        """
-        family_fn = getattr(self.legacy, "_catalog_family_for_query", None)
-        variant_fn = getattr(self.legacy, "_catalog_variant_for_product", None)
-        if not callable(family_fn) or not callable(variant_fn):
-            return []
-
-        try:
-            family = family_fn(query)
-        except Exception:
-            return []
-        if not isinstance(family, dict):
-            return []
-
-        try:
-            variant = variant_fn(product, family)
-        except Exception:
-            return []
-        if not isinstance(variant, dict):
-            return []
-
-        values = []
-        for raw in variant.get("formats_ml") or []:
-            try:
-                value = float(raw)
-            except (TypeError, ValueError):
-                continue
-            if value > 0 and value not in values:
-                values.append(value)
-        return sorted(values)
-
-    def _enforce_catalog_format_integrity(
-        self, query: str, products: List[Dict[str, Any]]
-    ) -> List[Dict[str, Any]]:
-        """Reject only explicit wrong-size offers for single/multi-format variants.
-
-        The rule is generic: if the authoritative catalog says a resolved
-        variant has verified formats, an offer with an explicit size must be
-        one of those formats. Offers with no explicit size are not relabelled
-        and remain eligible for normal validation.
-        """
-        size_fn = getattr(self.legacy, "product_size_ml", None)
-        if not callable(size_fn):
-            def size_fn(item):
-                for key in ("size_ml", "volume_ml", "format_ml"):
-                    value = item.get(key)
-                    if value not in (None, ""):
-                        try:
-                            return float(value)
-                        except (TypeError, ValueError):
-                            pass
-                return None
-
-        output: List[Dict[str, Any]] = []
-        for product in products:
-            if not isinstance(product, dict):
-                continue
-            formats = self._catalog_variant_formats(product, query)
-            if not formats:
-                output.append(product)
-                continue
-            try:
-                explicit_size = size_fn(product)
-            except Exception:
-                explicit_size = None
-            if explicit_size is None:
-                output.append(product)
-                continue
-            if any(abs(float(explicit_size) - value) < 0.01 for value in formats):
-                output.append(product)
-        return output
-
-    def _enrich_result_formats(
-        self, query: str, results: List[Dict[str, Any]]
-    ) -> List[Dict[str, Any]]:
-        """Expose verified/observed ml formats without inventing any size."""
-        size_fn = getattr(self.legacy, "product_size_ml", None)
-
-        def observed_sizes(item: Dict[str, Any]) -> List[float]:
-            offers = item.get("offers") if isinstance(item.get("offers"), list) else []
-            source = offers or [item]
-            values = []
-            for offer in source:
-                if not isinstance(offer, dict):
-                    continue
-                try:
-                    value = size_fn(offer) if callable(size_fn) else None
-                except Exception:
-                    value = None
-                if value is None:
-                    for key in ("size_ml", "volume_ml", "format_ml"):
-                        raw = offer.get(key)
-                        if raw not in (None, ""):
-                            try:
-                                value = float(raw)
-                            except (TypeError, ValueError):
-                                value = None
-                            break
-                if value is not None and value > 0 and value not in values:
-                    values.append(float(value))
-            return values
-
-        enriched = []
-        for result in results:
-            item = dict(result)
-            values = observed_sizes(item)
-            catalog_formats = self._catalog_variant_formats(item, query)
-            for value in catalog_formats:
-                if value not in values:
-                    values.append(value)
-            if values:
-                item["formats_ml"] = sorted(values)
-            enriched.append(item)
-        return enriched
-
     def _finalize(self, query: str, raw_pool: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
         validated = self._validate_candidates_only(query, raw_pool)
-        validated = self._enforce_catalog_format_integrity(query, validated)
         prepare = getattr(self.legacy, "_prepare_final_results", None)
         if callable(prepare):
             try:
@@ -393,8 +287,7 @@ class SearchEngine:
             final = []
         if not isinstance(final, list):
             final = list(final)
-        stable = self._stable_results([x for x in final if isinstance(x, dict)])
-        return self._enrich_result_formats(query, stable)
+        return self._stable_results([x for x in final if isinstance(x, dict)])
 
     def search(self, query: str) -> Dict[str, Any]:
         text = self.analyze_query(query)["raw"]
@@ -419,14 +312,40 @@ class SearchEngine:
         }
 
     def diagnostic_search(self, query: str) -> Dict[str, Any]:
+        """Forensic read-only diagnostic of the REAL search pipeline.
+
+        This intentionally measures every phase separately so we can distinguish:
+        - retailer execution time;
+        - orchestration/waiting time;
+        - raw deduplication;
+        - candidate validation;
+        - final grouping/ranking.
+        It never changes search results or job state.
+        """
         text = self.analyze_query(query)["raw"]
         if not text:
-            return {"ok": True, "query": "", "stores": {}, "raw_candidates": [], "validated_candidates": [], "errors": {}}
+            return {
+                "ok": True,
+                "diagnostic": "search-forensics-v1",
+                "query": "",
+                "timings": {},
+                "stores": {},
+                "raw_candidates": [],
+                "validated_candidates": [],
+                "errors": {},
+            }
+
         started = time.monotonic()
-        store_run = self._run_stores(text)
-        raw_pool: List[Dict[str, Any]] = []
+        timings: Dict[str, float] = {}
         stores: Dict[str, Any] = {}
         errors: Dict[str, str] = {}
+
+        t0 = time.monotonic()
+        store_run = self._run_stores(text)
+        timings["stores_wall_time"] = round(time.monotonic() - t0, 3)
+        timings["orchestrator_total_store_phase"] = round(store_run.get("elapsed", 0.0), 3)
+
+        raw_pool: List[Dict[str, Any]] = []
         for store in self.stores:
             result = store_run["stores"][store]
             raw_pool.extend(result.candidates)
@@ -439,31 +358,132 @@ class SearchEngine:
             }
             if result.error:
                 errors[store] = result.error
+
+        t0 = time.monotonic()
+        before_dedupe = len(raw_pool)
         raw_pool = self._dedupe_raw(raw_pool)
+        timings["dedupe"] = round(time.monotonic() - t0, 3)
+
+        t0 = time.monotonic()
         validated = self._validate_candidates_only(text, raw_pool)
+        timings["validation"] = round(time.monotonic() - t0, 3)
+
+        t0 = time.monotonic()
+        prepare = getattr(self.legacy, "_prepare_final_results", None)
+        if callable(prepare):
+            try:
+                prepared = prepare(validated, text)
+            except TypeError:
+                prepared = prepare(validated)
+        else:
+            prepared = validated
+        if prepared is None:
+            prepared = []
+        if not isinstance(prepared, list):
+            prepared = list(prepared)
+        prepared = [x for x in prepared if isinstance(x, dict)]
+        timings["final_prepare"] = round(time.monotonic() - t0, 3)
+
+        t0 = time.monotonic()
+        final = self._stable_results(prepared)
+        timings["stable_sort"] = round(time.monotonic() - t0, 3)
+        timings["total"] = round(time.monotonic() - started, 3)
+
+        slowest_store = max(
+            stores.items(),
+            key=lambda pair: float(pair[1].get("elapsed") or 0.0),
+            default=(None, {"elapsed": 0}),
+        )
+        timed_out = [
+            name for name, info in stores.items()
+            if info.get("status") == "timeout"
+        ]
+
         return {
             "ok": True,
+            "diagnostic": "search-forensics-v1",
             "query": text,
-            "elapsed": round(time.monotonic() - started, 3),
+            "timings": timings,
             "store_count": len(self.stores),
             "stores": stores,
+            "slowest_store": slowest_store[0],
+            "slowest_store_seconds": slowest_store[1].get("elapsed", 0),
+            "timed_out_stores": timed_out,
+            "raw_candidate_count_before_dedupe": before_dedupe,
             "raw_candidate_count": len(raw_pool),
             "validated_candidate_count": len(validated),
+            "final_result_count": len(final),
             "raw_candidates": [dict(x) for x in raw_pool],
             "validated_candidates": [dict(x) for x in validated],
             "errors": errors,
+            "interpretation": {
+                "store_bottleneck": bool(timed_out) or timings["stores_wall_time"] >= 10.0,
+                "validation_bottleneck": timings["validation"] >= 2.0,
+                "finalization_bottleneck": (timings["final_prepare"] + timings["stable_sort"]) >= 2.0,
+            },
+        }
+
+    def search_job_snapshot(self, job_id: str) -> Dict[str, Any]:
+        """Return the live progressive job state without re-running finalization.
+
+        ``main_legacy._search_job_snapshot`` historically re-applied its own
+        finalizer to ``job["results"]``. The progressive SearchEngine already
+        stores canonical final groups at every publication step, so reprocessing
+        them would add latency and could distort partial results.
+        """
+        jobs = getattr(self.legacy, "SEARCH_JOBS", None)
+        lock = getattr(self.legacy, "SEARCH_JOBS_LOCK", None)
+        if jobs is None:
+            raise RuntimeError("SEARCH_JOBS is not available")
+
+        if lock is not None:
+            with lock:
+                job = jobs.get(str(job_id or "").strip())
+                if job is None:
+                    from fastapi import HTTPException
+                    raise HTTPException(status_code=404, detail="Job di ricerca non trovato")
+                snapshot = dict(job)
+        else:
+            job = jobs.get(str(job_id or "").strip())
+            if job is None:
+                from fastapi import HTTPException
+                raise HTTPException(status_code=404, detail="Job di ricerca non trovato")
+            snapshot = dict(job)
+
+        results = snapshot.get("results")
+        if not isinstance(results, list):
+            results = []
+
+        store_status = snapshot.get("store_status")
+        if not isinstance(store_status, dict):
+            store_status = {}
+
+        completed_stores = sum(
+            1 for info in store_status.values()
+            if isinstance(info, dict)
+            and info.get("status") not in ("pending", "searching")
+        )
+
+        completed = bool(snapshot.get("completed"))
+        return {
+            "job_id": str(job_id),
+            "query": str(snapshot.get("query") or ""),
+            "count": len(results),
+            "results": list(results),
+            "comparisons": list(snapshot.get("comparisons") or []),
+            "errors": dict(snapshot.get("errors") or {}),
+            "store_status": dict(store_status),
+            "completed_stores": completed_stores,
+            "total_stores": len(self.stores),
+            "partial_result_count": len(results),
+            "phase": snapshot.get("phase", "discovery"),
+            "completed": completed,
+            "status": "completed" if completed else "searching",
+            "elapsed": snapshot.get("elapsed", 0),
+            "diagnostic": snapshot.get("diagnostic", {}),
         }
 
     def run_job(self, job_id: str, query: str) -> None:
-        """Run one progressive search job with isolated store deadlines.
-
-        A retailer can be slow or blocked without holding the other retailers
-        hostage.  Once a store reaches ``store_timeout`` it is marked as
-        timed out and removed from the job's pending set.  The underlying
-        Python thread cannot be force-killed safely, so the executor is always
-        shut down without waiting; late results from an already timed-out
-        store are deliberately ignored.
-        """
         jobs = getattr(self.legacy, "SEARCH_JOBS", None)
         lock = getattr(self.legacy, "SEARCH_JOBS_LOCK", None)
         if jobs is None:
@@ -473,6 +493,7 @@ class SearchEngine:
             raise RuntimeError("SEARCH_JOBS is not available")
 
         def update(payload: Dict[str, Any]) -> None:
+            phase_timings["job_update_count"] = int(phase_timings.get("job_update_count", 0)) + 1
             if lock is not None:
                 with lock:
                     job = jobs.get(job_id)
@@ -484,163 +505,150 @@ class SearchEngine:
                     job.update(payload)
 
         started = time.monotonic()
-        store_status = {
-            store: {"status": "pending", "count": 0}
-            for store in self.stores
+        phase_started = started
+        phase_timings: Dict[str, Any] = {
+            "job_started_monotonic": started,
+            "store_execution": {},
+            "job_update_count": 0,
         }
-
+        store_status = {store: {"status": "pending", "count": 0} for store in self.stores}
         update({
             "completed": False,
             "phase": "discovery",
             "status": "searching",
+            # Deliberately empty until ALL stores have finished or timed out.
             "results": [],
             "candidates": [],
             "errors": {},
             "store_status": store_status,
-            "completed_stores": 0,
-            "total_stores": len(self.stores),
-            "elapsed": 0.0,
         })
 
-        executor = None
         try:
-            executor = concurrent.futures.ThreadPoolExecutor(
-                max_workers=len(self.stores),
-                thread_name_prefix="scenthunter-store",
-            )
-            futures = {
-                executor.submit(self._run_one_store, store, query): store
-                for store in self.stores
-            }
-            future_started = {
-                future: time.monotonic()
-                for future in futures
-            }
+            executor = concurrent.futures.ThreadPoolExecutor(max_workers=len(self.stores), thread_name_prefix="scenthunter-store")
+            futures = {executor.submit(self._run_one_store, store, query): store for store in self.stores}
             pending = set(futures)
             raw_pool: List[Dict[str, Any]] = []
             errors: Dict[str, str] = {}
             deadline = started + self.global_timeout
+            last_partial_finalize = 0.0
+            last_partial_results: List[Dict[str, Any]] = []
 
-            def publish() -> None:
-                current_pool = self._dedupe_raw(list(raw_pool))
-                # Publish the same progressive behavior as the original
-                # SearchEngine: as soon as ANY store finishes, expose the
-                # validated/merged results already available. Never wait for
-                # the slowest retailer before showing the first products.
-                partial = self._finalize(query, current_pool) if current_pool else []
-                completed_stores = sum(
-                    1
-                    for value in store_status.values()
-                    if value.get("status") not in {"pending", "searching"}
-                )
-                update({
-                    "completed": False,
-                    "phase": "collecting",
-                    "status": "searching",
-                    "results": partial,
-                    "candidates": list(current_pool),
-                    "errors": dict(errors),
-                    "store_status": dict(store_status),
-                    "completed_stores": completed_stores,
-                    "total_stores": len(self.stores),
-                    "result_count": len(partial),
-                    "elapsed": round(time.monotonic() - started, 3),
-                })
-
-            while pending:
-                now = time.monotonic()
-                if now >= deadline:
-                    break
-
-                wait_timeout = min(
-                    0.10,
-                    max(0.01, deadline - now),
-                )
-                done, _ = concurrent.futures.wait(
+            while pending and time.monotonic() < deadline:
+                done, pending = concurrent.futures.wait(
                     pending,
-                    timeout=wait_timeout,
+                    timeout=min(0.10, max(0.01, deadline - time.monotonic())),
                     return_when=concurrent.futures.FIRST_COMPLETED,
                 )
-
-                changed = False
-
                 for future in done:
-                    if future not in pending:
-                        continue
-
-                    pending.remove(future)
                     store = futures[future]
-
                     try:
                         result = future.result()
                     except Exception as exc:
-                        result = StoreRun(
-                            store=store,
-                            status="error",
-                            candidates=[],
-                            elapsed=time.monotonic() - future_started[future],
-                            error=f"{type(exc).__name__}: {exc}",
-                        )
-
+                        result = StoreRun(store=store, status="error", error=f"{type(exc).__name__}: {exc}")
                     store_status[store] = {
                         "status": result.status,
                         "count": len(result.candidates),
                         "elapsed": round(result.elapsed, 3),
                         "error": result.error,
                     }
+                    phase_timings["store_execution"][store] = {
+                        "status": result.status,
+                        "elapsed": round(result.elapsed, 3),
+                        "count": len(result.candidates),
+                    }
                     raw_pool.extend(result.candidates)
-
                     if result.error:
                         errors[store] = result.error
 
-                    changed = True
+                    # PROGRESSIVE PUBLISH: appena termina un negozio, trasformiamo
+                    # il candidate pool disponibile negli stessi risultati canonici
+                    # usati dalla ricerca finale. Il frontend può quindi mostrare
+                    # subito i primi risultati senza aspettare gli 8 store.
+                    partial_raw = self._dedupe_raw(list(raw_pool))
+                    partial_results = last_partial_results
+                    # Publish immediately for the first completed store, then
+                    # throttle expensive canonicalization. This keeps the UI
+                    # responsive without changing the final result semantics.
+                    should_finalize_partial = (
+                        not partial_results
+                        or (time.monotonic() - last_partial_finalize) >= 0.75
+                    )
+                    if partial_raw and should_finalize_partial:
+                        try:
+                            partial_results = self._finalize(query, partial_raw)
+                            last_partial_results = list(partial_results)
+                            last_partial_finalize = time.monotonic()
+                        except Exception as partial_exc:
+                            phase_timings.setdefault("partial_finalize_errors", []).append(
+                                f"{type(partial_exc).__name__}: {partial_exc}"
+                            )
 
-                now = time.monotonic()
+                    completed_stores = sum(
+                        1 for x in store_status.values()
+                        if x["status"] != "pending" and x["status"] != "searching"
+                    )
 
-                # Enforce the per-store deadline independently of the global
-                # search deadline.  This is the key isolation mechanism.
-                for future in list(pending):
-                    elapsed = now - future_started[future]
-                    if elapsed >= self.store_timeout:
-                        pending.remove(future)
-                        store = futures[future]
-                        message = f"store timeout ({self.store_timeout:.0f}s)"
-                        store_status[store] = {
-                            "status": "timeout",
-                            "count": 0,
-                            "elapsed": round(elapsed, 3),
-                            "error": message,
-                        }
-                        errors[store] = message
-                        future.cancel()
-                        changed = True
-
-                if changed:
-                    publish()
+                    update({
+                        "completed": False,
+                        "phase": "collecting",
+                        "status": "searching",
+                        "results": list(partial_results),
+                        "candidates": list(partial_raw),
+                        "errors": dict(errors),
+                        "store_status": dict(store_status),
+                        "completed_stores": completed_stores,
+                        "total_stores": len(self.stores),
+                        "partial_result_count": len(partial_results),
+                        "elapsed": round(time.monotonic() - started, 3),
+                    })
 
             if pending:
-                now = time.monotonic()
-                for future in list(pending):
-                    pending.remove(future)
+                for future in pending:
                     store = futures[future]
-                    elapsed = now - future_started[future]
-                    message = (
-                        f"global search window expired "
-                        f"({self.global_timeout:.0f}s)"
-                    )
                     store_status[store] = {
                         "status": "timeout",
                         "count": 0,
-                        "elapsed": round(elapsed, 3),
-                        "error": message,
+                        "elapsed": round(time.monotonic() - started, 3),
+                        "error": f"global search window expired ({self.global_timeout:.0f}s)",
                     }
-                    errors[store] = message
-                    future.cancel()
+                    errors[store] = store_status[store]["error"]
 
-                publish()
+            executor.shutdown(wait=False, cancel_futures=True)
 
+            phase_timings["store_phase_wall_time"] = round(time.monotonic() - phase_started, 3)
+
+            t0 = time.monotonic()
+            raw_before_dedupe = len(raw_pool)
             raw_pool = self._dedupe_raw(raw_pool)
-            final = self._finalize(query, raw_pool)
+            phase_timings["dedupe"] = round(time.monotonic() - t0, 3)
+            phase_timings["raw_candidates_before_dedupe"] = raw_before_dedupe
+            phase_timings["raw_candidates"] = len(raw_pool)
+
+            t0 = time.monotonic()
+            validated = self._validate_candidates_only(query, raw_pool)
+            phase_timings["validation"] = round(time.monotonic() - t0, 3)
+            phase_timings["validated_candidates"] = len(validated)
+
+            t0 = time.monotonic()
+            prepare = getattr(self.legacy, "_prepare_final_results", None)
+            if callable(prepare):
+                try:
+                    prepared = prepare(validated, query)
+                except TypeError:
+                    prepared = prepare(validated)
+            else:
+                prepared = validated
+            if prepared is None:
+                prepared = []
+            if not isinstance(prepared, list):
+                prepared = list(prepared)
+            prepared = [x for x in prepared if isinstance(x, dict)]
+            phase_timings["final_prepare"] = round(time.monotonic() - t0, 3)
+
+            t0 = time.monotonic()
+            final = self._stable_results(prepared)
+            phase_timings["stable_sort"] = round(time.monotonic() - t0, 3)
+            phase_timings["total_before_final_update"] = round(time.monotonic() - started, 3)
 
             update({
                 "results": final,
@@ -653,31 +661,20 @@ class SearchEngine:
                 "elapsed": round(time.monotonic() - started, 3),
                 "raw_candidate_count": len(raw_pool),
                 "result_count": len(final),
-                "completed_stores": sum(
-                    1
-                    for value in store_status.values()
-                    if value.get("status") not in {"pending", "searching"}
-                ),
-                "total_stores": len(self.stores),
+                "diagnostic": {
+                    **phase_timings,
+                    "total": round(time.monotonic() - started, 3),
+                },
             })
         except Exception as exc:
             update({
-                "results": [],
-                "candidates": [],
-                "errors": {
-                    "_search": f"{type(exc).__name__}: {exc}"
-                },
-                "status": "error",
-                "completed": True,
-                "phase": "error",
+                "results": [], "candidates": [], "errors": {"_search": f"{type(exc).__name__}: {exc}"},
+                "status": "error", "completed": True, "phase": "error",
                 "elapsed": round(time.monotonic() - started, 3),
                 "error": f"{type(exc).__name__}: {exc}",
                 "traceback": traceback.format_exc(limit=8),
+                "diagnostic": {
+                    **phase_timings,
+                    "total": round(time.monotonic() - started, 3),
+                },
             })
-        finally:
-            if executor is not None:
-                executor.shutdown(
-                    wait=False,
-                    cancel_futures=True,
-                )
-
