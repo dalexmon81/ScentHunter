@@ -8,6 +8,7 @@ Discovery strategy:
 from __future__ import annotations
 
 import json
+import html as htmllib
 import re
 from urllib.parse import quote_plus, urljoin, urlparse
 
@@ -370,11 +371,12 @@ def _candidate_product_urls(html, query):
 
 
 def _category_product_line_links(html, query):
-    """Find Deloox Product-line category URLs matching the query.
+    """Find matching Deloox.be Product Line category URLs.
 
-    Deloox does not always render Product-line filters as normal <a> tags.
-    Some are present only in serialized HTML/JSON or in data attributes.
-    Therefore we inspect both parsed links and raw category URLs.
+    Deloox's filter markup is not stable: depending on the response it can
+    contain normal hrefs, relative URLs, escaped JSON URLs, or URLs embedded
+    in data attributes/scripts.  We therefore normalize the document first
+    and extract every Deloox.be category URL, then match the category slug.
     """
     soup = BeautifulSoup(html, "html.parser")
     links = []
@@ -382,11 +384,21 @@ def _category_product_line_links(html, query):
     q_tokens = tokens(query)
 
     def add(raw_url, label=""):
-        raw_url = clean(raw_url).replace("\\/","/")
+        raw_url = str(raw_url or "").strip()
         if not raw_url:
             return
 
-        url = urljoin(BASE_URL, raw_url).split("#")[0]
+        # Repeatedly unescape the slash forms used by HTML/JSON/JS.
+        for _ in range(3):
+            raw_url = (
+                raw_url
+                .replace("\\/", "/")
+                .replace("\\u002F", "/")
+                .replace("\\u002f", "/")
+            )
+        raw_url = htmllib.unescape(raw_url)
+
+        url = urljoin(BASE_URL, raw_url).split("#")[0].split("?")[0]
         try:
             parsed = urlparse(url)
         except Exception:
@@ -397,8 +409,6 @@ def _category_product_line_links(html, query):
         if not re.search(r"/(?:category|categoria|categorie)/", parsed.path, re.I):
             return
 
-        # Prefer an exact match on the category slug, but also accept a
-        # matching visible label when Deloox uses a localized slug.
         slug_text = parsed.path.rsplit("/", 1)[-1]
         if slug_text.lower().endswith(".html"):
             slug_text = slug_text[:-5]
@@ -414,27 +424,42 @@ def _category_product_line_links(html, query):
         seen.add(url)
         links.append(url)
 
-    # Normal visible links.
-    for a in soup.find_all("a", href=True):
-        add(a.get("href"), a.get_text(" ", strip=True))
+    # 1) Normal anchors and every data-* / href attribute.
+    for tag in soup.find_all(True):
+        label = tag.get_text(" ", strip=True)
+        for attr_name, value in tag.attrs.items():
+            values = value if isinstance(value, (list, tuple)) else [value]
+            for value_item in values:
+                if not isinstance(value_item, str):
+                    continue
+                add(value_item, label)
+        if tag.name == "a" and tag.get("href"):
+            add(tag.get("href"), label)
 
-    # Deloox can expose filter/category links inside JSON, data attributes,
-    # escaped URLs, or scripts without an <a> element.
-    raw = html.replace("\\/", "/")
+    # 2) Raw document.  Do NOT require quotes around the URL: Deloox can
+    # serialize these URLs inside JS/JSON with escaped slashes.
+    raw = html
+    for _ in range(3):
+        raw = (
+            raw
+            .replace("\\/", "/")
+            .replace("\\u002F", "/")
+            .replace("\\u002f", "/")
+        )
+    raw = htmllib.unescape(raw)
+
     patterns = [
-        r'(?:(?:"|\'))((?:https?:)?//(?:www\.)?deloox\.be)?'
-        r'(/(?:en/|it/|nl/|fr/)?(?:category|categoria|categorie)/\d+/[^"\'<>\s]+\.html)',
-        r'(?:(?:"|\'))((?:/)?(?:en/|it/|nl/|fr/)?(?:category|categoria|categorie)/\d+/[^"\'<>\s]+\.html)(?:(?:"|\'))',
+        r'https?://(?:www\.)?deloox\.be/(?:'
+        r'en/|it/|nl/|fr/)?(?:category|categoria|categorie)/\d+/[^"\'<>\s]+?\.html',
+        r'(?<![A-Za-z0-9])/(?:'
+        r'en/|it/|nl/|fr/)?(?:category|categoria|categorie)/\d+/[^"\'<>\s]+?\.html',
     ]
     for pattern in patterns:
-        for match in re.findall(pattern, raw, re.I):
-            if isinstance(match, tuple):
-                match = "".join(match)
-            add(match)
+        for raw_url in re.findall(pattern, raw, re.I):
+            add(raw_url)
 
-    _diag("category_links", accepted=len(links), query=query)
+    _diag("category_links", accepted=len(links), query=query, links=links[:20])
     return links
-
 
 def _category_pages(session):
     """Current generic fragrance catalog roots on Deloox.be.
