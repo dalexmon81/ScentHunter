@@ -2335,15 +2335,18 @@ def run_store(
 
     output: List[Dict[str, Any]] = []
     seen = set()
+    last_error: Optional[Exception] = None
 
     # FAST PATH: the exact query is tried first. Broader discovery attempts
     # are only used when the store returns no candidates at all. Each attempt
     # can trigger a complete HTTP/browser search, so running all six on every
     # store was the main avoidable latency multiplier.
     def collect(attempt: str) -> None:
+        nonlocal last_error
         try:
             results = search_fn(attempt) or []
         except Exception as exc:
+            last_error = exc
             print(
                 f"STORE_DISCOVERY_ERROR: store={store} "
                 f"attempt={attempt!r} error={type(exc).__name__}: {exc}",
@@ -2383,6 +2386,20 @@ def run_store(
             if output:
                 break
 
+    # Do not silently convert a scraper crash into an apparently healthy
+    # empty store. SearchEngine can then expose the real retailer error in
+    # store_status/errors instead of making the frontend look as if the
+    # retailer simply had no product.
+    if not output and last_error is not None:
+        raise RuntimeError(
+            f"{store}: all discovery attempts failed; "
+            f"last_error={type(last_error).__name__}: {last_error}"
+        ) from last_error
+
+    print(
+        f"STORE_DISCOVERY_RESULT: store={store} candidates={len(output)}",
+        flush=True,
+    )
     return output
 
 
