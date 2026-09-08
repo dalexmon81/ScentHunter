@@ -311,6 +311,31 @@ body{position:relative}
  .home-search-button{left:6.0%;width:48.6%;top:86.35%;height:6.55%;border-radius:14px;font-size:11px}
 }
 </style>
+<style id="SCENTHUNTER-NATIVE-SCROLL-FIX">
+/* iPhone/Safari: usa lo scroll nativo della pagina. Il contenitore .app non deve diventare un secondo viewport scrollabile. */
+html,body{
+  height:auto!important;
+  min-height:100%!important;
+  overflow-x:hidden!important;
+  overflow-y:auto!important;
+  overscroll-behavior-y:auto!important;
+}
+body{position:relative!important;}
+.app{
+  height:auto!important;
+  min-height:100dvh!important;
+  overflow:visible!important;
+  overflow-x:hidden!important;
+  overflow-y:visible!important;
+  -webkit-overflow-scrolling:auto!important;
+  touch-action:pan-y;
+}
+#searchOutput,#results{
+  overflow:visible!important;
+  touch-action:pan-y;
+}
+.product-choice{touch-action:pan-y!important;}
+</style>
 </head>
 <body>
 <main class="app">
@@ -1742,8 +1767,28 @@ async function openProduct(i){
   // UN SOLO FORMATO: resta il comportamento storico, terza scheda evitata.
   if(sizes.length===1){
     const selected=getSizeGroups(g).find(s=>s.size===sizes[0]);
-    const offers=selected?.offers||[];
-    renderSingleFormatComparison(g,img,offers,sizes[0],saved);
+    let offers=Array.isArray(selected?.offers)?selected.offers:[];
+
+    // Se il formato arriva dal catalogo master ma l'offerta live non espone
+    // lo stesso formato nel campo usato dal raggruppatore frontend, non
+    // dobbiamo mai mostrare una scheda "0 negozi". Recuperiamo prima le
+    // offerte dello stesso formato e, come ultima sicurezza, tutte le offerte
+    // già validate del gruppo.
+    if(!offers.length){
+      const allOffers=Array.isArray(g.offers)?g.offers:[];
+      const sameSize=allOffers.filter(o=>String(sizeOfOffer(o)||"")===String(sizes[0]));
+      offers=sameSize.length?sameSize:allOffers;
+    }
+
+    if(offers.length){
+      renderSingleFormatComparison(g,img,offers,sizes[0],saved);
+    }else{
+      // Non renderizzare mai una scheda vuota: torniamo alla lista dei
+      // prodotti invece di mostrare "0 negozi".
+      currentOpenProductKey="";
+      currentOpenSizeKey=null;
+      showProducts(currentProductGroups);
+    }
     return;
   }
 
@@ -1943,8 +1988,15 @@ async function searchStoresProgressive(term,onPartial){
 
   await new Promise(resolve=>setTimeout(resolve,150));
 
-  const statusUrl=backend()+"/search-status?job_id="+encodeURIComponent(job.job_id);
-  const snapshot=await fetchJSONWithTimeout(statusUrl,timeoutMs);
+  let snapshot;
+  try{
+    const statusUrl=backend()+"/search-status/"+encodeURIComponent(job.job_id);
+    snapshot=await fetchJSONWithTimeout(statusUrl,timeoutMs);
+  }catch(pathError){
+    // Compatibilità con il vecchio endpoint query-param, se presente.
+    const statusUrl=backend()+"/search-status?job_id="+encodeURIComponent(job.job_id);
+    snapshot=await fetchJSONWithTimeout(statusUrl,timeoutMs);
+  }
   renderSnapshot(snapshot,Boolean(snapshot?.completed));
 
   if(snapshot?.completed)break;
