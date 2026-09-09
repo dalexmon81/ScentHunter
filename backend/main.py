@@ -1115,6 +1115,67 @@ def diagnostic_parfumzentrum_trace(q: str = Query(..., min_length=1)):
         return result
 
 
+
+@app.get("/diagnostic-parfumzentrum-sitemap-forensic")
+def diagnostic_parfumzentrum_sitemap_forensic(q: str = Query(..., min_length=1)):
+    """Read-only forensic check of the live ParfumZentrum sitemap.
+    Does not call the production scraper.search() and does not mutate scraper state.
+    """
+    import requests as _rq
+    import xml.etree.ElementTree as _ET
+    import re as _re
+    import time as _tm
+    query = str(q or "").strip()
+    started = _tm.monotonic()
+    base = "https://www.parfum-zentrum.de"
+    sitemap = base + "/sitemap.xml"
+    headers = {
+        "User-Agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 Version/18.0 Mobile/15E148 Safari/604.1",
+        "Accept-Language": "de-DE,de;q=0.9,en;q=0.8",
+    }
+    out = {"ok": True, "diagnostic": "parfumzentrum_sitemap_forensic_v1", "query": query, "sitemap_url": sitemap, "stages": {}, "http_calls": []}
+    try:
+        t0 = _tm.monotonic()
+        r = _rq.get(sitemap, headers=headers, timeout=8)
+        out["http_calls"].append({"url": sitemap, "status": r.status_code, "bytes": len(r.content), "elapsed_ms": round((_tm.monotonic()-t0)*1000)})
+        r.raise_for_status()
+        root = _ET.fromstring(r.text)
+        urls = [el.text.strip() for el in root.iter() if el.tag.endswith("loc") and el.text]
+        out["stages"]["root_sitemap"] = {"url_count": len(urls), "sample": urls[:20], "looks_like_index": any("sitemap" in u.lower() and u.lower().endswith((".xml",".xml.gz")) for u in urls)}
+
+        # If this is an index, inspect child sitemaps and aggregate URLs.
+        child_maps = [u for u in urls if "sitemap" in u.lower() and u.lower().endswith((".xml",".xml.gz"))]
+        all_urls = []
+        child_info = []
+        for sm in child_maps:
+            try:
+                tt = _tm.monotonic(); rr = _rq.get(sm, headers=headers, timeout=8)
+                info={"url":sm,"status":rr.status_code,"bytes":len(rr.content),"elapsed_ms":round((_tm.monotonic()-tt)*1000)}
+                if rr.ok:
+                    rr_root=_ET.fromstring(rr.text)
+                    child_urls=[el.text.strip() for el in rr_root.iter() if el.tag.endswith("loc") and el.text]
+                    all_urls.extend(child_urls); info["url_count"]=len(child_urls)
+                child_info.append(info); out["http_calls"].append(info)
+            except Exception as exc:
+                child_info.append({"url":sm,"error":f"{type(exc).__name__}: {exc}"})
+        if child_maps:
+            urls=all_urls
+        lowq=query.lower()
+        qparts=[x.lower() for x in _re.findall(r"[A-Za-zÀ-ÿ0-9]+", query) if len(x)>1]
+        suffix=[u for u in urls if _re.search(r"_z\d+/?$", u)]
+        contains_all=[u for u in urls if all(part in u.lower() for part in qparts)]
+        token_exact=[u for u in urls if set(qparts).issubset(set(x.lower() for x in _re.findall(r"[A-Za-zÀ-ÿ0-9]+",u)))] if qparts else []
+        product_like=[u for u in urls if "/" in u and ("_z" in u.lower() or "/product" in u.lower())]
+        out["stages"]["resolved_urls"]={"url_count":len(urls),"product_like_count":len(product_like),"suffix_z_count":len(suffix),"suffix_z_samples":suffix[:10],"query_substring_count":len(contains_all),"query_substring_samples":contains_all[:20],"query_token_count":len(token_exact),"query_token_samples":token_exact[:20],"child_sitemaps":child_info[:30]}
+        out["stages"]["expected_live_products"]={"known_urls":[
+            "https://www.parfum-zentrum.de/french-avenue-liquid-brun-eau-de-parfum-100-ml-man_z1010339/",
+            "https://www.parfum-zentrum.de/french-avenue-liquid-brun-limited-edition-extrait-de-parfum-150-ml-unisex_z1225695/"
+        ],"known_url_present":[u for u in urls if "liquid-brun" in u.lower()]}
+        out["summary"]={"total_elapsed_ms":round((_tm.monotonic()-started)*1000),"http_call_count":len(out["http_calls"]),"resolved_url_count":len(urls)}
+        return out
+    except Exception as exc:
+        out["ok"]=False; out["error"]=f"{type(exc).__name__}: {exc}"; out["summary"]={"total_elapsed_ms":round((_tm.monotonic()-started)*1000),"http_call_count":len(out["http_calls"])}; return out
+
 # ===== FORENSIC SCRAPER TRACE V2 (READ-ONLY) =====
 # This endpoint does NOT change scraper/search behaviour. It instruments the
 # existing scraper functions in-memory for one request and reports exactly
