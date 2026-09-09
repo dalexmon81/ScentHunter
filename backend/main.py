@@ -29,7 +29,7 @@ from fastapi import Query
 # - product catalog
 # - eight store adapters
 # - central validation/finalization functions
-_engine = SearchEngine(_legacy, store_timeout=22.0, global_timeout=30.0)
+_engine = SearchEngine(_legacy, store_timeout=18.0, global_timeout=30.0)
 
 # Keep size variants from the same retailer product URL/product-id distinct.
 # The legacy deduplicator historically keyed product-id results without size,
@@ -943,239 +943,6 @@ def diagnostic_scraper_deep(
     finally:
         session.close()
 
-# ===== PARFUMZENTRUM PRECISE TRACE (READ-ONLY) =====
-@app.get("/diagnostic-parfumzentrum-trace")
-def diagnostic_parfumzentrum_trace(q: str = Query(..., min_length=1)):
-    import importlib as _pz_importlib
-    import time as _pz_time
-    import requests as _pz_requests
-
-    query = str(q or "").strip()
-    started = _pz_time.monotonic()
-    module_name = "scrapers.parfumzentrum.scraper"
-
-    result = {
-        "ok": True,
-        "diagnostic": "parfumzentrum_trace_v1",
-        "store": "parfumzentrum",
-        "query": query,
-        "module": module_name,
-        "stages": {},
-        "http_calls": [],
-    }
-
-    try:
-        module = _pz_importlib.import_module(module_name)
-        result["module_file"] = getattr(module, "__file__", None)
-        result["configured"] = {
-            "request_timeout": getattr(module, "REQUEST_TIMEOUT", None),
-            "max_candidates": getattr(module, "MAX_CANDIDATES", None),
-            "max_workers": getattr(module, "MAX_WORKERS", None),
-            "sitemap_url": getattr(module, "SITEMAP_URL", None),
-        }
-
-        class _LoggedSession(_pz_requests.Session):
-            def __init__(self):
-                super().__init__()
-                self.calls = []
-
-            def get(self, url, **kwargs):
-                t0 = _pz_time.monotonic()
-                try:
-                    r = super().get(url, **kwargs)
-                    self.calls.append({
-                        "url": str(url),
-                        "final_url": str(getattr(r, "url", "") or ""),
-                        "status": r.status_code,
-                        "bytes": len(r.content or b""),
-                        "elapsed_ms": round((_pz_time.monotonic() - t0) * 1000),
-                        "timeout": kwargs.get("timeout"),
-                    })
-                    return r
-                except Exception as exc:
-                    self.calls.append({
-                        "url": str(url), "status": None, "bytes": 0,
-                        "elapsed_ms": round((_pz_time.monotonic() - t0) * 1000),
-                        "timeout": kwargs.get("timeout"),
-                        "error": f"{type(exc).__name__}: {exc}",
-                    })
-                    raise
-
-        # Trace the real sitemap function without changing its implementation.
-        session = _LoggedSession()
-        headers = dict(getattr(module, "HEADERS", {}) or {})
-        if headers:
-            session.headers.update(headers)
-
-        sitemap_fn = getattr(module, "_get_sitemap_urls", None)
-        if not callable(sitemap_fn):
-            raise RuntimeError("_get_sitemap_urls_not_found")
-
-        t0 = _pz_time.monotonic()
-        sitemap_error = None
-        sitemap_urls = []
-        try:
-            # The production function creates its own Session, so patch its
-            # session factory temporarily to use our logged session.
-            original_new_session = getattr(module, "_new_session", None)
-            if callable(original_new_session):
-                module._new_session = lambda: session
-            try:
-                sitemap_urls = original_sitemap = sitemap_fn() or []
-            finally:
-                if callable(original_new_session):
-                    module._new_session = original_new_session
-        except Exception as exc:
-            sitemap_error = f"{type(exc).__name__}: {exc}"
-        result["stages"]["sitemap_discovery"] = {
-            "elapsed_ms": round((_pz_time.monotonic() - t0) * 1000),
-            "url_count": len(sitemap_urls),
-            "error": sitemap_error,
-            "sample": list(sitemap_urls)[:20],
-        }
-
-        tokens_fn = getattr(module, "_all_tokens_match", None)
-        token_urls = []
-        if callable(tokens_fn):
-            for u in sitemap_urls:
-                try:
-                    if re.search(r"_z\d+/?$", str(u)) and tokens_fn(str(u), query):
-                        token_urls.append(str(u))
-                        if len(token_urls) >= int(getattr(module, "MAX_CANDIDATES", 6) or 6):
-                            break
-                except Exception:
-                    continue
-
-        result["stages"]["candidate_filter"] = {
-            "input_url_count": len(sitemap_urls),
-            "candidate_count": len(token_urls),
-            "candidate_urls": token_urls,
-        }
-
-        # Test the exact production product parser on the discovered candidates,
-        # but in parallel exactly as production does.
-        parser = getattr(module, "_extract_product", None)
-        parsed = []
-        rejected = []
-        if callable(parser) and token_urls:
-            workers = min(int(getattr(module, "MAX_WORKERS", 4) or 4), len(token_urls))
-            t1 = _pz_time.monotonic()
-            with ThreadPoolExecutor(max_workers=workers) as ex:
-                futures = {ex.submit(parser, u, query): u for u in token_urls}
-                for f in as_completed(futures):
-                    u = futures[f]
-                    try:
-                        rows = f.result() or []
-                        if rows:
-                            parsed.extend(rows if isinstance(rows, list) else [rows])
-                        else:
-                            rejected.append({"url": u, "reason": "parser_returned_zero"})
-                    except Exception as exc:
-                        rejected.append({"url": u, "reason": f"{type(exc).__name__}: {exc}"})
-            result["stages"]["product_parse"] = {
-                "elapsed_ms": round((_pz_time.monotonic() - t1) * 1000),
-                "parsed_count": len(parsed),
-                "parsed": [
-                    {"name": x.get("name"), "size_ml": x.get("size_ml"),
-                     "price": x.get("price"), "url": x.get("url")}
-                    for x in parsed if isinstance(x, dict)
-                ][:30],
-                "rejected_count": len(rejected),
-                "rejected": rejected[:30],
-            }
-        else:
-            result["stages"]["product_parse"] = {
-                "elapsed_ms": 0,
-                "parsed_count": 0,
-                "parsed": [],
-                "rejected_count": len(rejected),
-                "rejected": rejected,
-            }
-
-        result["http_calls"] = session.calls
-        result["summary"] = {
-            "http_call_count": len(session.calls),
-            "total_elapsed_ms": round((_pz_time.monotonic() - started) * 1000),
-            "max_http_elapsed_ms": max((x.get("elapsed_ms", 0) for x in session.calls), default=0),
-        }
-        session.close()
-        return result
-    except Exception as exc:
-        result["ok"] = False
-        result["error"] = f"{type(exc).__name__}: {exc}"
-        result["http_calls"] = locals().get("session").calls if "session" in locals() else []
-        result["summary"] = {
-            "http_call_count": len(result["http_calls"]),
-            "total_elapsed_ms": round((_pz_time.monotonic() - started) * 1000),
-        }
-        try:
-            session.close()
-        except Exception:
-            pass
-        return result
-
-
-
-@app.get("/diagnostic-parfumzentrum-sitemap-forensic")
-def diagnostic_parfumzentrum_sitemap_forensic(q: str = Query(..., min_length=1)):
-    """Read-only forensic check of the live ParfumZentrum sitemap.
-    Does not call the production scraper.search() and does not mutate scraper state.
-    """
-    import requests as _rq
-    import xml.etree.ElementTree as _ET
-    import re as _re
-    import time as _tm
-    query = str(q or "").strip()
-    started = _tm.monotonic()
-    base = "https://www.parfum-zentrum.de"
-    sitemap = base + "/sitemap.xml"
-    headers = {
-        "User-Agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 Version/18.0 Mobile/15E148 Safari/604.1",
-        "Accept-Language": "de-DE,de;q=0.9,en;q=0.8",
-    }
-    out = {"ok": True, "diagnostic": "parfumzentrum_sitemap_forensic_v1", "query": query, "sitemap_url": sitemap, "stages": {}, "http_calls": []}
-    try:
-        t0 = _tm.monotonic()
-        r = _rq.get(sitemap, headers=headers, timeout=8)
-        out["http_calls"].append({"url": sitemap, "status": r.status_code, "bytes": len(r.content), "elapsed_ms": round((_tm.monotonic()-t0)*1000)})
-        r.raise_for_status()
-        root = _ET.fromstring(r.text)
-        urls = [el.text.strip() for el in root.iter() if el.tag.endswith("loc") and el.text]
-        out["stages"]["root_sitemap"] = {"url_count": len(urls), "sample": urls[:20], "looks_like_index": any("sitemap" in u.lower() and u.lower().endswith((".xml",".xml.gz")) for u in urls)}
-
-        # If this is an index, inspect child sitemaps and aggregate URLs.
-        child_maps = [u for u in urls if "sitemap" in u.lower() and u.lower().endswith((".xml",".xml.gz"))]
-        all_urls = []
-        child_info = []
-        for sm in child_maps:
-            try:
-                tt = _tm.monotonic(); rr = _rq.get(sm, headers=headers, timeout=8)
-                info={"url":sm,"status":rr.status_code,"bytes":len(rr.content),"elapsed_ms":round((_tm.monotonic()-tt)*1000)}
-                if rr.ok:
-                    rr_root=_ET.fromstring(rr.text)
-                    child_urls=[el.text.strip() for el in rr_root.iter() if el.tag.endswith("loc") and el.text]
-                    all_urls.extend(child_urls); info["url_count"]=len(child_urls)
-                child_info.append(info); out["http_calls"].append(info)
-            except Exception as exc:
-                child_info.append({"url":sm,"error":f"{type(exc).__name__}: {exc}"})
-        if child_maps:
-            urls=all_urls
-        lowq=query.lower()
-        qparts=[x.lower() for x in _re.findall(r"[A-Za-zÀ-ÿ0-9]+", query) if len(x)>1]
-        suffix=[u for u in urls if _re.search(r"_z\d+/?$", u)]
-        contains_all=[u for u in urls if all(part in u.lower() for part in qparts)]
-        token_exact=[u for u in urls if set(qparts).issubset(set(x.lower() for x in _re.findall(r"[A-Za-zÀ-ÿ0-9]+",u)))] if qparts else []
-        product_like=[u for u in urls if "/" in u and ("_z" in u.lower() or "/product" in u.lower())]
-        out["stages"]["resolved_urls"]={"url_count":len(urls),"product_like_count":len(product_like),"suffix_z_count":len(suffix),"suffix_z_samples":suffix[:10],"query_substring_count":len(contains_all),"query_substring_samples":contains_all[:20],"query_token_count":len(token_exact),"query_token_samples":token_exact[:20],"child_sitemaps":child_info[:30]}
-        out["stages"]["expected_live_products"]={"known_urls":[
-            "https://www.parfum-zentrum.de/french-avenue-liquid-brun-eau-de-parfum-100-ml-man_z1010339/",
-            "https://www.parfum-zentrum.de/french-avenue-liquid-brun-limited-edition-extrait-de-parfum-150-ml-unisex_z1225695/"
-        ],"known_url_present":[u for u in urls if "liquid-brun" in u.lower()]}
-        out["summary"]={"total_elapsed_ms":round((_tm.monotonic()-started)*1000),"http_call_count":len(out["http_calls"]),"resolved_url_count":len(urls)}
-        return out
-    except Exception as exc:
-        out["ok"]=False; out["error"]=f"{type(exc).__name__}: {exc}"; out["summary"]={"total_elapsed_ms":round((_tm.monotonic()-started)*1000),"http_call_count":len(out["http_calls"])}; return out
-
 # ===== FORENSIC SCRAPER TRACE V2 (READ-ONLY) =====
 # This endpoint does NOT change scraper/search behaviour. It instruments the
 # existing scraper functions in-memory for one request and reports exactly
@@ -1506,3 +1273,63 @@ def diagnostic_scraper_trace(
             session.close()
         except Exception:
             pass
+
+# ===== SABINA PIPELINE TRACE (READ-ONLY) =====
+@app.get('/test-store-trace')
+def test_store_trace(store: str = Query(...), q: str = Query(..., min_length=1)):
+    """Trace exactly where store candidates disappear; does not alter normal routes."""
+    store = str(store or '').strip().lower()
+    query = str(q or '').strip()
+    if store not in _legacy.STORES:
+        return {'error': 'store non valido', 'store': store, 'available': _legacy.STORES}
+
+    report = {'store': store, 'query': query, 'attempts': [], 'final_before_unique': [], 'final_after_unique': []}
+    module = importlib.import_module(f'scrapers.{store}.scraper')
+    search_fn = getattr(module, 'search', None) or getattr(module, 'scrape', None)
+    attempts = _legacy.build_search_attempts(store, query)
+    cumulative = []
+    seen = set()
+
+    for attempt in attempts:
+        entry = {'attempt': attempt}
+        try:
+            raw = search_fn(attempt) or []
+            entry['raw_count'] = len(raw) if isinstance(raw, list) else None
+            entry['raw'] = raw[:30] if isinstance(raw, list) else raw
+        except Exception as exc:
+            entry['error'] = f'{type(exc).__name__}: {exc}'
+            report['attempts'].append(entry)
+            continue
+
+        processed = []
+        for item in raw if isinstance(raw, list) else []:
+            if not isinstance(item, dict):
+                continue
+            p = dict(item)
+            p.setdefault('store', store)
+            try:
+                p = _legacy.resolve_actual_price(p)
+            except Exception as exc:
+                entry.setdefault('resolve_errors', []).append(f'{type(exc).__name__}: {exc}')
+            try:
+                key = _legacy.product_identity_key(p)
+            except Exception as exc:
+                key = f'KEY_ERROR:{type(exc).__name__}:{exc}'
+            processed.append({'name': p.get('name'), 'url': p.get('url'), 'price': p.get('price'), 'size_ml': p.get('size_ml'), 'brand': p.get('brand'), 'product_id': p.get('product_id'), 'store_product_id': p.get('store_product_id'), 'variant_id': p.get('variant_id'), 'sku': p.get('sku'), 'ean': p.get('ean'), 'identity_key': repr(key)})
+            if key not in seen:
+                seen.add(key)
+                cumulative.append(p)
+        entry['processed_count'] = len(processed)
+        entry['processed'] = processed
+        report['attempts'].append(entry)
+
+    report['cumulative_count'] = len(cumulative)
+    report['final_before_unique'] = cumulative[:50]
+    try:
+        final = _legacy.unique_results(cumulative)
+    except Exception as exc:
+        report['unique_error'] = f'{type(exc).__name__}: {exc}'
+        final = cumulative
+    report['final_after_unique'] = final[:50]
+    report['final_count'] = len(final)
+    return report
