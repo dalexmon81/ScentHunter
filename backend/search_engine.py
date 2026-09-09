@@ -47,8 +47,8 @@ class SearchEngine:
         stores = getattr(legacy_module, "STORES", None)
         configured = list(stores) if stores else list(STORE_PRIORITY)
 
-        # Store adapters create worker pools internally. Starting all eight at
-        # once multiplies those pools and saturates the Render instance.
+        # Store adapters create worker pools internally. The store jobs must
+        # still be started together so a slow store cannot queue a faster one.
         priority = [store for store in STORE_PRIORITY if store in configured]
         remainder = [store for store in configured if store not in priority]
         self.stores = priority + remainder
@@ -766,8 +766,9 @@ class SearchEngine:
                 "elapsed": 0.0,
             })
 
-            # The adapters already create their own worker pools. Use a
-            # rolling four-store window instead of an eight-way fan-out.
+            # Start every store immediately. Each adapter controls its own
+            # internal request concurrency; the coordinator only publishes
+            # stores as they complete.
             executor = concurrent.futures.ThreadPoolExecutor(
                 max_workers=max(1, len(self.stores)),
                 thread_name_prefix="scenthunter-store",
