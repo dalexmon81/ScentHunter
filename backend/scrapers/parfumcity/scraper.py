@@ -39,7 +39,7 @@ def matches(text,q):
     return bool(toks) and all(t in hay for t in toks)
 
 def size_ml(*values):
-    m=re.search(r"(?<!\d)(\d+(?:[.,]\d+)?)\s*(ml|cl)"," ".join(clean(x) for x in values),re.I)
+    m=re.search(r"(?<!\d)(\d+(?:[.,]\d+)?)\s*(ml|cl)\b"," ".join(clean(x) for x in values),re.I)
     if not m: return None
     n=float(m.group(1).replace(",","."))
     if m.group(2).lower()=="cl": n*=10
@@ -47,9 +47,9 @@ def size_ml(*values):
 
 def concentration(*values):
     t=norm(" ".join(clean(x) for x in values))
-    if re.search(r"eau de toilette|edt",t): return "Eau de Toilette"
-    if re.search(r"extrait(?: de parfum)?",t): return "Extrait de Parfum"
-    if re.search(r"eau de parfum|edp",t): return "Eau de Parfum"
+    if re.search(r"\beau de toilette\b|\bedt\b",t): return "Eau de Toilette"
+    if re.search(r"\bextrait(?: de parfum)?\b",t): return "Extrait de Parfum"
+    if re.search(r"\beau de parfum\b|\bedp\b",t): return "Eau de Parfum"
     return None
 
 def price(v):
@@ -207,11 +207,7 @@ def _item(product,variant,url):
         "offer":{"price":p,"currency":"EUR","availability":stock},
         "provenance":{"source_page":url,"product_source":"shopify_product_json","variant_source":"shopify_product_json"},
         "raw_data":{"product":product,"variant":variant},
-        # Espone il marchio anche al livello top-level: il backend centrale
-        # usa questo campo come identità primaria quando il retailer Shopify
-        # non lo espone nel formato standard. Non cambia il matching del nome.
-        "name":name,"brand":clean(product.get("vendor")) or None,
-        "price":f"{p:.2f}".replace(".",",")+" €","url":url,"available":available
+        "name":name,"price":f"{p:.2f}".replace(".",",")+" €","url":url,"available":available
     }
 
 CURRENT_QUERY=""
