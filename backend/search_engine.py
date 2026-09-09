@@ -1,105 +1,98 @@
-"""ScentHunter search orchestration v3.
+"""ScentHunter search orchestration v4.
 
-The live search layer uses the proven two-wave scheduler:
-- four store adapters start immediately;
-- when one finishes, the next waiting store starts;
-- no central query rewriting;
-- no central retries (store adapters own their retry/rate-limit policy);
-- raw candidates are collected losslessly;
-- central validation/grouping/ranking is applied only once at the end;
-- completed stores are published progressively to the frontend without being overwritten by partial validation;
-- the final result is finalized once all stores finish or the global window expires.
+Fixed two-wave scheduler:
+  WAVE 1: bplatz, deloox, parfumcity, perfumemarket
+  WAVE 2: orioudh, parfumzentrum, sabina, notino
+
+A wave is fully settled (success, empty, error, or per-store timeout)
+before the next wave starts. There is no rolling refill.
+
+Store adapters are left untouched. Central validation/grouping/finalization
+runs only after both waves have settled.
 """
 from __future__ import annotations
 
 import concurrent.futures
-import json
 import re
 import time
 import traceback
 from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional
 
-DEFAULT_STORE_TIMEOUT = 26.0
+
+DEFAULT_STORE_TIMEOUT = 18.0
 DEFAULT_GLOBAL_TIMEOUT = 45.0
 MAX_CONCURRENT_STORES = 4
-STORE_PRIORITY = [
-    "bplatz", "parfumcity", "orioudh", "perfumemarket",
-    "deloox", "parfumzentrum", "sabina", "notino",
-]
+
+STORE_WAVES = (
+    ("bplatz", "deloox", "parfumcity", "perfumemarket"),
+    ("orioudh", "parfumzentrum", "sabina", "notino"),
+)
+STORE_PRIORITY = [x for wave in STORE_WAVES for x in wave]
 
 
 @dataclass
 class StoreRun:
     store: str
-    status: str = "error"  # ok | empty | timeout | error
+    status: str = "error"
     candidates: List[Dict[str, Any]] = field(default_factory=list)
     elapsed: float = 0.0
     error: Optional[str] = None
 
 
 class SearchEngine:
-    def __init__(self, legacy_module: Any, *, store_timeout: float = DEFAULT_STORE_TIMEOUT,
-                 global_timeout: float = DEFAULT_GLOBAL_TIMEOUT,
-                 max_concurrent_stores: Optional[int] = None) -> None:
+    def __init__(
+        self,
+        legacy_module: Any,
+        *,
+        store_timeout: float = DEFAULT_STORE_TIMEOUT,
+        global_timeout: float = DEFAULT_GLOBAL_TIMEOUT,
+        max_concurrent_stores: Optional[int] = None,
+    ) -> None:
         self.legacy = legacy_module
         self.store_timeout = float(store_timeout)
-        self.global_timeout = float(global_timeout)
-        stores = getattr(legacy_module, "STORES", None)
-        configured = list(stores) if stores else list(STORE_PRIORITY)
+        self.global_timeout = max(float(global_timeout), self.store_timeout * 2.0 + 2.0)
 
-        # Store adapters create worker pools internally. Starting all eight at
-        # once multiplies those pools and saturates the Render instance.
-        priority = [store for store in STORE_PRIORITY if store in configured]
-        remainder = [store for store in configured if store not in priority]
-        self.stores = priority + remainder
-        requested_workers = MAX_CONCURRENT_STORES if max_concurrent_stores is None else int(max_concurrent_stores)
-        self.max_concurrent_stores = max(1, min(requested_workers, len(self.stores)))
+        configured = list(getattr(legacy_module, "STORES", None) or STORE_PRIORITY)
+        configured_set = set(configured)
+        ordered = [s for s in STORE_PRIORITY if s in configured_set]
+        ordered += [s for s in configured if s not in ordered]
+        self.stores = ordered
+
+        requested = MAX_CONCURRENT_STORES if max_concurrent_stores is None else int(max_concurrent_stores)
+        self.max_concurrent_stores = max(1, min(requested, 4, len(self.stores) or 1))
+
     def analyze_query(self, query: str) -> Dict[str, Any]:
         raw = str(query or "").strip()
         norm = self.legacy.norm(raw) if hasattr(self.legacy, "norm") else raw.lower()
         size_ml = None
-        try:
-            m = re.search(r"(?<!\d)(\d+(?:[.,]\d+)?)\s*(ml|cl)\b", raw, re.I)
-            if m:
-                size_ml = float(m.group(1).replace(",", "."))
-                if m.group(2).lower() == "cl":
-                    size_ml *= 10.0
-        except Exception:
-            pass
+        m = re.search(r"(?<!\d)(\d+(?:[.,]\d+)?)\s*(ml|cl)\b", raw, re.I)
+        if m:
+            size_ml = float(m.group(1).replace(",", "."))
+            if m.group(2).lower() == "cl":
+                size_ml *= 10.0
         return {"raw": raw, "normalized": norm, "size_ml": size_ml}
-
-    @staticmethod
-    def _safe_query(query: Any) -> str:
-        return str(query or "").strip()
 
     @staticmethod
     def _candidate_key(item: Dict[str, Any]) -> tuple:
         store = str(item.get("store") or item.get("shop") or "").strip().casefold()
         url = str(item.get("url") or item.get("source_url") or "").strip().casefold()
         product_id = str(item.get("product_id") or item.get("sku") or "").strip().casefold()
-        size = item.get("size_ml") or item.get("volume_ml") or item.get("format_ml")
-        if size in (None, ""):
-            size = ""
+        size = item.get("size_ml") or item.get("volume_ml") or item.get("format_ml") or ""
         return (store, product_id, url, str(size).strip().casefold())
 
     def _dedupe_raw(self, items: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
-        """Remove only true duplicate observations; never dedupe by product name."""
         out: List[Dict[str, Any]] = []
         seen = set()
         for item in items:
             if not isinstance(item, dict):
                 continue
             key = self._candidate_key(item)
-            # If no URL/id exists, keep the observation. The matcher owns
-            # identity decisions later and must see the complete evidence.
             if key[1] == "" and key[2] == "":
                 out.append(item)
-                continue
-            if key in seen:
-                continue
-            seen.add(key)
-            out.append(item)
+            elif key not in seen:
+                seen.add(key)
+                out.append(item)
         return out
 
     def _run_one_store(self, store: str, query: str) -> StoreRun:
@@ -129,81 +122,106 @@ class SearchEngine:
             return StoreRun(
                 store=store,
                 status="error",
-                candidates=[],
                 elapsed=time.monotonic() - started,
                 error=f"{type(exc).__name__}: {exc}",
             )
 
     def _run_stores(self, query: str) -> Dict[str, Any]:
-        """Run all stores with a bounded rolling concurrency window."""
         started = time.monotonic()
         deadline = started + self.global_timeout
         results: Dict[str, StoreRun] = {store: StoreRun(store=store) for store in self.stores}
-        executor = concurrent.futures.ThreadPoolExecutor(
-            max_workers=max(1, len(self.stores)),
-            thread_name_prefix="scenthunter-store",
-        )
-        queue = list(self.stores)
-        active: Dict[concurrent.futures.Future, tuple[str, float]] = {}
 
-        def submit_next() -> None:
-            while queue and len(active) < self.max_concurrent_stores:
-                store = queue.pop(0)
-                future = executor.submit(self._run_one_store, store, query)
-                active[future] = (store, time.monotonic())
-
-        submit_next()
-        try:
-            while active and time.monotonic() < deadline:
-                remaining = deadline - time.monotonic()
-                done, _ = concurrent.futures.wait(
-                    list(active),
-                    timeout=min(0.10, max(0.01, remaining)),
-                    return_when=concurrent.futures.FIRST_COMPLETED,
-                )
-                done.update(f for f in list(active) if f.done())
-                now = time.monotonic()
-
-                for future in list(done):
-                    if future not in active:
-                        continue
-                    store, submitted = active.pop(future)
-                    try:
-                        results[store] = future.result()
-                    except Exception as exc:
+        for wave in STORE_WAVES:
+            active = [s for s in wave if s in self.stores]
+            if not active:
+                continue
+            executor = concurrent.futures.ThreadPoolExecutor(
+                max_workers=min(self.max_concurrent_stores, len(active)),
+                thread_name_prefix="scenthunter-store",
+            )
+            futures: Dict[concurrent.futures.Future, tuple[str, float]] = {}
+            try:
+                for store in active:
+                    if time.monotonic() >= deadline:
                         results[store] = StoreRun(
-                            store=store, status="error", candidates=[],
-                            elapsed=now - submitted,
-                            error=f"{type(exc).__name__}: {exc}",
+                            store=store,
+                            status="timeout",
+                            elapsed=time.monotonic() - started,
+                            error="global search window expired before wave start",
                         )
-                    submit_next()
+                        continue
+                    future = executor.submit(self._run_one_store, store, query)
+                    futures[future] = (store, time.monotonic())
 
-            if active:
+                while futures:
+                    remaining = deadline - time.monotonic()
+                    if remaining <= 0:
+                        break
+
+                    now = time.monotonic()
+                    expired = [
+                        future
+                        for future, (store, submitted) in futures.items()
+                        if now - submitted >= self.store_timeout
+                    ]
+                    for future in expired:
+                        store, submitted = futures.pop(future)
+                        results[store] = StoreRun(
+                            store=store,
+                            status="timeout",
+                            elapsed=now - submitted,
+                            error="store timeout",
+                        )
+                        future.cancel()
+
+                    if not futures:
+                        break
+
+                    done, _ = concurrent.futures.wait(
+                        list(futures),
+                        timeout=min(0.10, remaining, self.store_timeout),
+                        return_when=concurrent.futures.FIRST_COMPLETED,
+                    )
+                    done.update(f for f in list(futures) if f.done())
+                    for future in list(done):
+                        if future not in futures:
+                            continue
+                        store, submitted = futures.pop(future)
+                        try:
+                            results[store] = future.result()
+                        except Exception as exc:
+                            results[store] = StoreRun(
+                                store=store,
+                                status="error",
+                                elapsed=time.monotonic() - submitted,
+                                error=f"{type(exc).__name__}: {exc}",
+                            )
+
                 now = time.monotonic()
-                for future, (store, submitted) in list(active.items()):
+                for future, (store, submitted) in list(futures.items()):
                     results[store] = StoreRun(
-                        store=store, status="timeout", candidates=[],
+                        store=store,
+                        status="timeout",
                         elapsed=now - submitted,
                         error="global search window expired",
                     )
                     future.cancel()
-                    active.pop(future, None)
+                    futures.pop(future, None)
+            finally:
+                executor.shutdown(wait=False, cancel_futures=True)
 
-            for store in queue:
-                results[store] = StoreRun(
-                    store=store, status="timeout", candidates=[],
-                    elapsed=max(0.0, time.monotonic() - started),
-                    error="global search window expired before store start",
-                )
-            queue.clear()
-        finally:
-            executor.shutdown(wait=False, cancel_futures=True)
-
+            # STRICT BARRIER: no store from the next wave is submitted until
+            # every store in this wave is settled.
         return {"stores": results, "elapsed": time.monotonic() - started}
 
     @staticmethod
     def _availability_rank(item: Dict[str, Any]) -> int:
-        value = str(item.get("availability") or item.get("stock_status") or item.get("stock") or "").strip().lower()
+        value = str(
+            item.get("availability")
+            or item.get("stock_status")
+            or item.get("stock")
+            or ""
+        ).strip().lower()
         if value in {"in_stock", "available", "true", "1", "yes", "in stock"}:
             return 0
         if value in {"out_of_stock", "oos", "unavailable", "sold_out", "sold out", "false", "0"}:
@@ -216,9 +234,7 @@ class SearchEngine:
     @staticmethod
     def _price_value(item: Dict[str, Any]) -> float:
         try:
-            value = item.get("price")
-            if value is None:
-                value = item.get("price_num")
+            value = item.get("price", item.get("price_num"))
             return float(value)
         except Exception:
             return float("inf")
@@ -249,22 +265,25 @@ class SearchEngine:
                     for x in clean if str(x.get("store") or x.get("shop") or "").strip()
                 ))
                 best = clean[0]
-                for field in ("store", "price", "url", "image", "availability", "available", "size_ml", "concentration", "gender"):
+                for field in (
+                    "store", "price", "url", "image", "availability",
+                    "available", "size_ml", "concentration", "gender",
+                ):
                     if field in best:
                         item[field] = best[field]
             output.append(item)
-        output.sort(key=lambda x: offer_key(x.get("offers", [x])[0] if isinstance(x.get("offers"), list) and x.get("offers") else x))
+
+        output.sort(key=lambda x: offer_key(
+            x.get("offers", [x])[0]
+            if isinstance(x.get("offers"), list) and x.get("offers")
+            else x
+        ))
         return output
 
-    def _validate_candidates_only(
-        self,
-        query: str,
-        candidates: List[Dict[str, Any]],
-    ) -> List[Dict[str, Any]]:
-        """Validate only the evidence supplied by the completed stores."""
+    def _validate_candidates_only(self, query: Any, candidates: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
         validate = getattr(self.legacy, "_validate_candidates_parallel", None)
         if not callable(validate):
-            return [item for item in candidates if isinstance(item, dict)]
+            return [x for x in candidates if isinstance(x, dict)]
         try:
             result = validate(candidates, query)
         except TypeError:
@@ -273,14 +292,9 @@ class SearchEngine:
             return []
         if not isinstance(result, list):
             result = list(result)
-        return [item for item in result if isinstance(item, dict)]
+        return [x for x in result if isinstance(x, dict)]
 
     def _orchestrate(self, query: str, raw_pool: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
-        """Run the legacy central validation/grouping pipeline on current evidence.
-
-        The store adapters only discover offers. Identity, format grouping,
-        availability ordering and catalog rules remain centralized in legacy.
-        """
         orchestrate = getattr(self.legacy, "_orchestrate_results", None)
         if callable(orchestrate):
             try:
@@ -307,20 +321,10 @@ class SearchEngine:
     def _finalize(self, query: str, raw_pool: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
         return self._orchestrate(query, raw_pool)
 
-    def _publish_results(
-        self,
-        query: str,
-        raw_pool: List[Dict[str, Any]],
-    ) -> List[Dict[str, Any]]:
-        """Build the exact frontend result shape from the evidence received so far."""
+    def _publish_results(self, query: str, raw_pool: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
         return self._orchestrate(query, raw_pool)
 
-    def _publish_validated_results(
-        self,
-        query: str,
-        validated_pool: List[Dict[str, Any]],
-    ) -> List[Dict[str, Any]]:
-        """Prepare already-validated evidence without validating old offers again."""
+    def _publish_validated_results(self, query: str, validated_pool: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
         prepare = getattr(self.legacy, "_prepare_final_results", None)
         if callable(prepare):
             try:
@@ -329,7 +333,6 @@ class SearchEngine:
                 result = prepare(validated_pool)
         else:
             result = validated_pool
-
         if result is None:
             return []
         if not isinstance(result, list):
@@ -340,6 +343,7 @@ class SearchEngine:
         text = self.analyze_query(query)["raw"]
         if not text:
             return {"query": "", "count": 0, "results": [], "comparisons": [], "errors": {}}
+
         store_run = self._run_stores(text)
         raw_pool: List[Dict[str, Any]] = []
         errors: Dict[str, str] = {}
@@ -359,53 +363,17 @@ class SearchEngine:
         }
 
     def diagnostic_search(self, query: str) -> Dict[str, Any]:
-        """Read-only forensic diagnostic of the store stage internals.
+        """Read-only per-store forensic diagnostic.
 
-        Unlike the normal production runner, this diagnostic intentionally
-        breaks each store into measurable stages:
-
-        1. scraper module load;
-        2. search function resolution;
-        3. construction of the normal production attempts;
-        4. each individual search() / scrape() call;
-        5. post-processing of returned candidates (price/image/identity);
-        6. duplicate filtering and total run_store-equivalent time.
-
-        Each individual search attempt is executed in its own worker with a
-        deadline slightly above the production per-store timeout. The
-        diagnostic is read-only and does not alter SEARCH_JOBS or production
-        search behavior.
+        This keeps the existing diagnostic endpoint alive while making the
+        scheduler itself independent from it.
         """
         text = self.analyze_query(query)["raw"]
-        if not text:
-            return {
-                "ok": True,
-                "diagnostic_type": "store_stage_forensics_v2",
-                "query": self.analyze_query(query),
-                "stores": {},
-                "timings": {},
-            }
+        started = time.monotonic()
+        reports: Dict[str, Any] = {}
 
-        diagnostic_started = time.monotonic()
-        attempts_builder = getattr(self.legacy, "build_search_attempts", None)
-        loader = getattr(self.legacy, "load_scraper", None)
-        price_resolver = getattr(self.legacy, "resolve_actual_price", None)
-        image_resolver = getattr(self.legacy, "product_image", None)
-        identity_builder = getattr(self.legacy, "product_identity_key", None)
-
-        if not callable(loader):
-            raise RuntimeError("legacy.load_scraper is not available")
-        if not callable(attempts_builder):
-            raise RuntimeError("legacy.build_search_attempts is not available")
-        if not callable(price_resolver):
-            raise RuntimeError("legacy.resolve_actual_price is not available")
-        if not callable(image_resolver):
-            raise RuntimeError("legacy.product_image is not available")
-        if not callable(identity_builder):
-            raise RuntimeError("legacy.product_identity_key is not available")
-
-        def diagnose_store(store: str) -> Dict[str, Any]:
-            store_started = time.monotonic()
+        def diagnose(store: str) -> Dict[str, Any]:
+            t0 = time.monotonic()
             info: Dict[str, Any] = {
                 "store": store,
                 "status": "error",
@@ -414,263 +382,135 @@ class SearchEngine:
                 "attempts": [],
                 "candidate_count": 0,
                 "postprocess_seconds": 0.0,
-                "dedupe_seconds": 0.0,
                 "run_store_equivalent_seconds": None,
                 "error": None,
             }
-
             try:
-                t0 = time.monotonic()
+                loader = getattr(self.legacy, "load_scraper")
+                module_t = time.monotonic()
                 module = loader(store)
-                info["module_load_seconds"] = round(time.monotonic() - t0, 4)
-            except Exception as exc:
-                info["error"] = f"module_load: {type(exc).__name__}: {exc}"
-                info["status"] = "error"
-                info["run_store_equivalent_seconds"] = round(time.monotonic() - store_started, 4)
-                return info
+                info["module_load_seconds"] = round(time.monotonic() - module_t, 4)
+                search_fn = getattr(module, "search", None) or getattr(module, "scrape", None)
+                if not callable(search_fn):
+                    raise RuntimeError("scraper senza funzione search()/scrape()")
 
-            search_fn = getattr(module, "search", None)
-            if not callable(search_fn):
-                search_fn = getattr(module, "scrape", None)
-            diagnostic_fn = getattr(module, "diagnostic_search", None)
-            if not callable(search_fn):
-                info["error"] = "scraper senza funzione search()/scrape()"
-                info["status"] = "error"
-                info["run_store_equivalent_seconds"] = round(time.monotonic() - store_started, 4)
-                return info
-            # Some adapters expose an opt-in internal forensic function.
-            # It executes the same real search but also reports every
-            # network request and internal stage. Normal production search
-            # never calls this function.
+                builder = getattr(self.legacy, "build_search_attempts", None)
+                attempts = list(builder(store, text) or []) if callable(builder) else [text]
+                info["attempt_build_seconds"] = 0.0
 
-            try:
-                t0 = time.monotonic()
-                attempts = list(attempts_builder(store, text) or [])
-                info["attempt_build_seconds"] = round(time.monotonic() - t0, 4)
-            except Exception as exc:
-                info["error"] = f"attempt_build: {type(exc).__name__}: {exc}"
-                info["status"] = "error"
-                info["run_store_equivalent_seconds"] = round(time.monotonic() - store_started, 4)
-                return info
-
-            raw_output: List[Dict[str, Any]] = []
-            seen = set()
-
-            for attempt_index, attempt in enumerate(attempts):
-                attempt_started = time.monotonic()
-                attempt_info: Dict[str, Any] = {
-                    "index": attempt_index,
-                    "query": attempt,
-                    "search_call_seconds": None,
-                    "search_call_status": "pending",
-                    "returned_count": 0,
-                    "postprocess_seconds": 0.0,
-                    "postprocess": {
-                        "resolve_actual_price_seconds": 0.0,
-                        "product_image_seconds": 0.0,
-                        "product_identity_key_seconds": 0.0,
-                    },
-                    "dedupe_seconds": 0.0,
-                    "accepted_count": 0,
-                    "error": None,
-                }
-
-                # Use a one-shot worker so a hanging shop search can be
-                # identified without blocking the whole diagnostic endpoint.
-                executor = concurrent.futures.ThreadPoolExecutor(
-                    max_workers=1,
-                    thread_name_prefix=f"scenthunter-diag-{store}",
-                )
-                use_internal_trace = callable(diagnostic_fn)
-                future = executor.submit(
-                    diagnostic_fn if use_internal_trace else search_fn,
-                    attempt,
-                )
-                try:
-                    payload = future.result(timeout=self.store_timeout + 2.0)
-                    if use_internal_trace and isinstance(payload, dict) and "results" in payload:
-                        results = payload.get("results") or []
-                        attempt_info["internal_trace"] = payload.get("trace") or {}
-                    else:
-                        results = payload or []
-                    attempt_info["search_call_seconds"] = round(time.monotonic() - attempt_started, 4)
-                    attempt_info["search_call_status"] = "ok"
-                except concurrent.futures.TimeoutError:
-                    attempt_info["search_call_seconds"] = round(time.monotonic() - attempt_started, 4)
-                    attempt_info["search_call_status"] = "timeout"
-                    attempt_info["error"] = f"search call exceeded {self.store_timeout + 2.0:.0f}s diagnostic deadline"
-                    info["attempts"].append(attempt_info)
-                    executor.shutdown(wait=False, cancel_futures=True)
-                    info["status"] = "timeout"
-                    info["error"] = attempt_info["error"]
-                    break
-                except Exception as exc:
-                    attempt_info["search_call_seconds"] = round(time.monotonic() - attempt_started, 4)
-                    attempt_info["search_call_status"] = "error"
-                    attempt_info["error"] = f"{type(exc).__name__}: {exc}"
-                    info["attempts"].append(attempt_info)
-                    executor.shutdown(wait=False, cancel_futures=True)
-                    continue
-                finally:
-                    if not future.done():
+                raw: List[Dict[str, Any]] = []
+                for index, attempt in enumerate(attempts):
+                    attempt_t = time.monotonic()
+                    executor = concurrent.futures.ThreadPoolExecutor(max_workers=1)
+                    future = executor.submit(search_fn, attempt)
+                    try:
+                        payload = future.result(timeout=self.store_timeout + 2.0)
+                        items = payload or []
+                        if not isinstance(items, list):
+                            items = list(items)
+                        items = [x for x in items if isinstance(x, dict)]
+                        info["attempts"].append({
+                            "index": index,
+                            "query": attempt,
+                            "search_call_seconds": round(time.monotonic() - attempt_t, 4),
+                            "search_call_status": "ok",
+                            "returned_count": len(items),
+                            "error": None,
+                        })
+                        raw.extend(items)
+                        if raw:
+                            break
+                    except concurrent.futures.TimeoutError:
+                        info["attempts"].append({
+                            "index": index,
+                            "query": attempt,
+                            "search_call_seconds": round(time.monotonic() - attempt_t, 4),
+                            "search_call_status": "timeout",
+                            "returned_count": 0,
+                            "error": f"search call exceeded {self.store_timeout + 2.0:.0f}s diagnostic deadline",
+                        })
+                        info["status"] = "timeout"
+                        info["error"] = info["attempts"][-1]["error"]
+                        future.cancel()
                         executor.shutdown(wait=False, cancel_futures=True)
-                    else:
-                        executor.shutdown(wait=True, cancel_futures=True)
-
-                if results is None:
-                    results = []
-                if not isinstance(results, list):
-                    try:
-                        results = list(results)
-                    except Exception:
-                        results = []
-
-                results = [x for x in results if isinstance(x, dict)]
-                attempt_info["returned_count"] = len(results)
-
-                for item in results:
-                    product = dict(item)
-                    product.setdefault("store", store)
-
-                    t0 = time.monotonic()
-                    try:
-                        product = price_resolver(product)
+                        break
                     except Exception as exc:
-                        attempt_info.setdefault("postprocess_errors", []).append(
-                            f"resolve_actual_price: {type(exc).__name__}: {exc}"
-                        )
-                    attempt_info["postprocess"]["resolve_actual_price_seconds"] += time.monotonic() - t0
+                        info["attempts"].append({
+                            "index": index,
+                            "query": attempt,
+                            "search_call_seconds": round(time.monotonic() - attempt_t, 4),
+                            "search_call_status": "error",
+                            "returned_count": 0,
+                            "error": f"{type(exc).__name__}: {exc}",
+                        })
+                    finally:
+                        if future.done():
+                            executor.shutdown(wait=True, cancel_futures=True)
+                        else:
+                            executor.shutdown(wait=False, cancel_futures=True)
 
-                    t0 = time.monotonic()
-                    try:
-                        image = image_resolver(product)
-                        if image:
-                            product["image"] = image
-                    except Exception as exc:
-                        attempt_info.setdefault("postprocess_errors", []).append(
-                            f"product_image: {type(exc).__name__}: {exc}"
-                        )
-                    attempt_info["postprocess"]["product_image_seconds"] += time.monotonic() - t0
+                info["candidate_count"] = len(raw)
+                if info["status"] != "timeout":
+                    info["status"] = "ok" if raw else "empty"
+                info["run_store_equivalent_seconds"] = round(time.monotonic() - t0, 4)
+                info["candidates"] = [
+                    {
+                        "store": x.get("store"),
+                        "name": x.get("name"),
+                        "price": x.get("price"),
+                        "available": x.get("available"),
+                        "url": x.get("url"),
+                    }
+                    for x in raw
+                ]
+                return info
+            except Exception as exc:
+                info["error"] = f"{type(exc).__name__}: {exc}"
+                info["run_store_equivalent_seconds"] = round(time.monotonic() - t0, 4)
+                return info
 
-                    t0 = time.monotonic()
-                    try:
-                        key = identity_builder(product)
-                    except Exception as exc:
-                        attempt_info.setdefault("postprocess_errors", []).append(
-                            f"product_identity_key: {type(exc).__name__}: {exc}"
-                        )
-                        key = None
-                    attempt_info["postprocess"]["product_identity_key_seconds"] += time.monotonic() - t0
-
-                    if key in seen:
-                        continue
-                    seen.add(key)
-                    raw_output.append(product)
-
-                attempt_info["postprocess_seconds"] = round(
-                    sum(float(v or 0.0) for v in attempt_info["postprocess"].values()),
-                    4,
-                )
-                t0 = time.monotonic()
-                attempt_info["accepted_count"] = len(raw_output)
-                attempt_info["dedupe_seconds"] = round(time.monotonic() - t0, 4)
-                info["attempts"].append(attempt_info)
-
-                # Exactly mirrors the current production run_store behavior:
-                # stop after the first attempt that produced candidates.
-                if raw_output:
-                    break
-
-            info["candidate_count"] = len(raw_output)
-            info["postprocess_seconds"] = round(
-                sum(float(a.get("postprocess_seconds") or 0.0) for a in info["attempts"]),
-                4,
-            )
-            info["dedupe_seconds"] = round(
-                sum(float(a.get("dedupe_seconds") or 0.0) for a in info["attempts"]),
-                4,
-            )
-            if info["status"] != "timeout":
-                info["status"] = "ok" if raw_output else "empty"
-            info["run_store_equivalent_seconds"] = round(time.monotonic() - store_started, 4)
-            info["candidates"] = [
-                {
-                    "store": x.get("store"),
-                    "name": x.get("name"),
-                    "price": x.get("price"),
-                    "available": x.get("available"),
-                    "url": x.get("url"),
-                }
-                for x in raw_output
-            ]
-            return info
-
-        # All eight stores are diagnosed concurrently, just like production.
-        executor = concurrent.futures.ThreadPoolExecutor(
-            max_workers=max(1, len(self.stores)),
-            thread_name_prefix="scenthunter-diagnostic-store",
-        )
-        futures = {executor.submit(diagnose_store, store): store for store in self.stores}
-        diagnosed: Dict[str, Any] = {}
+        executor = concurrent.futures.ThreadPoolExecutor(max_workers=len(self.stores) or 1)
+        futures = {executor.submit(diagnose, store): store for store in self.stores}
         try:
             for future in concurrent.futures.as_completed(futures):
                 store = futures[future]
                 try:
-                    diagnosed[store] = future.result()
+                    reports[store] = future.result()
                 except Exception as exc:
-                    diagnosed[store] = {
+                    reports[store] = {
                         "store": store,
                         "status": "error",
-                        "error": f"diagnostic worker: {type(exc).__name__}: {exc}",
+                        "error": f"{type(exc).__name__}: {exc}",
                     }
         finally:
             executor.shutdown(wait=False, cancel_futures=True)
 
-        total = round(time.monotonic() - diagnostic_started, 3)
-        ordered = {store: diagnosed.get(store, {"store": store, "status": "missing"}) for store in self.stores}
-
+        ordered = {store: reports.get(store, {"store": store, "status": "missing"}) for store in self.stores}
         return {
             "ok": True,
-            "diagnostic_type": "store_stage_forensics_v2",
+            "diagnostic_type": "store_stage_forensics_v3",
             "query": self.analyze_query(text),
             "production_limits": {
                 "store_timeout_seconds": self.store_timeout,
                 "global_timeout_seconds": self.global_timeout,
                 "diagnostic_attempt_deadline_seconds": self.store_timeout + 2.0,
             },
-            "total_diagnostic_seconds": total,
+            "total_diagnostic_seconds": round(time.monotonic() - started, 3),
             "stores": ordered,
             "interpretation": {
                 "search_call_bottleneck": [
                     name for name, info in ordered.items()
                     if any(
-                        isinstance(attempt, dict)
-                        and (
-                            float(attempt.get("search_call_seconds") or 0.0) >= 5.0
-                            or attempt.get("search_call_status") == "timeout"
-                        )
-                        for attempt in info.get("attempts", [])
+                        float(a.get("search_call_seconds") or 0.0) >= 5.0
+                        or a.get("search_call_status") == "timeout"
+                        for a in info.get("attempts", [])
+                        if isinstance(a, dict)
                     )
-                ],
-                "postprocess_bottleneck": [
-                    name for name, info in ordered.items()
-                    if float(info.get("postprocess_seconds") or 0.0) >= 1.0
-                ],
-                "module_load_bottleneck": [
-                    name for name, info in ordered.items()
-                    if float(info.get("module_load_seconds") or 0.0) >= 1.0
-                ],
+                ]
             },
         }
 
     def search_job_snapshot(self, job_id: str) -> Dict[str, Any]:
-        """Return the live progressive job state without re-running finalization.
-
-        ``main_legacy._search_job_snapshot`` historically re-applied its own
-        finalizer to ``job["results"]``. The progressive SearchEngine already
-        stores canonical final groups at every publication step, so reprocessing
-        them would add latency and could distort partial results.
-        """
         jobs = getattr(self.legacy, "SEARCH_JOBS", None)
         lock = getattr(self.legacy, "SEARCH_JOBS_LOCK", None)
         if jobs is None:
@@ -693,7 +533,6 @@ class SearchEngine:
         results = snapshot.get("results")
         if not isinstance(results, list):
             results = []
-
         store_status = snapshot.get("store_status")
         if not isinstance(store_status, dict):
             store_status = {}
@@ -703,7 +542,6 @@ class SearchEngine:
             if isinstance(info, dict)
             and info.get("status") not in ("pending", "searching")
         )
-
         completed = bool(snapshot.get("completed"))
         return {
             "job_id": str(job_id),
@@ -724,13 +562,6 @@ class SearchEngine:
         }
 
     def run_job(self, job_id: str, query: str) -> None:
-        """Run stores in a rolling window of four adapters.
-
-        A store result is published immediately when its adapter returns.
-        Partial central validation is intentionally NOT published because it can
-        temporarily hide offers from stores that have not finished yet. The
-        canonical validation/grouping/finalization runs once at the end.
-        """
         jobs = getattr(self.legacy, "SEARCH_JOBS", None)
         lock = getattr(self.legacy, "SEARCH_JOBS_LOCK", None)
         if jobs is None:
@@ -749,8 +580,7 @@ class SearchEngine:
 
         started = time.monotonic()
         store_status: Dict[str, Any] = {
-            store: {"status": "pending", "count": 0}
-            for store in self.stores
+            store: {"status": "pending", "count": 0} for store in self.stores
         }
         errors: Dict[str, str] = {}
         raw_pool: List[Dict[str, Any]] = []
@@ -771,9 +601,7 @@ class SearchEngine:
             "elapsed": 0.0,
         })
 
-        store_executor: Optional[concurrent.futures.ThreadPoolExecutor] = None
-
-        def publish_raw() -> None:
+        def publish() -> None:
             with raw_lock:
                 snapshot_results = [dict(x) for x in raw_pool if isinstance(x, dict)]
             update({
@@ -786,7 +614,8 @@ class SearchEngine:
                 "store_status": dict(store_status),
                 "completed_stores": sum(
                     1 for info in store_status.values()
-                    if isinstance(info, dict) and info.get("status") not in ("pending", "searching")
+                    if isinstance(info, dict)
+                    and info.get("status") not in ("pending", "searching")
                 ),
                 "total_stores": len(self.stores),
                 "raw_candidate_count": len(snapshot_results),
@@ -795,105 +624,122 @@ class SearchEngine:
             })
 
         try:
-            # Proven configuration: four adapters at once, then refill the
-            # window immediately as each adapter completes. Scrapers untouched.
-            store_executor = concurrent.futures.ThreadPoolExecutor(
-                max_workers=self.max_concurrent_stores,
-                thread_name_prefix="scenthunter-store",
-            )
-
-            queue = list(self.stores)
-            active: Dict[concurrent.futures.Future, tuple[str, float]] = {}
-
-            def submit_next() -> None:
-                while queue and len(active) < self.max_concurrent_stores:
-                    store = queue.pop(0)
-                    future = store_executor.submit(self._run_one_store, store, query)
-                    active[future] = (store, time.monotonic())
-                    store_status[store] = {"status": "searching", "count": 0}
-
-            submit_next()
-            update({"store_status": dict(store_status)})
             deadline = started + self.global_timeout
 
-            while active:
-                remaining = deadline - time.monotonic()
-                if remaining <= 0:
-                    break
+            for wave_number, wave in enumerate(STORE_WAVES, start=1):
+                active = [s for s in wave if s in self.stores]
+                if not active:
+                    continue
 
-                done, _ = concurrent.futures.wait(
-                    list(active),
-                    timeout=min(0.10, max(0.01, remaining)),
-                    return_when=concurrent.futures.FIRST_COMPLETED,
+                # Mark the entire wave as searching before launching it.
+                for store in active:
+                    store_status[store] = {"status": "searching", "count": 0}
+                update({
+                    "phase": f"discovery_wave_{wave_number}",
+                    "store_status": dict(store_status),
+                    "elapsed": round(time.monotonic() - started, 3),
+                })
+
+                executor = concurrent.futures.ThreadPoolExecutor(
+                    max_workers=min(self.max_concurrent_stores, len(active)),
+                    thread_name_prefix="scenthunter-store",
                 )
-                done.update(f for f in list(active) if f.done())
+                futures: Dict[concurrent.futures.Future, tuple[str, float]] = {}
 
-                for future in list(done):
-                    if future not in active:
-                        continue
-                    store, submitted = active.pop(future)
-                    try:
-                        result = future.result()
-                        candidates = [
-                            x for x in (result.candidates or [])
-                            if isinstance(x, dict)
-                        ]
-                        with raw_lock:
-                            raw_pool.extend(candidates)
-                            raw_pool[:] = self._dedupe_raw(raw_pool)
+                try:
+                    for store in active:
+                        if time.monotonic() >= deadline:
+                            store_status[store] = {
+                                "status": "timeout",
+                                "count": 0,
+                                "elapsed": round(time.monotonic() - started, 3),
+                                "error": "global search window expired before wave start",
+                            }
+                            errors[store] = store_status[store]["error"]
+                            continue
+                        future = executor.submit(self._run_one_store, store, query)
+                        futures[future] = (store, time.monotonic())
 
+                    while futures:
+                        remaining = deadline - time.monotonic()
+                        if remaining <= 0:
+                            break
+
+                        done, _ = concurrent.futures.wait(
+                            list(futures),
+                            timeout=min(0.10, remaining),
+                            return_when=concurrent.futures.FIRST_COMPLETED,
+                        )
+                        done.update(f for f in list(futures) if f.done())
+
+                        for future in list(done):
+                            if future not in futures:
+                                continue
+                            store, submitted = futures.pop(future)
+                            try:
+                                result = future.result()
+                            except Exception as exc:
+                                result = StoreRun(
+                                    store=store,
+                                    status="error",
+                                    elapsed=time.monotonic() - submitted,
+                                    error=f"{type(exc).__name__}: {exc}",
+                                )
+
+                            candidates = [
+                                x for x in (result.candidates or [])
+                                if isinstance(x, dict)
+                            ]
+                            with raw_lock:
+                                raw_pool.extend(candidates)
+                                raw_pool[:] = self._dedupe_raw(raw_pool)
+
+                            store_status[store] = {
+                                "status": result.status,
+                                "count": len(candidates),
+                                "elapsed": round(result.elapsed, 3),
+                            }
+                            if result.error:
+                                store_status[store]["error"] = result.error
+                                errors[store] = result.error
+
+                            publish()
+
+                    # Strict barrier timeout handling: settle all remaining
+                    # stores in this wave before the next wave can start.
+                    now = time.monotonic()
+                    for future, (store, submitted) in list(futures.items()):
+                        error = (
+                            "store timeout / global search window expired"
+                            if time.monotonic() >= deadline
+                            else "store timeout"
+                        )
                         store_status[store] = {
-                            "status": result.status,
-                            "count": len(candidates),
-                            "elapsed": round(result.elapsed, 3),
-                        }
-                        if result.error:
-                            store_status[store]["error"] = result.error
-                            errors[store] = result.error
-
-                        # CRITICAL: publish immediately. Do not run the central
-                        # finalizer here and do not replace the snapshot with a
-                        # partially validated subset.
-                        publish_raw()
-                    except Exception as exc:
-                        error = f"{type(exc).__name__}: {exc}"
-                        store_status[store] = {
-                            "status": "error",
+                            "status": "timeout",
                             "count": 0,
-                            "elapsed": round(time.monotonic() - submitted, 3),
+                            "elapsed": round(now - submitted, 3),
                             "error": error,
                         }
                         errors[store] = error
-                        publish_raw()
+                        future.cancel()
+                        futures.pop(future, None)
+                        publish()
+                finally:
+                    executor.shutdown(wait=False, cancel_futures=True)
 
-                    # Refill immediately: this creates the 4 + 4 rolling waves.
-                    submit_next()
-                    update({"store_status": dict(store_status)})
-
-            if active:
-                now = time.monotonic()
-                for future, (store, submitted) in list(active.items()):
-                    store_status[store] = {
-                        "status": "timeout",
-                        "count": 0,
-                        "elapsed": round(now - submitted, 3),
-                        "error": "global search window expired",
-                    }
-                    errors[store] = "global search window expired"
-                    future.cancel()
-                active.clear()
-
-            for store in queue:
-                store_status[store] = {
-                    "status": "timeout",
-                    "count": 0,
+                # HARD BARRIER: only after every store in this wave has a final
+                # status do we enter the next wave.
+                update({
+                    "phase": f"wave_{wave_number}_completed",
+                    "store_status": dict(store_status),
+                    "completed_stores": sum(
+                        1 for info in store_status.values()
+                        if isinstance(info, dict)
+                        and info.get("status") not in ("pending", "searching")
+                    ),
                     "elapsed": round(time.monotonic() - started, 3),
-                    "error": "global search window expired before store start",
-                }
-                errors[store] = "global search window expired before store start"
-            queue.clear()
+                })
 
-            # Only here do we pay the cost of canonical validation/grouping.
             with raw_lock:
                 final_raw = list(raw_pool)
             final_results = self._finalize(query, final_raw)
@@ -908,7 +754,8 @@ class SearchEngine:
                 "store_status": dict(store_status),
                 "completed_stores": sum(
                     1 for info in store_status.values()
-                    if isinstance(info, dict) and info.get("status") not in ("pending", "searching")
+                    if isinstance(info, dict)
+                    and info.get("status") not in ("pending", "searching")
                 ),
                 "total_stores": len(self.stores),
                 "raw_candidate_count": len(final_raw),
@@ -928,6 +775,3 @@ class SearchEngine:
                 "results_are_final": True,
                 "elapsed": round(time.monotonic() - started, 3),
             })
-        finally:
-            if store_executor is not None:
-                store_executor.shutdown(wait=False, cancel_futures=True)
