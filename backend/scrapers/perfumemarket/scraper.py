@@ -546,3 +546,92 @@ def diagnose(q):
         }
     finally:
         session.close()
+
+
+def diagnose_deep(q):
+    """Forensic diagnostic. It does not change search()."""
+    q = clean(q)
+    if not q:
+        return {"ok": False, "diagnostic": "perfumemarket_deep_v1", "error": "empty_query"}
+
+    session = requests.Session()
+    session.headers.update(HEADERS)
+    trace = {
+        "ok": True, "diagnostic": "perfumemarket_deep_v1", "query": q,
+        "configured_timeout": TIMEOUT, "retries": RETRIES,
+        "retry_sleep": RETRY_SLEEP, "http_calls": [],
+        "stages": {}, "candidates": [], "products": []
+    }
+    original_get = _get
+
+    def timed_get(sess, url, **kwargs):
+        t0 = time.perf_counter()
+        response = None
+        error = None
+        try:
+            response = original_get(sess, url, **kwargs)
+            return response
+        except Exception as exc:
+            error = f"{type(exc).__name__}: {exc}"
+            raise
+        finally:
+            trace["http_calls"].append({
+                "url": url,
+                "status": getattr(response, "status_code", None),
+                "elapsed_ms": round((time.perf_counter()-t0)*1000, 1),
+                "ok": bool(response and response.ok),
+                "error": error,
+            })
+
+    globals()["_get"] = timed_get
+    try:
+        t0 = time.perf_counter()
+        shopify = _shopify_discovery(session, q)
+        trace["stages"]["shopify_discovery_ms"] = round((time.perf_counter()-t0)*1000, 1)
+        trace["stages"]["shopify_candidates"] = list(shopify)
+
+        candidates = list(dict.fromkeys(shopify))[:MAX_PRODUCT_URLS]
+        if not candidates:
+            t0 = time.perf_counter()
+            sitemap = _targeted_sitemap(session, q)
+            trace["stages"]["sitemap_discovery_ms"] = round((time.perf_counter()-t0)*1000, 1)
+            trace["stages"]["sitemap_candidates"] = list(sitemap)
+            candidates = list(dict.fromkeys(sitemap))[:MAX_PRODUCT_URLS]
+        else:
+            trace["stages"]["sitemap_discovery_ms"] = 0.0
+            trace["stages"]["sitemap_candidates"] = []
+
+        trace["candidates"] = candidates
+
+        t0 = time.perf_counter()
+        if candidates:
+            with ThreadPoolExecutor(max_workers=min(PRODUCT_WORKERS, len(candidates))) as executor:
+                futures = {executor.submit(product, session, u, q): u for u in candidates}
+                for future in as_completed(futures):
+                    u = futures[future]
+                    try:
+                        item = future.result()
+                        err = None
+                    except Exception as exc:
+                        item = None
+                        err = f"{type(exc).__name__}: {exc}"
+                    trace["products"].append({
+                        "url": u, "accepted": bool(item),
+                        "name": item.get("name") if item else None,
+                        "price": item.get("price") if item else None,
+                        "error": err
+                    })
+        trace["stages"]["product_pages_total_ms"] = round((time.perf_counter()-t0)*1000, 1)
+        trace["summary"] = {
+            "candidate_count": len(candidates),
+            "accepted_count": sum(1 for x in trace["products"] if x["accepted"]),
+            "http_call_count": len(trace["http_calls"]),
+            "total_elapsed_ms": round(
+                trace["stages"]["shopify_discovery_ms"] +
+                trace["stages"]["sitemap_discovery_ms"] +
+                trace["stages"]["product_pages_total_ms"], 1)
+        }
+        return trace
+    finally:
+        globals()["_get"] = original_get
+        session.close()
