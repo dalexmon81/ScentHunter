@@ -805,16 +805,17 @@ def diagnostic_scraper_deep(
                 "elapsed_ms": round((_deep_time.monotonic() - t0) * 1000),
                 "candidate_url_count": len(urls),
                 "candidate_urls": list(urls)[:30],
+                "product_parse_limit": 12,
             }
 
             parsed = []
             rejected = []
             parser = getattr(module, "_product", None)
             if callable(parser):
-                for url in list(urls)[:30]:
+                for url in list(urls)[:12]:
                     t1 = _deep_time.monotonic()
                     try:
-                        r = session.get(url, headers=headers, timeout=timeout or 4)
+                        r = session.get(url, headers=headers, timeout=min(float(timeout or 4), 6.0))
                         status = r.status_code
                         body = r.text if status < 400 else ""
                         bytes_count = len(r.content or b"")
@@ -1052,9 +1053,9 @@ def diagnostic_scraper_trace(
         # ---- Deloox: instrument EVERY discovery sub-stage ----
         if store_key == "deloox":
             def wrap_candidate(original):
-                def wrapped(html, query_arg=None):
+                def wrapped(html, query_arg=None, *args, **kwargs):
                     before = _trace_time.monotonic()
-                    result = original(html, query_arg)
+                    result = original(html, query_arg, *args, **kwargs)
                     urls = list(result or [])
                     query_low = str(query_arg or query).casefold()
                     # Independent evidence from the same HTML, without changing
