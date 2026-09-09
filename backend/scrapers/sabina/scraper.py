@@ -328,11 +328,6 @@ def _dedupe(rows, query):
 
         size = str(row.get("size_ml") or "").strip()
         clean_url = url.split("?")[0]
-
-        # La stessa scheda prodotto viene estratta più volte dal JSON-LD e
-        # dai link/card HTML. Il nome può cambiare (es. con/senza brand),
-        # quindi il nome NON può far parte della chiave di deduplica.
-        # Una singola URL prodotto + formato identifica la stessa offerta.
         key = (clean_url.lower(), size)
         if key in seen:
             continue
