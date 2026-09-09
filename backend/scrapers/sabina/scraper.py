@@ -711,6 +711,72 @@ def _brand_collection_fallback(session, query):
     return []
 
 
+
+def _ecelastic_discovery(session, query):
+    """Native Sabina/Sellboost search endpoint.
+
+    Sabina uses the ecelastic/Sellboost search layer for its site search. The
+    public HTML search URLs are not a reliable discovery channel, so query the
+    site's own AJAX search generically and let the existing JSON/HTML parsers
+    validate the returned products.
+    """
+    from concurrent.futures import ThreadPoolExecutor, as_completed
+
+    ajax_url = BASE + "/modules/ecelastic/ajax.php"
+    payloads = [
+        {"q": query, "query": query, "search_query": query},
+        {"s": query, "search_query": query},
+        {"query": query},
+    ]
+
+    def request_one(payload, method):
+        try:
+            if method == "get":
+                r = session.get(
+                    ajax_url,
+                    params=payload,
+                    headers=HEADERS,
+                    timeout=TIMEOUT,
+                )
+            else:
+                r = session.post(
+                    ajax_url,
+                    data=payload,
+                    headers={**HEADERS, "X-Requested-With": "XMLHttpRequest"},
+                    timeout=TIMEOUT,
+                )
+            if r.status_code != 200 or not r.text.strip():
+                r.close()
+                return []
+            body = r.text
+            r.close()
+
+            try:
+                data = json.loads(body)
+                rows = _walk_json(data, query)
+            except Exception:
+                rows = _parse_html(body, query)
+            return rows or []
+        except Exception:
+            return []
+
+    # Six independent requests are cheap and keep one malformed payload from
+    # delaying the whole store. Stop as soon as a valid result set appears.
+    with ThreadPoolExecutor(max_workers=6) as ex:
+        futures = [
+            ex.submit(request_one, payload, method)
+            for payload in payloads
+            for method in ("get", "post")
+        ]
+        for fut in as_completed(futures):
+            try:
+                rows = fut.result()
+            except Exception:
+                rows = []
+            if rows:
+                return rows[:8]
+    return []
+
 def search(query):
     """Fast, bounded Sabina search."""
     query = _clean(query)
@@ -722,11 +788,15 @@ def search(query):
     s.headers.update(HEADERS)
 
     try:
-        # 1) Search pages in parallel. This is the fastest generic discovery
-        # channel and replaces the previous hard-coded French Avenue collection.
-        candidates = _brand_collection_fallback(s, query)
+        # 1) Sabina's native ecelastic/Sellboost search. This is the primary
+        # generic discovery path: no product, brand or price is hard-coded.
+        candidates = _ecelastic_discovery(s, query)
 
-        # 2) Generic sitemap fallback, still bounded.
+        # 2) Public HTML search fallback.
+        if not candidates and (time.monotonic() - started) < SEARCH_DEADLINE:
+            candidates = _brand_collection_fallback(s, query)
+
+        # 3) Generic sitemap fallback, still bounded.
         if not candidates and (time.monotonic() - started) < SEARCH_DEADLINE:
             candidates = _sitemap_product_candidates(
                 s,
