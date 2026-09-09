@@ -36,6 +36,7 @@ _engine = SearchEngine(
     _legacy,
     store_timeout=STORE_TIMEOUT_SECONDS,
     global_timeout=GLOBAL_SEARCH_TIMEOUT_SECONDS,
+    max_concurrent_stores=4,
 )
 
 # ---------------------------------------------------------------------------
@@ -168,6 +169,14 @@ if callable(_engine_snapshot):
 
 # Keep the exact FastAPI application object and every existing route.
 app = _legacy.app
+
+
+# Direct path-parameter status endpoint. The frontend prefers this route, so it
+# avoids the legacy query-parameter fallback and returns the engine snapshot
+# directly without re-running any finalization.
+@app.get("/search-status/{job_id}")
+def search_status_direct(job_id: str):
+    return _engine.search_job_snapshot(job_id)
 
 # ===== TEMPORARY READ-ONLY NOTINO DEEP DIAGNOSTIC =====
 JINA_PREFIX = "https://r.jina.ai/"
