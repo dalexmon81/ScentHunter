@@ -1,8 +1,9 @@
 """ScentHunter search orchestration v2.
 
-The live search layer is deliberately boring:
-- one request to each of the eight store adapters;
-- all stores start independently;
+The live search layer is deliberately controlled:
+- the eight store adapters run in two fixed waves of four;
+- wave 1 preserves the historical priority order;
+- only one complete search job is active at a time;
 - no central query rewriting;
 - no central retries (store adapters own their retry/rate-limit policy);
 - raw candidates are collected losslessly;
@@ -16,11 +17,12 @@ import json
 import re
 import time
 import traceback
+import threading
 from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional
 
-DEFAULT_STORE_TIMEOUT = 12.0
-DEFAULT_GLOBAL_TIMEOUT = 25.0
+DEFAULT_STORE_TIMEOUT = 15.0
+DEFAULT_GLOBAL_TIMEOUT = 35.0
 
 
 @dataclass
@@ -38,6 +40,7 @@ class SearchEngine:
         self.legacy = legacy_module
         self.store_timeout = float(store_timeout)
         self.global_timeout = float(global_timeout)
+        self._execution_lock = threading.Lock()
         stores = getattr(legacy_module, "STORES", None)
         self.stores = list(stores) if stores else [
             "bplatz", "deloox", "parfumcity", "parfumzentrum",
@@ -483,7 +486,7 @@ class SearchEngine:
             "diagnostic": snapshot.get("diagnostic", {}),
         }
 
-    def run_job(self, job_id: str, query: str) -> None:
+    def _run_job_impl(self, job_id: str, query: str) -> None:
         jobs = getattr(self.legacy, "SEARCH_JOBS", None)
         lock = getattr(self.legacy, "SEARCH_JOBS_LOCK", None)
         if jobs is None:
@@ -493,7 +496,6 @@ class SearchEngine:
             raise RuntimeError("SEARCH_JOBS is not available")
 
         def update(payload: Dict[str, Any]) -> None:
-            phase_timings["job_update_count"] = int(phase_timings.get("job_update_count", 0)) + 1
             if lock is not None:
                 with lock:
                     job = jobs.get(job_id)
@@ -505,117 +507,198 @@ class SearchEngine:
                     job.update(payload)
 
         started = time.monotonic()
-        phase_started = started
         phase_timings: Dict[str, Any] = {
             "job_started_monotonic": started,
             "store_execution": {},
             "job_update_count": 0,
+            "waves": [],
         }
-        store_status = {store: {"status": "pending", "count": 0} for store in self.stores}
+
+        # Deliberate two-wave scheduling.
+        # Wave 1 is the historical fast/priority group.  Wave 2 starts only
+        # after Wave 1 has released its four connections.  This avoids the
+        # eight-way connection burst that was causing 502/503/429 cascades,
+        # while preserving the old visible order: first four, then the other four.
+        priority_wave = [
+            store for store in (
+                "bplatz", "deloox", "parfumzentrum", "parfumcity"
+            ) if store in self.stores
+        ]
+        second_wave = [
+            store for store in self.stores if store not in priority_wave
+        ]
+        waves = [priority_wave, second_wave]
+        waves = [wave for wave in waves if wave]
+
+        store_status = {
+            store: {"status": "pending", "count": 0}
+            for store in self.stores
+        }
         update({
             "completed": False,
             "phase": "discovery",
             "status": "searching",
-            # Deliberately empty until ALL stores have finished or timed out.
             "results": [],
             "candidates": [],
             "errors": {},
             "store_status": store_status,
+            "completed_stores": 0,
+            "total_stores": len(self.stores),
         })
 
-        try:
-            executor = concurrent.futures.ThreadPoolExecutor(max_workers=len(self.stores), thread_name_prefix="scenthunter-store")
-            futures = {executor.submit(self._run_one_store, store, query): store for store in self.stores}
-            pending = set(futures)
-            raw_pool: List[Dict[str, Any]] = []
-            errors: Dict[str, str] = {}
-            deadline = started + self.global_timeout
-            last_partial_finalize = 0.0
-            last_partial_results: List[Dict[str, Any]] = []
+        raw_pool: List[Dict[str, Any]] = []
+        errors: Dict[str, str] = {}
+        last_partial_finalize = 0.0
+        last_partial_results: List[Dict[str, Any]] = []
+        deadline = started + self.global_timeout
 
-            while pending and time.monotonic() < deadline:
-                done, pending = concurrent.futures.wait(
-                    pending,
-                    timeout=min(0.10, max(0.01, deadline - time.monotonic())),
-                    return_when=concurrent.futures.FIRST_COMPLETED,
+        def publish_store_result(store: str, result: StoreRun, wave_index: int) -> None:
+            nonlocal raw_pool, last_partial_finalize, last_partial_results
+
+            store_status[store] = {
+                "status": result.status,
+                "count": len(result.candidates),
+                "elapsed": round(result.elapsed, 3),
+                "error": result.error,
+                "wave": wave_index + 1,
+            }
+            phase_timings["store_execution"][store] = {
+                "status": result.status,
+                "elapsed": round(result.elapsed, 3),
+                "count": len(result.candidates),
+                "wave": wave_index + 1,
+            }
+            raw_pool.extend(result.candidates)
+            if result.error:
+                errors[store] = result.error
+
+            partial_raw = self._dedupe_raw(list(raw_pool))
+            # Canonicalize immediately for the first result, then at most every
+            # 250 ms.  The first store result must reach the UI without waiting
+            # for the other stores or for the whole wave.
+            should_finalize = (
+                bool(partial_raw)
+                and (
+                    not last_partial_results
+                    or (time.monotonic() - last_partial_finalize) >= 0.25
                 )
-                for future in done:
-                    store = futures[future]
-                    try:
-                        result = future.result()
-                    except Exception as exc:
-                        result = StoreRun(store=store, status="error", error=f"{type(exc).__name__}: {exc}")
+            )
+            if should_finalize:
+                try:
+                    last_partial_results = list(
+                        self._finalize(query, partial_raw)
+                    )
+                    last_partial_finalize = time.monotonic()
+                except Exception as exc:
+                    phase_timings.setdefault(
+                        "partial_finalize_errors", []
+                    ).append(f"{type(exc).__name__}: {exc}")
+
+            completed_stores = sum(
+                1 for info in store_status.values()
+                if info.get("status") not in ("pending", "searching")
+            )
+            update({
+                "completed": False,
+                "phase": "collecting",
+                "status": "searching",
+                "results": list(last_partial_results),
+                "candidates": list(partial_raw),
+                "errors": dict(errors),
+                "store_status": dict(store_status),
+                "completed_stores": completed_stores,
+                "total_stores": len(self.stores),
+                "partial_result_count": len(last_partial_results),
+                "elapsed": round(time.monotonic() - started, 3),
+                "wave": wave_index + 1,
+            })
+
+        try:
+            for wave_index, wave in enumerate(waves):
+                if time.monotonic() >= deadline:
+                    break
+
+                wave_started = time.monotonic()
+                wave_deadline = min(deadline, wave_started + self.store_timeout)
+                for store in wave:
                     store_status[store] = {
-                        "status": result.status,
-                        "count": len(result.candidates),
-                        "elapsed": round(result.elapsed, 3),
-                        "error": result.error,
-                    }
-                    phase_timings["store_execution"][store] = {
-                        "status": result.status,
-                        "elapsed": round(result.elapsed, 3),
-                        "count": len(result.candidates),
-                    }
-                    raw_pool.extend(result.candidates)
-                    if result.error:
-                        errors[store] = result.error
-
-                    # PROGRESSIVE PUBLISH: appena termina un negozio, trasformiamo
-                    # il candidate pool disponibile negli stessi risultati canonici
-                    # usati dalla ricerca finale. Il frontend può quindi mostrare
-                    # subito i primi risultati senza aspettare gli 8 store.
-                    partial_raw = self._dedupe_raw(list(raw_pool))
-                    partial_results = last_partial_results
-                    # Publish immediately for the first completed store, then
-                    # throttle expensive canonicalization. This keeps the UI
-                    # responsive without changing the final result semantics.
-                    should_finalize_partial = (
-                        not partial_results
-                        or (time.monotonic() - last_partial_finalize) >= 0.75
-                    )
-                    if partial_raw and should_finalize_partial:
-                        try:
-                            partial_results = self._finalize(query, partial_raw)
-                            last_partial_results = list(partial_results)
-                            last_partial_finalize = time.monotonic()
-                        except Exception as partial_exc:
-                            phase_timings.setdefault("partial_finalize_errors", []).append(
-                                f"{type(partial_exc).__name__}: {partial_exc}"
-                            )
-
-                    completed_stores = sum(
-                        1 for x in store_status.values()
-                        if x["status"] != "pending" and x["status"] != "searching"
-                    )
-
-                    update({
-                        "completed": False,
-                        "phase": "collecting",
                         "status": "searching",
-                        "results": list(partial_results),
-                        "candidates": list(partial_raw),
-                        "errors": dict(errors),
-                        "store_status": dict(store_status),
-                        "completed_stores": completed_stores,
-                        "total_stores": len(self.stores),
-                        "partial_result_count": len(partial_results),
-                        "elapsed": round(time.monotonic() - started, 3),
-                    })
+                        "count": 0,
+                        "wave": wave_index + 1,
+                    }
 
-            if pending:
-                for future in pending:
-                    store = futures[future]
+                executor = concurrent.futures.ThreadPoolExecutor(
+                    max_workers=len(wave),
+                    thread_name_prefix=f"scenthunter-wave{wave_index + 1}",
+                )
+                futures = {
+                    executor.submit(self._run_one_store, store, query): store
+                    for store in wave
+                }
+                pending = set(futures)
+
+                try:
+                    while pending and time.monotonic() < wave_deadline:
+                        done, pending = concurrent.futures.wait(
+                            pending,
+                            timeout=min(
+                                0.10,
+                                max(0.01, wave_deadline - time.monotonic()),
+                            ),
+                            return_when=concurrent.futures.FIRST_COMPLETED,
+                        )
+                        for future in done:
+                            store = futures[future]
+                            try:
+                                result = future.result()
+                            except Exception as exc:
+                                result = StoreRun(
+                                    store=store,
+                                    status="error",
+                                    error=f"{type(exc).__name__}: {exc}",
+                                )
+                            publish_store_result(store, result, wave_index)
+
+                    if pending:
+                        now = time.monotonic()
+                        for future in pending:
+                            store = futures[future]
+                            result = StoreRun(
+                                store=store,
+                                status="timeout",
+                                candidates=[],
+                                elapsed=now - wave_started,
+                                error=(
+                                    f"store timeout ({self.store_timeout:.0f}s)"
+                                ),
+                            )
+                            publish_store_result(store, result, wave_index)
+                finally:
+                    executor.shutdown(wait=True, cancel_futures=True)
+
+                phase_timings["waves"].append({
+                    "wave": wave_index + 1,
+                    "stores": list(wave),
+                    "elapsed": round(time.monotonic() - wave_started, 3),
+                })
+
+                # Do not start wave 2 if the global window has expired.
+                if time.monotonic() >= deadline:
+                    break
+
+            # Any store not reached because the global window expired is marked
+            # explicitly instead of silently disappearing from the final state.
+            for store, info in store_status.items():
+                if info.get("status") in ("pending", "searching"):
                     store_status[store] = {
                         "status": "timeout",
                         "count": 0,
                         "elapsed": round(time.monotonic() - started, 3),
-                        "error": f"global search window expired ({self.global_timeout:.0f}s)",
+                        "error": (
+                            f"global search window expired ({self.global_timeout:.0f}s)"
+                        ),
                     }
                     errors[store] = store_status[store]["error"]
-
-            executor.shutdown(wait=False, cancel_futures=True)
-
-            phase_timings["store_phase_wall_time"] = round(time.monotonic() - phase_started, 3)
 
             t0 = time.monotonic()
             raw_before_dedupe = len(raw_pool)
@@ -648,8 +731,9 @@ class SearchEngine:
             t0 = time.monotonic()
             final = self._stable_results(prepared)
             phase_timings["stable_sort"] = round(time.monotonic() - t0, 3)
-            phase_timings["total_before_final_update"] = round(time.monotonic() - started, 3)
 
+            elapsed = round(time.monotonic() - started, 3)
+            phase_timings["total_before_final_update"] = elapsed
             update({
                 "results": final,
                 "candidates": list(raw_pool),
@@ -658,18 +742,22 @@ class SearchEngine:
                 "phase": "completed",
                 "status": "completed",
                 "completed": True,
-                "elapsed": round(time.monotonic() - started, 3),
+                "elapsed": elapsed,
                 "raw_candidate_count": len(raw_pool),
                 "result_count": len(final),
                 "diagnostic": {
                     **phase_timings,
-                    "total": round(time.monotonic() - started, 3),
+                    "total": elapsed,
                 },
             })
         except Exception as exc:
             update({
-                "results": [], "candidates": [], "errors": {"_search": f"{type(exc).__name__}: {exc}"},
-                "status": "error", "completed": True, "phase": "error",
+                "results": [],
+                "candidates": [],
+                "errors": {"_search": f"{type(exc).__name__}: {exc}"},
+                "status": "error",
+                "completed": True,
+                "phase": "error",
                 "elapsed": round(time.monotonic() - started, 3),
                 "error": f"{type(exc).__name__}: {exc}",
                 "traceback": traceback.format_exc(limit=8),
@@ -678,3 +766,10 @@ class SearchEngine:
                     "total": round(time.monotonic() - started, 3),
                 },
             })
+
+    def run_job(self, job_id: str, query: str) -> None:
+        # Only one complete search may actively hit the eight shops at a time.
+        # A second search is queued instead of creating overlapping scraper
+        # waves, which was the source of the observed 502/503/429 cascade.
+        with self._execution_lock:
+            return self._run_job_impl(job_id, query)
