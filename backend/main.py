@@ -805,17 +805,16 @@ def diagnostic_scraper_deep(
                 "elapsed_ms": round((_deep_time.monotonic() - t0) * 1000),
                 "candidate_url_count": len(urls),
                 "candidate_urls": list(urls)[:30],
-                "product_parse_limit": 12,
             }
 
             parsed = []
             rejected = []
             parser = getattr(module, "_product", None)
             if callable(parser):
-                for url in list(urls)[:12]:
+                for url in list(urls)[:30]:
                     t1 = _deep_time.monotonic()
                     try:
-                        r = session.get(url, headers=headers, timeout=min(float(timeout or 4), 6.0))
+                        r = session.get(url, headers=headers, timeout=timeout or 4)
                         status = r.status_code
                         body = r.text if status < 400 else ""
                         bytes_count = len(r.content or b"")
@@ -944,6 +943,178 @@ def diagnostic_scraper_deep(
     finally:
         session.close()
 
+# ===== PARFUMZENTRUM PRECISE TRACE (READ-ONLY) =====
+@app.get("/diagnostic-parfumzentrum-trace")
+def diagnostic_parfumzentrum_trace(q: str = Query(..., min_length=1)):
+    import importlib as _pz_importlib
+    import time as _pz_time
+    import requests as _pz_requests
+
+    query = str(q or "").strip()
+    started = _pz_time.monotonic()
+    module_name = "scrapers.parfumzentrum.scraper"
+
+    result = {
+        "ok": True,
+        "diagnostic": "parfumzentrum_trace_v1",
+        "store": "parfumzentrum",
+        "query": query,
+        "module": module_name,
+        "stages": {},
+        "http_calls": [],
+    }
+
+    try:
+        module = _pz_importlib.import_module(module_name)
+        result["module_file"] = getattr(module, "__file__", None)
+        result["configured"] = {
+            "request_timeout": getattr(module, "REQUEST_TIMEOUT", None),
+            "max_candidates": getattr(module, "MAX_CANDIDATES", None),
+            "max_workers": getattr(module, "MAX_WORKERS", None),
+            "sitemap_url": getattr(module, "SITEMAP_URL", None),
+        }
+
+        class _LoggedSession(_pz_requests.Session):
+            def __init__(self):
+                super().__init__()
+                self.calls = []
+
+            def get(self, url, **kwargs):
+                t0 = _pz_time.monotonic()
+                try:
+                    r = super().get(url, **kwargs)
+                    self.calls.append({
+                        "url": str(url),
+                        "final_url": str(getattr(r, "url", "") or ""),
+                        "status": r.status_code,
+                        "bytes": len(r.content or b""),
+                        "elapsed_ms": round((_pz_time.monotonic() - t0) * 1000),
+                        "timeout": kwargs.get("timeout"),
+                    })
+                    return r
+                except Exception as exc:
+                    self.calls.append({
+                        "url": str(url), "status": None, "bytes": 0,
+                        "elapsed_ms": round((_pz_time.monotonic() - t0) * 1000),
+                        "timeout": kwargs.get("timeout"),
+                        "error": f"{type(exc).__name__}: {exc}",
+                    })
+                    raise
+
+        # Trace the real sitemap function without changing its implementation.
+        session = _LoggedSession()
+        headers = dict(getattr(module, "HEADERS", {}) or {})
+        if headers:
+            session.headers.update(headers)
+
+        sitemap_fn = getattr(module, "_get_sitemap_urls", None)
+        if not callable(sitemap_fn):
+            raise RuntimeError("_get_sitemap_urls_not_found")
+
+        t0 = _pz_time.monotonic()
+        sitemap_error = None
+        sitemap_urls = []
+        try:
+            # The production function creates its own Session, so patch its
+            # session factory temporarily to use our logged session.
+            original_new_session = getattr(module, "_new_session", None)
+            if callable(original_new_session):
+                module._new_session = lambda: session
+            try:
+                sitemap_urls = original_sitemap = sitemap_fn() or []
+            finally:
+                if callable(original_new_session):
+                    module._new_session = original_new_session
+        except Exception as exc:
+            sitemap_error = f"{type(exc).__name__}: {exc}"
+        result["stages"]["sitemap_discovery"] = {
+            "elapsed_ms": round((_pz_time.monotonic() - t0) * 1000),
+            "url_count": len(sitemap_urls),
+            "error": sitemap_error,
+            "sample": list(sitemap_urls)[:20],
+        }
+
+        tokens_fn = getattr(module, "_all_tokens_match", None)
+        token_urls = []
+        if callable(tokens_fn):
+            for u in sitemap_urls:
+                try:
+                    if re.search(r"_z\d+/?$", str(u)) and tokens_fn(str(u), query):
+                        token_urls.append(str(u))
+                        if len(token_urls) >= int(getattr(module, "MAX_CANDIDATES", 6) or 6):
+                            break
+                except Exception:
+                    continue
+
+        result["stages"]["candidate_filter"] = {
+            "input_url_count": len(sitemap_urls),
+            "candidate_count": len(token_urls),
+            "candidate_urls": token_urls,
+        }
+
+        # Test the exact production product parser on the discovered candidates,
+        # but in parallel exactly as production does.
+        parser = getattr(module, "_extract_product", None)
+        parsed = []
+        rejected = []
+        if callable(parser) and token_urls:
+            workers = min(int(getattr(module, "MAX_WORKERS", 4) or 4), len(token_urls))
+            t1 = _pz_time.monotonic()
+            with ThreadPoolExecutor(max_workers=workers) as ex:
+                futures = {ex.submit(parser, u, query): u for u in token_urls}
+                for f in as_completed(futures):
+                    u = futures[f]
+                    try:
+                        rows = f.result() or []
+                        if rows:
+                            parsed.extend(rows if isinstance(rows, list) else [rows])
+                        else:
+                            rejected.append({"url": u, "reason": "parser_returned_zero"})
+                    except Exception as exc:
+                        rejected.append({"url": u, "reason": f"{type(exc).__name__}: {exc}"})
+            result["stages"]["product_parse"] = {
+                "elapsed_ms": round((_pz_time.monotonic() - t1) * 1000),
+                "parsed_count": len(parsed),
+                "parsed": [
+                    {"name": x.get("name"), "size_ml": x.get("size_ml"),
+                     "price": x.get("price"), "url": x.get("url")}
+                    for x in parsed if isinstance(x, dict)
+                ][:30],
+                "rejected_count": len(rejected),
+                "rejected": rejected[:30],
+            }
+        else:
+            result["stages"]["product_parse"] = {
+                "elapsed_ms": 0,
+                "parsed_count": 0,
+                "parsed": [],
+                "rejected_count": len(rejected),
+                "rejected": rejected,
+            }
+
+        result["http_calls"] = session.calls
+        result["summary"] = {
+            "http_call_count": len(session.calls),
+            "total_elapsed_ms": round((_pz_time.monotonic() - started) * 1000),
+            "max_http_elapsed_ms": max((x.get("elapsed_ms", 0) for x in session.calls), default=0),
+        }
+        session.close()
+        return result
+    except Exception as exc:
+        result["ok"] = False
+        result["error"] = f"{type(exc).__name__}: {exc}"
+        result["http_calls"] = locals().get("session").calls if "session" in locals() else []
+        result["summary"] = {
+            "http_call_count": len(result["http_calls"]),
+            "total_elapsed_ms": round((_pz_time.monotonic() - started) * 1000),
+        }
+        try:
+            session.close()
+        except Exception:
+            pass
+        return result
+
+
 # ===== FORENSIC SCRAPER TRACE V2 (READ-ONLY) =====
 # This endpoint does NOT change scraper/search behaviour. It instruments the
 # existing scraper functions in-memory for one request and reports exactly
@@ -1053,9 +1224,9 @@ def diagnostic_scraper_trace(
         # ---- Deloox: instrument EVERY discovery sub-stage ----
         if store_key == "deloox":
             def wrap_candidate(original):
-                def wrapped(html, query_arg=None, *args, **kwargs):
+                def wrapped(html, query_arg=None):
                     before = _trace_time.monotonic()
-                    result = original(html, query_arg, *args, **kwargs)
+                    result = original(html, query_arg)
                     urls = list(result or [])
                     query_low = str(query_arg or query).casefold()
                     # Independent evidence from the same HTML, without changing
