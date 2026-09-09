@@ -235,6 +235,7 @@ IGNORED_WORDS = {
 }
 
 GLOBAL_SEARCH_TIMEOUT = 90
+SEARCH_STORE_TIMEOUT = 18.0
 
 
 # ============================================================
@@ -2765,132 +2766,165 @@ def _run_search_job(
     job_id: str,
     query: str,
 ) -> None:
-    """
-    Esegue la discovery in parallelo e alimenta progressivamente
-    il candidate pool centrale.
+    """Fallback async scheduler: strict 4 + 4 with immediate publication.
 
-    Ogni volta che uno store termina:
-        discovery -> candidate pool -> deduplica -> pre-ranking
-        -> validazione centrale parallela -> risultati parziali.
+    The production entrypoint replaces this function with SearchEngine.run_job,
+    but keeping the legacy path on the same contract prevents an accidental
+    all-eight burst if main.py is bypassed.
     """
-    executor = ThreadPoolExecutor(
-        max_workers=len(STORES),
-        thread_name_prefix="scent_async_store",
+    waves = (
+        tuple(STORES[:4]),
+        tuple(STORES[4:8]),
     )
+    started = time.monotonic()
+    deadline = started + min(float(GLOBAL_SEARCH_TIMEOUT), SEARCH_STORE_TIMEOUT * 2.0 + 2.0)
+    candidates = []
+    errors = {}
+    previous_results = []
 
-    futures = {
-        executor.submit(
-            run_store,
-            store,
-            query,
-        ): store
-        for store in STORES
-    }
-
-    def process_store_candidates(
-        store: str,
-        store_candidates: Any,
-    ) -> None:
-        if not isinstance(store_candidates, list):
-            return
-
+    def update(payload):
         with SEARCH_JOBS_LOCK:
             job = SEARCH_JOBS.get(job_id)
-
-            if job is None:
-                return
-
-            job["candidates"].extend(
-                store_candidates
-            )
-
-            candidate_pool = list(
-                job["candidates"]
-            )
-
-        results = _orchestrate_results(
-            candidate_pool,
-            query,
-        )
-
-        with SEARCH_JOBS_LOCK:
-            job = SEARCH_JOBS.get(job_id)
-
             if job is not None:
-                job["results"] = results
+                job.update(payload)
+
+    def publish(final=False):
+        nonlocal previous_results
+        snapshot = list(candidates)
+        results = _orchestrate_results(snapshot, query)
+        previous_results = list(results)
+        update({
+            "results": results,
+            "errors": dict(errors),
+            "completed": bool(final),
+            "phase": "completed" if final else "discovery",
+            "elapsed": round(time.monotonic() - started, 3),
+        })
+
+    update({
+        "completed": False,
+        "phase": "wave_1_pending",
+        "results": [],
+        "errors": {},
+        "store_status": {store: {"status": "pending", "count": 0} for store in STORES},
+        "batch_id": 0,
+        "wave": 0,
+    })
 
     try:
-        try:
-            for future in as_completed(
-                futures,
-                timeout=GLOBAL_SEARCH_TIMEOUT,
-            ):
-                store = futures[future]
+        for wave_index, wave in enumerate(waves, 1):
+            if not wave:
+                continue
 
-                try:
-                    store_candidates = future.result()
+            remaining_global = deadline - time.monotonic()
+            if remaining_global <= 0:
+                for store in wave:
+                    errors[store] = "Timeout: finestra globale di ricerca scaduta"
+                break
 
-                    process_store_candidates(
-                        store,
-                        store_candidates,
+            with SEARCH_JOBS_LOCK:
+                job = SEARCH_JOBS.get(job_id)
+                if job is not None:
+                    for store in wave:
+                        job.setdefault("store_status", {})[store] = {"status": "searching", "count": 0}
+                    job["phase"] = f"wave_{wave_index}_searching"
+                    job["wave"] = wave_index
+
+            executor = ThreadPoolExecutor(
+                max_workers=min(4, len(wave)),
+                thread_name_prefix=f"scent_async_wave_{wave_index}",
+            )
+            futures = {
+                executor.submit(run_store, store, query): (store, time.monotonic())
+                for store in wave
+            }
+            try:
+                while futures:
+                    remaining_global = deadline - time.monotonic()
+                    if remaining_global <= 0:
+                        break
+
+                    now = time.monotonic()
+                    for future, (store, submitted) in list(futures.items()):
+                        if now - submitted >= SEARCH_STORE_TIMEOUT:
+                            futures.pop(future, None)
+                            future.cancel()
+                            errors[store] = "Timeout: ricerca del negozio oltre il limite"
+                            with SEARCH_JOBS_LOCK:
+                                job = SEARCH_JOBS.get(job_id)
+                                if job is not None:
+                                    job.setdefault("store_status", {})[store] = {
+                                        "status": "timeout",
+                                        "count": 0,
+                                        "elapsed": round(now - submitted, 3),
+                                    }
+
+                    if not futures:
+                        break
+
+                    done, _ = __import__("concurrent.futures").wait(
+                        list(futures),
+                        timeout=min(0.10, remaining_global, SEARCH_STORE_TIMEOUT),
+                        return_when=__import__("concurrent.futures").FIRST_COMPLETED,
                     )
+                    done.update(f for f in list(futures) if f.done())
 
-                except Exception as exc:
-                    with SEARCH_JOBS_LOCK:
-                        job = SEARCH_JOBS.get(job_id)
+                    for future in list(done):
+                        if future not in futures:
+                            continue
+                        store, submitted = futures.pop(future)
+                        try:
+                            store_candidates = future.result()
+                            if isinstance(store_candidates, list):
+                                candidates.extend(x for x in store_candidates if isinstance(x, dict))
+                        except Exception as exc:
+                            errors[store] = f"{type(exc).__name__}: {exc}"
+                            store_candidates = []
 
-                        if job is not None:
-                            job["errors"][store] = (
-                                f"{type(exc).__name__}: {exc}"
-                            )
-
-        except TimeoutError:
-            for future, store in futures.items():
-                if future.done():
-                    try:
-                        store_candidates = future.result()
-
-                        process_store_candidates(
-                            store,
-                            store_candidates,
-                        )
-
-                    except Exception as exc:
                         with SEARCH_JOBS_LOCK:
                             job = SEARCH_JOBS.get(job_id)
-
                             if job is not None:
-                                job["errors"][store] = (
-                                    f"{type(exc).__name__}: {exc}"
-                                )
+                                job.setdefault("store_status", {})[store] = {
+                                    "status": "ok" if store_candidates else "empty",
+                                    "count": len(store_candidates),
+                                    "elapsed": round(time.monotonic() - submitted, 3),
+                                }
+                                job["wave"] = wave_index
+                                job["phase"] = f"wave_{wave_index}_store_settled"
 
-                else:
+                        # Immediate publication: do not wait for the other three.
+                        publish(final=False)
+
+                    if not futures:
+                        break
+
+                now = time.monotonic()
+                for future, (store, submitted) in list(futures.items()):
+                    future.cancel()
+                    errors[store] = "Timeout: finestra globale di ricerca scaduta"
+                    futures.pop(future, None)
                     with SEARCH_JOBS_LOCK:
                         job = SEARCH_JOBS.get(job_id)
-
                         if job is not None:
-                            job["errors"][store] = (
-                                "Timeout: ricerca del negozio "
-                                "oltre il limite globale"
-                            )
+                            job.setdefault("store_status", {})[store] = {
+                                "status": "timeout",
+                                "count": 0,
+                                "elapsed": round(max(0.0, now - submitted), 3),
+                            }
+            finally:
+                executor.shutdown(wait=False, cancel_futures=True)
 
-    finally:
-        for future in futures:
-            if not future.done():
-                future.cancel()
+            # Real barrier: wave 2 is submitted only after wave 1 has settled.
 
-        executor.shutdown(
-            wait=False,
-            cancel_futures=True,
-        )
-
-        with SEARCH_JOBS_LOCK:
-            job = SEARCH_JOBS.get(job_id)
-
-            if job is not None:
-                job["completed"] = True
-                job["phase"] = "completed"
-                job["elapsed"] = round(time.time() - job.get("started_at", time.time()), 3)
+        publish(final=True)
+    except Exception as exc:
+        update({
+            "completed": True,
+            "phase": "completed",
+            "results": previous_results,
+            "errors": {**errors, "_job": f"{type(exc).__name__}: {exc}"},
+            "elapsed": round(time.monotonic() - started, 3),
+        })
 
 
 @app.get("/search-start")
