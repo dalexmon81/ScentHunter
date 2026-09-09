@@ -30,7 +30,7 @@ from fastapi import Query
 # - eight store adapters
 # - central validation/finalization functions
 STORE_TIMEOUT_SECONDS = 26.0
-GLOBAL_SEARCH_TIMEOUT_SECONDS = 30.0
+GLOBAL_SEARCH_TIMEOUT_SECONDS = 45.0
 
 _engine = SearchEngine(
     _legacy,
