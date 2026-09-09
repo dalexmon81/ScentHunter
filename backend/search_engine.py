@@ -293,114 +293,293 @@ class SearchEngine:
         }
 
     def diagnostic_search(self, query: str) -> Dict[str, Any]:
-        """Forensic read-only diagnostic of the REAL search pipeline.
+        """Read-only forensic diagnostic of the store stage internals.
 
-        This intentionally measures every phase separately so we can distinguish:
-        - retailer execution time;
-        - orchestration/waiting time;
-        - raw deduplication;
-        - candidate validation;
-        - final grouping/ranking.
-        It never changes search results or job state.
+        Unlike the normal production runner, this diagnostic intentionally
+        breaks each store into measurable stages:
+
+        1. scraper module load;
+        2. search function resolution;
+        3. construction of the normal production attempts;
+        4. each individual search() / scrape() call;
+        5. post-processing of returned candidates (price/image/identity);
+        6. duplicate filtering and total run_store-equivalent time.
+
+        Each individual search attempt is executed in its own worker with a
+        deadline slightly above the production per-store timeout. The
+        diagnostic is read-only and does not alter SEARCH_JOBS or production
+        search behavior.
         """
         text = self.analyze_query(query)["raw"]
         if not text:
             return {
                 "ok": True,
-                "diagnostic": "search-forensics-v1",
-                "query": "",
-                "timings": {},
+                "diagnostic_type": "store_stage_forensics_v2",
+                "query": self.analyze_query(query),
                 "stores": {},
-                "raw_candidates": [],
-                "validated_candidates": [],
-                "errors": {},
+                "timings": {},
             }
 
-        started = time.monotonic()
-        timings: Dict[str, float] = {}
-        stores: Dict[str, Any] = {}
-        errors: Dict[str, str] = {}
+        diagnostic_started = time.monotonic()
+        attempts_builder = getattr(self.legacy, "build_search_attempts", None)
+        loader = getattr(self.legacy, "load_scraper", None)
+        price_resolver = getattr(self.legacy, "resolve_actual_price", None)
+        image_resolver = getattr(self.legacy, "product_image", None)
+        identity_builder = getattr(self.legacy, "product_identity_key", None)
 
-        t0 = time.monotonic()
-        store_run = self._run_stores(text)
-        timings["stores_wall_time"] = round(time.monotonic() - t0, 3)
-        timings["orchestrator_total_store_phase"] = round(store_run.get("elapsed", 0.0), 3)
+        if not callable(loader):
+            raise RuntimeError("legacy.load_scraper is not available")
+        if not callable(attempts_builder):
+            raise RuntimeError("legacy.build_search_attempts is not available")
+        if not callable(price_resolver):
+            raise RuntimeError("legacy.resolve_actual_price is not available")
+        if not callable(image_resolver):
+            raise RuntimeError("legacy.product_image is not available")
+        if not callable(identity_builder):
+            raise RuntimeError("legacy.product_identity_key is not available")
 
-        raw_pool: List[Dict[str, Any]] = []
-        for store in self.stores:
-            result = store_run["stores"][store]
-            raw_pool.extend(result.candidates)
-            stores[store] = {
-                "status": result.status,
-                "count": len(result.candidates),
-                "elapsed": round(result.elapsed, 3),
-                "error": result.error,
-                "candidates": [dict(x) for x in result.candidates],
+        def diagnose_store(store: str) -> Dict[str, Any]:
+            store_started = time.monotonic()
+            info: Dict[str, Any] = {
+                "store": store,
+                "status": "error",
+                "module_load_seconds": None,
+                "attempt_build_seconds": None,
+                "attempts": [],
+                "candidate_count": 0,
+                "postprocess_seconds": 0.0,
+                "dedupe_seconds": 0.0,
+                "run_store_equivalent_seconds": None,
+                "error": None,
             }
-            if result.error:
-                errors[store] = result.error
 
-        t0 = time.monotonic()
-        before_dedupe = len(raw_pool)
-        raw_pool = self._dedupe_raw(raw_pool)
-        timings["dedupe"] = round(time.monotonic() - t0, 3)
-
-        t0 = time.monotonic()
-        validated = self._validate_candidates_only(text, raw_pool)
-        timings["validation"] = round(time.monotonic() - t0, 3)
-
-        t0 = time.monotonic()
-        prepare = getattr(self.legacy, "_prepare_final_results", None)
-        if callable(prepare):
             try:
-                prepared = prepare(validated, text)
-            except TypeError:
-                prepared = prepare(validated)
-        else:
-            prepared = validated
-        if prepared is None:
-            prepared = []
-        if not isinstance(prepared, list):
-            prepared = list(prepared)
-        prepared = [x for x in prepared if isinstance(x, dict)]
-        timings["final_prepare"] = round(time.monotonic() - t0, 3)
+                t0 = time.monotonic()
+                module = loader(store)
+                info["module_load_seconds"] = round(time.monotonic() - t0, 4)
+            except Exception as exc:
+                info["error"] = f"module_load: {type(exc).__name__}: {exc}"
+                info["status"] = "error"
+                info["run_store_equivalent_seconds"] = round(time.monotonic() - store_started, 4)
+                return info
 
-        t0 = time.monotonic()
-        final = self._stable_results(prepared)
-        timings["stable_sort"] = round(time.monotonic() - t0, 3)
-        timings["total"] = round(time.monotonic() - started, 3)
+            search_fn = getattr(module, "search", None)
+            if not callable(search_fn):
+                search_fn = getattr(module, "scrape", None)
+            if not callable(search_fn):
+                info["error"] = "scraper senza funzione search()/scrape()"
+                info["status"] = "error"
+                info["run_store_equivalent_seconds"] = round(time.monotonic() - store_started, 4)
+                return info
 
-        slowest_store = max(
-            stores.items(),
-            key=lambda pair: float(pair[1].get("elapsed") or 0.0),
-            default=(None, {"elapsed": 0}),
+            try:
+                t0 = time.monotonic()
+                attempts = list(attempts_builder(store, text) or [])
+                info["attempt_build_seconds"] = round(time.monotonic() - t0, 4)
+            except Exception as exc:
+                info["error"] = f"attempt_build: {type(exc).__name__}: {exc}"
+                info["status"] = "error"
+                info["run_store_equivalent_seconds"] = round(time.monotonic() - store_started, 4)
+                return info
+
+            raw_output: List[Dict[str, Any]] = []
+            seen = set()
+
+            for attempt_index, attempt in enumerate(attempts):
+                attempt_started = time.monotonic()
+                attempt_info: Dict[str, Any] = {
+                    "index": attempt_index,
+                    "query": attempt,
+                    "search_call_seconds": None,
+                    "search_call_status": "pending",
+                    "returned_count": 0,
+                    "postprocess_seconds": 0.0,
+                    "postprocess": {
+                        "resolve_actual_price_seconds": 0.0,
+                        "product_image_seconds": 0.0,
+                        "product_identity_key_seconds": 0.0,
+                    },
+                    "dedupe_seconds": 0.0,
+                    "accepted_count": 0,
+                    "error": None,
+                }
+
+                # Use a one-shot worker so a hanging shop search can be
+                # identified without blocking the whole diagnostic endpoint.
+                executor = concurrent.futures.ThreadPoolExecutor(
+                    max_workers=1,
+                    thread_name_prefix=f"scenthunter-diag-{store}",
+                )
+                future = executor.submit(search_fn, attempt)
+                try:
+                    results = future.result(timeout=self.store_timeout + 2.0)
+                    attempt_info["search_call_seconds"] = round(time.monotonic() - attempt_started, 4)
+                    attempt_info["search_call_status"] = "ok"
+                except concurrent.futures.TimeoutError:
+                    attempt_info["search_call_seconds"] = round(time.monotonic() - attempt_started, 4)
+                    attempt_info["search_call_status"] = "timeout"
+                    attempt_info["error"] = f"search call exceeded {self.store_timeout + 2.0:.0f}s diagnostic deadline"
+                    info["attempts"].append(attempt_info)
+                    executor.shutdown(wait=False, cancel_futures=True)
+                    info["status"] = "timeout"
+                    info["error"] = attempt_info["error"]
+                    break
+                except Exception as exc:
+                    attempt_info["search_call_seconds"] = round(time.monotonic() - attempt_started, 4)
+                    attempt_info["search_call_status"] = "error"
+                    attempt_info["error"] = f"{type(exc).__name__}: {exc}"
+                    info["attempts"].append(attempt_info)
+                    executor.shutdown(wait=False, cancel_futures=True)
+                    continue
+                finally:
+                    if not future.done():
+                        executor.shutdown(wait=False, cancel_futures=True)
+                    else:
+                        executor.shutdown(wait=True, cancel_futures=True)
+
+                if results is None:
+                    results = []
+                if not isinstance(results, list):
+                    try:
+                        results = list(results)
+                    except Exception:
+                        results = []
+
+                results = [x for x in results if isinstance(x, dict)]
+                attempt_info["returned_count"] = len(results)
+
+                for item in results:
+                    product = dict(item)
+                    product.setdefault("store", store)
+
+                    t0 = time.monotonic()
+                    try:
+                        product = price_resolver(product)
+                    except Exception as exc:
+                        attempt_info.setdefault("postprocess_errors", []).append(
+                            f"resolve_actual_price: {type(exc).__name__}: {exc}"
+                        )
+                    attempt_info["postprocess"]["resolve_actual_price_seconds"] += time.monotonic() - t0
+
+                    t0 = time.monotonic()
+                    try:
+                        image = image_resolver(product)
+                        if image:
+                            product["image"] = image
+                    except Exception as exc:
+                        attempt_info.setdefault("postprocess_errors", []).append(
+                            f"product_image: {type(exc).__name__}: {exc}"
+                        )
+                    attempt_info["postprocess"]["product_image_seconds"] += time.monotonic() - t0
+
+                    t0 = time.monotonic()
+                    try:
+                        key = identity_builder(product)
+                    except Exception as exc:
+                        attempt_info.setdefault("postprocess_errors", []).append(
+                            f"product_identity_key: {type(exc).__name__}: {exc}"
+                        )
+                        key = None
+                    attempt_info["postprocess"]["product_identity_key_seconds"] += time.monotonic() - t0
+
+                    if key in seen:
+                        continue
+                    seen.add(key)
+                    raw_output.append(product)
+
+                attempt_info["postprocess_seconds"] = round(
+                    sum(float(v or 0.0) for v in attempt_info["postprocess"].values()),
+                    4,
+                )
+                t0 = time.monotonic()
+                attempt_info["accepted_count"] = len(raw_output)
+                attempt_info["dedupe_seconds"] = round(time.monotonic() - t0, 4)
+                info["attempts"].append(attempt_info)
+
+                # Exactly mirrors the current production run_store behavior:
+                # stop after the first attempt that produced candidates.
+                if raw_output:
+                    break
+
+            info["candidate_count"] = len(raw_output)
+            info["postprocess_seconds"] = round(
+                sum(float(a.get("postprocess_seconds") or 0.0) for a in info["attempts"]),
+                4,
+            )
+            info["dedupe_seconds"] = round(
+                sum(float(a.get("dedupe_seconds") or 0.0) for a in info["attempts"]),
+                4,
+            )
+            if info["status"] != "timeout":
+                info["status"] = "ok" if raw_output else "empty"
+            info["run_store_equivalent_seconds"] = round(time.monotonic() - store_started, 4)
+            info["candidates"] = [
+                {
+                    "store": x.get("store"),
+                    "name": x.get("name"),
+                    "price": x.get("price"),
+                    "available": x.get("available"),
+                    "url": x.get("url"),
+                }
+                for x in raw_output
+            ]
+            return info
+
+        # All eight stores are diagnosed concurrently, just like production.
+        executor = concurrent.futures.ThreadPoolExecutor(
+            max_workers=max(1, len(self.stores)),
+            thread_name_prefix="scenthunter-diagnostic-store",
         )
-        timed_out = [
-            name for name, info in stores.items()
-            if info.get("status") == "timeout"
-        ]
+        futures = {executor.submit(diagnose_store, store): store for store in self.stores}
+        diagnosed: Dict[str, Any] = {}
+        try:
+            for future in concurrent.futures.as_completed(futures):
+                store = futures[future]
+                try:
+                    diagnosed[store] = future.result()
+                except Exception as exc:
+                    diagnosed[store] = {
+                        "store": store,
+                        "status": "error",
+                        "error": f"diagnostic worker: {type(exc).__name__}: {exc}",
+                    }
+        finally:
+            executor.shutdown(wait=False, cancel_futures=True)
+
+        total = round(time.monotonic() - diagnostic_started, 3)
+        ordered = {store: diagnosed.get(store, {"store": store, "status": "missing"}) for store in self.stores}
 
         return {
             "ok": True,
-            "diagnostic": "search-forensics-v1",
-            "query": text,
-            "timings": timings,
-            "store_count": len(self.stores),
-            "stores": stores,
-            "slowest_store": slowest_store[0],
-            "slowest_store_seconds": slowest_store[1].get("elapsed", 0),
-            "timed_out_stores": timed_out,
-            "raw_candidate_count_before_dedupe": before_dedupe,
-            "raw_candidate_count": len(raw_pool),
-            "validated_candidate_count": len(validated),
-            "final_result_count": len(final),
-            "raw_candidates": [dict(x) for x in raw_pool],
-            "validated_candidates": [dict(x) for x in validated],
-            "errors": errors,
+            "diagnostic_type": "store_stage_forensics_v2",
+            "query": self.analyze_query(text),
+            "production_limits": {
+                "store_timeout_seconds": self.store_timeout,
+                "global_timeout_seconds": self.global_timeout,
+                "diagnostic_attempt_deadline_seconds": self.store_timeout + 2.0,
+            },
+            "total_diagnostic_seconds": total,
+            "stores": ordered,
             "interpretation": {
-                "store_bottleneck": bool(timed_out) or timings["stores_wall_time"] >= 10.0,
-                "validation_bottleneck": timings["validation"] >= 2.0,
-                "finalization_bottleneck": (timings["final_prepare"] + timings["stable_sort"]) >= 2.0,
+                "search_call_bottleneck": [
+                    name for name, info in ordered.items()
+                    if any(
+                        isinstance(attempt, dict)
+                        and (
+                            float(attempt.get("search_call_seconds") or 0.0) >= 5.0
+                            or attempt.get("search_call_status") == "timeout"
+                        )
+                        for attempt in info.get("attempts", [])
+                    )
+                ],
+                "postprocess_bottleneck": [
+                    name for name, info in ordered.items()
+                    if float(info.get("postprocess_seconds") or 0.0) >= 1.0
+                ],
+                "module_load_bottleneck": [
+                    name for name, info in ordered.items()
+                    if float(info.get("module_load_seconds") or 0.0) >= 1.0
+                ],
             },
         }
 
