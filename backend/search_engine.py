@@ -1,11 +1,13 @@
 """ScentHunter search orchestration v4.
 
-Fixed two-wave scheduler:
-  WAVE 1: bplatz, deloox, parfumcity, perfumemarket
-  WAVE 2: orioudh, parfumzentrum, sabina, notino
+Fast two-batch scheduler:
+  - all 8 stores start concurrently
+  - batch 1 is published at ~1 second with the first four completed stores
+    (or fewer when one or more stores have not answered)
+  - batch 2 is published once the remaining stores settle
 
-A wave is fully settled (success, empty, error, or per-store timeout)
-before the next wave starts. There is no rolling refill.
+UI publication is batched; store execution is fully concurrent so a slow
+scraper cannot delay the first paint.
 
 Store adapters are left untouched. Central validation/grouping/finalization
 runs only after both waves have settled.
@@ -22,7 +24,7 @@ from typing import Any, Dict, List, Optional
 
 DEFAULT_STORE_TIMEOUT = 18.0
 DEFAULT_GLOBAL_TIMEOUT = 45.0
-MAX_CONCURRENT_STORES = 4
+MAX_CONCURRENT_STORES = 8
 
 STORE_WAVES = (
     ("bplatz", "deloox", "parfumcity", "perfumemarket"),
@@ -60,7 +62,7 @@ class SearchEngine:
         self.stores = ordered
 
         requested = MAX_CONCURRENT_STORES if max_concurrent_stores is None else int(max_concurrent_stores)
-        self.max_concurrent_stores = max(1, min(requested, 4, len(self.stores) or 1))
+        self.max_concurrent_stores = max(1, min(requested, 8, len(self.stores) or 1))
 
     def analyze_query(self, query: str) -> Dict[str, Any]:
         raw = str(query or "").strip()
@@ -575,6 +577,19 @@ class SearchEngine:
         }
 
     def run_job(self, job_id: str, query: str) -> None:
+        """Run all eight stores concurrently and publish exactly two UI batches.
+
+        Performance rule:
+        - all 8 stores start immediately;
+        - after 1 second, publish batch 1 containing the first 4 completed
+          stores, or fewer if one/more stores have not answered;
+        - batch 2 contains everything that arrives afterwards;
+        - the frontend therefore never receives one-store-at-a-time updates.
+
+        This deliberately separates *execution concurrency* from *UI batching*.
+        Waiting for a fixed four-store wave was the reason the first results
+        could be delayed by the slowest scraper.
+        """
         jobs = getattr(self.legacy, "SEARCH_JOBS", None)
         lock = getattr(self.legacy, "SEARCH_JOBS_LOCK", None)
         if jobs is None:
@@ -592,13 +607,16 @@ class SearchEngine:
                     job.update(payload)
 
         started = time.monotonic()
+        first_batch_deadline = started + 1.0
+        global_deadline = started + self.global_timeout
         store_status: Dict[str, Any] = {
             store: {"status": "pending", "count": 0} for store in self.stores
         }
         errors: Dict[str, str] = {}
         raw_pool: List[Dict[str, Any]] = []
         raw_lock = __import__("threading").Lock()
-        previous_results: List[Dict[str, Any]] = []
+        completed_order: List[str] = []
+        published_batch = 0
 
         update({
             "status": "searching",
@@ -618,33 +636,33 @@ class SearchEngine:
             "elapsed": 0.0,
         })
 
-        def publish_wave(wave_number: int) -> None:
-            nonlocal previous_results
+        def publish_batch(batch_id: int, final: bool = False) -> None:
+            nonlocal published_batch
             with raw_lock:
-                wave_raw = [dict(x) for x in raw_pool if isinstance(x, dict)]
-            final_results = self._finalize(query, wave_raw)
+                snapshot_raw = [dict(x) for x in raw_pool if isinstance(x, dict)]
+            final_results = self._finalize(query, snapshot_raw)
 
-            # Publish exactly one immutable UI batch per wave.
-            # Wave 1 publishes its complete result set. Wave 2 publishes only
-            # the newly introduced product groups, while `results` remains the
-            # cumulative list for consumers that want the full set.
-            previous_keys = {self._result_identity(x) for x in previous_results}
-            batch_results = [
-                dict(x) for x in final_results
-                if self._result_identity(x) not in previous_keys
-            ]
-            if wave_number == 1 and not previous_results:
+            if published_batch == 0:
                 batch_results = [dict(x) for x in final_results]
+            else:
+                previous_results = getattr(publish_batch, "_previous_results", [])
+                previous_keys = {self._result_identity(x) for x in previous_results}
+                batch_results = [
+                    dict(x) for x in final_results
+                    if self._result_identity(x) not in previous_keys
+                ]
 
-            previous_results = [dict(x) for x in final_results]
+            publish_batch._previous_results = [dict(x) for x in final_results]
+            published_batch = batch_id
+
             update({
-                "status": "searching",
-                "phase": f"wave_{wave_number}_published",
-                "completed": False,
+                "status": "completed" if final else "searching",
+                "phase": "completed" if final else f"batch_{batch_id}_published",
+                "completed": final,
                 "results": [dict(x) for x in final_results],
                 "batch_results": batch_results,
-                "batch_id": wave_number,
-                "wave": wave_number,
+                "batch_id": batch_id,
+                "wave": batch_id,
                 "comparisons": [],
                 "errors": dict(errors),
                 "store_status": dict(store_status),
@@ -654,134 +672,138 @@ class SearchEngine:
                     and info.get("status") not in ("pending", "searching")
                 ),
                 "total_stores": len(self.stores),
-                "raw_candidate_count": len(wave_raw),
+                "raw_candidate_count": len(snapshot_raw),
                 "results_are_final": True,
                 "elapsed": round(time.monotonic() - started, 3),
             })
+
+        executor = concurrent.futures.ThreadPoolExecutor(
+            max_workers=min(self.max_concurrent_stores, len(self.stores)),
+            thread_name_prefix="scenthunter-store",
+        )
+        futures: Dict[concurrent.futures.Future, tuple[str, float]] = {}
 
         try:
-            for wave_number, wave in enumerate(STORE_WAVES, start=1):
-                active = [s for s in wave if s in self.stores]
-                if not active:
-                    continue
-
-                # Each wave gets its own hard timeout. The second wave does not
-                # inherit remaining time from the first wave.
-                wave_started = time.monotonic()
-                wave_deadline = wave_started + self.store_timeout
-
-                for store in active:
-                    store_status[store] = {"status": "searching", "count": 0}
-                update({
-                    "phase": f"discovery_wave_{wave_number}",
-                    "wave": wave_number,
-                    "store_status": dict(store_status),
-                    "elapsed": round(time.monotonic() - started, 3),
-                })
-
-                executor = concurrent.futures.ThreadPoolExecutor(
-                    max_workers=min(self.max_concurrent_stores, len(active)),
-                    thread_name_prefix="scenthunter-store",
-                )
-                futures: Dict[concurrent.futures.Future, tuple[str, float]] = {}
-                try:
-                    for store in active:
-                        future = executor.submit(self._run_one_store, store, query)
-                        futures[future] = (store, time.monotonic())
-
-                    while futures:
-                        remaining = wave_deadline - time.monotonic()
-                        if remaining <= 0:
-                            break
-
-                        done, _ = concurrent.futures.wait(
-                            list(futures),
-                            timeout=min(0.10, remaining),
-                            return_when=concurrent.futures.FIRST_COMPLETED,
-                        )
-                        done.update(f for f in list(futures) if f.done())
-
-                        for future in list(done):
-                            if future not in futures:
-                                continue
-                            store, submitted = futures.pop(future)
-                            try:
-                                result = future.result()
-                            except Exception as exc:
-                                result = StoreRun(
-                                    store=store,
-                                    status="error",
-                                    elapsed=time.monotonic() - submitted,
-                                    error=f"{type(exc).__name__}: {exc}",
-                                )
-
-                            candidates = [x for x in (result.candidates or []) if isinstance(x, dict)]
-                            with raw_lock:
-                                raw_pool.extend(candidates)
-                                raw_pool[:] = self._dedupe_raw(raw_pool)
-
-                            store_status[store] = {
-                                "status": result.status,
-                                "count": len(candidates),
-                                "elapsed": round(result.elapsed, 3),
-                            }
-                            if result.error:
-                                store_status[store]["error"] = result.error
-                                errors[store] = result.error
-
-                    now = time.monotonic()
-                    for future, (store, submitted) in list(futures.items()):
-                        error = "store timeout"
-                        store_status[store] = {
-                            "status": "timeout",
-                            "count": 0,
-                            "elapsed": round(max(0.0, now - submitted), 3),
-                            "error": error,
-                        }
-                        errors[store] = error
-                        future.cancel()
-                        futures.pop(future, None)
-                finally:
-                    executor.shutdown(wait=False, cancel_futures=True)
-
-                # This is the ONLY publication point for this wave. Nothing is
-                # sent to the frontend while individual stores finish.
-                publish_wave(wave_number)
-
-            with raw_lock:
-                final_raw = list(raw_pool)
-            final_results = self._finalize(query, final_raw)
+            for store in self.stores:
+                future = executor.submit(self._run_one_store, store, query)
+                futures[future] = (store, time.monotonic())
+                store_status[store] = {"status": "searching", "count": 0}
 
             update({
-                "status": "completed",
-                "phase": "completed",
-                "completed": True,
-                "results": [dict(x) for x in final_results],
-                "batch_results": [],
-                "batch_id": 2,
-                "wave": 2,
-                "comparisons": [],
-                "errors": dict(errors),
+                "phase": "discovery_all_8_concurrent",
                 "store_status": dict(store_status),
-                "completed_stores": sum(
-                    1 for info in store_status.values()
-                    if isinstance(info, dict)
-                    and info.get("status") not in ("pending", "searching")
-                ),
-                "total_stores": len(self.stores),
-                "raw_candidate_count": len(final_raw),
-                "results_are_final": True,
                 "elapsed": round(time.monotonic() - started, 3),
             })
+
+            # Collect the first 4 completed stores. The 1-second deadline is
+            # intentional: it restores the fast first-paint behaviour instead
+            # of waiting for the slowest scraper.
+            while futures and len(completed_order) < 4:
+                remaining = first_batch_deadline - time.monotonic()
+                if remaining <= 0:
+                    break
+                done, _ = concurrent.futures.wait(
+                    list(futures),
+                    timeout=min(0.05, remaining),
+                    return_when=concurrent.futures.FIRST_COMPLETED,
+                )
+                for future in list(done):
+                    if future not in futures:
+                        continue
+                    store, submitted = futures.pop(future)
+                    try:
+                        result = future.result()
+                    except Exception as exc:
+                        result = StoreRun(
+                            store=store,
+                            status="error",
+                            elapsed=time.monotonic() - submitted,
+                            error=f"{type(exc).__name__}: {exc}",
+                        )
+                    candidates = [x for x in (result.candidates or []) if isinstance(x, dict)]
+                    with raw_lock:
+                        raw_pool.extend(candidates)
+                        raw_pool[:] = self._dedupe_raw(raw_pool)
+                    store_status[store] = {
+                        "status": result.status,
+                        "count": len(candidates),
+                        "elapsed": round(result.elapsed, 3),
+                    }
+                    if result.error:
+                        store_status[store]["error"] = result.error
+                        errors[store] = result.error
+                    completed_order.append(store)
+
+            # Always make the first UI publication at ~1s (or immediately when
+            # all 4 first completions are already available). Never publish a
+            # single-store update.
+            if time.monotonic() < first_batch_deadline:
+                time.sleep(max(0.0, first_batch_deadline - time.monotonic()))
+            publish_batch(1, final=False)
+
+            # Everything not included in batch 1 belongs to batch 2. No new
+            # store is started here: all eight were already running together.
+            while futures:
+                remaining = global_deadline - time.monotonic()
+                if remaining <= 0:
+                    break
+                done, _ = concurrent.futures.wait(
+                    list(futures),
+                    timeout=min(0.10, remaining),
+                    return_when=concurrent.futures.FIRST_COMPLETED,
+                )
+                for future in list(done):
+                    if future not in futures:
+                        continue
+                    store, submitted = futures.pop(future)
+                    try:
+                        result = future.result()
+                    except Exception as exc:
+                        result = StoreRun(
+                            store=store,
+                            status="error",
+                            elapsed=time.monotonic() - submitted,
+                            error=f"{type(exc).__name__}: {exc}",
+                        )
+                    candidates = [x for x in (result.candidates or []) if isinstance(x, dict)]
+                    with raw_lock:
+                        raw_pool.extend(candidates)
+                        raw_pool[:] = self._dedupe_raw(raw_pool)
+                    store_status[store] = {
+                        "status": result.status,
+                        "count": len(candidates),
+                        "elapsed": round(result.elapsed, 3),
+                    }
+                    if result.error:
+                        store_status[store]["error"] = result.error
+                        errors[store] = result.error
+                    completed_order.append(store)
+
+            # Mark any still-running stores as timed out, then publish the whole
+            # remainder as batch 2 in one single update.
+            now = time.monotonic()
+            for future, (store, submitted) in list(futures.items()):
+                error = "store timeout"
+                store_status[store] = {
+                    "status": "timeout",
+                    "count": 0,
+                    "elapsed": round(max(0.0, now - submitted), 3),
+                    "error": error,
+                }
+                errors[store] = error
+                future.cancel()
+                futures.pop(future, None)
+
+            publish_batch(2, final=True)
         except Exception as exc:
             update({
                 "status": "error",
                 "phase": "completed",
                 "completed": True,
-                "results": [dict(x) for x in previous_results],
+                "results": [],
                 "batch_results": [],
-                "batch_id": 0,
-                "wave": 0,
+                "batch_id": published_batch,
+                "wave": published_batch,
                 "comparisons": [],
                 "error": f"{type(exc).__name__}: {exc}",
                 "errors": dict(errors),
@@ -789,3 +811,6 @@ class SearchEngine:
                 "results_are_final": True,
                 "elapsed": round(time.monotonic() - started, 3),
             })
+        finally:
+            executor.shutdown(wait=False, cancel_futures=True)
+
