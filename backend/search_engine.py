@@ -22,7 +22,7 @@ from typing import Any, Dict, List, Optional
 
 DEFAULT_STORE_TIMEOUT = 26.0
 DEFAULT_GLOBAL_TIMEOUT = 45.0
-MAX_CONCURRENT_STORES = 4
+MAX_CONCURRENT_STORES = 8
 STORE_PRIORITY = [
     "bplatz", "parfumcity", "orioudh", "perfumemarket",
     "deloox", "parfumzentrum", "sabina", "notino",
