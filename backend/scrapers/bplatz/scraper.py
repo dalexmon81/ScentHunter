@@ -347,19 +347,83 @@ def search(query):
 
 
 def diagnostic_search(query):
-    """Run the real Bplatz search while recording every network request/stage."""
+    """Run the real Bplatz search with a guaranteed network trace.
+
+    The trace is captured at the requests.Session.get boundary so it cannot
+    disappear because of thread-local context or helper wrapping.
+    """
+    query = str(query or "").strip()
     started = time.monotonic()
-    trace = _trace_start(str(query or "").strip())
+    trace = {"query": query, "requests": [], "stages": []}
+    original_get = requests.Session.get
+
+    def traced_get(session, url, *args, **kwargs):
+        req_started = time.monotonic()
+        status_code = None
+        error = None
+        try:
+            response = original_get(session, url, *args, **kwargs)
+            status_code = getattr(response, "status_code", None)
+            trace["requests"].append({
+                "method": "GET",
+                "url": getattr(response, "url", None) or url,
+                "elapsed_seconds": round(time.monotonic() - req_started, 4),
+                "status_code": status_code,
+                "ok": bool(getattr(response, "ok", False)),
+            })
+            return response
+        except Exception as exc:
+            error = f"{type(exc).__name__}: {exc}"
+            trace["requests"].append({
+                "method": "GET",
+                "url": url,
+                "elapsed_seconds": round(time.monotonic() - req_started, 4),
+                "status_code": status_code,
+                "ok": False,
+                "error": error,
+            })
+            raise
+
+    def timed_stage(name, fn):
+        def wrapper(*args, **kwargs):
+            t0 = time.monotonic()
+            try:
+                result = fn(*args, **kwargs)
+                trace["stages"].append({
+                    "stage": name,
+                    "elapsed_seconds": round(time.monotonic() - t0, 4),
+                    "returned_count": len(result) if isinstance(result, (list, tuple, dict)) else None,
+                })
+                return result
+            except Exception as exc:
+                trace["stages"].append({
+                    "stage": name,
+                    "elapsed_seconds": round(time.monotonic() - t0, 4),
+                    "error": f"{type(exc).__name__}: {exc}",
+                })
+                raise
+        return wrapper
+
+    original_predictive = globals()["predictive_products"]
+    original_html = globals()["search_html_urls"]
+    original_product_json = globals()["product_json"]
+    requests.Session.get = traced_get
+    globals()["predictive_products"] = timed_stage("predictive_products", original_predictive)
+    globals()["search_html_urls"] = timed_stage("search_html_urls", original_html)
+    globals()["product_json"] = timed_stage("product_json", original_product_json)
     try:
-        results = _search_internal(query, trace=True)
+        results = search(query)
         trace["total_seconds"] = round(time.monotonic() - started, 4)
-        trace.pop("started_at", None)
         return {"results": results, "trace": trace}
     except Exception as exc:
         trace["total_seconds"] = round(time.monotonic() - started, 4)
-        trace.pop("started_at", None)
         trace["error"] = f"{type(exc).__name__}: {exc}"
         return {"results": [], "trace": trace}
+    finally:
+        globals()["predictive_products"] = original_predictive
+        globals()["search_html_urls"] = original_html
+        globals()["product_json"] = original_product_json
+        requests.Session.get = original_get
 
 
 if __name__ == "__main__":
