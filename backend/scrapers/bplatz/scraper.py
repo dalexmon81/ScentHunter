@@ -1,8 +1,8 @@
 import json
 import re
 import time
+from concurrent.futures import ThreadPoolExecutor
 import unicodedata
-from concurrent.futures import ThreadPoolExecutor, as_completed
 from urllib.parse import quote_plus, urljoin, urlparse
 
 import requests
@@ -199,14 +199,24 @@ def search_html_urls(session, query):
     return urls
 
 
-def _predictive_worker(search_query):
-    # Use one short-lived session per parallel request. requests.Session is not
-    # treated as a shared thread-safe object here.
-    session = requests.Session()
+def _predictive_search_worker(search_query):
+    # One independent session per worker avoids sharing a requests.Session
+    # across concurrent threads.
+    worker_session = requests.Session()
     try:
-        return search_query, predictive_products(session, search_query)
+        return predictive_products(worker_session, search_query)
     finally:
-        session.close()
+        worker_session.close()
+
+
+def _product_json_worker(url):
+    # One independent session per worker avoids sharing a requests.Session
+    # across concurrent threads.
+    worker_session = requests.Session()
+    try:
+        return product_json(worker_session, url)
+    finally:
+        worker_session.close()
 
 
 def candidate_urls(session, query):
@@ -223,21 +233,14 @@ def candidate_urls(session, query):
     urls = []
     seen = set()
 
-    # The predictive endpoint is the fastest and most precise discovery
-    # channel. The old implementation queried every variant serially; that
-    # made a three-query search pay the network latency three times. Run the
-    # independent queries concurrently instead.
-    with ThreadPoolExecutor(max_workers=min(3, len(searches))) as executor:
-        futures = [executor.submit(_predictive_worker, search_query) for search_query in searches]
-        predictive_by_query = {}
-        for future in as_completed(futures):
-            search_query, products = future.result()
-            predictive_by_query[search_query] = products
+    # Predictive searches are independent, so run them concurrently.
+    # Results are consumed in the original search order to keep output
+    # deterministic.
+    with ThreadPoolExecutor(max_workers=len(searches)) as executor:
+        predictive_results = list(executor.map(_predictive_search_worker, searches))
 
-    # Preserve deterministic priority: exact query first, then compact form,
-    # then token fallbacks, regardless of which network request finished first.
-    for search_query in searches:
-        for product in predictive_by_query.get(search_query, []):
+    for products in predictive_results:
+        for product in products:
             product_title = product.get("title") or product.get("name") or ""
             if not query_matches(product_title, query):
                 continue
@@ -251,9 +254,10 @@ def candidate_urls(session, query):
             seen.add(path)
             urls.append(absolute)
 
-    # Only pay for the slower HTML search when predictive discovery found
-    # nothing. For normal successful Shopify searches this removes an entire
-    # extra network round-trip while retaining the HTML channel as fallback.
+    # The HTML search is a true fallback: if predictive search returned no
+    # usable product URL, use the normal search page as the second discovery
+    # channel. This removes the unnecessary ~5s HTML request from the
+    # successful predictive path while preserving the fallback path.
     if not urls:
         for url in search_html_urls(session, query):
             if url not in urls:
@@ -274,25 +278,13 @@ def search(query):
     try:
         urls = candidate_urls(session, query)
 
-        # Product JSON requests are independent as well. Fetch them in
-        # parallel so a result set with several products does not serialize
-        # one network round-trip per product.
-        def fetch_product(url):
-            worker_session = requests.Session()
-            try:
-                return url, product_json(worker_session, url)
-            finally:
-                worker_session.close()
-
+        # Product JSON requests are independent, so fetch them concurrently.
+        # Keep the original URL order when building the final result list.
         with ThreadPoolExecutor(max_workers=min(8, max(1, len(urls)))) as executor:
-            futures = [executor.submit(fetch_product, url) for url in urls]
-            product_data = {}
-            for future in as_completed(futures):
-                url, data = future.result()
-                product_data[url] = data
+            product_data = list(executor.map(_product_json_worker, urls))
 
-        for url in urls:
-            item = product_from_json(product_data.get(url), url)
+        for url, data in zip(urls, product_data):
+            item = product_from_json(data, url)
             if not item or not query_matches(item["name"], query):
                 continue
             key = urlparse(item["url"]).path.rstrip("/")
