@@ -366,11 +366,16 @@ class SearchEngine:
             search_fn = getattr(module, "search", None)
             if not callable(search_fn):
                 search_fn = getattr(module, "scrape", None)
+            diagnostic_fn = getattr(module, "diagnostic_search", None)
             if not callable(search_fn):
                 info["error"] = "scraper senza funzione search()/scrape()"
                 info["status"] = "error"
                 info["run_store_equivalent_seconds"] = round(time.monotonic() - store_started, 4)
                 return info
+            # Some adapters expose an opt-in internal forensic function.
+            # It executes the same real search but also reports every
+            # network request and internal stage. Normal production search
+            # never calls this function.
 
             try:
                 t0 = time.monotonic()
@@ -410,9 +415,18 @@ class SearchEngine:
                     max_workers=1,
                     thread_name_prefix=f"scenthunter-diag-{store}",
                 )
-                future = executor.submit(search_fn, attempt)
+                use_internal_trace = callable(diagnostic_fn)
+                future = executor.submit(
+                    diagnostic_fn if use_internal_trace else search_fn,
+                    attempt,
+                )
                 try:
-                    results = future.result(timeout=self.store_timeout + 2.0)
+                    payload = future.result(timeout=self.store_timeout + 2.0)
+                    if use_internal_trace and isinstance(payload, dict) and "results" in payload:
+                        results = payload.get("results") or []
+                        attempt_info["internal_trace"] = payload.get("trace") or {}
+                    else:
+                        results = payload or []
                     attempt_info["search_call_seconds"] = round(time.monotonic() - attempt_started, 4)
                     attempt_info["search_call_status"] = "ok"
                 except concurrent.futures.TimeoutError:
@@ -807,4 +821,3 @@ class SearchEngine:
                 "error": f"{type(exc).__name__}: {exc}",
                 "traceback": traceback.format_exc(limit=8),
             })
-
