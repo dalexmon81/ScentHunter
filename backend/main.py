@@ -11,7 +11,7 @@ live search orchestration with the robust central SearchEngine.
 
 import main_legacy as _legacy
 from main_legacy import *
-from search_engine_SPEED3 import SearchEngine
+from search_engine import SearchEngine
 
 import importlib
 import json
