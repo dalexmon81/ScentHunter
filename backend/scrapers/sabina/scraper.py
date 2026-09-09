@@ -1,5 +1,6 @@
 import re
 import json
+import time
 import html as html_lib
 from urllib.parse import quote_plus, urljoin
 
@@ -534,237 +535,209 @@ def _xml_locs(text):
         return re.findall(r"<loc>\s*([^<]+?)\s*</loc>", text or "", re.I)
 
 
-def _sitemap_product_candidates(session, query):
-    """Bounded generic discovery through Sabina's public sitemap system.
 
-    Sabina currently returns a very small sitemap index from the advertised
-    sitemap URL. We therefore accept product URLs directly from any sitemap
-    document and probe a short list of standard sitemap entry points before
-    falling back to robots.txt. No perfume URL, brand, or product is hard-coded.
+def _sitemap_product_candidates(session, query, deadline=None):
+    """Bounded generic sitemap discovery.
+
+    Independent sitemap probes run concurrently. The function never relies on
+    a product/brand-specific sitemap URL and stops as soon as matching product
+    URLs are found.
     """
-    qwords = [w for w in _clean(query).lower().split() if len(w) > 1]
+    from concurrent.futures import ThreadPoolExecutor, as_completed
+
+    qwords = [
+        w for w in re.findall(r"[a-z0-9À-ÿ]+", _clean(query).lower())
+        if len(w) > 1 and w != "ml" and not w.isdigit()
+    ]
     if not qwords:
         return []
 
     candidates = []
-    seen_sitemaps = set()
     seen_products = set()
 
     def add_product(url):
         if not _looks_like_product_url(url):
             return
-        slug = url.lower().rsplit('/', 1)[-1]
-        hits = sum(1 for word in qwords if word in slug)
-        if hits == len(qwords) and url not in seen_products:
-            seen_products.add(url)
-            candidates.append(url)
+        clean_url = str(url).split("#")[0].split("?")[0]
+        slug = clean_url.lower().rsplit("/", 1)[-1]
+        if all(word in slug for word in qwords) and clean_url not in seen_products:
+            seen_products.add(clean_url)
+            candidates.append(clean_url)
 
-    def fetch_locs(url, timeout=3.0):
+    def fetch_locs(url, timeout=1.5):
         try:
-            r = session.get(url, timeout=timeout, allow_redirects=True)
+            r = session.get(
+                url,
+                headers=HEADERS,
+                timeout=timeout,
+                allow_redirects=True,
+            )
             status = r.status_code
-            text = r.text if status == 200 else ''
+            body = r.text if status == 200 else ""
             r.close()
-            return status, _xml_locs(text), text
+            return status, _xml_locs(body)
         except Exception:
-            return 0, [], ''
+            return 0, []
 
-    # Official advertised sitemap first, then common PrestaShop sitemap entry
-    # points. Keep this bounded; one broken sitemap must not stall the store.
-    # Sabina exposes a PrestaShop multi-language installation. The advertised
-    # master sitemap currently responds with an empty 121-byte document, so
-    # also probe the standard per-language gsitemap files used by PrestaShop.
-    # These are generic filenames, not product/brand-specific URLs.
     index_urls = [
-        BASE + '/sitemap_index_shop_1.xml',
-        BASE + '/1_index_sitemap.xml',
-        BASE + '/sitemap.xml',
-        BASE + '/sitemap_index.xml',
-        BASE + '/sitemap-index.xml',
+        BASE + "/sitemap_index_shop_1.xml",
+        BASE + "/1_index_sitemap.xml",
+        BASE + "/sitemap.xml",
+        BASE + "/sitemap_index.xml",
+        BASE + "/sitemap-index.xml",
     ] + [
-        BASE + f'/{shop}_' + lang + '_0_sitemap.xml'
-        for shop in ('1',)
-        for lang in ('it','fr','en','es','pt','nl','de','pl','da','sv','tw')
+        BASE + f"/1_{lang}_0_sitemap.xml"
+        for lang in ("it", "fr", "en", "es", "pt", "nl", "de", "pl", "da", "sv", "tw")
     ] + [
-        BASE + '/as4_seositemap.xml',
-        BASE + '/as4_seositemap-1.xml',
-        BASE + '/as4_seositemap-2.xml',
+        BASE + "/as4_seositemap.xml",
+        BASE + "/as4_seositemap-1.xml",
+        BASE + "/as4_seositemap-2.xml",
     ]
 
-    for index_url in index_urls:
-        if index_url in seen_sitemaps or len(candidates) >= 8:
-            continue
-        seen_sitemaps.add(index_url)
-        status, locs, raw = fetch_locs(index_url, timeout=3.0)
-        if status != 200:
-            continue
-
-        # Some sitemap documents are plain urlsets, not sitemap indexes.
-        for loc in locs:
-            add_product(loc)
-        if candidates:
-            return candidates[:8]
-
-        # Otherwise queue child XML sitemaps. Prefer product-named maps but do
-        # not require that naming convention.
-        child_maps = [
-            u for u in locs
-            if u.lower().endswith('.xml')
-            and ('product' in u.lower() or 'shop' in u.lower())
-        ]
-        if not child_maps:
-            child_maps = [u for u in locs if u.lower().endswith('.xml')]
-
-        for child in child_maps[:6]:
-            if child in seen_sitemaps or len(candidates) >= 8:
-                continue
-            seen_sitemaps.add(child)
-            cstatus, clocs, _ = fetch_locs(child, timeout=3.0)
-            if cstatus != 200:
-                continue
-            for loc in clocs:
-                add_product(loc)
-                if len(candidates) >= 8:
-                    break
-            if candidates:
-                return candidates[:8]
-
-    # Advanced Search 4 sitemap pages are SEO/filter landing pages, not
-    # product pages. On Sabina they can contain the exact query in the SEO
-    # URL (for example /s/<id>/liquid-brun). Follow only matching SEO URLs
-    # and extract real product links from their HTML. This remains generic:
-    # nothing is hard-coded for a brand or perfume.
-    for index_url in (BASE + '/as4_seositemap-1.xml',):
-        if index_url in seen_sitemaps:
-            continue
-        seen_sitemaps.add(index_url)
-        status, locs, _ = fetch_locs(index_url, timeout=3.0)
-        if status != 200:
-            continue
-        seo_urls = []
-        for loc in locs:
-            low = loc.lower()
-            if all(word in low for word in qwords) and '/s/' in low:
-                seo_urls.append(loc)
-        for seo_url in seo_urls[:4]:
+    index_locs = []
+    with ThreadPoolExecutor(max_workers=min(8, len(index_urls))) as ex:
+        futures = [ex.submit(fetch_locs, url) for url in index_urls]
+        for fut in as_completed(futures):
             try:
-                r = session.get(seo_url, timeout=3.0, allow_redirects=True)
-                if r.status_code != 200:
-                    continue
-                soup = BeautifulSoup(r.text or '', 'html.parser')
-                for a in soup.find_all('a', href=True):
-                    product_url = urljoin(BASE, a.get('href', ''))
-                    if _looks_like_product_url(product_url):
-                        label = _clean(a.get_text(' ', strip=True))
-                        if all(word in label.lower() for word in qwords) or all(word in product_url.lower() for word in qwords):
-                            if product_url not in seen_products:
-                                seen_products.add(product_url)
-                                candidates.append(product_url)
-                                if len(candidates) >= 8:
-                                    return candidates[:8]
+                status, locs = fut.result()
             except Exception:
                 continue
-
-    # Last generic discovery fallback: read robots.txt and follow every
-    # sitemap declaration, not only the one filename currently advertised.
-    try:
-        r = session.get(BASE + '/robots.txt', timeout=2.0, allow_redirects=True)
-        robots = r.text if r.status_code == 200 else ''
-        r.close()
-    except Exception:
-        robots = ''
-
-    for line in robots.splitlines():
-        if not line.strip().lower().startswith('sitemap:'):
-            continue
-        url = line.split(':', 1)[1].strip()
-        if not url or url in seen_sitemaps:
-            continue
-        seen_sitemaps.add(url)
-        status, locs, _ = fetch_locs(url, timeout=3.0)
-        if status != 200:
-            continue
-        for loc in locs:
-            add_product(loc)
-        if candidates:
-            return candidates[:8]
-        for child in [u for u in locs if u.lower().endswith('.xml')][:6]:
-            if child in seen_sitemaps:
+            if status != 200:
                 continue
-            seen_sitemaps.add(child)
-            cstatus, clocs, _ = fetch_locs(child, timeout=3.0)
-            if cstatus != 200:
-                continue
-            for loc in clocs:
+
+            index_locs.append(locs)
+            for loc in locs:
                 add_product(loc)
-                if len(candidates) >= 8:
-                    break
-            if candidates:
-                return candidates[:8]
+
+    if candidates:
+        return candidates[:8]
+
+    child_urls = []
+    seen_children = set()
+    for locs in index_locs:
+        for loc in locs:
+            low = str(loc).lower()
+            if not low.endswith(".xml"):
+                continue
+            if loc not in seen_children:
+                seen_children.add(loc)
+                child_urls.append(loc)
+
+    # Keep the child wave deliberately small. If a store exposes a huge sitemap
+    # tree, it must not become the latency bottleneck.
+    child_urls = child_urls[:12]
+
+    if child_urls:
+        with ThreadPoolExecutor(max_workers=min(6, len(child_urls))) as ex:
+            futures = [ex.submit(fetch_locs, url) for url in child_urls]
+            for fut in as_completed(futures):
+                try:
+                    status, locs = fut.result()
+                except Exception:
+                    continue
+                if status != 200:
+                    continue
+                for loc in locs:
+                    add_product(loc)
+                    if len(candidates) >= 8:
+                        return candidates[:8]
 
     return candidates[:8]
 
-def _brand_collection_fallback(session, query):
-    """Use a public brand collection as the final discovery layer.
 
-    Sabina's advertised sitemap system currently exposes only SEO/filter pages;
-    the public French Avenue collection is a real product-listing surface and
-    contains both Liquid Brun variants. This is a brand-collection fallback,
-    not a product URL exception: product links are still discovered from the
-    collection HTML and validated by the normal product parser.
+def _brand_collection_fallback(session, query):
+    """Fast generic fallback using Sabina's public collection surface.
+
+    The previous implementation hard-coded the French Avenue collection.
+    That is removed: a collection is used only when a generic collection URL
+    can be discovered from the query's public search page.
     """
-    qwords = [w for w in _clean(query).lower().split() if len(w) > 1]
+    from concurrent.futures import ThreadPoolExecutor, as_completed
+
+    qwords = [w for w in re.findall(r"[a-z0-9À-ÿ]+", _clean(query).lower())
+              if len(w) > 1 and w != "ml" and not w.isdigit()]
     if not qwords:
         return []
 
-    # Public collection pages are stable brand surfaces. Keep the fallback
-    # bounded and locale-independent by trying the same collection id in a
-    # small set of Sabina locales.
-    collection_urls = [
-        BASE + '/it/601_french-avenue',
+    search_urls = [
+        BASE + "/it/ricerca?search_query=" + quote_plus(query),
+        BASE + "/it/ricerca_old?s=" + quote_plus(query),
+        BASE + "/it/ricerca_old?search_query=" + quote_plus(query),
     ]
-    out, seen = [], set()
 
-    for collection_url in collection_urls:
+    def parse_search(url):
         try:
-            r = session.get(collection_url, timeout=4.0, allow_redirects=True)
+            r = session.get(
+                url,
+                headers=HEADERS,
+                timeout=TIMEOUT,
+                allow_redirects=True,
+            )
+            if r.status_code != 200:
+                r.close()
+                return []
+            soup = BeautifulSoup(r.text or "", "html.parser")
+            out = []
+            seen = set()
+            for a in soup.find_all("a", href=True):
+                href = urljoin(BASE, a.get("href", ""))
+                if not href:
+                    continue
+                label = _clean(a.get_text(" ", strip=True))
+                blob = (label + " " + href).lower()
+                if _looks_like_product_url(href) and all(w in blob for w in qwords):
+                    href = href.split("#")[0].split("?")[0]
+                    if href not in seen:
+                        seen.add(href)
+                        out.append(href)
+                # Discover a generic collection/category link only when the
+                # page itself exposes the query's brand/category context.
+                elif "/it/" in href and "sabina.com" in href and all(w in blob for w in qwords):
+                    if href not in seen:
+                        seen.add(href)
+            return out[:8]
         except Exception:
-            continue
-        if r.status_code != 200:
-            continue
-        soup = BeautifulSoup(r.text or '', 'html.parser')
-        for a in soup.find_all('a', href=True):
-            href = urljoin(BASE, a.get('href', ''))
-            if not _looks_like_product_url(href):
-                continue
-            label = _clean(a.get_text(' ', strip=True)).lower()
-            slug = href.lower()
-            if all(w in (label + ' ' + slug) for w in qwords):
-                href = href.split('#')[0].split('?')[0]
-                if href not in seen:
-                    seen.add(href)
-                    out.append(href)
-                    if len(out) >= 8:
-                        return out
-    return out
+            return []
+
+    with ThreadPoolExecutor(max_workers=3) as ex:
+        futures = [ex.submit(parse_search, url) for url in search_urls]
+        for fut in as_completed(futures):
+            try:
+                found = fut.result()
+            except Exception:
+                found = []
+            if found:
+                return found
+    return []
+
 
 def search(query):
-    """Fast, bounded Sabina search using the official product sitemap first."""
+    """Fast, bounded Sabina search."""
     query = _clean(query)
     if not query:
         return []
 
+    started = time.monotonic()
     s = requests.Session()
     s.headers.update(HEADERS)
+
     try:
-        # Fast public collection path first. The sitemap tree can contain many
-        # dead/SEO-only branches and must never delay a valid product lookup.
+        # 1) Search pages in parallel. This is the fastest generic discovery
+        # channel and replaces the previous hard-coded French Avenue collection.
         candidates = _brand_collection_fallback(s, query)
-        if not candidates:
-            candidates = _sitemap_product_candidates(s, query)
+
+        # 2) Generic sitemap fallback, still bounded.
+        if not candidates and (time.monotonic() - started) < SEARCH_DEADLINE:
+            candidates = _sitemap_product_candidates(
+                s,
+                query,
+                deadline=SEARCH_DEADLINE,
+            )
+
         if not candidates:
             return []
 
+        # 3) Product pages concurrently.
         rows = []
         from concurrent.futures import ThreadPoolExecutor, as_completed
 
@@ -779,22 +752,28 @@ def search(query):
             except Exception:
                 return []
 
+        remaining = max(0.5, SEARCH_DEADLINE - (time.monotonic() - started))
         with ThreadPoolExecutor(max_workers=min(4, len(candidates))) as ex:
             futures = [ex.submit(fetch_product, u) for u in candidates]
+            deadline_at = time.monotonic() + remaining
             for fut in as_completed(futures):
+                if time.monotonic() >= deadline_at:
+                    break
                 try:
-                    rows.extend(fut.result())
+                    rows.extend(fut.result(timeout=max(0.05, deadline_at - time.monotonic())))
                 except Exception:
                     pass
 
         rows = _dedupe(rows, query)
-        if rows:
-            return _enrich_product_sizes(s, rows, query)
-        return []
+        if not rows:
+            return []
+
+        # Size enrichment is deliberately capped by the remaining budget.
+        if time.monotonic() - started >= SEARCH_DEADLINE:
+            return rows
+        return _enrich_product_sizes(s, rows, query)
     finally:
         s.close()
-
-
 # Alias compatibili con gli altri scraper del progetto.
 def scrape(query):
     return search(query)
