@@ -31,6 +31,102 @@ from fastapi import Query
 # - central validation/finalization functions
 _engine = SearchEngine(_legacy, store_timeout=18.0, global_timeout=30.0)
 
+# ---------------------------------------------------------------------------
+# FAMILY REGISTRY RETAILER-BRAND NORMALIZATION
+# ---------------------------------------------------------------------------
+# Retailers sometimes populate `source_brand` with their own shop name
+# (e.g. Parfum City) even when the product title explicitly contains the
+# authoritative perfume brand (e.g. French Avenue). The Family Registry must
+# validate the perfume identity, not reject a correct offer because the
+# retailer's metadata field is mislabeled.
+_original_catalog_brand_matches = getattr(_legacy, "_catalog_brand_matches", None)
+_original_catalog_candidate_variant_key = getattr(
+    _legacy, "_catalog_candidate_variant_key", None
+)
+
+if callable(_original_catalog_brand_matches):
+    def _catalog_brand_matches_retailer_safe(product, family):
+        expected_brand = str(family.get("brand") or "").strip()
+        if not expected_brand:
+            return True
+
+        # First preserve the original authoritative check.
+        try:
+            if _original_catalog_brand_matches(product, family):
+                return True
+        except Exception:
+            pass
+
+        # If the retailer metadata says the shop name instead of the perfume
+        # brand, accept only when the authoritative brand is explicitly present
+        # in the product title/source title. No fuzzy matching is introduced.
+        values = [
+            product.get("name"),
+            product.get("title"),
+            product.get("product_name"),
+        ]
+        source = product.get("source")
+        if isinstance(source, dict):
+            values.extend([source.get("name"), source.get("title"), source.get("source_name")])
+
+        text = " ".join(str(v or "") for v in values).strip()
+        if not text:
+            return False
+
+        try:
+            normalized_text = _legacy.catalog_norm(text)
+            normalized_expected = _legacy.catalog_norm(expected_brand)
+            return bool(
+                normalized_expected
+                and re.search(
+                    rf"(?<![a-z0-9]){re.escape(normalized_expected)}(?![a-z0-9])",
+                    normalized_text,
+                    re.I,
+                )
+            )
+        except Exception:
+            return False
+
+    _legacy._catalog_brand_matches = _catalog_brand_matches_retailer_safe
+
+if callable(_original_catalog_candidate_variant_key):
+    def _catalog_candidate_variant_key_retailer_safe(product):
+        key = _original_catalog_candidate_variant_key(product)
+
+        # Some retailers use the commercial connector "by" between the perfume
+        # name and its brand ("Liquid Brun by French Avenue"). Once the
+        # authoritative brand is removed by the Family Registry, that connector
+        # is not part of the variant identity. Remove it only when it is actually
+        # followed by a registered family brand, so names such as "By Night"
+        # remain untouched.
+        raw_text = " ".join(
+            str(product.get(k) or "")
+            for k in ("name", "title", "product_name")
+        )
+        source = product.get("source")
+        if isinstance(source, dict):
+            raw_text += " " + " ".join(
+                str(source.get(k) or "")
+                for k in ("name", "title", "source_name")
+            )
+
+        try:
+            for family in getattr(_legacy, "FAMILY_REGISTRY", []) or []:
+                brand = str(family.get("brand") or "").strip()
+                if not brand:
+                    continue
+                pattern = rf"\bby\s+{re.escape(brand)}\b"
+                if re.search(pattern, raw_text, re.I):
+                    key = re.sub(r"\bby\b", " ", key, flags=re.I)
+                    key = re.sub(r"\s+", " ", key).strip()
+                    break
+        except Exception:
+            pass
+
+        return key
+
+    _legacy._catalog_candidate_variant_key = _catalog_candidate_variant_key_retailer_safe
+
 # Keep size variants from the same retailer product URL/product-id distinct.
 # The legacy deduplicator historically keyed product-id results without size,
 # which collapses 30/50/100 ml variants into the first one seen.
@@ -63,143 +159,6 @@ if callable(_engine_snapshot):
 
 # Keep the exact FastAPI application object and every existing route.
 app = _legacy.app
-
-
-# ===== READ-ONLY LIVE PIPELINE TRACE =====
-# Starts the EXACT same progressive search job used by the frontend and records
-# every observable publication step. It does not alter the search algorithm.
-@app.get("/diagnose-live-pipeline")
-def diagnose_live_pipeline(q: str = Query(..., min_length=1)):
-    import time as _trace_time
-
-    query = str(q or "").strip()
-    if not query:
-        return {"ok": False, "error": "query vuota"}
-
-    # Use the real route function so the trace follows the production path:
-    # search-start -> background _run_search_job -> SearchEngine -> snapshots.
-    started_response = _legacy.search_start(query)
-    job_id = str(started_response.get("job_id") or "")
-    if not job_id:
-        return {"ok": False, "error": "job_id mancante", "start_response": started_response}
-
-    started = _trace_time.monotonic()
-    timeline = []
-    last_signature = None
-
-    while _trace_time.monotonic() - started < 40.0:
-        snap = _engine.search_job_snapshot(job_id)
-        store_status = snap.get("store_status") or {}
-        completed_stores = int(snap.get("completed_stores") or 0)
-        result_count = int(snap.get("count") or 0)
-        candidate_count = len(snap.get("results") or [])
-        signature = (
-            completed_stores,
-            result_count,
-            tuple(sorted(
-                (str(k), str((v or {}).get("status")), int((v or {}).get("count") or 0))
-                for k, v in store_status.items()
-                if isinstance(v, dict)
-            )),
-        )
-        if signature != last_signature:
-            timeline.append({
-                "t_seconds": round(_trace_time.monotonic() - started, 3),
-                "elapsed_job": snap.get("elapsed"),
-                "phase": snap.get("phase"),
-                "completed": snap.get("completed"),
-                "completed_stores": completed_stores,
-                "result_count": result_count,
-                "store_status": store_status,
-                "errors": snap.get("errors") or {},
-                "results": snap.get("results") or [],
-            })
-            last_signature = signature
-
-        if snap.get("completed"):
-            return {
-                "ok": True,
-                "diagnostic": "live-progressive-pipeline-v1",
-                "query": query,
-                "job_id": job_id,
-                "total_trace_seconds": round(_trace_time.monotonic() - started, 3),
-                "timeline": timeline,
-                "final": snap,
-            }
-
-        _trace_time.sleep(0.10)
-
-    snap = _engine.search_job_snapshot(job_id)
-    return {
-        "ok": True,
-        "diagnostic": "live-progressive-pipeline-v1-timeout",
-        "query": query,
-        "job_id": job_id,
-        "total_trace_seconds": round(_trace_time.monotonic() - started, 3),
-        "timeline": timeline,
-        "final": snap,
-    }
-
-
-# ===== TARGETED READ-ONLY VALIDATION TRACE =====
-@app.get("/diagnose-validation-pipeline")
-def diagnose_validation_pipeline(q: str = Query(..., min_length=1)):
-    """Run the real 8-store collection, then validate each store independently."""
-    import time as _t
-    query = str(q or "").strip()
-    started = _t.monotonic()
-    store_run = _engine._run_stores(query)
-    rows = {}
-    all_raw = []
-    for store in _engine.stores:
-        result = store_run["stores"][store]
-        raw = [x for x in (result.candidates or []) if isinstance(x, dict)]
-        all_raw.extend(raw)
-        t0 = _t.monotonic()
-        try:
-            validated = _engine._validate_candidates_only(query, list(raw))
-            validation_error = None
-        except Exception as exc:
-            validated = []
-            validation_error = f"{type(exc).__name__}: {exc}"
-        validation_elapsed = _t.monotonic() - t0
-        rows[store] = {
-            "status": result.status,
-            "store_elapsed": round(result.elapsed, 3),
-            "raw_count": len(raw),
-            "raw": raw,
-            "validated_count": len(validated),
-            "validated": validated,
-            "validation_elapsed": round(validation_elapsed, 3),
-            "validation_error": validation_error,
-        }
-    t0 = _t.monotonic()
-    raw_pool = _engine._dedupe_raw(all_raw)
-    dedupe_elapsed = _t.monotonic() - t0
-    t0 = _t.monotonic()
-    validated_all = _engine._validate_candidates_only(query, list(raw_pool))
-    all_validation_elapsed = _t.monotonic() - t0
-    t0 = _t.monotonic()
-    final = _engine._finalize(query, list(raw_pool))
-    final_elapsed = _t.monotonic() - t0
-    return {
-        "ok": True,
-        "diagnostic": "validation-pipeline-v1",
-        "query": query,
-        "store_phase_elapsed": round(store_run.get("elapsed", 0), 3),
-        "stores": rows,
-        "aggregate": {
-            "raw_count": len(all_raw),
-            "raw_after_dedupe": len(raw_pool),
-            "validated_count": len(validated_all),
-            "final_count": len(final),
-            "dedupe_elapsed": round(dedupe_elapsed, 3),
-            "validation_elapsed": round(all_validation_elapsed, 3),
-            "final_elapsed": round(final_elapsed, 3),
-            "final": final,
-        },
-        "total_elapsed": round(_t.monotonic() - started, 3),
-    }
 
 # ===== TEMPORARY READ-ONLY NOTINO DEEP DIAGNOSTIC =====
 JINA_PREFIX = "https://r.jina.ai/"
@@ -1410,3 +1369,64 @@ def diagnostic_scraper_trace(
             session.close()
         except Exception:
             pass
+
+
+# ===== TARGETED READ-ONLY VALIDATION TRACE =====
+@app.get("/diagnose-validation-pipeline")
+def diagnose_validation_pipeline(q: str = Query(..., min_length=1)):
+    """Run the real 8-store collection, then validate each store independently."""
+    import time as _t
+    query = str(q or "").strip()
+    started = _t.monotonic()
+    store_run = _engine._run_stores(query)
+    rows = {}
+    all_raw = []
+    for store in _engine.stores:
+        result = store_run["stores"][store]
+        raw = [x for x in (result.candidates or []) if isinstance(x, dict)]
+        all_raw.extend(raw)
+        t0 = _t.monotonic()
+        try:
+            validated = _engine._validate_candidates_only(query, list(raw))
+            validation_error = None
+        except Exception as exc:
+            validated = []
+            validation_error = f"{type(exc).__name__}: {exc}"
+        validation_elapsed = _t.monotonic() - t0
+        rows[store] = {
+            "status": result.status,
+            "store_elapsed": round(result.elapsed, 3),
+            "raw_count": len(raw),
+            "raw": raw,
+            "validated_count": len(validated),
+            "validated": validated,
+            "validation_elapsed": round(validation_elapsed, 3),
+            "validation_error": validation_error,
+        }
+    t0 = _t.monotonic()
+    raw_pool = _engine._dedupe_raw(all_raw)
+    dedupe_elapsed = _t.monotonic() - t0
+    t0 = _t.monotonic()
+    validated_all = _engine._validate_candidates_only(query, list(raw_pool))
+    all_validation_elapsed = _t.monotonic() - t0
+    t0 = _t.monotonic()
+    final = _engine._finalize(query, list(raw_pool))
+    final_elapsed = _t.monotonic() - t0
+    return {
+        "ok": True,
+        "diagnostic": "validation-pipeline-v2-retailer-brand",
+        "query": query,
+        "store_phase_elapsed": round(store_run.get("elapsed", 0), 3),
+        "stores": rows,
+        "aggregate": {
+            "raw_count": len(all_raw),
+            "raw_after_dedupe": len(raw_pool),
+            "validated_count": len(validated_all),
+            "final_count": len(final),
+            "dedupe_elapsed": round(dedupe_elapsed, 3),
+            "validation_elapsed": round(all_validation_elapsed, 3),
+            "final_elapsed": round(final_elapsed, 3),
+            "final": final,
+        },
+        "total_elapsed": round(_t.monotonic() - started, 3),
+    }
