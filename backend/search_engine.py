@@ -22,7 +22,7 @@ from typing import Any, Dict, List, Optional
 
 DEFAULT_STORE_TIMEOUT = 26.0
 DEFAULT_GLOBAL_TIMEOUT = 45.0
-MAX_CONCURRENT_STORES = 4
+MAX_CONCURRENT_STORES = 8
 STORE_PRIORITY = [
     "bplatz", "parfumcity", "orioudh", "perfumemarket",
     "deloox", "parfumzentrum", "sabina", "notino",
@@ -729,9 +729,9 @@ class SearchEngine:
         The critical rule is: a store result is published to the job immediately
         when its adapter returns. Central identity validation/grouping runs in a
         separate worker and can never delay the publication of the next store.
-        Four store adapters are allowed at once because the adapters themselves
-        create worker pools; eight simultaneous adapters caused CPU contention on
-        small Render instances and made even the fast stores slower.
+        All eight store adapters are started immediately. The previous four-store
+        rolling window was counterproductive: one slow adapter occupied a slot and
+        prevented later stores from even starting before the global deadline.
         """
         jobs = getattr(self.legacy, "SEARCH_JOBS", None)
         lock = getattr(self.legacy, "SEARCH_JOBS_LOCK", None)
@@ -757,7 +757,9 @@ class SearchEngine:
         errors: Dict[str, str] = {}
         raw_pool: List[Dict[str, Any]] = []
         validated_pool: List[Dict[str, Any]] = []
-        raw_lock = __import__("threading").Lock()
+        threading_mod = __import__("threading")
+        raw_lock = threading_mod.Lock()
+        finalized_event = threading_mod.Event()
 
         update({
             "status": "searching",
@@ -803,6 +805,8 @@ class SearchEngine:
             })
 
         def validate_async(candidates: List[Dict[str, Any]]) -> None:
+            if finalized_event.is_set():
+                return
             try:
                 validated = self._validate_candidates_only(query, candidates)
                 if not validated:
@@ -814,6 +818,8 @@ class SearchEngine:
                     grouped = self._publish_validated_results(query, current)
                 except Exception:
                     grouped = list(current)
+                if finalized_event.is_set():
+                    return
                 update({
                     "status": "searching",
                     "phase": "validation",
@@ -835,14 +841,15 @@ class SearchEngine:
                 errors.setdefault("_validation", f"{type(exc).__name__}: {exc}")
 
         try:
-            # IMPORTANT: four concurrent store adapters, not eight. This is a
-            # scheduler-level optimization only; scraper code remains untouched.
+            # IMPORTANT: all eight store adapters start immediately. This is a
+            # scheduler-level change only; scraper code remains untouched. A slow
+            # store must never prevent another store from starting.
             store_executor = concurrent.futures.ThreadPoolExecutor(
                 max_workers=self.max_concurrent_stores,
                 thread_name_prefix="scenthunter-store",
             )
             validation_executor = concurrent.futures.ThreadPoolExecutor(
-                max_workers=2,
+                max_workers=1,
                 thread_name_prefix="scenthunter-validation",
             )
 
@@ -936,8 +943,9 @@ class SearchEngine:
                 errors[store] = "global search window expired before store start"
             queue.clear()
 
-            # Final canonicalization is done once, after discovery. Any validation
-            # workers still running are not allowed to overwrite this final result.
+            # Final canonicalization is done once, after discovery. Stop any late
+            # validation worker from overwriting the definitive result.
+            finalized_event.set()
             with raw_lock:
                 final_raw = list(raw_pool)
             final_results = self._finalize(query, final_raw)
