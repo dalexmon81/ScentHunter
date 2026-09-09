@@ -170,9 +170,11 @@ def _load_product_matcher_catalog() -> List[Dict[str, Any]]:
 _PRODUCT_MATCHER_CATALOG = _load_product_matcher_catalog()
 _PRODUCT_MATCHER = ProductMatcher(_PRODUCT_MATCHER_CATALOG)
 
-FRONTEND_DIR = Path(__file__).resolve().parent.parent / "frontend"
-FRONTEND_INDEX = FRONTEND_DIR / "index.html"
-FRONTEND_INDEX_TXT = FRONTEND_DIR / "index.txt"
+FRONTEND_INDEX = (
+    Path(__file__).resolve().parent.parent
+    / "frontend"
+    / "index.html"
+)
 
 NON_PERFUME = {
     # Confezioni / prodotti multipli: non sono una singola referenza profumo.
@@ -595,7 +597,7 @@ def _catalog_candidate_variant_key(product: Dict[str, Any]) -> str:
     # to the same commercial variant "Hawas Ice" when the user explicitly
     # requests the small format.
     key = re.sub(
-        r"\b(?:sample|samples|campione|campioncino|echantillon|muestra|unisex|mixte|mixed)\b",
+        r"\b(?:sample|samples|campione|campioncino|echantillon|muestra)\b",
         " ",
         key,
         flags=re.I,
@@ -751,28 +753,10 @@ def _load_family_registry() -> List[Dict[str, Any]]:
                 valid_aliases.append(alias)
 
             valid_aliases = list(dict.fromkeys(valid_aliases))
-
-            identity_values = []
-            for identity_key in ("gtins", "ean", "eans", "ean13", "barcodes", "barcode", "upcs", "upc"):
-                raw_values = variant.get(identity_key) or []
-                if isinstance(raw_values, str):
-                    raw_values = [raw_values]
-                if isinstance(raw_values, (list, tuple, set)):
-                    for identity_value in raw_values:
-                        value = str(identity_value or "").strip()
-                        if value and value not in identity_values:
-                            identity_values.append(value)
-
             normalized_variants.append(
                 {
                     "canonical_name": canonical_name,
                     "aliases": valid_aliases,
-                    "gtins": tuple(identity_values),
-                    "formats_ml": tuple(
-                        float(value)
-                        for value in (variant.get("formats_ml") or [])
-                        if str(value).strip()
-                    ),
                     "normalized_aliases": tuple(
                         catalog_variant_key(alias)
                         for alias in valid_aliases
@@ -869,48 +853,10 @@ def _catalog_brand_matches(
     if not actual_brand:
         return True
 
-    actual_brand_norm = catalog_norm(actual_brand)
-    if actual_brand_norm == expected_brand:
-        return True
-
-    # Alcuni retailer restituiscono il proprio nome nel campo `brand`
-    # invece del marchio reale (es. brand="ParfumCity", store="ParfumCity").
-    # In questo caso il campo brand non è affidabile e lasciamo che sia
-    # l'identità del prodotto/nome a determinare il match del catalogo.
-    retailer_names = {
-        catalog_norm(product.get("store")),
-        catalog_norm(product.get("_source_store")),
-    }
-    retailer_names.discard("")
-    if actual_brand_norm in retailer_names:
-        return True
-
-    # Alcuni retailer espongono il proprio nome nel campo `brand` con
-    # spazi/punteggiatura diversi dal valore `store`, ad esempio:
-    #   store="ParfumCity" / brand="Parfum City"
-    # Il confronto deve quindi essere strutturale, non sensibile a spazi,
-    # trattini o altra punteggiatura del nome del retailer.
-    def _retailer_compact(value: Any) -> str:
-        return re.sub(r"[^a-z0-9]+", "", catalog_norm(value))
-
-    actual_retailer_key = _retailer_compact(actual_brand)
-    if actual_retailer_key:
-        for retailer_name in retailer_names:
-            if _retailer_compact(retailer_name) == actual_retailer_key:
-                return True
-
-    source = product.get("source")
-    if isinstance(source, dict):
-        retailer_names.update({
-            catalog_norm(source.get("store")),
-            catalog_norm(source.get("_source_store")),
-        })
-        retailer_names.discard("")
-        for retailer_name in retailer_names:
-            if _retailer_compact(retailer_name) == actual_retailer_key:
-                return True
-
-    return False
+    return (
+        catalog_norm(actual_brand)
+        == expected_brand
+    )
 
 
 def _catalog_product_text(product: Dict[str, Any]) -> str:
@@ -997,15 +943,6 @@ def _catalog_variant_for_product(
 
     candidate_key = _catalog_candidate_variant_key(product)
     if brand:
-        # Gestisce titoli retailer come "Liquid Brun by French Avenue":
-        # il connettore appartiene alla formulazione commerciale, non
-        # all'identità della variante del catalogo.
-        candidate_key = re.sub(
-            rf"\b(?:by|de|from|par|von|van|da|di)\s+{re.escape(brand)}\b",
-            " ",
-            candidate_key,
-            flags=re.I,
-        )
         candidate_key = re.sub(
             rf"\b{re.escape(brand)}\b",
             " ",
@@ -1015,54 +952,6 @@ def _catalog_variant_for_product(
         candidate_key = re.sub(r"\s+", " ", candidate_key).strip()
     if not candidate_key:
         return None
-
-    # Strong identity: retailer GTIN/EAN is authoritative when the Family
-    # Registry explicitly binds that code to a variant. This handles retailer
-    # titles that omit the commercial perfume name (for example a Shopify
-    # title such as "Limited Edition French Avenue 150ML").
-    candidate_gtin = identity_value(
-        product,
-        "gtin",
-        "ean",
-        "ean13",
-        "barcode",
-        "upc",
-    )
-    # Some retailers expose the barcode only in their SKU field. Use it as a
-    # strong identity signal only when the SKU is purely numeric and therefore
-    # looks like a standard GTIN/EAN, and only against codes explicitly bound
-    # to a registry variant.
-    if not candidate_gtin:
-        sku_candidate = identity_value(product, "sku")
-        if re.fullmatch(r"\d{8,14}", sku_candidate):
-            candidate_gtin = sku_candidate
-    candidate_gtin = re.sub(r"\D", "", candidate_gtin)
-    candidate_size = product_size_ml(product)
-
-    if candidate_gtin:
-        gtin_matches = []
-        for variant in family.get("variants", []):
-            variant_gtins = {
-                re.sub(r"\D", "", str(value))
-                for value in (variant.get("gtins") or ())
-                if re.sub(r"\D", "", str(value))
-            }
-            if candidate_gtin not in variant_gtins:
-                continue
-            formats = []
-            for value in (variant.get("formats_ml") or ()):
-                try:
-                    formats.append(float(value))
-                except (TypeError, ValueError):
-                    pass
-            if candidate_size is not None and formats and not any(
-                abs(candidate_size - value) <= 0.01 for value in formats
-            ):
-                continue
-            gtin_matches.append(variant)
-
-        if len(gtin_matches) == 1:
-            return gtin_matches[0]
 
     candidate_gender = _catalog_gender_class(candidate_text)
     matches: List[Tuple[int, Dict[str, Any]]] = []
@@ -1166,7 +1055,7 @@ def _catalog_requested_variant(
     # "sample/campione" is a format request, not part of the commercial
     # variant identity. Remove it before resolving the catalog variant.
     query_clean = re.sub(
-        r"\b(?:sample|samples|campione|campioncino|echantillon|muestra|unisex|mixte|mixed)\b",
+        r"\b(?:sample|samples|campione|campioncino|echantillon|muestra)\b",
         " ",
         query_clean,
         flags=re.I,
@@ -1281,25 +1170,6 @@ def _catalog_match(
 
     if requested is not None and variant is not requested:
         return None
-
-    # Formato e identità sono attributi distinti, ma quando il Registry
-    # dichiara un solo formato verificato per una variante, un'offerta che
-    # espone esplicitamente un formato diverso non può appartenere a quella
-    # variante. Con più formati verificati, invece, il formato resta un
-    # attributo dell'offerta e non restringe l'identità.
-    verified_formats = []
-    for raw_size in (variant.get("formats_ml") or []):
-        try:
-            value = float(str(raw_size).replace(",", "."))
-        except (TypeError, ValueError):
-            continue
-        if value > 0 and not any(abs(existing - value) < 0.01 for existing in verified_formats):
-            verified_formats.append(value)
-
-    candidate_size = product_size_ml(product)
-    if len(verified_formats) == 1 and candidate_size is not None:
-        if abs(candidate_size - verified_formats[0]) >= 0.01:
-            return None
 
     result = dict(product)
     canonical_name = str(variant.get("canonical_name") or "").strip()
@@ -2273,41 +2143,6 @@ def _collapse_family_results(
         # nome/prezzo/store indicano l'offerta migliore, mentre "offers"
         # contiene l'intero confronto tra i negozi.
         representative = dict(unique_offers[0])
-
-        # Espone al livello prodotto tutti i formati realmente osservati.
-        # Se il Registry verifica ulteriori formati per la variante, li
-        # aggiungiamo senza inventare formati non presenti né verificati.
-        observed_formats = []
-        for offer in unique_offers:
-            size = product_size_ml(offer)
-            if size is not None and size > 0:
-                if not any(abs(existing - size) < 0.01 for existing in observed_formats):
-                    observed_formats.append(size)
-
-        catalog_formats = []
-        for variant_data in family.get("variants", []):
-            if catalog_norm(variant_data.get("canonical_name")) != canonical_key:
-                continue
-            for raw_size in (variant_data.get("formats_ml") or []):
-                try:
-                    size = float(str(raw_size).replace(",", "."))
-                except (TypeError, ValueError):
-                    continue
-                if size > 0 and not any(abs(existing - size) < 0.01 for existing in catalog_formats):
-                    catalog_formats.append(size)
-            break
-
-        formats_ml = sorted(observed_formats)
-        for size in catalog_formats:
-            if not any(abs(existing - size) < 0.01 for existing in formats_ml):
-                formats_ml.append(size)
-        formats_ml.sort()
-        if formats_ml:
-            representative["formats_ml"] = [
-                int(size) if float(size).is_integer() else size
-                for size in formats_ml
-            ]
-
         representative["offers"] = unique_offers
         representative["offer_count"] = len(unique_offers)
         representative["stores"] = list(dict.fromkeys(
@@ -2382,27 +2217,20 @@ def run_store(
 
     output: List[Dict[str, Any]] = []
     seen = set()
-    last_error: Optional[Exception] = None
 
-    # FAST PATH: the exact query is tried first. Broader discovery attempts
-    # are only used when the store returns no candidates at all. Each attempt
-    # can trigger a complete HTTP/browser search, so running all six on every
-    # store was the main avoidable latency multiplier.
-    def collect(attempt: str) -> None:
-        nonlocal last_error
+    for attempt_index, attempt in enumerate(attempts):
         try:
             results = search_fn(attempt) or []
         except Exception as exc:
-            last_error = exc
             print(
                 f"STORE_DISCOVERY_ERROR: store={store} "
                 f"attempt={attempt!r} error={type(exc).__name__}: {exc}",
                 flush=True,
             )
-            return
+            continue
 
         if not isinstance(results, list):
-            return
+            continue
 
         for item in results:
             if not isinstance(item, dict):
@@ -2423,30 +2251,13 @@ def run_store(
             seen.add(key)
             output.append(product)
 
-    # One request in the overwhelmingly common successful case.
-    collect(attempts[0])
+        # A successful exact discovery is authoritative for that store.
+        # Do NOT run the two fallback query forms afterwards: that made every
+        # healthy store perform up to three serial searches and could push
+        # ParfumZentrum/Sabina past the SearchEngine store deadline.
+        if output:
+            break
 
-    # Recovery path for retailer search endpoints that need a broader query.
-    if not output:
-        for attempt in attempts[1:]:
-            collect(attempt)
-            if output:
-                break
-
-    # Do not silently convert a scraper crash into an apparently healthy
-    # empty store. SearchEngine can then expose the real retailer error in
-    # store_status/errors instead of making the frontend look as if the
-    # retailer simply had no product.
-    if not output and last_error is not None:
-        raise RuntimeError(
-            f"{store}: all discovery attempts failed; "
-            f"last_error={type(last_error).__name__}: {last_error}"
-        ) from last_error
-
-    print(
-        f"STORE_DISCOVERY_RESULT: store={store} candidates={len(output)}",
-        flush=True,
-    )
     return output
 
 
@@ -2533,34 +2344,8 @@ def _validate_candidate(
     product: Dict[str, Any],
     query: str,
 ) -> Optional[Dict[str, Any]]:
-    candidate_store = str(product.get("store") or "").strip()
-    candidate_name = str(
-        product.get("name")
-        or product.get("title")
-        or product.get("product_name")
-        or ""
-    ).strip()
-    candidate_size = product_size_ml(product)
-
     if not matches(product, query):
-        print(
-            "CENTRAL_VALIDATION_REJECT: "
-            f"store={candidate_store} "
-            f"name={candidate_name!r} "
-            f"size={candidate_size!r} "
-            f"query={query!r}",
-            flush=True,
-        )
         return None
-
-    print(
-        "CENTRAL_VALIDATION_ACCEPT: "
-        f"store={candidate_store} "
-        f"name={candidate_name!r} "
-        f"size={candidate_size!r} "
-        f"query={query!r}",
-        flush=True,
-    )
 
     # Il main usa il matcher centrale per la risoluzione dell'identità.
     # Il query matching/family validation resta quello già esistente sopra;
@@ -2917,19 +2702,14 @@ def update_price_history(
     include_in_schema=False,
 )
 def root():
-    # Deploy-safe: the project files are delivered as index.txt in ChatGPT,
-    # while a normal production deploy may rename it to index.html. Support
-    # both without changing the frontend content.
-    frontend = FRONTEND_INDEX if FRONTEND_INDEX.exists() else FRONTEND_INDEX_TXT
-    if not frontend.exists():
+    if not FRONTEND_INDEX.exists():
         raise HTTPException(
             status_code=500,
-            detail="frontend/index.html o frontend/index.txt non trovato",
+            detail="frontend/index.html non trovato",
         )
 
     return FileResponse(
-        frontend,
-        media_type="text/html; charset=utf-8",
+        FRONTEND_INDEX
     )
 
 
@@ -2965,25 +2745,7 @@ def _search_job_snapshot(job_id: str) -> Dict[str, Any]:
         diagnostics = dict(job.get("store_diagnostics", {}))
         phase = job.get("phase", "discovery")
 
-    # SearchEngine pubblica già risultati finali (gruppi con offers).
-    # Riapplicarvi _prepare_final_results() ricollassa il gruppo usando
-    # soltanto il negozio rappresentativo e fa sparire gli altri retailer.
-    # Il vecchio runner legacy invece continua a pubblicare candidati grezzi.
-    # SearchEngine normalmente marca questi payload con results_are_final=True.
-    # Per compatibilità con eventuali versioni già deployate del SearchEngine,
-    # riconosciamo comunque un payload già raggruppato: se contiene offerte
-    # annidate, NON deve essere rifinalizzato, altrimenti _prepare_final_results()
-    # può ridurlo nuovamente alla sola offerta rappresentativa.
-    already_grouped = any(
-        isinstance(item, dict)
-        and isinstance(item.get("offers"), list)
-        and bool(item.get("offers"))
-        for item in raw_results
-    )
-    if job.get("results_are_final") or already_grouped:
-        results = raw_results
-    else:
-        results = _prepare_final_results(raw_results, query)
+    results = _prepare_final_results(raw_results, query)
     return {
         "job_id": job_id,
         "query": query,
