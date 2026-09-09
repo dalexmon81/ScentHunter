@@ -1969,7 +1969,9 @@ async function searchStoresProgressive(term,onPartial){
  while(true){
   if(Date.now()-startedAt>maxElapsed)throw new Error("Timeout ricerca");
 
-  await new Promise(resolve=>setTimeout(resolve,600));
+  // The backend publishes a settled store immediately. Poll frequently enough
+  // that the UI normally sees that snapshot within a fraction of a second.
+  await new Promise(resolve=>setTimeout(resolve,250));
 
   const pathStatusUrl=backend()+"/search-status/"+encodeURIComponent(job.job_id);
   let snapshot;
@@ -1985,7 +1987,7 @@ async function searchStoresProgressive(term,onPartial){
       const queryStatusUrl=backend()+"/search-status?job_id="+encodeURIComponent(job.job_id);
       snapshot=await fetchJSONWithTimeout(queryStatusUrl,timeoutMs);
     }else{
-      await new Promise(resolve=>setTimeout(resolve,900));
+      await new Promise(resolve=>setTimeout(resolve,400));
       snapshot=await fetchJSONWithTimeout(pathStatusUrl,timeoutMs);
     }
   }
@@ -2043,7 +2045,8 @@ async function searchPerfume(){
   };
 
   // Tutte le ricerche passano dalla stessa pipeline progressiva.
-  // Massimo 2 negozi alla volta, con aggiornamento dei risultati man mano.
+  // Il backend esegue esattamente 4 + 4; il frontend si limita a ricevere
+  // e mostrare ogni snapshot già pubblicato dal motore.
   data=await searchStoresProgressive(q,renderData);
 
   // Regola generale di recupero: se la query esatta non produce nulla,
