@@ -703,8 +703,6 @@ class SearchEngine:
                                 store_status[store]["error"] = result.error
                                 errors[store] = result.error
 
-                            publish()
-
                     # Strict barrier timeout handling: settle all remaining
                     # stores in this wave before the next wave can start.
                     now = time.monotonic()
@@ -723,9 +721,13 @@ class SearchEngine:
                         errors[store] = error
                         future.cancel()
                         futures.pop(future, None)
-                        publish()
                 finally:
                     executor.shutdown(wait=False, cancel_futures=True)
+
+                # BATCH PUBLICATION: expose the whole settled wave at once.
+                # The frontend therefore receives wave 1 as one batch of up to
+                # four stores, then wave 2 as the second batch.
+                publish()
 
                 # HARD BARRIER: only after every store in this wave has a final
                 # status do we enter the next wave.
