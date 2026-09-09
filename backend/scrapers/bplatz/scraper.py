@@ -200,8 +200,6 @@ def search_html_urls(session, query):
 
 
 def _predictive_search_worker(search_query):
-    # One independent session per worker avoids sharing a requests.Session
-    # across concurrent threads.
     worker_session = requests.Session()
     try:
         return predictive_products(worker_session, search_query)
@@ -210,8 +208,6 @@ def _predictive_search_worker(search_query):
 
 
 def _product_json_worker(url):
-    # One independent session per worker avoids sharing a requests.Session
-    # across concurrent threads.
     worker_session = requests.Session()
     try:
         return product_json(worker_session, url)
@@ -230,16 +226,7 @@ def candidate_urls(session, query):
         if len(token) >= 3 and token not in searches:
             searches.append(token)
 
-    urls = []
-    seen = set()
-
-    # Predictive searches are independent, so run them concurrently.
-    # Results are consumed in the original search order to keep output
-    # deterministic.
-    with ThreadPoolExecutor(max_workers=len(searches)) as executor:
-        predictive_results = list(executor.map(_predictive_search_worker, searches))
-
-    for products in predictive_results:
+    def collect(products, urls, seen):
         for product in products:
             product_title = product.get("title") or product.get("name") or ""
             if not query_matches(product_title, query):
@@ -254,10 +241,27 @@ def candidate_urls(session, query):
             seen.add(path)
             urls.append(absolute)
 
-    # The HTML search is a true fallback: if predictive search returned no
-    # usable product URL, use the normal search page as the second discovery
-    # channel. This removes the unnecessary ~5s HTML request from the
-    # successful predictive path while preserving the fallback path.
+    urls = []
+    seen = set()
+
+    # First try the exact user query alone. This is the fast path and avoids
+    # adding concurrent requests when the primary predictive search already
+    # returns usable products.
+    primary = predictive_products(session, searches[0])
+    collect(primary, urls, seen)
+    if urls:
+        return urls
+
+    # Only if the exact query produced no usable URLs, try the normalized
+    # variants concurrently. Keep deterministic search order when collecting.
+    fallback_searches = searches[1:]
+    if fallback_searches:
+        with ThreadPoolExecutor(max_workers=len(fallback_searches)) as executor:
+            predictive_results = list(executor.map(_predictive_search_worker, fallback_searches))
+        for products in predictive_results:
+            collect(products, urls, seen)
+
+    # Preserve the original HTML discovery channel as a final fallback.
     if not urls:
         for url in search_html_urls(session, query):
             if url not in urls:
@@ -277,12 +281,8 @@ def search(query):
 
     try:
         urls = candidate_urls(session, query)
-
-        # Product JSON requests are independent, so fetch them concurrently.
-        # Keep the original URL order when building the final result list.
         with ThreadPoolExecutor(max_workers=min(8, max(1, len(urls)))) as executor:
             product_data = list(executor.map(_product_json_worker, urls))
-
         for url, data in zip(urls, product_data):
             item = product_from_json(data, url)
             if not item or not query_matches(item["name"], query):
