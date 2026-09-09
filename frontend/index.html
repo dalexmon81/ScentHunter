@@ -84,10 +84,12 @@ html,body{min-height:100%;overflow-x:hidden}
 .nav{position:fixed!important;left:0!important;right:0!important;bottom:0!important;top:auto!important;transform:none!important;width:100%!important;max-width:760px!important;margin:0 auto!important;z-index:99999!important;padding-bottom:calc(9px + env(safe-area-inset-bottom))!important}
 .app{padding-bottom:calc(125px + env(safe-area-inset-bottom))!important}
 
-/* iPhone/Safari: viewport stabile + contenuto scrollabile */
-html,body{height:100%;height:100dvh;overflow:hidden!important}
-body{position:relative}
-.app{width:100%!important;max-width:760px!important;height:100%;height:100dvh;min-height:0!important;overflow-x:hidden!important;overflow-y:auto;-webkit-overflow-scrolling:touch;padding-bottom:calc(125px + env(safe-area-inset-bottom))!important}
+/* iPhone/Safari: scroll nativo della pagina.
+   Il vecchio modello body overflow:hidden + .app overflow:auto
+   rompeva lo scroll dopo la prima scheda con la bottom-nav fixed. */
+html,body{min-height:100%;height:auto;overflow-x:hidden!important;overflow-y:auto!important}
+body{position:relative;-webkit-overflow-scrolling:touch}
+.app{width:100%!important;max-width:760px!important;height:auto!important;min-height:100vh!important;overflow:visible!important;padding-bottom:calc(125px + env(safe-area-inset-bottom))!important}
 .nav{position:fixed!important;left:0!important;right:0!important;bottom:0!important;top:auto!important;transform:none!important;width:100%!important;max-width:760px!important;margin:0 auto!important;z-index:2147483647!important}
 </style>
 
@@ -310,31 +312,6 @@ body{position:relative}
  .home-search-icon{left:12px;width:20px;height:20px}
  .home-search-button{left:6.0%;width:48.6%;top:86.35%;height:6.55%;border-radius:14px;font-size:11px}
 }
-</style>
-<style id="SCENTHUNTER-NATIVE-SCROLL-FIX">
-/* iPhone/Safari: usa lo scroll nativo della pagina. Il contenitore .app non deve diventare un secondo viewport scrollabile. */
-html,body{
-  height:auto!important;
-  min-height:100%!important;
-  overflow-x:hidden!important;
-  overflow-y:auto!important;
-  overscroll-behavior-y:auto!important;
-}
-body{position:relative!important;}
-.app{
-  height:auto!important;
-  min-height:100dvh!important;
-  overflow:visible!important;
-  overflow-x:hidden!important;
-  overflow-y:visible!important;
-  -webkit-overflow-scrolling:auto!important;
-  touch-action:pan-y;
-}
-#searchOutput,#results{
-  overflow:visible!important;
-  touch-action:pan-y;
-}
-.product-choice{touch-action:pan-y!important;}
 </style>
 </head>
 <body>
@@ -740,6 +717,7 @@ function backend(){
 let currentProductGroups=[];
 let currentOpenProductKey="";
 let currentOpenSizeKey=null;
+let currentOpenOfferSignature="";
 
 function shPrice(o){
   if(o&&o.price)return String(o.price);
@@ -1653,16 +1631,31 @@ function productGroupKey(g){
 function clearOpenProduct(){
   currentOpenProductKey="";
   currentOpenSizeKey=null;
+  currentOpenOfferSignature="";
 }
 
-function showProducts(groups){
-  currentProductGroups=groups;
-  clearOpenProduct();
-  statusBox.textContent=groups.length
-    ?groups.length+(groups.length===1?" profumo trovato.":" profumi trovati.")
-    :"Nessun profumo trovato.";
+function openOfferSignature(g){
+  return (Array.isArray(g?.offers)?g.offers:[]).map(o=>[
+    String(o?.store||o?.shop||""),
+    String(o?.price_value??o?.price??""),
+    String(o?.availability||o?.stock_status||(o?.available??"")),
+    String(o?.size_ml||o?.size||"")
+  ].join("|")).sort().join("||");
+}
 
-  resultsBox.innerHTML=groups.map((g,i)=>{
+function showProducts(groups,final=false){
+  currentProductGroups=Array.isArray(groups)?groups:[];
+  clearOpenProduct();
+  // Durante la ricerca il backend parte con zero risultati. Non mostriamo
+  // mai "Nessun profumo trovato" in questa fase.
+  if(!currentProductGroups.length){
+    if(final)statusBox.textContent="Nessun risultato trovato.";
+    return;
+  }
+  statusBox.textContent=currentProductGroups.length
+    +(currentProductGroups.length===1?" profumo trovato.":" profumi trovati.");
+
+  resultsBox.innerHTML=currentProductGroups.map((g,i)=>{
     const sizes=getSizeGroups(g);
     const img=g.image||"";
 
@@ -1723,6 +1716,13 @@ function formatComparisonFor(g,sizeKey){
   return cache.find(x=>String(x.size_ml||x.size||"")===String(sizeKey))||null;
 }
 
+function scrollToSearchOutput(){
+  const el=document.getElementById("searchOutput");
+  if(!el)return;
+  const top=Math.max(0,el.getBoundingClientRect().top+window.scrollY-8);
+  window.scrollTo({top,behavior:"smooth"});
+}
+
 function renderFormatChoiceCard(gi,g,comparisons,sizes){
   const img=g.image||"";
   const bySize=new Map((comparisons||[]).map(x=>[String(x.size_ml||x.size||""),x]));
@@ -1749,7 +1749,7 @@ function renderFormatChoiceCard(gi,g,comparisons,sizes){
       </div>`;
     }).join("")}
   </article>`;
-  document.getElementById("searchOutput").scrollIntoView({behavior:"smooth",block:"start"});
+  scrollToSearchOutput();
 }
 
 async function openProduct(i){
@@ -1757,6 +1757,7 @@ async function openProduct(i){
   if(!g)return;
   currentOpenProductKey=productGroupKey(g);
   currentOpenSizeKey=null;
+  currentOpenOfferSignature=openOfferSignature(g);
   const detected=getSizeGroups(g).map(s=>s.size).filter(Boolean);
   const masterFormats=getMasterFormats(g);
   const sizes=[...new Set(masterFormats.length?masterFormats:detected)].sort((a,b)=>Number(a)-Number(b));
@@ -1766,35 +1767,17 @@ async function openProduct(i){
 
   // UN SOLO FORMATO: resta il comportamento storico, terza scheda evitata.
   if(sizes.length===1){
-    const selected=getSizeGroups(g).find(s=>s.size===sizes[0]);
-    let offers=Array.isArray(selected?.offers)?selected.offers:[];
-
-    // Se il formato arriva dal catalogo master ma l'offerta live non espone
-    // lo stesso formato nel campo usato dal raggruppatore frontend, non
-    // dobbiamo mai mostrare una scheda "0 negozi". Recuperiamo prima le
-    // offerte dello stesso formato e, come ultima sicurezza, tutte le offerte
-    // già validate del gruppo.
-    if(!offers.length){
-      const allOffers=Array.isArray(g.offers)?g.offers:[];
-      const sameSize=allOffers.filter(o=>String(sizeOfOffer(o)||"")===String(sizes[0]));
-      offers=sameSize.length?sameSize:allOffers;
-    }
-
-    if(offers.length){
-      renderSingleFormatComparison(g,img,offers,sizes[0],saved);
-    }else{
-      // Non renderizzare mai una scheda vuota: torniamo alla lista dei
-      // prodotti invece di mostrare "0 negozi".
-      currentOpenProductKey="";
-      currentOpenSizeKey=null;
-      showProducts(currentProductGroups);
-    }
+    const selected=getSizeGroups(g).find(s=>String(s.size)===String(sizes[0]));
+    // Con un solo formato non c'è ambiguità: se un retailer non ha inviato
+    // size_ml, le sue offerte appartengono comunque a questo formato.
+    const offers=(selected?.offers?.length?selected.offers:(Array.isArray(g.offers)?g.offers:[]));
+    renderSingleFormatComparison(g,img,offers,sizes[0],saved);
     return;
   }
 
   // DUE O TRE FORMATI: seconda scheda = formati + PREZZO PIÙ BASSO.
   resultsBox.innerHTML=`<article class="comparison"><button class="detail-back" onclick="clearOpenProduct();showProducts(currentProductGroups)">← Torna ai profumi</button><div class="comparison-head"><div class="result-image">${img?`<img src="${esc(img)}" alt="${esc(displayPerfumeName(g.name,g.brand))}" onerror="this.outerHTML='🧴'">`:"🧴"}</div><div class="result-main"><div class="store">${esc(g.brand||"")}</div><div class="name">${esc(displayPerfumeName(g.name,g.brand))}</div></div></div><div class="bestlabel">CONFRONTA I FORMATI</div><div class="offer-meta" style="margin-bottom:12px">Cerco il prezzo più basso per ogni formato...</div><div class="format-loading" aria-hidden="true">⏳</div></article>`;
-  document.getElementById("searchOutput").scrollIntoView({behavior:"smooth",block:"start"});
+  scrollToSearchOutput();
 
   try{
     const comparisons=await fetchFormatComparisons(g,sizes);
@@ -1822,7 +1805,7 @@ async function openProduct(i){
 
 function renderSingleFormatComparison(g,img,offers,size,saved){
   resultsBox.innerHTML=`<article class="comparison"><button class="detail-back" onclick="clearOpenProduct();showProducts(currentProductGroups)">← Torna ai profumi</button><div class="comparison-head"><div class="result-image">${img?`<img src="${esc(img)}" alt="${esc(displayPerfumeName(g.name,g.brand))}" onerror="this.outerHTML='🧴'">`:"🧴"}</div><div class="result-main"><div class="store">${esc(g.brand||"")}</div><div class="name">${esc(displayPerfumeName(g.name,g.brand))}</div></div></div><div class="format-compare-bar"><div class="format-compare-item"><div class="format-compare-copy"><div class="format-compare-label">FORMATO</div><div class="format-compare-value">${esc(formatLabel(size)||"Formato")}</div></div></div><div class="format-compare-item"><div class="format-compare-copy"><div class="format-compare-label">CONFRONTA I PREZZI</div><div class="format-compare-value">${offers.length} ${offers.length===1?"negozio":"negozi"}</div></div></div></div>${renderOffersHtml(g,img,offers,saved)}</article>`;
-  document.getElementById("searchOutput").scrollIntoView({behavior:"smooth",block:"start"});
+  scrollToSearchOutput();
 }
 
 function renderOffersHtml(g,img,offers,saved){
@@ -1843,7 +1826,7 @@ function openSize(gi,sizeKey,fromFormats=true){
   const offers=selected.offers||[]; const saved=getWishlist(); const img=g.image||"";
   statusBox.textContent="";
   resultsBox.innerHTML=`<article class="comparison"><button class="detail-back" onclick="openProduct(${gi})">← Torna ai formati</button><div class="comparison-head"><div class="result-image">${img?`<img src="${esc(img)}" alt="${esc(displayPerfumeName(g.name,g.brand))}" onerror="this.outerHTML='🧴'">`:"🧴"}</div><div class="result-main"><div class="store">${esc(g.brand||"")}</div><div class="name">${esc(displayPerfumeName(g.name,g.brand))}</div><div class="offer-meta">${esc(formatLabel(String(selected.size)))}</div></div></div><div class="format-compare-bar"><div class="format-compare-item"><div class="format-compare-copy"><div class="format-compare-label">FORMATO</div><div class="format-compare-value">${esc(formatLabel(String(selected.size)))}</div></div></div><div class="format-compare-item"><div class="format-compare-copy"><div class="format-compare-label">CONFRONTA I PREZZI</div><div class="format-compare-value">${offers.length} ${offers.length===1?"negozio":"negozi"}</div></div></div></div>${renderOffersHtml(g,img,offers,saved)}</article>`;
-  document.getElementById("searchOutput").scrollIntoView({behavior:"smooth",block:"start"});
+  scrollToSearchOutput();
 }
 
 function chooseOffer(gi,sizeKey,oi){
@@ -1988,14 +1971,13 @@ async function searchStoresProgressive(term,onPartial){
 
   await new Promise(resolve=>setTimeout(resolve,150));
 
+  const pathStatusUrl=backend()+"/search-status/"+encodeURIComponent(job.job_id);
   let snapshot;
   try{
-    const statusUrl=backend()+"/search-status/"+encodeURIComponent(job.job_id);
-    snapshot=await fetchJSONWithTimeout(statusUrl,timeoutMs);
+    snapshot=await fetchJSONWithTimeout(pathStatusUrl,timeoutMs);
   }catch(pathError){
-    // Compatibilità con il vecchio endpoint query-param, se presente.
-    const statusUrl=backend()+"/search-status?job_id="+encodeURIComponent(job.job_id);
-    snapshot=await fetchJSONWithTimeout(statusUrl,timeoutMs);
+    const queryStatusUrl=backend()+"/search-status?job_id="+encodeURIComponent(job.job_id);
+    snapshot=await fetchJSONWithTimeout(queryStatusUrl,timeoutMs);
   }
   renderSnapshot(snapshot,Boolean(snapshot?.completed));
 
@@ -2021,31 +2003,23 @@ async function searchPerfume(){
    currentProductGroups=groups;
 
    if(currentOpenProductKey){
-
     const gi=groups.findIndex(g=>productGroupKey(g)===currentOpenProductKey);
-
     if(gi>=0){
-
-     if(currentOpenSizeKey!==null){
-
-      const sg=getSizeGroups(groups[gi]).find(x=>x.size===currentOpenSizeKey);
-
-      if(sg) openSize(gi,currentOpenSizeKey,false);
-
-      else openProduct(gi);
-
-     }else{
-
-      openProduct(gi);
-
-     }
-
+      // Non ricreiamo la scheda ad ogni polling: altrimenti Safari perde la
+      // posizione e la scheda può mostrare temporaneamente 0 negozi.
+      const nextSignature=openOfferSignature(groups[gi]);
+      if(nextSignature!==currentOpenOfferSignature){
+        currentOpenOfferSignature=nextSignature;
+        if(currentOpenSizeKey!==null){
+          const sg=getSizeGroups(groups[gi]).find(x=>String(x.size)===String(currentOpenSizeKey));
+          if(sg) openSize(gi,currentOpenSizeKey,false);
+        }else{
+          openProduct(gi);
+        }
+      }
     }
-
-   }else{
-
-    showProducts(groups);
-
+   }else if(groups.length){
+    showProducts(groups,false);
    }
 
    updateBestPricesFromGroups(groups);
