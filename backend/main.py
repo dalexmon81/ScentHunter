@@ -29,7 +29,14 @@ from fastapi import Query
 # - product catalog
 # - eight store adapters
 # - central validation/finalization functions
-_engine = SearchEngine(_legacy, store_timeout=18.0, global_timeout=30.0)
+STORE_TIMEOUT_SECONDS = 18.0
+GLOBAL_SEARCH_TIMEOUT_SECONDS = 30.0
+
+_engine = SearchEngine(
+    _legacy,
+    store_timeout=STORE_TIMEOUT_SECONDS,
+    global_timeout=GLOBAL_SEARCH_TIMEOUT_SECONDS,
+)
 
 # ---------------------------------------------------------------------------
 # FAMILY REGISTRY RETAILER-BRAND NORMALIZATION
@@ -151,8 +158,10 @@ if callable(_original_product_identity_key):
 # explicitly; assigning only local wrapper globals would NOT change the routes.
 _legacy.search_perfume = _engine.search
 _legacy._run_search_job = _engine.run_job
-# The restored SearchEngine does not expose search_job_snapshot().
-# Keep the legacy snapshot function when that optional method is absent.
+# The frontend polls /search-status frequently. When the progressive engine
+# provides its snapshot implementation, install it in the legacy namespace so
+# every poll returns the already-published job state without re-running search
+# or the expensive finalization pipeline.
 _engine_snapshot = getattr(_engine, "search_job_snapshot", None)
 if callable(_engine_snapshot):
     _legacy._search_job_snapshot = _engine_snapshot
