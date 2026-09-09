@@ -100,20 +100,20 @@ def _xml_urls(xml_text):
     ]
 
 
-_SITEMAP_CACHE = {"ts": 0.0, "urls": []}
-_SITEMAP_CACHE_SECONDS = 900.0
+_SITEMAP_CACHE = []
+_SITEMAP_CACHE_TS = 0.0
+_SITEMAP_CACHE_TTL = 900.0
 
 
 def _get_sitemap_urls():
-    # The root sitemap is an index containing independent child sitemaps.
-    # Fetch the child maps concurrently: they are independent network calls.
+    global _SITEMAP_CACHE, _SITEMAP_CACHE_TS
+
     import time
     from concurrent.futures import ThreadPoolExecutor, as_completed
 
     now = time.time()
-    cached = _SITEMAP_CACHE.get("urls") or []
-    if cached and now - float(_SITEMAP_CACHE.get("ts", 0.0)) < _SITEMAP_CACHE_SECONDS:
-        return list(cached)
+    if _SITEMAP_CACHE and (now - _SITEMAP_CACHE_TS) < _SITEMAP_CACHE_TTL:
+        return list(_SITEMAP_CACHE)
 
     response = SESSION.get(SITEMAP_URL, headers=HEADERS, timeout=10)
     response.raise_for_status()
@@ -127,8 +127,8 @@ def _get_sitemap_urls():
     ]
 
     if not child_maps:
-        _SITEMAP_CACHE["ts"] = now
-        _SITEMAP_CACHE["urls"] = list(urls)
+        _SITEMAP_CACHE = list(urls)
+        _SITEMAP_CACHE_TS = time.time()
         return urls
 
     def fetch_child(sitemap):
@@ -152,8 +152,8 @@ def _get_sitemap_urls():
             except Exception:
                 continue
 
-    _SITEMAP_CACHE["ts"] = time.time()
-    _SITEMAP_CACHE["urls"] = list(output)
+    _SITEMAP_CACHE = list(output)
+    _SITEMAP_CACHE_TS = time.time()
     return output
 
 
@@ -793,25 +793,11 @@ def search(query):
         print("PARFUMZENTRUM SITEMAP ERROR:", error)
         return []
 
-    query_tokens = {
-        token for token in _tokens(query)
-        if token not in STOPWORDS
-        and not re.fullmatch(r"\d+(?:[.,]\d+)?", token)
-    }
-
-    candidates = []
-    for url in urls:
-        if not re.search(r"_z\d+/?$", url):
-            continue
-
-        url_tokens = set(_tokens(url))
-        if query_tokens and query_tokens.issubset(url_tokens):
-            requested_concentration = _concentration(query)
-            if (
-                not requested_concentration
-                or _concentration(url) == requested_concentration
-            ):
-                candidates.append(url)
+    candidates = [
+        url for url in urls
+        if re.search(r"_z\d+/?$", url)
+        and _matches_query(url, query)
+    ]
 
     # When the user did not request a size, do not let a miniature/sample
     # page compete with the normal product page for the same product.
