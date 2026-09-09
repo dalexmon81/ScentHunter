@@ -64,6 +64,82 @@ if callable(_engine_snapshot):
 # Keep the exact FastAPI application object and every existing route.
 app = _legacy.app
 
+
+# ===== READ-ONLY LIVE PIPELINE TRACE =====
+# Starts the EXACT same progressive search job used by the frontend and records
+# every observable publication step. It does not alter the search algorithm.
+@app.get("/diagnose-live-pipeline")
+def diagnose_live_pipeline(q: str = Query(..., min_length=1)):
+    import time as _trace_time
+
+    query = str(q or "").strip()
+    if not query:
+        return {"ok": False, "error": "query vuota"}
+
+    # Use the real route function so the trace follows the production path:
+    # search-start -> background _run_search_job -> SearchEngine -> snapshots.
+    started_response = _legacy.search_start(query)
+    job_id = str(started_response.get("job_id") or "")
+    if not job_id:
+        return {"ok": False, "error": "job_id mancante", "start_response": started_response}
+
+    started = _trace_time.monotonic()
+    timeline = []
+    last_signature = None
+
+    while _trace_time.monotonic() - started < 40.0:
+        snap = _engine.search_job_snapshot(job_id)
+        store_status = snap.get("store_status") or {}
+        completed_stores = int(snap.get("completed_stores") or 0)
+        result_count = int(snap.get("count") or 0)
+        candidate_count = len(snap.get("results") or [])
+        signature = (
+            completed_stores,
+            result_count,
+            tuple(sorted(
+                (str(k), str((v or {}).get("status")), int((v or {}).get("count") or 0))
+                for k, v in store_status.items()
+                if isinstance(v, dict)
+            )),
+        )
+        if signature != last_signature:
+            timeline.append({
+                "t_seconds": round(_trace_time.monotonic() - started, 3),
+                "elapsed_job": snap.get("elapsed"),
+                "phase": snap.get("phase"),
+                "completed": snap.get("completed"),
+                "completed_stores": completed_stores,
+                "result_count": result_count,
+                "store_status": store_status,
+                "errors": snap.get("errors") or {},
+                "results": snap.get("results") or [],
+            })
+            last_signature = signature
+
+        if snap.get("completed"):
+            return {
+                "ok": True,
+                "diagnostic": "live-progressive-pipeline-v1",
+                "query": query,
+                "job_id": job_id,
+                "total_trace_seconds": round(_trace_time.monotonic() - started, 3),
+                "timeline": timeline,
+                "final": snap,
+            }
+
+        _trace_time.sleep(0.10)
+
+    snap = _engine.search_job_snapshot(job_id)
+    return {
+        "ok": True,
+        "diagnostic": "live-progressive-pipeline-v1-timeout",
+        "query": query,
+        "job_id": job_id,
+        "total_trace_seconds": round(_trace_time.monotonic() - started, 3),
+        "timeline": timeline,
+        "final": snap,
+    }
+
 # ===== TEMPORARY READ-ONLY NOTINO DEEP DIAGNOSTIC =====
 JINA_PREFIX = "https://r.jina.ai/"
 NOTINO_BASE = "https://www.notino.fr"
@@ -1273,63 +1349,3 @@ def diagnostic_scraper_trace(
             session.close()
         except Exception:
             pass
-
-# ===== SABINA PIPELINE TRACE (READ-ONLY) =====
-@app.get('/test-store-trace')
-def test_store_trace(store: str = Query(...), q: str = Query(..., min_length=1)):
-    """Trace exactly where store candidates disappear; does not alter normal routes."""
-    store = str(store or '').strip().lower()
-    query = str(q or '').strip()
-    if store not in _legacy.STORES:
-        return {'error': 'store non valido', 'store': store, 'available': _legacy.STORES}
-
-    report = {'store': store, 'query': query, 'attempts': [], 'final_before_unique': [], 'final_after_unique': []}
-    module = importlib.import_module(f'scrapers.{store}.scraper')
-    search_fn = getattr(module, 'search', None) or getattr(module, 'scrape', None)
-    attempts = _legacy.build_search_attempts(store, query)
-    cumulative = []
-    seen = set()
-
-    for attempt in attempts:
-        entry = {'attempt': attempt}
-        try:
-            raw = search_fn(attempt) or []
-            entry['raw_count'] = len(raw) if isinstance(raw, list) else None
-            entry['raw'] = raw[:30] if isinstance(raw, list) else raw
-        except Exception as exc:
-            entry['error'] = f'{type(exc).__name__}: {exc}'
-            report['attempts'].append(entry)
-            continue
-
-        processed = []
-        for item in raw if isinstance(raw, list) else []:
-            if not isinstance(item, dict):
-                continue
-            p = dict(item)
-            p.setdefault('store', store)
-            try:
-                p = _legacy.resolve_actual_price(p)
-            except Exception as exc:
-                entry.setdefault('resolve_errors', []).append(f'{type(exc).__name__}: {exc}')
-            try:
-                key = _legacy.product_identity_key(p)
-            except Exception as exc:
-                key = f'KEY_ERROR:{type(exc).__name__}:{exc}'
-            processed.append({'name': p.get('name'), 'url': p.get('url'), 'price': p.get('price'), 'size_ml': p.get('size_ml'), 'brand': p.get('brand'), 'product_id': p.get('product_id'), 'store_product_id': p.get('store_product_id'), 'variant_id': p.get('variant_id'), 'sku': p.get('sku'), 'ean': p.get('ean'), 'identity_key': repr(key)})
-            if key not in seen:
-                seen.add(key)
-                cumulative.append(p)
-        entry['processed_count'] = len(processed)
-        entry['processed'] = processed
-        report['attempts'].append(entry)
-
-    report['cumulative_count'] = len(cumulative)
-    report['final_before_unique'] = cumulative[:50]
-    try:
-        final = _legacy.unique_results(cumulative)
-    except Exception as exc:
-        report['unique_error'] = f'{type(exc).__name__}: {exc}'
-        final = cumulative
-    report['final_after_unique'] = final[:50]
-    report['final_count'] = len(final)
-    return report
