@@ -20,7 +20,7 @@ import traceback
 from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional
 
-DEFAULT_STORE_TIMEOUT = 22.0
+DEFAULT_STORE_TIMEOUT = 26.0
 DEFAULT_GLOBAL_TIMEOUT = 30.0
 
 
@@ -293,6 +293,27 @@ class SearchEngine:
     ) -> List[Dict[str, Any]]:
         """Build the exact frontend result shape from the evidence received so far."""
         return self._orchestrate(query, raw_pool)
+
+    def _publish_validated_results(
+        self,
+        query: str,
+        validated_pool: List[Dict[str, Any]],
+    ) -> List[Dict[str, Any]]:
+        """Prepare already-validated evidence without validating old offers again."""
+        prepare = getattr(self.legacy, "_prepare_final_results", None)
+        if callable(prepare):
+            try:
+                result = prepare(validated_pool, query)
+            except TypeError:
+                result = prepare(validated_pool)
+        else:
+            result = validated_pool
+
+        if result is None:
+            return []
+        if not isinstance(result, list):
+            result = list(result)
+        return self._stable_results([x for x in result if isinstance(x, dict)])
 
     def search(self, query: str) -> Dict[str, Any]:
         text = self.analyze_query(query)["raw"]
@@ -740,6 +761,7 @@ class SearchEngine:
             submitted_at = {future: time.monotonic() for future in futures}
             pending = set(futures)
             raw_pool: List[Dict[str, Any]] = []
+            validated_pool: List[Dict[str, Any]] = []
             deadline = started + self.global_timeout
 
             while pending:
@@ -769,9 +791,24 @@ class SearchEngine:
 
                     try:
                         result = future.result()
-                        if result.candidates:
-                            raw_pool.extend(result.candidates)
+                        new_candidates = [
+                            item for item in (result.candidates or [])
+                            if isinstance(item, dict)
+                        ]
+                        if new_candidates:
+                            raw_pool.extend(new_candidates)
                             raw_pool = self._dedupe_raw(raw_pool)
+
+                            # Validate only the newly arrived store evidence.
+                            # Re-validating the whole accumulated pool on every
+                            # completion was unnecessary work and delayed the
+                            # first visible result as the pool grew.
+                            newly_validated = self._validate_candidates_only(
+                                query,
+                                self._dedupe_raw(new_candidates),
+                            )
+                            if newly_validated:
+                                validated_pool.extend(newly_validated)
 
                         store_status[store] = {
                             "status": result.status,
@@ -796,11 +833,14 @@ class SearchEngine:
                     # publish the current canonical/grouped result immediately
                     # after this store finishes. No final global wait.
                     try:
-                        progressive_results = self._publish_results(query, raw_pool)
+                        progressive_results = self._publish_validated_results(
+                            query,
+                            validated_pool,
+                        )
                     except Exception as exc:
                         # A formatting/finalization error must not kill the
-                        # search. Keep the raw validated evidence visible.
-                        progressive_results = self._validate_candidates_only(query, raw_pool)
+                        # search. The already validated candidates remain usable.
+                        progressive_results = list(validated_pool)
                         errors.setdefault(
                             "_orchestration",
                             f"{type(exc).__name__}: {exc}",
@@ -843,7 +883,7 @@ class SearchEngine:
                             "status": "searching",
                             "phase": "discovery",
                             "completed": False,
-                            "results": self._publish_results(query, raw_pool),
+                            "results": self._publish_validated_results(query, validated_pool),
                             "errors": dict(errors),
                             "store_status": dict(store_status),
                             "completed_stores": len(self.stores) - len(pending),
