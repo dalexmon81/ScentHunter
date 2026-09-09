@@ -20,7 +20,7 @@ import traceback
 from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional
 
-DEFAULT_STORE_TIMEOUT = 18.0
+DEFAULT_STORE_TIMEOUT = 22.0
 DEFAULT_GLOBAL_TIMEOUT = 30.0
 
 
