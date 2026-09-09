@@ -1,9 +1,9 @@
 import json
 import re
 import time
+import threading
 import unicodedata
 from urllib.parse import quote_plus, urljoin, urlparse
-from concurrent.futures import ThreadPoolExecutor, as_completed
 
 import requests
 from bs4 import BeautifulSoup
@@ -17,6 +17,40 @@ HEADERS = {
 TIMEOUT = 20
 RETRIES = 3
 RETRY_SLEEP = 0.6
+
+# Diagnostic tracing is opt-in and never changes normal search behavior.
+_TRACE_LOCAL = threading.local()
+
+
+def _trace_start(query=""):
+    trace = {
+        "query": query,
+        "requests": [],
+        "stages": [],
+        "started_at": time.monotonic(),
+    }
+    _TRACE_LOCAL.data = trace
+    return trace
+
+
+def _trace_get():
+    return getattr(_TRACE_LOCAL, "data", None)
+
+
+def _trace_stage(name, started, **extra):
+    trace = _trace_get()
+    if trace is not None:
+        item = {"stage": name, "elapsed_seconds": round(time.monotonic() - started, 4)}
+        item.update(extra)
+        trace["stages"].append(item)
+
+
+def _trace_request(kind, url, started, **extra):
+    trace = _trace_get()
+    if trace is not None:
+        item = {"kind": kind, "url": url, "elapsed_seconds": round(time.monotonic() - started, 4)}
+        item.update(extra)
+        trace["requests"].append(item)
 
 NON_PERFUME_MARKERS = {
     "gift set", "set regalo", "discovery set", "fragrance set", "perfume set",
@@ -67,12 +101,20 @@ def money(value):
 
 def _request_json(session, url, **kwargs):
     for attempt in range(RETRIES):
+        started = time.monotonic()
+        status_code = None
+        error = None
         try:
             response = session.get(url, **kwargs)
+            status_code = response.status_code
+            _trace_request("json", response.url if hasattr(response, "url") else url, started,
+                           attempt=attempt + 1, status_code=status_code, ok=bool(response.ok))
             if response.ok:
                 return response
-        except requests.RequestException:
-            pass
+        except requests.RequestException as exc:
+            error = f"{type(exc).__name__}: {exc}"
+            _trace_request("json", url, started, attempt=attempt + 1,
+                           status_code=status_code, ok=False, error=error)
         if attempt + 1 < RETRIES:
             time.sleep(RETRY_SLEEP)
     return None
@@ -80,18 +122,26 @@ def _request_json(session, url, **kwargs):
 
 def _request_html(session, url, **kwargs):
     for attempt in range(RETRIES):
+        started = time.monotonic()
+        status_code = None
         try:
             response = session.get(url, **kwargs)
+            status_code = response.status_code
+            _trace_request("html", response.url if hasattr(response, "url") else url, started,
+                           attempt=attempt + 1, status_code=status_code, ok=bool(response.ok))
             if response.ok:
                 return response
-        except requests.RequestException:
-            pass
+        except requests.RequestException as exc:
+            _trace_request("html", url, started, attempt=attempt + 1,
+                           status_code=status_code, ok=False,
+                           error=f"{type(exc).__name__}: {exc}")
         if attempt + 1 < RETRIES:
             time.sleep(RETRY_SLEEP)
     return None
 
 
 def predictive_products(session, query):
+    started = time.monotonic()
     endpoint = BASE + "/search/suggest.json"
     params = {
         "q": query,
@@ -101,22 +151,31 @@ def predictive_products(session, query):
     }
     response = _request_json(session, endpoint, params=params, headers=HEADERS, timeout=TIMEOUT)
     if not response:
+        _trace_stage("predictive_products", started, query=query, returned_count=0, response=False)
         return []
     try:
         data = response.json()
-        return (((data or {}).get("resources") or {}).get("results") or {}).get("products") or []
+        products = (((data or {}).get("resources") or {}).get("results") or {}).get("products") or []
+        _trace_stage("predictive_products", started, query=query, returned_count=len(products), response=True)
+        return products
     except (ValueError, TypeError):
+        _trace_stage("predictive_products_parse", started, query=query, returned_count=0, response=True)
         return []
 
 
 def product_json(session, url):
+    started = time.monotonic()
     clean = url.split("?")[0].rstrip("/")
     response = _request_json(session, clean + ".js", headers=HEADERS, timeout=TIMEOUT)
     if not response:
+        _trace_stage("product_json", started, url=url, response=False)
         return None
     try:
-        return response.json()
+        data = response.json()
+        _trace_stage("product_json", started, url=url, response=True, parsed=True)
+        return data
     except (ValueError, TypeError):
+        _trace_stage("product_json", started, url=url, response=True, parsed=False)
         return None
 
 
@@ -179,9 +238,11 @@ def _anchor_candidate(anchor, query):
 
 
 def search_html_urls(session, query):
+    started = time.monotonic()
     url = BASE + "/search?q=" + quote_plus(query) + "&type=product"
     response = _request_html(session, url, headers=HEADERS, timeout=TIMEOUT)
     if not response:
+        _trace_stage("search_html_urls", started, query=query, returned_count=0, response=False)
         return []
 
     soup = BeautifulSoup(response.text, "html.parser")
@@ -196,21 +257,12 @@ def search_html_urls(session, query):
             continue
         seen.add(path)
         urls.append(absolute)
+    _trace_stage("search_html_urls", started, query=query, returned_count=len(urls), response=True)
     return urls
 
 
 def candidate_urls(session, query):
-    """
-    Discover product URLs without serially waiting for every discovery channel.
-
-    The previous implementation executed predictive-search requests one after
-    another and only then fetched the normal search page.  For Shopify stores
-    this unnecessarily serialized independent network calls.
-
-    We keep the same discovery channels and matching rules, but run the
-    independent predictive queries concurrently and run the HTML discovery
-    concurrently as well.
-    """
+    started = time.monotonic()
     searches = [query]
     normalized = norm(query)
     compact = re.sub(r"(?<=\d)\s+(?=[a-z])|(?<=[a-z])\s+(?=\d)", "", normalized)
@@ -221,105 +273,93 @@ def candidate_urls(session, query):
         if len(token) >= 3 and token not in searches:
             searches.append(token)
 
-    def predictive_for(search_query):
-        # A separate Session per worker avoids sharing a requests.Session
-        # between concurrent network operations.
-        worker_session = requests.Session()
-        try:
-            return predictive_products(worker_session, search_query)
-        finally:
-            worker_session.close()
-
     urls = []
     seen = set()
 
-    # All predictive queries and the HTML search are independent discovery
-    # operations. Run them concurrently so one slow channel cannot hold up the
-    # others.
-    discovery_jobs = {}
-    with ThreadPoolExecutor(max_workers=min(6, len(searches) + 1)) as pool:
-        for search_query in searches:
-            discovery_jobs[pool.submit(predictive_for, search_query)] = ("predictive", search_query)
-        discovery_jobs[pool.submit(search_html_urls, session, query)] = ("html", query)
+    for search_query in searches:
+        stage_started = time.monotonic()
+        predictive = predictive_products(session, search_query)
+        _trace_stage("candidate_predictive_query", stage_started, query=search_query, returned_count=len(predictive))
+        for product in predictive:
+            product_title = product.get("title") or product.get("name") or ""
+            if not query_matches(product_title, query):
+                continue
+            product_url = product.get("url")
+            if not product_url:
+                continue
+            absolute = urljoin(BASE, product_url).split("?")[0]
+            path = urlparse(absolute).path.rstrip("/")
+            if "/products/" not in path or path in seen:
+                continue
+            seen.add(path)
+            urls.append(absolute)
 
-        for future in as_completed(discovery_jobs):
-            kind, search_query = discovery_jobs[future]
-            try:
-                data = future.result() or []
-            except Exception:
-                data = []
+    # Always run the normal search page as a second independent discovery
+    # channel. A temporary predictive-search failure must never hide products.
+    html_urls = search_html_urls(session, query)
+    for url in html_urls:
+        if url not in urls:
+            urls.append(url)
 
-            if kind == "predictive":
-                for product in data:
-                    product_title = product.get("title") or product.get("name") or ""
-                    if not query_matches(product_title, query):
-                        continue
-                    product_url = product.get("url")
-                    if not product_url:
-                        continue
-                    absolute = urljoin(BASE, product_url).split("?")[0]
-                    path = urlparse(absolute).path.rstrip("/")
-                    if "/products/" not in path or path in seen:
-                        continue
-                    seen.add(path)
-                    urls.append(absolute)
-            else:
-                for url in data:
-                    path = urlparse(url).path.rstrip("/")
-                    if "/products/" not in path or path in seen:
-                        continue
-                    seen.add(path)
-                    urls.append(url)
-
+    _trace_stage("candidate_urls", started, query=query, search_variants=searches, returned_count=len(urls))
     return urls
 
 
-def search(query):
+def _search_internal(query, trace=False):
     query = str(query or "").strip()
     if not query:
         return []
 
+    if trace:
+        _trace_start(query)
+    total_started = time.monotonic()
     session = requests.Session()
+    results = []
+    seen = set()
+
     try:
+        t0 = time.monotonic()
         urls = candidate_urls(session, query)
-        if not urls:
-            return []
-
-        def fetch_product(url):
-            worker_session = requests.Session()
-            try:
-                return url, product_json(worker_session, url)
-            finally:
-                worker_session.close()
-
-        results = []
-        seen = set()
-
-        # Product pages are independent. Fetch them concurrently instead of
-        # paying the product-page latency once per URL.
-        with ThreadPoolExecutor(max_workers=min(8, len(urls))) as pool:
-            futures = [pool.submit(fetch_product, url) for url in urls]
-            for future in as_completed(futures):
-                try:
-                    url, data = future.result()
-                except Exception:
-                    continue
-
-                item = product_from_json(data, url)
-                if not item or not query_matches(item["name"], query):
-                    continue
-                key = urlparse(item["url"]).path.rstrip("/")
-                if key in seen:
-                    continue
-                seen.add(key)
-                results.append(item)
-
-        # Preserve deterministic discovery order rather than completion order.
-        order = {url: index for index, url in enumerate(urls)}
-        results.sort(key=lambda item: order.get(item.get("url"), len(order)))
+        _trace_stage("candidate_discovery_total", t0, returned_count=len(urls))
+        for url in urls:
+            t0 = time.monotonic()
+            data = product_json(session, url)
+            item = product_from_json(data, url)
+            accepted = bool(item and query_matches(item["name"], query))
+            if not accepted:
+                _trace_stage("product_candidate", t0, url=url, accepted=False)
+                continue
+            key = urlparse(item["url"]).path.rstrip("/")
+            if key in seen:
+                _trace_stage("product_candidate", t0, url=url, accepted=False, duplicate=True)
+                continue
+            seen.add(key)
+            results.append(item)
+            _trace_stage("product_candidate", t0, url=url, accepted=True)
+        _trace_stage("search_total", total_started, returned_count=len(results))
         return results
     finally:
         session.close()
+
+
+def search(query):
+    return _search_internal(query, trace=False)
+
+
+def diagnostic_search(query):
+    """Run the real Bplatz search while recording every network request/stage."""
+    started = time.monotonic()
+    trace = _trace_start(str(query or "").strip())
+    try:
+        results = _search_internal(query, trace=True)
+        trace["total_seconds"] = round(time.monotonic() - started, 4)
+        trace.pop("started_at", None)
+        return {"results": results, "trace": trace}
+    except Exception as exc:
+        trace["total_seconds"] = round(time.monotonic() - started, 4)
+        trace.pop("started_at", None)
+        trace["error"] = f"{type(exc).__name__}: {exc}"
+        return {"results": [], "trace": trace}
 
 
 if __name__ == "__main__":
