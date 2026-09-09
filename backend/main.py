@@ -140,6 +140,67 @@ def diagnose_live_pipeline(q: str = Query(..., min_length=1)):
         "final": snap,
     }
 
+
+# ===== TARGETED READ-ONLY VALIDATION TRACE =====
+@app.get("/diagnose-validation-pipeline")
+def diagnose_validation_pipeline(q: str = Query(..., min_length=1)):
+    """Run the real 8-store collection, then validate each store independently."""
+    import time as _t
+    query = str(q or "").strip()
+    started = _t.monotonic()
+    store_run = _engine._run_stores(query)
+    rows = {}
+    all_raw = []
+    for store in _engine.stores:
+        result = store_run["stores"][store]
+        raw = [x for x in (result.candidates or []) if isinstance(x, dict)]
+        all_raw.extend(raw)
+        t0 = _t.monotonic()
+        try:
+            validated = _engine._validate_candidates_only(query, list(raw))
+            validation_error = None
+        except Exception as exc:
+            validated = []
+            validation_error = f"{type(exc).__name__}: {exc}"
+        validation_elapsed = _t.monotonic() - t0
+        rows[store] = {
+            "status": result.status,
+            "store_elapsed": round(result.elapsed, 3),
+            "raw_count": len(raw),
+            "raw": raw,
+            "validated_count": len(validated),
+            "validated": validated,
+            "validation_elapsed": round(validation_elapsed, 3),
+            "validation_error": validation_error,
+        }
+    t0 = _t.monotonic()
+    raw_pool = _engine._dedupe_raw(all_raw)
+    dedupe_elapsed = _t.monotonic() - t0
+    t0 = _t.monotonic()
+    validated_all = _engine._validate_candidates_only(query, list(raw_pool))
+    all_validation_elapsed = _t.monotonic() - t0
+    t0 = _t.monotonic()
+    final = _engine._finalize(query, list(raw_pool))
+    final_elapsed = _t.monotonic() - t0
+    return {
+        "ok": True,
+        "diagnostic": "validation-pipeline-v1",
+        "query": query,
+        "store_phase_elapsed": round(store_run.get("elapsed", 0), 3),
+        "stores": rows,
+        "aggregate": {
+            "raw_count": len(all_raw),
+            "raw_after_dedupe": len(raw_pool),
+            "validated_count": len(validated_all),
+            "final_count": len(final),
+            "dedupe_elapsed": round(dedupe_elapsed, 3),
+            "validation_elapsed": round(all_validation_elapsed, 3),
+            "final_elapsed": round(final_elapsed, 3),
+            "final": final,
+        },
+        "total_elapsed": round(_t.monotonic() - started, 3),
+    }
+
 # ===== TEMPORARY READ-ONLY NOTINO DEEP DIAGNOSTIC =====
 JINA_PREFIX = "https://r.jina.ai/"
 NOTINO_BASE = "https://www.notino.fr"
