@@ -1,16 +1,15 @@
 """ScentHunter search orchestration v4.
 
-Fast two-batch scheduler:
-  - all 8 stores start concurrently
-  - batch 1 is published at ~1 second with the first four completed stores
-    (or fewer when one or more stores have not answered)
-  - batch 2 is published once the remaining stores settle
-
-UI publication is batched; store execution is fully concurrent so a slow
-scraper cannot delay the first paint.
+Strict 4 + 4 store scheduler with immediate progressive publication:
+  - wave 1 starts exactly four stores concurrently
+  - every completed store is published immediately; the other stores do not
+    block that publication
+  - only after wave 1 has settled does wave 2 start
+  - wave 2 behaves the same and its last publication marks the job complete
 
 Store adapters are left untouched. Central validation/grouping/finalization
-runs only after both waves have settled.
+is invoked only for the currently available raw candidates at publication
+time, never while holding SEARCH_JOBS_LOCK.
 """
 from __future__ import annotations
 
@@ -791,6 +790,13 @@ class SearchEngine:
                             "elapsed": round(time.monotonic() - started, 3),
                         })
 
+                        # CRITICAL: publish immediately after EACH future settles.
+                        # Do not wait for the remaining stores in this wave.
+                        # _finalize() runs before the short SEARCH_JOBS update lock,
+                        # so the status endpoint can observe the new result as soon
+                        # as canonicalization/grouping finishes for this snapshot.
+                        publish_batch(wave_id, final=False)
+
                 now = time.monotonic()
                 for future, (store, submitted) in list(futures.items()):
                     store_status[store] = {
@@ -812,9 +818,11 @@ class SearchEngine:
             wave2 = tuple(STORE_WAVES[1])
 
             run_wave(1, wave1)
-            publish_batch(1, final=False)
 
             run_wave(2, wave2)
+            # Final publication happens after wave 2 has completely settled.
+            # Any wave-2 store that completed earlier was already published
+            # immediately inside run_wave().
             publish_batch(2, final=True)
         except Exception as exc:
             update({
