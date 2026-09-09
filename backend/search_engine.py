@@ -465,16 +465,24 @@ class SearchEngine:
         }
 
     def run_job(self, job_id: str, query: str) -> None:
+        """
+        Background search with true progressive publication.
+
+        All stores start immediately. As soon as one store finishes, its raw
+        candidates are added to the central pool and the current validated
+        result set is published to SEARCH_JOBS. The frontend can therefore
+        display the first shop without waiting for the slowest shop.
+        """
         jobs = getattr(self.legacy, "SEARCH_JOBS", None)
         lock = getattr(self.legacy, "SEARCH_JOBS_LOCK", None)
+
         if jobs is None:
             legacy_runner = getattr(self.legacy, "_run_search_job_legacy", None)
-            if callable(legacy_runner):
+            if legacy_runner is not None:
                 return legacy_runner(job_id, query)
             raise RuntimeError("SEARCH_JOBS is not available")
 
         def update(payload: Dict[str, Any]) -> None:
-            phase_timings["job_update_count"] = int(phase_timings.get("job_update_count", 0)) + 1
             if lock is not None:
                 with lock:
                     job = jobs.get(job_id)
@@ -485,168 +493,139 @@ class SearchEngine:
                 if job is not None:
                     job.update(payload)
 
-        started = time.monotonic()
-        phase_started = started
-        phase_timings: Dict[str, Any] = {
-            "job_started_monotonic": started,
-            "store_execution": {},
-            "job_update_count": 0,
-        }
-        store_status = {store: {"status": "pending", "count": 0} for store in self.stores}
-        update({
-            "completed": False,
-            "phase": "discovery",
-            "status": "searching",
-            "results": [],
-            "candidates": [],
-            "errors": {},
-            "store_status": store_status,
-        })
-
         try:
-            executor = concurrent.futures.ThreadPoolExecutor(max_workers=len(self.stores), thread_name_prefix="scenthunter-store")
-            futures = {executor.submit(self._run_one_store, store, query): store for store in self.stores}
+            update({
+                "status": "searching",
+                "results": [],
+                "store_status": {
+                    store: {"status": "searching", "count": 0}
+                    for store in self.stores
+                },
+            })
+
+            started = time.monotonic()
+            executor = concurrent.futures.ThreadPoolExecutor(
+                max_workers=max(1, len(self.stores)),
+                thread_name_prefix="scenthunter-store",
+            )
+            futures = {
+                executor.submit(self._run_one_store, store, query): store
+                for store in self.stores
+            }
+            submitted_at = {future: time.monotonic() for future in futures}
             pending = set(futures)
             raw_pool: List[Dict[str, Any]] = []
-            errors: Dict[str, str] = {}
+            store_status: Dict[str, Any] = {
+                store: {"status": "searching", "count": 0}
+                for store in self.stores
+            }
             deadline = started + self.global_timeout
 
-            while pending and time.monotonic() < deadline:
-                done, pending = concurrent.futures.wait(
-                    pending,
-                    timeout=min(0.10, max(0.01, deadline - time.monotonic())),
-                    return_when=concurrent.futures.FIRST_COMPLETED,
-                )
-                for future in done:
-                    store = futures[future]
-                    try:
-                        result = future.result()
-                    except Exception as exc:
-                        result = StoreRun(store=store, status="error", error=f"{type(exc).__name__}: {exc}")
-                    store_status[store] = {
-                        "status": result.status,
-                        "count": len(result.candidates),
-                        "elapsed": round(result.elapsed, 3),
-                        "error": result.error,
-                    }
-                    phase_timings["store_execution"][store] = {
-                        "status": result.status,
-                        "elapsed": round(result.elapsed, 3),
-                        "count": len(result.candidates),
-                    }
-                    raw_pool.extend(result.candidates)
-                    if result.error:
-                        errors[store] = result.error
-
-                    # PROGRESSIVE PUBLISH: appena termina un negozio, trasformiamo
-                    # il candidate pool disponibile negli stessi risultati canonici
-                    # usati dalla ricerca finale. Il frontend può quindi mostrare
-                    # subito i primi risultati senza aspettare gli 8 store.
-                    partial_raw = self._dedupe_raw(list(raw_pool))
-                    partial_results = []
-                    if partial_raw:
-                        try:
-                            partial_results = self._finalize(query, partial_raw)
-                        except Exception as partial_exc:
-                            # Un problema nella finalizzazione parziale non deve
-                            # bloccare la ricerca: la finalizzazione completa verrà
-                            # comunque eseguita alla fine.
-                            phase_timings.setdefault("partial_finalize_errors", []).append(
-                                f"{type(partial_exc).__name__}: {partial_exc}"
-                            )
-
-                    completed_stores = sum(
-                        1 for x in store_status.values()
-                        if x["status"] != "pending" and x["status"] != "searching"
+            try:
+                while pending and time.monotonic() < deadline:
+                    done, _ = concurrent.futures.wait(
+                        pending,
+                        timeout=min(0.20, max(0.01, deadline - time.monotonic())),
+                        return_when=concurrent.futures.FIRST_COMPLETED,
                     )
 
-                    update({
-                        "completed": False,
-                        "phase": "collecting",
-                        "status": "searching",
-                        "results": list(partial_results),
-                        "candidates": list(partial_raw),
-                        "errors": dict(errors),
-                        "store_status": dict(store_status),
-                        "completed_stores": completed_stores,
-                        "total_stores": len(self.stores),
-                        "partial_result_count": len(partial_results),
-                        "elapsed": round(time.monotonic() - started, 3),
-                    })
+                    now = time.monotonic()
 
-            if pending:
-                for future in pending:
-                    store = futures[future]
-                    store_status[store] = {
-                        "status": "timeout",
-                        "count": 0,
-                        "elapsed": round(time.monotonic() - started, 3),
-                        "error": f"global search window expired ({self.global_timeout:.0f}s)",
-                    }
-                    errors[store] = store_status[store]["error"]
+                    # Also collect futures that crossed their independent
+                    # timeout while we were waiting for another completion.
+                    for future in list(pending):
+                        if future.done():
+                            done.add(future)
 
-            executor.shutdown(wait=False, cancel_futures=True)
+                    for future in done:
+                        if future not in pending:
+                            continue
+                        pending.remove(future)
+                        store = futures[future]
+                        try:
+                            result = future.result()
+                            raw_pool.extend(result.candidates)
+                            store_status[store] = {
+                                "status": result.status,
+                                "count": len(result.candidates),
+                                "elapsed": round(result.elapsed, 3),
+                                "error": result.error,
+                            }
+                            if result.error:
+                                update({"errors": {store: result.error}})
+                        except Exception as exc:
+                            error = f"{type(exc).__name__}: {exc}"
+                            store_status[store] = {
+                                "status": "error",
+                                "count": 0,
+                                "elapsed": round(now - submitted_at[future], 3),
+                                "error": error,
+                            }
+                            update({"errors": {store: error}})
 
-            phase_timings["store_phase_wall_time"] = round(time.monotonic() - phase_started, 3)
+                        # Publish immediately after EACH completed store.
+                        # This is the critical latency path for the frontend.
+                        validated = self._validate_candidates_only(query, raw_pool)
+                        update({
+                            "results": validated,
+                            "store_status": dict(store_status),
+                            "phase": "discovery",
+                            "completed": False,
+                            "elapsed": round(time.monotonic() - started, 3),
+                            "raw_candidate_count": len(raw_pool),
+                        })
 
-            t0 = time.monotonic()
-            raw_before_dedupe = len(raw_pool)
-            raw_pool = self._dedupe_raw(raw_pool)
-            phase_timings["dedupe"] = round(time.monotonic() - t0, 3)
-            phase_timings["raw_candidates_before_dedupe"] = raw_before_dedupe
-            phase_timings["raw_candidates"] = len(raw_pool)
+                    if not pending:
+                        break
 
-            t0 = time.monotonic()
-            validated = self._validate_candidates_only(query, raw_pool)
-            phase_timings["validation"] = round(time.monotonic() - t0, 3)
-            phase_timings["validated_candidates"] = len(validated)
+                    now = time.monotonic()
+                    for future in list(pending):
+                        if now - submitted_at[future] >= self.store_timeout:
+                            pending.remove(future)
+                            store = futures[future]
+                            error = f"store exceeded independent timeout ({self.store_timeout:.0f}s)"
+                            store_status[store] = {
+                                "status": "timeout",
+                                "count": 0,
+                                "elapsed": round(now - submitted_at[future], 3),
+                                "error": error,
+                            }
+                            update({
+                                "errors": {store: error},
+                                "store_status": dict(store_status),
+                            })
 
-            t0 = time.monotonic()
-            prepare = getattr(self.legacy, "_prepare_final_results", None)
-            if callable(prepare):
-                try:
-                    prepared = prepare(validated, query)
-                except TypeError:
-                    prepared = prepare(validated)
-            else:
-                prepared = validated
-            if prepared is None:
-                prepared = []
-            if not isinstance(prepared, list):
-                prepared = list(prepared)
-            prepared = [x for x in prepared if isinstance(x, dict)]
-            phase_timings["final_prepare"] = round(time.monotonic() - t0, 3)
+                if pending:
+                    now = time.monotonic()
+                    for future in pending:
+                        store = futures[future]
+                        store_status[store] = {
+                            "status": "timeout",
+                            "count": 0,
+                            "elapsed": round(now - submitted_at[future], 3),
+                            "error": "global search window expired",
+                        }
+                        future.cancel()
+                    pending.clear()
 
-            t0 = time.monotonic()
-            final = self._stable_results(prepared)
-            phase_timings["stable_sort"] = round(time.monotonic() - t0, 3)
-            phase_timings["total_before_final_update"] = round(time.monotonic() - started, 3)
+                final_results = self._finalize(query, raw_pool)
+                update({
+                    "status": "completed",
+                    "results": final_results,
+                    "store_status": dict(store_status),
+                    "elapsed": round(time.monotonic() - started, 3),
+                    "raw_candidate_count": len(raw_pool),
+                    "phase": "completed",
+                    "completed": True,
+                })
+            finally:
+                executor.shutdown(wait=False, cancel_futures=True)
 
-            update({
-                "results": final,
-                "candidates": list(raw_pool),
-                "errors": dict(errors),
-                "store_status": dict(store_status),
-                "phase": "completed",
-                "status": "completed",
-                "completed": True,
-                "elapsed": round(time.monotonic() - started, 3),
-                "raw_candidate_count": len(raw_pool),
-                "result_count": len(final),
-                "diagnostic": {
-                    **phase_timings,
-                    "total": round(time.monotonic() - started, 3),
-                },
-            })
         except Exception as exc:
             update({
-                "results": [], "candidates": [], "errors": {"_search": f"{type(exc).__name__}: {exc}"},
-                "status": "error", "completed": True, "phase": "error",
-                "elapsed": round(time.monotonic() - started, 3),
+                "status": "error",
+                "results": [],
                 "error": f"{type(exc).__name__}: {exc}",
                 "traceback": traceback.format_exc(limit=8),
-                "diagnostic": {
-                    **phase_timings,
-                    "total": round(time.monotonic() - started, 3),
-                },
             })
+
