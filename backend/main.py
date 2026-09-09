@@ -36,7 +36,7 @@ _engine = SearchEngine(
     _legacy,
     store_timeout=STORE_TIMEOUT_SECONDS,
     global_timeout=GLOBAL_SEARCH_TIMEOUT_SECONDS,
-    max_concurrent_stores=4,
+    max_concurrent_stores=8,
 )
 
 # ---------------------------------------------------------------------------
