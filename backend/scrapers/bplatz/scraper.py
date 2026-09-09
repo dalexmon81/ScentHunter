@@ -2,6 +2,7 @@ import json
 import re
 import time
 from concurrent.futures import ThreadPoolExecutor
+from threading import Lock
 import unicodedata
 from urllib.parse import quote_plus, urljoin, urlparse
 
@@ -17,6 +18,9 @@ HEADERS = {
 TIMEOUT = 20
 RETRIES = 3
 RETRY_SLEEP = 0.6
+
+LAST_TRACE = {}
+_TRACE_LOCK = Lock()
 
 NON_PERFUME_MARKERS = {
     "gift set", "set regalo", "discovery set", "fragrance set", "perfume set",
@@ -91,7 +95,7 @@ def _request_html(session, url, **kwargs):
     return None
 
 
-def predictive_products(session, query):
+def predictive_products(session, query, trace=None, stage="predictive"):
     endpoint = BASE + "/search/suggest.json"
     params = {
         "q": query,
@@ -99,7 +103,10 @@ def predictive_products(session, query):
         "resources[limit]": "20",
         "resources[options][unavailable_products]": "show",
     }
+    started = time.monotonic()
     response = _request_json(session, endpoint, params=params, headers=HEADERS, timeout=TIMEOUT)
+    if trace is not None:
+        trace.append({"stage": stage, "query": query, "seconds": round(time.monotonic() - started, 4), "ok": bool(response)})
     if not response:
         return []
     try:
@@ -109,9 +116,12 @@ def predictive_products(session, query):
         return []
 
 
-def product_json(session, url):
+def product_json(session, url, trace=None):
     clean = url.split("?")[0].rstrip("/")
+    started = time.monotonic()
     response = _request_json(session, clean + ".js", headers=HEADERS, timeout=TIMEOUT)
+    if trace is not None:
+        trace.append({"stage": "product_json", "url": clean + ".js", "seconds": round(time.monotonic() - started, 4), "ok": bool(response)})
     if not response:
         return None
     try:
@@ -202,7 +212,10 @@ def search_html_urls(session, query):
 def _predictive_search_worker(search_query):
     worker_session = requests.Session()
     try:
-        return predictive_products(worker_session, search_query)
+        trace = []
+        started = time.monotonic()
+        products = predictive_products(worker_session, search_query, trace=trace, stage="predictive_fallback")
+        return products, round(time.monotonic() - started, 4), trace
     finally:
         worker_session.close()
 
@@ -210,7 +223,10 @@ def _predictive_search_worker(search_query):
 def _product_json_worker(url):
     worker_session = requests.Session()
     try:
-        return product_json(worker_session, url)
+        trace = []
+        started = time.monotonic()
+        data = product_json(worker_session, url, trace=trace)
+        return data, round(time.monotonic() - started, 4), trace
     finally:
         worker_session.close()
 
@@ -247,27 +263,40 @@ def candidate_urls(session, query):
     # First try the exact user query alone. This is the fast path and avoids
     # adding concurrent requests when the primary predictive search already
     # returns usable products.
-    primary = predictive_products(session, searches[0])
+    primary_trace = []
+    primary_started = time.monotonic()
+    primary = predictive_products(session, searches[0], trace=primary_trace, stage="predictive_primary")
+    primary_seconds = round(time.monotonic() - primary_started, 4)
     collect(primary, urls, seen)
     if urls:
-        return urls
+        return urls, {"primary_seconds": primary_seconds, "fallback_seconds": 0.0, "html_seconds": 0.0, "trace": primary_trace, "discovery_path": "primary_predictive"}
 
     # Only if the exact query produced no usable URLs, try the normalized
     # variants concurrently. Keep deterministic search order when collecting.
     fallback_searches = searches[1:]
+    fallback_seconds = 0.0
+    trace = list(primary_trace)
     if fallback_searches:
+        fallback_started = time.monotonic()
         with ThreadPoolExecutor(max_workers=len(fallback_searches)) as executor:
             predictive_results = list(executor.map(_predictive_search_worker, fallback_searches))
-        for products in predictive_results:
+        fallback_seconds = round(time.monotonic() - fallback_started, 4)
+        for products, _elapsed, worker_trace in predictive_results:
+            trace.extend(worker_trace)
             collect(products, urls, seen)
 
-    # Preserve the original HTML discovery channel as a final fallback.
+    html_seconds = 0.0
     if not urls:
+        html_started = time.monotonic()
         for url in search_html_urls(session, query):
             if url not in urls:
                 urls.append(url)
+        html_seconds = round(time.monotonic() - html_started, 4)
+        discovery_path = "html_fallback"
+    else:
+        discovery_path = "fallback_predictive"
 
-    return urls
+    return urls, {"primary_seconds": primary_seconds, "fallback_seconds": fallback_seconds, "html_seconds": html_seconds, "trace": trace, "discovery_path": discovery_path}
 
 
 def search(query):
@@ -280,9 +309,36 @@ def search(query):
     seen = set()
 
     try:
-        urls = candidate_urls(session, query)
+        search_started = time.monotonic()
+        candidate_result = candidate_urls(session, query)
+        if isinstance(candidate_result, tuple):
+            urls, discovery_trace = candidate_result
+        else:
+            urls, discovery_trace = candidate_result, {}
+        discovery_seconds = round(time.monotonic() - search_started, 4)
+        product_stage_started = time.monotonic()
         with ThreadPoolExecutor(max_workers=min(8, max(1, len(urls)))) as executor:
-            product_data = list(executor.map(_product_json_worker, urls))
+            product_data = list(executor.map(_product_json_worker, urls)) if urls else []
+        product_stage_seconds = round(time.monotonic() - product_stage_started, 4)
+        product_trace = []
+        normalized_product_data = []
+        for entry in product_data:
+            data, _elapsed, worker_trace = entry
+            normalized_product_data.append(data)
+            product_trace.extend(worker_trace)
+        product_data = normalized_product_data
+        trace_payload = {
+            "query": query,
+            "discovery_seconds": discovery_seconds,
+            "discovery": discovery_trace,
+            "product_json_stage_seconds": product_stage_seconds,
+            "product_json": product_trace,
+            "total_search_seconds": round(time.monotonic() - search_started, 4),
+            "url_count": len(urls),
+        }
+        with _TRACE_LOCK:
+            global LAST_TRACE
+            LAST_TRACE = trace_payload
         for url, data in zip(urls, product_data):
             item = product_from_json(data, url)
             if not item or not query_matches(item["name"], query):
