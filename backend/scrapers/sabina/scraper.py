@@ -748,79 +748,129 @@ def _brand_collection_fallback(session, query):
                         return out
     return out
 
-
 def _diagnostic(query):
-    """Temporary forensic mode. Normal Sabina search is untouched.
-
-    Trigger: __SABINA_DIAG__:Liquid Brun
-    Returns one JSON-serialisable dict so /test-store can expose the trace.
-    """
-    target = "https://www.sabina.com/it/profumi-da-uomo/34982-liquid-brun-eau-de-parfum-french-avenue.html"
-    started = time.monotonic() if 'time' in globals() else __import__('time').monotonic()
+    """Forensic trace of the ORIGINAL Sabina pipeline. No search logic is changed."""
     import time as _time
-    report = {"diagnostic":"sabina_forensic_v1", "query":query, "stages":{}}
+    from concurrent.futures import ThreadPoolExecutor, as_completed
+    q = _clean(query) or "Liquid Brun"
+    report = {"diagnostic":"sabina_forensic_v2_pipeline", "query":q, "stages":{}}
+    started = _time.monotonic()
     s = requests.Session()
     s.headers.update(HEADERS)
     try:
-        def timed_get(label, url, timeout):
-            t = _time.monotonic()
-            rec = {"url":url, "timeout":timeout}
-            try:
-                r = s.get(url, headers=HEADERS, timeout=timeout, allow_redirects=True)
-                rec.update({"status":r.status_code, "elapsed":round(_time.monotonic()-t,3), "final_url":r.url, "bytes":len(r.content)})
-                body = r.text if r.status_code == 200 else ""
-                r.close()
-                return rec, body
-            except Exception as e:
-                rec.update({"elapsed":round(_time.monotonic()-t,3), "error":f"{type(e).__name__}: {e}"})
-                return rec, ""
-
-        # 1. Exact collection used by Sabina(8).
-        collection = BASE + '/it/601_french-avenue'
-        rec, body = timed_get("collection", collection, 4.0)
-        soup = BeautifulSoup(body, 'html.parser') if body else None
-        links=[]
-        matching=[]
-        if soup:
-            for a in soup.find_all('a', href=True):
-                href=urljoin(BASE,a.get('href','')).split('#')[0].split('?')[0]
-                if _looks_like_product_url(href):
-                    links.append(href)
-                    blob=(_clean(a.get_text(' ',strip=True))+' '+href).lower()
-                    if all(w in blob for w in ('liquid','brun')):
-                        matching.append(href)
-        rec['product_link_count']=len(set(links))
-        rec['matching_liquid_brun_count']=len(set(matching))
-        rec['matching_liquid_brun_urls']=list(dict.fromkeys(matching))[:10]
-        report['stages']['brand_collection']=rec
-
-        # 2. Fetch the known real product directly: isolates network vs parser.
-        rec2, product_body = timed_get("known_product", target, 4.0)
-        report['stages']['known_product_http']=rec2
-        if product_body:
-            t=_time.monotonic()
-            try:
-                parsed=_parse_html(product_body, 'Liquid Brun')
-                rec2parse={"elapsed":round(_time.monotonic()-t,3),"parsed_count":len(parsed),"parsed":parsed[:10]}
-            except Exception as e:
-                rec2parse={"elapsed":round(_time.monotonic()-t,3),"error":f"{type(e).__name__}: {e}"}
-            report['stages']['known_product_parse']=rec2parse
-        else:
-            report['stages']['known_product_parse']={"skipped":True}
-
-        # 3. Run the ORIGINAL collection function and expose exactly what it returns.
-        t=_time.monotonic()
+        # Stage 1: exactly the discovery function used by Sabina(8).
+        t = _time.monotonic()
         try:
-            result=_brand_collection_fallback(s,'Liquid Brun')
-            report['stages']['original_brand_function']={"elapsed":round(_time.monotonic()-t,3),"count":len(result),"urls":result[:10]}
+            candidates = _brand_collection_fallback(s, q)
+            report["stages"]["brand_collection"] = {
+                "elapsed": round(_time.monotonic()-t,3),
+                "count": len(candidates),
+                "urls": candidates[:12],
+            }
         except Exception as e:
-            report['stages']['original_brand_function']={"elapsed":round(_time.monotonic()-t,3),"error":f"{type(e).__name__}: {e}"}
+            candidates = []
+            report["stages"]["brand_collection"] = {
+                "elapsed": round(_time.monotonic()-t,3),
+                "error": f"{type(e).__name__}: {e}",
+            }
 
-        report['total_elapsed']=round(_time.monotonic()-started,3)
-        report['conclusion']={
-            "collection_finds_product": bool(matching),
-            "direct_product_parses": bool(report['stages'].get('known_product_parse',{}).get('parsed_count')),
-            "original_collection_returns_product": bool(report['stages'].get('original_brand_function',{}).get('count')),
+        # Stage 2: exactly the product fetch + parser used by search().
+        product_trace = []
+        rows = []
+        def trace_product(url):
+            rec = {"url":url}
+            t0 = _time.monotonic()
+            try:
+                r = _get(s, url)
+                rec["http_elapsed"] = round(_time.monotonic()-t0,3)
+                if r is None:
+                    rec["http"] = "blocked_or_none"
+                    rec["parsed_count"] = 0
+                    return rec, []
+                rec["http"] = r.status_code
+                rec["bytes"] = len(r.content)
+                body = r.text
+                r.close()
+                t1 = _time.monotonic()
+                parsed = _parse_html(body, q)
+                rec["parse_elapsed"] = round(_time.monotonic()-t1,3)
+                rec["parsed_count"] = len(parsed)
+                rec["parsed"] = parsed[:12]
+                return rec, parsed
+            except Exception as e:
+                rec["elapsed"] = round(_time.monotonic()-t0,3)
+                rec["error"] = f"{type(e).__name__}: {e}"
+                return rec, []
+
+        t = _time.monotonic()
+        if candidates:
+            with ThreadPoolExecutor(max_workers=min(4, len(candidates))) as ex:
+                futs = [ex.submit(trace_product, u) for u in candidates]
+                for fut in as_completed(futs):
+                    rec, parsed = fut.result()
+                    product_trace.append(rec)
+                    rows.extend(parsed)
+        report["stages"]["product_fetch_parse"] = {
+            "elapsed": round(_time.monotonic()-t,3),
+            "url_count": len(candidates),
+            "trace": product_trace,
+            "raw_rows_count": len(rows),
+            "raw_rows": rows[:30],
+        }
+
+        # Stage 3: exact _dedupe used by search().
+        t = _time.monotonic()
+        try:
+            deduped = _dedupe(rows, q)
+            report["stages"]["dedupe"] = {
+                "elapsed": round(_time.monotonic()-t,3),
+                "before": len(rows),
+                "after": len(deduped),
+                "rows": deduped[:30],
+            }
+        except Exception as e:
+            deduped = []
+            report["stages"]["dedupe"] = {
+                "elapsed": round(_time.monotonic()-t,3),
+                "before": len(rows),
+                "error": f"{type(e).__name__}: {e}",
+            }
+
+        # Stage 4: exact enrichment used by search(), including its possible drops.
+        t = _time.monotonic()
+        if deduped:
+            try:
+                enriched = _enrich_product_sizes(s, deduped, q)
+                report["stages"]["enrichment"] = {
+                    "elapsed": round(_time.monotonic()-t,3),
+                    "before": len(deduped),
+                    "after": len(enriched),
+                    "rows": enriched[:30],
+                }
+            except Exception as e:
+                enriched = []
+                report["stages"]["enrichment"] = {
+                    "elapsed": round(_time.monotonic()-t,3),
+                    "before": len(deduped),
+                    "error": f"{type(e).__name__}: {e}",
+                }
+        else:
+            enriched = []
+            report["stages"]["enrichment"] = {"skipped": True, "before": 0, "after": 0}
+
+        report["total_elapsed"] = round(_time.monotonic()-started,3)
+        report["conclusion"] = {
+            "discovery_count": len(candidates),
+            "product_raw_rows": len(rows),
+            "dedupe_rows": len(deduped),
+            "enriched_rows": len(enriched),
+            "first_zero_stage": (
+                "discovery" if not candidates else
+                "product_fetch_parse" if not rows else
+                "dedupe" if not deduped else
+                "enrichment" if not enriched else
+                "none"
+            )
         }
         return report
     finally:
@@ -829,7 +879,7 @@ def _diagnostic(query):
 def search(query):
     """Fast, bounded Sabina search using the official product sitemap first."""
     query = _clean(query)
-    if query.startswith("__SABINA_DIAG__:"):
+    if query.startswith("__SABINA_DIAG_V2__:"):
         return [_diagnostic(query.split(":",1)[1].strip() or "Liquid Brun")]
     if not query:
         return []
