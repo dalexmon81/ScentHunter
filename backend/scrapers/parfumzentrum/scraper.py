@@ -100,25 +100,25 @@ def _xml_urls(xml_text):
     ]
 
 
-_SITEMAP_CACHE = []
-_SITEMAP_CACHE_TS = 0.0
-_SITEMAP_CACHE_TTL = 900.0
+_SITEMAP_CACHE = {"ts": 0.0, "urls": []}
+_SITEMAP_CACHE_SECONDS = 900.0
 
 
 def _get_sitemap_urls():
-    global _SITEMAP_CACHE, _SITEMAP_CACHE_TS
-
     import time
     from concurrent.futures import ThreadPoolExecutor, as_completed
 
     now = time.time()
-    if _SITEMAP_CACHE and (now - _SITEMAP_CACHE_TS) < _SITEMAP_CACHE_TTL:
-        return list(_SITEMAP_CACHE)
+    cached = _SITEMAP_CACHE.get("urls") or []
+    if cached and (now - float(_SITEMAP_CACHE.get("ts", 0.0))) < _SITEMAP_CACHE_SECONDS:
+        return list(cached)
 
-    response = SESSION.get(SITEMAP_URL, headers=HEADERS, timeout=10)
+    response = requests.get(SITEMAP_URL, headers=HEADERS, timeout=10)
     response.raise_for_status()
-    urls = _xml_urls(response.text)
-    response.close()
+    try:
+        urls = _xml_urls(response.text)
+    finally:
+        response.close()
 
     child_maps = [
         url for url in urls
@@ -127,8 +127,8 @@ def _get_sitemap_urls():
     ]
 
     if not child_maps:
-        _SITEMAP_CACHE = list(urls)
-        _SITEMAP_CACHE_TS = time.time()
+        _SITEMAP_CACHE["ts"] = time.time()
+        _SITEMAP_CACHE["urls"] = list(urls)
         return urls
 
     def fetch_child(sitemap):
@@ -152,8 +152,8 @@ def _get_sitemap_urls():
             except Exception:
                 continue
 
-    _SITEMAP_CACHE = list(output)
-    _SITEMAP_CACHE_TS = time.time()
+    _SITEMAP_CACHE["ts"] = time.time()
+    _SITEMAP_CACHE["urls"] = list(output)
     return output
 
 
@@ -597,7 +597,7 @@ def _choose_product_image(soup, product_name):
 
 def _extract_product(url, query):
     try:
-        response = SESSION.get(url, headers=HEADERS, timeout=10)
+        response = requests.get(url, headers=HEADERS, timeout=10)
     except requests.RequestException:
         return None
 
@@ -640,16 +640,16 @@ def _extract_product(url, query):
         concentration = "Extrait de Parfum"
 
     page_text = soup.get_text(" ", strip=True).lower()
-    if any(x in page_text for x in (
-        "nicht lieferbar", "nicht vorrätig", "ausverkauft",
-    )):
-        return None
-
-    price = _extract_price(soup)
-    if price is None:
-        return None
 
     data = _jsonld_product(soup)
+    availability = _product_availability(data, soup)
+    if any(x in page_text for x in (
+        "nicht lieferbar", "nicht vorrätig", "ausverkauft",
+        "leider nicht lieferbar", "in nächster zeit leider nicht lieferbar",
+    )):
+        availability = "out_of_stock"
+
+    price = _extract_price(soup)
     brand = _jsonld_value(data, "brand")
     image = _choose_product_image(soup, name)
 
@@ -657,7 +657,6 @@ def _extract_product(url, query):
     mpn = _jsonld_value(data, "mpn")
     sku = _jsonld_value(data, "sku")
     product_id = _jsonld_value(data, "productID", "productId")
-    availability = _product_availability(data, soup)
 
     return {
         "store": "ParfumZentrum",
@@ -782,6 +781,129 @@ def _candidate_score(url, query):
     return score
 
 
+def _category_links_from_html(html):
+    """Return generic same-site catalog/category URLs discovered on a product page."""
+    soup = BeautifulSoup(html or "", "html.parser")
+    links = []
+    seen = set()
+    for anchor in soup.find_all("a", href=True):
+        href = str(anchor.get("href") or "").strip()
+        if not href:
+            continue
+        if href.startswith("/"):
+            href = BASE_URL + href
+        elif href.startswith("//"):
+            href = "https:" + href
+        if not href.lower().startswith(BASE_URL.lower()):
+            continue
+        clean = href.split("#", 1)[0]
+        if not clean.lower().endswith("/"):
+            clean += "/"
+        if re.search(r"_z\d+/?$", clean, re.I):
+            continue
+        # Parfum-Zentrum's catalog/category URLs use v/k identifiers.
+        # Keeping this generic avoids hardcoding any perfume or brand.
+        if not re.search(r"(?:_v\d+|_k\d+)(?:/)?$", clean, re.I):
+            continue
+        if clean not in seen:
+            seen.add(clean)
+            links.append(clean)
+    return links
+
+
+def _product_urls_from_catalog_html(html, query):
+    soup = BeautifulSoup(html or "", "html.parser")
+    found = []
+    seen = set()
+    for anchor in soup.find_all("a", href=True):
+        href = str(anchor.get("href") or "").strip()
+        if href.startswith("/"):
+            href = BASE_URL + href
+        elif href.startswith("//"):
+            href = "https:" + href
+        if not href.lower().startswith(BASE_URL.lower()):
+            continue
+        clean = href.split("#", 1)[0]
+        if not re.search(r"_z\d+/?$", clean, re.I):
+            continue
+        label = " ".join(anchor.stripped_strings)
+        candidate_name = label or clean
+        if not _matches_query(candidate_name, query) and not _matches_query(clean, query):
+            continue
+        if clean not in seen:
+            seen.add(clean)
+            found.append(clean)
+    return found
+
+
+def _catalog_fallback_candidates(seed_urls, query):
+    """Discover products omitted from the sitemap via catalog links on seed pages."""
+    if not seed_urls:
+        return []
+
+    from concurrent.futures import ThreadPoolExecutor, as_completed
+
+    category_urls = []
+    seen_categories = set()
+
+    def fetch_seed(url):
+        try:
+            response = requests.get(url, headers=HEADERS, timeout=8)
+            try:
+                if response.status_code == 200:
+                    return response.text
+            finally:
+                response.close()
+        except requests.RequestException:
+            return ""
+        return ""
+
+    with ThreadPoolExecutor(max_workers=min(4, len(seed_urls))) as executor:
+        futures = [executor.submit(fetch_seed, url) for url in seed_urls[:4]]
+        for future in as_completed(futures):
+            try:
+                html = future.result() or ""
+            except Exception:
+                html = ""
+            for category in _category_links_from_html(html):
+                if category not in seen_categories:
+                    seen_categories.add(category)
+                    category_urls.append(category)
+
+    # A product page usually exposes a brand/category URL. Fetch only a small
+    # number of catalog pages to keep this fallback bounded and fast.
+    category_urls = category_urls[:4]
+    if not category_urls:
+        return []
+
+    def fetch_category(url):
+        try:
+            response = requests.get(url, headers=HEADERS, timeout=8)
+            try:
+                if response.status_code == 200:
+                    return _product_urls_from_catalog_html(response.text, query)
+            finally:
+                response.close()
+        except requests.RequestException:
+            return []
+        return []
+
+    discovered = []
+    seen = set()
+    with ThreadPoolExecutor(max_workers=min(4, len(category_urls))) as executor:
+        futures = [executor.submit(fetch_category, url) for url in category_urls]
+        for future in as_completed(futures):
+            try:
+                urls = future.result() or []
+            except Exception:
+                urls = []
+            for url in urls:
+                if url not in seen:
+                    seen.add(url)
+                    discovered.append(url)
+    return discovered
+
+
 def search(query):
     query = str(query or "").strip()
     if not query:
@@ -793,74 +915,102 @@ def search(query):
         print("PARFUMZENTRUM SITEMAP ERROR:", error)
         return []
 
-    candidates = [
-        url for url in urls
-        if re.search(r"_z\d+/?$", url)
-        and _matches_query(url, query)
-    ]
+    query_tokens = {
+        token for token in _tokens(query)
+        if token not in STOPWORDS
+        and not re.fullmatch(r"\d+(?:[.,]\d+)?", token)
+    }
 
-    # When the user did not request a size, do not let a miniature/sample
-    # page compete with the normal product page for the same product.
-    # This is deliberately based only on URL structure/tokens, never on a
-    # particular perfume name.
+    candidates = []
+    seen_candidates = set()
+    for url in urls:
+        if not re.search(r"_z\d+/?$", url, re.I):
+            continue
+        url_tokens = set(_tokens(url))
+        if query_tokens and query_tokens.issubset(url_tokens):
+            requested_concentration = _concentration(query)
+            if (
+                not requested_concentration
+                or _concentration(url) == requested_concentration
+            ):
+                if url not in seen_candidates:
+                    seen_candidates.add(url)
+                    candidates.append(url)
+
     if _requested_size_ml(query) is None:
         full_size_signatures = set()
-
         for url in candidates:
             size = _candidate_size_ml(url)
-            if size is None or size < 50:
-                continue
-
-            full_size_signatures.add(_candidate_signature(url))
+            if size is not None and size >= 50:
+                full_size_signatures.add(_candidate_signature(url))
 
         if full_size_signatures:
-            filtered = []
-            for url in candidates:
-                size = _candidate_size_ml(url)
-                if size is None or size >= 50:
-                    filtered.append(url)
-                    continue
-
-                signature = _candidate_signature(url)
-
-                # Drop only a small-format URL whose product identity is
-                # also present as a full-size URL. Other products remain.
-                if signature in full_size_signatures:
-                    continue
-
-                filtered.append(url)
-
-            candidates = filtered
+            candidates = [
+                url for url in candidates
+                if _candidate_size_ml(url) is None
+                or _candidate_size_ml(url) >= 50
+                or _candidate_signature(url) not in full_size_signatures
+            ]
 
     candidates.sort(
         key=lambda url: _candidate_score(url, query),
         reverse=True,
     )
 
-    results = []
-    seen = set()
-
-    for url in candidates[:24]:
+    # The site's sitemap can be stale/incomplete. If discovery is suspiciously
+    # small, use catalog/category links from the strongest seed product pages.
+    if len(candidates) < 2:
         try:
-            item = _extract_product(url, query)
+            fallback = _catalog_fallback_candidates(candidates[:4], query)
+            for url in fallback:
+                if url not in seen_candidates:
+                    seen_candidates.add(url)
+                    candidates.append(url)
+        except Exception as error:
+            print("PARFUMZENTRUM CATALOG FALLBACK ERROR:", repr(error))
+
+    candidates.sort(
+        key=lambda url: _candidate_score(url, query),
+        reverse=True,
+    )
+
+    # Parse product pages concurrently. This removes the old serial 24-page
+    # waterfall while keeping the parser and validation rules unchanged.
+    from concurrent.futures import ThreadPoolExecutor, as_completed
+
+    def parse_one(url):
+        try:
+            return _extract_product(url, query)
         except Exception as error:
             print("PARFUMZENTRUM PRODUCT ERROR:", repr(error))
-            item = None
+            return None
 
-        if not item:
-            continue
+    results = []
+    seen = set()
+    work = candidates[:24]
 
-        key = (
-            item["name"].lower(),
-            item["price"],
-            item["size_ml"],
+    with ThreadPoolExecutor(max_workers=min(6, len(work) or 1)) as executor:
+        futures = {executor.submit(parse_one, url): url for url in work}
+        for future in as_completed(futures):
+            item = future.result()
+            if not item:
+                continue
+
+            key = (
+                str(item.get("name") or "").lower(),
+                item.get("price"),
+                item.get("size_ml"),
+            )
+            if key in seen:
+                continue
+            seen.add(key)
+            results.append(item)
+
+    results.sort(
+        key=lambda item: (
+            0 if item.get("available") else 1,
+            -float(item.get("size_ml") or 0),
+            str(item.get("name") or "").lower(),
         )
-
-        if key in seen:
-            continue
-
-        seen.add(key)
-        results.append(item)
-
-    SESSION.close()
+    )
     return results
