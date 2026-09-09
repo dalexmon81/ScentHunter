@@ -553,3 +553,230 @@ def diagnose(q):
         }
     finally:
         session.close()
+class _DiagnosticSession(requests.Session):
+    """Requests session that records every HTTP attempt without changing production behavior."""
+    def __init__(self):
+        super().__init__()
+        self.trace = []
+
+    def get(self, url, **kwargs):
+        started = time.monotonic()
+        status = None
+        error = None
+        try:
+            response = super().get(url, **kwargs)
+            status = response.status_code
+            return response
+        except Exception as exc:
+            error = type(exc).__name__
+            raise
+        finally:
+            self.trace.append({
+                "url": str(url),
+                "elapsed_seconds": round(time.monotonic() - started, 4),
+                "status": status,
+                "error": error,
+                "timeout": kwargs.get("timeout"),
+            })
+
+
+def diagnostic_search(q):
+    """
+    Read-only forensic path used by SearchEngine.diagnostic_search().
+
+    It reproduces the production search flow but records the internal HTTP
+    critical path, retries, discovery endpoints, and parallel product phase.
+    The normal search() function is intentionally untouched.
+    """
+    q = clean(q)
+    if not q:
+        return {
+            "diagnostic": True,
+            "query": q,
+            "error": "empty_query",
+        }
+
+    started_total = time.monotonic()
+    session = _DiagnosticSession()
+    session.headers.update(HEADERS)
+
+    def elapsed(start):
+        return round(time.monotonic() - start, 4)
+
+    try:
+        discovery_started = time.monotonic()
+        discovery_http_start = len(session.trace)
+        shopify = _shopify_discovery(session, q)
+        discovery_http = session.trace[discovery_http_start:]
+        discovery_elapsed = elapsed(discovery_started)
+
+        sitemap = []
+        sitemap_http = []
+        sitemap_elapsed = 0.0
+
+        if not shopify:
+            sitemap_started = time.monotonic()
+            sitemap_http_start = len(session.trace)
+            sitemap = _targeted_sitemap(session, q)
+            sitemap_http = session.trace[sitemap_http_start:]
+            sitemap_elapsed = elapsed(sitemap_started)
+
+        candidates = []
+        seen = set()
+        for u in shopify + sitemap:
+            if u not in seen:
+                seen.add(u)
+                candidates.append(u)
+        candidates = candidates[:MAX_PRODUCT_URLS]
+
+        product_results = []
+        product_started = time.monotonic()
+        product_http_start = len(session.trace)
+
+        if candidates:
+            with ThreadPoolExecutor(
+                max_workers=min(PRODUCT_WORKERS, len(candidates))
+            ) as executor:
+                futures = {
+                    executor.submit(product, session, u, q): u
+                    for u in candidates
+                }
+                for future in as_completed(futures):
+                    url = futures[future]
+                    task_started = time.monotonic()
+                    try:
+                        item = future.result()
+                        error = None
+                    except Exception as exc:
+                        item = None
+                        error = type(exc).__name__
+
+                    product_results.append({
+                        "url": url,
+                        "accepted": bool(item),
+                        "name": item.get("name") if item else None,
+                        "price": item.get("price") if item else None,
+                        "task_wait_after_completion_seconds": round(
+                            time.monotonic() - task_started, 4
+                        ),
+                        "error": error,
+                    })
+
+        product_http = session.trace[product_http_start:]
+        product_elapsed = elapsed(product_started)
+
+        # Attach request chronology to the product phase. Since requests are
+        # concurrent, summed request time is NOT the wall-clock time; the
+        # endpoint timings below expose the real critical path.
+        discovery_calls = []
+        for call in discovery_http:
+            discovery_calls.append({
+                "url": call["url"],
+                "elapsed_seconds": call["elapsed_seconds"],
+                "status": call["status"],
+                "error": call["error"],
+                "timeout": call["timeout"],
+            })
+
+        sitemap_calls = []
+        for call in sitemap_http:
+            sitemap_calls.append({
+                "url": call["url"],
+                "elapsed_seconds": call["elapsed_seconds"],
+                "status": call["status"],
+                "error": call["error"],
+                "timeout": call["timeout"],
+            })
+
+        product_calls = []
+        for call in product_http:
+            product_calls.append({
+                "url": call["url"],
+                "elapsed_seconds": call["elapsed_seconds"],
+                "status": call["status"],
+                "error": call["error"],
+                "timeout": call["timeout"],
+            })
+
+        def critical_path(calls):
+            return round(
+                max((float(x.get("elapsed_seconds") or 0) for x in calls), default=0.0),
+                4,
+            )
+
+        def status_counts(calls):
+            counts = {}
+            for call in calls:
+                key = str(call.get("status"))
+                counts[key] = counts.get(key, 0) + 1
+            return counts
+
+        return {
+            "diagnostic": True,
+            "diagnostic_type": "perfumemarket_internal_forensics_v1",
+            "query": q,
+            "limits": {
+                "timeout_seconds": TIMEOUT,
+                "retries": RETRIES,
+                "retry_sleep_seconds": RETRY_SLEEP,
+                "max_product_urls": MAX_PRODUCT_URLS,
+                "product_workers": PRODUCT_WORKERS,
+            },
+            "timing": {
+                "discovery_seconds": discovery_elapsed,
+                "sitemap_seconds": sitemap_elapsed,
+                "product_fetch_seconds": product_elapsed,
+                "total_seconds": elapsed(started_total),
+            },
+            "discovery": {
+                "shopify_candidates": shopify,
+                "candidate_count": len(candidates),
+                "http_calls": discovery_calls,
+                "http_call_count": len(discovery_calls),
+                "http_critical_path_seconds": critical_path(discovery_calls),
+                "http_status_counts": status_counts(discovery_calls),
+            },
+            "sitemap": {
+                "used": bool(sitemap),
+                "candidates": sitemap,
+                "http_calls": sitemap_calls,
+                "http_call_count": len(sitemap_calls),
+                "http_critical_path_seconds": critical_path(sitemap_calls),
+                "http_status_counts": status_counts(sitemap_calls),
+            },
+            "products": {
+                "candidate_count": len(candidates),
+                "accepted_count": sum(
+                    1 for x in product_results if x["accepted"]
+                ),
+                "results": product_results,
+                "http_calls": product_calls,
+                "http_call_count": len(product_calls),
+                "http_critical_path_seconds": critical_path(product_calls),
+                "http_status_counts": status_counts(product_calls),
+            },
+            "analysis": {
+                "discovery_non_http_seconds": round(
+                    max(
+                        0.0,
+                        discovery_elapsed
+                        - critical_path(discovery_calls),
+                    ),
+                    4,
+                ),
+                "product_non_http_seconds": round(
+                    max(
+                        0.0,
+                        product_elapsed
+                        - critical_path(product_calls),
+                    ),
+                    4,
+                ),
+                "retry_like_duplicate_urls": sorted({
+                    url for url in [x["url"] for x in session.trace]
+                    if [y["url"] for y in session.trace].count(url) > 1
+                }),
+            },
+        }
+    finally:
+        session.close()
