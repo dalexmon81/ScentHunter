@@ -721,7 +721,6 @@ def diagnostic_scraper_deep(
     allowed = {
         "deloox": "scrapers.deloox.scraper",
         "sabina": "scrapers.sabina.scraper",
-        "bplatz": "scrapers.bplatz.scraper",
     }
     if store_key not in allowed:
         return {
@@ -794,32 +793,7 @@ def diagnostic_scraper_deep(
     }
 
     try:
-        if store_key == "bplatz":
-            # Bplatz diagnostic scraper records a private LAST_TRACE while
-            # executing the exact search() implementation. Expose that trace
-            # read-only without monkey-patching requests globally.
-            search_fn = getattr(module, "search", None)
-            if not callable(search_fn):
-                raise RuntimeError("search_not_found")
-            t0 = _deep_time.monotonic()
-            products = search_fn(query) or []
-            total_ms = round((_deep_time.monotonic() - t0) * 1000)
-            trace = getattr(module, "LAST_TRACE", None) or {}
-            result["stages"] = {
-                "search": trace,
-            }
-            result["results"] = products[:30]
-            result["summary"] = {
-                "http_call_count": len(trace.get("http_calls", []) or []),
-                "total_elapsed_ms": total_ms,
-                "result_count": len(products),
-                "discovery_path": (trace.get("discovery") or {}).get("discovery_path"),
-                "discovery_seconds": trace.get("discovery_seconds"),
-                "product_json_stage_seconds": trace.get("product_json_stage_seconds"),
-                "total_search_seconds": trace.get("total_search_seconds"),
-            }
-            return result
-        elif store_key == "deloox":
+        if store_key == "deloox":
             # Run the exact discovery function used by search(), then manually
             # run its authoritative product parser on every discovered URL.
             t0 = _deep_time.monotonic()
@@ -989,7 +963,6 @@ def diagnostic_scraper_trace(
     allowed = {
         "deloox": "scrapers.deloox.scraper",
         "sabina": "scrapers.sabina.scraper",
-        "bplatz": "scrapers.bplatz.scraper",
     }
     if store_key not in allowed:
         return {"ok": False, "diagnostic": "scraper_trace_v2", "error": "unsupported_store", "allowed_stores": sorted(allowed)}
