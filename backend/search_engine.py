@@ -510,6 +510,13 @@ class SearchEngine:
             },
         }
 
+    @staticmethod
+    def _result_identity(item: Dict[str, Any]) -> tuple:
+        brand = str(item.get("brand") or "").strip().casefold()
+        name = str(item.get("name") or item.get("title") or "").strip().casefold()
+        size = str(item.get("size_ml") or item.get("size") or "").strip().casefold()
+        return (brand, name, size)
+
     def search_job_snapshot(self, job_id: str) -> Dict[str, Any]:
         jobs = getattr(self.legacy, "SEARCH_JOBS", None)
         lock = getattr(self.legacy, "SEARCH_JOBS_LOCK", None)
@@ -533,6 +540,9 @@ class SearchEngine:
         results = snapshot.get("results")
         if not isinstance(results, list):
             results = []
+        batch_results = snapshot.get("batch_results")
+        if not isinstance(batch_results, list):
+            batch_results = []
         store_status = snapshot.get("store_status")
         if not isinstance(store_status, dict):
             store_status = {}
@@ -548,6 +558,9 @@ class SearchEngine:
             "query": str(snapshot.get("query") or ""),
             "count": len(results),
             "results": list(results),
+            "batch_results": list(batch_results),
+            "batch_id": int(snapshot.get("batch_id") or 0),
+            "wave": int(snapshot.get("wave") or 0),
             "comparisons": list(snapshot.get("comparisons") or []),
             "errors": dict(snapshot.get("errors") or {}),
             "store_status": dict(store_status),
@@ -585,12 +598,16 @@ class SearchEngine:
         errors: Dict[str, str] = {}
         raw_pool: List[Dict[str, Any]] = []
         raw_lock = __import__("threading").Lock()
+        previous_results: List[Dict[str, Any]] = []
 
         update({
             "status": "searching",
             "phase": "discovery",
             "completed": False,
             "results": [],
+            "batch_results": [],
+            "batch_id": 0,
+            "wave": 0,
             "comparisons": [],
             "errors": {},
             "store_status": dict(store_status),
@@ -601,14 +618,33 @@ class SearchEngine:
             "elapsed": 0.0,
         })
 
-        def publish() -> None:
+        def publish_wave(wave_number: int) -> None:
+            nonlocal previous_results
             with raw_lock:
-                snapshot_results = [dict(x) for x in raw_pool if isinstance(x, dict)]
+                wave_raw = [dict(x) for x in raw_pool if isinstance(x, dict)]
+            final_results = self._finalize(query, wave_raw)
+
+            # Publish exactly one immutable UI batch per wave.
+            # Wave 1 publishes its complete result set. Wave 2 publishes only
+            # the newly introduced product groups, while `results` remains the
+            # cumulative list for consumers that want the full set.
+            previous_keys = {self._result_identity(x) for x in previous_results}
+            batch_results = [
+                dict(x) for x in final_results
+                if self._result_identity(x) not in previous_keys
+            ]
+            if wave_number == 1 and not previous_results:
+                batch_results = [dict(x) for x in final_results]
+
+            previous_results = [dict(x) for x in final_results]
             update({
                 "status": "searching",
-                "phase": "discovery",
+                "phase": f"wave_{wave_number}_published",
                 "completed": False,
-                "results": snapshot_results,
+                "results": [dict(x) for x in final_results],
+                "batch_results": batch_results,
+                "batch_id": wave_number,
+                "wave": wave_number,
                 "comparisons": [],
                 "errors": dict(errors),
                 "store_status": dict(store_status),
@@ -618,24 +654,27 @@ class SearchEngine:
                     and info.get("status") not in ("pending", "searching")
                 ),
                 "total_stores": len(self.stores),
-                "raw_candidate_count": len(snapshot_results),
+                "raw_candidate_count": len(wave_raw),
                 "results_are_final": True,
                 "elapsed": round(time.monotonic() - started, 3),
             })
 
         try:
-            deadline = started + self.global_timeout
-
             for wave_number, wave in enumerate(STORE_WAVES, start=1):
                 active = [s for s in wave if s in self.stores]
                 if not active:
                     continue
 
-                # Mark the entire wave as searching before launching it.
+                # Each wave gets its own hard timeout. The second wave does not
+                # inherit remaining time from the first wave.
+                wave_started = time.monotonic()
+                wave_deadline = wave_started + self.store_timeout
+
                 for store in active:
                     store_status[store] = {"status": "searching", "count": 0}
                 update({
                     "phase": f"discovery_wave_{wave_number}",
+                    "wave": wave_number,
                     "store_status": dict(store_status),
                     "elapsed": round(time.monotonic() - started, 3),
                 })
@@ -645,23 +684,13 @@ class SearchEngine:
                     thread_name_prefix="scenthunter-store",
                 )
                 futures: Dict[concurrent.futures.Future, tuple[str, float]] = {}
-
                 try:
                     for store in active:
-                        if time.monotonic() >= deadline:
-                            store_status[store] = {
-                                "status": "timeout",
-                                "count": 0,
-                                "elapsed": round(time.monotonic() - started, 3),
-                                "error": "global search window expired before wave start",
-                            }
-                            errors[store] = store_status[store]["error"]
-                            continue
                         future = executor.submit(self._run_one_store, store, query)
                         futures[future] = (store, time.monotonic())
 
                     while futures:
-                        remaining = deadline - time.monotonic()
+                        remaining = wave_deadline - time.monotonic()
                         if remaining <= 0:
                             break
 
@@ -686,10 +715,7 @@ class SearchEngine:
                                     error=f"{type(exc).__name__}: {exc}",
                                 )
 
-                            candidates = [
-                                x for x in (result.candidates or [])
-                                if isinstance(x, dict)
-                            ]
+                            candidates = [x for x in (result.candidates or []) if isinstance(x, dict)]
                             with raw_lock:
                                 raw_pool.extend(candidates)
                                 raw_pool[:] = self._dedupe_raw(raw_pool)
@@ -703,19 +729,13 @@ class SearchEngine:
                                 store_status[store]["error"] = result.error
                                 errors[store] = result.error
 
-                    # Strict barrier timeout handling: settle all remaining
-                    # stores in this wave before the next wave can start.
                     now = time.monotonic()
                     for future, (store, submitted) in list(futures.items()):
-                        error = (
-                            "store timeout / global search window expired"
-                            if time.monotonic() >= deadline
-                            else "store timeout"
-                        )
+                        error = "store timeout"
                         store_status[store] = {
                             "status": "timeout",
                             "count": 0,
-                            "elapsed": round(now - submitted, 3),
+                            "elapsed": round(max(0.0, now - submitted), 3),
                             "error": error,
                         }
                         errors[store] = error
@@ -724,23 +744,9 @@ class SearchEngine:
                 finally:
                     executor.shutdown(wait=False, cancel_futures=True)
 
-                # BATCH PUBLICATION: expose the whole settled wave at once.
-                # The frontend therefore receives wave 1 as one batch of up to
-                # four stores, then wave 2 as the second batch.
-                publish()
-
-                # HARD BARRIER: only after every store in this wave has a final
-                # status do we enter the next wave.
-                update({
-                    "phase": f"wave_{wave_number}_completed",
-                    "store_status": dict(store_status),
-                    "completed_stores": sum(
-                        1 for info in store_status.values()
-                        if isinstance(info, dict)
-                        and info.get("status") not in ("pending", "searching")
-                    ),
-                    "elapsed": round(time.monotonic() - started, 3),
-                })
+                # This is the ONLY publication point for this wave. Nothing is
+                # sent to the frontend while individual stores finish.
+                publish_wave(wave_number)
 
             with raw_lock:
                 final_raw = list(raw_pool)
@@ -750,7 +756,10 @@ class SearchEngine:
                 "status": "completed",
                 "phase": "completed",
                 "completed": True,
-                "results": final_results,
+                "results": [dict(x) for x in final_results],
+                "batch_results": [],
+                "batch_id": 2,
+                "wave": 2,
                 "comparisons": [],
                 "errors": dict(errors),
                 "store_status": dict(store_status),
@@ -769,7 +778,10 @@ class SearchEngine:
                 "status": "error",
                 "phase": "completed",
                 "completed": True,
-                "results": [],
+                "results": [dict(x) for x in previous_results],
+                "batch_results": [],
+                "batch_id": 0,
+                "wave": 0,
                 "comparisons": [],
                 "error": f"{type(exc).__name__}: {exc}",
                 "errors": dict(errors),
