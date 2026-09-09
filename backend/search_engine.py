@@ -813,4 +813,3 @@ class SearchEngine:
             })
         finally:
             executor.shutdown(wait=False, cancel_futures=True)
-
