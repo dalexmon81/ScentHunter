@@ -29,7 +29,7 @@ from fastapi import Query
 # - product catalog
 # - eight store adapters
 # - central validation/finalization functions
-_engine = SearchEngine(_legacy, store_timeout=15.0, global_timeout=35.0)
+_engine = SearchEngine(_legacy, store_timeout=18.0, global_timeout=30.0)
 
 # Keep size variants from the same retailer product URL/product-id distinct.
 # The legacy deduplicator historically keyed product-id results without size,
