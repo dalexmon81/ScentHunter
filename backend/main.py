@@ -29,6 +29,8 @@ from fastapi import Query
 # - product catalog
 # - eight store adapters
 # - central validation/finalization functions
+# Store timeout is unchanged: lowering it would discard valid slow-store
+# responses. The speed improvement is publication/scheduling, not scrapers.
 STORE_TIMEOUT_SECONDS = 18.0
 GLOBAL_SEARCH_TIMEOUT_SECONDS = 30.0
 
@@ -36,7 +38,8 @@ _engine = SearchEngine(
     _legacy,
     store_timeout=STORE_TIMEOUT_SECONDS,
     global_timeout=GLOBAL_SEARCH_TIMEOUT_SECONDS,
-    max_concurrent_stores=8,
+    # Hard cap for the production scheduler: exactly 4 + 4.
+    max_concurrent_stores=4,
 )
 
 # ---------------------------------------------------------------------------
