@@ -1969,15 +1969,25 @@ async function searchStoresProgressive(term,onPartial){
  while(true){
   if(Date.now()-startedAt>maxElapsed)throw new Error("Timeout ricerca");
 
-  await new Promise(resolve=>setTimeout(resolve,150));
+  await new Promise(resolve=>setTimeout(resolve,600));
 
   const pathStatusUrl=backend()+"/search-status/"+encodeURIComponent(job.job_id);
   let snapshot;
   try{
     snapshot=await fetchJSONWithTimeout(pathStatusUrl,timeoutMs);
   }catch(pathError){
-    const queryStatusUrl=backend()+"/search-status?job_id="+encodeURIComponent(job.job_id);
-    snapshot=await fetchJSONWithTimeout(queryStatusUrl,timeoutMs);
+    // The path endpoint is the canonical route. Do not immediately fire a
+    // second request on 429/502/503: that doubles load exactly when the
+    // backend/proxy is already refusing requests. The query-param endpoint
+    // is only a compatibility fallback for old deployments (404/405).
+    const msg=String(pathError&&pathError.message||pathError||"");
+    if(/HTTP (404|405)\b/.test(msg)){
+      const queryStatusUrl=backend()+"/search-status?job_id="+encodeURIComponent(job.job_id);
+      snapshot=await fetchJSONWithTimeout(queryStatusUrl,timeoutMs);
+    }else{
+      await new Promise(resolve=>setTimeout(resolve,900));
+      snapshot=await fetchJSONWithTimeout(pathStatusUrl,timeoutMs);
+    }
   }
   renderSnapshot(snapshot,Boolean(snapshot?.completed));
 
