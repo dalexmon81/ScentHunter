@@ -1118,7 +1118,13 @@ def _filter_category_urls(root_url, html, query):
     base = root_url.split("?", 1)[0]
     for item in filters[:1]:
         fid, vid = item["filter_id"], item["value_id"]
+        # Deloox currently uses the array-style filter encoding on its
+        # category pages. Keep it FIRST; the other forms remain bounded
+        # compatibility fallbacks for older deployments.
         candidates = (
+            f"{base}?filters%5B{fid}%5D%5B%5D={vid}",
+            f"{base}?filters%5B{fid}%5D={vid}",
+            f"{base}?filters[{fid}][]={vid}",
             f"{base}?filter={fid}-{vid}",
             f"{base}?filters={fid}-{vid}",
             f"{base}?filter[{fid}]={vid}",
@@ -1505,9 +1511,18 @@ def _discover_from_categories(session, query, max_urls=120):
                 line_html=page.text
             else:
                 line_html=page.text
-            for u in _candidate_product_urls(line_html, query, require_query=False, max_results=max_urls):
-                if u not in local: local.add(u); found.append(u)
-                if len(found)>=max_urls: return found
+            probe_urls = _candidate_product_urls(
+                line_html, query, require_query=False, max_results=max_urls
+            )
+            if probe_urls:
+                for u in probe_urls:
+                    if u not in local:
+                        local.add(u); found.append(u)
+                if found:
+                    # A successful Product Line probe is enough. Do not spend
+                    # extra requests testing legacy encodings after we already
+                    # have real product pages.
+                    return found[:max_urls]
         return found
 
     all_urls=[]; seen=set()
