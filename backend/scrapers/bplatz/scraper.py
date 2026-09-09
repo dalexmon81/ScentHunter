@@ -3,6 +3,7 @@ import re
 import time
 import unicodedata
 from urllib.parse import quote_plus, urljoin, urlparse
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
 import requests
 from bs4 import BeautifulSoup
@@ -199,6 +200,17 @@ def search_html_urls(session, query):
 
 
 def candidate_urls(session, query):
+    """
+    Discover product URLs without serially waiting for every discovery channel.
+
+    The previous implementation executed predictive-search requests one after
+    another and only then fetched the normal search page.  For Shopify stores
+    this unnecessarily serialized independent network calls.
+
+    We keep the same discovery channels and matching rules, but run the
+    independent predictive queries concurrently and run the HTML discovery
+    concurrently as well.
+    """
     searches = [query]
     normalized = norm(query)
     compact = re.sub(r"(?<=\d)\s+(?=[a-z])|(?<=[a-z])\s+(?=\d)", "", normalized)
@@ -209,29 +221,55 @@ def candidate_urls(session, query):
         if len(token) >= 3 and token not in searches:
             searches.append(token)
 
+    def predictive_for(search_query):
+        # A separate Session per worker avoids sharing a requests.Session
+        # between concurrent network operations.
+        worker_session = requests.Session()
+        try:
+            return predictive_products(worker_session, search_query)
+        finally:
+            worker_session.close()
+
     urls = []
     seen = set()
 
-    for search_query in searches:
-        for product in predictive_products(session, search_query):
-            product_title = product.get("title") or product.get("name") or ""
-            if not query_matches(product_title, query):
-                continue
-            product_url = product.get("url")
-            if not product_url:
-                continue
-            absolute = urljoin(BASE, product_url).split("?")[0]
-            path = urlparse(absolute).path.rstrip("/")
-            if "/products/" not in path or path in seen:
-                continue
-            seen.add(path)
-            urls.append(absolute)
+    # All predictive queries and the HTML search are independent discovery
+    # operations. Run them concurrently so one slow channel cannot hold up the
+    # others.
+    discovery_jobs = {}
+    with ThreadPoolExecutor(max_workers=min(6, len(searches) + 1)) as pool:
+        for search_query in searches:
+            discovery_jobs[pool.submit(predictive_for, search_query)] = ("predictive", search_query)
+        discovery_jobs[pool.submit(search_html_urls, session, query)] = ("html", query)
 
-    # Always run the normal search page as a second independent discovery
-    # channel. A temporary predictive-search failure must never hide products.
-    for url in search_html_urls(session, query):
-        if url not in urls:
-            urls.append(url)
+        for future in as_completed(discovery_jobs):
+            kind, search_query = discovery_jobs[future]
+            try:
+                data = future.result() or []
+            except Exception:
+                data = []
+
+            if kind == "predictive":
+                for product in data:
+                    product_title = product.get("title") or product.get("name") or ""
+                    if not query_matches(product_title, query):
+                        continue
+                    product_url = product.get("url")
+                    if not product_url:
+                        continue
+                    absolute = urljoin(BASE, product_url).split("?")[0]
+                    path = urlparse(absolute).path.rstrip("/")
+                    if "/products/" not in path or path in seen:
+                        continue
+                    seen.add(path)
+                    urls.append(absolute)
+            else:
+                for url in data:
+                    path = urlparse(url).path.rstrip("/")
+                    if "/products/" not in path or path in seen:
+                        continue
+                    seen.add(path)
+                    urls.append(url)
 
     return urls
 
@@ -242,20 +280,43 @@ def search(query):
         return []
 
     session = requests.Session()
-    results = []
-    seen = set()
-
     try:
         urls = candidate_urls(session, query)
-        for url in urls:
-            item = product_from_json(product_json(session, url), url)
-            if not item or not query_matches(item["name"], query):
-                continue
-            key = urlparse(item["url"]).path.rstrip("/")
-            if key in seen:
-                continue
-            seen.add(key)
-            results.append(item)
+        if not urls:
+            return []
+
+        def fetch_product(url):
+            worker_session = requests.Session()
+            try:
+                return url, product_json(worker_session, url)
+            finally:
+                worker_session.close()
+
+        results = []
+        seen = set()
+
+        # Product pages are independent. Fetch them concurrently instead of
+        # paying the product-page latency once per URL.
+        with ThreadPoolExecutor(max_workers=min(8, len(urls))) as pool:
+            futures = [pool.submit(fetch_product, url) for url in urls]
+            for future in as_completed(futures):
+                try:
+                    url, data = future.result()
+                except Exception:
+                    continue
+
+                item = product_from_json(data, url)
+                if not item or not query_matches(item["name"], query):
+                    continue
+                key = urlparse(item["url"]).path.rstrip("/")
+                if key in seen:
+                    continue
+                seen.add(key)
+                results.append(item)
+
+        # Preserve deterministic discovery order rather than completion order.
+        order = {url: index for index, url in enumerate(urls)}
+        results.sort(key=lambda item: order.get(item.get("url"), len(order)))
         return results
     finally:
         session.close()
