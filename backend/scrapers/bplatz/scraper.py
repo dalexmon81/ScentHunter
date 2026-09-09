@@ -122,32 +122,65 @@ def product_json(session, url):
 
 def product_from_json(data, url):
     if not isinstance(data, dict):
-        return None
-    title = data.get("title") or ""
-    if contains_non_perfume_marker(title):
-        return None
+        return []
+
+    title = str(data.get("title") or "").strip()
+    if not title or contains_non_perfume_marker(title):
+        return []
 
     variants = data.get("variants") or []
-    available = [variant for variant in variants if variant.get("available") is True]
-    is_available = bool(available)
-    prices = []
-    for variant in available:
-        price = variant.get("price")
-        try:
-            price = float(price)
-            if price >= 100:
-                price /= 100
-            prices.append(price)
-        except (ValueError, TypeError):
+    if not isinstance(variants, list):
+        return []
+
+    results = []
+    for variant in variants:
+        if not isinstance(variant, dict):
             continue
 
-    return {
-        "store": "Bplatz",
-        "name": title,
-        "price": f"{min(prices):.2f}".replace(".", ",") + " €" if is_available and prices else "",
-        "url": url,
-        "available": is_available,
-    }
+        variant_title = str(variant.get("title") or "").strip()
+        display_name = title
+        if variant_title and variant_title.lower() != "default title":
+            display_name = f"{title} {variant_title}".strip()
+
+        if contains_non_perfume_marker(display_name):
+            continue
+        available = variant.get("available")
+        price = variant.get("price")
+        price_value = None
+        try:
+            price_value = float(price)
+            if price_value >= 100:
+                price_value /= 100
+        except (ValueError, TypeError):
+            pass
+
+        item = {
+            "store": "Bplatz",
+            "name": display_name,
+            "price": (
+                f"{price_value:.2f}".replace(".", ",") + " €"
+                if price_value is not None else ""
+            ),
+            "url": url,
+            "available": available is True,
+            "availability": (
+                "in_stock" if available is True
+                else "out_of_stock" if available is False
+                else "unknown"
+            ),
+        }
+
+        # Preserve useful Shopify identity fields when available.
+        if data.get("id") is not None:
+            item["product_id"] = data.get("id")
+        if variant.get("id") is not None:
+            item["sku"] = variant.get("sku") or variant.get("id")
+        if data.get("vendor"):
+            item["brand"] = data.get("vendor")
+
+        results.append(item)
+
+    return results
 
 
 def _anchor_candidate(anchor, query):
@@ -300,4 +333,4 @@ if __name__ == "__main__":
     for query in ("9 PM", "Rayhaan Aquatica", "Turathi Blue"):
         print("\nQUERY:", query)
         for result in search(query):
-            print(resul
+            print(result)
