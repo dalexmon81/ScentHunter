@@ -100,7 +100,21 @@ def _xml_urls(xml_text):
     ]
 
 
+_SITEMAP_CACHE = {"ts": 0.0, "urls": []}
+_SITEMAP_CACHE_SECONDS = 900.0
+
+
 def _get_sitemap_urls():
+    # The root sitemap is an index containing independent child sitemaps.
+    # Fetch the child maps concurrently: they are independent network calls.
+    import time
+    from concurrent.futures import ThreadPoolExecutor, as_completed
+
+    now = time.time()
+    cached = _SITEMAP_CACHE.get("urls") or []
+    if cached and now - float(_SITEMAP_CACHE.get("ts", 0.0)) < _SITEMAP_CACHE_SECONDS:
+        return list(cached)
+
     response = SESSION.get(SITEMAP_URL, headers=HEADERS, timeout=10)
     response.raise_for_status()
     urls = _xml_urls(response.text)
@@ -113,18 +127,33 @@ def _get_sitemap_urls():
     ]
 
     if not child_maps:
+        _SITEMAP_CACHE["ts"] = now
+        _SITEMAP_CACHE["urls"] = list(urls)
         return urls
 
-    output = []
-    for sitemap in child_maps:
+    def fetch_child(sitemap):
         try:
-            child = SESSION.get(sitemap, headers=HEADERS, timeout=10)
-            if child.status_code == 200:
-                output.extend(_xml_urls(child.text))
-            child.close()
+            child = requests.get(sitemap, headers=HEADERS, timeout=10)
+            try:
+                if child.status_code == 200:
+                    return _xml_urls(child.text)
+            finally:
+                child.close()
         except requests.RequestException:
-            continue
+            return []
+        return []
 
+    output = []
+    with ThreadPoolExecutor(max_workers=min(8, len(child_maps))) as executor:
+        futures = [executor.submit(fetch_child, sitemap) for sitemap in child_maps]
+        for future in as_completed(futures):
+            try:
+                output.extend(future.result() or [])
+            except Exception:
+                continue
+
+    _SITEMAP_CACHE["ts"] = time.time()
+    _SITEMAP_CACHE["urls"] = list(output)
     return output
 
 
@@ -764,11 +793,25 @@ def search(query):
         print("PARFUMZENTRUM SITEMAP ERROR:", error)
         return []
 
-    candidates = [
-        url for url in urls
-        if re.search(r"_z\d+/?$", url)
-        and _matches_query(url, query)
-    ]
+    query_tokens = {
+        token for token in _tokens(query)
+        if token not in STOPWORDS
+        and not re.fullmatch(r"\d+(?:[.,]\d+)?", token)
+    }
+
+    candidates = []
+    for url in urls:
+        if not re.search(r"_z\d+/?$", url):
+            continue
+
+        url_tokens = set(_tokens(url))
+        if query_tokens and query_tokens.issubset(url_tokens):
+            requested_concentration = _concentration(query)
+            if (
+                not requested_concentration
+                or _concentration(url) == requested_concentration
+            ):
+                candidates.append(url)
 
     # When the user did not request a size, do not let a miniature/sample
     # page compete with the normal product page for the same product.
