@@ -122,65 +122,32 @@ def product_json(session, url):
 
 def product_from_json(data, url):
     if not isinstance(data, dict):
-        return []
-
-    title = str(data.get("title") or "").strip()
-    if not title or contains_non_perfume_marker(title):
-        return []
+        return None
+    title = data.get("title") or ""
+    if contains_non_perfume_marker(title):
+        return None
 
     variants = data.get("variants") or []
-    if not isinstance(variants, list):
-        return []
-
-    results = []
-    for variant in variants:
-        if not isinstance(variant, dict):
-            continue
-
-        variant_title = str(variant.get("title") or "").strip()
-        display_name = title
-        if variant_title and variant_title.lower() != "default title":
-            display_name = f"{title} {variant_title}".strip()
-
-        if contains_non_perfume_marker(display_name):
-            continue
-        available = variant.get("available")
+    available = [variant for variant in variants if variant.get("available") is True]
+    is_available = bool(available)
+    prices = []
+    for variant in available:
         price = variant.get("price")
-        price_value = None
         try:
-            price_value = float(price)
-            if price_value >= 100:
-                price_value /= 100
+            price = float(price)
+            if price >= 100:
+                price /= 100
+            prices.append(price)
         except (ValueError, TypeError):
-            pass
+            continue
 
-        item = {
-            "store": "Bplatz",
-            "name": display_name,
-            "price": (
-                f"{price_value:.2f}".replace(".", ",") + " €"
-                if price_value is not None else ""
-            ),
-            "url": url,
-            "available": available is True,
-            "availability": (
-                "in_stock" if available is True
-                else "out_of_stock" if available is False
-                else "unknown"
-            ),
-        }
-
-        # Preserve useful Shopify identity fields when available.
-        if data.get("id") is not None:
-            item["product_id"] = data.get("id")
-        if variant.get("id") is not None:
-            item["sku"] = variant.get("sku") or variant.get("id")
-        if data.get("vendor"):
-            item["brand"] = data.get("vendor")
-
-        results.append(item)
-
-    return results
+    return {
+        "store": "Bplatz",
+        "name": title,
+        "price": f"{min(prices):.2f}".replace(".", ",") + " €" if is_available and prices else "",
+        "url": url,
+        "available": is_available,
+    }
 
 
 def _anchor_candidate(anchor, query):
@@ -255,7 +222,11 @@ def _product_json_worker(url):
 def candidate_urls(session, query):
     searches = [query]
     normalized = norm(query)
-    compact = re.sub(r"(?<=\d)\s+(?=[a-z])|(?<=[a-z])\s+(?=\d)", "", normalized)
+    compact = re.sub(
+        r"(?<=\d)\s+(?=[a-z])|(?<=[a-z])\s+(?=\d)",
+        "",
+        normalized,
+    )
     if compact and compact != normalized:
         searches.append(compact)
 
@@ -266,31 +237,33 @@ def candidate_urls(session, query):
     urls = []
     seen = set()
 
-    # Predictive searches are independent, so run them concurrently.
-    # Results are consumed in the original search order to keep output
-    # deterministic.
+    # All independent predictive requests run concurrently. This restores
+    # the fast discovery path: a slow token must not delay the exact query.
     with ThreadPoolExecutor(max_workers=len(searches)) as executor:
-        predictive_results = list(executor.map(_predictive_search_worker, searches))
+        predictive_results = list(
+            executor.map(_predictive_search_worker, searches)
+        )
 
     for products in predictive_results:
         for product in products:
             product_title = product.get("title") or product.get("name") or ""
             if not query_matches(product_title, query):
                 continue
+
             product_url = product.get("url")
             if not product_url:
                 continue
+
             absolute = urljoin(BASE, product_url).split("?")[0]
             path = urlparse(absolute).path.rstrip("/")
+
             if "/products/" not in path or path in seen:
                 continue
+
             seen.add(path)
             urls.append(absolute)
 
-    # The HTML search is a true fallback: if predictive search returned no
-    # usable product URL, use the normal search page as the second discovery
-    # channel. This removes the unnecessary ~5s HTML request from the
-    # successful predictive path while preserving the fallback path.
+    # HTML is a true fallback only when predictive discovery found nothing.
     if not urls:
         for url in search_html_urls(session, query):
             if url not in urls:
