@@ -1,13 +1,13 @@
-"""ScentHunter search orchestration v2.
+"""ScentHunter search orchestration v3.
 
-The live search layer is deliberately simple:
-- one request to each of the eight store adapters;
-- all stores start independently and concurrently;
+The live search layer uses the proven two-wave scheduler:
+- four store adapters start immediately;
+- when one finishes, the next waiting store starts;
 - no central query rewriting;
 - no central retries (store adapters own their retry/rate-limit policy);
 - raw candidates are collected losslessly;
-- validation/grouping/ranking is applied to the candidates received so far;
-- completed stores are published progressively to the frontend;
+- central validation/grouping/ranking is applied only once at the end;
+- completed stores are published progressively to the frontend without being overwritten by partial validation;
 - the final result is finalized once all stores finish or the global window expires.
 """
 from __future__ import annotations
@@ -22,7 +22,7 @@ from typing import Any, Dict, List, Optional
 
 DEFAULT_STORE_TIMEOUT = 26.0
 DEFAULT_GLOBAL_TIMEOUT = 45.0
-MAX_CONCURRENT_STORES = 8
+MAX_CONCURRENT_STORES = 4
 STORE_PRIORITY = [
     "bplatz", "parfumcity", "orioudh", "perfumemarket",
     "deloox", "parfumzentrum", "sabina", "notino",
@@ -724,14 +724,12 @@ class SearchEngine:
         }
 
     def run_job(self, job_id: str, query: str) -> None:
-        """Run stores progressively without putting central validation on the hot path.
+        """Run stores in a rolling window of four adapters.
 
-        The critical rule is: a store result is published to the job immediately
-        when its adapter returns. Central identity validation/grouping runs in a
-        separate worker and can never delay the publication of the next store.
-        All eight store adapters are started immediately. The previous four-store
-        rolling window was counterproductive: one slow adapter occupied a slot and
-        prevented later stores from even starting before the global deadline.
+        A store result is published immediately when its adapter returns.
+        Partial central validation is intentionally NOT published because it can
+        temporarily hide offers from stores that have not finished yet. The
+        canonical validation/grouping/finalization runs once at the end.
         """
         jobs = getattr(self.legacy, "SEARCH_JOBS", None)
         lock = getattr(self.legacy, "SEARCH_JOBS_LOCK", None)
@@ -756,10 +754,7 @@ class SearchEngine:
         }
         errors: Dict[str, str] = {}
         raw_pool: List[Dict[str, Any]] = []
-        validated_pool: List[Dict[str, Any]] = []
-        threading_mod = __import__("threading")
-        raw_lock = threading_mod.Lock()
-        finalized_event = threading_mod.Event()
+        raw_lock = __import__("threading").Lock()
 
         update({
             "status": "searching",
@@ -777,13 +772,8 @@ class SearchEngine:
         })
 
         store_executor: Optional[concurrent.futures.ThreadPoolExecutor] = None
-        validation_executor: Optional[concurrent.futures.ThreadPoolExecutor] = None
-        validation_futures: List[concurrent.futures.Future] = []
 
         def publish_raw() -> None:
-            # Raw candidates are intentionally exposed as a transient snapshot.
-            # The frontend already knows how to group a flat result list, so this
-            # makes the first offer visible without waiting for central matching.
             with raw_lock:
                 snapshot_results = [dict(x) for x in raw_pool if isinstance(x, dict)]
             update({
@@ -804,53 +794,12 @@ class SearchEngine:
                 "elapsed": round(time.monotonic() - started, 3),
             })
 
-        def validate_async(candidates: List[Dict[str, Any]]) -> None:
-            if finalized_event.is_set():
-                return
-            try:
-                validated = self._validate_candidates_only(query, candidates)
-                if not validated:
-                    return
-                with raw_lock:
-                    validated_pool.extend(validated)
-                    current = list(validated_pool)
-                try:
-                    grouped = self._publish_validated_results(query, current)
-                except Exception:
-                    grouped = list(current)
-                if finalized_event.is_set():
-                    return
-                update({
-                    "status": "searching",
-                    "phase": "validation",
-                    "completed": False,
-                    "results": grouped,
-                    "comparisons": [],
-                    "errors": dict(errors),
-                    "store_status": dict(store_status),
-                    "completed_stores": sum(
-                        1 for info in store_status.values()
-                        if isinstance(info, dict) and info.get("status") not in ("pending", "searching")
-                    ),
-                    "total_stores": len(self.stores),
-                    "raw_candidate_count": len(raw_pool),
-                    "results_are_final": True,
-                    "elapsed": round(time.monotonic() - started, 3),
-                })
-            except Exception as exc:
-                errors.setdefault("_validation", f"{type(exc).__name__}: {exc}")
-
         try:
-            # IMPORTANT: all eight store adapters start immediately. This is a
-            # scheduler-level change only; scraper code remains untouched. A slow
-            # store must never prevent another store from starting.
+            # Proven configuration: four adapters at once, then refill the
+            # window immediately as each adapter completes. Scrapers untouched.
             store_executor = concurrent.futures.ThreadPoolExecutor(
                 max_workers=self.max_concurrent_stores,
                 thread_name_prefix="scenthunter-store",
-            )
-            validation_executor = concurrent.futures.ThreadPoolExecutor(
-                max_workers=1,
-                thread_name_prefix="scenthunter-validation",
             )
 
             queue = list(self.stores)
@@ -871,6 +820,7 @@ class SearchEngine:
                 remaining = deadline - time.monotonic()
                 if remaining <= 0:
                     break
+
                 done, _ = concurrent.futures.wait(
                     list(active),
                     timeout=min(0.10, max(0.01, remaining)),
@@ -884,10 +834,14 @@ class SearchEngine:
                     store, submitted = active.pop(future)
                     try:
                         result = future.result()
-                        candidates = [x for x in (result.candidates or []) if isinstance(x, dict)]
+                        candidates = [
+                            x for x in (result.candidates or [])
+                            if isinstance(x, dict)
+                        ]
                         with raw_lock:
                             raw_pool.extend(candidates)
                             raw_pool[:] = self._dedupe_raw(raw_pool)
+
                         store_status[store] = {
                             "status": result.status,
                             "count": len(candidates),
@@ -897,14 +851,10 @@ class SearchEngine:
                             store_status[store]["error"] = result.error
                             errors[store] = result.error
 
-                        # FIRST publication: no validation, no grouping, no finalizer.
+                        # CRITICAL: publish immediately. Do not run the central
+                        # finalizer here and do not replace the snapshot with a
+                        # partially validated subset.
                         publish_raw()
-
-                        # Validation is deliberately detached from the store loop.
-                        if candidates:
-                            vf = validation_executor.submit(validate_async, self._dedupe_raw(candidates))
-                            validation_futures.append(vf)
-
                     except Exception as exc:
                         error = f"{type(exc).__name__}: {exc}"
                         store_status[store] = {
@@ -916,9 +866,9 @@ class SearchEngine:
                         errors[store] = error
                         publish_raw()
 
+                    # Refill immediately: this creates the 4 + 4 rolling waves.
                     submit_next()
-                    if queue:
-                        update({"store_status": dict(store_status)})
+                    update({"store_status": dict(store_status)})
 
             if active:
                 now = time.monotonic()
@@ -943,9 +893,7 @@ class SearchEngine:
                 errors[store] = "global search window expired before store start"
             queue.clear()
 
-            # Final canonicalization is done once, after discovery. Stop any late
-            # validation worker from overwriting the definitive result.
-            finalized_event.set()
+            # Only here do we pay the cost of canonical validation/grouping.
             with raw_lock:
                 final_raw = list(raw_pool)
             final_results = self._finalize(query, final_raw)
@@ -983,5 +931,3 @@ class SearchEngine:
         finally:
             if store_executor is not None:
                 store_executor.shutdown(wait=False, cancel_futures=True)
-            if validation_executor is not None:
-                validation_executor.shutdown(wait=False, cancel_futures=True)
