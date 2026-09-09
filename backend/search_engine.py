@@ -1,15 +1,15 @@
-"""ScentHunter search orchestration v4.
+"""ScentHunter search orchestration v5.
 
 Strict 4 + 4 store scheduler with immediate progressive publication:
   - wave 1 starts exactly four stores concurrently
-  - every completed store is published immediately; the other stores do not
-    block that publication
-  - only after wave 1 has settled does wave 2 start
-  - wave 2 behaves the same and its last publication marks the job complete
+  - a completed store is published immediately; remaining stores in that wave
+    never block the first visible result
+  - wave 2 is not submitted until every wave-1 store has settled
+  - wave 2 is handled the same way and its final publication completes the job
 
-Store adapters are left untouched. Central validation/grouping/finalization
-is invoked only for the currently available raw candidates at publication
-time, never while holding SEARCH_JOBS_LOCK.
+Store adapters are left untouched. The speed fix is upstream: the orchestration
+layer no longer waits for the whole first wave before publishing, and the
+status endpoint only returns the already-built snapshot.
 """
 from __future__ import annotations
 
@@ -23,7 +23,7 @@ from typing import Any, Dict, List, Optional
 
 DEFAULT_STORE_TIMEOUT = 18.0
 DEFAULT_GLOBAL_TIMEOUT = 45.0
-MAX_CONCURRENT_STORES = 8
+MAX_CONCURRENT_STORES = 4
 
 STORE_WAVES = (
     ("bplatz", "deloox", "parfumcity", "perfumemarket"),
@@ -61,7 +61,9 @@ class SearchEngine:
         self.stores = ordered
 
         requested = MAX_CONCURRENT_STORES if max_concurrent_stores is None else int(max_concurrent_stores)
-        self.max_concurrent_stores = max(1, min(requested, 8, len(self.stores) or 1))
+        # The production contract is 4 + 4. Never allow a caller to turn this
+        # scheduler into an 8-store burst by configuration.
+        self.max_concurrent_stores = max(1, min(requested, 4, len(self.stores) or 1))
 
     def analyze_query(self, query: str) -> Dict[str, Any]:
         raw = str(query or "").strip()
