@@ -40,6 +40,8 @@ SITEMAP_TIMEOUT = (2.0, 5.0)
 MAX_CANDIDATES = 20
 PRODUCT_WORKERS = 8
 SITEMAP_TTL = 30 * 60
+SITEMAP_MAX_CHILD_MAPS = 100
+SITEMAP_WORKERS = 12
 
 HEADERS = {
     "User-Agent": (
@@ -1027,6 +1029,20 @@ def _xml_urls(xml_text):
 
 
 def _get_sitemap_urls():
+    """
+    Load the complete product URL index published by Parfum-Zentrum.
+
+    The previous implementation only inspected the first six child sitemaps.
+    That is not safe: sitemap indexes are ordered administrative files, not a
+    guarantee that the requested product is in one of the first six files.
+    A perfectly valid product can therefore disappear from ScentHunter even
+    though its product page exists and the URL is present in the site's index.
+
+    We fetch every child sitemap (bounded by SITEMAP_MAX_CHILD_MAPS) in
+    parallel, cache the resulting product URLs, and keep direct URLs from the
+    root sitemap as well. This is generic and contains no perfume-specific
+    rules or prices.
+    """
     global _sitemap_cache
     global _sitemap_cached_at
 
@@ -1034,121 +1050,133 @@ def _get_sitemap_urls():
 
     if (
         _sitemap_cache
-        and now - _sitemap_cached_at
-        < SITEMAP_TTL
+        and now - _sitemap_cached_at < SITEMAP_TTL
     ):
-        return list(
-            _sitemap_cache
-        )
+        return list(_sitemap_cache)
 
     with _sitemap_lock:
         now = time.monotonic()
 
         if (
             _sitemap_cache
-            and now - _sitemap_cached_at
-            < SITEMAP_TTL
+            and now - _sitemap_cached_at < SITEMAP_TTL
         ):
-            return list(
-                _sitemap_cache
-            )
-
-        session = requests.Session()
-        session.headers.update(
-            HEADERS
-        )
+            return list(_sitemap_cache)
 
         try:
-            response = session.get(
+            response = requests.get(
                 SITEMAP_URL,
+                headers=HEADERS,
                 timeout=SITEMAP_TIMEOUT,
             )
-
-            if response.status_code != 200:
-                return []
-
-            urls = _xml_urls(
-                response.text
-            )
-
-            # A sitemap index can contain child maps.
-            child_maps = [
-                url
-                for url in urls
-                if "sitemap" in url.lower()
-                and url.lower().endswith(
-                    ".xml"
-                )
-            ]
-
-            if child_maps:
-                def fetch_child(url):
-                    try:
-                        child = session.get(
-                            url,
-                            timeout=(
-                                1.8,
-                                3.0,
-                        ),
-                        )
-                        try:
-                            if child.status_code == 200:
-                                return _xml_urls(
-                                    child.text
-                                )
-                        finally:
-                            child.close()
-                    except requests.RequestException:
-                        return []
-
-                    return []
-
-                output = []
-
-                with ThreadPoolExecutor(
-                    max_workers=min(
-                        6,
-                        len(child_maps),
-                    )
-                ) as pool:
-                    futures = [
-                        pool.submit(
-                            fetch_child,
-                            url,
-                        )
-                        for url in child_maps[:6]
-                    ]
-
-                    for future in as_completed(
-                        futures
-                    ):
-                        try:
-                            output.extend(
-                                future.result()
-                            )
-                        except Exception:
-                            continue
-
-                urls = output
-
-            _sitemap_cache = [
-                url
-                for url in urls
-                if _product_url(url)
-            ]
-            _sitemap_cached_at = (
-                time.monotonic()
-            )
-
-            return list(
-                _sitemap_cache
-            )
-
-        except requests.RequestException:
+            response.raise_for_status()
+            root_urls = _xml_urls(response.text)
+            response.close()
+        except (requests.RequestException, ET.ParseError):
             return []
 
-        finally:
-            session.close()
+        child_maps = []
+        direct_urls = []
+
+        for url in root_urls:
+            low = url.lower().split("?", 1)[0]
+            if low.endswith(".xml") or low.endswith(".xml.gz"):
+                child_maps.append(url)
+            elif _product_url(url):
+                direct_urls.append(url)
+
+        # Some stores expose more than one sitemap index level. Resolve one
+        # additional index level generically instead of assuming a fixed file
+        # naming scheme.
+        child_maps = list(dict.fromkeys(child_maps))[:SITEMAP_MAX_CHILD_MAPS]
+
+        def fetch_sitemap(url):
+            try:
+                child = requests.get(
+                    url,
+                    headers=HEADERS,
+                    timeout=(1.8, 4.0),
+                )
+                try:
+                    if child.status_code != 200:
+                        return []
+                    return _xml_urls(child.text)
+                finally:
+                    child.close()
+            except (requests.RequestException, ET.ParseError):
+                return []
+
+        collected = list(direct_urls)
+
+        if child_maps:
+            with ThreadPoolExecutor(
+                max_workers=min(SITEMAP_WORKERS, len(child_maps))
+            ) as pool:
+                futures = [
+                    pool.submit(fetch_sitemap, url)
+                    for url in child_maps
+                ]
+
+                for future in as_completed(futures):
+                    try:
+                        values = future.result()
+                    except Exception:
+                        values = []
+
+                    collected.extend(values)
+
+        # If a child sitemap is itself an index, resolve its children once.
+        nested_maps = []
+        product_urls = []
+
+        for url in collected:
+            low = url.lower().split("?", 1)[0]
+            if low.endswith(".xml") or low.endswith(".xml.gz"):
+                nested_maps.append(url)
+            elif _product_url(url):
+                product_urls.append(url)
+
+        nested_maps = list(dict.fromkeys(nested_maps))[:SITEMAP_MAX_CHILD_MAPS]
+
+        if nested_maps:
+            with ThreadPoolExecutor(
+                max_workers=min(SITEMAP_WORKERS, len(nested_maps))
+            ) as pool:
+                futures = [
+                    pool.submit(fetch_sitemap, url)
+                    for url in nested_maps
+                ]
+
+                for future in as_completed(futures):
+                    try:
+                        values = future.result()
+                    except Exception:
+                        values = []
+
+                    for value in values:
+                        if _product_url(value):
+                            product_urls.append(value)
+
+        # Preserve order while removing duplicates.
+        unique = []
+        seen = set()
+
+        for url in product_urls:
+            canonical = _product_url(url)
+            if not canonical:
+                continue
+
+            key = canonical.lower()
+            if key in seen:
+                continue
+
+            seen.add(key)
+            unique.append(canonical)
+
+        _sitemap_cache = unique
+        _sitemap_cached_at = time.monotonic()
+
+        return list(_sitemap_cache)
 
 
 def _sitemap_discovery(query):
