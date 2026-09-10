@@ -14,7 +14,7 @@ SEARCH_URL = BASE_URL + "/fulltext_search/1"
 SEARCH_DEADLINE = 14.0
 CATEGORY_FALLBACK_URLS = (
     BASE_URL + "/parfums/f/french-avenue/",
-    BASE_URL + "/french-avenue_v1341/",
+    BASE_URL + "/french-avenue_v1341/parfum_k319/",
 )
 PRODUCT_TIMEOUT = 2.5
 
