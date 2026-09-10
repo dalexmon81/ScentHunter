@@ -23,6 +23,11 @@ class ParfumzentrumUrlDiscoveryTests(unittest.TestCase):
             ["https://www.parfum-zentrum.de/armaf-club-de-nuit-intense-man-eau-de-toilette-105ml"],
         )
 
+    def test_rejects_non_product_slug_with_generic_terms(self):
+        html = '<a href="/parfum-eau-de-kategorien">Category</a>'
+        urls = scraper._extract_product_urls_from_html(html)
+        self.assertEqual(urls, [])
+
     def test_ignores_offsite_and_deduplicates(self):
         html = """
         <a href="https://evil.example/something_z123">Offsite</a>

@@ -23,8 +23,9 @@ HEADERS = {
 }
 
 PRODUCT_RE = re.compile(r"_z[0-9a-z-]*", re.I)
-PRODUCT_HINT_RE = re.compile(
-    r"(?:(?<!\d)\d{2,4}\s*ml\b|\b(?:eau|parfum|edt|edp|extrait)\b)",
+SIZE_HINT_RE = re.compile(r"(?<!\d)\d{2,4}\s*ml\b", re.I)
+CONCENTRATION_HINT_RE = re.compile(
+    r"\b(?:edt|edp|extrait|eau\s+de\s+toilette|eau\s+de\s+parfum)\b",
     re.I,
 )
 NON_PRODUCT_PATH_RE = re.compile(
@@ -69,7 +70,7 @@ def _extract_product_urls_from_html(html):
 
         # Keep compatibility with historical product URLs while allowing
         # server-rendered variants that no longer expose a strict `_z123` suffix.
-        if not PRODUCT_RE.search(path) and not PRODUCT_HINT_RE.search(path.replace("-", " ")):
+        if not _is_product_like_path(path):
             continue
 
         if normalized not in seen:
@@ -77,6 +78,17 @@ def _extract_product_urls_from_html(html):
             urls.append(normalized)
 
     return urls
+
+
+def _is_product_like_path(path):
+    text = str(path or "").replace("-", " ")
+    if PRODUCT_RE.search(text):
+        return True
+
+    if SIZE_HINT_RE.search(text):
+        return True
+
+    return bool(CONCENTRATION_HINT_RE.search(text)) and text.count(" ") >= 4
 
 
 def _tokens(text):
