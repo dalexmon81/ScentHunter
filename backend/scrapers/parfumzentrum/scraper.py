@@ -117,10 +117,14 @@ def _get(session, url, timeout):
     return response if response.status_code == 200 else None
 
 
+def _allowed_host(host):
+    host = str(host or "").lower()
+    return not host or host in {"parfum-zentrum.de", "www.parfum-zentrum.de"}
+
+
 def _normalize_product_url(href):
     parts = urlsplit(urljoin(BASE_URL + "/", str(href or "").strip()))
-    host = (parts.hostname or "").lower()
-    if host and host != "parfum-zentrum.de" and host != "www.parfum-zentrum.de":
+    if not _allowed_host(parts.hostname):
         return ""
     path = (parts.path or "/").rstrip("/") or "/"
     return urlunsplit((parts.scheme or "https", parts.netloc or urlsplit(BASE_URL).netloc, path, "", ""))
@@ -129,6 +133,8 @@ def _normalize_product_url(href):
 def _page_request_url(href, current_url):
     absolute = urljoin(current_url, str(href or "").strip())
     parts = urlsplit(absolute)
+    if not _allowed_host(parts.hostname):
+        return ""
     query = dict(parse_qsl(parts.query, keep_blank_values=True))
     fragment = dict(parse_qsl(parts.fragment, keep_blank_values=True))
 
