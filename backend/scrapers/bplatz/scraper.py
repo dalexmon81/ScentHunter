@@ -152,7 +152,7 @@ def _anchor_contexts(anchor, absolute):
     return texts
 
 
-def _predictive_search_worker(search_query):
+def _predictive_search_worker(search_query, match_query):
     # One independent session per worker avoids sharing a requests.Session
     # across concurrent threads.
     worker_session = requests.Session()
@@ -161,14 +161,14 @@ def _predictive_search_worker(search_query):
             worker_session,
             base_url=BASE,
             request_query=search_query,
-            match_query=CURRENT_QUERY,
+            match_query=match_query,
             query_matcher=query_matches,
             headers=HEADERS,
             timeout=TIMEOUT,
             limit=20,
             suggest_limit=20,
-            search_json_limit=12,
-            search_paths=("/search",),
+            allow_search_json=False,
+            search_paths=(),
             anchor_context_builder=_anchor_contexts,
         )
     finally:
@@ -183,9 +183,6 @@ def _product_json_worker(url):
         return product_json(worker_session, url)
     finally:
         worker_session.close()
-
-
-CURRENT_QUERY = ""
 
 
 def candidate_urls(session, query):
@@ -205,15 +202,15 @@ def candidate_urls(session, query):
 
     urls = []
     seen = set()
-    global CURRENT_QUERY
-    CURRENT_QUERY = query
 
     # All independent predictive requests run concurrently. This restores
     # the fast discovery path: a slow token must not delay the exact query.
     with ThreadPoolExecutor(max_workers=len(searches)) as executor:
-        predictive_results = list(
-            executor.map(_predictive_search_worker, searches)
-        )
+        predictive_results = list(executor.map(
+            _predictive_search_worker,
+            searches,
+            [query] * len(searches),
+        ))
 
     for discovered_urls in predictive_results:
         for absolute in discovered_urls:
@@ -223,6 +220,29 @@ def candidate_urls(session, query):
 
             seen.add(path)
             urls.append(absolute)
+
+    if urls:
+        return urls
+
+    for absolute in discover_shopify_product_urls(
+        session,
+        base_url=BASE,
+        request_query=query,
+        match_query=query,
+        query_matcher=query_matches,
+        headers=HEADERS,
+        timeout=TIMEOUT,
+        limit=20,
+        suggest_limit=20,
+        search_json_limit=12,
+        search_paths=("/search",),
+        anchor_context_builder=_anchor_contexts,
+    ):
+        path = urlparse(absolute).path.rstrip("/")
+        if "/products/" not in path or path in seen:
+            continue
+        seen.add(path)
+        urls.append(absolute)
 
     return urls
 

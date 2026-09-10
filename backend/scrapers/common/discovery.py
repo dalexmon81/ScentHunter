@@ -19,7 +19,11 @@ def iter_json_nodes(payload: Any) -> Iterator[Any]:
             yield from iter_json_nodes(value)
 
 
-def extract_json_ld_products(html: str) -> List[Dict[str, Any]]:
+def extract_json_ld_products(
+    html: str,
+    *,
+    include_offer_nodes: bool = False,
+) -> List[Dict[str, Any]]:
     soup = BeautifulSoup(html or "", "html.parser")
     records: List[Dict[str, Any]] = []
     for script in soup.select('script[type="application/ld+json"]'):
@@ -34,7 +38,10 @@ def extract_json_ld_products(html: str) -> List[Dict[str, Any]]:
             if not isinstance(node, dict):
                 continue
             node_type = node.get("@type") or node.get("type")
-            if node_type == "Product" or (isinstance(node_type, list) and "Product" in node_type) or node.get("offers"):
+            is_product = node_type == "Product" or (
+                isinstance(node_type, list) and "Product" in node_type
+            )
+            if is_product or (include_offer_nodes and node.get("offers")):
                 records.append(node)
     return records
 
