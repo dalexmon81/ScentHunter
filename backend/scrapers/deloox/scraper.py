@@ -2066,8 +2066,8 @@ def _discover_fast(session, query, deadline):
             targets.append(url)
 
     def probe(url):
-        remaining = max(0.8, min(2.5, deadline - time.monotonic()))
-        if remaining <= 0:
+        remaining = min(2.5, max(0.05, deadline - time.monotonic()))
+        if remaining <= 0.05:
             return url, []
         response = _fast_http_get(session, url, timeout=remaining)
         if not response:
@@ -2091,10 +2091,7 @@ def _discover_fast(session, query, deadline):
                 line_response = _fast_http_get(
                     session,
                     line_url,
-                    timeout=max(
-                        0.8,
-                        min(2.0, deadline - time.monotonic()),
-                    ),
+                    timeout=min(2.0, max(0.05, deadline - time.monotonic())),
                 )
                 if line_response:
                     candidates.extend(
@@ -2147,6 +2144,82 @@ def _discover_fast(session, query, deadline):
     return urls[:12]
 
 
+
+def _sitemap_discovery_fast(session, query, deadline, max_urls=12):
+    """Bounded sitemap discovery used only when live search surfaces yield no URLs."""
+    from concurrent.futures import ThreadPoolExecutor, as_completed
+
+    roots = (
+        BASE_URL + "/sitemap.xml",
+        BASE_URL + "/sitemap_index.xml",
+        BASE_URL + "/sitemap-index.xml",
+        BASE_URL + "/en/sitemap.xml",
+    )
+    found = []
+    seen = set()
+
+    def fetch(url, timeout):
+        try:
+            r = session.get(url, headers=HEADERS, timeout=timeout, allow_redirects=True)
+        except requests.RequestException:
+            return None
+        if r.status_code >= 400:
+            return None
+        return r.text or ""
+
+    def extract(xml):
+        if not xml:
+            return [], []
+        soup = BeautifulSoup(xml, "xml")
+        product_urls = []
+        child_maps = []
+        for loc in soup.find_all("loc"):
+            value = clean(loc.get_text())
+            if not value:
+                continue
+            low = value.lower()
+            if re.search(r"/(?:product|produit)/", low, re.I):
+                if tokens(query).issubset(tokens(value)):
+                    product_urls.append(value)
+            elif low.endswith(".xml") or "sitemap" in low:
+                child_maps.append(value)
+        return product_urls, child_maps
+
+    pool = ThreadPoolExecutor(max_workers=4)
+    futures = {pool.submit(fetch, u, min(1.8, max(0.05, deadline-time.monotonic()))): u for u in roots}
+    try:
+        for future in as_completed(futures, timeout=max(0.05, deadline-time.monotonic())):
+            xml = future.result()
+            products, children = extract(xml)
+            for u in products:
+                if u not in seen:
+                    seen.add(u); found.append(u)
+                    if len(found) >= max_urls:
+                        return found[:max_urls]
+            # Inspect only a very small number of child maps, concurrently below.
+            if children and time.monotonic() < deadline:
+                child_pool = ThreadPoolExecutor(max_workers=min(4, len(children[:4])))
+                child_futures = [child_pool.submit(fetch, u, min(1.5, max(0.05, deadline-time.monotonic()))) for u in children[:4]]
+                try:
+                    for cf in as_completed(child_futures, timeout=max(0.05, deadline-time.monotonic())):
+                        products2, _ = extract(cf.result())
+                        for u in products2:
+                            if u not in seen:
+                                seen.add(u); found.append(u)
+                                if len(found) >= max_urls:
+                                    return found[:max_urls]
+                except TimeoutError:
+                    pass
+                finally:
+                    child_pool.shutdown(wait=False, cancel_futures=True)
+            if time.monotonic() >= deadline:
+                break
+    except TimeoutError:
+        pass
+    finally:
+        pool.shutdown(wait=False, cancel_futures=True)
+    return found[:max_urls]
+
 def _discover(session, q):
     """Discover Deloox products with one strict wall-clock budget."""
     started = time.monotonic()
@@ -2172,6 +2245,29 @@ def _discover(session, q):
 
     if urls or time.monotonic() >= deadline:
         return urls[:12]
+
+    # Deloox product URLs are also exposed through XML sitemaps. This is a
+    # live, generic fallback: no perfume-specific URL is embedded here.
+    remaining = deadline - time.monotonic()
+    if remaining > 0.35:
+        try:
+            sitemap_urls = _sitemap_discovery_fast(
+                session,
+                q,
+                min(deadline, time.monotonic() + min(2.5, remaining)),
+                max_urls=12,
+            )
+        except Exception:
+            sitemap_urls = []
+        if sitemap_urls:
+            _diag(
+                "discover_sitemap_done",
+                count=len(sitemap_urls),
+                urls=sitemap_urls[:20],
+                query=q,
+                elapsed=round(time.monotonic() - started, 3),
+            )
+            return sitemap_urls[:12]
 
     # Only use the API if real time remains. Never extend the discovery budget.
     remaining = deadline - time.monotonic()
