@@ -1,10 +1,9 @@
-import asyncio
 import json
 import re
 import time
-from urllib.parse import unquote
+from urllib.parse import unquote, urljoin
+import requests
 from bs4 import BeautifulSoup
-from playwright.async_api import async_playwright
 
 
 BASE_URL = "https://www.parfum-zentrum.de"
@@ -15,6 +14,12 @@ PRODUCT_TIMEOUT = 2.5
 STOPWORDS = {
     "eau", "de", "the", "for", "and", "spray", "ml", "man", "woman",
     "men", "women", "herren", "damen",
+}
+
+HEADERS = {
+    "User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+    "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+    "Accept-Language": "de-DE,de;q=0.9",
 }
 
 
@@ -84,60 +89,89 @@ def _parse_price(value):
     return result if 0 < result < 10000 else None
 
 
-async def _extract_product_urls_with_playwright(query):
-    """Extract product URLs using Playwright to handle JavaScript rendering."""
+def _extract_product_urls(query):
+    """Extract product URLs using requests + BeautifulSoup."""
     query = str(query or "").strip()
     if not query:
         return []
 
     urls = []
+    seen = set()
+    
     try:
-        async with async_playwright() as p:
-            browser = await p.chromium.launch(headless=True)
-            page = await browser.new_page()
-            page.set_default_timeout(8000)
-
+        session = requests.Session()
+        session.headers.update(HEADERS)
+        
+        # Try first page
+        search_params = f"?search={query}&submit=Suche"
+        response = session.get(SEARCH_URL + search_params, timeout=5)
+        
+        if response.status_code != 200:
+            return []
+        
+        soup = BeautifulSoup(response.text, "html.parser")
+        
+        # Extract product links from first page
+        for link in soup.find_all("a", href=True):
+            href = link.get("href", "").strip()
+            if not href:
+                continue
+            
+            href = urljoin(BASE_URL, href)
+            
+            if re.search(r"_z\d+", href, re.I):
+                if href not in seen:
+                    seen.add(href)
+                    urls.append(href)
+        
+        # Try to find and follow pagination links (pages 2, 3, etc)
+        page_num = 2
+        while len(urls) < 40 and page_num <= 5:
             try:
-                search_params = f"?search={query}&submit=Suche"
-                await page.goto(SEARCH_URL + search_params, wait_until="networkidle")
-                await page.wait_for_selector("a", timeout=5000)
-                content = await page.content()
-                soup = BeautifulSoup(content, "html.parser")
-
+                # ParfumZentrum uses #Seite=2 anchor, but we need to make actual requests
+                # Try different pagination patterns
+                pagination_url = SEARCH_URL + f"?search={query}&submit=Suche&page={page_num}"
+                response = session.get(pagination_url, timeout=5)
+                
+                if response.status_code != 200:
+                    break
+                
+                soup = BeautifulSoup(response.text, "html.parser")
+                found_on_page = 0
+                
                 for link in soup.find_all("a", href=True):
                     href = link.get("href", "").strip()
                     if not href:
                         continue
-
-                    if href.startswith("/"):
-                        href = BASE_URL + href
-                    elif not href.startswith("http"):
-                        href = BASE_URL + "/" + href
-
+                    
+                    href = urljoin(BASE_URL, href)
+                    
                     if re.search(r"_z\d+", href, re.I):
-                        if href not in urls:
+                        if href not in seen:
+                            seen.add(href)
                             urls.append(href)
-
-                if len(urls) > 0:
-                    return urls[:40]
-
-            finally:
-                await browser.close()
-
+                            found_on_page += 1
+                
+                if found_on_page == 0:
+                    break
+                
+                page_num += 1
+            except Exception:
+                break
+        
+        session.close()
+        
     except Exception as e:
-        print(f"PLAYWRIGHT ERROR: {type(e).__name__}: {e}")
+        print(f"ERROR extracting URLs: {type(e).__name__}: {e}")
         return []
 
-    return urls
+    return urls[:40]
 
 
 def _extract_product(url, query):
     """Extract product details from a product page URL."""
     try:
-        import requests
-        response = requests.get(url, timeout=PRODUCT_TIMEOUT, headers={
-            "User-Agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X)"
-        })
+        response = requests.get(url, timeout=PRODUCT_TIMEOUT, headers=HEADERS)
     except Exception:
         return None
 
@@ -243,7 +277,7 @@ def _extract_product(url, query):
 
 
 def search(query):
-    """Main search function - synchronous wrapper for async Playwright."""
+    """Main search function - extract products using requests."""
     query = str(query or "").strip()
     if not query:
         return []
@@ -251,9 +285,9 @@ def search(query):
     started = time.monotonic()
 
     try:
-        product_urls = asyncio.run(_extract_product_urls_with_playwright(query))
+        product_urls = _extract_product_urls(query)
     except Exception as e:
-        print(f"PLAYWRIGHT EXTRACTION ERROR: {type(e).__name__}: {e}")
+        print(f"URL EXTRACTION ERROR: {type(e).__name__}: {e}")
         return []
 
     if not product_urls:
