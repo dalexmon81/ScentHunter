@@ -832,7 +832,8 @@ def _extract_product(url, query):
     availability = _product_availability(data, soup)
 
     return {
-        "store": "parfumZentrum",
+        "store": "ParfumZentrum",
+        "shop": "parfumzentrum",
         "source": {
             "source_name": name,
             "source_brand": brand,
