@@ -2110,25 +2110,38 @@ def _discover_fast(session, query, deadline):
         return url, candidates
 
     max_workers = min(8, len(targets))
-    with ThreadPoolExecutor(max_workers=max_workers) as pool:
-        futures = [pool.submit(probe, url) for url in targets]
-        for future in as_completed(futures):
-            if time.monotonic() >= deadline:
-                break
-            try:
-                source_url, candidates = future.result()
-            except Exception:
-                continue
+    pool = ThreadPoolExecutor(max_workers=max_workers)
+    futures = [pool.submit(probe, url) for url in targets]
+    try:
+        pending = set(futures)
+        while pending and time.monotonic() < deadline:
+            remaining = max(0.05, deadline - time.monotonic())
+            done = []
+            for future in as_completed(pending, timeout=remaining):
+                done.append(future)
+                if time.monotonic() >= deadline:
+                    break
 
-            for candidate in candidates:
-                if candidate not in seen:
-                    seen.add(candidate)
-                    urls.append(candidate)
+            for future in done:
+                pending.discard(future)
+                try:
+                    source_url, candidates = future.result(timeout=0)
+                except Exception:
+                    continue
 
-            # We only need a small bounded candidate set. Product validation
-            # below determines which URLs actually match the requested perfume.
-            if len(urls) >= 12:
-                return urls[:12]
+                for candidate in candidates:
+                    if candidate not in seen:
+                        seen.add(candidate)
+                        urls.append(candidate)
+
+                if len(urls) >= 12:
+                    return urls[:12]
+    except TimeoutError:
+        pass
+    finally:
+        # Never wait for a stuck network worker here. The store-level timeout
+        # in main.py is a second safety net, so this executor must not defeat it.
+        pool.shutdown(wait=False, cancel_futures=True)
 
     return urls[:12]
 
@@ -2316,44 +2329,56 @@ def search(query):
             len(discovered),
         )
 
-        with ThreadPoolExecutor(max_workers=max_workers) as pool:
-            futures = [
-                pool.submit(fetch_one, url)
-                for url in discovered[:PRODUCT_MAX_CANDIDATES]
-            ]
-
-            for future in as_completed(futures):
-                if time.monotonic() >= search_deadline:
-                    break
-
+        pool = ThreadPoolExecutor(max_workers=max_workers)
+        futures = [
+            pool.submit(fetch_one, url)
+            for url in discovered[:PRODUCT_MAX_CANDIDATES]
+        ]
+        try:
+            pending = set(futures)
+            while pending and time.monotonic() < search_deadline:
+                remaining = max(0.05, search_deadline - time.monotonic())
+                done = []
                 try:
-                    item = future.result()
-                except Exception:
-                    continue
+                    for future in as_completed(pending, timeout=remaining):
+                        done.append(future)
+                        if time.monotonic() >= search_deadline:
+                            break
+                except TimeoutError:
+                    pass
 
-                if not item:
-                    continue
+                for future in done:
+                    pending.discard(future)
+                    try:
+                        item = future.result(timeout=0)
+                    except Exception:
+                        continue
 
-                sku_value = None
-                sku = item["identity"].get("sku")
-                if sku:
-                    sku_value = sku.get("value")
+                    if not item:
+                        continue
 
-                final_url = (
-                    item.get("url")
-                    or ""
-                ).rstrip("/")
+                    sku_value = None
+                    sku = item["identity"].get("sku")
+                    if sku:
+                        sku_value = sku.get("value")
 
-                key = (
-                    final_url,
-                    sku_value,
-                )
+                    final_url = (
+                        item.get("url")
+                        or ""
+                    ).rstrip("/")
 
-                if key in seen:
-                    continue
+                    key = (
+                        final_url,
+                        sku_value,
+                    )
 
-                seen.add(key)
-                results.append(item)
+                    if key in seen:
+                        continue
+
+                    seen.add(key)
+                    results.append(item)
+        finally:
+            pool.shutdown(wait=False, cancel_futures=True)
 
         # Stable display order: bottle size first, then price.
         results.sort(
