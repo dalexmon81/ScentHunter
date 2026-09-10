@@ -27,6 +27,7 @@ class ParfumzentrumUrlDiscoveryTests(unittest.TestCase):
         html = """
         <a href="https://evil.example/something_z123">Offsite</a>
         <a href="/dior-homme-intense-edp-100ml_z555?ref=abc">One</a>
+        <a href="http://parfum-zentrum.de/dior-homme-intense-edp-100ml_z555">Three</a>
         <a href="https://www.parfum-zentrum.de/dior-homme-intense-edp-100ml_z555#x">Two</a>
         """
         urls = scraper._extract_product_urls_from_html(html)

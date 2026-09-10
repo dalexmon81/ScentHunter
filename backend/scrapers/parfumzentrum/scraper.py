@@ -23,6 +23,10 @@ HEADERS = {
 }
 
 PRODUCT_RE = re.compile(r"_z[0-9a-z-]*", re.I)
+PRODUCT_HINT_RE = re.compile(
+    r"(?:\b\d{2,4}\s*ml\b|\b(?:eau|parfum|edt|edp|extrait)\b)",
+    re.I,
+)
 NON_PRODUCT_PATH_RE = re.compile(
     r"/(?:suchen|marken|kategorien|warenkorb|konto|kontakt|impressum|datenschutz)(?:/|$)",
     re.I,
@@ -45,7 +49,7 @@ def _normalize_product_url(href):
     if not path or path == "/":
         return None
 
-    normalized = urlunparse((parsed.scheme, parsed.netloc, path.rstrip("/"), "", "", ""))
+    normalized = urlunparse(("https", "www.parfum-zentrum.de", path.rstrip("/"), "", "", ""))
     return normalized
 
 
@@ -65,7 +69,7 @@ def _extract_product_urls_from_html(html):
 
         # Keep compatibility with historical product URLs while allowing
         # server-rendered variants that no longer expose a strict `_z123` suffix.
-        if not PRODUCT_RE.search(path) and path.count("-") < 2:
+        if not PRODUCT_RE.search(path) and not PRODUCT_HINT_RE.search(path.replace("-", " ")):
             continue
 
         if normalized not in seen:
