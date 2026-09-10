@@ -19,21 +19,27 @@ def iter_json_nodes(payload: Any) -> Iterator[Any]:
             yield from iter_json_nodes(value)
 
 
-def extract_json_ld_products(
-    html: str,
-    *,
-    include_offer_nodes: bool = False,
-) -> List[Dict[str, Any]]:
+def extract_json_ld_blocks(html: str) -> List[Any]:
     soup = BeautifulSoup(html or "", "html.parser")
-    records: List[Dict[str, Any]] = []
+    payloads: List[Any] = []
     for script in soup.select('script[type="application/ld+json"]'):
         raw = script.string or script.get_text("", strip=True)
         if not raw:
             continue
         try:
-            payload = json.loads(raw)
+            payloads.append(json.loads(raw))
         except Exception:
             continue
+    return payloads
+
+
+def extract_json_ld_products(
+    html: str,
+    *,
+    include_offer_nodes: bool = False,
+) -> List[Dict[str, Any]]:
+    records: List[Dict[str, Any]] = []
+    for payload in extract_json_ld_blocks(html):
         for node in iter_json_nodes(payload):
             if not isinstance(node, dict):
                 continue
@@ -74,7 +80,7 @@ def discover_shopify_product_urls(
     unavailable_products: str = "show",
     search_paths: Sequence[str] = ("/search",),
     allow_search_json: bool = True,
-    allow_embedded_html_urls: bool = True,
+    allow_embedded_html_urls: bool = False,
     anchor_context_builder: Optional[Callable[[Any, str], Iterable[str]]] = None,
     url_normalizer: Optional[Callable[[str], str]] = None,
 ) -> List[str]:

@@ -6,7 +6,7 @@ from urllib.parse import unquote
 from bs4 import BeautifulSoup
 from playwright.async_api import async_playwright
 
-from scrapers.common.discovery import extract_json_ld_products
+from scrapers.common.discovery import extract_json_ld_blocks, extract_json_ld_products
 
 
 BASE_URL = "https://www.parfum-zentrum.de"
@@ -211,7 +211,7 @@ def _extract_product(url, query):
         return None
 
     brand = None
-    for data in product_records:
+    for data in extract_json_ld_blocks(response.text):
         raw_brand = data.get("brand")
         brand = raw_brand.get("name") if isinstance(raw_brand, dict) else raw_brand
         if brand:
