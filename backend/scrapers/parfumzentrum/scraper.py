@@ -273,6 +273,18 @@ def _parse_price(value):
 def _availability_from_text(value):
     text = _norm(value)
 
+    # Parfum-Zentrum contains availability-watch/help text on product pages
+    # that can include generic phrases such as 'nicht verfügbar'.
+    # Purchase-state markers must therefore win over generic page text.
+    if any(marker in text for marker in (
+        "auf lager",
+        "versandbereit",
+        "sofort lieferbar",
+        "lieferbar",
+        "auf lager >",
+    )):
+        return "in_stock"
+
     if any(
         marker in text
         for marker in OUT_MARKERS
@@ -760,24 +772,53 @@ def _extract_price(soup, data):
         'meta[property="product:price:amount"]',
         'meta[itemprop="price"]',
         'meta[name="price"]',
+        '[itemprop="price"]',
+        '[data-price]',
+        '[data-product-price]',
     )
 
     for selector in meta_selectors:
-        for node in soup.select(
-            selector
-        ):
-            price = _parse_price(
+        for node in soup.select(selector):
+            value = (
                 node.get("content")
-                or node.get_text(
-                    " ",
-                    strip=True,
-                )
+                or node.get("data-price")
+                or node.get_text(" ", strip=True)
             )
-
+            price = _parse_price(value)
             if price is not None:
                 return price
 
-    return _semantic_price(soup)
+    price = _semantic_price(soup)
+    if price is not None:
+        return price
+
+    # Final generic visible-price fallback. Do not depend on a CSS class: the
+    # site can change presentation classes while the customer-facing price
+    # remains plain text such as '24,70 €'. Exclude Grundpreis / litre and
+    # crossed/old prices through the surrounding-node checks.
+    for node in soup.find_all(["span", "div", "p", "strong", "b", "ins"]):
+        text = node.get_text(" ", strip=True)
+        if "€" not in text:
+            continue
+        low = text.lower()
+        if any(term in low for term in (
+            "grundpreis", "pro liter", "per liter", "€/l", "/l",
+            "coupon", "gutschein", "rabattcode", "discount-code",
+        )):
+            continue
+        if node.find_parent(["del", "s", "strike"]):
+            continue
+        price_match = re.search(
+            r"(?<![\d.,])\d{1,4}(?:[.]\d{3})*,\d{2}\s*€|(?<![\d.,])\d+(?:[.,]\d{2})\s*€",
+            text,
+            re.I,
+        )
+        if price_match:
+            price = _parse_price(price_match.group(0))
+            if price is not None:
+                return price
+
+    return None
 
 
 def _extract_name(soup, data):
