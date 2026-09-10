@@ -782,185 +782,185 @@ def diagnose_stores(q: str = "Liquid Brun"):
         ),
     }
 
-# ---------------------------------------------------------------------------
-# TARGETED DIAGNOSTIC — ONLY PARFUMZENTRUM + DELOOX
-# ---------------------------------------------------------------------------
 
-import contextlib
-import io
+# ============================================================
+# DIAGNOSTIC ENDPOINT FOR PARFUMZENTRUM
+# ============================================================
 
-
-def _diag_wrap_function(module, name, events):
-    """Wrap one scraper-internal function and record inputs/outputs.
-
-    This deliberately avoids monkey-patching requests. We trace the scraper's
-    own discovery/parser boundaries, which is the reliable information needed
-    to locate where a product disappears.
-    """
-    original = getattr(module, name, None)
-    if not callable(original):
-        return lambda: None
-
-    def wrapper(*args, **kwargs):
-        started = time.monotonic()
-        event = {"function": name, "started": round(started, 3)}
-        try:
-            value = original(*args, **kwargs)
-            event["elapsed"] = round(time.monotonic() - started, 3)
-            if isinstance(value, list):
-                event["count"] = len(value)
-                event["sample"] = [str(x)[:260] for x in value[:12]]
-            elif isinstance(value, dict):
-                event["count"] = 1
-                event["sample"] = [str(value)[:260]]
-            else:
-                event["count"] = 0 if value is None else 1
-                event["sample"] = [str(value)[:260]] if value is not None else []
-            event["ok"] = True
-            events.append(event)
-            return value
-        except Exception as exc:
-            event["elapsed"] = round(time.monotonic() - started, 3)
-            event["ok"] = False
-            event["error"] = f"{type(exc).__name__}: {exc}"
-            events.append(event)
-            raise
-
-    setattr(module, name, wrapper)
-
-    def restore():
-        setattr(module, name, original)
-
-    return restore
-
-
-def _diag_run_one(store, query):
-    events = []
-    logs = io.StringIO()
-    started = time.monotonic()
-    module = load_scraper(store)
-
-    if store == "parfumzentrum":
-        names = (
-            "_fulltext_search_urls",
-            "_category_fallback_urls",
-            "_get_sitemap_urls",
-            "_extract_product",
-        )
-    else:
-        names = ("_discover", "_product")
-
-    restores = []
-    for name in names:
-        restores.append(_diag_wrap_function(module, name, events))
-
-    try:
-        with contextlib.redirect_stdout(logs):
-            result = module.search(query)
-        rows = result if isinstance(result, list) else list(result or [])
-        return {
-            "store": store,
-            "elapsed": round(time.monotonic() - started, 3),
-            "result_count": len(rows),
-            "results": rows,
-            "events": events,
-            "logs": logs.getvalue().splitlines(),
-            "exception": "",
-        }
-    except Exception as exc:
-        return {
-            "store": store,
-            "elapsed": round(time.monotonic() - started, 3),
-            "result_count": 0,
-            "results": [],
-            "events": events,
-            "logs": logs.getvalue().splitlines(),
-            "exception": f"{type(exc).__name__}: {exc}",
-        }
-    finally:
-        for restore in reversed(restores):
-            restore()
-
-
-def _diag_html(report):
-    from html import escape
-
-    css = """
-    <style>
-    body{font-family:-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif;background:#101114;color:#eee;margin:0;padding:28px}
-    h1{font-size:42px;margin:0 0 8px}.sub{font-size:20px;color:#aeb3c0;margin-bottom:28px}
-    .card{background:#1b1c20;border:1px solid #36373d;border-radius:24px;padding:30px;margin:20px 0;overflow:hidden}
-    .big{font-size:42px;font-weight:800}.ok{color:#78e878}.bad{color:#ff7777}.muted{color:#aeb3c0}
-    h2{font-size:27px;margin-top:30px} table{width:100%;border-collapse:collapse;font-size:16px}
-    th,td{text-align:left;padding:10px 8px;border-bottom:1px solid #303138;vertical-align:top}th{color:#aeb3c0}
-    code{word-break:break-all}.url{max-width:520px}.event{margin:12px 0;padding:14px;border-radius:14px;background:#15161a;border:1px solid #303138}
-    .fn{font-weight:800;font-size:19px}.sample{white-space:pre-wrap;word-break:break-word;color:#c8cbd3;margin-top:6px}
-    summary{font-size:20px;font-weight:700;cursor:pointer;margin:12px 0}
-    </style>
-    """
-
-    parts=[
-        "<!doctype html><html><head><meta charset='utf-8'>",
-        "<meta name='viewport' content='width=device-width,initial-scale=1'>",
-        "<title>ScentHunter — Diagnostico 2 store</title>",css,"</head><body>",
-        "<h1>Diagnostico mirato</h1>",
-        f"<div class='sub'>Query: <b>{escape(str(report['query']))}</b> — SOLO ParfumZentrum e Deloox.</div>",
-    ]
-
-    for item in report["stores"]:
-        cls="bad" if item["exception"] else "ok"
-        parts += ["<div class='card'>",
-                  f"<div class='big'>{escape(str(item['store']))}</div>",
-                  f"<div class='{cls}'>{'ERRORE' if item['exception'] else 'FINE'} — {item['elapsed']} s — {item['result_count']} risultati</div>"]
-        if item["exception"]:
-            parts.append(f"<p class='bad'><b>Eccezione:</b> {escape(str(item['exception']))}</p>")
-
-        parts.append("<h2>Dove si perde</h2>")
-        if item["events"]:
-            for ev in item["events"]:
-                status="OK" if ev.get("ok") else "KO"
-                status_cls="ok" if ev.get("ok") else "bad"
-                parts.append("<div class='event'>")
-                parts.append(f"<div class='fn'>{escape(str(ev.get('function')))} — <span class='{status_cls}'>{status}</span> — {ev.get('elapsed',0)} s — count {ev.get('count',0)}</div>")
-                if ev.get("error"):
-                    parts.append(f"<div class='bad'>{escape(str(ev['error']))}</div>")
-                if ev.get("sample"):
-                    parts.append("<div class='sample'>"+escape("\n".join(str(x) for x in ev["sample"]))+"</div>")
-                parts.append("</div>")
-        else:
-            parts.append("<div class='muted'>Nessun confine interno intercettato.</div>")
-
-        parts.append("<h2>Risultati</h2>")
-        if item["results"]:
-            parts.append("<table><tr><th>Nome</th><th>Prezzo</th><th>Disponibilità</th></tr>")
-            for row in item["results"][:20]:
-                parts.append(f"<tr><td>{escape(str(row.get('name') or row.get('title') or ''))}</td><td>{escape(str(row.get('price') or row.get('price_value') or ''))}</td><td>{escape(str(row.get('available',row.get('availability',''))))}</td></tr>")
-            parts.append("</table>")
-        else:
-            parts.append("<div class='bad'><b>ZERO risultati.</b> Il blocco è nelle funzioni sopra.</div>")
-
-        if item["logs"]:
-            parts += ["<details><summary>Log interni</summary><pre>",escape("\n".join(item["logs"][-120:])),"</pre></details>"]
-        parts.append("</div>")
-
-    parts.append("<div class='card muted'><b>Metodo:</b> nessun tracer HTTP. Il test avvolge direttamente le funzioni reali di discovery e parsing dei SOLI due scraper, quindi il punto di perdita viene mostrato senza JSON chilometrico.</div>")
-    parts.append("</body></html>")
-    return "".join(parts)
-
-
-@app.get("/diagnose-two")
-def diagnose_two(q: str = "Liquid Brun"):
+@app.get("/test-parfumzentrum")
+def test_parfumzentrum_diagnostic(q: str = "Liquid Brun"):
+    """Diagnose ParfumZentrum scraper step-by-step."""
     query = str(q or "").strip() or "Liquid Brun"
-    return HTMLResponse(
-        _diag_html({
+    
+    try:
+        import requests
+        from bs4 import BeautifulSoup
+        import re
+        
+        BASE_URL = "https://www.parfum-zentrum.de"
+        SEARCH_URL = BASE_URL + "/suchen/"
+        
+        steps = []
+        
+        # Step 1: Make HTTP request
+        step1_started = time.monotonic()
+        try:
+            response = requests.get(
+                SEARCH_URL + f"?search={query}&submit=Suche",
+                timeout=5,
+                headers={"User-Agent": "Mozilla/5.0"}
+            )
+            step1_elapsed = round(time.monotonic() - step1_started, 3)
+            steps.append({
+                "step": 1,
+                "name": "HTTP Request",
+                "status": "OK" if response.status_code == 200 else "FAIL",
+                "elapsed": step1_elapsed,
+                "status_code": response.status_code,
+                "content_length": len(response.text),
+            })
+            
+            if response.status_code != 200:
+                return {
+                    "query": query,
+                    "status": "FAILED",
+                    "steps": steps,
+                    "error": f"HTTP {response.status_code}",
+                }
+            
+            # Step 2: Parse HTML
+            step2_started = time.monotonic()
+            soup = BeautifulSoup(response.text, "html.parser")
+            step2_elapsed = round(time.monotonic() - step2_started, 3)
+            steps.append({
+                "step": 2,
+                "name": "Parse HTML",
+                "status": "OK",
+                "elapsed": step2_elapsed,
+            })
+            
+            # Step 3: Extract product links
+            step3_started = time.monotonic()
+            urls = []
+            seen = set()
+            
+            for link in soup.find_all("a", href=True):
+                href = link.get("href", "").strip()
+                if not href:
+                    continue
+                
+                if href.startswith("/"):
+                    href = BASE_URL + href
+                elif not href.startswith("http"):
+                    href = BASE_URL + "/" + href
+                
+                if re.search(r"_z\d+", href, re.I):
+                    if href not in seen:
+                        seen.add(href)
+                        urls.append(href)
+            
+            step3_elapsed = round(time.monotonic() - step3_started, 3)
+            steps.append({
+                "step": 3,
+                "name": "Extract Product Links (_z pattern)",
+                "status": "OK" if urls else "ZERO RESULTS",
+                "elapsed": step3_elapsed,
+                "count": len(urls),
+                "sample_urls": urls[:5],
+            })
+            
+            if not urls:
+                # Debug: show what links we found
+                all_hrefs = []
+                for link in soup.find_all("a", href=True):
+                    href = link.get("href", "").strip()
+                    if href and "product" in href.lower():
+                        all_hrefs.append(href[:100])
+                
+                steps.append({
+                    "step": "DEBUG",
+                    "name": "Sample of all hrefs containing 'product'",
+                    "sample": all_hrefs[:10],
+                })
+                
+                return {
+                    "query": query,
+                    "status": "FAILED AT STEP 3",
+                    "steps": steps,
+                    "error": "No product links found matching _z pattern",
+                }
+            
+            # Step 4: Try to extract first product
+            if urls:
+                step4_started = time.monotonic()
+                first_url = urls[0]
+                
+                try:
+                    product_response = requests.get(first_url, timeout=2.5)
+                    step4_elapsed = round(time.monotonic() - step4_started, 3)
+                    
+                    if product_response.status_code == 200:
+                        product_soup = BeautifulSoup(product_response.text, "html.parser")
+                        h1 = product_soup.find("h1")
+                        name = " ".join(h1.stripped_strings) if h1 else "NO TITLE"
+                        
+                        steps.append({
+                            "step": 4,
+                            "name": "Extract First Product",
+                            "status": "OK",
+                            "elapsed": step4_elapsed,
+                            "url": first_url,
+                            "product_name": name,
+                            "product_status": product_response.status_code,
+                        })
+                    else:
+                        steps.append({
+                            "step": 4,
+                            "name": "Extract First Product",
+                            "status": "FAIL",
+                            "elapsed": step4_elapsed,
+                            "url": first_url,
+                            "product_status": product_response.status_code,
+                        })
+                except Exception as e:
+                    steps.append({
+                        "step": 4,
+                        "name": "Extract First Product",
+                        "status": "ERROR",
+                        "error": str(e),
+                    })
+            
+            return {
+                "query": query,
+                "status": "OK",
+                "steps": steps,
+                "total_urls_found": len(urls),
+            }
+            
+        except requests.RequestException as e:
+            step1_elapsed = round(time.monotonic() - step1_started, 3)
+            steps.append({
+                "step": 1,
+                "name": "HTTP Request",
+                "status": "ERROR",
+                "elapsed": step1_elapsed,
+                "error": str(e),
+            })
+            
+            return {
+                "query": query,
+                "status": "FAILED",
+                "steps": steps,
+                "error": f"HTTP Error: {e}",
+            }
+    
+    except Exception as e:
+        return {
             "query": query,
-            "stores": [
-                _diag_run_one("parfumzentrum", query),
-                _diag_run_one("deloox", query),
-            ],
-        }),
-        media_type="text/html",
-    )
+            "status": "ERROR",
+            "error": f"{type(e).__name__}: {e}",
+            "traceback": traceback.format_exc(),
+        }
 
 
 @app.get("/suggest")
