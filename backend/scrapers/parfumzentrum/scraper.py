@@ -24,7 +24,7 @@ HEADERS = {
 
 PRODUCT_RE = re.compile(r"_z[0-9a-z-]*", re.I)
 PRODUCT_HINT_RE = re.compile(
-    r"(?:\b\d{2,4}\s*ml\b|\b(?:eau|parfum|edt|edp|extrait)\b)",
+    r"(?:(?<!\d)\d{2,4}\s*ml\b|\b(?:eau|parfum|edt|edp|extrait)\b)",
     re.I,
 )
 NON_PRODUCT_PATH_RE = re.compile(
