@@ -115,15 +115,17 @@ def format_price(value: Any) -> Optional[str]:
 
 
 def resolve_product_price(raw_price: Any, search_price: Optional[str] = None) -> tuple[Optional[str], Optional[float]]:
-    """Resolve Shopify product prices without confusing cents with euros.
+    """Normalize PerfumeMarket Shopify variant prices to euros.
 
-    PerfumeMarket currently exposes some Shopify variant prices as integer cents
-    in the product JSON (for example 4299), while the live search card exposes
-    the customer-facing value (42,99 €). When both are available and they are
-    mathematically consistent, the customer-facing search price wins.
+    The live PerfumeMarket Shopify product payload currently exposes variant
+    prices as integer cents (for example 3099 and 4299), while the storefront
+    displays 30.99 EUR and 42.99 EUR. The scraper must normalize that store
+    representation before returning the offer.
 
-    We deliberately do not divide an isolated raw value by 100: without an
-    independent customer-facing price that would be an unsafe assumption.
+    If a customer-facing search price is available, it is preferred. Otherwise
+    an integer-looking Shopify value is treated as cents. Decimal euro values
+    such as 42.99 are left unchanged. This rule is store-wide and is not tied
+    to any particular perfume.
     """
     raw_num = parse_float(raw_price)
     search_num = parse_float(search_price) if search_price else None
@@ -131,17 +133,33 @@ def resolve_product_price(raw_price: Any, search_price: Optional[str] = None) ->
     if raw_num is None and search_num is None:
         return None, None
 
-    if raw_num is not None and search_num is not None:
-        # Shopify may expose 4299 while the visible shop price is 42.99.
-        # Accept the conversion only when the two sources agree exactly after
-        # converting cents to euros (within a tiny floating-point tolerance).
+    if search_num is not None:
+        # Search/collection cards are already customer-facing euro values.
+        # Use them as the authoritative display price.
+        if raw_num is None:
+            return format_price(search_num), search_num
+
+        # If the product payload is in cents, verify that it agrees with the
+        # search value before accepting the search value.
         if raw_num >= 1000 and abs((raw_num / 100.0) - search_num) < 0.011:
             return format_price(search_num), search_num
 
-        return format_price(raw_num), raw_num
+        # If the product payload already uses euros, keep it.
+        if abs(raw_num - search_num) < 0.011:
+            return format_price(search_num), search_num
 
-    if search_num is not None:
+        # Conflicting sources: prefer the customer-facing storefront value.
         return format_price(search_num), search_num
+
+    if raw_num is None:
+        return None, None
+
+    # PerfumeMarket's Shopify product JSON uses integer cents for prices.
+    # Values such as 3099 and 4299 therefore mean 30.99 and 42.99 EUR.
+    # Decimal euro values (42.99) remain untouched.
+    if raw_num >= 1000 and float(raw_num).is_integer():
+        euro_num = raw_num / 100.0
+        return format_price(euro_num), euro_num
 
     return format_price(raw_num), raw_num
 
