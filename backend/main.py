@@ -187,11 +187,26 @@ def sort_results(results: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
 # ---------------------------------------------------------------------------
 
 def run_store(store: str, query: str) -> Dict[str, Any]:
+    """
+    Call exactly one scraper directly.
+
+    The scraper remains untouched.  A transient empty result is retried once
+    for stores that are known to be sensitive to concurrent site load.  This
+    is still a direct scraper call and does not introduce validation/matching.
+    """
     started = time.monotonic()
     try:
         module = load_scraper(store)
         search = getattr(module, "search")
+
         raw = search(query)
+
+        # A concurrent burst can occasionally produce an empty response even
+        # though the same scraper succeeds when called alone.  Retry only an
+        # empty response, never a real result and never an exception.
+        if store == "parfumzentrum" and not raw:
+            time.sleep(0.25)
+            raw = search(query)
 
         # Some future scraper may return a generator/tuple; accept any normal
         # iterable while keeping the contract simple.
@@ -470,9 +485,16 @@ def test_store(store: str, q: str):
 
 @app.get("/diagnose-stores")
 def diagnose_stores(q: str = "Liquid Brun"):
-    """One direct call per scraper; useful after every deploy."""
+    """
+    Direct scraper diagnostic.
+
+    This intentionally uses the exact same run_store() path as the real
+    search. There is no legacy engine, matcher, validation or finalization
+    layer in between.
+    """
     query = str(q or "").strip()
     reports = []
+
     with ThreadPoolExecutor(max_workers=MAX_WORKERS) as executor:
         futures = {
             executor.submit(run_store, store, query): store
@@ -486,12 +508,17 @@ def diagnose_stores(q: str = "Liquid Brun"):
                 reports.append({
                     "store": store,
                     "status": "error",
+                    "elapsed": 0,
                     "count": 0,
                     "results": [],
                     "error": f"{type(exc).__name__}: {exc}",
                 })
 
-    reports.sort(key=lambda x: STORES.index(x["store"]) if x.get("store") in STORES else 999)
+    reports.sort(
+        key=lambda x: STORES.index(x["store"])
+        if x.get("store") in STORES else 999
+    )
+
     return {
         "ok": True,
         "architecture": "simple-direct-scrapers",
