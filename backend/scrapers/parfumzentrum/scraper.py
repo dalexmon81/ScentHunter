@@ -10,6 +10,10 @@ BASE_URL = "https://www.parfum-zentrum.de"
 SITEMAP_URL = BASE_URL + "/sitemap.xml"
 SEARCH_URL = BASE_URL + "/fulltext_search/1"
 SEARCH_DEADLINE = 14.0
+CATEGORY_FALLBACK_URLS = (
+    BASE_URL + "/parfums/f/french-avenue/",
+    BASE_URL + "/french-avenue_v1341/",
+)
 PRODUCT_TIMEOUT = 2.5
 
 SESSION = requests.Session()
@@ -141,6 +145,45 @@ def _fulltext_search_urls(query):
         return []
     except Exception:
         return []
+
+
+def _category_fallback_urls(query):
+    """Fallback discovery from stable category pages when native full-text search returns no links."""
+    wanted = {x for x in _tokens(query) if x not in STOPWORDS}
+    if not wanted:
+        return []
+
+    urls = []
+    seen = set()
+    from urllib.parse import urljoin
+
+    for category_url in CATEGORY_FALLBACK_URLS:
+        try:
+            response = SESSION.get(category_url, headers=HEADERS, timeout=3.5)
+            if response.status_code != 200:
+                response.close()
+                continue
+            soup = BeautifulSoup(response.text, "html.parser")
+            response.close()
+            for a in soup.find_all("a", href=True):
+                href = urljoin(BASE_URL, str(a.get("href") or "").strip())
+                if not href.startswith(BASE_URL):
+                    continue
+                path = href.split("#", 1)[0].lower()
+                if any(x in path for x in ("/category/", "/kategorie/", "/f/", "/fulltext_search", "/suchen/")):
+                    continue
+                text = " ".join(a.stripped_strings)
+                haystack = (text + " " + href).lower()
+                if all(token in haystack for token in wanted):
+                    if href not in seen:
+                        seen.add(href)
+                        urls.append(href)
+        except requests.RequestException:
+            continue
+        except Exception:
+            continue
+
+    return urls[:32]
 
 
 def _get_sitemap_urls():
@@ -819,8 +862,13 @@ def search(query):
     # 1) Native search is the primary path.
     candidates = _fulltext_search_urls(query)
 
-    # 2) Sitemap is only a bounded fallback.
-    if not candidates and (__import__("time").monotonic() - started) < 5.0:
+    # 2) Stable category pages are the primary fallback. The site's native
+    # full-text endpoint can return an HTML shell without product anchors.
+    if not candidates and (__import__("time").monotonic() - started) < 7.0:
+        candidates = _category_fallback_urls(query)
+
+    # 3) Sitemap is the last bounded fallback.
+    if not candidates and (__import__("time").monotonic() - started) < 9.0:
         try:
             sitemap_urls = _get_sitemap_urls()
             candidates = [
