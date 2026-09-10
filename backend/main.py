@@ -782,6 +782,304 @@ def diagnose_stores(q: str = "Liquid Brun"):
         ),
     }
 
+# ---------------------------------------------------------------------------
+# TARGETED DIAGNOSTIC — ONLY PARFUMZENTRUM + DELOOX
+# ---------------------------------------------------------------------------
+
+import contextlib
+import io
+from types import SimpleNamespace
+
+
+class _TraceSession:
+    def __init__(self, real_session, trace, label):
+        self._real = real_session
+        self._trace = trace
+        self._label = label
+
+    def request(self, method, url, *args, **kwargs):
+        started = time.monotonic()
+        try:
+            response = self._real.request(method, url, *args, **kwargs)
+            self._trace.append({
+                "label": self._label, "method": method.upper(),
+                "url": str(url), "status": getattr(response, "status_code", None),
+                "seconds": round(time.monotonic() - started, 3),
+                "bytes": len(getattr(response, "content", b"") or b""),
+                "error": "",
+            })
+            return response
+        except Exception as exc:
+            self._trace.append({
+                "label": self._label, "method": method.upper(),
+                "url": str(url), "status": None,
+                "seconds": round(time.monotonic() - started, 3),
+                "bytes": 0, "error": f"{type(exc).__name__}: {exc}",
+            })
+            raise
+
+    def get(self, url, *args, **kwargs):
+        return self.request("GET", url, *args, **kwargs)
+
+    def __getattr__(self, name):
+        return getattr(self._real, name)
+
+
+class _TraceRequests:
+    def __init__(self, real_requests, trace, label):
+        self._real = real_requests
+        self._trace = trace
+        self._label = label
+        self.RequestException = real_requests.RequestException
+
+    def get(self, url, *args, **kwargs):
+        started = time.monotonic()
+        try:
+            response = self._real.get(url, *args, **kwargs)
+            self._trace.append({
+                "label": self._label, "method": "GET", "url": str(url),
+                "status": getattr(response, "status_code", None),
+                "seconds": round(time.monotonic() - started, 3),
+                "bytes": len(getattr(response, "content", b"") or b""),
+                "error": "",
+            })
+            return response
+        except Exception as exc:
+            self._trace.append({
+                "label": self._label, "method": "GET", "url": str(url),
+                "status": None,
+                "seconds": round(time.monotonic() - started, 3),
+                "bytes": 0, "error": f"{type(exc).__name__}: {exc}",
+            })
+            raise
+
+    def Session(self, *args, **kwargs):
+        return _TraceSession(
+            self._real.Session(*args, **kwargs), self._trace, self._label
+        )
+
+    def __getattr__(self, name):
+        return getattr(self._real, name)
+
+
+def _diag_stage(url):
+    value = str(url or "").lower()
+    if "fulltext_search" in value:
+        return "RICERCA NATIVA"
+    if "search" in value:
+        return "RICERCA"
+    if "sitemap" in value:
+        return "SITEMAP"
+    if "/categorie/" in value or "/category" in value or "product-line" in value:
+        return "CATEGORIA"
+    if "/product/" in value or "/produit/" in value or "_z" in value:
+        return "PRODOTTO"
+    return "ALTRO"
+
+
+def _diag_run_one(store, query):
+    trace = []
+    stdout = io.StringIO()
+    started = time.monotonic()
+    module = load_scraper(store)
+    original_requests = getattr(module, "requests", None)
+    original_session = getattr(module, "SESSION", None)
+
+    try:
+        if original_requests is not None:
+            module.requests = _TraceRequests(original_requests, trace, store)
+        if original_session is not None:
+            module.SESSION = _TraceSession(original_session, trace, store)
+
+        with contextlib.redirect_stdout(stdout):
+            result = module.search(query)
+
+        rows = result if isinstance(result, list) else list(result or [])
+        return {
+            "store": store,
+            "elapsed": round(time.monotonic() - started, 3),
+            "result_count": len(rows),
+            "results": rows,
+            "trace": trace,
+            "logs": stdout.getvalue().splitlines(),
+            "exception": "",
+        }
+    except Exception as exc:
+        return {
+            "store": store,
+            "elapsed": round(time.monotonic() - started, 3),
+            "result_count": 0,
+            "results": [],
+            "trace": trace,
+            "logs": stdout.getvalue().splitlines(),
+            "exception": f"{type(exc).__name__}: {exc}",
+        }
+    finally:
+        if original_requests is not None:
+            module.requests = original_requests
+        if original_session is not None:
+            module.SESSION = original_session
+
+
+def _diag_group_trace(trace):
+    groups = {}
+    for item in trace:
+        stage = _diag_stage(item.get("url"))
+        bucket = groups.setdefault(stage, {
+            "calls": 0, "seconds": 0.0, "ok": 0, "bad": 0, "bytes": 0
+        })
+        bucket["calls"] += 1
+        bucket["seconds"] += item.get("seconds", 0.0) or 0.0
+        bucket["bytes"] += item.get("bytes", 0) or 0
+        status = item.get("status")
+        if status is not None and 200 <= status < 400:
+            bucket["ok"] += 1
+        else:
+            bucket["bad"] += 1
+    for bucket in groups.values():
+        bucket["seconds"] = round(bucket["seconds"], 3)
+    return groups
+
+
+def _diag_html(report):
+    from html import escape
+
+    css = """
+    <style>
+    body{font-family:-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif;
+         margin:0;background:#101114;color:#eee;padding:18px}
+    h1{font-size:21px;margin:0 0 5px}
+    h2{font-size:17px;margin:22px 0 9px}
+    .sub{color:#aeb2bb;margin-bottom:16px}
+    .card{background:#191b20;border:1px solid #30333a;border-radius:14px;
+          padding:15px;margin:12px 0}
+    .ok{color:#7ee787}.bad{color:#ff7b72}.muted{color:#9da1aa}
+    .big{font-size:26px;font-weight:700}
+    table{width:100%;border-collapse:collapse;font-size:12px}
+    th,td{padding:7px 6px;border-bottom:1px solid #2a2d33;text-align:left;
+           vertical-align:top}
+    th{color:#b9bec8}
+    code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:10px;
+         word-break:break-all}
+    .url{max-width:520px;word-break:break-all}
+    </style>
+    """
+
+    parts = [
+        "<!doctype html><html><head><meta charset='utf-8'>",
+        "<meta name='viewport' content='width=device-width,initial-scale=1'>",
+        "<title>ScentHunter — Diagnostico 2 store</title>",
+        css, "</head><body>",
+        "<h1>Diagnostico mirato</h1>",
+        f"<div class='sub'>Query: <b>{escape(report['query'])}</b> — "
+        "eseguiti SOLO ParfumZentrum e Deloox.</div>",
+    ]
+
+    for item in report["stores"]:
+        cls = "bad" if item["exception"] else "ok"
+        parts.append("<div class='card'>")
+        parts.append(
+            f"<div class='big'>{escape(item['store'])}</div>"
+            f"<div class='{cls}'>{'ERRORE' if item['exception'] else 'FINE'}"
+            f" — {item['elapsed']} s — {item['result_count']} risultati</div>"
+        )
+        if item["exception"]:
+            parts.append(
+                f"<p class='bad'><b>Eccezione:</b> {escape(item['exception'])}</p>"
+            )
+
+        groups = _diag_group_trace(item["trace"])
+        parts.append("<h2>Dove si perdono</h2>")
+        if groups:
+            parts.append(
+                "<table><tr><th>Fase</th><th>Chiamate</th>"
+                "<th>Tempo HTTP</th><th>OK</th><th>KO</th><th>Dati</th></tr>"
+            )
+            for stage, data in groups.items():
+                parts.append(
+                    "<tr>"
+                    f"<td><b>{escape(stage)}</b></td><td>{data['calls']}</td>"
+                    f"<td>{data['seconds']} s</td><td>{data['ok']}</td>"
+                    f"<td>{data['bad']}</td><td>{data['bytes']} B</td></tr>"
+                )
+            parts.append("</table>")
+        else:
+            parts.append("<div class='muted'>Nessuna richiesta HTTP intercettata.</div>")
+
+        parts.append("<h2>Risultati</h2>")
+        if item["results"]:
+            parts.append(
+                "<table><tr><th>Nome</th><th>Prezzo</th>"
+                "<th>Disponibilità</th></tr>"
+            )
+            for row in item["results"][:20]:
+                name = row.get("name") or row.get("title") or ""
+                price = row.get("price") or row.get("price_value") or ""
+                avail = row.get("available", row.get("availability", ""))
+                parts.append(
+                    f"<tr><td>{escape(name)}</td><td>{escape(price)}</td>"
+                    f"<td>{escape(avail)}</td></tr>"
+                )
+            parts.append("</table>")
+        else:
+            parts.append(
+                "<div class='bad'><b>ZERO risultati.</b> "
+                "Guarda il trace: così distinguiamo discovery, fetch o filtro.</div>"
+            )
+
+        parts.append("<details><summary>Trace HTTP completo</summary>")
+        if item["trace"]:
+            parts.append(
+                "<table><tr><th>#</th><th>Fase</th><th>Tempo</th>"
+                "<th>Status</th><th>Byte</th><th>URL</th><th>Errore</th></tr>"
+            )
+            for i, call in enumerate(item["trace"], 1):
+                status = call["status"]
+                status_cls = "ok" if status and 200 <= status < 400 else "bad"
+                parts.append(
+                    "<tr>"
+                    f"<td>{i}</td><td>{escape(_diag_stage(call['url']))}</td>"
+                    f"<td>{call['seconds']} s</td>"
+                    f"<td class='{status_cls}'>{escape(status)}</td>"
+                    f"<td>{call['bytes']}</td>"
+                    f"<td class='url'><code>{escape(call['url'])}</code></td>"
+                    f"<td class='bad'>{escape(call['error'])}</td></tr>"
+                )
+            parts.append("</table>")
+        else:
+            parts.append("<div class='muted'>Nessuna richiesta.</div>")
+        parts.append("</details>")
+
+        if item["logs"]:
+            parts.append("<details><summary>Log interni</summary><pre>")
+            parts.append(escape("\n".join(item["logs"][-100:])))
+            parts.append("</pre></details>")
+
+        parts.append("</div>")
+
+    parts.append(
+        "<div class='card muted'><b>Diagnosi:</b> "
+        "RICERCA/ SITEMAP = discovery; PRODOTTO = download/pagina; "
+        "risultati = parsing/filtro. Nessun altro negozio viene eseguito.</div>"
+    )
+    parts.append("</body></html>")
+    return "".join(parts)
+
+
+@app.get("/diagnose-two")
+def diagnose_two(q: str = "Liquid Brun"):
+    query = str(q or "").strip() or "Liquid Brun"
+    return HTMLResponse(
+        _diag_html({
+            "query": query,
+            "stores": [
+                _diag_run_one("parfumzentrum", query),
+                _diag_run_one("deloox", query),
+            ],
+        }),
+        media_type="text/html",
+    )
+
 
 @app.get("/suggest")
 def suggest(q: str):
