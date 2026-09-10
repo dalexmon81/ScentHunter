@@ -5,17 +5,17 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from urllib.parse import quote_plus, urljoin, urlparse
 
 import requests
-from bs4 import BeautifulSoup
 
 BASE = "https://bplatz.de"
 HEADERS = {
     "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0 Safari/537.36",
-    "Accept": "text/html,application/xhtml+xml,application/json;q=0.9,*/*;q=0.8",
+    "Accept": "application/json,text/javascript,text/html;q=0.9,*/*;q=0.8",
     "Accept-Language": "de-DE,de;q=0.9,en;q=0.8",
     "Cache-Control": "no-cache",
 }
-SEARCH_TIMEOUT = (2.0, 5.0)
-PRODUCT_TIMEOUT = (2.0, 5.0)
+
+SEARCH_TIMEOUT = (1.5, 4.0)
+PRODUCT_TIMEOUT = (1.5, 4.0)
 MAX_CANDIDATES = 12
 
 NON_PERFUME_MARKERS = {
@@ -50,18 +50,32 @@ def contains_non_perfume_marker(name):
 def query_matches(name, query):
     if contains_non_perfume_marker(name):
         return False
+
     ignored = {
         "eau", "de", "parfum", "perfume", "edp", "edt", "extrait",
         "spray", "ml", "for", "by", "the",
     }
-    query_tokens = [t for t in norm(query).split() if t not in ignored]
+    query_tokens = [
+        token for token in norm(query).split()
+        if token not in ignored
+    ]
     name_tokens = set(norm(name).split())
-    return bool(query_tokens) and all(t in name_tokens for t in query_tokens)
+    return bool(query_tokens) and all(
+        token in name_tokens for token in query_tokens
+    )
 
 
 def parse_price(value):
     if value in (None, ""):
         return None
+
+    if isinstance(value, (int, float)):
+        number = float(value)
+        # Shopify JSON normally exposes cents as an integer.
+        if number >= 1000:
+            number /= 100.0
+        return number
+
     text = str(value).strip().replace("\xa0", " ")
     text = re.sub(r"[^\d,.\-]", "", text)
     if not text:
@@ -79,6 +93,7 @@ def parse_price(value):
             text = text.replace(",", "")
     elif text.count(".") > 1:
         text = text.replace(".", "")
+
     try:
         return float(text)
     except ValueError:
@@ -90,64 +105,23 @@ def money(value):
     return "" if price is None else f"{price:.2f}".replace(".", ",") + " €"
 
 
-def request_get(session, url, timeout):
+def request_get(session, url, timeout, params=None):
     try:
-        response = session.get(url, headers=HEADERS, timeout=timeout, allow_redirects=True)
-        if response.ok and response.text:
+        response = session.get(
+            url,
+            params=params,
+            headers=HEADERS,
+            timeout=timeout,
+            allow_redirects=True,
+        )
+        if response.ok and response.content:
             return response
     except requests.RequestException:
         return None
     return None
 
 
-def search_html(session, query):
-    url = BASE + "/search?q=" + quote_plus(query) + "&type=product"
-    response = request_get(session, url, SEARCH_TIMEOUT)
-    if not response:
-        return []
-
-    soup = BeautifulSoup(response.text, "html.parser")
-    found = []
-    seen = set()
-
-    for anchor in soup.select('a[href*="/products/"]'):
-        href = anchor.get("href") or ""
-        absolute = urljoin(BASE, href).split("?")[0].rstrip("/")
-        path = urlparse(absolute).path
-        if "/products/" not in path:
-            continue
-        if path in seen:
-            continue
-
-        texts = [
-            anchor.get("title") or "",
-            anchor.get("aria-label") or "",
-            anchor.get_text(" ", strip=True) or "",
-        ]
-        if not any(query_matches(text, query) for text in texts):
-            # Check the nearest product card without walking too far into page
-            card = anchor
-            for _ in range(4):
-                card = card.parent
-                if not card:
-                    break
-                text = card.get_text(" ", strip=True)
-                if query_matches(text, query):
-                    texts.append(text)
-                    break
-
-        if any(query_matches(text, query) for text in texts):
-            seen.add(path)
-            found.append(absolute)
-            if len(found) >= MAX_CANDIDATES:
-                break
-
-    return found
-
-
-def predictive_html(session, query):
-    # Shopify predictive search fallback. Keep it independent from the HTML
-    # search because some Shopify themes disable predictive suggestions.
+def predictive_products(session, query):
     endpoint = BASE + "/search/suggest.json"
     params = {
         "q": query,
@@ -155,10 +129,12 @@ def predictive_html(session, query):
         "resources[limit]": "20",
         "resources[options][unavailable_products]": "show",
     }
+
     response = request_get(
         session,
-        endpoint + "?" + "&".join(f"{quote_plus(str(k))}={quote_plus(str(v))}" for k, v in params.items()),
+        endpoint,
         SEARCH_TIMEOUT,
+        params=params,
     )
     if not response:
         return []
@@ -172,59 +148,94 @@ def predictive_html(session, query):
         (((data or {}).get("resources") or {}).get("results") or {}).get("products")
         or []
     )
-    urls = []
+
+    candidates = []
     seen = set()
+
     for product in products:
-        title = product.get("title") or product.get("name") or ""
-        if not query_matches(title, query):
+        if not isinstance(product, dict):
             continue
-        raw_url = product.get("url") or product.get("handle") or ""
+
+        title = str(
+            product.get("title")
+            or product.get("name")
+            or ""
+        ).strip()
+
+        if not title or not query_matches(title, query):
+            continue
+
+        raw_url = (
+            product.get("url")
+            or product.get("product_url")
+            or ""
+        )
+
         if not raw_url:
             continue
-        if not raw_url.startswith("http"):
-            raw_url = "/products/" + str(raw_url).strip("/")
-        absolute = urljoin(BASE, raw_url).split("?")[0].rstrip("/")
-        path = urlparse(absolute).path
+
+        absolute = urljoin(BASE, str(raw_url)).split("?")[0].rstrip("/")
+        path = urlparse(absolute).path.rstrip("/")
+
         if "/products/" not in path or path in seen:
             continue
+
         seen.add(path)
-        urls.append(absolute)
-        if len(urls) >= MAX_CANDIDATES:
+        candidates.append({
+            "url": absolute,
+            "title": title,
+            "available_hint": product.get("available"),
+        })
+
+        if len(candidates) >= MAX_CANDIDATES:
             break
-    return urls
+
+    return candidates
 
 
-def jsonld_objects(soup):
-    objects = []
-    for node in soup.select('script[type="application/ld+json"]'):
-        raw = node.string or node.get_text()
-        if not raw:
-            continue
-        try:
-            data = json.loads(raw)
-        except (ValueError, TypeError):
-            continue
-        if isinstance(data, list):
-            objects.extend(data)
-        else:
-            objects.append(data)
-    return objects
+def product_json(session, url):
+    clean_url = url.split("?")[0].rstrip("/")
+    js_url = clean_url + ".js"
+
+    response = request_get(
+        session,
+        js_url,
+        PRODUCT_TIMEOUT,
+    )
+    if not response:
+        return None
+
+    try:
+        data = response.json()
+    except (ValueError, TypeError):
+        return None
+
+    return data if isinstance(data, dict) else None
 
 
-def walk_dicts(value):
-    if isinstance(value, dict):
-        yield value
-        for child in value.values():
-            yield from walk_dicts(child)
-    elif isinstance(value, list):
-        for child in value:
-            yield from walk_dicts(child)
+def extract_size_ml_from_variant(variant):
+    parts = [
+        variant.get("title"),
+        variant.get("option1"),
+        variant.get("option2"),
+        variant.get("option3"),
+    ]
 
+    text = " ".join(
+        str(value)
+        for value in parts
+        if value not in (None, "")
+    )
 
-def extract_size_ml(text):
-    matches = re.findall(r"(?<!\d)(\d+(?:[.,]\d+)?)\s*(ml|cl)\b", text or "", flags=re.I)
+    matches = re.findall(
+        r"(?<!\d)(\d+(?:[.,]\d+)?)\s*(ml|cl)\b",
+        text,
+        flags=re.I,
+    )
+
     if not matches:
         return None
+
     values = []
     for number, unit in matches:
         try:
@@ -233,117 +244,151 @@ def extract_size_ml(text):
                 value *= 10
             values.append(value)
         except ValueError:
-            pass
+            continue
+
     return min(values) if values else None
 
 
-def extract_product_html(html, url):
-    soup = BeautifulSoup(html, "html.parser")
-    objects = jsonld_objects(soup)
+def extract_size_ml_from_title(title):
+    matches = re.findall(
+        r"(?<!\d)(\d+(?:[.,]\d+)?)\s*(ml|cl)\b",
+        title or "",
+        flags=re.I,
+    )
 
-    title = ""
-    brand = ""
-    price = None
-    available = None
-    sku = ""
-    gtin = ""
-
-    for obj in walk_dicts(objects):
-        typ = obj.get("@type")
-        types = typ if isinstance(typ, list) else [typ]
-        if "Product" in types or typ == "Product":
-            title = title or str(obj.get("name") or "").strip()
-            brand_value = obj.get("brand")
-            if isinstance(brand_value, dict):
-                brand = brand or str(brand_value.get("name") or "").strip()
-            elif brand_value:
-                brand = brand or str(brand_value).strip()
-            sku = sku or str(obj.get("sku") or "").strip()
-            gtin = gtin or str(
-                obj.get("gtin13") or obj.get("gtin") or obj.get("gtin12") or ""
-            ).strip()
-
-            offers = obj.get("offers")
-            offer_list = offers if isinstance(offers, list) else [offers]
-            for offer in offer_list:
-                if not isinstance(offer, dict):
-                    continue
-                if price is None:
-                    price = parse_price(offer.get("price"))
-                if available is None and offer.get("availability"):
-                    availability = str(offer.get("availability")).lower()
-                    if "instock" in availability:
-                        available = True
-                    elif "outofstock" in availability or "soldout" in availability:
-                        available = False
-
-    if not title:
-        h1 = soup.find("h1")
-        title = h1.get_text(" ", strip=True) if h1 else ""
-    if not title:
-        meta = soup.find("meta", attrs={"property": "og:title"})
-        title = (meta.get("content") or "").strip() if meta else ""
-
-    if not brand:
-        # Bplatz currently exposes the seller/brand near the product title.
-        for text in soup.stripped_strings:
-            if text.strip().lower() in {"fragrance world", "french avenue"}:
-                brand = text.strip()
-                break
-
-    if price is None:
-        meta_price = soup.find("meta", attrs={"itemprop": "price"})
-        if meta_price:
-            price = parse_price(meta_price.get("content"))
-    if price is None:
-        node = soup.select_one('[data-price], [data-product-price], .price-item--sale, .price-item--regular')
-        if node:
-            price = parse_price(node.get("data-price") or node.get_text(" ", strip=True))
-
-    if available is None:
-        availability_meta = soup.find("meta", attrs={"itemprop": "availability"})
-        if availability_meta:
-            value = str(availability_meta.get("content") or "").lower()
-            if "instock" in value:
-                available = True
-            elif "outofstock" in value or "soldout" in value:
-                available = False
-
-    if available is None:
-        text = soup.get_text(" ", strip=True).lower()
-        if any(marker in text for marker in (
-            "out of stock", "nicht vorrätig", "ausverkauft", "sold out",
-        )):
-            available = False
-        elif any(marker in text for marker in (
-            "in den warenkorb", "add to cart", "jetzt kaufen",
-        )):
-            available = True
-
-    if not title or contains_non_perfume_marker(title):
+    if not matches:
         return None
-    return {
+
+    values = []
+    for number, unit in matches:
+        try:
+            value = float(number.replace(",", "."))
+            if unit.lower() == "cl":
+                value *= 10
+            values.append(value)
+        except ValueError:
+            continue
+
+    return min(values) if values else None
+
+
+def variant_to_result(data, variant, url, brand, title):
+    if not isinstance(variant, dict):
+        return None
+
+    variant_title = str(variant.get("title") or "").strip()
+    full_name = title
+
+    if variant_title and variant_title.lower() != "default title":
+        full_name = f"{title} {variant_title}".strip()
+
+    # Variant names are validated by the parent product title/query in build_results.
+
+    price = parse_price(variant.get("price"))
+    available = variant.get("available")
+
+    if available is not True and available is not False:
+        available = None
+
+    size_ml = (
+        extract_size_ml_from_variant(variant)
+        or extract_size_ml_from_title(full_name)
+    )
+
+    result = {
         "store": "Bplatz",
-        "name": title,
         "brand": brand,
-        "price": money(price),
-        "price_num": price,
+        "name": full_name,
+        "price": money(price) if price is not None and available is not False else "",
+        "price_num": price if price is not None and available is not False else None,
+        "size_ml": size_ml,
         "url": url,
-        "available": bool(available) if available is not None else False,
-        "availability": "in_stock" if available is True else ("out_of_stock" if available is False else "unknown"),
-        "size_ml": extract_size_ml(title),
-        "sku": sku,
-        "gtin": gtin,
+        "available": available,
+        "availability": (
+            "in_stock"
+            if available is True
+            else "out_of_stock"
+            if available is False
+            else "unknown"
+        ),
+        "sku": str(variant.get("sku") or "").strip(),
+        "store_product_id": str(variant.get("id") or "").strip(),
     }
 
+    return result
 
-def fetch_product(url):
+
+
+def build_results(data, url, query, available_hint=None):
+    if not isinstance(data, dict):
+        return []
+
+    title = str(data.get("title") or "").strip()
+    brand = str(data.get("vendor") or "").strip()
+
+    if not title or contains_non_perfume_marker(title):
+        return []
+
+    if not query_matches(title, query):
+        return []
+
+    variants = data.get("variants") or []
+    if not isinstance(variants, list):
+        variants = []
+
+    results = []
+
+    for variant in variants:
+        item = variant_to_result(data, variant, url, brand, title)
+        if item:
+            results.append(item)
+
+    # Shopify normally provides at least one variant. If a theme returns no
+    # variants, preserve a useful unknown-stock product rather than inventing
+    # availability.
+    if not results:
+        inferred_available = (
+            available_hint
+            if available_hint is True or available_hint is False
+            else None
+        )
+
+        results.append({
+            "store": "Bplatz",
+            "brand": brand,
+            "name": title,
+            "price": "",
+            "price_num": None,
+            "size_ml": extract_size_ml_from_title(title),
+            "url": url,
+            "available": inferred_available,
+            "availability": (
+                "in_stock"
+                if inferred_available is True
+                else "out_of_stock"
+                if inferred_available is False
+                else "unknown"
+            ),
+            "sku": "",
+            "store_product_id": "",
+        })
+
+    return results
+
+
+def product_worker(candidate, query):
     session = requests.Session()
     try:
-        response = request_get(session, url, PRODUCT_TIMEOUT)
-        if not response:
-            return None
-        return extract_product_html(response.text, url)
+        data = product_json(session, candidate["url"])
+        if not data:
+            return []
+
+        return build_results(
+            data,
+            candidate["url"],
+            query,
+            candidate.get("available_hint"),
+        )
     finally:
         session.close()
 
@@ -355,58 +400,62 @@ def search(query):
 
     session = requests.Session()
     try:
-        # HTML search is currently the most reliable first-party route on Bplatz:
-        # the live site exposes Liquid Brun directly in /search and collections.
-        urls = search_html(session, query)
-
-        # Predictive fallback for themes where search HTML is incomplete.
-        if not urls:
-            urls = predictive_html(session, query)
-
-        # Last-resort token search: useful when the exact phrase is not indexed
-        # by the theme but the product is discoverable by a distinctive token.
-        if not urls:
-            for token in norm(query).split():
-                if len(token) < 3:
-                    continue
-                urls = search_html(session, token)
-                if urls:
-                    break
-
-        urls = urls[:MAX_CANDIDATES]
+        candidates = predictive_products(session, query)
     finally:
         session.close()
 
-    if not urls:
+    if not candidates:
         return []
 
     results = []
-    with ThreadPoolExecutor(max_workers=min(6, len(urls))) as executor:
-        futures = {executor.submit(fetch_product, url): url for url in urls}
+
+    # The product endpoint is independent for every candidate, so one slow
+    # product cannot block the others.
+    with ThreadPoolExecutor(
+        max_workers=min(6, len(candidates))
+    ) as executor:
+        futures = [
+            executor.submit(product_worker, candidate, query)
+            for candidate in candidates
+        ]
+
         for future in as_completed(futures):
             try:
-                item = future.result()
+                results.extend(future.result())
             except Exception:
-                item = None
-            if item and query_matches(item.get("name", ""), query):
-                results.append(item)
+                continue
 
-    # Stable deterministic order and duplicate suppression.
+    # Conservative deduplication. Different variants remain separate.
     seen = set()
     final = []
+
     for item in results:
-        key = urlparse(item["url"]).path.rstrip("/")
+        key = (
+            urlparse(str(item.get("url") or "")).path.rstrip("/"),
+            str(item.get("size_ml") or ""),
+            str(item.get("price_num") or ""),
+            str(item.get("available")),
+        )
+
         if key in seen:
             continue
+
         seen.add(key)
         final.append(item)
 
-    final.sort(key=lambda x: (not bool(x.get("available")), x.get("price_num") is None, x.get("price_num") or 999999))
+    final.sort(
+        key=lambda item: (
+            item.get("available") is not True,
+            item.get("price_num") is None,
+            item.get("price_num") if item.get("price_num") is not None else 999999,
+        )
+    )
+
     return final
 
 
 if __name__ == "__main__":
-    for query in ("Liquid Brun", "9 PM", "Turathi Blue"):
-        print("\nQUERY:", query)
-        for result in search(query):
+    for test_query in ("Liquid Brun", "9 PM", "Turathi Blue"):
+        print("\nQUERY:", test_query)
+        for result in search(test_query):
             print(result)
