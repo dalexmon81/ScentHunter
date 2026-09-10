@@ -1,782 +1,987 @@
+"""
+ScentHunter - PerfumeMarket scraper
+Fast Shopify adapter.
+
+Design goals:
+- first-party Shopify search only on the live path
+- predictive search + normal search in parallel
+- no live sitemap crawl
+- bounded candidate count
+- concurrent product JSON enrichment
+- variant-level size/price/stock extraction
+- out-of-stock offers are retained
+- no perfume-specific hardcoded rules
+"""
+
 import json
 import re
-import time
-import unicodedata
 from concurrent.futures import ThreadPoolExecutor, as_completed
-from urllib.parse import urljoin, quote_plus
+from typing import Any, Dict, Iterable, List, Optional
+from urllib.parse import quote, urljoin, urlparse
 
 import requests
 from bs4 import BeautifulSoup
 
+
+BASE_URL = "https://www.perfumemarket.nl"
 STORE = "PerfumeMarket"
-BASE = "https://www.perfumemarket.nl"
-TIMEOUT = 12
-RETRIES = 3
-RETRY_SLEEP = 0.8
-MAX_PRODUCT_URLS = 40
-PRODUCT_WORKERS = 6
+
+CONNECT_TIMEOUT = 2.5
+READ_TIMEOUT = 5.0
+SEARCH_WORKERS = 4
+PRODUCT_WORKERS = 8
+MAX_CANDIDATES = 20
+MAX_RESULTS = 60
 
 HEADERS = {
     "User-Agent": (
-        "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 "
-        "(KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36"
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+        "AppleWebKit/537.36 (KHTML, like Gecko) "
+        "Chrome/131.0 Safari/537.36"
     ),
-    "Accept": "text/html,application/xhtml+xml,application/json;q=0.9,*/*;q=0.8",
-    "Accept-Language": "nl-NL,nl;q=0.9,en;q=0.8",
-    "Cache-Control": "no-cache",
+    "Accept-Language": "en-US,en;q=0.8",
+    "Accept": "text/html,application/json;q=0.9,*/*;q=0.8",
 }
 
-
-def clean(v):
-    return re.sub(r"\s+", " ", str(v or "")).strip()
-
-
-def norm(v):
-    x = unicodedata.normalize("NFKD", clean(v).lower())
-    x = "".join(c for c in x if not unicodedata.combining(c))
-    return re.sub(r"\s+", " ", re.sub(r"[^a-z0-9]+", " ", x)).strip()
+PRICE_RE = re.compile(
+    r"(?:€\s*)?(\d{1,5}(?:[.,]\d{2})?)(?:\s*€)?"
+)
 
 
-def toks(v):
-    return [x for x in norm(v).split() if len(x) > 1]
+# ---------------------------------------------------------------------------
+# Generic helpers
+# ---------------------------------------------------------------------------
+
+def clean(value: Any) -> str:
+    return re.sub(r"\s+", " ", str(value or "")).strip()
 
 
-def matches(t, q):
-    query_tokens = set(toks(q))
-    return bool(query_tokens) and query_tokens.issubset(set(toks(t)))
+def tokens(text: Any) -> List[str]:
+    return [
+        x.lower()
+        for x in re.findall(r"[a-z0-9]+", clean(text), re.I)
+        if x
+    ]
 
 
-def size_ml(v):
-    m = re.search(r"(?<!\d)(\d+(?:[.,]\d+)?)\s*(ml|cl)\b", clean(v), re.I)
-    if not m:
+def compact(text: Any) -> str:
+    return re.sub(r"[^a-z0-9]+", "", clean(text).lower())
+
+
+def query_matches(text: Any, query: Any) -> bool:
+    q = tokens(query)
+    if not q:
+        return False
+
+    t = set(tokens(text))
+    if all(x in t for x in q):
+        return True
+
+    cq = compact(query)
+    ct = compact(text)
+    return bool(cq and cq in ct)
+
+
+def parse_float(value: Any) -> Optional[float]:
+    if value is None or value == "":
         return None
-    n = float(m.group(1).replace(",", "."))
-    n *= 10 if m.group(2).lower() == "cl" else 1
-    return int(n) if n.is_integer() else n
+
+    text = clean(value)
+    text = re.sub(r"[^\d,.\-]", "", text)
+
+    if not text:
+        return None
+
+    # European format: 1.234,56
+    if "," in text and "." in text and text.rfind(",") > text.rfind("."):
+        text = text.replace(".", "").replace(",", ".")
+    elif "," in text:
+        text = text.replace(",", ".")
+    elif text.count(".") > 1:
+        parts = text.split(".")
+        text = "".join(parts[:-1]) + "." + parts[-1]
+
+    try:
+        return float(text)
+    except ValueError:
+        return None
 
 
-def concentration(v):
-    t = norm(v)
-    if re.search(r"\beau de toilette\b|\bedt\b", t):
-        return "Eau de Toilette"
-    if re.search(r"\beau de parfum\b|\bedp\b", t):
-        return "Eau de Parfum"
-    if re.search(r"\bextrait(?: de parfum)?\b", t):
-        return "Extrait de Parfum"
+def format_price(value: Any) -> Optional[str]:
+    number = parse_float(value)
+    if number is None:
+        return None
+    return f"{number:.2f}".replace(".", ",") + " €"
+
+
+def parse_price_text(text: Any) -> Optional[str]:
+    text = clean(text)
+    if not text:
+        return None
+
+    # Prefer values adjacent to the euro symbol.
+    euro_patterns = (
+        r"€\s*(\d{1,5}(?:[.,]\d{2})?)",
+        r"(\d{1,5}(?:[.,]\d{2})?)\s*€",
+    )
+    for pattern in euro_patterns:
+        match = re.search(pattern, text)
+        if match:
+            return format_price(match.group(1))
+
     return None
 
 
-def price(v):
-    t = clean(v)
-    if re.fullmatch(r"\d+(?:[.,]\d{1,2})?", t):
-        return float(t.replace(",", "."))
-    m = re.search(r"(?<![\d.,])(\d{1,4}(?:[.,]\d{2}))\s*€", t)
-    return float(m.group(1).replace(",", ".")) if m else None
+def parse_size_ml(value: Any) -> Optional[float]:
+    text = clean(value).lower().replace(",", ".")
+    if not text:
+        return None
 
-
-def _get(session, url, **kwargs):
-    for attempt in range(RETRIES):
+    # Explicit ml/cl only. Never infer a size from a bare number.
+    match = re.search(r"(\d+(?:\.\d+)?)\s*ml\b", text)
+    if match:
         try:
-            response = session.get(url, **kwargs)
-            if response.ok:
-                return response
-            # Retry transient/rate-limit/server responses; do not spin on 404.
-            if response.status_code not in {403, 408, 425, 429} and response.status_code < 500:
-                return None
-        except requests.RequestException:
-            pass
-        if attempt + 1 < RETRIES:
-            time.sleep(RETRY_SLEEP * (attempt + 1))
+            return float(match.group(1))
+        except ValueError:
+            return None
+
+    match = re.search(r"(\d+(?:\.\d+)?)\s*cl\b", text)
+    if match:
+        try:
+            return float(match.group(1)) * 10.0
+        except ValueError:
+            return None
+
     return None
 
 
-def _xml_urls(text):
-    soup = BeautifulSoup(text, "xml")
-    return [x.get_text(strip=True) for x in soup.find_all("loc")]
+def size_label(value: Any, size_ml: Optional[float]) -> Optional[str]:
+    text = clean(value)
+    if text and re.search(r"\b(?:ml|cl)\b", text, re.I):
+        return text
+
+    if size_ml is None:
+        return None
+
+    if float(size_ml).is_integer():
+        return f"{int(size_ml)} ml"
+    return f"{size_ml:g} ml"
 
 
-def _candidate_urls_from_html(text, query):
-    soup = BeautifulSoup(text or "", "html.parser")
-    out = []
-    seen = set()
+def normalize_url(url: Any) -> str:
+    value = urljoin(BASE_URL, clean(url))
+    parsed = urlparse(value)
+    if parsed.scheme not in ("http", "https"):
+        return ""
+    if parsed.netloc and "perfumemarket" not in parsed.netloc.lower():
+        return ""
+    return value.split("?", 1)[0].rstrip("/")
 
-    for a in soup.select('a[href*="/products/"]'):
-        href = a.get("href")
-        if not href:
+
+def request_json(session: requests.Session, url: str) -> Optional[Any]:
+    try:
+        response = session.get(
+            url,
+            headers=HEADERS,
+            timeout=(CONNECT_TIMEOUT, READ_TIMEOUT),
+        )
+        if not response.ok:
+            return None
+        return response.json()
+    except (requests.RequestException, ValueError, TypeError):
+        return None
+
+
+def request_text(session: requests.Session, url: str) -> Optional[str]:
+    try:
+        response = session.get(
+            url,
+            headers=HEADERS,
+            timeout=(CONNECT_TIMEOUT, READ_TIMEOUT),
+        )
+        if not response.ok:
+            return None
+        return response.text
+    except requests.RequestException:
+        return None
+
+
+# ---------------------------------------------------------------------------
+# Shopify discovery
+# ---------------------------------------------------------------------------
+
+def parse_predictive(payload: Any, query: str) -> List[Dict[str, Any]]:
+    if not isinstance(payload, dict):
+        return []
+
+    resources = payload.get("resources") or {}
+    if not isinstance(resources, dict):
+        return []
+
+    nested = resources.get("results") or {}
+    if not isinstance(nested, dict):
+        return []
+
+    products = nested.get("products") or []
+    if not isinstance(products, list):
+        return []
+
+    results: List[Dict[str, Any]] = []
+
+    for product in products:
+        if not isinstance(product, dict):
             continue
-        u = urljoin(BASE, href.split("?")[0].split("#")[0]).rstrip("/")
-        if u in seen:
+
+        name = clean(product.get("title") or product.get("name"))
+        url = normalize_url(product.get("url"))
+
+        if not name or not url or "/products/" not in url.lower():
             continue
-        label = clean(a.get_text(" ", strip=True))
-        context = f"{label} {u}"
-        if matches(context, query):
-            seen.add(u)
-            out.append(u)
 
-    # Some Shopify themes expose product URLs only in JSON/script data.
-    for match in re.findall(r'["\']([^"\']*/products/[^"\']+)["\']', text or "", re.I):
-        u = urljoin(BASE, match.split("?")[0].split("#")[0]).rstrip("/")
-        if u in seen:
+        if not query_matches(name + " " + url, query):
             continue
-        if matches(u, query):
-            seen.add(u)
-            out.append(u)
 
-    return out
-
-
-def _candidate_urls_from_json(data, query):
-    out = []
-    seen = set()
-
-    def walk(x):
-        if isinstance(x, dict):
-            # Shopify search/suggest commonly exposes url/title fields.
-            title = x.get("title") or x.get("name") or x.get("product_title") or ""
-            handle = x.get("handle") or ""
-            url = x.get("url") or x.get("product_url") or ""
-            if not url and handle:
-                url = f"/products/{handle}"
-            if url:
-                u = urljoin(BASE, str(url).split("?")[0].split("#")[0]).rstrip("/")
-                context = f"{title} {handle} {u}"
-                if u not in seen and matches(context, query):
-                    seen.add(u)
-                    out.append(u)
-            for v in x.values():
-                walk(v)
-        elif isinstance(x, list):
-            for v in x:
-                walk(v)
-
-    walk(data)
-    return out
-
-
-def _shopify_discovery(s, q):
-    """Concurrent Shopify discovery: query the three independent endpoints together."""
-    urls = []
-    seen = set()
-
-    def add_many(items):
-        for u in items:
-            u = str(u or "").strip().rstrip("/")
-            if u and u not in seen:
-                seen.add(u)
-                urls.append(u)
-
-    requests_to_run = [
-        (
-            "suggest",
-            BASE + "/search/suggest.json",
+        results.append(
             {
-                "q": q,
-                "resources[type]": "product",
-                "resources[limit]": "20",
-                "resources[options][unavailable_products]": "last",
-            },
+                "url": url,
+                "name": name,
+                "source": "predictive",
+            }
+        )
+
+    return results
+
+
+def parse_search_html(html: str, query: str) -> List[Dict[str, Any]]:
+    soup = BeautifulSoup(html or "", "html.parser")
+    results: List[Dict[str, Any]] = []
+    seen = set()
+
+    selectors = [
+        "a[href*='/products/']",
+        "[data-product-handle] a[href]",
+        ".card a[href]",
+        ".product-card a[href]",
+    ]
+
+    links = []
+    for selector in selectors:
+        links.extend(soup.select(selector))
+
+    if not links:
+        links = soup.find_all("a", href=True)
+
+    for link in links:
+        url = normalize_url(link.get("href"))
+        if not url or "/products/" not in url.lower():
+            continue
+
+        key = url.lower()
+        if key in seen:
+            continue
+
+        node = link
+        card = None
+
+        for _ in range(7):
+            if node is None:
+                break
+            text = clean(node.get_text(" ", strip=True))
+            if len(text) <= 2200 and (
+                parse_price_text(text)
+                or query_matches(text, query)
+            ):
+                card = node
+                break
+            node = getattr(node, "parent", None)
+
+        if card is None:
+            card = link.parent
+
+        card_text = clean(card.get_text(" ", strip=True)) if card else ""
+        title = ""
+
+        for selector in (
+            "h1", "h2", "h3", "h4",
+            ".product-title", ".product__title",
+            ".product-name", ".card__heading",
+            "[class*='product-title']", "[class*='product-name']",
+        ):
+            try:
+                element = card.select_one(selector) if card else None
+            except Exception:
+                element = None
+
+            if element:
+                title = clean(element.get_text(" ", strip=True))
+                if title:
+                    break
+
+        if not title:
+            title = clean(
+                link.get("title")
+                or link.get("aria-label")
+                or link.get_text(" ", strip=True)
+            )
+
+        if not title:
+            title = url.rsplit("/products/", 1)[-1].replace("-", " ")
+
+        if not query_matches(f"{title} {card_text} {url}", query):
+            continue
+
+        seen.add(key)
+        results.append(
+            {
+                "url": url,
+                "name": title,
+                "price": parse_price_text(card_text),
+                "source": "search_html",
+            }
+        )
+
+        if len(results) >= MAX_CANDIDATES:
+            break
+
+    return results
+
+
+def discovery_request(session: requests.Session, url: str, kind: str, query: str):
+    if kind == "predictive":
+        payload = request_json(session, url)
+        return parse_predictive(payload, query)
+
+    html = request_text(session, url)
+    return parse_search_html(html or "", query)
+
+
+def discover(session: requests.Session, query: str) -> List[Dict[str, Any]]:
+    encoded = quote(query)
+
+    urls = [
+        (
+            BASE_URL
+            + "/search/suggest.json?q="
+            + encoded
+            + "&resources[type]=product"
+            + "&resources[limit]=20"
+            + "&resources[options][unavailable_products]=last",
+            "predictive",
         ),
         (
-            "search",
-            BASE + "/search",
-            {"q": q, "type": "product"},
+            BASE_URL
+            + "/search?q="
+            + encoded
+            + "&type=product"
+            + "&options%5Bprefix%5D=last"
+            + "&options%5Bunavailable_products%5D=last",
+            "html",
         ),
         (
-            "nl_search",
-            BASE + "/nl/search",
-            {"q": q, "type": "product"},
+            BASE_URL
+            + "/search?q="
+            + encoded
+            + "&type=product",
+            "html",
+        ),
+        (
+            BASE_URL + "/search?q=" + encoded,
+            "html",
         ),
     ]
 
-    def fetch_one(spec):
-        name, url, params = spec
-        try:
-            r = _get(
-                s,
-                url,
-                params=params,
-                headers=HEADERS,
-                timeout=TIMEOUT,
-            )
-            return name, r
-        except Exception:
-            return name, None
-
-    # These endpoints are independent. Running them concurrently removes the
-    # cumulative latency caused by a slow endpoint while preserving all paths.
-    with ThreadPoolExecutor(max_workers=3) as executor:
-        futures = [executor.submit(fetch_one, spec) for spec in requests_to_run]
-        for future in as_completed(futures):
-            name, r = future.result()
-            if not r:
-                continue
-            try:
-                if name == "suggest":
-                    try:
-                        add_many(_candidate_urls_from_json(r.json(), q))
-                    except (ValueError, TypeError):
-                        pass
-                else:
-                    add_many(_candidate_urls_from_html(r.text, q))
-            finally:
-                try:
-                    r.close()
-                except Exception:
-                    pass
-
-    return urls
-
-
-def _targeted_sitemap(s, q):
-    """
-    Sitemap is a fallback only. Never crawl every child sitemap synchronously:
-    that was the main recall/timeout weakness of the old scraper.
-    """
-    out = []
+    found: List[Dict[str, Any]] = []
     seen = set()
 
-    # Product sitemaps are commonly discoverable from robots.txt without
-    # downloading the entire catalog.
-    try:
-        r = _get(s, BASE + "/robots.txt", headers=HEADERS, timeout=TIMEOUT)
-        if r:
-            sitemap_urls = re.findall(
-                r"(?im)^\s*sitemap:\s*(\S+)",
-                r.text or "",
-            )
-            for sm_url in sitemap_urls[:8]:
-                try:
-                    sm = _get(s, sm_url, headers=HEADERS, timeout=TIMEOUT)
-                    if not sm:
-                        continue
-                    for u in _xml_urls(sm.text):
-                        if "/products/" in u.lower() and matches(u, q):
-                            u = u.rstrip("/")
-                            if u not in seen:
-                                seen.add(u)
-                                out.append(u)
-                                if len(out) >= MAX_PRODUCT_URLS:
-                                    return out
-                except Exception:
+    # These are independent HTTP requests, so do not serialize them.
+    with ThreadPoolExecutor(max_workers=SEARCH_WORKERS) as executor:
+        futures = [
+            executor.submit(discovery_request, session, url, kind, query)
+            for url, kind in urls
+        ]
+
+        for future in as_completed(futures):
+            try:
+                items = future.result() or []
+            except Exception:
+                items = []
+
+            for item in items:
+                url = normalize_url(item.get("url"))
+                if not url:
                     continue
-    except Exception:
-        pass
 
-    # Direct Shopify product sitemap fallback.
-    for sm_url in (
-        BASE + "/sitemap_products_1.xml?from=1&to=999999999999999999",
-        BASE + "/sitemap_products_1.xml",
-    ):
-        if len(out) >= MAX_PRODUCT_URLS:
-            break
-        try:
-            sm = _get(s, sm_url, headers=HEADERS, timeout=TIMEOUT)
-            if not sm:
-                continue
-            for u in _xml_urls(sm.text):
-                if "/products/" in u.lower() and matches(u, q):
-                    u = u.rstrip("/")
-                    if u not in seen:
-                        seen.add(u)
-                        out.append(u)
-                        if len(out) >= MAX_PRODUCT_URLS:
-                            break
-        except Exception:
-            continue
+                key = url.lower()
+                if key in seen:
+                    continue
 
-    return out
+                seen.add(key)
+                found.append(item)
 
+                if len(found) >= MAX_CANDIDATES:
+                    break
 
-def _jsonld_product_data(soup):
-    product_data = {}
-    brand = None
-
-    for sc in soup.select('script[type="application/ld+json"]'):
-        try:
-            data = json.loads(sc.get_text(strip=True))
-        except Exception:
-            continue
-
-        stack = data if isinstance(data, list) else [data]
-        while stack:
-            x = stack.pop(0)
-            if isinstance(x, list):
-                stack.extend(x)
-                continue
-            if not isinstance(x, dict):
-                continue
-
-            types = x.get("@type")
-            types = types if isinstance(types, list) else [types]
-            if "Product" in types or "offers" in x:
-                if x.get("@type") == "Product" or "Product" in types:
-                    product_data = x
-                    brand = x.get("brand")
-                    brand = brand.get("name") if isinstance(brand, dict) else brand
-                    return product_data, brand
-
-    return product_data, brand
-
-
-def product(s, url, q):
-    r = _get(s, url, headers=HEADERS, timeout=TIMEOUT)
-    if not r:
-        return None
-
-    soup = BeautifulSoup(r.text, "html.parser")
-    h = soup.find("h1")
-    name = clean(h.get_text(" ", strip=True)) if h else ""
-
-    # Do not require the URL/search result to be perfect; the central matcher
-    # remains the final authority. Here we only require the product page itself
-    # to contain the requested identity tokens.
-    if not name or not matches(name, q):
-        return None
-
-    data, brand = _jsonld_product_data(soup)
-
-    price_value = None
-    offers = data.get("offers") if isinstance(data, dict) else None
-    offers = offers if isinstance(offers, list) else [offers]
-    for offer in offers:
-        if isinstance(offer, dict):
-            price_value = price(offer.get("price"))
-            if price_value is not None:
+            if len(found) >= MAX_CANDIDATES:
                 break
 
-    if price_value is None:
-        price_value = price(soup.get_text(" ", strip=True))
-    if price_value is None:
+    return found[:MAX_CANDIDATES]
+
+
+# ---------------------------------------------------------------------------
+# Product JSON / HTML enrichment
+# ---------------------------------------------------------------------------
+
+def product_json_url(product_url: str) -> str:
+    return product_url.rstrip("/") + ".js"
+
+
+def brand_from_product(product: Dict[str, Any], title: str) -> Optional[str]:
+    vendor = clean(product.get("vendor"))
+    if vendor:
+        return vendor
+
+    # Shopify titles frequently start with the brand, but only use this as a
+    # conservative fallback; never manufacture a brand from arbitrary text.
+    parts = clean(title).split()
+    if parts:
+        return parts[0]
+    return None
+
+
+def concentration_from_text(text: Any) -> Optional[str]:
+    value = clean(text)
+    if not value:
         return None
 
-    text = norm(soup.get_text(" ", strip=True))
-    stock = (
-        "out_of_stock"
-        if any(x in text for x in ("out of stock", "uitverkocht", "niet beschikbaar"))
-        else (
-            "in_stock"
-            if any(x in text for x in ("in stock", "op voorraad", "beschikbaar"))
-            else "unknown"
-        )
+    patterns = (
+        (r"\bextrait(?:\s+de)?\s+parfum\b", "Extrait de Parfum"),
+        (r"\bparfum\b", "Parfum"),
+        (r"\beau\s+de\s+parfum\b", "EDP"),
+        (r"\bedp\b", "EDP"),
+        (r"\beau\s+de\s+toilette\b", "EDT"),
+        (r"\bedt\b", "EDT"),
+        (r"\beau\s+de\s+cologne\b", "EDC"),
+        (r"\bedc\b", "EDC"),
     )
 
-    offer0 = next((x for x in offers if isinstance(x, dict)), {})
-    structured_price = (
-        price(offer0.get("price"))
-        if offer0.get("price") is not None
-        else None
-    )
-    final_price = structured_price if structured_price is not None else price_value
+    lower = value.lower()
+    for pattern, label in patterns:
+        if re.search(pattern, lower):
+            return label
 
-    av = offer0.get("availability")
-    if av:
-        av = str(av).lower()
-        if "outofstock" in av or "out of stock" in av:
-            stock = "out_of_stock"
-        elif "instock" in av or "in stock" in av:
-            stock = "in_stock"
-        elif "preorder" in av:
-            stock = "preorder"
+    return None
 
-    image = data.get("image") if isinstance(data, dict) else None
-    if isinstance(image, list):
-        image = image[0] if image else None
+
+def availability_from_variant(variant: Dict[str, Any]) -> Optional[bool]:
+    if "available" in variant:
+        value = variant.get("available")
+        if isinstance(value, bool):
+            return value
+
+    inventory = variant.get("inventory_quantity")
+    if isinstance(inventory, (int, float)):
+        return inventory > 0
+
+    return None
+
+
+def variant_option_text(variant: Dict[str, Any]) -> str:
+    values = []
+
+    for key in ("option1", "option2", "option3"):
+        value = clean(variant.get(key))
+        if value:
+            values.append(value)
+
+    options = variant.get("options")
+    if isinstance(options, list):
+        values.extend(clean(x) for x in options if clean(x))
+
+    return " ".join(dict.fromkeys(values))
+
+
+def extract_image(product: Dict[str, Any], variant: Dict[str, Any]) -> Optional[str]:
+    image = variant.get("featured_image")
     if isinstance(image, dict):
-        image = image.get("url") or image.get("contentUrl")
-    if not image:
-        meta = soup.select_one('meta[property="og:image"]')
-        image = meta.get("content") if meta else None
-    image = urljoin(url, str(image)) if image else None
+        image = image.get("src") or image.get("url")
 
-    def _val(*keys):
-        for key in keys:
-            value = data.get(key) if isinstance(data, dict) else None
-            if isinstance(value, dict):
-                value = value.get("name") or value.get("value") or value.get("@id")
-            if value not in (None, ""):
-                return str(value).strip()
+    if image:
+        return normalize_url(image)
+
+    images = product.get("images")
+    if isinstance(images, list) and images:
+        first = images[0]
+        if isinstance(first, dict):
+            return normalize_url(first.get("src") or first.get("url"))
+        return normalize_url(first)
+
+    return None
+
+
+def variant_result(
+    product: Dict[str, Any],
+    variant: Dict[str, Any],
+    product_url: str,
+    fallback_name: str,
+    search_price: Optional[str] = None,
+) -> Optional[Dict[str, Any]]:
+    title = clean(product.get("title") or fallback_name)
+    option_text = variant_option_text(variant)
+
+    full_name = clean(f"{title} {option_text}")
+
+    size_ml = parse_size_ml(option_text) or parse_size_ml(title)
+    size = size_label(option_text, size_ml)
+
+    raw_price = variant.get("price")
+    price = format_price(raw_price)
+
+    if not price:
+        price = search_price
+
+    available = availability_from_variant(variant)
+
+    variant_id = clean(variant.get("id"))
+    sku = clean(variant.get("sku"))
+    barcode = clean(variant.get("barcode"))
+
+    concentration = concentration_from_text(full_name)
+    brand = brand_from_product(product, title)
+    image = extract_image(product, variant)
+
+    # Keep an offer even when price is absent: this is important for OOS.
+    if available is None and price is None:
+        # Unknown product state with no price is not useful to the comparison
+        # engine unless the product itself is explicitly represented.
         return None
 
-    gtin = _val("gtin", "gtin13", "gtin12", "gtin14")
-    mpn = _val("mpn")
-    sku = _val("sku")
-    product_id = _val("productID", "productId", "product_id")
-
-    t = norm(name)
-    gender = (
-        "women"
-        if re.search(r"\b(women|woman|dames|dame|femme|female)\b", t)
-        else (
-            "men"
-            if re.search(r"\b(men|man|heren|homme|male)\b", t)
-            else ("unisex" if "unisex" in t else "unknown")
-        )
+    availability = (
+        "in_stock"
+        if available is True
+        else "out_of_stock"
+        if available is False
+        else "unknown"
     )
 
-    size = size_ml(name)
-    conc = concentration(name)
-
-    return {
+    result = {
         "store": STORE,
+        "shop": STORE,
+        "name": title,
+        "brand": brand,
+        "price": price or "",
+        "price_num": parse_float(raw_price) if raw_price is not None else parse_float(price),
+        "url": product_url,
+        "available": available,
+        "in_stock": available,
+        "availability": availability,
+        "size": size,
+        "size_ml": size_ml,
+        "concentration": concentration,
+        "image": image,
+        "sku": sku or None,
+        "gtin": barcode or None,
+        "mpn": sku or None,
+        "store_product_id": clean(product.get("id")) or None,
+        "store_variant_id": variant_id or None,
         "source": {
-            "source_name": name,
-            "source_brand": clean(brand) or None,
-            "url": url,
-            "image": image,
+            "store": STORE,
+            "method": "shopify_product_js",
+            "product_url": product_url,
         },
         "identity": {
-            "gtin": {"value": gtin, "source": "jsonld"} if gtin else None,
-            "mpn": {"value": mpn, "source": "jsonld"} if mpn else None,
-            "sku": {"value": sku, "source": "jsonld"} if sku else None,
-            "store_product_id": (
-                {"value": product_id, "source": "jsonld"} if product_id else None
-            ),
-            "store_variant_id": None,
+            "brand": brand,
+            "name": title,
+            "sku": sku or None,
+            "gtin": barcode or None,
+            "mpn": sku or None,
+            "store_product_id": clean(product.get("id")) or None,
+            "store_variant_id": variant_id or None,
         },
         "attributes": {
-            "size_ml": {"value": size, "source": "product_title"} if size is not None else None,
-            "concentration": {"value": conc, "source": "product_title"} if conc else None,
-            "gender": {"value": gender, "source": "product_title"},
-            "packaging_type": {"value": "product", "source": "default"},
+            "size": size,
+            "size_ml": size_ml,
+            "concentration": concentration,
+            "option_text": option_text or None,
         },
         "offer": {
-            "price": round(final_price, 2),
-            "currency": "EUR",
-            "availability": stock,
+            "price": price or "",
+            "price_num": (
+                parse_float(raw_price)
+                if raw_price is not None
+                else parse_float(price)
+            ),
+            "available": available,
+            "availability": availability,
         },
         "provenance": {
-            "source_page": url,
-            "name_source": "h1",
-            "brand_source": "jsonld" if brand else None,
-            "price_source": "jsonld" if structured_price is not None else "page",
-            "product_source": "jsonld" if data else "product_page",
-            "availability_source": "jsonld" if av else "page_text",
+            "discovery": "shopify_search",
+            "enrichment": "shopify_product_js",
         },
-        "raw_data": {"jsonld": data},
-        "name": name,
-        "price": f"{final_price:.2f}".replace(".", ",") + " €",
-        "url": url,
-        "available": stock == "in_stock",
+        "raw_data": {
+            "product_id": product.get("id"),
+            "variant_id": variant.get("id"),
+            "variant_title": variant.get("title"),
+        },
     }
 
+    return result
 
-def search(q):
-    q = clean(q)
-    if not q:
+
+def parse_product_json(
+    payload: Any,
+    product_url: str,
+    query: str,
+    search_item: Dict[str, Any],
+) -> List[Dict[str, Any]]:
+    if not isinstance(payload, dict):
+        return []
+
+    title = clean(payload.get("title") or search_item.get("name"))
+    if not title:
+        return []
+
+    if not query_matches(title + " " + product_url, query):
+        return []
+
+    variants = payload.get("variants")
+    if not isinstance(variants, list):
+        variants = []
+
+    results: List[Dict[str, Any]] = []
+
+    if variants:
+        for variant in variants:
+            if not isinstance(variant, dict):
+                continue
+
+            item = variant_result(
+                payload,
+                variant,
+                product_url,
+                title,
+                search_price=search_item.get("price"),
+            )
+            if item:
+                results.append(item)
+    else:
+        # Some Shopify themes expose a product object without a variants array.
+        # Preserve the product rather than silently losing it.
+        fake_variant = {
+            "price": payload.get("price"),
+            "available": payload.get("available"),
+        }
+        item = variant_result(
+            payload,
+            fake_variant,
+            product_url,
+            title,
+            search_price=search_item.get("price"),
+        )
+        if item:
+            results.append(item)
+
+    return results
+
+
+def parse_product_html(
+    html: str,
+    product_url: str,
+    query: str,
+    search_item: Dict[str, Any],
+) -> List[Dict[str, Any]]:
+    soup = BeautifulSoup(html or "", "html.parser")
+
+    title = ""
+    for selector in (
+        "h1",
+        "meta[property='og:title']",
+        "title",
+    ):
+        element = soup.select_one(selector)
+        if not element:
+            continue
+
+        title = clean(
+            element.get("content")
+            if element.name == "meta"
+            else element.get_text(" ", strip=True)
+        )
+        if title:
+            break
+
+    if not title or not query_matches(title + " " + product_url, query):
+        return []
+
+    price = search_item.get("price") or parse_price_text(
+        soup.get_text(" ", strip=True)
+    )
+
+    available = None
+    page_text = soup.get_text(" ", strip=True).lower()
+
+    if any(
+        marker in page_text
+        for marker in (
+            "out of stock",
+            "sold out",
+            "rupture de stock",
+            "ausverkauft",
+        )
+    ):
+        available = False
+
+    if any(
+        marker in page_text
+        for marker in (
+            "add to cart",
+            "ajouter au panier",
+            "in den warenkorb",
+            "add to bag",
+        )
+    ):
+        available = True
+
+    # JSON-LD fallback.
+    for script in soup.find_all("script", type="application/ld+json"):
+        raw = script.string or script.get_text(" ", strip=True)
+        if not raw:
+            continue
+
+        try:
+            data = json.loads(raw)
+        except (ValueError, TypeError, json.JSONDecodeError):
+            continue
+
+        objects = data if isinstance(data, list) else [data]
+
+        for obj in objects:
+            if not isinstance(obj, dict):
+                continue
+
+            offers = obj.get("offers")
+            if isinstance(offers, dict):
+                offers = [offers]
+
+            if not isinstance(offers, list):
+                continue
+
+            for offer in offers:
+                if not isinstance(offer, dict):
+                    continue
+
+                if not price:
+                    price = format_price(offer.get("price"))
+
+                stock = clean(offer.get("availability")).lower()
+                if stock.endswith("instock"):
+                    available = True
+                elif stock.endswith("outofstock"):
+                    available = False
+
+    if not price and available is not False:
+        return []
+
+    brand = None
+    for script in soup.find_all("script", type="application/ld+json"):
+        raw = script.string or script.get_text(" ", strip=True)
+        try:
+            data = json.loads(raw)
+        except Exception:
+            continue
+
+        objects = data if isinstance(data, list) else [data]
+        for obj in objects:
+            if not isinstance(obj, dict):
+                continue
+            value = obj.get("brand")
+            if isinstance(value, dict):
+                value = value.get("name")
+            if value:
+                brand = clean(value)
+                break
+        if brand:
+            break
+
+    size_ml = parse_size_ml(title)
+    size = size_label(title, size_ml)
+    concentration = concentration_from_text(title)
+
+    item = {
+        "store": STORE,
+        "shop": STORE,
+        "name": title,
+        "brand": brand,
+        "price": price or "",
+        "price_num": parse_float(price),
+        "url": product_url,
+        "available": available,
+        "in_stock": available,
+        "availability": (
+            "in_stock"
+            if available is True
+            else "out_of_stock"
+            if available is False
+            else "unknown"
+        ),
+        "size": size,
+        "size_ml": size_ml,
+        "concentration": concentration,
+        "image": None,
+        "sku": None,
+        "gtin": None,
+        "mpn": None,
+        "store_product_id": None,
+        "store_variant_id": None,
+        "source": {
+            "store": STORE,
+            "method": "shopify_product_html_fallback",
+            "product_url": product_url,
+        },
+        "identity": {
+            "brand": brand,
+            "name": title,
+        },
+        "attributes": {
+            "size": size,
+            "size_ml": size_ml,
+            "concentration": concentration,
+        },
+        "offer": {
+            "price": price or "",
+            "price_num": parse_float(price),
+            "available": available,
+            "availability": (
+                "in_stock"
+                if available is True
+                else "out_of_stock"
+                if available is False
+                else "unknown"
+            ),
+        },
+        "provenance": {
+            "discovery": "shopify_search",
+            "enrichment": "shopify_product_html_fallback",
+        },
+        "raw_data": {},
+    }
+
+    return [item]
+
+
+def enrich_candidate(
+    candidate: Dict[str, Any],
+    query: str,
+) -> List[Dict[str, Any]]:
+    url = normalize_url(candidate.get("url"))
+    if not url:
         return []
 
     session = requests.Session()
     session.headers.update(HEADERS)
 
     try:
-        # Three independent discovery paths, all fast and bounded.
-        candidates = []
-        seen = set()
+        payload = request_json(session, product_json_url(url))
+        if payload:
+            results = parse_product_json(payload, url, query, candidate)
+            if results:
+                return results
 
-        for u in _shopify_discovery(session, q):
-            if u not in seen:
-                seen.add(u)
-                candidates.append(u)
+        html = request_text(session, url)
+        if html:
+            return parse_product_html(html, url, query, candidate)
 
-        # Only use sitemap if normal discovery found nothing. This prevents a
-        # slow sitemap from delaying an otherwise successful search.
-        if not candidates:
-            for u in _targeted_sitemap(session, q):
-                if u not in seen:
-                    seen.add(u)
-                    candidates.append(u)
-
-        candidates = candidates[:MAX_PRODUCT_URLS]
-
-        if not candidates:
-            return []
-
-        out = []
-        seen_products = set()
-
-        with ThreadPoolExecutor(max_workers=min(PRODUCT_WORKERS, len(candidates))) as executor:
-            futures = {
-                executor.submit(product, session, u, q): u
-                for u in candidates
-            }
-            for future in as_completed(futures):
-                try:
-                    item = future.result()
-                except Exception:
-                    item = None
-                if item and item.get("url") not in seen_products:
-                    seen_products.add(item["url"])
-                    out.append(item)
-
-        return out
+        return []
     finally:
         session.close()
 
 
-def diagnose(q):
-    q = clean(q)
-    if not q:
-        return {"diagnostic": True, "query": q, "error": "empty_query"}
+# ---------------------------------------------------------------------------
+# Public scraper API
+# ---------------------------------------------------------------------------
+
+def dedupe_results(results: Iterable[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    output: List[Dict[str, Any]] = []
+    seen = set()
+
+    for item in results:
+        if not isinstance(item, dict):
+            continue
+
+        key = (
+            clean(item.get("url")).lower(),
+            clean(item.get("store_variant_id") or item.get("sku")).lower(),
+            clean(item.get("size_ml")),
+            clean(item.get("price_num")),
+            clean(item.get("available")),
+        )
+
+        if key in seen:
+            continue
+
+        seen.add(key)
+        output.append(item)
+
+    # Available first, unknown next, out of stock last.
+    def rank(item: Dict[str, Any]) -> int:
+        value = item.get("available")
+        if value is True:
+            return 0
+        if value is None:
+            return 1
+        return 2
+
+    output.sort(key=rank)
+    return output[:MAX_RESULTS]
+
+
+def search(query: str) -> List[Dict[str, Any]]:
+    query = clean(query)
+    if not query:
+        return []
 
     session = requests.Session()
     session.headers.update(HEADERS)
-    try:
-        shopify = _shopify_discovery(session, q)
-        sitemap = _targeted_sitemap(session, q) if not shopify else []
-
-        candidates = []
-        seen = set()
-        for u in shopify + sitemap:
-            if u not in seen:
-                seen.add(u)
-                candidates.append(u)
-
-        product_pages = []
-        for u in candidates[:MAX_PRODUCT_URLS]:
-            item = product(session, u, q)
-            product_pages.append({
-                "url": u,
-                "accepted": bool(item),
-                "name": item.get("name") if item else None,
-                "price": item.get("price") if item else None,
-            })
-
-        return {
-            "diagnostic": True,
-            "query": q,
-            "discovery_source": "shopify+sitemap_fallback",
-            "shopify_candidates": shopify,
-            "sitemap_candidates": sitemap,
-            "candidate_count": len(candidates),
-            "candidates": candidates,
-            "product_pages": product_pages,
-        }
-    finally:
-        session.close()
-class _DiagnosticSession(requests.Session):
-    """Requests session that records every HTTP attempt without changing production behavior."""
-    def __init__(self):
-        super().__init__()
-        self.trace = []
-
-    def get(self, url, **kwargs):
-        started = time.monotonic()
-        status = None
-        error = None
-        try:
-            response = super().get(url, **kwargs)
-            status = response.status_code
-            return response
-        except Exception as exc:
-            error = type(exc).__name__
-            raise
-        finally:
-            self.trace.append({
-                "url": str(url),
-                "elapsed_seconds": round(time.monotonic() - started, 4),
-                "status": status,
-                "error": error,
-                "timeout": kwargs.get("timeout"),
-            })
-
-
-def diagnostic_search(q):
-    """
-    Read-only forensic path used by SearchEngine.diagnostic_search().
-
-    It reproduces the production search flow but records the internal HTTP
-    critical path, retries, discovery endpoints, and parallel product phase.
-    The normal search() function is intentionally untouched.
-    """
-    q = clean(q)
-    if not q:
-        return {
-            "diagnostic": True,
-            "query": q,
-            "error": "empty_query",
-        }
-
-    started_total = time.monotonic()
-    session = _DiagnosticSession()
-    session.headers.update(HEADERS)
-
-    def elapsed(start):
-        return round(time.monotonic() - start, 4)
 
     try:
-        discovery_started = time.monotonic()
-        discovery_http_start = len(session.trace)
-        shopify = _shopify_discovery(session, q)
-        discovery_http = session.trace[discovery_http_start:]
-        discovery_elapsed = elapsed(discovery_started)
-
-        sitemap = []
-        sitemap_http = []
-        sitemap_elapsed = 0.0
-
-        if not shopify:
-            sitemap_started = time.monotonic()
-            sitemap_http_start = len(session.trace)
-            sitemap = _targeted_sitemap(session, q)
-            sitemap_http = session.trace[sitemap_http_start:]
-            sitemap_elapsed = elapsed(sitemap_started)
-
-        candidates = []
-        seen = set()
-        for u in shopify + sitemap:
-            if u not in seen:
-                seen.add(u)
-                candidates.append(u)
-        candidates = candidates[:MAX_PRODUCT_URLS]
-
-        product_results = []
-        product_started = time.monotonic()
-        product_http_start = len(session.trace)
-
-        if candidates:
-            with ThreadPoolExecutor(
-                max_workers=min(PRODUCT_WORKERS, len(candidates))
-            ) as executor:
-                futures = {
-                    executor.submit(product, session, u, q): u
-                    for u in candidates
-                }
-                for future in as_completed(futures):
-                    url = futures[future]
-                    task_started = time.monotonic()
-                    try:
-                        item = future.result()
-                        error = None
-                    except Exception as exc:
-                        item = None
-                        error = type(exc).__name__
-
-                    product_results.append({
-                        "url": url,
-                        "accepted": bool(item),
-                        "name": item.get("name") if item else None,
-                        "price": item.get("price") if item else None,
-                        "task_wait_after_completion_seconds": round(
-                            time.monotonic() - task_started, 4
-                        ),
-                        "error": error,
-                    })
-
-        product_http = session.trace[product_http_start:]
-        product_elapsed = elapsed(product_started)
-
-        # Attach request chronology to the product phase. Since requests are
-        # concurrent, summed request time is NOT the wall-clock time; the
-        # endpoint timings below expose the real critical path.
-        discovery_calls = []
-        for call in discovery_http:
-            discovery_calls.append({
-                "url": call["url"],
-                "elapsed_seconds": call["elapsed_seconds"],
-                "status": call["status"],
-                "error": call["error"],
-                "timeout": call["timeout"],
-            })
-
-        sitemap_calls = []
-        for call in sitemap_http:
-            sitemap_calls.append({
-                "url": call["url"],
-                "elapsed_seconds": call["elapsed_seconds"],
-                "status": call["status"],
-                "error": call["error"],
-                "timeout": call["timeout"],
-            })
-
-        product_calls = []
-        for call in product_http:
-            product_calls.append({
-                "url": call["url"],
-                "elapsed_seconds": call["elapsed_seconds"],
-                "status": call["status"],
-                "error": call["error"],
-                "timeout": call["timeout"],
-            })
-
-        def critical_path(calls):
-            return round(
-                max((float(x.get("elapsed_seconds") or 0) for x in calls), default=0.0),
-                4,
-            )
-
-        def status_counts(calls):
-            counts = {}
-            for call in calls:
-                key = str(call.get("status"))
-                counts[key] = counts.get(key, 0) + 1
-            return counts
-
-        return {
-            "diagnostic": True,
-            "diagnostic_type": "perfumemarket_internal_forensics_v1",
-            "query": q,
-            "limits": {
-                "timeout_seconds": TIMEOUT,
-                "retries": RETRIES,
-                "retry_sleep_seconds": RETRY_SLEEP,
-                "max_product_urls": MAX_PRODUCT_URLS,
-                "product_workers": PRODUCT_WORKERS,
-            },
-            "timing": {
-                "discovery_seconds": discovery_elapsed,
-                "sitemap_seconds": sitemap_elapsed,
-                "product_fetch_seconds": product_elapsed,
-                "total_seconds": elapsed(started_total),
-            },
-            "discovery": {
-                "shopify_candidates": shopify,
-                "candidate_count": len(candidates),
-                "http_calls": discovery_calls,
-                "http_call_count": len(discovery_calls),
-                "http_critical_path_seconds": critical_path(discovery_calls),
-                "http_status_counts": status_counts(discovery_calls),
-            },
-            "sitemap": {
-                "used": bool(sitemap),
-                "candidates": sitemap,
-                "http_calls": sitemap_calls,
-                "http_call_count": len(sitemap_calls),
-                "http_critical_path_seconds": critical_path(sitemap_calls),
-                "http_status_counts": status_counts(sitemap_calls),
-            },
-            "products": {
-                "candidate_count": len(candidates),
-                "accepted_count": sum(
-                    1 for x in product_results if x["accepted"]
-                ),
-                "results": product_results,
-                "http_calls": product_calls,
-                "http_call_count": len(product_calls),
-                "http_critical_path_seconds": critical_path(product_calls),
-                "http_status_counts": status_counts(product_calls),
-            },
-            "analysis": {
-                "discovery_non_http_seconds": round(
-                    max(
-                        0.0,
-                        discovery_elapsed
-                        - critical_path(discovery_calls),
-                    ),
-                    4,
-                ),
-                "product_non_http_seconds": round(
-                    max(
-                        0.0,
-                        product_elapsed
-                        - critical_path(product_calls),
-                    ),
-                    4,
-                ),
-                "retry_like_duplicate_urls": sorted({
-                    url for url in [x["url"] for x in session.trace]
-                    if [y["url"] for y in session.trace].count(url) > 1
-                }),
-            },
-        }
+        candidates = discover(session, query)
     finally:
         session.close()
+
+    if not candidates:
+        return []
+
+    results: List[Dict[str, Any]] = []
+
+    with ThreadPoolExecutor(max_workers=PRODUCT_WORKERS) as executor:
+        future_map = {
+            executor.submit(enrich_candidate, candidate, query): candidate
+            for candidate in candidates[:MAX_CANDIDATES]
+        }
+
+        for future in as_completed(future_map):
+            try:
+                results.extend(future.result() or [])
+            except Exception as exc:
+                print(f"PERFUMEMARKET PRODUCT ERROR: {exc}")
+
+    return dedupe_results(results)
+
+
+def scrape(query: str) -> List[Dict[str, Any]]:
+    return search(query)
+
+
+def search_perfumemarket(query: str) -> List[Dict[str, Any]]:
+    return search(query)
+
+
+if __name__ == "__main__":
+    import argparse
+
+    parser = argparse.ArgumentParser(description="ScentHunter PerfumeMarket scraper")
+    parser.add_argument("query", nargs="+")
+    args = parser.parse_args()
+
+    query = " ".join(args.query)
+    data = search(query)
+    print(json.dumps(data, ensure_ascii=False, indent=2))
