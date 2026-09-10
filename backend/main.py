@@ -791,90 +791,65 @@ import io
 from types import SimpleNamespace
 
 
-class _TraceSession:
-    def __init__(self, real_session, trace, label):
-        self._real = real_session
-        self._trace = trace
-        self._label = label
+class _TraceHTTP:
+    """Global HTTP tracer: catches requests.get AND every requests.Session()."""
+    def __init__(self, real_request, trace, label):
+        self.real_request = real_request
+        self.trace = trace
+        self.label = label
 
-    def request(self, method, url, *args, **kwargs):
+    def __call__(self, session, method, url, *args, **kwargs):
         started = time.monotonic()
         try:
-            response = self._real.request(method, url, *args, **kwargs)
-            self._trace.append({
-                "label": self._label, "method": method.upper(),
-                "url": str(url), "status": getattr(response, "status_code", None),
-                "seconds": round(time.monotonic() - started, 3),
-                "bytes": len(getattr(response, "content", b"") or b""),
-                "error": "",
-            })
-            return response
-        except Exception as exc:
-            self._trace.append({
-                "label": self._label, "method": method.upper(),
-                "url": str(url), "status": None,
-                "seconds": round(time.monotonic() - started, 3),
-                "bytes": 0, "error": f"{type(exc).__name__}: {exc}",
-            })
-            raise
-
-    def get(self, url, *args, **kwargs):
-        return self.request("GET", url, *args, **kwargs)
-
-    def __getattr__(self, name):
-        return getattr(self._real, name)
-
-
-class _TraceRequests:
-    def __init__(self, real_requests, trace, label):
-        self._real = real_requests
-        self._trace = trace
-        self._label = label
-        self.RequestException = real_requests.RequestException
-
-    def get(self, url, *args, **kwargs):
-        started = time.monotonic()
-        try:
-            response = self._real.get(url, *args, **kwargs)
-            self._trace.append({
-                "label": self._label, "method": "GET", "url": str(url),
+            response = self.real_request(session, method, url, *args, **kwargs)
+            body = getattr(response, "text", "") or ""
+            clue = _http_clue(body, self.label, url)
+            self.trace.append({
+                "label": self.label,
+                "method": str(method).upper(),
+                "url": str(url),
                 "status": getattr(response, "status_code", None),
                 "seconds": round(time.monotonic() - started, 3),
                 "bytes": len(getattr(response, "content", b"") or b""),
                 "error": "",
+                "clue": clue,
             })
             return response
         except Exception as exc:
-            self._trace.append({
-                "label": self._label, "method": "GET", "url": str(url),
+            self.trace.append({
+                "label": self.label,
+                "method": str(method).upper(),
+                "url": str(url),
                 "status": None,
                 "seconds": round(time.monotonic() - started, 3),
-                "bytes": 0, "error": f"{type(exc).__name__}: {exc}",
+                "bytes": 0,
+                "error": f"{type(exc).__name__}: {exc}",
+                "clue": "",
             })
             raise
 
-    def Session(self, *args, **kwargs):
-        return _TraceSession(
-            self._real.Session(*args, **kwargs), self._trace, self._label
-        )
 
-    def __getattr__(self, name):
-        return getattr(self._real, name)
-
-
-def _diag_stage(url):
-    value = str(url or "").lower()
-    if "fulltext_search" in value:
-        return "RICERCA NATIVA"
-    if "search" in value:
-        return "RICERCA"
-    if "sitemap" in value:
-        return "SITEMAP"
-    if "/categorie/" in value or "/category" in value or "product-line" in value:
-        return "CATEGORIA"
-    if "/product/" in value or "/produit/" in value or "_z" in value:
-        return "PRODOTTO"
-    return "ALTRO"
+def _http_clue(body, store, url):
+    """Small parser clue for product responses; never stores full HTML."""
+    if not body:
+        return "EMPTY"
+    soup = BeautifulSoup(body, "html.parser")
+    title = soup.find("title")
+    h1 = soup.find("h1")
+    title_text = " ".join(title.stripped_strings) if title else ""
+    h1_text = " ".join(h1.stripped_strings) if h1 else ""
+    low = body.lower()
+    markers = []
+    for marker in ("captcha", "cloudflare", "access denied", "just a moment", "bot verification"):
+        if marker in low:
+            markers.append(marker)
+    if "/product/" in str(url).lower() or "/produit/" in str(url).lower() or "_z" in str(url).lower():
+        if not h1_text:
+            return "PRODUCT: NO_H1" + (" | " + ",".join(markers) if markers else "")
+        return "PRODUCT: H1=" + h1_text[:140]
+    if markers:
+        return "PAGE: " + ",".join(markers)
+    return ("PAGE: H1=" + h1_text[:100]) if h1_text else ("PAGE: TITLE=" + title_text[:100] if title_text else "PAGE: OK")
 
 
 def _diag_run_one(store, query):
@@ -882,18 +857,14 @@ def _diag_run_one(store, query):
     stdout = io.StringIO()
     started = time.monotonic()
     module = load_scraper(store)
-    original_requests = getattr(module, "requests", None)
-    original_session = getattr(module, "SESSION", None)
+    import requests as _requests_lib
+    original_request = _requests_lib.sessions.Session.request
 
+    tracer = _TraceHTTP(original_request, trace, store)
     try:
-        if original_requests is not None:
-            module.requests = _TraceRequests(original_requests, trace, store)
-        if original_session is not None:
-            module.SESSION = _TraceSession(original_session, trace, store)
-
+        _requests_lib.sessions.Session.request = tracer
         with contextlib.redirect_stdout(stdout):
             result = module.search(query)
-
         rows = result if isinstance(result, list) else list(result or [])
         return {
             "store": store,
@@ -915,10 +886,22 @@ def _diag_run_one(store, query):
             "exception": f"{type(exc).__name__}: {exc}",
         }
     finally:
-        if original_requests is not None:
-            module.requests = original_requests
-        if original_session is not None:
-            module.SESSION = original_session
+        _requests_lib.sessions.Session.request = original_request
+
+
+def _diag_stage(url):
+    value = str(url or "").lower()
+    if "fulltext_search" in value:
+        return "RICERCA NATIVA"
+    if "search" in value:
+        return "RICERCA"
+    if "sitemap" in value:
+        return "SITEMAP"
+    if "/categorie/" in value or "/category" in value or "product-line" in value:
+        return "CATEGORIA"
+    if "/product/" in value or "/produit/" in value or "_z" in value:
+        return "PRODOTTO"
+    return "ALTRO"
 
 
 def _diag_group_trace(trace):
@@ -1031,7 +1014,7 @@ def _diag_html(report):
         if item["trace"]:
             parts.append(
                 "<table><tr><th>#</th><th>Fase</th><th>Tempo</th>"
-                "<th>Status</th><th>Byte</th><th>URL</th><th>Errore</th></tr>"
+                "<th>Status</th><th>Byte</th><th>URL</th><th>Indizio</th><th>Errore</th></tr>"
             )
             for i, call in enumerate(item["trace"], 1):
                 status = call["status"]
@@ -1043,6 +1026,7 @@ def _diag_html(report):
                     f"<td class='{status_cls}'>{escape(str(status) if status is not None else "—")}</td>"
                     f"<td>{call['bytes']}</td>"
                     f"<td class='url'><code>{escape(str(call['url']))}</code></td>"
+                    f"<td>{escape(str(call.get('clue') or ""))}</td>"
                     f"<td class='bad'>{escape(str(call['error']))}</td></tr>"
                 )
             parts.append("</table>")
