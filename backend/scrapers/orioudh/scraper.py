@@ -1,9 +1,11 @@
 import json
 import re
-from urllib.parse import quote_plus, urljoin
+from urllib.parse import urljoin
 
 import requests
 from bs4 import BeautifulSoup
+
+from scrapers.common.discovery import discover_shopify_product_urls
 
 STORE = "Orioudh"
 BASE_URL = "https://orioudh.com"
@@ -196,56 +198,25 @@ def _discover(session, q):
     the primary search surface and is explicitly asked to include unavailable
     products, which is important because Out of Stock must remain visible.
     """
-    urls = []
-    seen = set()
-
-    def add(u):
-        if not u:
-            return
-        u = urljoin(BASE_URL, str(u)).split("?")[0].split("#")[0].rstrip("/")
-        # Canonicalize host so www/non-www cannot create duplicate offers.
-        u = re.sub(r"^https?://www\.orioudh\.com", BASE_URL, u, flags=re.I)
-        if "/products/" in u and u not in seen:
-            seen.add(u)
-            urls.append(u)
-
-    # PRIMARY: one Shopify predictive-search request. Keep the full query so
-    # both Liquid Brun variants can be returned together.
-    r = _get(session, BASE_URL + "/search/suggest.json", {
-        "q": q,
-        "resources[type]": "product",
-        "resources[limit]": 20,
-        "resources[options][unavailable_products]": "show",
-    })
-    if r:
-        try:
-            data = r.json()
-            products = ((data.get("resources") or {}).get("results") or {}).get("products") or []
-            for product in products:
-                if not isinstance(product, dict):
-                    continue
-                u = product.get("url") or product.get("product_url")
-                if matches(f"{product.get('title','')} {product.get('vendor','')} {u or ''}", q):
-                    add(u)
-        except (ValueError, TypeError):
-            pass
-
-    if urls:
-        return urls[:8]
-
-    # ONE fallback: Shopify's normal search page. No catalogue/sitemap crawl.
-    r = _get(session, BASE_URL + "/search", {"q": q, "type": "product"})
-    if r:
-        soup = BeautifulSoup(r.text, "html.parser")
-        for a in soup.select('a[href*="/products/"]'):
-            u = a.get("href")
-            text = f"{a.get('title','')} {a.get_text(' ',strip=True)} {u or ''}"
-            if matches(text, q):
-                add(u)
-                if len(urls) >= 8:
-                    break
-
-    return urls[:8]
+    return discover_shopify_product_urls(
+        session,
+        base_url=BASE_URL,
+        request_query=q,
+        query_matcher=matches,
+        headers=HEADERS,
+        timeout=TIMEOUT,
+        limit=8,
+        match_query=q,
+        suggest_limit=20,
+        allow_search_json=False,
+        search_paths=("/search",),
+        url_normalizer=lambda value: re.sub(
+            r"^https?://www\.orioudh\.com",
+            BASE_URL,
+            value,
+            flags=re.I,
+        ),
+    )
 
 def _product_json(session, url):
     r = _get(session, url.rstrip("/") + ".js")

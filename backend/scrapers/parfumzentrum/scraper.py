@@ -6,6 +6,8 @@ from urllib.parse import unquote
 from bs4 import BeautifulSoup
 from playwright.async_api import async_playwright
 
+from scrapers.common.discovery import extract_json_ld_products
+
 
 BASE_URL = "https://www.parfum-zentrum.de"
 SEARCH_URL = BASE_URL + "/suchen/"
@@ -181,22 +183,19 @@ def _extract_product(url, query):
     )):
         return None
 
+    product_records = extract_json_ld_products(response.text)
     price = None
-    for script in soup.find_all("script", type="application/ld+json"):
-        try:
-            data = json.loads(script.string or "")
-            offers = data.get("offers", {})
-            if isinstance(offers, dict):
-                price = _parse_price(offers.get("price"))
-            elif isinstance(offers, list):
-                for offer in offers:
-                    price = _parse_price(offer.get("price"))
-                    if price:
-                        break
-            if price:
-                break
-        except:
-            pass
+    for data in product_records:
+        offers = data.get("offers", {})
+        if isinstance(offers, dict):
+            price = _parse_price(offers.get("price"))
+        elif isinstance(offers, list):
+            for offer in offers:
+                price = _parse_price(offer.get("price") if isinstance(offer, dict) else None)
+                if price:
+                    break
+        if price:
+            break
 
     if price is None:
         for meta in soup.find_all("meta"):
@@ -209,14 +208,11 @@ def _extract_product(url, query):
         return None
 
     brand = None
-    for script in soup.find_all("script", type="application/ld+json"):
-        try:
-            data = json.loads(script.string or "")
-            brand = data.get("brand", {}).get("name") if isinstance(data.get("brand"), dict) else data.get("brand")
-            if brand:
-                break
-        except:
-            pass
+    for data in product_records:
+        raw_brand = data.get("brand")
+        brand = raw_brand.get("name") if isinstance(raw_brand, dict) else raw_brand
+        if brand:
+            break
 
     availability = "in_stock"
     if any(x in page_text for x in ("nicht lieferbar", "nicht vorrätig", "ausverkauft")):

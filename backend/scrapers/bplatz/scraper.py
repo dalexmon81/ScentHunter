@@ -3,10 +3,11 @@ import re
 import time
 from concurrent.futures import ThreadPoolExecutor
 import unicodedata
-from urllib.parse import quote_plus, urljoin, urlparse
+from urllib.parse import urlparse
 
 import requests
-from bs4 import BeautifulSoup
+
+from scrapers.common.discovery import discover_shopify_product_urls
 
 BASE = "https://bplatz.de"
 HEADERS = {
@@ -91,24 +92,6 @@ def _request_html(session, url, **kwargs):
     return None
 
 
-def predictive_products(session, query):
-    endpoint = BASE + "/search/suggest.json"
-    params = {
-        "q": query,
-        "resources[type]": "product",
-        "resources[limit]": "20",
-        "resources[options][unavailable_products]": "show",
-    }
-    response = _request_json(session, endpoint, params=params, headers=HEADERS, timeout=TIMEOUT)
-    if not response:
-        return []
-    try:
-        data = response.json()
-        return (((data or {}).get("resources") or {}).get("results") or {}).get("products") or []
-    except (ValueError, TypeError):
-        return []
-
-
 def product_json(session, url):
     clean = url.split("?")[0].rstrip("/")
     response = _request_json(session, clean + ".js", headers=HEADERS, timeout=TIMEOUT)
@@ -150,18 +133,12 @@ def product_from_json(data, url):
     }
 
 
-def _anchor_candidate(anchor, query):
-    href = anchor.get("href") or ""
-    absolute = urljoin(BASE, href).split("?")[0]
-    path = urlparse(absolute).path.rstrip("/")
-    if not path or "/products/" not in path:
-        return None
-
+def _anchor_contexts(anchor, absolute):
     texts = [
         anchor.get("title") or "",
         anchor.get("aria-label") or "",
         anchor.get_text(" ", strip=True) or "",
-        path.replace("/products/", " ").replace("-", " "),
+        urlparse(absolute).path.replace("/products/", " ").replace("-", " "),
     ]
 
     card = anchor
@@ -172,31 +149,7 @@ def _anchor_candidate(anchor, query):
         candidate = card.get_text(" ", strip=True)
         if candidate:
             texts.append(candidate)
-
-    if not any(query_matches(text, query) for text in texts):
-        return None
-    return absolute
-
-
-def search_html_urls(session, query):
-    url = BASE + "/search?q=" + quote_plus(query) + "&type=product"
-    response = _request_html(session, url, headers=HEADERS, timeout=TIMEOUT)
-    if not response:
-        return []
-
-    soup = BeautifulSoup(response.text, "html.parser")
-    urls = []
-    seen = set()
-    for anchor in soup.select('a[href*="/products/"]'):
-        absolute = _anchor_candidate(anchor, query)
-        if not absolute:
-            continue
-        path = urlparse(absolute).path.rstrip("/")
-        if path in seen:
-            continue
-        seen.add(path)
-        urls.append(absolute)
-    return urls
+    return texts
 
 
 def _predictive_search_worker(search_query):
@@ -204,7 +157,20 @@ def _predictive_search_worker(search_query):
     # across concurrent threads.
     worker_session = requests.Session()
     try:
-        return predictive_products(worker_session, search_query)
+        return discover_shopify_product_urls(
+            worker_session,
+            base_url=BASE,
+            request_query=search_query,
+            match_query=CURRENT_QUERY,
+            query_matcher=query_matches,
+            headers=HEADERS,
+            timeout=TIMEOUT,
+            limit=20,
+            suggest_limit=20,
+            search_json_limit=12,
+            search_paths=("/search",),
+            anchor_context_builder=_anchor_contexts,
+        )
     finally:
         worker_session.close()
 
@@ -217,6 +183,9 @@ def _product_json_worker(url):
         return product_json(worker_session, url)
     finally:
         worker_session.close()
+
+
+CURRENT_QUERY = ""
 
 
 def candidate_urls(session, query):
@@ -236,6 +205,8 @@ def candidate_urls(session, query):
 
     urls = []
     seen = set()
+    global CURRENT_QUERY
+    CURRENT_QUERY = query
 
     # All independent predictive requests run concurrently. This restores
     # the fast discovery path: a slow token must not delay the exact query.
@@ -244,30 +215,14 @@ def candidate_urls(session, query):
             executor.map(_predictive_search_worker, searches)
         )
 
-    for products in predictive_results:
-        for product in products:
-            product_title = product.get("title") or product.get("name") or ""
-            if not query_matches(product_title, query):
-                continue
-
-            product_url = product.get("url")
-            if not product_url:
-                continue
-
-            absolute = urljoin(BASE, product_url).split("?")[0]
+    for discovered_urls in predictive_results:
+        for absolute in discovered_urls:
             path = urlparse(absolute).path.rstrip("/")
-
             if "/products/" not in path or path in seen:
                 continue
 
             seen.add(path)
             urls.append(absolute)
-
-    # HTML is a true fallback only when predictive discovery found nothing.
-    if not urls:
-        for url in search_html_urls(session, query):
-            if url not in urls:
-                urls.append(url)
 
     return urls
 

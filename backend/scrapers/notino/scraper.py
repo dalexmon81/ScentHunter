@@ -12,6 +12,8 @@ from urllib.parse import quote_plus, unquote, urljoin, urlparse
 import requests
 from bs4 import BeautifulSoup
 
+from scrapers.common.discovery import extract_json_ld_products
+
 STORE = "Notino"
 BASE_URL = "https://www.notino.fr"
 SEARCH_URL = BASE_URL + "/search.asp"
@@ -436,34 +438,8 @@ def _reader_search(session: requests.Session, url: str) -> Tuple[Optional[str], 
         return None, f"{type(exc).__name__}: {exc}"
 
 
-def _json_walk_products(payload: Any) -> Iterable[Dict[str, Any]]:
-    if isinstance(payload, dict):
-        typ = payload.get("@type") or payload.get("type")
-        if typ == "Product" or (isinstance(typ, list) and "Product" in typ):
-            yield payload
-        for value in payload.values():
-            if isinstance(value, (dict, list)):
-                yield from _json_walk_products(value)
-    elif isinstance(payload, list):
-        for value in payload:
-            yield from _json_walk_products(value)
-
-
 def _structured_product_records(text: str) -> List[Dict[str, Any]]:
-    records: List[Dict[str, Any]] = []
-    soup = BeautifulSoup(text or "", "html.parser")
-    scripts = soup.find_all("script", type=re.compile(r"ld\+json", re.I))
-    for script in scripts:
-        raw = script.string or script.get_text("", strip=True)
-        if not raw:
-            continue
-        try:
-            payload = json.loads(raw)
-        except Exception:
-            continue
-        for product in _json_walk_products(payload):
-            records.append(product)
-    return records
+    return extract_json_ld_products(text)
 
 
 def _structured_record_to_evidence(record: Dict[str, Any]) -> Tuple[str, str, str, Optional[str], Optional[float]]:

@@ -1,9 +1,10 @@
 import json
 import re
-from urllib.parse import quote_plus, urljoin
+from urllib.parse import urljoin
 
 import requests
-from bs4 import BeautifulSoup
+
+from scrapers.common.discovery import discover_shopify_product_urls
 
 STORE = "ParfumCity"
 BASE_URL = "https://www.parfumcity.nl"
@@ -90,77 +91,19 @@ def _discover(session,q):
       3. normal HTML search once.
     Sitemap crawling is intentionally removed from the normal request path.
     """
-    urls=[]
-    seen=set()
-
-    def add(u):
-        if not u:
-            return
-        u=urljoin(BASE_URL,str(u)).split("?")[0].split("#")[0].rstrip("/")
-        if "/products/" in u and u not in seen:
-            seen.add(u)
-            urls.append(u)
-
-    # 1) Primary Shopify suggest endpoint.
-    r=_get(session,BASE_URL+"/search/suggest.json",{
-        "q":q,
-        "resources[type]":"product",
-        "resources[limit]":12,
-        "resources[options][unavailable_products]":"show",
-    })
-    if r:
-        try:
-            data=r.json()
-            products=((data.get("resources") or {}).get("results") or {}).get("products") or []
-            for p in products:
-                if isinstance(p,dict):
-                    u=p.get("url") or p.get("product_url")
-                    if matches(f"{p.get('title','')} {p.get('vendor','')} {u or ''}",q):
-                        add(u)
-        except (ValueError,TypeError):
-            pass
-        finally:
-            r.close()
-
-    if urls:
-        return urls[:8]
-
-    # 2) Shopify JSON search.
-    r=_get(session,BASE_URL+"/search.json",{"q":q,"type":"product","limit":12})
-    if r:
-        try:
-            for p in r.json().get("products") or []:
-                if not isinstance(p,dict):
-                    continue
-                u=p.get("url") or p.get("handle")
-                if u and not str(u).startswith("/products/") and p.get("handle"):
-                    u="/products/"+p["handle"]
-                if matches(f"{p.get('title','')} {p.get('vendor','')} {u or ''}",q):
-                    add(u)
-        except (ValueError,TypeError):
-            pass
-        finally:
-            r.close()
-
-    if urls:
-        return urls[:8]
-
-    # 3) HTML search, one request only.
-    r=_get(session,BASE_URL+"/search",{"q":q,"type":"product"})
-    if r:
-        try:
-            soup=BeautifulSoup(r.text,"html.parser")
-            for a in soup.select('a[href*="/products/"]'):
-                u=a.get("href")
-                text=f"{a.get('title','')} {a.get_text(' ',strip=True)} {u or ''}"
-                if matches(text,q):
-                    add(u)
-                    if len(urls)>=8:
-                        break
-        finally:
-            r.close()
-
-    return urls[:8]
+    return discover_shopify_product_urls(
+        session,
+        base_url=BASE_URL,
+        request_query=q,
+        query_matcher=matches,
+        headers=HEADERS,
+        timeout=TIMEOUT,
+        limit=8,
+        match_query=q,
+        suggest_limit=12,
+        search_json_limit=12,
+        search_paths=("/search",),
+    )
 
 def _product_json(session,url):
     r=_get(session,url.rstrip("/")+".js")
