@@ -763,74 +763,62 @@ def _is_struck(node):
 
 
 def _extract_price(soup, data):
-    """Return the active customer-facing price of the current product.
+    structured = _jsonld_price(data)
 
-    The page contains many other product cards and prices (recommendations,
-    navigation, related products). A global lowest-price scan is therefore
-    unsafe. First anchor extraction to the current product H1 and its
-    purchase area; only then use generic visible/structured fallbacks.
-    """
-    # PRIMARY: extract from the DOM subtree belonging to the current product.
-    # This prevents unrelated recommendation prices such as 11,95 EUR from
-    # winning simply because they are cheaper.
-    h1 = soup.find("h1")
-    if h1:
-        current = h1
-        for distance in range(8):
-            current = getattr(current, "parent", None)
-            if current is None:
-                break
+    if structured is not None:
+        return structured
 
-            text = current.get_text(" ", strip=True)
-            low = text.lower()
-            if "€" not in text:
-                continue
+    meta_selectors = (
+        'meta[property="product:price:amount"]',
+        'meta[itemprop="price"]',
+        'meta[name="price"]',
+        '[itemprop="price"]',
+        '[data-price]',
+        '[data-product-price]',
+    )
 
-            purchase_score = 0
-            if "in den warenkorb" in low:
-                purchase_score += 300
-            if "auf lager" in low or "versandbereit" in low:
-                purchase_score += 200
-            if "inkl. mwst" in low or "inkl mwst" in low:
-                purchase_score += 100
+    for selector in meta_selectors:
+        for node in soup.select(selector):
+            value = (
+                node.get("content")
+                or node.get("data-price")
+                or node.get_text(" ", strip=True)
+            )
+            price = _parse_price(value)
+            if price is not None:
+                return price
 
-            if purchase_score <= 0:
-                continue
+    price = _semantic_price(soup)
+    if price is not None:
+        return price
 
-            for node in current.find_all(
-                ["span", "div", "p", "strong", "b", "ins"]
-            ):
-                node_text = node.get_text(" ", strip=True)
-                if "€" not in node_text:
-                    continue
+    # Final generic visible-price fallback. Do not depend on a CSS class: the
+    # site can change presentation classes while the customer-facing price
+    # remains plain text such as '24,70 €'. Exclude Grundpreis / litre and
+    # crossed/old prices through the surrounding-node checks.
+    for node in soup.find_all(["span", "div", "p", "strong", "b", "ins"]):
+        text = node.get_text(" ", strip=True)
+        if "€" not in text:
+            continue
+        low = text.lower()
+        if any(term in low for term in (
+            "grundpreis", "pro liter", "per liter", "€/l", "/l",
+            "coupon", "gutschein", "rabattcode", "discount-code",
+        )):
+            continue
+        if node.find_parent(["del", "s", "strike"]):
+            continue
+        price_match = re.search(
+            r"(?<![\d.,])\d{1,4}(?:[.]\d{3})*,\d{2}\s*€|(?<![\d.,])\d+(?:[.,]\d{2})\s*€",
+            text,
+            re.I,
+        )
+        if price_match:
+            price = _parse_price(price_match.group(0))
+            if price is not None:
+                return price
 
-                node_low = node_text.lower()
-                if any(term in node_low for term in (
-                    "grundpreis", "pro liter", "per liter", "€/l", "/l",
-                    "coupon", "gutschein", "rabattcode", "discount-code",
-                )):
-                    continue
-                if _is_struck(node):
-                    continue
-
-                matches = re.findall(
-                    r"(?<![\d.,])\d{1,4}(?:[.]\d{3})*,\d{2}\s*€"
-                    r"|(?<![\d.,])\d+(?:[.,]\d{2})\s*€",
-                    node_text,
-                    re.I,
-                )
-
-                for match in matches:
-                    price = _parse_price(match)
-                    if price is not None:
-                        return price
-
-            # Do not climb into the entire document.
-            if distance >= 5:
-                break
-
-    # SECONDARY: generic customer-facing visible prices, with context scoring.
-    visible_candidates = []
+    return None
 
 
 def _extract_name(soup, data):
@@ -997,67 +985,13 @@ def _candidate_urls_from_html(
     ][:MAX_CANDIDATES]
 
 
-def _search_page_state(html_text, query):
-    """Return the live catalog state exposed by the store search page.
-
-    States:
-      - "results": the requested query is reflected and product URLs exist.
-      - "zero": the requested query is reflected and the store explicitly
-        reports zero products.
-      - "unknown": the response is not enough to trust as a live catalog
-        answer (for example a generic shell, redirect page, or bot page).
-
-    This is intentionally separate from product extraction: a valid HTTP 200
-    page is not by itself proof that the query exists in the current catalog.
-    """
-    soup = BeautifulSoup(html_text, "html.parser")
-    visible_text = soup.get_text(" ", strip=True)
-    normalized_text = _norm(visible_text)
-    normalized_query = _norm(query)
-
-    if not normalized_query:
-        return "unknown"
-
-    # The real Parfum-Zentrum search page echoes the query in the heading,
-    # e.g. `Suche „Liquid brun"`. Only then can a zero-result state be trusted.
-    query_reflected = normalized_query in normalized_text
-
-    if not query_reflected:
-        return "unknown"
-
-    # The site currently renders `Produkte (0)` for a query with no live
-    # catalog matches. Accept small whitespace/markup variations.
-    zero_patterns = (
-        r"produkte\s*\(\s*0\s*\)",
-        r"produkte\s*0",
-        r"keine\s+produkte",
-        r"keine\s+ergebnisse",
-    )
-    if any(
-        re.search(pattern, normalized_text, re.I)
-        for pattern in zero_patterns
-    ):
-        return "zero"
-
-    # If product URLs are present, this is an actual positive search result.
-    if _candidate_urls_from_html(html_text, query):
-        return "results"
-
-    return "unknown"
-
-
 def _search_discovery(query):
-    """Discover products from the store's live search first.
-
-    Returns `(candidates, authoritative_zero)`.
-    `authoritative_zero=True` means the live store search itself explicitly
-    answered the query with zero products. In that case sitemap URLs must NOT
-    be used as a fallback, because they may represent stale/hidden products.
-    """
     session = requests.Session()
     session.headers.update(HEADERS)
 
     try:
+        # The public site exposes /suchen/ as its search page.
+        # Try the common parameter names used by this platform.
         endpoints = (
             SEARCH_URL
             + "?q="
@@ -1075,7 +1009,6 @@ def _search_discovery(query):
 
         seen = set()
         candidates = []
-        authoritative_zero = False
 
         for endpoint in endpoints:
             try:
@@ -1094,9 +1027,8 @@ def _search_discovery(query):
                 if response.status_code >= 400:
                     continue
 
-                html_text = response.text
                 urls = _candidate_urls_from_html(
-                    html_text,
+                    response.text,
                     query,
                 )
 
@@ -1107,31 +1039,19 @@ def _search_discovery(query):
                     seen.add(url)
                     candidates.append(url)
 
-                    if len(candidates) >= MAX_CANDIDATES:
-                        return candidates, False
-
-                state = _search_page_state(
-                    html_text,
-                    query,
-                )
-
-                if state == "zero":
-                    authoritative_zero = True
-                elif state == "results":
-                    # A live result page without extractable product URLs is
-                    # not a reason to trust the sitemap, so keep searching the
-                    # alternate parameter forms but do not mark zero.
-                    pass
+                    if (
+                        len(candidates)
+                        >= MAX_CANDIDATES
+                    ):
+                        return candidates
             finally:
                 response.close()
 
-        if candidates:
-            return candidates, False
-
-        return [], authoritative_zero
+        return candidates
 
     finally:
         session.close()
+
 
 def _xml_urls(xml_text):
     try:
@@ -1633,18 +1553,14 @@ def search(query):
     if not query:
         return []
 
-    # PRIMARY PATH: the store's live search is authoritative when it
-    # explicitly reports zero products. This prevents stale sitemap/product
-    # URLs from reappearing in ScentHunter after the retailer removes a
-    # product from its current catalog.
-    candidates, authoritative_zero = _search_discovery(
+    # FAST PATH: actual store search.
+    candidates = _search_discovery(
         query
     )
 
-    # FALLBACK: use the cached sitemap only when the live search response was
-    # not authoritative (for example a transient block or an unexpected page
-    # shell). Never use the sitemap to override an explicit live zero-result.
-    if not candidates and not authoritative_zero:
+    # FALLBACK: cached sitemap, never downloaded
+    # for every request.
+    if not candidates:
         candidates = _sitemap_discovery(
             query
         )
