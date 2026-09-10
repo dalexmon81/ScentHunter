@@ -763,8 +763,75 @@ def _is_struck(node):
 
 
 def _extract_price(soup, data):
-    structured = _jsonld_price(data)
+    """Return the active customer-facing product price.
 
+    Parfum-Zentrum can expose a stale/different numeric value in JSON-LD or
+    meta fields while the visible purchase price is shown next to the cart
+    area as e.g. ``24,70 € inkl. MwSt.``. The visible active price therefore
+    has priority. Structured/meta values are fallbacks only.
+    """
+    visible_candidates = []
+
+    for node in soup.find_all(["span", "div", "p", "strong", "b", "ins"]):
+        text = node.get_text(" ", strip=True)
+        if "€" not in text:
+            continue
+
+        low = text.lower()
+        if any(term in low for term in (
+            "grundpreis", "pro liter", "per liter", "€/l", "/l",
+            "coupon", "gutschein", "rabattcode", "discount-code",
+        )):
+            continue
+        if _is_struck(node):
+            continue
+
+        matches = re.findall(
+            r"(?<![\d.,])\d{1,4}(?:[.]\d{3})*,\d{2}\s*€"
+            r"|(?<![\d.,])\d+(?:[.,]\d{2})\s*€",
+            text,
+            re.I,
+        )
+
+        for match in matches:
+            price = _parse_price(match)
+            if price is None:
+                continue
+
+            score = 0
+            current = node
+            for distance in range(8):
+                if current is None:
+                    break
+                context = current.get_text(" ", strip=True).lower()
+                marker = (
+                    " ".join(current.get("class", [])).lower()
+                    + " " + str(current.get("id", "")).lower()
+                )
+
+                if "inkl. mwst" in context or "inkl mwst" in context:
+                    score += 80
+                if "in den warenkorb" in context:
+                    score += 100
+                if any(word in marker for word in (
+                    "product-price", "product_price", "current-price",
+                    "current_price", "final-price", "final_price",
+                    "sale-price", "sale_price",
+                )):
+                    score += 40
+
+                current = current.parent
+
+            visible_candidates.append((score, price))
+
+    if visible_candidates:
+        visible_candidates.sort(key=lambda item: (-item[0], item[1]))
+        return visible_candidates[0][1]
+
+    # Only after the customer-facing DOM has been exhausted do we trust
+    # structured/meta values. This prevents stale JSON-LD from overriding the
+    # price actually shown to the customer.
+    structured = _jsonld_price(data)
     if structured is not None:
         return structured
 
@@ -785,36 +852,6 @@ def _extract_price(soup, data):
                 or node.get_text(" ", strip=True)
             )
             price = _parse_price(value)
-            if price is not None:
-                return price
-
-    price = _semantic_price(soup)
-    if price is not None:
-        return price
-
-    # Final generic visible-price fallback. Do not depend on a CSS class: the
-    # site can change presentation classes while the customer-facing price
-    # remains plain text such as '24,70 €'. Exclude Grundpreis / litre and
-    # crossed/old prices through the surrounding-node checks.
-    for node in soup.find_all(["span", "div", "p", "strong", "b", "ins"]):
-        text = node.get_text(" ", strip=True)
-        if "€" not in text:
-            continue
-        low = text.lower()
-        if any(term in low for term in (
-            "grundpreis", "pro liter", "per liter", "€/l", "/l",
-            "coupon", "gutschein", "rabattcode", "discount-code",
-        )):
-            continue
-        if node.find_parent(["del", "s", "strike"]):
-            continue
-        price_match = re.search(
-            r"(?<![\d.,])\d{1,4}(?:[.]\d{3})*,\d{2}\s*€|(?<![\d.,])\d+(?:[.,]\d{2})\s*€",
-            text,
-            re.I,
-        )
-        if price_match:
-            price = _parse_price(price_match.group(0))
             if price is not None:
                 return price
 
