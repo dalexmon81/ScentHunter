@@ -997,13 +997,67 @@ def _candidate_urls_from_html(
     ][:MAX_CANDIDATES]
 
 
+def _search_page_state(html_text, query):
+    """Return the live catalog state exposed by the store search page.
+
+    States:
+      - "results": the requested query is reflected and product URLs exist.
+      - "zero": the requested query is reflected and the store explicitly
+        reports zero products.
+      - "unknown": the response is not enough to trust as a live catalog
+        answer (for example a generic shell, redirect page, or bot page).
+
+    This is intentionally separate from product extraction: a valid HTTP 200
+    page is not by itself proof that the query exists in the current catalog.
+    """
+    soup = BeautifulSoup(html_text, "html.parser")
+    visible_text = soup.get_text(" ", strip=True)
+    normalized_text = _norm(visible_text)
+    normalized_query = _norm(query)
+
+    if not normalized_query:
+        return "unknown"
+
+    # The real Parfum-Zentrum search page echoes the query in the heading,
+    # e.g. `Suche „Liquid brun"`. Only then can a zero-result state be trusted.
+    query_reflected = normalized_query in normalized_text
+
+    if not query_reflected:
+        return "unknown"
+
+    # The site currently renders `Produkte (0)` for a query with no live
+    # catalog matches. Accept small whitespace/markup variations.
+    zero_patterns = (
+        r"produkte\s*\(\s*0\s*\)",
+        r"produkte\s*0",
+        r"keine\s+produkte",
+        r"keine\s+ergebnisse",
+    )
+    if any(
+        re.search(pattern, normalized_text, re.I)
+        for pattern in zero_patterns
+    ):
+        return "zero"
+
+    # If product URLs are present, this is an actual positive search result.
+    if _candidate_urls_from_html(html_text, query):
+        return "results"
+
+    return "unknown"
+
+
 def _search_discovery(query):
+    """Discover products from the store's live search first.
+
+    Returns `(candidates, authoritative_zero)`.
+    `authoritative_zero=True` means the live store search itself explicitly
+    answered the query with zero products. In that case sitemap URLs must NOT
+    be used as a fallback, because they may represent stale/hidden products.
+    """
     session = requests.Session()
     session.headers.update(HEADERS)
 
     try:
-        # The public site exposes /suchen/ as its search page.
-        # Try the common parameter names used by this platform.
         endpoints = (
             SEARCH_URL
             + "?q="
@@ -1021,6 +1075,7 @@ def _search_discovery(query):
 
         seen = set()
         candidates = []
+        authoritative_zero = False
 
         for endpoint in endpoints:
             try:
@@ -1039,8 +1094,9 @@ def _search_discovery(query):
                 if response.status_code >= 400:
                     continue
 
+                html_text = response.text
                 urls = _candidate_urls_from_html(
-                    response.text,
+                    html_text,
                     query,
                 )
 
@@ -1051,19 +1107,31 @@ def _search_discovery(query):
                     seen.add(url)
                     candidates.append(url)
 
-                    if (
-                        len(candidates)
-                        >= MAX_CANDIDATES
-                    ):
-                        return candidates
+                    if len(candidates) >= MAX_CANDIDATES:
+                        return candidates, False
+
+                state = _search_page_state(
+                    html_text,
+                    query,
+                )
+
+                if state == "zero":
+                    authoritative_zero = True
+                elif state == "results":
+                    # A live result page without extractable product URLs is
+                    # not a reason to trust the sitemap, so keep searching the
+                    # alternate parameter forms but do not mark zero.
+                    pass
             finally:
                 response.close()
 
-        return candidates
+        if candidates:
+            return candidates, False
+
+        return [], authoritative_zero
 
     finally:
         session.close()
-
 
 def _xml_urls(xml_text):
     try:
@@ -1565,14 +1633,18 @@ def search(query):
     if not query:
         return []
 
-    # FAST PATH: actual store search.
-    candidates = _search_discovery(
+    # PRIMARY PATH: the store's live search is authoritative when it
+    # explicitly reports zero products. This prevents stale sitemap/product
+    # URLs from reappearing in ScentHunter after the retailer removes a
+    # product from its current catalog.
+    candidates, authoritative_zero = _search_discovery(
         query
     )
 
-    # FALLBACK: cached sitemap, never downloaded
-    # for every request.
-    if not candidates:
+    # FALLBACK: use the cached sitemap only when the live search response was
+    # not authoritative (for example a transient block or an unexpected page
+    # shell). Never use the sitemap to override an explicit live zero-result.
+    if not candidates and not authoritative_zero:
         candidates = _sitemap_discovery(
             query
         )
