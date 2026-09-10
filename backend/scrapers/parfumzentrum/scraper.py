@@ -101,41 +101,30 @@ def _xml_urls(xml_text):
 
 
 def _get_sitemap_urls():
-    """Bounded sitemap discovery; avoid serial waits on every child sitemap."""
-    try:
-        response = SESSION.get(SITEMAP_URL, headers=HEADERS, timeout=3.0)
-        response.raise_for_status()
-        urls = _xml_urls(response.text)
-        response.close()
-    except requests.RequestException:
-        return []
+    response = SESSION.get(SITEMAP_URL, headers=HEADERS, timeout=3.0)
+    response.raise_for_status()
+    urls = _xml_urls(response.text)
+    response.close()
 
     child_maps = [
         url for url in urls
-        if "sitemap" in url.lower() and url.lower().endswith(".xml")
+        if "sitemap" in url.lower()
+        and url.lower().endswith(".xml")
     ]
+
     if not child_maps:
         return urls
 
-    from concurrent.futures import ThreadPoolExecutor, as_completed
-
-    def fetch_child(url):
+    output = []
+    for sitemap in child_maps:
         try:
-            child = SESSION.get(url, headers=HEADERS, timeout=1.8)
+            child = SESSION.get(sitemap, headers=HEADERS, timeout=10)
             if child.status_code == 200:
-                text = child.text
-                child.close()
-                return _xml_urls(text)
+                output.extend(_xml_urls(child.text))
             child.close()
         except requests.RequestException:
-            pass
-        return []
+            continue
 
-    output = []
-    with ThreadPoolExecutor(max_workers=min(8, len(child_maps))) as pool:
-        futures = [pool.submit(fetch_child, u) for u in child_maps[:8]]
-        for future in as_completed(futures):
-            output.extend(future.result())
     return output
 
 
@@ -764,55 +753,113 @@ def _candidate_score(url, query):
     return score
 
 
+
+def _targeted_site_search(query):
+    """Use Parfum-Zentrum's own search page before sitemap discovery.
+
+    The store has a dedicated /suchen/ page. Query parameters are tried
+    concurrently because the site has changed search parameter naming across
+    deployments. Product URLs are accepted only when they have the site's
+    product-id suffix and the visible link text matches the requested query.
+    """
+    import urllib.parse
+    from concurrent.futures import ThreadPoolExecutor, as_completed
+
+    q = str(query or "").strip()
+    if not q:
+        return []
+
+    encoded = urllib.parse.quote_plus(q)
+    endpoints = [
+        f"{BASE_URL}/suchen/?q={encoded}",
+        f"{BASE_URL}/suchen/?query={encoded}",
+        f"{BASE_URL}/suchen/?search={encoded}",
+    ]
+
+    def fetch(endpoint):
+        try:
+            response = SESSION.get(endpoint, headers=HEADERS, timeout=3.0)
+            if response.status_code != 200:
+                response.close()
+                return []
+            html = response.text
+            response.close()
+
+            soup = BeautifulSoup(html, "html.parser")
+            found = []
+            seen = set()
+
+            for anchor in soup.find_all("a", href=True):
+                href = str(anchor.get("href") or "").strip()
+                if not href:
+                    continue
+
+                if href.startswith("/"):
+                    url = BASE_URL + href
+                elif href.startswith("http"):
+                    url = href
+                else:
+                    continue
+
+                url = url.split("#", 1)[0]
+                if not re.search(r"_z\d+/?$", url):
+                    continue
+
+                text = " ".join(anchor.stripped_strings)
+                evidence = f"{text} {url}"
+
+                if not _matches_query(evidence, q):
+                    continue
+
+                if url not in seen:
+                    seen.add(url)
+                    found.append(url)
+
+            return found[:16]
+        except requests.RequestException:
+            return []
+
+    with ThreadPoolExecutor(max_workers=3) as pool:
+        futures = [pool.submit(fetch, endpoint) for endpoint in endpoints]
+        merged = []
+        seen = set()
+
+        for future in as_completed(futures):
+            for url in future.result():
+                if url in seen:
+                    continue
+                seen.add(url)
+                merged.append(url)
+                if len(merged) >= 16:
+                    return merged[:16]
+
+    return merged[:16]
+
+
 def search(query):
     query = str(query or "").strip()
     if not query:
         return []
 
-    try:
-        urls = _get_sitemap_urls()
-    except Exception as error:
-        print("PARFUMZENTRUM SITEMAP ERROR:", error)
-        return []
+    # 1) The store's own search surface is the primary discovery mechanism.
+    # This is the critical fix: do not depend on a huge sitemap to find a
+    # product that the shop itself can already search.
+    candidates = _targeted_site_search(query)
 
-    candidates = [
-        url for url in urls
-        if re.search(r"_z\d+/?$", url)
-        and _matches_query(url, query)
-    ]
+    # 2) Sitemap remains a generic fallback for searches where the site's
+    # search endpoint returns no usable product URLs.
+    if not candidates:
+        try:
+            urls = _get_sitemap_urls()
+        except Exception as error:
+            print("PARFUMZENTRUM SITEMAP ERROR:", error)
+            urls = []
 
-    # When the user did not request a size, do not let a miniature/sample
-    # page compete with the normal product page for the same product.
-    # This is deliberately based only on URL structure/tokens, never on a
-    # particular perfume name.
-    if _requested_size_ml(query) is None:
-        full_size_signatures = set()
-
-        for url in candidates:
-            size = _candidate_size_ml(url)
-            if size is None or size < 50:
-                continue
-
-            full_size_signatures.add(_candidate_signature(url))
-
-        if full_size_signatures:
-            filtered = []
-            for url in candidates:
-                size = _candidate_size_ml(url)
-                if size is None or size >= 50:
-                    filtered.append(url)
-                    continue
-
-                signature = _candidate_signature(url)
-
-                # Drop only a small-format URL whose product identity is
-                # also present as a full-size URL. Other products remain.
-                if signature in full_size_signatures:
-                    continue
-
-                filtered.append(url)
-
-            candidates = filtered
+        candidates = [
+            url for url in urls
+            if re.search(r"_z\d+/?$", url)
+            and _matches_query(url, query)
+        ]
 
     candidates.sort(
         key=lambda url: _candidate_score(url, query),
@@ -835,14 +882,22 @@ def search(query):
     if product_urls:
         with ThreadPoolExecutor(max_workers=min(8, len(product_urls))) as pool:
             futures = [pool.submit(fetch_product, url) for url in product_urls]
+
             for future in as_completed(futures):
                 item = future.result()
                 if not item:
                     continue
-                key = (item["name"].lower(), item["price"], item["size_ml"])
-                if key not in seen:
-                    seen.add(key)
-                    results.append(item)
 
-    SESSION.close()
+                key = (
+                    item["name"].lower(),
+                    item["price"],
+                    item["size_ml"],
+                )
+
+                if key in seen:
+                    continue
+
+                seen.add(key)
+                results.append(item)
+
     return results
