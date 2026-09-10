@@ -11,6 +11,7 @@ BASE_URL = "https://www.parfum-zentrum.de"
 SEARCH_URL = BASE_URL + "/suchen/"
 SEARCH_DEADLINE = 14.0
 PRODUCT_TIMEOUT = 2.5
+SEARCH_TIMEOUT = 8.0
 HEADERS = {
     "User-Agent": (
         "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 "
@@ -121,53 +122,53 @@ def _extract_product_urls(query):
     deadline = time.monotonic() + SEARCH_DEADLINE
 
     try:
-        session = requests.Session()
-        while queue and time.monotonic() < deadline and len(urls) < 40:
-            page_url = queue.pop(0)
-            if page_url in seen_pages:
-                continue
-            seen_pages.add(page_url)
+        with requests.Session() as session:
+            while queue and time.monotonic() < deadline and len(urls) < 40:
+                page_url = queue.pop(0)
+                if page_url in seen_pages:
+                    continue
+                seen_pages.add(page_url)
 
-            try:
-                response = session.get(page_url, timeout=PRODUCT_TIMEOUT, headers=HEADERS)
-            except requests.RequestException:
-                continue
+                try:
+                    response = session.get(page_url, timeout=SEARCH_TIMEOUT, headers=HEADERS)
+                except requests.RequestException:
+                    continue
 
-            if response.status_code != 200:
-                continue
+                if response.status_code != 200:
+                    continue
 
-            soup = BeautifulSoup(response.text, "html.parser")
+                soup = BeautifulSoup(response.text, "html.parser")
 
-            for link in soup.find_all("a", href=True):
-                product_url = _normalize_url(link.get("href", ""), page_url)
-                if not product_url or not re.search(r"_z\d+", product_url, re.I):
-                    continue
-                if product_url in seen_urls:
-                    continue
-                seen_urls.add(product_url)
-                urls.append(product_url)
-                if len(urls) >= 40:
-                    break
+                for link in soup.find_all("a", href=True):
+                    product_url = _normalize_url(link.get("href", ""), page_url)
+                    if not product_url or not re.search(r"_z\d+", product_url, re.I):
+                        continue
+                    if product_url in seen_urls:
+                        continue
+                    seen_urls.add(product_url)
+                    urls.append(product_url)
+                    if len(urls) >= 40:
+                        break
 
-            for link in soup.find_all("a", href=True):
-                href = str(link.get("href", "") or "").strip()
-                next_page_url = _normalize_url(href, page_url)
-                if not next_page_url:
-                    continue
-                if next_page_url in seen_pages or next_page_url in queue:
-                    continue
-                if "/suchen/" not in next_page_url or "search=" not in next_page_url:
-                    continue
-                next_search = parse_qs(urlsplit(next_page_url).query).get("search", [""])[0].casefold()
-                if next_search != target_search:
-                    continue
-                label = " ".join(link.stripped_strings).strip()
-                if (
-                    re.search(r"(?:[#?&])Seite=\d+", href, re.I)
-                    or re.search(r"[?&]Seite=\d+", next_page_url, re.I)
-                    or label.isdigit()
-                ):
-                    queue.append(next_page_url)
+                for link in soup.find_all("a", href=True):
+                    href = str(link.get("href", "") or "").strip()
+                    next_page_url = _normalize_url(href, page_url)
+                    if not next_page_url:
+                        continue
+                    if next_page_url in seen_pages or next_page_url in queue:
+                        continue
+                    if "/suchen/" not in next_page_url or "search=" not in next_page_url:
+                        continue
+                    next_search = parse_qs(urlsplit(next_page_url).query).get("search", [""])[0].casefold()
+                    if next_search != target_search:
+                        continue
+                    label = " ".join(link.stripped_strings).strip()
+                    if (
+                        re.search(r"(?:[#?&])Seite=\d+", href, re.I)
+                        or re.search(r"[?&]Seite=\d+", next_page_url, re.I)
+                        or label.isdigit()
+                    ):
+                        queue.append(next_page_url)
 
         return urls[:40]
     except Exception as e:
