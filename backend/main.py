@@ -29,8 +29,6 @@ from fastapi import Query
 # - product catalog
 # - eight store adapters
 # - central validation/finalization functions
-# Store timeout is unchanged: lowering it would discard valid slow-store
-# responses. The speed improvement is publication/scheduling, not scrapers.
 STORE_TIMEOUT_SECONDS = 18.0
 GLOBAL_SEARCH_TIMEOUT_SECONDS = 30.0
 
@@ -38,8 +36,7 @@ _engine = SearchEngine(
     _legacy,
     store_timeout=STORE_TIMEOUT_SECONDS,
     global_timeout=GLOBAL_SEARCH_TIMEOUT_SECONDS,
-    # Hard cap for the production scheduler: exactly 4 + 4.
-    max_concurrent_stores=4,
+    max_concurrent_stores=8,
 )
 
 # ---------------------------------------------------------------------------
@@ -820,6 +817,55 @@ def diagnose_format_flow(
 def diagnose_all_stores(q: str = Query(..., min_length=1)):
     """Run the real 8-store SearchEngine diagnostic without changing search results."""
     return _engine.diagnostic_search(str(q).strip())
+
+# ===== DIRECT RUN_STORE DIAGNOSTIC (READ-ONLY) =====
+@app.get("/diagnostic-run-store")
+def diagnostic_run_store(
+    q: str = Query(..., min_length=1),
+    store: str = Query(..., min_length=1),
+):
+    """Bypass SearchEngine validation and call the legacy store adapter directly."""
+    import time as _direct_time
+    query = str(q or "").strip()
+    store_key = str(store or "").strip().lower()
+    allowed = {
+        "bplatz", "deloox", "parfumcity", "parfumzentrum",
+        "perfumemarket", "sabina", "orioudh", "notino",
+    }
+    if store_key not in allowed:
+        return {
+            "ok": False,
+            "diagnostic": "run_store_direct_v1",
+            "error": "unsupported_store",
+            "allowed_stores": sorted(allowed),
+        }
+    started = _direct_time.monotonic()
+    try:
+        raw = _legacy.run_store(store_key, query)
+        elapsed = _direct_time.monotonic() - started
+        if not isinstance(raw, list):
+            raw_list = []
+        else:
+            raw_list = [x for x in raw if isinstance(x, dict)]
+        return {
+            "ok": True,
+            "diagnostic": "run_store_direct_v1",
+            "store": store_key,
+            "query": query,
+            "elapsed_seconds": round(elapsed, 3),
+            "raw_count": len(raw_list),
+            "raw": raw_list,
+        }
+    except Exception as exc:
+        elapsed = _direct_time.monotonic() - started
+        return {
+            "ok": False,
+            "diagnostic": "run_store_direct_v1",
+            "store": store_key,
+            "query": query,
+            "elapsed_seconds": round(elapsed, 3),
+            "error": f"{type(exc).__name__}: {exc}",
+        }
 
 # ===== DEEP STORE SCRAPER DIAGNOSTIC (READ-ONLY) =====
 # Purpose: expose the exact discovery/fetch/parse stage where a store loses a
