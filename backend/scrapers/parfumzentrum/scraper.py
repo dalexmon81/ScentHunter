@@ -144,6 +144,11 @@ def _upsert_query_value(pairs, key, value):
     return updated
 
 
+def _page_number_from_text(text):
+    match = PAGE_RE.search(str(text or ""))
+    return match.group(1) if match else None
+
+
 def _normalize_product_url(href):
     parts = urlsplit(urljoin(BASE_URL + "/", str(href or "").strip()))
     if not _allowed_host(parts.hostname):
@@ -157,28 +162,33 @@ def _page_request_url(href, current_url):
     parts = urlsplit(absolute)
     if not _allowed_host(parts.hostname):
         return ""
-    query = parse_qsl(parts.query, keep_blank_values=True)
-    fragment = parse_qsl(parts.fragment, keep_blank_values=True)
+    query_pairs = parse_qsl(parts.query, keep_blank_values=True)
+    fragment_pairs = parse_qsl(parts.fragment, keep_blank_values=True)
     current_query = parse_qsl(urlsplit(current_url).query, keep_blank_values=True)
 
-    page_number = _first_query_value(query, "Seite") or _first_query_value(fragment, "Seite")
+    page_number = (
+        _first_query_value(query_pairs, "Seite")
+        or _first_query_value(fragment_pairs, "Seite")
+        or _page_number_from_text(href)
+        or _page_number_from_text(parts.fragment)
+    )
     if not page_number:
         return ""
-    query = _upsert_query_value(query, "Seite", page_number)
+    query_pairs = _upsert_query_value(query_pairs, "Seite", page_number)
 
-    search_value = _first_query_value(query, "search") or _first_query_value(current_query, "search")
+    search_value = _first_query_value(query_pairs, "search") or _first_query_value(current_query, "search")
     if search_value:
-        query = _upsert_query_value(query, "search", search_value)
+        query_pairs = _upsert_query_value(query_pairs, "search", search_value)
 
-    submit_value = _first_query_value(query, "submit") or _first_query_value(current_query, "submit") or "Suche"
-    query = _upsert_query_value(query, "submit", submit_value)
+    submit_value = _first_query_value(query_pairs, "submit") or _first_query_value(current_query, "submit") or "Suche"
+    query_pairs = _upsert_query_value(query_pairs, "submit", submit_value)
 
     search_parts = urlsplit(SEARCH_URL)
     return urlunsplit((
         search_parts.scheme or "https",
         search_parts.netloc or urlsplit(BASE_URL).netloc,
         search_parts.path or "/suchen/",
-        urlencode(query),
+        urlencode(query_pairs, doseq=True),
         "",
     ))
 
