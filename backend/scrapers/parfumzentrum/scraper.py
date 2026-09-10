@@ -154,7 +154,14 @@ def _page_request_url(href, current_url):
     if "Seite" not in query:
         return ""
 
-    return urlunsplit((parts.scheme or "https", parts.netloc or urlsplit(BASE_URL).netloc, parts.path or "/suchen/", urlencode(query), ""))
+    search_parts = urlsplit(SEARCH_URL)
+    return urlunsplit((
+        parts.scheme or "https",
+        parts.netloc or urlsplit(BASE_URL).netloc,
+        search_parts.path or "/suchen/",
+        urlencode(query),
+        "",
+    ))
 
 
 def _page_number(url):
