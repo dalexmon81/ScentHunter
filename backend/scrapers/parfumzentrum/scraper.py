@@ -1,7 +1,7 @@
 import json
 import re
 import time
-from urllib.parse import unquote, urljoin
+from urllib.parse import unquote, urljoin, urlparse
 import requests
 from bs4 import BeautifulSoup
 
@@ -21,6 +21,48 @@ HEADERS = {
     "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
     "Accept-Language": "de-DE,de;q=0.9",
 }
+
+PRODUCT_HINT_RE = re.compile(r"(?:^|[/_-])z(?=[0-9a-z-]*\d)[0-9a-z-]+(?:\.html?)?(?:/|$)", re.I)
+
+
+def _normalize_product_url(href):
+    href = str(href or "").strip()
+    if not href:
+        return None
+
+    absolute = urljoin(BASE_URL, href)
+    parsed = urlparse(absolute)
+    host = parsed.netloc.lower()
+    if host not in {"parfum-zentrum.de", "www.parfum-zentrum.de"}:
+        return None
+
+    path = (parsed.path or "").strip()
+    if not path:
+        return None
+
+    normalized = f"{BASE_URL}{path}"
+    if parsed.query:
+        normalized = f"{normalized}?{parsed.query}"
+    return normalized
+
+
+def _extract_product_urls_from_html(html):
+    soup = BeautifulSoup(html or "", "html.parser")
+    urls = []
+    seen = set()
+
+    for link in soup.find_all("a", href=True):
+        normalized = _normalize_product_url(link.get("href"))
+        if not normalized:
+            continue
+        path = urlparse(normalized).path
+        if not PRODUCT_HINT_RE.search(path):
+            continue
+        if normalized not in seen:
+            seen.add(normalized)
+            urls.append(normalized)
+
+    return urls
 
 
 def _tokens(text):
@@ -110,20 +152,11 @@ def _extract_product_urls(query):
         if response.status_code != 200:
             return []
         
-        soup = BeautifulSoup(response.text, "html.parser")
-        
         # Extract product links from first page
-        for link in soup.find_all("a", href=True):
-            href = link.get("href", "").strip()
-            if not href:
-                continue
-            
-            href = urljoin(BASE_URL, href)
-            
-            if re.search(r"_z\d+", href, re.I):
-                if href not in seen:
-                    seen.add(href)
-                    urls.append(href)
+        for href in _extract_product_urls_from_html(response.text):
+            if href not in seen:
+                seen.add(href)
+                urls.append(href)
         
         # Try to find and follow pagination links (pages 2, 3, etc)
         page_num = 2
@@ -137,21 +170,13 @@ def _extract_product_urls(query):
                 if response.status_code != 200:
                     break
                 
-                soup = BeautifulSoup(response.text, "html.parser")
                 found_on_page = 0
-                
-                for link in soup.find_all("a", href=True):
-                    href = link.get("href", "").strip()
-                    if not href:
-                        continue
-                    
-                    href = urljoin(BASE_URL, href)
-                    
-                    if re.search(r"_z\d+", href, re.I):
-                        if href not in seen:
-                            seen.add(href)
-                            urls.append(href)
-                            found_on_page += 1
+
+                for href in _extract_product_urls_from_html(response.text):
+                    if href not in seen:
+                        seen.add(href)
+                        urls.append(href)
+                        found_on_page += 1
                 
                 if found_on_page == 0:
                     break
