@@ -829,13 +829,14 @@ def _extract_product(url, query):
     availability = _product_availability(data, soup)
 
     return {
-        "store": "ParfumZentrum",
-        "source": {
-            "source_name": name,
-            "source_brand": brand,
-            "url": url,
-            "image": image,
-        },
+    "store": "ParfumZentrum",
+    "shop": "parfumzentrum",
+    "source": {
+        "source_name": name,
+        "source_brand": brand,
+        "url": url,
+        "image": image,
+    },
         "identity": {
             "gtin": {"value": gtin, "source": "jsonld"} if gtin else None,
             "mpn": {"value": mpn, "source": "jsonld"} if mpn else None,
