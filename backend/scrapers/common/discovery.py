@@ -160,6 +160,10 @@ def discover_shopify_product_urls(
         except Exception:
             return
         if not getattr(response, "ok", False):
+            try:
+                response.close()
+            except Exception:
+                pass
             return
         try:
             data = response.json()
@@ -179,6 +183,10 @@ def discover_shopify_product_urls(
         except Exception:
             return
         if not getattr(response, "ok", False):
+            try:
+                response.close()
+            except Exception:
+                pass
             return
         try:
             add_from_html(response.text or "")
