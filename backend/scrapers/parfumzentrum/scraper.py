@@ -1,16 +1,33 @@
-import asyncio
 import json
 import re
 import time
-from urllib.parse import unquote
+from urllib.parse import parse_qsl, unquote, urlencode, urljoin, urlsplit, urlunsplit
+
+import requests
 from bs4 import BeautifulSoup
-from playwright.async_api import async_playwright
 
 
 BASE_URL = "https://www.parfum-zentrum.de"
 SEARCH_URL = BASE_URL + "/suchen/"
 SEARCH_DEADLINE = 14.0
+SEARCH_TIMEOUT = 5.0
 PRODUCT_TIMEOUT = 2.5
+MAX_PRODUCT_URLS = 40
+MAX_RESULT_PAGES = 8
+
+HEADERS = {
+    "User-Agent": (
+        "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 "
+        "(KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36"
+    ),
+    "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+    "Accept-Language": "de-DE,de;q=0.9,en;q=0.8",
+    "Cache-Control": "no-cache",
+    "Pragma": "no-cache",
+}
+
+PRODUCT_RE = re.compile(r"_z\d+\b", re.I)
+PAGE_RE = re.compile(r"(?:^|[?#&])Seite=(\d+)\b", re.I)
 
 STOPWORDS = {
     "eau", "de", "the", "for", "and", "spray", "ml", "man", "woman",
@@ -84,64 +101,129 @@ def _parse_price(value):
     return result if 0 < result < 10000 else None
 
 
-async def _extract_product_urls_with_playwright(query):
-    """Extract product URLs using Playwright to handle JavaScript rendering."""
-    query = str(query or "").strip()
-    if not query:
-        return []
+def _search_url(query, page=None):
+    params = {"search": str(query or "").strip(), "submit": "Suche"}
+    if page and int(page) > 1:
+        params["Seite"] = str(int(page))
+    return SEARCH_URL + "?" + urlencode(params)
 
-    urls = []
+
+def _get(session, url, timeout):
     try:
-        async with async_playwright() as p:
-            browser = await p.chromium.launch(headless=True)
-            page = await browser.new_page()
-            page.set_default_timeout(8000)
+        response = session.get(url, timeout=timeout)
+    except requests.RequestException:
+        return None
+    return response if response.status_code == 200 else None
 
-            try:
-                search_params = f"?search={query}&submit=Suche"
-                await page.goto(SEARCH_URL + search_params, wait_until="networkidle")
-                await page.wait_for_selector("a", timeout=5000)
-                content = await page.content()
-                soup = BeautifulSoup(content, "html.parser")
 
-                for link in soup.find_all("a", href=True):
-                    href = link.get("href", "").strip()
-                    if not href:
-                        continue
+def _normalize_product_url(href):
+    parts = urlsplit(urljoin(BASE_URL + "/", str(href or "").strip()))
+    if parts.netloc and "parfum-zentrum.de" not in parts.netloc.lower():
+        return ""
+    path = (parts.path or "/").rstrip("/") or "/"
+    return urlunsplit((parts.scheme or "https", parts.netloc or urlsplit(BASE_URL).netloc, path, "", ""))
 
-                    if href.startswith("/"):
-                        href = BASE_URL + href
-                    elif not href.startswith("http"):
-                        href = BASE_URL + "/" + href
 
-                    if re.search(r"_z\d+", href, re.I):
-                        if href not in urls:
-                            urls.append(href)
+def _page_request_url(href, current_url):
+    absolute = urljoin(current_url, str(href or "").strip())
+    parts = urlsplit(absolute)
+    query = dict(parse_qsl(parts.query, keep_blank_values=True))
+    fragment = dict(parse_qsl(parts.fragment, keep_blank_values=True))
 
-                if len(urls) > 0:
-                    return urls[:40]
+    if "Seite" in fragment and "Seite" not in query:
+        query["Seite"] = fragment["Seite"]
 
-            finally:
-                await browser.close()
+    if "search" not in query:
+        current_query = dict(parse_qsl(urlsplit(current_url).query, keep_blank_values=True))
+        if "search" in current_query:
+            query["search"] = current_query["search"]
+        if "submit" in current_query:
+            query["submit"] = current_query["submit"]
 
-    except Exception as e:
-        print(f"PLAYWRIGHT ERROR: {type(e).__name__}: {e}")
-        return []
+    if "submit" not in query:
+        query["submit"] = "Suche"
+
+    if "Seite" not in query:
+        return ""
+
+    return urlunsplit((parts.scheme or "https", parts.netloc or urlsplit(BASE_URL).netloc, parts.path or "/suchen/", urlencode(query), ""))
+
+
+def _extract_product_urls_from_html(html):
+    soup = BeautifulSoup(html or "", "html.parser")
+    urls = []
+    seen = set()
+
+    for link in soup.find_all("a", href=True):
+        href = link.get("href", "").strip()
+        if not PRODUCT_RE.search(href):
+            continue
+        normalized = _normalize_product_url(href)
+        if normalized and normalized not in seen:
+            seen.add(normalized)
+            urls.append(normalized)
 
     return urls
 
 
-def _extract_product(url, query):
-    """Extract product details from a product page URL."""
-    try:
-        import requests
-        response = requests.get(url, timeout=PRODUCT_TIMEOUT, headers={
-            "User-Agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X)"
-        })
-    except Exception:
-        return None
+def _extract_page_urls_from_html(html, current_url):
+    soup = BeautifulSoup(html or "", "html.parser")
+    pages = []
+    seen = set()
 
-    if response.status_code != 200:
+    for link in soup.find_all("a", href=True):
+        href = link.get("href", "").strip()
+        if not PAGE_RE.search(href):
+            continue
+        page_url = _page_request_url(href, current_url)
+        if page_url and page_url not in seen:
+            seen.add(page_url)
+            pages.append(page_url)
+
+    pages.sort(
+        key=lambda value: int(PAGE_RE.search(value).group(1)) if PAGE_RE.search(value) else 9999
+    )
+    return pages
+
+
+def _extract_product_urls(session, query, deadline):
+    query = str(query or "").strip()
+    if not query:
+        return []
+
+    pending_pages = [_search_url(query)]
+    seen_pages = set()
+    product_urls = []
+    seen_products = set()
+
+    while pending_pages and len(seen_pages) < MAX_RESULT_PAGES and time.monotonic() < deadline:
+        page_url = pending_pages.pop(0)
+        if page_url in seen_pages:
+            continue
+        seen_pages.add(page_url)
+
+        response = _get(session, page_url, timeout=SEARCH_TIMEOUT)
+        if not response:
+            continue
+
+        for product_url in _extract_product_urls_from_html(response.text):
+            if product_url not in seen_products:
+                seen_products.add(product_url)
+                product_urls.append(product_url)
+                if len(product_urls) >= MAX_PRODUCT_URLS:
+                    return product_urls[:MAX_PRODUCT_URLS]
+
+        for extra_page in _extract_page_urls_from_html(response.text, response.url):
+            if extra_page not in seen_pages and extra_page not in pending_pages:
+                pending_pages.append(extra_page)
+
+    return product_urls[:MAX_PRODUCT_URLS]
+
+
+def _extract_product(session, url, query, timeout):
+    """Extract product details from a product page URL."""
+    response = _get(session, url, timeout=timeout)
+    if not response:
         return None
 
     soup = BeautifulSoup(response.text, "html.parser")
@@ -243,17 +325,23 @@ def _extract_product(url, query):
 
 
 def search(query):
-    """Main search function - synchronous wrapper for async Playwright."""
+    """Main search function using HTML parsing only."""
     query = str(query or "").strip()
     if not query:
         return []
 
     started = time.monotonic()
+    session = requests.Session()
+    session.headers.update(HEADERS)
 
     try:
-        product_urls = asyncio.run(_extract_product_urls_with_playwright(query))
+        product_urls = _extract_product_urls(
+            session,
+            query,
+            started + SEARCH_DEADLINE,
+        )
     except Exception as e:
-        print(f"PLAYWRIGHT EXTRACTION ERROR: {type(e).__name__}: {e}")
+        print(f"SEARCH EXTRACTION ERROR: {type(e).__name__}: {e}")
         return []
 
     if not product_urls:
@@ -263,12 +351,17 @@ def search(query):
     seen = set()
 
     for url in product_urls[:24]:
-        remaining = max(1.0, 12.0 - (time.monotonic() - started))
+        remaining = max(1.0, SEARCH_DEADLINE - (time.monotonic() - started))
         if remaining <= 0:
             break
 
         try:
-            item = _extract_product(url, query)
+            item = _extract_product(
+                session,
+                url,
+                query,
+                timeout=min(PRODUCT_TIMEOUT, remaining),
+            )
         except Exception as e:
             print(f"PRODUCT EXTRACTION ERROR: {type(e).__name__}: {e}")
             item = None
