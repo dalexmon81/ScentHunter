@@ -31,6 +31,12 @@ from urllib.parse import (
 import requests
 from bs4 import BeautifulSoup
 
+try:
+    from playwright.sync_api import sync_playwright, TimeoutError as PlaywrightTimeoutError
+except Exception:
+    sync_playwright = None
+    PlaywrightTimeoutError = Exception
+
 
 STORE = "Sabina"
 BASE = "https://www.sabina.com"
@@ -43,6 +49,8 @@ MAX_CANDIDATES = 8
 PRODUCT_WORKERS = 8
 MAX_EXTERNAL_RESULTS = 12
 MAX_VARIANT_ROWS = 80
+BROWSER_TIMEOUT_MS = 15000
+BROWSER_WAIT_MS = 1500
 
 HEADERS = {
     "User-Agent": (
@@ -2267,62 +2275,6 @@ def _extract_search_engine_urls(
     return found
 
 
-def _discover_from_external_search(
-    session,
-    query,
-):
-    q = quote_plus(
-        f"site:sabina.com {query}"
-    )
-
-    endpoints = [
-        (
-            "https://www.google.com/search"
-            f"?q={q}&num=20"
-        ),
-        (
-            "https://www.bing.com/search"
-            f"?q={q}&count=20"
-        ),
-        (
-            "https://html.duckduckgo.com/html/"
-            f"?q={q}"
-        ),
-    ]
-
-    for endpoint in endpoints:
-        try:
-            response = session.get(
-                endpoint,
-                headers={
-                    **HEADERS,
-                    "Referer":
-                        "https://www.google.com/",
-                },
-                timeout=TIMEOUT,
-            )
-        except requests.RequestException:
-            continue
-
-        try:
-            if not response.ok:
-                continue
-
-            urls = (
-                _extract_search_engine_urls(
-                    response.text,
-                    query,
-                )
-            )
-
-            if urls:
-                return urls
-        finally:
-            response.close()
-
-    return []
-
-
 def _dedupe_results(
     rows,
 ):
@@ -2364,6 +2316,69 @@ def _dedupe_results(
     return output
 
 
+def _is_product_url(url):
+    parsed = urlparse(url)
+    if parsed.netloc and parsed.netloc.lower() != "www.sabina.com":
+        return False
+    path = parsed.path.lower()
+    return bool(re.search(r"/\d{4,8}-[^/]+\.html$", path))
+
+
+def _query_tokens_in_text(query, text):
+    tokens = re.findall(r"[a-z0-9]+", _clean(query).lower())
+    haystack = _clean(text).lower()
+    return bool(tokens) and all(token in haystack for token in tokens if len(token) >= 3)
+
+
+def _discover_from_browser(query):
+    """Use Sabina's rendered first-party search when HTTP discovery is empty."""
+    if sync_playwright is None:
+        return []
+
+    search_url = BASE + "/es/buscar_old?s=" + quote_plus(query)
+    found, seen = [], set()
+
+    try:
+        with sync_playwright() as playwright:
+            browser = playwright.chromium.launch(headless=True)
+            context = browser.new_context(
+                user_agent=HEADERS["User-Agent"],
+                locale="es-ES",
+                extra_http_headers={"Accept-Language": HEADERS["Accept-Language"]},
+            )
+            page = context.new_page()
+            page.goto(search_url, wait_until="domcontentloaded", timeout=BROWSER_TIMEOUT_MS)
+            try:
+                page.wait_for_load_state("networkidle", timeout=5000)
+            except PlaywrightTimeoutError:
+                pass
+            page.wait_for_timeout(BROWSER_WAIT_MS)
+
+            anchors = page.locator("a[href]").evaluate_all(
+                """anchors => anchors.map(a => ({href:a.href||"", text:a.innerText||a.textContent||"", title:a.getAttribute("title")||"", aria:a.getAttribute("aria-label")||""}))"""
+            )
+            current_url = page.url
+            for item in anchors:
+                raw = _clean(item.get("href"))
+                if not raw:
+                    continue
+                absolute = urljoin(current_url, raw).split("#", 1)[0]
+                if not _is_product_url(absolute):
+                    continue
+                text = _clean(" ".join([item.get("text") or "", item.get("title") or "", item.get("aria") or ""]))
+                if not (_query_tokens_in_text(query, text) or _query_tokens_in_text(query, absolute)):
+                    continue
+                if absolute not in seen:
+                    seen.add(absolute); found.append(absolute)
+                if len(found) >= MAX_CANDIDATES:
+                    break
+            context.close()
+            browser.close()
+    except Exception:
+        return []
+    return found[:MAX_CANDIDATES]
+
+
 def search(query):
     query = _clean(
         query
@@ -2394,15 +2409,11 @@ def search(query):
             )
         )
 
-        # Last resort only. This keeps the normal path entirely
-        # first-party and bounded.
+        # Sabina's current search can be client-rendered. If HTTP discovery
+        # is empty, use the rendered first-party search page. Never depend on
+        # Google/Bing/DuckDuckGo for retailer discovery.
         if not candidate_urls:
-            candidate_urls = (
-                _discover_from_external_search(
-                    session,
-                    query,
-                )
-            )
+            candidate_urls = _discover_from_browser(query)
 
         candidate_urls = list(
             dict.fromkeys(
