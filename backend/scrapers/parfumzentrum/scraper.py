@@ -8,8 +8,6 @@ from urllib.parse import unquote
 
 BASE_URL = "https://www.parfum-zentrum.de"
 SITEMAP_URL = BASE_URL + "/sitemap.xml"
-FULLTEXT_SEARCH_URL = BASE_URL + "/fulltext_search/1"
-FULLTEXT_TIMEOUT = 5.0
 
 SESSION = requests.Session()
 HEADERS = {
@@ -93,21 +91,109 @@ def _parse_price(value):
     return result if 0 < result < 10000 else None
 
 
-def _xml_urls(xml_text):
-    root = ET.fromstring(xml_text)
-    return [
-        node.text.strip()
-        for node in root.iter()
-        if node.tag.endswith("loc") and node.text
+def _native_search_urls(query):
+    """Fast native Parfum-Zentrum discovery.
+
+    The current site still exposes the old full-text search endpoint, but a
+    single query can return only part of the matching catalog. We therefore
+    run the exact query plus useful token variants concurrently and merge the
+    product URLs. Sitemap crawling is only a fallback.
+    """
+    from concurrent.futures import ThreadPoolExecutor, as_completed
+
+    query = str(query or "").strip()
+    if not query:
+        return []
+
+    tokens = [
+        token for token in _tokens(query)
+        if token not in STOPWORDS and len(token) >= 3
     ]
+
+    queries = [query]
+    # Individual meaningful tokens often expose additional variants that the
+    # exact full-text query does not return.
+    for token in tokens:
+        if token not in queries:
+            queries.append(token)
+
+    # Also retry the query without concentration words.
+    reduced = " ".join(tokens)
+    if reduced and reduced not in queries:
+        queries.append(reduced)
+
+    def fetch_one(search_query):
+        try:
+            response = requests.get(
+                BASE_URL + "/fulltext_search/1",
+                params={"query": search_query},
+                headers=HEADERS,
+                timeout=4.0,
+            )
+            if response.status_code != 200:
+                response.close()
+                return []
+            html = response.text
+            response.close()
+        except requests.RequestException:
+            return []
+
+        soup = BeautifulSoup(html, "html.parser")
+        found = []
+        seen = set()
+
+        for node in soup.find_all("a", href=True):
+            url = _normalize_product_href(node.get("href"))
+            if url and url not in seen:
+                seen.add(url)
+                found.append(url)
+
+        # Defensive extraction for URLs embedded in scripts.
+        if not found:
+            for match in re.finditer(
+                r"""(?:https?:)?//[^"'<>\\s]*parfum-zentrum\.de[^"'<>\\s]*_z\d+/?""",
+                html,
+                re.I,
+            ):
+                url = _normalize_product_href(match.group(0))
+                if url and url not in seen:
+                    seen.add(url)
+                    found.append(url)
+
+        return found
+
+    merged = []
+    seen = set()
+
+    pool = ThreadPoolExecutor(max_workers=min(4, len(queries)))
+    futures = [pool.submit(fetch_one, q) for q in queries]
+    try:
+        for future in as_completed(futures, timeout=5.5):
+            try:
+                for url in future.result():
+                    if url not in seen:
+                        seen.add(url)
+                        merged.append(url)
+            except Exception:
+                pass
+    except TimeoutError:
+        pass
+    finally:
+        for future in futures:
+            future.cancel()
+        pool.shutdown(wait=False, cancel_futures=True)
+
+    return merged
 
 
 def _normalize_product_href(href):
     if not href:
         return None
+
     href = unquote(str(href).strip())
     if href.startswith("//"):
         href = "https:" + href
+
     if href.startswith(BASE_URL):
         path = href[len(BASE_URL):]
     elif href.startswith("http://") or href.startswith("https://"):
@@ -120,74 +206,32 @@ def _normalize_product_href(href):
         path = "/" + path
     path = re.sub(r"/{2,}", "/", path)
 
-    # Parfum-Zentrum product URLs use /<slug>_z<id>/.
     if not re.search(r"_z\d+/?$", path, re.I):
         return None
+
     if not path.endswith("/"):
         path += "/"
+
     return BASE_URL + path
 
 
-def _fulltext_search_urls(query):
-    """Use Parfum-Zentrum's native full-text search before sitemap discovery."""
-    try:
-        response = SESSION.get(
-            FULLTEXT_SEARCH_URL,
-            params={"query": query},
-            headers=HEADERS,
-            timeout=FULLTEXT_TIMEOUT,
-        )
-        if response.status_code != 200:
-            response.close()
-            return []
-
-        html = response.text
-        response.close()
-    except requests.RequestException as error:
-        print("PARFUMZENTRUM FULLTEXT ERROR:", repr(error))
-        return []
-
-    soup = BeautifulSoup(html, "html.parser")
-    found = []
-    seen = set()
-
-    # Primary path: real <a href> product links in the result cards.
-    for node in soup.find_all("a", href=True):
-        url = _normalize_product_href(node.get("href"))
-        if url and url not in seen:
-            seen.add(url)
-            found.append(url)
-
-    # Defensive fallback: some shop templates expose links in attributes or
-    # escaped HTML rather than ordinary anchor nodes.
-    if not found:
-        for match in re.finditer(
-            r"(?:href|url|link)\\?['\"]?\\s*[:=]\\s*['\"]([^'\"]*_z\\d+/?)(?:['\"])",
-            html,
-            re.I,
-        ):
-            url = _normalize_product_href(match.group(1))
-            if url and url not in seen:
-                seen.add(url)
-                found.append(url)
-
-    return found
-
-
 def _get_sitemap_urls():
-    """Fetch the sitemap index and all child sitemaps concurrently.
+    """Bounded sitemap fallback.
 
-    The previous implementation only inspected the first eight child
-    sitemaps. Parfum-Zentrum has enough sitemap shards that a product can
-    legitimately live outside those first eight shards, which makes the
-    scraper return zero candidates even though the product exists.
+    This path is intentionally never the primary search mechanism. It is
+    allowed to help when native search fails, but it must not hold the whole
+    ScentHunter search hostage for tens of seconds.
     """
     try:
-        response = SESSION.get(SITEMAP_URL, headers=HEADERS, timeout=3.0)
+        response = requests.get(
+            SITEMAP_URL,
+            headers=HEADERS,
+            timeout=3.0,
+        )
         response.raise_for_status()
         urls = _xml_urls(response.text)
         response.close()
-    except requests.RequestException:
+    except (requests.RequestException, ET.ParseError):
         return []
 
     child_maps = [
@@ -195,39 +239,43 @@ def _get_sitemap_urls():
         if "sitemap" in url.lower()
         and url.lower().endswith((".xml", ".xml.gz"))
     ]
+
     if not child_maps:
         return urls
 
-    from concurrent.futures import ThreadPoolExecutor, as_completed
-    import time
-
     output = []
-    deadline = time.monotonic() + 6.5
+    deadline = time.monotonic() + 5.0
 
-    def fetch_child(url):
+    def fetch_child(sitemap):
         try:
-            child = SESSION.get(url, headers=HEADERS, timeout=1.8)
-            if child.status_code == 200:
-                text = child.text
-                child.close()
-                return _xml_urls(text)
-            child.close()
-        except requests.RequestException:
-            pass
-        return []
+            response = requests.get(
+                sitemap,
+                headers=HEADERS,
+                timeout=1.8,
+            )
+            if response.status_code != 200:
+                response.close()
+                return []
+            data = _xml_urls(response.text)
+            response.close()
+            return data
+        except (requests.RequestException, ET.ParseError):
+            return []
 
-    # Do not arbitrarily inspect only the first N shards. Fetch all shards in
-    # parallel, while keeping a hard discovery deadline.
-    pool = ThreadPoolExecutor(max_workers=min(32, max(1, len(child_maps))))
+    pool = ThreadPoolExecutor(max_workers=min(24, max(1, len(child_maps))))
     futures = [pool.submit(fetch_child, url) for url in child_maps]
+
     try:
-        for future in as_completed(futures, timeout=max(0.1, deadline - time.monotonic())):
-            if time.monotonic() >= deadline:
-                break
+        for future in as_completed(
+            futures,
+            timeout=max(0.1, deadline - time.monotonic()),
+        ):
             try:
                 output.extend(future.result())
             except Exception:
                 pass
+            if time.monotonic() >= deadline:
+                break
     except TimeoutError:
         pass
     finally:
@@ -676,19 +724,7 @@ def _choose_product_image(soup, product_name):
     return scored[0][2] if scored else None
 
 
-def _extract_product(url, query):
-    try:
-        response = SESSION.get(url, headers=HEADERS, timeout=3.5)
-    except requests.RequestException:
-        return None
-
-    if response.status_code != 200:
-        response.close()
-        return None
-
-    html = response.text
-    response.close()
-
+def _extract_product_html(url, query, html):
     soup = BeautifulSoup(html, "html.parser")
 
     h1 = soup.find("h1")
@@ -780,6 +816,19 @@ def _extract_product(url, query):
     }
 
 
+
+def _extract_product(url, query):
+    try:
+        response = SESSION.get(url, headers=HEADERS, timeout=3.5)
+    except requests.RequestException:
+        return None
+    if response.status_code != 200:
+        response.close()
+        return None
+    html = response.text
+    response.close()
+    return _extract_product_html(url, query, html)
+
 def _candidate_size_ml(url):
     match = re.search(
         r"(?<!\d)(\d+(?:[.,]\d+)?)[\s_-]*ml\b",
@@ -863,48 +912,66 @@ def _candidate_score(url, query):
     return score
 
 
+def _product_worker(url, query):
+    try:
+        response = requests.get(
+            url,
+            headers=HEADERS,
+            timeout=3.5,
+        )
+    except requests.RequestException:
+        return None
+
+    if response.status_code != 200:
+        response.close()
+        return None
+
+    html = response.text
+    response.close()
+
+    try:
+        return _extract_product_html(url, query, html)
+    except Exception:
+        return None
+
+
 def search(query):
     query = str(query or "").strip()
     if not query:
         return []
 
-    # First use the site's own full-text search. This is the authoritative
-    # discovery mechanism and avoids depending on the ordering/coverage of
-    # the XML sitemap tree.
-    native_urls = _fulltext_search_urls(query)
-    native_candidates = [
-        url for url in native_urls
-        if _matches_query(url, query)
-    ]
+    # PRIMARY: current native search. This normally returns in a few seconds.
+    urls = _native_search_urls(query)
 
-    if native_candidates:
-        urls = native_candidates
-    else:
-        try:
-            urls = _get_sitemap_urls()
-        except Exception as error:
-            print("PARFUMZENTRUM SITEMAP ERROR:", error)
-            return []
-
+    # Filter immediately using the URL itself where possible.
     candidates = [
         url for url in urls
         if re.search(r"_z\d+/?$", url)
         and _matches_query(url, query)
     ]
 
-    # When the user did not request a size, do not let a miniature/sample
-    # page compete with the normal product page for the same product.
-    # This is deliberately based only on URL structure/tokens, never on a
-    # particular perfume name.
+    # FALLBACK: bounded sitemap only if native search produced nothing.
+    if not candidates:
+        try:
+            sitemap_urls = _get_sitemap_urls()
+        except Exception as error:
+            print("PARFUMZENTRUM SITEMAP ERROR:", error)
+            sitemap_urls = []
+
+        candidates = [
+            url for url in sitemap_urls
+            if re.search(r"_z\d+/?$", url)
+            and _matches_query(url, query)
+        ]
+
+    # When no size is requested, prefer normal/full-size variants.
     if _requested_size_ml(query) is None:
         full_size_signatures = set()
 
         for url in candidates:
             size = _candidate_size_ml(url)
-            if size is None or size < 50:
-                continue
-
-            full_size_signatures.add(_candidate_signature(url))
+            if size is None or size >= 50:
+                full_size_signatures.add(_candidate_signature(url))
 
         if full_size_signatures:
             filtered = []
@@ -914,11 +981,7 @@ def search(query):
                     filtered.append(url)
                     continue
 
-                signature = _candidate_signature(url)
-
-                # Drop only a small-format URL whose product identity is
-                # also present as a full-size URL. Other products remain.
-                if signature in full_size_signatures:
+                if _candidate_signature(url) in full_size_signatures:
                     continue
 
                 filtered.append(url)
@@ -930,29 +993,52 @@ def search(query):
         reverse=True,
     )
 
+    # Fetch product pages concurrently. The old scraper fetched candidates
+    # one by one, which is why one slow page could stall the entire store.
+    candidates = candidates[:16]
     results = []
     seen = set()
 
-    from concurrent.futures import ThreadPoolExecutor, as_completed
-
-    def fetch_product(url):
+    if candidates:
+        pool = ThreadPoolExecutor(max_workers=min(8, len(candidates)))
+        futures = {
+            pool.submit(_product_worker, url, query): url
+            for url in candidates
+        }
         try:
-            return _extract_product(url, query)
-        except Exception as error:
-            print("PARFUMZENTRUM PRODUCT ERROR:", repr(error))
-            return None
+            for future in as_completed(futures, timeout=7.5):
+                try:
+                    item = future.result()
+                except Exception as error:
+                    print("PARFUMZENTRUM PRODUCT ERROR:", repr(error))
+                    item = None
 
-    product_urls = candidates[:16]
-    if product_urls:
-        with ThreadPoolExecutor(max_workers=min(8, len(product_urls))) as pool:
-            futures = [pool.submit(fetch_product, url) for url in product_urls]
-            for future in as_completed(futures):
-                item = future.result()
                 if not item:
                     continue
-                key = (item["name"].lower(), item["price"], item["size_ml"])
-                if key not in seen:
-                    seen.add(key)
-                    results.append(item)
+
+                key = (
+                    item["name"].lower(),
+                    item["price"],
+                    item["size_ml"],
+                )
+
+                if key in seen:
+                    continue
+
+                seen.add(key)
+                results.append(item)
+        except TimeoutError:
+            pass
+        finally:
+            for future in futures:
+                future.cancel()
+            pool.shutdown(wait=False, cancel_futures=True)
+
+    # Stable output: strongest URL candidates first, then size/name.
+    results.sort(
+        key=lambda item: _candidate_score(item.get("url", ""), query),
+        reverse=True,
+    )
 
     return results
+
