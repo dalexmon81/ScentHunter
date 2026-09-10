@@ -183,10 +183,7 @@ def _extract_product(url, query):
     )):
         return None
 
-    product_records = extract_json_ld_products(
-        response.text,
-        include_offer_nodes=True,
-    )
+    product_records = extract_json_ld_products(response.text)
     price = None
     for data in product_records:
         offers = data.get("offers", {})

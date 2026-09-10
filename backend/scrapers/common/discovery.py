@@ -35,8 +35,6 @@ def extract_json_ld_blocks(html: str) -> List[Any]:
 
 def extract_json_ld_products(
     html: str,
-    *,
-    include_offer_nodes: bool = False,
 ) -> List[Dict[str, Any]]:
     records: List[Dict[str, Any]] = []
     for payload in extract_json_ld_blocks(html):
@@ -47,7 +45,7 @@ def extract_json_ld_products(
             is_product = node_type == "Product" or (
                 isinstance(node_type, list) and "Product" in node_type
             )
-            if is_product or (include_offer_nodes and node.get("offers")):
+            if is_product:
                 records.append(node)
     return records
 
@@ -104,23 +102,34 @@ def discover_shopify_product_urls(
         seen.add(url)
         urls.append(url)
 
-    def iter_json_products(data: Any) -> Iterator[Dict[str, Any]]:
-        for node in iter_json_nodes(data):
-            if isinstance(node, dict):
-                yield node
-
     def add_from_json_payload(data: Any) -> None:
-        for node in iter_json_products(data):
-            title = node.get("title") or node.get("name") or node.get("product_title") or ""
-            vendor = node.get("vendor") or node.get("brand") or ""
-            handle = node.get("handle") or ""
-            product_url = node.get("url") or node.get("product_url") or ""
-            if not product_url and handle:
-                product_url = f"/products/{handle}"
-            if product_url:
-                add(product_url, title, vendor, handle, product_url)
-                if len(urls) >= limit:
-                    return
+        product_lists: List[Any] = []
+        if isinstance(data, dict):
+            suggest_products = (
+                ((data.get("resources") or {}).get("results") or {}).get("products")
+            )
+            if isinstance(suggest_products, list):
+                product_lists.append(suggest_products)
+            direct_products = data.get("products")
+            if isinstance(direct_products, list):
+                product_lists.append(direct_products)
+        elif isinstance(data, list):
+            product_lists.append(data)
+
+        for products in product_lists:
+            for node in products:
+                if not isinstance(node, dict):
+                    continue
+                title = node.get("title") or node.get("name") or node.get("product_title") or ""
+                vendor = node.get("vendor") or node.get("brand") or ""
+                handle = node.get("handle") or ""
+                product_url = node.get("url") or node.get("product_url") or ""
+                if not product_url and handle:
+                    product_url = f"/products/{handle}"
+                if product_url:
+                    add(product_url, title, vendor, handle, product_url)
+                    if len(urls) >= limit:
+                        return
 
     def default_anchor_context(anchor: Any, url: str) -> List[str]:
         contexts = [
