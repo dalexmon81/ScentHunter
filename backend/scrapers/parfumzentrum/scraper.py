@@ -177,8 +177,9 @@ def _page_request_url(href, current_url):
     query_pairs = _upsert_query_value(query_pairs, "Seite", page_number)
 
     search_value = _first_query_value(query_pairs, "search") or _first_query_value(current_query, "search")
-    if search_value:
-        query_pairs = _upsert_query_value(query_pairs, "search", search_value)
+    if not search_value:
+        return ""
+    query_pairs = _upsert_query_value(query_pairs, "search", search_value)
 
     submit_value = _first_query_value(query_pairs, "submit") or _first_query_value(current_query, "submit") or "Suche"
     query_pairs = _upsert_query_value(query_pairs, "submit", submit_value)
