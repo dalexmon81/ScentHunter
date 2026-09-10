@@ -22,7 +22,7 @@ HEADERS = {
     "Accept-Language": "de-DE,de;q=0.9",
 }
 
-PRODUCT_HINT_RE = re.compile(r"(?:[_-])z(?=[0-9a-z-]*\d)[0-9a-z-]+(?:\.html?)?(?:/|$)", re.I)
+PRODUCT_HINT_RE = re.compile(r"(?:^|[/_-])z(?=[0-9a-z-]*\d)[0-9a-z-]+(?:\.html?)?(?:/|$)", re.I)
 
 
 def _normalize_product_url(href):
@@ -41,8 +41,6 @@ def _normalize_product_url(href):
         return None
 
     normalized = f"{BASE_URL}{path}"
-    if path != "/":
-        normalized = normalized.rstrip("/")
     if parsed.query:
         normalized = f"{normalized}?{parsed.query}"
     return normalized
