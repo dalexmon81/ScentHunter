@@ -260,6 +260,8 @@ def _run_job(job_id: str, query: str) -> None:
 
 @app.get("/")
 def root():
+    if FRONTEND_INDEX.exists():
+        return FileResponse(FRONTEND_INDEX)
     return {"app": "ScentHunter", "status": "running", "architecture": "simple-main-plus-independent-scrapers"}
 
 
