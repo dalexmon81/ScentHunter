@@ -122,6 +122,28 @@ def _allowed_host(host):
     return not host or host in {"parfum-zentrum.de", "www.parfum-zentrum.de"}
 
 
+def _first_query_value(pairs, key):
+    for name, value in pairs:
+        if name == key:
+            return value
+    return None
+
+
+def _upsert_query_value(pairs, key, value):
+    updated = []
+    replaced = False
+    for name, current in pairs:
+        if name == key:
+            if not replaced:
+                updated.append((name, str(value)))
+                replaced = True
+            continue
+        updated.append((name, current))
+    if not replaced:
+        updated.append((key, str(value)))
+    return updated
+
+
 def _normalize_product_url(href):
     parts = urlsplit(urljoin(BASE_URL + "/", str(href or "").strip()))
     if not _allowed_host(parts.hostname):
@@ -135,29 +157,26 @@ def _page_request_url(href, current_url):
     parts = urlsplit(absolute)
     if not _allowed_host(parts.hostname):
         return ""
-    query = dict(parse_qsl(parts.query, keep_blank_values=True))
-    fragment = dict(parse_qsl(parts.fragment, keep_blank_values=True))
+    query = parse_qsl(parts.query, keep_blank_values=True)
+    fragment = parse_qsl(parts.fragment, keep_blank_values=True)
+    current_query = parse_qsl(urlsplit(current_url).query, keep_blank_values=True)
 
-    if "Seite" in fragment and "Seite" not in query:
-        query["Seite"] = fragment["Seite"]
-
-    if "search" not in query:
-        current_query = dict(parse_qsl(urlsplit(current_url).query, keep_blank_values=True))
-        if "search" in current_query:
-            query["search"] = current_query["search"]
-        if "submit" in current_query:
-            query["submit"] = current_query["submit"]
-
-    if "submit" not in query:
-        query["submit"] = "Suche"
-
-    if "Seite" not in query:
+    page_number = _first_query_value(query, "Seite") or _first_query_value(fragment, "Seite")
+    if not page_number:
         return ""
+    query = _upsert_query_value(query, "Seite", page_number)
+
+    search_value = _first_query_value(query, "search") or _first_query_value(current_query, "search")
+    if search_value:
+        query = _upsert_query_value(query, "search", search_value)
+
+    submit_value = _first_query_value(query, "submit") or _first_query_value(current_query, "submit") or "Suche"
+    query = _upsert_query_value(query, "submit", submit_value)
 
     search_parts = urlsplit(SEARCH_URL)
     return urlunsplit((
-        parts.scheme or "https",
-        parts.netloc or urlsplit(BASE_URL).netloc,
+        search_parts.scheme or "https",
+        search_parts.netloc or urlsplit(BASE_URL).netloc,
         search_parts.path or "/suchen/",
         urlencode(query),
         "",
