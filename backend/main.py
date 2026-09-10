@@ -1398,6 +1398,11 @@ def diagnose_bplatz(q: str = "Liquid Brun"):
             base + "/products/fragrance-world-liquid-brun-eau-de-parfum-100ml",
             None,
         ),
+        (
+            "product_js",
+            base + "/products/fragrance-world-liquid-brun-eau-de-parfum-100ml.js",
+            None,
+        ),
     ]
 
     try:
