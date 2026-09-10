@@ -81,14 +81,27 @@ def _extract_product_urls_from_html(html):
 
 
 def _is_product_like_path(path):
-    text = str(path or "").replace("-", " ")
-    if PRODUCT_RE.search(text):
+    raw_path = str(path or "")
+    text = raw_path.replace("-", " ")
+    if PRODUCT_RE.search(raw_path):
         return True
 
-    if SIZE_HINT_RE.search(text):
+    segments = [segment for segment in raw_path.strip("/").split("/") if segment]
+    if len(segments) != 1:
+        return False
+
+    slug = segments[0]
+    tokens = [token for token in slug.split("-") if token]
+    if len(tokens) < 4:
+        return False
+
+    has_size = bool(SIZE_HINT_RE.search(slug))
+    has_concentration = bool(CONCENTRATION_HINT_RE.search(text))
+
+    if has_size and (has_concentration or len(tokens) >= 6):
         return True
 
-    return bool(CONCENTRATION_HINT_RE.search(text)) and text.count(" ") >= 4
+    return has_concentration and len(tokens) >= 6
 
 
 def _tokens(text):

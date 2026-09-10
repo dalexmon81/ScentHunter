@@ -28,6 +28,11 @@ class ParfumzentrumUrlDiscoveryTests(unittest.TestCase):
         urls = scraper._extract_product_urls_from_html(html)
         self.assertEqual(urls, [])
 
+    def test_rejects_non_product_slug_with_size_only_hint(self):
+        html = '<a href="/fragrance-trends-100ml-guide">Guide</a>'
+        urls = scraper._extract_product_urls_from_html(html)
+        self.assertEqual(urls, [])
+
     def test_ignores_offsite_and_deduplicates(self):
         html = """
         <a href="https://evil.example/something_z123">Offsite</a>
