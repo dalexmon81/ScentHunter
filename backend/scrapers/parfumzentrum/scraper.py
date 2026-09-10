@@ -1,7 +1,7 @@
 import json
 import re
 import time
-from urllib.parse import quote_plus, unquote, urljoin
+from urllib.parse import parse_qs, quote_plus, unquote, urljoin, urlsplit
 
 import requests
 from bs4 import BeautifulSoup
@@ -116,6 +116,7 @@ def _extract_product_urls(query):
     seen_urls = set()
     seen_pages = set()
     search_url = f"{SEARCH_URL}?search={quote_plus(query)}&submit=Suche"
+    target_search = parse_qs(urlsplit(search_url).query).get("search", [""])[0].casefold()
     queue = [search_url]
     deadline = time.monotonic() + SEARCH_DEADLINE
 
@@ -156,6 +157,9 @@ def _extract_product_urls(query):
                 if next_page_url in seen_pages or next_page_url in queue:
                     continue
                 if "/suchen/" not in next_page_url or "search=" not in next_page_url:
+                    continue
+                next_search = parse_qs(urlsplit(next_page_url).query).get("search", [""])[0].casefold()
+                if next_search != target_search:
                     continue
                 label = " ".join(link.stripped_strings).strip()
                 if (
