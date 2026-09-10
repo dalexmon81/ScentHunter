@@ -71,12 +71,71 @@ class SearchEngine:
         return {"raw": raw, "normalized": norm, "size_ml": size_ml}
 
     @staticmethod
-    def _candidate_key(item: Dict[str, Any]) -> tuple:
+    def _identity_value(item: Dict[str, Any], *keys: str) -> str:
+        for key in keys:
+            value = item.get(key)
+            if isinstance(value, dict):
+                value = value.get("value")
+            if value not in (None, ""):
+                return str(value).strip()
+
+        identity = item.get("identity")
+        if isinstance(identity, dict):
+            for key in keys:
+                value = identity.get(key)
+                if isinstance(value, dict):
+                    value = value.get("value")
+                if value not in (None, ""):
+                    return str(value).strip()
+        return ""
+
+    @classmethod
+    def _candidate_key(cls, item: Dict[str, Any]) -> tuple:
+        # The scraper contract allows a structured identity block.  Use it
+        # here too, otherwise a retailer candidate can be keyed only by URL
+        # while the legacy pipeline keys the same product by store/product id.
         store = str(item.get("store") or item.get("shop") or "").strip().casefold()
+        product_id = cls._identity_value(
+            item,
+            "store_product_id",
+            "product_id",
+            "catalog_id",
+            "sku",
+        ).casefold()
+        variant_id = cls._identity_value(
+            item,
+            "store_variant_id",
+            "variant_id",
+        ).casefold()
+        gtin = cls._identity_value(
+            item,
+            "gtin",
+            "ean",
+            "ean13",
+            "barcode",
+            "upc",
+        ).casefold()
         url = str(item.get("url") or item.get("source_url") or "").strip().casefold()
-        product_id = str(item.get("product_id") or item.get("sku") or "").strip().casefold()
         size = item.get("size_ml") or item.get("volume_ml") or item.get("format_ml") or ""
-        return store, product_id, url, str(size).strip().casefold()
+
+        identity = variant_id or product_id or gtin
+        return store, identity, url, str(size).strip().casefold()
+
+    @staticmethod
+    def _canonicalize_store_candidate(store: str, item: Dict[str, Any]) -> Dict[str, Any]:
+        product = dict(item)
+        raw_store = str(product.get("store") or product.get("shop") or "").strip()
+        canonical_store = str(store or "").strip().casefold()
+
+        # The eight-store engine uses stable lowercase store ids. Some
+        # scrapers return the retailer display name instead (e.g.
+        # "ParfumZentrum"). Keep the display value, but make the machine
+        # identity deterministic so filtering/dedup/grouping cannot drop the
+        # offer because of casing/name differences.
+        if raw_store and raw_store.casefold() != canonical_store:
+            product.setdefault("store_display_name", raw_store)
+        product["store"] = canonical_store
+        return product
 
     def _dedupe_raw(self, items: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
         out: List[Dict[str, Any]] = []
@@ -108,7 +167,11 @@ class SearchEngine:
                     candidates = list(raw)
                 except Exception:
                     candidates = []
-            candidates = [x for x in candidates if isinstance(x, dict)]
+            candidates = [
+                self._canonicalize_store_candidate(store, x)
+                for x in candidates
+                if isinstance(x, dict)
+            ]
             return StoreRun(
                 store=store,
                 status="ok" if candidates else "empty",
