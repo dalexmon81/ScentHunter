@@ -763,99 +763,74 @@ def _is_struck(node):
 
 
 def _extract_price(soup, data):
-    """Return the active customer-facing product price.
+    """Return the active customer-facing price of the current product.
 
-    Parfum-Zentrum can expose a stale/different numeric value in JSON-LD or
-    meta fields while the visible purchase price is shown next to the cart
-    area as e.g. ``24,70 € inkl. MwSt.``. The visible active price therefore
-    has priority. Structured/meta values are fallbacks only.
+    The page contains many other product cards and prices (recommendations,
+    navigation, related products). A global lowest-price scan is therefore
+    unsafe. First anchor extraction to the current product H1 and its
+    purchase area; only then use generic visible/structured fallbacks.
     """
-    visible_candidates = []
+    # PRIMARY: extract from the DOM subtree belonging to the current product.
+    # This prevents unrelated recommendation prices such as 11,95 EUR from
+    # winning simply because they are cheaper.
+    h1 = soup.find("h1")
+    if h1:
+        current = h1
+        for distance in range(8):
+            current = getattr(current, "parent", None)
+            if current is None:
+                break
 
-    for node in soup.find_all(["span", "div", "p", "strong", "b", "ins"]):
-        text = node.get_text(" ", strip=True)
-        if "€" not in text:
-            continue
-
-        low = text.lower()
-        if any(term in low for term in (
-            "grundpreis", "pro liter", "per liter", "€/l", "/l",
-            "coupon", "gutschein", "rabattcode", "discount-code",
-        )):
-            continue
-        if _is_struck(node):
-            continue
-
-        matches = re.findall(
-            r"(?<![\d.,])\d{1,4}(?:[.]\d{3})*,\d{2}\s*€"
-            r"|(?<![\d.,])\d+(?:[.,]\d{2})\s*€",
-            text,
-            re.I,
-        )
-
-        for match in matches:
-            price = _parse_price(match)
-            if price is None:
+            text = current.get_text(" ", strip=True)
+            low = text.lower()
+            if "€" not in text:
                 continue
 
-            score = 0
-            current = node
-            for distance in range(8):
-                if current is None:
-                    break
-                context = current.get_text(" ", strip=True).lower()
-                marker = (
-                    " ".join(current.get("class", [])).lower()
-                    + " " + str(current.get("id", "")).lower()
+            purchase_score = 0
+            if "in den warenkorb" in low:
+                purchase_score += 300
+            if "auf lager" in low or "versandbereit" in low:
+                purchase_score += 200
+            if "inkl. mwst" in low or "inkl mwst" in low:
+                purchase_score += 100
+
+            if purchase_score <= 0:
+                continue
+
+            for node in current.find_all(
+                ["span", "div", "p", "strong", "b", "ins"]
+            ):
+                node_text = node.get_text(" ", strip=True)
+                if "€" not in node_text:
+                    continue
+
+                node_low = node_text.lower()
+                if any(term in node_low for term in (
+                    "grundpreis", "pro liter", "per liter", "€/l", "/l",
+                    "coupon", "gutschein", "rabattcode", "discount-code",
+                )):
+                    continue
+                if _is_struck(node):
+                    continue
+
+                matches = re.findall(
+                    r"(?<![\d.,])\d{1,4}(?:[.]\d{3})*,\d{2}\s*€"
+                    r"|(?<![\d.,])\d+(?:[.,]\d{2})\s*€",
+                    node_text,
+                    re.I,
                 )
 
-                if "inkl. mwst" in context or "inkl mwst" in context:
-                    score += 80
-                if "in den warenkorb" in context:
-                    score += 100
-                if any(word in marker for word in (
-                    "product-price", "product_price", "current-price",
-                    "current_price", "final-price", "final_price",
-                    "sale-price", "sale_price",
-                )):
-                    score += 40
+                for match in matches:
+                    price = _parse_price(match)
+                    if price is not None:
+                        return price
 
-                current = current.parent
+            # Do not climb into the entire document.
+            if distance >= 5:
+                break
 
-            visible_candidates.append((score, price))
-
-    if visible_candidates:
-        visible_candidates.sort(key=lambda item: (-item[0], item[1]))
-        return visible_candidates[0][1]
-
-    # Only after the customer-facing DOM has been exhausted do we trust
-    # structured/meta values. This prevents stale JSON-LD from overriding the
-    # price actually shown to the customer.
-    structured = _jsonld_price(data)
-    if structured is not None:
-        return structured
-
-    meta_selectors = (
-        'meta[property="product:price:amount"]',
-        'meta[itemprop="price"]',
-        'meta[name="price"]',
-        '[itemprop="price"]',
-        '[data-price]',
-        '[data-product-price]',
-    )
-
-    for selector in meta_selectors:
-        for node in soup.select(selector):
-            value = (
-                node.get("content")
-                or node.get("data-price")
-                or node.get_text(" ", strip=True)
-            )
-            price = _parse_price(value)
-            if price is not None:
-                return price
-
-    return None
+    # SECONDARY: generic customer-facing visible prices, with context scoring.
+    visible_candidates = []
 
 
 def _extract_name(soup, data):
