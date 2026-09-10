@@ -508,9 +508,20 @@ def _inject_progressive_frontend(html: str) -> str:
   let polling=false;
 
   async function readJSON(url){
-    const response=await fetch(url,{headers:{"Accept":"application/json"}});
-    if(!response.ok)throw new Error("HTTP "+response.status);
-    return await response.json();
+    let lastError=null;
+    for(let attempt=0;attempt<4;attempt++){
+      try{
+        const response=await fetch(url,{headers:{"Accept":"application/json"}});
+        if(!response.ok)throw new Error("HTTP "+response.status);
+        return await response.json();
+      }catch(error){
+        lastError=error;
+        if(attempt<3){
+          await new Promise(resolve=>setTimeout(resolve,700));
+        }
+      }
+    }
+    throw lastError||new Error("Request failed");
   }
 
   function renderIncremental(data){
@@ -527,22 +538,10 @@ def _inject_progressive_frontend(html: str) -> str:
       })))
     );
 
-    const stores=data.stores||{};
-    const done=Object.values(stores).filter(
-      x=>x.status==="ok"||x.status==="empty"||x.status==="error"||x.status==="timeout"
-    ).length;
-
-    if(!data.completed){
-      statusBox.textContent=
-        groups.length+" "+(groups.length===1?"profumo":"profumi")+
-        " · "+done+"/8 negozi";
-    }
-
-    const errors=data.errors||{};
-    errorsBox.innerHTML=Object.keys(errors).length
-      ? "Alcuni negozi non hanno risposto: "+
-        Object.keys(errors).map(esc).join(", ")+"."
-      : "";
+    // Progress counters and store error messages are intentionally hidden.
+    // Results themselves appear progressively as stores finish.
+    statusBox.textContent="";
+    errorsBox.innerHTML="";
   }
 
   async function progressiveSearch(){
@@ -558,7 +557,7 @@ def _inject_progressive_frontend(html: str) -> str:
     polling=true;
     button.disabled=true;
     button.textContent="Cerco…";
-    statusBox.textContent="Cerco nei negozi…";
+    statusBox.textContent="";
     resultsBox.innerHTML="";
     errorsBox.innerHTML="";
     document.getElementById("searchOutput").scrollIntoView({
@@ -594,14 +593,10 @@ def _inject_progressive_frontend(html: str) -> str:
         await new Promise(resolve=>setTimeout(resolve,350));
       }
 
-      statusBox.textContent=
-        currentProductGroups.length+
-        (currentProductGroups.length===1
-          ?" profumo trovato."
-          :" profumi trovati.");
+      statusBox.textContent="";
     }catch(error){
       console.error(error);
-      statusBox.textContent="Impossibile completare la ricerca.";
+      statusBox.textContent="";
     }finally{
       polling=false;
       activeJob="";
