@@ -12,10 +12,7 @@ BASE_URL = "https://www.parfum-zentrum.de"
 SITEMAP_URL = BASE_URL + "/sitemap.xml"
 SEARCH_URL = BASE_URL + "/fulltext_search/1"
 SEARCH_DEADLINE = 14.0
-CATEGORY_FALLBACK_URLS = (
-    BASE_URL + "/parfums/f/french-avenue/",
-    BASE_URL + "/french-avenue_v1341/",
-)
+CATEGORY_FALLBACK_URLS = ()
 PRODUCT_TIMEOUT = 2.5
 
 SESSION = requests.Session()
@@ -833,7 +830,6 @@ def _extract_product(url, query):
 
     return {
         "store": "ParfumZentrum",
-        "shop": "parfumzentrum",
         "source": {
             "source_name": name,
             "source_brand": brand,
@@ -969,28 +965,32 @@ def search(query):
     # product-page parsing below is the authoritative validation step.
     candidates = list(dict.fromkeys(candidates))
 
-    # 2) Stable category fallback whenever native search returns nothing.
+    # 2) Generic sitemap fallback.
     #
-    # IMPORTANT: do not gate this fallback on an arbitrary elapsed-time check.
-    # Under concurrent Render load the native search can legitimately consume
-    # more than the old 7-second threshold. In that case the old code skipped
-    # the category fallback entirely and returned zero products even though the
-    # category page contained the requested product.
+    # The previous version used a hard-coded French Avenue category as the
+    # fallback. That was wrong: it could only discover products from that one
+    # brand and was not a valid scraper-wide fallback.
     #
-    # The fallback itself is bounded by its per-request timeouts, and once it
-    # returns one or more product URLs we stop here: no sitemap is needed.
-    if not candidates:
-        candidates = _category_fallback_urls(query)
-
-    # 3) Sitemap is the final fallback only when native + category discovery
-    # both found nothing. There is deliberately no second-product invention:
-    # if the category search finds one real product, one is the correct result.
+    # The sitemap contains the real product URLs, so use the query itself to
+    # select only matching product URLs before opening product pages. This is
+    # generic for every brand/perfume and avoids fetching arbitrary products.
     if not candidates:
         sitemap_urls = _get_sitemap_urls()
-        candidates = [
-            url for url in sitemap_urls
-            if re.search(r"_z\d+/?$", url, re.I)
-        ]
+        wanted = {
+            token for token in _tokens(query)
+            if token not in STOPWORDS
+        }
+        candidates = []
+        for url in sitemap_urls:
+            if not re.search(r"_z\d+/?$", url, re.I):
+                continue
+            url_tokens = set(_tokens(url))
+            if wanted and wanted.issubset(url_tokens):
+                candidates.append(url)
+
+    # 3) No broad product crawl. If neither native search nor the query-aware
+    # sitemap finds a matching URL, return no candidates rather than opening
+    # unrelated products.
 
     # De-duplicate and rank before fetching product pages.
     candidates = list(dict.fromkeys(candidates))
