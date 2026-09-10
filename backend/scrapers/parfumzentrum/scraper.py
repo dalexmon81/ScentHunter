@@ -22,8 +22,8 @@ HEADERS = {
     "Accept-Language": "de-DE,de;q=0.9",
 }
 
-PRODUCT_RE = re.compile(r"_z[0-9a-z-]*", re.I)
-SIZE_HINT_RE = re.compile(r"(?<!\d)\d{2,4}\s*ml\b", re.I)
+PRODUCT_RE = re.compile(r"_z\d+[0-9a-z-]*", re.I)
+SIZE_HINT_RE = re.compile(r"(?<!\d)\d{1,4}(?:[.,]\d+)?\s*(?:ml|cl)\b", re.I)
 CONCENTRATION_HINT_RE = re.compile(
     r"\b(?:edt|edp|extrait|eau\s+de\s+toilette|eau\s+de\s+parfum)\b",
     re.I,

@@ -15,12 +15,16 @@ class ParfumzentrumUrlDiscoveryTests(unittest.TestCase):
     def test_extracts_product_like_links_without_z_suffix(self):
         html = """
         <a href="/armaf-club-de-nuit-intense-man-eau-de-toilette-105ml">Product</a>
+        <a href="/sample-brand-eau-de-parfum-75cl">ProductCL</a>
         <a href="/suchen/?search=armaf">Search</a>
         """
         urls = scraper._extract_product_urls_from_html(html)
         self.assertEqual(
             urls,
-            ["https://www.parfum-zentrum.de/armaf-club-de-nuit-intense-man-eau-de-toilette-105ml"],
+            [
+                "https://www.parfum-zentrum.de/armaf-club-de-nuit-intense-man-eau-de-toilette-105ml",
+                "https://www.parfum-zentrum.de/sample-brand-eau-de-parfum-75cl",
+            ],
         )
 
     def test_rejects_non_product_slug_with_generic_terms(self):
