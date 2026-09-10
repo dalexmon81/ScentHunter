@@ -41,16 +41,16 @@ except Exception:
 STORE = "Sabina"
 BASE = "https://www.sabina.com"
 
-CONNECT_TIMEOUT = 2.5
-READ_TIMEOUT = 5.0
+CONNECT_TIMEOUT = 1.5
+READ_TIMEOUT = 3.5
 TIMEOUT = (CONNECT_TIMEOUT, READ_TIMEOUT)
 
 MAX_CANDIDATES = 8
 PRODUCT_WORKERS = 8
 MAX_EXTERNAL_RESULTS = 12
 MAX_VARIANT_ROWS = 80
-BROWSER_TIMEOUT_MS = 15000
-BROWSER_WAIT_MS = 1500
+BROWSER_TIMEOUT_MS = 8000
+BROWSER_WAIT_MS = 800
 
 HEADERS = {
     "User-Agent": (
@@ -1131,11 +1131,16 @@ def _extract_price_and_currency(
             candidates.append(
                 (
                     score,
+                    len(candidates),
                     price,
                 )
             )
 
     if candidates:
+        # Keep DOM order for equal-confidence price nodes. Sorting by the
+        # numeric price was wrong on Sabina because related-product cards can
+        # contain cheaper prices and were therefore selected over the main
+        # product price.
         candidates.sort(
             key=lambda row: (
                 -row[0],
@@ -1144,7 +1149,7 @@ def _extract_price_and_currency(
         )
 
         return (
-            candidates[0][1],
+            candidates[0][2],
             "EUR",
             "semantic_html",
         )
@@ -2077,13 +2082,11 @@ def _discover_from_first_party(
     seen = set()
     q = quote_plus(query)
 
+    # One current first-party HTTP route only. Older routes/AJAX endpoints
+    # are deliberately not chained here: on Sabina they add long waits without
+    # improving discovery when the search is client-rendered.
     search_urls = [
-        BASE + "/es/buscar?s=" + q,
-        BASE + "/es/buscar?controller=search&s=" + q,
         BASE + "/es/buscar_old?s=" + q,
-        BASE + "/es/buscar?search_query=" + q,
-        BASE + "/es/buscar_old?search_query=" + q,
-        BASE + "/es/search?s=" + q,
     ]
 
     for url in search_urls:
@@ -2115,48 +2118,9 @@ def _discover_from_first_party(
         if urls:
             return urls[:MAX_CANDIDATES]
 
-    # AJAX discovery is fallback only when the normal first-party search
-    # returned no query-relevant product URL.
-    ajax_endpoints = [
-        BASE + "/es/module/ec_customization/ajax",
-        BASE + "/es/modules/ec_customization/ajax",
-        BASE + "/modules/ecelastic/ajax.php",
-    ]
-
-    payloads = [
-        {"s": query, "query": query, "search_query": query},
-        {"q": query, "query": query, "search_query": query},
-    ]
-
-    for endpoint in ajax_endpoints:
-        for payload in payloads:
-            response = _get(
-                session,
-                endpoint,
-                params=payload,
-                ajax=True,
-            )
-            if response is None:
-                continue
-
-            try:
-                links = _extract_product_links_from_html(
-                    response.text,
-                    query,
-                )
-            finally:
-                response.close()
-
-            for link in links:
-                if link in seen:
-                    continue
-                seen.add(link)
-                urls.append(link)
-                if len(urls) >= MAX_CANDIDATES:
-                    return urls[:MAX_CANDIDATES]
-
-            if urls:
-                return urls[:MAX_CANDIDATES]
+    # No external search engines and no legacy AJAX cascade: if the
+    # first-party HTTP search is client-rendered, the caller immediately
+    # switches to the bounded browser discovery path.
 
     return urls[:MAX_CANDIDATES]
 
