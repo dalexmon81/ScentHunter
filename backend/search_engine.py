@@ -429,27 +429,30 @@ class SearchEngine:
         }
 
     def run_job(self, job_id: str, query: str) -> None:
-        """Run all eight stores concurrently and publish after each store settles."""
+        """Run all stores concurrently, collect first, finalize once.
+
+        IMPORTANT: result finalization is deliberately kept OUTSIDE the store
+        collection loop.  Validation/grouping can take seconds and must never
+        consume the global scraper deadline or prevent a store that already
+        returned from being added to the candidate pool.
+        """
         jobs = getattr(self.legacy, "SEARCH_JOBS", None)
         lock = getattr(self.legacy, "SEARCH_JOBS_LOCK", None)
         if jobs is None:
             raise RuntimeError("SEARCH_JOBS is not available")
 
         started = time.monotonic()
-        deadline = started + self.global_timeout
-        store_status: Dict[str, Any] = {s: {"status": "pending", "count": 0} for s in self.stores}
+        collection_deadline = started + self.global_timeout
+        store_status: Dict[str, Any] = {
+            s: {"status": "pending", "count": 0} for s in self.stores
+        }
         errors: Dict[str, str] = {}
         raw_pool: List[Dict[str, Any]] = []
         raw_lock = threading.Lock()
-        previous_results: List[Dict[str, Any]] = []
-        published_batch = 0
-
-        def completed_count() -> int:
-            return sum(1 for info in store_status.values() if info.get("status") not in ("pending", "searching"))
 
         self._job_update(jobs, lock, job_id, {
             "status": "searching",
-            "phase": "searching_all_stores",
+            "phase": "all_stores_searching",
             "completed": False,
             "results": [],
             "batch_results": [],
@@ -465,43 +468,23 @@ class SearchEngine:
             "elapsed": 0.0,
         })
 
-        def publish(final: bool = False) -> None:
-            nonlocal previous_results, published_batch
-            with raw_lock:
-                snapshot_raw = self._dedupe_raw([dict(x) for x in raw_pool if isinstance(x, dict)])
-            final_results = self._finalize(query, snapshot_raw)
-            previous_keys = {self._result_identity(x) for x in previous_results}
-            batch_results = [dict(x) for x in final_results if self._result_identity(x) not in previous_keys]
-            previous_results = [dict(x) for x in final_results]
-            published_batch += 1
-            self._job_update(jobs, lock, job_id, {
-                "status": "completed" if final else "searching",
-                "phase": "completed" if final else "store_result_published",
-                "completed": final,
-                "results": [dict(x) for x in final_results],
-                "batch_results": batch_results,
-                "batch_id": published_batch,
-                "wave": 0,
-                "comparisons": [],
-                "errors": dict(errors),
-                "store_status": dict(store_status),
-                "completed_stores": completed_count(),
-                "total_stores": len(self.stores),
-                "raw_candidate_count": len(snapshot_raw),
-                "results_are_final": final,
-                "elapsed": round(time.monotonic() - started, 3),
-            })
-
         executor = concurrent.futures.ThreadPoolExecutor(
             max_workers=min(self.max_concurrent_stores, len(self.stores) or 1),
             thread_name_prefix="scenthunter-store",
         )
         futures: Dict[concurrent.futures.Future, tuple[str, float]] = {}
+
         try:
+            # Start EVERY store immediately.
             for store in self.stores:
                 submitted = time.monotonic()
-                futures[executor.submit(self._run_one_store, store, query)] = (store, submitted)
-                store_status[store] = {"status": "searching", "count": 0}
+                futures[executor.submit(self._run_one_store, store, query)] = (
+                    store, submitted
+                )
+                store_status[store] = {
+                    "status": "searching",
+                    "count": 0,
+                }
 
             self._job_update(jobs, lock, job_id, {
                 "phase": "all_stores_searching",
@@ -510,12 +493,17 @@ class SearchEngine:
                 "elapsed": round(time.monotonic() - started, 3),
             })
 
+            # COLLECTION ONLY.  No _finalize() is allowed in this loop.
             while futures:
-                remaining = deadline - time.monotonic()
+                now = time.monotonic()
+                remaining = collection_deadline - now
                 if remaining <= 0:
                     break
-                now = time.monotonic()
-                expired = [f for f, (_, submitted) in futures.items() if now - submitted >= self.store_timeout]
+
+                expired = [
+                    f for f, (_, submitted) in futures.items()
+                    if now - submitted >= self.store_timeout
+                ]
                 for future in expired:
                     store, submitted = futures.pop(future)
                     store_status[store] = {
@@ -526,7 +514,6 @@ class SearchEngine:
                     }
                     errors[store] = "store timeout"
                     future.cancel()
-                    publish(False)
 
                 if not futures:
                     break
@@ -536,9 +523,11 @@ class SearchEngine:
                     timeout=min(0.10, remaining),
                     return_when=concurrent.futures.FIRST_COMPLETED,
                 )
+
                 for future in list(done):
                     if future not in futures:
                         continue
+
                     store, submitted = futures.pop(future)
                     try:
                         result = future.result()
@@ -549,10 +538,17 @@ class SearchEngine:
                             elapsed=time.monotonic() - submitted,
                             error=f"{type(exc).__name__}: {exc}",
                         )
-                    candidates = [x for x in result.candidates if isinstance(x, dict)]
+
+                    candidates = [
+                        x for x in result.candidates
+                        if isinstance(x, dict)
+                    ]
+
                     with raw_lock:
                         raw_pool.extend(candidates)
                         raw_pool[:] = self._dedupe_raw(raw_pool)
+                        raw_count = len(raw_pool)
+
                     store_status[store] = {
                         "status": result.status,
                         "count": len(candidates),
@@ -561,8 +557,32 @@ class SearchEngine:
                     if result.error:
                         store_status[store]["error"] = result.error
                         errors[store] = result.error
-                    publish(False)
 
+                    # Lightweight progress update only.  This does NOT run
+                    # validation/grouping/finalization.
+                    completed_stores = sum(
+                        1 for info in store_status.values()
+                        if info.get("status") not in ("pending", "searching")
+                    )
+                    self._job_update(jobs, lock, job_id, {
+                        "status": "searching",
+                        "phase": "collecting_results",
+                        "completed": False,
+                        "results": [],
+                        "batch_results": [],
+                        "batch_id": 0,
+                        "wave": 0,
+                        "comparisons": [],
+                        "errors": dict(errors),
+                        "store_status": dict(store_status),
+                        "completed_stores": completed_stores,
+                        "total_stores": len(self.stores),
+                        "raw_candidate_count": raw_count,
+                        "results_are_final": False,
+                        "elapsed": round(time.monotonic() - started, 3),
+                    })
+
+            # Anything still running has exceeded its allowed collection window.
             now = time.monotonic()
             for future, (store, submitted) in list(futures.items()):
                 store_status[store] = {
@@ -574,25 +594,58 @@ class SearchEngine:
                 errors[store] = "global search window expired"
                 future.cancel()
                 futures.pop(future, None)
+
+            # Snapshot the COMPLETE collected pool before any expensive work.
+            with raw_lock:
+                snapshot_raw = self._dedupe_raw(
+                    [dict(x) for x in raw_pool if isinstance(x, dict)]
+                )
+
+            # Only now, after store collection is over, perform the expensive
+            # central validation/grouping once.
+            final_results = self._finalize(query, snapshot_raw)
+
+            completed_stores = sum(
+                1 for info in store_status.values()
+                if info.get("status") not in ("pending", "searching")
+            )
+            elapsed = round(time.monotonic() - started, 3)
+
+            self._job_update(jobs, lock, job_id, {
+                "status": "completed",
+                "phase": "completed",
+                "completed": True,
+                "results": [dict(x) for x in final_results],
+                "batch_results": [dict(x) for x in final_results],
+                "batch_id": 1,
+                "wave": 1,
+                "comparisons": [],
+                "errors": dict(errors),
+                "store_status": dict(store_status),
+                "completed_stores": completed_stores,
+                "total_stores": len(self.stores),
+                "raw_candidate_count": len(snapshot_raw),
+                "results_are_final": True,
+                "elapsed": elapsed,
+            })
+
         except Exception as exc:
             self._job_update(jobs, lock, job_id, {
                 "status": "error",
                 "phase": "completed",
                 "completed": True,
-                "results": previous_results,
+                "results": [],
                 "batch_results": [],
-                "batch_id": published_batch,
+                "batch_id": 0,
+                "wave": 0,
                 "errors": dict(errors),
                 "error": f"{type(exc).__name__}: {exc}",
                 "traceback": traceback.format_exc(limit=8),
-                "results_are_final": bool(previous_results),
+                "results_are_final": False,
                 "elapsed": round(time.monotonic() - started, 3),
             })
-            return
         finally:
             executor.shutdown(wait=False, cancel_futures=True)
-
-        publish(True)
 
     def diagnostic_search(self, query: str) -> Dict[str, Any]:
         """Run all stores concurrently with hard per-store and global deadlines."""
@@ -771,4 +824,3 @@ class SearchEngine:
                 ],
             },
         }
-
