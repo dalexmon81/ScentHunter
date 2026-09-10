@@ -30,7 +30,6 @@ import threading
 import time
 import traceback
 import uuid
-import requests
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 from typing import Any, Dict, Iterable, List, Optional, Tuple
@@ -237,7 +236,7 @@ def match_results(
 
     for row in rows:
         try:
-            matched = matcher.match(row, query)
+            matched = matcher.match(row)
         except Exception as exc:
             logger.warning(
                 "MATCH ERROR | store=%s | query=%r | %s",
@@ -1366,94 +1365,6 @@ def diagnose_stores(
         "architecture": "live-orchestrator",
         **data,
     }
-
-
-@app.get("/diagnose-bplatz")
-def diagnose_bplatz(q: str = "Liquid Brun"):
-    """Diagnostica HTTP grezza Bplatz, inclusa la struttura JSON del prodotto."""
-    query = str(q or "").strip()
-    base = "https://bplatz.de"
-    headers = {
-        "User-Agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 Safari/604.1",
-        "Accept": "application/json,text/html,application/xhtml+xml",
-        "Accept-Language": "de-DE,de;q=0.9,en;q=0.8",
-    }
-    out: Dict[str, Any] = {"ok": True, "query": query, "base": base}
-    session = requests.Session()
-    product_url = base + "/products/fragrance-world-liquid-brun-eau-de-parfum-100ml"
-
-    try:
-        started = time.monotonic()
-        r = session.get(
-            base + "/search/suggest.json",
-            params={
-                "q": query,
-                "resources[type]": "product",
-                "resources[limit]": "20",
-                "resources[options][unavailable_products]": "show",
-            },
-            headers=headers,
-            timeout=(2.5, 6.0),
-        )
-        out["suggest"] = {
-            "status_code": r.status_code,
-            "final_url": r.url,
-            "content_type": r.headers.get("content-type", ""),
-            "length": len(r.content),
-            "elapsed": round(time.monotonic() - started, 3),
-        }
-        try:
-            data = r.json()
-            products = ((((data or {}).get("resources") or {}).get("results") or {}).get("products") or [])
-            out["suggest"]["products"] = [
-                {"title": p.get("title"), "url": p.get("url"), "available": p.get("available")}
-                for p in products[:20] if isinstance(p, dict)
-            ]
-        except Exception as exc:
-            out["suggest"]["json_error"] = repr(exc)
-
-        started = time.monotonic()
-        r = session.get(product_url + ".js", headers=headers, timeout=(2.5, 6.0))
-        item = {
-            "status_code": r.status_code,
-            "final_url": r.url,
-            "content_type": r.headers.get("content-type", ""),
-            "length": len(r.content),
-            "elapsed": round(time.monotonic() - started, 3),
-        }
-        try:
-            data = r.json()
-            item["json_type"] = type(data).__name__
-            item["title"] = data.get("title") if isinstance(data, dict) else None
-            item["vendor"] = data.get("vendor") if isinstance(data, dict) else None
-            item["product_type"] = data.get("product_type") if isinstance(data, dict) else None
-            variants = data.get("variants") or [] if isinstance(data, dict) else []
-            item["variant_count"] = len(variants)
-            item["variants"] = []
-            for v in variants[:20]:
-                if isinstance(v, dict):
-                    item["variants"].append({
-                        "id": v.get("id"),
-                        "title": v.get("title"),
-                        "option1": v.get("option1"),
-                        "option2": v.get("option2"),
-                        "option3": v.get("option3"),
-                        "price": v.get("price"),
-                        "available": v.get("available"),
-                        "inventory_quantity": v.get("inventory_quantity"),
-                    })
-            item["images_count"] = len(data.get("images") or []) if isinstance(data, dict) else 0
-            out["product_js"] = item
-        except Exception as exc:
-            item["json_error"] = repr(exc)
-            item["body_prefix"] = r.text[:1000]
-            out["product_js"] = item
-    except Exception as exc:
-        out["error"] = repr(exc)
-    finally:
-        session.close()
-
-    return out
 
 
 @app.get("/cache/clear")
