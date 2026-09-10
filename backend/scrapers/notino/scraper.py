@@ -620,15 +620,21 @@ def candidate_urls(html_text, query):
 
 
 def discover(session, query):
+    # Notino FR currently exposes the public search results through
+    # `exps`. The older `text`/`q` parameters can return the generic
+    # search shell without product links. Keep them only as fallbacks.
     endpoints = (
+        SEARCH_URL
+        + "?exps="
+        + quote_plus(query),
+        BASE_URL
+        + "/search.asp?exps="
+        + quote_plus(query),
         SEARCH_URL
         + "?text="
         + quote_plus(query),
         SEARCH_URL
         + "?q="
-        + quote_plus(query),
-        BASE_URL
-        + "/search.asp?text="
         + quote_plus(query),
     )
 
