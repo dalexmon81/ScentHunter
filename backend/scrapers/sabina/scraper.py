@@ -45,12 +45,12 @@ CONNECT_TIMEOUT = 1.5
 READ_TIMEOUT = 3.5
 TIMEOUT = (CONNECT_TIMEOUT, READ_TIMEOUT)
 
-MAX_CANDIDATES = 8
-PRODUCT_WORKERS = 8
-MAX_EXTERNAL_RESULTS = 12
+MAX_CANDIDATES = 6
+PRODUCT_WORKERS = 6
+MAX_EXTERNAL_RESULTS = 0
 MAX_VARIANT_ROWS = 80
-BROWSER_TIMEOUT_MS = 8000
-BROWSER_WAIT_MS = 800
+BROWSER_TIMEOUT_MS = 9000
+BROWSER_WAIT_MS = 1200
 
 HEADERS = {
     "User-Agent": (
@@ -2295,7 +2295,7 @@ def _query_tokens_in_text(query, text):
 
 
 def _discover_from_browser(query):
-    """Use Sabina's rendered first-party search when HTTP discovery is empty."""
+    """Discover structural Sabina product URLs from rendered search."""
     if sync_playwright is None:
         return []
 
@@ -2308,38 +2308,58 @@ def _discover_from_browser(query):
             context = browser.new_context(
                 user_agent=HEADERS["User-Agent"],
                 locale="es-ES",
-                extra_http_headers={"Accept-Language": HEADERS["Accept-Language"]},
+                extra_http_headers={
+                    "Accept-Language": HEADERS["Accept-Language"],
+                },
             )
             page = context.new_page()
-            page.goto(search_url, wait_until="domcontentloaded", timeout=BROWSER_TIMEOUT_MS)
+            page.goto(
+                search_url,
+                wait_until="domcontentloaded",
+                timeout=BROWSER_TIMEOUT_MS,
+            )
             try:
-                page.wait_for_load_state("networkidle", timeout=5000)
+                page.wait_for_load_state("networkidle", timeout=3500)
             except PlaywrightTimeoutError:
                 pass
             page.wait_for_timeout(BROWSER_WAIT_MS)
 
-            anchors = page.locator("a[href]").evaluate_all(
-                """anchors => anchors.map(a => ({href:a.href||"", text:a.innerText||a.textContent||"", title:a.getAttribute("title")||"", aria:a.getAttribute("aria-label")||""}))"""
+            hrefs = page.locator("a[href]").evaluate_all(
+                """
+                anchors => anchors.map(a => ({
+                    href: a.href || "",
+                    text: a.innerText || a.textContent || ""
+                }))
+                """
             )
+            rendered_html = page.content()
             current_url = page.url
-            for item in anchors:
-                raw = _clean(item.get("href"))
+
+            def add_url(raw):
                 if not raw:
-                    continue
+                    return
                 absolute = urljoin(current_url, raw).split("#", 1)[0]
-                if not _is_product_url(absolute):
-                    continue
-                text = _clean(" ".join([item.get("text") or "", item.get("title") or "", item.get("aria") or ""]))
-                if not (_query_tokens_in_text(query, text) or _query_tokens_in_text(query, absolute)):
-                    continue
-                if absolute not in seen:
-                    seen.add(absolute); found.append(absolute)
+                if not _is_product_url(absolute) or absolute in seen:
+                    return
+                seen.add(absolute)
+                found.append(absolute)
+
+            for item in hrefs:
+                add_url(_clean(item.get("href")))
                 if len(found) >= MAX_CANDIDATES:
                     break
+
+            if len(found) < MAX_CANDIDATES:
+                for match in re.finditer(r"(?:href=[\"'])([^\"']+)", rendered_html, re.I):
+                    add_url(match.group(1))
+                    if len(found) >= MAX_CANDIDATES:
+                        break
+
             context.close()
             browser.close()
     except Exception:
         return []
+
     return found[:MAX_CANDIDATES]
 
 
