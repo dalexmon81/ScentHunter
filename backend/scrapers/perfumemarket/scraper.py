@@ -114,6 +114,38 @@ def format_price(value: Any) -> Optional[str]:
     return f"{number:.2f}".replace(".", ",") + " €"
 
 
+def resolve_product_price(raw_price: Any, search_price: Optional[str] = None) -> tuple[Optional[str], Optional[float]]:
+    """Resolve Shopify product prices without confusing cents with euros.
+
+    PerfumeMarket currently exposes some Shopify variant prices as integer cents
+    in the product JSON (for example 4299), while the live search card exposes
+    the customer-facing value (42,99 €). When both are available and they are
+    mathematically consistent, the customer-facing search price wins.
+
+    We deliberately do not divide an isolated raw value by 100: without an
+    independent customer-facing price that would be an unsafe assumption.
+    """
+    raw_num = parse_float(raw_price)
+    search_num = parse_float(search_price) if search_price else None
+
+    if raw_num is None and search_num is None:
+        return None, None
+
+    if raw_num is not None and search_num is not None:
+        # Shopify may expose 4299 while the visible shop price is 42.99.
+        # Accept the conversion only when the two sources agree exactly after
+        # converting cents to euros (within a tiny floating-point tolerance).
+        if raw_num >= 1000 and abs((raw_num / 100.0) - search_num) < 0.011:
+            return format_price(search_num), search_num
+
+        return format_price(raw_num), raw_num
+
+    if search_num is not None:
+        return format_price(search_num), search_num
+
+    return format_price(raw_num), raw_num
+
+
 def parse_price_text(text: Any) -> Optional[str]:
     text = clean(text)
     if not text:
@@ -534,10 +566,7 @@ def variant_result(
     size = size_label(option_text, size_ml)
 
     raw_price = variant.get("price")
-    price = format_price(raw_price)
-
-    if not price:
-        price = search_price
+    price, price_num = resolve_product_price(raw_price, search_price)
 
     available = availability_from_variant(variant)
 
@@ -569,7 +598,7 @@ def variant_result(
         "name": title,
         "brand": brand,
         "price": price or "",
-        "price_num": parse_float(raw_price) if raw_price is not None else parse_float(price),
+        "price_num": price_num,
         "url": product_url,
         "available": available,
         "in_stock": available,
@@ -605,11 +634,7 @@ def variant_result(
         },
         "offer": {
             "price": price or "",
-            "price_num": (
-                parse_float(raw_price)
-                if raw_price is not None
-                else parse_float(price)
-            ),
+            "price_num": price_num,
             "available": available,
             "availability": availability,
         },
