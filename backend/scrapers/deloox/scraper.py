@@ -21,6 +21,7 @@ import re
 from urllib.parse import quote_plus, urljoin, urlparse
 
 import requests
+import time
 from bs4 import BeautifulSoup
 
 STORE = "Deloox"
