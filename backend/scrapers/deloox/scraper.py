@@ -2073,10 +2073,11 @@ def _discover_fast(session, query, deadline):
         if not response:
             return url, []
         html = response.text or ""
+        is_search_surface = "/search" in url.lower() or "/recherche" in url.lower() or "/zoeken" in url.lower()
         candidates = _candidate_product_urls(
             html,
             query,
-            require_query=True,
+            require_query=not is_search_surface,
             max_results=20,
         )
 
@@ -2147,8 +2148,9 @@ def _discover_fast(session, query, deadline):
 
 
 def _discover(session, q):
-    """Discover Deloox products with a strict live-search time budget."""
-    deadline = time.monotonic() + DISCOVERY_DEADLINE
+    """Discover Deloox products with one strict wall-clock budget."""
+    started = time.monotonic()
+    deadline = started + DISCOVERY_DEADLINE
 
     _diag(
         "discover_start",
@@ -2159,25 +2161,21 @@ def _discover(session, q):
 
     urls = _discover_fast(session, q, deadline)
 
+    elapsed = time.monotonic() - started
     _diag(
         "discover_fast_done",
         count=len(urls),
         urls=urls[:20],
         query=q,
-        elapsed=round(
-            max(0.0, DISCOVERY_DEADLINE - max(0.0, deadline - time.monotonic())),
-            3,
-        ),
+        elapsed=round(elapsed, 3),
     )
 
-    if urls:
+    if urls or time.monotonic() >= deadline:
         return urls[:12]
 
-    # One very small fallback through Deloox's own search API. This is still
-    # bounded by the same discovery deadline and is never allowed to turn the
-    # store into a long-running scraper.
-    if time.monotonic() < deadline:
-        remaining = max(0.8, min(2.0, deadline - time.monotonic()))
+    # Only use the API if real time remains. Never extend the discovery budget.
+    remaining = deadline - time.monotonic()
+    if remaining > 0.15:
         try:
             api_urls = _search_api_discovery_bounded(
                 session,
@@ -2194,6 +2192,7 @@ def _discover(session, q):
                 count=len(api_urls),
                 urls=api_urls[:20],
                 query=q,
+                elapsed=round(time.monotonic() - started, 3),
             )
             return api_urls[:12]
 
@@ -2201,10 +2200,9 @@ def _discover(session, q):
         "discover_done",
         count=0,
         query=q,
-        elapsed=round(DISCOVERY_DEADLINE, 3),
+        elapsed=round(time.monotonic() - started, 3),
     )
     return []
-
 
 def _search_api_discovery_bounded(session, query, timeout=2.0, max_urls=12):
     """Bounded variant of the legacy API discovery helper."""
@@ -2223,11 +2221,14 @@ def _search_api_discovery_bounded(session, query, timeout=2.0, max_urls=12):
             break
         started = time.monotonic()
         try:
+            request_timeout = min(timeout, 1.8)
+            if request_timeout <= 0.15:
+                break
             response = session.get(
                 endpoint,
                 params=payload,
                 headers=HEADERS,
-                timeout=max(0.8, min(timeout, 2.0)),
+                timeout=request_timeout,
             )
         except requests.RequestException:
             timeout -= time.monotonic() - started
