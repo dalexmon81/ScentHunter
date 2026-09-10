@@ -151,6 +151,14 @@ def _page_request_url(href, current_url):
     return urlunsplit((parts.scheme or "https", parts.netloc or urlsplit(BASE_URL).netloc, parts.path or "/suchen/", urlencode(query), ""))
 
 
+def _page_number(url):
+    query = dict(parse_qsl(urlsplit(str(url or "")).query, keep_blank_values=True))
+    try:
+        return int(query.get("Seite", "1"))
+    except (TypeError, ValueError):
+        return 9999
+
+
 def _extract_product_urls_from_html(html):
     soup = BeautifulSoup(html or "", "html.parser")
     urls = []
@@ -182,9 +190,7 @@ def _extract_page_urls_from_html(html, current_url):
             seen.add(page_url)
             pages.append(page_url)
 
-    pages.sort(
-        key=lambda value: int(PAGE_RE.search(value).group(1)) if PAGE_RE.search(value) else 9999
-    )
+    pages.sort(key=_page_number)
     return pages
 
 
