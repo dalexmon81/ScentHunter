@@ -533,7 +533,7 @@ def _inject_progressive_frontend(html: str) -> str:
         brand:g.brand||"",
         price:shPrice(o),
         price_value:o.price_value,
-        store:o.store||"",
+        store:o.shop||o.store||"",
         url:o.url||""
       })))
     );
