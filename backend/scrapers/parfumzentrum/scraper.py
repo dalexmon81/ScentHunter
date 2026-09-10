@@ -208,11 +208,17 @@ def _extract_product(url, query):
         return None
 
     brand = None
-    for data in extract_json_ld_blocks(response.text):
+    for data in product_records:
         raw_brand = data.get("brand")
         brand = raw_brand.get("name") if isinstance(raw_brand, dict) else raw_brand
         if brand:
             break
+    if not brand:
+        for data in extract_json_ld_blocks(response.text):
+            raw_brand = data.get("brand")
+            brand = raw_brand.get("name") if isinstance(raw_brand, dict) else raw_brand
+            if brand:
+                break
 
     availability = "in_stock"
     if any(x in page_text for x in ("nicht lieferbar", "nicht vorrätig", "ausverkauft")):

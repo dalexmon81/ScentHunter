@@ -163,6 +163,15 @@ class ScraperDiscoveryTests(unittest.TestCase):
                 "https://bplatz.de/products/fallback-two",
             ],
         )
+        self.assertEqual(
+            calls,
+            [
+                ("Liquid Brun", False),
+                ("liquid", False),
+                ("brun", False),
+                ("Liquid Brun", True),
+            ],
+        )
         self.assertEqual(sum(1 for _, full in calls if full), 1)
 
 
