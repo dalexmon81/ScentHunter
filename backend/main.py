@@ -30,6 +30,7 @@ import threading
 import time
 import traceback
 import uuid
+import requests
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 from typing import Any, Dict, Iterable, List, Optional, Tuple
@@ -1365,6 +1366,114 @@ def diagnose_stores(
         "architecture": "live-orchestrator",
         **data,
     }
+
+
+@app.get("/diagnose-bplatz")
+def diagnose_bplatz(q: str = "Liquid Brun"):
+    """Diagnostica HTTP grezza di Bplatz, senza scraper e senza ProductMatcher."""
+    query = str(q or "").strip()
+    base = "https://bplatz.de"
+    headers = {
+        "User-Agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 Safari/604.1",
+        "Accept": "application/json,text/html,application/xhtml+xml",
+        "Accept-Language": "de-DE,de;q=0.9,en;q=0.8",
+    }
+    out: Dict[str, Any] = {"ok": True, "query": query, "base": base}
+    session = requests.Session()
+
+    tests = [
+        (
+            "suggest",
+            base + "/search/suggest.json",
+            {
+                "q": query,
+                "resources[type]": "product",
+                "resources[limit]": "20",
+                "resources[options][unavailable_products]": "show",
+            },
+        ),
+        ("search", base + "/search", {"q": query, "type": "product"}),
+        (
+            "direct",
+            base + "/products/fragrance-world-liquid-brun-eau-de-parfum-100ml",
+            None,
+        ),
+    ]
+
+    try:
+        for name, url, params in tests:
+            try:
+                started = time.monotonic()
+                response = session.get(
+                    url,
+                    params=params,
+                    headers=headers,
+                    timeout=(2.5, 6.0),
+                    allow_redirects=True,
+                )
+                elapsed = round(time.monotonic() - started, 3)
+                item: Dict[str, Any] = {
+                    "status_code": response.status_code,
+                    "final_url": response.url,
+                    "content_type": response.headers.get("content-type", ""),
+                    "length": len(response.content),
+                    "elapsed": elapsed,
+                }
+
+                if name == "suggest":
+                    try:
+                        data = response.json()
+                        products = (
+                            (((data or {}).get("resources") or {}).get("results") or {})
+                            .get("products")
+                            or []
+                        )
+                        item["products"] = [
+                            {
+                                "title": p.get("title"),
+                                "url": p.get("url"),
+                                "available": p.get("available"),
+                            }
+                            for p in products[:20]
+                            if isinstance(p, dict)
+                        ]
+                    except Exception as exc:
+                        item["json_error"] = repr(exc)
+                else:
+                    text = response.text
+                    lower = text.lower()
+                    item["has_liquid_brun"] = "liquid brun" in lower
+                    item["has_29_price"] = "29" in text
+                    item["title"] = ""
+                    item["product_links"] = []
+                    try:
+                        from bs4 import BeautifulSoup
+                        soup = BeautifulSoup(text, "html.parser")
+                        if soup.title:
+                            item["title"] = soup.title.get_text(" ", strip=True)
+                        links = []
+                        seen_links = set()
+                        for anchor in soup.select('a[href*="/products/"]')[:50]:
+                            href = anchor.get("href") or ""
+                            absolute = requests.compat.urljoin(base, href)
+                            if absolute in seen_links:
+                                continue
+                            seen_links.add(absolute)
+                            links.append({
+                                "text": anchor.get_text(" ", strip=True)[:180],
+                                "href": absolute,
+                            })
+                        item["product_links"] = links[:20]
+                    except Exception as exc:
+                        item["html_parse_error"] = repr(exc)
+
+                out[name] = item
+            except Exception as exc:
+                out[name] = {"error": repr(exc)}
+    finally:
+        session.close()
+
+    return out
 
 
 @app.get("/cache/clear")
