@@ -1017,8 +1017,8 @@ def _diag_html(report):
                 price = row.get("price") or row.get("price_value") or ""
                 avail = row.get("available", row.get("availability", ""))
                 parts.append(
-                    f"<tr><td>{escape(name)}</td><td>{escape(price)}</td>"
-                    f"<td>{escape(avail)}</td></tr>"
+                    f"<tr><td>{escape(str(name))}</td><td>{escape(str(price))}</td>"
+                    f"<td>{escape(str(avail))}</td></tr>"
                 )
             parts.append("</table>")
         else:
@@ -1040,7 +1040,7 @@ def _diag_html(report):
                     "<tr>"
                     f"<td>{i}</td><td>{escape(_diag_stage(call['url']))}</td>"
                     f"<td>{call['seconds']} s</td>"
-                    f"<td class='{status_cls}'>{escape(status)}</td>"
+                    f"<td class='{status_cls}'>{escape(str(status) if status is not None else "—")}</td>"
                     f"<td>{call['bytes']}</td>"
                     f"<td class='url'><code>{escape(str(call['url']))}</code></td>"
                     f"<td class='bad'>{escape(str(call['error']))}</td></tr>"
