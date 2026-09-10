@@ -223,6 +223,10 @@ def product_url(url):
         return ""
 
     value = clean(url)
+    # Jina Reader returns Markdown links; absolute URLs captured from
+    # Markdown can carry the closing `)` of the link. Remove only common
+    # trailing punctuation, never characters from the product path itself.
+    value = value.rstrip(").,;]")
 
     if value.startswith("//"):
         value = "https:" + value
@@ -620,44 +624,22 @@ def candidate_urls(html_text, query):
 
 
 def discover(session, query):
-    # Notino FR currently exposes the public search results through
-    # `exps`. The older `text`/`q` parameters can return the generic
-    # search shell without product links. Keep them only as fallbacks.
-    endpoints = (
+    # Notino can return the public search page to normal browsers while
+    # blocking server-side requests from cloud/datacenter IPs. Therefore
+    # the first discovery path is the same public search page through
+    # Jina Reader. This is discovery only: product data is still fetched
+    # from Notino directly first, with Jina as the bounded product fallback.
+    search_endpoint = (
         SEARCH_URL
         + "?exps="
-        + quote_plus(query),
-        BASE_URL
-        + "/search.asp?exps="
-        + quote_plus(query),
-        SEARCH_URL
-        + "?text="
-        + quote_plus(query),
-        SEARCH_URL
-        + "?q="
-        + quote_plus(query),
+        + quote_plus(query)
     )
 
     seen = set()
     candidates = []
 
-    for endpoint in endpoints:
-        try:
-            response = session.get(
-                endpoint,
-                timeout=TIMEOUT,
-                allow_redirects=True,
-            )
-        except requests.RequestException:
-            continue
-
-        if response.status_code >= 400:
-            continue
-
-        for url in candidate_urls(
-            response.text,
-            query,
-        ):
+    def add_from(text):
+        for url in candidate_urls(text, query):
             if url in seen:
                 continue
 
@@ -665,7 +647,51 @@ def discover(session, query):
             candidates.append(url)
 
             if len(candidates) >= MAX_CANDIDATES:
+                return True
+
+        return False
+
+    # 1. Jina Reader search discovery. This is the primary route because
+    # it avoids Notino's datacenter-IP blocking on the search endpoint.
+    reader_url = (
+        READER_BASE
+        + search_endpoint.replace(
+            "https://",
+            "",
+            1,
+        )
+    )
+
+    try:
+        response = requests.get(
+            reader_url,
+            headers={
+                "User-Agent": "ScentHunter/1.0",
+                "Accept": "text/plain",
+            },
+            timeout=READER_TIMEOUT,
+        )
+
+        if response.status_code < 400 and response.text:
+            if add_from(response.text):
                 return candidates
+    except requests.RequestException:
+        pass
+
+    # 2. Direct Notino search fallback. Kept bounded and limited to the
+    # current endpoint; older parameters are not useful enough to justify
+    # four sequential 5-second waits on a blocked cloud IP.
+    try:
+        response = session.get(
+            search_endpoint,
+            timeout=TIMEOUT,
+            allow_redirects=True,
+        )
+
+        if response.status_code < 400 and response.text:
+            add_from(response.text)
+    except requests.RequestException:
+        pass
 
     return candidates
 
