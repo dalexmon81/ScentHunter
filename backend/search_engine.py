@@ -532,9 +532,10 @@ class SearchEngine:
         publish(True)
 
     def diagnostic_search(self, query: str) -> Dict[str, Any]:
-        """Run all eight stores concurrently and report discovery-stage timings."""
+        """Run all stores concurrently with hard per-store and global deadlines."""
         text = self.analyze_query(query)["raw"]
         started = time.monotonic()
+        deadline = started + self.global_timeout
         reports: Dict[str, Any] = {}
 
         def diagnose(store: str) -> Dict[str, Any]:
@@ -559,29 +560,123 @@ class SearchEngine:
                     "run_store_equivalent_seconds": round(time.monotonic() - t0, 4),
                     "error": result.error,
                     "candidates": [
-                        {"store": x.get("store"), "name": x.get("name"), "price": x.get("price"), "available": x.get("available"), "url": x.get("url")}
+                        {
+                            "store": x.get("store"),
+                            "name": x.get("name"),
+                            "price": x.get("price"),
+                            "available": x.get("available"),
+                            "url": x.get("url"),
+                        }
                         for x in result.candidates
                     ],
                 }
             except Exception as exc:
-                return {"store": store, "status": "error", "error": f"{type(exc).__name__}: {exc}"}
+                return {
+                    "store": store,
+                    "status": "error",
+                    "error": f"{type(exc).__name__}: {exc}",
+                }
 
-        executor = concurrent.futures.ThreadPoolExecutor(max_workers=min(8, len(self.stores) or 1))
-        futures = {executor.submit(diagnose, store): store for store in self.stores}
+        executor = concurrent.futures.ThreadPoolExecutor(
+            max_workers=min(MAX_CONCURRENT_STORES, len(self.stores) or 1),
+            thread_name_prefix="scenthunter-diagnostic",
+        )
+        futures = {
+            executor.submit(diagnose, store): (store, time.monotonic())
+            for store in self.stores
+        }
+
         try:
-            for future in concurrent.futures.as_completed(futures):
-                store = futures[future]
-                try:
-                    reports[store] = future.result()
-                except Exception as exc:
-                    reports[store] = {"store": store, "status": "error", "error": f"{type(exc).__name__}: {exc}"}
+            pending = set(futures)
+            while pending:
+                remaining_global = deadline - time.monotonic()
+                if remaining_global <= 0:
+                    break
+
+                done, pending = concurrent.futures.wait(
+                    pending,
+                    timeout=min(0.10, remaining_global),
+                    return_when=concurrent.futures.FIRST_COMPLETED,
+                )
+
+                for future in done:
+                    store, submitted = futures[future]
+                    try:
+                        reports[store] = future.result()
+                    except Exception as exc:
+                        reports[store] = {
+                            "store": store,
+                            "status": "error",
+                            "error": f"{type(exc).__name__}: {exc}",
+                        }
+
+                # Mark stores that exceeded their individual diagnostic deadline.
+                now = time.monotonic()
+                for future in list(pending):
+                    store, submitted = futures[future]
+                    if now - submitted >= self.store_timeout:
+                        reports[store] = {
+                            "store": store,
+                            "status": "timeout",
+                            "error": "store diagnostic timeout",
+                            "elapsed": round(now - submitted, 3),
+                            "attempts": [{
+                                "index": 0,
+                                "query": text,
+                                "search_call_seconds": round(now - submitted, 4),
+                                "search_call_status": "timeout",
+                                "returned_count": 0,
+                                "error": "store diagnostic timeout",
+                            }],
+                            "candidate_count": 0,
+                            "candidates": [],
+                        }
+                        future.cancel()
+                        pending.remove(future)
+
+            # Anything still pending at the global deadline is explicitly reported;
+            # never wait indefinitely for a scraper that ignores cancellation.
+            now = time.monotonic()
+            for future in list(pending):
+                store, submitted = futures[future]
+                reports[store] = {
+                    "store": store,
+                    "status": "timeout",
+                    "error": "global diagnostic window expired",
+                    "elapsed": round(max(0.0, now - submitted), 3),
+                    "attempts": [{
+                        "index": 0,
+                        "query": text,
+                        "search_call_seconds": round(max(0.0, now - submitted), 4),
+                        "search_call_status": "timeout",
+                        "returned_count": 0,
+                        "error": "global diagnostic window expired",
+                    }],
+                    "candidate_count": 0,
+                    "candidates": [],
+                }
+                future.cancel()
+                pending.remove(future)
         finally:
             executor.shutdown(wait=False, cancel_futures=True)
 
-        ordered = {store: reports.get(store, {"store": store, "status": "missing"}) for store in self.stores}
+        ordered = {
+            store: reports.get(
+                store,
+                {
+                    "store": store,
+                    "status": "timeout",
+                    "error": "diagnostic deadline expired",
+                    "candidate_count": 0,
+                    "candidates": [],
+                },
+            )
+            for store in self.stores
+        }
+
         return {
             "ok": True,
-            "diagnostic_type": "store_stage_forensics_v4",
+            "diagnostic_type": "store_stage_forensics_v5",
             "query": self.analyze_query(text),
             "production_limits": {
                 "store_timeout_seconds": self.store_timeout,
@@ -592,11 +687,25 @@ class SearchEngine:
             "stores": ordered,
             "interpretation": {
                 "search_call_bottleneck": [
-                    name for name, info in ordered.items()
+                    name
+                    for name, info in ordered.items()
                     if any(
-                        float(a.get("search_call_seconds") or 0.0) >= 5.0 or a.get("search_call_status") == "timeout"
-                        for a in info.get("attempts", []) if isinstance(a, dict)
+                        float(a.get("search_call_seconds") or 0.0) >= 5.0
+                        or a.get("search_call_status") == "timeout"
+                        for a in info.get("attempts", [])
+                        if isinstance(a, dict)
                     )
-                ]
+                ],
+                "stores_with_results": [
+                    name
+                    for name, info in ordered.items()
+                    if int(info.get("candidate_count") or 0) > 0
+                ],
+                "stores_without_results": [
+                    name
+                    for name, info in ordered.items()
+                    if int(info.get("candidate_count") or 0) == 0
+                ],
             },
         }
+
