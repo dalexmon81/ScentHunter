@@ -41,7 +41,10 @@ def _normalize_product_url(href):
     if not path:
         return None
 
-    return f"{BASE_URL}{path}".rstrip("/")
+    normalized = f"{BASE_URL}{path}".rstrip("/")
+    if parsed.query:
+        normalized = f"{normalized}?{parsed.query}"
+    return normalized
 
 
 def _extract_product_urls_from_html(html):
