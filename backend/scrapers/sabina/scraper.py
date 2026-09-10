@@ -39,7 +39,7 @@ CONNECT_TIMEOUT = 2.5
 READ_TIMEOUT = 5.0
 TIMEOUT = (CONNECT_TIMEOUT, READ_TIMEOUT)
 
-MAX_CANDIDATES = 24
+MAX_CANDIDATES = 8
 PRODUCT_WORKERS = 8
 MAX_EXTERNAL_RESULTS = 12
 MAX_VARIANT_ROWS = 80
@@ -2057,121 +2057,100 @@ def _discover_from_first_party(
     session,
     query,
 ):
+    """
+    Fast first-party discovery.
+
+    Sabina's normal search response is the authoritative discovery source.
+    We try the known first-party routes in order and stop as soon as a route
+    returns query-relevant product URLs. Historical/AJAX routes are fallback
+    only; they are not needlessly executed after a successful discovery.
+    """
     urls = []
     seen = set()
     q = quote_plus(query)
 
     search_urls = [
-        BASE
-        + "/es/buscar_old?search_query="
-        + q,
-        BASE
-        + "/es/buscar_old?s="
-        + q,
-        BASE
-        + "/es/buscar?search_query="
-        + q,
-        BASE
-        + "/es/buscar?s="
-        + q,
-        BASE
-        + "/es/buscar?controller=search&s="
-        + q,
-        BASE
-        + "/es/search?s="
-        + q,
+        BASE + "/es/buscar?s=" + q,
+        BASE + "/es/buscar?controller=search&s=" + q,
+        BASE + "/es/buscar_old?s=" + q,
+        BASE + "/es/buscar?search_query=" + q,
+        BASE + "/es/buscar_old?search_query=" + q,
+        BASE + "/es/search?s=" + q,
     ]
 
     for url in search_urls:
-        response = _get(
-            session,
-            url,
-        )
-
+        response = _get(session, url)
         if response is None:
             continue
 
         try:
-            links = (
-                _extract_product_links_from_html(
-                    response.text,
-                    query,
-                )
+            links = _extract_product_links_from_html(
+                response.text,
+                query,
             )
         finally:
             response.close()
 
+        if not links:
+            continue
+
         for link in links:
             if link in seen:
                 continue
-
             seen.add(link)
             urls.append(link)
+            if len(urls) >= MAX_CANDIDATES:
+                return urls[:MAX_CANDIDATES]
 
-        if len(urls) >= MAX_CANDIDATES:
-            break
+        # A successful first-party search is enough. Do not spend several
+        # additional network round-trips against equivalent legacy routes.
+        if urls:
+            return urls[:MAX_CANDIDATES]
 
-    # AJAX discovery is intentionally bounded.
-    if len(urls) < MAX_CANDIDATES:
-        ajax_endpoints = [
-            BASE
-            + "/es/module/ec_customization/ajax",
-            BASE
-            + "/es/modules/ec_customization/ajax",
-            BASE
-            + "/modules/ecelastic/ajax.php",
-        ]
+    # AJAX discovery is fallback only when the normal first-party search
+    # returned no query-relevant product URL.
+    ajax_endpoints = [
+        BASE + "/es/module/ec_customization/ajax",
+        BASE + "/es/modules/ec_customization/ajax",
+        BASE + "/modules/ecelastic/ajax.php",
+    ]
 
-        payloads = [
-            {
-                "s": query,
-                "query": query,
-                "search_query": query,
-            },
-            {
-                "q": query,
-                "query": query,
-                "search_query": query,
-            },
-        ]
+    payloads = [
+        {"s": query, "query": query, "search_query": query},
+        {"q": query, "query": query, "search_query": query},
+    ]
 
-        for endpoint in ajax_endpoints:
-            for payload in payloads:
-                response = _get(
-                    session,
-                    endpoint,
-                    params=payload,
-                    ajax=True,
+    for endpoint in ajax_endpoints:
+        for payload in payloads:
+            response = _get(
+                session,
+                endpoint,
+                params=payload,
+                ajax=True,
+            )
+            if response is None:
+                continue
+
+            try:
+                links = _extract_product_links_from_html(
+                    response.text,
+                    query,
                 )
+            finally:
+                response.close()
 
-                if response is None:
+            for link in links:
+                if link in seen:
                     continue
+                seen.add(link)
+                urls.append(link)
+                if len(urls) >= MAX_CANDIDATES:
+                    return urls[:MAX_CANDIDATES]
 
-                try:
-                    links = (
-                        _extract_product_links_from_html(
-                            response.text,
-                            query,
-                        )
-                    )
-                finally:
-                    response.close()
+            if urls:
+                return urls[:MAX_CANDIDATES]
 
-                for link in links:
-                    if link in seen:
-                        continue
-
-                    seen.add(link)
-                    urls.append(link)
-
-                    if (
-                        len(urls)
-                        >= MAX_CANDIDATES
-                    ):
-                        return urls
-
-    return urls
-
+    return urls[:MAX_CANDIDATES]
 
 def _extract_search_engine_urls(
     text,
