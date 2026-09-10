@@ -5,3 +5,4 @@ aiohttp==3.10.11
 beautifulsoup4==4.12.3
 requests==2.32.3
 python-multipart==0.0.9
+playwright==1.40.0
