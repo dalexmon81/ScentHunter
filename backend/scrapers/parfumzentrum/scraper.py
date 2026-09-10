@@ -122,7 +122,15 @@ def _fulltext_search_urls(query):
                 href = BASE_URL + href
             if not href.startswith(BASE_URL):
                 continue
-            if not re.search(r"_z\d+/?$", href):
+            # Search results on Parfum-Zentrum do not always expose the
+            # numeric _z product suffix in the href. Keep same-domain
+            # product-looking links and let the product page title perform
+            # the authoritative query match.
+            path = href.split("#", 1)[0].lower()
+            if any(part in path for part in (
+                "/fulltext_search", "/suchen", "/search", "/warenkorb",
+                "/cart", "/login", "/konto", "/category/", "/kategorie/",
+            )):
                 continue
             href = href.split("#", 1)[0]
             if href not in seen:
@@ -817,13 +825,15 @@ def search(query):
             sitemap_urls = _get_sitemap_urls()
             candidates = [
                 url for url in sitemap_urls
-                if re.search(r"_z\d+/?$", url) and _matches_query(url, query)
+                if re.search(r"_z\d+/?$", url)
             ]
         except Exception as error:
             print("PARFUMZENTRUM SITEMAP ERROR:", repr(error))
             candidates = []
 
-    candidates = [u for u in candidates if _matches_query(u, query)]
+    # Do NOT require the query tokens to occur in the URL. The live site
+    # can return valid product URLs whose slug is not a textual copy of the
+    # product name. _extract_product() checks the real H1 title.
     candidates = list(dict.fromkeys(candidates))
 
     if _requested_size_ml(query) is None:
