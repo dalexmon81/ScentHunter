@@ -168,12 +168,6 @@ def discover_shopify_product_urls(
             response = session.get(base_url + path, params=params, headers=headers, timeout=timeout)
         except Exception:
             return
-        if not getattr(response, "ok", False):
-            try:
-                response.close()
-            except Exception:
-                pass
-            return
         try:
             data = response.json()
         except Exception:
@@ -191,14 +185,8 @@ def discover_shopify_product_urls(
             response = session.get(base_url + path, params=params, headers=headers, timeout=timeout)
         except Exception:
             return
-        if not getattr(response, "ok", False):
-            try:
-                response.close()
-            except Exception:
-                pass
-            return
         try:
-            add_from_html(response.text or "")
+            add_from_html(getattr(response, "text", "") or "")
         finally:
             try:
                 response.close()
