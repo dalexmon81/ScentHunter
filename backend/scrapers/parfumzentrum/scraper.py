@@ -1,3 +1,4 @@
+from collections import deque
 import json
 import re
 import time
@@ -118,7 +119,8 @@ def _get(session, url, timeout):
 
 def _normalize_product_url(href):
     parts = urlsplit(urljoin(BASE_URL + "/", str(href or "").strip()))
-    if parts.netloc and "parfum-zentrum.de" not in parts.netloc.lower():
+    host = (parts.hostname or "").lower()
+    if host and host != "parfum-zentrum.de" and host != "www.parfum-zentrum.de":
         return ""
     path = (parts.path or "/").rstrip("/") or "/"
     return urlunsplit((parts.scheme or "https", parts.netloc or urlsplit(BASE_URL).netloc, path, "", ""))
@@ -191,13 +193,13 @@ def _extract_product_urls(session, query, deadline):
     if not query:
         return []
 
-    pending_pages = [_search_url(query)]
+    pending_pages = deque([_search_url(query)])
     seen_pages = set()
     product_urls = []
     seen_products = set()
 
     while pending_pages and len(seen_pages) < MAX_RESULT_PAGES and time.monotonic() < deadline:
-        page_url = pending_pages.pop(0)
+        page_url = pending_pages.popleft()
         if page_url in seen_pages:
             continue
         seen_pages.add(page_url)
@@ -351,7 +353,7 @@ def search(query):
     seen = set()
 
     for url in product_urls[:24]:
-        remaining = max(1.0, SEARCH_DEADLINE - (time.monotonic() - started))
+        remaining = SEARCH_DEADLINE - (time.monotonic() - started)
         if remaining <= 0:
             break
 
