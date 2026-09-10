@@ -1187,11 +1187,16 @@ def _run_job(job_id: str, query: str) -> None:
 
 @app.get("/")
 def root():
+    """Serve the real ScentHunter frontend at the public root URL."""
+    if FRONTEND_INDEX.exists():
+        return FileResponse(FRONTEND_INDEX, media_type="text/html")
+
     return {
         "app": "ScentHunter",
         "status": "running",
         "architecture": "8-independent-scrapers-live-orchestrator",
         "stores": STORES,
+        "error": "frontend/index.html not found",
     }
 
 
