@@ -265,6 +265,93 @@ _engine.run_job = _forensic_run_job
 _legacy._run_search_job = _engine.run_job
 
 
+@app.get('/diagnose-parfumzentrum-paths')
+def diagnose_parfumzentrum_paths(q: str = Query('Liquid Brun', min_length=1)):
+    """Read-only: compare the exact PZ execution paths used by production search."""
+    import inspect as _inspect
+    import importlib as _importlib
+    import time as _path_time
+    query = str(q or '').strip()
+    out = {'ok': True, 'diagnostic': 'parfumzentrum-path-comparison-v1', 'query': query, 'tests': {}}
+
+    def compact(rows):
+        result = []
+        for item in (rows or []):
+            if isinstance(item, dict):
+                result.append({
+                    'store': item.get('store'), 'name': item.get('name'),
+                    'price': item.get('price'), 'available': item.get('available'),
+                    'availability': item.get('availability'), 'url': item.get('url') or item.get('product_url'),
+                    'brand': item.get('brand'), 'size_ml': item.get('size_ml'),
+                    'store_product_id': item.get('store_product_id'), 'product_id': item.get('product_id'),
+                    'sku': item.get('sku'), 'gtin': item.get('gtin') or item.get('ean'),
+                    'identity': item.get('identity'),
+                })
+        return result[:20]
+
+    def run_test(label, fn):
+        started = _path_time.monotonic()
+        try:
+            rows = fn()
+            elapsed = round(_path_time.monotonic() - started, 4)
+            return {'label': label, 'status': 'ok' if rows else 'empty', 'elapsed': elapsed,
+                    'count': len(rows or []), 'rows': compact(rows), 'raw_type': type(rows).__name__}
+        except Exception as exc:
+            return {'label': label, 'status': 'error', 'elapsed': round(_path_time.monotonic() - started, 4),
+                    'count': 0, 'rows': [], 'error': f'{type(exc).__name__}: {exc}'}
+
+    try:
+        pz_module = _importlib.import_module('scrapers.parfumzentrum.scraper')
+        out['module'] = {
+            'name': getattr(pz_module, '__name__', None),
+            'file': getattr(pz_module, '__file__', None),
+            'search_repr': repr(getattr(pz_module, 'search', None)),
+        }
+        try:
+            out['module']['search_source_first_lines'] = _inspect.getsource(getattr(pz_module, 'search')).splitlines()[:20]
+        except Exception as exc:
+            out['module']['search_source_error'] = f'{type(exc).__name__}: {exc}'
+    except Exception as exc:
+        out['module_error'] = f'{type(exc).__name__}: {exc}'
+
+    out['tests']['legacy_run_store'] = run_test(
+        'legacy.run_store(parfumzentrum, query)',
+        lambda: _legacy.run_store('parfumzentrum', query),
+    )
+    out['tests']['engine_run_one_store'] = run_test(
+        'engine._run_one_store(parfumzentrum, query)',
+        lambda: _engine._run_one_store('parfumzentrum', query),
+    )
+
+    started = _path_time.monotonic()
+    try:
+        stores = _engine._run_stores(query)
+        pz = stores.get('parfumzentrum') if isinstance(stores, dict) else None
+        out['tests']['engine_run_stores'] = {
+            'status': 'ok' if pz and pz.get('candidates') else 'empty',
+            'elapsed': round(_path_time.monotonic() - started, 4),
+            'parfumzentrum_report': pz,
+            'all_store_statuses': {
+                str(k): {'status': (v or {}).get('status'), 'candidate_count': len((v or {}).get('candidates') or []),
+                         'elapsed': (v or {}).get('elapsed'), 'error': (v or {}).get('error')}
+                for k, v in (stores or {}).items() if isinstance(v, dict)
+            } if isinstance(stores, dict) else {},
+        }
+    except Exception as exc:
+        out['tests']['engine_run_stores'] = {'status': 'error', 'elapsed': round(_path_time.monotonic() - started, 4),
+                                             'error': f'{type(exc).__name__}: {exc}'}
+
+    a = out['tests']['legacy_run_store']; b = out['tests']['engine_run_one_store']
+    out['verdict'] = {
+        'legacy_has_pz': a.get('count', 0) > 0,
+        'engine_one_has_pz': b.get('count', 0) > 0,
+        'engine_stores_has_pz': out['tests']['engine_run_stores'].get('status') == 'ok',
+        'path_mismatch_legacy_vs_engine_one': (a.get('count', 0) > 0) != (b.get('count', 0) > 0),
+        'path_mismatch_engine_one_vs_engine_stores': (b.get('count', 0) > 0) != out['tests']['engine_run_stores'].get('status') == 'ok',
+    }
+    return out
+
+
 @app.get('/diagnose-real-search-forensics')
 def diagnose_real_search_forensics(q: str = Query(..., min_length=1)):
     """Read-only forensic diagnostic of the exact frontend search pipeline."""
