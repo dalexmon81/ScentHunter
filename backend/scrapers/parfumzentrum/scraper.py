@@ -22,7 +22,7 @@ HEADERS = {
     "Accept-Language": "de-DE,de;q=0.9",
 }
 
-PRODUCT_RE = re.compile(r"_z\d+[0-9a-z-]*", re.I)
+PRODUCT_RE = re.compile(r"_z\d+[0-9a-z-]*$", re.I)
 SIZE_HINT_RE = re.compile(r"(?<!\d)\d{1,4}(?:[.,]\d+)?\s*(?:ml|cl)\b", re.I)
 CONCENTRATION_HINT_RE = re.compile(
     r"\b(?:edt|edp|extrait|eau\s+de\s+toilette|eau\s+de\s+parfum)\b",
@@ -82,15 +82,15 @@ def _extract_product_urls_from_html(html):
 
 def _is_product_like_path(path):
     raw_path = str(path or "")
-    text = raw_path.replace("-", " ")
-    if PRODUCT_RE.search(raw_path):
-        return True
-
     segments = [segment for segment in raw_path.strip("/").split("/") if segment]
     if len(segments) != 1:
         return False
 
     slug = segments[0]
+    text = slug.replace("-", " ")
+    if PRODUCT_RE.search(slug):
+        return True
+
     tokens = [token for token in slug.split("-") if token]
     if len(tokens) < 4:
         return False

@@ -37,6 +37,11 @@ class ParfumzentrumUrlDiscoveryTests(unittest.TestCase):
         urls = scraper._extract_product_urls_from_html(html)
         self.assertEqual(urls, [])
 
+    def test_rejects_nested_path_with_z_suffix(self):
+        html = '<a href="/guide/bar_z123">GuideZ</a>'
+        urls = scraper._extract_product_urls_from_html(html)
+        self.assertEqual(urls, [])
+
     def test_ignores_offsite_and_deduplicates(self):
         html = """
         <a href="https://evil.example/something_z123">Offsite</a>
