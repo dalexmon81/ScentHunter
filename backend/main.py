@@ -788,82 +788,74 @@ def diagnose_stores(q: str = "Liquid Brun"):
 
 import contextlib
 import io
-from types import SimpleNamespace
 
 
-class _TraceHTTP:
-    """Global HTTP tracer: catches requests.get AND every requests.Session()."""
-    def __init__(self, real_request, trace, label):
-        self.real_request = real_request
-        self.trace = trace
-        self.label = label
+def _diag_wrap_function(module, name, events):
+    """Wrap one scraper-internal function and record inputs/outputs.
 
-    def __call__(self, session, method, url, *args, **kwargs):
+    This deliberately avoids monkey-patching requests. We trace the scraper's
+    own discovery/parser boundaries, which is the reliable information needed
+    to locate where a product disappears.
+    """
+    original = getattr(module, name, None)
+    if not callable(original):
+        return lambda: None
+
+    def wrapper(*args, **kwargs):
         started = time.monotonic()
+        event = {"function": name, "started": round(started, 3)}
         try:
-            response = self.real_request(session, method, url, *args, **kwargs)
-            body = getattr(response, "text", "") or ""
-            clue = _http_clue(body, self.label, url)
-            self.trace.append({
-                "label": self.label,
-                "method": str(method).upper(),
-                "url": str(url),
-                "status": getattr(response, "status_code", None),
-                "seconds": round(time.monotonic() - started, 3),
-                "bytes": len(getattr(response, "content", b"") or b""),
-                "error": "",
-                "clue": clue,
-            })
-            return response
+            value = original(*args, **kwargs)
+            event["elapsed"] = round(time.monotonic() - started, 3)
+            if isinstance(value, list):
+                event["count"] = len(value)
+                event["sample"] = [str(x)[:260] for x in value[:12]]
+            elif isinstance(value, dict):
+                event["count"] = 1
+                event["sample"] = [str(value)[:260]]
+            else:
+                event["count"] = 0 if value is None else 1
+                event["sample"] = [str(value)[:260]] if value is not None else []
+            event["ok"] = True
+            events.append(event)
+            return value
         except Exception as exc:
-            self.trace.append({
-                "label": self.label,
-                "method": str(method).upper(),
-                "url": str(url),
-                "status": None,
-                "seconds": round(time.monotonic() - started, 3),
-                "bytes": 0,
-                "error": f"{type(exc).__name__}: {exc}",
-                "clue": "",
-            })
+            event["elapsed"] = round(time.monotonic() - started, 3)
+            event["ok"] = False
+            event["error"] = f"{type(exc).__name__}: {exc}"
+            events.append(event)
             raise
 
+    setattr(module, name, wrapper)
 
-def _http_clue(body, store, url):
-    """Small parser clue for product responses; never stores full HTML."""
-    if not body:
-        return "EMPTY"
-    soup = BeautifulSoup(body, "html.parser")
-    title = soup.find("title")
-    h1 = soup.find("h1")
-    title_text = " ".join(title.stripped_strings) if title else ""
-    h1_text = " ".join(h1.stripped_strings) if h1 else ""
-    low = body.lower()
-    markers = []
-    for marker in ("captcha", "cloudflare", "access denied", "just a moment", "bot verification"):
-        if marker in low:
-            markers.append(marker)
-    if "/product/" in str(url).lower() or "/produit/" in str(url).lower() or "_z" in str(url).lower():
-        if not h1_text:
-            return "PRODUCT: NO_H1" + (" | " + ",".join(markers) if markers else "")
-        return "PRODUCT: H1=" + h1_text[:140]
-    if markers:
-        return "PAGE: " + ",".join(markers)
-    return ("PAGE: H1=" + h1_text[:100]) if h1_text else ("PAGE: TITLE=" + title_text[:100] if title_text else "PAGE: OK")
+    def restore():
+        setattr(module, name, original)
+
+    return restore
 
 
 def _diag_run_one(store, query):
-    trace = []
-    stdout = io.StringIO()
+    events = []
+    logs = io.StringIO()
     started = time.monotonic()
     module = load_scraper(store)
-    import requests as _requests_lib
-    original_request = _requests_lib.sessions.Session.request
 
-    tracer = _TraceHTTP(original_request, trace, store)
+    if store == "parfumzentrum":
+        names = (
+            "_fulltext_search_urls",
+            "_category_fallback_urls",
+            "_get_sitemap_urls",
+            "_extract_product",
+        )
+    else:
+        names = ("_discover", "_product")
+
+    restores = []
+    for name in names:
+        restores.append(_diag_wrap_function(module, name, events))
+
     try:
-        _requests_lib.sessions.Session.request = tracer
-        with contextlib.redirect_stdout(stdout):
+        with contextlib.redirect_stdout(logs):
             result = module.search(query)
         rows = result if isinstance(result, list) else list(result or [])
         return {
@@ -871,8 +863,8 @@ def _diag_run_one(store, query):
             "elapsed": round(time.monotonic() - started, 3),
             "result_count": len(rows),
             "results": rows,
-            "trace": trace,
-            "logs": stdout.getvalue().splitlines(),
+            "events": events,
+            "logs": logs.getvalue().splitlines(),
             "exception": "",
         }
     except Exception as exc:
@@ -881,47 +873,13 @@ def _diag_run_one(store, query):
             "elapsed": round(time.monotonic() - started, 3),
             "result_count": 0,
             "results": [],
-            "trace": trace,
-            "logs": stdout.getvalue().splitlines(),
+            "events": events,
+            "logs": logs.getvalue().splitlines(),
             "exception": f"{type(exc).__name__}: {exc}",
         }
     finally:
-        _requests_lib.sessions.Session.request = original_request
-
-
-def _diag_stage(url):
-    value = str(url or "").lower()
-    if "fulltext_search" in value:
-        return "RICERCA NATIVA"
-    if "search" in value:
-        return "RICERCA"
-    if "sitemap" in value:
-        return "SITEMAP"
-    if "/categorie/" in value or "/category" in value or "product-line" in value:
-        return "CATEGORIA"
-    if "/product/" in value or "/produit/" in value or "_z" in value:
-        return "PRODOTTO"
-    return "ALTRO"
-
-
-def _diag_group_trace(trace):
-    groups = {}
-    for item in trace:
-        stage = _diag_stage(item.get("url"))
-        bucket = groups.setdefault(stage, {
-            "calls": 0, "seconds": 0.0, "ok": 0, "bad": 0, "bytes": 0
-        })
-        bucket["calls"] += 1
-        bucket["seconds"] += item.get("seconds", 0.0) or 0.0
-        bucket["bytes"] += item.get("bytes", 0) or 0
-        status = item.get("status")
-        if status is not None and 200 <= status < 400:
-            bucket["ok"] += 1
-        else:
-            bucket["bad"] += 1
-    for bucket in groups.values():
-        bucket["seconds"] = round(bucket["seconds"], 3)
-    return groups
+        for restore in reversed(restores):
+            restore()
 
 
 def _diag_html(report):
@@ -929,123 +887,63 @@ def _diag_html(report):
 
     css = """
     <style>
-    body{font-family:-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif;
-         margin:0;background:#101114;color:#eee;padding:18px}
-    h1{font-size:21px;margin:0 0 5px}
-    h2{font-size:17px;margin:22px 0 9px}
-    .sub{color:#aeb2bb;margin-bottom:16px}
-    .card{background:#191b20;border:1px solid #30333a;border-radius:14px;
-          padding:15px;margin:12px 0}
-    .ok{color:#7ee787}.bad{color:#ff7b72}.muted{color:#9da1aa}
-    .big{font-size:26px;font-weight:700}
-    table{width:100%;border-collapse:collapse;font-size:12px}
-    th,td{padding:7px 6px;border-bottom:1px solid #2a2d33;text-align:left;
-           vertical-align:top}
-    th{color:#b9bec8}
-    code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:10px;
-         word-break:break-all}
-    .url{max-width:520px;word-break:break-all}
+    body{font-family:-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif;background:#101114;color:#eee;margin:0;padding:28px}
+    h1{font-size:42px;margin:0 0 8px}.sub{font-size:20px;color:#aeb3c0;margin-bottom:28px}
+    .card{background:#1b1c20;border:1px solid #36373d;border-radius:24px;padding:30px;margin:20px 0;overflow:hidden}
+    .big{font-size:42px;font-weight:800}.ok{color:#78e878}.bad{color:#ff7777}.muted{color:#aeb3c0}
+    h2{font-size:27px;margin-top:30px} table{width:100%;border-collapse:collapse;font-size:16px}
+    th,td{text-align:left;padding:10px 8px;border-bottom:1px solid #303138;vertical-align:top}th{color:#aeb3c0}
+    code{word-break:break-all}.url{max-width:520px}.event{margin:12px 0;padding:14px;border-radius:14px;background:#15161a;border:1px solid #303138}
+    .fn{font-weight:800;font-size:19px}.sample{white-space:pre-wrap;word-break:break-word;color:#c8cbd3;margin-top:6px}
+    summary{font-size:20px;font-weight:700;cursor:pointer;margin:12px 0}
     </style>
     """
 
-    parts = [
+    parts=[
         "<!doctype html><html><head><meta charset='utf-8'>",
         "<meta name='viewport' content='width=device-width,initial-scale=1'>",
-        "<title>ScentHunter — Diagnostico 2 store</title>",
-        css, "</head><body>",
+        "<title>ScentHunter — Diagnostico 2 store</title>",css,"</head><body>",
         "<h1>Diagnostico mirato</h1>",
-        f"<div class='sub'>Query: <b>{escape(report['query'])}</b> — "
-        "eseguiti SOLO ParfumZentrum e Deloox.</div>",
+        f"<div class='sub'>Query: <b>{escape(str(report['query']))}</b> — SOLO ParfumZentrum e Deloox.</div>",
     ]
 
     for item in report["stores"]:
-        cls = "bad" if item["exception"] else "ok"
-        parts.append("<div class='card'>")
-        parts.append(
-            f"<div class='big'>{escape(item['store'])}</div>"
-            f"<div class='{cls}'>{'ERRORE' if item['exception'] else 'FINE'}"
-            f" — {item['elapsed']} s — {item['result_count']} risultati</div>"
-        )
+        cls="bad" if item["exception"] else "ok"
+        parts += ["<div class='card'>",
+                  f"<div class='big'>{escape(str(item['store']))}</div>",
+                  f"<div class='{cls}'>{'ERRORE' if item['exception'] else 'FINE'} — {item['elapsed']} s — {item['result_count']} risultati</div>"]
         if item["exception"]:
-            parts.append(
-                f"<p class='bad'><b>Eccezione:</b> {escape(item['exception'])}</p>"
-            )
+            parts.append(f"<p class='bad'><b>Eccezione:</b> {escape(str(item['exception']))}</p>")
 
-        groups = _diag_group_trace(item["trace"])
-        parts.append("<h2>Dove si perdono</h2>")
-        if groups:
-            parts.append(
-                "<table><tr><th>Fase</th><th>Chiamate</th>"
-                "<th>Tempo HTTP</th><th>OK</th><th>KO</th><th>Dati</th></tr>"
-            )
-            for stage, data in groups.items():
-                parts.append(
-                    "<tr>"
-                    f"<td><b>{escape(stage)}</b></td><td>{data['calls']}</td>"
-                    f"<td>{data['seconds']} s</td><td>{data['ok']}</td>"
-                    f"<td>{data['bad']}</td><td>{data['bytes']} B</td></tr>"
-                )
-            parts.append("</table>")
+        parts.append("<h2>Dove si perde</h2>")
+        if item["events"]:
+            for ev in item["events"]:
+                status="OK" if ev.get("ok") else "KO"
+                status_cls="ok" if ev.get("ok") else "bad"
+                parts.append("<div class='event'>")
+                parts.append(f"<div class='fn'>{escape(str(ev.get('function')))} — <span class='{status_cls}'>{status}</span> — {ev.get('elapsed',0)} s — count {ev.get('count',0)}</div>")
+                if ev.get("error"):
+                    parts.append(f"<div class='bad'>{escape(str(ev['error']))}</div>")
+                if ev.get("sample"):
+                    parts.append("<div class='sample'>"+escape("\n".join(str(x) for x in ev["sample"]))+"</div>")
+                parts.append("</div>")
         else:
-            parts.append("<div class='muted'>Nessuna richiesta HTTP intercettata.</div>")
+            parts.append("<div class='muted'>Nessun confine interno intercettato.</div>")
 
         parts.append("<h2>Risultati</h2>")
         if item["results"]:
-            parts.append(
-                "<table><tr><th>Nome</th><th>Prezzo</th>"
-                "<th>Disponibilità</th></tr>"
-            )
+            parts.append("<table><tr><th>Nome</th><th>Prezzo</th><th>Disponibilità</th></tr>")
             for row in item["results"][:20]:
-                name = row.get("name") or row.get("title") or ""
-                price = row.get("price") or row.get("price_value") or ""
-                avail = row.get("available", row.get("availability", ""))
-                parts.append(
-                    f"<tr><td>{escape(str(name))}</td><td>{escape(str(price))}</td>"
-                    f"<td>{escape(str(avail))}</td></tr>"
-                )
+                parts.append(f"<tr><td>{escape(str(row.get('name') or row.get('title') or ''))}</td><td>{escape(str(row.get('price') or row.get('price_value') or ''))}</td><td>{escape(str(row.get('available',row.get('availability',''))))}</td></tr>")
             parts.append("</table>")
         else:
-            parts.append(
-                "<div class='bad'><b>ZERO risultati.</b> "
-                "Guarda il trace: così distinguiamo discovery, fetch o filtro.</div>"
-            )
-
-        parts.append("<details><summary>Trace HTTP completo</summary>")
-        if item["trace"]:
-            parts.append(
-                "<table><tr><th>#</th><th>Fase</th><th>Tempo</th>"
-                "<th>Status</th><th>Byte</th><th>URL</th><th>Indizio</th><th>Errore</th></tr>"
-            )
-            for i, call in enumerate(item["trace"], 1):
-                status = call["status"]
-                status_cls = "ok" if status and 200 <= status < 400 else "bad"
-                parts.append(
-                    "<tr>"
-                    f"<td>{i}</td><td>{escape(_diag_stage(call['url']))}</td>"
-                    f"<td>{call['seconds']} s</td>"
-                    f"<td class='{status_cls}'>{escape(str(status) if status is not None else "—")}</td>"
-                    f"<td>{call['bytes']}</td>"
-                    f"<td class='url'><code>{escape(str(call['url']))}</code></td>"
-                    f"<td>{escape(str(call.get('clue') or ""))}</td>"
-                    f"<td class='bad'>{escape(str(call['error']))}</td></tr>"
-                )
-            parts.append("</table>")
-        else:
-            parts.append("<div class='muted'>Nessuna richiesta.</div>")
-        parts.append("</details>")
+            parts.append("<div class='bad'><b>ZERO risultati.</b> Il blocco è nelle funzioni sopra.</div>")
 
         if item["logs"]:
-            parts.append("<details><summary>Log interni</summary><pre>")
-            parts.append(escape("\n".join(item["logs"][-100:])))
-            parts.append("</pre></details>")
-
+            parts += ["<details><summary>Log interni</summary><pre>",escape("\n".join(item["logs"][-120:])),"</pre></details>"]
         parts.append("</div>")
 
-    parts.append(
-        "<div class='card muted'><b>Diagnosi:</b> "
-        "RICERCA/ SITEMAP = discovery; PRODOTTO = download/pagina; "
-        "risultati = parsing/filtro. Nessun altro negozio viene eseguito.</div>"
-    )
+    parts.append("<div class='card muted'><b>Metodo:</b> nessun tracer HTTP. Il test avvolge direttamente le funzioni reali di discovery e parsing dei SOLI due scraper, quindi il punto di perdita viene mostrato senza JSON chilometrico.</div>")
     parts.append("</body></html>")
     return "".join(parts)
 
