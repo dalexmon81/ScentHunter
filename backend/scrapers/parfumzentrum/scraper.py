@@ -22,7 +22,6 @@ HEADERS = {
     "Accept-Language": "de-DE,de;q=0.9",
 }
 
-PRODUCT_RE = re.compile(r"(?:[_-])z\d+", re.I)
 PRODUCT_HINT_RE = re.compile(r"(?:[_-])z[0-9a-z-]+", re.I)
 
 
@@ -57,7 +56,7 @@ def _extract_product_urls_from_html(html):
         if not normalized:
             continue
         path = urlparse(normalized).path
-        if not PRODUCT_RE.search(path) and not PRODUCT_HINT_RE.search(path):
+        if not PRODUCT_HINT_RE.search(path):
             continue
         if normalized not in seen:
             seen.add(normalized)
