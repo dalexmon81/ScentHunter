@@ -43,6 +43,7 @@ def _concentration(text):
 
 
 def _matches_query(name, query):
+    """Check if product name matches the search query."""
     name_tokens = set(_tokens(name))
     wanted = {x for x in _tokens(query) if x not in STOPWORDS}
 
@@ -186,35 +187,18 @@ def _extract_product(url, query):
 
     name = " ".join(h1.stripped_strings)
 
+    # CRITICAL FIX: Filter by query BEFORE processing
     if not _matches_query(name, query):
         return None
 
-    size_match = re.search(
-        r"(?<!\d)(\d{1,4}(?:[.,]\d+)?)\s*ml\b",
-        name,
-        re.I,
-    )
-    size_ml = None
-    if size_match:
-        try:
-            size_ml = float(size_match.group(1).replace(",", "."))
-        except ValueError:
-            pass
-
-    concentration = ""
-    if re.search(r"\beau\s+de\s+toilette\b|\bedt\b", name, re.I):
-        concentration = "Eau de Toilette"
-    elif re.search(r"\beau\s+de\s+parfum\b|\bedp\b", name, re.I):
-        concentration = "Eau de Parfum"
-    elif re.search(r"\bextrait(?:\s+de\s+parfum)?\b", name, re.I):
-        concentration = "Extrait de Parfum"
-
+    # Check availability BEFORE wasting time on price extraction
     page_text = soup.get_text(" ", strip=True).lower()
     if any(x in page_text for x in (
         "nicht lieferbar", "nicht vorrätig", "ausverkauft",
     )):
         return None
 
+    # Extract price (required field)
     price = None
     for script in soup.find_all("script", type="application/ld+json"):
         try:
@@ -239,8 +223,30 @@ def _extract_product(url, query):
                 if price:
                     break
 
+    # If no price found, skip this product
     if price is None:
         return None
+
+    # Extract optional fields
+    size_match = re.search(
+        r"(?<!\d)(\d{1,4}(?:[.,]\d+)?)\s*ml\b",
+        name,
+        re.I,
+    )
+    size_ml = None
+    if size_match:
+        try:
+            size_ml = float(size_match.group(1).replace(",", "."))
+        except ValueError:
+            pass
+
+    concentration = ""
+    if re.search(r"\beau\s+de\s+toilette\b|\bedt\b", name, re.I):
+        concentration = "Eau de Toilette"
+    elif re.search(r"\beau\s+de\s+parfum\b|\bedp\b", name, re.I):
+        concentration = "Eau de Parfum"
+    elif re.search(r"\bextrait(?:\s+de\s+parfum)?\b", name, re.I):
+        concentration = "Extrait de Parfum"
 
     brand = None
     for script in soup.find_all("script", type="application/ld+json"):
@@ -296,7 +302,8 @@ def search(query):
     results = []
     seen = set()
 
-    for url in product_urls[:24]:
+    # Process ALL URLs (not just first 24) to maximize chances of finding matches
+    for url in product_urls:
         remaining = max(1.0, 12.0 - (time.monotonic() - started))
         if remaining <= 0:
             break
