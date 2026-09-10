@@ -28,6 +28,11 @@ from bs4 import BeautifulSoup
 STORE = "Notino"
 BASE_URL = "https://www.notino.fr"
 SEARCH_URL = BASE_URL + "/search.asp"
+DISCOVERY_DOMAINS = (
+    "https://www.notino.fr",
+    "https://www.notino.it",
+    "https://www.notino.de",
+)
 READER_BASE = "https://r.jina.ai/http://"
 
 CONNECT_TIMEOUT = 2.0
@@ -239,7 +244,7 @@ def product_url(url):
 
     host = parsed.netloc.lower().split(":", 1)[0]
 
-    if not host.endswith("notino.fr"):
+    if not (host == "notino.fr" or host.endswith(".notino.fr") or host.endswith(".notino.it") or host.endswith(".notino.de")):
         return ""
 
     path = parsed.path
@@ -248,6 +253,8 @@ def product_url(url):
         return ""
 
     return parsed._replace(
+        scheme="https",
+        netloc="www.notino.fr",
         query="",
         fragment="",
     ).geturl()
@@ -624,76 +631,82 @@ def candidate_urls(html_text, query):
 
 
 def discover(session, query):
-    # Notino can return the public search page to normal browsers while
-    # blocking server-side requests from cloud/datacenter IPs. Therefore
-    # the first discovery path is the same public search page through
-    # Jina Reader. This is discovery only: product data is still fetched
-    # from Notino directly first, with Jina as the bounded product fallback.
-    search_endpoint = (
-        SEARCH_URL
-        + "?exps="
-        + quote_plus(query)
-    )
+    """Discover Notino product URLs without depending on one blocked route.
 
-    seen = set()
+    The FR search page is known to work publicly, but cloud/server-side
+    requests can be denied.  Discovery therefore tries the same search on
+    several Notino country domains in parallel.  The country is irrelevant
+    for discovery: the returned product path/id is canonicalized to the FR
+    domain before product fetching, so pricing still comes from notino.fr.
+
+    Jina is kept as a second route for each domain.  All routes are bounded
+    and failures are isolated.
+    """
+    q = quote_plus(query)
+    endpoints = [
+        domain + "/search.asp?exps=" + q
+        for domain in DISCOVERY_DOMAINS
+    ]
+
     candidates = []
+    seen = set()
 
     def add_from(text):
+        if not text:
+            return
         for url in candidate_urls(text, query):
             if url in seen:
                 continue
-
             seen.add(url)
             candidates.append(url)
-
             if len(candidates) >= MAX_CANDIDATES:
-                return True
+                return
 
-        return False
+    def fetch_direct(endpoint):
+        try:
+            response = session.get(
+                endpoint,
+                timeout=TIMEOUT,
+                allow_redirects=True,
+            )
+            if response.status_code < 400 and response.text:
+                return response.text
+        except requests.RequestException:
+            return None
+        return None
 
-    # 1. Jina Reader search discovery. This is the primary route because
-    # it avoids Notino's datacenter-IP blocking on the search endpoint.
-    reader_url = (
-        READER_BASE
-        + search_endpoint.replace(
-            "https://",
-            "",
-            1,
-        )
-    )
+    def fetch_jina(endpoint):
+        reader_url = READER_BASE + endpoint.replace("https://", "", 1)
+        try:
+            response = requests.get(
+                reader_url,
+                headers={
+                    "User-Agent": "ScentHunter/1.0",
+                    "Accept": "text/plain",
+                },
+                timeout=READER_TIMEOUT,
+            )
+            if response.status_code < 400 and response.text:
+                return response.text
+        except requests.RequestException:
+            return None
+        return None
 
-    try:
-        response = requests.get(
-            reader_url,
-            headers={
-                "User-Agent": "ScentHunter/1.0",
-                "Accept": "text/plain",
-            },
-            timeout=READER_TIMEOUT,
-        )
+    # Direct country-domain discovery is attempted concurrently so one
+    # blocked Notino host cannot add several sequential timeout penalties.
+    with ThreadPoolExecutor(max_workers=len(endpoints) * 2) as pool:
+        futures = []
+        for endpoint in endpoints:
+            futures.append(pool.submit(fetch_direct, endpoint))
+            futures.append(pool.submit(fetch_jina, endpoint))
 
-        if response.status_code < 400 and response.text:
-            if add_from(response.text):
-                return candidates
-    except requests.RequestException:
-        pass
+        for future in as_completed(futures):
+            text = future.result()
+            add_from(text)
+            if len(candidates) >= MAX_CANDIDATES:
+                break
 
-    # 2. Direct Notino search fallback. Kept bounded and limited to the
-    # current endpoint; older parameters are not useful enough to justify
-    # four sequential 5-second waits on a blocked cloud IP.
-    try:
-        response = session.get(
-            search_endpoint,
-            timeout=TIMEOUT,
-            allow_redirects=True,
-        )
-
-        if response.status_code < 400 and response.text:
-            add_from(response.text)
-    except requests.RequestException:
-        pass
-
-    return candidates
+    return candidates[:MAX_CANDIDATES]
 
 
 def parse_product(url, html_text, query):
