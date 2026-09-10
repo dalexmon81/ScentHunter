@@ -23,6 +23,7 @@ from __future__ import annotations
 
 import copy
 import importlib
+import json
 import logging
 import re
 import threading
@@ -36,6 +37,8 @@ from typing import Any, Dict, Iterable, List, Optional, Tuple
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
+
+from product_matcher import ProductMatcher
 
 
 # ============================================================================
@@ -118,6 +121,8 @@ logger = logging.getLogger("scent-hunter")
 
 _CACHE: Dict[Tuple[str, str], Dict[str, Any]] = {}
 _CACHE_LOCK = threading.Lock()
+_MATCHER: Optional[ProductMatcher] = None
+_MATCHER_LOCK = threading.Lock()
 
 
 def _cache_key(store: str, query: str) -> Tuple[str, str]:
@@ -164,6 +169,87 @@ def _cache_put(store: str, query: str, results: List[Dict[str, Any]]) -> None:
 def _cache_clear() -> None:
     with _CACHE_LOCK:
         _CACHE.clear()
+
+
+# ============================================================================
+# CENTRAL PRODUCT MATCHER
+# ============================================================================
+
+def load_matcher() -> ProductMatcher:
+    """Load the canonical matcher once, using the real project catalog files."""
+    global _MATCHER
+
+    if _MATCHER is not None:
+        return _MATCHER
+
+    with _MATCHER_LOCK:
+        if _MATCHER is not None:
+            return _MATCHER
+
+        catalog_path = BASE_DIR / "product_catalog.json"
+        family_path = BASE_DIR / "family_registry.json"
+
+        catalog_payload = json.loads(
+            catalog_path.read_text(encoding="utf-8")
+        )
+        family_payload = json.loads(
+            family_path.read_text(encoding="utf-8")
+        )
+
+        products = (
+            catalog_payload.get("products", [])
+            if isinstance(catalog_payload, dict)
+            else catalog_payload
+        )
+        families = (
+            family_payload.get("families", [])
+            if isinstance(family_payload, dict)
+            else family_payload
+        )
+
+        if not isinstance(products, list):
+            products = []
+        if not isinstance(families, list):
+            families = []
+
+        _MATCHER = ProductMatcher(
+            catalog=products,
+            family_registry=families,
+        )
+
+        logger.info(
+            "MATCHER READY | catalog=%s | families=%s",
+            len(products),
+            len(families),
+        )
+
+        return _MATCHER
+
+
+def match_results(
+    rows: List[Dict[str, Any]],
+    query: str,
+) -> List[Dict[str, Any]]:
+    """Resolve scraper offers through the central identity layer."""
+    matcher = load_matcher()
+    matched_rows: List[Dict[str, Any]] = []
+
+    for row in rows:
+        try:
+            matched = matcher.match(row, query)
+        except Exception as exc:
+            logger.warning(
+                "MATCH ERROR | store=%s | query=%r | %s",
+                row.get("store"),
+                query,
+                exc,
+            )
+            continue
+
+        if matched is not None:
+            matched_rows.append(matched)
+
+    return matched_rows
 
 
 # ============================================================================
@@ -546,7 +632,8 @@ def _comparison_identity(item: Dict[str, Any]) -> Tuple[str, str, str]:
     ).strip()
 
     concentration = str(
-        item.get("concentration")
+        item.get("canonical_concentration")
+        or item.get("concentration")
         or item.get("type")
         or ""
     ).strip()
@@ -597,7 +684,8 @@ def build_comparisons(
         ).strip()
 
         concentration = str(
-            first.get("concentration")
+            first.get("canonical_concentration")
+            or first.get("concentration")
             or ""
         ).strip()
 
@@ -714,6 +802,12 @@ def run_store(
         for row in rows[:MAX_RESULTS_PER_STORE]:
             cleaned.append(clean_result(row, store))
 
+        cleaned = dedupe_results(cleaned)
+
+        # Canonicalizzazione centrale: il retailer resta la fonte dei dati
+        # reali (prezzo, formato, disponibilità, URL), mentre ProductMatcher
+        # decide l'identità del profumo e della variante.
+        cleaned = match_results(cleaned, query)
         cleaned = dedupe_results(cleaned)
         cleaned = sort_results(cleaned)
 
@@ -1103,10 +1197,18 @@ def root():
 
 @app.get("/health")
 def health():
+    try:
+        load_matcher()
+        matcher_loaded = True
+    except Exception as exc:
+        logger.exception("MATCHER INIT FAILED: %s", exc)
+        matcher_loaded = False
+
     return {
-        "status": "healthy",
-        "architecture": "live-orchestrator",
+        "status": "healthy" if matcher_loaded else "degraded",
+        "architecture": "live-orchestrator-matcher",
         "stores": STORES,
+        "matcher_loaded": matcher_loaded,
         "search_deadline_seconds": SEARCH_DEADLINE_SECONDS,
         "cache_ttl_seconds": CACHE_TTL_SECONDS,
     }
