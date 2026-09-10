@@ -1042,8 +1042,8 @@ def _diag_html(report):
                     f"<td>{call['seconds']} s</td>"
                     f"<td class='{status_cls}'>{escape(status)}</td>"
                     f"<td>{call['bytes']}</td>"
-                    f"<td class='url'><code>{escape(call['url'])}</code></td>"
-                    f"<td class='bad'>{escape(call['error'])}</td></tr>"
+                    f"<td class='url'><code>{escape(str(call['url']))}</code></td>"
+                    f"<td class='bad'>{escape(str(call['error']))}</td></tr>"
                 )
             parts.append("</table>")
         else:
