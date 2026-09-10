@@ -304,7 +304,15 @@ body{position:relative;-webkit-overflow-scrolling:touch}
 .home-search-button:disabled{opacity:1!important;cursor:default}
 .home-search-button.searching{letter-spacing:.1px}
 .home-search-button.searching .search-fixed{display:inline-block}
-.home-search-button.searching .search-dots{display:inline-block;min-width:3ch;text-align:left}
+.home-search-button.searching .search-dots{display:inline-block;min-width:1.6em;text-align:left}
+.home-search-button.searching .search-dots::after{content:".";display:inline-block;animation:searchDots 1.2s steps(1,end) infinite}
+@keyframes searchDots{
+ 0%{content:""}
+ 25%{content:"."}
+ 50%{content:".."}
+ 75%{content:"..."}
+ 100%{content:""}
+}
 @media(max-width:390px){
  .home-art{border-radius:18px}
  .home-search-field{left:6.0%;width:48.6%;top:78.0%;height:6.35%}
@@ -1969,9 +1977,7 @@ async function searchStoresProgressive(term,onPartial){
  while(true){
   if(Date.now()-startedAt>maxElapsed)throw new Error("Timeout ricerca");
 
-  // The backend publishes a settled store immediately. Poll frequently enough
-  // that the UI normally sees that snapshot within a fraction of a second.
-  await new Promise(resolve=>setTimeout(resolve,250));
+  await new Promise(resolve=>setTimeout(resolve,600));
 
   const pathStatusUrl=backend()+"/search-status/"+encodeURIComponent(job.job_id);
   let snapshot;
@@ -1987,7 +1993,7 @@ async function searchStoresProgressive(term,onPartial){
       const queryStatusUrl=backend()+"/search-status?job_id="+encodeURIComponent(job.job_id);
       snapshot=await fetchJSONWithTimeout(queryStatusUrl,timeoutMs);
     }else{
-      await new Promise(resolve=>setTimeout(resolve,400));
+      await new Promise(resolve=>setTimeout(resolve,900));
       snapshot=await fetchJSONWithTimeout(pathStatusUrl,timeoutMs);
     }
   }
@@ -2001,10 +2007,7 @@ async function searchStoresProgressive(term,onPartial){
 async function searchPerfume(){
  const q=queryInput.value.trim();if(!q){statusBox.textContent="";resultsBox.innerHTML="";errorsBox.innerHTML="";return}
  searchButton.disabled=true;searchButton.classList.add("searching");
- let dots=0;
- const updateSearchButton=()=>{dots=(dots+1)%4;searchButton.innerHTML='<span class="search-fixed">CERCO</span><span class="search-dots">'+". ".trim().repeat(0)+". ".trim().repeat(dots)+'</span>'};
- updateSearchButton();
- const dotsTimer=setInterval(updateSearchButton,500);
+ searchButton.innerHTML='<span class="search-fixed">CERCO</span><span class="search-dots" aria-hidden="true"></span>';
  statusBox.textContent="";resultsBox.innerHTML="";errorsBox.innerHTML="";
  clearOpenProduct();
  try{
@@ -2041,12 +2044,14 @@ async function searchPerfume(){
    // trasformare una ricerca con risultati validi in una ricerca "fallita".
    // Conserviamo gli errori internamente, ma l'utente vede solo i risultati utili.
    errorsBox.innerHTML="";
-   if(final)statusBox.textContent=groups.length?`Ricerca completata: ${groups.length} prodotti trovati.`:"Nessun risultato trovato.";
+   if(final){
+    statusBox.textContent=groups.length?`Ricerca completata: ${groups.length} prodotti trovati.`:"Nessun risultato trovato.";
+    statusBox.style.display="block";
+   }
   };
 
   // Tutte le ricerche passano dalla stessa pipeline progressiva.
-  // Il backend esegue esattamente 4 + 4; il frontend si limita a ricevere
-  // e mostrare ogni snapshot già pubblicato dal motore.
+  // Massimo 2 negozi alla volta, con aggiornamento dei risultati man mano.
   data=await searchStoresProgressive(q,renderData);
 
   // Regola generale di recupero: se la query esatta non produce nulla,
@@ -2080,7 +2085,7 @@ async function searchPerfume(){
   console.error(e);
   statusBox.textContent=String(e?.message||"Impossibile completare la ricerca.");
  }
- finally{clearInterval(dotsTimer);searchButton.disabled=false;searchButton.classList.remove("searching");searchButton.textContent="INIZIA LA RICERCA"}
+ finally{searchButton.disabled=false;searchButton.classList.remove("searching");searchButton.textContent="INIZIA LA RICERCA"}
 }
 
 window.searchPerfume=searchPerfume;
