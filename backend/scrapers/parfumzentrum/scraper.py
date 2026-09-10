@@ -10,7 +10,7 @@ from urllib.parse import unquote
 
 BASE_URL = "https://www.parfum-zentrum.de"
 SITEMAP_URL = BASE_URL + "/sitemap.xml"
-SEARCH_URL = BASE_URL + "/fulltext_search/1"
+SEARCH_URL = BASE_URL + "/suchen/"
 SEARCH_DEADLINE = 14.0
 CATEGORY_FALLBACK_URLS = ()
 PRODUCT_TIMEOUT = 2.5
@@ -191,9 +191,10 @@ def _fulltext_search_urls(query):
         try:
             response = requests.get(
                 SEARCH_URL,
-                params={"query": search_query},
+                params={"search": search_query, "submit": "Suche"},
                 headers=HEADERS,
                 timeout=4.0,
+
             )
             if response.status_code != 200:
                 response.close()
