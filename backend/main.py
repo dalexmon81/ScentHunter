@@ -36,7 +36,7 @@ from product_matcher import ProductMatcher
 
 app = FastAPI(
     title="ScentHunter API",
-    version="3.1-stable-sequential",
+    version="3.2-stable-sequential-retry",
 )
 
 app.add_middleware(
@@ -78,6 +78,7 @@ BASE_DIR = Path(__file__).resolve().parent
 FRONTEND_INDEX = BASE_DIR.parent / "frontend" / "index.html"
 
 # Cache breve solo per risultati NON vuoti.
+# Un risultato vuoto non entra mai in cache: viene ritentato.
 CACHE_TTL_SECONDS = 90.0
 MAX_RESULTS_PER_STORE = 80
 MAX_OFFERS_PER_COMPARISON = 100
@@ -774,6 +775,14 @@ def run_store(
     query: str,
     use_cache: bool = True,
 ) -> Dict[str, Any]:
+    """Run one store deterministically, retrying transient empty/error results.
+
+    A scraper is allowed to fail transiently because of anti-bot responses,
+    temporary HTTP errors, connection resets, or an incomplete page.  A single
+    empty/error response must therefore never decide the store's final result.
+    Each attempt is isolated, the scraper module is unloaded, and GC runs
+    before the next attempt.
+    """
     started = time.monotonic()
     query = str(query or "").strip()
 
@@ -785,6 +794,7 @@ def run_store(
                 "store": store,
                 "status": "cache",
                 "cache": "fresh",
+                "attempts": 0,
                 "elapsed": round(
                     time.monotonic() - started,
                     3,
@@ -796,106 +806,176 @@ def run_store(
 
     module_name = f"scrapers.{store}.scraper"
 
-    try:
-        module = load_scraper(store)
+    # Tre tentativi totali.  Nessun tentativo viene interrotto artificialmente:
+    # ogni scraper mantiene il proprio tempo necessario per completare la
+    # ricerca.  I ritardi servono solo a non martellare un sito che ha appena
+    # risposto con un risultato transitorio.
+    max_attempts = 3
+    retry_delays = (1.0, 2.0)
+    last_error: Optional[str] = None
 
-        search = getattr(module, "search", None)
+    for attempt in range(1, max_attempts + 1):
+        module = None
 
-        if not callable(search):
-            raise RuntimeError(
-                f"scraper {store} non espone search(query)"
+        try:
+            module = load_scraper(store)
+            search = getattr(module, "search", None)
+
+            if not callable(search):
+                raise RuntimeError(
+                    f"scraper {store} non espone search(query)"
+                )
+
+            logger.info(
+                "STORE START | %s | query=%r | attempt=%s/%s",
+                store,
+                query,
+                attempt,
+                max_attempts,
             )
 
-        logger.info(
-            "STORE START | %s | query=%r",
+            raw = search(query)
+            rows = _coerce_rows(raw)
+
+            cleaned = [
+                clean_result(row, store)
+                for row in rows[:MAX_RESULTS_PER_STORE]
+            ]
+            cleaned = dedupe_results(cleaned)
+
+            matched = match_results(
+                cleaned,
+                query,
+            )
+            matched = dedupe_results(matched)
+            matched = sort_results(matched)
+
+            if matched:
+                _cache_put(store, query, matched)
+
+                elapsed = round(
+                    time.monotonic() - started,
+                    3,
+                )
+
+                logger.info(
+                    "STORE END | %s | results=%s | attempts=%s | elapsed=%ss",
+                    store,
+                    len(matched),
+                    attempt,
+                    elapsed,
+                )
+
+                # Store finished successfully: release the scraper module
+                # before moving to the next retailer.
+                try:
+                    sys.modules.pop(module_name, None)
+                except Exception:
+                    pass
+                module = None
+                gc.collect()
+
+                return {
+                    "store": store,
+                    "status": "ok",
+                    "cache": "miss",
+                    "attempts": attempt,
+                    "elapsed": elapsed,
+                    "count": len(matched),
+                    "results": matched,
+                    "error": None,
+                }
+
+            # Empty is NOT cached.  Retry because a transient empty page is
+            # one of the exact failure modes this backend must tolerate.
+            logger.warning(
+                "STORE EMPTY | %s | query=%r | attempt=%s/%s",
+                store,
+                query,
+                attempt,
+                max_attempts,
+            )
+
+        except Exception as exc:
+            last_error = f"{type(exc).__name__}: {exc}"
+            logger.exception(
+                "STORE ERROR | %s | query=%r | attempt=%s/%s | %s",
+                store,
+                query,
+                attempt,
+                max_attempts,
+                last_error,
+            )
+
+        finally:
+            # Between attempts we release temporary parser/browser objects,
+            # but KEEP the scraper module/session alive.  This avoids resetting
+            # a store's own connection/session state on every retry.  The
+            # module itself is unloaded once, after the store is finished.
+            gc.collect()
+
+        if attempt < max_attempts:
+            delay = retry_delays[attempt - 1]
+            logger.info(
+                "STORE RETRY | %s | query=%r | next_attempt_in=%ss",
+                store,
+                query,
+                delay,
+            )
+            time.sleep(delay)
+
+    elapsed = round(
+        time.monotonic() - started,
+        3,
+    )
+
+    # The store is finished: now unload its module and force collection.
+    try:
+        sys.modules.pop(module_name, None)
+    except Exception:
+        pass
+    module = None
+    gc.collect()
+
+    # If all attempts returned empty, report empty.  If the scraper actually
+    # raised, preserve the real error instead of disguising it as zero.
+    if last_error is not None:
+        logger.error(
+            "STORE FAILED AFTER RETRIES | %s | query=%r | attempts=%s | elapsed=%ss",
             store,
             query,
-        )
-
-        raw = search(query)
-        rows = _coerce_rows(raw)
-
-        cleaned = [
-            clean_result(row, store)
-            for row in rows[:MAX_RESULTS_PER_STORE]
-        ]
-
-        cleaned = dedupe_results(cleaned)
-
-        matched = match_results(
-            cleaned,
-            query,
-        )
-
-        matched = dedupe_results(matched)
-        matched = sort_results(matched)
-
-        # Solo risultati reali NON vuoti entrano in cache.
-        _cache_put(
-            store,
-            query,
-            matched,
-        )
-
-        elapsed = round(
-            time.monotonic() - started,
-            3,
-        )
-
-        logger.info(
-            "STORE END | %s | results=%s | elapsed=%ss",
-            store,
-            len(matched),
+            max_attempts,
             elapsed,
         )
-
-        return {
-            "store": store,
-            "status": "ok" if matched else "empty",
-            "cache": "miss",
-            "elapsed": elapsed,
-            "count": len(matched),
-            "results": matched,
-            "error": None,
-        }
-
-    except Exception as exc:
-        error_text = (
-            f"{type(exc).__name__}: {exc}"
-        )
-
-        logger.exception(
-            "STORE ERROR | %s | query=%r | %s",
-            store,
-            query,
-            error_text,
-        )
-
         return {
             "store": store,
             "status": "error",
             "cache": "miss",
-            "elapsed": round(
-                time.monotonic() - started,
-                3,
-            ),
+            "attempts": max_attempts,
+            "elapsed": elapsed,
             "count": 0,
             "results": [],
-            "error": error_text,
+            "error": last_error,
         }
 
-    finally:
-        # Il punto fondamentale della versione stabile:
-        # dopo ogni negozio liberiamo gli oggetti pesanti.
-        try:
-            sys.modules.pop(
-                module_name,
-                None,
-            )
-        except Exception:
-            pass
+    logger.warning(
+        "STORE EMPTY AFTER RETRIES | %s | query=%r | attempts=%s | elapsed=%ss",
+        store,
+        query,
+        max_attempts,
+        elapsed,
+    )
 
-        gc.collect()
+    return {
+        "store": store,
+        "status": "empty",
+        "cache": "miss",
+        "attempts": max_attempts,
+        "elapsed": elapsed,
+        "count": 0,
+        "results": [],
+        "error": None,
+    }
 
 
 # ============================================================================
@@ -956,6 +1036,7 @@ def run_search(
                 "cache": report.get("cache"),
                 "count": report["count"],
                 "elapsed": report["elapsed"],
+                "attempts": report.get("attempts", 0),
             }
             for report in reports
         },
@@ -1059,6 +1140,7 @@ def _run_job(
                 "cache": report.get("cache"),
                 "count": report["count"],
                 "elapsed": report["elapsed"],
+                "attempts": report.get("attempts", 0),
             }
 
             if report.get("error"):
@@ -1122,7 +1204,7 @@ def root():
     return {
         "app": "ScentHunter",
         "status": "running",
-        "architecture": "sequential-live-scrapers",
+        "architecture": "sequential-live-scrapers-retry",
         "stores": STORES,
         "error": "frontend/index.html not found",
     }
@@ -1146,7 +1228,7 @@ def health():
             if matcher_loaded
             else "degraded"
         ),
-        "architecture": "sequential-live-scrapers-matcher",
+        "architecture": "sequential-live-scrapers-retry-matcher",
         "stores": STORES,
         "matcher_loaded": matcher_loaded,
         "cache_ttl_seconds": CACHE_TTL_SECONDS,
@@ -1282,7 +1364,7 @@ def diagnose_stores(
 
     return {
         "ok": True,
-        "architecture": "sequential-live-scrapers",
+        "architecture": "sequential-live-scrapers-retry",
         **data,
     }
 
