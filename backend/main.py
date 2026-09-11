@@ -49,7 +49,7 @@ from fastapi.responses import FileResponse
 
 app = FastAPI(
     title="ScentHunter API",
-    version="4.3-fast-lane-isolated",
+    version="4.4-single-live-search",
 )
 
 app.add_middleware(
@@ -985,6 +985,10 @@ def run_search(
 
 JOBS: Dict[str, Dict[str, Any]] = {}
 JOBS_LOCK = threading.Lock()
+# Render Free: non consentiamo due ricerche live contemporaneamente.
+# Una seconda ricerca resta in coda invece di creare un secondo gruppo di
+# subprocess e contendere RAM/CPU con il job ancora in esecuzione.
+SEARCH_RUN_LOCK = threading.Lock()
 
 # Evitiamo che una vecchia ricerca rimanga in RAM per sempre.
 MAX_JOBS = 40
@@ -1108,6 +1112,10 @@ def _run_job(job_id: str, query: str) -> None:
     """
     Orchestratore progressivo con sliding window.
 
+    IMPORTANTE: una sola ricerca live alla volta. Questo evita che una nuova
+    ricerca partita mentre la precedente sta ancora completando gli store
+    lenti avvii altri subprocess sullo stesso piano Render.
+
     Mantiene al massimo SEARCH_MAX_WORKERS retailer contemporaneamente,
     ma non usa batch rigidi: appena un retailer termina, il successivo
     viene avviato immediatamente.
@@ -1115,179 +1123,181 @@ def _run_job(job_id: str, query: str) -> None:
     Ogni retailer resta isolato nel proprio subprocess con timeout individuale
     (gestito da run_store -> _run_scraper_isolated).
     """
-    started = time.monotonic()
-    executor = None
+    # Serializza le ricerche LIVE. Gli store restano concorrenti dentro un
+    # singolo job (SEARCH_MAX_WORKERS), ma due job non possono sovrapporsi.
+    with SEARCH_RUN_LOCK:
+        started = time.monotonic()
+        executor = None
 
-    try:
-        from concurrent.futures import (
-            FIRST_COMPLETED,
-            ThreadPoolExecutor,
-            wait,
-        )
-
-        stores_queue = list(PROGRESSIVE_STORE_ORDER)
-        next_index = 0
-        active = {}
-
-        executor = ThreadPoolExecutor(
-            max_workers=SEARCH_MAX_WORKERS,
-            thread_name_prefix="scent_store",
-        )
-
-        def submit_next() -> bool:
-            nonlocal next_index
-
-            if next_index >= len(stores_queue):
-                return False
-
-            store = stores_queue[next_index]
-            next_index += 1
-            future = executor.submit(
-                run_store,
-                store,
-                query,
-                True,
-                PROGRESSIVE_STORE_TIMEOUTS.get(store, STORE_TIMEOUT_SECONDS),
-            )
-            active[future] = store
-            logger.info(
-                "SEARCH STORE START | job=%s | store=%s | active=%s/%s",
-                job_id,
-                store,
-                len(active),
-                SEARCH_MAX_WORKERS,
-            )
-            return True
-
-        # Riempie inizialmente la sliding window.
-        for _ in range(min(SEARCH_MAX_WORKERS, len(stores_queue))):
-            submit_next()
-
-        while active or next_index < len(stores_queue):
-            with JOBS_LOCK:
-                job = JOBS.get(job_id)
-                if job is None or job.get("completed"):
-                    break
-
-            remaining = JOB_HARD_TIMEOUT_SECONDS - (time.monotonic() - started)
-            if remaining <= 0:
-                with JOBS_LOCK:
-                    job = JOBS.get(job_id)
-                    if job and not job.get("completed"):
-                        job["errors"]["job"] = (
-                            "Ricerca completata con i risultati disponibili: "
-                            "tempo massimo orchestrazione raggiunto."
-                        )
-                break
-
-            done, _ = wait(
-                list(active),
-                timeout=remaining,
-                return_when=FIRST_COMPLETED,
+        try:
+            from concurrent.futures import (
+                FIRST_COMPLETED,
+                ThreadPoolExecutor,
+                wait,
             )
 
-            if not done:
-                # Il timeout globale è scaduto mentre almeno un retailer era
-                # ancora in esecuzione. Non aspettiamo un batch inesistente:
-                # usciamo e lasciamo che i future già avviati terminino da soli.
-                with JOBS_LOCK:
-                    job = JOBS.get(job_id)
-                    if job and not job.get("completed"):
-                        job["errors"]["job"] = (
-                            "Ricerca completata con i risultati disponibili: "
-                            "tempo massimo orchestrazione raggiunto."
-                        )
-                break
+            stores_queue = list(PROGRESSIVE_STORE_ORDER)
+            next_index = 0
+            active = {}
 
-            # Gestisce TUTTI i retailer che sono terminati nello stesso istante,
-            # pubblicando ciascun risultato subito e liberando immediatamente
-            # uno slot per il prossimo retailer.
-            for future in done:
-                store = active.pop(future, None)
-                if store is None:
-                    continue
+            executor = ThreadPoolExecutor(
+                max_workers=SEARCH_MAX_WORKERS,
+                thread_name_prefix="scent_store",
+            )
 
-                try:
-                    report = future.result()
-                except Exception as exc:
-                    report = {
-                        "store": store,
-                        "status": "error",
-                        "cache": "miss",
-                        "elapsed": round(time.monotonic() - started, 3),
-                        "count": 0,
-                        "results": [],
-                        "error": f"{type(exc).__name__}: {exc}",
-                    }
+            def submit_next() -> bool:
+                nonlocal next_index
 
-                # PUBBLICAZIONE IMMEDIATA: il frontend può vedere questo store
-                # senza aspettare gli altri retailer.
-                _publish_store_report(job_id, report, started)
-                gc.collect()
+                if next_index >= len(stores_queue):
+                    return False
 
-            # Riempie immediatamente gli slot appena liberati.
-            while (
-                len(active) < SEARCH_MAX_WORKERS
-                and next_index < len(stores_queue)
-                and time.monotonic() - started < JOB_HARD_TIMEOUT_SECONDS
-            ):
+                store = stores_queue[next_index]
+                next_index += 1
+                future = executor.submit(
+                    run_store,
+                    store,
+                    query,
+                    True,
+                    PROGRESSIVE_STORE_TIMEOUTS.get(store, STORE_TIMEOUT_SECONDS),
+                )
+                active[future] = store
+                logger.info(
+                    "SEARCH STORE START | job=%s | store=%s | active=%s/%s",
+                    job_id,
+                    store,
+                    len(active),
+                    SEARCH_MAX_WORKERS,
+                )
+                return True
+
+            # Riempie inizialmente la sliding window.
+            for _ in range(min(SEARCH_MAX_WORKERS, len(stores_queue))):
                 submit_next()
 
-    except Exception as exc:
-        logger.exception(
-            "SEARCH JOB ERROR | job=%s | query=%r | %s",
-            job_id,
-            query,
-            exc,
-        )
-        with JOBS_LOCK:
-            job = JOBS.get(job_id)
-            if job:
-                job["errors"]["job"] = f"{type(exc).__name__}: {exc}"
-
-    finally:
-        # MAI usare un context manager qui: chiudere un executor con
-        # wait=True in caso di timeout reintrodurrebbe esattamente il blocco
-        # che stiamo eliminando.
-        if executor is not None:
-            try:
+            while active or next_index < len(stores_queue):
                 with JOBS_LOCK:
                     job = JOBS.get(job_id)
-                    timed_out = bool(
-                        job
-                        and job.get("errors", {}).get("job")
-                        and "tempo massimo orchestrazione"
-                        in str(job["errors"]["job"])
-                    )
+                    if job is None or job.get("completed"):
+                        break
 
-                if timed_out:
-                    executor.shutdown(
-                        wait=False,
-                        cancel_futures=True,
-                    )
-                else:
-                    # In condizioni normali tutti i future sono già terminati,
-                    # quindi wait=True è sicuro e rilascia ordinatamente le
-                    # risorse del pool.
-                    executor.shutdown(
-                        wait=True,
-                        cancel_futures=True,
-                    )
-            except Exception:
-                logger.exception(
-                    "SEARCH EXECUTOR SHUTDOWN ERROR | job=%s",
-                    job_id,
+                remaining = JOB_HARD_TIMEOUT_SECONDS - (time.monotonic() - started)
+                if remaining <= 0:
+                    with JOBS_LOCK:
+                        job = JOBS.get(job_id)
+                        if job and not job.get("completed"):
+                            job["errors"]["job"] = (
+                                "Ricerca completata con i risultati disponibili: "
+                                "tempo massimo orchestrazione raggiunto."
+                            )
+                    break
+
+                done, _ = wait(
+                    list(active),
+                    timeout=remaining,
+                    return_when=FIRST_COMPLETED,
                 )
 
-        with JOBS_LOCK:
-            job = JOBS.get(job_id)
-            if job:
-                job["results"] = sort_results(dedupe_results(job["results"]))
-                job["comparisons"] = build_comparisons(job["results"])
-                job["completed"] = True
-                job["partial"] = False
-                job["elapsed"] = round(time.monotonic() - started, 3)
+                if not done:
+                    # Il timeout globale è scaduto mentre almeno un retailer era
+                    # ancora in esecuzione. Non aspettiamo un batch inesistente:
+                    # usciamo e lasciamo che i future già avviati terminino da soli.
+                    with JOBS_LOCK:
+                        job = JOBS.get(job_id)
+                        if job and not job.get("completed"):
+                            job["errors"]["job"] = (
+                                "Ricerca completata con i risultati disponibili: "
+                                "tempo massimo orchestrazione raggiunto."
+                            )
+                    break
 
+                # Gestisce TUTTI i retailer che sono terminati nello stesso istante,
+                # pubblicando ciascun risultato subito e liberando immediatamente
+                # uno slot per il prossimo retailer.
+                for future in done:
+                    store = active.pop(future, None)
+                    if store is None:
+                        continue
+
+                    try:
+                        report = future.result()
+                    except Exception as exc:
+                        report = {
+                            "store": store,
+                            "status": "error",
+                            "cache": "miss",
+                            "elapsed": round(time.monotonic() - started, 3),
+                            "count": 0,
+                            "results": [],
+                            "error": f"{type(exc).__name__}: {exc}",
+                        }
+
+                    # PUBBLICAZIONE IMMEDIATA: il frontend può vedere questo store
+                    # senza aspettare gli altri retailer.
+                    _publish_store_report(job_id, report, started)
+                    gc.collect()
+
+                # Riempie immediatamente gli slot appena liberati.
+                while (
+                    len(active) < SEARCH_MAX_WORKERS
+                    and next_index < len(stores_queue)
+                    and time.monotonic() - started < JOB_HARD_TIMEOUT_SECONDS
+                ):
+                    submit_next()
+
+        except Exception as exc:
+            logger.exception(
+                "SEARCH JOB ERROR | job=%s | query=%r | %s",
+                job_id,
+                query,
+                exc,
+            )
+            with JOBS_LOCK:
+                job = JOBS.get(job_id)
+                if job:
+                    job["errors"]["job"] = f"{type(exc).__name__}: {exc}"
+
+        finally:
+            # MAI usare un context manager qui: chiudere un executor con
+            # wait=True in caso di timeout reintrodurrebbe esattamente il blocco
+            # che stiamo eliminando.
+            if executor is not None:
+                try:
+                    with JOBS_LOCK:
+                        job = JOBS.get(job_id)
+                        timed_out = bool(
+                            job
+                            and job.get("errors", {}).get("job")
+                            and "tempo massimo orchestrazione"
+                            in str(job["errors"]["job"])
+                        )
+
+                    if timed_out:
+                        executor.shutdown(
+                            wait=False,
+                            cancel_futures=True,
+                        )
+                    else:
+                        # In condizioni normali tutti i future sono già terminati,
+                        # quindi wait=True è sicuro e rilascia ordinatamente le
+                        # risorse del pool.
+                        executor.shutdown(
+                            wait=True,
+                            cancel_futures=True,
+                        )
+                except Exception:
+                    logger.exception(
+                        "SEARCH EXECUTOR SHUTDOWN ERROR | job=%s",
+                        job_id,
+                    )
+
+            with JOBS_LOCK:
+                job = JOBS.get(job_id)
+                if job:
+                    job["results"] = sort_results(dedupe_results(job["results"]))
+                    job["comparisons"] = build_comparisons(job["results"])
+                    job["completed"] = True
+                    job["partial"] = False
+                    job["elapsed"] = round(time.monotonic() - started, 3)
 
 @app.get("/search")
 def search_perfume(
