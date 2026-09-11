@@ -94,6 +94,8 @@ FRONTEND_INDEX = BASE_DIR.parent / "frontend" / "index.html"
 # Evita la contesa CPU/RAM/browser che si verifica quando più retailer
 # vengono eseguiti contemporaneamente sul processo Render.
 STORE_TIMEOUT_SECONDS = 12.0
+SEARCH_MAX_WORKERS = 2
+JOB_HARD_TIMEOUT_SECONDS = 60.0
 
 # Cache fresh: una seconda ricerca identica viene servita quasi subito.
 CACHE_TTL_SECONDS = 90.0
@@ -1048,40 +1050,80 @@ def _publish_report(
         )
 
 
+def _publish_store_report(job_id: str, report: Dict[str, Any], started: float) -> None:
+    store = str(report.get("store") or "").strip().lower()
+    with JOBS_LOCK:
+        job = JOBS.get(job_id)
+        if job is None or job.get("completed"):
+            return
+
+        job["stores"][store] = {
+            "status": report["status"],
+            "cache": report.get("cache"),
+            "count": report["count"],
+            "elapsed": report["elapsed"],
+        }
+
+        if report.get("error"):
+            job["errors"][store] = report["error"]
+
+        job["results"].extend(report.get("results", []))
+        job["results"] = sort_results(dedupe_results(job["results"]))
+        job["comparisons"] = build_comparisons(job["results"])
+        job["partial"] = len(job["stores"]) < len(STORES)
+        job["elapsed"] = round(time.monotonic() - started, 3)
+
+
 def _run_job(job_id: str, query: str) -> None:
     started = time.monotonic()
 
     try:
-        for store in STORES:
-            report = run_store(store, query, use_cache=True)
+        # Massimo 2 retailer contemporaneamente.
+        # Questo dimezza il tempo totale della ricerca senza ripetere il
+        # problema di contesa RAM/CPU osservato con 8 processi simultanei.
+        from concurrent.futures import ThreadPoolExecutor, as_completed
 
+        for batch_start in range(0, len(STORES), SEARCH_MAX_WORKERS):
             with JOBS_LOCK:
                 job = JOBS.get(job_id)
                 if job is None or job.get("completed"):
                     return
 
-                job["stores"][store] = {
-                    "status": report["status"],
-                    "cache": report.get("cache"),
-                    "count": report["count"],
-                    "elapsed": report["elapsed"],
-                }
+            if time.monotonic() - started >= JOB_HARD_TIMEOUT_SECONDS:
+                with JOBS_LOCK:
+                    job = JOBS.get(job_id)
+                    if job and not job.get("completed"):
+                        job["errors"]["job"] = (
+                            "Ricerca completata con i risultati disponibili: "
+                            "tempo massimo orchestrazione raggiunto."
+                        )
+                break
 
-                if report.get("error"):
-                    job["errors"][store] = report["error"]
-
-                job["results"].extend(report.get("results", []))
-                job["results"] = sort_results(
-                    dedupe_results(job["results"])
-                )
-                job["comparisons"] = build_comparisons(job["results"])
-                job["partial"] = len(job["stores"]) < len(STORES)
-                job["elapsed"] = round(
-                    time.monotonic() - started,
-                    3,
-                )
-
-            gc.collect()
+            batch = STORES[batch_start:batch_start + SEARCH_MAX_WORKERS]
+            executor = ThreadPoolExecutor(max_workers=len(batch), thread_name_prefix="scent_store")
+            futures = {
+                executor.submit(run_store, store, query, True): store
+                for store in batch
+            }
+            try:
+                for future in as_completed(futures):
+                    store = futures[future]
+                    try:
+                        report = future.result()
+                    except Exception as exc:
+                        report = {
+                            "store": store,
+                            "status": "error",
+                            "cache": "miss",
+                            "elapsed": round(time.monotonic() - started, 3),
+                            "count": 0,
+                            "results": [],
+                            "error": f"{type(exc).__name__}: {exc}",
+                        }
+                    _publish_store_report(job_id, report, started)
+                    gc.collect()
+            finally:
+                executor.shutdown(wait=True, cancel_futures=False)
 
     except Exception as exc:
         logger.exception(
@@ -1099,16 +1141,11 @@ def _run_job(job_id: str, query: str) -> None:
         with JOBS_LOCK:
             job = JOBS.get(job_id)
             if job:
-                job["results"] = sort_results(
-                    dedupe_results(job["results"])
-                )
+                job["results"] = sort_results(dedupe_results(job["results"]))
                 job["comparisons"] = build_comparisons(job["results"])
                 job["completed"] = True
                 job["partial"] = False
-                job["elapsed"] = round(
-                    time.monotonic() - started,
-                    3,
-                )
+                job["elapsed"] = round(time.monotonic() - started, 3)
 
 
 @app.get("/search")
