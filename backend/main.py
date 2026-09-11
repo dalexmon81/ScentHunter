@@ -5,7 +5,7 @@ import importlib, json, os, signal, subprocess, sys, threading, time, traceback,
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
-APP_VERSION = '2.5-progressive-fast-first'
+APP_VERSION = '2.6-progressive-staged'
 app = FastAPI(title='ScentHunter API', version=APP_VERSION)
 app.add_middleware(CORSMiddleware, allow_origins=['*'], allow_credentials=True, allow_methods=['*'], allow_headers=['*'])
 
@@ -200,29 +200,39 @@ def _run_controlled_store(store,query,on_report):
 
 
 FAST_FIRST_STORES = ['bplatz', 'parfumcity']
-SECONDARY_LIGHT_STORES = ['orioudh', 'perfumemarket', 'parfumzentrum']
-DEFERRED_STORES = ['deloox', 'sabina', 'notino']
+SECOND_STAGE_STORES = ['orioudh']
+FINAL_STAGE_STORES = ['perfumemarket', 'parfumzentrum', 'deloox', 'sabina', 'notino']
 
 
 def collect_store_reports_isolated(query,stores,on_report=None):
-    """Progressive resource-aware scheduler.
+    """Three-stage progressive scheduler tuned for Render Free.
 
-    The first two proven-fast stores get the machine to themselves initially.
-    As soon as the first result/empty/error arrives, the remaining stores are
-    released. This avoids the Render Free CPU/RAM contention that previously
-    turned 5-8 second scrapers into 20-45 second scrapers when all 8 started
-    together. Every store remains independently killable and publishes as soon
-    as it finishes.
+    Stage 1: Bplatz + ParfumCity get the initial CPU/RAM burst alone.
+    Stage 2: after the first Stage-1 report, start only Orioudh.
+    Stage 3: after the second Stage-1 report, release the remaining stores.
+
+    This preserves true independent scraping and progressive publication while
+    avoiding the resource contention caused by launching all 8 workers at once.
+    Every scraper still runs in its own killable subprocess and late stores
+    cannot block earlier results.
     """
     requested=list(stores)
     reports={}; lock=threading.Lock(); threads=[]
     first_release=threading.Event()
-    started_stores=set()
-    started_lock=threading.Lock()
+    second_release=threading.Event()
+    started_stores=set(); started_lock=threading.Lock()
+    initial_report_count=0
 
     def publish(report):
-        with lock: reports[report['store']]=report
-        first_release.set()
+        nonlocal initial_report_count
+        with lock:
+            reports[report['store']]=report
+            if report['store'] in FAST_FIRST_STORES:
+                initial_report_count += 1
+                if initial_report_count >= 1:
+                    first_release.set()
+                if initial_report_count >= 2:
+                    second_release.set()
         if callable(on_report): on_report(report)
 
     def start_store(store):
@@ -233,19 +243,23 @@ def collect_store_reports_isolated(query,stores,on_report=None):
         t.start(); threads.append(t)
         return t
 
-    # Phase 1: only the two stores that have historically produced the fastest
-    # real offers. Do not let Deloox/Chromium consume the initial CPU/RAM burst.
+    # Stage 1: protect the two fastest real scrapers from resource contention.
     initial=[s for s in FAST_FIRST_STORES if s in requested]
     if not initial:
         initial=[s for s in requested[:2]]
     for store in initial: start_store(store)
 
-    # Release the rest as soon as one of the fast stores has reported. The
-    # fallback timer guarantees a broken fast store cannot delay the others.
+    # Stage 2: as soon as either fast store reports, add only Orioudh.
     release_deadline=time.monotonic()+8.0
     while not first_release.is_set() and time.monotonic()<release_deadline:
         first_release.wait(timeout=0.2)
+    for store in SECOND_STAGE_STORES: start_store(store)
 
+    # Stage 3: after both initial stores report, release the rest. A hard
+    # fallback prevents one broken fast scraper from holding the queue forever.
+    second_deadline=time.monotonic()+10.0
+    while not second_release.is_set() and time.monotonic()<second_deadline:
+        second_release.wait(timeout=0.2)
     remaining=[s for s in requested if s not in started_stores]
     for store in remaining: start_store(store)
 
