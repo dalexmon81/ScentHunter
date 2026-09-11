@@ -24,7 +24,7 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from typing import Any, Dict, List
 
 
-app = FastAPI(title="ScentHunter API", version="2.0-simple")
+app = FastAPI(title="ScentHunter API", version="2.1-simple-progressive")
 
 app.add_middleware(
     CORSMiddleware,
@@ -63,8 +63,8 @@ FRONTEND_INDEX = BASE_DIR.parent / "frontend" / "index.html"
 # Keep the live worker pool deliberately simple. All eight scrapers can run
 # independently; one slow/broken store cannot block the others from publishing.
 MAX_WORKERS = len(STORES)
-STORE_TIMEOUT_SECONDS = 25.0
-JOB_TIMEOUT_SECONDS = 55.0
+STORE_TIMEOUT_SECONDS = 25.0  # retained for compatibility; future.result() never uses this as a fake timeout
+JOB_TIMEOUT_SECONDS = 90.0
 
 
 # ---------------------------------------------------------------------------
@@ -298,7 +298,7 @@ def _snapshot(job_id: str) -> Dict[str, Any]:
 def _publish_store(job_id: str, report: Dict[str, Any]) -> None:
     with JOBS_LOCK:
         job = JOBS.get(job_id)
-        if not job:
+        if not job or job.get("completed"):
             return
 
         store = report["store"]
@@ -326,10 +326,14 @@ def _run_job(job_id: str, query: str) -> None:
             for store in STORES
         }
 
+        # IMPORTANT: never stop publishing just because one slow store crossed
+        # the old 55-second window. Deloox can legitimately take ~55 seconds;
+        # breaking here used to leave a completed Deloox future unpublished.
+        # Every future that actually completes is published cumulatively.
         for future in as_completed(futures):
             store = futures[future]
             try:
-                report = future.result(timeout=STORE_TIMEOUT_SECONDS)
+                report = future.result()
             except Exception as exc:
                 report = {
                     "store": store,
@@ -340,11 +344,6 @@ def _run_job(job_id: str, query: str) -> None:
                     "error": f"{type(exc).__name__}: {exc}",
                 }
             _publish_store(job_id, report)
-
-            # If the overall job has exceeded the frontend's comfortable
-            # window, finish with whatever independent stores have returned.
-            if time.monotonic() - started >= JOB_TIMEOUT_SECONDS:
-                break
 
     with JOBS_LOCK:
         job = JOBS.get(job_id)
@@ -367,7 +366,7 @@ def root():
     return {
         "app": "ScentHunter",
         "status": "running",
-        "architecture": "simple-main-plus-independent-scrapers",
+        "architecture": "simple-progressive-independent-scrapers",
         "error": "frontend/index.html not found",
     }
 
@@ -376,7 +375,7 @@ def root():
 def health():
     return {
         "status": "healthy",
-        "architecture": "simple",
+        "architecture": "simple-progressive",
         "stores": STORES,
     }
 
@@ -526,7 +525,7 @@ def diagnose_stores(q: str = "Liquid Brun"):
 
     return {
         "ok": True,
-        "architecture": "simple-direct-scrapers",
+        "architecture": "simple-progressive-direct-scrapers",
         "query": query,
         "stores": reports,
         "total_count": sum(x.get("count", 0) for x in reports),
