@@ -365,6 +365,7 @@ body{position:relative;-webkit-overflow-scrolling:touch}
 </nav>
 <script>
 let isSearching = false;
+let lastSearchData = null; // <-- NUOVO: ultimo payload valido di /search-status
 const queryInput=document.getElementById("query"),searchButton=document.getElementById("searchButton"),statusBox=document.getElementById("status"),resultsBox=document.getElementById("results"),errorsBox=document.getElementById("errorsBox");
 
 const WISH_KEY="scenthunter_wishlist_v4";
