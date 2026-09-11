@@ -5,7 +5,7 @@ import importlib, json, os, signal, subprocess, sys, threading, time, traceback,
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
-APP_VERSION = '2.4-progressive-controlled'
+APP_VERSION = '2.5-progressive-fast-first'
 app = FastAPI(title='ScentHunter API', version=APP_VERSION)
 app.add_middleware(CORSMiddleware, allow_origins=['*'], allow_credentials=True, allow_methods=['*'], allow_headers=['*'])
 
@@ -18,7 +18,7 @@ LIGHTWEIGHT_STORES = ['bplatz','parfumcity','parfumzentrum','perfumemarket','ori
 NETWORK_HEAVY_STORES = ['deloox']
 BROWSER_STORES = ['sabina','notino']
 try:
-    LIGHT_WORKERS = max(1, min(len(LIGHTWEIGHT_STORES), int(os.getenv('SCENTHUNTER_LIGHT_WORKERS', str(len(LIGHTWEIGHT_STORES))))))
+    LIGHT_WORKERS = max(1, min(len(LIGHTWEIGHT_STORES), int(os.getenv('SCENTHUNTER_LIGHT_WORKERS', '2'))))
 except ValueError:
     LIGHT_WORKERS = len(LIGHTWEIGHT_STORES)
 NETWORK_WORKERS = 1
@@ -199,23 +199,66 @@ def _run_controlled_store(store,query,on_report):
     on_report(report)
 
 
+FAST_FIRST_STORES = ['bplatz', 'parfumcity']
+SECONDARY_LIGHT_STORES = ['orioudh', 'perfumemarket', 'parfumzentrum']
+DEFERRED_STORES = ['deloox', 'sabina', 'notino']
+
+
 def collect_store_reports_isolated(query,stores,on_report=None):
+    """Progressive resource-aware scheduler.
+
+    The first two proven-fast stores get the machine to themselves initially.
+    As soon as the first result/empty/error arrives, the remaining stores are
+    released. This avoids the Render Free CPU/RAM contention that previously
+    turned 5-8 second scrapers into 20-45 second scrapers when all 8 started
+    together. Every store remains independently killable and publishes as soon
+    as it finishes.
+    """
+    requested=list(stores)
     reports={}; lock=threading.Lock(); threads=[]
+    first_release=threading.Event()
+    started_stores=set()
+    started_lock=threading.Lock()
+
     def publish(report):
         with lock: reports[report['store']]=report
+        first_release.set()
         if callable(on_report): on_report(report)
-    for store in stores:
+
+    def start_store(store):
+        with started_lock:
+            if store in started_stores or store not in requested: return None
+            started_stores.add(store)
         t=threading.Thread(target=_run_controlled_store,args=(store,query,publish),daemon=True,name=f'scenthunter-store-{store}')
         t.start(); threads.append(t)
+        return t
+
+    # Phase 1: only the two stores that have historically produced the fastest
+    # real offers. Do not let Deloox/Chromium consume the initial CPU/RAM burst.
+    initial=[s for s in FAST_FIRST_STORES if s in requested]
+    if not initial:
+        initial=[s for s in requested[:2]]
+    for store in initial: start_store(store)
+
+    # Release the rest as soon as one of the fast stores has reported. The
+    # fallback timer guarantees a broken fast store cannot delay the others.
+    release_deadline=time.monotonic()+8.0
+    while not first_release.is_set() and time.monotonic()<release_deadline:
+        first_release.wait(timeout=0.2)
+
+    remaining=[s for s in requested if s not in started_stores]
+    for store in remaining: start_store(store)
+
     deadline=time.monotonic()+JOB_TIMEOUT_SECONDS
-    for t in threads: t.join(timeout=max(0.0,deadline-time.monotonic()))
-    unfinished=[stores[i] for i,t in enumerate(threads) if t.is_alive()]
+    for t in list(threads):
+        t.join(timeout=max(0.0,deadline-time.monotonic()))
+    unfinished=[t.name.rsplit('scenthunter-store-',1)[-1] for t in threads if t.is_alive()]
     if unfinished:
         print(f'SEARCH SUPERVISORS STILL RUNNING stores={unfinished}',flush=True)
         with lock:
             for store in unfinished:
                 reports.setdefault(store,_empty_report(store,elapsed=JOB_TIMEOUT_SECONDS,error='job_timeout'))
-    return [reports[s] for s in stores if s in reports]
+    return [reports[s] for s in requested if s in reports]
 
 
 JOBS={}; JOBS_LOCK=threading.Lock()
