@@ -33,6 +33,7 @@ import subprocess
 import sys
 import threading
 import time
+import traceback
 import uuid
 from pathlib import Path
 from typing import Any, Dict, Iterable, List, Optional, Tuple
@@ -48,7 +49,7 @@ from fastapi.responses import FileResponse
 
 app = FastAPI(
     title="ScentHunter API",
-    version="4.2-progressive-isolated-render-safe",
+    version="4.2-sliding-window-isolated",
 )
 
 app.add_middleware(
@@ -89,14 +90,11 @@ STORE_LABELS = {
 BASE_DIR = Path(__file__).resolve().parent
 FRONTEND_INDEX = BASE_DIR.parent / "frontend" / "index.html"
 
-# Render Free: teniamo bassa la concorrenza per evitare contention RAM/CPU.
+# Un solo scraper pesante alla volta.
+# Evita la contesa CPU/RAM/browser che si verifica quando più retailer
+# vengono eseguiti contemporaneamente sul processo Render.
+STORE_TIMEOUT_SECONDS = 12.0
 SEARCH_MAX_WORKERS = 2
-
-# Timeout individuale per singolo store (worker isolato).
-# 15s è più realistico su Render Free rispetto a 12s.
-STORE_TIMEOUT_SECONDS = 15.0
-
-# Timeout hard orchestrazione job complessiva.
 JOB_HARD_TIMEOUT_SECONDS = 60.0
 
 # Cache fresh: una seconda ricerca identica viene servita quasi subito.
@@ -200,6 +198,8 @@ def _safe_float(value: Any) -> Optional[float]:
     if not text:
         return None
 
+    # "100 ml" -> 100 non è sempre desiderabile per size, ma per price no.
+    # Il parser generico viene usato solo nei punti in cui è appropriato.
     text = text.replace("\xa0", " ")
     text = text.replace(",", ".")
 
@@ -225,6 +225,7 @@ def _parse_size_ml(value: Any) -> Optional[float]:
     if not text:
         return None
 
+    # Importante: non inferiamo ml da un numero senza unità.
     ml_match = re.search(r"(?<!\d)(\d+(?:\.\d+)?)\s*ml\b", text)
     if ml_match:
         return float(ml_match.group(1))
@@ -266,6 +267,7 @@ def _coerce_rows(raw: Any) -> List[Dict[str, Any]]:
         return []
 
     if isinstance(raw, dict):
+        # Alcuni scraper futuri potrebbero restituire {"results": [...]}.
         for key in ("results", "items", "products", "offers"):
             value = raw.get(key)
             if isinstance(value, (list, tuple)):
@@ -293,6 +295,16 @@ def _coerce_rows(raw: Any) -> List[Dict[str, Any]]:
 
 
 def clean_result(item: Dict[str, Any], store: str) -> Dict[str, Any]:
+    """
+    Normalizzazione di trasporto.
+
+    NON decide se un prodotto è corretto:
+    - non inventa il brand
+    - non inventa la disponibilità
+    - non inventa prezzi
+    - non fonde varianti
+    """
+
     result = dict(item)
 
     machine_store = _normalise_store(
@@ -305,20 +317,30 @@ def clean_result(item: Dict[str, Any], store: str) -> Dict[str, Any]:
         str(result.get("shop") or machine_store),
     )
 
+    # Nome: conserviamo tutto quello che lo scraper ha fornito.
     if not result.get("name"):
         for key in ("title", "product_name", "productTitle"):
             if result.get(key):
                 result["name"] = str(result[key]).strip()
                 break
 
+    # Brand: non estraiamo arbitrariamente il brand dal nome.
     if result.get("brand") is not None:
         result["brand"] = str(result["brand"]).strip()
 
     if result.get("name") is not None:
         result["name"] = str(result["name"]).strip()
 
+    # Size: solo quando l'unità è esplicita.
     if result.get("size_ml") in (None, ""):
-        for key in ("volume_ml", "format_ml", "size_ml", "size", "volume", "format"):
+        for key in (
+            "volume_ml",
+            "format_ml",
+            "size_ml",
+            "size",
+            "volume",
+            "format",
+        ):
             parsed = _parse_size_ml(result.get(key))
             if parsed is not None:
                 result["size_ml"] = parsed
@@ -330,6 +352,7 @@ def clean_result(item: Dict[str, Any], store: str) -> Dict[str, Any]:
         except (TypeError, ValueError):
             result["size_ml"] = None
 
+    # Prezzo numerico: non viene mai creato se non esiste un prezzo reale.
     if result.get("price_num") in (None, ""):
         for key in ("price", "current_price", "sale_price"):
             parsed = _safe_float(result.get(key))
@@ -339,6 +362,10 @@ def clean_result(item: Dict[str, Any], store: str) -> Dict[str, Any]:
     else:
         result["price_num"] = _safe_float(result.get("price_num"))
 
+    # Disponibilità:
+    # - available esplicito ha priorità
+    # - altrimenti in_stock
+    # - se nessuna informazione esiste, rimane unknown
     if "available" in result:
         if result["available"] is None:
             result["available"] = None
@@ -346,7 +373,13 @@ def clean_result(item: Dict[str, Any], store: str) -> Dict[str, Any]:
             low = _norm_text(result["available"])
             if low in {"true", "1", "yes", "available", "in stock"}:
                 result["available"] = True
-            elif low in {"false", "0", "no", "unavailable", "out of stock"}:
+            elif low in {
+                "false",
+                "0",
+                "no",
+                "unavailable",
+                "out of stock",
+            }:
                 result["available"] = False
             else:
                 result["available"] = None
@@ -360,7 +393,13 @@ def clean_result(item: Dict[str, Any], store: str) -> Dict[str, Any]:
             low = _norm_text(value)
             if low in {"true", "1", "yes", "available", "in stock"}:
                 result["available"] = True
-            elif low in {"false", "0", "no", "unavailable", "out of stock"}:
+            elif low in {
+                "false",
+                "0",
+                "no",
+                "unavailable",
+                "out of stock",
+            }:
                 result["available"] = False
             else:
                 result["available"] = None
@@ -369,6 +408,7 @@ def clean_result(item: Dict[str, Any], store: str) -> Dict[str, Any]:
     else:
         result["available"] = None
 
+    # URL: supportiamo i nomi usati dagli scraper esistenti.
     if not result.get("url"):
         for key in ("product_url", "link", "href"):
             if result.get(key):
@@ -379,7 +419,19 @@ def clean_result(item: Dict[str, Any], store: str) -> Dict[str, Any]:
 
 
 def result_key(item: Dict[str, Any]) -> Tuple[str, str, str, str]:
-    store = _normalise_store(item.get("store") or item.get("shop"), "")
+    """
+    Dedup conservativo.
+
+    Non unisce:
+    - negozi diversi
+    - formati diversi
+    - prodotti con URL/ID diversi
+    """
+
+    store = _normalise_store(
+        item.get("store") or item.get("shop"),
+        "",
+    )
 
     product_id = str(
         item.get("store_product_id")
@@ -389,8 +441,18 @@ def result_key(item: Dict[str, Any]) -> Tuple[str, str, str, str]:
         or ""
     ).strip().lower()
 
-    url = str(item.get("url") or item.get("product_url") or "").strip().lower()
-    name = _norm_text(item.get("name") or item.get("title") or "")
+    url = str(
+        item.get("url")
+        or item.get("product_url")
+        or ""
+    ).strip().lower()
+
+    name = _norm_text(
+        item.get("name")
+        or item.get("title")
+        or ""
+    )
+
     brand = _norm_text(item.get("brand") or "")
 
     size = item.get("size_ml")
@@ -412,12 +474,14 @@ def result_key(item: Dict[str, Any]) -> Tuple[str, str, str, str]:
 def dedupe_results(results: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
     seen = set()
     output: List[Dict[str, Any]] = []
+
     for item in results:
         key = result_key(item)
         if key in seen:
             continue
         seen.add(key)
         output.append(item)
+
     return output
 
 
@@ -425,14 +489,22 @@ def _stock_rank(item: Dict[str, Any]) -> int:
     available = item.get("available")
     price = _safe_float(item.get("price_num"))
 
+    # Disponibili con prezzo
     if available is True and price is not None:
         return 0
+
+    # Disponibili ma senza prezzo
     if available is True:
         return 1
+
+    # Disponibilità non determinata
     if available is None and price is not None:
         return 2
+
     if available is None:
         return 3
+
+    # Out of stock sempre per ultimi
     return 4
 
 
@@ -441,6 +513,7 @@ def sort_results(results: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
         rank = _stock_rank(item)
         price = _safe_float(item.get("price_num"))
         size = _safe_float(item.get("size_ml"))
+
         return (
             rank,
             price if price is not None else float("inf"),
@@ -457,61 +530,123 @@ def sort_results(results: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
 # ============================================================================
 
 def _comparison_identity(item: Dict[str, Any]) -> Tuple[str, str, str]:
-    brand = str(item.get("canonical_brand") or item.get("brand") or "").strip()
-    name = str(item.get("canonical_name") or item.get("name") or item.get("title") or "").strip()
-    concentration = str(item.get("concentration") or item.get("type") or "").strip()
+    """
+    Identità di confronto volutamente conservativa.
 
-    return (_norm_text(brand), _norm_text(name), _norm_text(concentration))
+    Se uno scraper ha già prodotto canonical_brand/canonical_name,
+    li utilizziamo. Altrimenti restiamo sul brand/name reali del retailer.
+
+    La concentrazione viene mantenuta separata quando disponibile.
+    """
+
+    brand = str(
+        item.get("canonical_brand")
+        or item.get("brand")
+        or ""
+    ).strip()
+
+    name = str(
+        item.get("canonical_name")
+        or item.get("name")
+        or item.get("title")
+        or ""
+    ).strip()
+
+    concentration = str(
+        item.get("concentration")
+        or item.get("type")
+        or ""
+    ).strip()
+
+    return (
+        _norm_text(brand),
+        _norm_text(name),
+        _norm_text(concentration),
+    )
 
 
-def build_comparisons(results: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+def build_comparisons(
+    results: List[Dict[str, Any]],
+) -> List[Dict[str, Any]]:
     groups: Dict[Tuple[str, str, str], List[Dict[str, Any]]] = {}
 
     for item in results:
         brand, name, concentration = _comparison_identity(item)
+
         if not name:
             continue
-        groups.setdefault((brand, name, concentration), []).append(item)
+
+        key = (brand, name, concentration)
+        groups.setdefault(key, []).append(item)
 
     comparisons: List[Dict[str, Any]] = []
 
     for _, offers in groups.items():
         offers = dedupe_results(offers)
         offers = sort_results(offers)
+
         if not offers:
             continue
 
         first = offers[0]
-        brand = str(first.get("canonical_brand") or first.get("brand") or "").strip()
-        name = str(first.get("canonical_name") or first.get("name") or first.get("title") or "").strip()
-        concentration = str(first.get("concentration") or "").strip()
 
-        formats = sorted({
-            round(float(item["size_ml"]), 3)
-            for item in offers
-            if item.get("size_ml") is not None and _safe_float(item.get("size_ml")) is not None
-        })
+        brand = str(
+            first.get("canonical_brand")
+            or first.get("brand")
+            or ""
+        ).strip()
 
-        comparisons.append({
+        name = str(
+            first.get("canonical_name")
+            or first.get("name")
+            or first.get("title")
+            or ""
+        ).strip()
+
+        concentration = str(
+            first.get("concentration")
+            or ""
+        ).strip()
+
+        formats = sorted(
+            {
+                round(float(item["size_ml"]), 3)
+                for item in offers
+                if item.get("size_ml") is not None
+                and _safe_float(item.get("size_ml")) is not None
+            }
+        )
+
+        # Il frontend può mostrare le offerte sotto la variante corretta.
+        comparison = {
             "brand": brand,
             "name": name,
-            "canonical_brand": str(first.get("canonical_brand") or brand).strip(),
-            "canonical_name": str(first.get("canonical_name") or name).strip(),
+            "canonical_brand": str(
+                first.get("canonical_brand") or brand
+            ).strip(),
+            "canonical_name": str(
+                first.get("canonical_name") or name
+            ).strip(),
             "concentration": concentration,
             "formats": formats,
             "offers": offers[:MAX_OFFERS_PER_COMPARISON],
             "count": len(offers),
-        })
+        }
 
+        comparisons.append(comparison)
+
+    # Prima i gruppi con offerte realmente acquistabili e prezzo.
     def comparison_key(group: Dict[str, Any]):
         offers = group.get("offers", [])
         best_price = float("inf")
+
         for offer in offers:
             if offer.get("available") is False:
                 continue
             price = _safe_float(offer.get("price_num"))
             if price is not None:
                 best_price = min(best_price, price)
+
         return (
             best_price,
             _norm_text(group.get("brand")),
@@ -527,7 +662,9 @@ def build_comparisons(results: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
 # ============================================================================
 
 def load_scraper(store: str):
-    return importlib.import_module(f"scrapers.{store}.scraper")
+    return importlib.import_module(
+        f"scrapers.{store}.scraper"
+    )
 
 
 # ============================================================================
@@ -535,6 +672,7 @@ def load_scraper(store: str):
 # ============================================================================
 
 def _scraper_worker(store: str, query: str) -> int:
+    """Child-process entry point: execute exactly one retailer scraper."""
     try:
         module = load_scraper(store)
         search = getattr(module, "search", None)
@@ -543,52 +681,31 @@ def _scraper_worker(store: str, query: str) -> int:
 
         raw = search(query)
         rows = _coerce_rows(raw)
-        sys.stdout.write(json.dumps({"ok": True, "rows": rows}, ensure_ascii=False, default=str) + "\n")
+        sys.stdout.write(
+            json.dumps(
+                {"ok": True, "rows": rows},
+                ensure_ascii=False,
+                default=str,
+            ) + "\n"
+        )
         sys.stdout.flush()
         return 0
     except BaseException as exc:
-        sys.stdout.write(json.dumps({"ok": False, "error": f"{type(exc).__name__}: {exc}"}, ensure_ascii=False) + "\n")
+        sys.stdout.write(
+            json.dumps(
+                {"ok": False, "error": f"{type(exc).__name__}: {exc}"},
+                ensure_ascii=False,
+            ) + "\n"
+        )
         sys.stdout.flush()
         return 1
 
 
-def _terminate_process_tree(process: subprocess.Popen) -> None:
-    if process.poll() is not None:
-        return
-
-    # 1) Graceful terminate
-    try:
-        process.terminate()
-    except Exception:
-        pass
-
-    # 2) Wait breve
-    try:
-        process.wait(timeout=1.0)
-        return
-    except Exception:
-        pass
-
-    # 3) Hard kill gruppo processo (Linux/Render)
-    try:
-        if os.name != "nt":
-            os.killpg(process.pid, signal.SIGKILL)
-        else:
-            process.kill()
-    except Exception:
-        try:
-            process.kill()
-        except Exception:
-            pass
-
-    # 4) Last wait
-    try:
-        process.wait(timeout=1.5)
-    except Exception:
-        pass
-
-
-def _run_scraper_isolated(store: str, query: str) -> Tuple[List[Dict[str, Any]], Optional[str]]:
+def _run_scraper_isolated(
+    store: str,
+    query: str,
+) -> Tuple[List[Dict[str, Any]], Optional[str]]:
+    """Run exactly one scraper in a killable child process."""
     command = [
         sys.executable,
         str(Path(__file__).resolve()),
@@ -597,7 +714,11 @@ def _run_scraper_isolated(store: str, query: str) -> Tuple[List[Dict[str, Any]],
         query,
     ]
     env = os.environ.copy()
-    env["PYTHONPATH"] = str(BASE_DIR) + os.pathsep + env.get("PYTHONPATH", "")
+    env["PYTHONPATH"] = (
+        str(BASE_DIR)
+        + os.pathsep
+        + env.get("PYTHONPATH", "")
+    )
 
     process = None
     try:
@@ -613,7 +734,9 @@ def _run_scraper_isolated(store: str, query: str) -> Tuple[List[Dict[str, Any]],
             start_new_session=(os.name != "nt"),
         )
 
-        stdout, stderr = process.communicate(timeout=STORE_TIMEOUT_SECONDS)
+        stdout, stderr = process.communicate(
+            timeout=STORE_TIMEOUT_SECONDS
+        )
 
         payload = None
         for line in reversed((stdout or "").splitlines()):
@@ -624,7 +747,9 @@ def _run_scraper_isolated(store: str, query: str) -> Tuple[List[Dict[str, Any]],
                 candidate = json.loads(line)
             except json.JSONDecodeError:
                 continue
-            if isinstance(candidate, dict) and ("ok" in candidate or "rows" in candidate):
+            if isinstance(candidate, dict) and (
+                "ok" in candidate or "rows" in candidate
+            ):
                 payload = candidate
                 break
 
@@ -633,7 +758,7 @@ def _run_scraper_isolated(store: str, query: str) -> Tuple[List[Dict[str, Any]],
             if isinstance(payload, dict) and payload.get("error"):
                 error += ": " + str(payload["error"])
             elif stderr and stderr.strip():
-                error += ": " + stderr.strip()[-800:]
+                error += ": " + stderr.strip()[-1000:]
             return [], error
 
         if not isinstance(payload, dict) or payload.get("ok") is not True:
@@ -643,21 +768,49 @@ def _run_scraper_isolated(store: str, query: str) -> Tuple[List[Dict[str, Any]],
 
     except subprocess.TimeoutExpired:
         if process is not None:
-            _terminate_process_tree(process)
+            try:
+                if os.name != "nt":
+                    os.killpg(process.pid, signal.SIGKILL)
+                else:
+                    process.kill()
+            except Exception:
+                try:
+                    process.kill()
+                except Exception:
+                    pass
+            try:
+                process.communicate(timeout=2)
+            except Exception:
+                pass
         return [], f"timeout_after_{STORE_TIMEOUT_SECONDS:g}s"
 
     except Exception as exc:
-        if process is not None:
-            _terminate_process_tree(process)
+        if process is not None and process.poll() is None:
+            try:
+                if os.name != "nt":
+                    os.killpg(process.pid, signal.SIGKILL)
+                else:
+                    process.kill()
+            except Exception:
+                pass
         return [], f"{type(exc).__name__}: {exc}"
 
 
-def run_store(store: str, query: str, use_cache: bool = True) -> Dict[str, Any]:
+def run_store(
+    store: str,
+    query: str,
+    use_cache: bool = True,
+) -> Dict[str, Any]:
+    """Esegue un solo store, completamente isolato dagli altri."""
     started = time.monotonic()
     query = str(query or "").strip()
 
     if use_cache:
-        cached, cache_state = _cache_get(store, query, allow_stale=True)
+        cached, cache_state = _cache_get(
+            store,
+            query,
+            allow_stale=True,
+        )
         if cached is not None and cache_state == "fresh":
             return {
                 "store": store,
@@ -674,17 +827,27 @@ def run_store(store: str, query: str, use_cache: bool = True) -> Dict[str, Any]:
         if worker_error:
             raise RuntimeError(worker_error)
 
-        cleaned = [clean_result(row, store) for row in raw_rows[:MAX_RESULTS_PER_STORE]]
+        cleaned = [
+            clean_result(row, store)
+            for row in raw_rows[:MAX_RESULTS_PER_STORE]
+        ]
         cleaned = dedupe_results(cleaned)
         cleaned = sort_results(cleaned)
 
         matched = cleaned
 
+        # Non memorizziamo un risultato vuoto: un KO temporaneo di uno scraper
+        # non deve diventare un falso "nessun prodotto" per 90 secondi.
         if matched:
             _cache_put(store, query, matched)
 
         elapsed = round(time.monotonic() - started, 3)
-        logger.info("STORE END | %s | results=%s | elapsed=%ss", store, len(matched), elapsed)
+        logger.info(
+            "STORE END | %s | results=%s | elapsed=%ss",
+            store,
+            len(matched),
+            elapsed,
+        )
 
         return {
             "store": store,
@@ -698,9 +861,18 @@ def run_store(store: str, query: str, use_cache: bool = True) -> Dict[str, Any]:
 
     except Exception as exc:
         error_text = f"{type(exc).__name__}: {exc}"
-        logger.warning("STORE ERROR | %s | query=%r | %s", store, query, error_text)
+        logger.warning(
+            "STORE ERROR | %s | query=%r | %s",
+            store,
+            query,
+            error_text,
+        )
 
-        stale, stale_state = _cache_get(store, query, allow_stale=True)
+        stale, stale_state = _cache_get(
+            store,
+            query,
+            allow_stale=True,
+        )
         if stale is not None and stale_state == "stale":
             return {
                 "store": store,
@@ -730,7 +902,11 @@ def run_store(store: str, query: str, use_cache: bool = True) -> Dict[str, Any]:
 # SEARCH ORCHESTRATOR
 # ============================================================================
 
-def run_search(query: str, use_cache: bool = True) -> Dict[str, Any]:
+def run_search(
+    query: str,
+    use_cache: bool = True,
+) -> Dict[str, Any]:
+    """Esegue i retailer uno alla volta e restituisce risultati reali."""
     query = str(query or "").strip()
     started = time.monotonic()
 
@@ -745,7 +921,11 @@ def run_search(query: str, use_cache: bool = True) -> Dict[str, Any]:
 
     all_results = sort_results(dedupe_results(all_results))
     comparisons = build_comparisons(all_results)
-    errors = {report["store"]: report["error"] for report in reports if report.get("error")}
+    errors = {
+        report["store"]: report["error"]
+        for report in reports
+        if report.get("error")
+    }
 
     return {
         "query": query,
@@ -775,6 +955,8 @@ def run_search(query: str, use_cache: bool = True) -> Dict[str, Any]:
 
 JOBS: Dict[str, Dict[str, Any]] = {}
 JOBS_LOCK = threading.Lock()
+
+# Evitiamo che una vecchia ricerca rimanga in RAM per sempre.
 MAX_JOBS = 40
 
 
@@ -782,8 +964,14 @@ def _cleanup_jobs() -> None:
     with JOBS_LOCK:
         if len(JOBS) <= MAX_JOBS:
             return
-        ordered = sorted(JOBS.items(), key=lambda pair: pair[1].get("started_at", 0.0))
+
+        ordered = sorted(
+            JOBS.items(),
+            key=lambda pair: pair[1].get("started_at", 0.0),
+        )
+
         remove_count = len(JOBS) - MAX_JOBS
+
         for job_id, _ in ordered[:remove_count]:
             JOBS.pop(job_id, None)
 
@@ -812,6 +1000,7 @@ def _new_job(query: str) -> str:
 def _snapshot(job_id: str) -> Dict[str, Any]:
     with JOBS_LOCK:
         job = JOBS.get(job_id)
+
         if not job:
             return {
                 "job_id": job_id,
@@ -824,7 +1013,41 @@ def _snapshot(job_id: str) -> Dict[str, Any]:
                 "stores": {},
                 "elapsed": 0.0,
             }
+
         return copy.deepcopy(job)
+
+
+def _publish_report(
+    job_id: str,
+    report: Dict[str, Any],
+) -> None:
+    with JOBS_LOCK:
+        job = JOBS.get(job_id)
+        if not job:
+            return
+
+        store = report["store"]
+
+        job["stores"][store] = {
+            "status": report["status"],
+            "cache": report.get("cache"),
+            "count": report["count"],
+            "elapsed": report["elapsed"],
+        }
+
+        if report.get("error"):
+            job["errors"][store] = report["error"]
+
+        # Accumulo progressivo.
+        job["results"].extend(report.get("results", []))
+        job["results"] = dedupe_results(job["results"])
+        job["results"] = sort_results(job["results"])
+        job["comparisons"] = build_comparisons(job["results"])
+
+        job["elapsed"] = round(
+            time.time() - job["started_at"],
+            3,
+        )
 
 
 def _publish_store_report(job_id: str, report: Dict[str, Any], started: float) -> None:
@@ -852,94 +1075,197 @@ def _publish_store_report(job_id: str, report: Dict[str, Any], started: float) -
 
 
 def _run_job(job_id: str, query: str) -> None:
+    """
+    Orchestratore progressivo con sliding window.
+
+    Mantiene al massimo SEARCH_MAX_WORKERS retailer contemporaneamente,
+    ma non usa batch rigidi: appena un retailer termina, il successivo
+    viene avviato immediatamente.
+
+    Ogni retailer resta isolato nel proprio subprocess con timeout individuale
+    (gestito da run_store -> _run_scraper_isolated).
+    """
     started = time.monotonic()
+    executor = None
 
     try:
-        from concurrent.futures import FIRST_COMPLETED, ThreadPoolExecutor, wait
+        from concurrent.futures import (
+            FIRST_COMPLETED,
+            ThreadPoolExecutor,
+            wait,
+        )
 
-        max_workers = max(1, int(SEARCH_MAX_WORKERS))
-        pending_stores = list(STORES)
-        in_flight = {}
+        stores_queue = list(STORES)
+        next_index = 0
+        active = {}
 
-        with ThreadPoolExecutor(max_workers=max_workers, thread_name_prefix="scent_store") as executor:
-            # Avvio immediato primi slot
-            while pending_stores and len(in_flight) < max_workers:
-                store = pending_stores.pop(0)
-                future = executor.submit(run_store, store, query, True)
-                in_flight[future] = store
+        executor = ThreadPoolExecutor(
+            max_workers=SEARCH_MAX_WORKERS,
+            thread_name_prefix="scent_store",
+        )
 
-            while in_flight:
-                with JOBS_LOCK:
-                    job = JOBS.get(job_id)
-                    if job is None or job.get("completed"):
-                        return
+        def submit_next() -> bool:
+            nonlocal next_index
 
-                if time.monotonic() - started >= JOB_HARD_TIMEOUT_SECONDS:
-                    with JOBS_LOCK:
-                        job = JOBS.get(job_id)
-                        if job and not job.get("completed"):
-                            job["errors"]["job"] = (
-                                "Ricerca completata con i risultati disponibili: "
-                                "tempo massimo orchestrazione raggiunto."
-                            )
-                            job["partial"] = len(job.get("stores", {})) < len(STORES)
+            if next_index >= len(stores_queue):
+                return False
+
+            store = stores_queue[next_index]
+            next_index += 1
+            future = executor.submit(run_store, store, query, True)
+            active[future] = store
+            logger.info(
+                "SEARCH STORE START | job=%s | store=%s | active=%s/%s",
+                job_id,
+                store,
+                len(active),
+                SEARCH_MAX_WORKERS,
+            )
+            return True
+
+        # Riempie inizialmente la sliding window.
+        for _ in range(min(SEARCH_MAX_WORKERS, len(stores_queue))):
+            submit_next()
+
+        while active or next_index < len(stores_queue):
+            with JOBS_LOCK:
+                job = JOBS.get(job_id)
+                if job is None or job.get("completed"):
                     break
 
-                done, _ = wait(
-                    set(in_flight.keys()),
-                    timeout=0.5,
-                    return_when=FIRST_COMPLETED,
-                )
-                if not done:
+            remaining = JOB_HARD_TIMEOUT_SECONDS - (time.monotonic() - started)
+            if remaining <= 0:
+                with JOBS_LOCK:
+                    job = JOBS.get(job_id)
+                    if job and not job.get("completed"):
+                        job["errors"]["job"] = (
+                            "Ricerca completata con i risultati disponibili: "
+                            "tempo massimo orchestrazione raggiunto."
+                        )
+                break
+
+            done, _ = wait(
+                list(active),
+                timeout=remaining,
+                return_when=FIRST_COMPLETED,
+            )
+
+            if not done:
+                # Il timeout globale è scaduto mentre almeno un retailer era
+                # ancora in esecuzione. Non aspettiamo un batch inesistente:
+                # usciamo e lasciamo che i future già avviati terminino da soli.
+                with JOBS_LOCK:
+                    job = JOBS.get(job_id)
+                    if job and not job.get("completed"):
+                        job["errors"]["job"] = (
+                            "Ricerca completata con i risultati disponibili: "
+                            "tempo massimo orchestrazione raggiunto."
+                        )
+                break
+
+            # Gestisce TUTTI i retailer che sono terminati nello stesso istante,
+            # pubblicando ciascun risultato subito e liberando immediatamente
+            # uno slot per il prossimo retailer.
+            for future in done:
+                store = active.pop(future, None)
+                if store is None:
                     continue
 
-                for fut in done:
-                    store = in_flight.pop(fut, None)
-                    if not store:
-                        continue
+                try:
+                    report = future.result()
+                except Exception as exc:
+                    report = {
+                        "store": store,
+                        "status": "error",
+                        "cache": "miss",
+                        "elapsed": round(time.monotonic() - started, 3),
+                        "count": 0,
+                        "results": [],
+                        "error": f"{type(exc).__name__}: {exc}",
+                    }
 
-                    try:
-                        report = fut.result()
-                    except Exception as exc:
-                        report = {
-                            "store": store,
-                            "status": "error",
-                            "cache": "miss",
-                            "elapsed": round(time.monotonic() - started, 3),
-                            "count": 0,
-                            "results": [],
-                            "error": f"{type(exc).__name__}: {exc}",
-                        }
+                # PUBBLICAZIONE IMMEDIATA: il frontend può vedere questo store
+                # senza aspettare gli altri retailer.
+                _publish_store_report(job_id, report, started)
+                gc.collect()
 
-                    _publish_store_report(job_id, report, started)
-                    gc.collect()
-
-                    # Slot libero -> parte subito prossimo store
-                    if pending_stores:
-                        next_store = pending_stores.pop(0)
-                        next_fut = executor.submit(run_store, next_store, query, True)
-                        in_flight[next_fut] = next_store
+            # Riempie immediatamente gli slot appena liberati.
+            while (
+                len(active) < SEARCH_MAX_WORKERS
+                and next_index < len(stores_queue)
+                and time.monotonic() - started < JOB_HARD_TIMEOUT_SECONDS
+            ):
+                submit_next()
 
     except Exception as exc:
-        logger.exception("SEARCH JOB ERROR | job=%s | query=%r | %s", job_id, query, exc)
+        logger.exception(
+            "SEARCH JOB ERROR | job=%s | query=%r | %s",
+            job_id,
+            query,
+            exc,
+        )
         with JOBS_LOCK:
             job = JOBS.get(job_id)
             if job:
                 job["errors"]["job"] = f"{type(exc).__name__}: {exc}"
 
     finally:
+        # MAI usare un context manager qui: chiudere un executor con
+        # wait=True in caso di timeout reintrodurrebbe esattamente il blocco
+        # che stiamo eliminando.
+        if executor is not None:
+            try:
+                with JOBS_LOCK:
+                    job = JOBS.get(job_id)
+                    timed_out = bool(
+                        job
+                        and job.get("errors", {}).get("job")
+                        and "tempo massimo orchestrazione"
+                        in str(job["errors"]["job"])
+                    )
+
+                if timed_out:
+                    executor.shutdown(
+                        wait=False,
+                        cancel_futures=True,
+                    )
+                else:
+                    # In condizioni normali tutti i future sono già terminati,
+                    # quindi wait=True è sicuro e rilascia ordinatamente le
+                    # risorse del pool.
+                    executor.shutdown(
+                        wait=True,
+                        cancel_futures=True,
+                    )
+            except Exception:
+                logger.exception(
+                    "SEARCH EXECUTOR SHUTDOWN ERROR | job=%s",
+                    job_id,
+                )
+
         with JOBS_LOCK:
             job = JOBS.get(job_id)
             if job:
                 job["results"] = sort_results(dedupe_results(job["results"]))
                 job["comparisons"] = build_comparisons(job["results"])
                 job["completed"] = True
-                job["partial"] = len(job.get("stores", {})) < len(STORES)
+                job["partial"] = False
                 job["elapsed"] = round(time.monotonic() - started, 3)
 
 
 @app.get("/search")
-def search_perfume(q: str, fresh: bool = False):
+def search_perfume(
+    q: str,
+    fresh: bool = False,
+):
+    """
+    Endpoint principale usato dal frontend.
+
+    /search?q=...
+    /search?q=...&fresh=true
+
+    `fresh=true` forza il bypass della cache fresh, utile per test.
+    """
     query = str(q or "").strip()
 
     if not query:
@@ -954,12 +1280,20 @@ def search_perfume(q: str, fresh: bool = False):
             "elapsed": 0.0,
         }
 
-    logger.info("SEARCH START | query=%r | fresh=%s", query, fresh)
+    logger.info(
+        "SEARCH START | query=%r | fresh=%s",
+        query,
+        fresh,
+    )
 
-    data = run_search(query=query, use_cache=not fresh)
+    data = run_search(
+        query=query,
+        use_cache=not fresh,
+    )
 
     logger.info(
-        "SEARCH END | query=%r | results=%s | elapsed=%ss | stores=%s/%s",
+        "SEARCH END | query=%r | results=%s | elapsed=%ss | "
+        "stores=%s/%s",
         query,
         data["count"],
         data["elapsed"],
@@ -1015,7 +1349,11 @@ def search_status_query(job_id: str):
 # ============================================================================
 
 @app.get("/test-store")
-def test_store(store: str, q: str, fresh: bool = True):
+def test_store(
+    store: str,
+    q: str,
+    fresh: bool = True,
+):
     store = str(store or "").strip().lower()
     query = str(q or "").strip()
 
@@ -1028,7 +1366,11 @@ def test_store(store: str, q: str, fresh: bool = True):
             "stores": STORES,
         }
 
-    report = run_store(store, query, use_cache=not fresh)
+    report = run_store(
+        store,
+        query,
+        use_cache=not fresh,
+    )
 
     return {
         "ok": report["status"] not in {"error", "timeout"},
@@ -1038,8 +1380,17 @@ def test_store(store: str, q: str, fresh: bool = True):
 
 
 @app.get("/diagnose-stores")
-def diagnose_stores(q: str = "Liquid Brun"):
-    data = run_search(query=str(q or "").strip(), use_cache=False)
+def diagnose_stores(
+    q: str = "Liquid Brun",
+):
+    """
+    Diagnostica reale degli stessi otto scraper usati dalla ricerca.
+    Non usa un percorso parallelo diverso.
+    """
+    data = run_search(
+        query=str(q or "").strip(),
+        use_cache=False,
+    )
 
     return {
         "ok": True,
@@ -1051,7 +1402,11 @@ def diagnose_stores(q: str = "Liquid Brun"):
 @app.get("/cache/clear")
 def clear_cache():
     _cache_clear()
-    return {"ok": True, "cache": "cleared"}
+
+    return {
+        "ok": True,
+        "cache": "cleared",
+    }
 
 
 # ============================================================================
@@ -1060,6 +1415,7 @@ def clear_cache():
 
 @app.get("/", include_in_schema=False)
 def root_frontend():
+    """Serve il frontend reale dalla root dell'applicazione."""
     if FRONTEND_INDEX.exists():
         return FileResponse(FRONTEND_INDEX)
     return {"error": "frontend/index.html not found"}
@@ -1069,13 +1425,17 @@ def root_frontend():
 def frontend():
     if FRONTEND_INDEX.exists():
         return FileResponse(FRONTEND_INDEX)
-    return {"error": "frontend/index.html not found"}
+
+    return {
+        "error": "frontend/index.html not found",
+    }
+
 
 
 @app.get("/diagnose-frontend")
 def diagnose_frontend():
+    """Diagnostica quale frontend sta realmente servendo questo backend."""
     import hashlib
-
     data = {
         "diagnostic": True,
         "frontend_path": str(FRONTEND_INDEX),
@@ -1083,7 +1443,6 @@ def diagnose_frontend():
     }
     if not FRONTEND_INDEX.exists():
         return data
-
     raw = FRONTEND_INDEX.read_bytes()
     text = raw.decode("utf-8", errors="replace")
     data.update({
@@ -1103,7 +1462,6 @@ def diagnose_frontend():
     })
     return data
 
-
 # ============================================================================
 # LOCAL ENTRYPOINT
 # ============================================================================
@@ -1113,7 +1471,9 @@ if __name__ == "__main__":
         worker_store = str(sys.argv[2] or "").strip().lower()
         worker_query = str(sys.argv[3] or "").strip()
         if worker_store not in STORES:
-            sys.stdout.write(json.dumps({"ok": False, "error": "unknown_store"}) + "\n")
+            sys.stdout.write(
+                json.dumps({"ok": False, "error": "unknown_store"}) + "\n"
+            )
             raise SystemExit(1)
         raise SystemExit(_scraper_worker(worker_store, worker_query))
 
