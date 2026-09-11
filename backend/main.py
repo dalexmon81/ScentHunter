@@ -1281,6 +1281,53 @@ def frontend():
     }
 
 
+
+# ============================================================================
+# DIAGNOSTICO ENDPOINT - NON MODIFICA LA RICERCA
+# ============================================================================
+@app.get("/diagnose-search")
+def diagnose_search_endpoint(q: str = "Liquid Brun"):
+    """
+    Diagnostica visibile del percorso reale di ricerca.
+    Esegue gli stessi scraper usati da /search, uno alla volta,
+    senza cache, e restituisce per ogni store il punto esatto in cui
+    eventuali risultati vengono persi.
+    """
+    query = str(q or "").strip()
+    if not query:
+        raise HTTPException(status_code=400, detail="Parametro q mancante")
+
+    reports = []
+    all_results = []
+    started = time.monotonic()
+
+    for store in STORES:
+        report = run_store(store, query, use_cache=False)
+        rows = report.get("results") or []
+        all_results.extend(rows)
+
+        reports.append({
+            "store": store,
+            "status": report.get("status"),
+            "elapsed": report.get("elapsed"),
+            "count": report.get("count", len(rows)),
+            "results": rows,
+            "error": report.get("error"),
+        })
+
+    final_results = sort_results(dedupe_results(all_results))
+
+    return {
+        "diagnostic": True,
+        "query": query,
+        "architecture": "sequential-isolated-scrapers",
+        "total_elapsed": round(time.monotonic() - started, 3),
+        "total_results_before_dedupe": len(all_results),
+        "total_results_final": len(final_results),
+        "stores": reports,
+        "final_results": final_results,
+    }
+
 # ============================================================================
 # LOCAL ENTRYPOINT
 # ============================================================================
