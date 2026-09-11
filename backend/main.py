@@ -49,7 +49,7 @@ from fastapi.responses import FileResponse
 
 app = FastAPI(
     title="ScentHunter API",
-    version="4.2-sliding-window-isolated",
+    version="4.3-fast-lane-isolated",
 )
 
 app.add_middleware(
@@ -95,7 +95,34 @@ FRONTEND_INDEX = BASE_DIR.parent / "frontend" / "index.html"
 # vengono eseguiti contemporaneamente sul processo Render.
 STORE_TIMEOUT_SECONDS = 12.0
 SEARCH_MAX_WORKERS = 2
-JOB_HARD_TIMEOUT_SECONDS = 60.0
+JOB_HARD_TIMEOUT_SECONDS = 45.0
+
+# Ordine della ricerca progressiva: prima i retailer che dai test reali
+# stanno restituendo risultati in modo affidabile. I retailer lenti/instabili
+# vengono comunque interrogati, ma non possono occupare i primi slot.
+PROGRESSIVE_STORE_ORDER = [
+    "bplatz",
+    "parfumcity",
+    "perfumemarket",
+    "orioudh",
+    "deloox",
+    "parfumzentrum",
+    "sabina",
+    "notino",
+]
+
+# Timeout specifici: i quattro retailer della fast lane hanno già dimostrato
+# tempi reali ~6-10s; quelli instabili non devono trattenere la ricerca per 12s.
+PROGRESSIVE_STORE_TIMEOUTS = {
+    "bplatz": 12.0,
+    "parfumcity": 12.0,
+    "perfumemarket": 12.0,
+    "orioudh": 12.0,
+    "deloox": 7.0,
+    "parfumzentrum": 7.0,
+    "sabina": 7.0,
+    "notino": 7.0,
+}
 
 # Cache fresh: una seconda ricerca identica viene servita quasi subito.
 CACHE_TTL_SECONDS = 90.0
@@ -704,8 +731,10 @@ def _scraper_worker(store: str, query: str) -> int:
 def _run_scraper_isolated(
     store: str,
     query: str,
+    timeout_seconds: Optional[float] = None,
 ) -> Tuple[List[Dict[str, Any]], Optional[str]]:
     """Run exactly one scraper in a killable child process."""
+    timeout_seconds = float(timeout_seconds or STORE_TIMEOUT_SECONDS)
     command = [
         sys.executable,
         str(Path(__file__).resolve()),
@@ -735,7 +764,7 @@ def _run_scraper_isolated(
         )
 
         stdout, stderr = process.communicate(
-            timeout=STORE_TIMEOUT_SECONDS
+            timeout=timeout_seconds
         )
 
         payload = None
@@ -782,7 +811,7 @@ def _run_scraper_isolated(
                 process.communicate(timeout=2)
             except Exception:
                 pass
-        return [], f"timeout_after_{STORE_TIMEOUT_SECONDS:g}s"
+        return [], f"timeout_after_{timeout_seconds:g}s"
 
     except Exception as exc:
         if process is not None and process.poll() is None:
@@ -800,6 +829,7 @@ def run_store(
     store: str,
     query: str,
     use_cache: bool = True,
+    timeout_seconds: Optional[float] = None,
 ) -> Dict[str, Any]:
     """Esegue un solo store, completamente isolato dagli altri."""
     started = time.monotonic()
@@ -823,7 +853,7 @@ def run_store(
             }
 
     try:
-        raw_rows, worker_error = _run_scraper_isolated(store, query)
+        raw_rows, worker_error = _run_scraper_isolated(store, query, timeout_seconds=timeout_seconds)
         if worker_error:
             raise RuntimeError(worker_error)
 
@@ -1095,7 +1125,7 @@ def _run_job(job_id: str, query: str) -> None:
             wait,
         )
 
-        stores_queue = list(STORES)
+        stores_queue = list(PROGRESSIVE_STORE_ORDER)
         next_index = 0
         active = {}
 
@@ -1112,7 +1142,13 @@ def _run_job(job_id: str, query: str) -> None:
 
             store = stores_queue[next_index]
             next_index += 1
-            future = executor.submit(run_store, store, query, True)
+            future = executor.submit(
+                run_store,
+                store,
+                query,
+                True,
+                PROGRESSIVE_STORE_TIMEOUTS.get(store, STORE_TIMEOUT_SECONDS),
+            )
             active[future] = store
             logger.info(
                 "SEARCH STORE START | job=%s | store=%s | active=%s/%s",
@@ -1395,6 +1431,8 @@ def diagnose_stores(
     return {
         "ok": True,
         "architecture": "sequential-isolated-scrapers",
+        "progressive_order": PROGRESSIVE_STORE_ORDER,
+        "progressive_timeouts": PROGRESSIVE_STORE_TIMEOUTS,
         **data,
     }
 
