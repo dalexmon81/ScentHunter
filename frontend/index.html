@@ -2168,7 +2168,16 @@ async function searchPerfume(){
       updateBestPricesFromGroups(groups);
 
       if(!productDetailOpen){
-        showProducts(groups);
+        // Durante la ricerca uno snapshot iniziale può avere zero risultati.
+        // NON mostrare "nessun profumo trovato" finché il job non è concluso.
+        if(groups.length){
+          showProducts(groups);
+        }else if(final || progressiveData.completed){
+          showProducts(groups);
+        }else{
+          resultsBox.innerHTML="";
+          statusBox.textContent="Ricerca in corso...";
+        }
       }
 
       refreshWishlistFromResults(
