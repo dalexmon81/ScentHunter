@@ -1444,16 +1444,20 @@ async function searchStoresProgressive(term,onPartial){
       lastData=status||lastData;
 
       if(typeof onPartial==="function"){
-        onPartial({
-          query:status?.query||query,
-          count:Number(status?.count||0),
-          results:Array.isArray(status?.results)?status.results:[],
-          comparisons:Array.isArray(status?.comparisons)?status.comparisons:[],
-          errors:status?.errors&&typeof status.errors==="object"?status.errors:{},
-          phase:status?.phase||"searching",
-          completed:Boolean(status?.completed),
-          status:status?.status||"searching"
-        },Boolean(status?.completed));
+        try{
+          onPartial({
+            query:status?.query||query,
+            count:Number(status?.count||0),
+            results:Array.isArray(status?.results)?status.results:[],
+            comparisons:Array.isArray(status?.comparisons)?status.comparisons:[],
+            errors:status?.errors&&typeof status.errors==="object"?status.errors:{},
+            phase:status?.phase||"searching",
+            completed:Boolean(status?.completed),
+            status:status?.status||"searching"
+          },Boolean(status?.completed));
+        }catch(renderError){
+          console.error("ScentHunter render error:",renderError);
+        }
       }
 
       if(status?.status==="completed"||status?.completed===true){
@@ -1560,11 +1564,31 @@ async function searchPerfume(){
       errorsBox.innerHTML="";
     });
 
+    let usableFinalData=finalData;
+    const progressiveCount =
+      (Array.isArray(finalData?.results)?finalData.results.length:0) +
+      (Array.isArray(finalData?.comparisons)?finalData.comparisons.reduce((n,g)=>n+(Array.isArray(g?.offers)?g.offers.length:0),0):0);
+
+    if(progressiveCount===0 && finalData?.status!=="error"){
+      try{
+        const fallback=await fetchJSONWithTimeout(
+          backend()+"/search?q="+encodeURIComponent(q),
+          120000
+        );
+        const fallbackCount=
+          (Array.isArray(fallback?.results)?fallback.results.length:0) +
+          (Array.isArray(fallback?.comparisons)?fallback.comparisons.reduce((n,g)=>n+(Array.isArray(g?.offers)?g.offers.length:0),0):0);
+        if(fallbackCount>0)usableFinalData=fallback;
+      }catch(fallbackError){
+        console.error("ScentHunter fallback search error:",fallbackError);
+      }
+    }
+
     const finalGroups=shGroupData({
-      query:finalData?.query||q,
-      results:Array.isArray(finalData?.results)?finalData.results:[],
-      comparisons:Array.isArray(finalData?.comparisons)?finalData.comparisons:[],
-      errors:finalData?.errors&&typeof finalData.errors==="object"?finalData.errors:{},
+      query:usableFinalData?.query||q,
+      results:Array.isArray(usableFinalData?.results)?usableFinalData.results:[],
+      comparisons:Array.isArray(usableFinalData?.comparisons)?usableFinalData.comparisons:[],
+      errors:usableFinalData?.errors&&typeof usableFinalData.errors==="object"?usableFinalData.errors:{},
       completed:true,
       status:"completed"
     });
