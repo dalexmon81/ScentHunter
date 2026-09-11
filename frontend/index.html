@@ -92,6 +92,24 @@ body{position:relative}
 </style>
 
 <style>
+/* FIX8: scroll nativo della pagina su iPhone/Safari.
+   Evita il contenitore scrollabile annidato del FIX7. */
+html,body{
+  height:auto!important;
+  min-height:100%!important;
+  overflow-x:hidden!important;
+  overflow-y:auto!important;
+}
+.app{
+  height:auto!important;
+  min-height:100dvh!important;
+  overflow:visible!important;
+  -webkit-overflow-scrolling:auto!important;
+  padding-bottom:calc(125px + env(safe-area-inset-bottom))!important;
+}
+</style>
+
+<style>
 .view{display:none}.view.active{display:block}
 .wishlist-head{display:flex;align-items:center;justify-content:space-between;margin:6px 4px 18px}
 .wishlist-head h2{margin:0;font-size:25px}.wishlist-count{color:#e7b83f;font-weight:800}
