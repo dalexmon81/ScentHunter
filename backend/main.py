@@ -1078,36 +1078,58 @@ def _run_job(job_id: str, query: str) -> None:
     started = time.monotonic()
 
     try:
-        # Massimo 2 retailer contemporaneamente.
-        # Questo dimezza il tempo totale della ricerca senza ripetere il
-        # problema di contesa RAM/CPU osservato con 8 processi simultanei.
-        from concurrent.futures import ThreadPoolExecutor, as_completed
+        # Scheduler progressivo a finestra scorrevole:
+        # - massimo SEARCH_MAX_WORKERS store contemporanei
+        # - appena uno termina, parte subito il successivo
+        # - niente barriere di batch che rallentano la progressione lato frontend
+        from concurrent.futures import FIRST_COMPLETED, ThreadPoolExecutor, wait
 
-        for batch_start in range(0, len(STORES), SEARCH_MAX_WORKERS):
-            with JOBS_LOCK:
-                job = JOBS.get(job_id)
-                if job is None or job.get("completed"):
-                    return
+        max_workers = max(1, int(SEARCH_MAX_WORKERS))
+        pending_stores = list(STORES)
+        in_flight = {}
 
-            if time.monotonic() - started >= JOB_HARD_TIMEOUT_SECONDS:
+        with ThreadPoolExecutor(
+            max_workers=max_workers,
+            thread_name_prefix="scent_store",
+        ) as executor:
+            # warm start: riempiamo subito gli slot disponibili
+            while pending_stores and len(in_flight) < max_workers:
+                store = pending_stores.pop(0)
+                fut = executor.submit(run_store, store, query, True)
+                in_flight[fut] = store
+
+            while in_flight:
                 with JOBS_LOCK:
                     job = JOBS.get(job_id)
-                    if job and not job.get("completed"):
-                        job["errors"]["job"] = (
-                            "Ricerca completata con i risultati disponibili: "
-                            "tempo massimo orchestrazione raggiunto."
-                        )
-                break
+                    if job is None or job.get("completed"):
+                        return
 
-            batch = STORES[batch_start:batch_start + SEARCH_MAX_WORKERS]
-            executor = ThreadPoolExecutor(max_workers=len(batch), thread_name_prefix="scent_store")
-            futures = {
-                executor.submit(run_store, store, query, True): store
-                for store in batch
-            }
-            try:
-                for future in as_completed(futures):
-                    store = futures[future]
+                elapsed = time.monotonic() - started
+                if elapsed >= JOB_HARD_TIMEOUT_SECONDS:
+                    with JOBS_LOCK:
+                        job = JOBS.get(job_id)
+                        if job and not job.get("completed"):
+                            job["errors"]["job"] = (
+                                "Ricerca completata con i risultati disponibili: "
+                                "tempo massimo orchestrazione raggiunto."
+                            )
+                            job["partial"] = len(job.get("stores", {})) < len(STORES)
+                    break
+
+                done, _ = wait(
+                    set(in_flight.keys()),
+                    timeout=0.5,
+                    return_when=FIRST_COMPLETED,
+                )
+
+                if not done:
+                    continue
+
+                for future in done:
+                    store = in_flight.pop(future, None)
+                    if not store:
+                        continue
+
                     try:
                         report = future.result()
                     except Exception as exc:
@@ -1120,10 +1142,15 @@ def _run_job(job_id: str, query: str) -> None:
                             "results": [],
                             "error": f"{type(exc).__name__}: {exc}",
                         }
+
                     _publish_store_report(job_id, report, started)
                     gc.collect()
-            finally:
-                executor.shutdown(wait=True, cancel_futures=False)
+
+                    # slot libero -> avvio immediato prossimo store
+                    if pending_stores:
+                        next_store = pending_stores.pop(0)
+                        next_future = executor.submit(run_store, next_store, query, True)
+                        in_flight[next_future] = next_store
 
     except Exception as exc:
         logger.exception(
@@ -1144,7 +1171,8 @@ def _run_job(job_id: str, query: str) -> None:
                 job["results"] = sort_results(dedupe_results(job["results"]))
                 job["comparisons"] = build_comparisons(job["results"])
                 job["completed"] = True
-                job["partial"] = False
+                # True finché non hanno risposto tutti gli 8 store
+                job["partial"] = len(job.get("stores", {})) < len(STORES)
                 job["elapsed"] = round(time.monotonic() - started, 3)
 
 
