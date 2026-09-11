@@ -13,6 +13,9 @@ from __future__ import annotations
 import copy
 import gc
 import importlib
+import os
+import signal
+import subprocess
 import json
 import logging
 import re
@@ -99,6 +102,7 @@ JOBS: Dict[str, Dict[str, Any]] = {}
 JOBS_LOCK = threading.Lock()
 MAX_JOBS = 40
 SEARCH_MAX_WORKERS = 4
+STORE_TIMEOUT_SECONDS = 20.0
 _SEARCH_EXECUTION_LOCK = threading.Lock()
 
 
@@ -772,6 +776,86 @@ def load_scraper(store: str):
     )
 
 
+def _scraper_worker(store: str, query: str) -> int:
+    """Child-process entry point: execute exactly one retailer scraper."""
+    try:
+        module = load_scraper(store)
+        search = getattr(module, "search", None)
+        if not callable(search):
+            raise RuntimeError(f"scraper {store} non espone search(query)")
+
+        raw = search(query)
+        rows = _coerce_rows(raw)
+        sys.stdout.write(json.dumps({"ok": True, "rows": rows}, ensure_ascii=False, default=str) + "\n")
+        sys.stdout.flush()
+        return 0
+    except BaseException as exc:
+        sys.stdout.write(json.dumps({"ok": False, "error": f"{type(exc).__name__}: {exc}"}, ensure_ascii=False) + "\n")
+        sys.stdout.flush()
+        return 1
+
+
+def _run_scraper_isolated(store: str, query: str) -> Tuple[List[Dict[str, Any]], Optional[str]]:
+    """Run one scraper in a killable child process."""
+    command = [sys.executable, str(Path(__file__).resolve()), "--scenthunter-worker", store, query]
+    env = os.environ.copy()
+    env["PYTHONPATH"] = str(BASE_DIR) + os.pathsep + env.get("PYTHONPATH", "")
+    process = None
+    try:
+        process = subprocess.Popen(
+            command, cwd=str(BASE_DIR), env=env,
+            stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+            text=True, encoding="utf-8", errors="replace",
+            start_new_session=(os.name != "nt"),
+        )
+        stdout, stderr = process.communicate(timeout=STORE_TIMEOUT_SECONDS)
+        payload = None
+        for line in reversed((stdout or "").splitlines()):
+            line = line.strip()
+            if not line:
+                continue
+            try:
+                candidate = json.loads(line)
+            except json.JSONDecodeError:
+                continue
+            if isinstance(candidate, dict) and ("ok" in candidate or "rows" in candidate):
+                payload = candidate
+                break
+        if process.returncode != 0:
+            error = f"worker_exit_{process.returncode}"
+            if isinstance(payload, dict) and payload.get("error"):
+                error += ": " + str(payload["error"])
+            elif stderr and stderr.strip():
+                error += ": " + stderr.strip()[-1000:]
+            return [], error
+        if not isinstance(payload, dict) or payload.get("ok") is not True:
+            return [], "worker_invalid_response"
+        return _coerce_rows(payload.get("rows")), None
+    except subprocess.TimeoutExpired:
+        if process is not None:
+            try:
+                if os.name != "nt":
+                    os.killpg(process.pid, signal.SIGKILL)
+                else:
+                    process.kill()
+            except Exception:
+                try: process.kill()
+                except Exception: pass
+            try: process.communicate(timeout=2)
+            except Exception: pass
+        return [], f"timeout_after_{STORE_TIMEOUT_SECONDS:g}s"
+    except Exception as exc:
+        if process is not None and process.poll() is None:
+            try:
+                if os.name != "nt":
+                    os.killpg(process.pid, signal.SIGKILL)
+                else:
+                    process.kill()
+            except Exception:
+                pass
+        return [], f"{type(exc).__name__}: {exc}"
+
+
 def run_store(
     store: str,
     query: str,
@@ -797,26 +881,28 @@ def run_store(
                 "error": None,
             }
 
-    module_name = f"scrapers.{store}.scraper"
-
     try:
-        module = load_scraper(store)
-
-        search = getattr(module, "search", None)
-
-        if not callable(search):
-            raise RuntimeError(
-                f"scraper {store} non espone search(query)"
-            )
-
         logger.info(
             "STORE START | %s | query=%r",
             store,
             query,
         )
 
-        raw = search(query)
-        rows = _coerce_rows(raw)
+        rows, worker_error = _run_scraper_isolated(store, query)
+        if worker_error:
+            logger.warning(
+                "STORE WORKER ERROR | %s | query=%r | %s",
+                store, query, worker_error,
+            )
+            return {
+                "store": store,
+                "status": "error",
+                "cache": "miss",
+                "elapsed": round(time.monotonic() - started, 3),
+                "count": 0,
+                "results": [],
+                "error": worker_error,
+            }
 
         cleaned = [
             clean_result(row, store)
@@ -888,16 +974,7 @@ def run_store(
         }
 
     finally:
-        # Il punto fondamentale della versione stabile:
-        # dopo ogni negozio liberiamo gli oggetti pesanti.
-        try:
-            sys.modules.pop(
-                module_name,
-                None,
-            )
-        except Exception:
-            pass
-
+        # Il browser/network state del retailer vive nel child process.
         gc.collect()
 
 
@@ -1154,6 +1231,18 @@ def _run_job(
 # API
 # ============================================================================
 
+def _worker_cli() -> bool:
+    if len(sys.argv) != 4 or sys.argv[1] != "--scenthunter-worker":
+        return False
+    store = str(sys.argv[2] or "").strip().lower()
+    query = str(sys.argv[3] or "").strip()
+    if store not in STORES:
+        sys.stdout.write(json.dumps({"ok": False, "error": "unknown_store"}) + "\n")
+        sys.stdout.flush()
+        raise SystemExit(1)
+    raise SystemExit(_scraper_worker(store, query))
+
+
 @app.get("/")
 def root():
     if FRONTEND_INDEX.exists():
@@ -1358,6 +1447,7 @@ def frontend():
 # ============================================================================
 
 if __name__ == "__main__":
+    _worker_cli()
     import uvicorn
 
     uvicorn.run(
