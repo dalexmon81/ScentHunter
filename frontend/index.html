@@ -1976,7 +1976,35 @@ async function searchStoresProgressive(term,onPartial){
  renderSnapshot(job,false);
 
  while(true){
-  if(Date.now()-startedAt>maxElapsed)throw new Error("Timeout ricerca");
+  if(Date.now()-startedAt>maxElapsed)throw new const hasResults =
+  Array.isArray(lastSearchData?.results) &&
+  lastSearchData.results.length > 0;
+
+const hasComparisons =
+  Array.isArray(lastSearchData?.comparisons) &&
+  lastSearchData.comparisons.length > 0;
+
+if (hasResults || hasComparisons) {
+  // NON trattare come errore bloccante se abbiamo dati utili
+  statusBox.textContent = "Ricerca completata parzialmente: alcuni negozi hanno risposto.";
+  statusBox.style.display = "block";
+
+  // opzionale: mostra comunque gli errori store già presenti
+  if (lastSearchData?.errors) {
+    renderErrors(lastSearchData.errors);
+  }
+
+  // importante: fermiamo polling senza mostrare timeout rosso
+  isSearching = false;
+  searchButton.disabled = false;
+  searchButton.classList.remove("searching");
+} else {
+  // solo se davvero non c'è nulla
+  showError("Timeout ricerca");
+  isSearching = false;
+  searchButton.disabled = false;
+  searchButton.classList.remove("searching");
+}
 
   await new Promise(resolve=>setTimeout(resolve,600));
 
