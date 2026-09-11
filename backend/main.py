@@ -1175,6 +1175,125 @@ def _run_job(
             )
 
 
+
+# ============================================================================
+# DEEP SEARCH DIAGNOSTIC
+# ============================================================================
+
+def _diagnose_store(store: str, query: str) -> Dict[str, Any]:
+    """Trace one complete store path without using cache.
+
+    This deliberately uses the same isolated scraper invocation and the same
+    clean/match functions as the real search. It does not modify scraper code
+    and does not retry: the purpose is to capture the exact failure point of
+    THIS request.
+    """
+    started = time.monotonic()
+    stage = {
+        "store": store,
+        "started_at_ms": 0,
+        "scraper_finished": False,
+        "raw_count": None,
+        "clean_count": None,
+        "matched_count": None,
+        "scraper_elapsed": None,
+        "clean_elapsed": None,
+        "match_elapsed": None,
+        "total_elapsed": None,
+        "status": "started",
+        "error": None,
+    }
+
+    try:
+        t0 = time.monotonic()
+        rows, worker_error = _run_scraper_isolated(store, query)
+        t1 = time.monotonic()
+        stage["scraper_elapsed"] = round(t1 - t0, 3)
+        stage["scraper_finished"] = worker_error is None
+
+        if worker_error:
+            stage["status"] = (
+                "timeout" if worker_error.startswith("TimeoutError:")
+                else "scraper_error"
+            )
+            stage["error"] = worker_error
+            return stage
+
+        rows = rows or []
+        stage["raw_count"] = len(rows)
+
+        t2 = time.monotonic()
+        cleaned = [
+            clean_result(row, store)
+            for row in rows[:MAX_RESULTS_PER_STORE]
+        ]
+        cleaned = dedupe_results(cleaned)
+        t3 = time.monotonic()
+        stage["clean_count"] = len(cleaned)
+        stage["clean_elapsed"] = round(t3 - t2, 3)
+
+        t4 = time.monotonic()
+        matched = match_results(cleaned, query)
+        matched = dedupe_results(matched)
+        matched = sort_results(matched)
+        t5 = time.monotonic()
+        stage["matched_count"] = len(matched)
+        stage["match_elapsed"] = round(t5 - t4, 3)
+
+        if stage["raw_count"] == 0:
+            stage["status"] = "empty_from_scraper"
+        elif stage["clean_count"] == 0:
+            stage["status"] = "lost_in_clean"
+        elif stage["matched_count"] == 0:
+            stage["status"] = "lost_in_matcher"
+        else:
+            stage["status"] = "ok"
+
+        return stage
+
+    except Exception as exc:
+        stage["status"] = "backend_error"
+        stage["error"] = f"{type(exc).__name__}: {exc}"
+        logger.exception(
+            "DEEP DIAGNOSTIC ERROR | store=%s | query=%r",
+            store,
+            query,
+        )
+        return stage
+    finally:
+        stage["total_elapsed"] = round(time.monotonic() - started, 3)
+
+
+def run_deep_diagnostic(query: str) -> Dict[str, Any]:
+    query = str(query or "").strip()
+    started = time.monotonic()
+    reports: List[Dict[str, Any]] = []
+
+    # Same protection as normal search: one diagnostic/search execution at a time.
+    with _SEARCH_LOCK:
+        for store in STORES:
+            report = _diagnose_store(store, query)
+            reports.append(report)
+            gc.collect()
+
+    total = round(time.monotonic() - started, 3)
+    failures = [
+        r for r in reports
+        if r.get("status") != "ok"
+    ]
+
+    return {
+        "diagnostic": "deep-search-v1",
+        "query": query,
+        "ok": not failures,
+        "total_elapsed": total,
+        "store_timeout_seconds": STORE_TIMEOUT_SECONDS,
+        "completed_stores": len(reports),
+        "total_stores": len(STORES),
+        "failed_or_empty_stores": len(failures),
+        "stores": reports,
+    }
+
 # ============================================================================
 # API
 # ============================================================================
@@ -1337,6 +1456,12 @@ def test_store(
         "query": query,
         **report,
     }
+
+
+@app.get("/diagnose-search")
+def diagnose_search(q: str = "Liquid Brun"):
+    """Deep trace of one complete live search, store by store."""
+    return run_deep_diagnostic(str(q or "").strip())
 
 
 @app.get("/diagnose-stores")
