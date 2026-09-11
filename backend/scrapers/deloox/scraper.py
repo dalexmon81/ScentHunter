@@ -83,13 +83,27 @@ def availability(value):
 
 
 def get(session, url):
-    try:
-        r = session.get(url, headers=HEADERS, timeout=TIMEOUT, allow_redirects=True)
-        if r.status_code >= 400 or not r.text:
-            return None
-        return r
-    except requests.RequestException:
-        return None
+    # Deloox intermittently returns 503/429 to short-lived automated clients.
+    # Retry the same first-party request before declaring discovery empty.
+    for attempt, delay in enumerate((0.0, 0.8, 1.6)):
+        if delay:
+            import time
+            time.sleep(delay)
+        try:
+            r = session.get(
+                url,
+                headers=HEADERS,
+                timeout=TIMEOUT,
+                allow_redirects=True,
+            )
+            if r.status_code == 200 and r.text:
+                return r
+            if r.status_code not in (429, 500, 502, 503, 504):
+                return None
+        except requests.RequestException:
+            if attempt == 2:
+                return None
+    return None
 
 
 def is_product_url(url):
@@ -176,6 +190,8 @@ def discover(session, query):
         f"{BASE}/en/search?q={encoded}",
         f"{BASE}/en/search?search={encoded}",
         f"{BASE}/en/search?searchTerm={encoded}",
+        f"https://www.deloox.nl/en/search?query={encoded}",
+        f"https://www.deloox.es/en/search?query={encoded}",
     )
     for endpoint in endpoints:
         r = get(session, endpoint)
@@ -189,7 +205,12 @@ def discover(session, query):
 
     # Fallback: the public fragrance catalog is first-party and searchable by
     # product text. This is bounded to the first catalog page returned by Deloox.
-    for url in (f"{BASE}/en/category/1103659/fragrances.html", f"{BASE}/en/category/1121334/french-avenue-mens-fragrances.html"):
+    for url in (
+        f"{BASE}/en/category/1103659/fragrances.html",
+        f"{BASE}/en/category/1121334/french-avenue-mens-fragrances.html",
+        "https://www.deloox.nl/en/category/1121334/french-avenue-mens-fragrances.html",
+        "https://www.deloox.es/en/category/1121334/french-avenue-mens-fragrances.html",
+    ):
         r = get(session, url)
         if not r:
             continue
