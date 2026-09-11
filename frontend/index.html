@@ -1672,7 +1672,14 @@ async function searchPerfume(){
       updateBestPricesFromGroups(groups);
 
       if(groups.length){
-        showProducts(groups);
+        // Se l'utente ha già aperto la seconda scheda (confronto), NON
+        // ricostruiamo il DOM della lista ad ogni polling: altrimenti il
+        // dettaglio viene immediatamente chiuso e l'utente torna alla prima
+        // scheda. Aggiorniamo comunque currentProductGroups in memoria, così
+        // i nuovi risultati restano disponibili.
+        if(!currentOpenProductKey){
+          showProducts(groups);
+        }
         // Durante la ricerca non mostriamo un falso "nessun risultato".
         // Il numero finale viene mostrato solo quando tutti gli scraper hanno
         // terminato.
@@ -1734,7 +1741,11 @@ async function searchPerfume(){
     currentProductGroups=finalGroups;
     updateBestPricesFromGroups(finalGroups);
     if(finalGroups.length){
-      showProducts(finalGroups);
+      // Se l'utente è dentro la seconda scheda, non tornare alla lista quando
+      // arriva l'ultimo scraper. La vista aperta deve rimanere aperta.
+      if(!currentOpenProductKey){
+        showProducts(finalGroups);
+      }
       statusBox.textContent="Ricerca completata: "+finalGroups.length+
         (finalGroups.length===1?" prodotto trovato.":" prodotti trovati.");
     }else{
