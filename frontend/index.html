@@ -1672,12 +1672,35 @@ async function searchPerfume(){
       updateBestPricesFromGroups(groups);
 
       if(groups.length){
-        // Se l'utente ha già aperto la seconda scheda (confronto), NON
-        // ricostruiamo il DOM della lista ad ogni polling: altrimenti il
-        // dettaglio viene immediatamente chiuso e l'utente torna alla prima
-        // scheda. Aggiorniamo comunque currentProductGroups in memoria, così
-        // i nuovi risultati restano disponibili.
-        if(!currentOpenProductKey){
+        if(currentOpenProductKey){
+          // L'utente è già nella scheda confronto: aggiorniamo SOLO il
+          // contenuto della scheda aperta usando il gruppo più recente.
+          // Non richiamiamo showProducts(), altrimenti la lista verrebbe
+          // ricostruita e la navigazione tornerebbe alla prima scheda.
+          const openGroup=groups.find(g=>productGroupKey(g)===currentOpenProductKey);
+          if(openGroup){
+            const openIndex=groups.indexOf(openGroup);
+            const sizes=getSizeGroups(openGroup).map(x=>x.size).filter(Boolean);
+            const openSize=currentOpenSizeKey;
+            const saved=getWishlist();
+            const scrollY=window.scrollY;
+            if(openSize){
+              const selected=getSizeGroups(openGroup).find(x=>x.size===String(openSize));
+              if(selected){
+                resultsBox.innerHTML=`<article class="comparison"><button class="detail-back" onclick="openProduct(${openIndex})">← Torna ai formati</button><div class="comparison-head"><div class="result-image">${openGroup.image?`<img src="${esc(openGroup.image)}" alt="${esc(displayPerfumeName(openGroup.name,openGroup.brand))}" onerror="this.outerHTML='🧴'">`:"🧴"}</div><div class="result-main"><div class="store">${esc(openGroup.brand||"")}</div><div class="name">${esc(displayPerfumeName(openGroup.name,openGroup.brand))}</div><div class="offer-meta">${esc(formatLabel(String(selected.size)))}</div></div></div><div class="format-compare-bar"><div class="format-compare-item"><div class="format-compare-copy"><div class="format-compare-label">FORMATO</div><div class="format-compare-value">${esc(formatLabel(String(selected.size)))}</div></div></div><div class="format-compare-item"><div class="format-compare-copy"><div class="format-compare-label">CONFRONTA I PREZZI</div><div class="format-compare-value">${selected.offers.length} ${selected.offers.length===1?"negozio":"negozi"}</div></div></div></div>${renderOffersHtml(openGroup,openGroup.image||"",selected.offers,saved)}</article>`;
+              }
+            }else if(sizes.length===1){
+              const selected=getSizeGroups(openGroup).find(x=>x.size===sizes[0]);
+              renderSingleFormatComparison(openGroup,openGroup.image||"",selected?.offers||[],sizes[0],saved);
+            }else{
+              const cached=window._formatComparisonsByProduct?.[currentOpenProductKey];
+              if(Array.isArray(cached)&&cached.length){
+                renderFormatChoiceCard(openIndex,openGroup,cached,sizes);
+              }
+            }
+            window.scrollTo(0,scrollY);
+          }
+        }else{
           showProducts(groups);
         }
         // Durante la ricerca non mostriamo un falso "nessun risultato".
@@ -1741,9 +1764,28 @@ async function searchPerfume(){
     currentProductGroups=finalGroups;
     updateBestPricesFromGroups(finalGroups);
     if(finalGroups.length){
-      // Se l'utente è dentro la seconda scheda, non tornare alla lista quando
-      // arriva l'ultimo scraper. La vista aperta deve rimanere aperta.
-      if(!currentOpenProductKey){
+      if(currentOpenProductKey){
+        const openGroup=finalGroups.find(g=>productGroupKey(g)===currentOpenProductKey);
+        if(openGroup){
+          const openIndex=finalGroups.indexOf(openGroup);
+          const sizes=getSizeGroups(openGroup).map(x=>x.size).filter(Boolean);
+          const saved=getWishlist();
+          const scrollY=window.scrollY;
+          if(currentOpenSizeKey){
+            const selected=getSizeGroups(openGroup).find(x=>x.size===String(currentOpenSizeKey));
+            if(selected){
+              resultsBox.innerHTML=`<article class="comparison"><button class="detail-back" onclick="openProduct(${openIndex})">← Torna ai formati</button><div class="comparison-head"><div class="result-image">${openGroup.image?`<img src="${esc(openGroup.image)}" alt="${esc(displayPerfumeName(openGroup.name,openGroup.brand))}" onerror="this.outerHTML='🧴'">`:"🧴"}</div><div class="result-main"><div class="store">${esc(openGroup.brand||"")}</div><div class="name">${esc(displayPerfumeName(openGroup.name,openGroup.brand))}</div><div class="offer-meta">${esc(formatLabel(String(selected.size)))}</div></div></div><div class="format-compare-bar"><div class="format-compare-item"><div class="format-compare-copy"><div class="format-compare-label">FORMATO</div><div class="format-compare-value">${esc(formatLabel(String(selected.size)))}</div></div></div><div class="format-compare-item"><div class="format-compare-copy"><div class="format-compare-label">CONFRONTA I PREZZI</div><div class="format-compare-value">${selected.offers.length} ${selected.offers.length===1?"negozio":"negozi"}</div></div></div></div>${renderOffersHtml(openGroup,openGroup.image||"",selected.offers,saved)}</article>`;
+            }
+          }else if(sizes.length===1){
+            const selected=getSizeGroups(openGroup).find(x=>x.size===sizes[0]);
+            renderSingleFormatComparison(openGroup,openGroup.image||"",selected?.offers||[],sizes[0],saved);
+          }else{
+            const cached=window._formatComparisonsByProduct?.[currentOpenProductKey];
+            if(Array.isArray(cached)&&cached.length)renderFormatChoiceCard(openIndex,openGroup,cached,sizes);
+          }
+          window.scrollTo(0,scrollY);
+        }
+      }else{
         showProducts(finalGroups);
       }
       statusBox.textContent="Ricerca completata: "+finalGroups.length+
