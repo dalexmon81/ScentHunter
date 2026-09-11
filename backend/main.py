@@ -5,7 +5,7 @@ import importlib, json, os, signal, subprocess, sys, threading, time, traceback,
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
-APP_VERSION = '2.6-progressive-staged'
+APP_VERSION = '3.0-streaming-ready'
 app = FastAPI(title='ScentHunter API', version=APP_VERSION)
 app.add_middleware(CORSMiddleware, allow_origins=['*'], allow_credentials=True, allow_methods=['*'], allow_headers=['*'])
 
@@ -113,20 +113,44 @@ def run_store(store, query):
 WORKER_CODE = r'''
 import importlib, json, sys
 store=sys.argv[1]; query=sys.argv[2]
+
+def emit(event, **payload):
+    print(json.dumps({'event':event, **payload},ensure_ascii=False,default=str),flush=True)
+
 try:
     module=importlib.import_module(f'scrapers.{store}.scraper')
-    search=getattr(module,'search',None)
-    if not callable(search): raise RuntimeError(f'scraper {store} non espone search(query)')
-    raw=search(query)
-    if raw is None: rows=[]
-    elif isinstance(raw,list): rows=raw
-    elif isinstance(raw,tuple): rows=list(raw)
+    stream=getattr(module,'search_stream',None)
+    if callable(stream):
+        rows=[]
+        def on_result(row):
+            if isinstance(row,dict):
+                rows.append(row)
+                emit('result',row=row)
+        returned=stream(query,on_result)
+        if returned is not None:
+            try:
+                for row in returned:
+                    if isinstance(row,dict):
+                        emit('result',row=row)
+                        rows.append(row)
+            except TypeError:
+                pass
+        emit('done',count=len(rows),streaming=True)
     else:
-        try: rows=list(raw)
-        except TypeError: rows=[]
-    print(json.dumps({'ok':True,'rows':rows},ensure_ascii=False,default=str),flush=True)
+        search=getattr(module,'search',None)
+        if not callable(search): raise RuntimeError(f'scraper {store} non espone search(query)')
+        raw=search(query)
+        if raw is None: rows=[]
+        elif isinstance(raw,list): rows=raw
+        elif isinstance(raw,tuple): rows=list(raw)
+        else:
+            try: rows=list(raw)
+            except TypeError: rows=[]
+        for row in rows:
+            if isinstance(row,dict): emit('result',row=row)
+        emit('done',count=len(rows),streaming=False)
 except BaseException as exc:
-    print(json.dumps({'ok':False,'error':f'{type(exc).__name__}: {exc}'},ensure_ascii=False),flush=True)
+    emit('error',error=f'{type(exc).__name__}: {exc}')
     raise SystemExit(1)
 '''
 
@@ -141,28 +165,32 @@ def _kill_process_tree(process):
         except Exception: pass
 
 
-def _run_store_subprocess(store, query):
+def _run_store_subprocess(store, query, on_result=None):
     started=time.monotonic(); timeout=STORE_TIMEOUTS.get(store,STORE_TIMEOUT_SECONDS)
     env=os.environ.copy(); current=env.get('PYTHONPATH',''); env['PYTHONPATH']=str(BASE_DIR)+(os.pathsep+current if current else '')
-    process=None
+    process=None; rows=[]; worker_error=None
     try:
-        process=subprocess.Popen([sys.executable,'-c',WORKER_CODE,store,query],cwd=str(BASE_DIR),env=env,stdout=subprocess.PIPE,stderr=subprocess.PIPE,text=True,encoding='utf-8',errors='replace',start_new_session=(os.name!='nt'))
-        stdout,stderr=process.communicate(timeout=timeout)
-        payload=None
-        for line in reversed((stdout or '').splitlines()):
-            try: candidate=json.loads(line.strip())
+        process=subprocess.Popen([sys.executable,'-u','-c',WORKER_CODE,store,query],cwd=str(BASE_DIR),env=env,stdout=subprocess.PIPE,stderr=subprocess.DEVNULL,text=True,encoding='utf-8',errors='replace',bufsize=1,start_new_session=(os.name!='nt'))
+        deadline=time.monotonic()+timeout
+        while True:
+            if time.monotonic() >= deadline: raise subprocess.TimeoutExpired(process.args,timeout)
+            line=process.stdout.readline() if process.stdout is not None else ''
+            if not line:
+                if process.poll() is not None: break
+                time.sleep(0.01); continue
+            try: event=json.loads(line.strip())
             except json.JSONDecodeError: continue
-            if isinstance(candidate,dict) and ('ok' in candidate or 'rows' in candidate): payload=candidate; break
+            if not isinstance(event,dict): continue
+            kind=event.get('event')
+            if kind=='result' and isinstance(event.get('row'),dict):
+                row=clean_result(event['row'],store); rows.append(row)
+                if callable(on_result): on_result(row)
+            elif kind=='error': worker_error=str(event.get('error') or 'worker_error')
+        rc=process.wait(timeout=1)
         elapsed=round(time.monotonic()-started,3)
-        if process.returncode!=0:
-            error=f'worker_exit_{process.returncode}'
-            if isinstance(payload,dict) and payload.get('error'): error += ': '+str(payload['error'])
-            elif stderr and stderr.strip(): error += ': '+stderr.strip()[-1000:]
-            return _empty_report(store,elapsed=elapsed,error=error)
-        if not isinstance(payload,dict) or payload.get('ok') is not True: return _empty_report(store,elapsed=elapsed,error='worker_invalid_response')
-        rows=payload.get('rows') if isinstance(payload.get('rows'),list) else []
-        cleaned=[clean_result(x,store) for x in rows if isinstance(x,dict)]
-        return {'store':store,'status':'ok' if cleaned else 'empty','elapsed':elapsed,'count':len(cleaned),'results':cleaned,'error':None}
+        if rc!=0 or worker_error:
+            return {'store':store,'status':'error','elapsed':elapsed,'count':len(rows),'results':rows,'error':worker_error or f'worker_exit_{rc}'}
+        return {'store':store,'status':'ok' if rows else 'empty','elapsed':elapsed,'count':len(rows),'results':rows,'error':None}
     except subprocess.TimeoutExpired:
         if process is not None:
             _kill_process_tree(process)
@@ -177,7 +205,7 @@ def _run_store_subprocess(store, query):
         return _empty_report(store,elapsed=round(time.monotonic()-started,3),error=f'{type(exc).__name__}: {exc}')
 
 
-def _run_controlled_store(store,query,on_report):
+def _run_controlled_store(store,query,on_report,on_result=None):
     print(f'STORE START store={store} query={query!r}',flush=True)
     semaphore=LIGHT_SEMAPHORE; lane='light'
     if store in BROWSER_STORES: semaphore=BROWSER_SEMAPHORE; lane='browser'
@@ -189,7 +217,7 @@ def _run_controlled_store(store,query,on_report):
             print(f'STORE TIMEOUT store={store} timeout=lane_wait',flush=True); on_report(report); return
         waited=round(time.monotonic()-wait,3)
         if waited>.1: print(f'STORE QUEUED store={store} lane={lane} waited={waited}',flush=True)
-    try: report=_run_store_subprocess(store,query)
+    try: report=_run_store_subprocess(store,query,on_result=on_result)
     finally:
         if semaphore is not None: semaphore.release()
     if report.get('status')=='error':
@@ -291,20 +319,48 @@ def _snapshot(job_id):
         return {'job_id':job['job_id'],'query':job['query'],'completed':job['completed'],'status':'completed' if job['completed'] else 'searching','count':len(job['results']),'results':list(job['results']),'comparisons':list(job['comparisons']),'errors':dict(job['errors']),'stores':dict(job['stores'])}
 
 
+def _publish_result(job_id,row):
+    with JOBS_LOCK:
+        job=JOBS.get(job_id)
+        if not job or job.get('completed'): return
+        clean=clean_result(row,row.get('store') or row.get('shop') or '')
+        job['results'].append(clean)
+        job['results']=sort_results(dedupe_results(job['results']))
+        total=len(job['results'])
+    print(f"SEARCH PUBLISH RESULT job={job_id} store={clean.get('store')} total={total}",flush=True)
+
+
 def _publish_store(job_id,report):
     with JOBS_LOCK:
         job=JOBS.get(job_id)
         if not job or job.get('completed'): return
         store=report['store']; job['stores'][store]={'status':report['status'],'elapsed':report['elapsed'],'count':report['count']}
         if report.get('error'): job['errors'][store]=report['error']
+        # Individual rows may already have been published by the streaming
+        # worker. Dedupe here also makes legacy/non-streaming stores safe.
         if report.get('results'): job['results'].extend(report['results'])
         job['results']=sort_results(dedupe_results(job['results'])); total=len(job['results'])
     print(f"SEARCH PUBLISH job={job_id} store={store} count={report.get('count')} total={total}",flush=True)
 
 
+def _collect_streaming_for_job(job_id,query,stores):
+    reports={}; lock=threading.Lock(); threads=[]
+    def publish(report):
+        with lock: reports[report['store']]=report
+        _publish_store(job_id,report)
+    def publish_row(row):
+        _publish_result(job_id,row)
+    for store in stores:
+        t=threading.Thread(target=_run_controlled_store,args=(store,query,publish,publish_row),daemon=True,name=f'scenthunter-store-{store}')
+        t.start(); threads.append(t)
+    deadline=time.monotonic()+JOB_TIMEOUT_SECONDS
+    for t in threads: t.join(timeout=max(0.0,deadline-time.monotonic()))
+    return [reports[s] for s in stores if s in reports]
+
+
 def _run_job(job_id,query):
     started=time.monotonic(); print(f'SEARCH START job={job_id} query={query!r}',flush=True)
-    collect_store_reports_isolated(query,STORES,on_report=lambda r:_publish_store(job_id,r))
+    _collect_streaming_for_job(job_id,query,STORES)
     with JOBS_LOCK:
         job=JOBS.get(job_id)
         if job:
