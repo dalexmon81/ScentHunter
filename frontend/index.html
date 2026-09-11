@@ -848,6 +848,12 @@ function shGroupData(data){
     return "";
   }
 
+  // Normalizza in modo neutro i campi testuali ricevuti dagli scraper.
+  // Questa funzione non usa il Product Catalog: serve solo alla presentazione.
+  function cleanBrandText(v){
+    return String(v||"").replace(/\s+/g," ").trim();
+  }
+
   function productIdentity(o){
     const rawBrand=cleanBrandText(o.brand);
     const rawName=cleanBrandText(o.name);
