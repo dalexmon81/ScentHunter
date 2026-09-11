@@ -16,8 +16,11 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 
 import importlib
-import multiprocessing
-import queue
+import os
+import json
+import signal
+import subprocess
+import sys
 import threading
 import time
 import traceback
@@ -26,7 +29,7 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from typing import Any, Dict, List
 
 
-app = FastAPI(title="ScentHunter API", version="2.1-simple-progressive")
+app = FastAPI(title="ScentHunter API", version="2.2-isolated-progressive")
 
 app.add_middleware(
     CORSMiddleware,
@@ -64,7 +67,7 @@ FRONTEND_INDEX = BASE_DIR.parent / "frontend" / "index.html"
 
 # Keep the live worker pool deliberately simple. All eight scrapers can run
 # independently; one slow/broken store cannot block the others from publishing.
-MAX_WORKERS = len(STORES)
+MAX_WORKERS = max(1, min(len(STORES), int(os.getenv("SCENTHUNTER_MAX_WORKERS", str(len(STORES))))))
 # Real process isolation: a scraper can be terminated without killing the API.
 # Timeouts are intentionally generous for the slowest real stores observed in
 # production (Deloox/Sabina), while still preventing a search from hanging
@@ -249,140 +252,223 @@ def run_store(store: str, query: str) -> Dict[str, Any]:
         }
 
 
-def _store_process_worker(store: str, query: str, result_queue) -> None:
-    """Child-process entry point. The parent can hard-kill this process."""
-    report = run_store(store, query)
+def _kill_process_tree(process: subprocess.Popen) -> None:
+    """Kill a scraper process and its descendants without touching the API."""
     try:
-        result_queue.put(report)
+        if process.poll() is not None:
+            return
+        if os.name != "nt":
+            os.killpg(process.pid, signal.SIGKILL)
+        else:
+            process.kill()
     except Exception:
-        # If an exotic scraper object cannot be transported through the queue,
-        # still return a clean store-level error rather than killing the job.
-        result_queue.put({
+        try:
+            process.kill()
+        except Exception:
+            pass
+
+
+def _run_store_subprocess(store: str, query: str) -> Dict[str, Any]:
+    """Execute one scraper in a tiny child interpreter, not a copy of main.py."""
+    started = time.monotonic()
+    timeout = STORE_TIMEOUTS.get(store, STORE_TIMEOUT_SECONDS)
+
+    worker_code = r'''
+import importlib
+import json
+import sys
+
+store = sys.argv[1]
+query = sys.argv[2]
+try:
+    module = importlib.import_module(f"scrapers.{store}.scraper")
+    search = getattr(module, "search", None)
+    if not callable(search):
+        raise RuntimeError(f"scraper {store} non espone search(query)")
+    raw = search(query)
+    if raw is None:
+        rows = []
+    elif isinstance(raw, list):
+        rows = raw
+    elif isinstance(raw, tuple):
+        rows = list(raw)
+    else:
+        try:
+            rows = list(raw)
+        except TypeError:
+            rows = []
+    sys.stdout.write(json.dumps({"ok": True, "rows": rows}, ensure_ascii=False, default=str) + "\n")
+    sys.stdout.flush()
+except BaseException as exc:
+    sys.stdout.write(json.dumps({"ok": False, "error": f"{type(exc).__name__}: {exc}"}, ensure_ascii=False) + "\n")
+    sys.stdout.flush()
+    raise SystemExit(1)
+'''
+
+    env = os.environ.copy()
+    current_pythonpath = env.get("PYTHONPATH", "")
+    env["PYTHONPATH"] = str(BASE_DIR) + (os.pathsep + current_pythonpath if current_pythonpath else "")
+
+    process = None
+    try:
+        process = subprocess.Popen(
+            [sys.executable, "-c", worker_code, store, query],
+            cwd=str(BASE_DIR),
+            env=env,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+            start_new_session=(os.name != "nt"),
+        )
+        stdout, stderr = process.communicate(timeout=timeout)
+
+        payload = None
+        for line in reversed((stdout or "").splitlines()):
+            line = line.strip()
+            if not line:
+                continue
+            try:
+                candidate = json.loads(line)
+            except json.JSONDecodeError:
+                continue
+            if isinstance(candidate, dict) and ("ok" in candidate or "rows" in candidate):
+                payload = candidate
+                break
+
+        if process.returncode != 0:
+            error = f"worker_exit_{process.returncode}"
+            if isinstance(payload, dict) and payload.get("error"):
+                error += ": " + str(payload["error"])
+            elif stderr and stderr.strip():
+                error += ": " + stderr.strip()[-1000:]
+            return {
+                "store": store,
+                "status": "error",
+                "elapsed": round(time.monotonic() - started, 3),
+                "count": 0,
+                "results": [],
+                "error": error,
+            }
+
+        if not isinstance(payload, dict) or payload.get("ok") is not True:
+            return {
+                "store": store,
+                "status": "error",
+                "elapsed": round(time.monotonic() - started, 3),
+                "count": 0,
+                "results": [],
+                "error": "worker_invalid_response",
+            }
+
+        rows = payload.get("rows")
+        if not isinstance(rows, list):
+            rows = []
+        cleaned = [clean_result(item, store) for item in rows if isinstance(item, dict)]
+        return {
+            "store": store,
+            "status": "ok" if cleaned else "empty",
+            "elapsed": round(time.monotonic() - started, 3),
+            "count": len(cleaned),
+            "results": cleaned,
+            "error": None,
+        }
+
+    except subprocess.TimeoutExpired:
+        if process is not None:
+            _kill_process_tree(process)
+            try:
+                process.communicate(timeout=2)
+            except Exception:
+                pass
+        return {
             "store": store,
             "status": "error",
-            "elapsed": report.get("elapsed"),
+            "elapsed": round(time.monotonic() - started, 3),
             "count": 0,
             "results": [],
-            "error": "result_not_serializable",
-        })
+            "error": f"store_timeout_{timeout:.0f}s",
+        }
+    except Exception as exc:
+        if process is not None:
+            _kill_process_tree(process)
+            try:
+                process.communicate(timeout=1)
+            except Exception:
+                pass
+        return {
+            "store": store,
+            "status": "error",
+            "elapsed": round(time.monotonic() - started, 3),
+            "count": 0,
+            "results": [],
+            "error": f"{type(exc).__name__}: {exc}",
+        }
 
 
 def collect_store_reports_isolated(query: str, stores: List[str], on_report=None) -> List[Dict[str, Any]]:
-    """
-    Launch every store in its own process.
+    """Run all stores concurrently; each store is a killable child process."""
+    reports: Dict[str, Dict[str, Any]] = {}
+    max_workers = min(MAX_WORKERS, len(stores))
 
-    This is the critical reliability boundary: threads cannot forcibly stop a
-    blocked Python call, while a child process can. Results are consumed as soon
-    as each child finishes, so one slow store never delays publication of the
-    others.
-    """
-    ctx = multiprocessing.get_context("spawn")
-    result_queue = ctx.Queue()
-    processes = {}
-    started_at = {}
-    reports = {}
-
-    for store in stores:
-        process = ctx.Process(
-            target=_store_process_worker,
-            args=(store, query, result_queue),
-            name=f"scenthunter-{store}",
-            daemon=False,
-        )
-        process.start()
-        processes[store] = process
-        started_at[store] = time.monotonic()
-
-    overall_deadline = time.monotonic() + JOB_TIMEOUT_SECONDS
+    executor = ThreadPoolExecutor(
+        max_workers=max_workers,
+        thread_name_prefix="scenthunter-store",
+    )
+    futures = {
+        executor.submit(_run_store_subprocess, store, query): store
+        for store in stores
+    }
 
     try:
-        while processes and time.monotonic() < overall_deadline:
-            # Drain every result currently available.
-            drained = False
-            while True:
+        try:
+            completed = as_completed(futures, timeout=JOB_TIMEOUT_SECONDS)
+            for future in completed:
+                store = futures[future]
                 try:
-                    report = result_queue.get_nowait()
-                except queue.Empty:
-                    break
-                drained = True
-                store = str(report.get("store") or "").strip().lower()
-                if store in processes and store not in reports:
+                    report = future.result()
+                except Exception as exc:
+                    report = {
+                        "store": store,
+                        "status": "error",
+                        "elapsed": None,
+                        "count": 0,
+                        "results": [],
+                        "error": f"{type(exc).__name__}: {exc}",
+                    }
+                reports[store] = report
+                if callable(on_report):
+                    try:
+                        on_report(report)
+                    except Exception:
+                        traceback.print_exc()
+        except TimeoutError:
+            # The API/job must not wait for a slow future. Every future owns a
+            # killable child process, so cancelling the future is enough to
+            # detach it; the child is terminated by its own per-store timeout.
+            for future, store in futures.items():
+                if not future.done():
+                    future.cancel()
+                    report = {
+                        "store": store,
+                        "status": "error",
+                        "elapsed": round(JOB_TIMEOUT_SECONDS, 3),
+                        "count": 0,
+                        "results": [],
+                        "error": "job_timeout",
+                    }
                     reports[store] = report
                     if callable(on_report):
                         try:
                             on_report(report)
                         except Exception:
                             traceback.print_exc()
-                    proc = processes.pop(store)
-                    if proc.is_alive():
-                        proc.join(timeout=0.05)
-
-            # Hard timeout individual children.
-            now = time.monotonic()
-            for store, proc in list(processes.items()):
-                timeout = STORE_TIMEOUTS.get(store, STORE_TIMEOUT_SECONDS)
-                if now - started_at[store] >= timeout:
-                    if proc.is_alive():
-                        proc.terminate()
-                        proc.join(timeout=0.5)
-                        if proc.is_alive() and hasattr(proc, "kill"):
-                            proc.kill()
-                            proc.join(timeout=0.5)
-                    reports[store] = {
-                        "store": store,
-                        "status": "error",
-                        "elapsed": round(now - started_at[store], 3),
-                        "count": 0,
-                        "results": [],
-                        "error": f"store_timeout_{timeout:.0f}s",
-                    }
-                    if callable(on_report):
-                        try:
-                            on_report(reports[store])
-                        except Exception:
-                            traceback.print_exc()
-                    processes.pop(store, None)
-
-            if not processes:
-                break
-
-            if not drained:
-                time.sleep(0.05)
-
-        # Overall deadline: terminate anything still running.
-        now = time.monotonic()
-        for store, proc in list(processes.items()):
-            if proc.is_alive():
-                proc.terminate()
-                proc.join(timeout=0.5)
-                if proc.is_alive() and hasattr(proc, "kill"):
-                    proc.kill()
-                    proc.join(timeout=0.5)
-            reports[store] = {
-                "store": store,
-                "status": "error",
-                "elapsed": round(now - started_at[store], 3),
-                "count": 0,
-                "results": [],
-                "error": "job_timeout",
-            }
-            if callable(on_report):
-                try:
-                    on_report(reports[store])
-                except Exception:
-                    traceback.print_exc()
-            processes.pop(store, None)
     finally:
-        for proc in processes.values():
-            if proc.is_alive():
-                proc.terminate()
-                proc.join(timeout=0.5)
-
-        try:
-            result_queue.close()
-            result_queue.join_thread()
-        except Exception:
-            pass
+        # CRITICAL: never wait here. A running worker thread may still be
+        # waiting for its child process timeout. The FastAPI job must finish
+        # independently of that worker.
+        executor.shutdown(wait=False, cancel_futures=True)
 
     return [reports[store] for store in stores if store in reports]
 
