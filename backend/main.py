@@ -16,6 +16,8 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 
 import importlib
+import multiprocessing
+import queue
 import threading
 import time
 import traceback
@@ -63,8 +65,17 @@ FRONTEND_INDEX = BASE_DIR.parent / "frontend" / "index.html"
 # Keep the live worker pool deliberately simple. All eight scrapers can run
 # independently; one slow/broken store cannot block the others from publishing.
 MAX_WORKERS = len(STORES)
-STORE_TIMEOUT_SECONDS = 25.0  # retained for compatibility; future.result() never uses this as a fake timeout
-JOB_TIMEOUT_SECONDS = 90.0
+# Real process isolation: a scraper can be terminated without killing the API.
+# Timeouts are intentionally generous for the slowest real stores observed in
+# production (Deloox/Sabina), while still preventing a search from hanging
+# indefinitely.
+STORE_TIMEOUT_SECONDS = 60.0
+STORE_TIMEOUTS = {
+    "deloox": 70.0,
+    "sabina": 65.0,
+    "notino": 40.0,
+}
+JOB_TIMEOUT_SECONDS = 75.0
 
 
 # ---------------------------------------------------------------------------
@@ -187,29 +198,19 @@ def sort_results(results: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
 # ---------------------------------------------------------------------------
 
 def run_store(store: str, query: str) -> Dict[str, Any]:
-    """
-    Call exactly one scraper directly.
-
-    The scraper remains untouched.  A transient empty result is retried once
-    for stores that are known to be sensitive to concurrent site load.  This
-    is still a direct scraper call and does not introduce validation/matching.
-    """
+    """Run exactly one untouched scraper and normalize only its transport shape."""
     started = time.monotonic()
     try:
         module = load_scraper(store)
         search = getattr(module, "search")
-
         raw = search(query)
 
-        # A concurrent burst can occasionally produce an empty response even
-        # though the same scraper succeeds when called alone.  Retry only an
-        # empty response, never a real result and never an exception.
+        # ParfumZentrum has occasionally returned an empty response during a
+        # concurrent burst even though the same direct scraper succeeds alone.
         if store == "parfumzentrum" and not raw:
             time.sleep(0.25)
             raw = search(query)
 
-        # Some future scraper may return a generator/tuple; accept any normal
-        # iterable while keeping the contract simple.
         if raw is None:
             rows = []
         elif isinstance(raw, list):
@@ -246,6 +247,144 @@ def run_store(store: str, query: str) -> Dict[str, Any]:
             "results": [],
             "error": f"{type(exc).__name__}: {exc}",
         }
+
+
+def _store_process_worker(store: str, query: str, result_queue) -> None:
+    """Child-process entry point. The parent can hard-kill this process."""
+    report = run_store(store, query)
+    try:
+        result_queue.put(report)
+    except Exception:
+        # If an exotic scraper object cannot be transported through the queue,
+        # still return a clean store-level error rather than killing the job.
+        result_queue.put({
+            "store": store,
+            "status": "error",
+            "elapsed": report.get("elapsed"),
+            "count": 0,
+            "results": [],
+            "error": "result_not_serializable",
+        })
+
+
+def collect_store_reports_isolated(query: str, stores: List[str], on_report=None) -> List[Dict[str, Any]]:
+    """
+    Launch every store in its own process.
+
+    This is the critical reliability boundary: threads cannot forcibly stop a
+    blocked Python call, while a child process can. Results are consumed as soon
+    as each child finishes, so one slow store never delays publication of the
+    others.
+    """
+    ctx = multiprocessing.get_context("spawn")
+    result_queue = ctx.Queue()
+    processes = {}
+    started_at = {}
+    reports = {}
+
+    for store in stores:
+        process = ctx.Process(
+            target=_store_process_worker,
+            args=(store, query, result_queue),
+            name=f"scenthunter-{store}",
+            daemon=False,
+        )
+        process.start()
+        processes[store] = process
+        started_at[store] = time.monotonic()
+
+    overall_deadline = time.monotonic() + JOB_TIMEOUT_SECONDS
+
+    try:
+        while processes and time.monotonic() < overall_deadline:
+            # Drain every result currently available.
+            drained = False
+            while True:
+                try:
+                    report = result_queue.get_nowait()
+                except queue.Empty:
+                    break
+                drained = True
+                store = str(report.get("store") or "").strip().lower()
+                if store in processes and store not in reports:
+                    reports[store] = report
+                    if callable(on_report):
+                        try:
+                            on_report(report)
+                        except Exception:
+                            traceback.print_exc()
+                    proc = processes.pop(store)
+                    if proc.is_alive():
+                        proc.join(timeout=0.05)
+
+            # Hard timeout individual children.
+            now = time.monotonic()
+            for store, proc in list(processes.items()):
+                timeout = STORE_TIMEOUTS.get(store, STORE_TIMEOUT_SECONDS)
+                if now - started_at[store] >= timeout:
+                    if proc.is_alive():
+                        proc.terminate()
+                        proc.join(timeout=0.5)
+                        if proc.is_alive() and hasattr(proc, "kill"):
+                            proc.kill()
+                            proc.join(timeout=0.5)
+                    reports[store] = {
+                        "store": store,
+                        "status": "error",
+                        "elapsed": round(now - started_at[store], 3),
+                        "count": 0,
+                        "results": [],
+                        "error": f"store_timeout_{timeout:.0f}s",
+                    }
+                    if callable(on_report):
+                        try:
+                            on_report(reports[store])
+                        except Exception:
+                            traceback.print_exc()
+                    processes.pop(store, None)
+
+            if not processes:
+                break
+
+            if not drained:
+                time.sleep(0.05)
+
+        # Overall deadline: terminate anything still running.
+        now = time.monotonic()
+        for store, proc in list(processes.items()):
+            if proc.is_alive():
+                proc.terminate()
+                proc.join(timeout=0.5)
+                if proc.is_alive() and hasattr(proc, "kill"):
+                    proc.kill()
+                    proc.join(timeout=0.5)
+            reports[store] = {
+                "store": store,
+                "status": "error",
+                "elapsed": round(now - started_at[store], 3),
+                "count": 0,
+                "results": [],
+                "error": "job_timeout",
+            }
+            if callable(on_report):
+                try:
+                    on_report(reports[store])
+                except Exception:
+                    traceback.print_exc()
+            processes.pop(store, None)
+    finally:
+        for proc in processes.values():
+            if proc.is_alive():
+                proc.terminate()
+                proc.join(timeout=0.5)
+
+        try:
+            result_queue.close()
+            result_queue.join_thread()
+        except Exception:
+            pass
+
+    return [reports[store] for store in stores if store in reports]
 
 
 # ---------------------------------------------------------------------------
@@ -288,6 +427,8 @@ def _snapshot(job_id: str) -> Dict[str, Any]:
             "job_id": job["job_id"],
             "query": job["query"],
             "completed": job["completed"],
+            "status": "completed" if job["completed"] else "searching",
+            "count": len(job["results"]),
             "results": list(job["results"]),
             "comparisons": list(job["comparisons"]),
             "errors": dict(job["errors"]),
@@ -318,32 +459,14 @@ def _publish_store(job_id: str, report: Dict[str, Any]) -> None:
 def _run_job(job_id: str, query: str) -> None:
     started = time.monotonic()
 
-    # All independent scrapers start together. No central validation stage,
-    # no ProductMatcher, no family registry and no second pass.
-    with ThreadPoolExecutor(max_workers=MAX_WORKERS) as executor:
-        futures = {
-            executor.submit(run_store, store, query): store
-            for store in STORES
-        }
-
-        # IMPORTANT: never stop publishing just because one slow store crossed
-        # the old 55-second window. Deloox can legitimately take ~55 seconds;
-        # breaking here used to leave a completed Deloox future unpublished.
-        # Every future that actually completes is published cumulatively.
-        for future in as_completed(futures):
-            store = futures[future]
-            try:
-                report = future.result()
-            except Exception as exc:
-                report = {
-                    "store": store,
-                    "status": "error",
-                    "elapsed": round(time.monotonic() - started, 3),
-                    "count": 0,
-                    "results": [],
-                    "error": f"{type(exc).__name__}: {exc}",
-                }
-            _publish_store(job_id, report)
+    # Each store is isolated in a killable child process. We publish each report
+    # immediately as it becomes available, then finalize the job once every
+    # child has returned or been terminated.
+    collect_store_reports_isolated(
+        query,
+        STORES,
+        on_report=lambda report: _publish_store(job_id, report),
+    )
 
     with JOBS_LOCK:
         job = JOBS.get(job_id)
@@ -382,34 +505,15 @@ def health():
 
 @app.get("/search")
 def search_perfume(q: str):
-    """Synchronous compatibility endpoint. Calls the eight scrapers directly."""
+    """Synchronous compatibility endpoint using the same isolated engine."""
     query = str(q or "").strip()
     if not query:
         return {"query": "", "count": 0, "results": [], "errors": {}}
 
-    reports = []
+    reports = collect_store_reports_isolated(query, STORES)
     all_results: List[Dict[str, Any]] = []
-
-    with ThreadPoolExecutor(max_workers=MAX_WORKERS) as executor:
-        futures = {
-            executor.submit(run_store, store, query): store
-            for store in STORES
-        }
-        for future in as_completed(futures):
-            store = futures[future]
-            try:
-                report = future.result()
-            except Exception as exc:
-                report = {
-                    "store": store,
-                    "status": "error",
-                    "elapsed": None,
-                    "count": 0,
-                    "results": [],
-                    "error": f"{type(exc).__name__}: {exc}",
-                }
-            reports.append(report)
-            all_results.extend(report["results"])
+    for report in reports:
+        all_results.extend(report["results"])
 
     results = sort_results(dedupe_results(all_results))
     errors = {
@@ -442,6 +546,8 @@ def search_start(q: str):
             "job_id": "",
             "query": "",
             "completed": True,
+            "status": "completed",
+            "count": 0,
             "results": [],
             "comparisons": [],
             "errors": {},
