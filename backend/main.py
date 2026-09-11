@@ -29,7 +29,7 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from typing import Any, Dict, List
 
 
-app = FastAPI(title="ScentHunter API", version="2.2-isolated-progressive")
+app = FastAPI(title="ScentHunter API", version="2.3-progressive-controlled")
 
 app.add_middleware(
     CORSMiddleware,
@@ -67,7 +67,13 @@ FRONTEND_INDEX = BASE_DIR.parent / "frontend" / "index.html"
 
 # Keep the live worker pool deliberately simple. All eight scrapers can run
 # independently; one slow/broken store cannot block the others from publishing.
-MAX_WORKERS = max(1, min(len(STORES), int(os.getenv("SCENTHUNTER_MAX_WORKERS", str(len(STORES))))))
+# Requests-based scrapers can run together. Sabina is the only known adapter
+# that launches Playwright/Chromium, so keep it in a dedicated one-at-a-time
+# lane to avoid Render memory spikes.
+LIGHTWEIGHT_STORES = [s for s in STORES if s != "sabina"]
+BROWSER_STORES = ["sabina"]
+MAX_WORKERS = max(1, min(len(LIGHTWEIGHT_STORES), int(os.getenv("SCENTHUNTER_MAX_WORKERS", "7"))))
+BROWSER_WORKERS = 1
 # Real process isolation: a scraper can be terminated without killing the API.
 # Timeouts are intentionally generous for the slowest real stores observed in
 # production (Deloox/Sabina), while still preventing a search from hanging
@@ -78,7 +84,7 @@ STORE_TIMEOUTS = {
     "sabina": 65.0,
     "notino": 40.0,
 }
-JOB_TIMEOUT_SECONDS = 75.0
+JOB_TIMEOUT_SECONDS = 85.0
 
 
 # ---------------------------------------------------------------------------
@@ -407,24 +413,25 @@ except BaseException as exc:
         }
 
 
-def collect_store_reports_isolated(query: str, stores: List[str], on_report=None) -> List[Dict[str, Any]]:
-    """Run all stores concurrently; each store is a killable child process."""
-    reports: Dict[str, Dict[str, Any]] = {}
-    max_workers = min(MAX_WORKERS, len(stores))
+def _collect_lane(query: str, stores: List[str], max_workers: int, lane: str, on_report=None) -> List[Dict[str, Any]]:
+    """Run one concurrency lane without allowing one slow store to block publication."""
+    if not stores:
+        return []
 
+    reports: Dict[str, Dict[str, Any]] = {}
     executor = ThreadPoolExecutor(
-        max_workers=max_workers,
-        thread_name_prefix="scenthunter-store",
+        max_workers=max(1, min(max_workers, len(stores))),
+        thread_name_prefix=f"scenthunter-{lane}",
     )
     futures = {
         executor.submit(_run_store_subprocess, store, query): store
         for store in stores
     }
+    lane_started = time.monotonic()
 
     try:
         try:
-            completed = as_completed(futures, timeout=JOB_TIMEOUT_SECONDS)
-            for future in completed:
+            for future in as_completed(futures, timeout=JOB_TIMEOUT_SECONDS):
                 store = futures[future]
                 try:
                     report = future.result()
@@ -432,45 +439,83 @@ def collect_store_reports_isolated(query: str, stores: List[str], on_report=None
                     report = {
                         "store": store,
                         "status": "error",
-                        "elapsed": None,
+                        "elapsed": round(time.monotonic() - lane_started, 3),
                         "count": 0,
                         "results": [],
                         "error": f"{type(exc).__name__}: {exc}",
                     }
                 reports[store] = report
                 if callable(on_report):
-                    try:
-                        on_report(report)
-                    except Exception:
-                        traceback.print_exc()
+                    on_report(report)
         except TimeoutError:
-            # The API/job must not wait for a slow future. Every future owns a
-            # killable child process, so cancelling the future is enough to
-            # detach it; the child is terminated by its own per-store timeout.
+            # Do not wait for unfinished supervision threads. Their child
+            # processes have their own hard timeout and are isolated from API.
             for future, store in futures.items():
                 if not future.done():
                     future.cancel()
                     report = {
                         "store": store,
                         "status": "error",
-                        "elapsed": round(JOB_TIMEOUT_SECONDS, 3),
+                        "elapsed": round(time.monotonic() - lane_started, 3),
                         "count": 0,
                         "results": [],
-                        "error": "job_timeout",
+                        "error": "lane_timeout",
                     }
                     reports[store] = report
                     if callable(on_report):
-                        try:
-                            on_report(report)
-                        except Exception:
-                            traceback.print_exc()
+                        on_report(report)
     finally:
-        # CRITICAL: never wait here. A running worker thread may still be
-        # waiting for its child process timeout. The FastAPI job must finish
-        # independently of that worker.
         executor.shutdown(wait=False, cancel_futures=True)
 
     return [reports[store] for store in stores if store in reports]
+
+
+def collect_store_reports_isolated(query: str, stores: List[str], on_report=None) -> List[Dict[str, Any]]:
+    """Run lightweight stores in parallel and browser stores in a controlled lane."""
+    requested = list(stores)
+    light = [s for s in requested if s in LIGHTWEIGHT_STORES]
+    browser = [s for s in requested if s in BROWSER_STORES]
+
+    # Start both lanes immediately. The browser lane has one slot, preventing
+    # Chromium from competing with itself while the lightweight stores stay fast.
+    all_reports: Dict[str, Dict[str, Any]] = {}
+    lock = threading.Lock()
+
+    def publish(report):
+        with lock:
+            all_reports[report["store"]] = report
+        print(
+            f"STORE END store={report.get('store')} status={report.get('status')} "
+            f"elapsed={report.get('elapsed')} count={report.get('count')}",
+            flush=True,
+        )
+        if callable(on_report):
+            on_report(report)
+
+    threads = []
+    for lane, lane_stores, workers in (
+        ("light", light, MAX_WORKERS),
+        ("browser", browser, BROWSER_WORKERS),
+    ):
+        if not lane_stores:
+            continue
+        t = threading.Thread(
+            target=_collect_lane,
+            args=(query, lane_stores, workers, lane, publish),
+            daemon=True,
+            name=f"scenthunter-lane-{lane}",
+        )
+        t.start()
+        threads.append(t)
+
+    deadline = time.monotonic() + JOB_TIMEOUT_SECONDS
+    for t in threads:
+        remaining = max(0.0, deadline - time.monotonic())
+        t.join(timeout=remaining)
+
+    # If a lane is still supervising a child, do not block the API. The child
+    # itself remains independently killable and will hit its store timeout.
+    return [all_reports[store] for store in requested if store in all_reports]
 
 
 # ---------------------------------------------------------------------------
@@ -544,6 +589,7 @@ def _publish_store(job_id: str, report: Dict[str, Any]) -> None:
 
 def _run_job(job_id: str, query: str) -> None:
     started = time.monotonic()
+    print(f"SEARCH START job={job_id} query={query!r}", flush=True)
 
     # Each store is isolated in a killable child process. We publish each report
     # immediately as it becomes available, then finalize the job once every
@@ -560,6 +606,10 @@ def _run_job(job_id: str, query: str) -> None:
             job["results"] = sort_results(dedupe_results(job["results"]))
             job["completed"] = True
             job["elapsed"] = round(time.monotonic() - started, 3)
+            print(
+                f"SEARCH END job={job_id} elapsed={job['elapsed']} total={len(job['results'])}",
+                flush=True,
+            )
 
 
 # ---------------------------------------------------------------------------
