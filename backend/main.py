@@ -49,7 +49,7 @@ from fastapi.responses import FileResponse
 
 app = FastAPI(
     title="ScentHunter API",
-    version="4.0-sequential-isolated",
+    version="4.1-progressive-isolated",
 )
 
 app.add_middleware(
@@ -1267,154 +1267,17 @@ def clear_cache():
     }
 
 
-
-# ============================================================================
-# DIAGNOSTICA 2 - PIPELINE ESATTA /search -> JSON -> FRONTEND
-# ============================================================================
-
-def _diag_strip_raw_data(value):
-    """Copia ricorsiva del payload senza raw_data/metadata pesanti."""
-    if isinstance(value, dict):
-        out = {}
-        for key, item in value.items():
-            if key in {"raw_data", "raw_html", "html", "description_html", "media", "images"}:
-                continue
-            out[key] = _diag_strip_raw_data(item)
-        return out
-    if isinstance(value, list):
-        return [_diag_strip_raw_data(item) for item in value]
-    return value
-
-
-def _diag_json_size(value) -> int:
-    try:
-        return len(json.dumps(value, ensure_ascii=False, separators=(",", ":")).encode("utf-8"))
-    except Exception:
-        return -1
-
-
-@app.get("/diagnose-pipeline")
-def diagnose_pipeline(q: str = "Liquid Brun"):
-    """
-    Diagnostica il percorso REALE dell'endpoint /search senza modificare
-    scraper o frontend.
-
-    Misura:
-      1. run_search() completato;
-      2. payload JSON originale;
-      3. payload senza campi pesanti;
-      4. results/comparisons;
-      5. presenza di URL/prezzi nei dati che il frontend usa;
-      6. eventuali eccezioni di serializzazione.
-    """
-    query = str(q or "").strip()
-    started = time.monotonic()
-
-    try:
-        data = run_search(query=query, use_cache=False)
-        search_elapsed = round(time.monotonic() - started, 3)
-
-        results = data.get("results") or []
-        comparisons = data.get("comparisons") or []
-
-        original_size = _diag_json_size(data)
-        stripped = _diag_strip_raw_data(data)
-        stripped_size = _diag_json_size(stripped)
-
-        result_summary = []
-        for item in results:
-            result_summary.append({
-                "store": item.get("store"),
-                "shop": item.get("shop"),
-                "brand": item.get("brand"),
-                "name": item.get("name"),
-                "size_ml": item.get("size_ml"),
-                "price": item.get("price"),
-                "price_num": item.get("price_num"),
-                "available": item.get("available"),
-                "has_url": bool(item.get("url")),
-                "url": item.get("url") or "",
-                "raw_data_bytes": _diag_json_size(item.get("raw_data")) if item.get("raw_data") is not None else 0,
-            })
-
-        comparison_summary = []
-        for group in comparisons:
-            offers = group.get("offers") or []
-            comparison_summary.append({
-                "brand": group.get("brand"),
-                "name": group.get("name"),
-                "concentration": group.get("concentration"),
-                "offer_count": len(offers),
-                "offers": [{
-                    "store": o.get("store"),
-                    "shop": o.get("shop"),
-                    "name": o.get("name"),
-                    "size_ml": o.get("size_ml"),
-                    "price": o.get("price"),
-                    "price_num": o.get("price_num"),
-                    "available": o.get("available"),
-                    "has_url": bool(o.get("url")),
-                    "url": o.get("url") or "",
-                } for o in offers],
-            })
-
-        # Simulazione del passaggio JSON: serializza e rilegge esattamente
-        # ciò che il browser riceve da /search.
-        transport_error = None
-        transport_size = -1
-        roundtrip = None
-        try:
-            encoded = json.dumps(data, ensure_ascii=False, separators=(",", ":")).encode("utf-8")
-            transport_size = len(encoded)
-            roundtrip = json.loads(encoded.decode("utf-8"))
-        except Exception as exc:
-            transport_error = f"{type(exc).__name__}: {exc}"
-
-        return {
-            "diagnostic": True,
-            "query": query,
-            "status": "ok",
-            "search_elapsed": search_elapsed,
-            "backend_count": data.get("count"),
-            "results_count": len(results),
-            "comparisons_count": len(comparisons),
-            "stores": data.get("stores", {}),
-            "errors": data.get("errors", {}),
-            "payload_bytes_original": original_size,
-            "payload_kb_original": round(original_size / 1024, 1) if original_size >= 0 else None,
-            "payload_bytes_without_heavy_fields": stripped_size,
-            "payload_kb_without_heavy_fields": round(stripped_size / 1024, 1) if stripped_size >= 0 else None,
-            "raw_data_bytes_total": sum(x["raw_data_bytes"] for x in result_summary),
-            "transport_json_bytes": transport_size,
-            "transport_roundtrip_ok": roundtrip is not None,
-            "transport_error": transport_error,
-            "results": result_summary,
-            "comparisons": comparison_summary,
-            "diagnostic_conclusion": {
-                "backend_has_results": bool(results),
-                "frontend_data_source_has_comparisons": bool(comparisons),
-                "all_results_have_url": bool(results) and all(bool(x.get("url")) for x in results),
-                "json_serialization_ok": transport_error is None,
-                "heavy_raw_data_dominates": (
-                    original_size > 0 and stripped_size > 0 and original_size > stripped_size * 3
-                ),
-            },
-        }
-
-    except Exception as exc:
-        return {
-            "diagnostic": True,
-            "query": query,
-            "status": "backend_exception",
-            "elapsed": round(time.monotonic() - started, 3),
-            "error_type": type(exc).__name__,
-            "error": str(exc),
-            "traceback": traceback.format_exc(),
-        }
-
 # ============================================================================
 # FRONTEND
 # ============================================================================
+
+@app.get("/", include_in_schema=False)
+def root_frontend():
+    """Serve il frontend reale dalla root dell'applicazione."""
+    if FRONTEND_INDEX.exists():
+        return FileResponse(FRONTEND_INDEX)
+    return {"error": "frontend/index.html not found"}
+
 
 @app.get("/frontend")
 def frontend():
@@ -1425,6 +1288,37 @@ def frontend():
         "error": "frontend/index.html not found",
     }
 
+
+
+@app.get("/diagnose-frontend")
+def diagnose_frontend():
+    """Diagnostica quale frontend sta realmente servendo questo backend."""
+    import hashlib
+    data = {
+        "diagnostic": True,
+        "frontend_path": str(FRONTEND_INDEX),
+        "exists": FRONTEND_INDEX.exists(),
+    }
+    if not FRONTEND_INDEX.exists():
+        return data
+    raw = FRONTEND_INDEX.read_bytes()
+    text = raw.decode("utf-8", errors="replace")
+    data.update({
+        "bytes": len(raw),
+        "sha256": hashlib.sha256(raw).hexdigest(),
+        "has_search_endpoint": "/search?q=" in text or 'backend()+"/search' in text,
+        "has_search_start": "/search-start" in text,
+        "has_search_status": "/search-status" in text,
+        "has_openProduct": "function openProduct(" in text,
+        "has_openSize": "function openSize(" in text,
+        "has_detail_not_found": "detail not found" in text.lower(),
+        "has_detail_view": "detail-approved" in text,
+        "has_shGroupData": "function shGroupData(" in text,
+        "has_comparisons": "data.comparisons" in text,
+        "search_calls": text.count('"/search?q="'),
+        "search_start_calls": text.count('/search-start'),
+    })
+    return data
 
 # ============================================================================
 # LOCAL ENTRYPOINT
