@@ -15,13 +15,12 @@ import gc
 import importlib
 import json
 import logging
-import os
 import re
-import subprocess
 import sys
 import threading
 import time
 import uuid
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 from typing import Any, Dict, Iterable, List, Optional, Tuple
 
@@ -38,7 +37,7 @@ from product_matcher import ProductMatcher
 
 app = FastAPI(
     title="ScentHunter API",
-    version="3.2-isolated-sequential",
+    version="3.3-bounded-parallel-progressive",
 )
 
 app.add_middleware(
@@ -83,11 +82,6 @@ FRONTEND_INDEX = BASE_DIR.parent / "frontend" / "index.html"
 CACHE_TTL_SECONDS = 90.0
 MAX_RESULTS_PER_STORE = 80
 MAX_OFFERS_PER_COMPARISON = 100
-# Un singolo scraper non deve poter bloccare o abbattere il processo FastAPI.
-# Ogni store viene eseguito in un processo figlio, che viene terminato
-# completamente allo scadere del timeout. Un solo processo scraper alla volta
-# mantiene bassa la RAM su Render.
-STORE_TIMEOUT_SECONDS = 3.5
 
 logging.basicConfig(
     level=logging.INFO,
@@ -104,7 +98,8 @@ _MATCHER_LOCK = threading.Lock()
 JOBS: Dict[str, Dict[str, Any]] = {}
 JOBS_LOCK = threading.Lock()
 MAX_JOBS = 40
-_SEARCH_LOCK = threading.Lock()
+SEARCH_MAX_WORKERS = 4
+_SEARCH_EXECUTION_LOCK = threading.Lock()
 
 
 # ============================================================================
@@ -777,126 +772,6 @@ def load_scraper(store: str):
     )
 
 
-def _scraper_worker(store: str, query: str) -> None:
-    """Esegue uno scraper isolato e restituisce SOLO JSON su stdout."""
-    try:
-        module = load_scraper(store)
-        search = getattr(module, "search", None)
-        if not callable(search):
-            raise RuntimeError(
-                f"scraper {store} non espone search(query)"
-            )
-        raw = search(query)
-        rows = _coerce_rows(raw)
-        print(
-            json.dumps(rows, ensure_ascii=False, default=str),
-            flush=True,
-        )
-    except BaseException as exc:
-        print(
-            json.dumps(
-                {"__scenthunter_worker_error__": f"{type(exc).__name__}: {exc}"},
-                ensure_ascii=False,
-            ),
-            flush=True,
-        )
-        raise
-
-
-def _run_scraper_isolated(store: str, query: str) -> Tuple[Optional[List[Dict[str, Any]]], Optional[str]]:
-    """Run one retailer in a killable child process.
-
-    This is intentionally sequential: one browser/scraper process at a time.
-    A timeout kills the complete child process, including descendants it owns
-    where possible, so a stuck Playwright/browser cannot poison later searches.
-    """
-    command = [
-        sys.executable,
-        str(Path(__file__).resolve()),
-        "--scenthunter-worker",
-        store,
-        query,
-    ]
-    env = os.environ.copy()
-    pythonpath = str(BASE_DIR)
-    existing = env.get("PYTHONPATH", "")
-    env["PYTHONPATH"] = (
-        pythonpath + os.pathsep + existing
-        if existing
-        else pythonpath
-    )
-
-    process = None
-    try:
-        # Nuovo process group: se Playwright/Chromium apre figli, al timeout
-        # chiudiamo l'intero gruppo e non lasciamo processi fantasma su Render.
-        process = subprocess.Popen(
-            command,
-            cwd=str(BASE_DIR),
-            env=env,
-            stdin=subprocess.DEVNULL,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-            text=True,
-            encoding="utf-8",
-            errors="replace",
-            start_new_session=(os.name != "nt"),
-        )
-        try:
-            stdout, stderr = process.communicate(
-                timeout=STORE_TIMEOUT_SECONDS
-            )
-        except subprocess.TimeoutExpired:
-            if os.name != "nt":
-                try:
-                    os.killpg(process.pid, __import__("signal").SIGKILL)
-                except ProcessLookupError:
-                    pass
-            else:
-                process.kill()
-            stdout, stderr = process.communicate()
-            return None, f"TimeoutError: scraper oltre {STORE_TIMEOUT_SECONDS:.1f}s"
-        returncode = process.returncode
-    except Exception as exc:
-        if process is not None and process.poll() is None:
-            try:
-                process.kill()
-                process.communicate()
-            except Exception:
-                pass
-        return None, f"{type(exc).__name__}: {exc}"
-
-    stdout = (stdout or "").strip()
-    stderr = (stderr or "").strip()
-
-    # Lo worker emette un solo JSON. Se uno scraper scrive accidentalmente su
-    # stdout, prendiamo l'ultima riga JSON valida invece di buttare via tutto.
-    payload = None
-    for line in reversed(stdout.splitlines()):
-        line = line.strip()
-        if not line:
-            continue
-        try:
-            payload = json.loads(line)
-            break
-        except json.JSONDecodeError:
-            continue
-
-    if isinstance(payload, dict) and "__scenthunter_worker_error__" in payload:
-        return None, str(payload["__scenthunter_worker_error__"])
-
-    if returncode != 0:
-        detail = stderr[-600:] if stderr else "processo scraper terminato con errore"
-        return None, f"WorkerError: {detail}"
-
-    if payload is None:
-        detail = stderr[-600:] if stderr else "nessun JSON restituito dallo scraper"
-        return None, f"WorkerError: {detail}"
-
-    rows = _coerce_rows(payload)
-    return rows, None
-
-
 def run_store(
     store: str,
     query: str,
@@ -907,56 +782,76 @@ def run_store(
 
     if use_cache:
         cached = _cache_get(store, query)
+
         if cached is not None:
             return {
                 "store": store,
                 "status": "cache",
                 "cache": "fresh",
-                "elapsed": round(time.monotonic() - started, 3),
+                "elapsed": round(
+                    time.monotonic() - started,
+                    3,
+                ),
                 "count": len(cached),
                 "results": cached,
                 "error": None,
             }
 
+    module_name = f"scrapers.{store}.scraper"
+
     try:
-        logger.info("STORE START | %s | query=%r", store, query)
-        rows, worker_error = _run_scraper_isolated(store, query)
+        module = load_scraper(store)
 
-        if worker_error:
-            logger.warning(
-                "STORE WORKER ERROR | %s | query=%r | %s",
-                store,
-                query,
-                worker_error,
+        search = getattr(module, "search", None)
+
+        if not callable(search):
+            raise RuntimeError(
+                f"scraper {store} non espone search(query)"
             )
-            return {
-                "store": store,
-                "status": "timeout" if worker_error.startswith("TimeoutError:") else "error",
-                "cache": "miss",
-                "elapsed": round(time.monotonic() - started, 3),
-                "count": 0,
-                "results": [],
-                "error": worker_error,
-            }
 
-        rows = rows or []
+        logger.info(
+            "STORE START | %s | query=%r",
+            store,
+            query,
+        )
+
+        raw = search(query)
+        rows = _coerce_rows(raw)
+
         cleaned = [
             clean_result(row, store)
             for row in rows[:MAX_RESULTS_PER_STORE]
         ]
+
         cleaned = dedupe_results(cleaned)
-        matched = match_results(cleaned, query)
+
+        matched = match_results(
+            cleaned,
+            query,
+        )
+
         matched = dedupe_results(matched)
         matched = sort_results(matched)
-        _cache_put(store, query, matched)
 
-        elapsed = round(time.monotonic() - started, 3)
+        # Solo risultati reali NON vuoti entrano in cache.
+        _cache_put(
+            store,
+            query,
+            matched,
+        )
+
+        elapsed = round(
+            time.monotonic() - started,
+            3,
+        )
+
         logger.info(
             "STORE END | %s | results=%s | elapsed=%ss",
             store,
             len(matched),
             elapsed,
         )
+
         return {
             "store": store,
             "status": "ok" if matched else "empty",
@@ -966,26 +861,49 @@ def run_store(
             "results": matched,
             "error": None,
         }
+
     except Exception as exc:
-        error_text = f"{type(exc).__name__}: {exc}"
+        error_text = (
+            f"{type(exc).__name__}: {exc}"
+        )
+
         logger.exception(
             "STORE ERROR | %s | query=%r | %s",
             store,
             query,
             error_text,
         )
+
         return {
             "store": store,
             "status": "error",
             "cache": "miss",
-            "elapsed": round(time.monotonic() - started, 3),
+            "elapsed": round(
+                time.monotonic() - started,
+                3,
+            ),
             "count": 0,
             "results": [],
             "error": error_text,
         }
+
     finally:
+        # Il punto fondamentale della versione stabile:
+        # dopo ogni negozio liberiamo gli oggetti pesanti.
+        try:
+            sys.modules.pop(
+                module_name,
+                None,
+            )
+        except Exception:
+            pass
+
         gc.collect()
 
+
+# ============================================================================
+# RICERCA GLOBALE SEQUENZIALE
+# ============================================================================
 
 def run_search(
     query: str,
@@ -994,26 +912,61 @@ def run_search(
     query = str(query or "").strip()
     started = time.monotonic()
 
-    # Una sola ricerca globale alla volta. Evita che due tap ravvicinati, o
-    # due richieste del browser, lancino 16 processi/browser e facciano saltare
-    # la RAM del piano Render.
-    with _SEARCH_LOCK:
-        reports: List[Dict[str, Any]] = []
-        all_results: List[Dict[str, Any]] = []
+    reports: List[Dict[str, Any]] = []
+    all_results: List[Dict[str, Any]] = []
 
-        for store in STORES:
-            report = run_store(store, query, use_cache=use_cache)
+    # Parallelismo LIMITATO: quattro store contemporaneamente.
+    # Il vecchio 8x poteva saturare la RAM di Render; il sequenziale invece
+    # rendeva la ricerca dipendente dal negozio piu lento.
+    executor = ThreadPoolExecutor(
+        max_workers=SEARCH_MAX_WORKERS,
+        thread_name_prefix="scent_search_store",
+    )
+    futures = {
+        executor.submit(
+            run_store,
+            store,
+            query,
+            use_cache,
+        ): store
+        for store in STORES
+    }
+
+    try:
+        for future in as_completed(futures):
+            store = futures[future]
+            try:
+                report = future.result()
+            except Exception as exc:
+                report = {
+                    "store": store,
+                    "status": "error",
+                    "cache": "miss",
+                    "elapsed": 0.0,
+                    "count": 0,
+                    "results": [],
+                    "error": f"{type(exc).__name__}: {exc}",
+                }
+
             reports.append(report)
             all_results.extend(report.get("results", []))
             gc.collect()
+    finally:
+        executor.shutdown(wait=True, cancel_futures=False)
 
-        all_results = sort_results(dedupe_results(all_results))
-        comparisons = build_comparisons(all_results)
-        errors = {
-            report["store"]: report["error"]
-            for report in reports
-            if report.get("error")
-        }
+    all_results = sort_results(
+        dedupe_results(all_results)
+    )
+
+    comparisons = build_comparisons(
+        all_results
+    )
+
+    errors = {
+        report["store"]: report["error"]
+        for report in reports
+        if report.get("error")
+    }
 
     return {
         "query": query,
@@ -1033,7 +986,10 @@ def run_search(
         "completed_stores": len(reports),
         "total_stores": len(STORES),
         "partial": False,
-        "elapsed": round(time.monotonic() - started, 3),
+        "elapsed": round(
+            time.monotonic() - started,
+            3,
+        ),
     }
 
 
@@ -1109,190 +1065,90 @@ def _run_job(
 ) -> None:
     started = time.monotonic()
 
-    for store in STORES:
-        report = run_store(
-            store,
-            query,
-            use_cache=True,
+    # Un solo job globale alla volta: evita che ricaricamenti o richieste
+    # duplicate lancino piu gruppi di scraper contemporaneamente.
+    with _SEARCH_EXECUTION_LOCK:
+        executor = ThreadPoolExecutor(
+            max_workers=SEARCH_MAX_WORKERS,
+            thread_name_prefix="scenthunter_job_store",
         )
+        futures = {
+            executor.submit(
+                run_store,
+                store,
+                query,
+                True,
+            ): store
+            for store in STORES
+        }
+
+        try:
+            for future in as_completed(futures):
+                store = futures[future]
+
+                try:
+                    report = future.result()
+                except Exception as exc:
+                    report = {
+                        "store": store,
+                        "status": "error",
+                        "cache": "miss",
+                        "elapsed": 0.0,
+                        "count": 0,
+                        "results": [],
+                        "error": f"{type(exc).__name__}: {exc}",
+                    }
+
+                with JOBS_LOCK:
+                    job = JOBS.get(job_id)
+                    if job is None:
+                        continue
+
+                    job["stores"][store] = {
+                        "status": report["status"],
+                        "cache": report.get("cache"),
+                        "count": report["count"],
+                        "elapsed": report["elapsed"],
+                    }
+
+                    if report.get("error"):
+                        job["errors"][store] = report["error"]
+
+                    job["results"].extend(
+                        report.get("results", [])
+                    )
+                    job["results"] = sort_results(
+                        dedupe_results(job["results"])
+                    )
+                    job["comparisons"] = build_comparisons(
+                        job["results"]
+                    )
+                    job["elapsed"] = round(
+                        time.monotonic() - started,
+                        3,
+                    )
+                    job["partial"] = True
+
+                gc.collect()
+        finally:
+            executor.shutdown(wait=True, cancel_futures=False)
 
         with JOBS_LOCK:
             job = JOBS.get(job_id)
-
-            if not job:
-                return
-
-            job["stores"][store] = {
-                "status": report["status"],
-                "cache": report.get("cache"),
-                "count": report["count"],
-                "elapsed": report["elapsed"],
-            }
-
-            if report.get("error"):
-                job["errors"][store] = report["error"]
-
-            job["results"].extend(
-                report.get("results", [])
-            )
-
-            job["results"] = sort_results(
-                dedupe_results(job["results"])
-            )
-
-            job["comparisons"] = (
-                build_comparisons(
+            if job:
+                job["results"] = sort_results(
+                    dedupe_results(job["results"])
+                )
+                job["comparisons"] = build_comparisons(
                     job["results"]
                 )
-            )
-
-            job["elapsed"] = round(
-                time.monotonic() - started,
-                3,
-            )
-
-        gc.collect()
-
-    with JOBS_LOCK:
-        job = JOBS.get(job_id)
-
-        if job:
-            job["results"] = sort_results(
-                dedupe_results(
-                    job["results"]
+                job["completed"] = True
+                job["partial"] = False
+                job["elapsed"] = round(
+                    time.monotonic() - started,
+                    3,
                 )
-            )
-            job["comparisons"] = (
-                build_comparisons(
-                    job["results"]
-                )
-            )
-            job["completed"] = True
-            job["partial"] = False
-            job["elapsed"] = round(
-                time.monotonic() - started,
-                3,
-            )
 
-
-
-# ============================================================================
-# DEEP SEARCH DIAGNOSTIC
-# ============================================================================
-
-def _diagnose_store(store: str, query: str) -> Dict[str, Any]:
-    """Trace one complete store path without using cache.
-
-    This deliberately uses the same isolated scraper invocation and the same
-    clean/match functions as the real search. It does not modify scraper code
-    and does not retry: the purpose is to capture the exact failure point of
-    THIS request.
-    """
-    started = time.monotonic()
-    stage = {
-        "store": store,
-        "started_at_ms": 0,
-        "scraper_finished": False,
-        "raw_count": None,
-        "clean_count": None,
-        "matched_count": None,
-        "scraper_elapsed": None,
-        "clean_elapsed": None,
-        "match_elapsed": None,
-        "total_elapsed": None,
-        "status": "started",
-        "error": None,
-    }
-
-    try:
-        t0 = time.monotonic()
-        rows, worker_error = _run_scraper_isolated(store, query)
-        t1 = time.monotonic()
-        stage["scraper_elapsed"] = round(t1 - t0, 3)
-        stage["scraper_finished"] = worker_error is None
-
-        if worker_error:
-            stage["status"] = (
-                "timeout" if worker_error.startswith("TimeoutError:")
-                else "scraper_error"
-            )
-            stage["error"] = worker_error
-            return stage
-
-        rows = rows or []
-        stage["raw_count"] = len(rows)
-
-        t2 = time.monotonic()
-        cleaned = [
-            clean_result(row, store)
-            for row in rows[:MAX_RESULTS_PER_STORE]
-        ]
-        cleaned = dedupe_results(cleaned)
-        t3 = time.monotonic()
-        stage["clean_count"] = len(cleaned)
-        stage["clean_elapsed"] = round(t3 - t2, 3)
-
-        t4 = time.monotonic()
-        matched = match_results(cleaned, query)
-        matched = dedupe_results(matched)
-        matched = sort_results(matched)
-        t5 = time.monotonic()
-        stage["matched_count"] = len(matched)
-        stage["match_elapsed"] = round(t5 - t4, 3)
-
-        if stage["raw_count"] == 0:
-            stage["status"] = "empty_from_scraper"
-        elif stage["clean_count"] == 0:
-            stage["status"] = "lost_in_clean"
-        elif stage["matched_count"] == 0:
-            stage["status"] = "lost_in_matcher"
-        else:
-            stage["status"] = "ok"
-
-        return stage
-
-    except Exception as exc:
-        stage["status"] = "backend_error"
-        stage["error"] = f"{type(exc).__name__}: {exc}"
-        logger.exception(
-            "DEEP DIAGNOSTIC ERROR | store=%s | query=%r",
-            store,
-            query,
-        )
-        return stage
-    finally:
-        stage["total_elapsed"] = round(time.monotonic() - started, 3)
-
-
-def run_deep_diagnostic(query: str) -> Dict[str, Any]:
-    query = str(query or "").strip()
-    started = time.monotonic()
-    reports: List[Dict[str, Any]] = []
-
-    # Same protection as normal search: one diagnostic/search execution at a time.
-    with _SEARCH_LOCK:
-        for store in STORES:
-            report = _diagnose_store(store, query)
-            reports.append(report)
-            gc.collect()
-
-    total = round(time.monotonic() - started, 3)
-    failures = [
-        r for r in reports
-        if r.get("status") != "ok"
-    ]
-
-    return {
-        "diagnostic": "deep-search-v1",
-        "query": query,
-        "ok": not failures,
-        "total_elapsed": total,
-        "store_timeout_seconds": STORE_TIMEOUT_SECONDS,
-        "completed_stores": len(reports),
-        "total_stores": len(STORES),
-        "failed_or_empty_stores": len(failures),
-        "stores": reports,
-    }
 
 # ============================================================================
 # API
@@ -1309,7 +1165,7 @@ def root():
     return {
         "app": "ScentHunter",
         "status": "running",
-        "architecture": "isolated-sequential-live-scrapers",
+        "architecture": "bounded-parallel-progressive-live-scrapers",
         "stores": STORES,
         "error": "frontend/index.html not found",
     }
@@ -1333,7 +1189,7 @@ def health():
             if matcher_loaded
             else "degraded"
         ),
-        "architecture": "isolated-sequential-live-scrapers-matcher",
+        "architecture": "bounded-parallel-progressive-live-scrapers",
         "stores": STORES,
         "matcher_loaded": matcher_loaded,
         "cache_ttl_seconds": CACHE_TTL_SECONDS,
@@ -1458,12 +1314,6 @@ def test_store(
     }
 
 
-@app.get("/diagnose-search")
-def diagnose_search(q: str = "Liquid Brun"):
-    """Deep trace of one complete live search, store by store."""
-    return run_deep_diagnostic(str(q or "").strip())
-
-
 @app.get("/diagnose-stores")
 def diagnose_stores(
     q: str = "Liquid Brun",
@@ -1475,7 +1325,7 @@ def diagnose_stores(
 
     return {
         "ok": True,
-        "architecture": "isolated-sequential-live-scrapers",
+        "architecture": "bounded-parallel-progressive-live-scrapers",
         **data,
     }
 
@@ -1501,15 +1351,6 @@ def frontend():
     return {
         "error": "frontend/index.html not found"
     }
-
-
-# ============================================================================
-# ISOLATED SCRAPER WORKER ENTRYPOINT
-# ============================================================================
-
-if __name__ == "__main__" and len(sys.argv) >= 4 and sys.argv[1] == "--scenthunter-worker":
-    _scraper_worker(sys.argv[2], sys.argv[3])
-    raise SystemExit(0)
 
 
 # ============================================================================
