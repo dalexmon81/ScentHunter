@@ -2070,30 +2070,24 @@ def _discover_from_first_party(
     session,
     query,
 ):
-    """
-    Fast first-party discovery.
-
-    Sabina's normal search response is the authoritative discovery source.
-    We try the known first-party routes in order and stop as soon as a route
-    returns query-relevant product URLs. Historical/AJAX routes are fallback
-    only; they are not needlessly executed after a successful discovery.
-    """
+    """First-party Sabina discovery only; no external search engines."""
     urls = []
     seen = set()
     q = quote_plus(query)
 
-    # One current first-party HTTP route only. Older routes/AJAX endpoints
-    # are deliberately not chained here: on Sabina they add long waits without
-    # improving discovery when the search is client-rendered.
     search_urls = [
+        BASE + "/es/buscar?s=" + q,
+        BASE + "/es/buscar?controller=search&s=" + q,
         BASE + "/es/buscar_old?s=" + q,
+        BASE + "/es/buscar?search_query=" + q,
+        BASE + "/es/buscar_old?search_query=" + q,
+        BASE + "/es/search?s=" + q,
     ]
 
     for url in search_urls:
         response = _get(session, url)
         if response is None:
             continue
-
         try:
             links = _extract_product_links_from_html(
                 response.text,
@@ -2101,9 +2095,6 @@ def _discover_from_first_party(
             )
         finally:
             response.close()
-
-        if not links:
-            continue
 
         for link in links:
             if link in seen:
@@ -2113,14 +2104,51 @@ def _discover_from_first_party(
             if len(urls) >= MAX_CANDIDATES:
                 return urls[:MAX_CANDIDATES]
 
-        # A successful first-party search is enough. Do not spend several
-        # additional network round-trips against equivalent legacy routes.
         if urls:
             return urls[:MAX_CANDIDATES]
 
-    # No external search engines and no legacy AJAX cascade: if the
-    # first-party HTTP search is client-rendered, the caller immediately
-    # switches to the bounded browser discovery path.
+    # First-party AJAX fallback. These requests are only attempted after
+    # normal Sabina search routes produced no query-relevant product URL.
+    ajax_endpoints = [
+        BASE + "/es/module/ec_customization/ajax",
+        BASE + "/es/modules/ec_customization/ajax",
+        BASE + "/modules/ecelastic/ajax.php",
+    ]
+
+    payloads = [
+        {"s": query, "query": query, "search_query": query},
+        {"q": query, "query": query, "search_query": query},
+    ]
+
+    for endpoint in ajax_endpoints:
+        for payload in payloads:
+            response = _get(
+                session,
+                endpoint,
+                params=payload,
+                ajax=True,
+            )
+            if response is None:
+                continue
+
+            try:
+                links = _extract_product_links_from_html(
+                    response.text,
+                    query,
+                )
+            finally:
+                response.close()
+
+            for link in links:
+                if link in seen:
+                    continue
+                seen.add(link)
+                urls.append(link)
+                if len(urls) >= MAX_CANDIDATES:
+                    return urls[:MAX_CANDIDATES]
+
+            if urls:
+                return urls[:MAX_CANDIDATES]
 
     return urls[:MAX_CANDIDATES]
 
@@ -2295,12 +2323,13 @@ def _query_tokens_in_text(query, text):
 
 
 def _discover_from_browser(query):
-    """Discover structural Sabina product URLs from rendered search."""
+    """Discover Sabina product URLs from rendered first-party search."""
     if sync_playwright is None:
         return []
 
     search_url = BASE + "/es/buscar_old?s=" + quote_plus(query)
-    found, seen = [], set()
+    found = []
+    seen = set()
 
     try:
         with sync_playwright() as playwright:
@@ -2319,44 +2348,70 @@ def _discover_from_browser(query):
                 timeout=BROWSER_TIMEOUT_MS,
             )
             try:
-                page.wait_for_load_state("networkidle", timeout=3500)
+                page.wait_for_load_state(
+                    "networkidle",
+                    timeout=5000,
+                )
             except PlaywrightTimeoutError:
                 pass
             page.wait_for_timeout(BROWSER_WAIT_MS)
 
-            hrefs = page.locator("a[href]").evaluate_all(
+            anchors = page.locator("a[href]").evaluate_all(
                 """
                 anchors => anchors.map(a => ({
                     href: a.href || "",
-                    text: a.innerText || a.textContent || ""
+                    text: a.innerText || a.textContent || "",
+                    title: a.getAttribute("title") || "",
+                    aria: a.getAttribute("aria-label") || ""
                 }))
                 """
             )
-            rendered_html = page.content()
+
             current_url = page.url
 
-            def add_url(raw):
+            for item in anchors:
+                raw = _clean(item.get("href"))
                 if not raw:
-                    return
-                absolute = urljoin(current_url, raw).split("#", 1)[0]
-                if not _is_product_url(absolute) or absolute in seen:
-                    return
+                    continue
+
+                absolute = urljoin(
+                    current_url,
+                    raw,
+                ).split("#", 1)[0]
+
+                if not _is_product_url(absolute):
+                    continue
+
+                # Critical: never accept an arbitrary product link merely
+                # because it appears on the rendered search page.
+                text = _clean(
+                    " ".join(
+                        [
+                            item.get("text") or "",
+                            item.get("title") or "",
+                            item.get("aria") or "",
+                        ]
+                    )
+                )
+
+                if not (
+                    _query_tokens_in_text(query, text)
+                    or _query_tokens_in_text(query, absolute)
+                ):
+                    continue
+
+                if absolute in seen:
+                    continue
+
                 seen.add(absolute)
                 found.append(absolute)
 
-            for item in hrefs:
-                add_url(_clean(item.get("href")))
                 if len(found) >= MAX_CANDIDATES:
                     break
 
-            if len(found) < MAX_CANDIDATES:
-                for match in re.finditer(r"(?:href=[\"'])([^\"']+)", rendered_html, re.I):
-                    add_url(match.group(1))
-                    if len(found) >= MAX_CANDIDATES:
-                        break
-
             context.close()
             browser.close()
+
     except Exception:
         return []
 
