@@ -41,16 +41,16 @@ except Exception:
 STORE = "Sabina"
 BASE = "https://www.sabina.com"
 
-CONNECT_TIMEOUT = 1.5
-READ_TIMEOUT = 3.5
+CONNECT_TIMEOUT = 2.5
+READ_TIMEOUT = 5.0
 TIMEOUT = (CONNECT_TIMEOUT, READ_TIMEOUT)
 
-MAX_CANDIDATES = 6
+MAX_CANDIDATES = 8
 PRODUCT_WORKERS = 6
 MAX_EXTERNAL_RESULTS = 0
 MAX_VARIANT_ROWS = 80
 BROWSER_TIMEOUT_MS = 9000
-BROWSER_WAIT_MS = 1200
+BROWSER_WAIT_MS = 1000
 
 HEADERS = {
     "User-Agent": (
@@ -2075,13 +2075,13 @@ def _discover_from_first_party(
     seen = set()
     q = quote_plus(query)
 
+    # The legacy route was the one that historically rendered Sabina's
+    # product cards correctly. Keep it first; only try two current aliases
+    # when it produces no query-relevant product URL.
     search_urls = [
+        BASE + "/es/buscar_old?s=" + q,
         BASE + "/es/buscar?s=" + q,
         BASE + "/es/buscar?controller=search&s=" + q,
-        BASE + "/es/buscar_old?s=" + q,
-        BASE + "/es/buscar?search_query=" + q,
-        BASE + "/es/buscar_old?search_query=" + q,
-        BASE + "/es/search?s=" + q,
     ]
 
     for url in search_urls:
@@ -2327,7 +2327,16 @@ def _discover_from_browser(query):
     if sync_playwright is None:
         return []
 
-    search_url = BASE + "/es/buscar_old?s=" + quote_plus(query)
+    q = quote_plus(query)
+    # The legacy route was the one that historically rendered Sabina's
+    # product cards correctly. Keep it first; only try two current aliases
+    # when it produces no query-relevant product URL.
+    search_urls = [
+        BASE + "/es/buscar_old?s=" + q,
+        BASE + "/es/buscar?s=" + q,
+        BASE + "/es/buscar?controller=search&s=" + q,
+    ]
+
     found = []
     seen = set()
 
@@ -2342,126 +2351,127 @@ def _discover_from_browser(query):
                 },
             )
             page = context.new_page()
-            page.goto(
-                search_url,
-                wait_until="domcontentloaded",
-                timeout=BROWSER_TIMEOUT_MS,
-            )
+
             try:
-                page.wait_for_load_state(
-                    "networkidle",
-                    timeout=5000,
-                )
-            except PlaywrightTimeoutError:
-                pass
-            page.wait_for_timeout(BROWSER_WAIT_MS)
+                for search_url in search_urls:
+                    try:
+                        page.goto(
+                            search_url,
+                            wait_until="domcontentloaded",
+                            timeout=BROWSER_TIMEOUT_MS,
+                        )
+                    except PlaywrightTimeoutError:
+                        # A route can still have a useful DOM after its load
+                        # timeout, so continue inspecting the current page.
+                        pass
+                    except Exception:
+                        continue
 
-            anchors = page.locator("a[href]").evaluate_all(
-                """
-                anchors => anchors.map(a => ({
-                    href: a.href || "",
-                    text: a.innerText || a.textContent || "",
-                    title: a.getAttribute("title") || "",
-                    aria: a.getAttribute("aria-label") || ""
-                }))
-                """
-            )
+                    try:
+                        page.wait_for_load_state(
+                            "networkidle",
+                            timeout=2000,
+                        )
+                    except PlaywrightTimeoutError:
+                        pass
 
-            current_url = page.url
+                    page.wait_for_timeout(BROWSER_WAIT_MS)
 
-            for item in anchors:
-                raw = _clean(item.get("href"))
-                if not raw:
-                    continue
-
-                absolute = urljoin(
-                    current_url,
-                    raw,
-                ).split("#", 1)[0]
-
-                if not _is_product_url(absolute):
-                    continue
-
-                # Critical: never accept an arbitrary product link merely
-                # because it appears on the rendered search page.
-                text = _clean(
-                    " ".join(
-                        [
-                            item.get("text") or "",
-                            item.get("title") or "",
-                            item.get("aria") or "",
-                        ]
+                    current_url = page.url
+                    anchors = page.locator("a[href]").evaluate_all(
+                        """
+                        anchors => anchors.map(a => ({
+                            href: a.href || "",
+                            text: a.innerText || a.textContent || "",
+                            title: a.getAttribute("title") || "",
+                            aria: a.getAttribute("aria-label") || ""
+                        }))
+                        """
                     )
-                )
 
-                if not (
-                    _query_tokens_in_text(query, text)
-                    or _query_tokens_in_text(query, absolute)
-                ):
-                    continue
+                    for item in anchors:
+                        raw = _clean(item.get("href"))
+                        if not raw:
+                            continue
 
-                if absolute in seen:
-                    continue
+                        absolute = urljoin(
+                            current_url,
+                            raw,
+                        ).split("#", 1)[0]
 
-                seen.add(absolute)
-                found.append(absolute)
+                        if not _is_product_url(absolute):
+                            continue
 
-                if len(found) >= MAX_CANDIDATES:
-                    break
+                        text = _clean(
+                            " ".join(
+                                [
+                                    item.get("text") or "",
+                                    item.get("title") or "",
+                                    item.get("aria") or "",
+                                ]
+                            )
+                        )
 
-            context.close()
-            browser.close()
+                        # Accept a product only when the query is visible in
+                        # the card metadata/text or in the product slug.
+                        if not (
+                            _query_tokens_in_text(query, text)
+                            or _query_tokens_in_text(query, absolute)
+                        ):
+                            continue
+
+                        if absolute in seen:
+                            continue
+
+                        seen.add(absolute)
+                        found.append(absolute)
+
+                        if len(found) >= MAX_CANDIDATES:
+                            break
+
+                    if len(found) >= MAX_CANDIDATES:
+                        break
+
+                    # A route that returned no relevant product is simply
+                    # not the active search implementation. Try the next
+                    # first-party route without failing the whole search.
+
+            finally:
+                context.close()
+                browser.close()
 
     except Exception:
         return []
 
     return found[:MAX_CANDIDATES]
 
-
 def search(query):
-    query = _clean(
-        query
-    )
+    query = _clean(query)
 
     if not query:
         return []
 
-    session = requests.Session()
-    session.headers.update(
-        HEADERS
-    )
+    # Sabina's current search is client-rendered. Use the rendered
+    # first-party search as the primary discovery path so the request does
+    # not waste most of the global search budget on legacy HTTP routes.
+    candidate_urls = _discover_from_browser(query)
 
-    try:
-        # Warm-up: establishes cookies/locale before discovery.
-        response = _get(
-            session,
-            BASE + "/es/",
-        )
+    # Browser discovery is bounded and query-filtered. If Playwright is not
+    # available in the runtime, fall back to Sabina's own HTTP/AJAX routes.
+    if not candidate_urls:
+        session = requests.Session()
+        session.headers.update(HEADERS)
+        try:
+            response = _get(session, BASE + "/es/")
+            if response is not None:
+                response.close()
+            candidate_urls = _discover_from_first_party(session, query)
+        finally:
+            session.close()
 
-        if response is not None:
-            response.close()
-
-        candidate_urls = (
-            _discover_from_first_party(
-                session,
-                query,
-            )
-        )
-
-        # Sabina's current search can be client-rendered. If HTTP discovery
-        # is empty, use the rendered first-party search page. Never depend on
-        # Google/Bing/DuckDuckGo for retailer discovery.
-        if not candidate_urls:
-            candidate_urls = _discover_from_browser(query)
-
-        candidate_urls = list(
-            dict.fromkeys(
-                candidate_urls
-            )
-        )[:MAX_CANDIDATES]
-
-    finally:
-        session.close()
+    candidate_urls = list(
+        dict.fromkeys(candidate_urls)
+    )[:MAX_CANDIDATES]
 
     if not candidate_urls:
         return []
@@ -2485,9 +2495,7 @@ def search(query):
             for url in candidate_urls
         }
 
-        for future in as_completed(
-            futures
-        ):
+        for future in as_completed(futures):
             try:
                 results.extend(
                     future.result()
@@ -2495,77 +2503,41 @@ def search(query):
             except Exception:
                 continue
 
-    results = _dedupe_results(
-        results
-    )
+    results = _dedupe_results(results)
 
     def sort_key(item):
-        availability = item.get(
-            "availability"
-        )
+        availability = item.get("availability")
 
-        if (
-            availability
-            == "out_of_stock"
-        ):
+        if availability == "out_of_stock":
             state = 2
-        elif item.get(
-            "price_num"
-        ) is not None:
+        elif item.get("price_num") is not None:
             state = 0
         else:
             state = 1
 
-        price = item.get(
-            "price_num"
-        )
+        price = item.get("price_num")
 
         try:
-            numeric_price = float(
-                price
-            )
-        except (
-            TypeError,
-            ValueError,
-        ):
-            numeric_price = float(
-                "inf"
-            )
+            numeric_price = float(price)
+        except (TypeError, ValueError):
+            numeric_price = float("inf")
 
-        size = item.get(
-            "size_ml"
-        )
+        size = item.get("size_ml")
 
         try:
-            numeric_size = float(
-                size
-            )
-        except (
-            TypeError,
-            ValueError,
-        ):
-            numeric_size = float(
-                "inf"
-            )
+            numeric_size = float(size)
+        except (TypeError, ValueError):
+            numeric_size = float("inf")
 
         return (
             state,
             numeric_price,
             numeric_size,
-            str(
-                item.get(
-                    "name"
-                )
-                or ""
-            ).lower(),
+            str(item.get("name") or "").lower(),
         )
 
-    results.sort(
-        key=sort_key
-    )
-
+    results.sort(key=sort_key)
     return results[:80]
-
 
 def scrape(query):
     return search(query)
