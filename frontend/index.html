@@ -1972,55 +1972,82 @@ async function searchPerfume(){
 
   try{
     /*
-     * ARCHITETTURA SEMPLICE:
-     * il main nuovo espone /search come snapshot completo delle 8 ricerche.
-     * Usiamo direttamente questo endpoint per evitare che gli snapshot
-     * progressivi del vecchio flusso possano sovrascrivere/perdere offerte.
-     * Il backend lancia comunque gli 8 scraper in parallelo.
+     * RICERCA PROGRESSIVA REALE:
+     * /search-start avvia gli 8 scraper in parallelo.
+     * /search-status restituisce gli scraper già terminati senza aspettare
+     * quelli lenti. Ad ogni snapshot ricostruiamo TUTTI i gruppi dal set
+     * completo restituito dal backend fino a quel momento.
+     *
+     * Non facciamo merge manuali tra snapshot: lo snapshot del backend è
+     * cumulativo. Questo evita sia la perdita dei negozi sia i duplicati.
      */
-    const data=await fetchJSONWithTimeout(
-      backend()+"/search?q="+encodeURIComponent(q),
-      120000
-    );
+    let lastGroups=[];
+    const finalData=await searchStoresProgressive(q,(snapshot,completed)=>{
+      const normalized={
+        query:snapshot?.query||q,
+        results:Array.isArray(snapshot?.results)?snapshot.results:[],
+        comparisons:Array.isArray(snapshot?.comparisons)?snapshot.comparisons:[],
+        errors:snapshot?.errors&&typeof snapshot.errors==="object"?snapshot.errors:{},
+        completed:Boolean(completed),
+        status:completed?"completed":"searching"
+      };
 
-    const normalized={
-      query:data?.query||q,
-      results:Array.isArray(data?.results)?data.results:[],
-      comparisons:Array.isArray(data?.comparisons)?data.comparisons:[],
-      errors:data?.errors&&typeof data.errors==="object"?data.errors:{},
+      const groups=shGroupData(normalized);
+      lastGroups=groups;
+      currentProductGroups=groups;
+      updateBestPricesFromGroups(groups);
+
+      if(groups.length){
+        showProducts(groups);
+        // Durante la ricerca non mostriamo un falso "nessun risultato".
+        // Il numero finale viene mostrato solo quando tutti gli scraper hanno
+        // terminato.
+        if(!completed){
+          statusBox.textContent="";
+        }
+      }else if(completed){
+        statusBox.textContent="Nessun risultato trovato.";
+        resultsBox.innerHTML="";
+      }else{
+        statusBox.textContent="";
+        resultsBox.innerHTML="";
+      }
+
+      refreshWishlistFromResults(
+        groups.flatMap(g=>(Array.isArray(g.offers)?g.offers:[]).map(o=>({
+          name:g.name||"",
+          brand:g.brand||"",
+          price:shPrice(o),
+          price_value:o.price_value,
+          store:o.store||"",
+          url:o.url||"",
+          pic:g.image||o.image||o.image_url||o.thumbnail||o.source?.image||"🧴"
+        })))
+      );
+
+      errorsBox.innerHTML="";
+    });
+
+    const finalGroups=shGroupData({
+      query:finalData?.query||q,
+      results:Array.isArray(finalData?.results)?finalData.results:[],
+      comparisons:Array.isArray(finalData?.comparisons)?finalData.comparisons:[],
+      errors:finalData?.errors&&typeof finalData.errors==="object"?finalData.errors:{},
       completed:true,
-      status:data?.status||"completed"
-    };
+      status:"completed"
+    });
 
-    /*
-     * Una sola normalizzazione finale. Nessun accumulatore locale e nessun
-     * merge tra snapshot: /search contiene già TUTTE le offerte restituite
-     * dagli scraper terminati.
-     */
-    const groups=shGroupData(normalized);
-    currentProductGroups=groups;
-    updateBestPricesFromGroups(groups);
-
-    if(groups.length){
-      showProducts(groups);
+    currentProductGroups=finalGroups;
+    updateBestPricesFromGroups(finalGroups);
+    if(finalGroups.length){
+      showProducts(finalGroups);
+      statusBox.textContent="Ricerca completata: "+finalGroups.length+
+        (finalGroups.length===1?" prodotto trovato.":" prodotti trovati.");
     }else{
       statusBox.textContent="Nessun risultato trovato.";
       resultsBox.innerHTML="";
     }
-
-    refreshWishlistFromResults(
-      groups.flatMap(g=>(Array.isArray(g.offers)?g.offers:[]).map(o=>({
-        name:g.name||"",
-        brand:g.brand||"",
-        price:shPrice(o),
-        price_value:o.price_value,
-        store:o.store||"",
-        url:o.url||"",
-        pic:g.image||o.image||o.image_url||o.thumbnail||o.source?.image||"🧴"
-      })))
-    );
-
-    errorsBox.innerHTML="";
+    lastGroups=finalGroups;
 
   }catch(e){
     console.error(e);
