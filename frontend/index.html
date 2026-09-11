@@ -848,10 +848,136 @@ function shGroupData(data){
     return "";
   }
 
-  // Normalizza in modo neutro i campi testuali ricevuti dagli scraper.
-  // Questa funzione non usa il Product Catalog: serve solo alla presentazione.
-  function cleanBrandText(v){
-    return String(v||"").replace(/\s+/g," ").trim();
+  function isLikelyBrand(v){
+    const rawBrand=cleanBrandText(v);
+    const n=norm(rawBrand);
+    if(!n || n.length<2)return false;
+    if(/\b(?:ml|milliliter|eau de parfum|eau de toilette|edp|edt|edc|perfume|parfum|spray)\b/i.test(rawBrand))return false;
+    if(/\b(?:women|woman|men|man|homme|femme|unisex)\b/i.test(rawBrand))return false;
+    if(/\b(?:by|for men|for women|for him|for her|pour homme|pour femme)\b/i.test(rawBrand))return false;
+    if(/[|,;]/.test(rawBrand))return false;
+    if(/\d/.test(rawBrand))return false;
+    if(n.split(" ").length>5)return false;
+    return true;
+  }
+
+  function canonicalKnownBrand(v){
+    const n=norm(v);
+    return knownBrandMap.get(n)||"";
+  }
+
+  const brandCandidates=new Map();
+  function addBrandCandidate(v,weight){
+    const rawBrand=cleanBrandText(v);
+    if(!isLikelyBrand(rawBrand))return;
+    const known=canonicalKnownBrand(rawBrand);
+    const candidate=known||rawBrand;
+    const n=norm(candidate);
+    const old=brandCandidates.get(n);
+    if(!old || weight>old.weight || (weight===old.weight && candidate.length>old.raw.length)){
+      brandCandidates.set(n,{norm:n,raw:candidate,weight});
+    }
+  }
+
+  raw.forEach(o=>{
+    const name=cleanBrandText(o.name);
+    const by=name.match(/\bby\s+([^|,;]+?)\s*$/i);
+    if(by)addBrandCandidate(by[1],100);
+
+    const knownAtStart=KNOWN_BRANDS.find(b=>{
+      const bn=norm(b);
+      return norm(name)===bn || norm(name).startsWith(bn+" ");
+    });
+    if(knownAtStart)addBrandCandidate(knownAtStart,90);
+
+    const explicit=cleanBrandText(o.brand);
+    if(isLikelyBrand(explicit))addBrandCandidate(explicit,60);
+  });
+
+  const brandList=[...brandCandidates.values()].sort((a,b)=>{
+    if(b.weight!==a.weight)return b.weight-a.weight;
+    if(b.norm.length!==a.norm.length)return b.norm.length-a.norm.length;
+    return b.raw.length-a.raw.length;
+  });
+
+  function findBrand(o){
+    const name=cleanBrandText(o.name);
+    const n=norm(name);
+
+    const by=name.match(/\bby\s+([^|,;]+?)\s*$/i);
+    if(by){
+      const byRaw=cleanBrandText(by[1]);
+      const known=canonicalKnownBrand(byRaw);
+      if(known)return known;
+      const exact=brandList.find(b=>b.norm===norm(byRaw));
+      if(exact)return pretty(exact.raw);
+      if(isLikelyBrand(byRaw))return pretty(byRaw);
+    }
+
+    const knownPrefix=KNOWN_BRANDS
+      .filter(b=>n===norm(b)||n.startsWith(norm(b)+" "))
+      .sort((a,b)=>norm(b).length-norm(a).length)[0];
+    if(knownPrefix)return knownPrefix;
+
+    const knownSuffix=KNOWN_BRANDS
+      .filter(b=>n.endsWith(" "+norm(b)) && n!==norm(b))
+      .sort((a,b)=>norm(b).length-norm(a).length)[0];
+    if(knownSuffix)return knownSuffix;
+
+    const prefix=brandList
+      .filter(b=>n===b.norm || n.startsWith(b.norm+" "))
+      .sort((a,b)=>b.norm.length-a.norm.length)[0];
+    if(prefix)return pretty(prefix.raw);
+
+    const explicit=cleanBrandText(o.brand);
+    if(isLikelyBrand(explicit)){
+      const known=canonicalKnownBrand(explicit);
+      return known||pretty(explicit);
+    }
+
+    return "";
+  }
+
+  function cleanProductName(o,brand){
+    let n=cleanBrandText(o.name||"Profumo")
+      .replace(/\b\d{1,4}\s*ml\b/gi," ")
+      .replace(/\s+/g," ")
+      .trim();
+
+    n=n.replace(/\s+by\s+[^|,;]+$/i," ").trim();
+    n=n.replace(/\(\s*\)/g," ")
+      .replace(/\((?:man|woman|men|women|homme|femme|unisex)\)/gi," ")
+      .replace(/\s+/g," ")
+      .trim();
+
+    const protectedPourFemme="__SCENTHUNTER_POUR_FEMME__";
+    n=n.replace(/\bpour\s+femme\b/gi,protectedPourFemme);
+    n=n
+      .replace(/^(?:women'?s|men'?s|women|men)\s+perfume\s*[-–—:]\s*/i,"")
+      .replace(/^(?:eau de parfum|eau de toilette|eau de cologne|extrait de parfum|extract de parfum|extrait|edp|edt|edc|spray)\s*[-–—:]\s*/i,"")
+      .replace(/\b(?:women'?s|men'?s|women|men)\s+perfume\b/gi," ")
+      .replace(/\b(?:eau de parfum|eau de toilette|eau de cologne|extract de parfum|extrait|eau de parfum intense|edp|edt|edc|spray)\b/gi," ")
+      .replace(/\b(?:for men|for women|for him|for her|pour homme|homme|femme|men|man|women|woman|unisex)\b/gi," ")
+      .replace(/\s+/g," ")
+      .trim();
+    n=n.replace(new RegExp(protectedPourFemme,"g"),"Pour Femme");
+
+    if(brand){
+      const brandWords=norm(brand).split(/\s+/).filter(Boolean)
+        .map(w=>w.replace(/[.*+?^${}()|[\]\\]/g,"\\$&")).join("\\s+");
+      if(brandWords){
+        for(let pass=0;pass<5;pass++){
+          const before=n;
+          n=n.replace(new RegExp("^\\s*"+brandWords+"\\s*[-–—:]?\\s*","i"),"").trim();
+          if(n===before)break;
+        }
+        n=n.replace(new RegExp("\\s+"+brandWords+"\\s*$","i")," ").trim();
+        n=n.replace(new RegExp("\\s+by\\s+"+brandWords+"\\s*$","i")," ").trim();
+      }
+    }
+
+    n=n.replace(/\s*[-–—]\s*/g," ").replace(/\s+/g," ").trim();
+    return pretty(n||"Profumo");
   }
 
   function productIdentity(o){
