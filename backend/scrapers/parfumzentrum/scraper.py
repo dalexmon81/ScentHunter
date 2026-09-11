@@ -1641,10 +1641,55 @@ def search(query):
         query
     )
 
-    # FALLBACK: use the cached sitemap only when the live search response was
-    # not authoritative (for example a transient block or an unexpected page
-    # shell). Never use the sitemap to override an explicit live zero-result.
-    if not candidates and not authoritative_zero:
+    # FALLBACK 1: Parfum-Zentrum's live search is known to return
+    # "Produkte (0)" for products that are visibly present in its own
+    # first-party category pages. Search the public category index before
+    # falling back to the much larger sitemap.
+    if not candidates:
+        category_urls = (
+            BASE_URL + "/french-avenue_v1341/",
+            BASE_URL + "/french-avenue_v1341/orient-duftwelt_k378/",
+            BASE_URL + "/french-avenue_v1341/parfum_k319/herrendufte_k322/herren-eau-de-parfum-edp_k390/",
+            BASE_URL + "/herrendufte/",
+            BASE_URL + "/herren-eau-de-parfum/",
+            BASE_URL + "/parfums/",
+        )
+
+        for category_url in category_urls:
+            try:
+                response = _session().get(
+                    category_url,
+                    timeout=PRODUCT_TIMEOUT,
+                    allow_redirects=True,
+                )
+            except requests.RequestException:
+                continue
+
+            try:
+                if response.status_code != 200 or not response.text:
+                    continue
+
+                discovered = _candidate_urls_from_html(
+                    response.text,
+                    query,
+                )
+
+                for url in discovered:
+                    if url not in candidates:
+                        candidates.append(url)
+
+                    if len(candidates) >= MAX_CANDIDATES:
+                        break
+
+                if candidates:
+                    break
+            finally:
+                response.close()
+
+    # FALLBACK 2: complete first-party sitemap.
+    # This remains generic and is only used when the lighter category
+    # discovery did not find the requested product.
+    if not candidates:
         candidates = _sitemap_discovery(
             query
         )
