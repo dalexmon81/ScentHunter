@@ -358,12 +358,17 @@ def _run_job(job_id: str, query: str) -> None:
 # API
 # ---------------------------------------------------------------------------
 
-@app.get("/")
+@app.get("/", include_in_schema=False)
 def root():
+    # The public URL must serve the real ScentHunter frontend.
+    # Keep the API available under /health and the search endpoints below.
+    if FRONTEND_INDEX.exists():
+        return FileResponse(FRONTEND_INDEX)
     return {
         "app": "ScentHunter",
         "status": "running",
         "architecture": "simple-main-plus-independent-scrapers",
+        "error": "frontend/index.html not found",
     }
 
 
