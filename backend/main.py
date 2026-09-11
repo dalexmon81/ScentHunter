@@ -971,49 +971,34 @@ def run_store(
 
 def run_search(
     query: str,
-    use_cache: bool = True,
+    use_cache: bool = False,
 ) -> Dict[str, Any]:
-    """Esegue i retailer uno alla volta e restituisce risultati reali."""
+    """UNICO motore di ricerca: usa lo stesso sliding-window di /search-start.
+
+    Il vecchio percorso sequenziale è stato eliminato. Anche /search deve
+    comportarsi esattamente come la ricerca progressiva del frontend, così
+    non esistono più due motori con comportamenti diversi.
+    """
     query = str(query or "").strip()
-    started = time.monotonic()
+    if not query:
+        return {
+            "query": "", "count": 0, "results": [], "comparisons": [],
+            "errors": {}, "stores": {}, "completed_stores": 0,
+            "total_stores": len(STORES), "partial": False, "elapsed": 0.0,
+        }
 
-    reports: List[Dict[str, Any]] = []
-    all_results: List[Dict[str, Any]] = []
+    job_id = _new_job(query)
+    _cancel_active_job(job_id)
+    _run_job(job_id, query)
+    data = _snapshot(job_id)
 
-    for store in STORES:
-        report = run_store(store, query, use_cache=use_cache)
-        reports.append(report)
-        all_results.extend(report.get("results", []))
-        gc.collect()
-
-    all_results = sort_results(dedupe_results(all_results))
-    comparisons = build_comparisons(all_results)
-    errors = {
-        report["store"]: report["error"]
-        for report in reports
-        if report.get("error")
-    }
-
-    return {
-        "query": query,
-        "count": len(all_results),
-        "results": all_results,
-        "comparisons": comparisons,
-        "errors": errors,
-        "stores": {
-            report["store"]: {
-                "status": report["status"],
-                "cache": report.get("cache"),
-                "count": report["count"],
-                "elapsed": report["elapsed"],
-            }
-            for report in reports
-        },
-        "completed_stores": len(reports),
-        "total_stores": len(STORES),
-        "partial": False,
-        "elapsed": round(time.monotonic() - started, 3),
-    }
+    # Compatibilità con il vecchio contratto /search.
+    data["count"] = len(data.get("results", []))
+    data["completed_stores"] = len(data.get("stores", {}))
+    data["total_stores"] = len(STORES)
+    data["partial"] = False
+    data["status"] = "completed"
+    return data
 
 
 # ============================================================================
@@ -1465,7 +1450,7 @@ def diagnose_stores(
 
     return {
         "ok": True,
-        "architecture": "sequential-isolated-scrapers",
+        "architecture": "single-sliding-window-isolated-scrapers",
         "progressive_order": PROGRESSIVE_STORE_ORDER,
         "progressive_timeouts": PROGRESSIVE_STORE_TIMEOUTS,
         **data,
