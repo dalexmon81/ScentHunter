@@ -968,7 +968,109 @@ def _discover_sitemap_products(session, query):
                             return product_urls
     return product_urls
 
+
+def _discover_category_products(session, query):
+    """Fallback discovery by crawling Sabina perfume category pages."""
+    query_norm = norm(query)
+    if not query_norm:
+        return []
+
+    categories = (
+        f"{BASE_URL}/it/7-profumi-da-uomo",
+        f"{BASE_URL}/it/31-profumi-uomo",
+        f"{BASE_URL}/it/profumi-di-donna",
+        f"{BASE_URL}/it/perfumi-arabi",
+    )
+
+    found = []
+    seen = set()
+
+    for category_url in categories:
+        for page in range(1, 4):
+            url = category_url if page == 1 else f"{category_url}?page={page}"
+            try:
+                response = session.get(url, headers=HEADERS, timeout=8)
+                if response.status_code >= 400:
+                    break
+                soup = BeautifulSoup(response.text, "html.parser")
+
+                for anchor in soup.find_all("a", href=True):
+                    href = normalise_url(anchor.get("href"), response.url)
+                    if not href or href in seen or not is_product_url(href):
+                        continue
+
+                    # Match the visible product-card text as well as the URL.
+                    card = anchor
+                    for _ in range(4):
+                        parent = getattr(card, "parent", None)
+                        if parent is None:
+                            break
+                        card = parent
+
+                    haystack = norm(" ".join([
+                        anchor.get_text(" ", strip=True),
+                        card.get_text(" ", strip=True) if card else "",
+                        urlparse(href).path,
+                    ]))
+
+                    if all(word in haystack for word in query_norm.split()):
+                        seen.add(href)
+                        found.append(href)
+                        if len(found) >= MAX_CANDIDATES:
+                            return found
+            except Exception:
+                continue
+
+    return found
+
+
+def _search_sabina_ajax_full(session, query):
+    """Try Sabina's native ps_searchbar AJAX endpoint and return product URLs."""
+    found = []
+    seen = set()
+    headers = dict(HEADERS)
+    headers.update({
+        "Accept": "application/json, text/javascript, */*; q=0.01",
+        "X-Requested-With": "XMLHttpRequest",
+        "Referer": f"{BASE_URL}/en/",
+    })
+    for lang in ("en", "it"):
+        try:
+            r = session.get(
+                f"{BASE_URL}/{lang}/module/ps_searchbar/ajax",
+                params={"search_query": query, "ajaxSearch": "1"},
+                headers=headers,
+                timeout=10,
+            )
+            if r.status_code != 200:
+                continue
+            data = r.json()
+            items = data.get("products", []) if isinstance(data, dict) else []
+            for item in items:
+                if not isinstance(item, dict):
+                    continue
+                raw = item.get("url") or item.get("link") or item.get("product_url")
+                if not raw:
+                    continue
+                u = normalise_url(raw, r.url)
+                if u and is_product_url(u) and u not in seen:
+                    seen.add(u)
+                    found.append(u)
+                    if len(found) >= MAX_CANDIDATES:
+                        return found
+        except Exception:
+            continue
+    return found
+
 def discover_product_urls(session, query):
+    ajax_urls = _search_sabina_ajax_full(session, query)
+    if ajax_urls:
+        return ajax_urls
+
+    category_urls = _discover_category_products(session, query)
+    if category_urls:
+        return category_urls
+
     sitemap_urls = _discover_sitemap_products(session, query)
     if sitemap_urls:
         return sitemap_urls
