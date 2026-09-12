@@ -44,6 +44,10 @@ def clean(value):
     return re.sub(r"\s+", " ", str(value or "")).strip()
 
 
+# Compatibilita con sitecustomize.py: mantiene il nome atteso dal wrapper.
+_clean = clean
+
+
 def norm(value):
     value = unicodedata.normalize("NFKD", str(value or ""))
     value = "".join(
