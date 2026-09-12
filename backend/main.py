@@ -16,9 +16,6 @@ FRONTEND_INDEX = BASE_DIR.parent / 'frontend' / 'index.html'
 LIGHTWEIGHT_STORES = ['bplatz','parfumcity','parfumzentrum','perfumemarket','orioudh']
 NETWORK_HEAVY_STORES = ['deloox']
 BROWSER_STORES = ['sabina','notino']
-# Render Free has one shared CPU. Running every scraper process at once
-# makes even the fast HTTP scrapers 5x slower. Keep the threads started
-# immediately, but cap actual concurrent execution to preserve first-result speed.
 LIGHT_WORKERS = 2
 NETWORK_WORKERS = 1
 BROWSER_WORKERS = 1
@@ -205,7 +202,6 @@ def _run_controlled_store(store,query,on_report,on_result=None):
     on_report(report)
 
 def collect_store_reports_isolated(query,stores,on_report=None,on_result=None):
-    """All requested stores start immediately; no staged scheduler."""
     requested=list(stores); reports={}; lock=threading.Lock(); threads=[]
     def publish(report):
         with lock: reports[report['store']]=report
@@ -319,6 +315,41 @@ def diagnose_stores(q:str='Liquid Brun'):
     if not query: return {'ok':False,'query':'','stores':[],'total_count':0,'architecture':APP_VERSION}
     reports=collect_store_reports_isolated(query,STORES); by_store={r['store']:r for r in reports}; ordered=[by_store[s] for s in STORES if s in by_store]
     return {'ok':True,'architecture':APP_VERSION,'query':query,'stores':ordered,'total_count':sum(r.get('count',0) for r in ordered)}
+
+@app.get('/diagnose-sabina')
+def diagnose_sabina(q:str='Liquid Brun'):
+    query=str(q or '').strip()
+    started=time.monotonic()
+    report={'ok':True,'architecture':APP_VERSION,'query':query,'elapsed':0.0,'module':{},'direct_search':{},'stream_search':{}}
+    try:
+        module=load_scraper('sabina')
+        report['module']={'module':getattr(module,'__file__',None),'BASE_URL':getattr(module,'BASE_URL',None),'BASE':getattr(module,'BASE',None),'_clean':callable(getattr(module,'_clean',None)),'clean':callable(getattr(module,'clean',None)),'search':callable(getattr(module,'search',None)),'search_stream':callable(getattr(module,'search_stream',None))}
+        try:
+            t=time.monotonic(); raw=module.search(query); rows=[] if raw is None else list(raw) if not isinstance(raw,list) else raw
+            report['direct_search']={'elapsed':round(time.monotonic()-t,3),'count':len(rows),'results':[clean_result(x,'sabina') for x in rows if isinstance(x,dict)]}
+        except Exception as exc:
+            report['direct_search']={'elapsed':round(time.monotonic()-t,3),'count':0,'error':f'{type(exc).__name__}: {exc}'}
+        stream=getattr(module,'search_stream',None)
+        if callable(stream):
+            stream_rows=[]; t=time.monotonic()
+            def collect(row):
+                if isinstance(row,dict): stream_rows.append(clean_result(row,'sabina'))
+            try:
+                returned=stream(query,collect)
+                if returned is not None:
+                    try:
+                        for row in returned:
+                            if isinstance(row,dict): stream_rows.append(clean_result(row,'sabina'))
+                    except TypeError: pass
+                report['stream_search']={'elapsed':round(time.monotonic()-t,3),'count':len(stream_rows),'results':stream_rows}
+            except Exception as exc:
+                report['stream_search']={'elapsed':round(time.monotonic()-t,3),'count':len(stream_rows),'results':stream_rows,'error':f'{type(exc).__name__}: {exc}'}
+        else:
+            report['stream_search']={'elapsed':0.0,'count':0,'error':'search_stream_missing'}
+    except Exception as exc:
+        report['ok']=False; report['error']=f'{type(exc).__name__}: {exc}'
+    report['elapsed']=round(time.monotonic()-started,3)
+    return report
 
 @app.get('/suggest')
 def suggest(q:str):
