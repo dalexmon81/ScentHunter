@@ -3,10 +3,11 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 import importlib, json, os, signal, subprocess, sys, threading, time, traceback, uuid
 from pathlib import Path
-
+from backend.api.routes.debug import router as debug_router
 APP_VERSION = '3.0-streaming-speed'
 app = FastAPI(title='ScentHunter API', version=APP_VERSION)
 app.add_middleware(CORSMiddleware, allow_origins=['*'], allow_credentials=True, allow_methods=['*'], allow_headers=['*'])
+app.include_router(debug_router)
 
 STORES = ['bplatz','deloox','parfumcity','parfumzentrum','perfumemarket','sabina','orioudh','notino']
 STORE_LABELS = {'bplatz':'Bplatz','deloox':'Deloox','parfumcity':'ParfumCity','parfumzentrum':'ParfumZentrum','perfumemarket':'PerfumeMarket','sabina':'Sabina','orioudh':'Orioudh','notino':'Notino'}
