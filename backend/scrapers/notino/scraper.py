@@ -321,3 +321,82 @@ def search(query: str) -> List[Dict[str, Any]]:
 
 def scrape(query: str) -> List[Dict[str, Any]]:
     return search(query)
+    
+def diagnose(query: str) -> Dict[str, Any]:
+    query = _clean(query)
+    report: Dict[str, Any] = {
+        "query": query,
+        "search_urls": [],
+        "candidates_count": 0,
+        "candidates": [],
+        "parsed_count": 0,
+        "filtered_count": 0,
+        "results": [],
+        "errors": [],
+    }
+
+    if not query:
+        report["errors"].append("empty_query")
+        return report
+
+    session = requests.Session()
+    try:
+        search_urls = [
+            f"{BASE}/search.asp?exps={quote_plus(query)}",
+            f"{BASE}/search/?exps={quote_plus(query)}",
+            f"{BASE}/search?exps={quote_plus(query)}",
+        ]
+        report["search_urls"] = search_urls
+
+        response = None
+        last_error = None
+        for u in search_urls:
+            try:
+                response = _get(session, u, SEARCH_TIMEOUT)
+                if response is not None:
+                    break
+            except Exception as exc:
+                last_error = f"{type(exc).__name__}: {exc}"
+                report["errors"].append(f"search_url_failed {u} -> {last_error}")
+
+        if response is None:
+            report["errors"].append(last_error or "search_failed")
+            return report
+
+        urls = _extract_urls(response.text)
+        if not urls:
+            urls = _extract_urls(response.text.replace("\\/", "/"))
+
+        urls = urls[:MAX_CANDIDATES]
+        report["candidates"] = urls
+        report["candidates_count"] = len(urls)
+    finally:
+        session.close()
+
+    parsed: List[Dict[str, Any]] = []
+    for u in report["candidates"]:
+        try:
+            item = _parse_product(u)
+            if item:
+                parsed.append(item)
+        except Exception as exc:
+            report["errors"].append(f"parse_failed {u} -> {type(exc).__name__}: {exc}")
+
+    report["parsed_count"] = len(parsed)
+
+    filtered = [x for x in parsed if _query_matches(x.get("name", ""), query)]
+    report["filtered_count"] = len(filtered)
+
+    if not filtered:
+        filtered = parsed[:]  # fallback anti-empty
+
+    filtered.sort(
+        key=lambda item: (
+            not bool(item.get("available")),
+            item.get("price_num") is None,
+            item.get("price_num") or 0,
+        )
+    )
+
+    report["results"] = filtered[:20]
+    return report    
