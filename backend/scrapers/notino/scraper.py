@@ -1,17 +1,16 @@
 from __future__ import annotations
 
-import json
 import logging
 import re
 from concurrent.futures import ThreadPoolExecutor, as_completed
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List
 from urllib.parse import quote_plus, urljoin
 
 import requests
 from bs4 import BeautifulSoup
 
 BASE_URL = "https://www.notino.fr"
-JINA_URL = "https://r.jina.ai/"
+TRANSLATE_BASE = "https://www-notino-fr.translate.goog"
 TIMEOUT = 25
 
 log = logging.getLogger("scenthunter.notino")
@@ -19,186 +18,236 @@ if not log.handlers:
     logging.basicConfig(level=logging.INFO)
 
 HEADERS = {
-    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
-                  "(KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
+    "User-Agent": (
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+        "AppleWebKit/537.36 (KHTML, like Gecko) "
+        "Chrome/131.0.0.0 Safari/537.36"
+    ),
     "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
     "Accept-Language": "fr-FR,fr;q=0.9,en;q=0.8",
 }
 
-PRODUCT_RE = re.compile(r"https?://(?:www\.)?notino\.fr/[^ \n\]\)\"<>]+/p-\d+/?", re.I)
-REL_PRODUCT_RE = re.compile(r"(/[^ \n\]\)\"<>]+/p-\d+/?)(?:[?#][^ \n\]\)\"<>]*)?", re.I)
+PRODUCT_RE = re.compile(
+    r"https?://(?:www\.)?notino\.fr/[^\"'<>\s]+/p-\d+/?",
+    re.I,
+)
+REL_PRODUCT_RE = re.compile(
+    r"(?:href=[\"']|https?://[^\"']*)"
+    r"([^\"'<>\s]+/p-\d+/?)(?:[?#][^\"'<>\s]*)?",
+    re.I,
+)
 
 
-def _jina_get(target_url: str) -> requests.Response:
-    url = JINA_URL + target_url
-    headers = {
-        **HEADERS,
-        "X-Engine": "browser",
-        "X-Respond-With": "markdown",
-        "X-Base": "true",
-        "X-No-Cache": "true",
-    }
-    log.info("NOTINO JINA GET %s", target_url)
-    r = requests.get(url, headers=headers, timeout=TIMEOUT)
-    log.info("NOTINO JINA status=%s bytes=%s final=%s",
-             r.status_code, len(r.content), r.url)
-    r.raise_for_status()
+def _translate_url(notino_url: str) -> str:
+    parsed = notino_url.split("://", 1)[-1]
+    if parsed.startswith("www.notino.fr"):
+        path = parsed[len("www.notino.fr"):]
+    elif parsed.startswith("notino.fr"):
+        path = parsed[len("notino.fr"):]
+    else:
+        path = "/" + parsed.split("/", 1)[-1]
+
+    return (
+        TRANSLATE_BASE
+        + path
+        + ("&" if "?" in path else "?")
+        + "_x_tr_sl=fr&_x_tr_tl=en&_x_tr_hl=en"
+    )
+
+
+def _get(url: str) -> requests.Response:
+    log.info("NOTINO GET %s", url)
+
+    # Primary route: Google Translate fetches the origin server-side.
+    proxy_url = _translate_url(url)
+    r = requests.get(
+        proxy_url,
+        headers=HEADERS,
+        timeout=TIMEOUT,
+        allow_redirects=True,
+    )
+
+    log.info(
+        "NOTINO PROXY status=%s bytes=%s final=%s",
+        r.status_code,
+        len(r.content),
+        r.url,
+    )
+
+    if r.status_code >= 400:
+        raise requests.HTTPError(
+            f"proxy HTTP {r.status_code} for {url} via {proxy_url}",
+            response=r,
+        )
+
     return r
 
 
-def _extract_product_urls(text: str) -> List[str]:
+def _extract_product_urls(html: str) -> List[str]:
+    soup = BeautifulSoup(html or "", "html.parser")
     found: List[str] = []
 
-    for m in PRODUCT_RE.findall(text or ""):
-        u = m.rstrip(".,;")
-        if u not in found:
-            found.append(u)
+    for a in soup.find_all("a", href=True):
+        href = a.get("href", "")
+        if "/p-" not in href.lower():
+            continue
 
-    for m in REL_PRODUCT_RE.findall(text or ""):
-        u = urljoin(BASE_URL, m).rstrip(".,;")
+        # Translate pages may rewrite links back through translate.goog.
+        if "notino.fr/" in href.lower():
+            m = re.search(
+                r"(https?://(?:www\.)?notino\.fr/[^?#\"'<>\s]+/p-\d+/?",
+                href,
+                re.I,
+            )
+            if m:
+                href = m.group(1)
+            else:
+                continue
+        elif href.startswith("/"):
+            href = urljoin(BASE_URL, href)
+        else:
+            continue
+
+        href = href.rstrip(".,;)")
+        if href not in found:
+            found.append(href)
+
+    # Fallback regex in case the HTML contains escaped/embedded URLs.
+    for m in PRODUCT_RE.findall(html or ""):
+        u = m.rstrip(".,;)")
         if u not in found:
             found.append(u)
 
     return found
 
 
-def _first(text: str, patterns: List[str]) -> Optional[str]:
+def _parse_price(text: str) -> float | None:
+    patterns = [
+        r"(\d{1,4}(?:[.,]\d{1,2})?)\s*€",
+        r"€\s*(\d{1,4}(?:[.,]\d{1,2})?)",
+    ]
     for pattern in patterns:
-        m = re.search(pattern, text or "", re.I | re.S)
+        m = re.search(pattern, text, re.I)
         if m:
-            return re.sub(r"\s+", " ", m.group(1)).strip()
+            try:
+                return float(m.group(1).replace(".", "").replace(",", "."))
+            except ValueError:
+                pass
     return None
 
 
-def _parse_price(text: str) -> Optional[float]:
-    value = _first(text, [
-        r"(\d{1,4}(?:[.,]\d{1,2})?)\s*€",
-        r"€\s*(\d{1,4}(?:[.,]\d{1,2})?)",
-    ])
-    if not value:
-        return None
+def _parse_product(url: str) -> Dict[str, Any] | None:
     try:
-        return float(value.replace(".", "").replace(",", "."))
-    except ValueError:
-        return None
-
-
-def _parse_product(url: str) -> Optional[Dict[str, Any]]:
-    try:
-        r = _jina_get(url)
-        text = r.text
+        r = _get(url)
     except Exception as exc:
-        log.exception("NOTINO PRODUCT FAILED %s: %s", url, exc)
+        log.warning("NOTINO PRODUCT FAILED %s: %s", url, exc)
         return None
 
-    name = _first(text, [
-        r"^#\s*(.+)$",
-        r"\*\*(?:Product|Produit)\*\*\s*[:\-]\s*(.+)",
-    ])
+    soup = BeautifulSoup(r.text, "html.parser")
+    text = soup.get_text(" ", strip=True)
 
-    if not name:
-        title = _first(text, [r"Title:\s*(.+)"])
-        name = title
+    title = ""
+    h1 = soup.find("h1")
+    if h1:
+        title = h1.get_text(" ", strip=True)
 
-    if not name:
-        # Fallback from URL slug
-        slug = url.rstrip("/").split("/")[-2] if "/p-" in url else ""
-        name = slug.replace("-", " ").strip().title() or "Notino product"
+    if not title:
+        title_tag = soup.find("title")
+        if title_tag:
+            title = title_tag.get_text(" ", strip=True)
+
+    if not title:
+        return None
+
+    # Prefer the product name around the H1; strip common suffixes.
+    title = re.sub(r"\s+", " ", title).strip()
+    title = re.sub(r"\s*\|\s*Notino.*$", "", title, flags=re.I).strip()
 
     price_num = _parse_price(text)
 
-    size = _first(text, [
-        r"\b(\d{2,4})\s*ml\b",
-        r"\b(\d+(?:[.,]\d+)?)\s*ml\b",
-    ])
     size_ml = None
-    if size:
+    m = re.search(r"\b(\d+(?:[.,]\d+)?)\s*ml\b", text, re.I)
+    if m:
         try:
-            size_ml = float(size.replace(",", "."))
+            size_ml = float(m.group(1).replace(",", "."))
         except ValueError:
             pass
 
     lower = text.lower()
-    unavailable_words = [
-        "rupture de stock",
-        "indisponible",
-        "épuisé",
-        "out of stock",
-        "sold out",
-    ]
-    available = not any(x in lower for x in unavailable_words)
+    unavailable = any(
+        phrase in lower
+        for phrase in (
+            "rupture de stock",
+            "indisponible",
+            "épuisé",
+            "out of stock",
+            "sold out",
+        )
+    )
 
     return {
         "store": "notino",
         "shop": "Notino",
         "brand": "French Avenue" if "french avenue" in lower else "",
-        "name": name,
+        "name": title,
         "price": price_num,
         "price_num": price_num,
         "size_ml": size_ml,
         "url": url,
-        "available": available,
-        "availability": "En stock" if available else "Rupture de stock",
+        "available": not unavailable,
+        "availability": "En stock" if not unavailable else "Rupture de stock",
     }
 
 
 def search(query: str) -> List[Dict[str, Any]]:
-    q = (query or "").strip()
-    if not q:
+    query = (query or "").strip()
+    if not query:
         return []
 
-    search_url = f"{BASE_URL}/search.asp?exps={quote_plus(q)}"
-    log.info("NOTINO SEARCH START query=%r url=%s", q, search_url)
+    search_url = f"{BASE_URL}/search.asp?exps={quote_plus(query)}"
+    log.info("NOTINO SEARCH %r", query)
 
-    # First attempt: Jina's browser-backed Reader, which is specifically
-    # designed to fetch/render third-party pages server-side.
-    response = _jina_get(search_url)
-    text = response.text
+    response = _get(search_url)
+    urls = _extract_product_urls(response.text)
 
-    urls = _extract_product_urls(text)
-    log.info("NOTINO SEARCH extracted %s product URLs", len(urls))
+    log.info("NOTINO SEARCH FOUND %d PRODUCT URLS", len(urls))
 
-    # If the rendered search page does not expose product URLs, use Jina Search
-    # as a second discovery route. This is still external retrieval, not a
-    # fabricated Notino endpoint.
-    if not urls:
-        search_proxy = JINA_URL + "https://www.google.com/search?q=" + quote_plus(
-            f"site:notino.fr {q} Notino"
-        )
-        log.info("NOTINO DISCOVERY FALLBACK %s", search_proxy)
-        rr = requests.get(
-            search_proxy,
-            headers={**HEADERS, "X-Engine": "browser"},
-            timeout=TIMEOUT,
-        )
-        log.info("NOTINO DISCOVERY status=%s bytes=%s", rr.status_code, len(rr.content))
-        rr.raise_for_status()
-        urls = _extract_product_urls(rr.text)
-
-    # Keep this deliberately small: first prove retrieval works.
-    urls = urls[:8]
+    # Only products belonging to the requested Notino result page.
+    urls = urls[:12]
 
     if not urls:
-        log.warning("NOTINO SEARCH: zero product URLs for query=%r", q)
+        # The translated HTML can expose the exact Liquid Brun product links
+        # as text even when anchor extraction is different.
+        for match in re.findall(
+            r"https?://(?:www\.)?notino\.fr/[^\"'<>\s]+/p-\d+/?",
+            response.text,
+            re.I,
+        ):
+            if match not in urls:
+                urls.append(match)
+            if len(urls) >= 12:
+                break
+
+    if not urls:
+        log.warning("NOTINO SEARCH EMPTY: no product URLs")
         return []
 
     results: List[Dict[str, Any]] = []
-    with ThreadPoolExecutor(max_workers=min(4, len(urls))) as pool:
-        futures = {pool.submit(_parse_product, u): u for u in urls}
+
+    with ThreadPoolExecutor(max_workers=min(4, len(urls))) as executor:
+        futures = {executor.submit(_parse_product, u): u for u in urls}
         for future in as_completed(futures):
             item = future.result()
             if item:
                 results.append(item)
 
-    results.sort(key=lambda x: (
-        not bool(x.get("available")),
-        x.get("price_num") is None,
-        x.get("price_num") or 0,
-    ))
+    results.sort(
+        key=lambda x: (
+            not bool(x.get("available")),
+            x.get("price_num") is None,
+            x.get("price_num") or 0,
+        )
+    )
 
-    log.info("NOTINO SEARCH DONE query=%r results=%s", q, len(results))
+    log.info("NOTINO SEARCH DONE %r -> %d RESULTS", query, len(results))
     return results
-
-
-if __name__ == "__main__":
-    print(json.dumps(search("Liquid Brun"), ensure_ascii=False, indent=2))
