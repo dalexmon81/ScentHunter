@@ -394,6 +394,7 @@ for _installer in (
     _install_perfumemarket,
     _install_deloox,
     _install_orioudh,
+    _install_sabina,
 ):
     try:
         _installer()
