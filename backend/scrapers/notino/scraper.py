@@ -297,7 +297,8 @@ def search(query: str) -> List[Dict[str, Any]]:
                 last_error = exc
 
         if response is None:
-            raise last_error or RuntimeError("Notino search failed")
+            logger.warning("notino blocked (403) query=%r err=%r", query, last_error)
+            return []
 
         urls = _extract_urls(response.text)
 
@@ -394,7 +395,11 @@ def diagnose(query: str) -> Dict[str, Any]:
                 report["errors"].append(f"search_url_failed {u} -> {last_error}")
 
         if response is None:
-            report["errors"].append(last_error or "search_failed")
+            msg = str(last_error or "search_failed")
+            if "403" in msg:
+                report["blocked"] = True
+                report["block_reason"] = "http_403_forbidden"
+            report["errors"].append(msg)
             return report
 
         urls = _extract_urls(response.text)
