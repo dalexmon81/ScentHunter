@@ -3,7 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 import importlib, json, os, signal, subprocess, sys, threading, time, traceback, uuid
 from pathlib import Path
-from backend.api.routes.debug import router as debug_router
+from debug_notino import router as debug_router
 APP_VERSION = '3.0-streaming-speed'
 app = FastAPI(title='ScentHunter API', version=APP_VERSION)
 app.add_middleware(CORSMiddleware, allow_origins=['*'], allow_credentials=True, allow_methods=['*'], allow_headers=['*'])
