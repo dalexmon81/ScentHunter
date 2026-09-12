@@ -1462,3 +1462,127 @@ if __name__ == "__main__":
             indent=2,
         )
     )
+
+# Temporary diagnostic endpoint for live Sabina discovery.
+# It is registered only when this scraper is imported by the running FastAPI app.
+def _register_sabina_diagnostic_route():
+    try:
+        import sys
+        main_module = sys.modules.get("main")
+        app = getattr(main_module, "app", None) if main_module else None
+        if app is None or getattr(app.state, "_sabina_diag_registered", False):
+            return
+
+        @app.get("/diagnose-sabina")
+        def diagnose_sabina(q: str = "Liquid Brun"):
+            import time as _time
+            from urllib.parse import quote_plus as _quote_plus
+            report = {
+                "ok": True,
+                "query": q,
+                "module": __name__,
+                "attributes": {
+                    "BASE_URL": globals().get("BASE_URL"),
+                    "BASE": globals().get("BASE"),
+                    "_clean": callable(globals().get("_clean")),
+                    "search": callable(globals().get("search")),
+                    "search_stream": callable(globals().get("search_stream")),
+                },
+                "endpoints": [],
+                "products": [],
+            }
+            endpoints = (
+                f"{globals().get('BASE_URL', 'https://www.sabina.com')}/en/search?controller=search&s={_quote_plus(q)}",
+                f"{globals().get('BASE_URL', 'https://www.sabina.com')}/en/search?s={_quote_plus(q)}",
+                f"{globals().get('BASE_URL', 'https://www.sabina.com')}/en/search?query={_quote_plus(q)}",
+                f"{globals().get('BASE_URL', 'https://www.sabina.com')}/en/?s={_quote_plus(q)}",
+            )
+            for endpoint in endpoints:
+                started = _time.monotonic()
+                item = {"url": endpoint}
+                try:
+                    session = requests.Session()
+                    session.headers.update(HEADERS)
+                    response = session.get(endpoint, timeout=(3, 8), allow_redirects=True)
+                    soup = BeautifulSoup(response.text, "html.parser")
+                    found = []
+                    seen = set()
+                    for a in soup.select("a[href]"):
+                        url = globals()["normalise_url"](a.get("href"))
+                        if not url or not globals()["is_product_url"](url) or url in seen:
+                            continue
+                        text = a.get_text(" ", strip=True)
+                        if globals()["query_matches"](f"{text} {url}", q):
+                            seen.add(url)
+                            found.append({"url": url, "text": text[:200]})
+                    item.update({
+                        "status_code": response.status_code,
+                        "final_url": response.url,
+                        "elapsed": round(_time.monotonic() - started, 3),
+                        "html_length": len(response.text),
+                        "title": soup.title.get_text(" ", strip=True) if soup.title else "",
+                        "matching_product_links": found[:10],
+                        "matching_count": len(found),
+                    })
+                except Exception as exc:
+                    item.update({"elapsed": round(_time.monotonic() - started, 3), "error": f"{type(exc).__name__}: {exc}"})
+                finally:
+                    try: session.close()
+                    except Exception: pass
+                report["endpoints"].append(item)
+
+            product_urls = []
+            for endpoint in report["endpoints"]:
+                for found in endpoint.get("matching_product_links", []):
+                    url = found.get("url")
+                    if url and url not in product_urls:
+                        product_urls.append(url)
+            for url in product_urls[:5]:
+                started = _time.monotonic()
+                item = {"url": url}
+                try:
+                    session = requests.Session()
+                    session.headers.update(HEADERS)
+                    response = session.get(url, timeout=(3, 8), allow_redirects=True)
+                    soup = BeautifulSoup(response.text, "html.parser")
+                    jsonld = []
+                    for script in soup.select('script[type="application/ld+json"]'):
+                        raw = script.string or script.get_text()
+                        if raw:
+                            try:
+                                jsonld.append(json.loads(raw))
+                            except Exception:
+                                pass
+                    product = globals()["first_jsonld_product"](soup)
+                    name = str(product.get("name") or "") if isinstance(product, dict) else ""
+                    price = None
+                    if isinstance(product, dict):
+                        offers = product.get("offers")
+                        offer = offers if isinstance(offers, dict) else (offers[0] if isinstance(offers, list) and offers else {})
+                        if isinstance(offer, dict): price = offer.get("price")
+                    item.update({
+                        "status_code": response.status_code,
+                        "elapsed": round(_time.monotonic() - started, 3),
+                        "html_length": len(response.text),
+                        "page_title": soup.title.get_text(" ", strip=True) if soup.title else "",
+                        "jsonld_blocks": len(jsonld),
+                        "jsonld_product_found": bool(product),
+                        "product_name": name,
+                        "query_matches_name": globals()["query_matches"](name or url, q),
+                        "jsonld_price": price,
+                        "parser_result": globals()["_sabina_parse_product"](response.text, url, q),
+                    })
+                except Exception as exc:
+                    item.update({"elapsed": round(_time.monotonic() - started, 3), "error": f"{type(exc).__name__}: {exc}"})
+                finally:
+                    try: session.close()
+                    except Exception: pass
+                report["products"].append(item)
+            return report
+
+        app.state._sabina_diag_registered = True
+    except Exception:
+        pass
+
+
+_register_sabina_diagnostic_route()
