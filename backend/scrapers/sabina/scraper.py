@@ -815,6 +815,54 @@ def availability_from_product_page(soup, jsonld_offer=None):
         return "preorder", "sabina_jsonld"
 
     return "unknown", "sabina_html_availability"
+
+def _discover_direct_prestashop(session, query):
+    """Fast discovery through Sabina's native PrestaShop search endpoint."""
+    urls = []
+    seen = set()
+    encoded_query = quote_plus(clean(query))
+
+    headers = dict(HEADERS)
+    headers.update({
+        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
+        "Accept-Language": "it-IT,it;q=0.9,en;q=0.8",
+        "Upgrade-Insecure-Requests": "1",
+        "Sec-Fetch-Dest": "document",
+        "Sec-Fetch-Mode": "navigate",
+        "Sec-Fetch-Site": "none",
+        "Cache-Control": "max-age=0",
+    })
+
+    try:
+        session.get(f"{BASE_URL}/it/", headers=headers, timeout=8)
+    except Exception:
+        pass
+
+    routes = (
+        f"{BASE_URL}/it/ricerca?controller=search&s={encoded_query}",
+        f"{BASE_URL}/en/search?controller=search&s={encoded_query}",
+    )
+
+    for url in routes:
+        try:
+            response = session.get(url, headers=headers, timeout=12, allow_redirects=True)
+            if response.status_code >= 400:
+                continue
+            soup = BeautifulSoup(response.text, "html.parser")
+            for anchor in soup.find_all("a", href=True):
+                href = normalise_url(anchor.get("href"), response.url)
+                if not href or not is_product_url(href):
+                    continue
+                if href not in seen:
+                    seen.add(href)
+                    urls.append(href)
+                    if len(urls) >= MAX_CANDIDATES:
+                        return urls
+        except Exception:
+            continue
+
+    return urls
+
 def discover_product_urls(session, query):
     """Discover real Sabina product URLs without browser automation.
 
