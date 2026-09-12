@@ -1,10 +1,8 @@
 """
 ScentHunter streaming bootstrap with timing diagnostics.
 
-This is based on the current working streaming bootstrap. It keeps the
-existing scraper logic and adds diagnostic fields to PerfumeMarket and
-Deloox results so /search-status exposes discovery and first-result timing.
-The frontend can ignore fields beginning with "_diagnostic_".
+Targeted optimization: Deloox discovery only.
+All other store logic is unchanged.
 """
 from concurrent.futures import ThreadPoolExecutor, as_completed
 import time
@@ -177,11 +175,66 @@ def _install_deloox():
         started = time.monotonic()
         s._stream_diag = {"started": started}
 
-        session = s.requests.Session()
+        # Deloox was spending ~43s in sequential discovery. The existing
+        # scraper tries six first-party search URLs one after another.
+        # Probe those same first-party URLs concurrently and move on as soon
+        # as one returns relevant product URLs.
+        encoded = s.quote_plus(query)
+        endpoints = (
+            f"{s.BASE}/en/search?query={encoded}",
+            f"{s.BASE}/en/search?q={encoded}",
+            f"{s.BASE}/en/search?search={encoded}",
+            f"{s.BASE}/en/search?searchTerm={encoded}",
+            f"https://www.deloox.nl/en/search?query={encoded}",
+            f"https://www.deloox.es/en/search?query={encoded}",
+        )
+
+        def probe(endpoint):
+            session = s.requests.Session()
+            try:
+                response = s.get(session, endpoint)
+                if not response:
+                    return []
+                return s.extract_candidates(response.text, query)
+            except Exception:
+                return []
+            finally:
+                session.close()
+
+        pool = ThreadPoolExecutor(max_workers=len(endpoints))
+        futures = [pool.submit(probe, endpoint) for endpoint in endpoints]
+        urls = []
+        seen = set()
+
         try:
-            urls = s.discover(session, query)
+            for future in as_completed(futures):
+                try:
+                    found = future.result() or []
+                except Exception:
+                    found = []
+
+                for url in found:
+                    if url not in seen:
+                        seen.add(url)
+                        urls.append(url)
+
+                if urls:
+                    break
         finally:
-            session.close()
+            # Do not wait for slower/blocked discovery probes.
+            for future in futures:
+                if not future.done():
+                    future.cancel()
+            pool.shutdown(wait=False, cancel_futures=True)
+
+        # Preserve the original bounded first-party catalog fallback if all
+        # search endpoints failed.
+        if not urls:
+            session = s.requests.Session()
+            try:
+                urls = s.discover(session, query)
+            finally:
+                session.close()
 
         s._stream_diag["discovery_elapsed"] = round(
             time.monotonic() - started, 3
