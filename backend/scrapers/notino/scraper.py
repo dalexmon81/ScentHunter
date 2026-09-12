@@ -35,16 +35,19 @@ BROWSER_ENABLED = os.getenv("NOTINO_BROWSER", "1").lower() not in {"0", "false",
 LOGGER = logging.getLogger(__name__)
 
 HEADERS = {
+    # HTTP fallback: use a current-looking desktop browser identity and keep
+    # the browser and HTTP session on the same French storefront.
     "User-Agent": (
-        "Mozilla/5.0 (X11; Linux x86_64) "
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
         "AppleWebKit/537.36 (KHTML, like Gecko) "
-        "Chrome/126.0.0.0 Safari/537.36"
+        "Chrome/131.0.0.0 Safari/537.36"
     ),
-    "Accept-Language": "fr-FR,fr;q=0.9,en;q=0.7",
+    "Accept-Language": "fr-FR,fr;q=0.9,en;q=0.8",
     "Accept": (
         "text/html,application/xhtml+xml,application/xml;"
         "q=0.9,image/avif,image/webp,*/*;q=0.8"
     ),
+    "Referer": BASE_URL + "/",
 }
 
 PRICE_RE = re.compile(
@@ -969,11 +972,15 @@ def _browser_context():
         ],
     )
 
+    # Do not hard-code a Chrome version for Playwright. Let Chromium expose
+    # its real User-Agent/client-hint version so the browser identity is
+    # internally consistent. The previous Linux/Chrome 126 override could
+    # disagree with the Chromium binary actually installed on Render.
     context = browser.new_context(
-        user_agent=HEADERS["User-Agent"],
         locale="fr-FR",
         extra_http_headers={
             "Accept-Language": HEADERS["Accept-Language"],
+            "Referer": BASE_URL + "/",
         },
         viewport={
             "width": 1365,
@@ -1025,6 +1032,7 @@ def _browser_discover_resources(
         "html_bytes": 0,
         "candidate_count": 0,
         "error": None,
+        "warmup_status": None,
     }
 
     if sync_playwright is None or not BROWSER_ENABLED:
@@ -1042,6 +1050,28 @@ def _browser_discover_resources(
         playwright, browser, context = resources
         page = context.new_page()
 
+        # Warm the storefront first so any normal session/cookies established
+        # on the homepage are available when the search request is made.
+        # This mirrors the session-warming pattern already used by the
+        # working Sabina scraper and avoids going directly from a cold
+        # Render browser to the search endpoint.
+        warmup_response = None
+        try:
+            warmup_response = page.goto(
+                BASE_URL + "/",
+                wait_until="domcontentloaded",
+                timeout=min(BROWSER_TIMEOUT_MS, 20000),
+            )
+        except PlaywrightTimeoutError:
+            pass
+        except Exception as exc:
+            LOGGER.debug("Notino homepage warmup failed: %s", exc)
+
+        try:
+            page.wait_for_timeout(1200)
+        except Exception:
+            pass
+
         response = page.goto(
             SEARCH_URL.format(query=quote_plus(query)),
             wait_until="domcontentloaded",
@@ -1051,6 +1081,11 @@ def _browser_discover_resources(
         if response is not None:
             report["status"] = response.status
 
+        report["warmup_status"] = (
+            warmup_response.status
+            if warmup_response is not None
+            else None
+        )
         report["final_url"] = page.url
         _wait_search_page(page)
 
@@ -1205,8 +1240,16 @@ def _search_http_candidates(session: requests.Session, query: str) -> Tuple[List
         if normalized not in variants: variants.append(normalized)
     compact = re.sub(r"(?<=\d)\s+(?=[a-z])|(?<=[a-z])\s+(?=\d)", "", norm(raw_query))
     if compact and compact not in variants: variants.append(compact)
-    try: session.headers.update(HEADERS)
-    except Exception: pass
+    try:
+        session.headers.update(HEADERS)
+        # Warm the same storefront session before search. If Notino rejects
+        # the HTTP path with 403, browser discovery remains the primary path;
+        # this warmup is deliberately best-effort.
+        session.get(BASE_URL + "/", timeout=TIMEOUT, allow_redirects=True)
+    except requests.RequestException:
+        pass
+    except Exception:
+        pass
     for variant in variants[:3]:
         url = SEARCH_URL.format(query=quote_plus(variant))
         try:
