@@ -232,7 +232,7 @@ SECOND_STAGE_STORES = ['orioudh']
 FINAL_STAGE_STORES = ['perfumemarket', 'parfumzentrum', 'deloox', 'sabina', 'notino']
 
 
-def collect_store_reports_isolated(query,stores,on_report=None):
+def collect_store_reports_isolated(query,stores,on_report=None,on_result=None):
     """Three-stage progressive scheduler tuned for Render Free.
 
     Stage 1: Bplatz + ParfumCity get the initial CPU/RAM burst alone.
@@ -267,7 +267,7 @@ def collect_store_reports_isolated(query,stores,on_report=None):
         with started_lock:
             if store in started_stores or store not in requested: return None
             started_stores.add(store)
-        t=threading.Thread(target=_run_controlled_store,args=(store,query,publish),daemon=True,name=f'scenthunter-store-{store}')
+        t=threading.Thread(target=_run_controlled_store,args=(store,query,publish,on_result),daemon=True,name=f'scenthunter-store-{store}')
         t.start(); threads.append(t)
         return t
 
@@ -360,7 +360,7 @@ def _collect_streaming_for_job(job_id,query,stores):
 
 def _run_job(job_id,query):
     started=time.monotonic(); print(f'SEARCH START job={job_id} query={query!r}',flush=True)
-    _collect_streaming_for_job(job_id,query,STORES)
+    collect_store_reports_isolated(query,STORES,on_report=lambda r:_publish_store(job_id,r),on_result=lambda row:_publish_result(job_id,row))
     with JOBS_LOCK:
         job=JOBS.get(job_id)
         if job:
