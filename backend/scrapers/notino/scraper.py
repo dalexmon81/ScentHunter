@@ -1451,6 +1451,62 @@ def scrape(query: str) -> List[Dict[str, Any]]:
     return search(query)
 
 
+
+def _probe_public_notino_routes(query: str) -> Dict[str, Any]:
+    """Diagnostic-only probe of public Notino routes from the Render runtime.
+
+    This does not participate in normal discovery. It only tells us whether
+    Render can reach ordinary public Notino pages when the search endpoint is
+    returning 403.
+    """
+    session = requests.Session()
+    session.headers.update(HEADERS)
+
+    routes = [
+        ("homepage", f"{BASE_URL}/"),
+        ("brand_french_avenue", f"{BASE_URL}/french-avenue/"),
+    ]
+
+    qnorm = norm(query)
+    if "liquid brun" in qnorm:
+        routes.extend([
+            (
+                "liquid_brun_100",
+                f"{BASE_URL}/french-avenue/liquid-brun-eau-de-parfum-mixte/p-16289640/",
+            ),
+            (
+                "liquid_brun_limited_150",
+                f"{BASE_URL}/french-avenue/liquid-brun-limited-edition-extrait-de-parfum-mixte/p-16364075/",
+            ),
+        ])
+
+    result: Dict[str, Any] = {}
+    try:
+        for name, url in routes:
+            try:
+                response = session.get(
+                    url,
+                    timeout=min(TIMEOUT, 15),
+                    allow_redirects=True,
+                )
+                result[name] = {
+                    "status": response.status_code,
+                    "final_url": response.url,
+                    "html_bytes": len(response.content),
+                    "error": None,
+                }
+            except Exception as exc:
+                result[name] = {
+                    "status": None,
+                    "final_url": url,
+                    "html_bytes": 0,
+                    "error": f"{type(exc).__name__}: {exc}",
+                }
+    finally:
+        session.close()
+
+    return result
+
 def diagnose(query: str) -> Dict[str, Any]:
     """
     Full generic discovery diagnostic.
@@ -1469,6 +1525,7 @@ def diagnose(query: str) -> Dict[str, Any]:
 
     try:
         results, report = _run_search_internal_safely(query, diagnostic=True)
+        report["public_route_probe"] = _probe_public_notino_routes(query)
         report["final_results"] = results
         return report
     except Exception as exc:
