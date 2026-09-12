@@ -359,6 +359,45 @@ def diagnose_sabina(q:str='Liquid Brun'):
     report['elapsed']=round(time.monotonic()-started,3)
     return report
 
+@app.get('/diagnose-notino')
+def diagnose_notino(q:str='Liquid Brun'):
+    query=str(q or '').strip()
+    if not query:
+        return {
+            'ok':False,
+            'query':'',
+            'error':'empty_query',
+            'architecture':APP_VERSION
+        }
+
+    try:
+        module=load_scraper('notino')
+        diagnose=getattr(module,'diagnose',None)
+
+        if not callable(diagnose):
+            return {
+                'ok':False,
+                'query':query,
+                'error':'notino_diagnose_missing',
+                'architecture':APP_VERSION
+            }
+
+        report=diagnose(query)
+
+        return {
+            'ok':True,
+            'architecture':APP_VERSION,
+            **report
+        }
+
+    except Exception as exc:
+        return {
+            'ok':False,
+            'query':query,
+            'error':f'{type(exc).__name__}: {exc}',
+            'architecture':APP_VERSION
+        }
+
 @app.get('/suggest')
 def suggest(q:str):
     query=str(q or '').strip()
