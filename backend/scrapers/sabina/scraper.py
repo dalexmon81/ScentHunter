@@ -863,7 +863,52 @@ def _discover_direct_prestashop(session, query):
 
     return urls
 
+
+def _discover_ajax_prestashop(session, query):
+    """Try Sabina's native PrestaShop ps_searchbar AJAX endpoint."""
+    urls = []
+    seen = set()
+    encoded = quote_plus(clean(query))
+    headers = dict(HEADERS)
+    headers.update({
+        "Accept": "application/json, text/javascript, */*; q=0.01",
+        "X-Requested-With": "XMLHttpRequest",
+        "Referer": f"{BASE_URL}/en/",
+    })
+
+    for lang in ("en", "it"):
+        url = f"{BASE_URL}/{lang}/module/ps_searchbar/ajax"
+        try:
+            response = session.get(
+                url,
+                params={"search_query": clean(query), "ajaxSearch": "1"},
+                headers=headers,
+                timeout=10,
+                allow_redirects=True,
+            )
+            if response.status_code >= 400:
+                continue
+            data = response.json()
+            items = data.get("products", []) if isinstance(data, dict) else []
+            for item in items:
+                if not isinstance(item, dict):
+                    continue
+                raw = item.get("url") or item.get("link") or item.get("product_url")
+                candidate = normalise_url(raw, response.url) if raw else None
+                if candidate and is_product_url(candidate) and candidate not in seen:
+                    seen.add(candidate)
+                    urls.append(candidate)
+                    if len(urls) >= MAX_CANDIDATES:
+                        return urls
+        except Exception:
+            continue
+    return urls
+
 def discover_product_urls(session, query):
+    ajax_urls = _discover_ajax_prestashop(session, query)
+    if ajax_urls:
+        return ajax_urls
+
     """Discover real Sabina product URLs.
 
     First try the native PrestaShop search with a browser-like session.
