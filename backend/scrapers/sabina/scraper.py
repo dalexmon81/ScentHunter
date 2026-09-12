@@ -48,6 +48,9 @@ def clean(value):
 _clean = clean
 
 
+_clean = clean
+
+
 def norm(value):
     value = unicodedata.normalize("NFKD", str(value or ""))
     value = "".join(
