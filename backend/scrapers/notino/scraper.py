@@ -1250,7 +1250,7 @@ def _search_http_candidates(session, query):
         variants.append(compact)
 
     headers = {
-        "User-Agent": USER_AGENT,
+        "User-Agent": HEADERS["User-Agent"],
         "Accept-Language": "fr-FR,fr;q=0.9,en;q=0.7",
         "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
     }
