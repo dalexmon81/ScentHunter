@@ -4,7 +4,7 @@ from fastapi.responses import FileResponse
 import importlib, json, os, signal, subprocess, sys, threading, time, traceback, uuid
 from pathlib import Path
 
-APP_VERSION = '3.0-streaming-parallel'
+APP_VERSION = '3.0-streaming-speed'
 app = FastAPI(title='ScentHunter API', version=APP_VERSION)
 app.add_middleware(CORSMiddleware, allow_origins=['*'], allow_credentials=True, allow_methods=['*'], allow_headers=['*'])
 
@@ -16,9 +16,12 @@ FRONTEND_INDEX = BASE_DIR.parent / 'frontend' / 'index.html'
 LIGHTWEIGHT_STORES = ['bplatz','parfumcity','parfumzentrum','perfumemarket','orioudh']
 NETWORK_HEAVY_STORES = ['deloox']
 BROWSER_STORES = ['sabina','notino']
-LIGHT_WORKERS = len(LIGHTWEIGHT_STORES)
-NETWORK_WORKERS = len(NETWORK_HEAVY_STORES)
-BROWSER_WORKERS = len(BROWSER_STORES)
+# Render Free has one shared CPU. Running every scraper process at once
+# makes even the fast HTTP scrapers 5x slower. Keep the threads started
+# immediately, but cap actual concurrent execution to preserve first-result speed.
+LIGHT_WORKERS = 2
+NETWORK_WORKERS = 1
+BROWSER_WORKERS = 1
 STORE_TIMEOUT_SECONDS = 60.0
 STORE_TIMEOUTS = {'bplatz':60.0,'deloox':75.0,'parfumcity':60.0,'parfumzentrum':60.0,'perfumemarket':60.0,'sabina':70.0,'orioudh':60.0,'notino':45.0}
 JOB_TIMEOUT_SECONDS = 125.0
