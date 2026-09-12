@@ -1214,7 +1214,99 @@ def _validate_candidate(
 
     return parse_product_html(url, html, query)
 
+def _search_http_candidates(session, query):
+    report = {
+        "enabled": True,
+        "status": None,
+        "final_url": None,
+        "html_bytes": 0,
+        "candidate_count": 0,
+        "error": None,
+    }
 
+    candidates = []
+    seen = set()
+
+    raw_query = clean(query)
+    if not raw_query:
+        return candidates, report
+
+    normalized_tokens = [t for t in query_tokens(raw_query) if len(t) >= 2]
+
+    variants = [raw_query]
+
+    if normalized_tokens:
+        normalized = " ".join(normalized_tokens)
+        if normalized not in variants:
+            variants.append(normalized)
+
+    compact = re.sub(
+        r"(?<=\d)\s+(?=[a-z])|(?<=[a-z])\s+(?=\d)",
+        "",
+        norm(raw_query),
+    )
+
+    if compact and compact not in variants:
+        variants.append(compact)
+
+    headers = {
+        "User-Agent": USER_AGENT,
+        "Accept-Language": "fr-FR,fr;q=0.9,en;q=0.7",
+        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+    }
+
+    try:
+        session.headers.update(headers)
+    except Exception:
+        pass
+
+    for variant in variants[:3]:
+        url = SEARCH_URL.format(query=quote_plus(variant))
+
+        try:
+            response = session.get(
+                url,
+                timeout=TIMEOUT,
+                allow_redirects=True,
+            )
+
+            report["status"] = response.status_code
+            report["final_url"] = response.url
+            report["html_bytes"] += len(response.content or b"")
+
+            if response.status_code >= 400 or not response.text:
+                continue
+
+            items = extract_candidates_from_html(
+                response.text,
+                response.url,
+                query,
+            )
+
+            for item in items:
+                key = _candidate_key(item.get("url"))
+
+                if key and key not in seen:
+                    seen.add(key)
+                    candidates.append(item)
+
+        except requests.RequestException as exc:
+            report["error"] = str(exc)
+            continue
+
+        except Exception as exc:
+            report["error"] = str(exc)
+            continue
+
+    candidates.sort(
+        key=lambda x: x.get("score", 0),
+        reverse=True,
+    )
+
+    candidates = candidates[:MAX_CANDIDATES]
+    report["candidate_count"] = len(candidates)
+
+    return candidates, report
 def _search_internal(
     query: str,
     diagnostic: bool = False,
