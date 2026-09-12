@@ -318,7 +318,76 @@ def _install_orioudh():
 
     s.search_stream = search_stream
 
+def _install_sabina():
+    try:
+        from scrapers.sabina import scraper as s
+    except Exception:
+        return
 
+    if hasattr(s, "search_stream"):
+        return
+
+    def search_stream(query, emit):
+        query = s._clean(query)
+        if not query:
+            return None
+
+        started = time.monotonic()
+        s._stream_diag = {"started": started}
+
+        import requests
+
+        session = requests.Session()
+        try:
+            urls = s._discover_from_first_party(session, query)
+        finally:
+            session.close()
+
+        s._stream_diag["discovery_elapsed"] = round(
+            time.monotonic() - started, 3
+        )
+
+        if not urls:
+            return None
+
+        urls = list(dict.fromkeys(urls))
+
+        with ThreadPoolExecutor(
+            max_workers=min(
+                getattr(s, "PRODUCT_WORKERS", 8),
+                len(urls),
+            )
+        ) as pool:
+            futures = [
+                pool.submit(
+                    s._extract_product_page,
+                    url,
+                    query,
+                )
+                for url in urls
+            ]
+
+            for future in as_completed(futures):
+                try:
+                    rows = future.result() or []
+                except Exception:
+                    continue
+
+                if isinstance(rows, dict):
+                    rows = [rows]
+
+                for row in rows:
+                    if isinstance(row, dict):
+                        _diag_emit(
+                            s,
+                            emit,
+                            row,
+                            started,
+                        )
+
+        return None
+
+    s.search_stream = search_stream
 for _installer in (
     _install_bplatz,
     _install_parfumcity,
