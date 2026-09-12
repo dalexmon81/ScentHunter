@@ -33,6 +33,8 @@ PRODUCT_RE = re.compile(
 SIZE_RE = re.compile(r"(?<!\d)(\d+(?:[.,]\d+)?)\s*(ml|cl|l)\b", re.I)
 PRICE_RE = re.compile(r"(\d{1,4}(?:[.,]\d{1,2})?)\s*€", re.I)
 
+logger = logging.getLogger(__name__)
+
 
 def _clean(value: Any) -> str:
     return re.sub(r"\s+", " ", str(value or "")).strip()
@@ -43,6 +45,11 @@ def _norm(value: Any) -> str:
 
 
 def _query_matches(name: str, query: str) -> bool:
+    """
+    Fuzzy-ish matcher:
+    - query <=2 token: almeno 1 match
+    - query >2 token: almeno 50% token match
+    """
     q_tokens = [x for x in _norm(query).split() if len(x) > 1]
     n_tokens = set(_norm(name).split())
     if not q_tokens or not n_tokens:
@@ -51,9 +58,6 @@ def _query_matches(name: str, query: str) -> bool:
     matched = sum(1 for t in q_tokens if t in n_tokens)
     ratio = matched / len(q_tokens)
 
-    # Regole morbide:
-    # - query corta: basta 1 match
-    # - query media/lunga: almeno 50%
     return matched >= 1 if len(q_tokens) <= 2 else ratio >= 0.5
 
 
@@ -114,16 +118,13 @@ def _extract_urls(html: str) -> List[str]:
         url = url.split("#", 1)[0].split("?", 1)[0].rstrip(".,;)")
         low = url.lower()
 
-        # dominio corretto
         if "notino.fr" not in low:
             return
 
-        # escludi pagine non-prodotto più comuni
         blocked = ("/search", "/blog", "/about", "/kontakt", "/cart", "/panier")
         if any(x in low for x in blocked):
             return
 
-        # tieni URL “profondi” (tipicamente prodotto)
         path = urlparse(url).path.strip("/")
         if len(path.split("/")) < 2:
             return
@@ -134,27 +135,7 @@ def _extract_urls(html: str) -> List[str]:
     for a in soup.find_all("a", href=True):
         add(a.get("href", ""))
 
-    for url in PRODUCT_RE.findall(html or ""):
-        add(url)
-
-    return found
-
-    def add(url: str):
-        if not url:
-            return
-        if url.startswith("/"):
-            url = urljoin(BASE, url)
-        if not re.match(r"^https?://", url, re.I):
-            return
-        url = url.split("#", 1)[0].split("?", 1)[0].rstrip(".,;)")
-        if "notino.fr" not in url.lower() or "/p-" not in url.lower():
-            return
-        if url not in found:
-            found.append(url)
-
-    for a in soup.find_all("a", href=True):
-        add(a.get("href", ""))
-
+    # fallback regex scan
     for url in PRODUCT_RE.findall(html or ""):
         add(url)
 
@@ -258,13 +239,6 @@ def _parse_product(url: str) -> Optional[Dict[str, Any]]:
 
 
 def search(query: str) -> List[Dict[str, Any]]:
-    """
-    Notino discovery follows the same architecture as the working scrapers:
-    first-party search -> product URLs -> parallel product pages.
-
-    No Jina, Google Translate, Browserless, hard-coded perfume, or external
-    search engine is used.
-    """
     query = _clean(query)
     if not query:
         return []
@@ -293,12 +267,11 @@ def search(query: str) -> List[Dict[str, Any]]:
 
         urls = _extract_urls(response.text)
 
-        # Search result HTML can contain products in JSON/script data even when
-        # anchors are not present.
         if not urls:
             urls = _extract_urls(response.text.replace("\\/", "/"))
 
         urls = urls[:MAX_CANDIDATES]
+        logger.info("notino: query=%r candidates=%d", query, len(urls))
     finally:
         session.close()
 
@@ -322,16 +295,17 @@ def search(query: str) -> List[Dict[str, Any]]:
             if item:
                 results.append(item)
 
-    # The search page itself determines candidates; this final filter only
-    # removes unrelated products that may have been embedded in page data.
-    filtered = [
-    item for item in results
-    if _query_matches(item.get("name", ""), query)
-]
+    logger.info("notino: query=%r parsed=%d", query, len(results))
 
-# fallback: se il filtro testuale azzera, non buttare via Notino
-if not filtered:
-    filtered = results[:]
+    filtered = [
+        item for item in results
+        if _query_matches(item.get("name", ""), query)
+    ]
+
+    # fallback anti-empty
+    if not filtered:
+        logger.info("notino: query=%r filter-empty -> fallback to parsed", query)
+        filtered = results[:]
 
     filtered.sort(
         key=lambda item: (
@@ -340,10 +314,8 @@ if not filtered:
             item.get("price_num") or 0,
         )
     )
-    if not filtered:
-    # fallback: restituisci comunque i migliori candidati
-    filtered = results[:]
 
+    logger.info("notino: query=%r final=%d", query, len(filtered))
     return filtered
 
 
