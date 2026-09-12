@@ -43,9 +43,18 @@ def _norm(value: Any) -> str:
 
 
 def _query_matches(name: str, query: str) -> bool:
-    q = [x for x in _norm(query).split() if len(x) > 1]
-    n = _norm(name)
-    return bool(q) and all(x in n for x in q)
+    q_tokens = [x for x in _norm(query).split() if len(x) > 1]
+    n_tokens = set(_norm(name).split())
+    if not q_tokens or not n_tokens:
+        return False
+
+    matched = sum(1 for t in q_tokens if t in n_tokens)
+    ratio = matched / len(q_tokens)
+
+    # Regole morbide:
+    # - query corta: basta 1 match
+    # - query media/lunga: almeno 50%
+    return matched >= 1 if len(q_tokens) <= 2 else ratio >= 0.5
 
 
 def _price(value: Any) -> Optional[float]:
@@ -93,6 +102,42 @@ def _get(session: requests.Session, url: str, timeout) -> requests.Response:
 def _extract_urls(html: str) -> List[str]:
     soup = BeautifulSoup(html or "", "html.parser")
     found: List[str] = []
+
+    def add(url: str):
+        if not url:
+            return
+        if url.startswith("/"):
+            url = urljoin(BASE, url)
+        if not re.match(r"^https?://", url, re.I):
+            return
+
+        url = url.split("#", 1)[0].split("?", 1)[0].rstrip(".,;)")
+        low = url.lower()
+
+        # dominio corretto
+        if "notino.fr" not in low:
+            return
+
+        # escludi pagine non-prodotto più comuni
+        blocked = ("/search", "/blog", "/about", "/kontakt", "/cart", "/panier")
+        if any(x in low for x in blocked):
+            return
+
+        # tieni URL “profondi” (tipicamente prodotto)
+        path = urlparse(url).path.strip("/")
+        if len(path.split("/")) < 2:
+            return
+
+        if url not in found:
+            found.append(url)
+
+    for a in soup.find_all("a", href=True):
+        add(a.get("href", ""))
+
+    for url in PRODUCT_RE.findall(html or ""):
+        add(url)
+
+    return found
 
     def add(url: str):
         if not url:
@@ -291,6 +336,9 @@ def search(query: str) -> List[Dict[str, Any]]:
             item.get("price_num") or 0,
         )
     )
+    if not filtered:
+    # fallback: restituisci comunque i migliori candidati
+    filtered = results[:]
 
     return filtered
 
