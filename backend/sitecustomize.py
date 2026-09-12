@@ -204,6 +204,8 @@ def _install_orioudh():
         if not query:
             return None
 
+        s.CURRENT_QUERY = query
+
         session = s.requests.Session()
         try:
             urls = s._discover(session, query)
